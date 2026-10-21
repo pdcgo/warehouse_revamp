@@ -155,7 +155,7 @@ func TestOrderCancel_FailedReturnLeavesTheOrderLive(t *testing.T) {
 		t.Fatalf("detail: %v", err)
 	}
 
-	if got := detail.Msg.GetOrder().GetStatus(); got != sellingv1.OrderStatus_ORDER_STATUS_PLACED {
+	if got := detail.Msg.GetOrder().GetStatus(); got != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 		t.Fatalf("order status = %v, want still PLACED — a cancel whose stock did not come back "+
 			"must not stand", got)
 	}

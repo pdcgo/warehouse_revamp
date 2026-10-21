@@ -9,8 +9,18 @@
 /** Where the emulator is — the same default the server uses (event_source.NewPubsubEmulator). */
 export const PUBSUB_HOST = process.env.PUBSUB_EMULATOR_HOST || "localhost:8085";
 
-/** The project the dev server publishes to (event_sender.go `devProjectID`). */
-export const PUBSUB_PROJECT = "warehouse-dev";
+/**
+ * The project the E2E server publishes to — its OWN, not the dev server's `warehouse-dev`. The emulator PUSHES
+ * to each server, so sharing a project would hand the dev server the e2e's orders (posted into the dev database)
+ * and let each run overwrite the other's push URLs. playwright.config.ts gives the server the same id.
+ */
+export const PUBSUB_PROJECT = "warehouse-e2e";
+
+/**
+ * Where the emulator pushes the e2e server's events: its API on :8081, reached from inside the emulator's
+ * container. CI binds that API on every interface (E2E_API_ADDR) so a container can reach it.
+ */
+export const PUBSUB_PUSH_BASE_URL = process.env.E2E_PUSH_BASE_URL || "http://host.docker.internal:8081";
 
 /** Throws, with the command that fixes it, when the emulator does not answer. */
 export async function requirePubsubEmulator(): Promise<void> {
@@ -49,5 +59,5 @@ export async function requirePubsubEmulator(): Promise<void> {
  * and takes a second, so a restarted emulator can never cost an investigation again.
  */
 export function ensurePubsubTopicsCommand(): string {
-  return `go run ../tools/san pubsub ensure --project ${PUBSUB_PROJECT} --emulator`;
+  return `go run ../tools/san pubsub ensure --project ${PUBSUB_PROJECT} --emulator --push-base-url ${PUBSUB_PUSH_BASE_URL}`;
 }

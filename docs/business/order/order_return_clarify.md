@@ -4,6 +4,10 @@ What [order_return.md](./order_return.md) leaves open. **That doc is yours — t
 are deleted, so this file is always the current open set. Decisions land in
 [context_decision.md](./context_decision.md).
 
+> ✅ **Built (2026-10-21):** the table, its editor (Settings → Return Warehouse) and the `team_infos` drop — the
+> [Contradiction](#the-return-warehouse-moved-out-of-team-infos) is resolved. Create does not check yet (rollout steps 2–3).
+> **Nothing is open here.**
+
 > ✅ **Your edits (2026-10-19):** item 2 of §Table Must Have and the own branch of §Order Return Flow —
 > [the-map-table-still-has-warehouse-and-to-product](#the-map-table-still-has-warehouse-and-to-product) and the last critique resolved.
 > **Nothing is open here.**
@@ -151,12 +155,12 @@ flowchart LR
 
 | | | |
 | --- | --- | --- |
-| the configuration | `team_return_configurations` — `team_id` unique, `warehouse_id` | not built |
-| `team_infos.return_warehouse_id` | **dropped** | a `team_service` migration |
+| the configuration | `team_return_configurations` — `team_id` unique, `warehouse_id` | ✅ built *(2026-10-21)* — selling `00016` |
+| `team_infos.return_warehouse_id` | **dropped** | ✅ team `00009` *(2026-10-21)* |
 | `shops.return_warehouse_id` | not built | [the-return-warehouse-is-per-team](./context_decision.md#the-return-warehouse-is-per-team) |
 | `orders.return_warehouse_id` | not built | [the-return-warehouse-is-read-when-the-return-happens](./context_decision.md#the-return-warehouse-is-read-when-the-return-happens) |
-| **an editor** | ⛔ **missing** — no screen sets a row | this is what blocks the gate |
-| the gate | create refuses a team with no configuration | still [what it checks](#the-gate-is-on-the-order-not-the-config) is open |
+| **an editor** | ✅ *(2026-10-21)* the Settings screen's **Return Warehouse** card | a selling team's managers set it |
+| the gate | create refuses a team with no configuration ([create-refuses-a-team-with-no-return-warehouse](./context_decision.md#create-refuses-a-team-with-no-return-warehouse)) | not on — after every team has a row |
 
 ### the-return-flow-corrected
 
@@ -296,6 +300,8 @@ was the one the owner made, adding the state that made both readings true at onc
 
 ## the-return-warehouse-moved-out-of-team-infos
 
+✅ *(2026-10-21)* **Resolved** — every site below is done; the build was the last. Kept as a heading so the links into it hold.
+
 *(2026-10-17)* [the-return-warehouse-lives-in-team-return-configurations](./context_decision.md#the-return-warehouse-lives-in-team-return-configurations)
 moves the return warehouse out of `team_infos`. One cause, these sites:
 
@@ -304,7 +310,7 @@ moves the return warehouse out of `team_infos`. One cause, these sites:
 | [the-return-warehouse-is-per-team](./context_decision.md#the-return-warehouse-is-per-team) | *"no new configuration table — the column already exists"* | ✅ noted — per team holds, the location moved |
 | [the-return-warehouse-is-read-when-the-return-happens](./context_decision.md#the-return-warehouse-is-read-when-the-return-happens) | reads `team_infos.return_warehouse_id` | ✅ noted — reads `team_return_configurations` |
 | this file's Proposed Design and the corrected flow | `team_infos.return_warehouse_id` | ✅ redrawn |
-| the build — `team_service` columns `return_warehouse_id` and `return_user_id` ([return-user-id-is-dropped](./context_decision.md#return-user-id-is-dropped)), `TeamInfoUpdate` fields 6 and 7, their handler and test, the frontend hook, the `00006` comment | the columns are live | ⛔ a `team_service` migration when built, with [database-schema.md](../../database-schema.md) in the same commit |
+| the build — `team_service` columns `return_warehouse_id` and `return_user_id` ([return-user-id-is-dropped](./context_decision.md#return-user-id-is-dropped)), `TeamInfoUpdate` fields 6 and 7, their handler and test, the frontend hook, the `00006` comment | the columns are live | ✅ *(2026-10-21)* team `00009` drops both, fields 6–7 reserved, handler/test/hook and [database-schema.md](../../database-schema.md) updated. `00006`'s comment stays: it describes the table as it was when it ran |
 
 **Which is wrong:** everything that names `team_infos` — your answer is the newer statement. **→ Recommend** the drop is
 its own `team_service` commit, so nothing that still writes the field is left behind.

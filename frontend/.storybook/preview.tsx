@@ -27,6 +27,7 @@ import { resetRestockStub } from "./restockStub";
 import { resetWarehouseTransferStub } from "./warehouseTransferStub";
 import { resetOpnameStub } from "./opnameStub";
 import { resetRackStub } from "./rackStub";
+import { resetReturnConfigurationStub } from "./returnConfigurationStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
 import type { Lang } from "../src/i18n/language";
@@ -396,6 +397,8 @@ const preview: Preview = {
     resetOpnameStub();
     // …and the shelves, which a move or a sample on Rack detail writes to.
     resetRackStub();
+    // …and the return warehouses, which the settings card saves.
+    resetReturnConfigurationStub();
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
     // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
     stubUploads();

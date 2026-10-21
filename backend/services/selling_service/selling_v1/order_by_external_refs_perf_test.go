@@ -59,7 +59,7 @@ func perfMarketRef(market string, i int) string {
 // carry a marketplace ref, 20% are phone orders with none, and one in a hundred re-uses the ref of an
 // earlier order of its team (a cancelled order typed in again), so a ref can find two orders.
 func perfRefOrders(shopIDs [][]uint64) []selling_service_models.Order {
-	statuses := []string{"placed", "confirmed", "picking", "packed", "shipped", "cancelled"}
+	statuses := []string{"pending", "processed", "picked", "shipping", "shipped", "completed", "problem", "lost", "return", "return_completed", "cancel"}
 
 	rows := make([]selling_service_models.Order, 0, perfRefOrderRows)
 

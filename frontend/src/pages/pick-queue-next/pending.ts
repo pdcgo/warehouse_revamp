@@ -7,7 +7,6 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 
 /** One unwired part of the screen. The id is also its i18n key (`warehouseOrders.pending.<id>`). */
 export type PendingId =
-  | "statusSet"
   | "shop"
   | "receiptCode"
   | "quantity"
@@ -16,18 +15,12 @@ export type PendingId =
   | "teamFilter"
   | "marketplaceFilter"
   | "courierFilter"
-  | "shipmentStatus"
-  | "stepMove"
   | "resiLookup"
-  | "bulkHandover"
   | "barcode"
   | "printMerge"
   | "exportFile";
 
 const PARTS: PendingPart<PendingId>[] = [
-  // The tabs are the steps of `processed` (`the-warehouse-tabs-are-the-processed-steps`), and the last
-  // one — handed over — has no status in the contract yet, so its tab is disabled.
-  { id: "statusSet", kind: "missing" },
   // The order carries `shop_id` only, and `ShopList` is scoped to the SELLING team, so a warehouse
   // cannot name the seller's shop or its marketplace.
   { id: "shop", kind: "sample" },
@@ -44,15 +37,8 @@ const PARTS: PendingPart<PendingId>[] = [
   { id: "teamFilter", kind: "dropped" },
   { id: "marketplaceFilter", kind: "dropped" },
   { id: "courierFilter", kind: "dropped" },
-  // …and the shipment's state lives on a shipment record that does not exist yet.
-  { id: "shipmentStatus", kind: "dropped" },
-  // THE WORKBENCH (`a-warehouse-step-moves-by-the-old-systems-table`, `scanning-is-the-crews-hands`).
-  // A skip, a move back or a move into "Sudah diambil" has no RPC — pressing it does nothing but say so.
-  { id: "stepMove", kind: "dropped" },
   // No RPC finds an order by its tracking number: the handover scan looks in the orders the screen loaded.
   { id: "resiLookup", kind: "derived" },
-  // …and hands them over one call per parcel — there is no bulk handover RPC.
-  { id: "bulkHandover", kind: "derived" },
   // Products have no barcode: the validation scan matches the SKU.
   { id: "barcode", kind: "derived" },
   // Several receipts printed as ONE document — nothing merges them.

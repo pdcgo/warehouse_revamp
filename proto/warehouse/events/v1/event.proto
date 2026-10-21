@@ -239,6 +239,13 @@ message OrderPlaced {
   // envelope's identity says who caused THAT PUBLISH — the operator running the backfill. A consumer
   // folding the fact reads this one.
   uint64 actor_id = 9;
+
+  // The shop it was sold on, and what the PLATFORM says the buyer paid, whole rupiah — 0 = not recorded.
+  // settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
+  // its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
+  // calls settlement, so the event has to carry everything the account needs.
+  uint64 shop_id = 10;
+  int64 marketplace_total = 11;
 }
 
 // One line of a placed order, as liability_service needs it (#186).
@@ -285,6 +292,10 @@ message OrderCancelled {
   // ledger movement, and it is a different person's act from the placement it undoes — so it carries
   // its own actor rather than reusing the one on the entries being reversed.
   uint64 actor_id = 3;
+
+  // The shop it was sold on — settlement cancels the sale on that shop's account
+  // (settlement-opens-the-sale-from-the-order-event).
+  uint64 shop_id = 4;
 }
 
 // RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.

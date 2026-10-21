@@ -952,6 +952,8 @@ consumer that wants only `fund`, or wants to exclude `system_adjustment`, needs 
 
 ### In — two, and both already exist with no consumer
 
+🔄 *(2026-10-21)* **Decided:** settlement consumes both ([settlement-opens-the-sale-from-the-order-event](./context_decision.md#settlement-opens-the-sale-from-the-order-event)). `OrderPlaced` must gain `shop_id` and the platform total.
+
 `context.md` says *"its trigered on order created, `order_service` calling --> `settlement_service`"*
 — a synchronous RPC. But `selling_service` **already publishes both facts** and the proto says
 outright that nothing listens:
@@ -1401,6 +1403,9 @@ flowchart TB
 ```
 
 ## the calling service is named twice and neither name is in the tree
+
+🔄 *(2026-10-21)* Half gone: §Type 1–2 no longer names a caller, since settlement receives the events ([settlement-opens-the-sale-from-the-order-event](./context_decision.md#settlement-opens-the-sale-from-the-order-event)).
+`architecture/context.md:9` still says `order_service` where the tree has `selling_service`.
 
 **New this round**, and it arrived with the arrow that answers Q4.
 

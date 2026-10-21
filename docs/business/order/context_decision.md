@@ -88,6 +88,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations) | a team's return warehouse is a `team_return_configurations` row in the order context — `team_infos.return_warehouse_id` is dropped |
 | [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) | order create refuses a team with no `team_return_configurations` row — turned on only after every team has one |
 | [a-team-may-pick-any-return-warehouse](#a-team-may-pick-any-return-warehouse) | the return warehouse may be any warehouse — one with no fee agreement takes the returns uncharged, accepted |
+| [each-team-sets-its-own-return-warehouse](#each-team-sets-its-own-return-warehouse) | no backfill: every selling team sets its own return warehouse on Settings, then the create check turns on |
+| [root-sees-which-teams-have-no-return-warehouse](#root-sees-which-teams-have-no-return-warehouse) | root's Teams list badges every selling team with no return warehouse; none left = turn the check on |
 | [stock-in-the-return-warehouse-is-not-drift](#stock-in-the-return-warehouse-is-not-drift) | stock in several warehouses is normal — the team moves it by warehouse transfer if it wants; no report, nothing automatic |
 | [a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move) | the warehouse forces `return` only from `shipping`, `shipped`, `problem`, `completed` — never from an order whose goods never left |
 | [the-accept-records-where-it-was-accepted](#the-accept-records-where-it-was-accepted) | the accept records the warehouse it happened in, automatically — the stock still goes to the configured one |
@@ -96,6 +98,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-returned-borrowed-unit-is-relabelled-at-the-accept](#a-returned-borrowed-unit-is-relabelled-at-the-accept) | at the accept, each borrowed unit gets the mapped product's label over the lender's — own units keep theirs |
 | [a-borrowed-line-needs-its-map-at-create](#a-borrowed-line-needs-its-map-at-create) | create refuses a borrowed line the team has not mapped for returns — mapped once per product; the return's error is a backstop |
 | [a-return-never-clones-a-product](#a-return-never-clones-a-product) | a borrowed line returns as the team's own mapped product — no map is an error, nothing is cloned |
+| [what-an-order-proves-is-already-kept](#what-an-order-proves-is-already-kept) | an order's history needs nothing new: its creator, door, frozen lines and timeline already show it |
+| [a-found-lost-parcel-is-a-found-stock-in](#a-found-lost-parcel-is-a-found-stock-in) | a parcel back after `lost` is a `found` stock-in naming the order; the order stays lost, the money is settled by hand |
+| [cod-and-shipping-are-the-platforms](#cod-and-shipping-are-the-platforms) | buyer shipping and COD need nothing on the order: COD is only ever the marketplace's, paid out like any order |
 
 ---
 
@@ -400,7 +405,8 @@ stateDiagram-v2
 
 **The spec.** Every move out of `lost` is refused. **The consequence, stated so it is not rediscovered:** a
 parcel found after being declared lost does **not** come back through its order — its goods re-enter stock by
-some other path, which no doc describes yet (clarify *Awaiting*).
+some other path, which no doc describes yet (clarify *Awaiting*). 🔄 *(2026-10-21)* Described now:
+[a-found-lost-parcel-is-a-found-stock-in](#a-found-lost-parcel-is-a-found-stock-in).
 
 ---
 
@@ -2499,7 +2505,7 @@ flowchart LR
 | --- | --- |
 | creditors | `warehouse_id` of the order, always · the owning team of each shared product |
 | the build | already checks exactly these (`credit_checker.go`) |
-| ⚠ still saying *shared product only* | the box in [order_creation.md](./order_creation.md) and [balance/context.md](../balance/context.md) §Balance Policy 2 — the owner's to amend |
+| ⚠ still saying *shared product only* | the box in [order_creation.md](./order_creation.md) and [balance/context.md](../balance/context.md) §Balance Policy 2 — the owner's to amend. 🔄 *(2026-10-21)* both amended |
 
 ---
 
@@ -2986,6 +2992,11 @@ flowchart LR
 tabs, [the-status-moves-miss-picked-and-shipping](./context_clarify.md#the-status-moves-miss-picked-and-shipping).
 [order-created-is-finalize](#order-created-is-finalize) drew its seam against the journey; the seam is now `[*] --> pending`.
 
+✅ *(2026-10-21)* **Built**: the eleven are the `OrderStatus` enum (00015 migrated every order and history row by the
+mapping the owner agreed), and every plain move goes through `OrderStatusChange`
+([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)).
+Not built: the return accept (`return → return_completed`).
+
 ---
 
 ## the-draft-is-deleted-in-the-orders-transaction
@@ -3050,7 +3061,8 @@ flowchart LR
 | read | when the return happens — [the-return-warehouse-is-read-when-the-return-happens](#the-return-warehouse-is-read-when-the-return-happens), now from this table |
 | `team_infos.return_warehouse_id` | dropped: a `team_service` migration, the `TeamInfoUpdate` field, its handler and test, the frontend hook's parameter, and [database-schema.md](../../database-schema.md) in the same commit |
 | `team_infos.return_user_id` | 🔄 *(2026-10-19)* dropped too — [return-user-id-is-dropped](#return-user-id-is-dropped) |
-| what create checks | still open — [the-gate-is-on-the-order-not-the-config](./order_return_clarify.md#the-gate-is-on-the-order-not-the-config) |
+| what create checks | still open — [the-gate-is-on-the-order-not-the-config](./order_return_clarify.md#the-gate-is-on-the-order-not-the-config). 🔄 *(2026-10-21)* Answered 2026-10-17 and this row was missed: the team's row — [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) |
+| ✅ built *(2026-10-21)* | selling `00016` creates the table; `TeamReturnConfigurationDetail` / `TeamReturnConfigurationSet` ([return_configuration.proto](../../../proto/warehouse/selling/v1/return_configuration.proto)) read it and upsert it on the unique `team_id`; the Settings screen's **Return Warehouse** card sets it. team `00009` drops both `team_infos` columns, with `TeamInfo`/`TeamInfoUpdateRequest` fields 6–7 reserved. The table starts empty |
 
 ---
 
@@ -3082,6 +3094,8 @@ flowchart LR
 | the refusal | names the team, and says the return warehouse is not set |
 | the rollout | 1. the table and a screen to set it · 2. a row for every team · 3. the check — never in one commit |
 | ✅ drawn *(2026-10-19)* | in [order_creation.md](./order_creation.md)'s *Check the Request* |
+| 🔄 *(2026-10-21)* step 1 built | the table and the Settings card ([the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations)). Steps 2 and 3 are not: no team has a row yet, and create does not check |
+| 🔄 *(2026-10-21)* step 2 | each team sets its own, no backfill — [each-team-sets-its-own-return-warehouse](#each-team-sets-its-own-return-warehouse) |
 
 ---
 
@@ -3343,3 +3357,153 @@ flowchart LR
 | --- | --- |
 | dropped | `team_infos.return_user_id` — in the same `team_service` migration as `return_warehouse_id` ([the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations)) |
 | with it | the `TeamInfoUpdate` field 7, its handler and test, the frontend hook's parameter, and [database-schema.md](../../database-schema.md) |
+| ✅ built *(2026-10-21)* | team `00009` drops it with `return_warehouse_id`; field 7 is reserved |
+
+---
+
+## what-an-order-proves-is-already-kept
+
+> Owner, in chat (2026-10-21): *"yes, i follow your recomendation"* — to *"can `what-an-order-must-prove` be closed as
+> covered?"*, the critique in [context_clarify.md](./context_clarify.md#critique). As recommended.
+
+**The verdict.** Nothing new is needed to show an order's history months later. Each fact already has one home, written
+when it happens and never edited.
+
+```mermaid
+flowchart LR
+  O["order 1042, months later"] --> W["who took it - created_by_user_id"]
+  O --> D["by which door - the draft's source, then the form"]
+  O --> M["what, at what cost - the lines, frozen at create"]
+  O --> T["who picked, who handed over, when - order_timeline_logs"]
+```
+
+**The spec.**
+
+| must show | kept in |
+| --- | --- |
+| who took the order | `orders.created_by_user_id` |
+| by which door | the draft's source ([drafts-exist-only-for-the-third-party-app](#drafts-exist-only-for-the-third-party-app)) |
+| what was ordered, at what cost | the lines and their money, frozen at create ([a-lines-money-is-frozen-at-finalize](#a-lines-money-is-frozen-at-finalize)) |
+| who moved it, and when | a row per move in `order_timeline_logs`, with its actor ([picked-lives-on-the-order-timeline](../inventory/transaction_decision.md#picked-lives-on-the-order-timeline), [one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)) |
+
+---
+
+## a-found-lost-parcel-is-a-found-stock-in
+
+> Owner, in chat (2026-10-21): *"okay, i follow your recomendation"* — to *"when a parcel marked `lost` turns up at the
+> warehouse, how do its goods get back into stock?"*, the gap [lost-is-final](#lost-is-final) left open (clarify *Awaiting*).
+> As recommended.
+
+**The verdict.** A parcel that comes back after its order went `lost` is entered by the warehouse as a **`found` stock-in
+that names the order**. The order stays `lost`, because [lost-is-final](#lost-is-final). The units go back on a rack under their
+owning team. Any money the platform already paid for the loss is settled by hand by customer service
+([a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand)).
+
+```mermaid
+flowchart LR
+  L["order 1042 - lost"] -.->|"stays lost"| L
+  P["the courier brings the parcel back"] --> F["warehouse - Found Stock, from lost order 1042"]
+  F --> I["inventory - found, Sabun x 2, Melati's, rack A-3"]
+  F --> M["customer service - settles any platform payout by hand"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who enters it | the warehouse that receives the parcel |
+| the transaction | `found` ([problem-and-found-replace-opname](../inventory/transaction_decision.md#problem-and-found-replace-opname)), outside a count. It names the lost order |
+| the units | back under their owning team, on the rack the warehouse picks |
+| their value | proposed: the cost the order took them at. The order's take already names its batches |
+| the order | stays `lost`. No status move |
+| the money | settled by hand by customer service, as for any lost parcel |
+| inventory's to build | a `found` stock-in outside an opname session, carrying an optional order reference |
+
+---
+
+## cod-and-shipping-are-the-platforms
+
+> Owner, in chat (2026-10-21): *"we never take order cod outside platform marketplace"* — to *"can buyer shipping and COD
+> be closed: does the order need anything for them?"*, the last item of the clarify's *Awaiting*. As recommended.
+
+**The verdict.** Neither buyer shipping nor COD needs anything on the order. Every order is a marketplace order, so a COD
+buyer's cash goes to the courier, then to the platform. The seller is paid in the platform's normal payout, the same as
+a prepaid order. The money never passes through us.
+
+```mermaid
+flowchart LR
+  B["the buyer - cash at the door"] --> C["the courier"] --> P["the platform"]
+  P -->|"the payout - 92.000"| S["settlement records it"]
+  O["order 1042 - goods_cost, warehouse_fee, status"] -.->|"no COD, no shipping field"| P
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| buyer shipping | not recorded ([an-order-records-no-shipping-cost](#an-order-records-no-shipping-cost)) |
+| COD | not recorded. The platform's money until its payout, which settlement already records |
+| COD outside a marketplace | never taken, and excluded: every order needs a platform ref and total ([platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize)) |
+| a COD parcel refused at the door | `shipping → return`, and the sale stays open with no payout ([lost-and-return-leave-the-sale-open](#lost-and-return-leave-the-sale-open)) |
+
+---
+
+## each-team-sets-its-own-return-warehouse
+
+> Owner, in chat (2026-10-21): **"i choose B"** — to *"before order create can refuse a team with no return warehouse, every
+> selling team needs one. Fill them from each team's default warehouse, or let each team set it itself?"*, option B. **Against
+> my recommendation** (fill once from the default warehouse, then set the rest by hand).
+
+**The verdict.** Nothing is filled in for a team. Every selling team's manager sets the return warehouse on **Settings → Return
+Warehouse**, and the create check of [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse)
+is turned on once every selling team has done so. A return warehouse is always a choice somebody in the team made, never a value
+the system guessed for it.
+
+```mermaid
+flowchart LR
+  T["each selling team's manager"] -->|"Settings - Return Warehouse"| R["team_return_configurations row"]
+  R --> Q{"every selling team has a row?"}
+  Q -->|"no"| W["the card warns - not set yet"]
+  Q -->|"yes"| C["turn on the create check - rollout step 3"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| rollout step 2 | each team sets its own, on the card built in step 1. No backfill and no `san` command |
+| what a team without one sees | the card's warning: *no return warehouse is set, orders will require one soon* |
+| the default warehouse | not read. It may be where the team ships from, but returns can be sent elsewhere ([a-team-may-pick-any-return-warehouse](#a-team-may-pick-any-return-warehouse)), so it is not a stand-in for the choice |
+| what I gave up | the teams with a default set would have been done at once; now every team, those included, waits on a person |
+| ⚠ not settled | how anyone sees that every team is done — no screen lists the teams still missing one, so step 3's trigger is only visible to a database query today. 🔄 *(2026-10-21)* settled — [root-sees-which-teams-have-no-return-warehouse](#root-sees-which-teams-have-no-return-warehouse) |
+
+---
+
+## root-sees-which-teams-have-no-return-warehouse
+
+> Owner, in chat (2026-10-21): *"i follow your recomendation"* — to *"nothing on screen shows which selling teams have not set
+> a return warehouse yet, so the moment to turn on the create check is only visible through a database query. A badge on
+> root's Teams list, like the shops' No primary CS?"*. As recommended. It closes the gap
+> [each-team-sets-its-own-return-warehouse](#each-team-sets-its-own-return-warehouse) left open.
+
+**The verdict.** On root's **Teams** list, every selling team that has not set a return warehouse carries a **No return
+warehouse** badge. When no selling team carries one, step 3 of
+[create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) can be turned on.
+
+```mermaid
+flowchart LR
+  L["root's Teams list - a page of teams"] --> B["TeamReturnConfigurationByIds - the selling teams' ids"]
+  B -->|"a team is absent"| M["badge - No return warehouse"]
+  B -->|"a team is answered"| N["no badge"]
+  M -.->|"none left"| C["turn on the create check"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | the name cell of [TeamTable](../../../frontend/src/pages/teams/components/TeamTable.tsx), selling teams only, in the warning tone |
+| who sees it | root and the Administrator. The read is unscoped, so its policy is theirs alone, and the list does not ask for anybody else |
+| the read | `TeamReturnConfigurationByIds(filter.ids = team ids)` — the guideline's ByIds shape; a team that has set none is **absent**. One indexed query: 0.7 ms for 200 teams |
+| no flash | nothing is marked until the answer is in, so a slow read never marks a team that has one |
+| ✅ built *(2026-10-21)* | pinned by `team_return_configuration_by_ids_test.go` and the story *Pages/Teams/TeamTable* |

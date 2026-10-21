@@ -654,10 +654,6 @@ type TeamInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	ContactNumber string                 `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3" json:"contact_number,omitempty"`
-	// Opaque ids owned by other services. Not validated here — no FK is possible across a
-	// service boundary. 0 = unset.
-	ReturnWarehouseId uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3" json:"return_warehouse_id,omitempty"`
-	ReturnUserId      uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3" json:"return_user_id,omitempty"`
 	// The warehouse this SELLING team ships from by default (#145). 0 = not configured.
 	//
 	// A convenience, not a rule: the order form pre-selects it and the person may still choose another,
@@ -711,20 +707,6 @@ func (x *TeamInfo) GetContactNumber() string {
 		return x.ContactNumber
 	}
 	return ""
-}
-
-func (x *TeamInfo) GetReturnWarehouseId() uint64 {
-	if x != nil {
-		return x.ReturnWarehouseId
-	}
-	return 0
-}
-
-func (x *TeamInfo) GetReturnUserId() uint64 {
-	if x != nil {
-		return x.ReturnUserId
-	}
-	return 0
 }
 
 func (x *TeamInfo) GetDefaultWarehouseId() uint64 {
@@ -2059,10 +2041,8 @@ type TeamInfoUpdateRequest struct {
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// ALL optional — explicit presence. Absent = leave alone. Present = write it, including
 	// present-and-zero = clear. Without presence there is no way to say "don't touch this", and
-	// a contact-number-only update silently blanks the return and default warehouse.
+	// a contact-number-only update silently blanks the default warehouse.
 	ContactNumber      *string `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
-	ReturnWarehouseId  *uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3,oneof" json:"return_warehouse_id,omitempty"`    // present & 0 = clear to NULL
-	ReturnUserId       *uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3,oneof" json:"return_user_id,omitempty"`                   // present & 0 = clear to NULL
 	DefaultWarehouseId *uint64 `protobuf:"varint,8,opt,name=default_warehouse_id,json=defaultWarehouseId,proto3,oneof" json:"default_warehouse_id,omitempty"` // present & 0 = clear to NULL (#145)
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
@@ -2110,20 +2090,6 @@ func (x *TeamInfoUpdateRequest) GetContactNumber() string {
 		return *x.ContactNumber
 	}
 	return ""
-}
-
-func (x *TeamInfoUpdateRequest) GetReturnWarehouseId() uint64 {
-	if x != nil && x.ReturnWarehouseId != nil {
-		return *x.ReturnWarehouseId
-	}
-	return 0
-}
-
-func (x *TeamInfoUpdateRequest) GetReturnUserId() uint64 {
-	if x != nil && x.ReturnUserId != nil {
-		return *x.ReturnUserId
-	}
-	return 0
 }
 
 func (x *TeamInfoUpdateRequest) GetDefaultWarehouseId() uint64 {
@@ -2206,13 +2172,11 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x06\t\"S\n" +
 	"\x1bWarehouseInfoUpdateResponse\x124\n" +
-	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\x95\x02\n" +
+	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\xf0\x01\n" +
 	"\bTeamInfo\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12%\n" +
-	"\x0econtact_number\x18\x02 \x01(\tR\rcontactNumber\x12.\n" +
-	"\x13return_warehouse_id\x18\x06 \x01(\x04R\x11returnWarehouseId\x12$\n" +
-	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\x120\n" +
-	"\x14default_warehouse_id\x18\b \x01(\x04R\x12defaultWarehouseIdJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\tbank_typeR\x0fbank_owner_nameR\x13bank_account_number\"\xad\x02\n" +
+	"\x0econtact_number\x18\x02 \x01(\tR\rcontactNumber\x120\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04R\x12defaultWarehouseIdJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\tbank_typeR\x0fbank_owner_nameR\x13bank_account_numberR\x13return_warehouse_idR\x0ereturn_user_id\"\xad\x02\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12/\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\x04type\x12\x12\n" +
@@ -2308,19 +2272,15 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12>\n" +
-	"\x05value\x18\x02 \x01(\v2(.warehouse.team.v1.TeamByIdsResponseListR\x05value:\x028\x01\"\xb3\x03\n" +
+	"\x05value\x18\x02 \x01(\v2(.warehouse.team.v1.TeamByIdsResponseListR\x05value:\x028\x01\"\xd9\x02\n" +
 	"\x15TeamInfoUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x123\n" +
-	"\x0econtact_number\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18(H\x00R\rcontactNumber\x88\x01\x01\x123\n" +
-	"\x13return_warehouse_id\x18\x06 \x01(\x04H\x01R\x11returnWarehouseId\x88\x01\x01\x12)\n" +
-	"\x0ereturn_user_id\x18\a \x01(\x04H\x02R\freturnUserId\x88\x01\x01\x125\n" +
-	"\x14default_warehouse_id\x18\b \x01(\x04H\x03R\x12defaultWarehouseId\x88\x01\x01:\x0e\x92\xb5\x18\n" +
+	"\x0econtact_number\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18(H\x00R\rcontactNumber\x88\x01\x01\x125\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04H\x01R\x12defaultWarehouseId\x88\x01\x01:\x0e\x92\xb5\x18\n" +
 	"\n" +
 	"\b\x01\x02\x03\x04\x06\t\v\fB\x11\n" +
-	"\x0f_contact_numberB\x16\n" +
-	"\x14_return_warehouse_idB\x11\n" +
-	"\x0f_return_user_idB\x17\n" +
-	"\x15_default_warehouse_idJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\tbank_typeR\x0fbank_owner_nameR\x13bank_account_number\"I\n" +
+	"\x0f_contact_numberB\x17\n" +
+	"\x15_default_warehouse_idJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\tbank_typeR\x0fbank_owner_nameR\x13bank_account_numberR\x13return_warehouse_idR\x0ereturn_user_id\"I\n" +
 	"\x16TeamInfoUpdateResponse\x12/\n" +
 	"\x04info\x18\x01 \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info*\xb6\x01\n" +
 	"\aWeekday\x12\x17\n" +

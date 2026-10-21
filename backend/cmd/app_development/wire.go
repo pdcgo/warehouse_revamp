@@ -74,9 +74,6 @@ func InitializeApp() (*App, error) {
 		// caller's token. See shop_primary.go.
 		NewShopClient,
 		NewShopPrimary,
-		// Joins selling to settlement — an order opens and cancels its marketplace account. See
-		// settlement_poster.go.
-		NewSettlementPoster,
 		// The subscription settlement's replay seeks — see replay_broker.go.
 		NewReplayBroker,
 		// The settlement importer, and its four services as clients under the uploader's token — see

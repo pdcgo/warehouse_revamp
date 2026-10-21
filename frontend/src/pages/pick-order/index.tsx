@@ -26,8 +26,7 @@ import { toaster } from "../../components/feedback/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { usePickOrder } from "../../features/picking/queries";
-import { useAdvanceOrderFulfilment } from "../../features/picking/queries";
-import type { FulfilmentStep } from "../../features/picking/queries";
+import { useOrderStatusChange } from "../../features/orders/queries";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -47,11 +46,13 @@ function parseOrderId(raw: string | undefined): bigint {
 // CONFIRM is the first of them (owner): the building has seen the order and takes the job on. It was
 // the selling team's button until now (#91), which is why a warehouse opening a just-placed order used
 // to find a screen with nothing on it to press.
-const NEXT_STEP: Partial<Record<OrderStatus, { labelKey: string; toastKey: string; step: FulfilmentStep }>> = {
-  [OrderStatus.PLACED]: { labelKey: "picking.action.confirm", toastKey: "picking.toast.confirmed", step: "confirm" },
-  [OrderStatus.CONFIRMED]: { labelKey: "picking.action.startPicking", toastKey: "picking.toast.picking", step: "pick" },
-  [OrderStatus.PICKING]: { labelKey: "picking.action.markPacked", toastKey: "picking.toast.packed", step: "pack" },
-  [OrderStatus.PACKED]: { labelKey: "picking.action.markShipped", toastKey: "picking.toast.shipped", step: "ship" },
+//
+// The warehouse's three forward moves of the status diagram, each an OrderStatusChange: confirm, Set
+// Picked, and the handover. A move back to pending is the list's (it asks for a reason).
+const NEXT_STEP: Partial<Record<OrderStatus, { labelKey: string; toastKey: string; to: OrderStatus }>> = {
+  [OrderStatus.PENDING]: { labelKey: "picking.action.confirm", toastKey: "picking.toast.confirmed", to: OrderStatus.PROCESSED },
+  [OrderStatus.PROCESSED]: { labelKey: "picking.action.markPicked", toastKey: "picking.toast.picked", to: OrderStatus.PICKED },
+  [OrderStatus.PICKED]: { labelKey: "picking.action.markHandedOver", toastKey: "picking.toast.handedOver", to: OrderStatus.SHIPPING },
 };
 
 // PickOrderPage — one order, its lines, and WHICH SHELF to walk to for each (#151).
@@ -75,8 +76,8 @@ export function PickOrderPage() {
 
   // Both reads land together — see usePickOrder. A partial screen would be worse than a slower one.
   const query = usePickOrder({ warehouseId, orderId });
-  // Advancing a step also moves stock — the hook invalidates both (#177).
-  const advanceMutation = useAdvanceOrderFulfilment();
+  // The move invalidates the orders and the stock screens together.
+  const moveMutation = useOrderStatusChange();
 
   const order = query.data?.order ?? null;
   const locations = query.data?.locations ?? [];
@@ -90,11 +91,16 @@ export function PickOrderPage() {
     if (!step) return;
 
     try {
-      // The step, and the stock it moves, invalidated together by the hook (#177).
-      // The step is read off NEXT_STEP rather than re-derived from the status here. The two used to be
-      // separate ladders — a label table and a chain of ternaries — and adding a fourth state to one
-      // and not the other is how a button ends up firing the previous step's RPC.
-      await advanceMutation.mutateAsync({ warehouseId, orderId, step: step.step });
+      // The move is read off NEXT_STEP rather than re-derived from the status here. The two used to be
+      // separate ladders — a label table and a chain of ternaries — and adding a state to one and not
+      // the other is how a button ends up making the previous step's move.
+      const [result] = await moveMutation.mutateAsync({ teamId: warehouseId, orderIds: [orderId], to: step.to });
+
+      if (!result?.moved) {
+        toaster.create({ type: "error", title: t("picking.toast.stepFailed"), description: result?.refusedReason });
+        return;
+      }
+
       toaster.create({ type: "success", title: t(step.toastKey) });
     } catch (err) {
       toaster.create({
@@ -178,7 +184,7 @@ export function PickOrderPage() {
         {step && (
           <Button
             colorPalette="brand"
-            loading={advanceMutation.isPending}
+            loading={moveMutation.isPending}
             onClick={() => void advance()}
             data-testid="pick-order-advance"
           >

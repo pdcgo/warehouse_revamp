@@ -108,7 +108,7 @@ func (a *importerOrders) OrdersByRefs(ctx context.Context, teamID uint64, refs [
 						OrderID:         order.GetOrderId(),
 						ShopID:          order.GetShopId(),
 						CreatedByUserID: order.GetCreatedByUserId(),
-						Cancelled:       order.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_CANCELLED,
+						Cancelled:       order.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_CANCEL,
 					})
 				}
 			}

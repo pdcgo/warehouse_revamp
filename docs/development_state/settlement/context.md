@@ -4,7 +4,10 @@
 screen and docs in the commit after it. 🔨 **Widened 2026-09-29 for the settlement importer** (9f20652): the five types,
 source `importer`, an imported shop row counted for the shop's primary CS, and the report's *Position to date* — see
 [below](#what-the-importer-changed-2026-09-29) and the importer's own
-[state report](./settlement_importer.md).
+[state report](./settlement_importer.md). 🔨 **Re-seamed 2026-10-21:** the order no longer calls settlement. `OrderSaleHandler`
+opens and cancels the sale from `OrderPlaced` / `OrderCancelled`
+([settlement-opens-the-sale-from-the-order-event](../../business/settlement/context_decision.md#settlement-opens-the-sale-from-the-order-event)),
+so an order's settlement account lands a moment after the order, not inside its transaction.
 
 **Settlement is BUILT END TO END.** The ledger, the order seam, the event, the fold, the reports, the
 maintenance RPCs, the report screen.
@@ -13,9 +16,9 @@ maintenance RPCs, the report screen.
 | --- | --- |
 | proto | `settlement.proto` — **4 services, 8 RPCs** · `event.proto` — `SettlementLogPosted` (variant 300, topic `settlement-log-posted`) |
 | schema | settlement `00001–00006` (00006: the five report columns, `settlement_logs.user_id`, `exporter` → `importer`): `settlement_logs`, `order_settlements` (+`created_by_user_id`), `shop_settlements`, `settlement_event_logs`, `shop_/user_settlement_daily_reports`, `shop_/user_settlement_reports`, `settlement_service_metadata` · selling `00013`: `orders.created_by_user_id` |
-| service | `backend/services/settlement_service/` — mounted, plus the push route `/event/settlement-fold/push` |
-| wiring | `cmd/app_development/settlement_poster.go` (selling → settlement) · `replay_broker.go` (the replay's subscription) · `shop_primary.go` (settlement → the shop's `ShopAccessCheck`, a Connect client forwarding the caller's token) |
-| provisioning | `san pubsub ensure` declares `settlement-fold` on `settlement-log-posted` |
+| service | `backend/services/settlement_service/` — mounted, plus the push routes `/event/settlement-fold/push`, `/event/settlement-order-placed/push` and `/event/settlement-order-cancelled/push` (`order_sale.go`, 2026-10-21) |
+| wiring | ~~`settlement_poster.go` (selling → settlement)~~ deleted 2026-10-21: the order events carry `shop_id` and `marketplace_total` instead · `replay_broker.go` (the replay's subscription) · `shop_primary.go` (settlement → the shop's `ShopAccessCheck`, a Connect client forwarding the caller's token) |
+| provisioning | `san pubsub ensure` declares `settlement-fold` on `settlement-log-posted`, and `settlement-order-placed` / `settlement-order-cancelled` on the order topics. The local emulator PUSHES to them, dev and e2e on separate projects ([the-emulator-pushes-locally](../../technical/event_architecture/context_decision.md#the-emulator-pushes-locally)) |
 | frontend | `/settlement` (list — **reworked 2026-10-02**, [below](#the-list-reworked-2026-10-02)), the order page's Settlement tab, **`/settlement/report`** (`pages/settlement-report/`), nav entry, `features/settlement/{analytics,measure,window}.ts` |
 | docs | [rpc.md](../../services/settlement_service/rpc.md) · [database-schema.md](../../database-schema.md#settlement_service) · [san.md](../../tools/san.md#pubsub-ensure) |
 

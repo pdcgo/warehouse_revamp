@@ -57,6 +57,10 @@ services:
       --host-port=0.0.0.0:8085
     ports:
       - "8085:8085"
+    # The emulator PUSHES events to the API on the host (san dev run: :8080, the e2e: :8081). Docker Desktop
+    # resolves host.docker.internal by itself; on Linux (CI) this line is what makes the name exist.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       # `up --wait` (san dev run) waits on this. Without it "running" means the JVM has started,
       # not that the emulator answers — and the topics are made in the very next step.

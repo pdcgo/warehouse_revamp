@@ -18,24 +18,21 @@ service OrderService {
   rpc OrderList(OrderListRequest) returns (OrderListResponse);
   rpc OrderDetail(OrderDetailRequest) returns (OrderDetailResponse);
 
-  // Cancel: PLACED or CONFIRMED -> CANCELLED (terminal), and it stays SELLING-SIDE — calling an order
-  // off is the decision of the team whose customer it is. No inventory/revenue here — #70 extends
-  // cancel with the stock + money reversal once stock integration (#69) lands.
+  // Cancel: PENDING -> CANCEL (terminal), and only the SELLING team (who-may-cancel-a-pending-order). The
+  // warehouse hands a processed or picked order back to PENDING first. It returns the stock, publishes
+  // OrderCancelled and cancels the sale, which is why it is not one of OrderStatusChange's plain moves.
   rpc OrderCancel(OrderCancelRequest) returns (OrderCancelResponse);
 
-  // The WAREHOUSE's side of an order (#150): the crew records what it has done, in the order it
-  // happens and one step at a time.
+  // EVERY PLAIN MOVE of the status diagram (one-status-change-for-every-plain-move): the warehouse's
+  // confirm, pick, hand back and handover, and customer service's shipped, completed, problem, lost and
+  // forced return. The server holds the table of who may make which move. Many orders at once — a
+  // handover scan of 30 parcels is one call, with a result per order.
   //
-  //   PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
+  //   pending → processed → picked → shipping → shipped → completed
+  //   shipping / shipped / problem / completed → return · shipped / problem / return → lost
   //
-  // ⚠ CONFIRM IS THE FIRST OF THESE, not a selling-side step that precedes them (owner) — see
-  // OrderConfirmRequest for why #91's selling-side confirm was wrong. All four are scoped to the
-  // order's WAREHOUSE, not its selling team; see OrderPickRequest for why that is the only scope
-  // that can work.
-  rpc OrderConfirm(OrderConfirmRequest) returns (OrderConfirmResponse);
-  rpc OrderPick(OrderPickRequest) returns (OrderPickResponse);
-  rpc OrderPack(OrderPackRequest) returns (OrderPackResponse);
-  rpc OrderShip(OrderShipRequest) returns (OrderShipResponse);
+  // Cancel and the return accept do more than move a status, so they keep their own RPCs.
+  rpc OrderStatusChange(OrderStatusChangeRequest) returns (OrderStatusChangeResponse);
 
   // ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
   //
@@ -73,25 +70,39 @@ service OrderService {
   rpc OrderCreatorList(OrderCreatorListRequest) returns (OrderCreatorListResponse);
 }
 
-// Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
-// warehouse core.
+// An order's status: the eleven of the order context's status diagram
+// (the-status-move-is-the-only-journey). Who makes each move is OrderStatusChange's table.
+//
+// The numbers 1, 2, 3, 5 and 6 are kept from the old six, so an old value still means the status its
+// rows were migrated to (00015): placed→pending, confirmed→processed, cancelled→cancel, packed→picked,
+// shipped→shipping. Old picking (4) became processed, and is reserved.
 enum OrderStatus {
-  ORDER_STATUS_UNSPECIFIED = 0;
-  ORDER_STATUS_PLACED = 1;
-  ORDER_STATUS_CONFIRMED = 2;
-  ORDER_STATUS_CANCELLED = 3;
+  reserved 4;
+  reserved "ORDER_STATUS_PLACED", "ORDER_STATUS_CONFIRMED", "ORDER_STATUS_CANCELLED",
+    "ORDER_STATUS_PICKING", "ORDER_STATUS_PACKED";
 
-  // The warehouse's states (#150). Each is an action a person STARTS AND FINISHES, so an order being
-  // worked on right now is visibly different from one nobody has touched — which is the whole reason
-  // "just record it shipped" was rejected.
-  //
-  //   CONFIRMED → PICKING → PACKED → SHIPPED
-  //
-  // Forward only, one step at a time: you cannot pack what was never picked, and a skipped state means
-  // somebody is guessing at what happened.
-  ORDER_STATUS_PICKING = 4;
-  ORDER_STATUS_PACKED = 5;
-  ORDER_STATUS_SHIPPED = 6;
+  ORDER_STATUS_UNSPECIFIED = 0;
+  // Created, waiting for the warehouse.
+  ORDER_STATUS_PENDING = 1;
+  // The warehouse confirmed it and printed the label.
+  ORDER_STATUS_PROCESSED = 2;
+  // Called off by the selling team, from pending only. Terminal.
+  ORDER_STATUS_CANCEL = 3;
+  // The warehouse set it picked: done, waiting for the handover.
+  ORDER_STATUS_PICKED = 5;
+  // Handed to the courier, by the warehouse's handover scan.
+  ORDER_STATUS_SHIPPING = 6;
+  // Customer service saw it moving on the platform.
+  ORDER_STATUS_SHIPPED = 7;
+  ORDER_STATUS_COMPLETED = 8;
+  // Customer service saw a problem on the platform.
+  ORDER_STATUS_PROBLEM = 9;
+  // Terminal (lost-is-final).
+  ORDER_STATUS_LOST = 10;
+  // Coming back: claimed by customer service, or forced by the warehouse.
+  ORDER_STATUS_RETURN = 11;
+  // Back in the warehouse, accepted. Terminal.
+  ORDER_STATUS_RETURN_COMPLETED = 12;
 }
 
 // WHAT HAPPENED TO AN ORDER — one kind per step of its life.
@@ -100,20 +111,26 @@ enum OrderStatus {
 // the order IS; an event is something that WAS DONE, and the two come apart the moment anything
 // happens that does not change the status — a note edited, a receipt attached, a courier corrected.
 // Reusing OrderStatus here would mean the first such event has nowhere to go.
+//
+// Every kind so far is a move and names the status moved INTO, so the numbers follow OrderStatus's.
 enum OrderEventKind {
-  ORDER_EVENT_KIND_UNSPECIFIED = 0;
-  // It was placed — typed in on the form, or promoted from a draft. Every order has exactly one,
-  // including the ones backfilled from `created_at`.
-  ORDER_EVENT_KIND_PLACED = 1;
-  // The selling team accepted it (#91).
-  ORDER_EVENT_KIND_CONFIRMED = 2;
-  // Called off, by either end, before the courier had it (#70/#150).
-  ORDER_EVENT_KIND_CANCELLED = 3;
+  reserved 4;
+  reserved "ORDER_EVENT_KIND_PLACED", "ORDER_EVENT_KIND_CONFIRMED", "ORDER_EVENT_KIND_CANCELLED",
+    "ORDER_EVENT_KIND_PICKING", "ORDER_EVENT_KIND_PACKED";
 
-  // The warehouse's three (#150) — each an action a person starts and finishes.
-  ORDER_EVENT_KIND_PICKING = 4;
-  ORDER_EVENT_KIND_PACKED = 5;
-  ORDER_EVENT_KIND_SHIPPED = 6;
+  ORDER_EVENT_KIND_UNSPECIFIED = 0;
+  // Placed — every order has one, at its creation — or handed back to pending by the warehouse.
+  ORDER_EVENT_KIND_PENDING = 1;
+  ORDER_EVENT_KIND_PROCESSED = 2;
+  ORDER_EVENT_KIND_CANCEL = 3;
+  ORDER_EVENT_KIND_PICKED = 5;
+  ORDER_EVENT_KIND_SHIPPING = 6;
+  ORDER_EVENT_KIND_SHIPPED = 7;
+  ORDER_EVENT_KIND_COMPLETED = 8;
+  ORDER_EVENT_KIND_PROBLEM = 9;
+  ORDER_EVENT_KIND_LOST = 10;
+  ORDER_EVENT_KIND_RETURN = 11;
+  ORDER_EVENT_KIND_RETURN_COMPLETED = 12;
 }
 
 // One entry in an order's history — WHAT happened, WHO did it, WHEN.
@@ -126,6 +143,8 @@ message OrderEvent {
   // WHEN IT HAPPENED, unix seconds — not when the row was written. A backfilled event carries the
   // moment its column recorded, which may be months before the row existed.
   int64 at_unix = 4;
+  // Why, when the move needed a reason: required for a move back to pending, empty otherwise.
+  string note = 5;
 }
 
 // OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
@@ -542,47 +561,8 @@ message OrderDetailResponse {
   Order order = 1;
 }
 
-// OrderConfirm moves a PLACED order to CONFIRMED. Same audience as OrderCreate — the selling team's
-// managers and customer service.
-message OrderConfirmRequest {
-  // CONFIRM IS THE WAREHOUSE'S ACTION, NOT THE SELLING TEAM'S (owner). It is the FIRST of the four
-  // steps the crew works, not a selling-side acknowledgement that happens before them:
-  //
-  //   PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
-  //
-  // This reverses #91, which had the selling team confirm its own order. That never described a real
-  // moment: the team that TYPED the order in has nothing left to decide about it, so its "confirm" was
-  // a click that asserted nothing. The warehouse's confirm does mean something — the building has seen
-  // the order, has the goods, and accepts the job. Until it happens the order is waiting on somebody
-  // who has not looked at it yet, which is exactly what PLACED should say.
-  //
-  // Scoped and policed identically to OrderPick/OrderPack/OrderShip below — see OrderPickRequest for
-  // why the ORDER'S WAREHOUSE is the only scope that can work here. Staff are included for the same
-  // reason: the person who accepts the job is the person standing in the building.
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN,
-      ROLE_WAREHOUSE_STAFF
-    ]
-  };
-
-  // The WAREHOUSE accepting the order — not the team that placed it.
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
-}
-
-message OrderConfirmResponse {
-  Order order = 1;
-}
-
-// OrderCancel moves a PLACED or CONFIRMED order to CANCELLED (terminal). Cancelling an already
-// cancelled order is rejected. Selling-side only — no stock/money is reversed yet (that is #70).
+// OrderCancel moves a PENDING order to CANCEL (terminal), returning its stock and cancelling its sale.
+// Only the order's SELLING team (who-may-cancel-a-pending-order); any other status is refused.
 message OrderCancelRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
@@ -605,85 +585,59 @@ message OrderCancelResponse {
   Order order = 1;
 }
 
-message OrderPickRequest {
-  // Write: the WAREHOUSE crew, staff included — staff are the ones who actually walk the aisles, so
-  // excluding them would leave the people doing the work unable to record it.
-  //
-  // ⚠ THE SCOPE IS THE ORDER'S WAREHOUSE, NOT ITS SELLING TEAM (#150, owner's call), and this is the
-  // only scope that can work: the crew holds no role in the selling team that owns the order, so
-  // scoping to the selling team would deny every real caller. Scoping to the warehouse asks the
-  // question that matters — "do you work in the building this order ships from?"
-  //
-  // The handler finds the order by (order_id, warehouse_id), so a crew can only ever touch orders
-  // shipping from its own warehouse; another warehouse's reads as NotFound. Same shape as
-  // RestockRequestFulfill, where the warehouse also acts on a record a selling team created.
+// OrderStatusChange makes one plain move for many orders (one-status-change-for-every-plain-move).
+message OrderStatusChangeRequest {
+  // Write: both ends of an order. The warehouse crew makes its moves (staff included — they are the
+  // ones at the shelf and the handover), and the selling team's customer service makes its own. Which
+  // end the caller is, per order, follows from the scope: the order's warehouse, or its team.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
     ]
   };
 
-  // The WAREHOUSE doing the work — not the team that placed the order.
+  // The team making the move: the order's warehouse, or its selling team.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The orders to move. A handover scan sends the whole batch, and each gets its own result.
+  repeated uint64 order_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1,
+    max_items: 200,
+    unique: true,
+    items: {uint64: {gt: 0}}
+  }];
+  // The status to move INTO. Cancel and return_completed have their own actions and are refused here.
+  OrderStatus to = 3 [(buf.validate.field).enum = {
+    defined_only: true,
+    not_in: [0]
+  }];
+  // Why: required for a move back to pending, and written to the order's history with the move.
+  string note = 4 [(buf.validate.field).string.max_len = 500];
 }
 
-message OrderPickResponse {
-  Order order = 1;
+message OrderStatusChangeResponse {
+  // One per requested order, in the order sent.
+  repeated OrderStatusChangeResult results = 1;
 }
 
-message OrderPackRequest {
-  // Same crew, same scope as OrderPick — see there for why the warehouse and not the selling team.
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN,
-      ROLE_WAREHOUSE_STAFF
-    ]
-  };
-
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
-}
-
-message OrderPackResponse {
-  Order order = 1;
-}
-
-message OrderShipRequest {
-  // Same crew, same scope. Handing to the courier is the last thing the warehouse does with an order —
-  // after this it has left the building, and a cancel is refused (#70/#150).
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN,
-      ROLE_WAREHOUSE_STAFF
-    ]
-  };
-
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
-}
-
-message OrderShipResponse {
-  Order order = 1;
+// One order's outcome. A refusal never blocks the rest: 30 scanned, 28 moved, 2 "not picked yet".
+message OrderStatusChangeResult {
+  uint64 order_id = 1;
+  bool moved = 2;
+  // Where the order is now: the new status if moved, its unchanged one if refused, UNSPECIFIED when
+  // it is not one of the caller's orders.
+  OrderStatus status = 3;
+  // Why it did not move, for a person to read. Empty when moved.
+  string refused_reason = 4;
 }
 
 // ── Order activity, per product ──────────────────────────────────────────────────────────────────

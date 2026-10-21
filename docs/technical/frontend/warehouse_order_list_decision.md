@@ -20,6 +20,7 @@ each old heading there now points here.
 | [the-filter-gains-seller-marketplace-and-courier](#the-filter-gains-seller-marketplace-and-courier) | `OrderListFilter` gains seller team, marketplace and courier; the shipment-state switch is dropped for the status tabs |
 | [one-status-change-for-every-plain-move](#one-status-change-for-every-plain-move) | one `OrderStatusChange(order_ids, to, note)` for every plain move, many orders at once; cancel and return accept keep their own RPCs |
 | [a-warehouse-prints-the-labels-of-orders-it-ships](#a-warehouse-prints-the-labels-of-orders-it-ships) | `OrderLabels(team_id, order_ids)` merges the labels of orders this warehouse ships into one PDF; access follows the order, nothing is shared |
+| [a-batch-move-saves-in-one-transaction](#a-batch-move-saves-in-one-transaction) | a batch status move saves in one transaction of four statements; refusals stay per order, a database failure moves nothing |
 | [one-export-is-the-list-as-a-file](#one-export-is-the-list-as-a-file) | one `OrderExport(team_id, filter)` for both lists: the list's rows, the reader's columns, .xlsx, streamed with progress |
 
 ## the-two-ends-are-two-screens
@@ -127,6 +128,10 @@ flowchart LR
 - Tried and reverted in the same pass: the seller's whole stage strip with the step filter under it. The owner's
   correction is that the warehouse does not use the order's statuses at all.
 
+🔄 *(2026-10-21)* **The steps ARE statuses now** (00015): Perlu konfirmasi = pending, Dikonfirmasi = processed, Sudah
+diambil = picked, Sudah diserahkan = shipping — every tab narrows and is counted. *Sedang diambil* and *Dikemas* went with
+the statuses that held them ([one-status-change-for-every-plain-move](#one-status-change-for-every-plain-move)).
+
 ## the-confirmed-step-reads-dikonfirmasi
 
 > Owner, in chat (2026-10-01): picked *"Ganti jadi 'Dikonfirmasi'"*.
@@ -208,6 +213,12 @@ stateDiagram-v2
   Sudah diambil does nothing yet but say so. The table belongs on the server.
 - The label "Diambil" became **"Sedang diambil"** and the new step is **"Sudah diambil"** — on the seller's step filter
   too, since both screens read `PROCESSED_STEPS`.
+
+🔄 *(2026-10-21)* **Superseded in part by the owner's status diagram**
+([the-status-move-is-the-only-journey](../../business/order/context_decision.md#the-status-move-is-the-only-journey)): the
+moves are pending → processed → picked → shipping, a move back goes to **pending** (not Dikonfirmasi) with a note, and the
+skips went with the folded steps. The menu reads [steps.ts](../../../frontend/src/pages/pick-queue-next/steps.ts); the
+server's table is `orderMoves`.
 
 ## scanning-is-the-crews-hands
 
@@ -365,6 +376,8 @@ flowchart LR
 | its own RPCs | `OrderCancel` (refunds the warehouse fee, returns the stock) and the return accept (records the warehouse, relabels borrowed units, returns the stock) |
 | folded in | `OrderPick` and `OrderShip` become `OrderStatusChange` calls |
 | the handover | the bulk handover is this RPC with `to: shipping` |
+| the save | 🔄 *(2026-10-21)* one transaction for the whole batch — [a-batch-move-saves-in-one-transaction](#a-batch-move-saves-in-one-transaction) |
+| ✅ built *(2026-10-21)* | [order_status_change.go](../../../backend/services/selling_service/selling_v1/order_status_change.go), its table `orderMoves` in order_transition.go; `OrderConfirm`, `OrderPick`, `OrderPack` and `OrderShip` are removed. Pinned by `order_status_change_test.go`. The warehouse list, the pick page, the handover scan and the order menus call it, and a hand-back's note reaches the history |
 
 ---
 
@@ -434,3 +447,42 @@ sequenceDiagram
 | the file | .xlsx. Phone numbers and ids are written as text, so `0812…` keeps its 0 and a long marketplace id never becomes `5.78E+17` |
 | one for both | the seller's Export and the warehouse's Export call the same RPC |
 | the link | expiring, like any other document link |
+
+---
+
+## a-batch-move-saves-in-one-transaction
+
+> Owner, in chat (2026-10-21): *"okay, i follow you recomendation"* — to *"when a crew moves many orders at once, should
+> each order save on its own, or all together?"*, raised by the performance audit
+> ([OrderStatusChange.md](../../../audits/services/selling_service/performances/OrderStatusChange.md)). As recommended. A new
+> question: [one-status-change-for-every-plain-move](#one-status-change-for-every-plain-move) settled what the person sees, not
+> how the server saves it.
+
+**The verdict.** `OrderStatusChange` saves the whole batch in **one transaction of four statements**, whatever its size. Each
+order still gets its own result, and a refusal still touches only its own order, because it is decided from the locked row
+before anything is written. Only a failure of the database itself fails the batch, and then nothing moves.
+
+```mermaid
+sequenceDiagram
+    participant C as crew - 200 parcels scanned
+    participant S as OrderStatusChange
+    participant DB as orders, order_events
+    C->>S: order_ids, to shipping
+    S->>DB: lock every order of the batch, in id order
+    S->>S: per order - an edge, the caller's end, a note if back
+    S->>DB: one UPDATE of the orders that may move
+    S->>DB: one INSERT of their history rows
+    S-->>C: a result per order - 198 moved, 2 not picked yet
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the statements | lock (`SELECT … WHERE id IN … ORDER BY id FOR UPDATE`) · one `UPDATE` · one multi-row history `INSERT` — four with the transaction, for 1 order or 200 |
+| a refusal | per order, as before: decided in Go from the locked row, so 28 move and 2 are told why |
+| a database failure | the batch rolls back. Every order answers *"could not be saved — try again"*, and the crew rescans |
+| two crews, the same parcels | locked in **id order**, never scan order, so two batches queue instead of deadlocking. The second reads what the first wrote and is told *"already shipping"* |
+| an id sent twice | refused by the proto; a direct caller's second copy reads *"already …"* |
+| measured | 200 orders: 248 ms and 800 queries before, **11 ms and 4 queries** after. 20 orders: 22 ms → 2.4 ms |
+| ✅ built *(2026-10-21)* | `moveOrders` in [order_status_change.go](../../../backend/services/selling_service/selling_v1/order_status_change.go) and `setOrdersStatus` in order_transition.go — every status write, cancel's included, goes through it. The race tests pass 80/80 at `-count=20` ([lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |

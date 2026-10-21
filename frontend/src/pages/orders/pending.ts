@@ -12,7 +12,6 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 
 /** One unwired part of the screen. The id is also its i18n key (`orders.pending.<id>`). */
 export type PendingId =
-  | "statusSet"
   | "summaryCost"
   | "summaryItems"
   | "export"
@@ -23,22 +22,10 @@ export type PendingId =
   | "receiptCode"
   | "deadline"
   | "totalFee"
-  | "lifecycle"
   | "marketplaceFilter"
   | "withdrawal";
 
 const PARTS: PendingPart<PendingId>[] = [
-  // ⚠ THE STATUS SET IS THE OWNER'S EIGHT, THE CONTRACT STILL CARRIES THE OLD SIX. One mark, not
-  // five, because there is one cause: `OrderStatus` is `placed · confirmed · picking · packed ·
-  // shipped · cancelled`, which the owner's own clarify already records as stale and awaiting a
-  // migration. What that costs on this screen:
-  //
-  //   completed · problem · lost · return  → no enum value exists, so those four tabs read 0 forever
-  //   processed                            → covers THREE enum values, and `OrderListFilter.status`
-  //                                          takes one, so it counts but cannot narrow the table
-  //
-  // `pending` and `cancel` are renames of `placed` and `cancelled` and cost nothing.
-  { id: "statusSet", kind: "missing" },
   // ⚠ TWO MARKS FOR SEVEN COLUMNS, because there are two CAUSES and the reader only needs to know
   // each once (HARD RULE 11: group by cause, not by symptom).
   //
@@ -96,21 +83,6 @@ const PARTS: PendingPart<PendingId>[] = [
   // problem". Both are the owner's to set; they are named in one place (`deadlineMock`) for that.
   { id: "deadline", kind: "sample" },
   { id: "totalFee", kind: "sample" },
-  // Derivable rather than stored: a shop belongs to exactly one marketplace, so this is "every shop
-  // on Shopee". The filter is not on the wire either way.
-  // ⚠ AN ORDER'S LIFE ENDS AT "SHIPPED" IN THE CONTRACT. `OrderService` writes exactly two things a
-  // seller can reach — `OrderCancel` and `OrderShip` (plus the warehouse's confirm/pick/pack) — so
-  // FOUR of the owner's row actions have no RPC to call: Retur Barang, Selesaikan Order, Jadikan
-  // Lost and Selesaikan Sengketa.
-  //
-  // ONE entry for all four (HARD RULE 11: group by cause). They are not four oversights; they are
-  // one half of the lifecycle that has not been designed — the same half whose four STATUSES read 0
-  // forever under `statusSet`. The tabs and the menu items are the same gap seen from two angles.
-  //
-  // `dropped` rather than `missing`: the items are ON the menu and can be pressed. Each one answers
-  // with a toast carrying this sentence, which is the least dishonest thing a button with nothing
-  // behind it can do.
-  { id: "lifecycle", kind: "dropped" },
   { id: "marketplaceFilter", kind: "dropped" },
   // ⚠ WHAT THE IMPORT IS FOR, and it has nowhere to land — nor anywhere to land NEXT to.
   //

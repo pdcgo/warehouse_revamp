@@ -13,107 +13,106 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
-// OrderStatus as stored in the `status` TEXT column. Keep in sync with the proto enum — this mapper
-// is the only writer/reader, so validity is guarded here (no DB CHECK, cf. #80).
+// OrderStatus as stored in the `status` TEXT column — the eleven of the order context's status diagram
+// (the-status-move-is-the-only-journey). This mapper is the only writer/reader, so validity is guarded
+// here (no DB CHECK, cf. #80). 00015 moved every row from the old six.
 const (
-	orderStatusPlaced    = "placed"
-	orderStatusConfirmed = "confirmed"
-	orderStatusCancelled = "cancelled"
-
-	// The warehouse's states (#150): CONFIRMED -> PICKING -> PACKED -> SHIPPED.
-	orderStatusPicking = "picking"
-	orderStatusPacked  = "packed"
-	orderStatusShipped = "shipped"
+	orderStatusPending         = "pending"
+	orderStatusProcessed       = "processed"
+	orderStatusPicked          = "picked"
+	orderStatusShipping        = "shipping"
+	orderStatusShipped         = "shipped"
+	orderStatusCompleted       = "completed"
+	orderStatusProblem         = "problem"
+	orderStatusLost            = "lost"
+	orderStatusReturn          = "return"
+	orderStatusReturnCompleted = "return_completed"
+	orderStatusCancel          = "cancel"
 )
 
-func orderStatusToText(s sellingv1.OrderStatus) string {
-	switch s {
-	case sellingv1.OrderStatus_ORDER_STATUS_PLACED:
-		return orderStatusPlaced
-	case sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED:
-		return orderStatusConfirmed
-	case sellingv1.OrderStatus_ORDER_STATUS_CANCELLED:
-		return orderStatusCancelled
-	case sellingv1.OrderStatus_ORDER_STATUS_PICKING:
-		return orderStatusPicking
-	case sellingv1.OrderStatus_ORDER_STATUS_PACKED:
-		return orderStatusPacked
-	case sellingv1.OrderStatus_ORDER_STATUS_SHIPPED:
-		return orderStatusShipped
-	default:
-		return ""
-	}
+// orderStatusTexts is the ONE pairing of a stored status and its proto value. Both directions read it,
+// so a status added to one cannot be missing from the other.
+var orderStatusTexts = map[string]sellingv1.OrderStatus{
+	orderStatusPending:         sellingv1.OrderStatus_ORDER_STATUS_PENDING,
+	orderStatusProcessed:       sellingv1.OrderStatus_ORDER_STATUS_PROCESSED,
+	orderStatusPicked:          sellingv1.OrderStatus_ORDER_STATUS_PICKED,
+	orderStatusShipping:        sellingv1.OrderStatus_ORDER_STATUS_SHIPPING,
+	orderStatusShipped:         sellingv1.OrderStatus_ORDER_STATUS_SHIPPED,
+	orderStatusCompleted:       sellingv1.OrderStatus_ORDER_STATUS_COMPLETED,
+	orderStatusProblem:         sellingv1.OrderStatus_ORDER_STATUS_PROBLEM,
+	orderStatusLost:            sellingv1.OrderStatus_ORDER_STATUS_LOST,
+	orderStatusReturn:          sellingv1.OrderStatus_ORDER_STATUS_RETURN,
+	orderStatusReturnCompleted: sellingv1.OrderStatus_ORDER_STATUS_RETURN_COMPLETED,
+	orderStatusCancel:          sellingv1.OrderStatus_ORDER_STATUS_CANCEL,
 }
 
-func orderStatusFromText(text string) sellingv1.OrderStatus {
-	switch text {
-	case orderStatusPlaced:
-		return sellingv1.OrderStatus_ORDER_STATUS_PLACED
-	case orderStatusConfirmed:
-		return sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED
-	case orderStatusCancelled:
-		return sellingv1.OrderStatus_ORDER_STATUS_CANCELLED
-	case orderStatusPicking:
-		return sellingv1.OrderStatus_ORDER_STATUS_PICKING
-	case orderStatusPacked:
-		return sellingv1.OrderStatus_ORDER_STATUS_PACKED
-	case orderStatusShipped:
-		return sellingv1.OrderStatus_ORDER_STATUS_SHIPPED
-	default:
-		return sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED
+// orderStatusToText is "" for UNSPECIFIED or a value this build does not know.
+func orderStatusToText(s sellingv1.OrderStatus) string {
+	for text, status := range orderStatusTexts {
+		if status == s {
+			return text
+		}
 	}
+
+	return ""
+}
+
+// orderStatusFromText is UNSPECIFIED for a text this build does not know.
+func orderStatusFromText(text string) sellingv1.OrderStatus {
+	return orderStatusTexts[text]
 }
 
 // OrderEventKind as stored in the `kind` TEXT column of `order_events` (00011).
 //
-// ⚠ THE STRINGS ARE THE STATUS STRINGS ABOVE, ON PURPOSE — every event so far is a transition, so a
-// transition records the state it moved INTO and the 00011 backfill could insert `status` verbatim as
-// a kind. They are declared separately rather than aliased because the two vocabularies are only
-// coincidentally equal: the first event that is not a status change (a note edited, a receipt
-// attached) gets a kind here and no status anywhere, and an alias would have to be untangled first.
-const (
-	orderEventPlaced    = "placed"
-	orderEventConfirmed = "confirmed"
-	orderEventCancelled = "cancelled"
-	orderEventPicking   = "picking"
-	orderEventPacked    = "packed"
-	orderEventShipped   = "shipped"
-)
-
-func orderEventKindFromText(text string) sellingv1.OrderEventKind {
-	switch text {
-	case orderEventPlaced:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_PLACED
-	case orderEventConfirmed:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_CONFIRMED
-	case orderEventCancelled:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_CANCELLED
-	case orderEventPicking:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_PICKING
-	case orderEventPacked:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_PACKED
-	case orderEventShipped:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPED
-	default:
-		// A kind written by a newer build than this one. UNSPECIFIED travels out and the screen renders
-		// it as an unknown step, which is better than dropping the row — a gap in a history reads as
-		// nothing having happened.
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_UNSPECIFIED
-	}
+// ⚠ THE STRINGS ARE THE STATUS STRINGS ABOVE, ON PURPOSE — every event so far is a move, so a move
+// records the status it moved INTO (setOrderStatus writes its status as the kind). They are paired in
+// their own table rather than aliased because the two vocabularies are only coincidentally equal: the
+// first event that is not a status change (a note edited, a receipt attached) gets a kind here and no
+// status anywhere, and an alias would have to be untangled first.
+var orderEventKinds = map[string]sellingv1.OrderEventKind{
+	"pending":          sellingv1.OrderEventKind_ORDER_EVENT_KIND_PENDING,
+	"processed":        sellingv1.OrderEventKind_ORDER_EVENT_KIND_PROCESSED,
+	"picked":           sellingv1.OrderEventKind_ORDER_EVENT_KIND_PICKED,
+	"shipping":         sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPING,
+	"shipped":          sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPED,
+	"completed":        sellingv1.OrderEventKind_ORDER_EVENT_KIND_COMPLETED,
+	"problem":          sellingv1.OrderEventKind_ORDER_EVENT_KIND_PROBLEM,
+	"lost":             sellingv1.OrderEventKind_ORDER_EVENT_KIND_LOST,
+	"return":           sellingv1.OrderEventKind_ORDER_EVENT_KIND_RETURN,
+	"return_completed": sellingv1.OrderEventKind_ORDER_EVENT_KIND_RETURN_COMPLETED,
+	"cancel":           sellingv1.OrderEventKind_ORDER_EVENT_KIND_CANCEL,
 }
 
-// recordOrderEvent appends one row to the order's history.
+// orderEventKindFromText is UNSPECIFIED for a kind written by a newer build than this one. UNSPECIFIED
+// travels out and the screen renders it as an unknown step, which is better than dropping the row — a
+// gap in a history reads as nothing having happened.
+func orderEventKindFromText(text string) sellingv1.OrderEventKind {
+	return orderEventKinds[text]
+}
+
+// recordOrderEvent appends one row to the order's history, with the move's note ("" when it needs none).
 //
 // `at` is passed in rather than taken here so the event and the thing it describes share ONE moment:
 // setOrderStatus already stamped `updated_at`, and a second time.Now() at this line would file a
 // midnight transition on a different day from the row it belongs to (guidelines/event-guideline.md #2).
-func recordOrderEvent(tx *gorm.DB, orderID uint64, kind string, actor uint64, at time.Time) error {
-	return tx.Create(&selling_service_models.OrderEvent{
-		OrderID:     orderID,
-		Kind:        kind,
-		ActorUserID: actor,
-		At:          at,
-	}).Error
+func recordOrderEvent(tx *gorm.DB, orderID uint64, kind string, actor uint64, at time.Time, note string) error {
+	return recordOrderEvents(tx, []uint64{orderID}, kind, actor, at, note)
+}
+
+// recordOrderEvents appends the same step to several orders' histories in one INSERT — a batch move.
+func recordOrderEvents(tx *gorm.DB, orderIDs []uint64, kind string, actor uint64, at time.Time, note string) error {
+	events := make([]selling_service_models.OrderEvent, 0, len(orderIDs))
+	for _, orderID := range orderIDs {
+		events = append(events, selling_service_models.OrderEvent{
+			OrderID:     orderID,
+			Kind:        kind,
+			ActorUserID: actor,
+			At:          at,
+			Note:        note,
+		})
+	}
+
+	return tx.Create(&events).Error
 }
 
 // eventActor is WHO is doing this, for the history — 0 when the caller cannot be identified.
@@ -175,6 +174,7 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 			Kind:        orderEventKindFromText(o.Events[i].Kind),
 			ActorUserId: o.Events[i].ActorUserID,
 			AtUnix:      o.Events[i].At.Unix(),
+			Note:        o.Events[i].Note,
 		})
 	}
 

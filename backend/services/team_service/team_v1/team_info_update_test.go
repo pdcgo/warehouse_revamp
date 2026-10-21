@@ -26,9 +26,9 @@ func TestTeamInfoUpdate_PartialDoesNotBlank(t *testing.T) {
 
 	// Set two fields.
 	_, err := svc.TeamInfoUpdate(ctx, connect.NewRequest(&teamv1.TeamInfoUpdateRequest{
-		TeamId:            teamID,
-		ContactNumber:     proto.String("0811"),
-		ReturnWarehouseId: proto.Uint64(42),
+		TeamId:             teamID,
+		ContactNumber:      proto.String("0811"),
+		DefaultWarehouseId: proto.Uint64(42),
 	}))
 	if err != nil {
 		t.Fatalf("first update: %v", err)
@@ -49,8 +49,8 @@ func TestTeamInfoUpdate_PartialDoesNotBlank(t *testing.T) {
 		t.Errorf("contact = %q, want 0822", info.GetContactNumber())
 	}
 
-	if info.GetReturnWarehouseId() != 42 {
-		t.Errorf("return warehouse = %d, want 42 — a contact-only update BLANKED it", info.GetReturnWarehouseId())
+	if info.GetDefaultWarehouseId() != 42 {
+		t.Errorf("default warehouse = %d, want 42 — a contact-only update BLANKED it", info.GetDefaultWarehouseId())
 	}
 }
 
@@ -91,8 +91,8 @@ func TestTeamInfoUpdate_PresentZeroClears(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := svc.TeamInfoUpdate(ctx, connect.NewRequest(&teamv1.TeamInfoUpdateRequest{
-		TeamId:            teamID,
-		ReturnWarehouseId: proto.Uint64(99),
+		TeamId:             teamID,
+		DefaultWarehouseId: proto.Uint64(99),
 	}))
 	if err != nil {
 		t.Fatalf("set: %v", err)
@@ -100,15 +100,15 @@ func TestTeamInfoUpdate_PresentZeroClears(t *testing.T) {
 
 	// present-and-zero => clear
 	res, err := svc.TeamInfoUpdate(ctx, connect.NewRequest(&teamv1.TeamInfoUpdateRequest{
-		TeamId:            teamID,
-		ReturnWarehouseId: proto.Uint64(0),
+		TeamId:             teamID,
+		DefaultWarehouseId: proto.Uint64(0),
 	}))
 	if err != nil {
 		t.Fatalf("clear: %v", err)
 	}
 
-	if res.Msg.GetInfo().GetReturnWarehouseId() != 0 {
-		t.Errorf("return_warehouse_id = %d, want 0 (cleared)", res.Msg.GetInfo().GetReturnWarehouseId())
+	if res.Msg.GetInfo().GetDefaultWarehouseId() != 0 {
+		t.Errorf("default_warehouse_id = %d, want 0 (cleared)", res.Msg.GetInfo().GetDefaultWarehouseId())
 	}
 }
 

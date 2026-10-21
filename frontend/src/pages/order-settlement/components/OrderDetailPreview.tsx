@@ -184,9 +184,9 @@ function orderFor(settlement: OrderSettlement): Order {
       },
     ],
     events: [
-      { id: 1n, kind: OrderEventKind.PLACED, actorUserId: 61n, atUnix: 1_767_225_600n },
-      { id: 2n, kind: OrderEventKind.CONFIRMED, actorUserId: 62n, atUnix: 1_767_232_800n },
-      { id: 3n, kind: OrderEventKind.SHIPPED, actorUserId: 62n, atUnix: 1_767_312_000n },
+      { id: 1n, kind: OrderEventKind.PENDING, actorUserId: 61n, atUnix: 1_767_225_600n },
+      { id: 2n, kind: OrderEventKind.PROCESSED, actorUserId: 62n, atUnix: 1_767_232_800n },
+      { id: 3n, kind: OrderEventKind.SHIPPING, actorUserId: 62n, atUnix: 1_767_312_000n },
     ],
     createdAtUnix: 1_767_225_600n,
   });

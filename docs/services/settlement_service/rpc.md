@@ -43,7 +43,7 @@ flowchart LR
 **One write path for three writers**, differing only in `source_type` — `importer`, `manual`, `order`
 ([the-source-is-named-importer](../../business/settlement/settlement_importer_decision.md#the-source-is-named-importer)).
 All three retry: the importer re-imports an overlapping statement, a person double-submits, and
-`order_service` retries across a timeout. `PostEntry` and `CancelSale` are the same path called in-process.
+Pub/Sub redelivers an order's event. `PostEntry` and `CancelSale` are the same path, called in-process by the order events' push handler.
 
 ```mermaid
 sequenceDiagram
@@ -145,44 +145,49 @@ logged and never fails the post; re-posting the same `unique_id` republishes it.
 
 ---
 
-## order_service → settlement_service (cross-service)
+## order_service → settlement_service (cross-service, by event)
 
-`selling_service` **calls** settlement through the composition root's `settlementPoster` — an interface
-selling owns, so neither service imports the other.
+`selling_service` **never calls** settlement. It publishes the order's events, and settlement opens and cancels the
+order's account from them on its OWN two push subscriptions
+([settlement-opens-the-sale-from-the-order-event](../../business/settlement/context_decision.md#settlement-opens-the-sale-from-the-order-event)):
+`settlement-order-placed` and `settlement-order-cancelled`, beside liability's on the same topics. Neither service
+imports the other, and a settlement outage loses nothing — Pub/Sub delivers again.
 
 ```mermaid
 sequenceDiagram
   participant CS as Customer Service
   participant O as selling_service
-  participant A as settlementPoster
+  participant B as Pub/Sub
   participant S as settlement_service
 
   CS->>+O: OrderCreate
-  O->>O: write the order — created_by_user_id from the TOKEN
-  O->>O: COMMIT
+  O->>O: write the order — created_by_user_id from the TOKEN, COMMIT
+  O->>B: OrderPlaced — shop_id, marketplace_total, actor_id, occurred_at = created_at
+  O-->>-CS: order created, whatever settlement does
+  B->>+S: push /event/settlement-order-placed/push
   alt marketplace_total above 0
-    O->>+A: OpenSale
-    A->>+S: PostEntry — initial_total, change = minus marketplace_total, key order-placed:ID
-    S-->>-A: row
-    A-->>-O: ok, or an error that is only LOGGED
+    S->>S: PostEntry — initial_total, change = minus marketplace_total, key order-placed:ID
   end
-  O-->>-CS: order created, whatever settlement said
+  S-->>-B: 200 — a redelivery finds its own row and returns it
 
   CS->>+O: OrderCancel
-  O->>O: status CANCELLED, stock back, COMMIT
-  O->>+A: CancelSale — CancelledAt is the instant the cancel was written
-  A->>+S: CancelSale — key hash of order, Jakarta act date, cancel
-  S-->>-A: row, or ErrNothingToCancel, which the adapter swallows
-  A-->>-O: ok
+  O->>O: status cancel, stock back, COMMIT
+  O->>B: OrderCancelled — shop_id, actor_id, occurred_at = the instant the cancel was written
   O-->>-CS: order cancelled
+  B->>+S: push /event/settlement-order-cancelled/push
+  S->>S: CancelSale — key hash of order, Jakarta act date, cancel
+  S-->>-B: 200 — ErrNothingToCancel is an answer, not a failure
 ```
 
 | | |
 | --- | --- |
-| **after the commit, never fatal** | [the-order-commits-without-settlement](../../business/settlement/context_decision.md#the-order-commits-without-settlement) — the buyer already paid; a missing account is repaired by hand from the order page |
-| **`marketplace_total = 0` opens nothing** | 0 means NOT RECORDED — a phone order has no marketplace sale |
-| **the cancel's key is the ACT's date** | [the-cancel-key-is-order-plus-act-date](../../business/settlement/context_decision.md#the-cancel-key-is-order-plus-act-date) — the date comes from the order row the cancel wrote, so a retry after midnight produces the same key |
-| **the creator** | `orders.created_by_user_id` from `san_auth.GetIdentity` at placement, copied onto the account by the opening post and never again |
+| **the order never waits on settlement** | [the-order-commits-without-settlement](../../business/settlement/context_decision.md#the-order-commits-without-settlement) — by construction now: it only publishes |
+| **a settlement failure** | NACKs, so Pub/Sub redelivers, then the dead-letter topic. A lost publish is the accepted cost, repaired by hand ([a-missing-account-is-fixed-by-hand](../../business/settlement/context_decision.md#a-missing-account-is-fixed-by-hand)) |
+| **twice** | the keys are derived from the order, so a redelivery collides with its own row (`Created: false`) and is ACKed |
+| **`marketplace_total = 0` opens nothing** | 0 means NOT RECORDED. The order context requires the total at create, which is not built; until it is, this skip keeps such an order out |
+| **the cancel's key is the ACT's date** | [the-cancel-key-is-order-plus-act-date](../../business/settlement/context_decision.md#the-cancel-key-is-order-plus-act-date) — the event's `occurred_at`, the instant the cancel was written, so a redelivery after midnight produces the same key |
+| **the creator** | the event's `actor_id` — `orders.created_by_user_id`, from `san_auth.GetIdentity` at placement — copied onto the account by the opening post and never again |
+| **the handler** | `OrderSaleHandler` in [order_sale.go](../../../backend/services/settlement_service/settlement_v1/order_sale.go), one handler behind both routes, switching on the variant |
 
 ---
 

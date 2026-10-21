@@ -16,14 +16,15 @@ import (
 // lines, and nothing else returns them.
 //
 // The scope check is the match itself: an order belonging to neither of the caller's ends reads as
-// NotFound, never PermissionDenied, so a caller cannot probe for which ids exist.
+// NotFound, never PermissionDenied, so a caller cannot probe for which ids exist. The root team opens
+// any order (readsEveryTeam), as its list shows every team's.
 func (s *Service) OrderDetail(
 	ctx context.Context,
 	req *connect.Request[sellingv1.OrderDetailRequest],
 ) (*connect.Response[sellingv1.OrderDetailResponse], error) {
 	var order selling_service_models.Order
 
-	err := s.db.
+	query := s.db.
 		WithContext(ctx).
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
 			return db.Order("id ASC")
@@ -35,8 +36,13 @@ func (s *Service) OrderDetail(
 		Preload("Events", func(db *gorm.DB) *gorm.DB {
 			return db.Order("at ASC, id ASC")
 		}).
-		Where("id = ? AND (team_id = ? OR warehouse_id = ?)",
-			req.Msg.GetOrderId(), req.Msg.GetTeamId(), req.Msg.GetTeamId()).
+		Where("id = ?", req.Msg.GetOrderId())
+
+	if !readsEveryTeam(req.Msg.GetTeamId()) {
+		query = query.Where("(team_id = ? OR warehouse_id = ?)", req.Msg.GetTeamId(), req.Msg.GetTeamId())
+	}
+
+	err := query.
 		First(&order).
 		Error
 	if err != nil {

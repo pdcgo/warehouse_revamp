@@ -204,6 +204,11 @@ jobs:
 
       # Playwright's global-setup migrates + seeds the DB, and its webServer starts the Go API
       # and the Vite dev server. Go is on PATH from setup-go, so `go run ./cmd/...` works.
+      #
+      # ⚠ E2E_API_ADDR binds the API on every interface: the emulator PUSHES events to it from inside its
+      # container (host.docker.internal → the runner), and a server bound to loopback is unreachable from there.
       - name: e2e
         working-directory: frontend
+        env:
+          E2E_API_ADDR: 0.0.0.0:8081
         run: npm run e2e

@@ -3,11 +3,10 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { rpcError } from "../../api/clients";
+import { orderStatusLabelKey } from "../../components/badges/OrderStatusBadge";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
-import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
-import { useAdvanceOrderFulfilment } from "../picking/queries";
-import { useCancelOrder } from "./queries";
+import { useCancelOrder, useOrderStatusChange } from "./queries";
 import type { RowAction } from "./rowActions";
 import { rowActionsFor } from "./rowActions";
 import type { OrderStageId } from "./stages";
@@ -24,12 +23,12 @@ import type { OrderStageId } from "./stages";
 // button, so it is controlled: a `trigger` inside `Menu.Content` would be unmounted by the menu closing
 // before the dialog ever opened.
 //
-// ⚠ AN ILLEGAL ACTION IS ABSENT, NEVER GREYED — `actions` holds only what this order can take now.
+// ⚠ AN ILLEGAL ACTION IS ABSENT, NEVER GREYED — `actions` holds only what this order can take now, and
+// only the ones the reader's end of the order may make.
 
 export function useOrderActions({
   teamId,
   orderId,
-  status,
   stage,
   warehouseId,
   pendingNs,
@@ -37,8 +36,7 @@ export function useOrderActions({
   /** The team reading the order — the caller, not the order's owner. */
   teamId: bigint | undefined;
   orderId: bigint;
-  status: OrderStatus;
-  /** Which of the owner's eight the order is in — the key to the action table. */
+  /** Which status the order is in — the key to the action table. */
   stage: OrderStageId | undefined;
   /** The warehouse fulfilling it. Equal to `teamId` when a crew is reading its own queue. */
   warehouseId: bigint;
@@ -50,17 +48,11 @@ export function useOrderActions({
 }): { actions: RowAction[]; press: (action: RowAction) => void; dialog: ReactNode } {
   const { t } = useTranslation();
   const cancelMutation = useCancelOrder();
-  const advanceMutation = useAdvanceOrderFulfilment();
-
+  const moveMutation = useOrderStatusChange();
   const [confirming, setConfirming] = useState<RowAction | null>(null);
 
-  // ⚠ `OrderShip` is scoped to the building. Offering it to a seller would be offering a call the
-  // access interceptor refuses — see the note in `rowActions.ts`.
-  const canFulfil = teamId !== undefined && teamId === warehouseId;
-
-  // ⚠ `withdrawalTotal` IS NOT PASSED: no field carries it, so the owner's "kalau wd_total > 0" gate on
-  // a returned order cannot be evaluated. Undefined skips the gate rather than guessing.
-  const actions = stage ? rowActionsFor(stage, status, { canFulfil }) : [];
+  const side = teamId !== undefined && teamId === warehouseId ? "warehouse" : "selling";
+  const actions = stage ? rowActionsFor(stage, side) : [];
 
   async function run(action: RowAction) {
     if (action.pending) {
@@ -83,9 +75,23 @@ export function useOrderActions({
         return;
       }
 
-      if (action.id === "ship") {
-        await advanceMutation.mutateAsync({ warehouseId, orderId, step: "ship" });
-        toaster.create({ type: "success", title: t("orders.orderShipped") });
+      if (action.to !== undefined) {
+        const [result] = await moveMutation.mutateAsync({ teamId, orderIds: [orderId], to: action.to });
+
+        // A refusal is an answer, not a failure of the call — the server says why in its own words.
+        if (!result?.moved) {
+          toaster.create({
+            type: "error",
+            title: t(`orders.rowAction.${action.id}`),
+            description: result?.refusedReason,
+          });
+          return;
+        }
+
+        toaster.create({
+          type: "success",
+          title: t("orders.statusMoved", { status: t(orderStatusLabelKey(action.to)) }),
+        });
       }
     } catch (err) {
       toaster.create({ type: "error", title: rpcError(err) });
@@ -93,8 +99,6 @@ export function useOrderActions({
   }
 
   function press(action: RowAction) {
-    // An unbuilt destructive action does not confirm — there is nothing to confirm, and a dialog
-    // asking "are you sure?" about a button that does nothing is two lies in a row.
     if (action.destructive && !action.pending) {
       setConfirming(action);
       return;
@@ -103,7 +107,6 @@ export function useOrderActions({
     void run(action);
   }
 
-  // One dialog for every destructive action, its words chosen by which one opened it.
   const dialog = (
     <ConfirmDialog
       open={confirming !== null}

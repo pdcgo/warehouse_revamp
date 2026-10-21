@@ -218,7 +218,7 @@ export const TheSummaryFollowsTheFilterBar: Story = {
     const canvas = within(canvasElement);
 
     // `pending` is the owner's name for what the contract still calls PLACED.
-    const placed = OWN.filter((o) => o.status === OrderStatus.PLACED);
+    const placed = OWN.filter((o) => o.status === OrderStatus.PENDING);
     await waitFor(() =>
       expect(canvas.getByTestId("order-summary-row-pending")).toHaveTextContent(
         `${placed.length} tx`,
@@ -246,44 +246,32 @@ export const ATabNarrowsTheTableButNeverTheCounts: Story = {
     await waitFor(() => expect(before).not.toHaveTextContent("0"));
     const count = before.textContent;
 
-    await userEvent.click(canvas.getByTestId("orders-tab-shipped"));
+    await userEvent.click(canvas.getByTestId("orders-tab-shipping"));
 
-    const shipped = OWN.find((o) => o.status === OrderStatus.SHIPPED)!;
-    const placed = OWN.find((o) => o.status === OrderStatus.PLACED)!;
-    await waitFor(() => expect(canvas.getByTestId(`order-row-${shipped.id}`)).toBeInTheDocument());
+    const handedOver = OWN.find((o) => o.status === OrderStatus.SHIPPING)!;
+    const placed = OWN.find((o) => o.status === OrderStatus.PENDING)!;
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${handedOver.id}`)).toBeInTheDocument());
     await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
 
-    // The Placed tab still says how many are waiting, from the tab you are standing on.
+    // The Pending tab still says how many are waiting, from the tab you are standing on.
     await expect(canvas.getByTestId("orders-tab-count-pending")).toHaveTextContent(count!);
   },
 };
 
-// ⚠ …AND "DIPROSES" CANNOT NARROW AT ALL, WHICH IS WHY THE STEP FILTER EXISTS. The owner folded four
-// warehouse steps into one status and `OrderListFilter.status` takes exactly one enum value — so the
-// tab can COUNT its three (confirmed, picking, packed) and cannot narrow to them. Picking a step does
-// what the tab cannot.
-//
-// ⚠ THIS TEST IS PINNED TO A GAP, ON PURPOSE. It is the `statusSet` mark written as an assertion, so
-// the day the enum gains a single `PROCESSED` value this fails and somebody re-reads the step filter's
-// reason for existing.
-export const DiprosesCountsButOnlyAStepCanNarrow: Story = {
+// EVERY TAB NARROWS TO ITS ONE STATUS (one-tab-per-status). This replaced a test pinned to a gap on
+// purpose: "Diproses" used to sum three old statuses and could not narrow, so a step filter did it — the
+// enum now has one `PROCESSED`, the test failed as it promised to, and the step filter went.
+export const EveryTabNarrowsToItsStatus: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const packed = OWN.find((o) => o.status === OrderStatus.PACKED)!;
-    const placed = OWN.find((o) => o.status === OrderStatus.PLACED)!;
+    const processed = OWN.find((o) => o.status === OrderStatus.PROCESSED)!;
+    const placed = OWN.find((o) => o.status === OrderStatus.PENDING)!;
 
     await userEvent.click(canvas.getByTestId("orders-tab-processed"));
 
-    // The tab alone leaves the table as it was — the pending order is still listed.
-    await waitFor(() => expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument());
-    await expect(canvas.getByTestId(`order-row-${placed.id}`)).toBeInTheDocument();
-
-    // One step IS one enum value, so it narrows.
-    await userEvent.click(canvas.getByTestId("processed-step-filter-packed"));
-
     await waitFor(() => expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull());
-    await expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument();
+    await expect(canvas.getByTestId(`order-row-${processed.id}`)).toBeInTheDocument();
   },
 };
 

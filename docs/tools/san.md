@@ -294,7 +294,7 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | --- | --- | --- |
 | 1 | check out a submodule a plain `git clone` left empty | `git submodule update --init` |
 | 2 | `docker compose --profile pubsub up -d --wait` — Postgres, Redis and the Pub/Sub emulator | |
-| 3 | the emulator's topics and subscriptions | [`pubsub ensure --project warehouse-dev --emulator`](#pubsub-ensure) |
+| 3 | the emulator's topics, and subscriptions that PUSH to the dev API ([the-emulator-pushes-locally](../technical/event_architecture/context_decision.md#the-emulator-pushes-locally)) | [`pubsub ensure --project warehouse-dev --emulator --push-base-url http://host.docker.internal:8080`](#pubsub-ensure) — `PUBSUB_PUSH_BASE_URL` overrides the URL |
 | 4 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
 | 5 | the suppliers inventory_service set aside, into supplier_service | [`supplier move`](#supplier-move) |
 | 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
@@ -800,6 +800,8 @@ constant beside the handler that serves it):
 | --- | --- | --- |
 | `liability-order-placed` | `order-placed` | liability charges an order's fees |
 | `liability-order-cancelled` | `order-cancelled` | liability reverses them |
+| `settlement-order-placed` | `order-placed` | settlement opens the order's account — its `initial_total` ([settlement-opens-the-sale-from-the-order-event](../business/settlement/context_decision.md#settlement-opens-the-sale-from-the-order-event)) — push route `/event/settlement-order-placed/push` |
+| `settlement-order-cancelled` | `order-cancelled` | settlement cancels that sale — its `initial_total_cancel` — push route `/event/settlement-order-cancelled/push` |
 | `settlement-fold` | `settlement-log-posted` | settlement's reports fold — push route `/event/settlement-fold/push` |
 | `financial-account-withdrawal` | `settlement-log-posted` | a shop's withdrawals post into its financial account — push route `/event/financial-account-withdrawal/push` |
 | `supplier-fold` | `restock-accepted` | a supplier's figures fold — push route `/event/supplier-fold/push` ([the-report-is-processed-like-settlement](../business/supplier/context_decision.md#the-report-is-processed-like-settlement)) |

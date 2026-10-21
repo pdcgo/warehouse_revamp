@@ -5,6 +5,7 @@ import { ProductService } from "../gen/warehouse/product/v1/product_pb";
 import { ShopService } from "../gen/warehouse/selling/v1/selling_pb";
 import { OrderService } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
+import { TeamReturnConfigurationService } from "../gen/warehouse/selling/v1/return_configuration_pb";
 import { ShipmentChannelService } from "../gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptService } from "../gen/warehouse/shipment/v1/receipt_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
@@ -47,6 +48,8 @@ export const orderClient = createClient(OrderService, transport);
 // Drafts are PERSONAL as well as team-scoped (#192): the server narrows every call to the caller,
 // so a draft never appears for a colleague however the client asks.
 export const orderDraftClient = createClient(OrderDraftService, transport);
+// Where a selling team's returns are received (the-return-warehouse-lives-in-team-return-configurations).
+export const teamReturnConfigurationClient = createClient(TeamReturnConfigurationService, transport);
 // The ONE courier catalogue (docs/business/shipment) — public reads, root writes.
 export const shipmentChannelClient = createClient(ShipmentChannelService, transport);
 // Reads an uploaded shipping label (receipt-check-is-shipments) — signed in, stores nothing.

@@ -1,43 +1,71 @@
 import { useTranslation } from "react-i18next";
 
 import { rpcError } from "../../api/clients";
-import type { Order } from "../../gen/warehouse/selling/v1/order_pb";
+import type { Order, OrderStatusChangeResult } from "../../gen/warehouse/selling/v1/order_pb";
 import { toaster } from "../../components/feedback/Toaster";
-import { useAdvanceOrderFulfilment } from "../../features/picking/queries";
+import { useOrderStatusChange } from "../../features/orders/queries";
 import type { WarehouseStep } from "./steps";
-import { rpcFor, stepLabelKey, stepOfStatus } from "./steps";
+import { stepLabelKey, statusOfStep } from "./steps";
 
-// MOVING AN ORDER TO ANOTHER STEP — the one runner the row menu, the bulk bar and the scan dialogs share,
+// MOVING ORDERS TO ANOTHER STEP — the one runner the row menu, the bulk bar and the scan dialogs share,
 // so a move from any of them behaves the same.
 //
-// A move the RPCs can make (one step forward) runs for real. Any other — a skip, a move back, a move into
-// "Sudah diambil" — has no RPC yet and says so instead of pretending (`stepMove`).
+// ONE CALL FOR THE WHOLE LIST (one-status-change-for-every-plain-move): a bulk move or a handover batch
+// is a single OrderStatusChange, and each order comes back with its own result. A refusal never blocks
+// the rest — the toast says how many moved and why the others did not, in the server's words.
 export function useStepMove(warehouseId: bigint | undefined) {
   const { t } = useTranslation();
-  const advance = useAdvanceOrderFulfilment();
+  const change = useOrderStatusChange();
 
-  /** Moves ONE order; returns whether it moved. `quiet` leaves the toast to the caller (bulk, scans). */
-  async function move(order: Order, to: WarehouseStep, quiet = false): Promise<boolean> {
-    const from = stepOfStatus(order.status);
+  /**
+   * Moves these orders to `to` and returns each one's result ([] when nothing could be asked).
+   * `note` is the reason a move back needs. `quiet` leaves the feedback to the caller (the scan dialogs
+   * answer with a sound).
+   */
+  async function move(
+    list: Order[],
+    to: WarehouseStep,
+    opts: { note?: string; quiet?: boolean } = {},
+  ): Promise<OrderStatusChangeResult[]> {
+    const { note = "", quiet = false } = opts;
 
-    if (!from || warehouseId === undefined) return false;
-
-    const rpc = rpcFor(from, to);
-
-    if (!rpc) {
-      if (!quiet) toaster.create({ type: "info", title: t("warehouseOrders.pending.stepMove.reason") });
-      return false;
-    }
+    if (warehouseId === undefined || list.length === 0) return [];
 
     try {
-      await advance.mutateAsync({ warehouseId, orderId: order.id, step: rpc });
-      if (!quiet) toaster.create({ type: "success", title: t("warehouseOrders.moved", { step: t(stepLabelKey(to)) }) });
-      return true;
+      const results = await change.mutateAsync({
+        teamId: warehouseId,
+        orderIds: list.map((order) => order.id),
+        to: statusOfStep(to),
+        note,
+      });
+
+      if (!quiet) {
+        const moved = results.filter((result) => result.moved).length;
+        const refused = results.filter((result) => !result.moved);
+        const step = t(stepLabelKey(to));
+
+        if (moved > 0) {
+          toaster.create({
+            type: "success",
+            title: list.length > 1 ? `${t("warehouseOrders.moved", { step })} (${moved})` : t("warehouseOrders.moved", { step }),
+          });
+        }
+
+        if (refused.length > 0) {
+          toaster.create({
+            type: "warning",
+            title: t("warehouseOrders.notMoved", { count: refused.length }),
+            description: refused.map((result) => `#${result.orderId}: ${result.refusedReason}`).join("\n"),
+          });
+        }
+      }
+
+      return results;
     } catch (err) {
       if (!quiet) toaster.create({ type: "error", title: rpcError(err) });
-      return false;
+      return [];
     }
   }
 
-  return { move, busy: advance.isPending };
+  return { move, busy: change.isPending };
 }

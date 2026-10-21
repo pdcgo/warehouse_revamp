@@ -1,64 +1,56 @@
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
-import type { FulfilmentStep } from "../../features/picking/queries";
 
-// THE WAREHOUSE'S STEPS AND WHERE EACH MAY GO (owner — `a-warehouse-step-moves-by-the-old-systems-table`).
+// THE WAREHOUSE'S STEPS AND WHERE EACH MAY GO — the warehouse's side of the status diagram
+// (the-status-move-is-the-only-journey), the moves OrderStatusChange lets a warehouse make
+// (one-status-change-for-every-plain-move). Each step IS an order status now:
 //
-//   Perlu konfirmasi → Dikonfirmasi
-//   Dikonfirmasi     → Sedang diambil · Sudah diambil · Dikemas
-//   Sedang diambil   → Sudah diambil · Dikonfirmasi · Dikemas
-//   Sudah diambil    → Dikemas · Dikonfirmasi
-//   Dikemas          → Sudah diserahkan · Dikonfirmasi
-//   Sudah diserahkan → (none)
+//   Perlu konfirmasi (pending)    → Dikonfirmasi
+//   Dikonfirmasi (processed)      → Sudah diambil · back to Perlu konfirmasi
+//   Sudah diambil (picked)        → Sudah diserahkan · back to Perlu konfirmasi
+//   Sudah diserahkan (shipping)   → (none — the parcel is customer service's from here)
 //
-// Skipping forward is allowed (a small order picked and packed in one go); going BACK is only ever to
-// Dikonfirmasi — the order returns to the queue — and asks for a reason. Stock does not move on any of
-// these: the goods left the shelf's count when the order was placed.
+// Going BACK is only ever to Perlu konfirmasi — goods on no rack, or the platform cancelled and the parcel
+// was unpacked — and asks for a reason, which the server requires and keeps on the order's history. Stock
+// does not move on any of these: the goods left the shelf's count when the order was placed.
 //
-// ⚠ THE TABLE BELONGS ON THE SERVER. This is the preview's copy, so the menu offers only allowed moves;
-// the RPCs today move ONE step forward each (confirm, pick, pack, ship), so a skip, a move back, or a move
-// into "Sudah diambil" (no status yet) does nothing but say so — the `stepMove` mark.
+// 🔄 IT REPLACES THE OLD SYSTEM'S TABLE (`a-warehouse-step-moves-by-the-old-systems-table`), which the
+// owner's later status diagram supersedes: "Sedang diambil" folded into processed and "Dikemas" into
+// picked (00015), so the skips between them went with them, and a move back now returns to pending.
+//
+// ⚠ THE TABLE IS THE SERVER'S (`orderMoves`, order_transition.go). This copy only decides what the menu
+// offers; a move the server refuses comes back with its reason.
 
-export type WarehouseStep = "toConfirm" | "confirm" | "picking" | "picked" | "packed" | "handover";
+export type WarehouseStep = "toConfirm" | "confirm" | "picked" | "handover";
 
 export const STEP_MOVES: Record<WarehouseStep, WarehouseStep[]> = {
   toConfirm: ["confirm"],
-  confirm: ["picking", "picked", "packed"],
-  picking: ["picked", "confirm", "packed"],
-  picked: ["packed", "confirm"],
-  packed: ["handover", "confirm"],
+  confirm: ["picked", "toConfirm"],
+  picked: ["handover", "toConfirm"],
   handover: [],
 };
 
-/** The step an order is at, from its status. Handed over is SHIPPED in the build until it has its own. */
+const STEP_STATUS: Record<WarehouseStep, OrderStatus> = {
+  toConfirm: OrderStatus.PENDING,
+  confirm: OrderStatus.PROCESSED,
+  picked: OrderStatus.PICKED,
+  handover: OrderStatus.SHIPPING,
+};
+
+const STEPS = Object.keys(STEP_STATUS) as WarehouseStep[];
+
+/** The status a step is. */
+export function statusOfStep(step: WarehouseStep): OrderStatus {
+  return STEP_STATUS[step];
+}
+
+/** The step an order is at, from its status — undefined once the warehouse is done with it. */
 export function stepOfStatus(status: OrderStatus): WarehouseStep | undefined {
-  switch (status) {
-    case OrderStatus.PLACED:
-      return "toConfirm";
-    case OrderStatus.CONFIRMED:
-      return "confirm";
-    case OrderStatus.PICKING:
-      return "picking";
-    case OrderStatus.PACKED:
-      return "packed";
-    case OrderStatus.SHIPPED:
-      return "handover";
-    default:
-      return undefined;
-  }
+  return STEPS.find((step) => STEP_STATUS[step] === status);
 }
 
 /** Whether a move sends the order back to the queue — the one that asks for a reason. */
 export function isBack(from: WarehouseStep, to: WarehouseStep): boolean {
-  return to === "confirm" && from !== "toConfirm";
-}
-
-/** The RPC that makes this move today, or undefined when none does (a skip, a move back, "picked"). */
-export function rpcFor(from: WarehouseStep, to: WarehouseStep): FulfilmentStep | undefined {
-  if (from === "toConfirm" && to === "confirm") return "confirm";
-  if (from === "confirm" && to === "picking") return "pick";
-  if (from === "picking" && to === "packed") return "pack";
-  if (from === "packed" && to === "handover") return "ship";
-  return undefined;
+  return to === "toConfirm" && from !== "toConfirm";
 }
 
 /** The i18n key that names a step — the tab's own word. */

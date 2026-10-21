@@ -1,6 +1,20 @@
 import { useTranslation } from "react-i18next";
 import { Box, Card, Flex, Icon, Separator, Text, Timeline } from "@chakra-ui/react";
-import { Ban, CheckCircle2, Clock, Hand, PackageCheck, ShoppingCart, Truck } from "lucide-react";
+import {
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  CircleCheck,
+  Clock,
+  PackageCheck,
+  PackageOpen,
+  PackageX,
+  Navigation,
+  RotateCcw,
+  ShoppingCart,
+  Truck,
+  Undo2,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import type { Order, OrderEvent } from "../../../gen/warehouse/selling/v1/order_pb";
@@ -24,42 +38,69 @@ export interface TimelinePanelProps {
 // How each kind renders. A map rather than a switch so an UNKNOWN kind — an event written by a newer
 // build than this screen — falls through to a readable default instead of crashing the tab.
 //
-// The palette is doing work, not decoration: the two ENDINGS are coloured (green for shipped, red for
-// cancelled) and the steps on the way there are not, so the state an order finished in is findable
-// without reading a word.
+// The palette is doing work, not decoration: the ENDINGS are coloured, each in its status's own hue, and
+// the steps on the way there are not, so the state an order finished in is findable without reading a word.
 const LOOK: Partial<Record<OrderEventKind, { icon: LucideIcon; palette?: string }>> = {
-  [OrderEventKind.PLACED]: { icon: ShoppingCart },
-  [OrderEventKind.CONFIRMED]: { icon: CheckCircle2 },
-  [OrderEventKind.PICKING]: { icon: Hand },
-  [OrderEventKind.PACKED]: { icon: PackageCheck },
-  [OrderEventKind.SHIPPED]: { icon: Truck, palette: "green" },
-  [OrderEventKind.CANCELLED]: { icon: Ban, palette: "red" },
+  [OrderEventKind.PENDING]: { icon: ShoppingCart },
+  [OrderEventKind.PROCESSED]: { icon: CheckCircle2 },
+  [OrderEventKind.PICKED]: { icon: PackageCheck },
+  [OrderEventKind.SHIPPING]: { icon: Truck },
+  [OrderEventKind.SHIPPED]: { icon: Navigation },
+  [OrderEventKind.COMPLETED]: { icon: CircleCheck, palette: "green" },
+  [OrderEventKind.PROBLEM]: { icon: AlertTriangle },
+  [OrderEventKind.LOST]: { icon: PackageX, palette: "purple" },
+  [OrderEventKind.RETURN]: { icon: Undo2 },
+  [OrderEventKind.RETURN_COMPLETED]: { icon: PackageOpen, palette: "pink" },
+  [OrderEventKind.CANCEL]: { icon: Ban, palette: "rose" },
 };
 
 /**
  * The i18n key per event kind.
  *
- * ⚠ EXPORTED because the order-detail PREVIEW renders the same events in a flat list. Two screens
- * naming the same event differently is exactly what one shared map prevents.
+ * ⚠ EXPORTED because the order-detail PREVIEW and the seller's rail render the same events. Two screens
+ * naming the same event differently is exactly what one shared map prevents. Prefer
+ * `timelineTitleKey`, which also tells a placement from a hand-back.
  */
 export const TIMELINE_TITLE: Partial<Record<OrderEventKind, string>> = {
-  [OrderEventKind.PLACED]: "orders.timeline.placed",
-  [OrderEventKind.CONFIRMED]: "orders.timeline.confirmed",
-  [OrderEventKind.PICKING]: "orders.timeline.picking",
-  [OrderEventKind.PACKED]: "orders.timeline.packed",
+  [OrderEventKind.PENDING]: "orders.timeline.placed",
+  [OrderEventKind.PROCESSED]: "orders.timeline.confirmed",
+  [OrderEventKind.PICKED]: "orders.timeline.picked",
+  [OrderEventKind.SHIPPING]: "orders.timeline.shipping",
   [OrderEventKind.SHIPPED]: "orders.timeline.shipped",
-  [OrderEventKind.CANCELLED]: "orders.timeline.cancelled",
+  [OrderEventKind.COMPLETED]: "orders.timeline.completed",
+  [OrderEventKind.PROBLEM]: "orders.timeline.problem",
+  [OrderEventKind.LOST]: "orders.timeline.lost",
+  [OrderEventKind.RETURN]: "orders.timeline.return",
+  [OrderEventKind.RETURN_COMPLETED]: "orders.timeline.returnCompleted",
+  [OrderEventKind.CANCEL]: "orders.timeline.cancelled",
 };
+
+/**
+ * The i18n key for one event, given its place in the history.
+ *
+ * ⚠ A `pending` IS TWO DIFFERENT EVENTS: the order being placed — always the first row — or the warehouse
+ * handing it back (goods on no rack, the platform cancelled), which carries a note saying why.
+ */
+export function timelineTitleKey(event: OrderEvent, index: number): string {
+  if (event.kind === OrderEventKind.PENDING && index > 0) {
+    return "orders.timeline.handedBack";
+  }
+
+  return TIMELINE_TITLE[event.kind] ?? "orders.timeline.unknown";
+}
 
 // WHAT IS STILL OWED, per status — the step that has not happened yet.
 //
-// Only for the states something is expected to happen FROM. SHIPPED and CANCELLED are endings: a
-// waiting step under either would promise work nobody is going to do.
+// Only for the states something is expected to happen FROM. The endings — completed, lost,
+// return_completed and cancel — have none: a waiting step under one would promise work nobody is going
+// to do. Problem has none either: what happens next is customer service's call, not a step in a line.
 const AWAITING_KEY: Partial<Record<OrderStatus, string>> = {
-  [OrderStatus.PLACED]: "orders.timeline.awaitingConfirm",
-  [OrderStatus.CONFIRMED]: "orders.timeline.awaitingPick",
-  [OrderStatus.PICKING]: "orders.timeline.awaitingPack",
-  [OrderStatus.PACKED]: "orders.timeline.awaitingShip",
+  [OrderStatus.PENDING]: "orders.timeline.awaitingConfirm",
+  [OrderStatus.PROCESSED]: "orders.timeline.awaitingPick",
+  [OrderStatus.PICKED]: "orders.timeline.awaitingShip",
+  [OrderStatus.SHIPPING]: "orders.timeline.awaitingShipped",
+  [OrderStatus.SHIPPED]: "orders.timeline.awaitingDelivery",
+  [OrderStatus.RETURN]: "orders.timeline.awaitingReturn",
 };
 
 // TIMELINE — WHO DID WHAT, AND WHEN.
@@ -96,8 +137,8 @@ export function TimelinePanel({ order, actors, actorFallback }: TimelinePanelPro
               event={event}
               actor={actors?.get(event.actorUserId.toString())}
               fallback={actorFallback(event.actorUserId)}
-              title={t(TIMELINE_TITLE[event.kind] ?? "orders.timeline.unknown")}
-              icon={LOOK[event.kind]?.icon ?? Clock}
+              title={t(timelineTitleKey(event, i))}
+              icon={event.kind === OrderEventKind.PENDING && i > 0 ? RotateCcw : (LOOK[event.kind]?.icon ?? Clock)}
               palette={LOOK[event.kind]?.palette}
             />
           ))}
@@ -195,6 +236,12 @@ function EventStep({
                 afternoon — the day alone cannot put those in order, and "how long did it sit between
                 confirmed and picked" is the question this tab is opened to answer. */}
             <Timeline.Description>{formatUnixDateTime(event.atUnix)}</Timeline.Description>
+            {/* WHY, when the move needed a reason — a hand-back to pending always says one. */}
+            {event.note && (
+              <Text fontSize="sm" color="fg.muted" data-testid={`${testId}-note`}>
+                {event.note}
+              </Text>
+            )}
           </Box>
         </Flex>
       </Timeline.Content>
@@ -206,20 +253,19 @@ function EventStep({
 // `order-timeline-shipped` and survives the enum gaining a value.
 /** Exported so the seller's timeline RAIL carries the same testids this tab's steps do. */
 export function timelineKindSlug(kind: OrderEventKind): string {
-  switch (kind) {
-    case OrderEventKind.PLACED:
-      return "placed";
-    case OrderEventKind.CONFIRMED:
-      return "confirmed";
-    case OrderEventKind.PICKING:
-      return "picking";
-    case OrderEventKind.PACKED:
-      return "packed";
-    case OrderEventKind.SHIPPED:
-      return "shipped";
-    case OrderEventKind.CANCELLED:
-      return "cancelled";
-    default:
-      return "unknown";
-  }
+  return SLUG[kind] ?? "unknown";
 }
+
+const SLUG: Partial<Record<OrderEventKind, string>> = {
+  [OrderEventKind.PENDING]: "pending",
+  [OrderEventKind.PROCESSED]: "processed",
+  [OrderEventKind.PICKED]: "picked",
+  [OrderEventKind.SHIPPING]: "shipping",
+  [OrderEventKind.SHIPPED]: "shipped",
+  [OrderEventKind.COMPLETED]: "completed",
+  [OrderEventKind.PROBLEM]: "problem",
+  [OrderEventKind.LOST]: "lost",
+  [OrderEventKind.RETURN]: "return",
+  [OrderEventKind.RETURN_COMPLETED]: "return_completed",
+  [OrderEventKind.CANCEL]: "cancel",
+};

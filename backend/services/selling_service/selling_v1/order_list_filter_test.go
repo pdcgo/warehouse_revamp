@@ -294,11 +294,11 @@ func TestOrderList_FiltersCompose(t *testing.T) {
 
 	// And composing with the STATUS tab, which is the one filter the stat does not share.
 	wantOrders(t, listFiltered(t, svc, 2, &sellingv1.OrderListFilter{
-		Search: "Budi", ShopId: shopA, Status: sellingv1.OrderStatus_ORDER_STATUS_PLACED,
+		Search: "Budi", ShopId: shopA, Status: sellingv1.OrderStatus_ORDER_STATUS_PENDING,
 	}), wanted)
 
 	wantOrders(t, listFiltered(t, svc, 2, &sellingv1.OrderListFilter{
-		Search: "Budi", ShopId: shopA, Status: sellingv1.OrderStatus_ORDER_STATUS_CANCELLED,
+		Search: "Budi", ShopId: shopA, Status: sellingv1.OrderStatus_ORDER_STATUS_CANCEL,
 	}))
 }
 
@@ -334,7 +334,7 @@ func TestOrderStat_SharesTheListFilters(t *testing.T) {
 		}
 
 		for _, row := range res.Msg.GetByStatus() {
-			if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_PLACED {
+			if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 				return row.GetCount()
 			}
 		}

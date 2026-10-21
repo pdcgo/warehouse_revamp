@@ -723,9 +723,15 @@ type OrderPlaced struct {
 	// the stored row, so a backfill six hours later still names the person who placed it. The
 	// envelope's identity says who caused THAT PUBLISH — the operator running the backfill. A consumer
 	// folding the fact reads this one.
-	ActorId       uint64 `protobuf:"varint,9,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ActorId uint64 `protobuf:"varint,9,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// The shop it was sold on, and what the PLATFORM says the buyer paid, whole rupiah — 0 = not recorded.
+	// settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
+	// its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
+	// calls settlement, so the event has to carry everything the account needs.
+	ShopId           uint64 `protobuf:"varint,10,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	MarketplaceTotal int64  `protobuf:"varint,11,opt,name=marketplace_total,json=marketplaceTotal,proto3" json:"marketplace_total,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *OrderPlaced) Reset() {
@@ -817,6 +823,20 @@ func (x *OrderPlaced) GetLines() []*OrderPlacedLine {
 func (x *OrderPlaced) GetActorId() uint64 {
 	if x != nil {
 		return x.ActorId
+	}
+	return 0
+}
+
+func (x *OrderPlaced) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *OrderPlaced) GetMarketplaceTotal() int64 {
+	if x != nil {
+		return x.MarketplaceTotal
 	}
 	return 0
 }
@@ -920,7 +940,10 @@ type OrderCancelled struct {
 	// WHO CANCELLED IT (every-entry-names-who-posted-it). The reversal this event causes is a real
 	// ledger movement, and it is a different person's act from the placement it undoes — so it carries
 	// its own actor rather than reusing the one on the entries being reversed.
-	ActorId       uint64 `protobuf:"varint,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	ActorId uint64 `protobuf:"varint,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// The shop it was sold on — settlement cancels the sale on that shop's account
+	// (settlement-opens-the-sale-from-the-order-event).
+	ShopId        uint64 `protobuf:"varint,4,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -972,6 +995,13 @@ func (x *OrderCancelled) GetOrderId() uint64 {
 func (x *OrderCancelled) GetActorId() uint64 {
 	if x != nil {
 		return x.ActorId
+	}
+	return 0
+}
+
+func (x *OrderCancelled) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
 	}
 	return 0
 }
@@ -2141,7 +2171,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"reversesId\x12\x12\n" +
 	"\x04note\x18\x0f \x01(\tR\x04note\x12\x17\n" +
 	"\auser_id\x18\x10 \x01(\x04R\x06userId:\x1b\x8a\xb5\x18\x17\n" +
-	"\x15settlement-log-posted\"\xc1\x02\n" +
+	"\x15settlement-log-posted\"\x87\x03\n" +
 	"\vOrderPlaced\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x18\n" +
@@ -2152,18 +2182,22 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown\x12!\n" +
 	"\fwarehouse_id\x18\a \x01(\x04R\vwarehouseId\x12:\n" +
 	"\x05lines\x18\b \x03(\v2$.warehouse.events.v1.OrderPlacedLineR\x05lines\x12\x19\n" +
-	"\bactor_id\x18\t \x01(\x04R\aactorId:\x12\x8a\xb5\x18\x0e\n" +
+	"\bactor_id\x18\t \x01(\x04R\aactorId\x12\x17\n" +
+	"\ashop_id\x18\n" +
+	" \x01(\x04R\x06shopId\x12+\n" +
+	"\x11marketplace_total\x18\v \x01(\x03R\x10marketplaceTotal:\x12\x8a\xb5\x18\x0e\n" +
 	"\forder-placed\"\x8f\x01\n" +
 	"\x0fOrderPlacedLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12$\n" +
 	"\x0eowning_team_id\x18\x02 \x01(\x04R\fowningTeamId\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\rR\bquantity\x12\x1b\n" +
-	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\"v\n" +
+	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\"\x8f\x01\n" +
 	"\x0eOrderCancelled\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x19\n" +
-	"\bactor_id\x18\x03 \x01(\x04R\aactorId:\x15\x8a\xb5\x18\x11\n" +
+	"\bactor_id\x18\x03 \x01(\x04R\aactorId\x12\x17\n" +
+	"\ashop_id\x18\x04 \x01(\x04R\x06shopId:\x15\x8a\xb5\x18\x11\n" +
 	"\x0forder-cancelled\"\xcc\x03\n" +
 	"\x0fRestockAccepted\x12\x1d\n" +
 	"\n" +

@@ -122,7 +122,7 @@ func TestOrderList_FiltersByCreator(t *testing.T) {
 	var placed int64
 
 	for _, row := range res.Msg.GetByStatus() {
-		if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_PLACED {
+		if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 			placed = row.GetCount()
 		}
 	}

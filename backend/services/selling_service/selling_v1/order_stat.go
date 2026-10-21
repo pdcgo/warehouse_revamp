@@ -81,7 +81,7 @@ func (s *Service) OrderStat(
 		// CANCELLED is counted in the census but never in the money: it is a real thing sitting in a
 		// real state, and it is not revenue. Excluding it HERE — one place, over grouped rows — is why
 		// the rule cannot end up applied to the count and forgotten on the sum.
-		if row.Status == orderStatusCancelled {
+		if row.Status == orderStatusCancel {
 			continue
 		}
 

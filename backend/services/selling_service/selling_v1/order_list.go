@@ -11,6 +11,7 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -41,6 +42,16 @@ type orderScopeFilter interface {
 // reads as "no filter applied" rather than as a bad query.
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
+// readsEveryTeam reports whether a read is scoped to the ROOT team, and so crosses every team
+// (root-reads-every-teams-orders). The root team is the one scope only ROOT and ADMIN hold, so this is
+// no new permission — it is the rule settlement's reports already use (isRootScope). Without it a root
+// reader matched neither leg of the scope and got an empty list under its Team column.
+//
+// READS ONLY. A write scoped to the root team still names the order's own team or warehouse.
+func readsEveryTeam(teamID uint64) bool {
+	return teamID == san_auth.RootTeamID
+}
+
 // scopedOrders builds the set of orders a team may see — the WHOLE set, before any status filter.
 //
 // It is shared by OrderList and OrderStat rather than written twice, and that is what makes the stat
@@ -48,7 +59,7 @@ var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 // table describing a different set of orders, which is worse than no header at all.
 func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.DB {
 	// BOTH SIDES (#151): the team that placed the order, or the warehouse shipping it. The latter is
-	// the pick queue.
+	// the pick queue. The root team reads every team's orders and skips the clause.
 	//
 	// The parentheses are written explicitly even though GORM does not need them here — it wraps a
 	// chained Where containing an OR before AND-ing the next one, so the generated SQL is already
@@ -56,7 +67,9 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// assumed.) They stay because the correctness of the status filter added later should be readable
 	// from THIS line rather than resting on an ORM behaviour: precedence is what makes an OR-plus-
 	// filter go wrong, and hand-built SQL a refactor away would not be so forgiving.
-	query = query.Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID)
+	if !readsEveryTeam(teamID) {
+		query = query.Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID)
+	}
 
 	// Only orders carrying THIS product on a line (#159). An EXISTS subquery rather than a JOIN: a join
 	// against a one-to-many would return the order once PER MATCHING LINE, so an order listing the same

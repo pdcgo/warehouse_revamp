@@ -61,16 +61,15 @@ const OFFSET_HOURS = [-9, 2, 11, 30, 73];
 /**
  * When this order has to be out — or `undefined` when the question no longer applies.
  *
- * ⚠ A SHIPPED, COMPLETED OR CANCELLED ORDER HAS NO LIVE DEADLINE, and that absence is the point rather
- * than a gap in the sample: the clock stops when the parcel leaves. A column that stayed red on orders
+ * ⚠ AN ORDER HANDED OVER, OR PAST THAT, OR CANCELLED HAS NO LIVE DEADLINE, and that absence is the point
+ * rather than a gap in the sample: the clock stops when the parcel leaves. A column that stayed red on orders
  * already out of the building would be a column people learn to ignore.
  */
 export function mockDeadline(id: bigint, status: OrderStatus, now: Date = new Date()): bigint | undefined {
   const live =
-    status === OrderStatus.PLACED ||
-    status === OrderStatus.CONFIRMED ||
-    status === OrderStatus.PICKING ||
-    status === OrderStatus.PACKED;
+    status === OrderStatus.PENDING ||
+    status === OrderStatus.PROCESSED ||
+    status === OrderStatus.PICKED;
 
   if (!live) {
     return undefined;

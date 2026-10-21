@@ -24,6 +24,9 @@ type OrderEvent struct {
 	// orders placed months ago. The timeline orders by this.
 	At time.Time
 
+	// WHY, when the move needed a reason (00015): required for a move back to pending, "" otherwise.
+	Note string
+
 	CreatedAt time.Time
 }
 

@@ -66,6 +66,8 @@ import { warehouseTransferService } from "./warehouseTransferStub";
 import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { rackService } from "./rackStub";
+import { returnConfigurationService } from "./returnConfigurationStub";
+import { TeamReturnConfigurationService } from "../src/gen/warehouse/selling/v1/return_configuration_pb";
 import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
@@ -616,14 +618,6 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
 
-// The order a fulfilment step acts on — found only from the WAREHOUSE side it ships from.
-function fulfilmentOrder(req: { teamId: bigint; orderId: bigint }) {
-  const order = orders.find((o) => o.id === req.orderId && o.warehouseId === req.teamId);
-  if (!order) throw new ConnectError("order not found", Code.NotFound);
-
-  return order;
-}
-
 // ── The daily statement, from three services at once ────────────────────────────────────────────
 //
 // The statement is the one screen here that subtracts one service from another (revenue or
@@ -781,6 +775,7 @@ export const transport = createRouterTransport(({ service }) => {
   // The rack registry (scoped by the warehouse, as the server is), Rack detail's reads and the two prototype writes —
   // rackStub.ts plays them, writeable, with the placement decisions.
   service(RackService, rackService);
+  service(TeamReturnConfigurationService, returnConfigurationService);
 
   service(CategoryService, {
     // The one full-tree read the pagination rule exempts (a picker needs every node to assemble the
@@ -1127,16 +1122,24 @@ export const transport = createRouterTransport(({ service }) => {
       return { order };
     },
 
-    // The crew's four steps. STATELESS on purpose: the page reads the new status back through the
-    // invalidation, and a stub that remembered a step would leak it into the next story. So a story
-    // asserts the step was ACCEPTED (the toast), not that the badge moved.
+    // Every plain move (one-status-change-for-every-plain-move). STATELESS on purpose: the page reads the
+    // new status back through the invalidation, and a stub that remembered a move would leak it into the
+    // next story. So a story asserts the move was ACCEPTED (the toast), not that the badge moved.
     //
-    // The scope is the WAREHOUSE side only — the crew advances what ships from its building, and a
-    // selling team pressing these would be refused by the policy long before the handler.
-    orderConfirm: (req) => ({ order: fulfilmentOrder(req) }),
-    orderPick: (req) => ({ order: fulfilmentOrder(req) }),
-    orderPack: (req) => ({ order: fulfilmentOrder(req) }),
-    orderShip: (req) => ({ order: fulfilmentOrder(req) }),
+    // One result per order, like the server: an order at either end of the caller's scope moves, any
+    // other is refused — and a refusal never fails the call. The who-may-make-which-move table is the
+    // server's and is not copied here.
+    orderStatusChange: (req) => ({
+      results: req.orderIds.map((orderId) => {
+        const order = orders.find(
+          (o) => o.id === orderId && (o.teamId === req.teamId || o.warehouseId === req.teamId),
+        );
+
+        return order
+          ? { orderId, moved: true, status: req.to }
+          : { orderId, moved: false, refusedReason: "not one of this team's orders" };
+      }),
+    }),
 
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were

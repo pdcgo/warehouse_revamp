@@ -166,14 +166,14 @@ export const UnrecordedActor: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("timeline-rail")).toBeInTheDocument());
 
-    // The steps are there — asserted by TESTID, not by the word "shipped", which also appears in the
+    // The steps are there — asserted by TESTID, not by the words "handed over", which also appear in the
     // status badge in the header and would pass against a completely empty timeline.
-    await waitFor(() => expect(canvas.getByTestId("order-timeline-shipped")).toBeInTheDocument());
-    await expect(canvas.getByTestId("order-timeline-placed")).toBeInTheDocument();
+    await waitFor(() => expect(canvas.getByTestId("order-timeline-shipping")).toBeInTheDocument());
+    await expect(canvas.getByTestId("order-timeline-pending")).toBeInTheDocument();
 
     // …and nobody is named on them. Both halves are checked: no resolved person block, and no
     // "User #0" — the fallback firing on an id that means ABSENCE is the specific bug here.
-    await expect(canvas.queryByTestId("order-timeline-shipped-by")).not.toBeInTheDocument();
+    await expect(canvas.queryByTestId("order-timeline-shipping-by")).not.toBeInTheDocument();
     await expect(canvasElement).not.toHaveTextContent(/User #0/);
   },
 };

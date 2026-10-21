@@ -28,17 +28,9 @@ import {
   orderSummaryTotal,
   summariseOrderStat,
 } from "../../features/orders/stat";
-import {
-  ALL_STAGE,
-  ORDER_STAGES,
-  PROCESSED_STEPS,
-  orderStage,
-  stageCanFilterTheList,
-  stageOfStatus,
-} from "../../features/orders/stages";
-import type { ProcessedStep } from "../../features/orders/stages";
+import { ALL_STAGE, ORDER_STAGES, orderStage, stageOfStatus } from "../../features/orders/stages";
 import { DRAFTS_TAB, StageTabs } from "../../features/orders/StageTabs";
-import { StageBadge } from "../../features/orders/StageBadge";
+import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import {
   CreatedCell,
   DateCell,
@@ -53,7 +45,6 @@ import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orde
 import { OrderRowActions } from "./components/OrderRowActions";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeams } from "../../features/teams/queries";
-import { ProcessedStepFilter } from "./components/ProcessedStepFilter";
 import { useOrderDrafts } from "../../features/orderDrafts/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
@@ -137,11 +128,6 @@ export function SellerOrdersPage() {
 
   const [importing, setImporting] = useState(false);
 
-  // WHICH OF `processed`'S FOUR STEPS, when that is the chosen status. Tab-scoped on purpose: it is a
-  // narrowing OF a tab, not a filter of the screen, so it is not in `filters` and the Clear button
-  // above does not reach it.
-  const [step, setStep] = useState<ProcessedStep["id"] | undefined>(undefined);
-
   const teamId = current?.teamId;
 
   // A shop belongs to a SELLING team. This list is read from both ends (#151) — a warehouse sees the
@@ -184,20 +170,8 @@ export function SellerOrdersPage() {
 
   const stage = orderStage(tab);
 
-  // ⚠ THE STAGE IS NOT ALWAYS A FILTER. `OrderListFilter.status` takes ONE status, so a stage that
-  // covers three (`processed`) or none (`completed` and the other three) cannot narrow the table —
-  // the tab is selectable and the rows below it stay whatever they were. That is the `statusSet`
-  // mark's doing, and inventing a filter the server ignores is what it exists to prevent.
-  // A chosen step wins over the stage: `processed` alone cannot filter (three statuses at once), but
-  // any ONE of its steps can, which is the whole reason the step filter exists.
-  const stepStatus = PROCESSED_STEPS.find((item) => item.id === step)?.status;
-
-  const listStatus =
-    stage?.id === "processed" && stepStatus !== undefined
-      ? stepStatus
-      : stage && stageCanFilterTheList(stage)
-        ? stage.statuses[0]!
-        : OrderStatus.UNSPECIFIED;
+  // A tab IS one status (one-tab-per-status), so it always narrows the table; All narrows nothing.
+  const listStatus = stage ? stage.status : OrderStatus.UNSPECIFIED;
 
   const query = useOrders({
     teamId,
@@ -306,7 +280,7 @@ export function SellerOrdersPage() {
   function stageBadgeFor(status: OrderStatus) {
     const item = stageOfStatus(status);
 
-    return item ? <StageBadge stage={item} /> : undefined;
+    return item ? <OrderStatusBadge status={item.status} /> : undefined;
   }
 
   function teamOf(id: bigint) {
@@ -534,7 +508,6 @@ export function SellerOrdersPage() {
         value={tab}
         count={tabCount}
         draftCount={draftCount}
-        mark={<NotImplemented list={ORDERS_LIST_PENDING} id="statusSet" />}
         onSelect={(value) => {
           if (value === DRAFTS_TAB) {
             void navigate("/order-drafts");
@@ -542,23 +515,9 @@ export function SellerOrdersPage() {
           }
 
           setTab(value);
-          // ⚠ The step belongs to `processed`. Carrying it to another tab would leave a filter set on
-          // a status it cannot apply to, invisibly.
-          setStep(undefined);
           setPage(1);
         }}
       />
-
-      {/* NARROWING `processed` TO ONE STEP — under the tab it belongs to, and nowhere else. */}
-      {stage?.id === "processed" && (
-        <ProcessedStepFilter
-          value={step}
-          onChange={(next) => {
-            setStep(next);
-            setPage(1);
-          }}
-        />
-      )}
 
       {/* BY STATUS FIRST (owner), and BELOW THE STATUS FILTER — the tab strip above decides which
           pile the measure line describes, so the summary reads as the answer to the control right
@@ -577,7 +536,7 @@ export function SellerOrdersPage() {
         badge={(row) => {
           const item = orderStage(row.key);
 
-          return item ? <StageBadge stage={item} /> : null;
+          return item ? <OrderStatusBadge status={item.status} /> : null;
         }}
         marks={
           <>
@@ -767,11 +726,10 @@ export function SellerOrdersPage() {
                             <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                               {/* The stage keys the owner's per-status action table; the warehouse id
                                 decides whether "Jadikan Dikirim" is this reader's to press at all —
-                                `OrderShip` is scoped to the building holding the parcel. */}
+                                OrderStatusChange gives the warehouse's moves to the building holding the parcel. */}
                               <OrderRowActions
                                 teamId={teamId}
                                 orderId={o.id}
-                                status={o.status}
                                 stage={stageOfStatus(o.status)?.id}
                                 warehouseId={o.warehouseId}
                               />

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Badge,
   Box,
+  HStack,
   Icon,
   IconButton,
   Menu,
@@ -14,8 +16,9 @@ import {
 import { Eye, MoreHorizontal, Pencil, Phone, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
-import type { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
+import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../../../gen/warehouse/team/v1/team_pb";
+import { useTeamsWithReturnWarehouse } from "../../../features/orders/queries";
 import { useTeam } from "../../../features/team/TeamContext";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
@@ -64,6 +67,13 @@ export function TeamTable({
   // is the real gate; this only decides what the UI offers.
   const admin = isGlobalAdmin(current?.role);
 
+  // WHICH SELLING TEAMS HAVE NO RETURN WAREHOUSE (root-sees-which-teams-have-no-return-warehouse). Each team sets
+  // its own (each-team-sets-its-own-return-warehouse), and order create starts refusing a team without one only
+  // once none is left — this mark is how root sees that moment. Root and the Administrator only: the read is
+  // unscoped. Nothing is marked until the answer is in, so a slow read never flashes a badge on a team that has one.
+  const sellingIds = teams.filter((team) => team.type === TeamType.SELLING).map((team) => team.id);
+  const withReturn = useTeamsWithReturnWarehouse({ teamIds: sellingIds, enabled: admin });
+
   // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in
   // its loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would
   // close while the delete was still in flight. mutateAsync REJECTS on failure, so the catch is not
@@ -105,20 +115,27 @@ export function TeamTable({
                 return (
                   <Table.Row key={team.id.toString()} data-testid={`team-row-${team.teamCode}`}>
                     <Table.Cell>
-                      <Box
-                        cursor="pointer"
-                        data-testid={`open-team-${team.teamCode}`}
-                        onClick={() => navigate(`/teams/${team.id}`)}
-                      >
-                        <TeamItem
-                          team={{
-                            teamName: team.name,
-                            teamType: team.type,
-                            teamId: team.id,
-                            imageUrl: team.imageUrl,
-                          }}
-                        />
-                      </Box>
+                      <HStack gap="2">
+                        <Box
+                          cursor="pointer"
+                          data-testid={`open-team-${team.teamCode}`}
+                          onClick={() => navigate(`/teams/${team.id}`)}
+                        >
+                          <TeamItem
+                            team={{
+                              teamName: team.name,
+                              teamType: team.type,
+                              teamId: team.id,
+                              imageUrl: team.imageUrl,
+                            }}
+                          />
+                        </Box>
+                        {withReturn.data && team.type === TeamType.SELLING && !withReturn.data.has(team.id) && (
+                          <Badge colorPalette="warning" size="sm" data-testid={`team-no-return-${team.teamCode}`}>
+                            {t("teams.noReturnWarehouse")}
+                          </Badge>
+                        )}
+                      </HStack>
                     </Table.Cell>
                     <Table.Cell>{team.teamCode}</Table.Cell>
 

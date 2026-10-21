@@ -16,7 +16,7 @@ import { ScanInput } from "./ScanInput";
 
 // HANDING PARCELS TO THE COURIER, ONE SCAN AT A TIME (owner — `scanning-is-the-crews-hands`).
 //
-// Only a Dikemas order may be handed over; the end state is Sudah diserahkan (SHIPPED in the build).
+// Only a Sudah diambil (picked) order may be handed over; the end state is Sudah diserahkan (shipping).
 //
 //   Ambil massal OFF  every good scan is handed over at once
 //   Ambil massal ON   scans collect into the list; one button hands them over together
@@ -98,7 +98,7 @@ export function HandoverScanDialog({
       return;
     }
 
-    if (order.status !== OrderStatus.PACKED) {
+    if (order.status !== OrderStatus.PICKED) {
       beep("wrong");
       const step = stepOfStatus(order.status);
       setEntries((prev) => [
@@ -114,23 +114,31 @@ export function HandoverScanDialog({
       return;
     }
 
-    const moved = await move(order, "handover", true);
+    const [result] = await move([order], "handover", { quiet: true });
+    const moved = result?.moved ?? false;
     beep(moved ? "fulfilled" : "wrong");
     setEntries((prev) => [{ code, order, state: moved ? "handedOver" : "failed" }, ...prev]);
   }
 
   async function handOverAll() {
     setSubmitting(true);
-    let done = 0;
+    // ONE CALL FOR THE BATCH (one-status-change-for-every-plain-move), each parcel with its own result.
+    const batch = ready.filter((entry) => entry.order !== undefined);
+    const results = await move(
+      batch.map((entry) => entry.order!),
+      "handover",
+      { quiet: true },
+    );
+    const movedIds = new Set(results.filter((result) => result.moved).map((result) => String(result.orderId)));
+    const done = movedIds.size;
 
-    // ⚠ ONE CALL PER PARCEL (`bulkHandover`) — there is no bulk RPC yet.
-    for (const entry of ready) {
-      const moved = entry.order ? await move(entry.order, "handover", true) : false;
-      if (moved) done += 1;
-      setEntries((prev) =>
-        prev.map((item) => (item.code === entry.code ? { ...item, state: moved ? "handedOver" : "failed" } : item)),
-      );
-    }
+    setEntries((prev) =>
+      prev.map((item) =>
+        batch.some((entry) => entry.code === item.code)
+          ? { ...item, state: movedIds.has(String(item.order?.id)) ? "handedOver" : "failed" }
+          : item,
+      ),
+    );
 
     setSubmitting(false);
     beep(done === ready.length ? "fulfilled" : "wrong");
@@ -211,7 +219,6 @@ export function HandoverScanDialog({
                   onClick={() => void handOverAll()}
                 >
                   {t("warehouseOrders.handover.submit", { count: ready.length })}
-                  <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="bulkHandover" />
                 </Button>
               </Dialog.Footer>
             )}

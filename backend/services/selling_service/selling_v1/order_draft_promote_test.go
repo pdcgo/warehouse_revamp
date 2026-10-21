@@ -78,7 +78,7 @@ func TestOrderDraftPromote_TheDraftBecomesAnOrderAndDisappears(t *testing.T) {
 		t.Fatalf("OrderDraftPromote: %v", err)
 	}
 
-	if order.GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PLACED {
+	if order.GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 		t.Fatalf("status = %v, want PLACED", order.GetStatus())
 	}
 

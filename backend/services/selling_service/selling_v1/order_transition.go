@@ -15,16 +15,66 @@ import (
 // — the request was valid but the order's current state does not allow the move.
 var (
 	errOrderMissing     = errors.New("order not found")
-	errNotPlaced        = errors.New("only a placed order can be confirmed")
 	errAlreadyCancelled = errors.New("order is already cancelled")
-	// #150: once the courier has it, the goods have left the building. Putting the stock back would
-	// book them onto a shelf while they are on a van — what comes back now is a RETURN, not a cancel.
-	errShippedCannotCancel = errors.New("a shipped order cannot be cancelled — it has already left")
+	// Only a pending order is cancelled (who-may-cancel-a-pending-order). The warehouse hands a processed
+	// or picked order back to pending first; once the courier has it, what comes back is a RETURN.
+	errOnlyPendingCancels = errors.New("only a pending order can be cancelled — " +
+		"the warehouse hands a processed or picked order back to pending first")
 )
+
+// moveSide is which end of an order may make a move: its warehouse, its selling team, or either.
+type moveSide int
+
+const (
+	sideWarehouse moveSide = 1 << iota
+	sideSelling
+)
+
+// orderMove is one edge of the status diagram.
+type orderMove struct {
+	from, to string
+}
+
+// orderMoveRule says who may make a move, and whether it needs a note.
+type orderMoveRule struct {
+	by        moveSide
+	needsNote bool
+}
+
+// orderMoves is the status diagram's PLAIN moves (the-status-move-is-the-only-journey), the table
+// OrderStatusChange reads (one-status-change-for-every-plain-move). Each line is an edge of the
+// owner's §Status Move with who makes it.
+//
+// Two edges are NOT here, because they do more than move a status and keep their own RPCs:
+// pending → cancel (OrderCancel: stock back, the sale cancelled) and return → return_completed (the
+// return accept: the warehouse recorded, borrowed units relabelled, stock back).
+var orderMoves = map[orderMove]orderMoveRule{
+	// The warehouse.
+	{orderStatusPending, orderStatusProcessed}: {by: sideWarehouse},
+	{orderStatusProcessed, orderStatusPending}: {by: sideWarehouse, needsNote: true}, // goods on no rack
+	{orderStatusProcessed, orderStatusPicked}:  {by: sideWarehouse},
+	{orderStatusPicked, orderStatusPending}:    {by: sideWarehouse, needsNote: true}, // platform cancelled, unpacked
+	{orderStatusPicked, orderStatusShipping}:   {by: sideWarehouse},                  // the handover scan
+
+	// Customer service, from the platform.
+	{orderStatusShipping, orderStatusShipped}:  {by: sideSelling},
+	{orderStatusShipped, orderStatusCompleted}: {by: sideSelling},
+	{orderStatusShipped, orderStatusProblem}:   {by: sideSelling},
+	{orderStatusShipped, orderStatusLost}:      {by: sideSelling},
+	{orderStatusProblem, orderStatusCompleted}: {by: sideSelling},
+	{orderStatusProblem, orderStatusLost}:      {by: sideSelling},
+	{orderStatusReturn, orderStatusLost}:       {by: sideSelling}, // the parcel never came back
+
+	// A return: claimed by customer service, or forced by the warehouse.
+	{orderStatusShipping, orderStatusReturn}:  {by: sideSelling | sideWarehouse},
+	{orderStatusShipped, orderStatusReturn}:   {by: sideSelling | sideWarehouse},
+	{orderStatusProblem, orderStatusReturn}:   {by: sideSelling | sideWarehouse},
+	{orderStatusCompleted, orderStatusReturn}: {by: sideSelling | sideWarehouse},
+}
 
 // loadScopedOrder loads one order (with its lines) FOR UPDATE, constrained to the team. The team_id
 // clause is the scope check — another team's order reads as not-found. The row lock makes the
-// read-modify-write on status safe against a concurrent confirm/cancel on the same order.
+// read-modify-write on status safe against a concurrent move or cancel on the same order.
 func loadScopedOrder(tx *gorm.DB, teamID, orderID uint64, dst *selling_service_models.Order) error {
 	return tx.
 		Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -37,11 +87,11 @@ func loadScopedOrder(tx *gorm.DB, teamID, orderID uint64, dst *selling_service_m
 }
 
 // setOrderStatus writes the new status (stamping updated_at), RECORDS THE TRANSITION on the order's
-// history, and mirrors both onto the in-memory row so the caller can map the fresh state straight back
-// to proto.
+// history with its note, and mirrors both onto the in-memory row so the caller can map the fresh state
+// straight back to proto.
 //
 // The history write lives HERE, at the single choke point every transition already passes through,
-// rather than in the five handlers that call it. A handler that forgot the line would leave a gap in a
+// rather than in the handlers that call it. A handler that forgot the line would leave a gap in a
 // timeline nothing else can reconstruct — the row keeps only its current status — and that gap is
 // invisible until somebody opens the order weeks later and finds a step missing.
 //
@@ -53,30 +103,56 @@ func setOrderStatus(
 	order *selling_service_models.Order,
 	status string,
 	actor uint64,
+	note string,
 ) error {
-	// The moment is taken ONCE and written to the row, the in-memory model AND the event, so a caller
+	return setOrdersStatus(tx, []*selling_service_models.Order{order}, status, actor, note)
+}
+
+// setOrdersStatus is setOrderStatus for a batch that all moves INTO the same status: one UPDATE and one
+// multi-row history INSERT, whatever the size of the batch (a-batch-move-saves-in-one-transaction). The
+// orders must be distinct and already locked by the caller. An empty batch writes nothing.
+func setOrdersStatus(
+	tx *gorm.DB,
+	orders []*selling_service_models.Order,
+	status string,
+	actor uint64,
+	note string,
+) error {
+	if len(orders) == 0 {
+		return nil
+	}
+
+	// The moment is taken ONCE and written to the rows, the in-memory models AND the events, so a caller
 	// that publishes an event about this transition can take the time from the ORDER rather than calling
 	// time.Now() again at the publish site. Two clocks for one fact would file a boundary transition in
 	// different days depending on who read it (guidelines/event-guideline.md #2).
 	now := time.Now()
 
+	ids := make([]uint64, 0, len(orders))
+	for _, order := range orders {
+		ids = append(ids, order.ID)
+	}
+
 	err := tx.
-		Model(order).
+		Model(&selling_service_models.Order{}).
+		Where("id IN ?", ids).
 		Updates(map[string]any{"status": status, "updated_at": now}).
 		Error
 	if err != nil {
 		return err
 	}
 
-	// The kind IS the status moved into — see the orderEvent* constants for why the two vocabularies
-	// are written down separately despite being equal today.
-	err = recordOrderEvent(tx, order.ID, status, actor, now)
+	// The kind IS the status moved into — see orderEventKinds for why the two vocabularies are written
+	// down separately despite being equal today.
+	err = recordOrderEvents(tx, ids, status, actor, now, note)
 	if err != nil {
 		return err
 	}
 
-	order.Status = status
-	order.UpdatedAt = now
+	for _, order := range orders {
+		order.Status = status
+		order.UpdatedAt = now
+	}
 
 	return nil
 }
@@ -86,8 +162,7 @@ func mapOrderErr(err error) error {
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return connect.NewError(connect.CodeNotFound, errOrderMissing)
-	case errors.Is(err, errNotPlaced), errors.Is(err, errAlreadyCancelled),
-		errors.Is(err, errShippedCannotCancel), errors.Is(err, errWrongStateForStep):
+	case errors.Is(err, errAlreadyCancelled), errors.Is(err, errOnlyPendingCancels):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)

@@ -89,6 +89,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-unitemised-take-is-a-deduction](../../technical/frontend/order_settlement_decision.md#the-unitemised-take-is-a-deduction) | the selling price less every payout is **Potongan** (EN *Deductions*) — not *Tidak dirinci* |
 | [the-source-is-a-badge](../../technical/frontend/order_settlement_decision.md#the-source-is-a-badge) | an entry's source — Import · Manual · Order — is a badge in the ledger; the list row shows none |
 | [a-wrong-day-is-refolded-from-the-log](#a-wrong-day-is-refolded-from-the-log) | a report day that is wrong while the log is right is re-folded from the log by an operator command — one report, one shop, one date |
+| [settlement-opens-the-sale-from-the-order-event](#settlement-opens-the-sale-from-the-order-event) | settlement writes `initial_total` and its cancel from the order events; the order never calls settlement |
 
 ---
 
@@ -2590,6 +2591,9 @@ deleting it. Set retention to its 31-day maximum, and keep dedup retention ≥ i
 **The verdict.** No. The order commits whether or not settlement accepts `initial_total`. A failure is
 recorded and repaired, never propagated backwards into the sale.
 
+🔄 *(2026-10-21)* Still true, and now by construction: settlement reads the order's event instead of being called
+([settlement-opens-the-sale-from-the-order-event](#settlement-opens-the-sale-from-the-order-event)). The `SettlementPost` step below is that event.
+
 ```mermaid
 flowchart TD
   s(("start")) --> place["OrderPlace — validate, reserve stock, write the order"]
@@ -2673,6 +2677,9 @@ replay need exists or has an owner:
 > answering [context Q1](./context_clarify.md#question): how is a missing account found and repaired?
 
 **The verdict.** By a person, on the order detail page. **No flag, no repair command, no reconcile job.**
+
+🔄 *(2026-10-21)* Still the repair, now for a lost publish only: a settlement failure is redelivered by the broker
+([settlement-opens-the-sale-from-the-order-event](#settlement-opens-the-sale-from-the-order-event)).
 
 ```mermaid
 flowchart LR
@@ -3815,3 +3822,43 @@ flowchart LR
 | `system_adjustment` | stays for its own case — a fact the log never recorded |
 | the broker replay | stays for range rebuilds |
 | a second reader of the log | accepted, for a one-day repair — the replay decision avoided it for range rebuilds only |
+
+---
+
+## settlement-opens-the-sale-from-the-order-event
+
+> Owner (2026-10-21), in [context.md](./context.md) §Type `initial_total` and `initial_total_cancel`, edited in this session:
+> *"`settlement_service` receives the order created event (push subscribe)"* and *"… receives the order cancelled event"*. It
+> resolves [settlement-subscribes-here-and-is-called-in-its-own-doc](../order/order_creation_clarify.md#settlement-subscribes-here-and-is-called-in-its-own-doc),
+> as recommended, in favour of the newer [order_creation.md](../order/order_creation.md).
+
+**The verdict.** Settlement opens an order's account by **listening to the order's events**. The order never calls
+settlement. `initial_total` is written from *Order Created*, and `initial_total_cancel` from *Order Cancelled*. If settlement
+is down, the broker delivers the event again, so a short outage loses nothing.
+
+```mermaid
+sequenceDiagram
+  participant O as order service
+  participant B as broker
+  participant S as settlement
+  O->>O: commit the order
+  O->>B: OrderPlaced - order 1042, shop 57, platform total 120.000
+  B->>S: push
+  S->>S: initial_total -120.000 on order 1042
+  Note over B,S: settlement down - redelivered later, then the dead-letter topic
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the create | settlement subscribes to `order-placed` and writes `initial_total` |
+| the cancel | settlement subscribes to `order-cancelled` and writes `initial_total_cancel` |
+| the order service | never calls settlement. `openSettlement` and its `OpenSale` call are retired |
+| what `OrderPlaced` must carry | `shop_id` and the platform total, beside the team, the order id, the actor and when. It has neither today |
+| twice | the account is keyed on the order id, so a redelivery cannot open it twice |
+| settlement fails | the event is redelivered, then lands in the dead-letter topic |
+| a lost publish | the accepted cost ([no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)), still fixed by hand ([a-missing-account-is-fixed-by-hand](#a-missing-account-is-fixed-by-hand)) |
+| a platform total of 0 | required at create ([platform-total-is-required-at-finalize](../order/context_decision.md#platform-total-is-required-at-finalize)), so it should never arrive. 🔄 *(2026-10-21)* That create check is not built yet, so the handler still skips a 0 — it goes when the check lands |
+| still true | [the-order-commits-without-settlement](#the-order-commits-without-settlement): the order never waits on settlement |
+| ✅ built *(2026-10-21)* | `OrderSaleHandler` ([order_sale.go](../../../backend/services/settlement_service/settlement_v1/order_sale.go)) behind `settlement-order-placed` and `settlement-order-cancelled`; the events carry `shop_id` and `marketplace_total`; selling's `OpenSale` / `CancelSale` calls and their adapter are removed. Pinned by `order_sale_test.go` |

@@ -22,13 +22,14 @@ func TestOrder_Cancel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OrderCancel: %v", err)
 	}
-	if resp.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCELLED {
-		t.Fatalf("status = %v, want CANCELLED", resp.Msg.GetOrder().GetStatus())
+	if resp.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCEL {
+		t.Fatalf("status = %v, want CANCEL", resp.Msg.GetOrder().GetStatus())
 	}
 }
 
-// A CONFIRMED order can still be cancelled.
-func TestOrder_CancelConfirmed(t *testing.T) {
+// PENDING ONLY (who-may-cancel-a-pending-order): a processed order is refused, and becomes cancellable
+// once its warehouse hands it back to pending — the moment the goods are unpacked and re-shelved.
+func TestOrder_CancelOnlyFromPending(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := context.Background()
@@ -36,17 +37,21 @@ func TestOrder_CancelConfirmed(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "X2", "shopee")
 	id := placeOrder(t, svc, 2, shopID)
 
-	_, err := svc.OrderConfirm(ctx, connect.NewRequest(&sellingv1.OrderConfirmRequest{TeamId: testWarehouse, OrderId: id}))
-	if err != nil {
-		t.Fatalf("confirm: %v", err)
+	moveOrder(t, svc, testWarehouse, id, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED, "")
+
+	_, err := svc.OrderCancel(ctx, connect.NewRequest(&sellingv1.OrderCancelRequest{TeamId: 2, OrderId: id}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("cancelling a processed order = %v, want FailedPrecondition", connect.CodeOf(err))
 	}
+
+	moveOrder(t, svc, testWarehouse, id, sellingv1.OrderStatus_ORDER_STATUS_PENDING, "platform cancelled")
 
 	resp, err := svc.OrderCancel(ctx, connect.NewRequest(&sellingv1.OrderCancelRequest{TeamId: 2, OrderId: id}))
 	if err != nil {
-		t.Fatalf("cancel-after-confirm: %v", err)
+		t.Fatalf("cancel once handed back to pending: %v", err)
 	}
-	if resp.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCELLED {
-		t.Fatalf("status = %v, want CANCELLED", resp.Msg.GetOrder().GetStatus())
+	if resp.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCEL {
+		t.Fatalf("status = %v, want CANCEL", resp.Msg.GetOrder().GetStatus())
 	}
 }
 
@@ -88,7 +93,7 @@ func TestOrder_CancelCrossTeam(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OrderDetail: %v", err)
 	}
-	if got.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PLACED {
-		t.Fatalf("status = %v, want still PLACED", got.Msg.GetOrder().GetStatus())
+	if got.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
+		t.Fatalf("status = %v, want still PENDING", got.Msg.GetOrder().GetStatus())
 	}
 }

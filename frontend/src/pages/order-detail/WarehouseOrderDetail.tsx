@@ -140,13 +140,14 @@ export function WarehouseOrderDetailPage() {
 
         {/* NO CONFIRM BUTTON HERE ANY MORE (owner). Confirming is the WAREHOUSE accepting the job, and
             it happens on that team's order screen — this seat can no longer do it, and the RPC would
-            refuse it anyway now that OrderConfirm is scoped to the order's warehouse.
+            refuse it anyway: OrderStatusChange lets only the order's warehouse move pending → processed.
 
-            The status still reads PLACED here until the building acts, which is the honest thing for
+            The status still reads PENDING here until the building acts, which is the honest thing for
             this screen to show: it is waiting on somebody else. Cancel stays — calling an order off is
-            still this team's decision, right up until the goods leave the building. */}
+            still this team's decision, from PENDING only: a processed or picked order is handed back to
+            pending by the warehouse first (who-may-cancel-a-pending-order). */}
 
-        {(order.status === OrderStatus.PLACED || order.status === OrderStatus.CONFIRMED) && (
+        {order.status === OrderStatus.PENDING && (
           <ConfirmDialog
             title={t("orders.cancelOrder")}
             message={t("orders.cancelMessage", { id: order.id.toString() })}

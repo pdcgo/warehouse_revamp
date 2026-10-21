@@ -547,22 +547,23 @@
     "actions": "Aksi",
     "viewDetail": "Lihat Detail",
     "step": {
-      "all": "Semua langkah",
       "confirm": "Dikonfirmasi",
-      "picking": "Sedang diambil",
       "picked": "Sudah diambil",
-      "packed": "Dikemas",
       "handover": "Sudah diserahkan"
     },
     "stage": {
       "pending": "Menunggu",
       "processed": "Diproses",
+      "picked": "Sudah diambil",
+      "shipping": "Sudah diserahkan",
       "shipped": "Dikirim",
       "completed": "Selesai",
       "problem": "Bermasalah",
       "lost": "Hilang",
       "return": "Retur",
-      "cancel": "Batal"
+      "return_completed": "Retur diterima",
+      "cancel": "Batal",
+      "unknown": "Tidak diketahui"
     },
     "summary": {
       "tx": "Tx",
@@ -599,10 +600,6 @@
       "submit": "Impor"
     },
     "pending": {
-      "statusSet": {
-        "label": "Kumpulan status",
-        "reason": "Kontraknya masih memakai enam status lama, jadi Selesai, Bermasalah, Hilang dan Retur selamanya 0, dan Diproses bisa dihitung tapi belum bisa menyaring tabelnya."
-      },
       "summaryCost": {
         "label": "Nilai belanja dan margin",
         "reason": "Sensus per status baru menjumlahkan total pesanan saja, jadi nilai barang, HPP, dan jumlah pesanan tanpa HPP semuanya angka contoh."
@@ -642,10 +639,6 @@
       "totalFee": {
         "label": "Biaya gudang di dalam total",
         "reason": "Total di sini adalah harga barang ditambah biaya mengerjakannya, dan biaya itu belum bisa dibaca per pesanan: tercatat sebagai liabilitas dengan kunci pesanan, sementara daftarnya hanya bisa ditanya per pihak. Harga barangnya nyata, biayanya angka contoh."
-      },
-      "lifecycle": {
-        "label": "Aksi setelah dikirim",
-        "reason": "Kontraknya baru menulis batal dan kirim, jadi Retur Barang, Selesaikan Order, Jadikan Lost dan Selesaikan Sengketa belum punya yang dipanggil — separuh siklus yang sama dengan empat tab status yang selalu 0."
       },
       "marketplaceFilter": {
         "label": "Filter marketplace",
@@ -741,15 +734,6 @@
     "searchPlaceholder": "Cari pelanggan, telepon atau no. pesanan",
     "shopAll": "Semua toko",
     "clearFilters": "Hapus Filter",
-    "statusName": {
-      "placed": "Dibuat",
-      "confirmed": "Dikonfirmasi",
-      "picking": "Diambil",
-      "packed": "Dikemas",
-      "shipped": "Dikirim",
-      "cancelled": "Dibatalkan",
-      "unknown": "Tidak diketahui"
-    },
     "tab": {
       "allStatus": "Semua Status",
       "drafts": "Draf"
@@ -789,18 +773,25 @@
     "timeline": {
       "placed": "Pesanan dibuat",
       "confirmed": "Pesanan dikonfirmasi",
-      "picking": "Mulai diambil",
-      "packed": "Selesai dikemas",
-      "shipped": "Diserahkan ke kurir",
+      "picked": "Sudah diambil",
+      "shipping": "Diserahkan ke kurir",
+      "shipped": "Sedang dikirim",
+      "completed": "Pesanan selesai",
+      "problem": "Ada masalah pengiriman",
+      "lost": "Paket hilang",
+      "return": "Retur dimulai",
+      "returnCompleted": "Retur diterima gudang",
       "cancelled": "Pesanan dibatalkan",
+      "handedBack": "Dikembalikan ke menunggu",
       "unknown": "Ada perubahan",
       "userRef": "Pengguna #{{id}}",
       "awaitingConfirm": "Menunggu konfirmasi",
-      "awaitingPick": "Menunggu gudang",
-      "awaitingPack": "Sedang diambil",
-      "awaitingShip": "Menunggu kurir"
+      "awaitingPick": "Menunggu diambil",
+      "awaitingShip": "Menunggu kurir",
+      "awaitingShipped": "Menunggu terlihat jalan di platform",
+      "awaitingDelivery": "Dalam perjalanan ke pembeli",
+      "awaitingReturn": "Menunggu barang kembali"
     },
-    "orderShipped": "Pesanan ditandai dikirim",
     "rowAction": {
       "cancel": "Batalkan Order",
       "editReceipt": "Edit Resi",
@@ -836,7 +827,8 @@
       }
     },
     "orderIdColumn": "ID Order",
-    "orderTitleLabel": "Pesanan"
+    "orderTitleLabel": "Pesanan",
+    "statusMoved": "Pesanan dipindah ke {{status}}"
   },
   "orderDetail": {
     "nav": {
@@ -897,10 +889,6 @@
       "title": "Penerima"
     },
     "pending": {
-      "statusSet": {
-        "label": "Delapan status",
-        "reason": "Kontraknya masih memakai enam status lama, jadi Selesai, Bermasalah, Hilang dan Retur tidak akan pernah muncul — di sini maupun di timeline."
-      },
       "notes": {
         "label": "Catatan",
         "reason": "Pesanan hanya menyimpan SATU catatan, ditulis saat dibuat — tanpa daftar, tanpa penulis, tanpa tipe sistem atau pengguna, dan tidak bisa diubah. Catatan yang ditambah atau diubah di sini hilang saat dimuat ulang."
@@ -936,10 +924,6 @@
       "withdrawal": {
         "label": "Withdrawal ke ledger settlement",
         "reason": "Belum ada yang mengimpor withdrawal dari marketplace, jadi payout baru muncul di ledger kalau diposting manual, dan Edit Withdrawal belum punya RPC."
-      },
-      "lifecycle": {
-        "label": "Aksi setelah dikirim",
-        "reason": "Kontraknya baru menulis batal dan kirim, jadi Retur Barang, Selesaikan Order, Jadikan Lost dan Selesaikan Sengketa belum punya yang dipanggil."
       }
     },
     "stepper": {
@@ -1000,10 +984,6 @@
     "deleteOneMessage": "Hapus draf {{ref}}? Tindakan ini tidak bisa dibatalkan, dan aplikasi pengirim bisa mengirimnya lagi.",
     "updated": "Diubah",
     "pending": {
-      "statusSet": {
-        "label": "Kumpulan status",
-        "reason": "Strip ini memakai delapan tahap pemilik, tapi kontrak masih punya enam status lama, jadi selesai, masalah, lost dan retur selalu 0."
-      },
       "readyCount": {
         "label": "Jumlah siap",
         "reason": "Hanya dihitung dari draft di halaman ini. Untuk seluruh draft perlu agregat draft di server, yang belum ada."
@@ -1875,6 +1855,7 @@
   },
   "teams": {
     "name": "Nama",
+    "noReturnWarehouse": "Belum ada gudang retur",
     "description": "Deskripsi",
     "type": "Tipe",
     "code": "Kode",
@@ -2300,7 +2281,11 @@
     "defaultWarehouse": "Gudang Pengiriman Default",
     "defaultWarehouseHint": "Pesanan baru dimulai dengan gudang ini terpilih. Anda tetap dapat mengubahnya di setiap pesanan.",
     "warehouse": "Gudang",
-    "defaultWarehouseSaved": "Gudang default disimpan"
+    "defaultWarehouseSaved": "Gudang default disimpan",
+    "returnWarehouse": "Gudang Retur",
+    "returnWarehouseHint": "Paket retur tim ini diterima di gudang ini. Gudang mana pun dapat dipilih.",
+    "returnWarehouseNotSet": "Gudang retur belum diatur. Pesanan akan segera membutuhkannya.",
+    "returnWarehouseSaved": "Gudang retur disimpan"
   },
   "picking": {
     "title": "Pesanan",
@@ -2311,9 +2296,8 @@
     "tab": {
       "new": "Baru",
       "toPick": "Perlu Diambil",
-      "picking": "Sedang Diambil",
-      "packed": "Sudah Dikemas",
-      "shipped": "Sudah Dikirim",
+      "picked": "Sudah Diambil",
+      "handover": "Sudah Diserahkan",
       "all": "Semua"
     },
     "table": {
@@ -2328,9 +2312,8 @@
     },
     "action": {
       "confirm": "Konfirmasi Pesanan",
-      "startPicking": "Mulai Ambil",
-      "markPacked": "Tandai Dikemas",
-      "markShipped": "Tandai Dikirim"
+      "markPicked": "Tandai Sudah Diambil",
+      "markHandedOver": "Tandai Diserahkan"
     },
     "detail": {
       "title": "Pesanan #{{id}}",
@@ -2341,9 +2324,8 @@
     },
     "toast": {
       "confirmed": "Pesanan dikonfirmasi",
-      "picking": "Pengambilan dimulai",
-      "packed": "Ditandai dikemas",
-      "shipped": "Ditandai dikirim",
+      "picked": "Ditandai sudah diambil",
+      "handedOver": "Ditandai diserahkan",
       "stepFailed": "Tidak dapat mencatat langkah itu"
     }
   },
@@ -2945,10 +2927,6 @@
       "mpDate": "Tanggal MP"
     },
     "pending": {
-      "statusSet": {
-        "label": "Sudah diserahkan",
-        "reason": "Sudah diserahkan adalah langkah terakhir gudang, tapi kontrak belum punya statusnya — tabnya belum bisa menyaring apa pun."
-      },
       "shop": {
         "label": "Toko seller",
         "reason": "Order hanya membawa id toko, dan gudang tidak bisa membaca toko milik seller."
@@ -2981,21 +2959,9 @@
         "label": "Filter jasa kirim",
         "reason": "Daftar order belum punya filter jasa kirim — memilihnya belum menyaring apa pun."
       },
-      "shipmentStatus": {
-        "label": "Status pengiriman",
-        "reason": "Apakah paket yang sudah diserahkan sedang jalan adalah milik catatan pengiriman, yang belum ada."
-      },
-      "stepMove": {
-        "label": "Memindah langkah",
-        "reason": "Server baru bisa memindah order satu langkah maju. Melompat langkah, mundur, atau pindah ke Sudah diambil belum berjalan."
-      },
       "resiLookup": {
         "label": "Mencari lewat resi",
         "reason": "Belum ada RPC untuk mencari order lewat nomor resi, jadi scan serah kurir hanya mencari di order yang sudah dimuat layar ini."
-      },
-      "bulkHandover": {
-        "label": "Serah kurir massal",
-        "reason": "Belum ada RPC serah kurir massal — ambil massal menyerahkan paket satu panggilan per paket."
       },
       "barcode": {
         "label": "Barcode",
@@ -3016,13 +2982,7 @@
     },
     "filter": {
       "team": "Semua tim",
-      "courier": "Semua jasa kirim",
-      "shipment": "Status pengiriman",
-      "shipmentState": {
-        "any": "Semua",
-        "notMoving": "Belum jalan",
-        "inTransit": "Dalam perjalanan"
-      }
+      "courier": "Semua jasa kirim"
     },
     "header": {
       "scanHandover": "Pindai Serah Kurir"
@@ -3066,7 +3026,7 @@
       "massOn": "Hasil scan dikumpulkan di daftar, lalu diserahkan sekaligus.",
       "massOff": "Setiap scan yang valid langsung diserahkan.",
       "ready": "Siap",
-      "wrongStep": "Bukan Dikemas — {{step}}",
+      "wrongStep": "Belum diambil — {{step}}",
       "notFound": "Tidak ditemukan",
       "handedOver": "Sudah diserahkan",
       "failed": "Gagal",
@@ -3091,7 +3051,8 @@
       "next": "Pindah ke {{step}}",
       "loading": "Memuat barang di order…"
     },
-    "moved": "Dipindah ke {{step}}"
+    "moved": "Dipindah ke {{step}}",
+    "notMoved": "{{count}} pesanan tidak dipindah"
   },
   "settlementImports": {
     "title": "Impor Penyelesaian",

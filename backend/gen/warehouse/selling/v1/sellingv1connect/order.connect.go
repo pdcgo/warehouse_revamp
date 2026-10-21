@@ -44,15 +44,9 @@ const (
 	// OrderServiceOrderCancelProcedure is the fully-qualified name of the OrderService's OrderCancel
 	// RPC.
 	OrderServiceOrderCancelProcedure = "/warehouse.selling.v1.OrderService/OrderCancel"
-	// OrderServiceOrderConfirmProcedure is the fully-qualified name of the OrderService's OrderConfirm
-	// RPC.
-	OrderServiceOrderConfirmProcedure = "/warehouse.selling.v1.OrderService/OrderConfirm"
-	// OrderServiceOrderPickProcedure is the fully-qualified name of the OrderService's OrderPick RPC.
-	OrderServiceOrderPickProcedure = "/warehouse.selling.v1.OrderService/OrderPick"
-	// OrderServiceOrderPackProcedure is the fully-qualified name of the OrderService's OrderPack RPC.
-	OrderServiceOrderPackProcedure = "/warehouse.selling.v1.OrderService/OrderPack"
-	// OrderServiceOrderShipProcedure is the fully-qualified name of the OrderService's OrderShip RPC.
-	OrderServiceOrderShipProcedure = "/warehouse.selling.v1.OrderService/OrderShip"
+	// OrderServiceOrderStatusChangeProcedure is the fully-qualified name of the OrderService's
+	// OrderStatusChange RPC.
+	OrderServiceOrderStatusChangeProcedure = "/warehouse.selling.v1.OrderService/OrderStatusChange"
 	// OrderServiceOrderProductActivityByIdsProcedure is the fully-qualified name of the OrderService's
 	// OrderProductActivityByIds RPC.
 	OrderServiceOrderProductActivityByIdsProcedure = "/warehouse.selling.v1.OrderService/OrderProductActivityByIds"
@@ -74,23 +68,20 @@ type OrderServiceClient interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
 	OrderList(context.Context, *connect.Request[v1.OrderListRequest]) (*connect.Response[v1.OrderListResponse], error)
 	OrderDetail(context.Context, *connect.Request[v1.OrderDetailRequest]) (*connect.Response[v1.OrderDetailResponse], error)
-	// Cancel: PLACED or CONFIRMED -> CANCELLED (terminal), and it stays SELLING-SIDE — calling an order
-	// off is the decision of the team whose customer it is. No inventory/revenue here — #70 extends
-	// cancel with the stock + money reversal once stock integration (#69) lands.
+	// Cancel: PENDING -> CANCEL (terminal), and only the SELLING team (who-may-cancel-a-pending-order). The
+	// warehouse hands a processed or picked order back to PENDING first. It returns the stock, publishes
+	// OrderCancelled and cancels the sale, which is why it is not one of OrderStatusChange's plain moves.
 	OrderCancel(context.Context, *connect.Request[v1.OrderCancelRequest]) (*connect.Response[v1.OrderCancelResponse], error)
-	// The WAREHOUSE's side of an order (#150): the crew records what it has done, in the order it
-	// happens and one step at a time.
+	// EVERY PLAIN MOVE of the status diagram (one-status-change-for-every-plain-move): the warehouse's
+	// confirm, pick, hand back and handover, and customer service's shipped, completed, problem, lost and
+	// forced return. The server holds the table of who may make which move. Many orders at once — a
+	// handover scan of 30 parcels is one call, with a result per order.
 	//
-	//	PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
+	//	pending → processed → picked → shipping → shipped → completed
+	//	shipping / shipped / problem / completed → return · shipped / problem / return → lost
 	//
-	// ⚠ CONFIRM IS THE FIRST OF THESE, not a selling-side step that precedes them (owner) — see
-	// OrderConfirmRequest for why #91's selling-side confirm was wrong. All four are scoped to the
-	// order's WAREHOUSE, not its selling team; see OrderPickRequest for why that is the only scope
-	// that can work.
-	OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error)
-	OrderPick(context.Context, *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error)
-	OrderPack(context.Context, *connect.Request[v1.OrderPackRequest]) (*connect.Response[v1.OrderPackResponse], error)
-	OrderShip(context.Context, *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error)
+	// Cancel and the return accept do more than move a status, so they keep their own RPCs.
+	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
 	// The selling team's product list asks one question of this service: when did each of these
@@ -159,28 +150,10 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderCancel")),
 			connect.WithClientOptions(opts...),
 		),
-		orderConfirm: connect.NewClient[v1.OrderConfirmRequest, v1.OrderConfirmResponse](
+		orderStatusChange: connect.NewClient[v1.OrderStatusChangeRequest, v1.OrderStatusChangeResponse](
 			httpClient,
-			baseURL+OrderServiceOrderConfirmProcedure,
-			connect.WithSchema(orderServiceMethods.ByName("OrderConfirm")),
-			connect.WithClientOptions(opts...),
-		),
-		orderPick: connect.NewClient[v1.OrderPickRequest, v1.OrderPickResponse](
-			httpClient,
-			baseURL+OrderServiceOrderPickProcedure,
-			connect.WithSchema(orderServiceMethods.ByName("OrderPick")),
-			connect.WithClientOptions(opts...),
-		),
-		orderPack: connect.NewClient[v1.OrderPackRequest, v1.OrderPackResponse](
-			httpClient,
-			baseURL+OrderServiceOrderPackProcedure,
-			connect.WithSchema(orderServiceMethods.ByName("OrderPack")),
-			connect.WithClientOptions(opts...),
-		),
-		orderShip: connect.NewClient[v1.OrderShipRequest, v1.OrderShipResponse](
-			httpClient,
-			baseURL+OrderServiceOrderShipProcedure,
-			connect.WithSchema(orderServiceMethods.ByName("OrderShip")),
+			baseURL+OrderServiceOrderStatusChangeProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderStatusChange")),
 			connect.WithClientOptions(opts...),
 		),
 		orderProductActivityByIds: connect.NewClient[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse](
@@ -222,10 +195,7 @@ type orderServiceClient struct {
 	orderList                 *connect.Client[v1.OrderListRequest, v1.OrderListResponse]
 	orderDetail               *connect.Client[v1.OrderDetailRequest, v1.OrderDetailResponse]
 	orderCancel               *connect.Client[v1.OrderCancelRequest, v1.OrderCancelResponse]
-	orderConfirm              *connect.Client[v1.OrderConfirmRequest, v1.OrderConfirmResponse]
-	orderPick                 *connect.Client[v1.OrderPickRequest, v1.OrderPickResponse]
-	orderPack                 *connect.Client[v1.OrderPackRequest, v1.OrderPackResponse]
-	orderShip                 *connect.Client[v1.OrderShipRequest, v1.OrderShipResponse]
+	orderStatusChange         *connect.Client[v1.OrderStatusChangeRequest, v1.OrderStatusChangeResponse]
 	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
 	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
 	orderStat                 *connect.Client[v1.OrderStatRequest, v1.OrderStatResponse]
@@ -253,24 +223,9 @@ func (c *orderServiceClient) OrderCancel(ctx context.Context, req *connect.Reque
 	return c.orderCancel.CallUnary(ctx, req)
 }
 
-// OrderConfirm calls warehouse.selling.v1.OrderService.OrderConfirm.
-func (c *orderServiceClient) OrderConfirm(ctx context.Context, req *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error) {
-	return c.orderConfirm.CallUnary(ctx, req)
-}
-
-// OrderPick calls warehouse.selling.v1.OrderService.OrderPick.
-func (c *orderServiceClient) OrderPick(ctx context.Context, req *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error) {
-	return c.orderPick.CallUnary(ctx, req)
-}
-
-// OrderPack calls warehouse.selling.v1.OrderService.OrderPack.
-func (c *orderServiceClient) OrderPack(ctx context.Context, req *connect.Request[v1.OrderPackRequest]) (*connect.Response[v1.OrderPackResponse], error) {
-	return c.orderPack.CallUnary(ctx, req)
-}
-
-// OrderShip calls warehouse.selling.v1.OrderService.OrderShip.
-func (c *orderServiceClient) OrderShip(ctx context.Context, req *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error) {
-	return c.orderShip.CallUnary(ctx, req)
+// OrderStatusChange calls warehouse.selling.v1.OrderService.OrderStatusChange.
+func (c *orderServiceClient) OrderStatusChange(ctx context.Context, req *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error) {
+	return c.orderStatusChange.CallUnary(ctx, req)
 }
 
 // OrderProductActivityByIds calls warehouse.selling.v1.OrderService.OrderProductActivityByIds.
@@ -303,23 +258,20 @@ type OrderServiceHandler interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
 	OrderList(context.Context, *connect.Request[v1.OrderListRequest]) (*connect.Response[v1.OrderListResponse], error)
 	OrderDetail(context.Context, *connect.Request[v1.OrderDetailRequest]) (*connect.Response[v1.OrderDetailResponse], error)
-	// Cancel: PLACED or CONFIRMED -> CANCELLED (terminal), and it stays SELLING-SIDE — calling an order
-	// off is the decision of the team whose customer it is. No inventory/revenue here — #70 extends
-	// cancel with the stock + money reversal once stock integration (#69) lands.
+	// Cancel: PENDING -> CANCEL (terminal), and only the SELLING team (who-may-cancel-a-pending-order). The
+	// warehouse hands a processed or picked order back to PENDING first. It returns the stock, publishes
+	// OrderCancelled and cancels the sale, which is why it is not one of OrderStatusChange's plain moves.
 	OrderCancel(context.Context, *connect.Request[v1.OrderCancelRequest]) (*connect.Response[v1.OrderCancelResponse], error)
-	// The WAREHOUSE's side of an order (#150): the crew records what it has done, in the order it
-	// happens and one step at a time.
+	// EVERY PLAIN MOVE of the status diagram (one-status-change-for-every-plain-move): the warehouse's
+	// confirm, pick, hand back and handover, and customer service's shipped, completed, problem, lost and
+	// forced return. The server holds the table of who may make which move. Many orders at once — a
+	// handover scan of 30 parcels is one call, with a result per order.
 	//
-	//	PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
+	//	pending → processed → picked → shipping → shipped → completed
+	//	shipping / shipped / problem / completed → return · shipped / problem / return → lost
 	//
-	// ⚠ CONFIRM IS THE FIRST OF THESE, not a selling-side step that precedes them (owner) — see
-	// OrderConfirmRequest for why #91's selling-side confirm was wrong. All four are scoped to the
-	// order's WAREHOUSE, not its selling team; see OrderPickRequest for why that is the only scope
-	// that can work.
-	OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error)
-	OrderPick(context.Context, *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error)
-	OrderPack(context.Context, *connect.Request[v1.OrderPackRequest]) (*connect.Response[v1.OrderPackResponse], error)
-	OrderShip(context.Context, *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error)
+	// Cancel and the return accept do more than move a status, so they keep their own RPCs.
+	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
 	// The selling team's product list asks one question of this service: when did each of these
@@ -384,28 +336,10 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderCancel")),
 		connect.WithHandlerOptions(opts...),
 	)
-	orderServiceOrderConfirmHandler := connect.NewUnaryHandler(
-		OrderServiceOrderConfirmProcedure,
-		svc.OrderConfirm,
-		connect.WithSchema(orderServiceMethods.ByName("OrderConfirm")),
-		connect.WithHandlerOptions(opts...),
-	)
-	orderServiceOrderPickHandler := connect.NewUnaryHandler(
-		OrderServiceOrderPickProcedure,
-		svc.OrderPick,
-		connect.WithSchema(orderServiceMethods.ByName("OrderPick")),
-		connect.WithHandlerOptions(opts...),
-	)
-	orderServiceOrderPackHandler := connect.NewUnaryHandler(
-		OrderServiceOrderPackProcedure,
-		svc.OrderPack,
-		connect.WithSchema(orderServiceMethods.ByName("OrderPack")),
-		connect.WithHandlerOptions(opts...),
-	)
-	orderServiceOrderShipHandler := connect.NewUnaryHandler(
-		OrderServiceOrderShipProcedure,
-		svc.OrderShip,
-		connect.WithSchema(orderServiceMethods.ByName("OrderShip")),
+	orderServiceOrderStatusChangeHandler := connect.NewUnaryHandler(
+		OrderServiceOrderStatusChangeProcedure,
+		svc.OrderStatusChange,
+		connect.WithSchema(orderServiceMethods.ByName("OrderStatusChange")),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderProductActivityByIdsHandler := connect.NewUnaryHandler(
@@ -448,14 +382,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderDetailHandler.ServeHTTP(w, r)
 		case OrderServiceOrderCancelProcedure:
 			orderServiceOrderCancelHandler.ServeHTTP(w, r)
-		case OrderServiceOrderConfirmProcedure:
-			orderServiceOrderConfirmHandler.ServeHTTP(w, r)
-		case OrderServiceOrderPickProcedure:
-			orderServiceOrderPickHandler.ServeHTTP(w, r)
-		case OrderServiceOrderPackProcedure:
-			orderServiceOrderPackHandler.ServeHTTP(w, r)
-		case OrderServiceOrderShipProcedure:
-			orderServiceOrderShipHandler.ServeHTTP(w, r)
+		case OrderServiceOrderStatusChangeProcedure:
+			orderServiceOrderStatusChangeHandler.ServeHTTP(w, r)
 		case OrderServiceOrderProductActivityByIdsProcedure:
 			orderServiceOrderProductActivityByIdsHandler.ServeHTTP(w, r)
 		case OrderServiceOrderActivityStatProcedure:
@@ -491,20 +419,8 @@ func (UnimplementedOrderServiceHandler) OrderCancel(context.Context, *connect.Re
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderCancel is not implemented"))
 }
 
-func (UnimplementedOrderServiceHandler) OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderConfirm is not implemented"))
-}
-
-func (UnimplementedOrderServiceHandler) OrderPick(context.Context, *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderPick is not implemented"))
-}
-
-func (UnimplementedOrderServiceHandler) OrderPack(context.Context, *connect.Request[v1.OrderPackRequest]) (*connect.Response[v1.OrderPackResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderPack is not implemented"))
-}
-
-func (UnimplementedOrderServiceHandler) OrderShip(context.Context, *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderShip is not implemented"))
+func (UnimplementedOrderServiceHandler) OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderStatusChange is not implemented"))
 }
 
 func (UnimplementedOrderServiceHandler) OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error) {

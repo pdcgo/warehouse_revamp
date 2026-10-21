@@ -120,6 +120,8 @@ export const key = {
   // which is exactly the entanglement the separate table was chosen to avoid.
   orderDrafts: (teamId: bigint | undefined, params?: Params) => scope("orderDrafts", teamId, params),
   shops: (teamId: bigint | undefined, params?: Params) => scope("shops", teamId, params),
+  // The team's return warehouse. Its own prefix: a save changes no order, so it must not refetch them.
+  returnConfiguration: (teamId: bigint | undefined, params?: Params) => scope("returnConfiguration", teamId, params),
   inventory: (teamId: bigint | undefined, params?: Params) => scope("inventory", teamId, params),
   racks: (teamId: bigint | undefined, params?: Params) => scope("racks", teamId, params),
   restock: (teamId: bigint | undefined, params?: Params) => scope("restock", teamId, params),

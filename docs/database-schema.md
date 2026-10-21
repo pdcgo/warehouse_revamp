@@ -36,8 +36,6 @@ erDiagram
     team_infos {
         bigserial   id                  PK
         bigint      team_id             FK "unique, on delete cascade"
-        bigint      return_warehouse_id "nullable opaque cross-service id"
-        bigint      return_user_id      "nullable opaque cross-service id"
         bigint      default_warehouse_id "nullable, the warehouse a SELLING team ships from by default (#145)"
         text        contact_number "no bank — dropped by 00008, a team's bank is a financial account"
         timestamptz created_at
@@ -79,8 +77,11 @@ erDiagram
     ⚠ **How root SETS it is not designed yet** (owner) — the column and the read path landed first, so
     no RPC writes it today.
 - **`team_infos`** — 1:1 with `teams` (`UNIQUE (team_id)`, which is what makes `TeamInfoUpdate` a
-  real `ON CONFLICT` upsert). `return_warehouse_id` / `return_user_id` are opaque ids owned by other
-  services — no FK is possible across the service boundary.
+  real `ON CONFLICT` upsert).
+  - **No return warehouse and no return user (00009).** The return warehouse is the order context's
+    `team_return_configurations` (selling_service, below), which order create reads without calling
+    this service; the return user was read by nothing. Both columns were dropped, not copied — nothing
+    had read them.
   - **`default_warehouse_id`** (#145) — the warehouse a SELLING team ships from by default. Every
     order must name a warehouse (#72), and a team almost always ships from the same building, so this
     is that answer held once rather than asked every time.
@@ -270,6 +271,7 @@ erDiagram
     orders ||--o{ order_items : "order_id"
     orders ||--o{ order_events : "order_id"
     order_drafts ||--o{ order_draft_items : "draft_id"
+    team_return_configurations
 
     shops {
         bigserial   id          PK
@@ -295,7 +297,7 @@ erDiagram
         bigserial   id               PK
         bigint      team_id          "owning SELLING team, opaque, no FK"
         bigint      shop_id          FK "-> shops(id)"
-        text        status           "OrderStatus as text (placed/confirmed/picking/packed/shipped/cancelled); no CHECK"
+        text        status           "OrderStatus as text, the eleven (00015) — default pending; no CHECK"
         text        customer_name    "required"
         text        customer_phone
         text        provinsi_code    "frozen address snapshot: opaque region_service code, no FK"
@@ -339,9 +341,10 @@ erDiagram
     order_events {
         bigserial   id            PK
         bigint      order_id      FK "-> orders(id), ON DELETE CASCADE"
-        text        kind          "OrderEventKind as text (placed/confirmed/picking/packed/shipped/cancelled); no CHECK"
+        text        kind          "OrderEventKind as text — the status moved into (00015); no CHECK"
         bigint      actor_user_id "who did it — opaque user_service id, no FK; 0 = not recorded"
         timestamptz at            "WHEN IT HAPPENED — not when the row was written"
+        text        note          "why, when the move needed a reason (00015) — required back to pending, '' otherwise"
         timestamptz created_at
     }
 
@@ -380,6 +383,14 @@ erDiagram
         bigint      product_id    "0 until a person maps it — the unmapped line IS the incompleteness"
         int         quantity      "no CHECK, unlike order_items — a scrape may not have read it"
         bigint      unit_price
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    team_return_configurations {
+        bigserial   id           PK
+        bigint      team_id      "the SELLING team — UNIQUE, opaque, no FK (00016)"
+        bigint      warehouse_id "where its returns are received — any warehouse, CHECK > 0, opaque, no FK"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -429,9 +440,12 @@ erDiagram
     old order — `placed` from `created_at`, and its current status from `updated_at` — so an order that
     shipped last month shows two steps, not six. The steps in between were never written down, and
     inventing plausible ones would make every step untrustworthy rather than just those.
-  - **No `UNIQUE (order_id, kind)`.** The lifecycle keeps `confirmed` singular (only a placed order can
-    be confirmed), exactly as it is what keeps `status` honest — and a future kind that legitimately
-    repeats must not need a migration to be allowed.
+  - **No `UNIQUE (order_id, kind)`** — and kinds DO repeat now: a warehouse hands an order back to
+    `pending` and confirms it again, so `pending` and `processed` can each appear twice on one history.
+  - **`note` (00015)** — why, when a move needed a reason. A move back to `pending` must carry one
+    (one-status-change-for-every-plain-move); every other row, and every row written before, is `''`.
+  - **00015 moved every kind with the statuses**, by the same mapping: `placed → pending`,
+    `confirmed`/`picking → processed`, `packed → picked`, `shipped → shipping`, `cancelled → cancel`.
 - **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.cogs`
   as their total. `unit_price` is what the buyer pays; `unit_cost` is what we paid, so
   **`margin = total − cogs − shipping_cost`** is computable from the order alone.
@@ -457,9 +471,11 @@ erDiagram
     cannot drift, because the lines it was computed from are frozen too — exactly like `subtotal`.
 - **`orders`** / **`order_items`** — the SELLING side of an order (#67): who ordered, from which
   shop, and the frozen money (whole rupiah). Team-scoped (`team_id` opaque); `shop_id` is a real FK
-  (same service). `status` is the `OrderStatus` enum as text (`placed`/`confirmed`/`cancelled` —
-  selling-side only; fulfillment states wait on the warehouse core), no `CHECK` (mapper + proto
-  guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name`/`unit_price` frozen
+  (same service). `status` is the `OrderStatus` enum as text — the eleven of the status diagram
+  (`pending`, `processed`, `picked`, `shipping`, `shipped`, `completed`, `problem`, `lost`, `return`,
+  `return_completed`, `cancel`), default `pending` since 00015, which moved every old row:
+  `placed → pending`, `confirmed`/`picking → processed`, `packed → picked`, `shipped → shipping` (the old
+  `shipped` was the handover), `cancelled → cancel`. No `CHECK` (mapper + proto guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name`/`unit_price` frozen
   at order time), `ON DELETE CASCADE`. `OrderCreate` does **not** touch inventory (that is #69), and
   COGS/margin are the revenue side (#74). The UI is #68.
 - **The order's delivery address is a SNAPSHOT** (#118) — the ten `provinsi_*` … `address_line`
@@ -503,6 +519,18 @@ erDiagram
     `team_id` with `use_scope`, because a team-level policy without a scope is a dead letter.
     `shop_id` / `warehouse_id` / a mapped `product_id` have **no FK** and can go stale underneath a
     draft; promote re-checks them and names which reference died.
+- **`team_return_configurations`** (00016) — where a selling team's returned parcels are received
+  ([the-return-warehouse-lives-in-team-return-configurations](business/order/context_decision.md#the-return-warehouse-lives-in-team-return-configurations)).
+  One row per team; **no row = not set**, the state order create will refuse once its check is on
+  ([create-refuses-a-team-with-no-return-warehouse](business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse)).
+  - **In the order context, not in `team_infos`**, because order create is what reads it — its own
+    table, no call to team_service. It replaced `team_infos.return_warehouse_id` (dropped by team 00009).
+  - **`UNIQUE (team_id)` is what makes the Set one `INSERT … ON CONFLICT DO UPDATE`**, so two managers
+    saving at once leave one row holding the later warehouse.
+  - **Any warehouse** ([a-team-may-pick-any-return-warehouse](business/order/context_decision.md#a-team-may-pick-any-return-warehouse)):
+    nothing checks the pair. `CHECK (warehouse_id > 0)` because there is no clear — a team without one
+    has no row.
+  - Starts **empty**: the rollout is the table and its screen, a row for every team, then the check.
 
 `backend/services/category_service/db_migrations/`
 
@@ -1063,9 +1091,8 @@ erDiagram
     suppliers ||--o{ restock_items : "supplier_id, opaque via RPC"
 ```
 
-`user_team_roles.team_id`, `products.team_id`, `documents.team_id`,
-`team_infos.return_warehouse_id`, and `team_infos.return_user_id` point at rows owned by other
-services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
+`user_team_roles.team_id`, `products.team_id`, `documents.team_id`, and
+`team_return_configurations.team_id` / `.warehouse_id` point at rows owned by other services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
 the owning service resolves them over Connect RPC.
 
 ---

@@ -2102,3 +2102,36 @@ the producer's own table. A handler that needs to be the bulk path is a handler 
   handler call is not one-at-a-time per worker.
 - **the receive path's shape otherwise** — the rejection record and the repeated-failure layer are unchanged
   ([the receive half](./context_clarify.md#the-receive-half-is-built-twice-and-wired-once)).
+
+---
+
+## the-emulator-pushes-locally
+
+> Owner, in chat (2026-10-21): *"Push locally too (Recommended)"* — to *"settlement now opens an order's account from the
+> order event, but the dev stack and e2e never deliver events to push handlers (no push URL, no pull reader). How should
+> local delivery work?"*. As recommended, raised by
+> [settlement-opens-the-sale-from-the-order-event](../../business/settlement/context_decision.md#settlement-opens-the-sale-from-the-order-event).
+
+**The verdict.** The local Pub/Sub emulator **pushes** to the local servers, as production's Pub/Sub does, so every
+consumer's handler runs locally. The dev server and the e2e server each have their **own emulator project**, so neither
+receives the other's events.
+
+```mermaid
+flowchart LR
+  D["dev API :8080 - publishes to warehouse-dev"] --> E["one emulator :8085"]
+  T["e2e API :8081 - publishes to warehouse-e2e"] --> E
+  E -->|"push - warehouse-dev subscriptions"| D
+  E -->|"push - warehouse-e2e subscriptions"| T
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| dev | `san dev run` and `dev setup` make `warehouse-dev`'s subscriptions push to `http://host.docker.internal:8080/event/<sub>/push`. `PUBSUB_PUSH_BASE_URL` overrides |
+| e2e | the e2e setup makes `warehouse-e2e`'s push to `:8081`, and its server publishes there (`PUBSUB_PROJECT`). `E2E_PUSH_BASE_URL` overrides |
+| why two projects | one emulator serves both. A shared project would hand the dev server the e2e's orders, posted into the dev database, and let each run overwrite the other's push URLs |
+| the host name | `host.docker.internal`, mapped by docker-compose (`host-gateway`) so it resolves on Linux too |
+| CI | binds the e2e API on every interface (`E2E_API_ADDR=0.0.0.0:8081`): a server bound to loopback is unreachable from the emulator's container |
+| what now runs locally | settlement's order account, liability's order fees and restock courier charge, the settlement and supplier folds, financial account's listeners, selling's member-removed listener |
+| an asynchronous write | a screen that reads a consumer's write right after the producer's (an order's settlement account) sees it a moment later. The e2e reloads until it lands |

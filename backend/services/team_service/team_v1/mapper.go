@@ -230,15 +230,7 @@ func teamInfoToProto(info *team_service_models.TeamInfo) *teamv1.TeamInfo {
 		ContactNumber: info.ContactNumber,
 	}
 
-	if info.ReturnWarehouseID != nil {
-		out.ReturnWarehouseId = *info.ReturnWarehouseID
-	}
-
-	if info.ReturnUserID != nil {
-		out.ReturnUserId = *info.ReturnUserID
-	}
-
-	// The default shipping warehouse (#145). 0 on the wire = not configured, like the ids above.
+	// The default shipping warehouse (#145). 0 on the wire = not configured.
 	if info.DefaultWarehouseID != nil {
 		out.DefaultWarehouseId = *info.DefaultWarehouseID
 	}
