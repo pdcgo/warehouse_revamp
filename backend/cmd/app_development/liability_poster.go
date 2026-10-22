@@ -29,35 +29,6 @@ func NewLiabilityPoster(liability *liability_v1.Service) inventory_v1.LiabilityP
 	return &liabilityPoster{liability: liability}
 }
 
-func (p *liabilityPoster) PostRestockOutlay(
-	ctx context.Context,
-	tx *gorm.DB,
-	sellingTeamID, warehouseID, restockRequestID, actorID uint64,
-	amount int64,
-) error {
-	_, err := p.liability.PostEntry(ctx, tx, liability_v1.Posting{
-		// The team that asked for the restock owes; the warehouse that paid the courier is owed.
-		DebtorTeamID:   sellingTeamID,
-		CreditorTeamID: warehouseID,
-		Amount:         amount,
-		SourceType:     liability_v1.SourceTypeIncidentalFee,
-		SourceID:       restockRequestID,
-		// The warehouse person who accepted the delivery — computed by the fulfil handler for its own
-		// records, and until now dropped at this boundary (every-entry-names-who-posted-it).
-		ActorID: actorID,
-	})
-
-	// ALREADY POSTED IS A NORMAL ANSWER, not a failure — and swallowing it here rather than in the
-	// ledger is deliberate. An acceptance that somehow ran twice must not fail on the second attempt
-	// over a debt that is already correctly recorded; the ledger's job is to refuse the duplicate,
-	// and this caller's job is to decide that refusing is fine.
-	if errors.Is(err, liability_v1.ErrAlreadyPosted) {
-		return nil
-	}
-
-	return err
-}
-
 // PostStockDamage records that the WAREHOUSE owes the OWNING TEAM for stock it broke or lost while
 // holding it (business_level §Warehouse 5).
 //

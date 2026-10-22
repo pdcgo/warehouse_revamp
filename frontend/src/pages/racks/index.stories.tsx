@@ -23,7 +23,7 @@ const Routed = routedPage(
 );
 
 const meta = {
-  title: "Pages/Racks/RackList",
+  title: "Pages/Inventory/Racks/RackList",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {

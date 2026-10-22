@@ -168,7 +168,7 @@ func (s *Service) placeOrder(
 			// The warehouse this order ships from (#72), as chosen by whoever typed it — copied onto
 			// the order, never looked up later, so it reads the same forever.
 			WarehouseID:   p.warehouseID,
-			Status:        orderStatusPlaced,
+			Status:        orderStatusPending,
 			CustomerName:  p.customerName,
 			CustomerPhone: p.customerPhone,
 			// FROZEN at order time: the names are copied, not resolved later, so this order reads the
@@ -217,16 +217,22 @@ func (s *Service) placeOrder(
 			return createErr
 		}
 
-		// THE FIRST EVENT ON ITS HISTORY (00011). Both doors into `orders` run this function, so a
-		// promoted draft gets the same opening step as a typed-in order — recorded here rather than in
-		// the two handlers precisely so they cannot differ.
+		// THE FIRST ROW ON ITS TIMELINE (order-timeline-logs-replaces-order-events), from the selling team that
+		// placed it. Both doors into `orders` run this function, so a promoted draft gets the same opening row
+		// as a typed-in order — recorded here rather than in the two handlers precisely so they cannot differ.
 		//
 		// `order.CreatedAt` is the order's own moment, stamped by GORM on the insert above, not a fresh
-		// time.Now(): the event says when the order came into being, and the two must be the same
-		// instant or the timeline disagrees with the header beside it.
-		eventErr := recordOrderEvent(tx, order.ID, orderEventPlaced, eventActor(ctx), order.CreatedAt)
-		if eventErr != nil {
-			return eventErr
+		// time.Now(): the row says when the order came into being, and the two must be the same instant or
+		// the timeline disagrees with the header beside it.
+		logErr := recordTimelineLogs(tx, []selling_service_models.OrderTimelineLog{{
+			OrderID:   order.ID,
+			Status:    orderStatusPending,
+			From:      timelineFromSelling,
+			ActorID:   eventActor(ctx),
+			CreatedAt: order.CreatedAt,
+		}})
+		if logErr != nil {
+			return logErr
 		}
 
 		// Whatever the caller needs done atomically with the order. For promote (#194) this is the
@@ -317,6 +323,10 @@ func (s *Service) placeOrder(
 				// this event causes are posted by a consumer with no request context to read one from
 				// (every-entry-names-who-posted-it).
 				ActorId: eventActor(ctx),
+				// What settlement opens the order's account from — the order never calls settlement
+				// (settlement-opens-the-sale-from-the-order-event).
+				ShopId:           order.ShopID,
+				MarketplaceTotal: order.MarketplaceTotal,
 			},
 		},
 	})
@@ -329,46 +339,7 @@ func (s *Service) placeOrder(
 		)
 	}
 
-	// THE SETTLEMENT ACCOUNT OPENS (settlement #order-service-calls-settlement) — a CALL, not a
-	// subscription, so the account exists the moment the order does.
-	//
-	// After the commit and NEVER FATAL (#the-order-commits-without-settlement): the buyer has already
-	// paid on the marketplace, and refusing the order would lose the only record of that sale. A missing
-	// account is repaired by hand from the order page (#a-missing-account-is-fixed-by-hand), and the
-	// adapter keys the post on the order id, so a repeat cannot open it twice.
-	//
-	// ⚠ SKIPPED WHEN marketplace_total IS 0, because 0 means NOT RECORDED — an order taken over the phone
-	// has no marketplace sale to settle, and an account opened at 0 is an account nothing can compute
-	// against.
-	s.openSettlement(ctx, &order)
-
 	return &order, nil
-}
-
-// openSettlement asks settlement_service to open this order's account, and logs rather than returns a
-// failure — see the call site for why an order is never failed by its ledger.
-func (s *Service) openSettlement(ctx context.Context, order *selling_service_models.Order) {
-	if order.MarketplaceTotal <= 0 {
-		return
-	}
-
-	err := s.settlement.OpenSale(ctx, SaleOpening{
-		TeamID:           order.TeamID,
-		ShopID:           order.ShopID,
-		OrderID:          order.ID,
-		MarketplaceTotal: order.MarketplaceTotal,
-		CreatedByUserID:  order.CreatedByUserID,
-		PlacedAt:         order.CreatedAt,
-	})
-	if err != nil {
-		slog.ErrorContext(ctx, "order placed but its settlement account did not open — "+
-			"post its initial_total by hand from the order page",
-			"order_id", order.ID,
-			"team_id", order.TeamID,
-			"marketplace_total", order.MarketplaceTotal,
-			"error", err,
-		)
-	}
 }
 
 // costKnown reports whether EVERY line's cost was actually known (#74/#153).

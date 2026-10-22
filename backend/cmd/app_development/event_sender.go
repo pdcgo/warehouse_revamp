@@ -8,9 +8,9 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 )
 
-// devProjectID is what the emulator is addressed as. The emulator does not authenticate, so the id
-// only has to be stable — every dev machine uses the same one so a topic created by the setup tool is
-// the topic the server publishes to.
+// devProjectID is the DEFAULT emulator project (Config.PubsubProject). The emulator does not
+// authenticate, so the id only has to be stable — every dev machine uses the same one so a topic created
+// by the setup tool is the topic the server publishes to. The e2e server overrides it (PUBSUB_PROJECT).
 const devProjectID = "warehouse-dev"
 
 // NewPubsubClient connects the dev server to the LOCAL EMULATOR (dev-runs-the-emulator).
@@ -35,8 +35,8 @@ const devProjectID = "warehouse-dev"
 // It takes no ctx because the ctx would only scope the CONSTRUCTION, and construction dials nothing —
 // every publish carries its own. Threading a context through the injector to be ignored would suggest
 // a cancellation this returns no way to honour.
-func NewPubsubClient() (*pubsub.Client, error) {
-	return event_source.NewPubsubEmulator(context.Background(), devProjectID)
+func NewPubsubClient(cfg *Config) (*pubsub.Client, error) {
+	return event_source.NewPubsubEmulator(context.Background(), cfg.PubsubProject)
 }
 
 // NewEventSender provides the EventSender the services publish through (#153).

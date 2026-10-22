@@ -60,6 +60,10 @@ enum DocumentResourceType {
   // Private because a statement lists every order and what the platform took from each — the shop's
   // books, read through a signed URL by somebody who belongs to the team.
   DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT = 6;
+
+  // PRIVATE: an order list exported as .xlsx (one-export-is-the-list-as-a-file), stored as the person who exported it
+  // and read back through an expiring signed link. Private because it names buyers and their phone numbers.
+  DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT = 7;
 }
 
 message Document {

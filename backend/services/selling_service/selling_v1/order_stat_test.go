@@ -62,11 +62,11 @@ func TestOrderStat_CountsAndValuesEachStatus(t *testing.T) {
 
 	placeOrder(t, svc, 2, shop) // PLACED, 10_000
 	placeOrder(t, svc, 2, shop) // PLACED, 10_000
-	confirmedOrder(t, svc, shop)
+	processedOrder(t, svc, shop)
 
 	got := orderStat(t, svc, 2, 0)
 
-	placedCount, placedValue := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PLACED)
+	placedCount, placedValue := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PENDING)
 	if placedCount != 2 {
 		t.Fatalf("placed count = %d, want 2", placedCount)
 	}
@@ -74,7 +74,7 @@ func TestOrderStat_CountsAndValuesEachStatus(t *testing.T) {
 		t.Fatalf("placed value = %d, want 20000", placedValue)
 	}
 
-	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
+	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
 	if confirmedCount != 1 {
 		t.Fatalf("confirmed count = %d, want 1", confirmedCount)
 	}
@@ -82,7 +82,7 @@ func TestOrderStat_CountsAndValuesEachStatus(t *testing.T) {
 	// A status nobody is in is absent, not a zero row — the contract says so, and the frontend renders
 	// the gaps from the enum it already knows.
 	for _, row := range got.GetByStatus() {
-		if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_CANCELLED {
+		if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_CANCEL {
 			t.Fatalf("cancelled has a row with no cancelled orders: %v", row)
 		}
 	}
@@ -102,7 +102,7 @@ func TestOrderStat_CancelledCountsInTheCensusButNotTheRevenue(t *testing.T) {
 
 	got := orderStat(t, svc, 2, 0)
 
-	cancelledCount, cancelledValue := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_CANCELLED)
+	cancelledCount, cancelledValue := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_CANCEL)
 	if cancelledCount != 1 {
 		t.Fatalf("cancelled count = %d, want 1", cancelledCount)
 	}
@@ -126,11 +126,11 @@ func TestOrderStat_TheWarehouseSeesTheOrdersShippingFromIt(t *testing.T) {
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	confirmedOrder(t, svc, shop)
+	processedOrder(t, svc, shop)
 
 	got := orderStat(t, svc, testWarehouse, 0)
 
-	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
+	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
 	if confirmedCount != 1 {
 		t.Fatalf("the warehouse's confirmed count = %d, want 1", confirmedCount)
 	}
@@ -155,16 +155,16 @@ func TestOrderStat_ProductFilterNarrowsIt(t *testing.T) {
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	placeOrder(t, svc, 2, shop)  // product 1
-	confirmedOrder(t, svc, shop) // product 100 (orderReq)
+	processedOrder(t, svc, shop) // product 100 (orderReq)
 
 	onlyProduct1 := orderStat(t, svc, 2, 1)
 
-	placedCount, _ := statusCount(onlyProduct1, sellingv1.OrderStatus_ORDER_STATUS_PLACED)
+	placedCount, _ := statusCount(onlyProduct1, sellingv1.OrderStatus_ORDER_STATUS_PENDING)
 	if placedCount != 1 {
 		t.Fatalf("product 1 placed count = %d, want 1", placedCount)
 	}
 
-	confirmedCount, _ := statusCount(onlyProduct1, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
+	confirmedCount, _ := statusCount(onlyProduct1, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
 	if confirmedCount != 0 {
 		t.Fatalf("product 1 confirmed count = %d, want 0 — that order carries product 100", confirmedCount)
 	}

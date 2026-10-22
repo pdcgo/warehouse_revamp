@@ -13,26 +13,26 @@ import (
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 )
 
-// seedRestock writes one restock as inventory_service stores it — its status, its supplier, one line and that line's
-// damaged units — accepted at `acceptedAt` when it is "fulfilled".
+// seedRestock writes one restock as inventory_service stores it — its status, one line naming its supplier and that line's
+// problem rows — accepted at `acceptedAt` when it is "accepted". 9 were in the box, 2 of them broken: 7 good.
 func seedRestock(t *testing.T, db *gorm.DB, status string, supplierID *uint64, acceptedAt time.Time) uint64 {
 	t.Helper()
 
-	rr := inventory_service_models.RestockRequest{
-		RequestingTeamID: 12,
-		WarehouseID:      5,
-		Status:           status,
-		SupplierID:       supplierID,
-		Items: []inventory_service_models.RestockRequestItem{{
-			ProductID: 100, SKU: "SKU1", Name: "Kaos", Quantity: 10, TotalPrice: 30000, ReceivedQuantity: 7,
-			Damaged: []inventory_service_models.RestockDamagedUnit{
-				{Quantity: 2, Reason: "crushed", DamageType: "broken"},
-				{Quantity: 1, Reason: "short", DamageType: "lost"},
-			},
+	rr := inventory_service_models.Restock{
+		TeamID:      12,
+		WarehouseID: 5,
+		Status:      status,
+		Items: []inventory_service_models.RestockItem{{
+			ProductID: 100, SKU: "SKU1", Name: "Kaos", Count: 10, Total: 30000, PriceUnit: 3000, ReceivedCount: 9,
+			SupplierID: supplierID,
 		}},
+		Problems: []inventory_service_models.RestockProblemItem{
+			{ProductID: 100, Count: 2, Note: "crushed", ProblemType: "broken"},
+			{ProductID: 100, Count: 1, Note: "short", ProblemType: "missing"},
+		},
 	}
 
-	if status == "fulfilled" {
+	if status == "accepted" {
 		rr.AcceptedAt = &acceptedAt
 	}
 
@@ -63,9 +63,9 @@ func TestBackfillSupplierFigures_FoldsTheAcceptedOnce(t *testing.T) {
 	// 23:30 on the 2nd in UTC is the 3rd in Jakarta — the day the figures must land on.
 	acceptedAt := time.Date(2026, 9, 2, 23, 30, 0, 0, time.UTC)
 
-	seedRestock(t, db, "fulfilled", &supplier, acceptedAt)
-	seedRestock(t, db, "fulfilled", nil, acceptedAt)
-	seedRestock(t, db, "pending", &supplier, acceptedAt)
+	seedRestock(t, db, "accepted", &supplier, acceptedAt)
+	seedRestock(t, db, "accepted", nil, acceptedAt)
+	seedRestock(t, db, "ongoing", &supplier, acceptedAt)
 
 	result, err := san.BackfillSupplierFigures(context.Background())
 	if err != nil {

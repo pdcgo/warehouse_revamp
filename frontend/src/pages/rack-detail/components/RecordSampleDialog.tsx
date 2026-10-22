@@ -40,7 +40,8 @@ const units = (raw: string | undefined) => {
 //   a-sample-is-recorded-on-rack-detail           this dialog, beside Move Goods.
 //   a-handed-over-sample-is-final                 nothing here undoes it — the dialog says so before it is sent.
 //
-// Who on the owning team agreed is NOT on the form: who bears a sample is transaction Q6 (the pending mark).
+//   a-sample-is-a-stock-out-at-batch-value        no money moves and nobody on the owning team is asked to agree, so
+//                                                 there is no "agreed by" field — the team sees the sample instead.
 export function RecordSampleDialog({
   warehouseId,
   rack,
@@ -138,10 +139,7 @@ export function RecordSampleDialog({
           <Dialog.Content data-testid="record-sample-dialog">
             <form onSubmit={submit} style={{ display: "contents" }}>
               <Dialog.Header>
-                <HStack gap="2">
-                  <Dialog.Title>{t("racks.sample.title", { code: rack.code })}</Dialog.Title>
-                  <NotImplemented list={RACK_DETAIL_PENDING} id="sampleAgreedBy" />
-                </HStack>
+                <Dialog.Title>{t("racks.sample.title", { code: rack.code })}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>

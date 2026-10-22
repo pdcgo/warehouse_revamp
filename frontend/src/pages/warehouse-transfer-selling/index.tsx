@@ -23,7 +23,7 @@ import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseT
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { formatUnixDateTime } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 import { idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { TRANSFER_SELLING_PENDING } from "./pending";
 
@@ -235,14 +235,14 @@ export function WarehouseTransferSellingPage() {
                                   channel={couriers.data?.get(transfer.shipmentId.toString())}
                                 />
                                 <Span fontSize="xs" color="fg.muted" data-testid={`transfer-cost-${transfer.id}`}>
-                                  {transfer.shipmentCost > 0n
-                                    ? formatRupiah(transfer.shipmentCost)
+                                  {transfer.shipmentCost > 0
+                                    ? formatRupiahNumber(transfer.shipmentCost)
                                     : t("warehouseTransfer.table.noCost")}
                                 </Span>
                               </Stack>
                             </Table.Cell>
                             <Table.Cell textAlign="end" whiteSpace="nowrap" data-testid={`transfer-value-${transfer.id}`}>
-                              {formatRupiah(transfer.total)}
+                              {formatRupiahNumber(transfer.total)}
                             </Table.Cell>
                             <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                               {teamId !== undefined && (

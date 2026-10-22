@@ -58,21 +58,25 @@ counts it in, and *the accept is what receives the stock*. The design is
 [restock_decision.md](../../business/inventory/restock_decision.md); the contract was **rewritten in place** to it
 ([the-restock-contract-changes-in-place](../../business/inventory/restock_decision.md#the-restock-contract-changes-in-place)).
 
-> ⚠ **Until the restock backend step.** The contract is ahead of the tables: `finance_account_id`, `shipment_id`,
-> `receipt_file`, a line's `supplier_id` / `supplier_channel_id` / `note`, a problem row's `note` and cancel's
-> `money_returned` are **accepted but not stored**; `RestockRequestArrive` and `RestockRequestMarkLost` answer
-> **Unimplemented**. The stored status text still says `pending` for ONGOING and `fulfilled` for ACCEPTED, and a
-> missing problem row is stored as `lost` — the mapper translates; renaming the data is that step's migration.
+> 🔄 **00024 (2026-10-15): the tables caught up with the contract.** Every field is stored, the status words are the
+> contract's, a missing problem row is `missing`, the trail is `restock_logs` and the courier's charge is one column
+> pair on the restock ([restocks-non-stock-parts-come-before-the-switch-over](../../business/inventory/restock_decision.md#restocks-non-stock-parts-come-before-the-switch-over)).
+> 🔄 **Ledger stage 2 (2026-10-16): the accept writes the decided ledgers** through `inventory_mutations.PostRestock`, in
+> its own transaction, and the restock records its `transaction_id`
+> ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)).
+> ⚠ It still writes today's stock tables beside them, until stage 3 moves their readers
+> ([ledgers.md](../../development_state/inventory/ledgers.md)). Create and update now refuse another team's product
+> ([a-restock-carries-only-the-teams-own-products](../../business/inventory/restock_decision.md#a-restock-carries-only-the-teams-own-products)).
 
 | RPC | Who | From → to | What it does |
 | --- | --- | --- | --- |
-| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction; each product once; the lines' common supplier is stored at the restock level until lines store their own |
-| `RestockRequestList` / `Detail` | either side | — | rows where `requesting_team_id = team` **OR** `warehouse_id = team`; a third team reads **NotFound**. Every filter server-side; a lens narrows the two-sided scope, never replaces it |
-| `RestockRequestUpdate` | selling team | ongoing | a full replace of the restock. The arrived window — lines only, new lines allowed (each may name its supplier and store), none removed — opens with `Arrive` |
-| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | *Unimplemented until the backend step* |
+| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction, and the first trail row; each product once (refused as InvalidArgument, and by a unique index); each product the team's own, asked of product_service before the transaction (another team's or an unknown one is InvalidArgument); each line's supplier and store asked of supplier_service before the transaction (a store names its supplier and belongs to it). Announces *Restock Created* after commit |
+| `RestockRequestList` / `Detail` | either side | — | rows where `team_id = team` **OR** `warehouse_id = team`; a third team reads **NotFound**. Every filter server-side; a lens narrows the two-sided scope, never replaces it |
+| `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace; every product the team's own, asked before the lock, as create. **Ongoing:** every field, the paying account required. **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged. An edit that moves money announces *Restock Updated* |
+| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | signs for the box: who and when, a trail row; moves no stock. Locked FOR UPDATE, scoped to `warehouse_id` — the selling team and another warehouse read NotFound. A late lost box keeps its lost-by. Opens the arrived window of Update |
 | `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
-| `RestockRequestMarkLost` | selling team | ongoing → lost | *Unimplemented until the backend step* |
-| `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once |
+| `RestockRequestMarkLost` | selling team | ongoing → lost | gives the parcel up: who and when, a trail row carrying the optional why; moves no money. Ongoing only — a box in the building is not lost. A lost restock is neither accepted nor cancelled; only signing for a late box brings it back |
+| `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once; whether it did is written on the trail row and announced in *Restock Cancelled* |
 | `RestockRequestLabels` | warehouse | accepted | one label per placement the good units went to |
 | `RestockInboundStat` | warehouse | — | what is still coming: ongoing **and** arrived |
 
@@ -119,18 +123,12 @@ sequenceDiagram
         H-->>W: InvalidArgument — refused, never interpreted
     else the count is complete
         loop every line
-            H->>DB: received_quantity = good units
-            H->>DB: problem rows — broken as typed, missing = count − received
-            opt good units
-                H->>DB: mint the line's batch at the landed price
-                H->>DB: one movement and shelf row per placement
-            end
+            H->>DB: received_count = what was in the box, broken included
+            H->>DB: restock_problem_items by restock and product — broken as typed, missing = count − received, at the landed unit price
         end
-        H->>DB: status accepted, accepted_by, accepted_at
-        opt courier charge above 0
-            H->>DB: one cost line, a trail row, the debt to the warehouse
-        end
-        H->>DB: trail row accepted, COMMIT
+        H->>DB: PostRestock - a restock transaction, a batch per line with good units at the decided landed price, rack rows, items
+        H->>DB: status accepted, accepted_by, accepted_at, transaction_id, the courier's charge and its note on the restock
+        H->>DB: trail row, from ongoing or arrived to accepted, COMMIT
         H-->>W: the restock, accepted
     end
 ```
@@ -140,13 +138,97 @@ sequenceDiagram
 | received above the line's count is refused — the selling team adds the extra by an edit first | [accept-refuses-more-than-the-line-says](../../business/inventory/restock_decision.md#accept-refuses-more-than-the-line-says) |
 | the short units are a MISSING row, worked out, never typed | [a-short-unit-at-the-door-is-missing](../../business/inventory/restock_decision.md#a-short-unit-at-the-door-is-missing) |
 | the good units go onto placements of this warehouse, exactly received − broken; there is no unplaced choice | [there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile) |
-| a problem row's worth is the line's share, filled on read | [the-problem-price-is-filled-by-the-system](../../business/inventory/restock_decision.md#the-problem-price-is-filled-by-the-system) |
-| one batch per line with good units; unit cost = line total ÷ good units + (shipping + courier charge) ÷ all good units | [one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line) |
-| one courier's charge, its note required; outside the restock's total, inside the unit price; the debt posts in the same transaction | [the-courier-is-paid-once-per-restock](../../business/inventory/restock_decision.md#the-courier-is-paid-once-per-restock), [the-couriers-debt-is-written-in-the-accept](../../business/inventory/restock_decision.md#the-couriers-debt-is-written-in-the-accept) |
-| an empty problem note is stored as words while 00013's `CHECK (reason <> '')` stands | [a-broken-reason-is-optional](../../business/inventory/restock_decision.md#a-broken-reason-is-optional) |
+| a problem row's worth is the landed unit price over every unit ordered, filled at accept and stored | [the-problem-price-is-filled-by-the-system](../../business/inventory/restock_decision.md#the-problem-price-is-filled-by-the-system), [all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered) |
+| one batch per line with good units; the batch's price = line total ÷ line count + (shipping + courier charge) ÷ every unit ordered | [one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line), [unit-price-is-line-price-plus-costs-per-unit](../../business/inventory/restock_decision.md#unit-price-is-line-price-plus-costs-per-unit) |
+| one courier's charge, its note required; outside the restock's total, inside the unit price; saved on the restock, and *Restock Accepted* carries it — liability posts the debt from the event | [the-courier-is-paid-once-per-restock](../../business/inventory/restock_decision.md#the-courier-is-paid-once-per-restock), [balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event) |
+| a problem row's note is optional — an empty one stays empty | [a-broken-reason-is-optional](../../business/inventory/restock_decision.md#a-broken-reason-is-optional) |
 
-`applyDelta` + `appendMovement` are the same stock primitives `StockReceive` uses, so an accept is indistinguishable in
-the ledger from a manual receive except for its `reason` (`"restock request"`) and `ref` (the tracking number).
+✅ *(2026-10-16)* **The courier's debt left the accept**: `PostRestockOutlay` is gone, *Restock Accepted* carries the charge, its note and
+the accepting person, and liability posts the debt from `/event/liability-restock-accepted/push`.
+✅ *(2026-10-16)* **The unit cost is the decided one**: the line's `total ÷ count`, plus the costs over every unit
+ORDERED, and a broken or missing row carries that same landed price
+([all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered)).
+
+✅ *(2026-10-17)* **The accept writes only the ledgers**: one `restock` transaction (`inventory_mutations.PostRestock`), a
+batch per line with good units at the landed price, its rack rows. The old `stock_*` writes are gone, and the line's
+placements are read back from the accept's rack rows.
+
+✅ *(2026-10-17)* **The tables carry the owner's names and the money is `double`** (`00030`): `restocks`,
+`restock_items`, `restock_problem_items` — the problem rows keyed by restock and product — and every money field on
+the wire and in the tables a double, as the ledgers hold it
+([money-is-double-in-the-api-too](../../technical/stock/design_decision.md#money-is-double-in-the-api-too)).
+`restocks.subtotal` / `total` and a line's `price_unit` are stored, written by every create and edit.
+
+---
+
+## Order transactions — an order's take and its release, on the ledgers
+
+`OrderTransactionService` (`order_transaction.proto`): the order service calls it while it creates an order, before the
+order exists, so inventory knows the take only by the order form's key K
+([every-release-goes-by-the-key](../../business/order/context_decision.md#every-release-goes-by-the-key)). ✅ *(2026-10-17)*
+**Selling's order calls it** through the composition root's stock picker, with the key `order:<order id>` until the
+order form mints K ([the-order-take-bridges-its-key-per-order](../../technical/stock/design_decision.md#the-order-take-bridges-its-key-per-order)).
+
+### OrderTransactionCreate
+
+```mermaid
+sequenceDiagram
+    participant O as order service
+    participant H as OrderTransactionCreate
+    participant P as product_service
+    participant DB as Postgres
+
+    O->>H: team_id (the ORDERING team), K, warehouse, lines
+    H->>DB: K in idempotency_order_check?
+    alt claimed
+        H-->>O: AlreadyExists - KEY_USED, never the earlier take
+    end
+    H->>P: ProductByIds - owner, private, reserve, markup
+    Note over H: a borrowed line on a private product, an owner below its reserve, or an unknown product
+    alt any line not allowed
+        H-->>O: FailedPrecondition - NOT_ALLOWED, every such line
+    end
+    H->>DB: BEGIN
+    H->>DB: per line, product order - lock the owner's batches by id, count
+    alt any line short
+        H-->>O: FailedPrecondition - NOT_ENOUGH_STOCK, every short line with wanted and available
+    end
+    H->>DB: one order transaction of the ordering team
+    H->>DB: batches oldest first, every line, then racks holding the fewest first, every line
+    H->>DB: one item per product
+    H->>DB: claim K with the transaction - a same-second twin meets the unique index
+    H->>DB: COMMIT
+    H-->>O: transaction_id, per line owner, unit cost, cost with markup, markup, total
+```
+
+| Rule | Decision |
+| --- | --- |
+| K looked up first; a hit is refused, never answered | [a-used-key-is-refused-first](../../business/inventory/order_decision.md#a-used-key-is-refused-first) |
+| the product read before any transaction; private and the reserve stop other teams only | [the-take-checks-the-product-first](../../business/inventory/order_decision.md#the-take-checks-the-product-first), [the-reserve-stops-other-teams-at-low-stock](../../business/product/context_decision.md#the-reserve-stops-other-teams-at-low-stock) |
+| the reserve compares the owner's total stock, every warehouse, a plain read | [the-reserve-is-read-before-the-take](../../business/inventory/order_decision.md#the-reserve-is-read-before-the-take) |
+| one error, one reason, every refused line, on an `OrderTransactionRefusal` detail | [a-refusal-names-its-reason-and-every-line](../../business/inventory/order_decision.md#a-refusal-names-its-reason-and-every-line) |
+| one transaction per order, of the ordering team; each item names its owner | [an-order-is-one-inventory-transaction](../../business/order/context_decision.md#an-order-is-one-inventory-transaction), [an-item-carries-its-owning-team](../../business/inventory/transaction_decision.md#an-item-carries-its-owning-team) |
+| the markup is inventory's, on cost, for another team's product only | [inventory-computes-the-markup](../../business/order/context_decision.md#inventory-computes-the-markup) |
+| K claimed in its own table, inside the take's transaction | [the-key-is-claimed-in-its-own-table](../../business/inventory/transaction_decision.md#the-key-is-claimed-in-its-own-table) |
+| lines in product order, batches before racks — no deadlock between two orders | [batches-lock-before-shelves-by-id](../../business/inventory/context_decision.md#batches-lock-before-shelves-by-id) · `order_transaction_race_test.go` |
+
+### OrderTransactionRelease
+
+```mermaid
+flowchart LR
+  R["release K - the order's team"] --> L{"K claimed?"}
+  L -->|"no"| C["claim K with none - a late take is refused"]
+  L -->|"with none"| N["nothing"]
+  L -->|"with a transaction"| T{"the team's?"}
+  T -->|"no"| X["NotFound"]
+  T -->|"yes"| B["RollbackTake - once, every log row flipped, is_rollback set"]
+```
+
+One path for an order cancelled and for a create that failed after its take. Only a take is rolled back
+([a-rollback-only-undoes-a-take](../../business/inventory/transaction_decision.md#a-rollback-only-undoes-a-take)); the
+rollback reverses the log rows, not the items
+([a-rollback-reverses-its-log-rows](../../business/inventory/transaction_decision.md#a-rollback-reverses-its-log-rows)).
+⚠ Still to wire: *Order Cancel* and the create's *InventoryTxCancel* compensation reach this by K at the cutover.
 
 ---
 
@@ -157,18 +239,18 @@ it, A processes and ships it, B signs for it and counts it in. The design is
 [warehouse_transfer.md](../../business/inventory/warehouse_transfer.md) and its decisions in
 [warehouse_transfer_decision.md](../../business/inventory/warehouse_transfer_decision.md).
 
-> ⚠ **PROTOTYPE — no handler exists.** `WarehouseTransferService`
-> ([warehouse_transfer.proto](../../../proto/warehouse/inventory/v1/warehouse_transfer.proto)) is mounted answering
-> **Unimplemented** (`inventory_v1.WarehouseTransferPrototype`), and the screens run against the Storybook stub until
-> design_accept. The flows below are what the backend step builds. It supersedes `InventoryService.StockTransfer`, the
-> instant one-product move.
+> **Built on the decided ledgers** — `inventory_v1/warehouse_transfer_*.go`, one file per RPC, the legs in
+> `inventory_mutations/post_transfer.go` (`PostTransferOut`, `PostTransferIn`). It supersedes
+> `InventoryService.StockTransfer`, the instant one-product move, which nothing calls and the cut-over retires.
+> ⚠ Money on the wire is still whole rupiah (`int64`), rounded from the `double` columns, until the cut-over turns the
+> contract `double`.
 
 | RPC | Who | From → to | What it does |
 | --- | --- | --- | --- |
 | `WarehouseTransferCreate` | selling team | → created | the transfer, its lines and its `transfer_out` at A in one transaction — below |
 | `WarehouseTransferList` / `Detail` | any side | — | rows where the team owns it, or is A, or is B; a fourth team reads **NotFound**. `direction` splits a warehouse's outgoing from its incoming |
-| `WarehouseTransferUpdate` | selling team | until accepted | the shipping cost, its account and the note — never the lines |
-| `WarehouseTransferCancel` | selling team | created → cancelled | rolls the `transfer_out` back |
+| `WarehouseTransferUpdate` | selling team | until accepted | the shipping cost, its account and the note — never the lines. Not a status change: no trail row. An edit that moved money bumps `cost_revision` and publishes *Warehouse Transfer Updated* with both sides |
+| `WarehouseTransferCancel` | selling team | created → cancelled | rolls the `transfer_out` back (`RollbackTake`) under the transfer's lock; publishes *Warehouse Transfer Cancelled* — the cost back to its account |
 | `WarehouseTransferMarkLost` | selling team | shipped → lost | the loss is the team's |
 | `WarehouseTransferProcess` | A | created → process | from here on there is no cancel |
 | `WarehouseTransferShip` | A | process → shipped | the courier, tracking number and label photo — all optional |
@@ -207,20 +289,19 @@ sequenceDiagram
 
     S->>H: from, to, lines [product, count], note, shipment_cost + account
     H->>H: from equals to, a product twice, or a cost without an account → InvalidArgument
-    H->>DB: inventory_transactions row — transfer_out at A
-    loop every line
-        H->>DB: lock A's batches oldest first, then shelves fewest first
-        alt A holds too few
-            H-->>S: FailedPrecondition — nothing written
-        else enough
-            H->>DB: batch_logs and product_placement_logs, the line's total from the batch rows
-        end
+    H->>H: ask product_service — a product not the team's own → InvalidArgument
+    H->>DB: warehouse_transfers row, created — so the out-leg can name it
+    H->>DB: lock A's batches of every line, in product order, and count them
+    alt any line short
+        H-->>S: FailedPrecondition naming every short line — the whole transaction rolls back
+    else enough
+        H->>DB: inventory_transactions row — transfer_out at A
+        H->>DB: batch_logs oldest first, every line — then product_placement_logs fewest racks first
+        H->>DB: items equal to the batch rows, the lines with their totals, the out-leg and total on the transfer
+        H->>DB: warehouse_products for B, the first trail row, COMMIT
+        H--)F: Warehouse Transfer Created after commit — the account and the cost, 0 included
+        H-->>S: the transfer, created, with its pick list read back from the rack rows
     end
-    H->>DB: warehouse_transfers created, its lines with their picks, the first trail row, COMMIT
-    opt shipment_cost above 0
-        H-->>F: event after commit — the account, the amount
-    end
-    H-->>S: the transfer, created
 ```
 
 ### The accept transaction — the stock arrives at B
@@ -230,6 +311,7 @@ sequenceDiagram
     participant B as Warehouse B member
     participant H as WarehouseTransferAccept
     participant DB as Postgres - one tx
+    participant BAL as balance - by event, not built yet
 
     B->>H: lines [item, arrived, broken, notes, placements], courier charge + note
     H->>DB: SELECT transfer WHERE id AND to_warehouse_id FOR UPDATE
@@ -240,17 +322,19 @@ sequenceDiagram
     else a line missing, doubled, over its count, broken above arrived, or not all good units placed
         H-->>B: InvalidArgument
     else the count is complete
-        H->>DB: inventory_transactions row — transfer_in at B
+        H->>DB: read the out-leg's batch rows — the layers, per product, oldest first
+        H->>DB: inventory_transactions row — transfer_in at B, even when nothing arrived good
         loop every line
-            H->>DB: problem rows — broken as typed, missing = count − arrived, priced off the newest layer
-            H->>DB: one batch at B per source batch, same price and expiry, good units filling the oldest first
-            H->>DB: one placement log per rack the good units went to
+            H->>DB: one batch at B per source layer with good units, at the layer's price when it left A
+            Note over H,DB: good units fill the oldest layers, broken then missing come off the newest
         end
-        opt courier charge above 0
-            H->>DB: the selling team's debt to B
-        end
+        H->>DB: the good units onto B's racks, items equal to the batch rows
+        H->>DB: arrived counts on the lines, problem rows priced from their layers
+        H->>DB: the courier charge and its note on the transfer
         H->>DB: status accepted, trail row, COMMIT
         H-->>B: the transfer, accepted
+        H--)BAL: Warehouse Transfer Accepted, after commit — the charge, 0 included
+        Note over BAL: the selling team owes B the charge, once per transfer — nothing for 0
     end
 ```
 
@@ -261,72 +345,78 @@ sequenceDiagram
 | B mints one batch per source batch; the trip never changes a unit's price | [the-receiver-mints-one-batch-per-source-batch](../../business/inventory/warehouse_transfer_decision.md#the-receiver-mints-one-batch-per-source-batch), [a-transfer-never-changes-a-units-price](../../business/inventory/warehouse_transfer_decision.md#a-transfer-never-changes-a-units-price) |
 | every price is the system's, from the batch rows | [the-system-fills-a-transfers-prices](../../business/inventory/warehouse_transfer_decision.md#the-system-fills-a-transfers-prices) |
 | broken, missing and lost are the selling team's loss | [the-selling-team-bears-broken-missing-and-lost](../../business/inventory/warehouse_transfer_decision.md#the-selling-team-bears-broken-missing-and-lost) |
-| the shipping expense reaches the account by event; the on-site charge is a debt written in the accept | [the-shipping-expense-reaches-the-account-by-event](../../business/inventory/warehouse_transfer_decision.md#the-shipping-expense-reaches-the-account-by-event), [the-on-site-charge-is-paid-by-b-at-accept](../../business/inventory/warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept) |
+| the shipping expense reaches the account by event; B pays the on-site charge and saves it at accept, and balance posts the debt from the accepted event | [the-shipping-expense-reaches-the-account-by-event](../../business/inventory/warehouse_transfer_decision.md#the-shipping-expense-reaches-the-account-by-event), [the-on-site-charge-is-paid-by-b-at-accept](../../business/inventory/warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept), [balance-posts-the-transfers-on-site-debt-from-the-event](../../business/inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event) |
 | one line per product, one problem row per product per kind | [a-product-appears-once-per-transfer](../../business/inventory/warehouse_transfer_decision.md#a-product-appears-once-per-transfer) |
+| the receiving warehouse can find what is coming | [a-transfer-links-its-products-to-the-receiver](../../business/inventory/context_decision.md#a-transfer-links-its-products-to-the-receiver) |
+
+**Choices the build made, inside the decisions** — none is a new rule; each is where the decisions were silent:
+
+| | |
+| --- | --- |
+| the price B's batch copies | the source batch's `price_unit_after` on the out-leg's row — its price when it left A, so a revaluation at A after the out-leg never reaches B |
+| broken and missing on one newest layer | broken first, then missing |
+| a pick list and a put-away | never stored: read back from the legs' `product_placement_logs` (takes are negative, puts positive) |
+| the events | four, published after commit and never failing the request: *Created* (every create, cost 0 included), *Updated* (only an edit that moved money, id `…:<cost_revision>`), *Cancelled*, *Accepted* (every accept, charge 0 included). Their money is `double` from day one. ⚠ Nobody listens yet: the financial account's listener is not built, and balance waits on the source type ([balance Q13](../../business/balance/context_clarify.md#question)) |
+| not checked | that A and B are warehouse teams — as a restock's warehouse is not; a transfer to a team with no warehouse roles simply waits, unaccepted |
+
+Proven under concurrency by `warehouse_transfer_race_test.go` (`-tags raceaudit`): eight accepts of one box count it in
+once, sixteen creates never send more than A holds and never deadlock with their lines in opposite order, a cancel
+racing A's confirm and a lost racing an accept each end in exactly one, and an Interleave shows a second accept waiting
+on the first one's lock.
 
 ---
 
-## Stock lives in a PLACE (#135) — and what that changes about reads
+## Stock lives on the decided ledgers — and what that changes about reads
 
-Since #135 the grain is **(warehouse, rack, product)**. One idea explains most of the surprises here:
+Every reader reads the ledgers ([database-schema.md § The decided ledgers](../../database-schema.md#the-decided-ledgers-00025-00026)),
+and nothing reads the dropped `stock_*` tables. One idea explains most of the surprises:
 
-> **A movement is a statement about ONE PLACE; a level is a statement about ONE WAREHOUSE.**
+> **A rack row counts units of ONE product on ONE rack; a batch counts units of ONE delivery. Neither knows the other.**
 
-- `applyDelta`/`appendMovement` take a place. A movement's `delta` and `balance` are **that place's** —
-  "this shelf went from 40 to 49" — never the warehouse's total for the product.
-- `StockList` **sums across a product's places** and returns one line per product: "how much of X do we
-  have here?" has never meant "on which shelf". Its page total counts **products**, not rows, or a
-  warehouse spreading one product over more shelves would silently shrink its own page.
-- **`rack_id IS NULL` = unplaced** — a real place ("somewhere in this warehouse, not yet shelved"),
-  not a missing value. Every query matches it with **`IS NOT DISTINCT FROM`, never `=`**: `rack_id =
-  NULL` is never true in SQL, so a plain `=` reports a phantom shortage for goods sitting right there.
+- **Where** a product sits is `product_placements` (one row per product per rack, its count after every change in
+  `product_placement_logs`). `StockList`, `ProductPlaces`, `PlacementList`, `RackList`'s stock slice, `RackStock` and
+  `RackHistory` read these.
+- **What it is worth** is `batches` (price, units, value — `stock_valuation` is the truth). `StockAvailability`,
+  `StockCost`, the batch and cost-layer reads and every owner read use these; the owner is `batches.team_id`.
+- **No row carries both**, so a product's history without a batch reads the rack rows and with one reads the batch's
+  rows; a batch's "racks" are where it was put away when it was minted
+  ([a-batch-shows-the-racks-it-was-put-on](../../business/inventory/batch_decision.md#a-batch-shows-the-racks-it-was-put-on)).
+- **There is no unplaced pile** ([there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile)):
+  every unit is on a rack, and a request naming "unplaced" is refused.
+- **"Last counted"** is the newest `adjustment` rack row — a count writes one even when it finds the rack exact.
 
-### A stock-take counts a SHELF (#139)
+### A stock-take counts a RACK (#139) — provisionally, as an `adjustment`
 
-`StockAdjust` corrects **one place** to a counted figure, and the request must **say which** — a rack,
-or explicitly the unplaced pile. It is a **required `oneof`**, and the handler re-checks it rather than
-reading the zero value, because `GetRackId()` returns 0 both for *"unplaced"* and for *"said nothing"*.
-Silently treating the second as the first is the bug the field exists to prevent: a stock-take that
-corrects a pile nobody counted. **Refuse, do not interpret** — the same rule as the per-line count in
-`RestockRequestAccept`.
-
-The rejected alternative was a warehouse-level figure. It needed a rule for spreading a correction
-across a product's shelves (proportionally? onto unplaced? refuse?) and **every such rule invents a
-fact nobody observed**. A stock-take that corrects the wrong shelf is worse than no stock-take, because
-it is believed.
+`StockAdjust` and the one-rack `StockOpname` survive the cut-over as provisional `adjustment` transactions
+([old-shelf-corrections-move-onto-the-ledgers-provisionally](../../technical/stock/design_decision.md#old-shelf-corrections-move-onto-the-ledgers-provisionally));
+every choice the port made is open in [adjustment_clarify.md](../../business/inventory/adjustment_clarify.md). The
+request must say which rack it counted — a required `oneof`, re-checked by the handler — and "unplaced" is refused.
 
 ```mermaid
 sequenceDiagram
     participant W as Warehouse manager
-    participant H as StockAdjust
-    participant DB as Postgres (one tx)
-
-    W->>H: StockAdjust{warehouse, product, on_hand: 37,<br/>place: rack_id=A-01-3 | unplaced: true}
-    activate H
-    alt no place named
-        H-->>W: InvalidArgument — a stock-take must say where it counted (#139)
-    else place named
-        H->>DB: BEGIN
-        opt place is a rack
-            H->>DB: rackExists(warehouse, rack)?
-            Note over H,DB: another warehouse's rack → NotFound,<br/>never PermissionDenied
+    participant H as StockAdjust - recount
+    participant DB as Postgres - one tx
+    W->>H: product, rack A-01-3, counted 37
+    alt no rack named, or unplaced
+        H-->>W: InvalidArgument
+    else a rack of this warehouse
+        H->>DB: lock the owner's batches of the product, then the rack row
+        alt counted below the rack
+            H->>DB: adjustment tx - the shortfall off the rack, and off the batches oldest first
+        else counted above
+            H->>DB: adjustment tx - a batch minted at the owner's newest price here, onto the rack
+        else exact
+            H->>DB: adjustment tx - a 0 rack row, so the rack reads as counted
         end
-        H->>DB: SELECT on_hand … rack_id IS NOT DISTINCT FROM ? FOR UPDATE
-        Note over H,DB: THAT place's figure, locked
-        H->>DB: UPSERT stock_levels SET on_hand = counted
-        Note over H,DB: set TO the count, not += delta —<br/>the count is authoritative
-        H->>DB: INSERT stock_movements (ADJUST, rack, delta, balance=counted)
-        H->>DB: SELECT SUM(on_hand) … WHERE warehouse, product
-        Note over H,DB: the warehouse's total AFTER, read back —<br/>not this handler's opinion of it
-        H->>DB: COMMIT
-        H-->>W: Movement{rack, balance: 37} + Level{on_hand: 104}
-        Note over W: "this shelf is now 37" AND<br/>"the warehouse holds 104" —<br/>two different questions
+        H->>DB: the warehouse's total after, read back, COMMIT
+        H-->>W: Movement - the rack's change and count after, plus the warehouse total
     end
-    deactivate H
 ```
 
-Correcting one shelf leaves the product's other shelves **exactly as they were** — that is the point,
-and it is what the warehouse-level alternative could not promise.
+Correcting one rack leaves the product's other racks **exactly as they were**. Damaged, lost and found name a batch
+and take from or return to it; a damaged or lost unit is owed to its owner inside the transaction and written off to
+expense after it (§ Broken, lost, and found).
 
 ### Reading a rack, and why it needs another service (#138)
 
@@ -352,52 +442,22 @@ does not know what any warehouse holds.
 
 ### Moving stock inside a warehouse (#136)
 
-`StockMove` changes **where** stock sits, never **how much** there is. That invariant is the definition
-of a move, and it is what makes it a different fact from a receive: the warehouse's total for the
-product is identical before and after.
+A move is `RackMove` (below) — `StockMove`, `StockReceive`, `StockTransfer`, `StockPick` and `StockReturn` are gone:
+goods come in by a restock, move between racks by `RackMove`, leave for an order by `OrderTransactionCreate`, and go to
+another warehouse by a warehouse transfer. **A rack that still holds stock cannot be deleted** (#138) —
+`FailedPrecondition`, empty it first; the check sums its `product_placements` rows, because `RackDelete` is a soft delete
+and the FK never fires.
 
-**One verb for both jobs**, because they are one act with different arguments:
-
-| | |
-| --- | --- |
-| `from: unplaced → to: rack` | **shelving** what arrived — the pile #135 left behind, which is everything predating #137 |
-| `from: rack → to: rack` | **re-organising** a shelf |
-
-- **Both ends are required, and must differ.** Moving stock onto the place it already sits is a
-  mistake, not a no-op worth recording — honouring it would write a ledger pair saying nothing
-  happened, twice. `InvalidArgument`.
-- **The source is decremented FIRST**, deliberately. `applyDelta`'s guard refuses to take a place
-  below zero, so taking first means an over-move is rejected *before* anything is credited anywhere.
-  Crediting first and then discovering the source was short would still roll back — but it would have
-  written a positive movement for goods that were never there.
-- **Both legs commit together.** A move that took stock off a shelf without putting it anywhere would
-  destroy goods that are physically in the building.
-- **One `MOVEMENT_KIND_MOVE`, not an OUT/IN pair** like a transfer. A transfer needs two kinds because
-  its legs are in two *warehouses* and each side only ever sees its own; both legs of a move are in the
-  same warehouse, so a reader sees the pair together and the rack plus the sign already tell the story.
-- Staff may do it, unlike `StockTransfer` (a manager action): nothing leaves the building, and the
-  person carrying the box is the one who knows where it went.
-
-**A rack that still holds stock cannot be deleted** (#138) — `FailedPrecondition`, empty the shelf
-first, and **`StockMove` is how you empty it**. The check lives in the handler because the FK cannot do it: `stock_levels.rack_id` is
-`ON DELETE RESTRICT`, but `RackDelete` is a **soft** delete, so the row is never removed and the
-constraint never fires. Unguarded, #137 made this a live bug — the goods were **stranded**, still in
-`stock_levels` at a location that had vanished from every list, where nobody could find or fix them.
-Moving them to unplaced instead was rejected: the boxes are still physically on that shelf until a
-person moves them, so recording them as "somewhere" would invent a location nobody observed.
-
-### `RackMove` and `RackSample` — the decided model (PROTOTYPE)
+### `RackMove` and `RackSample` — on the decided ledgers
 
 The placement decisions ([placement_decision.md](../../business/inventory/placement_decision.md)) give a rack two writes
 of its own, both opened from Rack detail: **Move Goods** — staff reorganizing space, from one rack to one or more — and
 **Record Sample** — goods handed to a person at the warehouse
 ([a-sample-is-handed-over-at-the-warehouse](../../business/inventory/transaction_decision.md#a-sample-is-handed-over-at-the-warehouse)).
 
-> ⚠ **PROTOTYPE — no handler exists.** Both are on `RackService`
-> ([rack.proto](../../../proto/warehouse/inventory/v1/rack.proto)) and answer **Unimplemented** (`rack_move.go`,
-> `rack_sample.go`); the dialogs run against the Storybook stub (`.storybook/rackStub.ts`) until design_accept. The
-> backend step writes them on the decided ledgers, which wait on the transaction and ledger questions. `RackMove`
-> supersedes `StockMove`, whose one product, one batch and *unplaced* end all go.
+> ✅ *(2026-10-16)* **Built on the decided ledgers** (`inventory_mutations.PostMove`, `PostSample`; tests in
+> `rack_move_test.go`, `rack_sample_test.go`, races in `rack_move_race_test.go`). The rack screens read the ledgers, and
+> `RackMove` replaced `StockMove`, whose one product, one batch and *unplaced* end all went.
 
 | RPC | Who | What it writes |
 | --- | --- | --- |
@@ -424,7 +484,7 @@ sequenceDiagram
   end
 ```
 
-The rules the stub plays, and the backend step keeps:
+The rules, as the stub played them and the handlers now keep:
 
 | | |
 | --- | --- |
@@ -432,9 +492,9 @@ The rules the stub plays, and the backend step keeps:
 | all or nothing | one database transaction for every team's transaction; any line that does not fit refuses the whole write, naming the product ([a-move-is-all-or-nothing](../../business/inventory/placement_decision.md#a-move-is-all-or-nothing)) |
 | one transaction per owning team | the response lists them in team id order ([a-move-writes-one-transaction-per-owning-team](../../business/inventory/placement_decision.md#a-move-writes-one-transaction-per-owning-team)) |
 | the ceiling | a line takes at most the rack's stock count, so sold units waiting for the picker stay ([a-move-leaves-sold-units-on-their-rack](../../business/inventory/placement_decision.md#a-move-leaves-sold-units-on-their-rack)) |
-| a product being counted | refused; `RackStockLine.counting` tells the dialog to lock it at 0 — always false until the stock count is built |
+| a product being counted | refused once opname is built; `RackStockLine.counting` tells the dialog to lock it at 0 — always false until then |
 | `RackList` STOCK slice | real today: each rack's stock count and product count for the Racks page, one grouped `SUM`/`COUNT` over the page's racks, only when asked — a picker never pays for it |
-| `RackSample.recipient` | required, who received it — proposed at the prototype; who on the team agreed is not on the request (transaction Q6) |
+| `RackSample.recipient` | required, who received it, kept on the transaction ([a-sample-keeps-its-recipient](../../business/inventory/transaction_decision.md#a-sample-keeps-its-recipient)). No member of the owning team is asked to agree, and the sample posts nothing to balance ([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)) |
 
 ---
 
@@ -482,11 +542,11 @@ asks *what have I committed that has not landed*; the warehouse asks *what work 
 ```mermaid
 flowchart LR
     subgraph "the same rows, read from two ends"
-      RR["restock_requests (ongoing or arrived)"]
-      RI[restock_request_items]
+      RR["restocks (ongoing or arrived)"]
+      RI[restock_items]
       RI --> RR
     end
-    RR -->|"requesting_team_id = team"| O["OwnerStockStat — money committed"]
+    RR -->|"team_id = team"| O["OwnerStockStat — money committed"]
     RR -->|"warehouse_id = team"| I["RestockInboundStat — work waiting"]
 ```
 
@@ -499,7 +559,7 @@ the table it sits above.
 | `restock_count` | `COUNT(*)` over the pending REQUESTS | Over requests, not the item join — a two-line delivery is **one** delivery. 3 deliveries of 400 pieces and 30 of 400 are the same stock and completely different amounts of door-opening. |
 | `product_count` | **DISTINCT** `product_id` across the queue | Counting LINES reports 4 for one SKU on four deliveries. It is one thing to find a shelf for, and put-away is the job this number sizes. |
 | `unit_count` | Σ ordered `count` | The **asked** quantity — nobody has counted these yet, which is exactly why they are in the queue. |
-| `amount` | Σ `total_price` | **Goods only.** Shipping is what the buying team paid to get them moving and the courier's charge is 0 until someone accepts, so either would answer a question about somebody else's spending. |
+| `amount` | Σ line `total`, a double | **Goods only.** Shipping is what the buying team paid to get them moving and the courier's charge is 0 until someone accepts, so either would answer a question about somebody else's spending. |
 | `oldest_pending_unix` | `MIN(created_at)` over the REQUESTS | Over requests, not their lines — a line-less request still waits at the door, and a MIN over the item join would skip it. A count of 7 hides the box that has sat since Monday. |
 
 **Still coming is the whole meaning of it** — on its way, or at the door not yet counted. An accepted restock has
@@ -519,22 +579,21 @@ Every other read in this service answers **for a warehouse**: the caller is the 
 *how much of my product is on a shelf, anywhere, and what is it worth* — which no RPC could answer
 before.
 
-### Ownership is derived, never asserted
+### Ownership is written on the batch
 
-`inventory_service` does not know who owns a product: `product_id` is an opaque id and no stock row
-carries an owner. What it does know is **how the stock got there** — every unit arrives on an accepted
-restock line, and a restock names the team that raised it:
+A batch carries its owner, written at mint and never changed
+([a-batch-carries-its-owner](../../business/inventory/warehouse_transfer_decision.md#a-batch-carries-its-owner)): the
+restock's selling team, or the source batch's at a transfer. Every owner read filters `batches.team_id`, so a caller
+passing another team's product id matches none of its batches and gets nothing back — no climb through restocks, and
+no trust placed in the client.
 
 ```mermaid
 flowchart LR
-    SSB[stock_shelf_batches — units on a shelf] --> B[stock_batches — one delivery's units, frozen HPP]
-    B --> RI[restock_request_items]
-    RI --> RR["restock_requests.requesting_team_id — THE OWNER"]
+    R["restock accept - team 12's restock"] -->|"team_id = 12"| B7["batch 7 at Gudang A"]
+    B7 -->|"transfer accept copies it"| B31["batch 31 at Gudang B - team 12"]
+    B7 --> Q["OwnerStockByIds as team 12 - both batches"]
+    B31 --> Q
 ```
-
-That chain **is** the authorization. A caller passing another team's product id joins to none of its
-rows and gets nothing back — no ownership column that could disagree with the restock it came from,
-and no trust placed in the client.
 
 ### The page's three reads
 
@@ -604,49 +663,28 @@ are not a fact about a building — 200 units in Surabaya and 300 in Jakarta are
 so `warehouse_id` narrows the answer instead of defining it, and the Batch rows carry the building
 they landed in as a column.
 
-### The ledger the owner reads is a different table
+### The ledger the owner reads is the batch ledger
 
-`OwnerStockHistory` reads **`stock_owner_movements`**, not `stock_movements`. The ledger answers for a
-SHELF: its `balance` is a rack's running total, its `rack_id` is the point of the row, and a
-shelf-to-shelf move is among its commonest events. None of those is a fact about what an owner holds.
-
-```mermaid
-flowchart TB
-    AM["appendMovement — the one choke point every ledger row passes through"]
-    AM --> SM[stock_movements — the shelf's ledger]
-    AM --> P{"project?"}
-    P -->|"kind = MOVE"| DROP["dropped — changes where stock sits, not what the owner has"]
-    P -->|"batch named"| CHAIN["owner = batch → restock line → requesting team"]
-    P -->|"no batch — a recount, every PICK"| PROD["owner = whoever owns batches of this product in this warehouse"]
-    CHAIN --> SOM[stock_owner_movements]
-    PROD --> SOM
-```
-
-Two rules, because a batch-less event cannot climb the chain at all. A movement that resolves to **no**
-owner is not projected — stock nobody restocked here has no owner to tell.
+`OwnerStockHistory` reads the **batch rows** of the owner's batches (`batch_logs` joined to `batches.team_id`), not the
+rack rows. A rack row answers for a SHELF — its count is a rack's running total, and a rack-to-rack move is among its
+commonest rows — and none of that is a fact about what an owner holds. A move writes no batch row
+([a-move-writes-two-rack-rows-and-no-batch-row](../../business/inventory/placement_decision.md#a-move-writes-two-rack-rows-and-no-batch-row)),
+so it never appears here; every take, mint, adjustment and rollback does, each naming its batch.
 
 ### Why the balance is computed and not stored
 
 `OwnerMovement.balance` is the owner's on-hand of that product **in that building** after the event —
-a running `SUM(delta) OVER (PARTITION BY warehouse_id ORDER BY id)` over their own ledger.
+a running `SUM(change_count) OVER (PARTITION BY warehouse_id ORDER BY id)` over their own batch rows.
 
 - **Derived, not stored.** Stored, it would be a number maintained by two writers on different shelves
   of the same product with nothing serialising them: two concurrent receives would each read the same
-  "previous" balance and write the same "after". Derived, it cannot drift from the rows it is made of,
-  and rebuilding the projection reproduces every figure exactly.
+  "previous" balance and write the same "after". Derived, it cannot drift from the rows it is made of.
 - **The window runs BEFORE the filters.** Kind and date narrow the result *outside* the subquery.
   Summing after them would produce "the total of the adjustments I asked to see" — a number about the
   filter rather than about the stock.
 - **`PARTITION BY warehouse_id`, always.** With the lens set it is a single partition and costs
   nothing. With the lens open it is what keeps each row's balance a statement about ONE building,
   rather than a total that adds together stock in cities which can never fill each other's orders.
-
-### This projection is meant to move
-
-Today `appendMovement` writes both tables in one transaction, so the owner's history can never be
-missing an event the shelf's ledger recorded. Later it becomes an **event consumer** (owner) — the
-rows and the read shape do not change when it does, which is the reason the owner's lens lives in its
-own table now rather than being fused into `stock_movements`.
 
 ---
 
@@ -658,7 +696,9 @@ count everything on it, and the useful fact afterwards is *"A-01-3 was counted, 
 wrong"* — not five unrelated corrections that happen to share a rack.
 
 `StockOpname` is that act. It reuses the recount mechanics per line and adds the two things a sweep
-needs: **all-or-nothing**, and **the whole picture of the variance**.
+needs: **all-or-nothing**, and **the whole picture of the variance**. ⚠ It runs on the ledgers **provisionally**, as `adjustment`
+transactions, until the stock count replaces it
+([old-shelf-corrections-move-onto-the-ledgers-provisionally](../../technical/stock/design_decision.md#old-shelf-corrections-move-onto-the-ledgers-provisionally)).
 
 ```mermaid
 sequenceDiagram
@@ -682,11 +722,12 @@ sequenceDiagram
     rect rgb(240, 240, 240)
         Note over I: ONE transaction — lines sorted by product id
         loop each counted line
-            I->>I: SELECT on_hand FOR UPDATE — the lock that makes this safe
-            I->>I: set the shelf to the counted figure
-            I->>I: attribute the delta FIFO, oldest layer first — and price it
-            I->>I: append an ADJUST movement (batch-less "—")
+            I->>I: lock the owner's batches, then the rack row — the locks that make this safe
+            I->>I: short - off the rack and the oldest batches, priced at their value
+            I->>I: over - a batch minted at the owner's newest price here, onto the rack
+            I->>I: exact - a 0 rack row, so the rack reads as counted
         end
+        I->>I: the shortfall owed to each owner, keyed by its adjustment
     end
 
     I->>E: PostStockLoss — ONE write-off for the whole shelf, AFTER commit
@@ -698,17 +739,12 @@ sequenceDiagram
 | | |
 | --- | --- |
 | **Only the lines sent are counted** | A product on the shelf and absent from `lines` is left completely alone — **never zeroed**. The tempting reading ("a sweep means everything else is gone") would turn one forgotten row or one lost page into a silent write-off of real stock, and a stock-take is BELIEVED. Emptying a shelf is `counted_qty = 0`, said out loud. |
-| **A zero-variance line still writes a movement** | `last_opname_unix` is read from the newest `ADJUST` on that `(product, rack)`, so a correct count that wrote nothing would leave the shelf looking permanently overdue for the count somebody just did. Counting and changing are different things. |
+| **A zero-variance line still writes a rack row** | `last_opname_unix` is read from the newest `adjustment` rack row on that `(product, rack)`, so a correct count that wrote nothing would leave the rack looking permanently overdue for the count somebody just did. Counting and changing are different things. |
 
 ### What a shortfall is worth
 
-The delta lands on the batches on that shelf **oldest first** (owner's Q1), and the write-off is priced
-at **the layers the draw actually consumed** — not at "the oldest layer's cost" applied to everything.
-A shortfall spanning two deliveries at different prices is worth the sum of what it took from each.
-
-`value_known = false` says the figure is a **floor**: a batch's `unit_cost` is nullable and nil means
-UNKNOWN, never 0 (#74), so units drawn from a costless layer leave priced at nothing. The screen says
-"at least X" rather than showing a confident total.
+A shortfall leaves the owner's batches **oldest first**, and the write-off is priced at **the value the draw actually
+took** from each (an-emptying-take-takes-all-the-value). Every batch carries its price, so `value_known` is always true.
 
 A **surplus is never valued**. Stock that turns up was not bought, and booking a negative expense for it
 would let a sloppy count read as income.
@@ -716,8 +752,8 @@ would let a sloppy count read as income.
 ### Concurrency
 
 Two people counting one shelf at the same second is the normal case here, not an edge case. Every line
-takes a `FOR UPDATE` row lock on `stock_levels`, and **the lines are sorted by product id before
-locking** — a deadlock guard, not tidiness: two requests locking `7 then 3` and `3 then 7` would have
+locks its batches and then its rack row (batches-lock-before-shelves-by-id), and **the lines are sorted by product id
+before locking** — a deadlock guard, not tidiness: two requests locking `7 then 3` and `3 then 7` would have
 Postgres kill one of them, and the person would see a stock-take fail for no reason they could explain.
 
 Proved rather than asserted — see
@@ -725,11 +761,67 @@ Proved rather than asserted — see
 
 ### Not yet
 
-- **The unplaced pile cannot be counted here.** `RackStock` is a per-rack read and the pile has no rack
-  id. The screen says so rather than showing an empty shelf.
 - **A shelf larger than one screen** is flagged (`truncated`) rather than silently counted in part. The
   uncounted rows are safe — the server never touches a product it was not sent — but the person would
   otherwise believe they had finished.
+
+## Stock count sessions — `OpnameService` (PROTOTYPE)
+
+A stock count of ONE warehouse, as a session: plan it, snapshot and lock the shelf book, count blind, write each difference
+as a draft with its reason, and finalize into the stock-problem register. The design is
+[opname.md](../../business/inventory/opname.md) and its decisions in
+[opname_decision.md](../../business/inventory/opname_decision.md).
+
+> ⚠ **PROTOTYPE — no handler exists.** `OpnameService` ([opname.proto](../../../proto/warehouse/inventory/v1/opname.proto))
+> is mounted answering **Unimplemented** (`inventory_v1.OpnamePrototype`), and the screens
+> (`/inventories/opname/sessions…`) run against the Storybook stub (`.storybook/opnameStub.ts`) until design_accept. The
+> flows below are what the backend step builds. It supersedes `StockOpname` above — that RPC and its page keep working
+> until then.
+
+| RPC | Who | What it does |
+| --- | --- | --- |
+| `OpnameSessionList` / `Detail` | any warehouse member | the sessions, newest first; a counter's read of an unfinished one carries no difference count |
+| `OpnameSessionCreate` | Owner, Admin | snapshot the plan's `product_placements` rows — **rows at 0 included** — and lock them; refused while another session is active |
+| `OpnameSessionCancel` | Owner, Admin | active → cancel; rows released, nothing posted |
+| `OpnameRowList` | Owner, Admin — **never staff** | every row WITH the book figure: the watch page |
+| `OpnameRowSendBack` | Owner, Admin | a counted row back to counting; its count and drafts cleared |
+| `OpnameRackList` | any member | the racks to visit; an `all` session lists every rack, empty ones too |
+| `OpnameRackCount` | any member | one rack as its counter sees it — **no book figure before the row is counted** |
+| `OpnameRowCount` | any member | the blind count, then one recount that replaces it; answers the row revealed, with the system's draft |
+| `OpnameRowMarkCounted` | any member | closes a revealed row: the broken count and every draft's reason |
+| `OpnameRowAddFound` | any member | a product found on a rack: a row at 0, its other racks join; refused when its team never had it here |
+| `OpnameFinalizePreview` | Owner, Admin | what finalize posts, per product, and why it is refused |
+| `OpnameSessionFinalize` | Owner, Admin — never a counter | posts it: one `opname` transaction per owning team |
+
+### A row's life
+
+```mermaid
+stateDiagram-v2
+    [*] --> created: SessionCreate — snapshot and lock
+    created --> revealed: RowCount — the blind count
+    revealed --> revealed: RowCount — the one recount
+    revealed --> counted: RowMarkCounted — every draft has its reason
+    counted --> created: RowSendBack — admin, drafts deleted
+    counted --> [*]: SessionFinalize — released
+    created --> [*]: SessionCancel — released
+```
+
+`revealed` is not a stored status: the row is still `created`, with its count in. A short row gets the system's `lost`
+draft (the shortage less the broken, at least 0); an over row the system's `surplus` draft.
+
+### What finalize posts
+
+```mermaid
+flowchart LR
+  P["each product, over all its racks"] --> B["broken - the drafts', summed - posted as written"]
+  P --> R["the rest - sellable, minus book, plus broken"]
+  R -->|"short n"| L["lost n - per batch, oldest first, after broken"]
+  R -->|"over n"| C["claims the oldest open loss, then mints at the newest price here"]
+  R -->|"0"| M["a move - racks corrected only"]
+```
+
+Finalizing **is** the agreement (`finalizing-is-the-agreement`): the broken and lost rows are what the warehouse owes the
+teams, a claim is what they pay back.
 
 ## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
 
@@ -746,8 +838,8 @@ sequenceDiagram
 
     W->>I: StockAdjust{DAMAGED, batch, qty}
     Note over I: one transaction
-    I->>I: units off the shelf and off the batch
-    I->>I: read the batch's frozen cost AND its owner<br/>(batch → restock line → requesting team)
+    I->>I: an adjustment of the batch's owner - units off the batch, then off the rack
+    I->>I: the value the batch gave up, and its owner - batches.team_id
     I->>S: PostStockDamage — the WAREHOUSE owes the OWNER
     Note over I: commit
     I->>E: PostStockLoss — the warehouse's own P&L, best-effort
@@ -785,16 +877,15 @@ team's goods gone with nothing recorded — the situation the ledger exists to p
 
 | | |
 | --- | --- |
-| **`FOUND`** | posts the same source type as a **reversal**, against its own movement — never by deleting the entry that charged it |
-| **`RECOUNT`** | names no batch, so it can point at no cost layer and no owner. (That `StockOpname` *does* value its shortfalls is a known recorded contradiction, untouched by this change.) |
-| **unknown cost** | `unit_cost` NULL is *"we do not know"*, not free (#74). Nothing is posted — a zero entry would consume the pair's idempotency key for that movement, so a later backfill could never post the real figure. |
+| **`FOUND`** | posts the same source type as a **reversal**, against its own adjustment — never by deleting the entry that charged it |
+| **`RECOUNT`** | books nothing, as before the cut-over — the open contradiction with `StockOpname` is [adjustment Q2](../../business/inventory/adjustment_clarify.md#question) |
 | **the warehouse's own goods** | a team cannot owe itself |
 | **damage at RECEIVING, and on returned orders** | **§Warehouse 6** — neither enters the warehouse's custody, and neither travels this RPC |
 
 ### Idempotency
 
-`source_id` is the **adjust movement**. Every adjust writes exactly one, so a retried adjust is
-refused by the ledger's unique index, and a damage and its later find can never collide.
+`source_id` is the **adjustment transaction**. Every adjust writes exactly one, so a retried adjust is refused by the
+ledger's unique index, and a damage and its later find can never collide.
 
 ### An opname shortfall reimburses too (owner, 2026-08-20)
 
@@ -807,18 +898,15 @@ it**, which is the worst kind of inconsistency: invisible, and only in the accou
 
 | | |
 | --- | --- |
-| **one debt per owner, per line** | keyed on that line's movement, so `source_id` means the same thing it means for an adjust and a re-run is refused by the ledger rather than charging twice |
-| **⚠ a shortfall can span several owners** | a shelf holds whatever restocks filled it. 15 missing may take 10 units of team A's layer and 5 of team B's — at *their own* costs. `fifoDraw.ByOwner` carries the split rather than collapsing it; summing would pay the first team and leave the second with nothing |
+| **one debt per owner** | keyed on that owner's adjustment transaction — one per owning team per count — so `source_id` means the same thing it means for an adjust and a re-run is refused by the ledger rather than charging twice |
 | **a surplus reimburses nobody** | and is not a reversal either — stock that turns up on a count was never established as lost, so there is no debt of its own to give back. Only a `FOUND` adjust against a specific batch reverses a specific reimbursement |
-| **unknown cost** | posts nothing, same as the adjust path (#74) |
 | **the warehouse's own goods** | a team cannot owe itself |
 
 The obligation joins the count's **transaction**; the expense stays best-effort after it — the same
 split the single-adjust path draws, and for the same reason.
 
-⚠ **`StockAdjust` with reason `RECOUNT` still does neither** — no write-off and no reimbursement. It is
-now the only one of the three paths out of step, on both axes — an open **contradiction**, left
-standing deliberately: changing a shipped money path is the owner's call.
+⚠ **`StockAdjust` with reason `RECOUNT` still does neither** — no write-off and no reimbursement — the one path out of
+step, kept by the provisional port and open as [adjustment Q2](../../business/inventory/adjustment_clarify.md#question).
 
 ## RestockRequestAccept — announces the accept
 
@@ -827,8 +915,42 @@ supplier, the accept's Jakarta day and instant, and per line the ordered count, 
 the missing and the line's supplier
 ([restock-accepted-carries-every-line](../../business/inventory/restock_decision.md#restock-accepted-carries-every-line)).
 supplier_service folds it into a supplier's figures ([its doc](../supplier_service/rpc.md#the-figures--a-fold-of-restock-accepted)).
-The restock's other money events — Restock Created, Cancelled and Updated, for the financial account — are in the
-contract and published from the backend step.
+The restock's money events — *Restock Created*, *Updated* and *Cancelled* — are below.
+
+## The restock's money events — for the account that paid
+
+The selling team's account paid for the goods and the shipping when it raised the restock; three events tell whoever
+posts that payment what happened to it
+([a-created-restock-tells-the-financial-account](../../business/inventory/restock_decision.md#a-created-restock-tells-the-financial-account),
+[an-edit-sends-the-difference](../../business/inventory/restock_decision.md#an-edit-sends-the-difference),
+[an-edit-may-move-the-payment-to-another-account](../../business/inventory/restock_decision.md#an-edit-may-move-the-payment-to-another-account)).
+Inventory announces and does not know who listens. ⚠ **No listener is built yet** — financial_account_service's
+subscription is its own to add; until then the topics fill and nothing posts.
+
+```mermaid
+sequenceDiagram
+  participant T as selling team
+  participant INV as inventory_service
+  participant PS as Pub/Sub
+  T->>INV: RestockRequestCreate — account 7, goods 250.000, shipping 20.000
+  INV->>INV: one transaction, COMMIT
+  INV->>PS: RestockCreated — account 7, amount 270.000, restock-created N
+  T->>INV: RestockRequestUpdate — 12 instead of 10
+  INV->>INV: one transaction, COMMIT
+  INV->>PS: RestockUpdated — account 7 to 7, 270.000 to 290.000, restock-updated N and the edit's trail row
+  T->>INV: RestockRequestCancel — money returned
+  INV->>INV: one transaction, COMMIT
+  INV->>PS: RestockCancelled — account 7, 290.000, money returned, restock-cancelled N
+  Note over INV,PS: a failed publish is logged with its event_id, never fails the request
+```
+
+| | |
+| --- | --- |
+| the amount | goods plus shipping — never the courier's charge, which the warehouse paid ([the-couriers-charge-stays-out-of-total](../../business/inventory/restock_decision.md#the-couriers-charge-stays-out-of-total)) |
+| an edit | announced only when the amount or the paying account changed; a note or a tracking number moves no money |
+| event ids | derived — `restock-created:N`, `restock-cancelled:N`, and `restock-updated:N:<trail row>` per edit — so a republish dedups |
+| after, never inside | an event for a write that rolled back would move money that never moved |
+| topics | read from the proto by `san pubsub ensure` — nothing to add |
 
 ```mermaid
 sequenceDiagram

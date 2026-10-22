@@ -8,12 +8,10 @@ import type { RestockRequestItem } from "../../../gen/warehouse/inventory/v1/res
 import type { SupplierChannel } from "../../../gen/warehouse/supplier/v1/supplier_channel_pb";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { LineSupplier } from "../../../features/restock/LineSupplier";
 import type { SupplierRecord } from "../../../features/suppliers/adapt";
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiahNumber } from "../../../lib/money";
 import type { LineDraft, LineState } from "../draft";
-import { RESTOCK_ACCEPT_PENDING } from "../pending";
 import { PlacementPanel } from "./PlacementPanel";
 
 // ONE LINE OF THE BOX, in three columns (owner): WHAT IT IS · WHAT ARRIVED · WHERE IT GOES — the three questions asked at
@@ -46,8 +44,8 @@ export function LineCard({
   thumbnailUrl?: string;
   suppliers: Record<string, SupplierRecord>;
   channels: Record<string, SupplierChannel>;
-  goodsPrice: bigint;
-  hpp: bigint;
+  goodsPrice: number;
+  hpp: number;
   recommendations: ProductPlace[];
   update: (fn: (d: LineDraft) => LineDraft) => void;
 }) {
@@ -84,7 +82,6 @@ export function LineCard({
                 channels={channels}
                 testId={`accept-supplier-${pid}`}
               />
-              <NotImplemented list={RESTOCK_ACCEPT_PENDING} id="lineSupplier" />
             </Flex>
 
             {/* "ORDERED 12" WITH THE SELLING TEAM'S WORD BESIDE IT. A line that says more than was first ordered was
@@ -103,7 +100,6 @@ export function LineCard({
                     </Text>{" "}
                     {item.note}
                   </Text>
-                  <NotImplemented list={RESTOCK_ACCEPT_PENDING} id="lineNote" />
                 </Flex>
               )}
             </Stack>
@@ -114,13 +110,13 @@ export function LineCard({
             <Stack gap="1" borderTopWidth="1px" borderColor="border" pt="2">
               <PriceRow
                 label={t("restock.accept.goodsPrice")}
-                value={st.good > 0n ? t("restock.accept.perPiece", { price: formatRupiah(goodsPrice) }) : "—"}
+                value={st.good > 0n ? t("restock.accept.perPiece", { price: formatRupiahNumber(goodsPrice) }) : "—"}
                 testId={`accept-goods-${pid}`}
                 muted
               />
               <PriceRow
                 label={t("restock.accept.hpp")}
-                value={st.good > 0n ? t("restock.accept.perPiece", { price: formatRupiah(hpp) }) : "—"}
+                value={st.good > 0n ? t("restock.accept.perPiece", { price: formatRupiahNumber(hpp) }) : "—"}
                 testId={`accept-hpp-${pid}`}
               />
             </Stack>
@@ -273,7 +269,7 @@ function Outcome({
 }: {
   label: string;
   value: string;
-  worth?: bigint;
+  worth?: number;
   testId: string;
   worthTestId?: string;
 }) {
@@ -285,7 +281,7 @@ function Outcome({
       <Spacer />
       {worth !== undefined && (
         <Text fontSize="xs" color="fg.muted" data-testid={worthTestId}>
-          {t("restock.accept.worth", { value: formatRupiah(worth) })}
+          {t("restock.accept.worth", { value: formatRupiahNumber(worth) })}
         </Text>
       )}
       <Text fontWeight="bold" minW="8" textAlign="end" data-testid={testId}>
@@ -316,7 +312,6 @@ function ProblemNote({
         data-testid={testId}
         onChange={(e) => onChange(e.target.value)}
       />
-      <NotImplemented list={RESTOCK_ACCEPT_PENDING} id="problemNotes" />
     </Flex>
   );
 }

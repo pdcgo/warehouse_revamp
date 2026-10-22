@@ -17,8 +17,8 @@ import (
 // up the visible rows would make the headline move every time somebody typed, which is the one thing
 // a headline must not do.
 //
-// Ownership is derived exactly as in OwnerStockByIds — through restock_requests.requesting_team_id —
-// so this can never total another team's goods.
+// Ownership is read exactly as in OwnerStockByIds — `batches.team_id` (a-batch-carries-its-owner) — so this can
+// never total another team's goods.
 func (s *Service) OwnerStockStat(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.OwnerStockStatRequest],
@@ -31,13 +31,10 @@ func (s *Service) OwnerStockStat(
 	// The lens as a pair of SQL fragments: `?` is the warehouse and `? = 0` disables the clause, so
 	// one statement serves both "everywhere" and "this building" without string-building a WHERE.
 	const readySQL = `
-		SELECT COALESCE(SUM(sb.qty), 0) AS qty,
-		       COALESCE(SUM(sb.qty * COALESCE(b.unit_cost, 0)), 0) AS value
-		FROM stock_shelf_batches sb
-		JOIN stock_batches b ON b.id = sb.batch_id
-		JOIN restock_request_items ri ON ri.id = b.restock_request_item_id
-		JOIN restock_requests r ON r.id = ri.restock_request_id
-		WHERE r.requesting_team_id = ? AND sb.qty > 0 AND (? = 0 OR b.warehouse_id = ?)`
+		SELECT COALESCE(SUM(b.stock_count), 0) AS qty,
+		       ROUND(COALESCE(SUM(b.stock_valuation), 0))::bigint AS value
+		FROM batches b
+		WHERE b.team_id = ? AND b.stock_count > 0 AND (? = 0 OR b.warehouse_id = ?)`
 
 	var ready struct {
 		Qty   int64
@@ -50,11 +47,11 @@ func (s *Service) OwnerStockStat(
 	}
 
 	const ongoingSQL = `
-		SELECT COALESCE(SUM(ri.quantity), 0) AS qty,
-		       COALESCE(SUM(ri.total_price), 0) AS value
-		FROM restock_request_items ri
-		JOIN restock_requests r ON r.id = ri.restock_request_id
-		WHERE r.requesting_team_id = ? AND r.status IN ? AND (? = 0 OR r.warehouse_id = ?)`
+		SELECT COALESCE(SUM(ri.count), 0) AS qty,
+		       ROUND(COALESCE(SUM(ri.total), 0))::bigint AS value
+		FROM restock_items ri
+		JOIN restocks r ON r.id = ri.restock_id
+		WHERE r.team_id = ? AND r.status IN ? AND (? = 0 OR r.warehouse_id = ?)`
 
 	var ongoing struct {
 		Qty   int64
@@ -69,11 +66,10 @@ func (s *Service) OwnerStockStat(
 	// MAX over no rows is NULL, not 0 — a team that has never received anything needs a nullable scan
 	// target or the driver errors on the conversion.
 	const lastRestockSQL = `
-		SELECT MAX(b.accepted_at)
-		FROM stock_batches b
-		JOIN restock_request_items ri ON ri.id = b.restock_request_item_id
-		JOIN restock_requests r ON r.id = ri.restock_request_id
-		WHERE r.requesting_team_id = ? AND (? = 0 OR b.warehouse_id = ?)`
+		SELECT MAX(b.created_at)
+		FROM batches b
+		JOIN inventory_transactions t ON t.id = b.transaction_id
+		WHERE b.team_id = ? AND t.tx_type = 'restock' AND (? = 0 OR b.warehouse_id = ?)`
 
 	var lastRestock sql.NullTime
 

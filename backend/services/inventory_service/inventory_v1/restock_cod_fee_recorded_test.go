@@ -8,7 +8,6 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
@@ -47,7 +46,7 @@ func acceptWithFee(
 	db *gorm.DB,
 	svc *inventory_v1.Service,
 	product uint64,
-	codFee int64,
+	codFee float64,
 ) *inventoryv1.RestockRequest {
 	t.Helper()
 
@@ -85,36 +84,23 @@ func acceptWithFee(
 		t.Fatalf("detail: %v", err)
 	}
 
-	// The ROWS themselves, in the database, not just what the RPC chose to echo. HPP sums these lines
-	// directly (stock_cost.go), so a cost that reached the wire but not the table would still cost
-	// wrong.
-	var stored []inventory_service_models.RestockCostLine
-
-	err = db.Where("restock_request_id = ?", reqID).Order("id ASC").Find(&stored).Error
-	if err != nil {
-		t.Fatalf("read cost lines: %v", err)
-	}
-
-	var storedTotal int64
-	for i := range stored {
-		storedTotal += stored[i].Amount
-	}
-
-	if storedTotal != codFee {
-		t.Fatalf("cost lines total %d in the database, want %d", storedTotal, codFee)
+	// The ROW itself, in the database, not just what the RPC chose to echo. HPP reads this column directly
+	// (stock_cost.go), so a charge that reached the wire but not the table would still cost wrong.
+	if stored := storedRestock(t, db, reqID).WarehouseAdditionalCost; stored != codFee {
+		t.Fatalf("the charge is %v in the database, want %v", stored, codFee)
 	}
 
 	return detail.Msg.GetRequest()
 }
 
 // codFeeOf is what the delivery cost the warehouse at the door — the restock's one courier's charge.
-func codFeeOf(r *inventoryv1.RestockRequest) int64 {
+func codFeeOf(r *inventoryv1.RestockRequest) float64 {
 	return r.GetWarehouseAdditionalCost()
 }
 
 // owed is everything the selling team is out of pocket for this restock: what its account paid (the total) plus the
 // courier's charge it owes the warehouse — the charge counted ONCE, on its own field.
-func owed(r *inventoryv1.RestockRequest) int64 {
+func owed(r *inventoryv1.RestockRequest) float64 {
 	return r.GetTotal() + codFeeOf(r)
 }
 
@@ -126,7 +112,7 @@ func TestRestockAccept_TheCODFeeIsRecordedAndStaysOutOfTheTotal(t *testing.T) {
 	req := acceptWithFee(t, db, newService(t, db), feeProduct, 25000)
 
 	if codFeeOf(req) != 25000 {
-		t.Fatalf("courier's charge reads back as %d, want 25000 — the requesting team cannot settle a fee it "+
+		t.Fatalf("courier's charge reads back as %v, want 25000 — the requesting team cannot settle a fee it "+
 			"is never shown", codFeeOf(req))
 	}
 	if req.GetWarehouseAdditionalCostNote() != courierNote {
@@ -135,7 +121,7 @@ func TestRestockAccept_TheCODFeeIsRecordedAndStaysOutOfTheTotal(t *testing.T) {
 
 	// 500.000 goods + 15.000 freight — and NOT the 25.000 at the door.
 	if req.GetSubtotal() != 500000 || req.GetTotal() != 515000 {
-		t.Fatalf("subtotal/total = %d/%d, want 500000/515000 — the courier's charge stays out of the total",
+		t.Fatalf("subtotal/total = %v/%v, want 500000/515000 — the courier's charge stays out of the total",
 			req.GetSubtotal(), req.GetTotal())
 	}
 }
@@ -148,12 +134,12 @@ func TestRestockAccept_NoCODFeeLeavesTheTotalAtTheOrderedValue(t *testing.T) {
 	req := acceptWithFee(t, db, newService(t, db), feeProduct, 0)
 
 	if codFeeOf(req) != 0 {
-		t.Fatalf("courier's charge = %d on a delivery nobody paid for at the door, want 0",
+		t.Fatalf("courier's charge = %v on a delivery nobody paid for at the door, want 0",
 			codFeeOf(req))
 	}
 
 	if got := req.GetTotal(); got != 515000 {
-		t.Fatalf("total = %d, want 515000 (goods + freight, no door fee)", got)
+		t.Fatalf("total = %v, want 515000 (goods + freight, no door fee)", got)
 	}
 }
 
@@ -170,12 +156,12 @@ func TestRestockAccept_TheTotalStaysPutAndTheChargeIsCountedOnce(t *testing.T) {
 	without := acceptWithFee(t, db, svc, feeProductB, 0)
 
 	if withFee.GetTotal() != without.GetTotal() {
-		t.Fatalf("the charge moved the total from %d to %d — it must stay out of it",
+		t.Fatalf("the charge moved the total from %v to %v — it must stay out of it",
 			without.GetTotal(), withFee.GetTotal())
 	}
 
 	if owed(withFee)-owed(without) != 25000 {
-		t.Fatalf("the charge moved what is owed by %d, want exactly the 25000 paid at the door",
+		t.Fatalf("the charge moved what is owed by %v, want exactly the 25000 paid at the door",
 			owed(withFee)-owed(without))
 	}
 }

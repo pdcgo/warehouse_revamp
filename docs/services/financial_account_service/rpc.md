@@ -10,16 +10,17 @@ that moves only with a log row ([context_decision.md](../../business/financial_a
 
 | service | RPC | what it is |
 | --- | --- | --- |
-| `FinancialAccountService` | `FinancialAccountList` · `FinancialAccountByIds` | the team's accounts — **no balance** |
-| | `FinancialAccountOverview` | the balances — per account, and a total per type |
+| `FinancialAccountService` | `FinancialAccountList` · `FinancialAccountByIds` | the team's accounts — **no balance** · `archived_only` lists the archived alone, for the archive view |
+| | `FinancialAccountOverview` | the balances — per account, and a total per type · `archived` counts the archived per type instead, for the archive's tabs |
 | | `FinancialAccountLogList` | one account's statement, newest first |
-| | `FinancialAccountCreate` | an account, and its `opening_balance` row in the same transaction |
+| | `FinancialAccountCreate` | an account, and its `opening_balance` row in the same transaction · type **Lainnya** is type and provider `unknown`, as a pair, number optional ([lainnya-is-opened-by-the-server](../../business/financial_account/context_decision.md#lainnya-is-opened-by-the-server)) |
 | | `FinancialAccountUpdate` · `Archive` · `Restore` | name, holder, description · out of the pickers only at zero · back |
 | | `FinancialAccountIdentify` | an `unknown` account filled in, or moved into a registered one |
 | | `FinancialAccountTransfer` · `Capital` · `Reconcile` | the hand rows — two legs · the owner's money · the bank's figure in, the difference posted |
 | | `FinancialAccountShopSet` · `OperationalSet` | which account a shop withdraws into · which accounts pay for operations |
 | `FinancialAccountAnalyticService` | `AnalyticTimeSearch` · `AnalyticGroupSearch` · `AnalyticGroupMetric` | settlement's report shape, read from one row per account per day |
 | *(push route)* | `/event/financial-account-withdrawal/push` | settlement's `withdrawal` rows into the shop's account |
+| *(push route)* | `/event/financial-account-team-payment/push` | liability's accepted team payments — out of the payer's account, into the creditor's |
 
 Every member of the team **sees**; admin and up **moves** the money
 ([seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up)) —
@@ -34,6 +35,10 @@ flowchart LR
   S["settlement_service"] -->|"SettlementLogPosted"| T["topic settlement-log-posted"]
   T -->|"push, financial-account-withdrawal"| WL["the withdrawal listener"]
   WL --> POST
+  LS["liability_service"] -->|"LiabilityPaymentAccepted"| LT["topic liability-payment-accepted"]
+  LT -->|"push, financial-account-team-payment"| TL["the team-payment listener"]
+  TL --> POST
+  LS -.->|"FinancialAccountByIds, the caller's token"| BI["is the account the team's own, active, named"]
   POST --> L[("financial_account_logs + the balance")]
   POST --> D[("financial_account_daily_reports")]
   D --> A["AnalyticTimeSearch, GroupSearch, GroupMetric"]
@@ -114,6 +119,42 @@ sequenceDiagram
 
 The description names the shop by id (`Withdrawal from shop #21`) — a listener hears an event, not a person,
 so it has no caller to ask the shop's service with. The screens put the shop's name in.
+
+---
+
+## The team-payment listener
+
+[a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept) —
+liability publishes `LiabilityPaymentAccepted` once a creditor accepts, and this posts the transfer into BOTH
+teams' books: one `team_payment` row out of the payer's account, one into the creditor's, sharing a group. Route
+`/event/financial-account-team-payment/push`, subscription `financial-account-team-payment` on
+`liability-payment-accepted`. How liability checks the two accounts before it publishes:
+[liability's rpc.md](../liability_service/rpc.md#where-the-money-left-and-where-it-landed--the-accounts).
+
+```mermaid
+sequenceDiagram
+    participant B as Pub/Sub
+    participant L as the listener
+    participant DB as one transaction
+    B->>L: LiabilityPaymentAccepted — from, to, amount, the accept time
+    L->>DB: CLAIM the event id — a redelivery stops here
+    L->>DB: lock from and to FOR UPDATE, in id order, ONE statement — each must be the team the event names
+    L->>DB: post team_payment minus amount on from — skipped when from is 0
+    L->>DB: post team_payment plus amount on to — one group, the day the creditor accepted
+    L-->>B: 200 acks, and any error NACKs and Pub/Sub redelivers
+```
+
+| case | what happens |
+| --- | --- |
+| the same event twice, even at once | posted once — the claim is the write |
+| payments both ways between the same two accounts at once | no deadlock — two teams' accounts, locked in id order like a transfer's ([lock order](../../../audits/services/financial_account_service/concurrency/lock-order.md)) |
+| `from_account_id = 0` — a payment recorded before *Paid from* existed | only the creditor's leg posts; a reconcile on the payer's side finds the transfer |
+| an account missing, or not the team the event names | an error, never filed elsewhere — liability asked before recording and accepting, so this is a bug for the dead-letter queue |
+| an archived account | posts — refusing would dead-letter money that moved |
+| no `to_account_id`, or no amount | an error — liability's contract makes both impossible, and the listener does not trust that |
+
+The descriptions name the other team by id (`Team payment #12 to team #7`) — as for a withdrawal, a listener
+has no caller to ask the team's service with.
 
 ---
 

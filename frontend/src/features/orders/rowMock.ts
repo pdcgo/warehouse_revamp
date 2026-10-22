@@ -1,5 +1,4 @@
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
-import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 
 // THE TWO ROW FACTS THE CONTRACT DOES NOT CARRY, INVENTED SO THE ROW CAN BE LOOKED AT (owner).
 //
@@ -76,8 +75,8 @@ export function mockMarketplaceCreated(id: bigint, externalRef: string): bigint 
 /**
  * WHEN THE ORDER ENTERED THE STAGE BEING FILTERED.
  *
- * ⚠ THIS IS THE ONE `OrderEvent` ALREADY HAS A SHAPE FOR — `kind` + `at_unix` — and the one the list
- * cannot read: events are populated by `OrderDetail` only. So the shape is right and the source is
+ * ⚠ THIS IS THE ONE `OrderTimelineLog` ALREADY HAS A SHAPE FOR — `status` + `created_at_unix` — and the one the
+ * list cannot read: the timeline is populated by `OrderDetail` only. So the shape is right and the source is
  * missing, which is exactly what the mark says.
  *
  * Returned as an OFFSET from the order's creation, so a transition is never before the order existed.
@@ -114,32 +113,3 @@ export function mockWarehouseFee(id: bigint): bigint {
 
 // ── For the WAREHOUSE's row (`the-warehouse-row-is-the-old-systems-columns`) ──────────────────────
 
-const SHOP_SUFFIXES = ["Official", "Store", "Mart"];
-const SHOP_MARKETPLACES = [Marketplace.SHOPEE, Marketplace.TOKOPEDIA, Marketplace.TIKTOK, Marketplace.LAZADA];
-
-/**
- * THE SELLER'S SHOP, as a warehouse would see it — named after the SELLING team, so a row never shows one
- * seller's order under another seller's shop. ⚠ A warehouse cannot read it: `ShopList` is scoped to the
- * selling team, and the order carries only `shop_id`. Undefined for an order with no marketplace
- * reference — a phone order has no storefront.
- */
-export function mockSellerShop(
-  id: bigint,
-  externalRef: string,
-  teamName: string,
-): { name: string; marketplace: Marketplace } | undefined {
-  if (externalRef.trim() === "") return undefined;
-
-  const n = Number(id);
-  const base = teamName.replace(/^Toko\s+/i, "") || "Toko";
-
-  return {
-    name: `${base} ${SHOP_SUFFIXES[n % SHOP_SUFFIXES.length]}`,
-    marketplace: SHOP_MARKETPLACES[n % SHOP_MARKETPLACES.length]!,
-  };
-}
-
-/** How many units the order holds. ⚠ A list result carries no items, so the warehouse row cannot count them. */
-export function mockQuantity(id: bigint): number {
-  return 1 + (Number(id) % 6);
-}

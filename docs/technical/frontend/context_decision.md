@@ -69,6 +69,7 @@ when it applies one of these.
 | [a-one-type-picker-shows-the-name-alone](#a-one-type-picker-shows-the-name-alone) | a team filter that offers ONE type (warehouses, selling teams) shows its pick as the name alone — no type badge | the supplier screens, the seller's orders |
 | [a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes) | an × and Hapus Filter fade in as they appear, the phone's Filter count pops when it changes, a chip's pick turns in 120ms — the results never fade | every `FilterBar` |
 | [motion-is-small-quick-and-shared](#motion-is-small-quick-and-shared) | motion is pure CSS from the theme: a page rises and fades in, a swap fades in place, a first load is a skeleton, one tab underline slides, a hover answers in 120ms — and a refresh moves nothing | the supplier screens first |
+| [a-counted-line-is-three-columns](#a-counted-line-is-three-columns) | a screen that counts line by line gives each line Accept Delivery's frame — what it is · what you type · what it means — in a fixed shape, under a sticky header | Accept Delivery, then the stock count's Count page |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1517,6 +1518,33 @@ refresh → the same list · Back from a supplier → the same list · a pasted 
 | ⚠ its own writes are not followed | a write returns as a REPLACE navigation, and the router can commit it a keystroke late; following it set the search box back and dropped letters (seen only when the story run was under load). The hook follows a URL changed from outside — Back, a link — and never its own echo |
 | applied to | the suppliers, Discover, a supplier page's Toko · Produk · Statistik, the Supplier Report; the accounts list (its type tab and sort, beside `view=archived`), an account's statement, the account report; the seller's and the warehouse's orders (the stage tab was already `status`), the settlement list and report, the settlement imports, the daily statement; Kewajiban's list and a pair's date range; batches and a batch, stock, products, Discover products, racks, shops, shipment channels, the pick queue (its step tab), returns; restock and transfers (both sides), users, teams (the type tab), expenses |
 | nothing to keep | the drafts and the balance sheet hold no filter of their own |
+
+## a-counted-line-is-three-columns
+
+> Owner, in chat (2026-10-14), previewing the stock count prototype: *"why count page so weird ? any recomendation ? like
+> restock layout when accepting ?"* — then, to the sketch: *"yes like that"*.
+
+```
+sticky:  ←  Count #15 · A-01-1  [All racks]            1 of 3 counted  [Change Rack] [Add Found]
+┌──────────────────────┬────────────────────────────┬────────────────────────────┐
+│ [img] product name   │ ☑ Your Count    ↺ Recount  │ ⚖ The Difference        −2 │
+│ SKU · team           │ Counted *  [− _ +] [Submit]│ Of the missing, broken [ ] │
+│ ● state              │ Counted                 2  │ Lost 2 *  [why… e.g. …   ] │
+│                      │ Expected      ⊘ hidden     │           [✓ Mark Counted] │
+│                      │ Difference              —  │                            │
+└──────────────────────┴────────────────────────────┴────────────────────────────┘
+        below lg the three columns stack inside the card; on a phone the header's actions fold into ⋯
+```
+
+| | |
+| --- | --- |
+| the line | **three columns** — *what it is* (picture, name, SKU, team, state), *what you type* (the count, then the figures it gives), *what it means* (the difference and its reasons, on a grey ground). `minmax(0,3fr) 4fr 4fr` |
+| the frame | **fixed** — a figure not known yet reads **—** (or *hidden*, for a book figure before a blind count), never a different card per state. A rack or a box is scanned down one column |
+| the picture | always — someone at a shelf or a box recognises the picture before the SKU (`ProductListItem`) |
+| the header | sticky: back, the title, where you are, the progress, the actions; one row with `⋯` on a phone ([the-phone-header-is-one-row](#the-phone-header-is-one-row)) |
+| stacks | below `lg` on the Count page (its columns are light); Accept Delivery keeps `xl` — a placement picker needs the room |
+| not a card in a card | the two typed columns are bordered boxes inside the line's card, as Accept Delivery's are — the one pattern the owner pointed at |
+| was | the Count page stacked every field on the left, each card a different shape by state — *"so weird"* |
 
 ## Recorded elsewhere
 

@@ -25,7 +25,6 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useProductsByIds } from "../../features/products/queries";
 import { useProductPlaces } from "../../features/inventory/queries";
 import { useLineSuppliers } from "../../features/restock/LineSupplier";
@@ -39,7 +38,6 @@ import { CourierCharge } from "./components/CourierCharge";
 import { LineCard } from "./components/LineCard";
 import type { LineDraft } from "./draft";
 import { emptyLine, lineState, receivedLine } from "./draft";
-import { RESTOCK_ACCEPT_PENDING } from "./pending";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -105,24 +103,28 @@ export function RestockAcceptPage() {
   const updater = (itemId: bigint) => (fn: (d: LineDraft) => LineDraft) =>
     setDrafts((prev) => ({ ...prev, [itemId.toString()]: fn(prev[itemId.toString()] ?? emptyLine()) }));
 
-  const lines = items.map((item) => {
-    const draft = draftOf(item.id);
-    return { item, draft, st: lineState(item, draft) };
-  });
-
   const courierCharge = toRupiah(charge);
   // The charge's note is required once it is above 0 (the-courier-is-paid-once-per-restock).
-  const chargeNoteMissing = courierCharge > 0n && chargeNote.trim() === "";
+  const chargeNoteMissing = courierCharge > 0 && chargeNote.trim() === "";
 
-  // The HPP preview mirrors the handler: shipping + the courier's charge, spread over every good unit of the restock.
-  const freight = (request?.shipmentCost ?? 0n) + courierCharge;
-  const goodAcross = lines.reduce((sum, l) => sum + l.st.good, 0n);
+  // The landed unit price: shipping + the courier's charge, spread over every unit ORDERED in the restock
+  // (unit-price-is-line-price-plus-costs-per-unit, all-qty-is-every-unit-ordered). It does not move as the box is
+  // counted, and a broken or missing unit is worth the same price as a good one.
+  const costs = (request?.shipmentCost ?? 0) + courierCharge;
+  const allQty = items.reduce((sum, i) => sum + i.count, 0n);
+  const landedOf = (item: (typeof items)[number]) => unitHpp(item.total, item.count, costs, allQty);
+
+  const lines = items.map((item) => {
+    const draft = draftOf(item.id);
+    const landed = landedOf(item);
+    return { item, draft, landed, st: lineState(item, draft, landed) };
+  });
 
   const unfinished = lines.filter((l) => !l.st.ready).length;
   const ready = lines.length > 0 && unfinished === 0 && !chargeNoteMissing;
   const busy = accept.isPending;
 
-  const ordered = items.reduce((sum, i) => sum + i.count, 0n);
+  const ordered = allQty;
   const inBox = lines.reduce((sum, l) => sum + l.st.received, 0n);
 
   async function submit() {
@@ -136,7 +138,7 @@ export function RestockAcceptPage() {
         // Built from the restock's own lines, so every line is counted exactly once — the handler's first check.
         lines: lines.map((l) => receivedLine(l.item, l.draft, l.st)),
         warehouseAdditionalCost: courierCharge,
-        warehouseAdditionalCostNote: courierCharge > 0n ? chargeNote.trim() : "",
+        warehouseAdditionalCostNote: courierCharge > 0 ? chargeNote.trim() : "",
       });
 
       toaster.create({ type: "success", title: t("restock.accept.toast.accepted") });
@@ -320,7 +322,6 @@ export function RestockAcceptPage() {
         </Text>
       )}
 
-      <NotImplementedSummary list={RESTOCK_ACCEPT_PENDING} />
 
       <AcceptSummary request={request} courierCharge={courierCharge} />
 
@@ -335,7 +336,7 @@ export function RestockAcceptPage() {
         onNote={setChargeNote}
       />
 
-      {lines.map(({ item, draft, st }) => {
+      {lines.map(({ item, draft, landed, st }) => {
         const product = products?.get(item.productId.toString());
 
         return (
@@ -349,8 +350,8 @@ export function RestockAcceptPage() {
             thumbnailUrl={product?.defaultImageThumbnailUrl}
             suppliers={suppliers}
             channels={channels}
-            goodsPrice={unitGoods(item.total, st.good)}
-            hpp={unitHpp(item.total, st.good, freight, goodAcross)}
+            goodsPrice={unitGoods(item.total, item.count)}
+            hpp={landed}
             // Real placements only — a pile with no placement is not somewhere to put things.
             recommendations={places.filter((p) => p.productId === item.productId && p.rackId !== 0n)}
             update={updater(item.id)}

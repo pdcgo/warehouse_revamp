@@ -16,7 +16,7 @@ func (s *Service) RackCreate(
 ) (*connect.Response[inventoryv1.RackCreateResponse], error) {
 	rack := &inventory_service_models.Rack{
 		WarehouseID: req.Msg.GetTeamId(),
-		Code:        req.Msg.GetCode(),
+		Code:        inventory_service_models.CleanRackCode(req.Msg.GetCode()),
 		Name:        req.Msg.GetName(),
 		Description: req.Msg.GetDescription(),
 	}

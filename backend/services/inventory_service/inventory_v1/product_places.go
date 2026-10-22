@@ -24,9 +24,9 @@ type productPlaceRow struct {
 //
 // It reads CURRENT LEVELS, and that is the right source here — unlike StockPickLocations (#151), which
 // reads the ledger because a pick is a commitment already made. "Where does this live now" is a
-// question about the present, and the present is exactly what stock_levels holds.
+// question about the present, and the present is exactly what the rack rows hold.
 //
-// Empty places are excluded (on_hand > 0). A shelf that USED to hold the product is not a
+// Empty racks are excluded (stock_count > 0). A shelf that USED to hold the product is not a
 // recommendation — it is a shelf with nothing on it, and suggesting it would send someone to an empty
 // space wondering what they were meant to find.
 func (s *Service) ProductPlaces(
@@ -37,15 +37,13 @@ func (s *Service) ProductPlaces(
 
 	err := s.db.
 		WithContext(ctx).
-		Table("stock_levels AS sl").
-		Select("sl.product_id AS product_id, sl.rack_id AS rack_id, r.code AS rack_code, sl.on_hand AS on_hand").
-		Joins("LEFT JOIN racks r ON r.id = sl.rack_id").
-		Where("sl.warehouse_id = ? AND sl.product_id IN ? AND sl.on_hand > 0",
+		Table("product_placements AS pp").
+		Select("pp.product_id AS product_id, pp.placement_id AS rack_id, r.code AS rack_code, pp.stock_count AS on_hand").
+		Joins("JOIN placements r ON r.id = pp.placement_id").
+		Where("pp.warehouse_id = ? AND pp.product_id IN ? AND pp.stock_count > 0",
 			req.Msg.GetWarehouseId(), req.Msg.GetFilter().GetIds()).
-		// The unplaced pile first, then shelves by label — the same order the pick walk uses (#151), so
-		// a place reads the same wherever it is shown. `IS NOT NULL` rather than `IS NULL`: false sorts
-		// first, so this puts the nulls first (the inverted form is a trap #151 already fell into).
-		Order("sl.product_id, (sl.rack_id IS NOT NULL), r.code").
+		// Racks by label — the same order the pick walk uses (#151), so a place reads the same wherever it is shown.
+		Order("pp.product_id, r.code").
 		Scan(&rows).
 		Error
 	if err != nil {
@@ -60,8 +58,6 @@ func (s *Service) ProductPlaces(
 			OnHand:    rows[i].OnHand,
 		}
 
-		// nil rack = the unplaced pile (#135), carried as 0 with an empty code. It belongs in the
-		// answer: "there are already 12 of these unshelved" is exactly what stops a second pile.
 		if rows[i].RackID != nil {
 			place.RackId = *rows[i].RackID
 		}

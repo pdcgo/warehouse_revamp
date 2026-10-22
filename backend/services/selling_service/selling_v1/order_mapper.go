@@ -2,7 +2,6 @@ package selling_v1
 
 import (
 	"context"
-	"time"
 
 	"gorm.io/gorm"
 
@@ -13,107 +12,88 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
-// OrderStatus as stored in the `status` TEXT column. Keep in sync with the proto enum — this mapper
-// is the only writer/reader, so validity is guarded here (no DB CHECK, cf. #80).
+// OrderStatus as stored in the `status` TEXT column — the eleven of the order context's status diagram
+// (the-status-move-is-the-only-journey). This mapper is the only writer/reader, so validity is guarded
+// here (no DB CHECK, cf. #80). 00015 moved every row from the old six.
 const (
-	orderStatusPlaced    = "placed"
-	orderStatusConfirmed = "confirmed"
-	orderStatusCancelled = "cancelled"
-
-	// The warehouse's states (#150): CONFIRMED -> PICKING -> PACKED -> SHIPPED.
-	orderStatusPicking = "picking"
-	orderStatusPacked  = "packed"
-	orderStatusShipped = "shipped"
+	orderStatusPending         = "pending"
+	orderStatusProcessed       = "processed"
+	orderStatusPicked          = "picked"
+	orderStatusShipping        = "shipping"
+	orderStatusShipped         = "shipped"
+	orderStatusCompleted       = "completed"
+	orderStatusProblem         = "problem"
+	orderStatusLost            = "lost"
+	orderStatusReturn          = "return"
+	orderStatusReturnCompleted = "return_completed"
+	orderStatusCancel          = "cancel"
 )
 
+// orderStatusTexts is the ONE pairing of a stored status and its proto value. Both directions read it,
+// so a status added to one cannot be missing from the other.
+var orderStatusTexts = map[string]sellingv1.OrderStatus{
+	orderStatusPending:         sellingv1.OrderStatus_ORDER_STATUS_PENDING,
+	orderStatusProcessed:       sellingv1.OrderStatus_ORDER_STATUS_PROCESSED,
+	orderStatusPicked:          sellingv1.OrderStatus_ORDER_STATUS_PICKED,
+	orderStatusShipping:        sellingv1.OrderStatus_ORDER_STATUS_SHIPPING,
+	orderStatusShipped:         sellingv1.OrderStatus_ORDER_STATUS_SHIPPED,
+	orderStatusCompleted:       sellingv1.OrderStatus_ORDER_STATUS_COMPLETED,
+	orderStatusProblem:         sellingv1.OrderStatus_ORDER_STATUS_PROBLEM,
+	orderStatusLost:            sellingv1.OrderStatus_ORDER_STATUS_LOST,
+	orderStatusReturn:          sellingv1.OrderStatus_ORDER_STATUS_RETURN,
+	orderStatusReturnCompleted: sellingv1.OrderStatus_ORDER_STATUS_RETURN_COMPLETED,
+	orderStatusCancel:          sellingv1.OrderStatus_ORDER_STATUS_CANCEL,
+}
+
+// orderStatusToText is "" for UNSPECIFIED or a value this build does not know.
 func orderStatusToText(s sellingv1.OrderStatus) string {
-	switch s {
-	case sellingv1.OrderStatus_ORDER_STATUS_PLACED:
-		return orderStatusPlaced
-	case sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED:
-		return orderStatusConfirmed
-	case sellingv1.OrderStatus_ORDER_STATUS_CANCELLED:
-		return orderStatusCancelled
-	case sellingv1.OrderStatus_ORDER_STATUS_PICKING:
-		return orderStatusPicking
-	case sellingv1.OrderStatus_ORDER_STATUS_PACKED:
-		return orderStatusPacked
-	case sellingv1.OrderStatus_ORDER_STATUS_SHIPPED:
-		return orderStatusShipped
-	default:
-		return ""
+	for text, status := range orderStatusTexts {
+		if status == s {
+			return text
+		}
 	}
+
+	return ""
 }
 
+// orderStatusFromText is UNSPECIFIED for a text this build does not know.
 func orderStatusFromText(text string) sellingv1.OrderStatus {
-	switch text {
-	case orderStatusPlaced:
-		return sellingv1.OrderStatus_ORDER_STATUS_PLACED
-	case orderStatusConfirmed:
-		return sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED
-	case orderStatusCancelled:
-		return sellingv1.OrderStatus_ORDER_STATUS_CANCELLED
-	case orderStatusPicking:
-		return sellingv1.OrderStatus_ORDER_STATUS_PICKING
-	case orderStatusPacked:
-		return sellingv1.OrderStatus_ORDER_STATUS_PACKED
-	case orderStatusShipped:
-		return sellingv1.OrderStatus_ORDER_STATUS_SHIPPED
-	default:
-		return sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED
-	}
+	return orderStatusTexts[text]
 }
 
-// OrderEventKind as stored in the `kind` TEXT column of `order_events` (00011).
-//
-// ⚠ THE STRINGS ARE THE STATUS STRINGS ABOVE, ON PURPOSE — every event so far is a transition, so a
-// transition records the state it moved INTO and the 00011 backfill could insert `status` verbatim as
-// a kind. They are declared separately rather than aliased because the two vocabularies are only
-// coincidentally equal: the first event that is not a status change (a note edited, a receipt
-// attached) gets a kind here and no status anywhere, and an alias would have to be untangled first.
+// Which side wrote a timeline row (order-timeline-logs-replaces-order-events), as stored in its `from` column.
 const (
-	orderEventPlaced    = "placed"
-	orderEventConfirmed = "confirmed"
-	orderEventCancelled = "cancelled"
-	orderEventPicking   = "picking"
-	orderEventPacked    = "packed"
-	orderEventShipped   = "shipped"
+	timelineFromWarehouse = "warehouse"
+	timelineFromSelling   = "selling"
 )
 
-func orderEventKindFromText(text string) sellingv1.OrderEventKind {
-	switch text {
-	case orderEventPlaced:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_PLACED
-	case orderEventConfirmed:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_CONFIRMED
-	case orderEventCancelled:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_CANCELLED
-	case orderEventPicking:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_PICKING
-	case orderEventPacked:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_PACKED
-	case orderEventShipped:
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPED
-	default:
-		// A kind written by a newer build than this one. UNSPECIFIED travels out and the screen renders
-		// it as an unknown step, which is better than dropping the row — a gap in a history reads as
-		// nothing having happened.
-		return sellingv1.OrderEventKind_ORDER_EVENT_KIND_UNSPECIFIED
-	}
+var timelineFroms = map[string]sellingv1.OrderTimelineFrom{
+	timelineFromWarehouse: sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_WAREHOUSE,
+	timelineFromSelling:   sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_SELLING,
 }
 
-// recordOrderEvent appends one row to the order's history.
-//
-// `at` is passed in rather than taken here so the event and the thing it describes share ONE moment:
-// setOrderStatus already stamped `updated_at`, and a second time.Now() at this line would file a
-// midnight transition on a different day from the row it belongs to (guidelines/event-guideline.md #2).
-func recordOrderEvent(tx *gorm.DB, orderID uint64, kind string, actor uint64, at time.Time) error {
-	return tx.Create(&selling_service_models.OrderEvent{
-		OrderID:     orderID,
-		Kind:        kind,
-		ActorUserID: actor,
-		At:          at,
-	}).Error
+// recordTimelineLogs appends rows to orders' timelines in one INSERT — one row for a placement, one per order for a
+// batch move. The caller stamps CreatedAt, so a row and the change it describes share ONE moment
+// (guidelines/event-guideline.md #2).
+func recordTimelineLogs(tx *gorm.DB, logs []selling_service_models.OrderTimelineLog) error {
+	if len(logs) == 0 {
+		return nil
+	}
+
+	return tx.Create(&logs).Error
+}
+
+// timelineLogToProto maps one timeline row. A status this build does not know travels as UNSPECIFIED, which the
+// screen shows as an unknown step rather than dropping the row — a gap reads as nothing having happened.
+func timelineLogToProto(log *selling_service_models.OrderTimelineLog) *sellingv1.OrderTimelineLog {
+	return &sellingv1.OrderTimelineLog{
+		Id:            log.ID,
+		Status:        orderStatusFromText(log.Status),
+		Note:          log.Note,
+		From:          timelineFroms[log.From],
+		ActorId:       log.ActorID,
+		CreatedAtUnix: log.CreatedAt.Unix(),
+	}
 }
 
 // eventActor is WHO is doing this, for the history — 0 when the caller cannot be identified.
@@ -155,7 +135,15 @@ func eventIdentity(ctx context.Context) *role_basev1.Identity {
 
 func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 	items := make([]*sellingv1.OrderItem, 0, len(o.Items))
+
+	// The list query selects the unit count; a detail, which loads the lines, counts them here.
+	itemQuantity := o.ItemQuantity
+
 	for i := range o.Items {
+		if o.ItemQuantity == 0 {
+			itemQuantity += int64(o.Items[i].Quantity)
+		}
+
 		items = append(items, &sellingv1.OrderItem{
 			Id:        o.Items[i].ID,
 			ProductId: o.Items[i].ProductID,
@@ -168,14 +156,9 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 	}
 
 	// Empty on every path but OrderDetail, which is the only one that preloads them.
-	events := make([]*sellingv1.OrderEvent, 0, len(o.Events))
-	for i := range o.Events {
-		events = append(events, &sellingv1.OrderEvent{
-			Id:          o.Events[i].ID,
-			Kind:        orderEventKindFromText(o.Events[i].Kind),
-			ActorUserId: o.Events[i].ActorUserID,
-			AtUnix:      o.Events[i].At.Unix(),
-		})
+	timeline := make([]*sellingv1.OrderTimelineLog, 0, len(o.TimelineLogs))
+	for i := range o.TimelineLogs {
+		timeline = append(timeline, timelineLogToProto(&o.TimelineLogs[i]))
 	}
 
 	return &sellingv1.Order{
@@ -200,9 +183,10 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		// The storefront's own id for this order, verbatim in both directions.
 		OrderExternalRefId: o.OrderExternalRefID,
 		Items:              items,
-		Events:             events,
+		TimelineLogs:       timeline,
 		CreatedAtUnix:      o.CreatedAt.Unix(),
 		CreatedByUserId:    o.CreatedByUserID,
+		ItemQuantity:       itemQuantity,
 	}
 }
 

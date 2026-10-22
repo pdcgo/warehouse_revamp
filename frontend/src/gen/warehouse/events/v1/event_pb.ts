@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/events/v1/event.proto.
  */
 export const file_warehouse_events_v1_event: GenFile = /*@__PURE__*/
-  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJItUGCgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkoKFXNldHRsZW1lbnRfbG9nX3Bvc3RlZBisAiABKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlNldHRsZW1lbnRMb2dQb3N0ZWRIABJBChByZXN0b2NrX2FjY2VwdGVkGJADIAEoCzIkLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0FjY2VwdGVkSAASPwoPcmVzdG9ja19jcmVhdGVkGJEDIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0NyZWF0ZWRIABJDChFyZXN0b2NrX2NhbmNlbGxlZBiSAyABKAsyJS53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tDYW5jZWxsZWRIABI/Cg9yZXN0b2NrX3VwZGF0ZWQYkwMgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrVXBkYXRlZEgAGi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AUIQCgdtZXNzYWdlEgW6SAIIASJZCg1NZW1iZXJSZW1vdmVkEg8KB3RlYW1faWQYASABKAQSDwoHdXNlcl9pZBgCIAEoBBIQCghhY3Rvcl9pZBgDIAEoBDoUirUYEAoObWVtYmVyLXJlbW92ZWQitgMKE1NldHRsZW1lbnRMb2dQb3N0ZWQSDgoGbG9nX2lkGAEgASgEEhEKCXVuaXF1ZV9pZBgCIAEoCRIQCghvcmRlcl9pZBgDIAEoBBIPCgdzaG9wX2lkGAQgASgEEg8KB3RlYW1faWQYBSABKAQSEAoIYWN0b3JfaWQYBiABKAQSIAoYb3JkZXJfY3JlYXRlZF9ieV91c2VyX2lkGAcgASgEEkAKD3NldHRsZW1lbnRfdHlwZRgIIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlEjgKC3NvdXJjZV90eXBlGAkgASgOMiMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU291cmNlVHlwZRIOCgZjaGFuZ2UYCiABKAMSDwoHYmFsYW5jZRgLIAEoAxIRCglwb3N0ZWRfb24YDCABKAkSEwoLb2NjdXJyZWRfb24YDSABKAkSEwoLcmV2ZXJzZXNfaWQYDiABKAQSDAoEbm90ZRgPIAEoCRIPCgd1c2VyX2lkGBAgASgEOhuKtRgXChVzZXR0bGVtZW50LWxvZy1wb3N0ZWQi6wEKC09yZGVyUGxhY2VkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSMwoFbGluZXMYCCADKAsyJC53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyUGxhY2VkTGluZRIQCghhY3Rvcl9pZBgJIAEoBDoSirUYDgoMb3JkZXItcGxhY2VkImIKD09yZGVyUGxhY2VkTGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhYKDm93bmluZ190ZWFtX2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhEKCXVuaXRfY29zdBgEIAEoAyJcCg5PcmRlckNhbmNlbGxlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhAKCGFjdG9yX2lkGAMgASgEOhWKtRgRCg9vcmRlci1jYW5jZWxsZWQi4QEKD1Jlc3RvY2tBY2NlcHRlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhMKC3N1cHBsaWVyX2lkGAQgASgEEhMKC2FjY2VwdGVkX29uGAUgASgJEjcKBWxpbmVzGAYgAygLMigud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrQWNjZXB0ZWRMaW5lEhgKEGFjY2VwdGVkX2F0X3VuaXgYByABKAM6Foq1GBIKEHJlc3RvY2stYWNjZXB0ZWQi3QEKE1Jlc3RvY2tBY2NlcHRlZExpbmUSDwoHaXRlbV9pZBgBIAEoBBISCgpwcm9kdWN0X2lkGAIgASgEEhUKDW9yZGVyZWRfY291bnQYAyABKAMSEwoLdG90YWxfcHJpY2UYBCABKAMSFgoOYWNjZXB0ZWRfY291bnQYBSABKAMSFAoMYnJva2VuX2NvdW50GAYgASgDEhUKDW1pc3NpbmdfY291bnQYByABKAMSEwoLc3VwcGxpZXJfaWQYCCABKAQSGwoTc3VwcGxpZXJfY2hhbm5lbF9pZBgJIAEoBCK5AQoOUmVzdG9ja0NyZWF0ZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhQKDHdhcmVob3VzZV9pZBgDIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYBCABKAQSDgoGYW1vdW50GAUgASgDEhAKCGFjdG9yX2lkGAYgASgEEhcKD2NyZWF0ZWRfYXRfdW5peBgHIAEoAzoVirUYEQoPcmVzdG9jay1jcmVhdGVkIsEBChBSZXN0b2NrQ2FuY2VsbGVkEhIKCnJlc3RvY2tfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYAyABKAQSDgoGYW1vdW50GAQgASgDEhYKDm1vbmV5X3JldHVybmVkGAUgASgIEhAKCGFjdG9yX2lkGAYgASgEEhkKEWNhbmNlbGxlZF9hdF91bml4GAcgASgDOheKtRgTChFyZXN0b2NrLWNhbmNlbGxlZCLfAQoOUmVzdG9ja1VwZGF0ZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEh4KFm9sZF9maW5hbmNlX2FjY291bnRfaWQYAyABKAQSHgoWbmV3X2ZpbmFuY2VfYWNjb3VudF9pZBgEIAEoBBISCgpvbGRfYW1vdW50GAUgASgDEhIKCm5ld19hbW91bnQYBiABKAMSEAoIYWN0b3JfaWQYByABKAQSFwoPdXBkYXRlZF9hdF91bml4GAggASgDOhWKtRgRCg9yZXN0b2NrLXVwZGF0ZWQ6ZgoMZXZlbnRfY29uZmlnEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNGGAyABKAsyIC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Q29uZmlnUgtldmVudENvbmZpZ0JMWkpnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V2ZW50cy92MTtldmVudHN2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
+  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIokKCgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkoKFXNldHRsZW1lbnRfbG9nX3Bvc3RlZBisAiABKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlNldHRsZW1lbnRMb2dQb3N0ZWRIABJBChByZXN0b2NrX2FjY2VwdGVkGJADIAEoCzIkLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0FjY2VwdGVkSAASPwoPcmVzdG9ja19jcmVhdGVkGJEDIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0NyZWF0ZWRIABJDChFyZXN0b2NrX2NhbmNlbGxlZBiSAyABKAsyJS53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tDYW5jZWxsZWRIABI/Cg9yZXN0b2NrX3VwZGF0ZWQYkwMgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrVXBkYXRlZEgAElQKGndhcmVob3VzZV90cmFuc2Zlcl9jcmVhdGVkGJQDIAEoCzItLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJDcmVhdGVkSAASVAoad2FyZWhvdXNlX3RyYW5zZmVyX3VwZGF0ZWQYlQMgASgLMi0ud2FyZWhvdXNlLmV2ZW50cy52MS5XYXJlaG91c2VUcmFuc2ZlclVwZGF0ZWRIABJYChx3YXJlaG91c2VfdHJhbnNmZXJfY2FuY2VsbGVkGJYDIAEoCzIvLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJDYW5jZWxsZWRIABJWCht3YXJlaG91c2VfdHJhbnNmZXJfYWNjZXB0ZWQYlwMgASgLMi4ud2FyZWhvdXNlLmV2ZW50cy52MS5XYXJlaG91c2VUcmFuc2ZlckFjY2VwdGVkSAASVAoabGlhYmlsaXR5X3BheW1lbnRfYWNjZXB0ZWQY9AMgASgLMi0ud2FyZWhvdXNlLmV2ZW50cy52MS5MaWFiaWxpdHlQYXltZW50QWNjZXB0ZWRIABovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCEAoHbWVzc2FnZRIFukgCCAEiWQoNTWVtYmVyUmVtb3ZlZBIPCgd0ZWFtX2lkGAEgASgEEg8KB3VzZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQ6FIq1GBAKDm1lbWJlci1yZW1vdmVkIrYDChNTZXR0bGVtZW50TG9nUG9zdGVkEg4KBmxvZ19pZBgBIAEoBBIRCgl1bmlxdWVfaWQYAiABKAkSEAoIb3JkZXJfaWQYAyABKAQSDwoHc2hvcF9pZBgEIAEoBBIPCgd0ZWFtX2lkGAUgASgEEhAKCGFjdG9yX2lkGAYgASgEEiAKGG9yZGVyX2NyZWF0ZWRfYnlfdXNlcl9pZBgHIAEoBBJACg9zZXR0bGVtZW50X3R5cGUYCCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZRI4Cgtzb3VyY2VfdHlwZRgJIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGUSDgoGY2hhbmdlGAogASgDEg8KB2JhbGFuY2UYCyABKAMSEQoJcG9zdGVkX29uGAwgASgJEhMKC29jY3VycmVkX29uGA0gASgJEhMKC3JldmVyc2VzX2lkGA4gASgEEgwKBG5vdGUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBDobirUYFwoVc2V0dGxlbWVudC1sb2ctcG9zdGVkIpcCCgtPcmRlclBsYWNlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEg8KB3JldmVudWUYAyABKAMSDAoEY29ncxgEIAEoAxIVCg1zaGlwcGluZ19jb3N0GAUgASgDEhIKCmNvc3Rfa25vd24YBiABKAgSFAoMd2FyZWhvdXNlX2lkGAcgASgEEjMKBWxpbmVzGAggAygLMiQud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlclBsYWNlZExpbmUSEAoIYWN0b3JfaWQYCSABKAQSDwoHc2hvcF9pZBgKIAEoBBIZChFtYXJrZXRwbGFjZV90b3RhbBgLIAEoAzoSirUYDgoMb3JkZXItcGxhY2VkImIKD09yZGVyUGxhY2VkTGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhYKDm93bmluZ190ZWFtX2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhEKCXVuaXRfY29zdBgEIAEoAyJtCg5PcmRlckNhbmNlbGxlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhAKCGFjdG9yX2lkGAMgASgEEg8KB3Nob3BfaWQYBCABKAQ6FYq1GBEKD29yZGVyLWNhbmNlbGxlZCK+AgoPUmVzdG9ja0FjY2VwdGVkEhIKCnJlc3RvY2tfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSEwoLc3VwcGxpZXJfaWQYBCABKAQSEwoLYWNjZXB0ZWRfb24YBSABKAkSNwoFbGluZXMYBiADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tBY2NlcHRlZExpbmUSGAoQYWNjZXB0ZWRfYXRfdW5peBgHIAEoAxIhChl3YXJlaG91c2VfYWRkaXRpb25hbF9jb3N0GAggASgBEiYKHndhcmVob3VzZV9hZGRpdGlvbmFsX2Nvc3Rfbm90ZRgJIAEoCRIQCghhY3Rvcl9pZBgKIAEoBDoWirUYEgoQcmVzdG9jay1hY2NlcHRlZCLdAQoTUmVzdG9ja0FjY2VwdGVkTGluZRIPCgdpdGVtX2lkGAEgASgEEhIKCnByb2R1Y3RfaWQYAiABKAQSFQoNb3JkZXJlZF9jb3VudBgDIAEoAxITCgt0b3RhbF9wcmljZRgEIAEoARIWCg5hY2NlcHRlZF9jb3VudBgFIAEoAxIUCgxicm9rZW5fY291bnQYBiABKAMSFQoNbWlzc2luZ19jb3VudBgHIAEoAxITCgtzdXBwbGllcl9pZBgIIAEoBBIbChNzdXBwbGllcl9jaGFubmVsX2lkGAkgASgEIrkBCg5SZXN0b2NrQ3JlYXRlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgEIAEoBBIOCgZhbW91bnQYBSABKAESEAoIYWN0b3JfaWQYBiABKAQSFwoPY3JlYXRlZF9hdF91bml4GAcgASgDOhWKtRgRCg9yZXN0b2NrLWNyZWF0ZWQiwQEKEFJlc3RvY2tDYW5jZWxsZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIOCgZhbW91bnQYBCABKAESFgoObW9uZXlfcmV0dXJuZWQYBSABKAgSEAoIYWN0b3JfaWQYBiABKAQSGQoRY2FuY2VsbGVkX2F0X3VuaXgYByABKAM6F4q1GBMKEXJlc3RvY2stY2FuY2VsbGVkIt8BCg5SZXN0b2NrVXBkYXRlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSHgoWb2xkX2ZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIeChZuZXdfZmluYW5jZV9hY2NvdW50X2lkGAQgASgEEhIKCm9sZF9hbW91bnQYBSABKAESEgoKbmV3X2Ftb3VudBgGIAEoARIQCghhY3Rvcl9pZBgHIAEoBBIXCg91cGRhdGVkX2F0X3VuaXgYCCABKAM6FYq1GBEKD3Jlc3RvY2stdXBkYXRlZCLtAQoYV2FyZWhvdXNlVHJhbnNmZXJDcmVhdGVkEhMKC3RyYW5zZmVyX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSGQoRZnJvbV93YXJlaG91c2VfaWQYAyABKAQSFwoPdG9fd2FyZWhvdXNlX2lkGAQgASgEEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgFIAEoBBIOCgZhbW91bnQYBiABKAESEAoIYWN0b3JfaWQYByABKAQSFwoPY3JlYXRlZF9hdF91bml4GAggASgDOiCKtRgcChp3YXJlaG91c2UtdHJhbnNmZXItY3JlYXRlZCL1AQoYV2FyZWhvdXNlVHJhbnNmZXJVcGRhdGVkEhMKC3RyYW5zZmVyX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSHgoWb2xkX2ZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIeChZuZXdfZmluYW5jZV9hY2NvdW50X2lkGAQgASgEEhIKCm9sZF9hbW91bnQYBSABKAESEgoKbmV3X2Ftb3VudBgGIAEoARIQCghhY3Rvcl9pZBgHIAEoBBIXCg91cGRhdGVkX2F0X3VuaXgYCCABKAM6IIq1GBwKGndhcmVob3VzZS10cmFuc2Zlci11cGRhdGVkIr8BChpXYXJlaG91c2VUcmFuc2ZlckNhbmNlbGxlZBITCgt0cmFuc2Zlcl9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIOCgZhbW91bnQYBCABKAESEAoIYWN0b3JfaWQYBSABKAQSGQoRY2FuY2VsbGVkX2F0X3VuaXgYBiABKAM6Ioq1GB4KHHdhcmVob3VzZS10cmFuc2Zlci1jYW5jZWxsZWQijwIKGVdhcmVob3VzZVRyYW5zZmVyQWNjZXB0ZWQSEwoLdHJhbnNmZXJfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIZChFmcm9tX3dhcmVob3VzZV9pZBgDIAEoBBIXCg90b193YXJlaG91c2VfaWQYBCABKAQSIQoZd2FyZWhvdXNlX2FkZGl0aW9uYWxfY29zdBgFIAEoARImCh53YXJlaG91c2VfYWRkaXRpb25hbF9jb3N0X25vdGUYBiABKAkSEAoIYWN0b3JfaWQYByABKAQSGAoQYWNjZXB0ZWRfYXRfdW5peBgIIAEoAzohirUYHQobd2FyZWhvdXNlLXRyYW5zZmVyLWFjY2VwdGVkItMBChhMaWFiaWxpdHlQYXltZW50QWNjZXB0ZWQSEgoKcGF5bWVudF9pZBgBIAEoBBIVCg1wYXllcl90ZWFtX2lkGAIgASgEEhgKEGNyZWRpdG9yX3RlYW1faWQYAyABKAQSDgoGYW1vdW50GAQgASgDEhcKD2Zyb21fYWNjb3VudF9pZBgFIAEoBBIVCg10b19hY2NvdW50X2lkGAYgASgEEhAKCGFjdG9yX2lkGAcgASgEOiCKtRgcChpsaWFiaWxpdHktcGF5bWVudC1hY2NlcHRlZDpmCgxldmVudF9jb25maWcSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMY0YYDIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuRXZlbnRDb25maWdSC2V2ZW50Q29uZmlnQkxaSmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvZXZlbnRzL3YxO2V2ZW50c3YxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
 
 /**
  * EventConfig declares, ON THE VARIANT ITSELF, which Pub/Sub topic that event belongs to. The topic
@@ -125,7 +125,7 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
   message: {
     /**
      * Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-     * inventory 400–499.
+     * inventory 400–499, liability 500–599.
      *
      * @generated from field: warehouse.events.v1.MemberRemoved member_removed = 100;
      */
@@ -173,6 +173,36 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
      */
     value: RestockUpdated;
     case: "restockUpdated";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.WarehouseTransferCreated warehouse_transfer_created = 404;
+     */
+    value: WarehouseTransferCreated;
+    case: "warehouseTransferCreated";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.WarehouseTransferUpdated warehouse_transfer_updated = 405;
+     */
+    value: WarehouseTransferUpdated;
+    case: "warehouseTransferUpdated";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.WarehouseTransferCancelled warehouse_transfer_cancelled = 406;
+     */
+    value: WarehouseTransferCancelled;
+    case: "warehouseTransferCancelled";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.WarehouseTransferAccepted warehouse_transfer_accepted = 407;
+     */
+    value: WarehouseTransferAccepted;
+    case: "warehouseTransferAccepted";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.LiabilityPaymentAccepted liability_payment_accepted = 500;
+     */
+    value: LiabilityPaymentAccepted;
+    case: "liabilityPaymentAccepted";
   } | { case: undefined; value?: undefined };
 };
 
@@ -442,6 +472,21 @@ export type OrderPlaced = Message<"warehouse.events.v1.OrderPlaced"> & {
    * @generated from field: uint64 actor_id = 9;
    */
   actorId: bigint;
+
+  /**
+   * The shop it was sold on, and what the PLATFORM says the buyer paid, whole rupiah — 0 = not recorded.
+   * settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
+   * its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
+   * calls settlement, so the event has to carry everything the account needs.
+   *
+   * @generated from field: uint64 shop_id = 10;
+   */
+  shopId: bigint;
+
+  /**
+   * @generated from field: int64 marketplace_total = 11;
+   */
+  marketplaceTotal: bigint;
 };
 
 /**
@@ -533,6 +578,14 @@ export type OrderCancelled = Message<"warehouse.events.v1.OrderCancelled"> & {
    * @generated from field: uint64 actor_id = 3;
    */
   actorId: bigint;
+
+  /**
+   * The shop it was sold on — settlement cancels the sale on that shop's account
+   * (settlement-opens-the-sale-from-the-order-event).
+   *
+   * @generated from field: uint64 shop_id = 4;
+   */
+  shopId: bigint;
 };
 
 /**
@@ -604,6 +657,28 @@ export type RestockAccepted = Message<"warehouse.events.v1.RestockAccepted"> & {
    * @generated from field: int64 accepted_at_unix = 7;
    */
   acceptedAtUnix: bigint;
+
+  /**
+   * The courier's charge at the door, ONE per restock, and its note; 0 = none. Balance posts the selling team's debt to
+   * the warehouse from it, after the accept commits (balance-posts-the-couriers-debt-from-the-event) — the accept itself
+   * no longer writes balance. Money is `double`, as inventory stores it (money-is-double-in-the-api-too).
+   *
+   * @generated from field: double warehouse_additional_cost = 8;
+   */
+  warehouseAdditionalCost: number;
+
+  /**
+   * @generated from field: string warehouse_additional_cost_note = 9;
+   */
+  warehouseAdditionalCostNote: string;
+
+  /**
+   * Who counted the box in — the debt's actor (every-entry-names-who-posted-it). Read from the stored restock, never
+   * from the envelope's identity.
+   *
+   * @generated from field: uint64 actor_id = 10;
+   */
+  actorId: bigint;
 };
 
 /**
@@ -621,7 +696,7 @@ export const RestockAcceptedSchema: GenMessage<RestockAccepted> = /*@__PURE__*/
  */
 export type RestockAcceptedLine = Message<"warehouse.events.v1.RestockAcceptedLine"> & {
   /**
-   * restock_request_items.id
+   * restock_items.id
    *
    * @generated from field: uint64 item_id = 1;
    */
@@ -636,16 +711,17 @@ export type RestockAcceptedLine = Message<"warehouse.events.v1.RestockAcceptedLi
 
   /**
    * Units ordered on the line, and the line's total as typed — what the supplier charged. A figure's value is
-   * units × total ÷ ordered, so the line's three values add back to its total without a rounded unit price.
+   * units × total ÷ ordered, so the line's three values add back to its total without a rounded unit price. The
+   * total is `double`, as inventory stores it (money-is-double-in-the-api-too).
    *
    * @generated from field: int64 ordered_count = 3;
    */
   orderedCount: bigint;
 
   /**
-   * @generated from field: int64 total_price = 4;
+   * @generated from field: double total_price = 4;
    */
-  totalPrice: bigint;
+  totalPrice: number;
 
   /**
    * Units accepted as good stock — the batch's sellable count.
@@ -725,12 +801,12 @@ export type RestockCreated = Message<"warehouse.events.v1.RestockCreated"> & {
   financeAccountId: bigint;
 
   /**
-   * Goods plus shipping, whole rupiah — never the courier's charge, which the warehouse paid
-   * (the-couriers-charge-stays-out-of-total).
+   * Goods plus shipping — never the courier's charge, which the warehouse paid
+   * (the-couriers-charge-stays-out-of-total). `double`, as inventory stores it (money-is-double-in-the-api-too).
    *
-   * @generated from field: int64 amount = 5;
+   * @generated from field: double amount = 5;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * @generated from field: uint64 actor_id = 6;
@@ -776,9 +852,9 @@ export type RestockCancelled = Message<"warehouse.events.v1.RestockCancelled"> &
   financeAccountId: bigint;
 
   /**
-   * @generated from field: int64 amount = 4;
+   * @generated from field: double amount = 4;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * @generated from field: bool money_returned = 5;
@@ -835,14 +911,14 @@ export type RestockUpdated = Message<"warehouse.events.v1.RestockUpdated"> & {
   newFinanceAccountId: bigint;
 
   /**
-   * @generated from field: int64 old_amount = 5;
+   * @generated from field: double old_amount = 5;
    */
-  oldAmount: bigint;
+  oldAmount: number;
 
   /**
-   * @generated from field: int64 new_amount = 6;
+   * @generated from field: double new_amount = 6;
    */
-  newAmount: bigint;
+  newAmount: number;
 
   /**
    * @generated from field: uint64 actor_id = 7;
@@ -861,6 +937,316 @@ export type RestockUpdated = Message<"warehouse.events.v1.RestockUpdated"> & {
  */
 export const RestockUpdatedSchema: GenMessage<RestockUpdated> = /*@__PURE__*/
   messageDesc(file_warehouse_events_v1_event, 11);
+
+/**
+ * WarehouseTransferCreated announces a transfer OPENED, and the shipping expense typed with it — the selling team's,
+ * from its own account (the-shipping-expense-reaches-the-account-by-event, a-transfer-names-its-paying-account). The cost
+ * may still be 0 here and typed later; a listener posts nothing for 0.
+ *
+ * Published by inventory_service after WarehouseTransferCreate commits; financial_account_service posts the expense.
+ * `event_id` is `warehouse-transfer-created:<transfer_id>`.
+ *
+ * ⚠ Money is `double`, unlike the restock events beside it (stock-money-is-float64-compared-at-4-digits names the
+ * transfer's costs): a new event gets the decided type on day one, since changing a published field's type later is a
+ * wire break.
+ *
+ * @generated from message warehouse.events.v1.WarehouseTransferCreated
+ */
+export type WarehouseTransferCreated = Message<"warehouse.events.v1.WarehouseTransferCreated"> & {
+  /**
+   * @generated from field: uint64 transfer_id = 1;
+   */
+  transferId: bigint;
+
+  /**
+   * The selling team that owns the goods and pays the trip.
+   *
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * A and B.
+   *
+   * @generated from field: uint64 from_warehouse_id = 3;
+   */
+  fromWarehouseId: bigint;
+
+  /**
+   * @generated from field: uint64 to_warehouse_id = 4;
+   */
+  toWarehouseId: bigint;
+
+  /**
+   * The account that paid; 0 when the cost is 0.
+   *
+   * @generated from field: uint64 finance_account_id = 5;
+   */
+  financeAccountId: bigint;
+
+  /**
+   * The shipping cost, rupiah. Never in a unit's price (a-transfer-never-changes-a-units-price).
+   *
+   * @generated from field: double amount = 6;
+   */
+  amount: number;
+
+  /**
+   * @generated from field: uint64 actor_id = 7;
+   */
+  actorId: bigint;
+
+  /**
+   * @generated from field: int64 created_at_unix = 8;
+   */
+  createdAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.WarehouseTransferCreated.
+ * Use `create(WarehouseTransferCreatedSchema)` to create a new message.
+ */
+export const WarehouseTransferCreatedSchema: GenMessage<WarehouseTransferCreated> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 12);
+
+/**
+ * WarehouseTransferUpdated announces an edit that changed the shipping cost or the account that paid it — until the
+ * transfer is accepted (the-shipping-expense-reaches-the-account-by-event). Not sent for an edit that changed neither.
+ *
+ * Both sides are carried, as RestockUpdated: the same account means post new − old; a different account means the old
+ * one gets old_amount back and the new one pays new_amount. `event_id` is
+ * `warehouse-transfer-updated:<transfer_id>:<cost_revision>` — one per edit that moved money.
+ *
+ * @generated from message warehouse.events.v1.WarehouseTransferUpdated
+ */
+export type WarehouseTransferUpdated = Message<"warehouse.events.v1.WarehouseTransferUpdated"> & {
+  /**
+   * @generated from field: uint64 transfer_id = 1;
+   */
+  transferId: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 old_finance_account_id = 3;
+   */
+  oldFinanceAccountId: bigint;
+
+  /**
+   * @generated from field: uint64 new_finance_account_id = 4;
+   */
+  newFinanceAccountId: bigint;
+
+  /**
+   * @generated from field: double old_amount = 5;
+   */
+  oldAmount: number;
+
+  /**
+   * @generated from field: double new_amount = 6;
+   */
+  newAmount: number;
+
+  /**
+   * @generated from field: uint64 actor_id = 7;
+   */
+  actorId: bigint;
+
+  /**
+   * @generated from field: int64 updated_at_unix = 8;
+   */
+  updatedAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.WarehouseTransferUpdated.
+ * Use `create(WarehouseTransferUpdatedSchema)` to create a new message.
+ */
+export const WarehouseTransferUpdatedSchema: GenMessage<WarehouseTransferUpdated> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 13);
+
+/**
+ * WarehouseTransferCancelled announces a transfer called off while created
+ * (cancel-before-processed-lost-only-in-transit) — whatever was posted for its shipping comes back to the account that
+ * paid. `event_id` is `warehouse-transfer-cancelled:<transfer_id>` — a transfer is cancelled once.
+ *
+ * @generated from message warehouse.events.v1.WarehouseTransferCancelled
+ */
+export type WarehouseTransferCancelled = Message<"warehouse.events.v1.WarehouseTransferCancelled"> & {
+  /**
+   * @generated from field: uint64 transfer_id = 1;
+   */
+  transferId: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * The account that paid and the amount it gets back; 0 = nothing was posted.
+   *
+   * @generated from field: uint64 finance_account_id = 3;
+   */
+  financeAccountId: bigint;
+
+  /**
+   * @generated from field: double amount = 4;
+   */
+  amount: number;
+
+  /**
+   * @generated from field: uint64 actor_id = 5;
+   */
+  actorId: bigint;
+
+  /**
+   * @generated from field: int64 cancelled_at_unix = 6;
+   */
+  cancelledAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.WarehouseTransferCancelled.
+ * Use `create(WarehouseTransferCancelledSchema)` to create a new message.
+ */
+export const WarehouseTransferCancelledSchema: GenMessage<WarehouseTransferCancelled> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 14);
+
+/**
+ * WarehouseTransferAccepted announces B counted the box in, and the courier's charge B paid at its door
+ * (balance-posts-the-transfers-on-site-debt-from-the-event). Published after EVERY accept, a charge of 0 included; the
+ * selling team owes B the charge, and nothing for 0.
+ *
+ * `event_id` is `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once. ⚠ Balance does not listen
+ * yet: the source type it posts under is open (balance context Q13) — never INCIDENTAL_FEE keyed by the transfer id,
+ * which collides with a restock's of the same number.
+ *
+ * @generated from message warehouse.events.v1.WarehouseTransferAccepted
+ */
+export type WarehouseTransferAccepted = Message<"warehouse.events.v1.WarehouseTransferAccepted"> & {
+  /**
+   * @generated from field: uint64 transfer_id = 1;
+   */
+  transferId: bigint;
+
+  /**
+   * The selling team — the debtor.
+   *
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * A, and B — the warehouse that paid the courier, the creditor.
+   *
+   * @generated from field: uint64 from_warehouse_id = 3;
+   */
+  fromWarehouseId: bigint;
+
+  /**
+   * @generated from field: uint64 to_warehouse_id = 4;
+   */
+  toWarehouseId: bigint;
+
+  /**
+   * The courier's charge at B's door, rupiah, and its note (an-incidental-line-must-say-what-it-was-for); 0 = none.
+   *
+   * @generated from field: double warehouse_additional_cost = 5;
+   */
+  warehouseAdditionalCost: number;
+
+  /**
+   * @generated from field: string warehouse_additional_cost_note = 6;
+   */
+  warehouseAdditionalCostNote: string;
+
+  /**
+   * Who counted it in — read from the stored transfer, never from the envelope's identity.
+   *
+   * @generated from field: uint64 actor_id = 7;
+   */
+  actorId: bigint;
+
+  /**
+   * @generated from field: int64 accepted_at_unix = 8;
+   */
+  acceptedAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.WarehouseTransferAccepted.
+ * Use `create(WarehouseTransferAcceptedSchema)` to create a new message.
+ */
+export const WarehouseTransferAcceptedSchema: GenMessage<WarehouseTransferAccepted> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 15);
+
+/**
+ * LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the
+ * money was there (a-team-payment-posts-on-accept). Published by liability_service after LiabilityPaymentConfirm
+ * commits; the financial accounts post one `team_payment` row out of `from_account_id` and one into
+ * `to_account_id`, sharing a group.
+ *
+ * Recording and rejecting publish nothing: a claim moves no account. And there is no reverse to follow
+ * (an-accepted-payment-is-final). `event_id` is `liability-payment-accepted:<payment_id>` — a payment is accepted
+ * once. The envelope's `occurred_at` is when it was accepted, which is the day both rows count on.
+ *
+ * @generated from message warehouse.events.v1.LiabilityPaymentAccepted
+ */
+export type LiabilityPaymentAccepted = Message<"warehouse.events.v1.LiabilityPaymentAccepted"> & {
+  /**
+   * @generated from field: uint64 payment_id = 1;
+   */
+  paymentId: bigint;
+
+  /**
+   * @generated from field: uint64 payer_team_id = 2;
+   */
+  payerTeamId: bigint;
+
+  /**
+   * @generated from field: uint64 creditor_team_id = 3;
+   */
+  creditorTeamId: bigint;
+
+  /**
+   * Whole rupiah, always positive — direction is the two accounts, never a sign.
+   *
+   * @generated from field: int64 amount = 4;
+   */
+  amount: bigint;
+
+  /**
+   * The payer's account. 0 on a payment recorded before *Paid from* existed: only the `to` leg posts.
+   *
+   * @generated from field: uint64 from_account_id = 5;
+   */
+  fromAccountId: bigint;
+
+  /**
+   * The creditor's account, named on accept. Never 0.
+   *
+   * @generated from field: uint64 to_account_id = 6;
+   */
+  toAccountId: bigint;
+
+  /**
+   * Who accepted — the creditor's person, read from the payment row. The person who decided the money landed.
+   *
+   * @generated from field: uint64 actor_id = 7;
+   */
+  actorId: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.LiabilityPaymentAccepted.
+ * Use `create(LiabilityPaymentAcceptedSchema)` to create a new message.
+ */
+export const LiabilityPaymentAcceptedSchema: GenMessage<LiabilityPaymentAccepted> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 16);
 
 /**
  * 50001 — the number warehouse.event_base.v1 held before it was removed

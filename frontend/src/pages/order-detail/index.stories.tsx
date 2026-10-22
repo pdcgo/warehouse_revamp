@@ -133,7 +133,7 @@ export const MarketplaceTotalDiffersFromOurs: Story = {
 /**
  * THE HISTORY TAB, WITH THE PEOPLE RESOLVED.
  *
- * The actor ids come from the EVENTS — the order row records no actor at all — and are resolved
+ * The actor ids come from the TIMELINE — the order row records no actor at all — and are resolved
  * through a separate `UserByIDs` read. ⚠ `fetchActors` SWALLOWS a failure there, so an unstubbed
  * lookup does not throw: it quietly degrades every step to "User #61". This story is what notices.
  */
@@ -147,13 +147,18 @@ export const Timeline: Story = {
     await waitFor(async () => {
       await expect(canvasElement).toHaveTextContent(ani.name);
     });
+
+    // EACH ROW SAYS WHICH SIDE WROTE IT (order-timeline-logs-replaces-order-events): the seller placed the order,
+    // the warehouse confirmed it.
+    await expect(canvas.getByTestId("order-timeline-pending")).toHaveTextContent("Seller");
+    await expect(canvas.getByTestId("order-timeline-processed")).toHaveTextContent("Warehouse");
   },
 };
 
 /**
  * ACTOR 0 IS "NOT RECORDED", NOT "USER ZERO".
  *
- * Every event backfilled by the history migration is in that state. The step must still SHOW — it
+ * A row whose writer was not identified is in that state. The step must still SHOW — it
  * happened — while the page stays silent about who took it. Inventing a name there would be worse
  * than the gap, and hiding the step would be worse still.
  */
@@ -166,14 +171,14 @@ export const UnrecordedActor: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("timeline-rail")).toBeInTheDocument());
 
-    // The steps are there — asserted by TESTID, not by the word "shipped", which also appears in the
+    // The steps are there — asserted by TESTID, not by the words "handed over", which also appear in the
     // status badge in the header and would pass against a completely empty timeline.
-    await waitFor(() => expect(canvas.getByTestId("order-timeline-shipped")).toBeInTheDocument());
-    await expect(canvas.getByTestId("order-timeline-placed")).toBeInTheDocument();
+    await waitFor(() => expect(canvas.getByTestId("order-timeline-shipping")).toBeInTheDocument());
+    await expect(canvas.getByTestId("order-timeline-pending")).toBeInTheDocument();
 
     // …and nobody is named on them. Both halves are checked: no resolved person block, and no
     // "User #0" — the fallback firing on an id that means ABSENCE is the specific bug here.
-    await expect(canvas.queryByTestId("order-timeline-shipped-by")).not.toBeInTheDocument();
+    await expect(canvas.queryByTestId("order-timeline-shipping-by")).not.toBeInTheDocument();
     await expect(canvasElement).not.toHaveTextContent(/User #0/);
   },
 };

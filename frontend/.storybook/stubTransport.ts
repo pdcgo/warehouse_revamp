@@ -52,7 +52,7 @@ import {
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
-import { sessionScenario, teamCreateScenario } from "./sessionScenario";
+import { orderExportScenario, sessionScenario, teamCreateScenario } from "./sessionScenario";
 import { userStub } from "./userStub";
 import {
   FinancialAccountAnalyticService,
@@ -75,7 +75,11 @@ import {
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
+import { opnameService } from "./opnameStub";
+import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { rackService } from "./rackStub";
+import { returnConfigurationService } from "./returnConfigurationStub";
+import { TeamReturnConfigurationService } from "../src/gen/warehouse/selling/v1/return_configuration_pb";
 import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
@@ -595,7 +599,17 @@ const WAREHOUSE_ID = teams[0]!.id;
 // table, so if the two narrowed differently the tab counts would describe a different population
 // than the rows under them — and nothing on screen would explain the gap.
 type OrderScopeFilter =
-  | { search?: string; shopId?: bigint; createdFromUnix?: bigint; createdToUnix?: bigint; createdByUserId?: bigint }
+  | {
+      search?: string;
+      shopId?: bigint;
+      createdFromUnix?: bigint;
+      createdToUnix?: bigint;
+      createdByUserId?: bigint;
+      // The warehouse's three (the-filter-gains-seller-marketplace-and-courier).
+      sellerTeamId?: bigint;
+      marketplace?: Marketplace;
+      shippingCode?: string;
+    }
   | undefined;
 
 // Free text over the customer's NAME, their PHONE, and — only when the term is ALL DIGITS — the
@@ -621,16 +635,12 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .filter((o) => !filter?.createdToUnix || o.createdAtUnix <= filter.createdToUnix)
     // Who typed it in; 0 is anybody, and an unrecorded creator (0) is nobody's.
     .filter((o) => !filter?.createdByUserId || o.createdByUserId === filter.createdByUserId)
+    // The seller team, the marketplace its shop is on, the courier — as the server's scopedOrders applies them.
+    .filter((o) => !filter?.sellerTeamId || o.teamId === filter.sellerTeamId)
+    .filter((o) => !filter?.marketplace || shops.find((s) => s.id === o.shopId)?.marketplace === filter.marketplace)
+    .filter((o) => !filter?.shippingCode || o.shippingCode === filter.shippingCode)
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
-}
-
-// The order a fulfilment step acts on — found only from the WAREHOUSE side it ships from.
-function fulfilmentOrder(req: { teamId: bigint; orderId: bigint }) {
-  const order = orders.find((o) => o.id === req.orderId && o.warehouseId === req.teamId);
-  if (!order) throw new ConnectError("order not found", Code.NotFound);
-
-  return order;
 }
 
 // ── The daily statement, from three services at once ────────────────────────────────────────────
@@ -775,8 +785,10 @@ export const transport = createRouterTransport(({ service }) => {
 
   // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
   service(RestockRequestService, restockRequestService);
-  // The warehouse transfer — a prototype, so this stub is its only implementation until the backend step.
+  // The warehouse transfer — warehouseTransferStub.ts plays the same rules the server keeps (warehouse_transfer_decision.md).
   service(WarehouseTransferService, warehouseTransferService);
+  // The stock count — a prototype: opnameStub.ts plays the decided opname rules (opname_decision.md).
+  service(OpnameService, opnameService);
 
   // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
   service(SupplierService, supplierService);
@@ -787,6 +799,7 @@ export const transport = createRouterTransport(({ service }) => {
   // The rack registry (scoped by the warehouse, as the server is), Rack detail's reads and the two prototype writes —
   // rackStub.ts plays them, writeable, with the placement decisions.
   service(RackService, rackService);
+  service(TeamReturnConfigurationService, returnConfigurationService);
 
   // The global taxonomy — categoryStub.ts plays its rules, writeable: a parent must exist, a name once per parent, a
   // delete is soft and refused while the category has sub-categories.
@@ -1082,11 +1095,17 @@ export const transport = createRouterTransport(({ service }) => {
     orderList: (req) =>
       pagedColumnar(
         "order",
-        visibleOrders(req.teamId, req.filter).filter(
-          // UNSPECIFIED is the ABSENCE of a status filter (the "All Status" tab), never a status an
-          // order can hold — so it must not be compared against one.
-          (o) => !req.filter?.status || o.status === req.filter.status,
-        ),
+        visibleOrders(req.teamId, req.filter)
+          .filter(
+            // UNSPECIFIED is the ABSENCE of a status filter (the "All Status" tab), never a status an
+            // order can hold — so it must not be compared against one.
+            (o) => !req.filter?.status || o.status === req.filter.status,
+          )
+          // The row's unit count, summed from the order's lines as the server's query does.
+          .map((o) => ({
+            ...o,
+            itemQuantity: BigInt((orderDetailFor(o.id)?.items ?? []).reduce((n, it) => n + it.quantity, 0)),
+          })),
         req.page,
       ),
 
@@ -1110,16 +1129,43 @@ export const transport = createRouterTransport(({ service }) => {
       return { order };
     },
 
-    // The crew's four steps. STATELESS on purpose: the page reads the new status back through the
-    // invalidation, and a stub that remembered a step would leak it into the next story. So a story
-    // asserts the step was ACCEPTED (the toast), not that the badge moved.
+    // Every plain move (one-status-change-for-every-plain-move). STATELESS on purpose: the page reads the
+    // new status back through the invalidation, and a stub that remembered a move would leak it into the
+    // next story. So a story asserts the move was ACCEPTED (the toast), not that the badge moved.
     //
-    // The scope is the WAREHOUSE side only — the crew advances what ships from its building, and a
-    // selling team pressing these would be refused by the policy long before the handler.
-    orderConfirm: (req) => ({ order: fulfilmentOrder(req) }),
-    orderPick: (req) => ({ order: fulfilmentOrder(req) }),
-    orderPack: (req) => ({ order: fulfilmentOrder(req) }),
-    orderShip: (req) => ({ order: fulfilmentOrder(req) }),
+    // One result per order, like the server: an order at either end of the caller's scope moves, any
+    // other is refused — and a refusal never fails the call. The who-may-make-which-move table is the
+    // server's and is not copied here.
+    // THE LIST AS A FILE (one-export-is-the-list-as-a-file): progress, then a link. The link is an empty data: URL, so
+    // the download a story triggers goes nowhere. What was asked is kept for the story to read.
+    orderExport: async function* (req) {
+      const rows = visibleOrders(req.teamId, req.filter)
+        .filter((o) => !req.filter?.status || o.status === req.filter.status)
+        .filter((o) => req.orderIds.length === 0 || req.orderIds.includes(o.id));
+      const total = BigInt(rows.length);
+
+      orderExportScenario.last = { view: req.view, status: req.filter?.status ?? 0, orderIds: req.orderIds, rows: rows.length };
+
+      yield { message: "exporting orders", done: 0n, total };
+      yield {
+        message: "the file is ready",
+        done: total,
+        total,
+        downloadUrl: "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,",
+        filename: "orders.xlsx",
+      };
+    },
+    orderStatusChange: (req) => ({
+      results: req.orderIds.map((orderId) => {
+        const order = orders.find(
+          (o) => o.id === orderId && (o.teamId === req.teamId || o.warehouseId === req.teamId),
+        );
+
+        return order
+          ? { orderId, moved: true, status: req.to }
+          : { orderId, moved: false, refusedReason: "not one of this team's orders" };
+      }),
+    }),
 
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were
@@ -1327,7 +1373,14 @@ export const transport = createRouterTransport(({ service }) => {
 
     // RECORD — the payer's claim. ⚠ IT POSTS NOTHING: a recorded payment is pending until the creditor
     // accepts it, so the stub adds the row and leaves every balance where it was.
+    //
+    // ⚠ *Paid from* is REQUIRED, as the contract's `gt = 0` makes it — so a screen that forgot to send the
+    // account it picked fails here, the way it would against the server.
     liabilityPaymentRecord: (req) => {
+      if (!req.fromAccountId) {
+        throw new ConnectError("from_account_id: value must be greater than 0", Code.InvalidArgument);
+      }
+
       const row = {
         id: nextPaymentId++,
         payerTeamId: req.teamId,
@@ -1341,6 +1394,8 @@ export const transport = createRouterTransport(({ service }) => {
         confirmedAtUnix: 0n,
         documentIds: [...req.documentIds],
         reason: "",
+        fromAccountId: req.fromAccountId,
+        toAccountId: 0n,
       };
       paymentsTable.unshift(row);
 
@@ -1350,7 +1405,14 @@ export const transport = createRouterTransport(({ service }) => {
     // ACCEPT — the `yes` arm, and the only act that lets a balance go down. The positions are signed
     // from team 11's side, so a payment FROM the counterparty shrinks what they owe us, and a payment
     // TO them shrinks what we owe them.
+    //
+    // ⚠ *Received into* is REQUIRED, as the contract makes it — accepting is final, so the stub refuses a
+    // screen that did not send the account the money landed in.
     liabilityPaymentConfirm: (req) => {
+      if (!req.toAccountId) {
+        throw new ConnectError("to_account_id: value must be greater than 0", Code.InvalidArgument);
+      }
+
       const row = paymentsTable.find((p) => p.id === req.paymentId);
 
       if (!row) {
@@ -1364,6 +1426,7 @@ export const transport = createRouterTransport(({ service }) => {
       row.status = 2;
       row.confirmedBy = 1n;
       row.confirmedAtUnix = BigInt(Math.floor(Date.now() / 1000));
+      row.toAccountId = req.toAccountId;
 
       const theyPaid = positionsTable.find((p) => p.counterpartyId === row.payerTeamId);
       const wePaid = positionsTable.find((p) => p.counterpartyId === row.creditorTeamId);

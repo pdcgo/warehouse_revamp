@@ -28,17 +28,14 @@ import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { useRestockRequest } from "../../features/restock/queries";
 import { DetailField } from "../../features/restock/DetailField";
 import { committedValue, courierCharge, goodsTotal, shortfall } from "../../features/restock/summary";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTime } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 import { LinesCard } from "./components/LinesCard";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
-import { RESTOCK_WAREHOUSE_DETAIL_PENDING as PENDING } from "./pending";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -153,7 +150,7 @@ export function RestockWarehouseDetailPage() {
             </Heading>
             {status}
             <Spacer />
-            <WarehouseRestockActions request={request} teamId={teamId} variant="menu" pending={PENDING} />
+            <WarehouseRestockActions request={request} teamId={teamId} variant="menu" />
           </Flex>
           {missingBadge && <Box>{missingBadge}</Box>}
         </Stack>
@@ -171,12 +168,11 @@ export function RestockWarehouseDetailPage() {
             {status}
             {missingBadge}
             <Spacer />
-            <WarehouseRestockActions request={request} teamId={teamId} variant="buttons" pending={PENDING} />
+            <WarehouseRestockActions request={request} teamId={teamId} variant="buttons" />
           </Flex>
         </>
       )}
 
-      <NotImplementedSummary list={PENDING} />
 
       {/* THE PARCEL — what finds the box at the door: who sent it, the courier, the tracking number and its photo. */}
       <Card.Root maxW="full" overflow="hidden">
@@ -196,7 +192,6 @@ export function RestockWarehouseDetailPage() {
                       channelId={request.shipmentId}
                       channel={channels.data?.get(request.shipmentId.toString())}
                     />
-                    <NotImplemented list={PENDING} id="courier" />
                   </HStack>
                 }
               />
@@ -223,7 +218,6 @@ export function RestockWarehouseDetailPage() {
                           {t("restock.detail.noReceiptPhoto")}
                         </Text>
                       )}
-                      <NotImplemented list={PENDING} id="receiptPhoto" />
                     </HStack>
                   </Stack>
                 }
@@ -266,17 +260,17 @@ export function RestockWarehouseDetailPage() {
               <Text fontSize="sm" color="fg.muted">
                 {t("restock.detail.subtotal")}:{" "}
                 <Text as="span" color="fg" data-testid="restock-detail-subtotal">
-                  {formatRupiah(goodsTotal(request.items))}
+                  {formatRupiahNumber(goodsTotal(request.items))}
                 </Text>
               </Text>
               <Text fontSize="sm" color="fg.muted">
                 {t("restock.detail.shipping")}:{" "}
                 <Text as="span" color="fg" data-testid="restock-detail-shipping">
-                  {formatRupiah(request.shipmentCost)}
+                  {formatRupiahNumber(request.shipmentCost)}
                 </Text>
               </Text>
               <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-total">
-                {t("restock.detail.total")}: {formatRupiah(committedValue(request))}
+                {t("restock.detail.total")}: {formatRupiahNumber(committedValue(request))}
               </Text>
             </Stack>
 
@@ -290,7 +284,7 @@ export function RestockWarehouseDetailPage() {
                   {charge > 0n ? (
                     <>
                       <Text fontWeight="semibold" data-testid="restock-detail-courier-charge">
-                        {formatRupiah(charge)}
+                        {formatRupiahNumber(charge)}
                       </Text>
                       <Text fontSize="sm" wordBreak="break-word" data-testid="restock-detail-courier-charge-note">
                         {request.warehouseAdditionalCostNote}

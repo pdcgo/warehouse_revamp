@@ -11,7 +11,7 @@ import (
 // pickLocationRow is the query's shape: one product, one rack, the quantity taken from it.
 type pickLocationRow struct {
 	ProductID uint64
-	RackID    *uint64
+	RackID    uint64
 	RackCode  *string
 	Quantity  int64
 }
@@ -19,26 +19,17 @@ type pickLocationRow struct {
 // StockPickLocations returns WHERE THIS PICK'S GOODS WERE TAKEN FROM — the pick screen's shelf column
 // (#151).
 //
-// Read from the LEDGER, not from stock_levels. StockPick recorded, per rack, exactly how much it drew
-// for this ref (#149); those rows are what the order holds and they cannot drift. Current levels answer
+// Read from the TAKE, not from the racks now. The order's take wrote, per rack, exactly how much it drew under
+// this ref — its key (the-order-take-bridges-its-key-per-order); those rows are what the order holds and they cannot
+// drift. Current levels answer
 // a different question whose answer keeps changing — another order draws from the same shelf, a
 // stock-take shifts goods — and a picker sent by current levels can arrive at a shelf whose stock is
 // spoken for.
 //
-// PICK and RETURN are NETTED, per shelf, and only a positive remainder is a stop on the walk.
-//
-// Reading PICK rows alone looks right and is not: the ledger is APPEND-ONLY, so a returned pick's PICK
-// rows are still there (the history of "took 5, gave 5 back" has to survive). Filtering to PICK would
-// therefore send a picker after a cancelled order's goods — goods that are back on the shelf and
-// available to everybody else. That was this handler's first version, and its test caught it.
-//
-// A returned pick nets to zero on every shelf and drops out entirely. An empty list is the right answer
-// to "where do I go for this" when the answer is "nowhere".
-//
-// StockReturn is all-or-nothing today, so netting and filtering would agree on every CURRENT input
-// except the one above. Netting is still what belongs here: it is a statement about what the ref still
-// holds, which stays true if a partial return ever lands, whereas a kind filter would need finding and
-// changing at exactly the moment it started lying.
+// The take and its rollback are NETTED, per rack, and only a positive remainder is a stop on the walk: the log is
+// append-only, so a released take's rows are still there beside their reversal (a-rollback-reverses-its-log-rows).
+// A released take nets to zero on every rack and drops out entirely — an empty list is the right answer to "where
+// do I go for this" when the answer is "nowhere".
 func (s *Service) StockPickLocations(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockPickLocationsRequest],
@@ -47,30 +38,15 @@ func (s *Service) StockPickLocations(
 
 	err := s.db.
 		WithContext(ctx).
-		Table("stock_movements AS m").
-		Select("m.product_id AS product_id, m.rack_id AS rack_id, r.code AS rack_code, "+
-			// A pick's delta is negative and a return's is positive, so negating and summing nets them:
-			// what is still held for this ref. It also flips the sign for the screen — a picker is told
-			// "take 3", never "take -3".
-			"SUM(-m.delta) AS quantity").
-		Joins("LEFT JOIN racks r ON r.id = m.rack_id").
-		Where("m.warehouse_id = ? AND m.ref = ? AND m.kind IN ?",
-			req.Msg.GetWarehouseId(),
-			req.Msg.GetRef(),
-			[]int32{
-				int32(inventoryv1.MovementKind_MOVEMENT_KIND_PICK),
-				int32(inventoryv1.MovementKind_MOVEMENT_KIND_RETURN),
-			},
-		).
-		Group("m.product_id, m.rack_id, r.code").
-		// Only what is still held. A shelf whose pick was fully returned nets to 0 and is not a stop.
-		Having("SUM(-m.delta) > 0").
-		// The same order StockPick drained in (#149): the UNPLACED pile first, then shelves by label. So
-		// the list reads as the walk the system already planned rather than an arbitrary shuffle.
-		//
-		// `IS NOT NULL` rather than `IS NULL`: false sorts before true, so this puts the nulls — the
-		// unplaced pile — first. The inverted form quietly sorted them last, and the test caught it.
-		Order("m.product_id, (m.rack_id IS NOT NULL), r.code").
+		Table("idempotency_order_check AS k").
+		Select("l.product_id AS product_id, l.placement_id AS rack_id, r.code AS rack_code, "+
+			"SUM(-l.stock_change) AS quantity").
+		Joins("JOIN product_placement_logs l ON l.transaction_id = k.transaction_id").
+		Joins("JOIN placements r ON r.id = l.placement_id").
+		Where("k.idempotency_key = ? AND l.warehouse_id = ?", req.Msg.GetRef(), req.Msg.GetWarehouseId()).
+		Group("l.product_id, l.placement_id, r.code").
+		Having("SUM(-l.stock_change) > 0").
+		Order("l.product_id, r.code").
 		Scan(&rows).
 		Error
 	if err != nil {
@@ -82,13 +58,8 @@ func (s *Service) StockPickLocations(
 	for i := range rows {
 		loc := inventoryv1.StockPickLocation{
 			ProductId: rows[i].ProductID,
+			RackId:    rows[i].RackID,
 			Quantity:  rows[i].Quantity,
-		}
-
-		// nil rack = the unplaced pile (#135), carried over the wire as 0 with an empty code. It is a
-		// real place, not a missing value, and the screen names it in words.
-		if rows[i].RackID != nil {
-			loc.RackId = *rows[i].RackID
 		}
 
 		if rows[i].RackCode != nil {

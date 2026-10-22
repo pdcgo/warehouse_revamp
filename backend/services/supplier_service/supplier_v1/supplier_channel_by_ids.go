@@ -2,21 +2,36 @@ package supplier_v1
 
 import (
 	"context"
-	"errors"
 
 	"connectrpc.com/connect"
 
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_service_models"
 )
 
-// SupplierChannelByIds reads stores by id, deleted ones included — what a restock line shows, with a deleted badge
-// when the store is gone (a-deleted-supplier-still-shows-with-a-badge).
-//
-// ⚠ Unimplemented until the restock backend step (the-restock-contract-changes-in-place): restock lines do not store
-// a store yet, so nothing calls this outside the prototype.
+// SupplierChannelByIds reads stores by id — what a restock line shows beside its supplier — whoever keeps them, and
+// DELETED ONES INCLUDED, marked, so the line still names its store with a deleted badge
+// (a-deleted-supplier-still-shows-with-a-badge). Like SupplierByIds it is a read without `deleted_at IS NULL`: a
+// purchase outlives its store record. An unknown id is absent, never an error.
 func (s *Service) SupplierChannelByIds(
-	_ context.Context,
-	_ *connect.Request[supplierv1.SupplierChannelByIdsRequest],
+	ctx context.Context,
+	req *connect.Request[supplierv1.SupplierChannelByIdsRequest],
 ) (*connect.Response[supplierv1.SupplierChannelByIdsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SupplierChannelByIds lands with the restock backend step"))
+	var channels []supplier_service_models.SupplierChannel
+
+	err := s.db.
+		WithContext(ctx).
+		Where("id IN ?", req.Msg.GetIds()).
+		Find(&channels).
+		Error
+	if err != nil {
+		return nil, internal(err)
+	}
+
+	out := make(map[uint64]*supplierv1.SupplierChannel, len(channels))
+	for i := range channels {
+		out[channels[i].ID] = channelToProto(&channels[i])
+	}
+
+	return connect.NewResponse(&supplierv1.SupplierChannelByIdsResponse{Channels: out}), nil
 }

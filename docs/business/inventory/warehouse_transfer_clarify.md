@@ -3,6 +3,22 @@
 [warehouse_transfer.md](./warehouse_transfer.md) is yours, and this file is mine. When a point is answered I delete it
 here, and your answer goes in [warehouse_transfer_decision.md](./warehouse_transfer_decision.md).
 
+> 🆕 **From inventory context (2026-10-16):** a transfer's create upserts its products into `warehouse_products` for the
+> receiving warehouse ([a-transfer-links-its-products-to-the-receiver](./context_decision.md#a-transfer-links-its-products-to-the-receiver)).
+> Not drawn yet in your create flow — one box before the transaction, as restock.md has it. Nothing opened here.
+
+> ✅ **Fourteenth pass (2026-10-15)** — Q10 answered, option B:
+> [balance-posts-the-transfers-on-site-debt-from-the-event](./warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event).
+> Its contradiction closes. **No question is open here.** Two things it raised: your table has no column for the charge's
+> note ([the-table-has-no-note-for-the-charge](#the-table-has-no-note-for-the-charge)), and balance's `INCIDENTAL_FEE`
+> would drop a transfer whose id matches a restock's — balance's to answer, so it is
+> [balance Q13](../balance/context_clarify.md#question).
+>
+> 🆕 **Thirteenth pass (2026-10-14)** — a ripple from restock. The restock rule that
+> [the-on-site-charge-is-paid-by-b-at-accept](./warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept)
+> copied is reversed ([the-on-site-debt-copied-a-reversed-rule](#the-on-site-debt-copied-a-reversed-rule)). **Open now:
+> [Q10](#question)**, whether the transfer follows.
+>
 > ✅ **Twelfth pass (2026-10-10)** — `problem` deleted by you, `warehouse_transfer_teams` removed at your request: **every
 > contradiction is closed, and no question is open.**
 >
@@ -141,10 +157,47 @@ None open. Every critique raised on this doc has been answered — the answers a
    [a-transfer-never-goes-to-its-own-warehouse](./warehouse_transfer_decision.md#a-transfer-never-goes-to-its-own-warehouse) ·
    [a-transfer-is-locked-before-any-status-change](./warehouse_transfer_decision.md#a-transfer-is-locked-before-any-status-change) ·
    [a-transfers-lines-are-never-edited](./warehouse_transfer_decision.md#a-transfers-lines-are-never-edited).
+10. ✅ **Answered** *(2026-10-15)*, option B — [balance-posts-the-transfers-on-site-debt-from-the-event](./warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event).
+    What it leaves open is balance's: the source type ([balance Q13](../balance/context_clarify.md#question)).
 
 ---
 
 # Contradiction
+
+## the-table-has-no-note-for-the-charge
+
+*(2026-10-15)* Raised by [Q10](#question)'s answer.
+
+| | says |
+| --- | --- |
+| your §Table Should Have — `warehouse_transfers` | `warehouse_additional_cost`, and no note for it |
+| [an-incidental-line-must-say-what-it-was-for](../balance/context_decision.md#an-incidental-line-must-say-what-it-was-for) | balance refuses a courier's charge without a note |
+| [balance-posts-the-transfers-on-site-debt-from-the-event](./warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event) | the accept saves the charge **and its note** on the transfer, and the event carries both |
+
+**Your table is the one behind.** The contract already has `warehouse_additional_cost_note`, required when the charge is
+above 0, so nothing is built wrong. Only your list lacks it.
+**→ Recommend:** add `warehouse_additional_cost_note` under `warehouse_additional_cost` in your `warehouse_transfers`.
+
+```mermaid
+flowchart LR
+  B["B types Rp 5.000 and why"] --> T["warehouse_transfers - the charge and its note"]
+  T --> E["Warehouse Transfer Accepted"]
+  E --> BAL["balance - refuses a charge without a note"]
+```
+
+## the-on-site-debt-copied-a-reversed-rule
+
+✅ *(2026-10-15)* **Closed by [Q10](#question)** — the transfer follows the restock
+([balance-posts-the-transfers-on-site-debt-from-the-event](./warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)).
+The decision had copied a restock rule that was reversed four days later. Kept for the lesson: a rule borrowed from a
+sibling links to it **and** says what it copied, so a reversal there is found by its grep, as it was here.
+
+```mermaid
+flowchart LR
+  R["restock - the debt in the accept"] -->|"reversed 2026-10-14"| RE["restock - balance posts from the event"]
+  R -->|"copied, 2026-10-10"| T["transfer - the debt in B's accept"]
+  T -->|"followed, 2026-10-15"| TE["transfer - balance posts from the event"]
+```
 
 ## the-flow-and-the-status-list-disagree
 

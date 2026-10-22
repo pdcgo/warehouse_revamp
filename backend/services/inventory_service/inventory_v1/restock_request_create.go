@@ -10,78 +10,141 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// RestockRequestCreate records a selling team's restock request (status PENDING) with its priced
-// lines (#105/#124). It does NOT touch stock — the target warehouse does that when it fulfils.
+// RestockRequestCreate records a selling team's restock (status ONGOING) with its priced lines. It does NOT touch stock
+// — the warehouse does that when it accepts.
 //
-// The optional supplier must be a LIVE supplier — any selling team's, since team B restocks from team A's
-// supplier on its own restock (a-team-restocks-from-another-teams-supplier). It is asked of supplier_service,
-// which owns suppliers (the-supplier-gets-its-own-service); a deleted or unknown one is NotFound.
+// Each line may name a supplier, which must be a LIVE one — any selling team's, since team B restocks from team A's
+// supplier on its own restock (a-team-restocks-from-another-teams-supplier). It is asked of supplier_service, which
+// owns suppliers (the-supplier-gets-its-own-service); a deleted or unknown one is NotFound. A product appears once
+// (a-product-appears-once-per-restock).
 func (s *Service) RestockRequestCreate(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestCreateRequest],
 ) (*connect.Response[inventoryv1.RestockRequestCreateResponse], error) {
 	teamID := req.Msg.GetTeamId()
 
-	rr := inventory_service_models.RestockRequest{
-		RequestingTeamID: teamID,
+	err := productsOnce(req.Msg.GetItems())
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
+	// Only the team's own products (a-restock-carries-only-the-teams-own-products) — asked before any transaction.
+	err = s.ownProductsOnly(ctx, teamID, req.Msg.GetItems())
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
+	// Asked BEFORE the transaction, never inside one: a call to another service would hold a pooled connection — and
+	// any lock already taken — for a network round-trip (audits/services/inventory_service/concurrency/lock-order.md).
+	// A supplier deleted between this answer and the commit leaves the same state as "restock first, then delete",
+	// which is kept on purpose.
+	err = s.liveLineSuppliers(ctx, teamID, req.Msg.GetItems())
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
+	stores := s.askLineStores(ctx, teamID, req.Msg.GetItems())
+
+	for _, item := range req.Msg.GetItems() {
+		err = stores.check(item)
+		if err != nil {
+			return nil, restockErr(err)
+		}
+	}
+
+	rr := inventory_service_models.Restock{
+		TeamID:           teamID,
 		WarehouseID:      req.Msg.GetWarehouseId(),
 		Status:           restockStatusOngoing,
-		OrderRef:         req.Msg.GetInvoiceRefId(),
+		InvoiceRefID:     req.Msg.GetInvoiceRefId(),
 		Receipt:          req.Msg.GetReceipt(),
-		ShippingCost:     req.Msg.GetShipmentCost(),
+		ReceiptFile:      req.Msg.GetReceiptFile(),
+		ShipmentID:       req.Msg.GetShipmentId(),
+		FinanceAccountID: req.Msg.GetFinanceAccountId(),
+		ShipmentCost:     req.Msg.GetShipmentCost(),
 		Note:             req.Msg.GetNote(),
 		Items:            restockItemModels(req.Msg.GetItems()),
-		// WHO RAISED IT, from the caller's identity rather than the request body — a client that
-		// could nominate its own author could file somebody else's name against a delivery.
+		// WHO RAISED IT, from the caller's identity rather than the request body — a client that could nominate its
+		// own author could file somebody else's name against a delivery.
 		CreatedByUserID: actorFrom(ctx),
 	}
 
-	// The supplier the lines name, carried at the restock level until lines store their own (restockLineSupplier).
-	// ⚠ finance_account_id, shipment_id, receipt_file and the line notes have no column until the backend step.
-	if supplier := restockLineSupplier(req.Msg.GetItems()); supplier != nil {
-		supplierID := *supplier
-		rr.SupplierID = &supplierID
-
-		// Asked BEFORE the transaction, never inside one: a call to another service would hold a pooled
-		// connection — and any lock already taken — for a network round-trip
-		// (audits/services/inventory_service/concurrency/lock-order.md). A supplier deleted between this
-		// answer and the commit leaves the same state as "restock first, then delete", which is kept on purpose.
-		live, checkErr := s.suppliers.SupplierIsLive(ctx, teamID, supplierID)
-		if checkErr == nil && !live {
-			checkErr = errRestockSupplierMissing
-		}
-
-		if checkErr != nil {
-			return nil, restockErr(checkErr)
-		}
-	}
-
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// GORM inserts the request and its lines in this transaction, stamping their
-		// RestockRequestID — a request without its lines is not a request.
+	// Subtotal, total and each line's unit price, from the lines as typed — stored with them (restockTotals).
+	restockTotals(&rr)
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// GORM inserts the restock and its lines in this transaction, stamping their RestockID — a restock
+		// without its lines is not a restock.
 		createErr := tx.Create(&rr).Error
 		if createErr != nil {
 			return createErr
 		}
 
-		// THE FIRST ENTRY IN ITS HISTORY (00019). `rr.CreatedAt` rather than a fresh time.Now(): the
-		// event must carry the same instant the row does, or the timeline and the created-date filter
-		// disagree about which second the restock was raised.
-		eventErr := recordRestockEvent(tx, rr.ID, restockEventCreated, rr.CreatedByUserID, rr.CreatedAt)
-		if eventErr != nil {
-			return eventErr
+		// THE FIRST ROW OF ITS TRAIL (every-status-change-is-logged). `rr.CreatedAt` rather than a fresh time.Now():
+		// the log must carry the same instant the row does, or the trail and the created-date filter disagree about
+		// which second the restock was raised.
+		logErr := recordRestockLog(tx, rr.ID, "", restockStatusOngoing, rr.CreatedByUserID, restockLogCreated, rr.CreatedAt)
+		if logErr != nil {
+			return logErr
 		}
 
-		// Asking a warehouse to stock a product is what makes that product VISIBLE to it (#142). In the
-		// same transaction, because a request whose products the warehouse cannot see is a request
-		// nobody there can act on — the two facts have to land together or not at all.
+		// Asking a warehouse to stock a product is what makes that product VISIBLE to it (#142). In the same
+		// transaction, because a restock whose products the warehouse cannot see is one nobody there can act on.
 		return linkWarehouseProducts(tx, rr.WarehouseID, rr.Items)
 	})
 	if err != nil {
 		return nil, restockErr(err)
 	}
 
+	// AFTER the commit: the paying account hears the money left it (a-created-restock-tells-the-financial-account).
+	s.publishRestockMoney(ctx, restockCreatedEvent(&rr))
+
 	return connect.NewResponse(&inventoryv1.RestockRequestCreateResponse{
 		Request: restockRequestToProto(&rr),
 	}), nil
+}
+
+// productsOnce refuses a restock that lists a product twice (a-product-appears-once-per-restock). The database refuses
+// it too (00024's unique index); this says so as InvalidArgument instead of an internal constraint error.
+func productsOnce(items []*inventoryv1.RestockRequestItem) error {
+	seen := make(map[uint64]struct{}, len(items))
+
+	for _, item := range items {
+		if _, dup := seen[item.GetProductId()]; dup {
+			return errRestockProductTwice
+		}
+
+		seen[item.GetProductId()] = struct{}{}
+	}
+
+	return nil
+}
+
+// liveLineSuppliers asks supplier_service once per distinct supplier the lines name, and refuses the first that is
+// not live.
+func (s *Service) liveLineSuppliers(ctx context.Context, teamID uint64, items []*inventoryv1.RestockRequestItem) error {
+	asked := make(map[uint64]struct{}, len(items))
+
+	for _, item := range items {
+		id := item.GetSupplierId()
+		if id == 0 {
+			continue
+		}
+
+		if _, done := asked[id]; done {
+			continue
+		}
+
+		asked[id] = struct{}{}
+
+		live, err := s.suppliers.SupplierIsLive(ctx, teamID, id)
+		if err != nil {
+			return err
+		}
+
+		if !live {
+			return errRestockSupplierMissing
+		}
+	}
+
+	return nil
 }

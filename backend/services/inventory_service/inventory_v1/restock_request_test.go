@@ -22,7 +22,7 @@ const (
 )
 
 // stagingCode is the code of the staging placement a test with no shelf in it puts everything on.
-const stagingCode = "AREA-TERIMA"
+const stagingCode = "area-terima"
 
 // stagingPlacement is the warehouse's staging placement — its *Area Terima* — found, or made the first time it is
 // asked for. Every unit in stock is on a placement (there-is-no-unplaced-pile): a staging area is an ordinary placement,
@@ -34,7 +34,7 @@ func stagingPlacement(t *testing.T, db *gorm.DB, warehouse uint64) uint64 {
 	rack := inventory_service_models.Rack{}
 
 	err := db.
-		Where("warehouse_id = ? AND code = ? AND deleted = FALSE", warehouse, stagingCode).
+		Where("warehouse_id = ? AND code = ? AND deleted_at IS NULL", warehouse, stagingCode).
 		Attrs(inventory_service_models.Rack{WarehouseID: warehouse, Code: stagingCode, Name: "Area Terima"}).
 		FirstOrCreate(&rack).
 		Error
@@ -231,7 +231,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 
 	// The WAREHOUSE side sees the same requests through its own leg of the OR, and the tab must
 	// filter that leg too. This is what catches the operator-precedence trap: an unparenthesised
-	// `requesting_team_id = ? OR warehouse_id = ? AND status = ?` binds the AND to the warehouse leg
+	// `team_id = ? OR warehouse_id = ? AND status = ?` binds the AND to the warehouse leg
 	// only, so the selling team's list would quietly ignore the tab.
 	if only := list(warehouse, ongoing); len(only) != 1 || only[0].GetId() != stillPending.GetId() {
 		t.Fatalf("warehouse ongoing tab = %+v, want just the ongoing one", only)
@@ -292,12 +292,12 @@ func TestRestockRequest_Detail(t *testing.T) {
 		// The line is typed as its total (a-line-is-typed-as-its-total); the unit price is read-only, worked out on
 		// read — 1.500 over 2 is 750 a piece.
 		if got.GetItems()[0].GetPriceUnit() != 750 {
-			t.Fatalf("team %d: price_unit = %d, want 750 (total ÷ count)", team, got.GetItems()[0].GetPriceUnit())
+			t.Fatalf("team %v: price_unit = %v, want 750 (total ÷ count)", team, got.GetItems()[0].GetPriceUnit())
 		}
 
 		// Subtotal is the lines, total adds the freight — here none (the-couriers-charge-stays-out-of-total).
 		if got.GetSubtotal() != 2200 || got.GetTotal() != 2200 {
-			t.Fatalf("team %d: subtotal/total = %d/%d, want 2200/2200", team, got.GetSubtotal(), got.GetTotal())
+			t.Fatalf("team %v: subtotal/total = %v/%v, want 2200/2200", team, got.GetSubtotal(), got.GetTotal())
 		}
 	}
 
@@ -350,7 +350,7 @@ func TestRestockRequest_InvoiceRefPaymentAndNote(t *testing.T) {
 		t.Fatalf("invoice ref = %q, want the non-numeric reference back", got.GetInvoiceRefId())
 	}
 	if got.GetShipmentCost() != 18000 {
-		t.Fatalf("shipment cost = %d, want 18000", got.GetShipmentCost())
+		t.Fatalf("shipment cost = %v, want 18000", got.GetShipmentCost())
 	}
 	if got.GetNote() != "titip ke driver, jangan ditinggal di pos" {
 		t.Fatalf("note did not round-trip: %q", got.GetNote())
@@ -358,7 +358,7 @@ func TestRestockRequest_InvoiceRefPaymentAndNote(t *testing.T) {
 
 	// The goods and the agreed freight — what the paying account paid (the-couriers-charge-stays-out-of-total).
 	if got.GetSubtotal() != 4000 || got.GetTotal() != 22000 {
-		t.Fatalf("subtotal/total = %d/%d, want 4000/22000", got.GetSubtotal(), got.GetTotal())
+		t.Fatalf("subtotal/total = %v/%v, want 4000/22000", got.GetSubtotal(), got.GetTotal())
 	}
 
 	// A new restock writes no payment type: that is history, and the account replaced it.
@@ -369,7 +369,7 @@ func TestRestockRequest_InvoiceRefPaymentAndNote(t *testing.T) {
 	// A restock raised BEFORE paying accounts carries its type as stored text; it must still read back. Written
 	// around the API because no request can write it any more.
 	err = db.
-		Model(&inventory_service_models.RestockRequest{}).
+		Model(&inventory_service_models.Restock{}).
 		Where("id = ?", got.GetId()).
 		Update("payment_type", "shopee_pay").
 		Error
@@ -417,7 +417,7 @@ func TestRestockRequest_PaymentContextOptional(t *testing.T) {
 		t.Fatalf("absent context should be zero, got %+v", got)
 	}
 	if got.GetSubtotal() != 100 || got.GetTotal() != 100 {
-		t.Fatalf("subtotal/total = %d/%d, want 100/100 with no freight", got.GetSubtotal(), got.GetTotal())
+		t.Fatalf("subtotal/total = %v/%v, want 100/100 with no freight", got.GetSubtotal(), got.GetTotal())
 	}
 	if got.GetPaymentType() != inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_UNSPECIFIED {
 		t.Fatalf("payment type = %v, want UNSPECIFIED", got.GetPaymentType())
@@ -558,11 +558,9 @@ func TestRestockRequest_OptionalContextOmitted(t *testing.T) {
 	}
 }
 
-// The supplier rides each LINE in the contract (a-line-connects-to-any-teams-supplier-from-a-popup), but until lines
-// store their own it is kept once per restock: the supplier every line names. Lines that DISAGREE keep none rather
-// than crediting the whole restock to the first one — a supplier's figures read it — and every line reads back the
-// same answer.
-func TestRestockRequest_LinesThatDisagreeOnTheSupplierKeepNone(t *testing.T) {
+// EACH LINE KEEPS ITS OWN SUPPLIER (a-line-names-the-channel-it-was-bought-from, 00024): two lines may name two
+// suppliers, or one may name none, and each reads back exactly what it was given — nothing is merged up to the restock.
+func TestRestockRequest_EachLineKeepsItsOwnSupplier(t *testing.T) {
 	db := san_testdb.DB(t)
 	ctx := ctxUser(1)
 
@@ -599,17 +597,18 @@ func TestRestockRequest_LinesThatDisagreeOnTheSupplierKeepNone(t *testing.T) {
 	}
 
 	for name, c := range map[string]struct {
-		first, second, want uint64
+		first, second uint64
 	}{
-		"both lines from one supplier": {melati, melati, melati},
-		"two suppliers":                {melati, sinar, 0},
-		"one line names none":          {melati, 0, 0},
+		"both lines from one supplier": {melati, melati},
+		"two suppliers":                {melati, sinar},
+		"one line names none":          {melati, 0},
 	} {
 		got := create(c.first, c.second)
+		want := []uint64{c.first, c.second}
 
 		for i, item := range got.GetItems() {
-			if item.GetSupplierId() != c.want {
-				t.Fatalf("%s: line %d reads supplier %d, want %d", name, i, item.GetSupplierId(), c.want)
+			if item.GetSupplierId() != want[i] {
+				t.Fatalf("%s: line %d reads supplier %d, want %d", name, i, item.GetSupplierId(), want[i])
 			}
 		}
 	}
@@ -675,7 +674,8 @@ func TestRestockRequest_AcceptReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	// extra-units-are-added-by-the-selling-teams-edit: the selling team turns 5 into 6, and the warehouse accepts
 	// what the line now says. An edit is a full replace, so the lines come back with new ids.
 	edited, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-		TeamId: sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+		TeamId:           sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Short", Count: 10, Total: 5000},
 			{ProductId: 200, Sku: "SKU2", Name: "Exact", Count: 3, Total: 1000},
@@ -724,7 +724,8 @@ func TestRestockRequest_AcceptReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	// THE GAP IS WRITTEN DOWN, not just implied (a-short-unit-at-the-door-is-missing): count − received, as a MISSING
 	// row priced by the system from the line (the-problem-price-is-filled-by-the-system). Nobody typed it.
 	for i, want := range []struct {
-		missing, priceUnit, total int64
+		missing          int64
+		priceUnit, total float64
 	}{{1, 500, 500}, {0, 0, 0}, {0, 0, 0}, {2, 450, 900}} {
 		problems := got[i].GetProblems()
 
@@ -741,7 +742,7 @@ func TestRestockRequest_AcceptReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 		}
 
 		if problems[0].GetPriceUnit() != want.priceUnit || problems[0].GetTotal() != want.total {
-			t.Fatalf("line %d: missing worth %d × … = %d, want %d / %d", i,
+			t.Fatalf("line %d: missing worth %v × … = %v, want %v / %v", i,
 				problems[0].GetPriceUnit(), problems[0].GetTotal(), want.priceUnit, want.total)
 		}
 	}
@@ -838,8 +839,8 @@ func TestRestockRequest_AcceptPutsGoodsOnTheNamedShelf(t *testing.T) {
 	}{{100, rackA, 10}, {200, rackB, 4}} {
 		var on int64
 
-		err = db.Raw(`SELECT COALESCE(SUM(on_hand), 0) FROM stock_levels
-		              WHERE warehouse_id = ? AND product_id = ? AND rack_id = ?`,
+		err = db.Raw(`SELECT COALESCE(SUM(stock_count), 0) FROM product_placements
+		              WHERE warehouse_id = ? AND product_id = ? AND placement_id = ?`,
 			warehouse, c.product, c.rack).Scan(&on).Error
 		if err != nil {
 			t.Fatalf("read shelf: %v", err)
@@ -850,22 +851,10 @@ func TestRestockRequest_AcceptPutsGoodsOnTheNamedShelf(t *testing.T) {
 		}
 	}
 
-	var unplacedRows int64
-
-	err = db.Raw(`SELECT COUNT(*) FROM stock_levels WHERE warehouse_id = ? AND rack_id IS NULL`,
-		warehouse).Scan(&unplacedRows).Error
-	if err != nil {
-		t.Fatalf("count unplaced: %v", err)
-	}
-
-	if unplacedRows != 0 {
-		t.Fatalf("shelving as you count must leave nothing unplaced, got %d unplaced rows", unplacedRows)
-	}
-
-	// And the ledger says which shelf each receipt went to.
+	// And the ledger says which rack each receipt went to.
 	var placedMovements int64
 
-	err = db.Raw(`SELECT COUNT(*) FROM stock_movements WHERE warehouse_id = ? AND rack_id IS NOT NULL`,
+	err = db.Raw(`SELECT COUNT(*) FROM product_placement_logs WHERE warehouse_id = ? AND change_type = 'restock'`,
 		warehouse).Scan(&placedMovements).Error
 	if err != nil {
 		t.Fatalf("count movements: %v", err)
@@ -1029,7 +1018,8 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 
 	// And again on edit.
 	updated, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-		TeamId: sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+		TeamId:           sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			{
 				ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500,
@@ -1182,7 +1172,8 @@ func TestRestockRequest_Update(t *testing.T) {
 
 	// Another team cannot edit it — indistinguishable from one that does not exist.
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-		TeamId: 9, RequestId: reqID, WarehouseId: warehouse,
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+		TeamId:           9, RequestId: reqID, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{{ProductId: 1, Sku: "X", Name: "X", Count: 1}},
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
@@ -1207,7 +1198,7 @@ func TestRestockRequest_Update(t *testing.T) {
 
 	// The totals follow the replaced lines: 1.500 + 250, plus the edited freight.
 	if got.GetSubtotal() != 1750 || got.GetTotal() != 13750 {
-		t.Fatalf("subtotal/total = %d/%d, want 1750/13750", got.GetSubtotal(), got.GetTotal())
+		t.Fatalf("subtotal/total = %v/%v, want 1750/13750", got.GetSubtotal(), got.GetTotal())
 	}
 
 	// Read it back rather than trusting the response — the rows are what the next reader sees.
@@ -1275,7 +1266,7 @@ func TestRestockRequest_UpdateClearsOptionalContext(t *testing.T) {
 	// A historic payment type, as a restock raised before paying accounts carries it — written around the API,
 	// because no request can write one any more.
 	err = db.
-		Model(&inventory_service_models.RestockRequest{}).
+		Model(&inventory_service_models.Restock{}).
 		Where("id = ?", reqID).
 		Update("payment_type", "shopee_pay").
 		Error
@@ -1285,7 +1276,8 @@ func TestRestockRequest_UpdateClearsOptionalContext(t *testing.T) {
 
 	// Everything optional left out: the person cleared the lot.
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-		TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5,
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+		TeamId:           sellingTeam, RequestId: reqID, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
 		},
@@ -1341,7 +1333,8 @@ func TestRestockRequest_UpdateOnlyWhileOngoing(t *testing.T) {
 
 	tryEdit := func(reqID uint64) error {
 		_, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-			TeamId: sellingTeam, RequestId: reqID, WarehouseId: warehouse,
+			FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+			TeamId:           sellingTeam, RequestId: reqID, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
 				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 999, Total: 500},
 			},
@@ -1419,7 +1412,8 @@ func TestRestockRequest_UpdateSupplierMustBeLive(t *testing.T) {
 	// The supplier rides each line (a-line-connects-to-any-teams-supplier-from-a-popup).
 	edit := func(supplierID uint64) error {
 		_, updErr := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-			TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5,
+			FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+			TeamId:           sellingTeam, RequestId: reqID, WarehouseId: 5,
 			Items: []*inventoryv1.RestockRequestItem{
 				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplierID},
 			},
@@ -1484,7 +1478,8 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 
 	// The edit re-sends the prefilled (now deleted) supplier and changes only the note.
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-		TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5,
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+		TeamId:           sellingTeam, RequestId: reqID, WarehouseId: 5,
 		Note: "just fixing a typo",
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
@@ -1506,7 +1501,8 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 	}
 
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-		TeamId: sellingTeam, RequestId: fresh.Msg.GetRequest().GetId(), WarehouseId: 5,
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+		TeamId:           sellingTeam, RequestId: fresh.Msg.GetRequest().GetId(), WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
 		},
@@ -1810,7 +1806,7 @@ func TestRestockRequest_AcceptRecordsDamageWithoutStockingIt(t *testing.T) {
 
 		// the-problem-price-is-filled-by-the-system: the line's share, 100.000 × 2 ÷ 10.
 		if problems[0].GetPriceUnit() != 10000 || problems[0].GetTotal() != 20000 {
-			t.Fatalf("%s: problem worth %d / %d, want 10000 / 20000", source,
+			t.Fatalf("%s: problem worth %v / %v, want 10000 / 20000", source,
 				problems[0].GetPriceUnit(), problems[0].GetTotal())
 		}
 	}
@@ -1878,17 +1874,20 @@ func TestRestockRequest_AcceptBrokenIsCountedOutOfReceived(t *testing.T) {
 	}
 }
 
-// onHandAt reads what one PLACE holds. `rack == nil` asks for stock on NO placement — which must always be 0 now
-// (there-is-no-unplaced-pile) — and IS NOT DISTINCT FROM is what makes that question honest: `rack_id = NULL` is never
-// true in SQL, so the ordinary comparison would report a rack-less row as empty however much sat in it (#135).
+// onHandAt reads what one RACK row holds. `rack == nil` asks for stock on NO placement, which is always 0
+// (there-is-no-unplaced-pile).
 func onHandAt(t *testing.T, db *gorm.DB, warehouse, product uint64, rack *uint64) int64 {
 	t.Helper()
 
 	var on int64
 
-	err := db.Raw(`SELECT COALESCE(SUM(on_hand), 0) FROM stock_levels
-	               WHERE warehouse_id = ? AND product_id = ? AND rack_id IS NOT DISTINCT FROM ?`,
-		warehouse, product, rack).Scan(&on).Error
+	if rack == nil {
+		return 0
+	}
+
+	err := db.Raw(`SELECT COALESCE(SUM(stock_count), 0) FROM product_placements
+	               WHERE warehouse_id = ? AND product_id = ? AND placement_id = ?`,
+		warehouse, product, *rack).Scan(&on).Error
 	if err != nil {
 		t.Fatalf("read place: %v", err)
 	}
@@ -1909,16 +1908,14 @@ func TestRestockRequestList_FiltersByProduct(t *testing.T) {
 	const sellingTeam, warehouse uint64 = 2, 5
 	const wanted, other uint64 = 100, 200
 
-	// A request naming the product TWICE, alongside one that does not name it at all.
-	//
-	// ⚠ a-product-appears-once-per-restock forbids this for a NEW restock, but nothing refuses it yet (the unique
-	// (restock, product) key lands with the backend step), and rows written before the decision can hold it — so the
-	// filter must still return such a restock once.
+	// A request naming the product beside another line, alongside one that does not name it at all. A product appears
+	// once per restock (a-product-appears-once-per-restock, 00024's unique index), so EXISTS is what keeps a
+	// several-line restock from being counted per line.
 	twice, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Count: 3, Total: 3000},
-			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Count: 2, Total: 2000},
+			{ProductId: 300, Sku: "SKU3", Name: "Gizmo", Count: 2, Total: 2000},
 		},
 	}))
 	if err != nil {

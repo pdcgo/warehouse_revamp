@@ -18,6 +18,12 @@ each old heading there now points here.
 | [a-deadline-is-loud-or-it-is-nothing](#a-deadline-is-loud-or-it-is-nothing) | four urgency bands, and an overdue order tints its whole row |
 | [the-preview-became-the-order-list](#the-preview-became-the-order-list) | a seller's `/orders` IS this screen now — the preview page is gone |
 | [the-summary-follows-the-tab](#the-summary-follows-the-tab) | All Status shows the piles; a status tab shows its own figures as cards; the measure line is gone. The cards fill the row again |
+| [root-reads-every-teams-orders](#root-reads-every-teams-orders) | a request scoped to the root team reads every team's orders: the list, its counts and order detail |
+| [finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) | a `return` order's menu drops *Selesaikan Order* until settlement can show the withdrawal |
+| [one-tab-per-status](#one-tab-per-status) | one tab per decided status plus All, in the status diagram's order; `return_completed` has its own |
+| [shipping-is-cyan-and-picked-is-sky](#shipping-is-cyan-and-picked-is-sky) | picked joins processed in sky; shipping, the handover, gets its own cyan |
+| [pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed) | return completed is pink, *Retur Diterima*'s colour; return is red |
+| [the-order-import-moves-statuses-only](#the-order-import-moves-statuses-only) | the order list's Import moves statuses only; payouts and withdrawals come from Settlement Imports |
 
 ## status-colours-are-carried-over-verbatim
 
@@ -35,7 +41,7 @@ were. Nothing was re-picked.
 | `completed` | **green** | `completed` — Selesai |
 | `problem` | **purple** | `problem` — Bermasalah |
 | `lost` | **purple** | `return_problem` — Lost |
-| `return` | **pink** | `return_completed` — Retur Diterima |
+| `return` | **pink** | `return_completed` — Retur Diterima. 🔄 *(2026-10-21)* pink moved with its meaning to `return_completed`, and `return` is red — [pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed) |
 | `cancel` | **rose** | `cancel` — Batal |
 
 **Why verbatim.** People have been reading these colours for years. A fresh palette would spend that
@@ -227,6 +233,8 @@ selling team", so root and admin get Team instead of a Shop column that would be
 and sees an empty list — the column would be correct and the table empty. That is a server change,
 not a column; it is open in the clarify file.
 
+🔄 *(2026-10-19)* **Decided:** [root-reads-every-teams-orders](#root-reads-every-teams-orders). ✅ Built 2026-10-21.
+
 ## the-action-menu-is-a-table-keyed-by-status
 
 > Owner, in chat (2026-09-28) — the per-status action list, given in the OLD status names.
@@ -241,7 +249,7 @@ traced through branches. Mapped onto the decided eight:
 | shipped | Retur Barang · Selesaikan Order | neither |
 | completed | Edit Withdrawal | no |
 | problem | Selesaikan Sengketa | no |
-| return | Jadikan Lost · Selesaikan Order (only when `wd_total` is above zero) | neither, and no `wd_total` |
+| return | Jadikan Lost · ~~Selesaikan Order (only when `wd_total` is above zero)~~ 🔄 *(2026-10-21)* dropped: [finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) | neither, and no `wd_total` |
 | lost · cancel | — | the owner listed none, and both are ends |
 
 **Two of the owner's rows fold into one stage**, and this is the only judgement call:
@@ -379,3 +387,179 @@ flowchart LR
   With `auto-fit` the drafts page's three cards fill the row, so a draft card is no longer the width of an order
   card. The shape is shared; the width follows how many cards share the row, on every tab alike.
 - The cost-unknown note stays, under whichever strip is showing.
+
+---
+
+## root-reads-every-teams-orders
+
+> Owner, in chat (2026-10-19): *"yes, follow your recomendation"* — to
+> [technical order Q6](../order/design_clarify.md#question), *"does a root or admin reader see every team's orders in the
+> order list?"*. As recommended.
+
+**The verdict.** A request scoped to the **root team** reads **every team's** orders, in the list, its counts and order
+detail. Only ROOT and ADMIN hold that scope, so this is no new permission: it's the rule the settlement reports already use
+([isRootScope](../../../backend/services/settlement_service/settlement_v1/analytic_shared.go)). Every other team is unchanged.
+
+```mermaid
+flowchart LR
+  Q{"the request's team"} -->|"team 1 - root"| A["every team's orders, with the Team column"]
+  Q -->|"any other team"| B["team_id or warehouse_id = that team - unchanged"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the rule | `team_id` = the root team means no team filter |
+| where | `scopedOrders`, so the list and `OrderStat` stay one set of orders, and order detail's lookup |
+| who | ROOT and ADMIN in the root team, the only ones the interceptor lets hold that scope |
+| any other team | `(team_id = ? OR warehouse_id = ?)`, as today |
+| the screen | the Team column ([harga-beli-team-and-gudang-are-on-the-row](#harga-beli-team-and-gudang-are-on-the-row)) gets its rows |
+| ✅ built *(2026-10-21)* | `readsEveryTeam` in [order_list.go](../../../backend/services/selling_service/selling_v1/order_list.go), used by `scopedOrders` (list, stat, creator picker) and [order_detail.go](../../../backend/services/selling_service/selling_v1/order_detail.go). Pinned by `TestOrderList_TheRootTeamReadsEveryTeam` |
+
+---
+
+## finish-order-on-a-return-waits-for-the-withdrawal
+
+> Owner, in chat (2026-10-21): *"okay, i follow your recomendation"* — to *"does the order list keep Selesaikan Order on an
+> order in `return`?"*, the last row of
+> [the-order-menu-and-the-status-move-disagree-after-the-handover](../../business/order/context_clarify.md#the-order-menu-and-the-status-move-disagree-after-the-handover).
+> As recommended.
+
+**The verdict.** A `return` order's menu **drops *Selesaikan Order***. It needed the withdrawal figure (`wd_total`), which
+settlement doesn't have yet, and the status diagram has no `return → completed`. When settlement can show an order's
+withdrawal, the edge and the item come back together.
+
+```mermaid
+flowchart LR
+  R["an order in return"] --> L["Jadikan Lost - return to lost"]
+  R --> A["the warehouse's accept - return to return_completed"]
+  R -.->|"later, with the withdrawal figure"| C["Selesaikan Order - return to completed"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the `return` row of the menu | *Jadikan Lost* only |
+| *Selesaikan Order* on `return` | removed |
+| when it comes back | once settlement shows an order's withdrawal, with `return → completed` added to the status diagram in the same change |
+| the other rows | unchanged ([the-action-menu-is-a-table-keyed-by-status](#the-action-menu-is-a-table-keyed-by-status)) |
+| ✅ built *(2026-10-21)* | the `return` row of [rowActions.ts](../../../frontend/src/features/orders/rowActions.ts) is *Jadikan Lost* only |
+
+---
+
+## one-tab-per-status
+
+> Owner, in chat (2026-10-21): *"yes, i follow your recomendation"* — to *"which tabs does the order list show, and does
+> `return_completed` get its own?"*, the last point of
+> [the-warehouse-steps-rule-met-the-return-status](../../business/order/context_clarify.md#the-warehouse-steps-rule-met-the-return-status).
+> As recommended.
+
+**The verdict.** The order list shows **one tab per status, plus *All***, in the status diagram's order
+([the-status-move-is-the-only-journey](../../business/order/context_decision.md#the-status-move-is-the-only-journey)).
+`return_completed` has its own tab beside `return`. Statuses are never grouped, because each is a different queue with a
+different person acting on it.
+
+```mermaid
+flowchart LR
+  A["All"] --> P["pending"] --> PR["processed"] --> PK["picked"] --> SH["shipping"] --> SD["shipped"] --> C["completed"]
+  C --> PB["problem"] --> L["lost"] --> R["return"] --> RC["return_completed"] --> X["cancel"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the tabs | All · pending · processed · picked · shipping · shipped · completed · problem · lost · return · return_completed · cancel |
+| *All* | shows every pile at once ([the-summary-follows-the-tab](#the-summary-follows-the-tab)) |
+| a phone | the tab row scrolls sideways |
+| the warehouse's own list | keeps its own tabs ([the-warehouse-tabs-are-the-processed-steps](warehouse_order_list_decision.md#the-warehouse-tabs-are-the-processed-steps)) |
+| ✅ built *(2026-10-21)* | the proto `OrderStatus` carries the eleven (00015 migrated every order), [statusTabs.ts](../../../frontend/src/features/orders/statusTabs.ts) and `StageTabs` draw one tab each in one row that scrolls sideways, and the step filter under Diproses is gone |
+
+---
+
+## shipping-is-cyan-and-picked-is-sky
+
+> Owner, in chat (2026-10-21): *"i follow your recomendation"* — to *"what colour are picked, shipping and return completed?"*,
+> the three statuses [status-colours-are-carried-over-verbatim](#status-colours-are-carried-over-verbatim) never coloured. As
+> recommended, which changed my own build: it had put shipping in sky too.
+
+**The verdict.** **Picked** is **sky**, with processed: both are the order inside the building. **Shipping** is **cyan**, its own
+hue: the goods have been handed to the courier and left. Return completed is settled by
+[pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed).
+
+```mermaid
+flowchart LR
+  P["pending - amber"] --> PR["processed - sky"] --> PK["picked - sky"] --> SH["shipping - cyan"] --> SD["shipped - blue"] --> C["completed - green"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| picked | `sky`, the same as processed. The label tells the two apart |
+| shipping | `cyan`. In the *All* list, *has it left us?* is what the crew scans for, so it must not look like an order still on the shelf |
+| the order of hues | sky → cyan → blue runs in journey order: in the building, handed over, on the road |
+| where | the one map `ORDER_STATUSES` in [OrderStatusBadge.tsx](../../../frontend/src/components/badges/OrderStatusBadge.tsx). The tabs, the stepper and the timeline all read it |
+| ✅ built *(2026-10-21)* | shipping moved from sky to cyan. Storybook: *Components/Badges/OrderStatusBadge → All Statuses* |
+
+---
+
+## pink-follows-retur-diterima-to-return-completed
+
+> Owner, in chat (2026-10-21): *"yes a"* — to *"pink is your colour for Retur Diterima. Should it stay on return, or move to
+> return completed, which is what Retur Diterima now means?"*, option A. As recommended. Raised because the build had already
+> made this move **without asking**, and my first question reported return as the owner's red when the record says pink.
+
+**The verdict.** **Return completed** is **pink**, *Retur Diterima*'s colour, carried over verbatim to the status that now means
+it ([the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed)).
+**Return** (claimed, the parcel on its way back, nothing settled) is **red**.
+
+```mermaid
+flowchart LR
+  OLD["Retur Diterima - pink"] -->|"2026-09-24, eight statuses"| R1["return"]
+  OLD -->|"2026-10-21, after return_completed split off"| RC["return_completed - pink"]
+  R2["return - claimed, coming back"] --> RED["red"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| return completed | `pink`. Its timeline row is pink too, as an ending |
+| return | `red` |
+| the near pair | return's red sits next to cancel's rose: the same kind of accepted near-neighbours as processed's sky and shipped's blue. The label carries which |
+| what it amends | the `return` row of [status-colours-are-carried-over-verbatim](#status-colours-are-carried-over-verbatim). The rule there still holds: pink went where its meaning went |
+| ✅ built *(2026-10-21)* | already so in [OrderStatusBadge.tsx](../../../frontend/src/components/badges/OrderStatusBadge.tsx); its comment no longer calls it a proposal |
+
+---
+
+## the-order-import-moves-statuses-only
+
+> Owner, in chat (2026-10-21): *"okay, i follow your recomendation"* — to *"the order list's Import promises to move each order
+> to the marketplace's status AND to record the payout against the order. The payout is what Settlement Imports already does.
+> Keep the payout promise?"*. As recommended: drop it.
+
+**The verdict.** The order list's **Import** reads the marketplace's **order export** and moves statuses — nothing else. Money
+always comes from the marketplace's **statement**, through **Settlement Imports**: each order's payout and fees onto its
+settlement, each wallet → bank withdrawal onto the shop
+([withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type)). One file,
+one job, and no payout can be posted from two screens.
+
+```mermaid
+flowchart LR
+  OE["the marketplace's order export"] --> OI["Orders - Import"] --> S["each order's status"]
+  ST["the marketplace's statement"] --> SI["Settlement Imports"] --> P["payouts and fees - per order"]
+  SI --> W["withdrawals - per shop"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the dialog | keeps *"each order it names is moved to the status the marketplace reports"*. The payout line is gone, and in its place: *payouts and withdrawals are not read from this file — import the statement on Settlement Imports* |
+| why not both | the importer refuses a repeated row only by the row's key from the statement. A payout read from a different file would carry a different key and be posted twice |
+| the `withdrawal` pending entry | **stays** — it no longer explains the dialog, but it still explains a completed order's **Edit Withdrawal**: settlement records withdrawals per shop, so an order still has no withdrawal figure ([finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) waits on the same figure). The strip stays at 12 |
+| the status half | still not built, and which marketplace status maps to which of ours is not decided |
+| ✅ built *(2026-10-21)* | the dialog line in [ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx). The stale reasons found with it — the list's Export and Withdrawal, the order detail's Withdrawal — now say what is true |

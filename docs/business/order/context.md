@@ -3,6 +3,7 @@
 ## General.
 1. for order settlement, its follow [this](../settlement/context.md).
 2. for order event related, see [this](./event_context.md)
+3. for order return related, see [this](./order_return.md)
 
 ## Whats Order Responsbility And Not.
 ### Responsbility.
@@ -25,7 +26,9 @@ when order created. its bring 4 things.
 
     field that must have:
     - `id`, primary key
-    - `order_external_ref_id`, its for order uniqueness, its cannot empty
+    - `idempotency_key`
+    - `transaction_id`
+    - `order_external_ref_id`, its for duplicate warning, its cannot empty
     - `shop_id`
     - `team_id`
     - `warehouse_id`
@@ -67,13 +70,27 @@ when order created. its bring 4 things.
     - `desa_name`
     - `postal_code`
     - `address_line`
-    
 
-4. `order_drafts`,
+4. Table `order_timeline_logs`.
 
     field that must have:
     - `id`, primary key
-    - `order_external_ref_id`, its for order uniqueness, its cannot empty
+    - `order_id`
+    - `status`
+    - `note`
+    - `from`
+    - `actor_id`
+    - `created_at`
+    
+    field `from` is from where log created. It contain:
+    - `warehouse`. if it from warehouse side log. 
+    - `selling`. if it from selling side log. 
+
+5. `order_drafts`,
+
+    field that must have:
+    - `id`, primary key
+    - `order_external_ref_id`, its for order duplicate warning, its cannot empty
     - `shop_id`
     - `team_id`
     - `shipment_channel_id`
@@ -83,7 +100,7 @@ when order created. its bring 4 things.
     - `receipt`
     - `receipt_file`
 
-5. `order_draft_platform_items`
+6. `order_draft_platform_items`
 
     field that must have:
     - `id`, primary key
@@ -93,7 +110,7 @@ when order created. its bring 4 things.
     - `qty`
     - `total`
 
-6. `order_draft_addresses`
+7. `order_draft_addresses`
 
     field that must have:
     - `id`, primary key
@@ -111,12 +128,16 @@ when order created. its bring 4 things.
 ### Order Items Table.
 1. money in columns are frozen at finalize and never recomputed.
 
+### Whats `order_timeline_logs` Table Used For.
+1. for track timeline order status change or if there note from warehouse while processing orders like picking goods but there no goods in rack.
 
 ### Order Status.
 1. Status That Existed.
     - `cancel`
     - `pending`
     - `processed`
+    - `picked`
+    - `shipping`
     - `shipped`
     - `completed`
     - `problem`
@@ -127,20 +148,28 @@ when order created. its bring 4 things.
 2. Status Move.
     ```mermaid
     stateDiagram-v2
-
-    pending-->cancel
-    pending-->processed
-    processed-->cancel
-    processed-->shipped
-    shipped-->completed
-    shipped-->problem
-    problem-->completed
-    problem-->lost
-    problem-->return
-    shipped-->lost
-    shipped-->return
-    completed-->return
-    return-->return_completed
+    [*] --> pending
+    pending --> processed: warehouse - confirms, the label printed
+    pending --> cancel: the selling team
+    processed --> pending: warehouse - goods on no rack, a note
+    processed --> picked: warehouse - Set Picked
+    picked --> pending: warehouse - platform cancelled, unpacked
+    picked --> shipping: warehouse - the handover scan
+    shipping --> shipped: customer service - seen moving on the platform
+    shipping --> return: customer service, or the warehouse forcing it
+    shipped --> completed: customer service
+    shipped --> problem: customer service - seen on the platform
+    shipped --> lost: customer service
+    shipped --> return: customer service, or the warehouse forcing it
+    problem --> completed: customer service
+    problem --> lost: customer service
+    problem --> return: customer service, or the warehouse forcing it
+    completed --> return: customer service, or the warehouse forcing it
+    return --> return_completed: warehouse - accepts, the goods are here
+    return --> lost: customer service - the parcel never came back
+    cancel --> [*]
+    lost --> [*]
+    return_completed --> [*]
     ```
 
 ## Order Draft Behavior and What Used For.
@@ -180,28 +209,29 @@ fork_state-->ord: finalized and create new order
 ```
 
 
-## How We Manage Order Uniqueness.
-1. Order uniqueness manage by code.
-2. Unique Scope by `order_external_ref_id` + `shop_id`
+## How We Warn Duplicate Order.
+1. `order_external_ref_id` + `shop_id` is not unique. same reference can be created twice, ex: cancel and create new one.
+2. frontend check before create order, and in every Try Again. it look in `orders` that not `cancel`, and in `order_drafts`.
+3. draft that being finalized is not warned.
+4. if found, frontend show warning with that order or draft. customer service can open it, or still create.
+5. backend not refuse duplicate reference.
 
     ```mermaid
     flowchart TD
-    
     s(("Start"))
     e(("End"))
 
-    s-->ordcreate["Order need Create"]
-    ordcreate-->refcheck{"is `order_external_ref_id` exist ?"}
+    s-->ordcreate["Order Need Create"]
+    ordcreate-->refcheck{"same shop and ref in orders not cancel, or in drafts ?"}
     refcheck-->|no|created["Order Created"]
-    refcheck-->|yes|fetch["Fetch existing order with `order_external_ref_id` that not canceled"]
-
-    fetch-->iscancel{"Is Existing Order Cancel"}
-    iscancel-->|no|created
-    iscancel-->|yes|deny["Deny Order Create"]
-
-    deny-->e
+    refcheck-->|"yes, only the draft being finalized"|created
+    refcheck-->|"yes, other order or draft"|warn["Show Warning With That Order or Draft"]
+    warn-->|open it|open["Open That Order or Draft"]
+    warn-->|still create|created
+    open-->e
     created-->e
     ```
+
 
 ## How Order Enter Our System.
 1. Order Draft is stored to another place. not in table `orders` but in `order_drafts`
@@ -315,57 +345,13 @@ how we charge that 2 item is managed by balance service that explained in [balan
 
 
 
-## Complete Journey Of The Orders.
-```mermaid
-flowchart TD
-s(("start"))
-e(("End"))
-
-s-->create["Order Created"]
-create-->cancel{"Is Cancel ?"}
-cancel-->|yes|uc["User Cancel Order"]
-    uc-->e
-cancel-->|no|waccept["Warehouse Accept Order"]
-    waccept-->process["Warehouse Process Order (Packing/Picking)"]
-    process-->give["Warehouse Give to Shipping Channel"]
-    give-->setwcompleted["set status warehouse process `completed`"]
-    setwcompleted-->setship["set status `shipped`"]
-    setship-->shipproblem{"is Shipment Problem ?"}
-    shipproblem-->|yes|setproblem["set status `problem`"]
-        setproblem-->e
-    shipproblem-->|no|completed["set status `completed`"]
-        completed-->e
-
-```
-
-
-
-## Stock Ownership When Order Return. 
-```mermaid
-flowchart TD
-
-s(("Start"))
-e(("End"))
-
-s-->ret["Order Return Happen"]
-ret-->iscross{"Is Product Cross"}
-iscross-->|yes|linkmap{"Is Product Have LinkMap"}
-    linkmap-->|no|pcreate["Duplicate Cross Product"]
-        pcreate-->own["Set Ownership to Own"]
-        own-->reg["Register To LinkMap"]
-        reg-->claim["Claim Cross Return Stock With Own Product"]
-    linkmap-->|yes|pget["Getting Own Product Have Linked"]
-        pget-->claim
-    
-    claim-->ivcreate["Create Return"]
-
-iscross-->|no|ivcreate
-ivcreate-->e
-
-
-```
-### What Is Product LinkMap
-1. its use for prevent duplicate create product when order return happened.
-2. its use for map product ownership when its return.
-
-
+## Order Shipments.
+### who change status `shipping` and `shipped`
+1. `shipping` to `shipped`
+    - customer service check manually to external platform and mark shipped manually.
+2. `shipped` to `problem`
+    - customer service check manually to external platform and mark problem manually.
+3. `shipping` to `return`
+    - customer service check manually to external platform and mark return manually.
+4. `return` to `lost`
+    - customer service check manually to external platform and mark lost manually.

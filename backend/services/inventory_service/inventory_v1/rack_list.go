@@ -24,7 +24,7 @@ func (s *Service) RackList(
 	query := s.db.
 		WithContext(ctx).
 		Model(&inventory_service_models.Rack{}).
-		Where("warehouse_id = ? AND deleted = ?", req.Msg.GetTeamId(), false)
+		Where("warehouse_id = ? AND deleted_at IS NULL", req.Msg.GetTeamId())
 
 	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
@@ -80,8 +80,8 @@ type rackTotal struct {
 // totals (a-rack-shows-its-stock-count-for-now) — and its product count. ONE grouped query for the page's racks, never
 // one per rack.
 //
-// The product count is COUNT(*), not COUNT(DISTINCT product_id): a level row is one product on one rack (its key is
-// warehouse, product, rack), so the rows ARE the distinct products. A level that fell to 0 is not on the rack.
+// The product count is COUNT(*), not COUNT(DISTINCT product_id): a rack row is one product on one rack (UNIQUE on
+// product and rack), so the rows ARE the distinct products. A row that fell to 0 is not on the rack.
 //
 // A rack holding nothing is absent from the result and reads 0 and 0: the slice answers for every rack on the page.
 func (s *Service) rackStockTotals(
@@ -107,10 +107,10 @@ func (s *Service) rackStockTotals(
 
 	err := s.db.
 		WithContext(ctx).
-		Model(&inventory_service_models.StockLevel{}).
-		Select("rack_id, SUM(on_hand) AS total, COUNT(*) AS products").
-		Where("warehouse_id = ? AND rack_id IN ? AND on_hand > 0", warehouseID, ids).
-		Group("rack_id").
+		Model(&inventory_service_models.ProductPlacement{}).
+		Select("placement_id AS rack_id, SUM(stock_count) AS total, COUNT(*) AS products").
+		Where("warehouse_id = ? AND placement_id IN ? AND stock_count > 0", warehouseID, ids).
+		Group("placement_id").
 		Scan(&rows).
 		Error
 	if err != nil {

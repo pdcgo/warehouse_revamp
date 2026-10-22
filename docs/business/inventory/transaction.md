@@ -1,7 +1,7 @@
 # Transaction.
 
 
-## General Table That Must Have.
+## General Table That Must Have in Transaction.
 
 1. Table `inventory_transactions`
 
@@ -26,17 +26,33 @@
     - `transfer_in`
     - `transfer_out`
     - `adjustment`
+    - `revaluation`
+    - `problem`
+    - `found`
+    - `move`
 
-2. Table `inventory_transaction_items`
+2. Table `idempotency_order_check`
+    Field that must have:
+    - `id` as primary key
+    - `idempotency_key`, its unique
+    - `transaction_id`
+
+
+3. Table `inventory_transaction_items`
 
     Field that must have:
     - `id` as primary key
     - `warehouse_id`
     - `transaction_id`
+    - `product_id`
+    - `product_team_id`
+    - `is_owned`
     - `quantity`
     - `total`
     - `created_at`
 
+### Field `product_team_id` and `is_owned`
+1. Its extra data for giving info that that product is shared/cross
 
 
 ## Transaction Flow Related.
@@ -89,24 +105,27 @@ state invsrv {
     rollback: Rollback Inventory Transaction
     state rollback {
         state "Existed Transaction" as txexist
-        state "Get Items" as ritems
         state "Post to Placement Ledger" as rpmut
         state "Post to Batch Ledger" as rbmut
         state "update field `is_rollback`" as rollfield
         state if_rollback <<choice>>
+        state mut_fork <<fork>>
         state "Do Nothing" as nothing
+        state "Placement Log" as plog
+        state "Batch Log" as blog
 
         [*]-->txexist: find and lock existing Inventory Transaction
 
         txexist-->if_rollback
-        if_rollback-->ritems: [ if not rollback ] getting item
+        if_rollback-->mut_fork: [ if not rollback ] getting item
         if_rollback-->nothing: [ if rollbacked ]
 
         nothing-->[*]
 
-        ritems-->rpmut
-        ritems-->rbmut
-
+        mut_fork-->plog: getting placement log by inventory_transactions.id
+        plog-->rpmut: rollback invert
+        mut_fork-->blog: getting batch log by inventory_transactions.id
+        blog-->rbmut: rollback invert
         rpmut-->rollfield
         rbmut-->rollfield
 

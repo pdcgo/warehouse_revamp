@@ -13,12 +13,12 @@ import (
 // StockedProductList pages over the products a warehouse actually holds — the list behind the order
 // form's product picker.
 //
-// The GROUPING is the whole design. `stock_levels` has a row per (warehouse, product, place), so a
+// The GROUPING is the whole design. `product_placements` has a row per (product, rack), so a
 // product on three shelves is three rows; a caller paging over those rows would meet the same product
 // three times and the pager would count it three times. Grouping to one row per product makes a page
 // of ten mean ten products.
 //
-// `HAVING SUM(on_hand) > 0` rather than `WHERE on_hand > 0`. With the CHECK constraint on `on_hand`
+// `HAVING SUM(stock_count) > 0` rather than `WHERE stock_count > 0`. With the CHECK constraint on `stock_count`
 // forbidding negatives the two select the same products today, so this is not a correctness fix — it
 // is written on the SUM because the sum is the quantity that decides the question. A picked-out
 // product keeps its rows at 0, and "can this warehouse sell it" is a fact about the total on hand,
@@ -33,10 +33,10 @@ func (s *Service) StockedProductList(
 	grouped := func() *gorm.DB {
 		q := s.db.
 			WithContext(ctx).
-			Table("stock_levels").
+			Table("product_placements").
 			Where("warehouse_id = ?", req.Msg.GetFilter().GetWarehouseId()).
 			Group("product_id").
-			Having("SUM(on_hand) > 0")
+			Having("SUM(stock_count) > 0")
 
 		// The caller's own narrowing — how a search term survives a list this service owns: the term
 		// was resolved against the catalogue, which this service cannot read, and arrives as ids.
@@ -73,7 +73,7 @@ func (s *Service) StockedProductList(
 	// Ordered by product id: a stable order is what makes paging repeatable, and this list has no
 	// better key to offer — the names it would sort by live in the catalogue, not here.
 	err = grouped().
-		Select("product_id, COALESCE(SUM(on_hand), 0) AS available").
+		Select("product_id, COALESCE(SUM(stock_count), 0) AS available").
 		Order("product_id").
 		Offset(offset).
 		Limit(int(page.GetLimit())).

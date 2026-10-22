@@ -427,13 +427,9 @@ flowchart LR
    ⚠ It is academic until there IS a field — `shipping_code` is the carrier and `OrderReceipt` is the
    attached file; the printed number is nowhere.
 
-6. **Can a root reader see the list at all?** The owner decided the Team column appears for a reader
-   above selling level — *"root bisa liat team"*. `scopedOrders` is `(team_id = ? OR warehouse_id = ?)`
-   with no root bypass, so a reader in the root team matches neither and gets an empty table. The
-   column is built and correct; there would be no rows under it.
-   **→ Recommend the bypass live where every other one does** — ROOT/ADMIN in team 1 already skip
-   scope checks in the access interceptor, so this is that same rule reaching the query, not a new
-   policy. ⚠ It is a server change and nothing on the screen can stand in for it.
+6. ✅ *(2026-10-19)* **Answered: yes, the root scope reads every team** —
+   [root-reads-every-teams-orders](../frontend/order_list_decision.md#root-reads-every-teams-orders). As recommended.
+   Kept as a line so the numbers hold.
 
 7. **Does a date on a row show the year, and whose clock formats it?** A filtered row now carries
    three timestamps in one cell, each rendered `formatUnixDateTime` — *"Sep 27, 2026, 03:18 PM"* on
@@ -501,37 +497,30 @@ flowchart LR
     `OrderDraftUpdate` like any other field, and carried into the order by Promote. The rows' sum stays the seed
     when the app sends none.
 
-16. **What must an order list carry to a WAREHOUSE reader?** The warehouse row
-    ([the-warehouse-row-is-the-old-systems-columns](../frontend/warehouse_order_list_decision.md#the-warehouse-row-is-the-old-systems-columns))
-    shows the seller's shop and marketplace, the units on the order and who created it — none of which a list result
-    gives a warehouse: `ShopList` is scoped to the selling team, items are empty in a list, and `Order` has no creator.
-    **→ Recommend** denormalised fields on the list row — `shop_name`, `marketplace`, `item_quantity`,
-    `created_by_user_id` — written when the order is placed, rather than giving a warehouse read access to every
-    seller's shops. The resi, the marketplace date and the deadline are the open fields already asked about above.
+16. ✅ *(2026-10-19)* **Answered: `ShopByIds` and `UserByIDs` per page, `item_quantity` on the list row** —
+    [the-warehouse-row-fills-from-shop-and-user-by-ids](../frontend/warehouse_order_list_decision.md#the-warehouse-row-fills-from-shop-and-user-by-ids). Your proposal, replacing my copy onto the order.
+    Kept as a line so the numbers hold.
 
-17. **What must the warehouse be able to filter by?** The warehouse list
-    ([the-warehouse-filters-by-team-marketplace-and-courier](../frontend/warehouse_order_list_decision.md#the-warehouse-filters-by-team-marketplace-and-courier))
-    offers a seller team, a marketplace, a courier and a shipment state — `OrderListFilter` has a status, a search, a
-    shop and a date window, and none of those four. Its search also does not reach the MP order id or the resi, which
-    is what a packer has in hand.
-    **→ Recommend** `seller_team_id`, `marketplace` and `shipping_code` on `OrderListFilter` (all already on the order
-    or on the denormalised row of Q16), and the search widened to `order_external_ref_id` and the tracking number.
-    The shipment state waits on the shipment record; courier first, because parcels are batched by courier.
+17. ✅ *(2026-10-19)* **Answered: seller team, marketplace and courier; the shipment state is the status tabs** —
+    [the-filter-gains-seller-marketplace-and-courier](../frontend/warehouse_order_list_decision.md#the-filter-gains-seller-marketplace-and-courier).
+    As recommended. Kept as a line so the numbers hold.
 
 18. **What does the warehouse workbench need from the contract?** The warehouse list now changes steps by the old
     system's table, scans parcels to hand over, validates picks by scan, and prints labels in bulk
     ([a-warehouse-step-moves-by-the-old-systems-table](../frontend/warehouse_order_list_decision.md#a-warehouse-step-moves-by-the-old-systems-table),
     [scanning-is-the-crews-hands](../frontend/warehouse_order_list_decision.md#scanning-is-the-crews-hands)). Missing today:
 
+    🔄 *(2026-10-19)* **Six of seven settled** — marked ✅ below. Only the barcode stays open, ⏸ parked by you to discuss in depth.
+
     | need | → Recommend |
     | --- | --- |
-    | statuses for **Sudah diambil** and **Sudah diserahkan** | `PICKED` and `HANDED_OVER` in one migration (Q4 already asks for the second) |
-    | moves beyond one step forward | one `WarehouseStepChange(order_ids, to, reason)` with the transition table on the server, a reason required for a move back and written to the timeline |
-    | finding an order by its label | a lookup by tracking number or MP order id, scoped to the warehouse — the same field Q17's search needs |
-    | a real bulk handover | the step change above taking many ids, with a result per order |
-    | a product barcode | `barcode` on the product (several per product, for different packs) |
-    | labels printed together | the document service merging several receipts into one file |
-    | export | the order list's export, shared with the seller's |
+    | ✅ statuses for **Sudah diambil** and **Sudah diserahkan** | overtaken: `picked` and `shipping` are order statuses ([picked-and-shipping-are-order-statuses](../../business/order/context_decision.md#picked-and-shipping-are-order-statuses)) |
+    | ✅ moves beyond one step forward | one `OrderStatusChange(order_ids, to, note)` for every plain move ([one-status-change-for-every-plain-move](../frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)) |
+    | ✅ finding an order by its label | overtaken: a label scan reads the ref or the receipt ([a-label-scan-reads-the-ref-or-the-receipt](../../business/inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)) |
+    | ✅ a real bulk handover | `OrderStatusChange` with many ids and `to: shipping`, a result per order ([one-status-change-for-every-plain-move](../frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)) |
+    | ⏸ a product barcode | `barcode` on the product (several per product, for different packs) ⏸ *Parked by the owner (2026-10-19): "skip this, we talk deep later, its complicated"* |
+    | ✅ labels printed together | `OrderLabels(team_id, order_ids)`, one merged PDF; a warehouse reads the labels of the orders it ships ([a-warehouse-prints-the-labels-of-orders-it-ships](../frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)) |
+    | ✅ export | one `OrderExport(team_id, filter)` for both lists, .xlsx, streamed ([one-export-is-the-list-as-a-file](../frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)) |
 
 13. **Where does a draft's pushing app go on the row?** The draft list used to show `source` under the reference;
     [the-draft-list-is-the-drafts-tab](../frontend/order_draft_decision.md#the-draft-list-is-the-drafts-tab) gave that line to

@@ -29,11 +29,17 @@ export const teamCreateScenario = {
   last: undefined as undefined | { name: string; ownerUserId: bigint },
 };
 
+/** What the last OrderExport was asked — the view, the status tab and the ticked ids (one-export-is-the-list-as-a-file). */
+export const orderExportScenario = {
+  last: undefined as undefined | { view: number; status: number; orderIds: bigint[]; rows: number },
+};
+
 export function resetSessionScenario() {
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
   sessionScenario.memberOf = null;
   sessionScenario.teamNames = {};
   teamCreateScenario.last = undefined;
+  orderExportScenario.last = undefined;
 }
 
 /** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */

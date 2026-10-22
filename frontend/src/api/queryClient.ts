@@ -120,12 +120,16 @@ export const key = {
   // which is exactly the entanglement the separate table was chosen to avoid.
   orderDrafts: (teamId: bigint | undefined, params?: Params) => scope("orderDrafts", teamId, params),
   shops: (teamId: bigint | undefined, params?: Params) => scope("shops", teamId, params),
+  // The team's return warehouse. Its own prefix: a save changes no order, so it must not refetch them.
+  returnConfiguration: (teamId: bigint | undefined, params?: Params) => scope("returnConfiguration", teamId, params),
   inventory: (teamId: bigint | undefined, params?: Params) => scope("inventory", teamId, params),
   racks: (teamId: bigint | undefined, params?: Params) => scope("racks", teamId, params),
   restock: (teamId: bigint | undefined, params?: Params) => scope("restock", teamId, params),
   // Its OWN prefix, not a filter on `restock`: a transfer is not a purchase, and its writes move stock at two
   // warehouses, so they refresh `inventory` as well (features/warehouseTransfer/queries.ts).
   warehouseTransfer: (teamId: bigint | undefined, params?: Params) => scope("warehouseTransfer", teamId, params),
+  // The stock count's sessions, rows and racks. Its own prefix: a finalize moves stock, so it refreshes `inventory` too.
+  opname: (teamId: bigint | undefined, params?: Params) => scope("opname", teamId, params),
   suppliers: (teamId: bigint | undefined, params?: Params) => scope("suppliers", teamId, params),
   users: (teamId: bigint | undefined, params?: Params) => scope("users", teamId, params),
   teams: (teamId: bigint | undefined, params?: Params) => scope("teams", teamId, params),

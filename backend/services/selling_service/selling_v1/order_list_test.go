@@ -8,6 +8,7 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
@@ -43,7 +44,7 @@ func TestOrderList_TheWarehouseSeesOrdersShippingFromIt(t *testing.T) {
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	id := confirmedOrder(t, svc, shop)
+	id := processedOrder(t, svc, shop)
 
 	got := listOrders(t, svc, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
 
@@ -68,7 +69,7 @@ func TestOrderList_AnUnrelatedTeamSeesNothing(t *testing.T) {
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	confirmedOrder(t, svc, shop)
+	processedOrder(t, svc, shop)
 
 	const strangerTeam uint64 = 902
 
@@ -86,21 +87,15 @@ func TestOrderList_AnUnrelatedTeamSeesNothing(t *testing.T) {
 func TestOrderList_FiltersByStatus(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
-	ctx := context.Background()
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	// One left CONFIRMED (waiting to be picked) and one walked on to PICKING (already being worked).
-	waiting := confirmedOrder(t, svc, shop)
-	inProgress := confirmedOrder(t, svc, shop)
+	// One left PROCESSED (waiting to be picked) and one set PICKED (already done).
+	waiting := processedOrder(t, svc, shop)
+	picked := processedOrder(t, svc, shop)
 
-	_, err := svc.OrderPick(ctx, connect.NewRequest(&sellingv1.OrderPickRequest{
-		TeamId: testWarehouse, OrderId: inProgress,
-	}))
-	if err != nil {
-		t.Fatalf("pick: %v", err)
-	}
+	moveOrder(t, svc, testWarehouse, picked, sellingv1.OrderStatus_ORDER_STATUS_PICKED, "")
 
-	queue := listOrders(t, svc, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
+	queue := listOrders(t, svc, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
 
 	if len(orderRows(queue)) != 1 {
 		t.Fatalf("the pick queue holds %d orders, want 1", len(orderRows(queue)))
@@ -144,9 +139,9 @@ func TestOrderList_TheStatusFilterAppliesToTheSellingSideToo(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	confirmed := confirmedOrder(t, svc, shop)
+	confirmed := processedOrder(t, svc, shop)
 
-	got := listOrders(t, svc, 2, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
+	got := listOrders(t, svc, 2, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
 
 	if len(orderRows(got)) != 1 {
 		t.Fatalf("the selling team's CONFIRMED list holds %d orders, want 1 — if this is 2, the status "+
@@ -166,7 +161,7 @@ func TestOrderDetail_TheWarehouseCanOpenItsOrders(t *testing.T) {
 	ctx := context.Background()
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	id := confirmedOrder(t, svc, shop)
+	id := processedOrder(t, svc, shop)
 
 	got, err := svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
 		TeamId: testWarehouse, OrderId: id,
@@ -185,6 +180,58 @@ func TestOrderDetail_TheWarehouseCanOpenItsOrders(t *testing.T) {
 	}))
 	if code := connect.CodeOf(err); code != connect.CodeNotFound {
 		t.Fatalf("an unrelated team opening the order = %v, want NotFound", code)
+	}
+}
+
+// root-reads-every-teams-orders — a reader scoped to the ROOT team sees every team's orders: the list,
+// its total, its stat and order detail. Two selling teams, neither of them root and neither of them the
+// warehouse, so passing means the scope was lifted — not matched by one leg of the OR.
+func TestOrderList_TheRootTeamReadsEveryTeam(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := context.Background()
+
+	shopA := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+	shopB := insertShop(t, db, 3, "Toko B", "TOKO-B", "tokopedia")
+
+	_, err := svc.OrderCreate(ctx, connect.NewRequest(orderReq(shopA)))
+	if err != nil {
+		t.Fatalf("team 2's order: %v", err)
+	}
+
+	reqB := orderReq(shopB)
+	reqB.TeamId = 3
+
+	other, err := svc.OrderCreate(ctx, connect.NewRequest(reqB))
+	if err != nil {
+		t.Fatalf("team 3's order: %v", err)
+	}
+
+	got := listOrders(t, svc, san_auth.RootTeamID, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
+	if len(orderRows(got)) != 2 {
+		t.Fatalf("the root team sees %d orders, want both teams' 2", len(orderRows(got)))
+	}
+	if got.GetPageInfo().GetTotalItems() != 2 {
+		t.Fatalf("the root team's total = %d, want 2", got.GetPageInfo().GetTotalItems())
+	}
+
+	// The stat goes through the same scope, so its census must count both as well.
+	placed, _ := statusCount(orderStat(t, svc, san_auth.RootTeamID, 0), sellingv1.OrderStatus_ORDER_STATUS_PENDING)
+	if placed != 2 {
+		t.Fatalf("the root team's stat counts %d placed orders, want 2", placed)
+	}
+
+	_, err = svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: san_auth.RootTeamID, OrderId: other.Msg.GetOrder().GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("the root team opening team 3's order: %v", err)
+	}
+
+	// A selling team still reads its own alone — lifting the scope for root must not lift it for anyone.
+	mine := listOrders(t, svc, 3, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
+	if len(orderRows(mine)) != 1 {
+		t.Fatalf("team 3 sees %d orders, want its own 1", len(orderRows(mine)))
 	}
 }
 

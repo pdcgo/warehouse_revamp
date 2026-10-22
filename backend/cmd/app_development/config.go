@@ -46,6 +46,10 @@ type Config struct {
 	DocumentStorageDir  string `env:"DOCUMENT_STORAGE_DIR" yaml:"document_storage_dir"`
 	DocumentBaseURL     string `env:"DOCUMENT_BASE_URL" yaml:"document_base_url"`
 	DocumentTokenSecret string `env:"DOCUMENT_TOKEN_SECRET" yaml:"document_token_secret"`
+	// PubsubProject is the emulator project this server publishes to and seeks in. The dev default is
+	// `warehouse-dev`; the e2e server runs on `warehouse-e2e`, so the two never receive each other's events
+	// now that the emulator PUSHES to each server (the-emulator-pushes-locally).
+	PubsubProject string `env:"PUBSUB_PROJECT" yaml:"pubsub_project"`
 }
 
 func NewConfig() (*Config, error) {
@@ -60,6 +64,7 @@ func NewConfig() (*Config, error) {
 
 		DocumentBaseURL:     "http://localhost:8080/local-storage",
 		DocumentTokenSecret: "dev-document-secret-do-not-use-in-production",
+		PubsubProject:       devProjectID,
 	}
 
 	err := san_config.NewConfiguration(&cfg,

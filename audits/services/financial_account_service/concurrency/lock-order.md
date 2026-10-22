@@ -20,6 +20,7 @@ was found and fixed in this pass (below).
 | `FinancialAccountShopSet` | *(ShopAccessCheck — outside the transaction)* → `financial_accounts` (1) → `shop_accounts` (upsert on `shop_id`) | the network call is BEFORE the transaction, so no lock is held across it |
 | `FinancialAccountOperationalSet` | `financial_accounts` (1) → `operational_accounts` | insert `ON CONFLICT DO NOTHING` |
 | the withdrawal listener | `financial_account_event_logs` (claim) → `financial_accounts` (1) | the claim is an `INSERT … ON CONFLICT DO NOTHING`; a new shop's account + link are inserted, the unique `shop_id` deciding a race |
+| the team-payment listener | `financial_account_event_logs` (claim) → `financial_accounts` (2, **two teams**, **ORDER BY id**) | the one write across two teams' books — still one statement, id order, so it composes with every transfer and every other payment. Liability's account check is a network call made BEFORE its own transaction, never under a lock |
 | *(every post)* | under the account lock: `financial_account_logs` → `financial_accounts.balance` → `financial_account_daily_reports` (the day, then later days) | the day rows are per account, so the account lock serialises the upsert and the shift — no advisory lock |
 
 Evidence: [`financial_account_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/financial_account_race_test.go) (`raceaudit`), 20 runs clean.
@@ -33,6 +34,9 @@ Evidence: [`financial_account_race_test.go`](../../../../backend/services/financ
 | a redelivery posts once | the same event 4× at once → posted once, every delivery acked |
 | a new shop gets one unknown account | 4 first withdrawals at once → 1 account, 1 link; the losers fail, are redelivered, and all 4 post once |
 | a withdrawal follows a shop moved while it waited | **Interleave** — see below |
+| no deadlock between opposite team payments | 8 payments seller→warehouse and warehouse→seller at once → 0 deadlocks, both balances where they started ([`team_payment_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/team_payment_race_test.go)) |
+| a team payment redelivered posts once | the same acceptance 4× at once → out of the payer once, into the creditor once |
+| a team payment takes the account lock | **Interleave: the payment BLOCKS** behind a capital post on the creditor's account, then builds on its balance |
 
 ---
 

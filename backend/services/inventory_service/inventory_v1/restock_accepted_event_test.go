@@ -59,7 +59,7 @@ func createTwoLines(t *testing.T, svc *inventory_v1.Service) *inventoryv1.Restoc
 }
 
 func newAcceptService(db *gorm.DB, sender *recordingSender) *inventory_v1.Service {
-	return inventory_v1.NewService(db, nil, nil, fakeSuppliers{acceptSupplier: true}, sender.send)
+	return inventory_v1.NewService(db, nil, nil, fakeSuppliers{acceptSupplier: true}, sender.send, nil)
 }
 
 // The accept announces what it COUNTED (each-figure-is-read-at-the-accept): per line the good units, the broken and
@@ -74,6 +74,9 @@ func TestRestockRequestAccept_PublishesRestockAccepted(t *testing.T) {
 	req := createTwoLines(t, svc)
 	first, second := req.GetItems()[0], req.GetItems()[1]
 	staging := stagingPlacement(t, db, acceptWarehouse)
+
+	// The create announced itself (RestockCreated); only what the ACCEPT publishes is asked about here.
+	sender.sent = nil
 
 	before := time.Now().Unix()
 
@@ -135,7 +138,7 @@ func TestRestockRequestAccept_PublishesRestockAccepted(t *testing.T) {
 		got := line{
 			int64(l.GetProductId()),
 			l.GetOrderedCount(),
-			l.GetTotalPrice(),
+			int64(l.GetTotalPrice()),
 			l.GetAcceptedCount(),
 			l.GetBrokenCount(),
 			l.GetMissingCount(),
@@ -155,6 +158,7 @@ func TestRestockRequestAccept_ARefusedAcceptPublishesNothing(t *testing.T) {
 	svc := newAcceptService(db, sender)
 
 	req := createTwoLines(t, svc)
+	sender.sent = nil // the create's own RestockCreated is not the accept's
 
 	// Only one of the two lines counted — refused as incomplete (#133).
 	_, err := svc.RestockRequestAccept(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{

@@ -453,12 +453,13 @@ type RestockProblemItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Type  RestockProblemType     `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.inventory.v1.RestockProblemType" json:"type,omitempty"`
 	Count int64                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
-	// What they were worth, FILLED BY THE SYSTEM from the line and never editable by the warehouse
-	// (the-problem-price-is-filled-by-the-system): line total × count ÷ line count.
-	PriceUnit int64 `protobuf:"varint,3,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
-	Total     int64 `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	// What they were worth, FILLED BY THE SYSTEM and never editable by the warehouse
+	// (the-problem-price-is-filled-by-the-system): the landed unit price, the same as a good unit's
+	// (all-qty-is-every-unit-ordered). total = price_unit × count.
+	PriceUnit float64 `protobuf:"fixed64,3,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
+	Total     float64 `protobuf:"fixed64,4,opt,name=total,proto3" json:"total,omitempty"`
 	// The WAREHOUSE's note on this row — "box crushed". Optional (a-broken-reason-is-optional); its one writer is the
-	// warehouse (three-notes-one-writer-each). ⚠ Not stored until the backend step.
+	// warehouse (three-notes-one-writer-each).
 	Note          string `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -508,14 +509,14 @@ func (x *RestockProblemItem) GetCount() int64 {
 	return 0
 }
 
-func (x *RestockProblemItem) GetPriceUnit() int64 {
+func (x *RestockProblemItem) GetPriceUnit() float64 {
 	if x != nil {
 		return x.PriceUnit
 	}
 	return 0
 }
 
-func (x *RestockProblemItem) GetTotal() int64 {
+func (x *RestockProblemItem) GetTotal() float64 {
 	if x != nil {
 		return x.Total
 	}
@@ -594,11 +595,12 @@ type RestockRequestItem struct {
 	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// How many were ORDERED. Renamed in place from `quantity`.
 	Count int64 `protobuf:"varint,5,opt,name=count,proto3" json:"count,omitempty"`
-	// The line's TOTAL, whole rupiah, as the invoice prints it (a-line-is-typed-as-its-total). Renamed in place from
+	// The line's TOTAL, as the invoice prints it (a-line-is-typed-as-its-total) — the truth. Renamed in place from
 	// `total_price`. Zero is legitimate (a sample).
-	Total int64 `protobuf:"varint,6,opt,name=total,proto3" json:"total,omitempty"`
-	// total ÷ count, for display only — never typed, never stored as the truth. Set on read.
-	PriceUnit int64 `protobuf:"varint,11,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
+	Total float64 `protobuf:"fixed64,6,opt,name=total,proto3" json:"total,omitempty"`
+	// total ÷ count, for display — never typed. Stored beside the total and rewritten whenever either changes; ignored on
+	// a create or an update.
+	PriceUnit float64 `protobuf:"fixed64,11,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
 	// What arrived in the box, broken units included. 0 until accepted. Read-only here; the accept writes it.
 	ReceivedCount int64 `protobuf:"varint,12,opt,name=received_count,json=receivedCount,proto3" json:"received_count,omitempty"`
 	// Where the good units went, and what went wrong — both written by the accept, read-only here.
@@ -608,11 +610,9 @@ type RestockRequestItem struct {
 	// Who sold it, and from which store — both optional; a stall has a supplier and no store
 	// (a-line-may-name-a-supplier-without-a-channel). Any team's supplier, picked from the Connect Supplier Channel
 	// popup (a-line-connects-to-any-teams-supplier-from-a-popup). A store, when given, must be that supplier's.
-	// ⚠ Not stored until the backend step.
 	SupplierId        uint64 `protobuf:"varint,13,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
 	SupplierChannelId uint64 `protobuf:"varint,14,opt,name=supplier_channel_id,json=supplierChannelId,proto3" json:"supplier_channel_id,omitempty"`
-	// The SELLING team's note on the line — "extra stock" (extra-units-are-added-by-the-selling-teams-edit). ⚠ Not
-	// stored until the backend step.
+	// The SELLING team's note on the line — "extra stock" (extra-units-are-added-by-the-selling-teams-edit).
 	Note          string `protobuf:"bytes,15,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -683,14 +683,14 @@ func (x *RestockRequestItem) GetCount() int64 {
 	return 0
 }
 
-func (x *RestockRequestItem) GetTotal() int64 {
+func (x *RestockRequestItem) GetTotal() float64 {
 	if x != nil {
 		return x.Total
 	}
 	return 0
 }
 
-func (x *RestockRequestItem) GetPriceUnit() int64 {
+func (x *RestockRequestItem) GetPriceUnit() float64 {
 	if x != nil {
 		return x.PriceUnit
 	}
@@ -839,32 +839,32 @@ type RestockRequest struct {
 	// The parcel — what finds the box at the door (the-receipt-is-the-tracking-number).
 	// The courier's tracking number (resi). Empty = none yet.
 	Receipt string `protobuf:"bytes,13,opt,name=receipt,proto3" json:"receipt,omitempty"`
-	// A photo of the label. ⚠ Not stored until the backend step.
+	// A photo of the label.
 	ReceiptFile string `protobuf:"bytes,29,opt,name=receipt_file,json=receiptFile,proto3" json:"receipt_file,omitempty"`
-	// The courier — a shipment channel. ⚠ Not stored until the backend step.
+	// The courier — a shipment channel.
 	ShipmentId uint64 `protobuf:"varint,28,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
 	// The money — what the selling team paid when it raised it.
 	// The store's invoice or order number; one per restock (a-restock-has-one-invoice). Renamed in place from
 	// `order_ref`.
 	InvoiceRefId string `protobuf:"bytes,15,opt,name=invoice_ref_id,json=invoiceRefId,proto3" json:"invoice_ref_id,omitempty"`
-	// The operational account that paid (a-restock-names-its-paying-account). ⚠ Not stored until the backend step.
+	// The operational account that paid (a-restock-names-its-paying-account).
 	FinanceAccountId uint64 `protobuf:"varint,27,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
 	// History only — see RestockPaymentType.
 	PaymentType RestockPaymentType `protobuf:"varint,17,opt,name=payment_type,json=paymentType,proto3,enum=warehouse.inventory.v1.RestockPaymentType" json:"payment_type,omitempty"`
 	// Freight the selling team paid. Renamed in place from `shipping_cost`.
-	ShipmentCost int64 `protobuf:"varint,16,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
-	// Σ line totals. Set on read.
-	Subtotal int64 `protobuf:"varint,30,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
-	// subtotal + shipment_cost — and NOT the courier's charge (the-couriers-charge-stays-out-of-total). Set on read.
-	Total int64 `protobuf:"varint,31,opt,name=total,proto3" json:"total,omitempty"`
+	ShipmentCost float64 `protobuf:"fixed64,16,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
+	// Σ line totals. Stored, written by every create and edit.
+	Subtotal float64 `protobuf:"fixed64,30,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
+	// subtotal + shipment_cost — and NOT the courier's charge (the-couriers-charge-stays-out-of-total). Stored.
+	Total float64 `protobuf:"fixed64,31,opt,name=total,proto3" json:"total,omitempty"`
 	// The courier's charge at the door — paid by the warehouse on the spot, compensated by the selling team
 	// (the-warehouse-cost-is-the-couriers-charge-at-the-door). One per restock, with its note
 	// (the-courier-is-paid-once-per-restock). Entered at accept; 0 until then.
-	WarehouseAdditionalCost     int64  `protobuf:"varint,38,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
-	WarehouseAdditionalCostNote string `protobuf:"bytes,39,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
+	WarehouseAdditionalCost     float64 `protobuf:"fixed64,38,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
+	WarehouseAdditionalCostNote string  `protobuf:"bytes,39,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
 	// The SELLING team's note on the restock as a whole (three-notes-one-writer-each).
 	Note string `protobuf:"bytes,18,opt,name=note,proto3" json:"note,omitempty"`
-	// The inventory transaction the accept made; 0 until accepted. ⚠ Not stored until the backend step.
+	// The inventory transaction the accept made; 0 until accepted.
 	TransactionId uint64 `protobuf:"varint,32,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
 	// Who did what, and when — user_service ids, 0 = not yet or not recorded; unix seconds, 0 = not yet.
 	CreatedByUserId   uint64 `protobuf:"varint,20,opt,name=created_by_user_id,json=createdByUserId,proto3" json:"created_by_user_id,omitempty"`
@@ -996,28 +996,28 @@ func (x *RestockRequest) GetPaymentType() RestockPaymentType {
 	return RestockPaymentType_RESTOCK_PAYMENT_TYPE_UNSPECIFIED
 }
 
-func (x *RestockRequest) GetShipmentCost() int64 {
+func (x *RestockRequest) GetShipmentCost() float64 {
 	if x != nil {
 		return x.ShipmentCost
 	}
 	return 0
 }
 
-func (x *RestockRequest) GetSubtotal() int64 {
+func (x *RestockRequest) GetSubtotal() float64 {
 	if x != nil {
 		return x.Subtotal
 	}
 	return 0
 }
 
-func (x *RestockRequest) GetTotal() int64 {
+func (x *RestockRequest) GetTotal() float64 {
 	if x != nil {
 		return x.Total
 	}
 	return 0
 }
 
-func (x *RestockRequest) GetWarehouseAdditionalCost() int64 {
+func (x *RestockRequest) GetWarehouseAdditionalCost() float64 {
 	if x != nil {
 		return x.WarehouseAdditionalCost
 	}
@@ -1127,9 +1127,9 @@ type RestockRequestCreateRequest struct {
 	InvoiceRefId string                `protobuf:"bytes,12,opt,name=invoice_ref_id,json=invoiceRefId,proto3" json:"invoice_ref_id,omitempty"`
 	// REQUIRED — every restock names the account that paid (a-restock-must-name-the-account-that-paid).
 	FinanceAccountId uint64 `protobuf:"varint,16,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
-	// Whole rupiah; zero is legitimate (free shipping).
-	ShipmentCost  int64  `protobuf:"varint,13,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
-	Note          string `protobuf:"bytes,15,opt,name=note,proto3" json:"note,omitempty"`
+	// Zero is legitimate (free shipping).
+	ShipmentCost  float64 `protobuf:"fixed64,13,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
+	Note          string  `protobuf:"bytes,15,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1220,7 +1220,7 @@ func (x *RestockRequestCreateRequest) GetFinanceAccountId() uint64 {
 	return 0
 }
 
-func (x *RestockRequestCreateRequest) GetShipmentCost() int64 {
+func (x *RestockRequestCreateRequest) GetShipmentCost() float64 {
 	if x != nil {
 		return x.ShipmentCost
 	}
@@ -2179,8 +2179,8 @@ type RestockInboundPreview struct {
 	ProductCount int64 `protobuf:"varint,1,opt,name=product_count,json=productCount,proto3" json:"product_count,omitempty"`
 	// Pieces ORDERED — nobody has counted them yet.
 	UnitCount int64 `protobuf:"varint,2,opt,name=unit_count,json=unitCount,proto3" json:"unit_count,omitempty"`
-	// The line totals, whole rupiah. Freight and the courier's charge are not the goods' worth.
-	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	// The line totals. Freight and the courier's charge are not the goods' worth.
+	Amount float64 `protobuf:"fixed64,3,opt,name=amount,proto3" json:"amount,omitempty"`
 	// When the longest-waiting one was raised, unix seconds; 0 when nothing is waiting.
 	OldestPendingUnix int64 `protobuf:"varint,4,opt,name=oldest_pending_unix,json=oldestPendingUnix,proto3" json:"oldest_pending_unix,omitempty"`
 	unknownFields     protoimpl.UnknownFields
@@ -2238,7 +2238,7 @@ func (x *RestockInboundPreview) GetUnitCount() int64 {
 	return 0
 }
 
-func (x *RestockInboundPreview) GetAmount() int64 {
+func (x *RestockInboundPreview) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -2416,9 +2416,9 @@ type RestockRequestUpdateRequest struct {
 	InvoiceRefId string                `protobuf:"bytes,8,opt,name=invoice_ref_id,json=invoiceRefId,proto3" json:"invoice_ref_id,omitempty"`
 	// REQUIRED while ongoing (above 0). While arrived it must EQUAL the stored value — and a restock raised before paying
 	// accounts stores 0 — so the rule is the handler's, not a field constraint that would lock such a restock's lines.
-	FinanceAccountId uint64 `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
-	ShipmentCost     int64  `protobuf:"varint,9,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
-	Note             string `protobuf:"bytes,11,opt,name=note,proto3" json:"note,omitempty"`
+	FinanceAccountId uint64  `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	ShipmentCost     float64 `protobuf:"fixed64,9,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
+	Note             string  `protobuf:"bytes,11,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -2516,7 +2516,7 @@ func (x *RestockRequestUpdateRequest) GetFinanceAccountId() uint64 {
 	return 0
 }
 
-func (x *RestockRequestUpdateRequest) GetShipmentCost() int64 {
+func (x *RestockRequestUpdateRequest) GetShipmentCost() float64 {
 	if x != nil {
 		return x.ShipmentCost
 	}
@@ -2679,11 +2679,11 @@ type RestockRequestAcceptRequest struct {
 	RequestId uint64 `protobuf:"varint,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// One entry per line, EVERY line exactly once — accepting IS the count.
 	Lines []*RestockRequestReceivedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
-	// The courier's charge at the door, whole rupiah; 0 = none (the-courier-is-paid-once-per-restock). Its note is
-	// REQUIRED when it is above 0 — the handler checks, since a rule across two fields cannot be written here
+	// The courier's charge at the door; 0 = none (the-courier-is-paid-once-per-restock). Its note is REQUIRED when it
+	// is above 0 — the handler checks, since a rule across two fields cannot be written here
 	// (an-incidental-line-must-say-what-it-was-for).
-	WarehouseAdditionalCost     int64  `protobuf:"varint,6,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
-	WarehouseAdditionalCostNote string `protobuf:"bytes,7,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
+	WarehouseAdditionalCost     float64 `protobuf:"fixed64,6,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
+	WarehouseAdditionalCostNote string  `protobuf:"bytes,7,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -2739,7 +2739,7 @@ func (x *RestockRequestAcceptRequest) GetLines() []*RestockRequestReceivedLine {
 	return nil
 }
 
-func (x *RestockRequestAcceptRequest) GetWarehouseAdditionalCost() int64 {
+func (x *RestockRequestAcceptRequest) GetWarehouseAdditionalCost() float64 {
 	if x != nil {
 		return x.WarehouseAdditionalCost
 	}
@@ -3164,8 +3164,8 @@ type RestockLabel struct {
 	Quantity int64  `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	// The placement's code ("A-01-3"). Renamed in place from rack_code.
 	PlacementCode string `protobuf:"bytes,6,opt,name=placement_code,json=placementCode,proto3" json:"placement_code,omitempty"`
-	// Per-unit landed price for this restock, the courier's charge included.
-	Hpp           int64 `protobuf:"varint,8,opt,name=hpp,proto3" json:"hpp,omitempty"`
+	// Per-unit landed price for this restock, the courier's charge included — the batch's price, as stored.
+	Hpp           float64 `protobuf:"fixed64,8,opt,name=hpp,proto3" json:"hpp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3242,7 +3242,7 @@ func (x *RestockLabel) GetPlacementCode() string {
 	return ""
 }
 
-func (x *RestockLabel) GetHpp() int64 {
+func (x *RestockLabel) GetHpp() float64 {
 	if x != nil {
 		return x.Hpp
 	}
@@ -3328,12 +3328,12 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x1d\n" +
 	"\x05count\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\x12\x1d\n" +
 	"\n" +
-	"price_unit\x18\x03 \x01(\x03R\tpriceUnit\x12\x14\n" +
-	"\x05total\x18\x04 \x01(\x03R\x05total\x12\x1c\n" +
+	"price_unit\x18\x03 \x01(\x01R\tpriceUnit\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x01R\x05total\x12\x1c\n" +
 	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\"s\n" +
 	"\x10RestockPlacement\x12*\n" +
 	"\fplacement_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\vplacementId\x12#\n" +
-	"\bquantity\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantityJ\x04\b\x02\x10\x03R\bunplaced\"\xbf\x04\n" +
+	"\bquantity\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantityJ\x04\b\x02\x10\x03R\bunplaced\"\xc8\x04\n" +
 	"\x12RestockRequestItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
@@ -3341,10 +3341,10 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x03sku\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x03sku\x12\x1e\n" +
 	"\x04name\x18\x04 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12\x1d\n" +
-	"\x05count\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\x12\x1d\n" +
-	"\x05total\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x05total\x12\x1d\n" +
+	"\x05count\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\x12&\n" +
+	"\x05total\x18\x06 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\x05total\x12\x1d\n" +
 	"\n" +
-	"price_unit\x18\v \x01(\x03R\tpriceUnit\x12%\n" +
+	"price_unit\x18\v \x01(\x01R\tpriceUnit\x12%\n" +
 	"\x0ereceived_count\x18\f \x01(\x03R\rreceivedCount\x12H\n" +
 	"\n" +
 	"placements\x18\t \x03(\v2(.warehouse.inventory.v1.RestockPlacementR\n" +
@@ -3379,10 +3379,10 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x0einvoice_ref_id\x18\x0f \x01(\tR\finvoiceRefId\x12,\n" +
 	"\x12finance_account_id\x18\x1b \x01(\x04R\x10financeAccountId\x12M\n" +
 	"\fpayment_type\x18\x11 \x01(\x0e2*.warehouse.inventory.v1.RestockPaymentTypeR\vpaymentType\x12#\n" +
-	"\rshipment_cost\x18\x10 \x01(\x03R\fshipmentCost\x12\x1a\n" +
-	"\bsubtotal\x18\x1e \x01(\x03R\bsubtotal\x12\x14\n" +
-	"\x05total\x18\x1f \x01(\x03R\x05total\x12:\n" +
-	"\x19warehouse_additional_cost\x18& \x01(\x03R\x17warehouseAdditionalCost\x12C\n" +
+	"\rshipment_cost\x18\x10 \x01(\x01R\fshipmentCost\x12\x1a\n" +
+	"\bsubtotal\x18\x1e \x01(\x01R\bsubtotal\x12\x14\n" +
+	"\x05total\x18\x1f \x01(\x01R\x05total\x12:\n" +
+	"\x19warehouse_additional_cost\x18& \x01(\x01R\x17warehouseAdditionalCost\x12C\n" +
 	"\x1ewarehouse_additional_cost_note\x18' \x01(\tR\x1bwarehouseAdditionalCostNote\x12\x12\n" +
 	"\x04note\x18\x12 \x01(\tR\x04note\x12%\n" +
 	"\x0etransaction_id\x18  \x01(\x04R\rtransactionId\x12+\n" +
@@ -3398,7 +3398,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x11cancelled_at_unix\x18\x17 \x01(\x03R\x0fcancelledAtUnix\x126\n" +
 	"\x04logs\x18% \x03(\v2\".warehouse.inventory.v1.RestockLogR\x04logsJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\f\x10\rJ\x04\b\x0e\x10\x0fJ\x04\b\x13\x10\x14J\x04\b\x19\x10\x1aJ\x04\b\x1a\x10\x1bR\n" +
 	"product_idR\x03skuR\x04nameR\bquantityR\rshipping_codeR\border_idR\vsupplier_idR\x10cod_shipping_feeR\x06eventsR\n" +
-	"cost_lines\"\xf0\x04\n" +
+	"cost_lines\"\xf9\x04\n" +
 	"\x1bRestockRequestCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12*\n" +
 	"\fwarehouse_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\vwarehouseId\x12J\n" +
@@ -3409,8 +3409,8 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\vshipment_id\x18\x11 \x01(\x04R\n" +
 	"shipmentId\x12-\n" +
 	"\x0einvoice_ref_id\x18\f \x01(\tB\a\xbaH\x04r\x02\x18dR\finvoiceRefId\x125\n" +
-	"\x12finance_account_id\x18\x10 \x01(\x04B\a\xbaH\x042\x02 \x00R\x10financeAccountId\x12,\n" +
-	"\rshipment_cost\x18\r \x01(\x03B\a\xbaH\x04\"\x02(\x00R\fshipmentCost\x12\x1c\n" +
+	"\x12finance_account_id\x18\x10 \x01(\x04B\a\xbaH\x042\x02 \x00R\x10financeAccountId\x125\n" +
+	"\rshipment_cost\x18\r \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\fshipmentCost\x12\x1c\n" +
 	"\x04note\x18\x0f \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\t\x10\n" +
 	"J\x04\b\v\x10\fJ\x04\b\x0e\x10\x0fR\n" +
@@ -3495,7 +3495,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\rproduct_count\x18\x01 \x01(\x03R\fproductCount\x12\x1d\n" +
 	"\n" +
 	"unit_count\x18\x02 \x01(\x03R\tunitCount\x12\x16\n" +
-	"\x06amount\x18\x03 \x01(\x03R\x06amount\x12.\n" +
+	"\x06amount\x18\x03 \x01(\x01R\x06amount\x12.\n" +
 	"\x13oldest_pending_unix\x18\x04 \x01(\x03R\x11oldestPendingUnix\"H\n" +
 	"\x18RestockInboundStatFilter\x12,\n" +
 	"\x12requesting_team_id\x18\x01 \x01(\x04R\x10requestingTeamId\"\x98\x01\n" +
@@ -3504,7 +3504,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x06filter\x18\x02 \x01(\v20.warehouse.inventory.v1.RestockInboundStatFilterR\x06filter:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"e\n" +
 	"\x1aRestockInboundStatResponse\x12G\n" +
-	"\apreview\x18\x01 \x01(\v2-.warehouse.inventory.v1.RestockInboundPreviewR\apreview\"\xcc\x04\n" +
+	"\apreview\x18\x01 \x01(\v2-.warehouse.inventory.v1.RestockInboundPreviewR\apreview\"\xd5\x04\n" +
 	"\x1bRestockRequestUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
@@ -3516,8 +3516,8 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\vshipment_id\x18\x0e \x01(\x04R\n" +
 	"shipmentId\x12-\n" +
 	"\x0einvoice_ref_id\x18\b \x01(\tB\a\xbaH\x04r\x02\x18dR\finvoiceRefId\x12,\n" +
-	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountId\x12,\n" +
-	"\rshipment_cost\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x00R\fshipmentCost\x12\x1c\n" +
+	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountId\x125\n" +
+	"\rshipment_cost\x18\t \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\fshipmentCost\x12\x1c\n" +
 	"\x04note\x18\v \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05J\x04\b\x04\x10\x05J\x04\b\a\x10\bJ\x04\b\n" +
 	"\x10\vJ\x04\b\f\x10\rR\rshipping_codeR\vsupplier_idR\fpayment_type\"`\n" +
@@ -3529,13 +3529,13 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"request_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\trequestId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"`\n" +
 	"\x1cRestockRequestArriveResponse\x12@\n" +
-	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"\x8a\x03\n" +
+	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"\x93\x03\n" +
 	"\x1bRestockRequestAcceptRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\trequestId\x12R\n" +
-	"\x05lines\x18\x03 \x03(\v22.warehouse.inventory.v1.RestockRequestReceivedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines\x12C\n" +
-	"\x19warehouse_additional_cost\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x17warehouseAdditionalCost\x12M\n" +
+	"\x05lines\x18\x03 \x03(\v22.warehouse.inventory.v1.RestockRequestReceivedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines\x12L\n" +
+	"\x19warehouse_additional_cost\x18\x06 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\x17warehouseAdditionalCost\x12M\n" +
 	"\x1ewarehouse_additional_cost_note\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x1bwarehouseAdditionalCostNote:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\bJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\x10cod_shipping_feeR\n" +
 	"cost_lines\"\x8a\x03\n" +
@@ -3581,7 +3581,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\bbatch_id\x18\x04 \x01(\x04R\abatchId\x12\x1a\n" +
 	"\bquantity\x18\x05 \x01(\x03R\bquantity\x12%\n" +
 	"\x0eplacement_code\x18\x06 \x01(\tR\rplacementCode\x12\x10\n" +
-	"\x03hpp\x18\b \x01(\x03R\x03hppJ\x04\b\a\x10\bR\bunplaced\"\xcc\x01\n" +
+	"\x03hpp\x18\b \x01(\x01R\x03hppJ\x04\b\a\x10\bR\bunplaced\"\xcc\x01\n" +
 	"\x1cRestockRequestLabelsResponse\x12\x1d\n" +
 	"\n" +
 	"restock_id\x18\x01 \x01(\x04R\trestockId\x12(\n" +

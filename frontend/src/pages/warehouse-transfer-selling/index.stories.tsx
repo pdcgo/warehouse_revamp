@@ -7,8 +7,8 @@ import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { WarehouseTransferSellingPage } from "./index";
 
 // ⚠ PROTOTYPE for implementation_analysis — the warehouse transfer decisions
-// (docs/business/inventory/warehouse_transfer_decision.md). The real server answers Unimplemented; this runs on the
-// Storybook stub.
+// (docs/business/inventory/warehouse_transfer_decision.md). This runs on the Storybook stub, which plays the same rules
+// as the server.
 //
 // Toko Melati's (12) transfers: 601 created, 602 process, 603 shipped, 604 arrived, 605 accepted with problems,
 // 606 cancelled, 607 lost, 608 shipped the other way. Toko Kenanga's 609 is NOT here — a team sees only its own.
@@ -23,7 +23,7 @@ const Routed = routedPage(
 );
 
 const meta = {
-  title: "Pages/WarehouseTransfer/TransferSelling",
+  title: "Pages/Inventory/WarehouseTransfer/TransferSelling",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {

@@ -24,10 +24,12 @@ export interface OrderStatSummary {
   avgOrder: bigint;
 }
 
-// The statuses that mean "the warehouse has this". CONFIRMED is in here deliberately: the selling side
-// has finished with it and it is waiting on the crew, which is the same answer to "who is this
-// sitting with" as picking and packed.
-const IN_WAREHOUSE = [OrderStatus.CONFIRMED, OrderStatus.PICKING, OrderStatus.PACKED];
+// The statuses that mean "the warehouse has this": confirmed and being picked, or picked and waiting for
+// the handover. Both are sitting with the crew, which is the answer to "who is this sitting with".
+const IN_WAREHOUSE = [OrderStatus.PROCESSED, OrderStatus.PICKED];
+
+// The statuses that mean "it has left the building": handed to the courier, or seen moving on the platform.
+const LEFT_THE_BUILDING = [OrderStatus.SHIPPING, OrderStatus.SHIPPED];
 
 export function summariseOrderStat(res: OrderStatResponse | undefined): OrderStatSummary {
   const counts = new Map<OrderStatus, number>();
@@ -43,9 +45,9 @@ export function summariseOrderStat(res: OrderStatResponse | undefined): OrderSta
 
   return {
     count,
-    toConfirm: count(OrderStatus.PLACED),
+    toConfirm: count(OrderStatus.PENDING),
     inWarehouse: IN_WAREHOUSE.reduce((sum, s) => sum + count(s), 0),
-    shipped: count(OrderStatus.SHIPPED),
+    shipped: LEFT_THE_BUILDING.reduce((sum, s) => sum + count(s), 0),
     orders30d,
     revenue30d,
     avgOrder: orders30d > 0 ? revenue30d / BigInt(orders30d) : 0n,

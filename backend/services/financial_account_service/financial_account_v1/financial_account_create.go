@@ -17,14 +17,16 @@ import (
 // with a row that explains where its first number came from.
 //
 // Refused: a number already recorded in ANY team (a-real-account-is-recorded-once), a name the team already
-// uses, a type or provider `unknown`, a day after today, a balance below zero.
+// uses, a type `unknown` without provider `unknown` or the other way round, a day after today, a balance below
+// zero. Type *Lainnya* — `unknown`, its provider set by it, its number optional — is a person's to open
+// (the-type-decides-the-provider); it is then allowed what the listener's unknown accounts are.
 func (s *Service) FinancialAccountCreate(
 	ctx context.Context,
 	req *connect.Request[financial_accountv1.FinancialAccountCreateRequest],
 ) (*connect.Response[financial_accountv1.FinancialAccountCreateResponse], error) {
 	msg := req.Msg
 
-	id, err := checkIdentity(msg.GetType(), msg.GetProvider(), msg.GetAccountNumber())
+	id, err := checkIdentity(msg.GetType(), msg.GetProvider(), msg.GetAccountNumber(), true)
 	if err != nil {
 		return nil, err
 	}

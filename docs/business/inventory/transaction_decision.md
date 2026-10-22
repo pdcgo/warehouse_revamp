@@ -10,6 +10,21 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once) | an undo finds and locks the existing transaction, reverses it in both ledgers and sets `is_rollback`; a second undo does nothing | your transaction.md, 2026-10-09 — answers context Q13e, against my new reversing transaction |
 | [a-sample-is-handed-over-at-the-warehouse](#a-sample-is-handed-over-at-the-warehouse) | a sample is goods going OUT: a person asks at the warehouse, staff pick the goods and hand them over | chat, 2026-10-12 — answers placement Q1a and the *what is it* half of Q6; my *asked ahead in the app* is withdrawn |
 | [a-move-has-its-own-type](#a-move-has-its-own-type) | `move` joins the `tx_type` list: goods carried between racks, never typed `adjustment` | chat, 2026-10-12 — answers placement Q3a choice 1 and the `move` part of Q5, as recommended |
+| [an-orders-take-carries-its-idempotency-key](#an-orders-take-carries-its-idempotency-key) | an order's inventory transactions carry the idempotency key the order was created with — optional, orders only for now; no `ref_id` | your transaction.md edit, 2026-10-12 — answers *where the key lives* in Q1; my `ref_id` withdrawn |
+| [an-item-names-its-product](#an-item-names-its-product) | `inventory_transaction_items` gains `product_id`: one item per product per transaction | your transaction.md edit, 2026-10-12 — answers 2a of Q2, as recommended |
+| [an-item-equals-its-batch-rows](#an-item-equals-its-batch-rows) | an item's total is what its batch rows moved — paid for goods in, chosen oldest first for goods out — and every mutation asserts the item equals its rows | chat, 2026-10-12 — answers 2b of Q2, as recommended |
+| [a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value) | a sample is a stock-out and nothing more: its units and their batch value leave the owning team's stock; no money moves, nobody has to agree, and the team sees every sample of its goods | chat, 2026-10-12 — answers Q6, **against** my *the team bears it only when a named member agreed* |
+| [an-item-carries-its-owning-team](#an-item-carries-its-owning-team) | `inventory_transaction_items` gains `product_team_id` and `is_owned` — which team the item's goods belong to, and whether that is the transaction's own team | your transaction.md edit, 2026-10-15 — answers the item half of Q7, after [an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction) |
+| [an-order-transaction-is-the-ordering-teams](#an-order-transaction-is-the-ordering-teams) | an order's transaction carries the ORDERING team; each item names its owner, so `is_owned` false means borrowed | chat, 2026-10-15 — answers the header half of Q7, as recommended |
+| [superseded-a-key-buys-one-take-by-its-unique-index](#superseded-a-key-buys-one-take-by-its-unique-index) | ⛔ reversed the same hour — [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table) | chat, 2026-10-15 |
+| [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table) | an order's key is claimed once, in `idempotency_order_check` (key UNIQUE, `transaction_id`); `inventory_transactions` no longer carries it | your transaction.md edit + chat, 2026-10-15 — answers Q1, option b |
+| [a-rollback-reverses-its-log-rows](#a-rollback-reverses-its-log-rows) | a rollback flips each log row the transaction wrote — same batch, rack and value; the items are only checked | chat, 2026-10-16 — answers Q3, as recommended |
+| [picked-lives-on-the-order-timeline](#picked-lives-on-the-order-timeline) | *picked* is the order's `picked` status, logged on `order_timeline_logs`; inventory stores nothing and is not told | chat, 2026-10-16 — answers Q8, against my `picked_at` |
+| [a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take) | a rollback undoes a take only — `order`, `transfer_out`; a wrong stock-in is corrected by an `adjustment`, so no rollback can take a batch below zero | chat, 2026-10-16 — answers Q4, as recommended (reframed) |
+| [revaluation-and-opname-are-transaction-types](#revaluation-and-opname-are-transaction-types) | `tx_type` gains `revaluation` (a price change, no unit moved) and `opname` (a count's finalize), never filed as `adjustment` | your transaction.md edit and chat, 2026-10-16 — answers Q5, as recommended |
+| [a-sample-keeps-its-recipient](#a-sample-keeps-its-recipient) | `inventory_transactions.recipient`, nullable, set by a sample only; the staff's note stays in `description` | chat, 2026-10-16 — answers Q9, as recommended |
+| [problem-and-found-replace-opname](#problem-and-found-replace-opname) | `tx_type` drops `opname` and gains `problem` (broken and lost, out) and `found` (a surplus, in); every type goes one way, so items stay positive and one per product; the ledgers' `change_type` lists follow | your transaction.md, placement.md and batch.md edits, 2026-10-16 — your proposal; answers Q2c, over my item `change_type` |
+| [items-are-what-history-and-reports-read](#items-are-what-history-and-reports-read) | items exist to be read: a team's history, the order's line cost, the sample list, shared-product info, and reports — never the rollback | chat, 2026-10-16 — answers Q2d, as recommended, plus reports |
 
 ---
 
@@ -101,6 +116,11 @@ flowchart LR
 transaction for order 9001 (Q1) · reversing from the log rows rather than the items (Q3) · a rollback that would take a
 batch or a rack below zero (Q4).
 
+🔄 *(2026-10-16)* **Its Q3 is settled** — the rollback reverses the log rows, not the items: [a-rollback-reverses-its-log-rows](#a-rollback-reverses-its-log-rows).
+
+🔄 *(2026-10-16)* **Amended by [a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take)**: *"any later undo"* is narrowed —
+only a take (`order`, `transfer_out`) is rolled back; a stock-in is corrected by an `adjustment`. Its Q4 is settled.
+
 ## a-sample-is-handed-over-at-the-warehouse
 
 > Owner, in chat *(2026-10-12)*, answering [placement Q1a](./placement_clarify.md#question): *"sometimes random person
@@ -132,6 +152,10 @@ flowchart LR
 sample ever comes back (placement Q1) · who bears it, and whether the owning team has to agree first
 ([transaction Q6](./transaction_clarify.md#question)).
 
+✅ *(2026-10-12)* All three are settled since: the rack and the return in
+[placement_decision.md](./placement_decision.md#a-sample-names-the-rack-it-was-taken-from), who bears it in
+[a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value).
+
 ## a-move-has-its-own-type
 
 > Owner, in chat *(2026-10-12)*: *"3a, use `move`, and choice 1"*, choosing the first of three choices offered for
@@ -160,3 +184,562 @@ flowchart LR
 
 **What it does NOT settle**: `revaluation` and `opname`, the rest of [transaction Q5](./transaction_clarify.md#question) ·
 ⚠ the lists in [transaction.md](./transaction.md) and [placement.md](./placement.md) are yours to add `move` to.
+
+🔄 *(2026-10-16)* **Written** in your [transaction.md](./transaction.md) `tx_type` list and [placement.md](./placement.md)'s `change_type`.
+
+## a-sample-is-a-stock-out-at-batch-value
+
+> Owner, in chat *(2026-10-12)*, on [transaction Q6](./transaction_clarify.md#question): *"why selling team should pay ?
+> isn't that we can just record stock out with qty and valuation out of warehouse as sample ?"* — then *"yes"* to the rule
+> restated from it. **Against my recommendation**, which was that the team bears a sample only when a member of it is named
+> as having agreed, and otherwise the warehouse owes the team for it.
+
+**The verdict.** A sample is a **stock-out and nothing more**. Its units leave the rack and the batch, and its value leaves
+with them, typed `sample`. No money moves between the warehouse and the team, and nobody on the team has to agree first.
+The goods are the owning team's ([business_level.md](../business_level.md) §Warehouse 4: *"Ownership of stock is by selling
+team"*), so the value that leaves is the team's — and **the team sees every sample of its goods** in its history.
+
+```mermaid
+flowchart LR
+  S["staff record a sample - 2 Gelas Kaca, Rak A, to Budi"] --> T["inventory_transactions - sample, team Melati"]
+  T --> B["batch_logs - batch 7, -2, -Rp 30.000"]
+  T --> P["product_placement_logs - Rak A, -2"]
+  T -.->|"never"| M["balance - no payable, no receivable"]
+  T --> H["Melati's history - product, quantity, value, recipient, who recorded it"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the transaction | `tx_type` `sample`; `team_id` the owning team, one transaction per owning team ([a-sample-is-recorded-on-rack-detail](./placement_decision.md#a-sample-is-recorded-on-rack-detail)) |
+| the batch side | oldest batch first, the value taken being the batch's, as for every take ([a-sample-names-the-rack-it-was-taken-from](./placement_decision.md#a-sample-names-the-rack-it-was-taken-from)) |
+| the rack side | the rack staff took it from — same decision |
+| the item | the quantity and the value taken ([Q2](./transaction_clarify.md#question)) |
+| money | **none**: no balance entry, whoever records it and whoever receives it |
+| agreement | **none required**: the Record Sample dialog has no *Agreed By* field |
+| the team sees | every sample of its goods: product, quantity, value, recipient, and the staff member who recorded it (`create_by_user_id`, the log rows' `actor_id`) |
+| withdrawn | my *named member, else the warehouse pays*, and with it the 7-day rejection by the team |
+
+⚠ **The trade it accepts.** A unit lost in the warehouse's custody is the warehouse's debt
+([in-custody-shortfall-is-the-warehouses](./context_clarify.md#in-custody-shortfall-is-the-warehouses)); a unit recorded as a
+sample costs the warehouse nothing. So a shortfall recorded as a sample lands on the team, and the only guard is that the
+team sees it. If that is ever abused, an optional *Agreed By* comes back as one nullable column — nothing stored today
+changes.
+
+**What it does NOT settle**: where the recipient is kept — `RackSample.recipient` is required on the request, and
+[transaction.md](./transaction.md)'s `inventory_transactions` has no column for it ([Q9](./transaction_clarify.md#question)) ·
+`batch_logs.change_type` lacked `sample` — ✅ added 2026-10-16 ([the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up)).
+
+## an-orders-take-carries-its-idempotency-key
+
+> Owner, in [transaction.md](./transaction.md) §General Table That Must Have in Transaction *(2026-10-12)*:
+> *"`idempotency_key`, optional, its now only used for order"*, added to `inventory_transactions`. It answers *where the
+> key lives* in [Q1](./transaction_clarify.md#question), after the merged order decisions made the key the only name an
+> order's take has ([every-release-goes-by-the-key](../order/context_decision.md#every-release-goes-by-the-key)). **No
+> `ref_id`** — my recommendation is withdrawn ([q1-ref-id-is-overtaken](./transaction_clarify.md#q1-ref-id-is-overtaken)).
+
+**The verdict.** An order's inventory transactions carry the **idempotency key** the order was created with — the one
+the browser mints, the take receives, and `orders.idempotency_key` keeps. A release (Order Cancel, the compensation) and
+the verify scan find the take by it. Every other cause keeps your pattern: the record that causes the change holds its
+transaction.
+
+```mermaid
+flowchart LR
+  F["the order form mints the key"] --> TK["inventory take"]
+  TK --> T1["inventory_transactions - order, Melati, the key"]
+  TK --> T2["inventory_transactions - order, Sinar, the key"]
+  C["Order Cancel or the compensation - the key"] -->|"finds both"| T1
+  C --> T2
+  R["restocks.transaction_id, warehouse_transfers outbound and inbound"] -.->|"no key - the cause holds the id"| X["their transactions"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `inventory_transactions.idempotency_key` | optional · set on an `order` transaction only, for now |
+| an order of two owners | each of its transactions carries the same key ([Q7](./transaction_clarify.md#question)) |
+| 🔄 *(2026-10-15)* | **amended by [an-order-transaction-is-the-ordering-teams](#an-order-transaction-is-the-ordering-teams)** — an order of two owners is **one** transaction, carrying the key and the ordering team |
+| `ref_id` | not added |
+| restock, transfer | unchanged — `restocks.transaction_id`, `warehouse_transfers.outbound_transaction_id` / `inbound_transaction_id` |
+
+**What it does NOT settle** — the rest of [Q1](./transaction_clarify.md#question): how *a key buys one take, ever* is
+enforced, when two owners' rows share one key and so the key cannot be unique on this table · where a release that
+arrives **before** its take is kept ([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once)).
+
+🔄 *(2026-10-15)* **Amended by [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table)**: the key is no longer a column of `inventory_transactions` — it lives in `idempotency_order_check`, which points at the transaction. A release and the verify scan find the take through it.
+
+
+## an-item-names-its-product
+
+> Owner, in chat *(2026-10-12)*: *"yes, i forgot `product_id` in `inventory_transaction_items`"* — and added it to
+> [transaction.md](./transaction.md) §General Table That Must Have in Transaction. It answers 2a of
+> [Q2](./transaction_clarify.md#question), as recommended.
+
+**The verdict.** An item says **what** moved: one item per product per transaction, naming the product. An order of
+2 *Kaos Hitam* and 1 *Gelas Kaca* is two items, each readable on its own, instead of two numbers of nothing in particular.
+
+```mermaid
+flowchart LR
+  T["inventory_transactions - order"] --> I1["item - Kaos Hitam, quantity 2"]
+  T --> I2["item - Gelas Kaca, quantity 1"]
+  I1 --> L1["its batch and rack log rows"]
+  I2 --> L2["its batch and rack log rows"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `inventory_transaction_items.product_id` | 🆕 required — the product the item moved |
+| per transaction | one item per product; a move that empties a rack of three products writes three ([a-move-lists-its-units-at-zero-value](./placement_decision.md#a-move-lists-its-units-at-zero-value), which assumed this) |
+
+**What it does NOT settle** — the rest of [Q2](./transaction_clarify.md#question): where an item's total comes from for goods
+going out, and that it must equal its batch rows (2b) · which way a count's or an adjustment's item points (2c) · what else
+reads the items (2d).
+
+## an-item-equals-its-batch-rows
+
+> Owner, in chat *(2026-10-12)*: *"for 2b i follow your recomedation"*. It answers 2b of
+> [Q2](./transaction_clarify.md#question) — *for goods going out, the total is not known until the batches are chosen* — as
+> recommended.
+
+**The verdict.** An item's total is **what its batch rows moved**. For goods coming in it is what was paid, and the batch is
+minted from it. For goods going out it is what the chosen batches give up, oldest first — a *result* of the batch choice,
+not an input to it. So a mutation chooses before it writes, and the item it writes always equals its rows.
+
+```mermaid
+flowchart LR
+  L["lock and choose the batches - oldest first"] --> T["write the transaction"]
+  T --> I["write the item - Kaos Hitam, 3, Rp 32.000"]
+  I --> B["batch_logs - batch 7 -2 -Rp 20.000, batch 9 -1 -Rp 12.000"]
+  I --> P["placement_logs - Rak A -1, Rak B -2"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the order of work | lock and choose ([batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id)) → the transaction → the items, with their totals → the log rows; one database transaction |
+| goods in | the item's total is what was paid; the batch is minted from it, `price_unit = total ÷ quantity` |
+| goods out | the item's total is the value the chosen batches give up |
+| the rule | per item, its **total** equals the value of its product's batch rows, and its **quantity** equals the units they moved — a move, which has no batch rows, counts the units off its source rack and totals 0 ([a-move-lists-its-units-at-zero-value](./placement_decision.md#a-move-lists-its-units-at-zero-value)) |
+| proven by | each mutation's unit test asserts it |
+
+**What it does NOT settle** — the rest of [Q2](./transaction_clarify.md#question): which way an item of a count or an
+adjustment points (2c) · what else reads the items (2d).
+
+---
+
+## an-item-carries-its-owning-team
+
+> Owner, in [transaction.md](./transaction.md) §General Table That Must Have *(2026-10-15)*: `inventory_transaction_items`
+> gains **`product_team_id`** and **`is_owned`** — *"Its extra data for giving info that that product is shared/cross"*. Made
+> the same day the order chose ONE `transaction_id`, the primary key of `inventory_transactions`
+> ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)).
+
+**The verdict.** An item says whose goods it moved. One order is one transaction even when it holds two owners' goods, so
+the owner lives on the **item**, not on the transaction: `product_team_id` is the team that owns the product, and `is_owned`
+says whether that is the transaction's own team — false for a borrowed (cross) line.
+
+```mermaid
+flowchart LR
+  T["inventory_transactions 552 - order 9001, Toko Melati"] --> I1["item - Kaos Hitam - product_team_id B - is_owned true"]
+  T --> I2["item - Kemeja Putih - product_team_id A - is_owned false"]
+  O["orders.transaction_id = 552"] -.->|"the primary key"| T
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `product_team_id` | the team that owns the item's product — on every item, every `tx_type` |
+| `is_owned` | `product_team_id` equals the transaction's team — false on an order's borrowed line. ⚠ Outside an order not stated: every other type moves the owner's own goods today, so it would read true |
+| what it is for | telling a shared/cross line apart where the item is read, without a lookup |
+
+**What it does NOT settle** — the header half of [Q7](./transaction_clarify.md#question): `is_owned` compares the item to the
+**transaction's** team, so that team must be the one that ordered. It reads as answered; it is asked to be confirmed, not assumed.
+
+## an-order-transaction-is-the-ordering-teams
+
+> Owner, in chat (2026-10-15): *"yes, i rename it to owner_team_id"* — answering the order's
+> [which-team-is-team-id](../order/order_creation_clarify.md#which-team-is-team-id), which was asked with *"it also
+> settles transaction Q7: the order's single transaction carries the ordering team, B"*. It answers the header half of
+> [Q7](./transaction_clarify.md#question) — the *"Confirm B"* left by
+> [an-item-carries-its-owning-team](#an-item-carries-its-owning-team) — as recommended. Recorded beside the order side's
+> [the-take-names-the-orderer-and-each-owner](../order/context_decision.md#the-take-names-the-orderer-and-each-owner).
+
+**The verdict.** An order's inventory transaction carries the **ordering** team in `team_id` — B, who sold — even when
+some of its items are A's goods. Each item names its own owner (`product_team_id`), so `is_owned` reads as *this item's
+owner is the team that ordered*, and false means **borrowed**.
+
+```mermaid
+flowchart LR
+  T["inventory_transactions - order 9001 - team_id B, the orderer"] --> I1["item - Kaos Hitam - product_team_id B - is_owned true"]
+  T --> I2["item - Kemeja Putih - product_team_id A - is_owned false, borrowed"]
+  I2 --> B["batch rows - A's batches"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `inventory_transactions.team_id` on an `order` | the ordering team — the request's `team_id` ([the-take-names-the-orderer-and-each-owner](../order/context_decision.md#the-take-names-the-orderer-and-each-owner)) |
+| an order of two owners | **one** transaction ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)), carrying the key and B |
+| what A reads for *"what was taken from my stock"* | its items (`product_team_id` A) and its batch rows — not transaction headers |
+
+**What it amends.** [an-orders-take-carries-its-idempotency-key](#an-orders-take-carries-its-idempotency-key) — its row
+*"an order of two owners: each of its transactions carries the same key"* and its two-transaction diagram. One
+transaction now, as the order decided; the key on it is unchanged.
+
+## superseded-a-key-buys-one-take-by-its-unique-index
+
+> ⛔ **SUPERSEDED (2026-10-15, the same hour)** by [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table):
+> the owner put the unique key in a table of its own, `idempotency_order_check`, and removed `idempotency_key` from
+> `inventory_transactions` — option b, not the a recorded below. Kept as the record, per the header.
+
+> Owner, in chat (2026-10-15): *"for 1 yes"* — answering [Q1](./transaction_clarify.md#question), asked as *"UNIQUE on the
+> key, and an empty rolled-back row when a cancel arrives first?"*, as recommended (option a, no `inventory_take_keys`).
+> The same message scoped the **order's** key per team
+> ([superseded-the-order-key-is-unique-within-its-team](../order/context_decision.md#superseded-the-order-key-is-unique-within-its-team));
+> inventory's stays on the key alone.
+
+**The verdict.** The database holds *a key buys one take, ever*
+([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once)):
+`inventory_transactions.idempotency_key` is **UNIQUE where set**. A cancel that finds no take under its key writes an
+**empty, already rolled-back** `order` row under it, so a take that lands later fails on the same index. Exactly one row
+per key can ever exist — the take's or the cancel's.
+
+```mermaid
+sequenceDiagram
+  participant O as order_service
+  participant I as inventory
+  participant T as inventory_transactions
+  O->>I: take under K
+  Note over O: the call times out
+  O->>I: InventoryTxCancel K
+  alt the cancel lands first
+    I->>T: insert an empty rolled-back row under K
+    I->>T: the late take inserts under K - the unique index refuses it
+  else the take lands first
+    I->>T: the take's row under K
+    I->>T: the cancel finds it and rolls it back
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the index | `UNIQUE (idempotency_key) WHERE idempotency_key IS NOT NULL` — on the key **alone**, not per team: a release goes by K alone, so K must name one take |
+| a take on a used K | refused at the lookup ([a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first)) or, in the same second, at the insert — the same *key used* |
+| a cancel on an unseen K | inserts `tx_type = order`, `is_rollback = true`, no items, under K and the ordering team |
+| a cancel on a taken K | reverses it and sets `is_rollback` ([an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once)) |
+| a cancel on a released K | does nothing |
+
+⚠ **Two gaps it leaves:** the empty row needs the ordering team, and `InventoryTxCancel` is specified to carry only the key
+([the-compensation-event-is-inventory-tx-cancel](../order/context_decision.md#the-compensation-event-is-inventory-tx-cancel))
+— it has to carry `team_id` too · [transaction.md](./transaction.md) does not say UNIQUE yet — both reported in
+transaction_clarify (`the-key-column-does-not-say-unique`, since resolved).
+
+## the-key-is-claimed-in-its-own-table
+
+> Owner, in [transaction.md](./transaction.md) §General Table That Must Have *(2026-10-15)*: a new table 2,
+> `idempotency_order_check` — `id`, `idempotency_key` *"its unique"*, `transaction_id` — and in chat: *"sorry, i remove
+> from order. and i have better"* · *"i removed `idempotency_key` from table `inventory_transactions`"* · *"because
+> idempotency_key is just mainly used for prevent creating double order and easy rollback between order service and
+> inventory service"*. It answers [Q1](./transaction_clarify.md#question) with **option b**, a table of its own — over the
+> a I had recorded minutes earlier ([superseded-a-key-buys-one-take-by-its-unique-index](#superseded-a-key-buys-one-take-by-its-unique-index)).
+
+**The verdict.** An order's key is claimed **once, in one place**: `idempotency_order_check`, unique on the key, pointing
+at the transaction it bought. The take claims it with its transaction; a cancel that arrives before the take claims it with
+none. Whichever claims first wins and the other meets the unique index. The key is not on `inventory_transactions` any
+more — it is a tool between the two services, for one job, so it lives in its own table.
+
+```mermaid
+sequenceDiagram
+  participant O as order_service
+  participant I as inventory
+  participant C as idempotency_order_check
+  O->>I: take under K
+  Note over O: the call times out
+  O->>I: InventoryTxCancel K
+  alt the take claims K first
+    I->>C: K - transaction 552
+    I->>C: the cancel finds K - rolls transaction 552 back
+  else the cancel claims K first
+    I->>C: K - no transaction
+    I->>C: the late take claims K - the unique index refuses it, key used
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `idempotency_order_check` | `id` · `idempotency_key` UNIQUE · `transaction_id` |
+| the take | writes its transaction, then claims K with its id — a violation rolls the whole take back: *key used* |
+| the lookup first | [a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first) reads this table |
+| a cancel — K claimed with a transaction | rolls that transaction back, `is_rollback` ([an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once)) |
+| a cancel — K claimed with none | does nothing |
+| a cancel — K not claimed | claims it with no transaction: `transaction_id` empty means *cancelled before anything was taken* — confirmed in chat, 2026-10-15 |
+| a release, the verify scan | find the take through this table: K → `transaction_id` |
+| `inventory_transactions.idempotency_key` | removed |
+| the cancel's team | not needed — the claim row carries no team, so `InventoryTxCancel` stays the key alone |
+| what it is for | stopping a double order and making the rollback between order and inventory easy — nothing else reads it |
+
+**What it amends.** [an-orders-take-carries-its-idempotency-key](#an-orders-take-carries-its-idempotency-key) — the key
+moves off `inventory_transactions` into this table; a release and the verify scan still find the take by it, through
+`transaction_id`. Its *"optional, set on an `order` transaction only"* row is gone with the column.
+
+## a-rollback-reverses-its-log-rows
+
+> Owner, in chat (2026-10-16): *"for transaction Q3 i follow your recomendation"* — answering [Q3](./transaction_clarify.md#question),
+> *does a rollback reverse the items, or the log rows?*, as recommended.
+
+**The verdict.** A rollback flips the sign of **each log row** the transaction wrote — every `batch_logs` row and every
+`product_placement_logs` row — so the units go back to exactly the batches and racks they left, at their own prices. The
+items are not re-posted; they are only checked against the rows, and `is_rollback` marks the transaction
+([an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once)).
+
+```mermaid
+flowchart LR
+  T["order 9001's take"] --> L["its log rows - batch 7 -2, batch 9 -1, Rak A -1, Rak B -2"]
+  L -->|"rollback - each row flipped"| B["batch 7 +2, batch 9 +1, Rak A +1, Rak B +2"]
+  B --> S["is_rollback set - a second rollback does nothing"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| what is reversed | each of the transaction's log rows, sign flipped — same batch, same rack, same value |
+| the items | not re-posted; the reversed rows must still equal them ([an-item-equals-its-batch-rows](#an-item-equals-its-batch-rows)) |
+| where it is written | new log rows under the same transaction, `actor_id` = who rolled it back ([ledger-logs-are-append-only](../../technical/ledger/mutation_and_ledger_decision.md#ledger-logs-are-append-only)) |
+| why not the items | an item says *"Kaos Hitam +3, Rp 32.000"* — re-posting it would choose batches and racks again, and could choose differently |
+
+⚠ [transaction.md](./transaction.md) §Transaction Flow Related draws *"Get Items"* → post to both ledgers — reported in
+`the-rollback-draws-get-items` in transaction_clarify (✅ resolved 2026-10-16, see below).
+
+🔄 *(2026-10-16)* **Drawn in your [transaction.md](./transaction.md) §Transaction Flow Related:** the rollback forks into *Placement Log*
+and *Batch Log*, each read by `inventory_transactions.id` and inverted, then `is_rollback` is set.
+
+## picked-lives-on-the-order-timeline
+
+> Owner, in chat (2026-10-16): *"for transaction Q8 it logged on `order_timeline_logs`"* — answering
+> [transaction_clarify Q8](./transaction_clarify.md#question), *where is picked stored?*, against my `picked_at` on
+> `inventory_transactions`.
+
+**The verdict.** *Picked* is an order fact. *Set Picked* moves the order to `picked`
+([picked-and-shipping-are-order-statuses](../order/context_decision.md#picked-and-shipping-are-order-statuses)), and the
+move is a row on `order_timeline_logs`, which carries the time. Inventory keeps no column and no transaction for it, and
+nothing tells inventory. It reverses
+[superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked).
+
+```mermaid
+sequenceDiagram
+  participant S as staff
+  participant O as order
+  participant T as order_timeline_logs
+  participant I as inventory
+  S->>O: Set Picked - order 9001
+  O->>T: status picked, from warehouse, 13:40
+  Note over I: nothing written, nothing told
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where *picked* is | `orders.status = picked`, and its time on the `order_timeline_logs` row |
+| inventory | no `picked_at`, no pick transaction, no event |
+| a transfer out | unchanged: it waits on its own transfer's status until Warehouse A processes it |
+| ⚠ who still needs it | the rack delete — [superseded-a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#superseded-a-placement-deletes-only-when-nothing-waits-on-it) refuses while a sold unit waits on the rack, and inventory no longer knows which are waiting. How it finds out is [placement Q5](./placement_clarify.md#question) |
+
+🔄 *(2026-10-16)* **Amended by [a-placement-deletes-at-zero-stock](./placement_decision.md#a-placement-deletes-at-zero-stock)**: the
+rack delete no longer asks, so nothing in inventory needs *picked* now.
+
+## a-rollback-only-undoes-a-take
+
+> Owner, in chat (2026-10-16): *"yes"* — answering [transaction_clarify Q4](./transaction_clarify.md#question) as reframed:
+> *does a rollback only ever undo a take (order, transfer out), with any stock-in corrected by an `adjustment`?*
+
+**The verdict.** A rollback undoes a **take**, the units that left, and nothing else. Undoing a take only puts units back,
+so a rollback can never take a batch or a rack below zero. A stock-in that was wrong (a restock, a transfer in) is never
+rolled back. It is corrected with an `adjustment` for the units still there, because by then some may be sold and the
+sale's cost already taken from that batch.
+
+```mermaid
+flowchart LR
+  T["order or transfer_out"] -->|"cancel"| R["rollback - units back"]
+  S["restock, transfer_in, return, adjustment"] -->|"wrong"| A["adjustment - for the units still there"]
+  S -.->|"never"| R
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| rolled back | `order` on *Order Canceled*, `transfer_out` on a cancel while created — both put units back |
+| never rolled back | every other type: `restock`, `transfer_in`, `return`, `adjustment`, `sample`, `move` |
+| the guard | the rollback refuses a transaction of any other type, so a later caller cannot open the way below zero |
+| a wrong restock | an `adjustment` for what is still on the shelf. Batch 7: 10 in, 6 sold, wrong — an adjustment takes out the 4 left |
+| below zero | cannot come from a rollback; the rack's database check ([a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero)) stays as the backstop |
+
+It amends [an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once) (*"and any later undo"*) and
+[an-accepted-restock-cannot-be-cancelled](./restock_decision.md#an-accepted-restock-cannot-be-cancelled) (*"stock is undone
+by a rollback"*).
+
+## revaluation-and-opname-are-transaction-types
+
+> Owner, in chat (2026-10-16): *"yes, i added it"* — answering [transaction_clarify Q5](./transaction_clarify.md#question),
+> as recommended. [transaction.md](./transaction.md)'s `tx_type` list now ends in `revaluation` and `opname`.
+
+**The verdict.** A revaluation and a count each get a transaction type of their own. Neither is filed as `adjustment`,
+which keeps its one meaning: units found broken, lost or found at the shelf, outside a count.
+
+```mermaid
+flowchart LR
+  R["Melati corrects batch 7 - Rp 10.000 to 12.000"] --> TR["tx_type revaluation - no unit moved"]
+  C["the count of Rak A finds 2 missing"] --> TO["tx_type opname - from the session"]
+  A["Ani drops a carton at 10:00"] --> TA["tx_type adjustment - at the shelf"]
+```
+
+**The spec.**
+
+| | `revaluation` | `opname` |
+| --- | --- | --- |
+| written by | `PostRevaluation`, the owning team's Owner or Admin ([the-owning-team-revalues-with-a-reason](./context_decision.md#the-owning-team-revalues-with-a-reason)) | a count's finalize, one transaction per owning team in the session ([opname.md](./opname.md)) |
+| rows | `batch_logs` with `change_count` 0, and `batch_price_logs` — no rack row | batch and rack rows for every difference, and the stock-problem rows |
+| told apart from | a loss or breakage — nothing moved | a shelf `adjustment` — what [an-adjustment-writes-the-same-problem-row](./opname_decision.md#an-adjustment-writes-the-same-problem-row) reads |
+| rolled back | never ([a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take)) | never |
+
+✅ `move` was added to the list the same day ([a-move-has-its-own-type](#a-move-has-its-own-type)). Both ledgers'
+`change_type` lists carry `opname` too, and batch.md has `sample` — the lists agree, [the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up).
+
+🔄 *(2026-10-16)* **Amended by [problem-and-found-replace-opname](#problem-and-found-replace-opname)**: its `opname` half is
+reversed — a count writes `problem`, `found` and `move` transactions. `revaluation` stands.
+
+## a-sample-keeps-its-recipient
+
+> Owner, in chat (2026-10-16): *"for q9 i follow your recomendation"* — answering
+> [transaction_clarify Q9](./transaction_clarify.md#question), *where is a sample's recipient kept?*, with option **a**.
+
+**The verdict.** Who received a sample is its own fact, kept in its own column: `recipient` on `inventory_transactions`,
+set by a sample and empty on every other type. The staff's note stays in `description`. The owning team checks its samples
+by who got them ([a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value)), so that has to be
+readable on its own.
+
+```mermaid
+flowchart LR
+  D["Record Sample - recipient Budi, note for a review video"] --> T["inventory_transactions - sample"]
+  T --> R["recipient - Budi"]
+  T --> N["description - for a review video"]
+  R --> H["Melati's history - 2 Kaos Hitam to Budi"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `inventory_transactions.recipient` | 🆕 string, nullable |
+| set by | a sample only, from `RackSample.recipient`, which the request requires |
+| every other type | empty |
+| `description` | the staff's note, as for every transaction |
+| ⚠ not written yet | the column is yours to add to [transaction.md](./transaction.md) |
+
+## problem-and-found-replace-opname
+
+> Owner, in chat (2026-10-16): *"in tx_type we remove opname, and add problem, found ?"*, then *"followed ledger too"*, and
+> the edits: [transaction.md](./transaction.md)'s `tx_type` and [placement.md](./placement.md)'s `change_type` now read
+> `… adjustment · revaluation · problem · found · move`, and [batch.md](./batch.md)'s gains `problem` and `found`. It
+> answers 2c of [transaction_clarify Q2](./transaction_clarify.md#question) — *which way does an item point?* — with a
+> better design than my *`change_type` on every item*.
+
+**The verdict.** A transaction's type names **one direction**. A count no longer writes an `opname` transaction. It writes
+what it found: a **`problem`** for units broken or lost (out), a **`found`** for a surplus (in), and a **`move`** for units
+only on the wrong rack. An item therefore never needs to say which way it went. It stays positive and one per product,
+and the reason (broken or lost) stays where it already lives, on the stock-problem row, per batch.
+
+```mermaid
+flowchart LR
+  F["finalize - session 12, team Melati"] --> P["901 problem - Kaos Hitam 2, Rp 20.000"]
+  F --> N["902 found - Kaos Polos 1, Rp 10.000"]
+  F --> M["903 move - Kaos Merah 1, Rp 0"]
+  P --> R["warehouse_stock_problems - batch 7 broken 1, batch 7 lost 1"]
+  N --> C["claims problem 88 - back into batch 3"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `problem` | units out because broken or lost — from a count's finalize or a report at the shelf; writes the stock-problem rows |
+| `found` | units in because a surplus was found — claims the oldest open loss, else a new batch at the team's last price |
+| `move` | a count's rack-only correction is a move, as any move ([a-move-has-its-own-type](#a-move-has-its-own-type)) |
+| items | positive, one per product per transaction ([an-item-names-its-product](#an-item-names-its-product) unchanged) |
+| broken vs lost | `warehouse_stock_problems.problem_type`, per batch — not on the item |
+| the ledgers | each log row carries its transaction's type; the three lists are one list |
+| per count, per team | up to three transactions — `problem`, `found`, `move` — listed by the session ([a-session-lists-its-final-transactions](./opname_decision.md#a-session-lists-its-final-transactions)) |
+| `adjustment` | left with corrections only, such as a wrong stock-in ([a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take)) — yours to design in [adjustment.md](./adjustment.md) |
+
+It amends [revaluation-and-opname-are-transaction-types](#revaluation-and-opname-are-transaction-types) (its `opname` half).
+⚠ Not yet in your docs: batch.md still lists `broken` and `lost`, and opname.md still draws one `opname` transaction per
+team — [opname-md-still-draws-one-opname-transaction](./opname_clarify.md#opname-md-still-draws-one-opname-transaction).
+
+🔄 *(2026-10-16)* **Amended by your batch.md and placement.md edits, the same day:** the ledgers carry the **reason**, not
+`problem`. A `problem` transaction's batch and rack rows say `broken` or `lost`; a `found` transaction's say `found`. So
+`problem` appears only as a `tx_type`, and the rest of each list is the transaction's type. Broken versus lost is then on
+the log row **and** on the stock-problem row — your choice over my *drop them from batch.md*.
+
+## items-are-what-history-and-reports-read
+
+> Owner, in chat (2026-10-16): *"yes, intend to report"* — answering 2d of [transaction_clarify Q2](./transaction_clarify.md#question),
+> *what reads the items?*: the four readers I listed, and reports.
+
+**The verdict.** An item is the ledger's summary **for reading**: one line per product per transaction, saying what the log
+rows underneath say. Nothing writes from it and nothing reverses from it — the rollback reads the log rows
+([a-rollback-reverses-its-log-rows](#a-rollback-reverses-its-log-rows)). It earns its place because history and reports
+read one line instead of summing batch and rack rows.
+
+```mermaid
+flowchart LR
+  L["batch rows and rack rows - the facts"] -->|"equal, checked by each mutation's test"| I["item - Kaos Hitam 3, Rp 32.000, Sinar's"]
+  I --> H["a team's history"]
+  I --> O["the order's line cost - the markup"]
+  I --> S["the sample list"]
+  I --> X["shared-product info"]
+  I --> R["reports"]
+```
+
+**The spec.**
+
+| reader | reads |
+| --- | --- |
+| a team's history | *"order · Kaos Hitam 3 · Rp 32.000"* |
+| the order's take answer | the line's cost, total ÷ quantity ([inventory-computes-the-markup](../order/context_decision.md#inventory-computes-the-markup)) |
+| the sample list | what went out, beside the transaction's `recipient` ([a-sample-keeps-its-recipient](#a-sample-keeps-its-recipient)) |
+| shared-product info | `product_team_id`, `is_owned` — whose goods were sold |
+| reports | items grouped by their transaction's team and type, by `warehouse_id` and `created_at` — one join to `inventory_transactions` |
+| not | the rollback |
+
+**What it does NOT settle:** which reports — none is designed yet. When one is, it reads items first, and a column is added
+to the item only if a report cannot be answered through the one join.
+
+🔄 *(2026-10-16, later)* **The report meant first** (owner: *"especially placement and batch, we later can see flow last
+stock balance more clearly"*): the **stock flow** of a rack and of a batch — every movement with the balance after it. It
+reads the **log rows**, which already carry the balance: `product_placement_logs.stock_after`,
+`batch_logs.stock_count_after` and `stock_valuation_after`. Each line is labelled by its transaction (type, who, when) and
+its row's `change_type`; the item gives the per-product summary beside it.
+
+| Kaos Hitam on Rak A | transaction | row | change | `stock_after` |
+| --- | --- | --- | --- | --- |
+| 09:00 | #552 order | `order` | −1 | 5 |
+| 13:00 | #570 restock | `restock` | +10 | 15 |
+| 15:00 | #901 problem | `broken` | −1 | 14 |
+| 15:00 | #901 problem | `lost` | −1 | 13 |
+
+⚠ Read in `id` order, not `created_at`: two rows in the same second share a timestamp, and the balance after is only a
+sequence in the order the rows were written — under the lock
+([batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id)).

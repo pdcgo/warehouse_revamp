@@ -53,6 +53,7 @@ func InitializeApp() (*App, error) {
 		// Joins selling to inventory (#149/#70) — see stock_picker.go.
 		NewStockPicker,
 		NewProductCatalog,
+		NewInventoryProductReader,
 		// Where the order events go (#153) — see event_sender.go. Dev publishes to the local
 		// EMULATOR, not an in-process loopback (dev-runs-the-emulator).
 		NewPubsubClient,
@@ -64,14 +65,15 @@ func InitializeApp() (*App, error) {
 		NewSupplierClient,
 		NewInventorySupplierChecker,
 		liability_v1.NewService,
+		// Whether a payment's *Paid from* / *Received into* is the team's own live account — asked of
+		// financial_account_service under the caller's token. See liability_deps.go.
+		NewFinancialAccountClient,
+		NewLiabilityAccountChecker,
 		settlement_v1.NewService,
 		// Who an imported shop row counts for — the shop's primary CS, asked over Connect under the
 		// caller's token. See shop_primary.go.
 		NewShopClient,
 		NewShopPrimary,
-		// Joins selling to settlement — an order opens and cancels its marketplace account. See
-		// settlement_poster.go.
-		NewSettlementPoster,
 		// The subscription settlement's replay seeks — see replay_broker.go.
 		NewReplayBroker,
 		// The settlement importer, and its four services as clients under the uploader's token — see
@@ -83,6 +85,7 @@ func InitializeApp() (*App, error) {
 		NewImporterShopChecker,
 		NewImporterOrderFinder,
 		NewImporterStatementStore,
+		NewOrderExportStore,
 		NewImporterLedger,
 		// Joins inventory to liability (#184) — see liability_poster.go.
 		NewLiabilityPoster,

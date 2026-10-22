@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Box, Button, Popover, Portal, Stack, Table, Text } from "@chakra-ui/react";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 
 // One priced line of goods — the shape every document in this system has a list of: a restock's
 // items, an order's lines, a return's contents, a batch receipt's rows.
@@ -15,11 +15,11 @@ export interface ProductLine {
   name: string;
   quantity: bigint;
   /**
-   * Whole rupiah, THE LINE TOTAL (not the per-piece price — see #140: people buy in totals). The
+   * Rupiah as stored (a `double`), THE LINE TOTAL (not the per-piece price — see #140: people buy in totals). The
    * unit price shown beside it is DERIVED from this and the quantity, and is openly a rounding.
    * Omit on every line, or pass `showPrices={false}`, for an unpriced list.
    */
-  totalPrice?: bigint;
+  totalPrice?: number;
 }
 
 // ProductLinesPopover shows a document's full list of goods WITHOUT LEAVING THE LIST (owner).
@@ -55,15 +55,15 @@ export function ProductLinesPopover({
   const { t } = useTranslation();
 
   const priced = showPrices && lines.some((l) => l.totalPrice !== undefined);
-  const goodsTotal = lines.reduce((sum, l) => sum + (l.totalPrice ?? 0n), 0n);
+  const goodsTotal = lines.reduce((sum, l) => sum + (l.totalPrice ?? 0), 0);
 
   // What one piece cost, derived and openly a rounding: 10.000 over 3 pieces shows 3.333 while the
   // line still totals 10.000. The two columns can look a rupiah apart, and that is the honest
   // picture — the invoice said 10.000, and no per-piece figure divides it exactly.
-  function unitPrice(line: ProductLine): bigint {
-    if (line.totalPrice === undefined || line.quantity <= 0n) return 0n;
+  function unitPrice(line: ProductLine): number {
+    if (line.totalPrice === undefined || line.quantity <= 0n) return 0;
 
-    return line.totalPrice / line.quantity;
+    return line.totalPrice / Number(line.quantity);
   }
 
   return (
@@ -145,12 +145,12 @@ export function ProductLinesPopover({
                           <Table.Cell textAlign="end">{line.quantity.toString()}</Table.Cell>
                           {priced && (
                             <Table.Cell textAlign="end" whiteSpace="nowrap">
-                              {formatRupiah(unitPrice(line))}
+                              {formatRupiahNumber(unitPrice(line))}
                             </Table.Cell>
                           )}
                           {priced && (
                             <Table.Cell textAlign="end" whiteSpace="nowrap">
-                              {formatRupiah(line.totalPrice ?? 0n)}
+                              {formatRupiahNumber(line.totalPrice ?? 0)}
                             </Table.Cell>
                           )}
                         </Table.Row>
@@ -172,7 +172,7 @@ export function ProductLinesPopover({
                             whiteSpace="nowrap"
                             data-testid={`${testId}-total`}
                           >
-                            {formatRupiah(goodsTotal)}
+                            {formatRupiahNumber(goodsTotal)}
                           </Table.Cell>
                         </Table.Row>
                       </Table.Footer>

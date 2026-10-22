@@ -1,5 +1,5 @@
-// inventory_service's WarehouseTransferService as Storybook's stub — the ONLY implementation the transfer has until the
-// backend step (the real server answers Unimplemented).
+// inventory_service's WarehouseTransferService as Storybook's stub. The server is built
+// (backend/services/inventory_service/inventory_v1/warehouse_transfer_*.go); the stub plays the same rules without it.
 //
 // It plays the DECIDED rules (docs/business/inventory/warehouse_transfer_decision.md), because the screens must
 // already honour them:
@@ -48,7 +48,7 @@ const STOCKED_WAREHOUSE = 11n;
 
 // What a unit is worth when the stub opens a NEW transfer. The real server prices each unit from the batch it comes
 // off; the stub has no batches, so it uses one price per product — enough to show a value that is filled, not typed.
-const STUB_PRICE: Record<string, bigint> = { "74": 65000n, "71": 40000n, "72": 15000n, "73": 12000n };
+const STUB_PRICE: Record<string, number> = { "74": 65000, "71": 40000, "72": 15000, "73": 12000 };
 
 type PageReq = { page?: number; limit?: number } | undefined;
 
@@ -109,14 +109,14 @@ function move(r: TransferFixture, to: S, description = "") {
 function toWire(r: TransferFixture, withLogs: boolean) {
   const items = r.items.map((l) => ({
     ...l,
-    priceUnit: l.count > 0n ? l.total / l.count : 0n,
-    problems: l.problems.map((p) => ({ ...p, priceUnit: p.count > 0n ? p.total / p.count : 0n })),
+    priceUnit: l.count > 0n ? l.total / Number(l.count) : 0,
+    problems: l.problems.map((p) => ({ ...p, priceUnit: p.count > 0n ? p.total / Number(p.count) : 0 })),
   }));
 
   return {
     ...r,
     items,
-    total: r.items.reduce((sum, l) => sum + l.total, 0n),
+    total: r.items.reduce((sum, l) => sum + l.total, 0),
     logs: withLogs ? r.logs : [],
   };
 }
@@ -129,8 +129,8 @@ export function transferWire(id: bigint) {
   return toWire(found, true);
 }
 
-function requireAccount(cost: bigint, accountId: bigint) {
-  if (cost > 0n && accountId === 0n) throw invalid("finance_account_id: required when shipment_cost is above 0");
+function requireAccount(cost: number, accountId: bigint) {
+  if (cost > 0 && accountId === 0n) throw invalid("finance_account_id: required when shipment_cost is above 0");
 }
 
 export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTransferService>> = {
@@ -165,7 +165,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
         sku: product?.sku ?? "",
         name: product?.name ?? "",
         count: l.count,
-        total: (STUB_PRICE[l.productId.toString()] ?? 0n) * l.count,
+        total: (STUB_PRICE[l.productId.toString()] ?? 0) * Number(l.count),
         picks: firstRack ? [{ placementId: firstRack.id, quantity: l.count }] : [],
         arrivedCount: 0n,
         placements: [],
@@ -185,8 +185,8 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
       receipt: "",
       receiptFile: "",
       shipmentCost: req.shipmentCost,
-      financeAccountId: req.shipmentCost > 0n ? req.financeAccountId : 0n,
-      warehouseAdditionalCost: 0n,
+      financeAccountId: req.shipmentCost > 0 ? req.financeAccountId : 0n,
+      warehouseAdditionalCost: 0,
       warehouseAdditionalCostNote: "",
       outboundTransactionId: 9000n + id,
       inboundTransactionId: 0n,
@@ -260,7 +260,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     requireAccount(req.shipmentCost, req.financeAccountId);
 
     r.shipmentCost = req.shipmentCost;
-    r.financeAccountId = req.shipmentCost > 0n ? req.financeAccountId : 0n;
+    r.financeAccountId = req.shipmentCost > 0 ? req.financeAccountId : 0n;
     r.note = req.note;
 
     return { transfer: toWire(r, true) };
@@ -331,7 +331,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     if (r.status !== S.SHIPPED && r.status !== S.ARRIVED) {
       throw precondition("a transfer is accepted only from shipped or arrived");
     }
-    if (req.warehouseAdditionalCost > 0n && req.warehouseAdditionalCostNote.trim() === "") {
+    if (req.warehouseAdditionalCost > 0 && req.warehouseAdditionalCostNote.trim() === "") {
       throw invalid("warehouse_additional_cost_note: required when the charge is above 0");
     }
 
@@ -356,7 +356,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
 
     for (const item of r.items) {
       const counted = byItem.get(item.id.toString())!;
-      const price = item.count > 0n ? item.total / item.count : 0n;
+      const price = item.count > 0n ? item.total / Number(item.count) : 0;
       const missing = item.count - counted.arrivedCount;
 
       item.arrivedCount = counted.arrivedCount;
@@ -366,7 +366,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
         item.problems.push({
           type: WarehouseTransferProblemType.BROKEN,
           count: counted.brokenCount,
-          total: price * counted.brokenCount,
+          total: price * Number(counted.brokenCount),
           note: counted.brokenNote,
         });
       }
@@ -374,7 +374,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
         item.problems.push({
           type: WarehouseTransferProblemType.MISSING,
           count: missing,
-          total: price * missing,
+          total: price * Number(missing),
           note: counted.missingNote,
         });
       }

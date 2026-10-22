@@ -117,6 +117,32 @@ export const shopService = {
 
   shopDetail: (req: { teamId: bigint; shopId: bigint }) => ({ shop: find(req.teamId, req.shopId) }),
 
+  // ACROSS TEAMS, basic fields only (the-warehouse-row-fills-from-shop-and-user-by-ids) — a warehouse's order row names
+  // another team's shop. An unknown id is simply absent.
+  shopByIds: (req: { filter?: { ids?: bigint[] } }) => ({
+    items: Object.fromEntries(
+      rows
+        .filter((s) => (req.filter?.ids ?? []).includes(s.id))
+        .map((s) => [
+          s.id.toString(),
+          {
+            items: [
+              {
+                d: {
+                  case: "basic" as const,
+                  value: {
+                    mapData: {
+                      [s.id.toString()]: { id: s.id, teamId: s.teamId, name: s.name, marketplace: s.marketplace },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ]),
+    ),
+  }),
+
   shopCreate: (req: { teamId: bigint; name: string; shopCode: string; marketplace: Marketplace; description: string }) => {
     const id = rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
     const shop: ShopRow = {

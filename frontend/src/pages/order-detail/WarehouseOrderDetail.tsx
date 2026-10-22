@@ -45,7 +45,7 @@ export function WarehouseOrderDetailPage() {
   // THE PEOPLE ON THE TIMELINE. The ids come from the EVENTS (00011) — the order row itself records no
   // actor at all, which is precisely why the history had to become a table before this tab could exist.
   // Deduplicated into one lookup: the same person often takes several steps.
-  const actors = useActors(order?.events.map((event) => event.actorUserId) ?? []);
+  const actors = useActors(order?.timelineLogs.map((log) => log.actorId) ?? []);
 
   // Names an actor the lookup could not resolve. 0 is "not recorded" — every event backfilled by
   // 00011 is in that state — and gets nothing, because inventing a name there would be worse than the
@@ -143,13 +143,14 @@ export function WarehouseOrderDetailPage() {
 
         {/* NO CONFIRM BUTTON HERE ANY MORE (owner). Confirming is the WAREHOUSE accepting the job, and
             it happens on that team's order screen — this seat can no longer do it, and the RPC would
-            refuse it anyway now that OrderConfirm is scoped to the order's warehouse.
+            refuse it anyway: OrderStatusChange lets only the order's warehouse move pending → processed.
 
-            The status still reads PLACED here until the building acts, which is the honest thing for
+            The status still reads PENDING here until the building acts, which is the honest thing for
             this screen to show: it is waiting on somebody else. Cancel stays — calling an order off is
-            still this team's decision, right up until the goods leave the building. */}
+            still this team's decision, from PENDING only: a processed or picked order is handed back to
+            pending by the warehouse first (who-may-cancel-a-pending-order). */}
 
-        {(order.status === OrderStatus.PLACED || order.status === OrderStatus.CONFIRMED) && (
+        {order.status === OrderStatus.PENDING && (
           <ConfirmDialog
             title={t("orders.cancelOrder")}
             message={t("orders.cancelMessage", { id: order.id.toString() })}

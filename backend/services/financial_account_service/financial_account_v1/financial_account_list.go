@@ -28,7 +28,12 @@ func (s *Service) FinancialAccountList(
 
 	query := db.Model(&m.FinancialAccount{}).Where("financial_accounts.team_id = ?", msg.GetTeamId())
 
-	if !filter.GetIncludeArchived() {
+	// The archive view asks for the archived ALONE (the-archive-is-its-own-view), so it is counted and paged
+	// here; `include_archived` only adds them to the active, for the screens that list both.
+	switch {
+	case filter.GetArchivedOnly():
+		query = query.Where("financial_accounts.status = ?", m.StatusArchived)
+	case !filter.GetIncludeArchived():
 		query = query.Where("financial_accounts.status = ?", m.StatusActive)
 	}
 

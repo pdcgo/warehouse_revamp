@@ -66,20 +66,13 @@ func aRackWithGoods(t *testing.T, svc *inventory_v1.Service, db *gorm.DB) (uint6
 		t.Fatalf("accept: %v", err)
 	}
 
-	// The second product with NO restock behind it. StockReceive lands goods in the unplaced pile —
-	// a real place (#135) — so a StockMove is what puts them on this shelf, which is also the movement
-	// the Placement History tab is about.
-	_, err = svc.StockReceive(ctx, connect.NewRequest(&inventoryv1.StockReceiveRequest{
-		WarehouseId: rackWarehouse, ProductId: unpriced, Quantity: 4,
-	}))
-	if err != nil {
-		t.Fatalf("receive: %v", err)
-	}
+	// The second product arrives on ANOTHER rack, at Rp 1.000 a unit, and is moved onto this one — the movement the
+	// Placement History tab is about.
+	elsewhere := receive(t, svc, ctx, rackWarehouse, unpriced, 4)
 
-	_, err = svc.StockMove(ctx, connect.NewRequest(&inventoryv1.StockMoveRequest{
-		WarehouseId: rackWarehouse, ProductId: unpriced, Quantity: 4,
-		From: &inventoryv1.StockPlace{Place: &inventoryv1.StockPlace_Unplaced{Unplaced: true}},
-		To:   &inventoryv1.StockPlace{Place: &inventoryv1.StockPlace_RackId{RackId: rackID}},
+	_, err = svc.RackMove(ctx, connect.NewRequest(&inventoryv1.RackMoveRequest{
+		TeamId: rackWarehouse, FromRackId: elsewhere,
+		Lines: []*inventoryv1.RackMoveLine{{ProductId: unpriced, Quantity: 4, ToRackId: rackID}},
 	}))
 	if err != nil {
 		t.Fatalf("move: %v", err)
@@ -106,19 +99,17 @@ func TestRackDetail_SummarisesWhatIsOnTheShelf(t *testing.T) {
 	summary := res.Msg.GetSummary()
 
 	if summary.GetTotalOnHand() != 14 {
-		t.Fatalf("total on hand = %d, want 14 (10 restocked + 4 received)", summary.GetTotalOnHand())
+		t.Fatalf("total on hand = %d, want 14 (10 restocked + 4 moved in)", summary.GetTotalOnHand())
 	}
 
-	// 500.000 over 10 units = 50.000 each, and no freight on this request.
-	if summary.GetTotalValue() != 500000 {
-		t.Fatalf("total value = %d, want 500000", summary.GetTotalValue())
+	// 10 × 50.000 + 4 × 1.000.
+	if summary.GetTotalValue() != 504000 {
+		t.Fatalf("total value = %d, want 504000", summary.GetTotalValue())
 	}
 
-	// ⚠ The product with no restock behind it contributes NOTHING and is COUNTED. A shelf of
-	// never-restocked goods must read as "worth little, and here is why" rather than as a confident
-	// small number.
-	if summary.GetUnknownCostProducts() != 1 {
-		t.Fatalf("unknown-cost products = %d, want 1", summary.GetUnknownCostProducts())
+	// Every unit on the ledgers carries a price, so nothing on the shelf is of unknown cost.
+	if summary.GetUnknownCostProducts() != 0 {
+		t.Fatalf("unknown-cost products = %d, want 0", summary.GetUnknownCostProducts())
 	}
 }
 
@@ -196,10 +187,9 @@ func TestRackStock_CarriesTheCostAndTheValue(t *testing.T) {
 		t.Fatalf("the restocked line = %+v, want cost 50000 × 10 = 500000", got)
 	}
 
-	// ⚠ Unknown, not free — and the flag says which, so a screen never has to infer it from a zero.
 	other := byProduct[unpriced]
-	if other == nil || other.GetCostKnown() || other.GetValue() != 0 {
-		t.Fatalf("the never-restocked line = %+v, want cost_known=false and value 0", other)
+	if other == nil || !other.GetCostKnown() || other.GetUnitCost() != 1000 || other.GetValue() != 4000 {
+		t.Fatalf("the moved-in line = %+v, want cost 1000 × 4 = 4000", other)
 	}
 }
 
@@ -275,7 +265,7 @@ func TestRackHistory_FiltersToThePlacementKinds(t *testing.T) {
 	}
 
 	if len(rackHistoryRows(placements.Msg)) != 2 {
-		t.Fatalf("%d placement movements, want the 2 receives", len(rackHistoryRows(placements.Msg)))
+		t.Fatalf("%d placement movements, want the receive and the move", len(rackHistoryRows(placements.Msg)))
 	}
 
 	// The count must follow the filter too, or the pager reports rows the tab will not show.

@@ -30,13 +30,14 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-transfer-has-the-restocks-two-costs](#a-transfer-has-the-restocks-two-costs) | `shipment_cost` is the selling team's expense; `warehouse_additional_cost` is paid on site by the warehouse and owed back by the team, like a restock | your §Table Should Have edit and chat, 2026-10-10 — answers the core of Q8, in part against my *b* |
 | [a-transfer-names-its-paying-account](#a-transfer-names-its-paying-account) | `finance_account_id` — the selling team's account that pays `shipment_cost` | your §Table Should Have edit, 2026-10-10 — answers the account half of Q8d, as recommended |
 | [the-shipping-expense-reaches-the-account-by-event](#the-shipping-expense-reaches-the-account-by-event) | the team types `shipment_cost` until accepted; each save sends the account and the difference to `financial_account_service`; the account is required only when the cost is above 0 | chat, 2026-10-10 — answers Q8d, as recommended |
-| [the-on-site-charge-is-paid-by-b-at-accept](#the-on-site-charge-is-paid-by-b-at-accept) | B pays the courier's on-site charge and enters it at accept; the team's debt to B is written inside the accept | chat, 2026-10-10 — answers Q8e, as recommended |
+| [the-on-site-charge-is-paid-by-b-at-accept](#the-on-site-charge-is-paid-by-b-at-accept) | B pays the courier's on-site charge and enters it at accept; the team's debt to B is written inside the accept | chat, 2026-10-10 — answers Q8e, as recommended — 🔄 the debt half superseded by [balance-posts-the-transfers-on-site-debt-from-the-event](#balance-posts-the-transfers-on-site-debt-from-the-event); B still pays and enters the charge at accept |
 | [a-transfer-never-changes-a-units-price](#a-transfer-never-changes-a-units-price) | neither cost enters B's unit price — a transfer moves, it does not buy | chat, 2026-10-10 — answers Q8f, as recommended, unlike a restock |
 | [the-sender-enters-the-courier-at-ship](#the-sender-enters-the-courier-at-ship) | Warehouse A enters the courier, the tracking number and the label photo when it ships; the team enters only the cost and its account | chat, 2026-10-10 — raised by the screens, as recommended |
 | [the-transfer-prototype-is-accepted](#the-transfer-prototype-is-accepted) | design_accept: the six screens and the contract are the design; a contract change from here is a new pass | chat, 2026-10-10 |
 | [the-decided-ledgers-come-before-the-transfer](#the-decided-ledgers-come-before-the-transfer) | the legs write the decided ledgers (transactions, batches, placements), built first — not today's `stock_*` tables | chat, 2026-10-10 — **against** my existing-tables recommendation |
 | [a-batch-carries-its-owner](#a-batch-carries-its-owner) | `batches.team_id` is written at mint — the restock's team, or the source batch's at a transfer; no climb through restocks | chat, 2026-10-10 — as recommended |
 | [the-transfer-expense-event-waits-for-the-events-pass](#the-transfer-expense-event-waits-for-the-events-pass) | the shipping-expense event is built in one events pass with restock's | chat, 2026-10-10 — as recommended |
+| [balance-posts-the-transfers-on-site-debt-from-the-event](#balance-posts-the-transfers-on-site-debt-from-the-event) | B's accept saves the courier's charge on the transfer and never writes balance; balance posts the team's debt to B from *Warehouse Transfer Accepted*, once per transfer | chat, 2026-10-15 — answers [Q10](./warehouse_transfer_clarify.md#question), as recommended (option B) |
 
 ---
 
@@ -788,6 +789,17 @@ flowchart LR
 ([the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept)), and it is
 answered once for both.
 
+⚠ *(2026-10-14)* **The restock rule this copied is reversed.** The debt is balance's, posted from *Restock Accepted*
+([balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event)).
+That answers *which table* for both, as this section expected. Whether the transfer's debt also leaves the accept for an
+event is asked in [warehouse_transfer_clarify Q10](./warehouse_transfer_clarify.md#question). Until you answer, this
+decision stands as written.
+
+🔄 *(2026-10-15)* **The debt half is superseded** — it follows the restock:
+[balance-posts-the-transfers-on-site-debt-from-the-event](#balance-posts-the-transfers-on-site-debt-from-the-event). The
+rest stands: B pays the courier on site and enters the charge at accept. Kept as the record of what the in-transaction
+write bought.
+
 ## a-transfer-never-changes-a-units-price
 
 > Owner, in chat *(2026-10-10)*: *"for q8 yes follow your recomendation"*. It answers
@@ -944,3 +956,52 @@ flowchart LR
 | --- | --- |
 | this pass | `shipment_cost` and `finance_account_id` stored; no event |
 | the events pass | the transfer's and the restock's events together: create, cost change, cancel refund |
+
+## balance-posts-the-transfers-on-site-debt-from-the-event
+
+> Owner, in chat *(2026-10-15)*: *"yes option b"*, choosing between *A — keep the debt in the accept* and *B — follow
+> restock, event → balance*. It answers [warehouse_transfer_clarify Q10](./warehouse_transfer_clarify.md#question) as
+> recommended, and supersedes the debt half of
+> [the-on-site-charge-is-paid-by-b-at-accept](#the-on-site-charge-is-paid-by-b-at-accept).
+
+**The verdict.** B's accept saves the courier's charge and its note **on the transfer**, inside its own transaction, and
+never writes balance's tables. After commit, *Warehouse Transfer Accepted* carries the charge, and balance posts what the
+selling team owes B, once per transfer. A courier's charge reaches balance one way, whichever door it was paid at — the
+restock's ([balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event))
+or the transfer's.
+
+```mermaid
+sequenceDiagram
+  participant K as courier
+  participant B as Warehouse B
+  participant I as inventory
+  participant BAL as balance
+  K->>B: asks Rp 5.000 at the door
+  B->>K: pays it on site
+  B->>I: accept — the count, the charge, its note
+  I->>I: one transaction — batches, problem rows, the charge on the transfer
+  I-->>BAL: after commit, Warehouse Transfer Accepted — Rp 5.000
+  BAL->>BAL: the selling team owes B Rp 5.000, once per transfer
+```
+
+**The trade-off, said plainly.** The debt no longer commits with the accept — given up here as it was for restock, for
+the same reason: inventory never writes balance's data (HARD RULE 3). A publish that never happens
+([no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted))
+leaves the debt **unposted, but not unrecorded**: the charge is on the accepted transfer, and publishing the same event
+again posts it once.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the accept | saves `warehouse_additional_cost` and `warehouse_additional_cost_note` on the transfer; never calls balance |
+| *Warehouse Transfer Accepted* | 🆕 published after every accept commits, a charge of 0 included; carries the transfer, the selling team, Warehouse B, the charge, its note, and when it was accepted |
+| `event_id` | `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once, so a redelivery, a replay or a re-publish posts nothing new |
+| balance | the selling team owes B the charge, with its note ([an-incidental-line-must-say-what-it-was-for](../balance/context_decision.md#an-incidental-line-must-say-what-it-was-for)); nothing for 0 |
+| when it is built | in the events pass with the shipping expense ([the-transfer-expense-event-waits-for-the-events-pass](#the-transfer-expense-event-waits-for-the-events-pass)); until then the charge is stored, and the accept screen marks the debt `missing` |
+
+**What it does NOT settle** — which source type balance posts it under. `INCIDENTAL_FEE`'s `source_id` is the restock,
+and balance refuses a second row with the same *(team, counterparty, source type, source id, reversal)*. Restocks and
+transfers are numbered separately, so transfer 41 posted as `INCIDENTAL_FEE` beside restock 41 — same team, same
+warehouse — reads as a duplicate and is **dropped**. Asked where it is answered:
+[balance Q13](../balance/context_clarify.md#question).

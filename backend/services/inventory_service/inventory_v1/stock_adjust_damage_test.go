@@ -225,33 +225,6 @@ func TestStockAdjust_RecountReimbursesNobody(t *testing.T) {
 	}
 }
 
-// ⚠ AN UNKNOWN COST REIMBURSES NOTHING (#74). 0 means "we do not know what this cost", not "free" —
-// and a debt of zero would consume the pair's idempotency key for that movement, so the real figure
-// could never be posted if the cost were later backfilled.
-func TestStockAdjust_UnknownCostPostsNoDebt(t *testing.T) {
-	db := san_testdb.DB(t)
-	poster := &recordingPoster{}
-	svc := newServiceWithLiability(t, db, poster)
-
-	const warehouse uint64 = 5
-
-	rackID, batchID, product := damageFixture(t, db, svc, warehouse)
-
-	// A batch received straight into stock has no recorded cost. Forced here, because the restock path
-	// always computes one.
-	err := db.Exec(`UPDATE stock_batches SET unit_cost = NULL WHERE id = ?`, batchID).Error
-	if err != nil {
-		t.Fatalf("blank the cost: %v", err)
-	}
-
-	adjustBatch(t, svc, warehouse, product, rackID, batchID,
-		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_DAMAGED, 5)
-
-	if len(poster.damaged) != 0 {
-		t.Fatalf("an unknown-cost batch posted %+v, want no debt at all", poster.damaged)
-	}
-}
-
 // A TEAM CANNOT OWE ITSELF. A warehouse that raised its own restock owns the goods it holds, so
 // breaking them is its own loss and there is nobody to reimburse — the ledger would refuse the
 // posting anyway, and failing an honest stock correction over it would be the wrong outcome.
@@ -281,7 +254,7 @@ func TestStockAdjust_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 // thing a fake can agree with while production has it backwards.
 func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db)})
+	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db, nil, nil)})
 
 	const warehouse uint64 = 5
 

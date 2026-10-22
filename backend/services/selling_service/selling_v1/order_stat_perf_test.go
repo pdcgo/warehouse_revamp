@@ -19,7 +19,7 @@ import (
 // every order the team has ever placed, so this is the read whose cost grows forever if it grows at
 // all. Spread across six statuses and 30 days so both halves of the response have work to do.
 func perfOrderRows(n int, shopIDs []uint64) []selling_service_models.Order {
-	statuses := []string{"placed", "confirmed", "picking", "packed", "shipped", "cancelled"}
+	statuses := []string{"pending", "processed", "picked", "shipping", "shipped", "completed", "problem", "lost", "return", "return_completed", "cancel"}
 
 	rows := make([]selling_service_models.Order, 0, n)
 

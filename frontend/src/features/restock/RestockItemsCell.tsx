@@ -47,7 +47,8 @@ export function RestockItemsCell({
     sku: item.sku,
     name: item.name,
     quantity: item.count,
-    totalPrice: item.total,
+    // Restock money is still whole rupiah on the wire until it turns `double` (money-is-double-in-the-api-too).
+    totalPrice: Number(item.total),
   }));
 
   return (

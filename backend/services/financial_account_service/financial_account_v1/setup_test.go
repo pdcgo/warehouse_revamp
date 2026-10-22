@@ -86,6 +86,18 @@ func bca(team uint64, name, number string, opening float64) accountSpec {
 	}
 }
 
+// other is type Lainnya — unknown, its provider set by the type, its number optional (the-type-decides-the-provider).
+func other(team uint64, name, number string, opening float64) accountSpec {
+	return accountSpec{
+		team:     team,
+		name:     name,
+		typ:      financial_accountv1.FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_UNKNOWN,
+		provider: financial_accountv1.FinancialAccountProvider_FINANCIAL_ACCOUNT_PROVIDER_UNKNOWN,
+		number:   number,
+		opening:  opening,
+	}
+}
+
 func cash(team uint64, name string, opening float64) accountSpec {
 	return accountSpec{
 		team:     team,

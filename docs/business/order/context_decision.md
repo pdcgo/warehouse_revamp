@@ -9,7 +9,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-draft-carries-its-shop](#a-draft-carries-its-shop) | a draft has its shop, and therefore its owning team, from the moment it exists |
 | [ensuring-an-order-is-whole-is-order-services-job](#ensuring-an-order-is-whole-is-order-services-job) | finding and repairing a half-succeeded order is `order_service`'s job |
 | [the-order-follows-settlement-for-its-money](#the-order-follows-settlement-for-its-money) | marketplace money is described by the settlement doc — the order only opens and cancels the sale |
-| [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) | no two live orders share `(shop_id, order_external_ref_id)` · the ref is never empty · checked in code |
+| [superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref) | ⛔ uniqueness reversed — [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) · the ref is still never empty |
 | [drafts-keep-their-own-table](#drafts-keep-their-own-table) | `order_drafts` stays apart from `orders`, carrying the same ref and shop |
 | [superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses) | ⛔ reversed — a ninth status `return_completed` was added |
 | [the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses) | the order carries the milestone, the record that owns the work carries its steps |
@@ -37,6 +37,28 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-take-reduces-stock-and-placement](#a-take-reduces-stock-and-placement) | create takes stock directly — shelves and counts are inventory's to design |
 | [rupiah-is-floating-point](#rupiah-is-floating-point) | every rupiah amount is `double`/`float`, system-wide |
 | [the-take-is-never-retried](#the-take-is-never-retried) | one call to inventory — any failure fails the create |
+| [the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key) | one key from the form names the take, *Order Created* and the compensation |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | the order keeps the key it was created with — a resend gets that order back |
+| [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) | `orders.idempotency_key`, UNIQUE — a key, not an `_id` |
+| [inventory-takes-a-key-once](#inventory-takes-a-key-once) | a second take on a used key is refused, never replayed · an early cancel is kept |
+| [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the form mints a new key after any answer — 🔄 its *same key on no answer* exception is gone: [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) |
+| [every-release-goes-by-the-key](#every-release-goes-by-the-key) | Order Cancel carries the key · inventory has ONE release, by key, for the cancel and the compensation · a second release does nothing |
+| [the-compensation-event-is-inventory-tx-cancel](#the-compensation-event-is-inventory-tx-cancel) | the failed create's event is `InventoryTxCancel`, carrying the key — one name in both docs |
+| [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | after Create the form waits locked · the order opens it · an error mints a new key · no answer offers *Try Again* — 🔄 under a new key ([every-submit-mints-a-new-key](#every-submit-mints-a-new-key)) |
+| [an-order-is-one-inventory-transaction](#an-order-is-one-inventory-transaction) | the take is ONE inventory transaction, even across owners · `orders.transaction_id` keeps it as a reference · releases still go by the key |
+| [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) | a key belongs to one submit — *Try Again* included — so two attempts never share a take; the shop + ref check alone recognises a resend |
+| [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) | two live orders may share a shop and ref — the form warns before Create, the server refuses nothing |
+| [a-try-again-always-warns](#a-try-again-always-warns) | *Try Again* re-checks the shop and ref and always warns — naming the order, or saying the last Create may still be finishing |
+| [the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too) | the warning reads live orders AND drafts on the same shop and ref, never the draft being finalized |
+| [the-debt-check-runs-before-the-take](#the-debt-check-runs-before-the-take) | before the transaction, the order asks balance for the limits of the teams it borrows from — consulted, never managed |
+| [over-the-limit-refuses-the-create](#over-the-limit-refuses-the-create) | a creditor at or over its limit refuses the whole create, naming the creditor, the debt and the limit |
+| [the-warehouse-is-a-creditor-on-every-order](#the-warehouse-is-a-creditor-on-every-order) | the debt check asks about the fulfilling warehouse always, plus each team a shared product is borrowed from |
+| [a-failed-owner-lookup-refuses-the-create](#a-failed-owner-lookup-refuses-the-create) | the products' owning teams are looked up before the check — if that fails, the create is refused |
+| [the-take-names-the-orderer-and-each-owner](#the-take-names-the-orderer-and-each-owner) | the request carries the ordering `team_id`; each line carries `owner_team_id` — own or borrowed is the two compared |
+| [superseded-the-order-key-is-unique-within-its-team](#superseded-the-order-key-is-unique-within-its-team) | ⛔ withdrawn the same hour — the key's uniqueness lives in inventory's `idempotency_order_check` |
+| [only-the-selling-team-cancels](#only-the-selling-team-cancels) | only the selling team cancels; the warehouse declines by handing the order back to `pending` with a note |
+| [order-timeline-logs-replaces-order-events](#order-timeline-logs-replaces-order-events) | one history table, `order_timeline_logs` (status, note, from, actor); the built `order_events` is dropped |
+| [the-order-refuses-a-used-key](#the-order-refuses-a-used-key) | a key already on an order is refused as a used key — never answered with that order, by the lookup or the unique index |
 | [inventory-computes-the-markup](#inventory-computes-the-markup) | the take returns owner, cost and markup — the order applies nothing |
 | [the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total) | the owning team is paid Σ `total` of its lines — the goods plus the markup |
 | [a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) | no sent-at stamps, no incomplete-orders list, no retry button |
@@ -52,6 +74,33 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [both-cs-and-the-warehouse-can-return-an-order](#both-cs-and-the-warehouse-can-return-an-order) | either may set `return` — but the warehouse person always ACCEPTS, and that is when stock moves |
 | [a-return-is-never-partial](#a-return-is-never-partial) | a return is the whole order or nothing — no line comes back on its own |
 | [platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize) | an order cannot be finalized without the buyer-paid figure — it is what settlement opens on |
+| [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses) | `picked` (Set Picked, every good scanned) and `shipping` (the handover scan) are order statuses; packing stays a step | chat and your §Order Status, 2026-10-16 — as recommended |
+| [a-cancel-refunds-the-warehouse-fee-in-full](#a-cancel-refunds-the-warehouse-fee-in-full) | a cancel reverses the whole warehouse fee, however far the warehouse got — nothing kept once `picked`, no cancel fee |
+| [what-shipped-is-what-was-ordered](#what-shipped-is-what-was-ordered) | no OrderShipped or OrderReturned lines — a short pick never ships and a return is whole, so the ordered lines are the answer |
+| [a-return-keeps-both-fees](#a-return-keeps-both-fees) | `return` reverses nothing in balance — the warehouse fee and the product fee both stay |
+| [customer-service-sets-shipped-and-problem-by-hand](#customer-service-sets-shipped-and-problem-by-hand) | customer service reads the platform and marks `shipped` and `problem` by hand — `shipping` and `shipped` stay apart |
+| [shipping-can-go-straight-to-return](#shipping-can-go-straight-to-return) | `shipping → return` without `shipped` first — customer service from the platform, or the warehouse forcing it |
+| [a-return-that-never-arrives-goes-lost](#a-return-that-never-arrives-goes-lost) | `return → lost`, by customer service, when the parcel never reaches the warehouse — nothing moves in stock or money |
+| [lost-and-return-leave-the-sale-open](#lost-and-return-leave-the-sale-open) | only a cancel reverses the sale — `lost` and `return` leave it open for the platform's own entries |
+| [no-order-without-a-courier](#no-order-without-a-courier) | `shipment_channel_id` is required to create an order — picked on the form when the draft has none |
+| [the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey) | §Complete Journey is deleted — §Status Move, each edge naming who, is the one drawing of an order's statuses |
+| [the-draft-is-deleted-in-the-orders-transaction](#the-draft-is-deleted-in-the-orders-transaction) | a finalized draft is deleted inside the order's transaction — both commit, or neither |
+| [the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations) | a team's return warehouse is a `team_return_configurations` row in the order context — `team_infos.return_warehouse_id` is dropped |
+| [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) | order create refuses a team with no `team_return_configurations` row — turned on only after every team has one |
+| [a-team-may-pick-any-return-warehouse](#a-team-may-pick-any-return-warehouse) | the return warehouse may be any warehouse — one with no fee agreement takes the returns uncharged, accepted |
+| [each-team-sets-its-own-return-warehouse](#each-team-sets-its-own-return-warehouse) | no backfill: every selling team sets its own return warehouse on Settings, then the create check turns on |
+| [root-sees-which-teams-have-no-return-warehouse](#root-sees-which-teams-have-no-return-warehouse) | root's Teams list badges every selling team with no return warehouse; none left = turn the check on |
+| [stock-in-the-return-warehouse-is-not-drift](#stock-in-the-return-warehouse-is-not-drift) | stock in several warehouses is normal — the team moves it by warehouse transfer if it wants; no report, nothing automatic |
+| [a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move) | the warehouse forces `return` only from `shipping`, `shipped`, `problem`, `completed` — never from an order whose goods never left |
+| [the-accept-records-where-it-was-accepted](#the-accept-records-where-it-was-accepted) | the accept records the warehouse it happened in, automatically — the stock still goes to the configured one |
+| [return-user-id-is-dropped](#return-user-id-is-dropped) | `team_infos.return_user_id` is dropped with `return_warehouse_id` — a return is addressed to a warehouse, not a person |
+| [a-short-return-is-accepted-and-the-gap-written-off](#a-short-return-is-accepted-and-the-gap-written-off) | a short return parcel is accepted whole, and each missing unit is written off as a `problem`, reason lost, at the same moment |
+| [a-returned-borrowed-unit-is-relabelled-at-the-accept](#a-returned-borrowed-unit-is-relabelled-at-the-accept) | at the accept, each borrowed unit gets the mapped product's label over the lender's — own units keep theirs |
+| [a-borrowed-line-needs-its-map-at-create](#a-borrowed-line-needs-its-map-at-create) | create refuses a borrowed line the team has not mapped for returns — mapped once per product; the return's error is a backstop |
+| [a-return-never-clones-a-product](#a-return-never-clones-a-product) | a borrowed line returns as the team's own mapped product — no map is an error, nothing is cloned |
+| [what-an-order-proves-is-already-kept](#what-an-order-proves-is-already-kept) | an order's history needs nothing new: its creator, door, frozen lines and timeline already show it |
+| [a-found-lost-parcel-is-a-found-stock-in](#a-found-lost-parcel-is-a-found-stock-in) | a parcel back after `lost` is a `found` stock-in naming the order; the order stays lost, the money is settled by hand |
+| [cod-and-shipping-are-the-platforms](#cod-and-shipping-are-the-platforms) | buyer shipping and COD need nothing on the order: COD is only ever the marketplace's, paid out like any order |
 
 ---
 
@@ -84,6 +133,9 @@ flowchart LR
 | **at** | **one atomic act.** Map each external SKU to our product · resolve each line's owner · commit stock · write the money · publish `Order Created`. All of it, or none. |
 | **after** | the journey. The order is the warehouse's to accept. |
 | **therefore** | **finalize may REFUSE.** Availability seen while drafting can go stale, and every check runs here — so a refusal is an ordinary outcome, not an error path. |
+
+🔄 *(2026-10-17)* §Complete Journey is deleted ([the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey)).
+The verdict holds — *Order Created* is now `[*] --> pending` in §Status Move.
 
 **What it closes.** The seam is gone, so *"when is stock committed?"* has one answer: **at finalize, which
 is creation**. The words *"at creation"* are no longer ambiguous, and the diagrams now join.
@@ -217,7 +269,11 @@ and a return after `completed` no longer needs `completed` to be final for the m
 
 ---
 
-## an-order-is-unique-by-shop-and-marketplace-ref
+## superseded-an-order-is-unique-by-shop-and-marketplace-ref
+
+> ⛔ **SUPERSEDED IN PART (2026-10-15)** by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused):
+> two live orders **may** share a shop and ref — the form warns, the server refuses nothing. The ref is still
+> **required** on every order; that half stands. Kept as the record, per the header.
 
 > Owner, in the doc (2026-09-15): §Table That Must Have — *"`order_external_ref_id`, its for order uniqueness,
 > its cannot empty"* · §How We Manage Order Uniqueness — *"Order uniqueness manage by code"*, *"Unique Scope by
@@ -349,7 +405,8 @@ stateDiagram-v2
 
 **The spec.** Every move out of `lost` is refused. **The consequence, stated so it is not rediscovered:** a
 parcel found after being declared lost does **not** come back through its order — its goods re-enter stock by
-some other path, which no doc describes yet (clarify *Awaiting*).
+some other path, which no doc describes yet (clarify *Awaiting*). 🔄 *(2026-10-21)* Described now:
+[a-found-lost-parcel-is-a-found-stock-in](#a-found-lost-parcel-is-a-found-stock-in).
 
 ---
 
@@ -399,6 +456,10 @@ granular to browse by and built a control to fold them. This makes that permanen
 ⚠ **What it does NOT settle:** where the warehouse's own QUEUE lives. Filtering by the four on the
 order list lets a seller find *which* orders are still being packed; it does not give the crew a
 screen to work from, and no doc describes that screen or that record yet.
+
+🔄 *(2026-10-16)* **Amended by [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses)**: two of the four
+steps are order statuses now — picking ends in `picked`, and the handover sets `shipping`. Packing stays a step with no
+status, and `shipped` keeps its meaning here: the parcel moving.
 
 ---
 
@@ -472,7 +533,7 @@ sequenceDiagram
 | --- | --- |
 | basis | `orders.total` — never `platform_total`, which can be missing and would compute a fee of 0 |
 | rate | `fee_percent`, capped by `max_fee`, both from the warehouse's own config |
-| frozen | when the order calls, per [warehouse-prices-balance-records](../warehouse/context_decision.md#warehouse-prices-balance-records) |
+| frozen | when the order calls, per [warehouse-prices-balance-records](../teams/warehouse/context_decision.md#warehouse-prices-balance-records) |
 | stored | `orders.warehouse_fee`, the frozen copy |
 | balance | is told the amount and records it; it computes nothing |
 
@@ -482,7 +543,10 @@ sale or not, so the warehouse should not absorb a promotion it had no part in.
 ⚠ **What it leaves open:** `total` includes **shipping cost**, so the warehouse earns a percentage of the
 courier's fee as well as of the goods. If that is not intended the basis is `subtotal`, not `total`.
 ⚠ And the build still charges a **flat** `liability_terms.handling_fee`, which this supersedes —
-see [is-the-old-flat-rate-column-dropped](../warehouse/context_clarify.md#question).
+see [is-the-old-flat-rate-column-dropped](../teams/warehouse/context_clarify.md#question).
+
+🔄 *(2026-10-19)* **Both settled:** the basis is `goods_cost` ([the-fee-is-priced-on-goods-cost](../teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost)),
+never shipping, and the flat rate is dropped last ([the-flat-rate-is-dropped-last](../teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)).
 
 ---
 
@@ -540,7 +604,7 @@ answer — *what were the goods worth?*
 | --- | --- |
 | basis | `orders.sub_total` |
 | rate | `fee_percent`, capped by `max_fee`, from the warehouse's own config |
-| frozen | when the order calls, per [warehouse-prices-balance-records](../warehouse/context_decision.md#warehouse-prices-balance-records) |
+| frozen | when the order calls, per [warehouse-prices-balance-records](../teams/warehouse/context_decision.md#warehouse-prices-balance-records) |
 | stored | `orders.warehouse_fee` |
 | balance | is told the amount; it computes nothing |
 
@@ -685,6 +749,10 @@ stay as written — so the difference can only be carried by a **new** fact, whi
 announce what actually shipped
 ([the-order-announces-what-shipped-and-what-came-back](./context_clarify.md#the-order-announces-what-shipped-and-what-came-back)).
 
+🔄 *(2026-10-17)* **No longer so.** The picked quantity cannot differ any more — a short pick never ships
+([what-shipped-is-what-was-ordered](#what-shipped-is-what-was-ordered)) — so the frozen figures are always the shipped
+ones, and no new fact is needed.
+
 ---
 
 ## superseded-the-two-draft-line-tables-are-not-linked
@@ -783,8 +851,9 @@ if the create succeeds and the draft is not removed, the draft stays in the queu
 
 | | |
 | --- | --- |
-| the safety net that already exists | [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) — the second attempt carries the same ref and is refused |
+| the safety net that already exists | [superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref) — the second attempt carries the same ref and is refused |
 | what the net does not fix | a **stale draft** sitting in the queue, which a person will open and work on again |
+| 🔄 *(2026-10-15)* | **amended by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)** — the second attempt is now **warned**, not refused. The net is the person reading the warning |
 | ⚠ **→ Recommend** | the create-order request carries `order_draft_id`, and the backend removes the draft in the same transaction. The seeding stays in the browser; only the cleanup moves back |
 
 ⚠ **And it reopens who writes `order_draft_items`.** [the-two-draft-line-tables-are-not-linked](#the-two-draft-line-tables-are-not-linked)
@@ -852,7 +921,7 @@ flowchart LR
 
 | sequence | if the second call fails |
 | --- | --- |
-| **create, then delete** | the order exists, the draft stays in the queue. Someone opens it again — and the duplicate order is refused by [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref). **Wasted work, nothing lost** |
+| **create, then delete** | the order exists, the draft stays in the queue. Someone opens it again — and the duplicate order is refused by [superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref). **Wasted work, nothing lost** |
 | ⛔ **delete, then create** | the draft is gone and **no order exists**. The scrape is lost, and nobody is told |
 
 **→ Recommend, in order of preference:**
@@ -905,7 +974,7 @@ where it was.
 `if success` branch **after** the commit, so a failed delete still leaves a finalized draft in the queue —
 the benign failure, but an avoidable one. Drafts and orders are the same service and the same database, so
 **→ recommend the delete run inside the order's transaction**, which makes *"the order exists and the draft is
-gone"* one fact.
+gone"* one fact. ✅ *(2026-10-17)* Taken — [the-draft-is-deleted-in-the-orders-transaction](#the-draft-is-deleted-in-the-orders-transaction).
 
 ⚠ **And a re-scrape can still resurrect it.** The app's push is create-or-update on the reference, so a
 deleted draft returns the next time the app reads that platform order. **→ A push whose reference already
@@ -1352,6 +1421,8 @@ settlement is needed.
 
 ## a-return-map-is-written-once
 
+🔄 *(2026-10-19)* A map is now made ahead and never by a clone ([a-return-never-clones-a-product](#a-return-never-clones-a-product)). The rule here holds.
+
 > Asked as *"Is a map ever re-pointed, or written once?"* — [order_return.md](./order_return.md)
 > §Table Must Have gives `product_return_maps` an `updated_at`, which says a row is expected to change.
 > **Owner: written once.**
@@ -1411,6 +1482,8 @@ discrepancy with no home in this design, and `problem` is the only status that c
 different question from this one and is not settled here.
 
 ## the-map-is-unique-on-its-source
+
+🔄 *(2026-10-19)* A map is now made ahead and never by a clone ([a-return-never-clones-a-product](#a-return-never-clones-a-product)). The rule here holds.
 
 > Asked as *"the field list says `shared_product_id` is composite unique with `to_product_id`, and the column
 > beneath it is `own_product_id` — which name is stale? And what is `warehouse_id` doing in a catalogue map?"*
@@ -1506,6 +1579,11 @@ flowchart LR
 and no new configuration table — the column already exists as `team_infos.return_warehouse_id` in
 `team_service`, beside its outbound twin `default_warehouse_id`.
 
+🔄 *(2026-10-17)* **Where it lives is reversed; per team holds.** The return warehouse is a row of
+`team_return_configurations` (`team_id` unique), and `team_infos.return_warehouse_id` is dropped —
+[the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations).
+Every `team_infos` mention below is the old location.
+
 ```mermaid
 flowchart LR
   S1["shop 1"] --> T["team_infos.return_warehouse_id"]
@@ -1550,6 +1628,10 @@ flowchart LR
 **The verdict.** The order does **not** carry a return warehouse. When a parcel comes back, the flow reads
 `team_infos.return_warehouse_id` **at that moment**, as [order_return.md](./order_return.md)'s first box
 (`Get Team Return Configuration`) already draws it. There is no `orders.return_warehouse_id` column.
+
+🔄 *(2026-10-17)* The configuration it reads is now `team_return_configurations`, not `team_infos` —
+[the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations).
+The verdict holds.
 
 ```mermaid
 flowchart LR
@@ -1621,6 +1703,7 @@ the field is worth more than the accuracy it theoretically costs.
 | what the operator sees | no warehouse picker — the location is already resolved |
 | the stale window | accepted. If a mismatch ever lands, it is corrected by a manual stock transfer |
 | no safeguard is built | no warning on configuration change, no reconciliation job. The frequency does not justify the machinery |
+| 🔄 *(2026-10-19)* amended | the accept now records the warehouse it happened in — asked of nobody — [the-accept-records-where-it-was-accepted](#the-accept-records-where-it-was-accepted) |
 
 ⚠ **My counter-proposal is withdrawn, and the flaw in it is worth keeping.** I argued the receiving warehouse
 should be *whoever scanned the parcel*, because a person standing in a building cannot be wrong about which
@@ -1779,3 +1862,1649 @@ flowchart LR
 
 The contract has no status for it yet (nor for the handover); both are asked for in
 [design_clarify.md](../../technical/order/design_clarify.md#question).
+
+---
+
+## the-frontend-mints-the-idempotency-key
+
+> Owner (2026-10-12), written into [order_creation.md](./order_creation.md): the frontend **creates an idempotency
+> key** before the form is filled, and the key rides the whole create — into the RPC, into the take, onto *Order
+> Created* on success and onto the compensation on error. It answers the open ⚠ of
+> [the-take-is-never-retried](#the-take-is-never-retried): *the take still needs a reference the order knows before
+> it calls*. Its purpose, in the owner's words the same day: *"if we call inventory service and timeout, we can
+> publish cancel inv transaction"*.
+
+**The verdict.** One key, minted in the browser before anything is sent, names the create everywhere it goes. It
+exists before the take, so the compensation can name a take whose response never arrived.
+
+```mermaid
+sequenceDiagram
+  participant F as frontend
+  participant O as order_service
+  participant I as inventory_service
+  participant B as broker
+  F->>F: open the form, mint key K
+  F->>O: OrderCreate with K
+  O->>I: take stock with K
+  I-->>O: lines, owner, cost
+  alt the transaction commits
+    O->>B: Order Created with K
+  else any step fails
+    O->>B: compensation with K
+    B->>I: release the take named K
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| minted by | the frontend, at *Order Need Created* — before the form is filled |
+| carried on | the create request · the take request · *Order Created* · the compensation event |
+| what it names | the TAKE — the take runs before the order row exists, so the key is its only reference |
+| what it fixes | a take that committed after its call timed out can still be released — the compensation carries K, not the lost response |
+
+**What it amends.** [the-take-is-never-retried](#the-take-is-never-retried) says inventory *"does not need to be
+idempotent against a retry"*. Minted when the form opens, K is the same on a second submit of the same form, so
+inventory must recognise it — a second take on one K must not take twice. The verdict there stands: `order_service`
+never retries the call by itself.
+
+**What it left open, settled the same day:** the order stores K
+([the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key),
+[the-idempotency-key-is-unique](#the-idempotency-key-is-unique)) · a key buys one take
+([inventory-takes-a-key-once](#inventory-takes-a-key-once)) · a new K after any answer
+([a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer)).
+
+🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: K is minted at each
+submit, not when the form opens, so a second submit never carries the first one's K.
+
+---
+
+## the-order-stores-its-idempotency-key
+
+> Owner (2026-10-12), in [context.md](./context.md) §Table That Must Have: `orders` gains **`idempotency_id`** —
+> answering *"does the order keep the key?"*
+> ([order_creation_clarify](./order_creation_clarify.md#question)), as recommended.
+
+**The verdict.** The order keeps the key it was created with, so a create can tell **its own resend** from a new
+order.
+
+```mermaid
+flowchart TD
+  R["OrderCreate with K"] --> Q{"an order already has idempotency_key K?"}
+  Q -->|"yes"| S["return that order — success, no stock taken"]
+  Q -->|"no"| N["a new create — the take runs"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| column | `orders.idempotency_key` — the key minted by the frontend ([the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key)). The doc wrote `idempotency_id`, renamed by [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) |
+| what it prevents | a resend of an order that DID commit, whose reply was lost, being refused by the uniqueness check as a duplicate of itself |
+| unique | yes — [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) |
+
+🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: no resend carries the key
+any more, so *what it prevents* no longer happens — a resend of a committed order **is** refused by the shop + ref check,
+by design. The column stays: the Order Cancel reads K from it. Whether the resend shortcut stays is
+[a-key-returns-only-its-own-teams-order](./context_decision.md#the-order-refuses-a-used-key).
+🔄 *(2026-10-15, later)* **And by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)**: that
+resend is **warned**, not refused — the person may create it.
+
+---
+
+## the-idempotency-key-is-unique
+
+> Owner (2026-10-12): *"yes, i follow the recommendation of the critique"* — accepting
+> `the-idempotency-id-is-unique` as recommended.
+
+**The verdict.** The order's key is **UNIQUE**, and the column is named **`idempotency_key`** — it is a value the
+frontend minted, not a reference to another row, and the diagram already calls it a key.
+
+```mermaid
+flowchart LR
+  A["submit 1 with K"] --> IX["UNIQUE index on idempotency_key"]
+  B["submit 2 with K, the same second"] --> IX
+  IX --> W["one row is written"]
+  IX --> L["the other fails, and is answered with the order that won"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| column | `orders.idempotency_key` — renames the `idempotency_id` written in [context.md](./context.md) §Table That Must Have |
+| constraint | `UNIQUE`. A check in code alone lets two submits in the same second both pass — the same race as the ref's |
+| the loser | a unique violation on this column is a resend that lost the race, so it is answered with the order that won, never as an error |
+
+⚠ **The owner's table still says `idempotency_id`** — reported in
+[order_creation_clarify](./order_creation_clarify.md#contradiction), not edited (RULE 7b).
+
+---
+
+## inventory-takes-a-key-once
+
+> Owner (2026-10-12): *"yes, i follow the recommendation of the critique"* — accepting it as recommended. It
+> **reverses my own earlier spec**, written the same morning, in which inventory REPLAYED a second take on the same
+> key by returning the first take's answer.
+
+**The verdict.** A key buys **one take, ever.** A second take on a key inventory has already seen — as a take or
+as a cancel — is refused, never replayed.
+
+```mermaid
+flowchart TD
+  T["a take arrives with K"] --> Q{"has inventory seen K before?"}
+  Q -->|"no"| D["take the stock under K"]
+  Q -->|"yes — a take or a cancel"| X["refuse — K is used"]
+  C["a cancel arrives with K"] --> Q2{"is there a take under K?"}
+  Q2 -->|"yes"| R["release it"]
+  Q2 -->|"no — the take is still on its way"| TS["keep the cancel, so the late take is refused"]
+```
+
+**Why replay was wrong.** A timeout publishes the cancel for K. If the form resends on K and inventory replays,
+the resend is handed the very take being cancelled — the order commits, the cancel lands, and the stock goes back
+on the shelf under a live order. Refusing makes that impossible, so the release needs no check against the order.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a take on an unseen K | takes the stock, recorded under K |
+| a take on a seen K | refused as a used key |
+| a cancel on a K with a take | releases it |
+| a cancel on an unseen K | **kept** — the take may still be committing after its call timed out — and a later take on K is refused |
+| the order's own resend | never reaches inventory: [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) answers it first |
+
+⚠ **Accepted, not solved:** `order_service` dies after the take and before it publishes the cancel. The take under
+K is then held with nothing to release it — the lost-publish case
+[a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) already accepts.
+
+---
+
+## a-key-is-spent-by-any-answer
+
+> Owner (2026-10-12): *"yes, i follow the recommendation of the critique"* — accepting it as recommended.
+
+**The verdict.** The form mints a **new key after any answer** from the server, success or error. It keeps the
+same key only for a resend that got **no answer at all** — the one case where the person cannot know whether the
+first attempt happened.
+
+```mermaid
+flowchart TD
+  O["open the form, mint K"] --> S["submit with K"]
+  S --> A{"did the server answer?"}
+  A -->|"no answer"| S
+  A -->|"an error"| N["mint a new K, the person fixes the form"]
+  N --> S
+  A -->|"success"| D(("done — K is spent"))
+```
+
+**Why it is needed.** With [inventory-takes-a-key-once](#inventory-takes-a-key-once), a form that keeps K after an
+error is **locked**: every later submit is refused as a used key, even after the line is fixed.
+
+⚠ **The owner's frontend box does not draw this loop yet** — it ends at *Create Order*. Reported in
+[order_creation_clarify](./order_creation_clarify.md#critique).
+
+🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: the *no answer*
+exception is gone — every submit, a resend included, gets a new key.
+
+---
+
+## every-release-goes-by-the-key
+
+> Owner (2026-10-12), on `the-cancel-finds-the-take-by-key`: *"One way to release stock in inventory: release the
+> take under K. Both events use it … Releasing an already-released take does nothing … yes, its i mean"* — as
+> recommended.
+
+**The verdict.** Inventory has **one** way to give stock back: *release the take under K*. The compensation and
+the Order Cancel both use it — they differ only in **why** they were sent — so the Order Cancel carries K. A release
+on a take already released does nothing.
+
+**Why.** The take runs before the order row exists, so inventory files it under K and never learns an order id.
+An Order Cancel naming only the order finds no take, and the stock stays taken forever — silently, until a count
+shows a shortage nobody can explain.
+
+```mermaid
+flowchart LR
+  CMP["compensation — the create failed"] -->|"K"| R["release the take under K"]
+  CAN["Order Cancel — the order was cancelled"] -->|"K, and the order id"| R
+  R --> Q{"the take under K?"}
+  Q -->|"taken"| B["give the stock back, mark it released"]
+  Q -->|"already released"| N["do nothing, acknowledge"]
+  Q -->|"not seen yet"| TS["keep the release — inventory-takes-a-key-once"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| Order Cancel | carries `idempotency_key` beside the order id — read from `orders.idempotency_key` ([the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key)) |
+| the compensation | carries K, as already drawn ([the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key)) |
+| inventory | one release, by K. Taken → released · released → nothing · unseen → kept, so a late take is refused ([inventory-takes-a-key-once](#inventory-takes-a-key-once)) |
+| a redelivered cancel | finds the take released, acknowledges, gives nothing back twice |
+| K on *Order Created* | needed by nothing that releases stock — inventory may read it to label a take with its order, for display only |
+
+**What it amends.** [inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled) says the
+release is *"keyed on the order"* — it is keyed on K. Its verdict, that a cancel releases stock **by event**, stands.
+[event_context.md](./event_context.md) §Order Cancel lists subscribers and no fields, so nothing in it is stale —
+the key is a field the event gains.
+
+---
+
+## the-compensation-event-is-inventory-tx-cancel
+
+> Owner (2026-10-15), in chat: *"event name we use 'InventoryTxCancel"* — and in [order_creation.md](./order_creation.md)
+> the diagram's *"Inventory Tx Cancel Compensate Event"* became *"InventoryTxCancel Compensate Event"*. Answers
+> `the-compensation-event-has-two-names` ([order_creation_clarify](./order_creation_clarify.md)).
+
+**The verdict.** The event `order_service` publishes when a create fails after asking inventory for stock is
+**`InventoryTxCancel`** — the name [event_context.md](./event_context.md) already used. The two docs now say one name.
+
+```mermaid
+flowchart LR
+  F["the create fails or times out, after the take was asked for"] -->|"InventoryTxCancel, with K"| I["inventory_service"]
+  I --> R["release the take under K"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| name | `InventoryTxCancel` — the message, and the label in both docs |
+| published by | `order_service`, on any failure after the take was called, a timeout included |
+| carries | `idempotency_key` ([the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key)) |
+| heard by | `inventory_service` — the one release by key ([every-release-goes-by-the-key](#every-release-goes-by-the-key)) |
+
+⚠ **Not the name I recommended.** I proposed naming it as a fact — the take was returned because the order was never
+created. The owner kept the existing name; nothing structural rides on it, since what the event means is in its spec.
+
+---
+
+## the-form-locks-until-it-is-answered
+
+> Owner (2026-10-15): drew the proposed loop into [order_creation.md](./order_creation.md)'s frontend box, as
+> recommended — *"okay im edited order_creation.md"*. Answers `the-form-locks-until-it-is-answered`
+> ([order_creation_clarify](./order_creation_clarify.md)).
+
+**The verdict.** After *Create Order* the form waits, **locked**, for one of three answers. The order opens it; an error
+mints a new key and gives the form back as typed; **no answer** keeps the key and offers *Try Again*, which resends
+exactly what was sent. It draws [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer), which until now was in no
+diagram.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  state "Create Order" as cre
+  state "Waiting for the Answer, Form Locked" as wait
+  state answer <<choice>>
+  state "Open the Created Order" as done
+  state "Create Idempotency Key" as idem
+  cre-->wait
+  wait-->answer
+  answer-->done: the order
+  answer-->idem: an error, new key, the form keeps what was typed
+  answer-->cre: no answer, Try Again with the same key
+```
+
+**The spec.**
+
+| the answer | the key | the form |
+| --- | --- | --- |
+| the order | spent | opens the order |
+| an error | a new key | stays filled and editable |
+| none — the connection dropped, or the browser gave up waiting | the same key | locked to what was sent · *Try Again* resends exactly that |
+
+| | |
+| --- | --- |
+| why locked | an edited form resent under the same key, after the first attempt committed, is handed the FIRST order back — the edit lost without a word |
+| no answer | nothing came back. Anything the server sent is an answer, even an error about its own timeout to inventory — that one has already published `InventoryTxCancel` |
+| the resend | a person presses *Try Again* — never an automatic resend, the browser's side of [the-take-is-never-retried](#the-take-is-never-retried) |
+| leaving the page with no answer | the key is lost, and nothing more is needed — retyping the order is refused by the shop + ref check |
+
+⚠ **Left open:** whether *"key already used"* gets its own message — it is not in the diagram
+([order_creation_clarify](./order_creation_clarify.md#key-already-used-gets-its-own-message)).
+
+🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: *Try Again* sends under
+a **new** key. The form still locks while it waits; what a *Try Again* meets when the first submit did commit is the
+shop + ref refusal, not a used key.
+🔄 *(2026-10-15, later)* **And by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)**: it
+meets a **warning**, not a refusal — and *leaving the page with no answer* is no longer covered by a refusal either.
+
+---
+
+## an-order-is-one-inventory-transaction
+
+> Owner (2026-10-15): *"transaction id still need for reference later"*, then added **`transaction_id`** to `orders` in
+> [context.md](./context.md) §Table That Must Have — choosing, of the two shapes offered, **one id on the order** over one
+> id per line. **Against my recommendation** (per line), and chosen knowing that it settles inventory's side too.
+
+**The verdict.** An order's stock take is **one** inventory transaction, and the order keeps its id as a reference. The
+take's response keeps its single `transaction_id`. The key still names the take for every release — the id is for
+reading it later.
+
+```mermaid
+flowchart LR
+  OC["OrderCreate - Melati, team B"] -->|"take with K"| T["ONE inventory transaction - B's own Kaos Hitam, and A's Kemeja Putih"]
+  T -->|"transaction_id"| O["orders.transaction_id"]
+  R["Order Cancel or InventoryTxCancel"] -->|"by K, unchanged"| T
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `orders.transaction_id` | the inventory transaction that took the order's stock — written at create, never changed |
+| the response | `OrderTransactionCreateResponse.transaction_id` — one |
+| an order mixing owners | still one transaction. Each line's owner comes back on its line — [which-team-is-team-id](./order_creation_clarify.md#which-team-is-team-id) |
+| the release | still by K — [every-release-goes-by-the-key](#every-release-goes-by-the-key) is unchanged |
+
+**What it settles on inventory's side** — recorded there as open points, not decided here:
+
+| | |
+| --- | --- |
+| the key can be UNIQUE | one order is one row, so `inventory_transactions.idempotency_key` can carry *a key buys one take, ever* itself ([transaction Q1](../inventory/transaction_clarify.md#question)) |
+| the transaction's `team_id` | it cannot be the stock owner when an order holds two owners' goods ([transaction Q7](../inventory/transaction_clarify.md#question)) |
+| a stale spec row | [an-orders-take-carries-its-idempotency-key](../inventory/transaction_decision.md#an-orders-take-carries-its-idempotency-key) says *"each of its transactions"* — reported, and since amended by [an-order-transaction-is-the-ordering-teams](../inventory/transaction_decision.md#an-order-transaction-is-the-ordering-teams) |
+
+---
+
+## every-submit-mints-a-new-key
+
+> Owner, in chat (2026-10-15): *"for 'twin' every frontend must generate new idempotency_key when submitting form"* —
+> answering the **twin** case of `the-take-replays-a-used-key` (resolved by [a-used-key-is-refused-first](../inventory/order_decision.md#a-used-key-is-refused-first)):
+> a *Try Again* with no answer resent the same key while the first submit was still running, so two attempts shared one
+> take and the loser's compensation released the winner's stock. **It reverses** the *same key on no answer* exception of
+> [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) — which I had recommended.
+
+**The verdict.** A key belongs to exactly **one submit**. The form mints a fresh one every time it sends — the first
+*Create*, a resubmit after an error, and *Try Again* after no answer alike. Two attempts never share a key, so they
+never share a take, and a compensation can only ever release its own attempt's stock. The key is now purely **the take's
+name**; recognising a resend is the shop + ref check's job alone.
+
+```mermaid
+flowchart LR
+  F["the form"] -->|"Create - K1"| S1["submit 1 - take under K1"]
+  F -->|"no answer, Try Again - K2"| S2["submit 2 - take under K2"]
+  S2 -->|"submit 1 already committed"| D["refused - this shop and ref already have an order"]
+  S2 -->|"submit 1 failed"| C["created under K2"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| minted | at every submit — never when the form opens, never reused |
+| no answer | *Try Again* sends under a new key |
+| what the key names | the take — for `InventoryTxCancel`, the Order Cancel and the verify scan ([every-release-goes-by-the-key](#every-release-goes-by-the-key)) |
+| what recognises a resend | the shop + ref check ([superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref)) — a *Try Again* after the order committed is refused as a duplicate of it |
+| a used key at inventory | only a cancel that beat its take, or a bug — refused ([a-used-key-is-refused-first](../inventory/order_decision.md#a-used-key-is-refused-first)) |
+
+**What it amends.**
+
+| decision | said | now |
+| --- | --- | --- |
+| [the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key) | minted at *Order Need Created*, before the form is filled | minted at each submit |
+| [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the same key only for a resend with no answer | no exception |
+| [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | *no answer, Try Again with the same key* | *Try Again* with a new key |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | *"a resend gets that order back"* | no resend carries the key — the column stays, for the cancel; the shortcut has no honest caller ([a-key-returns-only-its-own-teams-order](./context_decision.md#the-order-refuses-a-used-key)) |
+
+**What it does NOT settle.** A *Try Again* while submit 1 is **still running** passes the shop + ref check, which is in
+code — so nothing but a unique index stops a second order
+([one-uniqueness-check-covers-drafts-and-orders](./context_clarify.md#one-uniqueness-check-covers-drafts-and-orders)).
+And what the form shows when *Try Again* meets its own order
+([key-already-used-gets-its-own-message](./order_creation_clarify.md#key-already-used-gets-its-own-message)).
+
+🔄 *(2026-10-15)* **Amended by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)**: nothing
+*refuses* a resend now — the form **warns** that the shop and ref already have an order, and the person may go on. A
+*Try Again* while submit 1 is still running finds nothing to warn about.
+
+---
+
+## a-duplicate-ref-is-warned-not-refused
+
+> Owner, in chat (2026-10-15), asked whether `(shop_id, order_external_ref_id)` gets a partial unique index:
+> *"no need unique, its reference order id from external platform, and maybe customer service can cancel and create new
+> one for same reference"* · *"we guard it in frontend as warning, for some reason it must can create double"* · *"we just
+> give warning in frontend before order creation that we already create that order, but order still can be created"*.
+> **Against my recommendation** (the partial index), and it **reverses the uniqueness half** of
+> [superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref).
+
+**The verdict.** A marketplace ref may be on **two live orders** of one shop. Before *Create*, the form looks for a live
+order with the same shop and ref and, if it finds one, **warns** — naming it — and the person may create anyway. The
+server refuses nothing for a repeated ref: no unique index, no handler check.
+
+```mermaid
+flowchart LR
+  F["the form - shop Melati, ref SHP-123"] --> Q{"a live order with this shop and ref?"}
+  Q -->|"no"| C["Create"]
+  Q -->|"yes - order 9001"| W["warning - SHP-123 is already order 9001"]
+  W -->|"open it"| O["order 9001"]
+  W -->|"create anyway"| C
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the ref | still **required** on every order — that half of the superseded decision stands |
+| the check | the frontend's, before *Create* — a warning naming the order, never a refusal |
+| the server | creates the order whatever its ref — no unique index, no handler check |
+| a cancelled order | not warned about, as before — cancel and re-create stays the normal path |
+| why doubles must be possible | the owner's business case — not yet written down |
+
+**What it amends.**
+
+| decision | said | now |
+| --- | --- | --- |
+| [the-frontend-finalizes-a-draft-not-the-backend](#the-frontend-finalizes-a-draft-not-the-backend) | the safety net: *"the second attempt carries the same ref and is refused"* | warned, not refused |
+| [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) | a *Try Again* after the order committed is refused by the shop + ref check | warned, not refused |
+| [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | *"retyping the order is refused by the shop + ref check"* | warned |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | its amendment: a resend of a committed order is refused by the shop + ref check | warned |
+
+**What it does NOT settle:**
+
+| | |
+| --- | --- |
+| a *Try Again* while submit 1 is still running | the warning finds nothing yet, so the double is silent — [key-already-used-gets-its-own-message](./order_creation_clarify.md#key-already-used-gets-its-own-message) |
+| drafts | whether the warning looks at drafts with the same ref too — [one-uniqueness-check-covers-drafts-and-orders](./context_clarify.md#one-uniqueness-check-covers-drafts-and-orders) |
+| settlement | a statement line names a ref, not an order. With two live orders, the shipped importer posts it to the **newest** — [settlement_importer Q15](../settlement/settlement_importer_clarify.md#question) |
+
+🔄 *(2026-10-15, later)* **Why doubles exist**, answered in chat: *"for most case, one live and one canceled. and other
+reason that we cannot talk here"*. So the common case is cancel-and-re-create — one **live** order on the ref, which the
+warning does not even fire for. Two **live** orders are the rare case, and **its reason is deliberately not recorded** in
+this repository. What the settlement importer does with that rare case is
+[settlement_importer Q15](../settlement/settlement_importer_clarify.md#question).
+
+---
+
+## a-try-again-always-warns
+
+> Owner, in chat (2026-10-15): *"for 'Does Try Again always warn?' yes"* — answering
+> [key-already-used-gets-its-own-message](./order_creation_clarify.md#key-already-used-gets-its-own-message) in its last
+> form, as recommended. The successor of [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered), after
+> [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) and
+> [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused).
+
+**The verdict.** *Try Again* never sends straight away. It first re-runs the duplicate check for this shop and ref, and
+**always** warns: naming the order when it finds one, and saying the last *Create* may still be finishing when it finds
+none. The duplicate warning can only see an order that has committed, and *Try Again* exists for exactly the moment when
+the first submit may not have committed yet.
+
+```mermaid
+flowchart LR
+  T["no answer - Try Again"] --> R["re-check this shop and ref"]
+  R -->|"found - order 9001"| W1["already created as order 9001 - open it, or create anyway"]
+  R -->|"nothing yet"| W2["your last Create got no answer and may still be finishing - check the order list, or send again"]
+  W1 -->|"create anyway"| S["send under a new key"]
+  W2 -->|"send again"| S
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| when | every *Try Again* — the one way to resend after no answer |
+| the read | the duplicate warning's own lookup ([the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too)) |
+| found | the duplicate warning, naming the order, with a way to open it |
+| nothing found | *"your last Create got no answer and may still be finishing"* — check the order list, or send again |
+| sending | under a new key ([every-submit-mints-a-new-key](#every-submit-mints-a-new-key)); the server refuses nothing ([a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)) |
+
+---
+
+## the-duplicate-warning-reads-drafts-too
+
+> Owner, in chat (2026-10-15): *"for 'Does the warning also read drafts with the same ref, but stay quiet about the draft
+> being finalized?' yes"* — answering
+> [one-uniqueness-check-covers-drafts-and-orders](./context_clarify.md#one-uniqueness-check-covers-drafts-and-orders) in
+> its last form, as recommended.
+
+**The verdict.** The duplicate warning of
+[a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) looks in **both** tables — live orders
+and drafts — for the same shop and ref, and never names the draft the person is finalizing. A draft already scraped for
+this ref is the likeliest double; a warning about the very draft they opened would teach people to click past every
+warning.
+
+```mermaid
+flowchart TD
+  IN["about to Create an order, or finalize a draft"] --> Q{"a draft, or a live order, already with this shop and ref?"}
+  Q -->|"no"| W["create"]
+  Q -->|"yes - the very draft being finalized"| W
+  Q -->|"yes - anything else"| D["warn, naming the order or draft"]
+  D -->|"open it"| O["that order or draft"]
+  D -->|"create anyway"| W
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| shown on | the order form before *Create*, a draft's *finalize*, and every *Try Again* ([a-try-again-always-warns](#a-try-again-always-warns)) |
+| looks at | `orders` where `status <> 'cancel'`, and `order_drafts` — both on `(shop_id, order_external_ref_id)` |
+| stays quiet about | the draft being finalized |
+| finalize | writes the order and deletes the draft in **one transaction**, so a finished finalize leaves no draft behind to warn about |
+| the server | refuses nothing ([a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)) |
+
+## the-debt-check-runs-before-the-take
+
+> Owner (2026-10-15), in [order_creation.md](./order_creation.md): a new **§Reference** — *"before create order, order
+> service check dept threeshold"*, linking [balance/context.md](../balance/context.md) — and a new box between the RPC and
+> the transaction: *"checking debt threshold limit if order contain shared product"*, which gives Balance Service *"team
+> ids data that product shared"* and gets back *"threshold limit data"*. Answers
+> `the-order-consults-the-debt-it-does-not-manage` (the §Reference line **is** the line asked for) and the debt half of
+> `finalize-enforces-every-rule-on-both-doors` ([context_clarify](./context_clarify.md)).
+
+**The verdict.** The order does not manage the debt, but it **consults** it: before the database transaction opens —
+so before any stock is taken — `order_service` asks balance for the limits of the teams it would borrow from, and checks
+them. Nothing is taken, and nothing has to be compensated, for an order the check stops.
+
+```mermaid
+flowchart LR
+  R["OrderCreate"] --> C["debt check - the teams this order borrows from"]
+  C -->|"their limits"| B["balance"]
+  C --> T["open the transaction - the take, the order rows"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | after the RPC is called, **before** the transaction and the take |
+| asks | balance — the threshold data for the borrowing team against each lending team |
+| when | the order contains a shared (cross) product — as drawn |
+| what it compares | the debt already **committed** on the pair against its limit ([balance §Balance Policy 2](../balance/context.md)) — this order's own charge is not added; the order that crosses the limit posts truthfully and the **next** one is stopped ([the-block-stops-orders-only](../balance/context_decision.md#the-block-stops-orders-only)) |
+
+**What it does NOT settle** — asked in [context_clarify](./context_clarify.md):
+
+| | |
+| --- | --- |
+| the refusal | the box has no *over the limit* branch — [a-blocked-line-refuses-the-whole-order](./context_clarify.md#a-blocked-line-refuses-the-whole-order) |
+| the warehouse | checked only when a shared product is present, while the build and balance check the fulfilling warehouse on every order — [the-warehouse-is-a-creditor-too](./context_clarify.md#the-warehouse-is-a-creditor-too) |
+| where the owners come from | the take returns them, but it runs after the check — [the-owners-are-needed-before-the-take](./context_clarify.md#critique) |
+
+---
+
+## the-take-names-the-orderer-and-each-owner
+
+> Owner, in chat (2026-10-15): *"yes, i rename it to owner_team_id"* — answering
+> [which-team-is-team-id](./order_creation_clarify.md#which-team-is-team-id), asked as *"does the request carry `team_id`
+> (the orderer), and does `TransactionItem.team_id` become `owner_team_id`? → yes, both"*, with *"it also settles
+> transaction Q7: the order's single transaction carries the ordering team"*. As recommended. In
+> [order_creation.md](./order_creation.md) the line's field is renamed; the request's field is not drawn yet.
+
+**The verdict.** The take names the two teams apart. The **request** carries the ordering team; each **line** of the
+answer carries the team that owns its stock. Inventory decides own or borrowed per line by comparing the two — which is
+what the markup, the private check and the reserve all bind on.
+
+```mermaid
+flowchart LR
+  R["OrderTransactionCreateRequest - team_id B, the orderer"] --> I["inventory - per line, owner equals orderer?"]
+  I -->|"Kaos Hitam - owner B"| O["own - no markup, no private or reserve check"]
+  I -->|"Kemeja Putih - owner A"| X["borrowed - A's markup, private and reserve checked"]
+  O --> L["TransactionItem.owner_team_id B"]
+  X --> M["TransactionItem.owner_team_id A"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `OrderTransactionCreateRequest.team_id` | the ordering team — the request's `use_scope` field, so the access interceptor scopes the call to it |
+| `TransactionItem.owner_team_id` | the team whose stock the line was taken from — renamed from `team_id`; `order_items.owner_team_id` freezes it |
+| inventory's own names | `inventory_transaction_items.product_team_id` and `is_owned` ([an-item-carries-its-owning-team](../inventory/transaction_decision.md#an-item-carries-its-owning-team)) — the contract's `owner_team_id` is `product_team_id` |
+| the inventory transaction | carries the ordering team ([an-order-transaction-is-the-ordering-teams](../inventory/transaction_decision.md#an-order-transaction-is-the-ordering-teams)) |
+
+✅ *(2026-10-17)* **Drawn:** `team_id` on `OrderTransactionCreateRequest` in [order_creation.md](./order_creation.md) —
+was reported in [order_creation_clarify](./order_creation_clarify.md#the-request-still-names-no-orderer).
+
+---
+
+## over-the-limit-refuses-the-create
+
+> Owner (2026-10-15), in chat: *"yes"* — to all three of *draw the refusal, check the warehouse too, and refuse if the
+> product owners cannot be looked up*, each as recommended. The diagram to draw is in
+> [context_clarify](./context_clarify.md#proposed--the-debt-check-as-decided).
+> Answers `a-blocked-line-refuses-the-whole-order`.
+
+**The verdict.** When any creditor of the order is at or over its limit, the create is **refused** — before the
+transaction, so nothing is taken. One create is one order, so the refusal is all-or-nothing; it names **which** creditor,
+what is owed and the limit, because the person who hits it is customer service, who cannot look the numbers up.
+
+```mermaid
+flowchart LR
+  C{"every creditor under its limit?"} -->|"yes"| T["open the transaction"]
+  C -->|"no"| R["refused - Toko Sinar, you owe 52.000.000 of a 50.000.000 limit"]
+```
+
+| | |
+| --- | --- |
+| refused when | a creditor's committed debt is at or over its limit ([the-debt-check-runs-before-the-take](#the-debt-check-runs-before-the-take)) |
+| the answer | an error naming the creditor, the debt and the limit — the form shows it and the person decides (remove the line, or wait) |
+| partial order | never — the whole create is refused |
+
+---
+
+## the-warehouse-is-a-creditor-on-every-order
+
+> Owner (2026-10-15), in chat: *"yes"* — to all three of *draw the refusal, check the warehouse too, and refuse if the
+> product owners cannot be looked up*, each as recommended. The diagram to draw is in
+> [context_clarify](./context_clarify.md#proposed--the-debt-check-as-decided).
+> Answers `the-warehouse-is-a-creditor-too`, and resolves the contradiction `the-debt-check-skips-the-warehouse`.
+
+**The verdict.** The debt check asks about the **fulfilling warehouse on every order**, plus **each team a shared product
+is borrowed from**. The warehouse fee puts the seller in debt to the warehouse on every order, and the threshold is per
+pair — so a limit on the warehouse pair is enforced, not a number nothing reads.
+
+```mermaid
+flowchart LR
+  O1["an order - own goods only"] --> W["the warehouse pair"]
+  O2["an order - with a borrowed line"] --> W
+  O2 --> A["the lending team pair"]
+```
+
+| | |
+| --- | --- |
+| creditors | `warehouse_id` of the order, always · the owning team of each shared product |
+| the build | already checks exactly these (`credit_checker.go`) |
+| ⚠ still saying *shared product only* | the box in [order_creation.md](./order_creation.md) and [balance/context.md](../balance/context.md) §Balance Policy 2 — the owner's to amend. 🔄 *(2026-10-21)* both amended |
+
+---
+
+## a-failed-owner-lookup-refuses-the-create
+
+> Owner (2026-10-15), in chat: *"yes"* — to all three of *draw the refusal, check the warehouse too, and refuse if the
+> product owners cannot be looked up*, each as recommended. The diagram to draw is in
+> [context_clarify](./context_clarify.md#proposed--the-debt-check-as-decided).
+> Answers the critique `the-owners-are-needed-before-the-take`.
+
+**The verdict.** Before the debt check, the order looks up **each product's owning team** — the take, which also returns it,
+runs only after the check. If that lookup fails, the create is **refused**, never let through with only the warehouse
+checked — the same way the take fails when it cannot read a product's rate
+([inventory-computes-the-markup](#inventory-computes-the-markup)).
+
+```mermaid
+flowchart LR
+  R["OrderCreate"] --> L["product ids - their owning teams"]
+  L -->|"looked up"| C["the debt check"]
+  L -->|"lookup failed"| X["refused - try again"]
+```
+
+| | |
+| --- | --- |
+| asks | `product_service` — product id → owning team |
+| on failure | refuse the create. ⚠ **The build does the opposite** (fails open, `orderCreditors`) — to change when this is built |
+
+---
+
+## the-order-refuses-a-used-key
+
+> Owner (2026-10-15), in chat: *"yes"* — to *"close the key shortcut"*, whose one proposal was **drop it**: a key already
+> on an order is refused as a used key, the answer inventory gives. Answers `a-key-returns-only-its-own-teams-order`
+> ([order_creation_clarify](./order_creation_clarify.md)) — **against** my first recommendation there (*match K and the
+> team*), which [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) made unnecessary.
+
+**The verdict.** `OrderCreate` never answers with an existing order. A key that is already on an order is **refused as a
+used key** — whether the lookup finds it before the take, or the unique index catches it at the insert. Since every
+submit mints its own key, no honest caller ever sends a used one; the only callers left are a bug and a hostile one, and
+neither is handed another team's order.
+
+```mermaid
+flowchart LR
+  R["OrderCreate with K"] --> Q{"an order already has K?"}
+  Q -->|"no"| T["the debt check, then the take"]
+  Q -->|"yes"| X["refused - a used key"]
+  T --> I{"unique index on the insert"}
+  I -->|"violation"| X
+  I -->|"ok"| O["the order"]
+```
+
+| | |
+| --- | --- |
+| a used key | refused, as an error — never answered with the order that holds it |
+| the unique index | stays on `orders.idempotency_key`, as the backstop; a violation is the same refusal |
+| the team match | not needed — nothing is ever returned by key |
+| inventory | gives the same answer for a used key ([a-used-key-is-refused-first](../inventory/order_decision.md#a-used-key-is-refused-first)) |
+
+**What it amends.**
+
+| decision | said | now |
+| --- | --- | --- |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | *"an order already has K? return that order"* | refused |
+| [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) | *"the loser … is answered with the order that won, never as an error"* | an error — resolves the contradiction `a-same-key-resend-never-reaches-the-unique-index` |
+
+---
+
+## superseded-the-order-key-is-unique-within-its-team
+
+> ⛔ **SUPERSEDED (2026-10-15, the same hour)** — the owner removed the edit from [context.md](./context.md) (*"sorry, i
+> remove from order. and i have better"*) and put the key's uniqueness in inventory's `idempotency_order_check`
+> ([the-key-is-claimed-in-its-own-table](../inventory/transaction_decision.md#the-key-is-claimed-in-its-own-table)).
+> `orders.idempotency_key` falls back to [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) — my reading.
+> Kept as the record.
+
+> Owner, in [context.md](./context.md) §Table That Must Have *(2026-10-15)*: *"`idempotency_key`, its unique together with
+> `team_id`"* — written while answering inventory's [transaction Q1](../inventory/transaction_clarify.md#question) in chat
+> (*"for 1 yes i edited …"*). It narrows the scope of
+> [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) from the whole table to one team.
+
+**The verdict.** On `orders`, an idempotency key is unique **within its team**: `UNIQUE (team_id, idempotency_key)`. The
+lookup *"an order already has K?"* and the index both ask it of the request's own team, and a hit is refused as a used key
+([the-order-refuses-a-used-key](#the-order-refuses-a-used-key)).
+
+```mermaid
+flowchart LR
+  R["OrderCreate - team B, K"] --> Q{"team B already has an order with K?"}
+  Q -->|"yes"| X["refused - a used key"]
+  Q -->|"no"| T["the take - inventory's own index refuses K if ANY team used it"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `orders` | `UNIQUE (team_id, idempotency_key)` — replaces the whole-table `UNIQUE (idempotency_key)` |
+| a K another team used | not caught here — inventory's index is on the key alone and refuses it ([superseded-a-key-buys-one-take-by-its-unique-index](../inventory/transaction_decision.md#superseded-a-key-buys-one-take-by-its-unique-index)) |
+| why inventory stays global | a release goes by K alone ([every-release-goes-by-the-key](#every-release-goes-by-the-key)) — two takes under one K in two teams would leave a cancel not knowing which to release |
+
+**What it amends.** [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) — `UNIQUE` on the column alone → per
+team. [the-order-refuses-a-used-key](#the-order-refuses-a-used-key) — its *"the unique index stays on
+`orders.idempotency_key`"* reads `(team_id, idempotency_key)`.
+
+---
+
+## only-the-selling-team-cancels
+
+> Owner, in chat (2026-10-15): *"why not directly cancel? first, its make selling customer service aware about it. and
+> warehouse staff and customer service discuss about it. at the end of the day customer service more aware if there is
+> still any order that pending that order cancel. because cancel order mean any other reason and mostly leave without
+> aware."* It answers [who-may-cancel-a-pending-order](./context_clarify.md#who-may-cancel-a-pending-order) — *is cancel
+> also how the warehouse declines an order it cannot fulfil?* — **against** my *both may, with a reason*.
+
+**The verdict.** Only the **selling team** cancels an order. When the warehouse cannot fulfil one, it does not cancel: it
+hands the order back to `pending` with a note on the order's timeline
+([missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending)).
+A cancel can mean anything and is passed over; a `pending` order stays on customer service's list until somebody acts,
+and it makes the warehouse and customer service talk.
+
+```mermaid
+flowchart LR
+  W["warehouse cannot fulfil"] --> P["back to pending - a note on the timeline, from warehouse"]
+  P --> CS["customer service sees it on its list - talks to the warehouse"]
+  CS -->|"decides"| C["cancel - the selling team's act"]
+  CS -->|"or"| K["keeps it - waits for stock"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who cancels | the selling team — never the warehouse |
+| the warehouse declines by | `processed` → `pending`, with a note in `order_timeline_logs`, `from = warehouse` |
+| why | a `pending` order is chased; a cancel is not |
+| the usual ending | customer service cancels it and creates a new order — owner: *"although at the ending, thats order canceled by customer service and create one"*. That is the common one-live-one-cancelled double of [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) |
+
+**What it does NOT settle:** the move `processed → pending` in the status diagram
+([the-status-moves-miss-the-way-back](./context_clarify.md#the-status-moves-miss-the-way-back)).
+
+## order-timeline-logs-replaces-order-events
+
+> Owner, in chat (2026-10-15): *"simple, drop order_events and create new order_timeline_logs"* — answering
+> [the-timeline-is-order-events](./context_clarify.md#the-timeline-is-order-events). Simpler than my *one table, keep the
+> event-style `kind`*.
+
+**The verdict.** An order's history is **one** table, `order_timeline_logs`, as written in [context.md](./context.md)
+§Table That Must Have — `order_id`, `status`, `note`, `from` (`warehouse` / `selling`), `actor_id`, `created_at`. The built
+`order_events` is dropped, not migrated into it.
+
+```mermaid
+flowchart LR
+  E["order_events - built, dropped"] -.->|"replaced"| T["order_timeline_logs"]
+  S["a status change"] --> T
+  N["a note - goods missing on Rak A, from warehouse"] --> T
+  T --> UI["the order's Timeline tab"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a row | a status change, or a note — with who wrote it and from which side |
+| `from` | `warehouse` or `selling` |
+| `order_events` | dropped — nothing is carried over |
+| picking, packed | not statuses: on the timeline only when someone writes them as a note |
+| the build | ⚠ `order_events` still backs the Timeline tab (selling_service `00011`) — replaced when this is built |
+| ✅ built *(2026-10-21)* | selling `00017` creates `order_timeline_logs` and drops `order_events`; every move and the placement write a row with its `from` side; `OrderDetail` returns `timeline_logs`, and the Timeline tab and the seller's rail show the side. ⚠ The status-move build earlier the same day had extended `order_events` instead (00015's `note` column) — found and corrected by 00017. Nothing writes a note-only row yet |
+
+🔄 *(2026-10-16)* **Amended by [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses)**: `picked` is a
+status now, so its row is a status change, not a note. Packing is still a note when someone writes it.
+
+## picked-and-shipping-are-order-statuses
+
+> Owner, in chat (2026-10-16): *"for \"Are picked and shipping order statuses?\" yes, i add it to status"* — answering
+> [picked-and-shipping-are-order-statuses](./context_clarify.md#picked-and-shipping-are-order-statuses), as recommended.
+> Your §Order Status list carries both.
+
+**The verdict.** Two of the warehouse's steps are order statuses: `picked`, when every good is scanned and the staff press
+*Set Picked*, and `shipping`, when the parcel is scanned at the courier. `shipped` keeps its meaning, the parcel moving.
+Packing stays a step with no status. It amends
+[the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses).
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  pending --> processed: the warehouse confirms, the label printed
+  processed --> picked: Set Picked, every good scanned
+  picked --> shipping: the handover scan, packing in between
+  shipping --> shipped: the parcel moves
+```
+
+**The spec.**
+
+| status | set by | means |
+| --- | --- | --- |
+| `processed` | the warehouse confirms and prints the label | the warehouse took the job |
+| `picked` | *Set Picked* on the pick page ([the-item-scans-live-on-the-page](../inventory/order_decision.md#the-item-scans-live-on-the-page)) | the goods are off the racks |
+| `shipping` | the handover scan ([a-label-scan-reads-the-ref-or-the-receipt](../inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)) | the courier has the parcel; the warehouse is done |
+| `shipped` | the parcel starts moving | as before — *problem, lost, return, completed* run from here |
+
+| | |
+| --- | --- |
+| each move | one `order_timeline_logs` row, `from = warehouse` ([order-timeline-logs-replaces-order-events](#order-timeline-logs-replaces-order-events)) |
+| packing | no status; a note on the timeline only if someone writes one |
+| ✅ drawn *(2026-10-17)* | was: §Status Move and §Complete Journey still go `processed --> shipped`. §Status Move is redrawn and the journey deleted — [the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey) |
+| ⚠ the warehouse tabs | [the-warehouse-tabs-are-the-processed-steps](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-tabs-are-the-processed-steps) still lists them as steps of `processed` |
+| ⚠ the build | `OrderStatus` is placed · confirmed · picking · packed · shipped — a migration when this is built |
+
+---
+
+## a-cancel-refunds-the-warehouse-fee-in-full
+
+> Owner, in chat (2026-10-17): *"full refund is fine, that our policy in work, and its fair"* — asked as *"an order
+> cancelled after `picked` refunds the whole warehouse fee, though the staff picked, packed and unpacked it — should the
+> fee stay once picked?"*. Against my *the fee stays once `picked`*.
+
+**The verdict.** A cancel refunds the warehouse fee **in full**, however far the warehouse got — from `pending`, or
+handed back to `pending` from `processed` or `picked`
+([a-platform-cancel-goes-back-through-pending](../inventory/order_decision.md#a-platform-cancel-goes-back-through-pending)).
+It is the policy the business already works by, and the owner holds it fair.
+[inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled) stands unchanged.
+
+```mermaid
+flowchart LR
+  P["pending - nothing done yet"] --> C["cancel - by the selling team"]
+  PR["processed - handed back to pending"] --> C
+  PK["picked - unpacked, handed back to pending"] --> C
+  C --> B["balance - warehouse fee and product fee reversed in full"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| warehouse fee | reversed in full on every cancel |
+| product fee | reversed in full — the unit is back on the rack and back to its owner |
+| Order Cancel | carries nothing about how far the warehouse got; balance reads back what was posted |
+| the staff's work | picking, packing and unpacking a cancelled order is not charged |
+
+**What it rules out.** A fee kept once `picked`, a separate cancel fee, and a cancel that reads the timeline for a past
+`picked`. Nothing new is built.
+
+---
+
+## what-shipped-is-what-was-ordered
+
+> Owner, in chat (2026-10-17): **"yes"** — to closing
+> [the-order-announces-what-shipped-and-what-came-back](./context_clarify.md#the-order-announces-what-shipped-and-what-came-back)
+> as recommended: no new events, both fees stay on a return. The fee half is
+> [a-return-keeps-both-fees](#a-return-keeps-both-fees).
+
+**The verdict.** The order announces no *OrderShipped* and no *OrderReturned* lines. Two later decisions made both
+redundant: a short pick never ships, and a return is never partial — so what left and what came back are always the
+ordered lines. **Order Status Change** ([event_context.md](./event_context.md)) is all a consumer needs.
+
+```mermaid
+flowchart LR
+  S["picker short"] -->|"another rack has it"| T["taken from there"]
+  S -->|"no rack has it"| P["back to pending - cancel or wait"]
+  R["return"] --> W["always the whole order"]
+  T --> E["what shipped = what was ordered"]
+  W --> E2["what came back = what was ordered"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a short pick | never ships — [missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending) |
+| a return | the whole order — [a-return-is-never-partial](#a-return-is-never-partial) |
+| events | Order Created, Order Cancel, Order Status Change, InventoryTxCancel — unchanged |
+| a parcel back with an item missing | the one case where what came back differs; asked in [a-short-delivered-parcel-has-no-home](./order_return_clarify.md#a-short-delivered-parcel-has-no-home) |
+
+---
+
+## a-return-keeps-both-fees
+
+> Owner, in chat (2026-10-17): **"yes"** — the money half of the same answer, as recommended.
+
+**The verdict.** Moving an order to `return` reverses nothing in balance. The warehouse fee stays, because the
+warehouse picked, packed and handed over. The product fee stays, because the borrowed unit becomes the borrower's own
+product (§Stock Ownership When Order Return) — a refund would give the borrower the unit for free. Same shape as
+[a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand).
+
+| Melati's order, B's unit borrowed | at create | on return |
+| --- | ---: | --- |
+| warehouse fee — Melati to the warehouse | 8.600 | **stays** |
+| product fee — Melati to Toko B | 72.000 | **stays** — the unit is Melati's now |
+
+```mermaid
+flowchart LR
+  R["order moves to return"] --> B["balance - nothing reversed"]
+  R --> I["inventory - the units come back, the borrowed one as Melati's own"]
+  A["the return warehouse accepts"] -.->|"may ADD a cod_fee"| B
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| warehouse fee | stays |
+| product fee | stays |
+| a return may | **add** a charge — a `cod_fee` when the warehouse accepts ([balance context](../balance/context.md)) — never remove one |
+| the unit's value back in stock | inventory return's brief, not the order's ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief)) |
+
+---
+
+## customer-service-sets-shipped-and-problem-by-hand
+
+> Owner, in [context.md](./context.md) §Order Shipments (2026-10-17): *"`shipping` to `shipped` — customer service check
+> manually to external platform and mark shipped manually"*, and the same words for `shipped` to `problem` — answering
+> [nobody-is-named-after-the-handover](./context_clarify.md#nobody-is-named-after-the-handover). Against my *merge
+> `shipping` and `shipped` if the third-party app cannot see the platform*.
+
+**The verdict.** Customer service reads the platform and sets `shipped` and `problem` by hand. `shipping` and `shipped`
+stay two statuses — `shipping` is the warehouse handing the parcel over, `shipped` is customer service seeing it move on
+the platform. Every move after the handover is now a person's; none comes from the third-party app.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  picked --> shipping: warehouse - the handover scan
+  shipping --> shipped: customer service - seen moving on the platform
+  shipped --> problem: customer service - seen on the platform
+  shipped --> completed: customer service
+```
+
+**The spec.**
+
+| move | who | from what |
+| --- | --- | --- |
+| `picked → shipping` | the warehouse | the handover scan ([picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses)) |
+| `shipping → shipped` | customer service | the platform, checked by hand |
+| `shipped → problem` | customer service | the platform, checked by hand |
+| each move | one `order_timeline_logs` row, `from = selling` | |
+| ⚠ the menu | [the-action-menu-is-a-table-keyed-by-status](../../technical/frontend/order_list_decision.md#the-action-menu-is-a-table-keyed-by-status) has no *mark shipped* on `shipping` and no way into `problem` — both are needed | |
+
+**What it leaves open.** An order nobody has marked yet, when the parcel is already back —
+[an-unmarked-order-can-leave-shipping](./context_clarify.md#an-unmarked-order-can-leave-shipping).
+
+---
+
+## shipping-can-go-straight-to-return
+
+> Owner, in [context.md](./context.md) §Order Shipments item 3 (2026-10-17): *"`shipping` to `return` — customer service
+> check manually to external platform and mark return manually"* — answering
+> [an-unmarked-order-can-leave-shipping](./context_clarify.md#an-unmarked-order-can-leave-shipping). The edge as
+> recommended; I had named only the warehouse, you named customer service.
+
+**The verdict.** An order may move `shipping → return` without being marked `shipped` first. Customer service sets it
+from the platform. The warehouse's force — a parcel back that nobody marked — takes the same edge, since
+[both-cs-and-the-warehouse-can-return-an-order](#both-cs-and-the-warehouse-can-return-an-order) forces any order not
+yet `return`. No other move leaves `shipping` but `shipped`.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  shipping --> shipped: customer service - seen moving
+  shipping --> return: customer service from the platform, or the warehouse forcing it
+  shipped --> return: customer service or the warehouse
+  return --> return_completed: the warehouse accepts
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `shipping → return` | customer service, from the platform · the warehouse, forcing it with the parcel in hand |
+| `shipping → completed`, `→ problem`, `→ lost` | not allowed — customer service marks `shipped` first |
+| the timeline | one `return` row; no *shipped* row is written on the way |
+| ✅ drawn *(2026-10-17)* | in §Status Move — [the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey) |
+
+---
+
+## a-return-that-never-arrives-goes-lost
+
+> Owner, in chat (2026-10-17): **"for a yes"** — to *"if a return parcel never arrives, can the order go to `lost`?"*,
+> from [the-order-menu-and-the-status-move-disagree-after-the-handover](./context_clarify.md#the-order-menu-and-the-status-move-disagree-after-the-handover).
+> As recommended.
+
+**The verdict.** `return → lost` is a move. Customer service sets it when a parcel claimed as coming back never reaches
+the warehouse — the order no longer waits in `return` forever. It is the menu's *Jadikan Lost*
+([the-action-menu-is-a-table-keyed-by-status](../../technical/frontend/order_list_decision.md#the-action-menu-is-a-table-keyed-by-status)).
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  return --> return_completed: the warehouse accepts - the goods are here
+  return --> lost: customer service - the parcel never came back
+  lost --> [*]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who | customer service, from the platform |
+| stock | nothing moves — the goods left at create and were never accepted back ([both-cs-and-the-warehouse-can-return-an-order](#both-cs-and-the-warehouse-can-return-an-order): only the accept moves stock) |
+| money | nothing moves — as [a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand) |
+| after | `lost` is final ([lost-is-final](#lost-is-final)) |
+| ✅ drawn *(2026-10-17)* | in §Status Move |
+
+---
+
+## lost-and-return-leave-the-sale-open
+
+> Owner, in chat (2026-10-17): **"b no"** — to *"when an order goes `lost` or `return`, should it cancel the sale in
+> settlement?"*, [lost-and-return-do-not-reverse-initial-total](./context_clarify.md#lost-and-return-do-not-reverse-initial-total).
+> As recommended.
+
+**The verdict.** Only a cancel reverses the sale (`initial_total_cancel`). `lost` and `return` leave it open: what the
+platform pays, deducts or refunds for the parcel arrives as settlement entries, by API or by hand, and an account left
+with a residual is normal ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)).
+
+```mermaid
+flowchart LR
+  C["cancel"] --> X["initial_total_cancel - the sale reversed"]
+  L["lost"] --> N["the sale stays open"]
+  R["return"] --> N
+  P["the platform - refund, deduction, claim"] --> S["settlement entries - by API or by hand"]
+```
+
+| status | the sale on the settlement account |
+| --- | --- |
+| `cancel` | reversed |
+| `lost` · `return` · `return_completed` | open — the platform's own entries say what it was worth |
+
+---
+
+## no-order-without-a-courier
+
+> Owner, in chat (2026-10-17): **"for d no"** — to *"can an order be created without a courier?"*,
+> [an-order-cannot-be-created-without-a-channel](./context_clarify.md#an-order-cannot-be-created-without-a-channel)
+> (re-routed from shipment). As recommended.
+
+**The verdict.** `shipment_channel_id` is required to create an order. A draft whose courier the app could not convert
+arrives with it empty, and the person picks the courier on the create form — or root adds the missing channel first.
+An order with no courier cannot be handed over.
+
+```mermaid
+flowchart LR
+  D["draft - shipment_channel_id empty"] --> F["create form - the courier field required"]
+  F -->|"picked"| O["order created"]
+  F -->|"no channel exists"| R["root adds the channel first"]
+  R --> F
+```
+
+| | |
+| --- | --- |
+| `orders.shipment_channel_id` | required — the create refuses without it |
+| `order_drafts.shipment_channel_id` | may be empty — the app could not convert the platform's courier |
+| the form | the courier field is required, seeded from the draft when it has one |
+
+---
+
+## the-status-move-is-the-only-journey
+
+> Owner, in [context.md](./context.md) (2026-10-17): §Complete Journey Of The Orders deleted, and §Status Move replaced
+> by the redraw with who makes each move — answering
+> [the-journey-stops-setting-statuses](./context_clarify.md#the-journey-stops-setting-statuses) by my revised
+> recommendation (*delete it*), not my first (*take the status boxes out*).
+
+**The verdict.** An order's statuses are drawn in **one** place: §Status Move. Each edge names who makes the move, so
+the diagram is the journey too — there is no second drawing to fall behind. Since `picked` and `shipping` became
+statuses, every journey box was a status move; a journey without statuses would have been nearly empty.
+
+```mermaid
+flowchart LR
+  J["§Complete Journey - deleted"] -.->|"every box was a status move"| SM["§Status Move - each edge names who"]
+  SM --> W["warehouse - confirm, Set Picked, handover scan, accept a return"]
+  SM --> CS["customer service - cancel, shipped, problem, completed, lost, return"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the statuses | §Order Status 1, the list — 11 |
+| the moves, and who | §Status Move — the one diagram |
+| who changes `shipping` onwards | §Order Shipments, in words |
+| a new move | drawn in §Status Move only |
+
+**What it closes.** [the-journey-still-sets-the-old-statuses](./context_clarify.md#the-journey-still-sets-the-old-statuses),
+[the-status-moves-miss-the-way-back](./context_clarify.md#the-status-moves-miss-the-way-back) and, but for the warehouse
+tabs, [the-status-moves-miss-picked-and-shipping](./context_clarify.md#the-status-moves-miss-picked-and-shipping).
+[order-created-is-finalize](#order-created-is-finalize) drew its seam against the journey; the seam is now `[*] --> pending`.
+
+✅ *(2026-10-21)* **Built**: the eleven are the `OrderStatus` enum (00015 migrated every order and history row by the
+mapping the owner agreed), and every plain move goes through `OrderStatusChange`
+([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)).
+Not built: the return accept (`return → return_completed`).
+
+---
+
+## the-draft-is-deleted-in-the-orders-transaction
+
+> Owner, in [order_creation.md](./order_creation.md) (2026-10-17): the pasted diagram puts *"Delete Draft Order, if from a
+> draft"* inside *Open Database Transaction*, after *Insert Order Item Table* — taking the recommendation made in
+> [create-order-takes-the-draft-id-and-deletes-it](#create-order-takes-the-draft-id-and-deletes-it) (2026-09-16), and the
+> spec of [the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too). It was flagged before the paste.
+
+**The verdict.** When an order is created from a draft, the draft is deleted **in the order's own transaction**. *"The
+order exists"* and *"the draft is gone"* are one fact: both commit, or neither does.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  state "Insert Order Table" as o
+  state "Insert Order Item Table" as i
+  state "Delete Draft Order, if from a draft" as d
+  state "Order Created" as c
+  [*] --> o
+  o --> i
+  i --> d
+  d --> c
+  c --> [*]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| when | inside the order's transaction, after its lines |
+| a typed order | no `order_draft_id`, nothing deleted |
+| the create fails | the draft stays, unchanged — the person fixes the form and sends again |
+| the duplicate warning | never meets the finalized draft afterwards ([the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too)) |
+
+---
+
+## the-return-warehouse-lives-in-team-return-configurations
+
+> Owner, in chat (2026-10-17): *"we use team_return_configurations, return_warehouse_id in team_infos stale, drop it"* —
+> asked as *"drop `team_return_configurations` and use `team_infos.return_warehouse_id`?"*. **Against my recommendation**
+> (no new table).
+
+**The verdict.** A team's return warehouse is a row of **`team_return_configurations`** — the table
+[order_return.md](./order_return.md) §Table Must Have asks for, in the order context. `team_infos.return_warehouse_id` is
+stale and is **dropped**. One place holds the fact, so the two can never disagree. What it gains over my option: the order's
+create check reads its own table, with no call to team service.
+
+```mermaid
+flowchart LR
+  T["team_return_configurations - team_id unique, warehouse_id"] -->|"read when the return happens"| R["the return"]
+  T -->|"read by the create check"| C["order create"]
+  X["team_infos.return_warehouse_id"] -.->|"stale - dropped"| D["a team_service migration"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the table | `team_return_configurations` — `id`, `team_id` (unique), `warehouse_id` — in the order context |
+| per team | unchanged — [the-return-warehouse-is-per-team](#the-return-warehouse-is-per-team) |
+| read | when the return happens — [the-return-warehouse-is-read-when-the-return-happens](#the-return-warehouse-is-read-when-the-return-happens), now from this table |
+| `team_infos.return_warehouse_id` | dropped: a `team_service` migration, the `TeamInfoUpdate` field, its handler and test, the frontend hook's parameter, and [database-schema.md](../../database-schema.md) in the same commit |
+| `team_infos.return_user_id` | 🔄 *(2026-10-19)* dropped too — [return-user-id-is-dropped](#return-user-id-is-dropped) |
+| what create checks | still open — [the-gate-is-on-the-order-not-the-config](./order_return_clarify.md#the-gate-is-on-the-order-not-the-config). 🔄 *(2026-10-21)* Answered 2026-10-17 and this row was missed: the team's row — [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) |
+| ✅ built *(2026-10-21)* | selling `00016` creates the table; `TeamReturnConfigurationDetail` / `TeamReturnConfigurationSet` ([return_configuration.proto](../../../proto/warehouse/selling/v1/return_configuration.proto)) read it and upsert it on the unique `team_id`; the Settings screen's **Return Warehouse** card sets it. team `00009` drops both `team_infos` columns, with `TeamInfo`/`TeamInfoUpdateRequest` fields 6–7 reserved. The table starts empty |
+
+---
+
+## create-refuses-a-team-with-no-return-warehouse
+
+> Owner, in chat (2026-10-17): *"yes b i follow your recomendation, choose 1"* — to
+> [the-gate-is-on-the-order-not-the-config](./order_return_clarify.md#the-gate-is-on-the-order-not-the-config), reframed as
+> *"create refuses when the team has no `team_return_configurations` row, with the check turned on only after every team has
+> one?"*. As recommended — which reversed my own earlier *gate the request*.
+
+**The verdict.** Order create refuses a team that has **no `team_return_configurations` row**. The request names no return
+warehouse — the order carries nothing about returns
+([the-return-warehouse-is-read-when-the-return-happens](#the-return-warehouse-is-read-when-the-return-happens)). The check
+is turned on **last**, after every team has a row.
+
+```mermaid
+flowchart LR
+  C["order create"] --> Q{"this team has a team_return_configurations row?"}
+  Q -->|"yes"| OK["continue - the request, the debt, the take"]
+  Q -->|"no"| R["refuse - set the return warehouse first"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | before the transaction, beside *Check the Request* in [order_creation.md](./order_creation.md) |
+| reads | the order context's own `team_return_configurations` — no call to another service |
+| the refusal | names the team, and says the return warehouse is not set |
+| the rollout | 1. the table and a screen to set it · 2. a row for every team · 3. the check — never in one commit |
+| ✅ drawn *(2026-10-19)* | in [order_creation.md](./order_creation.md)'s *Check the Request* |
+| 🔄 *(2026-10-21)* step 1 built | the table and the Settings card ([the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations)). Steps 2 and 3 are not: no team has a row yet, and create does not check |
+| 🔄 *(2026-10-21)* step 2 | each team sets its own, no backfill — [each-team-sets-its-own-return-warehouse](#each-team-sets-its-own-return-warehouse) |
+
+---
+
+## a-team-may-pick-any-return-warehouse
+
+> Owner, in chat (2026-10-17): **"i choose 1"** — to *"which warehouses may a team pick for returns?"*
+> ([which-warehouses-may-be-named](./order_return_clarify.md#which-warehouses-may-be-named)), option 1, every warehouse.
+> **Against my recommendation** (only a warehouse the team has a fee agreement with).
+
+**The verdict.** A team's `team_return_configurations` row may name **any** warehouse. The settings screen lists every
+warehouse, and the server checks nothing about the pair.
+
+```mermaid
+flowchart LR
+  M["Melati picks a return warehouse"] --> ANY["any warehouse - saved"]
+  ANY --> T{"Melati and that warehouse have a fee agreement?"}
+  T -->|"yes"| C["returns are charged as agreed"]
+  T -->|"no"| F["returns are received and shelved without a charge - accepted"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the screen | lists every warehouse |
+| the server | refuses only a warehouse that does not exist |
+| a warehouse with no fee agreement with the team | receives, checks and shelves its returns, and nothing is charged — `liability_terms` means *no row, no charge*. An accepted cost, stated so it is not rediscovered |
+
+---
+
+## stock-in-the-return-warehouse-is-not-drift
+
+> Owner, in chat (2026-10-17): *"no drifted stock back, and its okay selling team have stock on multiple warehouse, if
+> selling team decide manage their stock, they can move with warehouse transfer"* — answering
+> [who-moves-the-drifted-stock-back](./order_return_clarify.md#who-moves-the-drifted-stock-back). Against my *a report of
+> the drift*; the transfer half as recommended.
+
+**The verdict.** A returned unit that lands in the return warehouse is **not drift** — a selling team holding stock in several
+warehouses is normal. Nothing moves it back. If the team wants it elsewhere, it moves it with a warehouse transfer, when it
+decides. No report is built for it.
+
+```mermaid
+flowchart LR
+  A["Gudang A - Melati ships from here"] -->|"order"| B["buyer"]
+  B -->|"return"| C["Gudang C - Melati's return warehouse"]
+  C -->|"only if Melati decides - a warehouse transfer"| A
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| after a return | the unit stays in the return warehouse, as Melati's stock there |
+| moving it | Melati's choice — a warehouse transfer, the existing flow |
+| automatic transfer | none |
+| a drift report | none |
+
+---
+
+## a-forced-return-follows-the-status-move
+
+> Owner, in chat (2026-10-17): **"yes"** — to closing
+> [what-bounds-a-forced-return](./order_return_clarify.md#what-bounds-a-forced-return) as answered by the redrawn §Status
+> Move: the warehouse cannot force a `pending`, `processed` or `picked` order to `return`. As recommended.
+
+**The verdict.** *Warehouse Force Order To Return* ([order_return.md](./order_return.md) §Who Change The Returns) skips the
+customer-service step, **not** the status rules. It is allowed only from the statuses §Status Move gives a `return` edge —
+`shipping`, `shipped`, `problem`, `completed`. A parcel in the warehouse person's hands can only be one that left.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  shipping --> return: forced, or customer service
+  shipped --> return: forced, or customer service
+  problem --> return: forced, or customer service
+  completed --> return: forced, or customer service
+```
+
+| | |
+| --- | --- |
+| allowed from | `shipping` · `shipped` · `problem` · `completed` |
+| refused from | `pending` · `processed` · `picked` — the goods never left — and every final status |
+| the source | [the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey) |
+
+---
+
+## the-accept-records-where-it-was-accepted
+
+> Owner, in chat (2026-10-19): **"yes"** — to *"record the accepting person's warehouse on the return?"*
+> ([does-the-accept-record-where-it-was-accepted](./order_return_clarify.md#does-the-accept-record-where-it-was-accepted)).
+> As recommended.
+
+**The verdict.** When a warehouse person accepts a return (`return → return_completed`), the warehouse they accept it **in**
+is recorded, automatically — from the warehouse team they are working in. Nobody is asked anything, so the speed
+[a-stale-return-location-is-accepted](#a-stale-return-location-is-accepted) protects is kept. The stock still goes into the
+configured return warehouse; the record only makes a mismatch visible, to be fixed by a warehouse transfer.
+
+```mermaid
+flowchart LR
+  P["parcel at Gudang B - an old label"] --> A["staff of Gudang B accept it"]
+  A --> S["stock into Gudang C - the configured one, unchanged"]
+  A --> R["recorded - accepted at Gudang B"]
+  R --> V["the mismatch is visible - fixed by a transfer"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| recorded | the accepting warehouse, at `return_completed`, from the person's working warehouse team |
+| asked | nothing — no picker, no question |
+| the stock | into the configured warehouse ([the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations)) |
+| where it is stored | ⚠ **proposed, not decided** — the `return_completed` row of `order_timeline_logs`, which already marks that moment with its actor and `from = warehouse` |
+
+---
+
+## a-return-never-clones-a-product
+
+> Owner, in [order_return.md](./order_return.md) (2026-10-19): *"i change my mind"* — §Order Return Flow drops *Clone Product*
+> and *Add Product Map*; a cross line that is not mapped goes to **Error**. It reverses the clone of §Stock Ownership When
+> Order Return, and makes
+> [who-names-a-cloned-product](./order_return_clarify.md#who-names-a-cloned-product) moot.
+
+**The verdict.** A return never creates a product. A borrowed line comes back as the borrowing team's **own, already mapped**
+product; when no map exists for it, the return is refused with an error. The map is made ahead, by the team, in the return
+mapper.
+
+```mermaid
+flowchart LR
+  L["a borrowed line - Toko B's TKB-KAOS-01"] --> M{"Melati has a map for it?"}
+  M -->|"yes - to MLT-KAOS-01"| OK["comes back as Melati's MLT-KAOS-01"]
+  M -->|"no"| E["Error - the return is refused, nothing is cloned"]
+  O["an own line"] --> OK2["comes back as itself - never reads the map"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `product_return_maps` | as §Table Must Have item 2, with [the-map-is-unique-on-its-source](#the-map-is-unique-on-its-source) — unique `(team_id, shared_product_id)`, no `warehouse_id` |
+| 🔄 corrected the same day | a §Product Return Mapper redefining the table (`parent_team_id`, `parent_product_id`, `team_id`, `product_id`) was drafted in the doc and removed by the owner; this entry first recorded it |
+| written once | still — [a-return-map-is-written-once](#a-return-map-is-written-once); the table has `created_at` only |
+| an own line | never reads the map — [an-own-line-never-touches-the-map](#an-own-line-never-touches-the-map) |
+| an unmapped borrowed line | the whole return is refused — a return is never partial ([a-return-is-never-partial](#a-return-is-never-partial)) — and the order stays `return` |
+| who makes a map, and when | open — [when-must-the-map-exist](./order_return_clarify.md#when-must-the-map-exist) |
+
+---
+
+## a-borrowed-line-needs-its-map-at-create
+
+> Owner, in chat (2026-10-19): **"yes 2"** — to [when-must-the-map-exist](./order_return_clarify.md#when-must-the-map-exist),
+> option 2: the map is required at order create. As recommended.
+
+**The verdict.** Order create refuses a **borrowed** line whose product the ordering team has not mapped for returns, naming
+the product. The selling team maps it then — **once per borrowed product**, the first time it sells it — to one of its own
+products. The return's *Error* branch ([a-return-never-clones-a-product](#a-return-never-clones-a-product)) stays as a
+backstop that, in practice, never fires.
+
+```mermaid
+flowchart LR
+  C["order create - Melati, borrowed TKB-KAOS-01"] --> Q{"Melati maps TKB-KAOS-01 for returns?"}
+  Q -->|"yes"| OK["create goes on"]
+  Q -->|"no"| R["refuse - map TKB-KAOS-01 for returns first"]
+  R --> MAP["Melati maps it to her MLT-KAOS-01 - once, never re-pointed"]
+  MAP --> C
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| checked | each line whose owner is not the ordering team — after the owners lookup, before the transaction |
+| an own line | never checked ([an-own-line-never-touches-the-map](#an-own-line-never-touches-the-map)) |
+| the refusal | names every unmapped product — the create is refused whole |
+| who maps | the selling team, to one of its own products; a map is written once ([a-return-map-is-written-once](#a-return-map-is-written-once)) |
+| where it is mapped | ⚠ not designed — a screen, or an action from the refusal |
+| the return | still refuses an unmapped line — a backstop, e.g. for orders created before this check |
+| ✅ drawn *(2026-10-19)* | in [order_creation.md](./order_creation.md), after the owners lookup |
+
+---
+
+## a-returned-borrowed-unit-is-relabelled-at-the-accept
+
+> Owner, in chat (2026-10-19): **"yes"** — to *"relabel borrowed units at the accept?"*
+> ([the-returned-unit-keeps-the-lenders-label](./order_return_clarify.md#the-returned-unit-keeps-the-lenders-label)). As
+> recommended.
+
+**The verdict.** When a return is accepted, each unit of a **borrowed** line gets the mapped product's label printed and
+stuck over the lender's — `TKB-KAOS-01` becomes `MLT-KAOS-01` — so a later pick scan matches. Own units keep their label.
+
+```mermaid
+flowchart LR
+  U["returned unit - TKB-KAOS-01"] --> A["the accept - mapped to Melati's MLT-KAOS-01"]
+  A --> P["print MLT-KAOS-01, stick it over the old label"]
+  P --> OK["a later pick scan matches"]
+  O["own unit"] --> K["keeps its label"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| when | at the accept (`return → return_completed`), while the staff hold the units |
+| which units | every unit of a borrowed line — its quantity is the line's ordered quantity ([a-return-is-never-partial](#a-return-is-never-partial)) |
+| the label | the mapped own product's code ([a-borrowed-line-needs-its-map-at-create](#a-borrowed-line-needs-its-map-at-create)) |
+| own units | unchanged |
+
+---
+
+## a-short-return-is-accepted-and-the-gap-written-off
+
+> Owner, in chat (2026-10-19): *"yes, it 1"* — to
+> [a-short-delivered-parcel-has-no-home](./order_return_clarify.md#a-short-delivered-parcel-has-no-home), option 1. As
+> recommended.
+
+**The verdict.** A return parcel that comes back short is **accepted** (`return → return_completed`). The return stays whole —
+every line at its ordered quantity — and **at the same moment** each missing unit is written off as an inventory `problem`,
+reason *lost*. A timeline note says what was missing, so customer service can claim it from the platform.
+
+```mermaid
+flowchart LR
+  P["parcel back - 2 of 3 Kaos Hitam"] --> A["accept - return_completed"]
+  A --> IN["return transaction - 3 in, the whole order"]
+  A --> W["problem - 1 written off, reason lost"]
+  A --> N["timeline note, from warehouse - 1 Kaos Hitam missing"]
+  N --> CS["customer service claims it from the platform"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the order | `return_completed`, as any accepted return |
+| the return transaction | whole — [a-return-is-never-partial](#a-return-is-never-partial) |
+| the missing units | an inventory `problem`, reason *lost*, in the same act — the shelf count is right at once |
+| the note | an `order_timeline_logs` row, `from = warehouse`, naming each missing product and how many |
+| the money | customer service's claim on the platform, entered in settlement by hand ([a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand)) |
+| inventory's side | part of the brief [inventory return.md](../inventory/return.md) answers ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief)) |
+
+---
+
+## return-user-id-is-dropped
+
+> Owner, in chat (2026-10-19): *"remove it"* — to [return_user_id-is-unread](./order_return_clarify.md#return_user_id-is-unread),
+> after *"is return_user_id useless right ?"*. As recommended.
+
+**The verdict.** `team_infos.return_user_id` is dropped. A return is addressed to a warehouse, and any of its staff accepts it
+([both-cs-and-the-warehouse-can-return-an-order](#both-cs-and-the-warehouse-can-return-an-order)); no named person is kept,
+here or in `team_return_configurations`.
+
+```mermaid
+flowchart LR
+  T["team_infos"] -.->|"dropped"| W["return_warehouse_id"]
+  T -.->|"dropped"| U["return_user_id"]
+  W --> C["team_return_configurations - the return warehouse, no person"]
+```
+
+| | |
+| --- | --- |
+| dropped | `team_infos.return_user_id` — in the same `team_service` migration as `return_warehouse_id` ([the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations)) |
+| with it | the `TeamInfoUpdate` field 7, its handler and test, the frontend hook's parameter, and [database-schema.md](../../database-schema.md) |
+| ✅ built *(2026-10-21)* | team `00009` drops it with `return_warehouse_id`; field 7 is reserved |
+
+---
+
+## what-an-order-proves-is-already-kept
+
+> Owner, in chat (2026-10-21): *"yes, i follow your recomendation"* — to *"can `what-an-order-must-prove` be closed as
+> covered?"*, the critique in [context_clarify.md](./context_clarify.md#critique). As recommended.
+
+**The verdict.** Nothing new is needed to show an order's history months later. Each fact already has one home, written
+when it happens and never edited.
+
+```mermaid
+flowchart LR
+  O["order 1042, months later"] --> W["who took it - created_by_user_id"]
+  O --> D["by which door - the draft's source, then the form"]
+  O --> M["what, at what cost - the lines, frozen at create"]
+  O --> T["who picked, who handed over, when - order_timeline_logs"]
+```
+
+**The spec.**
+
+| must show | kept in |
+| --- | --- |
+| who took the order | `orders.created_by_user_id` |
+| by which door | the draft's source ([drafts-exist-only-for-the-third-party-app](#drafts-exist-only-for-the-third-party-app)) |
+| what was ordered, at what cost | the lines and their money, frozen at create ([a-lines-money-is-frozen-at-finalize](#a-lines-money-is-frozen-at-finalize)) |
+| who moved it, and when | a row per move in `order_timeline_logs`, with its actor ([picked-lives-on-the-order-timeline](../inventory/transaction_decision.md#picked-lives-on-the-order-timeline), [one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)) |
+
+---
+
+## a-found-lost-parcel-is-a-found-stock-in
+
+> Owner, in chat (2026-10-21): *"okay, i follow your recomendation"* — to *"when a parcel marked `lost` turns up at the
+> warehouse, how do its goods get back into stock?"*, the gap [lost-is-final](#lost-is-final) left open (clarify *Awaiting*).
+> As recommended.
+
+**The verdict.** A parcel that comes back after its order went `lost` is entered by the warehouse as a **`found` stock-in
+that names the order**. The order stays `lost`, because [lost-is-final](#lost-is-final). The units go back on a rack under their
+owning team. Any money the platform already paid for the loss is settled by hand by customer service
+([a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand)).
+
+```mermaid
+flowchart LR
+  L["order 1042 - lost"] -.->|"stays lost"| L
+  P["the courier brings the parcel back"] --> F["warehouse - Found Stock, from lost order 1042"]
+  F --> I["inventory - found, Sabun x 2, Melati's, rack A-3"]
+  F --> M["customer service - settles any platform payout by hand"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who enters it | the warehouse that receives the parcel |
+| the transaction | `found` ([problem-and-found-replace-opname](../inventory/transaction_decision.md#problem-and-found-replace-opname)), outside a count. It names the lost order |
+| the units | back under their owning team, on the rack the warehouse picks |
+| their value | proposed: the cost the order took them at. The order's take already names its batches |
+| the order | stays `lost`. No status move |
+| the money | settled by hand by customer service, as for any lost parcel |
+| inventory's to build | a `found` stock-in outside an opname session, carrying an optional order reference |
+
+---
+
+## cod-and-shipping-are-the-platforms
+
+> Owner, in chat (2026-10-21): *"we never take order cod outside platform marketplace"* — to *"can buyer shipping and COD
+> be closed: does the order need anything for them?"*, the last item of the clarify's *Awaiting*. As recommended.
+
+**The verdict.** Neither buyer shipping nor COD needs anything on the order. Every order is a marketplace order, so a COD
+buyer's cash goes to the courier, then to the platform. The seller is paid in the platform's normal payout, the same as
+a prepaid order. The money never passes through us.
+
+```mermaid
+flowchart LR
+  B["the buyer - cash at the door"] --> C["the courier"] --> P["the platform"]
+  P -->|"the payout - 92.000"| S["settlement records it"]
+  O["order 1042 - goods_cost, warehouse_fee, status"] -.->|"no COD, no shipping field"| P
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| buyer shipping | not recorded ([an-order-records-no-shipping-cost](#an-order-records-no-shipping-cost)) |
+| COD | not recorded. The platform's money until its payout, which settlement already records |
+| COD outside a marketplace | never taken, and excluded: every order needs a platform ref and total ([platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize)) |
+| a COD parcel refused at the door | `shipping → return`, and the sale stays open with no payout ([lost-and-return-leave-the-sale-open](#lost-and-return-leave-the-sale-open)) |
+
+---
+
+## each-team-sets-its-own-return-warehouse
+
+> Owner, in chat (2026-10-21): **"i choose B"** — to *"before order create can refuse a team with no return warehouse, every
+> selling team needs one. Fill them from each team's default warehouse, or let each team set it itself?"*, option B. **Against
+> my recommendation** (fill once from the default warehouse, then set the rest by hand).
+
+**The verdict.** Nothing is filled in for a team. Every selling team's manager sets the return warehouse on **Settings → Return
+Warehouse**, and the create check of [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse)
+is turned on once every selling team has done so. A return warehouse is always a choice somebody in the team made, never a value
+the system guessed for it.
+
+```mermaid
+flowchart LR
+  T["each selling team's manager"] -->|"Settings - Return Warehouse"| R["team_return_configurations row"]
+  R --> Q{"every selling team has a row?"}
+  Q -->|"no"| W["the card warns - not set yet"]
+  Q -->|"yes"| C["turn on the create check - rollout step 3"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| rollout step 2 | each team sets its own, on the card built in step 1. No backfill and no `san` command |
+| what a team without one sees | the card's warning: *no return warehouse is set, orders will require one soon* |
+| the default warehouse | not read. It may be where the team ships from, but returns can be sent elsewhere ([a-team-may-pick-any-return-warehouse](#a-team-may-pick-any-return-warehouse)), so it is not a stand-in for the choice |
+| what I gave up | the teams with a default set would have been done at once; now every team, those included, waits on a person |
+| ⚠ not settled | how anyone sees that every team is done — no screen lists the teams still missing one, so step 3's trigger is only visible to a database query today. 🔄 *(2026-10-21)* settled — [root-sees-which-teams-have-no-return-warehouse](#root-sees-which-teams-have-no-return-warehouse) |
+
+---
+
+## root-sees-which-teams-have-no-return-warehouse
+
+> Owner, in chat (2026-10-21): *"i follow your recomendation"* — to *"nothing on screen shows which selling teams have not set
+> a return warehouse yet, so the moment to turn on the create check is only visible through a database query. A badge on
+> root's Teams list, like the shops' No primary CS?"*. As recommended. It closes the gap
+> [each-team-sets-its-own-return-warehouse](#each-team-sets-its-own-return-warehouse) left open.
+
+**The verdict.** On root's **Teams** list, every selling team that has not set a return warehouse carries a **No return
+warehouse** badge. When no selling team carries one, step 3 of
+[create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) can be turned on.
+
+```mermaid
+flowchart LR
+  L["root's Teams list - a page of teams"] --> B["TeamReturnConfigurationByIds - the selling teams' ids"]
+  B -->|"a team is absent"| M["badge - No return warehouse"]
+  B -->|"a team is answered"| N["no badge"]
+  M -.->|"none left"| C["turn on the create check"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | the name cell of [TeamTable](../../../frontend/src/pages/teams/components/TeamTable.tsx), selling teams only, in the warning tone |
+| who sees it | root and the Administrator. The read is unscoped, so its policy is theirs alone, and the list does not ask for anybody else |
+| the read | `TeamReturnConfigurationByIds(filter.ids = team ids)` — the guideline's ByIds shape; a team that has set none is **absent**. One indexed query: 0.7 ms for 200 teams |
+| no flash | nothing is marked until the answer is in, so a slow read never marks a team that has one |
+| ✅ built *(2026-10-21)* | pinned by `team_return_configuration_by_ids_test.go` and the story *Pages/Teams/TeamTable* |

@@ -17,8 +17,9 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 // A transfer has seven statuses (a-transfer-has-seven-statuses), and EVERY status change locks the transfer row first
 // (a-transfer-is-locked-before-any-status-change).
 //
-// ⚠ PROTOTYPE: no handler exists yet. The service is mounted answering Unimplemented, and the screens run against the
-// Storybook stub until the backend step. It supersedes InventoryService.StockTransfer, the instant one-product move.
+// Built on the decided ledgers (inventory_v1/warehouse_transfer_*.go): the two legs are `transfer_out` and `transfer_in`
+// transactions. Money is `double`, rupiah as stored (money-is-double-in-the-api-too); the screen rounds for display. It
+// supersedes InventoryService.StockTransfer, the instant one-product move.
 service WarehouseTransferService {
   // The selling team opens a transfer. Its transfer_out is written in the same transaction — shelves fewest first,
   // batches oldest first — and too few at A fails the create.
@@ -44,8 +45,8 @@ service WarehouseTransferService {
   // Warehouse B signs for the box: shipped or lost → arrived.
   rpc WarehouseTransferArrive(WarehouseTransferArriveRequest) returns (WarehouseTransferArriveResponse);
   // Warehouse B counts the box in: shipped or arrived → accepted. Its transfer_in mints one batch per source batch
-  // (the-receiver-mints-one-batch-per-source-batch), and the courier's on-site charge becomes the team's debt to B
-  // inside the same transaction (the-on-site-charge-is-paid-by-b-at-accept).
+  // (the-receiver-mints-one-batch-per-source-batch). The courier's on-site charge is saved on the transfer, and balance
+  // posts the team's debt to B from Warehouse Transfer Accepted (balance-posts-the-transfers-on-site-debt-from-the-event).
   rpc WarehouseTransferAccept(WarehouseTransferAcceptRequest) returns (WarehouseTransferAcceptResponse);
 }
 
@@ -104,8 +105,8 @@ message WarehouseTransferProblem {
   int64 count = 2 [(buf.validate.field).int64.gt = 0];
   // What they were worth, FILLED BY THE SYSTEM from the layer the units came off — the newest first
   // (the-system-fills-a-transfers-prices). `total` is exact; `price_unit` is total ÷ count, for display.
-  int64 price_unit = 3;
-  int64 total = 4;
+  double price_unit = 3;
+  double total = 4;
   // Warehouse B's note on the row (a-transfer-problem-row-carries-a-note). Optional.
   string note = 5 [(buf.validate.field).string.max_len = 200];
 }
@@ -121,9 +122,9 @@ message WarehouseTransferItem {
   int64 count = 5 [(buf.validate.field).int64.gt = 0];
   // The value the out-leg took for this product — the sum of its batch rows, each at its own price. Exact, and filled
   // by the system (the-system-fills-a-transfers-prices).
-  int64 total = 6;
+  double total = 6;
   // total ÷ count, for display only. Different batch prices live in the ledger, never on the line.
-  int64 price_unit = 7;
+  double price_unit = 7;
   // Where A takes the units from — A's pick list, chosen by the system at create, fewest first.
   repeated WarehouseTransferPlacement picks = 8;
   // What arrived in the box, broken units included. 0 until accepted.
@@ -161,7 +162,7 @@ message WarehouseTransfer {
   // The lines. At least one.
   repeated WarehouseTransferItem items = 7;
   // Σ line totals — the value of the goods moved. Both costs sit outside it.
-  int64 total = 8;
+  double total = 8;
 
   // The trip — entered by A when it ships (the-sender-enters-the-courier-at-ship); all optional
   // (a-transfer-may-travel-without-a-courier).
@@ -171,11 +172,11 @@ message WarehouseTransfer {
 
   // The shipping expense — the selling team's, from its own account (a-transfer-has-the-restocks-two-costs).
   // Never in a unit's price (a-transfer-never-changes-a-units-price).
-  int64 shipment_cost = 12;
+  double shipment_cost = 12;
   // Required when shipment_cost is above 0 (a-transfer-names-its-paying-account).
   uint64 finance_account_id = 13;
   // The courier's charge at B's door — B pays it, the team owes B. Entered at accept; 0 until then.
-  int64 warehouse_additional_cost = 14;
+  double warehouse_additional_cost = 14;
   // Required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for).
   string warehouse_additional_cost_note = 15;
 
@@ -235,7 +236,10 @@ message WarehouseTransferCreateRequest {
   string note = 5 [(buf.validate.field).string.max_len = 1000];
   // Optional now; editable until accepted. finance_account_id is required when shipment_cost is above 0 — the handler
   // checks.
-  int64 shipment_cost = 6 [(buf.validate.field).int64.gte = 0];
+  double shipment_cost = 6 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
   uint64 finance_account_id = 7;
 }
 
@@ -356,7 +360,10 @@ message WarehouseTransferUpdateRequest {
   uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
   // A full replace of the three editable fields. A cost change sends the difference to the paying account, and an
   // account change moves the whole amount (the-shipping-expense-reaches-the-account-by-event).
-  int64 shipment_cost = 3 [(buf.validate.field).int64.gte = 0];
+  double shipment_cost = 3 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
   uint64 finance_account_id = 4;
   string note = 5 [(buf.validate.field).string.max_len = 1000];
 }
@@ -514,9 +521,12 @@ message WarehouseTransferAcceptRequest {
   uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
   // One entry per line, EVERY line exactly once — accepting IS the count.
   repeated WarehouseTransferCountedLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
-  // The courier's charge at B's door, whole rupiah; 0 = none. Its note is required when it is above 0 — the handler
+  // The courier's charge at B's door, rupiah; 0 = none. Its note is required when it is above 0 — the handler
   // checks.
-  int64 warehouse_additional_cost = 4 [(buf.validate.field).int64.gte = 0];
+  double warehouse_additional_cost = 4 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
   string warehouse_additional_cost_note = 5 [(buf.validate.field).string.max_len = 200];
 }
 

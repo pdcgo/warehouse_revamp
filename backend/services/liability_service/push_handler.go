@@ -2,6 +2,7 @@ package liability_service
 
 import (
 	"context"
+	"math"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
@@ -25,6 +26,9 @@ import (
 const (
 	OrderPlacedSubscription    = "liability-order-placed"
 	OrderCancelledSubscription = "liability-order-cancelled"
+	// The courier's charge at a restock's door, posted from *Restock Accepted*
+	// (balance-posts-the-couriers-debt-from-the-event). Its OWN subscription beside supplier's fold on the same topic.
+	RestockAcceptedSubscription = "liability-restock-accepted"
 )
 
 // NewLiabilityPushHandler charges an order's fees on placement and reverses them on cancellation
@@ -76,6 +80,21 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 			// charged, so reversing reads its own entries rather than recomputing fees from rates
 			// that may have changed since.
 			return svc.ReverseOrder(ctx, cancelled.GetTeamId(), cancelled.GetOrderId(), cancelled.GetActorId())
+
+		case *eventsv1.Event_RestockAccepted:
+			accepted := variant.RestockAccepted
+
+			// The selling team owes the warehouse the courier's charge (balance-posts-the-couriers-debt-from-the-event).
+			// ActorID is the VARIANT's — who counted the box in, from the stored restock — never the envelope's. The charge
+			// arrives as inventory stores it, a double (money-is-double-in-the-api-too); liability's entries are whole
+			// rupiah, so it is rounded here, at this service's edge.
+			return svc.ChargeRestockCourier(ctx, liability_v1.CourierCharge{
+				RestockID:     accepted.GetRestockId(),
+				SellingTeamID: accepted.GetTeamId(),
+				WarehouseID:   accepted.GetWarehouseId(),
+				Amount:        int64(math.Round(accepted.GetWarehouseAdditionalCost())),
+				ActorID:       accepted.GetActorId(),
+			})
 
 		default:
 			// A variant this build does not handle. ACKed rather than NACKed: redelivering a message

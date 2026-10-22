@@ -21,23 +21,16 @@ import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrderCreators, useOrders, useOrderStat } from "../../features/orders/queries";
+import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
 import {
   orderSummaryRows,
   orderSummaryTotal,
   summariseOrderStat,
 } from "../../features/orders/stat";
-import {
-  ALL_STAGE,
-  ORDER_STAGES,
-  PROCESSED_STEPS,
-  orderStage,
-  stageCanFilterTheList,
-  stageOfStatus,
-} from "../../features/orders/stages";
-import type { ProcessedStep } from "../../features/orders/stages";
+import { ALL_STAGE, ORDER_STAGES, orderStage, stageOfStatus } from "../../features/orders/stages";
 import { StageTabs } from "../../features/orders/StageTabs";
-import { StageBadge } from "../../features/orders/StageBadge";
+import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import {
   CreatedCell,
   DateCell,
@@ -52,7 +45,6 @@ import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orde
 import { OrderRowActions } from "./components/OrderRowActions";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeams } from "../../features/teams/queries";
-import { ProcessedStepFilter } from "./components/ProcessedStepFilter";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDERS_LIST_PENDING } from "./pending";
@@ -100,9 +92,8 @@ import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-// How the stage tab, `processed`'s step and the creator are spelled in the URL — only a real one is read back.
+// How the status tab and the creator are spelled in the URL — only a real one is read back.
 const STAGE_CODEC = oneOfCodec<string>([ALL_STAGE, ...ORDER_STAGES.map((item) => item.id)]);
-const STEP_CODEC = optionalCodec(oneOfCodec(PROCESSED_STEPS.map((item) => item.id)));
 const CREATOR_CODEC = optionalCodec(idCodec);
 
 // THE ORDERS LIST, WITH WHAT THE OWNER ASKED IT TO GROW — a PREVIEW (owner).
@@ -118,10 +109,9 @@ const CREATOR_CODEC = optionalCodec(idCodec);
 // while this is looked at; when it is accepted this page replaces it, exactly as `order-create-next`
 // became the order form. Nothing here is routed — it is reached from Storybook.
 //
-// ⚠ TWO OF THE FOUR NEW FILTERS NARROW NOTHING. `OrderListFilter` carries a status, a product, a
-// search term, a shop, a date window and who typed the order in; there is no warehouse field and no
-// marketplace field. They are on screen so the SHAPE of the bar can be judged, each carrying the mark
-// that says so — see `pending.ts`.
+// ⚠ ONE OF THE FOUR NEW FILTERS NARROWS NOTHING. `OrderListFilter` has no warehouse field. It is on screen so
+// the SHAPE of the bar can be judged, carrying the mark that says so — see `pending.ts`. The marketplace filter
+// is real (the-filter-gains-seller-marketplace-and-courier).
 //
 // WHY THEY ARE SEARCH SELECTS (owner). A picker over data that grows is typed into; only a static,
 // small set stays a plain dropdown. Warehouse and creator and shop all grow, so all three search.
@@ -132,9 +122,8 @@ export function SellerOrdersPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
 
-  // THE FILTERS, THE STAGE TAB AND ITS STEP LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back
-  // from an order, opens the same narrowed list. `?status=` is also how the Drafts tab comes back to a stage, and it is
-  // written with `replace`, so Back leaves the screen rather than walking the tabs.
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an
+  // order, opens the same narrowed list. Written with `replace`, so Back leaves the screen rather than walking the tabs.
   const [tab, setTab] = useUrlState<string>("status", ALL_STAGE, STAGE_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -150,11 +139,6 @@ export function SellerOrdersPage() {
   const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
 
   const [importing, setImporting] = useState(false);
-
-  // WHICH OF `processed`'S FOUR STEPS, when that is the chosen status. Tab-scoped on purpose: it is a
-  // narrowing OF a tab, not a filter of the screen, so it is not in `filters` and the Clear button
-  // above does not reach it.
-  const [step, setStep] = useUrlState<ProcessedStep["id"] | undefined>("step", undefined, STEP_CODEC);
 
   const teamId = current?.teamId;
 
@@ -180,17 +164,18 @@ export function SellerOrdersPage() {
   const filters: OrderFilters = useMemo(() => {
     const { fromUnix, toUnix } = resolveRange(range);
 
-    // ⚠ `warehouseId` and `marketplace` are deliberately NOT here. There is nowhere on
-    // `OrderListFilter` to put them, and inventing a field the server ignores would make the screen
-    // look wired while the rows stayed the same — the exact lie the marks are there to prevent.
+    // ⚠ `warehouseId` is deliberately NOT here. There is nowhere on `OrderListFilter` to put it, and inventing a
+    // field the server ignores would make the screen look wired while the rows stayed the same — the exact lie the
+    // marks are there to prevent. The marketplace IS here (the-filter-gains-seller-marketplace-and-courier).
     return {
       search: debouncedSearch,
       shopId: canFilterByShop ? shopId : 0n,
       fromUnix,
       toUnix,
       createdByUserId: creatorId ?? 0n,
+      marketplace,
     };
-  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId]);
+  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId, marketplace]);
 
   // The "created by" filter's people: everyone who typed in an order this team may list
   // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
@@ -198,20 +183,10 @@ export function SellerOrdersPage() {
 
   const stage = orderStage(tab);
 
-  // ⚠ THE STAGE IS NOT ALWAYS A FILTER. `OrderListFilter.status` takes ONE status, so a stage that
-  // covers three (`processed`) or none (`completed` and the other three) cannot narrow the table —
-  // the tab is selectable and the rows below it stay whatever they were. That is the `statusSet`
-  // mark's doing, and inventing a filter the server ignores is what it exists to prevent.
-  // A chosen step wins over the stage: `processed` alone cannot filter (three statuses at once), but
-  // any ONE of its steps can, which is the whole reason the step filter exists.
-  const stepStatus = PROCESSED_STEPS.find((item) => item.id === step)?.status;
+  // A tab IS one status (one-tab-per-status), so it always narrows the table; All narrows nothing.
+  const listStatus = stage ? stage.status : OrderStatus.UNSPECIFIED;
 
-  const listStatus =
-    stage?.id === "processed" && stepStatus !== undefined
-      ? stepStatus
-      : stage && stageCanFilterTheList(stage)
-        ? stage.statuses[0]!
-        : OrderStatus.UNSPECIFIED;
+  const exporter = useOrderExport();
 
   const query = useOrders({
     teamId,
@@ -318,7 +293,7 @@ export function SellerOrdersPage() {
   function stageBadgeFor(status: OrderStatus) {
     const item = stageOfStatus(status);
 
-    return item ? <StageBadge stage={item} /> : undefined;
+    return item ? <OrderStatusBadge status={item.status} /> : undefined;
   }
 
   function teamOf(id: bigint) {
@@ -418,15 +393,26 @@ export function SellerOrdersPage() {
           />
         ) : (
         <Flex gap="2" align="center" wrap="wrap">
+          {/* THE LIST AS A FILE (one-export-is-the-list-as-a-file): exactly the rows on screen with this filter and
+              tab, every page of them. */}
           <Button
             size="xs"
             variant="outline"
             colorPalette="gray"
             data-testid="orders-export"
+            loading={exporter.running}
+            loadingText={
+              exporter.progress
+                ? t("orders.export.running", { done: exporter.progress.done, total: exporter.progress.total })
+                : undefined
+            }
+            onClick={() =>
+              teamId !== undefined &&
+              void exporter.start({ teamId, filters, status: listStatus, view: OrderExportView.SELLER })
+            }
           >
             <Icon as={Download} boxSize="4" />
             {t("orders.export.action")}
-            <NotImplemented list={ORDERS_LIST_PENDING} id="export" />
           </Button>
 
           <Button
@@ -521,18 +507,13 @@ export function SellerOrdersPage() {
             typed into. Seven marketplaces, changed by entering a new country — searching a list you
             can see in full is a keystroke tax. */}
         <FilterField w="15rem" testId="orders-marketplace-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <MarketplaceSelect
-                // Its × clears it (every-filter-clears-from-its-own-x).
-                clearable
-                value={marketplace}
-                placeholder={t("orders.marketplaceAll")}
-                onChange={(m) => refilter(() => setMarketplace(m))}
-              />
-            </Box>
-            <NotImplemented list={ORDERS_LIST_PENDING} id="marketplaceFilter" />
-          </Flex>
+          <MarketplaceSelect
+            // Its × clears it (every-filter-clears-from-its-own-x).
+            clearable
+            value={marketplace}
+            placeholder={t("orders.marketplaceAll")}
+            onChange={(m) => refilter(() => setMarketplace(m))}
+          />
         </FilterField>
 
         {canFilterByShop && (
@@ -562,26 +543,11 @@ export function SellerOrdersPage() {
       <StageTabs
         value={tab}
         count={tabCount}
-        mark={<NotImplemented list={ORDERS_LIST_PENDING} id="statusSet" />}
         onSelect={(value) => {
           setTab(value);
-          // ⚠ The step belongs to `processed`. Carrying it to another tab would leave a filter set on
-          // a status it cannot apply to, invisibly.
-          setStep(undefined);
           setPage(1);
         }}
       />
-
-      {/* NARROWING `processed` TO ONE STEP — under the tab it belongs to, and nowhere else. */}
-      {stage?.id === "processed" && (
-        <ProcessedStepFilter
-          value={step}
-          onChange={(next) => {
-            setStep(next);
-            setPage(1);
-          }}
-        />
-      )}
 
       {/* BY STATUS FIRST (owner), and BELOW THE STATUS FILTER — the tab strip above decides which
           pile the measure line describes, so the summary reads as the answer to the control right
@@ -600,7 +566,7 @@ export function SellerOrdersPage() {
         badge={(row) => {
           const item = orderStage(row.key);
 
-          return item ? <StageBadge stage={item} /> : null;
+          return item ? <OrderStatusBadge status={item.status} /> : null;
         }}
         marks={
           <>
@@ -793,11 +759,10 @@ export function SellerOrdersPage() {
                             <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                               {/* The stage keys the owner's per-status action table; the warehouse id
                                 decides whether "Jadikan Dikirim" is this reader's to press at all —
-                                `OrderShip` is scoped to the building holding the parcel. */}
+                                OrderStatusChange gives the warehouse's moves to the building holding the parcel. */}
                               <OrderRowActions
                                 teamId={teamId}
                                 orderId={o.id}
-                                status={o.status}
                                 stage={stageOfStatus(o.status)?.id}
                                 warehouseId={o.warehouseId}
                               />

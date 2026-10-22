@@ -20,6 +20,7 @@ const SUFFIX = Date.now().toString().slice(-6);
 const BCA_NAME = `E2E BCA ${SUFFIX}`;
 const BCA_NUMBER = `88${SUFFIX}01`;
 const KAS_NAME = `E2E Kas ${SUFFIX}`;
+const OTHER_NAME = `E2E Lainnya ${SUFFIX}`;
 const SHOP_CODE = `FA${SUFFIX}`;
 const SHOP_NAME = `E2E Account Shop ${SUFFIX}`;
 // A shop id no shop has — the listener does not need the shop to exist to hold its money.
@@ -232,6 +233,42 @@ test("An account is archived only at zero", async ({ page }) => {
   await page.getByTestId("confirm-action").click();
 
   await expect(accountRow(page, KAS_NAME)).toHaveCount(0);
+});
+
+// the-archive-is-its-own-view — the archived ALONE, served by the server: the cash box archived above, and none of
+// the active accounts beside it. Nothing on the view says it is worked out on screen any more.
+test("The archive lists the archived alone", async ({ page }) => {
+  await login(page);
+  await gotoAccounts(page);
+
+  await page.getByTestId("open-archived-accounts").click();
+  await expect(page.getByTestId("financial-accounts-heading")).toHaveText("Archived Accounts");
+  await expect(accountRow(page, KAS_NAME)).toHaveCount(1);
+  await expect(accountRow(page, BCA_NAME)).toHaveCount(0);
+  await expect(page.getByTestId("not-implemented-summary")).toHaveCount(0);
+
+  await page.getByTestId("back-to-active-accounts").click();
+  await expect(accountRow(page, BCA_NAME)).toHaveCount(1);
+  await expect(accountRow(page, KAS_NAME)).toHaveCount(0);
+});
+
+// the-type-decides-the-provider — type Lainnya opens on the real server, its provider set by the type and no number
+// asked. Opened at zero, so the team's totals the later steps check are unchanged.
+test("A Lainnya account opens without a number", async ({ page }) => {
+  await login(page);
+  await gotoAccounts(page);
+
+  await page.getByTestId("open-create-account").click();
+  const form = page.getByTestId("account-form");
+  await expect(form).toBeVisible();
+  await form.getByTestId("account-name").fill(OTHER_NAME);
+  await form.getByTestId("account-type-4").click();
+  await expect(form.getByTestId("account-provider")).toHaveCount(0);
+  await form.getByTestId("account-opening").fill("0");
+  await form.getByTestId("account-form-save").click();
+  await expect(form).toBeHidden();
+
+  await expect(accountRow(page, OTHER_NAME)).toContainText("Other");
 });
 
 // a-shop-with-no-account-gets-an-unknown-one — and one-contract-for-both-handler-types: the same event twice

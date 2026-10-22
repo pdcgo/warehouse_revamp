@@ -69,7 +69,13 @@ func (s *Service) FinancialAccountOverview(
 
 			rows := []total{}
 
-			// ACTIVE accounts only — an archived one holds zero by rule.
+			// ACTIVE accounts by default — the totals cards and the list's tabs. `archived` counts the archived
+			// instead, for the archive view's tabs (the-archive-is-its-own-view); they hold zero by rule.
+			status := m.StatusActive
+			if msg.GetFilter().GetArchived() {
+				status = m.StatusArchived
+			}
+
 			err := db.Raw(`
 SELECT type,
        COALESCE(SUM(balance), 0)           AS balance,
@@ -77,7 +83,7 @@ SELECT type,
        COUNT(*) FILTER (WHERE balance < 0) AS below_zero_count
 FROM financial_accounts
 WHERE team_id = ? AND status = ?
-GROUP BY type`, msg.GetTeamId(), m.StatusActive).Scan(&rows).Error
+GROUP BY type`, msg.GetTeamId(), status).Scan(&rows).Error
 			if err != nil {
 				return nil, dbError(err)
 			}

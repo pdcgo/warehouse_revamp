@@ -6,50 +6,15 @@ import (
 	"gorm.io/gorm"
 )
 
-// LiabilityPoster is how inventory_service records that a WAREHOUSE IS OWED MONEY (#184).
+// LiabilityPoster is how inventory_service records that one team owes another over stock it holds — today, only that the
+// WAREHOUSE owes the owning team for goods it broke or lost.
 //
-// It exists for one obligation that already happens today and goes unrecorded: receiving a delivery
-// costs the warehouse money — the courier's fee at the door, and whatever else it pays to get the
-// goods in — spent on goods belonging to the requesting team. Those numbers already reach the order's
-// COGS (#155) — correct for costing, and silent on who is owed them.
+// An INTERFACE THIS SERVICE OWNS, in this service's own terms, for the same reason selling_service declares
+// `StockPicker`: inventory must never import liability_service, and the implementation lives in the composition root.
 //
-// An INTERFACE THIS SERVICE OWNS, in this service's own terms, for the same reason selling_service
-// declares `StockPicker`: inventory must never import liability_service, and the implementation
-// lives in the composition root where knowing about two services is the entire job.
-//
-// ⚠ IT TAKES THE CALLER'S TRANSACTION, which is the one thing that makes it different from
-// StockPicker — and it is a deliberate difference, not an inconsistency:
-//
-//   - selling→inventory CANNOT be atomic. Stock is another service's commit, so that path takes the
-//     stock and COMPENSATES if the order then fails.
-//   - inventory→liability CAN be. Both tables live in the same database, so the acceptance and the
-//     obligation are one transaction and there is nothing to compensate.
-//
-// Atomicity here is required rather than nice. If the stock movement commits and the obligation does
-// not, the warehouse is out of pocket with no record — which is EXACTLY the situation this service
-// was built to fix, reproduced by the code meant to fix it.
-//
-// The cost of passing a transaction across a service boundary is real and worth naming: the two
-// services are no longer independently deployable while this call is in-process. The day liability
-// moves to its own database, this becomes an event and the atomicity argument has to be re-made — at
-// which point the reconciliation report (#187) is what covers the gap.
+// ⚠ The courier's charge at the door is no longer posted through here: balance posts it from *Restock Accepted*
+// (balance-posts-the-couriers-debt-from-the-event), and the accept never writes balance's tables.
 type LiabilityPoster interface {
-	// PostRestockOutlay records that `sellingTeamID` owes `warehouseID` what the warehouse laid out to
-	// receive restock request `restockRequestID` — the SUM of that request's cost lines.
-	//
-	// ONE CALL PER DELIVERY, not per cost line. The debt is for the delivery; the breakdown of why
-	// lives on the restock beside the goods, and posting per line would make the ledger's `source_id`
-	// name a cost row while every other source names a business object.
-	//
-	// It must be IDEMPOTENT on the restock request: an acceptance that is somehow retried must not
-	// charge twice. A movement already recorded is a normal answer, not an error.
-	PostRestockOutlay(
-		ctx context.Context,
-		tx *gorm.DB,
-		sellingTeamID, warehouseID, restockRequestID, actorID uint64,
-		amount int64,
-	) error
-
 	// PostStockDamage records that `warehouseID` owes `ownerTeamID` the value of stock it broke or lost
 	// while holding it, valued at the batch's frozen cost (business_level Â§Warehouse 5).
 	//
@@ -86,7 +51,6 @@ type LiabilityPoster interface {
 // runs in production is the day COD obligations stop being recorded. That is what #187 exists to catch.
 type noLiability struct{}
 
-
 // StockDamageKind — WHICH custody movement a posting records, in this service's own terms.
 //
 // ⚠ IT REPLACED A BOOLEAN. The parameter used to be `reversal`, which said only whether the money was
@@ -105,10 +69,6 @@ const (
 	// reversal — the flag the ledger still keeps, now carried by the kind rather than by the caller.
 	StockDamageFound
 )
-
-func (noLiability) PostRestockOutlay(context.Context, *gorm.DB, uint64, uint64, uint64, uint64, int64) error {
-	return nil
-}
 
 func (noLiability) PostStockDamage(
 	context.Context, *gorm.DB, uint64, uint64, uint64, uint64, int64, StockDamageKind,

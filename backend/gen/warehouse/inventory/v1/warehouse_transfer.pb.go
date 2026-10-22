@@ -312,8 +312,8 @@ type WarehouseTransferProblem struct {
 	Count int64                        `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
 	// What they were worth, FILLED BY THE SYSTEM from the layer the units came off — the newest first
 	// (the-system-fills-a-transfers-prices). `total` is exact; `price_unit` is total ÷ count, for display.
-	PriceUnit int64 `protobuf:"varint,3,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
-	Total     int64 `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	PriceUnit float64 `protobuf:"fixed64,3,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
+	Total     float64 `protobuf:"fixed64,4,opt,name=total,proto3" json:"total,omitempty"`
 	// Warehouse B's note on the row (a-transfer-problem-row-carries-a-note). Optional.
 	Note          string `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -364,14 +364,14 @@ func (x *WarehouseTransferProblem) GetCount() int64 {
 	return 0
 }
 
-func (x *WarehouseTransferProblem) GetPriceUnit() int64 {
+func (x *WarehouseTransferProblem) GetPriceUnit() float64 {
 	if x != nil {
 		return x.PriceUnit
 	}
 	return 0
 }
 
-func (x *WarehouseTransferProblem) GetTotal() int64 {
+func (x *WarehouseTransferProblem) GetTotal() float64 {
 	if x != nil {
 		return x.Total
 	}
@@ -397,9 +397,9 @@ type WarehouseTransferItem struct {
 	Count int64 `protobuf:"varint,5,opt,name=count,proto3" json:"count,omitempty"`
 	// The value the out-leg took for this product — the sum of its batch rows, each at its own price. Exact, and filled
 	// by the system (the-system-fills-a-transfers-prices).
-	Total int64 `protobuf:"varint,6,opt,name=total,proto3" json:"total,omitempty"`
+	Total float64 `protobuf:"fixed64,6,opt,name=total,proto3" json:"total,omitempty"`
 	// total ÷ count, for display only. Different batch prices live in the ledger, never on the line.
-	PriceUnit int64 `protobuf:"varint,7,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
+	PriceUnit float64 `protobuf:"fixed64,7,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
 	// Where A takes the units from — A's pick list, chosen by the system at create, fewest first.
 	Picks []*WarehouseTransferPlacement `protobuf:"bytes,8,rep,name=picks,proto3" json:"picks,omitempty"`
 	// What arrived in the box, broken units included. 0 until accepted.
@@ -477,14 +477,14 @@ func (x *WarehouseTransferItem) GetCount() int64 {
 	return 0
 }
 
-func (x *WarehouseTransferItem) GetTotal() int64 {
+func (x *WarehouseTransferItem) GetTotal() float64 {
 	if x != nil {
 		return x.Total
 	}
 	return 0
 }
 
-func (x *WarehouseTransferItem) GetPriceUnit() int64 {
+func (x *WarehouseTransferItem) GetPriceUnit() float64 {
 	if x != nil {
 		return x.PriceUnit
 	}
@@ -621,7 +621,7 @@ type WarehouseTransfer struct {
 	// The lines. At least one.
 	Items []*WarehouseTransferItem `protobuf:"bytes,7,rep,name=items,proto3" json:"items,omitempty"`
 	// Σ line totals — the value of the goods moved. Both costs sit outside it.
-	Total int64 `protobuf:"varint,8,opt,name=total,proto3" json:"total,omitempty"`
+	Total float64 `protobuf:"fixed64,8,opt,name=total,proto3" json:"total,omitempty"`
 	// The trip — entered by A when it ships (the-sender-enters-the-courier-at-ship); all optional
 	// (a-transfer-may-travel-without-a-courier).
 	ShipmentId  uint64 `protobuf:"varint,9,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
@@ -629,11 +629,11 @@ type WarehouseTransfer struct {
 	ReceiptFile string `protobuf:"bytes,11,opt,name=receipt_file,json=receiptFile,proto3" json:"receipt_file,omitempty"`
 	// The shipping expense — the selling team's, from its own account (a-transfer-has-the-restocks-two-costs).
 	// Never in a unit's price (a-transfer-never-changes-a-units-price).
-	ShipmentCost int64 `protobuf:"varint,12,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
+	ShipmentCost float64 `protobuf:"fixed64,12,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
 	// Required when shipment_cost is above 0 (a-transfer-names-its-paying-account).
 	FinanceAccountId uint64 `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
 	// The courier's charge at B's door — B pays it, the team owes B. Entered at accept; 0 until then.
-	WarehouseAdditionalCost int64 `protobuf:"varint,14,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
+	WarehouseAdditionalCost float64 `protobuf:"fixed64,14,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
 	// Required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for).
 	WarehouseAdditionalCostNote string `protobuf:"bytes,15,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
 	// The two legs; 0 = not yet written.
@@ -739,7 +739,7 @@ func (x *WarehouseTransfer) GetItems() []*WarehouseTransferItem {
 	return nil
 }
 
-func (x *WarehouseTransfer) GetTotal() int64 {
+func (x *WarehouseTransfer) GetTotal() float64 {
 	if x != nil {
 		return x.Total
 	}
@@ -767,7 +767,7 @@ func (x *WarehouseTransfer) GetReceiptFile() string {
 	return ""
 }
 
-func (x *WarehouseTransfer) GetShipmentCost() int64 {
+func (x *WarehouseTransfer) GetShipmentCost() float64 {
 	if x != nil {
 		return x.ShipmentCost
 	}
@@ -781,7 +781,7 @@ func (x *WarehouseTransfer) GetFinanceAccountId() uint64 {
 	return 0
 }
 
-func (x *WarehouseTransfer) GetWarehouseAdditionalCost() int64 {
+func (x *WarehouseTransfer) GetWarehouseAdditionalCost() float64 {
 	if x != nil {
 		return x.WarehouseAdditionalCost
 	}
@@ -978,8 +978,8 @@ type WarehouseTransferCreateRequest struct {
 	Note  string                   `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
 	// Optional now; editable until accepted. finance_account_id is required when shipment_cost is above 0 — the handler
 	// checks.
-	ShipmentCost     int64  `protobuf:"varint,6,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
-	FinanceAccountId uint64 `protobuf:"varint,7,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	ShipmentCost     float64 `protobuf:"fixed64,6,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
+	FinanceAccountId uint64  `protobuf:"varint,7,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1049,7 +1049,7 @@ func (x *WarehouseTransferCreateRequest) GetNote() string {
 	return ""
 }
 
-func (x *WarehouseTransferCreateRequest) GetShipmentCost() int64 {
+func (x *WarehouseTransferCreateRequest) GetShipmentCost() float64 {
 	if x != nil {
 		return x.ShipmentCost
 	}
@@ -1562,9 +1562,9 @@ type WarehouseTransferUpdateRequest struct {
 	TransferId uint64                 `protobuf:"varint,2,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
 	// A full replace of the three editable fields. A cost change sends the difference to the paying account, and an
 	// account change moves the whole amount (the-shipping-expense-reaches-the-account-by-event).
-	ShipmentCost     int64  `protobuf:"varint,3,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
-	FinanceAccountId uint64 `protobuf:"varint,4,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
-	Note             string `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	ShipmentCost     float64 `protobuf:"fixed64,3,opt,name=shipment_cost,json=shipmentCost,proto3" json:"shipment_cost,omitempty"`
+	FinanceAccountId uint64  `protobuf:"varint,4,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	Note             string  `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1613,7 +1613,7 @@ func (x *WarehouseTransferUpdateRequest) GetTransferId() uint64 {
 	return 0
 }
 
-func (x *WarehouseTransferUpdateRequest) GetShipmentCost() int64 {
+func (x *WarehouseTransferUpdateRequest) GetShipmentCost() float64 {
 	if x != nil {
 		return x.ShipmentCost
 	}
@@ -2210,10 +2210,10 @@ type WarehouseTransferAcceptRequest struct {
 	TransferId uint64 `protobuf:"varint,2,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
 	// One entry per line, EVERY line exactly once — accepting IS the count.
 	Lines []*WarehouseTransferCountedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
-	// The courier's charge at B's door, whole rupiah; 0 = none. Its note is required when it is above 0 — the handler
+	// The courier's charge at B's door, rupiah; 0 = none. Its note is required when it is above 0 — the handler
 	// checks.
-	WarehouseAdditionalCost     int64  `protobuf:"varint,4,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
-	WarehouseAdditionalCostNote string `protobuf:"bytes,5,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
+	WarehouseAdditionalCost     float64 `protobuf:"fixed64,4,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
+	WarehouseAdditionalCostNote string  `protobuf:"bytes,5,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -2269,7 +2269,7 @@ func (x *WarehouseTransferAcceptRequest) GetLines() []*WarehouseTransferCountedL
 	return nil
 }
 
-func (x *WarehouseTransferAcceptRequest) GetWarehouseAdditionalCost() int64 {
+func (x *WarehouseTransferAcceptRequest) GetWarehouseAdditionalCost() float64 {
 	if x != nil {
 		return x.WarehouseAdditionalCost
 	}
@@ -2428,8 +2428,8 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x1d\n" +
 	"\x05count\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\x12\x1d\n" +
 	"\n" +
-	"price_unit\x18\x03 \x01(\x03R\tpriceUnit\x12\x14\n" +
-	"\x05total\x18\x04 \x01(\x03R\x05total\x12\x1c\n" +
+	"price_unit\x18\x03 \x01(\x01R\tpriceUnit\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x01R\x05total\x12\x1c\n" +
 	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\"\xda\x03\n" +
 	"\x15WarehouseTransferItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
@@ -2438,9 +2438,9 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x03sku\x18\x03 \x01(\tR\x03sku\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1d\n" +
 	"\x05count\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\x12\x14\n" +
-	"\x05total\x18\x06 \x01(\x03R\x05total\x12\x1d\n" +
+	"\x05total\x18\x06 \x01(\x01R\x05total\x12\x1d\n" +
 	"\n" +
-	"price_unit\x18\a \x01(\x03R\tpriceUnit\x12H\n" +
+	"price_unit\x18\a \x01(\x01R\tpriceUnit\x12H\n" +
 	"\x05picks\x18\b \x03(\v22.warehouse.inventory.v1.WarehouseTransferPlacementR\x05picks\x12#\n" +
 	"\rarrived_count\x18\t \x01(\x03R\farrivedCount\x12R\n" +
 	"\n" +
@@ -2464,15 +2464,15 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x06status\x18\x05 \x01(\x0e2/.warehouse.inventory.v1.WarehouseTransferStatusR\x06status\x12\x12\n" +
 	"\x04note\x18\x06 \x01(\tR\x04note\x12C\n" +
 	"\x05items\x18\a \x03(\v2-.warehouse.inventory.v1.WarehouseTransferItemR\x05items\x12\x14\n" +
-	"\x05total\x18\b \x01(\x03R\x05total\x12\x1f\n" +
+	"\x05total\x18\b \x01(\x01R\x05total\x12\x1f\n" +
 	"\vshipment_id\x18\t \x01(\x04R\n" +
 	"shipmentId\x12\x18\n" +
 	"\areceipt\x18\n" +
 	" \x01(\tR\areceipt\x12!\n" +
 	"\freceipt_file\x18\v \x01(\tR\vreceiptFile\x12#\n" +
-	"\rshipment_cost\x18\f \x01(\x03R\fshipmentCost\x12,\n" +
+	"\rshipment_cost\x18\f \x01(\x01R\fshipmentCost\x12,\n" +
 	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountId\x12:\n" +
-	"\x19warehouse_additional_cost\x18\x0e \x01(\x03R\x17warehouseAdditionalCost\x12C\n" +
+	"\x19warehouse_additional_cost\x18\x0e \x01(\x01R\x17warehouseAdditionalCost\x12C\n" +
 	"\x1ewarehouse_additional_cost_note\x18\x0f \x01(\tR\x1bwarehouseAdditionalCostNote\x126\n" +
 	"\x17outbound_transaction_id\x18\x10 \x01(\x04R\x15outboundTransactionId\x124\n" +
 	"\x16inbound_transaction_id\x18\x11 \x01(\x04R\x14inboundTransactionId\x12+\n" +
@@ -2495,14 +2495,14 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x15WarehouseTransferLine\x12&\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12\x1d\n" +
-	"\x05count\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\"\x82\x03\n" +
+	"\x05count\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\"\x8b\x03\n" +
 	"\x1eWarehouseTransferCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x123\n" +
 	"\x11from_warehouse_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ffromWarehouseId\x12/\n" +
 	"\x0fto_warehouse_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\rtoWarehouseId\x12M\n" +
 	"\x05lines\x18\x04 \x03(\v2-.warehouse.inventory.v1.WarehouseTransferLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines\x12\x1c\n" +
-	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note\x12,\n" +
-	"\rshipment_cost\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\fshipmentCost\x12,\n" +
+	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note\x125\n" +
+	"\rshipment_cost\x18\x06 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\fshipmentCost\x12,\n" +
 	"\x12finance_account_id\x18\a \x01(\x04R\x10financeAccountId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"h\n" +
 	"\x1fWarehouseTransferCreateResponse\x12E\n" +
@@ -2542,12 +2542,12 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\n" +
 	"\b\x01\x02\x03\x04\x05\x06\t\b\"h\n" +
 	"\x1fWarehouseTransferDetailResponse\x12E\n" +
-	"\btransfer\x18\x01 \x01(\v2).warehouse.inventory.v1.WarehouseTransferR\btransfer\"\xf7\x01\n" +
+	"\btransfer\x18\x01 \x01(\v2).warehouse.inventory.v1.WarehouseTransferR\btransfer\"\x80\x02\n" +
 	"\x1eWarehouseTransferUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
 	"\vtransfer_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
-	"transferId\x12,\n" +
-	"\rshipment_cost\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\fshipmentCost\x12,\n" +
+	"transferId\x125\n" +
+	"\rshipment_cost\x18\x03 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\fshipmentCost\x12,\n" +
 	"\x12finance_account_id\x18\x04 \x01(\x04R\x10financeAccountId\x12\x1c\n" +
 	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"h\n" +
@@ -2593,13 +2593,13 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"transferId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"h\n" +
 	"\x1fWarehouseTransferArriveResponse\x12E\n" +
-	"\btransfer\x18\x01 \x01(\v2).warehouse.inventory.v1.WarehouseTransferR\btransfer\"\xe7\x02\n" +
+	"\btransfer\x18\x01 \x01(\v2).warehouse.inventory.v1.WarehouseTransferR\btransfer\"\xf0\x02\n" +
 	"\x1eWarehouseTransferAcceptRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
 	"\vtransfer_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
 	"transferId\x12T\n" +
-	"\x05lines\x18\x03 \x03(\v24.warehouse.inventory.v1.WarehouseTransferCountedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines\x12C\n" +
-	"\x19warehouse_additional_cost\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x17warehouseAdditionalCost\x12M\n" +
+	"\x05lines\x18\x03 \x03(\v24.warehouse.inventory.v1.WarehouseTransferCountedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines\x12L\n" +
+	"\x19warehouse_additional_cost\x18\x04 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\x17warehouseAdditionalCost\x12M\n" +
 	"\x1ewarehouse_additional_cost_note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x1bwarehouseAdditionalCostNote:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"\xc6\x02\n" +
 	"\x1cWarehouseTransferCountedLine\x12 \n" +

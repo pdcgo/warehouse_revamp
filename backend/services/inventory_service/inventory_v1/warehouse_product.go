@@ -23,7 +23,7 @@ import (
 func linkWarehouseProducts(
 	tx *gorm.DB,
 	warehouseID uint64,
-	items []inventory_service_models.RestockRequestItem,
+	items []inventory_service_models.RestockItem,
 ) error {
 	if len(items) == 0 {
 		return nil
@@ -38,12 +38,25 @@ func linkWarehouseProducts(
 	// rows we already know are redundant is wasteful, and because the day this becomes a DO UPDATE
 	// (say, to stamp a "last requested" time) the absence of this would be a runtime error rather than
 	// a review comment.
-	seen := make(map[uint64]struct{}, len(items))
-	links := make([]inventory_service_models.WarehouseProduct, 0, len(items))
-
+	ids := make([]uint64, 0, len(items))
 	for i := range items {
-		productID := items[i].ProductID
+		ids = append(ids, items[i].ProductID)
+	}
 
+	return linkWarehouseProductIDs(tx, warehouseID, ids)
+}
+
+// linkWarehouseProductIDs is linkWarehouseProducts by product id — a transfer's create links its products to the
+// RECEIVING warehouse the same way (a-transfer-links-its-products-to-the-receiver), so B's crew can find what is coming.
+func linkWarehouseProductIDs(tx *gorm.DB, warehouseID uint64, productIDs []uint64) error {
+	if len(productIDs) == 0 {
+		return nil
+	}
+
+	seen := make(map[uint64]struct{}, len(productIDs))
+	links := make([]inventory_service_models.WarehouseProduct, 0, len(productIDs))
+
+	for _, productID := range productIDs {
 		_, already := seen[productID]
 		if already {
 			continue

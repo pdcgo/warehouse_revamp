@@ -25,7 +25,7 @@ func (f fakeRoles) Roles(_ context.Context, userID, teamID uint64) (role_basev1.
 func newServiceWithRoles(t *testing.T, db *gorm.DB, roles selling_v1.RoleReader) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, nil, roles)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, roles, nil)
 }
 
 func accessCheck(t *testing.T, svc *selling_v1.Service, teamID, shopID, userID uint64) *sellingv1.ShopAccessCheckResponse {

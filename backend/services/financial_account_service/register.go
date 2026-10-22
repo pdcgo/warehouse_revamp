@@ -20,8 +20,14 @@ import (
 // own delivery state, so the accounts falling behind never delays a report, and vice versa.
 const WithdrawalSubscription = "financial-account-withdrawal"
 
+// TeamPaymentSubscription is the push subscription that brings liability's accepted team payments to the
+// accounts (a-team-payment-posts-on-accept) — one row out of the payer's account, one into the creditor's.
+// Declared with the same care as the withdrawal's: tools/san's `pubsub ensure` creates it with an event_type
+// filter, which is immutable once made.
+const TeamPaymentSubscription = "financial-account-team-payment"
+
 // NewRegister mounts financial_account_service's Connect handlers under the shared interceptor chain, mounts
-// the withdrawal listener's push route, and reports the Connect services for reflection.
+// the withdrawal and team-payment listeners' push routes, and reports the Connect services for reflection.
 func NewRegister(
 	mux *http.ServeMux,
 	accounts *financial_account_v1.Service,
@@ -34,6 +40,7 @@ func NewRegister(
 		// THE LISTENER — /event/<sub_id>/push. A plain HTTP route, not a Connect RPC, so the roling ACL does not
 		// reach it: it is the broker's door, restricted at the ingress like settlement's fold.
 		mux.Handle("/event/"+WithdrawalSubscription+"/push", event_source.NewMuxPushHandler(accounts.WithdrawalHandler()))
+		mux.Handle("/event/"+TeamPaymentSubscription+"/push", event_source.NewMuxPushHandler(accounts.TeamPaymentHandler()))
 
 		return san_grpc.ServiceReflectNames{
 			financial_accountv1connect.FinancialAccountServiceName,

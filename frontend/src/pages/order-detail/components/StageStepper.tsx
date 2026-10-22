@@ -6,20 +6,20 @@ import type { OrderStage, OrderStageId } from "../../../features/orders/stages";
 
 // WHERE THIS ORDER IS ON ITS JOURNEY — a picture instead of a badge to read.
 //
-// The owner's eight statuses are not a line: four are the journey (menunggu → diproses → dikirim →
-// selesai) and four are ways OFF it (bermasalah, hilang, retur, batal). So the stepper draws the
-// journey as steps, and an off-journey status as a BRANCH hanging from the step it left from, in its
-// own colour — "cancelled while waiting" and "lost after it shipped" are different stories and should
-// look it.
+// The eleven statuses are not a line: six are the journey (menunggu → diproses → sudah diambil → sudah
+// diserahkan → dikirim → selesai) and five are ways OFF it (bermasalah, hilang, retur, retur diterima,
+// batal). So the stepper draws the journey as steps, and an off-journey status as a BRANCH hanging from
+// the step it left from, in its own colour — "cancelled while waiting" and "lost after it shipped" are
+// different stories and should look it.
 //
 // ⚠ WHERE A BRANCH LEAVES IS INFERRED, and stated here rather than hidden. The order's history would say
-// exactly, but a cancel can only happen before the parcel ships (the business rule), and lost / return /
-// problem only after it — so cancel branches from Menunggu and the other three from Dikirim.
+// exactly, but a cancel only happens from pending (the status diagram), and lost / return / problem only
+// after the handover — so cancel branches from Menunggu and the other four from Dikirim.
 //
 // ⚠ THE COLOURS ARE CATEGORICAL — the stage hues from `stages.ts`, the one case the theme rule names as
 // hue-not-role. Done steps take the current stage's colour so the path reads as one travelled line.
 
-const JOURNEY: OrderStageId[] = ["pending", "processed", "shipped", "completed"];
+const JOURNEY: OrderStageId[] = ["pending", "processed", "picked", "shipping", "shipped", "completed"];
 
 /** The forward step an off-journey status leaves from. */
 function branchesFrom(id: OrderStageId): OrderStageId {

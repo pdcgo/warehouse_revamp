@@ -58,3 +58,40 @@ func TestFinancialAccountOverview_BalancesAndTotalsByType(t *testing.T) {
 		t.Fatalf("cash = %+v", box)
 	}
 }
+
+// the-archive-is-its-own-view: the archive's type tabs count the ARCHIVED, from the server — not from a page of rows.
+func TestFinancialAccountOverview_ArchivedTotalsCountTheArchived(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	mustCreate(t, svc, bca(teamA, "BCA Live", "7777000011", 1_000))
+
+	for i, spec := range []accountSpec{
+		bca(teamA, "BCA Old", "7777000012", 0),
+		bca(teamA, "BNI Old", "7777000013", 0),
+		cash(teamA, "Kas Old", 0),
+	} {
+		a := mustCreate(t, svc, spec)
+
+		_, err := svc.FinancialAccountArchive(asAni(), connect.NewRequest(&financial_accountv1.FinancialAccountArchiveRequest{TeamId: teamA, AccountId: a.GetId()}))
+		if err != nil {
+			t.Fatalf("archive %d: %v", i, err)
+		}
+	}
+
+	resp, err := svc.FinancialAccountOverview(asAni(), connect.NewRequest(&financial_accountv1.FinancialAccountOverviewRequest{
+		TeamId: teamA,
+		Filter: &financial_accountv1.FinancialAccountOverviewFilter{Archived: true},
+		MetricRequest: []financial_accountv1.FinancialAccountMetricDataType{
+			financial_accountv1.FinancialAccountMetricDataType_FINANCIAL_ACCOUNT_METRIC_DATA_TYPE_TYPE_TOTAL,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("overview: %v", err)
+	}
+
+	totals := resp.Msg.GetItems()[0].GetTypeTotal().GetItems()
+	if len(totals) != 2 || totals[0].GetAccountCount() != 2 || totals[1].GetAccountCount() != 1 || totals[0].GetBalance() != 0 {
+		t.Fatalf("archived totals = %+v — want 2 banks then 1 cash box, all at zero", totals)
+	}
+}

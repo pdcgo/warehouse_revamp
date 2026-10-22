@@ -29,7 +29,7 @@ const At41 = routedAt(41n);
 const At42 = routedAt(42n);
 
 const meta = {
-  title: "Pages/Racks/RackDetail",
+  title: "Pages/Inventory/Racks/RackDetail",
   component: At41,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {

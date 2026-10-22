@@ -31,8 +31,6 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useRestockRequest, useSaveRestockRequest } from "../../features/restock/queries";
 import { useLineSuppliers } from "../../features/restock/LineSupplier";
 import { toRupiah } from "../../features/restock/counting";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { OwnProductPicker } from "../../components/products/OwnProductPicker";
 import type { PickedProduct } from "../../components/products/ProductSelect";
@@ -43,7 +41,6 @@ import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ReceiptUpload, type ReceiptValue, emptyReceipt } from "../../components/orders/ReceiptUpload";
 import { toaster } from "../../components/feedback/Toaster";
 import { type FormMode, type LineDraft, lineFromItem, lineFromPicked, missingParts, modeFor, toQty } from "./draft";
-import { RESTOCK_FORM_PENDING } from "./pending";
 import { LineCard } from "./components/LineCard";
 import { SummaryCard } from "./components/SummaryCard";
 
@@ -410,7 +407,6 @@ export function RestockRequestFormPage() {
     <Stack gap="section" maxW="7xl" data-testid={isEdit ? "restock-edit-page" : "restock-create-page"}>
       {header}
 
-      <NotImplementedSummary list={RESTOCK_FORM_PENDING} />
 
       {headerLocked && (
         <Alert.Root status="info" data-testid="restock-arrived-banner">
@@ -496,7 +492,6 @@ export function RestockRequestFormPage() {
                         <HStack gap="1">
                           {t("restock.form.financeAccount")}
                           <Field.RequiredIndicator />
-                          <NotImplemented list={RESTOCK_FORM_PENDING} id="financeAccount" />
                         </HStack>
                       </Field.Label>
                       <Box w="full">
@@ -530,7 +525,6 @@ export function RestockRequestFormPage() {
                       <Field.Label>
                         <HStack gap="1">
                           {t("restock.form.courier")}
-                          <NotImplemented list={RESTOCK_FORM_PENDING} id="shipment" />
                         </HStack>
                       </Field.Label>
                       <Box w="full" data-testid="restock-courier">
@@ -554,7 +548,6 @@ export function RestockRequestFormPage() {
                       <Field.Label>
                         <HStack gap="1">
                           {t("restock.form.labelPhoto")}
-                          <NotImplemented list={RESTOCK_FORM_PENDING} id="receiptFile" />
                         </HStack>
                       </Field.Label>
                       <Box w="full" data-testid="restock-receipt-file">

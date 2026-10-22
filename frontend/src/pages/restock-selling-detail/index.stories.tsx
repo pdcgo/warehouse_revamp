@@ -34,7 +34,7 @@ const At505 = routedAt(505n);
 const At507 = routedAt(507n);
 
 const meta = {
-  title: "Pages/Restock/RestockSellingDetail",
+  title: "Pages/Inventory/Restock/RestockSellingDetail",
   component: At501,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {
@@ -247,8 +247,9 @@ export const TheParcelAndThePayment: Story = {
 };
 
 // a-short-unit-at-the-door-is-missing — the column is MISSING, never Lost. 503's rice: 10 ordered, 9 in the box, 2 of
-// them broken — so 7 good, 2 broken worth 130.000 with the warehouse's note, 1 missing worth 65.000
-// (the-problem-price-is-filled-by-the-system).
+// them broken — so 7 good, 2 broken worth 132.333,33 with the warehouse's note, 1 missing worth 66.166,67. Each is the
+// landed price, 650.000 ÷ 10 + (30.000 shipping + 5.000 courier's charge) ÷ 30 ordered = 66.166,67
+// (the-problem-price-is-filled-by-the-system, all-qty-is-every-unit-ordered).
 export const TheMissingColumn: Story = {
   render: () => <At503 />,
   play: async ({ canvasElement }) => {
@@ -262,10 +263,10 @@ export const TheMissingColumn: Story = {
     await expect(canvas.getByTestId("restock-detail-received-74")).toHaveTextContent("9");
     await expect(canvas.getByTestId("restock-detail-good-74")).toHaveTextContent("7");
     await expect(canvas.getByTestId("restock-detail-broken-74-count")).toHaveTextContent("2");
-    await expect(canvas.getByTestId("restock-detail-broken-74-value")).toHaveTextContent("Rp 130.000");
+    await expect(canvas.getByTestId("restock-detail-broken-74-value")).toHaveTextContent("Rp 132.333");
     await expect(canvas.getByTestId("restock-detail-broken-74-note")).toHaveTextContent("Karung sobek");
     await expect(canvas.getByTestId("restock-detail-missing-74-count")).toHaveTextContent("1");
-    await expect(canvas.getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 65.000");
+    await expect(canvas.getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.167");
     await expect(canvas.getByTestId("restock-detail-missing")).toHaveTextContent("1 missing");
   },
 };

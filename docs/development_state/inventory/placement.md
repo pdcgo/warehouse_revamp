@@ -1,22 +1,22 @@
 # Development state — inventory / placement
 
-**As of 2026-10-12, placement is DECIDED, PROTOTYPED and ACCEPTED** ([the-placement-prototype-is-accepted](../../business/inventory/placement_decision.md#the-placement-prototype-is-accepted)). Its writes are not built. Every question in
+**As of 2026-10-17, placement is BUILT on the ledgers** (uncommitted, for the owner's review — [ledgers.md](ledgers.md)).
+Decided, prototyped and accepted on 2026-10-12 ([the-placement-prototype-is-accepted](../../business/inventory/placement_decision.md#the-placement-prototype-is-accepted)). Every question in
 [placement_clarify.md](../../business/inventory/placement_clarify.md) is answered and its contradictions are resolved; the
 decisions are in [placement_decision.md](../../business/inventory/placement_decision.md) (20) and two in
 [transaction_decision.md](../../business/inventory/transaction_decision.md) (`a-sample-is-handed-over-at-the-warehouse`,
-`a-move-has-its-own-type`). Rack detail's two new writes — **Move Goods** and **Record Sample** — run in Storybook against a
-stub that plays those decisions; in the app they are on Rack detail and answer **Unimplemented**. The Racks page — the
-placement list — is built and real, and now shows each rack's product count and stock count.
+`a-move-has-its-own-type`). Rack detail's two writes — **Move Goods** and **Record Sample** — are real (`PostMove`, `PostSample`); every
+rack read is on `product_placements`; `racks` is now `placements` (`00028`) with `deleted_at` and lowercase codes.
 
-**Next step: backend analysis, which waits on the ledgers.** design_accept passed with no change asked for. The backend
-step is on the same critical path as the transfer: the decided ledgers first
-([the-decided-ledgers-come-before-the-transfer](../../business/inventory/warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)).
+**Next step: the owner's review.** Both writes are performance-audited and fixed (2026-10-17, [RackMove](../../../audits/services/inventory_service/performances/RackMove.md), [RackSample](../../../audits/services/inventory_service/performances/RackSample.md): 9 and 12 statements whatever the lines). `RackStockLine.counting` waits on the
+stock count.
 
 ```mermaid
 flowchart LR
-  A["design_accept passed - 2026-10-12"] --> Q["the ledgers' open questions"]
-  Q --> L["build the ledgers"]
-  L --> M["RackMove and RackSample on them"]
+  A["design_accept passed - 2026-10-12"] --> L["the ledgers built"]
+  L --> M["RackMove and RackSample on them - built"]
+  M --> P["performance audit - done and fixed 2026-10-17"]
+  P --> R["owner review"]
 ```
 
 ## What was decided
@@ -34,14 +34,15 @@ flowchart LR
 | | |
 | --- | --- |
 | contract | `RackList` gains a `STOCK` data type — `RackStockTotal` (rack id → stock count and product count) per rack on the page, 0 and 0 for an empty one. `RackService.RackMove` (`from_rack_id`, lines of `product_id`·`quantity`·`to_rack_id`, `description`) and `RackService.RackSample` (`rack_id`, lines, `recipient`, `description`), both answering `repeated RackTransaction` (one per owning team). `RackStockLine.counting` (always false until opname). `MovementKind.SAMPLE = 8` |
-| backend: real | `RackList` serves the STOCK slice only when asked: one grouped `SUM(on_hand)`, `COUNT(*)` over the page's racks (`rackStockTotals` — a level row is one product on one rack, so the rows are the distinct products); `rack_list_stock_test.go` (sums and counts, empty, zeroed, another warehouse, not asked) |
-| backend: prototype | `inventory_v1/rack_move.go`, `rack_sample.go` — methods on `*Service` answering Unimplemented, so service.go's compile-time assertion still catches a forgotten RPC; `rack_move_test.go`, `rack_sample_test.go` pin it. **No tables, no migration** |
+| backend: real | `RackList` serves the STOCK slice only when asked: one grouped `SUM(stock_count)`, `COUNT(*)` over `product_placements` (`rackStockTotals`); `rack_list_stock_test.go` · `RackMove` → `PostMove` (one `move` tx per owning team, a placement row per rack touched, no batch row, all or nothing) · `RackSample` → `PostSample` (oldest batch first, the page's rack, `recipient` on the tx) · `RackDelete` soft-deletes, refused while any `product_placements` row on it is above 0 · `RackStock`, `RackDetail`, `RackHistory` read the ledgers |
+| backend: schema | `00028_racks_become_placements` — the table, sequence, pkey and constraint renamed; `deleted_at`; codes lowercased (a collision gets the row's id as a suffix); `CHECK (code = lower(btrim(code)))`; the unique index on `deleted_at IS NULL`. `CleanRackCode` trims and lowercases on create and update |
+| backend: tests | `rack_move_test.go`, `rack_sample_test.go` (4 + 2), `rack_move_race_test.go` (`-tags raceaudit`, 2) |
 | frontend: features | `features/racks/queries.ts`: `useRackContents` (the whole rack, one 200-row page, products resolved by ByIds), `useRackMove`, `useRackSample` (both through `useInvalidateStock`); `movementKind.ts` labels SAMPLE |
 | frontend: components | `RackSelect` gains `excludeRackId` (a move's source) and `testId` (+ story `LeavesOneRackOut`) |
 | frontend: Racks page | `pages/racks/`: *Products* and *Stock* columns (`rackListPageRowData`, `rackStockTotalsFromList`); the list now spreads `listQuery` and sits in `RefreshOverlay` (RULE 10, which it had missed) |
 | frontend: Rack detail | `pages/rack-detail/`: Move Goods and Record Sample actions (a `⋯` menu on a phone), `components/MoveGoodsDialog.tsx`, `components/RecordSampleDialog.tsx`, `pending.ts`; the page's hand-rolled reads re-run on a `reloadKey` after a write; both history tabs show **who** (`by`, via `fetchActors`) and the product's name instead of `#id`; the Products and Prices tables have a **Team** column (`TeamItem`), and the product cell no longer repeats the team |
 | Storybook | `.storybook/rackStub.ts` — the registry (rackList with search, paging and the STOCK slice; rackCreate, rackUpdate, rackDelete as the server answers them, on a writeable copy of the fixture racks), rackDetail, rackStock, rackHistory and the two writes, writeable, reset in preview's `beforeEach`; `rackStubScenario.raceBeforeNextWrite` arms the all-or-nothing refusal; `rackShelf` / `lastRackWrite` for assertions. Shelves: A-01-1 holds three teams' goods, A-01-2 a counted product |
-| stories | `Pages/Racks/RackList` — Default, Search, CreateRack, DuplicateCodeIsRefused, EditRack, DeleteAnEmptyRack, DeleteRefusedWhileItHoldsStock, OpensRackDetail · `Pages/Racks/RackDetail` — Default, MoveToOneRack, SplitOverTwoRacks, MoveEverythingNeedsARack, TheSourceRackIsNotOffered, SameRackTwiceIsOneLine, RefusedWholeWhenALineChanged, ACountedProductIsLocked, RecordSample, ASampleOfACountedProductIsLocked, PlacementHistoryNamesWhoMovedIt |
+| stories | `Pages/Inventory/Racks/RackList` — Default, Search, CreateRack, DuplicateCodeIsRefused, EditRack, DeleteAnEmptyRack, DeleteRefusedWhileItHoldsStock, OpensRackDetail · `Pages/Inventory/Racks/RackDetail` — Default, MoveToOneRack, SplitOverTwoRacks, MoveEverythingNeedsARack, TheSourceRackIsNotOffered, SameRackTwiceIsOneLine, RefusedWholeWhenALineChanged, ACountedProductIsLocked, RecordSample, ASampleOfACountedProductIsLocked, PlacementHistoryNamesWhoMovedIt |
 | i18n | `racks.table.products`, `racks.table.stock`, `racks.detail.team`, `racks.move.*`, `racks.sample.*`, `racks.detail.actions`, `racks.detail.pending.*`, `warehouseProduct.kind.sample` (en, id) |
 | docs | [rpc.md § RackMove and RackSample](../../services/inventory_service/rpc.md) |
 | tests | Go build/vet/test green, **with Postgres up**, so the database tests ran · stories **1252** green (8 RackList, 11 RackDetail, 1 RackSelect new) · typecheck and build green |
@@ -50,8 +51,10 @@ flowchart LR
 
 | mark | kind | why |
 | --- | --- | --- |
-| `countLock` | derived | a counted product locks at 0, but what a count's lock blocks is [opname Q4](../../business/inventory/opname_clarify.md#question), and opname is not built |
-| `sampleAgreedBy` | missing | who on the owning team agreed to a sample is not on the form: who bears a sample is [transaction Q6](../../business/inventory/transaction_clarify.md#question) |
+| `countLock` | derived | a counted product locks at 0 — decided ([a-lock-stops-units-moving-not-sales](../../business/inventory/opname_decision.md#a-lock-stops-units-moving-not-sales)); what is missing is opname itself, so only the stub sets it |
+
+✅ *(2026-10-12)* `sampleAgreedBy` is removed: a sample names no member of the owning team and moves no money
+([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)).
 
 ## Proposed at the prototype — accepted as built
 
@@ -61,19 +64,21 @@ flowchart LR
 - The Products tab column still reads *On this rack* while it now means the stock count; with sold units waiting it reads
   lower than the shelf. Kept as it is.
 
-## The backend step: what it has to do
+## The backend step: what was done, what is left
 
-1. Wait for the ledgers (transaction Q1–Q8, context Q14, the template, technical stock Q5–Q6).
-2. `RackMove`: lock the source and destination shelf rows in id order; check every line first (not counting, at most
+1. ✅ The ledgers.
+2. ✅ `RackMove`: lock the source and destination shelf rows in id order; check every line first (not counting, at most
    `stock_count`, no rack twice, every rack in the warehouse, never the source); one `move` transaction per owning team;
    a placement row per rack touched; no batch row; all in one database transaction.
-3. `RackSample`: the same checks on one rack; one `sample` transaction per owning team; the batch ledger takes oldest first.
-4. `RackStockLine.counting` from the count's snapshot row, once opname exists.
-5. **Lowercase rack codes** ([rack-codes-are-saved-lowercase](../../business/inventory/placement_decision.md#rack-codes-are-saved-lowercase)) — not built: create and update store the code as typed. Trim and lowercase on save, plus a migration for today's codes; two codes differing only by case collide, so the migration has to find them first.
-6. When RackList moves onto `product_placements`, `rackStockTotals` sums `stock_count` there instead of `stock_levels.on_hand`.
-7. Retire `InventoryService.StockMove` and `MoveStockDialog` (inventory page, warehouse product page) — one product, one
-   batch, an *unplaced* end: all superseded.
-8. Audit both writes (`audit-rpc-performance`, `audit-sql` — two staff on one rack is the normal case).
+3. ✅ `RackSample`: the same checks on one rack; one `sample` transaction per owning team; the batch ledger takes oldest first;
+   no balance entry ([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)).
+   `recipient` is on the transaction ([a-sample-keeps-its-recipient](../../business/inventory/transaction_decision.md#a-sample-keeps-its-recipient)).
+4. ⬜ `RackStockLine.counting` from the count's snapshot row, once opname exists.
+5. ✅ **Lowercase rack codes** ([rack-codes-are-saved-lowercase](../../business/inventory/placement_decision.md#rack-codes-are-saved-lowercase)) — `00028` and `CleanRackCode`.
+6. ✅ `rackStockTotals` sums `product_placements.stock_count`.
+7. ✅ `InventoryService.StockMove` is gone from the contract; `MoveStockDialog` (inventory page, warehouse product page)
+   now calls `RackMove` with one line — no batch, no *unplaced* end.
+8. ✅ `audit-sql` done (`rack_move_race_test.go`); ✅ `audit-rpc-performance` on both, fixed 2026-10-17.
 
 ## Elsewhere
 

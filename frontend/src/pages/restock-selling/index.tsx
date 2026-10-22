@@ -46,13 +46,10 @@ import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBad
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { formatUnixDateTime } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiah, formatRupiahNumber } from "../../lib/money";
 import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
-import { RESTOCK_SELLING_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -210,7 +207,6 @@ export function RestockSellingPage() {
 
   return (
     <Stack gap="section">
-      <NotImplementedSummary list={RESTOCK_SELLING_PENDING} />
 
       <Flex align="center" gap="card">
         <Spacer />
@@ -341,7 +337,6 @@ export function RestockSellingPage() {
                     <Table.ColumnHeader>
                       <HStack gap="1.5">
                         {t("restock.table.supplier")}
-                        <NotImplemented list={RESTOCK_SELLING_PENDING} id="lineSupplier" />
                       </HStack>
                     </Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.destination")}</Table.ColumnHeader>
@@ -352,7 +347,6 @@ export function RestockSellingPage() {
                     <Table.ColumnHeader>
                       <HStack gap="1.5">
                         {t("restock.table.shipment")}
-                        <NotImplemented list={RESTOCK_SELLING_PENDING} id="courier" />
                       </HStack>
                     </Table.ColumnHeader>
                     <Table.ColumnHeader textAlign="end">
@@ -493,7 +487,7 @@ export function RestockSellingPage() {
                           />
                         </Table.Cell>
                         <Table.Cell textAlign="end" whiteSpace="nowrap" data-testid={`restock-value-${request.id}`}>
-                          {formatRupiah(committedValue(request))}
+                          {formatRupiahNumber(committedValue(request))}
                         </Table.Cell>
 
                         {/* Stop the row's navigate from firing when a row action is used. */}
@@ -506,7 +500,7 @@ export function RestockSellingPage() {
                               request={request}
                               teamId={teamId}
                               variant="menu"
-                              pending={RESTOCK_SELLING_PENDING}
+                             
                             />
                           )}
                         </Table.Cell>

@@ -14,6 +14,7 @@ The suppliers a selling team buys stock from, and the online stores each one sel
 | | `SupplierByIds` | ids a caller holds — any team's, **deleted ones included, marked** |
 | `SupplierChannelService` | `SupplierChannelList` | any team's live supplier's live stores, searched, filtered by type, paged |
 | | `SupplierChannelCreate` · `Update` · `Delete` | the owning team's own; delete is **soft** |
+| | `SupplierChannelByIds` | stores by id — any team's, **deleted ones included, marked**; what a restock line shows beside its supplier |
 | `SupplierAnalyticService` | `AnalyticTimeSearch` | one supplier's six figures by day, month or year — every bucket of the window — and the window's total |
 | | `AnalyticProductSearch` | one supplier's figures per restocking team's product — Product Grouped |
 | | `AnalyticGroupSearch` · `AnalyticGroupMetric` | suppliers ranked by restocked value or broken rate, searched, one restocking team or all — then a page's figures |
@@ -78,16 +79,19 @@ sequenceDiagram
 sequenceDiagram
   participant INV as inventory_service — RestockRequestCreate or Update
   participant S as supplier_service
-  INV->>S: SupplierByIds — the restock's supplier_id, under the caller's token
+  INV->>S: SupplierByIds — each line's supplier_id, under the caller's token
   S-->>INV: the supplier, deleted marked — or absent
-  Note over INV: live means present and not deleted — else NotFound, nothing written
+  INV->>S: SupplierChannelByIds — the stores the lines name, in one call
+  S-->>INV: each store with its supplier, deleted marked — or absent
+  Note over INV: both asked BEFORE the restock is locked. A store names its supplier and belongs to it, and a newly named store or supplier is live — else NotFound or InvalidArgument, nothing written
 ```
 
-`restock_requests.supplier_id` is an opaque id into this service since inventory's `00023` — any selling team's
-live supplier is accepted
+Each restock LINE's `supplier_id` and `supplier_channel_id` (inventory's `00024`; the restock-level column is gone) are
+opaque ids into this service — any selling team's live supplier and store are accepted
 ([a-team-restocks-from-another-teams-supplier](../../business/supplier/context_decision.md#a-team-restocks-from-another-teams-supplier)).
-The frontend's restock and batch screens read a supplier's name with `SupplierByIds` too, so a deleted
-supplier still names a past delivery.
+The frontend's restock and batch screens read a supplier's name with `SupplierByIds` and a store's with
+`SupplierChannelByIds` too, so a deleted supplier or store still names a past delivery, with its deleted badge
+([a-deleted-supplier-still-shows-with-a-badge](../../business/inventory/restock_decision.md#a-deleted-supplier-still-shows-with-a-badge)).
 
 ## The move — not an RPC
 

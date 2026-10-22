@@ -99,6 +99,20 @@ const ReturnDetailPage = lazy(() =>
 const OpnamePage = lazy(() =>
   import("./pages/opname").then((m) => ({ default: m.OpnamePage })),
 );
+// The stock count's sessions — a PROTOTYPE until design_accept (docs/business/inventory/opname.md). They sit BESIDE the
+// one-rack page above, which keeps working on the real backend until the backend step replaces it.
+const OpnameSessionsPage = lazy(() =>
+  import("./pages/opname-sessions").then((m) => ({ default: m.OpnameSessionsPage })),
+);
+const OpnameSessionDetailPage = lazy(() =>
+  import("./pages/opname-session-detail").then((m) => ({ default: m.OpnameSessionDetailPage })),
+);
+const OpnameCountPage = lazy(() =>
+  import("./pages/opname-count").then((m) => ({ default: m.OpnameCountPage })),
+);
+const OpnameFinalizePage = lazy(() =>
+  import("./pages/opname-finalize").then((m) => ({ default: m.OpnameFinalizePage })),
+);
 const SuppliersPage = lazy(() =>
   import("./pages/suppliers").then((m) => ({ default: m.SuppliersPage })),
 );
@@ -163,8 +177,8 @@ const RestockWarehouseDetailPage = lazy(() =>
     default: m.RestockWarehouseDetailPage,
   })),
 );
-// The warehouse transfer — a PROTOTYPE until design_accept: the real server answers Unimplemented, so every screen shows
-// its error state outside Storybook (docs/business/inventory/warehouse_transfer.md).
+// The warehouse transfer (docs/business/inventory/warehouse_transfer.md) — served by inventory_service on the decided
+// ledgers.
 const WarehouseTransferSellingPage = lazy(() =>
   import("./pages/warehouse-transfer-selling").then((m) => ({ default: m.WarehouseTransferSellingPage })),
 );
@@ -397,6 +411,11 @@ export const router = createBrowserRouter([
       // dialog (CLAUDE.md).
       { path: "inventories/returns/:returnId", element: <ReturnDetailPage /> },
       { path: "inventories/opname", element: <OpnamePage /> },
+      // Under /inventories/opname, so the menu's Opname stays lit (nav.ts matches the longest prefix).
+      { path: "inventories/opname/sessions", element: <OpnameSessionsPage /> },
+      { path: "inventories/opname/sessions/:sessionId", element: <OpnameSessionDetailPage /> },
+      { path: "inventories/opname/sessions/:sessionId/count", element: <OpnameCountPage /> },
+      { path: "inventories/opname/sessions/:sessionId/finalize", element: <OpnameFinalizePage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Every team's suppliers, searched across teams — independent of the team's own list above

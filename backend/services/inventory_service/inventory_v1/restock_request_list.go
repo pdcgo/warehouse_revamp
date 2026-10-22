@@ -14,7 +14,7 @@ import (
 )
 
 // RestockRequestList serves BOTH sides of a request (#105): a team sees requests it MADE
-// (requesting_team_id) and requests TARGETING it as a warehouse (warehouse_id). Newest first,
+// (team_id) and requests TARGETING it as a warehouse (warehouse_id). Newest first,
 // paginated. The team_id is the caller's team (use_scope).
 func (s *Service) RestockRequestList(
 	ctx context.Context,
@@ -25,13 +25,13 @@ func (s *Service) RestockRequestList(
 
 	query := s.db.
 		WithContext(ctx).
-		Model(&inventory_service_models.RestockRequest{}).
+		Model(&inventory_service_models.Restock{}).
 		// The parentheses are explicit, not load-bearing here: GORM wraps a chained Where containing an
 		// OR before AND-ing the next one, so the status filter below already applies to both legs.
 		// (Verified against the emitted SQL — an earlier comment here claimed they were required, and
 		// that was wrong.) They stay because precedence is what makes an OR-plus-filter go wrong, and
 		// this should be readable from the line rather than resting on ORM behaviour.
-		Where("(requesting_team_id = ? OR warehouse_id = ?)", teamID, teamID)
+		Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID)
 
 	// One status, or all of them (#130). Filtered HERE and not in the client because the list is
 	// paginated: a client-side tab would filter this page only, and the count would still be the
@@ -45,8 +45,8 @@ func (s *Service) RestockRequestList(
 	// both the rows and the paginated total.
 	if productID := req.Msg.GetFilter().GetProductId(); productID != 0 {
 		query = query.Where(
-			"EXISTS (SELECT 1 FROM restock_request_items i "+
-				"WHERE i.restock_request_id = restock_requests.id AND i.product_id = ?)",
+			"EXISTS (SELECT 1 FROM restock_items i "+
+				"WHERE i.restock_id = restocks.id AND i.product_id = ?)",
 			productID,
 		)
 	}
@@ -64,7 +64,7 @@ func (s *Service) RestockRequestList(
 	// It NARROWS the two-sided scope, it does not widen it: the OR above still applies, so a warehouse
 	// asking for team 9's restocks gets the ones addressed to itself and not team 9's whole book.
 	if requesterID := req.Msg.GetFilter().GetRequestingTeamId(); requesterID != 0 {
-		query = query.Where("requesting_team_id = ?", requesterID)
+		query = query.Where("team_id = ?", requesterID)
 	}
 
 	// BY PERSON (owner): whose orders these are, and who was at the door. Two independent filters that
@@ -93,7 +93,7 @@ func (s *Service) RestockRequestList(
 		return nil, restockErr(err)
 	}
 
-	var rrs []inventory_service_models.RestockRequest
+	var rrs []inventory_service_models.Restock
 
 	err = query.
 		// Preload, not a join: GORM fetches this page's lines in ONE extra query keyed by request id,
@@ -202,7 +202,7 @@ func applyRestockSearch(query *gorm.DB, q string) *gorm.DB {
 	if strings.HasPrefix(q, "#") {
 		id, err := strconv.ParseUint(strings.TrimPrefix(q, "#"), 10, 64)
 		if err == nil && id != 0 {
-			return query.Where("restock_requests.id = ?", id)
+			return query.Where("restocks.id = ?", id)
 		}
 		// A "#" followed by something that is not a number is NOT an id, and the term keeps its hash
 		// on the way into the text search below rather than being stripped: a hash inside a reference
@@ -215,9 +215,9 @@ func applyRestockSearch(query *gorm.DB, q string) *gorm.DB {
 
 	conditions := []string{
 		"LOWER(receipt) LIKE ?",
-		"LOWER(order_ref) LIKE ?",
-		"EXISTS (SELECT 1 FROM restock_request_items i " +
-			"WHERE i.restock_request_id = restock_requests.id " +
+		"LOWER(invoice_ref_id) LIKE ?",
+		"EXISTS (SELECT 1 FROM restock_items i " +
+			"WHERE i.restock_id = restocks.id " +
 			"AND (LOWER(i.sku) LIKE ? OR LOWER(i.name) LIKE ?))",
 	}
 	args := []any{like, like, like, like}
@@ -226,7 +226,7 @@ func applyRestockSearch(query *gorm.DB, q string) *gorm.DB {
 	// printed with the hash.
 	id, err := strconv.ParseUint(strings.TrimPrefix(q, "#"), 10, 64)
 	if err == nil && id != 0 {
-		conditions = append(conditions, "restock_requests.id = ?")
+		conditions = append(conditions, "restocks.id = ?")
 		args = append(args, id)
 	}
 

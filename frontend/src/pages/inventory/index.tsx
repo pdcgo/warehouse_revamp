@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Button,
   Flex,
   HStack,
   Heading,
@@ -16,7 +15,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowRightLeft, MoreHorizontal, Pencil, Plus } from "lucide-react";
+import { ArrowRightLeft, MoreHorizontal, Pencil } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -24,7 +23,6 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useWarehouseStock } from "../../features/inventory/queries";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { Pagination } from "../../components/chrome/Pagination";
-import { ReceiveStockDialog } from "../../features/inventory/ReceiveStockDialog";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
 import { idCodec, textCodec, useUrlState } from "../../lib/urlState";
@@ -35,7 +33,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const LEVEL_LIMIT = 200;
 
 // InventoryPage is the warehouse stock screen (#55): pick a warehouse, see its products with on-hand,
-// and receive or adjust stock. It assumes a warehouse stocks its OWN team's catalogue (product
+// and adjust or move stock. Goods come IN only by a restock (a-box-nobody-raised-comes-in-by-the-teams-restock). It assumes a warehouse stocks its OWN team's catalogue (product
 // team_id = warehouse_id) — the cross-team-storage question is still open (see the brainstorming doc).
 // `title` lets it serve both the root/admin "Inventory" route and the "Stock" sub-menu entry (#95).
 //
@@ -63,7 +61,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
   const [pageSize, setPageSize] = useState(20);
 
   const [dialog, setDialog] = useState<{
-    kind: "receive" | "adjust" | "move";
+    kind: "adjust" | "move";
     product: Product;
   } | null>(null);
 
@@ -144,23 +142,10 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                       <Table.Cell textAlign="end" data-testid={`stock-onhand-${product.sku}`}>
                         {stock.toString()}
                       </Table.Cell>
-                      {/* Receive stays inline — it is the one action someone comes to this row to do,
-                          and burying the common case behind a kebab costs a click every time. Adjust
-                          and Move collapse into the overflow: three actions is where the house rule
-                          says a row stops being a row and starts being a toolbar, and #136's Move is
-                          what pushed this one over. */}
+                      {/* Adjust and Move sit in the overflow — goods come in by a restock, so the row has no
+                          receive of its own. */}
                       <Table.Cell textAlign="end">
                         <HStack justify="end" gap="1">
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            data-testid={`receive-${product.sku}`}
-                            onClick={() => setDialog({ kind: "receive", product })}
-                          >
-                            <Icon as={Plus} boxSize="4" />
-                            {t("inventory.receive")}
-                          </Button>
-
                           <Menu.Root>
                             <Menu.Trigger asChild>
                               <IconButton
@@ -222,18 +207,6 @@ export function InventoryPage({ title }: { title?: string } = {}) {
             </HStack>
           )}
         </>
-      )}
-
-      {dialog?.kind === "receive" && warehouseId !== undefined && (
-        <ReceiveStockDialog
-          key={dialog.product.id.toString()}
-          warehouseId={warehouseId}
-          product={dialog.product}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
       )}
 
       {dialog?.kind === "adjust" && warehouseId !== undefined && (

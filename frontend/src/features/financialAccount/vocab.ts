@@ -54,7 +54,7 @@ export const TYPE_KEY: Record<number, string> = {
 };
 
 // The types New Account offers — Lainnya last, for an account outside the three (owner,
-// `the-type-decides-the-provider`). The server does not accept it yet (`FINANCIAL_ACCOUNT_PENDING`, otherType).
+// `the-type-decides-the-provider`). The server takes it as a pair — type and provider unknown — its number optional.
 export const PICKABLE_TYPES: FinancialAccountType[] = [
   FinancialAccountType.BANK_ACCOUNT,
   FinancialAccountType.WALLET,

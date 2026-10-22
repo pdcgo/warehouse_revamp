@@ -219,6 +219,19 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "order-cancelled",
 			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
 		},
+		// settlement_service's order account — mirrors settlement_service.OrderPlacedSubscription and
+		// OrderCancelledSubscription (settlement-opens-the-sale-from-the-order-event). The SAME topics as
+		// liability's, their OWN subscriptions.
+		{
+			ID:     "settlement-order-placed",
+			Topic:  "order-placed",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderPlaced"`,
+		},
+		{
+			ID:     "settlement-order-cancelled",
+			Topic:  "order-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
+		},
 		// settlement_service's fold — mirrors settlement_service.FoldSubscription. Its replay SEEKS this
 		// subscription, reaching back as far as the topic's 31-day retention.
 		{
@@ -230,6 +243,13 @@ func declaredSubscriptions() []event_source.Subscription {
 		// restock's accept (the-report-is-processed-like-settlement); its replay SEEKS this subscription.
 		{
 			ID:     "supplier-fold",
+			Topic:  "restock-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockAccepted"`,
+		},
+		// liability_service's courier charge — mirrors liability_service.RestockAcceptedSubscription. The SAME topic as
+		// supplier's fold, its OWN subscription (balance-posts-the-couriers-debt-from-the-event).
+		{
+			ID:     "liability-restock-accepted",
 			Topic:  "restock-accepted",
 			Filter: `attributes.event_type = "warehouse.events.v1.RestockAccepted"`,
 		},
@@ -246,6 +266,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			ID:     "financial-account-withdrawal",
 			Topic:  "settlement-log-posted",
 			Filter: `attributes.event_type = "warehouse.events.v1.SettlementLogPosted"`,
+		},
+		// financial_account_service's team-payment listener — mirrors financial_account_service.TeamPaymentSubscription
+		// (a-team-payment-posts-on-accept). liability's acceptance, out of the payer's account and into the creditor's.
+		{
+			ID:     "financial-account-team-payment",
+			Topic:  "liability-payment-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.LiabilityPaymentAccepted"`,
 		},
 	}
 }

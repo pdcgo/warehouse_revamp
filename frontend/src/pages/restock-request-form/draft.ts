@@ -111,15 +111,15 @@ export function toQty(raw: string): number {
 }
 
 /** The line's money — the typed total (blank is 0, which is legitimate: a sample). */
-export function lineMoney(line: LineDraft): bigint {
+export function lineMoney(line: LineDraft): number {
   return toRupiah(line.total);
 }
 
-/** What one piece cost, derived and openly rounded; 0 while the count is not valid. */
-export function perPiece(line: LineDraft): bigint {
+/** What one piece cost, derived — total ÷ count, rounded only where it is shown; 0 while the count is not valid. */
+export function perPiece(line: LineDraft): number {
   const qty = toQty(line.count);
 
-  return qty > 0 ? lineMoney(line) / BigInt(qty) : 0n;
+  return qty > 0 ? lineMoney(line) / qty : 0;
 }
 
 /** A line added while the box is at the door must say why (lines-can-be-added-not-removed-while-arrived). */
@@ -133,7 +133,7 @@ export function needsNote(mode: FormMode, line: LineDraft): boolean {
  * (the-couriers-charge-stays-out-of-total). The form has no such field, and this is why.
  */
 export function totals(lines: LineDraft[], shippingCost: string) {
-  const goods = lines.reduce((sum, l) => sum + lineMoney(l), 0n);
+  const goods = lines.reduce((sum, l) => sum + lineMoney(l), 0);
   const shipping = toRupiah(shippingCost);
 
   return { goods, shipping, total: goods + shipping };

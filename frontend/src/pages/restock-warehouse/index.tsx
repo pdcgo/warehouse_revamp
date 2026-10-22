@@ -33,8 +33,6 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
 import { useRestockInbound, useRestockPeople, useRestockRequests } from "../../features/restock/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
@@ -48,10 +46,9 @@ import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { daysSinceUnix, formatUnixDate } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
-import { RESTOCK_WAREHOUSE_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -220,7 +217,6 @@ export function RestockWarehousePage() {
             order goods for itself — it receives what a selling team bought (#105). */}
       </Flex>
 
-      <NotImplementedSummary list={RESTOCK_WAREHOUSE_PENDING} />
 
       {/* WHAT IS STILL TO DO (owner). Server-side totals over every restock targeting this warehouse
           that is ON ITS WAY OR AT THE DOOR — ongoing and arrived, both still to be counted in — so they
@@ -256,7 +252,7 @@ export function RestockWarehousePage() {
         <Stat.Root>
           <Stat.Label>{t("restock.stat.inboundAmount")}</Stat.Label>
           <Stat.ValueText data-testid="restock-stat-amount">
-            {formatRupiah(inbound.data?.amount ?? 0n)}
+            {formatRupiahNumber(inbound.data?.amount ?? 0)}
           </Stat.ValueText>
           <Stat.HelpText>{t("restock.stat.inboundAmountHint")}</Stat.HelpText>
         </Stat.Root>
@@ -438,7 +434,6 @@ export function RestockWarehousePage() {
                     <Table.ColumnHeader>
                       <HStack gap="1.5">
                         {t("restock.table.shipment")}
-                        <NotImplemented list={RESTOCK_WAREHOUSE_PENDING} id="courier" />
                       </HStack>
                     </Table.ColumnHeader>
                     <Table.ColumnHeader textAlign="end">
@@ -513,7 +508,7 @@ export function RestockWarehousePage() {
                               request={request}
                               teamId={teamId}
                               variant="row"
-                              pending={RESTOCK_WAREHOUSE_PENDING}
+                             
                             />
                           )}
                         </Table.Cell>

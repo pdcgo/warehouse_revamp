@@ -17,7 +17,7 @@ func rackToProto(r *inventory_service_models.Rack) *inventoryv1.Rack {
 		Code:        r.Code,
 		Name:        r.Name,
 		Description: r.Description,
-		Deleted:     r.Deleted,
+		Deleted:     r.DeletedAt != nil,
 	}
 }
 
@@ -50,9 +50,37 @@ func rackExists(tx *gorm.DB, warehouseID, rackID uint64) (bool, error) {
 
 	err := tx.
 		Model(&inventory_service_models.Rack{}).
-		Where("id = ? AND warehouse_id = ? AND deleted = ?", rackID, warehouseID, false).
+		Where("id = ? AND warehouse_id = ? AND deleted_at IS NULL", rackID, warehouseID).
 		Count(&count).
 		Error
 
 	return count > 0, err
+}
+
+// racksExist is rackExists for every rack a write names, in ONE statement: true only when each id is an active rack of
+// this warehouse. Duplicates are fine.
+func racksExist(tx *gorm.DB, warehouseID uint64, rackIDs []uint64) (bool, error) {
+	unique := map[uint64]struct{}{}
+	for _, id := range rackIDs {
+		unique[id] = struct{}{}
+	}
+
+	if len(unique) == 0 {
+		return true, nil
+	}
+
+	ids := make([]uint64, 0, len(unique))
+	for id := range unique {
+		ids = append(ids, id)
+	}
+
+	var count int64
+
+	err := tx.
+		Model(&inventory_service_models.Rack{}).
+		Where("id IN ? AND warehouse_id = ? AND deleted_at IS NULL", ids, warehouseID).
+		Count(&count).
+		Error
+
+	return count == int64(len(ids)), err
 }

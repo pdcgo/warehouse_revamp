@@ -45,7 +45,7 @@ const AtOngoing = routedAt(501n);
 const AtAccepted = routedAt(503n);
 
 const meta = {
-  title: "Pages/Restock/RestockAccept",
+  title: "Pages/Inventory/Restock/RestockAccept",
   component: AtArrived,
   parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
@@ -189,8 +189,8 @@ export const MissingIsWorkedOutFromReceived: Story = {
 
     await waitFor(() => expect(line.getByTestId(`accept-missing-${id}`)).toHaveTextContent("3"));
     await expect(line.getByTestId(`accept-good-${id}`)).toHaveTextContent("9");
-    // 400.000 × 3 ÷ 12
-    await expect(line.getByTestId(`accept-missing-value-${id}`)).toHaveTextContent("100.000");
+    // 3 × the landed price 34.215,69 (400.000 ÷ 12 + 15.000 ÷ 17), the same as a good unit (all-qty-is-every-unit-ordered).
+    await expect(line.getByTestId(`accept-missing-value-${id}`)).toHaveTextContent("102.647");
     // The warehouse's optional word on the missing units appears beside them (three-notes-one-writer-each).
     await expect(line.getByTestId(`accept-missing-note-${id}`)).toBeInTheDocument();
 
@@ -248,8 +248,8 @@ export const GoodUnitsMustBeFullyPlaced: Story = {
 
     // Counted, nothing placed yet.
     await expect(line.getByTestId(`accept-good-${id}`)).toHaveTextContent("10");
-    // 400.000 × 2 ÷ 12, filled by the system.
-    await expect(line.getByTestId(`accept-broken-value-${id}`)).toHaveTextContent("66.666");
+    // 2 × the landed price 34.215,69, filled by the system.
+    await expect(line.getByTestId(`accept-broken-value-${id}`)).toHaveTextContent("68.431");
     await expect(line.getByTestId(`accept-unbalanced-${id}`)).toBeInTheDocument();
     await expectAccept(canvasElement, false);
 
@@ -306,15 +306,37 @@ export const TheChargeStaysOutOfTheTotal: Story = {
 
     // 400.000 + 325.000 + 15.000 shipping.
     await expect(canvas.getByTestId("accept-grand-total")).toHaveTextContent("740.000");
-    // 400.000 ÷ 12 + 15.000 ÷ 17 good units.
-    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.215");
+    // 400.000 ÷ 12 + 15.000 ÷ 17 units ordered = 34.215,69.
+    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.216");
 
     await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
 
     await waitFor(() => expect(canvas.getByTestId("accept-courier-owed")).toHaveTextContent("5.000"));
     await expect(canvas.getByTestId("accept-grand-total")).toHaveTextContent("740.000");
     // (15.000 + 5.000) ÷ 17 — the charge is in the unit price.
-    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.509");
+    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.510");
+  },
+};
+
+/**
+ * all-qty-is-every-unit-ordered — the costs are spread over every unit ORDERED, so the landed price does not move when
+ * units arrive broken or short, and a broken or missing unit is worth exactly what a good one costs. Coffee 12 with 1
+ * broken, rice 4 of 5: the coffee's HPP stays 34.215,69 (dividing by the 15 good units would make it 37.363,64).
+ */
+export const ProblemUnitsCarryTheLandedPrice: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await count(canvasElement, COFFEE.productId, "12", "1");
+    await count(canvasElement, RICE.productId, "4");
+
+    // 400.000 ÷ 12 + 15.000 ÷ 17 — every unit ordered, not the good ones.
+    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.216");
+    const coffee = await lineOf(canvasElement, COFFEE.productId);
+    await expect(coffee.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.216");
+
+    // 325.000 ÷ 5 + 15.000 ÷ 17 — the missing unit carries the rice's landed price.
+    const rice = await lineOf(canvasElement, RICE.productId);
+    await expect(rice.getByTestId(`accept-missing-value-${RICE.productId}`)).toHaveTextContent("65.882");
   },
 };
 
@@ -347,7 +369,7 @@ export const AcceptingCountsTheBoxIn: Story = {
       await restockRequestService.restockRequestDetail!({ teamId: 11n, requestId: 502n } as never, {} as never)
     ).request!;
     await expect(stored.status).toBe(RestockRequestStatus.ACCEPTED);
-    await expect(stored.warehouseAdditionalCost).toBe(5000n);
+    await expect(stored.warehouseAdditionalCost).toBe(5000);
 
     const coffee = stored.items!.find((l) => l.productId === COFFEE.productId)!;
     await expect(coffee.receivedCount).toBe(12n);
@@ -357,8 +379,4 @@ export const AcceptingCountsTheBoxIn: Story = {
     const rice = stored.items!.find((l) => l.productId === RICE.productId)!;
     await expect(rice.problems!.find((p) => p.type === RestockProblemType.MISSING)?.count).toBe(1n);
   },
-};
-
-export const WithoutTheMarks: Story = {
-  globals: { pendingMarks: "off" },
 };

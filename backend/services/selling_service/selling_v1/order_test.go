@@ -36,7 +36,7 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OrderCreate: %v", err)
 	}
-	if created.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PLACED {
+	if created.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 		t.Fatalf("new order status = %v, want PLACED", created.Msg.GetOrder().GetStatus())
 	}
 

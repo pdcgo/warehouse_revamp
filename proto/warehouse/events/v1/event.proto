@@ -92,7 +92,7 @@ message Event {
     option (buf.validate.oneof).required = true;
 
     // Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-    // inventory 400–499.
+    // inventory 400–499, liability 500–599.
     MemberRemoved member_removed = 100;
 
     OrderPlaced order_placed = 200;
@@ -104,6 +104,12 @@ message Event {
     RestockCreated restock_created = 401;
     RestockCancelled restock_cancelled = 402;
     RestockUpdated restock_updated = 403;
+    WarehouseTransferCreated warehouse_transfer_created = 404;
+    WarehouseTransferUpdated warehouse_transfer_updated = 405;
+    WarehouseTransferCancelled warehouse_transfer_cancelled = 406;
+    WarehouseTransferAccepted warehouse_transfer_accepted = 407;
+
+    LiabilityPaymentAccepted liability_payment_accepted = 500;
   }
 }
 
@@ -233,6 +239,13 @@ message OrderPlaced {
   // envelope's identity says who caused THAT PUBLISH — the operator running the backfill. A consumer
   // folding the fact reads this one.
   uint64 actor_id = 9;
+
+  // The shop it was sold on, and what the PLATFORM says the buyer paid, whole rupiah — 0 = not recorded.
+  // settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
+  // its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
+  // calls settlement, so the event has to carry everything the account needs.
+  uint64 shop_id = 10;
+  int64 marketplace_total = 11;
 }
 
 // One line of a placed order, as liability_service needs it (#186).
@@ -279,6 +292,10 @@ message OrderCancelled {
   // ledger movement, and it is a different person's act from the placement it undoes — so it carries
   // its own actor rather than reusing the one on the entries being reversed.
   uint64 actor_id = 3;
+
+  // The shop it was sold on — settlement cancels the sale on that shop's account
+  // (settlement-opens-the-sale-from-the-order-event).
+  uint64 shop_id = 4;
 }
 
 // RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.
@@ -313,20 +330,30 @@ message RestockAccepted {
 
   // The accept's instant, unix seconds (restock-accepted-carries-every-line) — the day above is derived from it.
   int64 accepted_at_unix = 7;
+
+  // The courier's charge at the door, ONE per restock, and its note; 0 = none. Balance posts the selling team's debt to
+  // the warehouse from it, after the accept commits (balance-posts-the-couriers-debt-from-the-event) — the accept itself
+  // no longer writes balance. Money is `double`, as inventory stores it (money-is-double-in-the-api-too).
+  double warehouse_additional_cost = 8;
+  string warehouse_additional_cost_note = 9;
+  // Who counted the box in — the debt's actor (every-entry-names-who-posted-it). Read from the stored restock, never
+  // from the envelope's identity.
+  uint64 actor_id = 10;
 }
 
 // One line as the accept counted it. Lost and broken sit BESIDE accepted, never inside it, so
 // ordered ≈ accepted + lost + broken (each-figure-is-read-at-the-accept).
 message RestockAcceptedLine {
-  // restock_request_items.id
+  // restock_items.id
   uint64 item_id = 1;
   // The restocking team's product.
   uint64 product_id = 2;
 
   // Units ordered on the line, and the line's total as typed — what the supplier charged. A figure's value is
-  // units × total ÷ ordered, so the line's three values add back to its total without a rounded unit price.
+  // units × total ÷ ordered, so the line's three values add back to its total without a rounded unit price. The
+  // total is `double`, as inventory stores it (money-is-double-in-the-api-too).
   int64 ordered_count = 3;
-  int64 total_price = 4;
+  double total_price = 4;
 
   // Units accepted as good stock — the batch's sellable count.
   int64 accepted_count = 5;
@@ -356,9 +383,9 @@ message RestockCreated {
   uint64 warehouse_id = 3;
   // The operational account that paid.
   uint64 finance_account_id = 4;
-  // Goods plus shipping, whole rupiah — never the courier's charge, which the warehouse paid
-  // (the-couriers-charge-stays-out-of-total).
-  int64 amount = 5;
+  // Goods plus shipping — never the courier's charge, which the warehouse paid
+  // (the-couriers-charge-stays-out-of-total). `double`, as inventory stores it (money-is-double-in-the-api-too).
+  double amount = 5;
   uint64 actor_id = 6;
   int64 created_at_unix = 7;
 }
@@ -374,7 +401,7 @@ message RestockCancelled {
   uint64 restock_id = 1;
   uint64 team_id = 2;
   uint64 finance_account_id = 3;
-  int64 amount = 4;
+  double amount = 4;
   bool money_returned = 5;
   uint64 actor_id = 6;
   int64 cancelled_at_unix = 7;
@@ -393,8 +420,117 @@ message RestockUpdated {
   uint64 team_id = 2;
   uint64 old_finance_account_id = 3;
   uint64 new_finance_account_id = 4;
-  int64 old_amount = 5;
-  int64 new_amount = 6;
+  double old_amount = 5;
+  double new_amount = 6;
   uint64 actor_id = 7;
   int64 updated_at_unix = 8;
+}
+
+// WarehouseTransferCreated announces a transfer OPENED, and the shipping expense typed with it — the selling team's,
+// from its own account (the-shipping-expense-reaches-the-account-by-event, a-transfer-names-its-paying-account). The cost
+// may still be 0 here and typed later; a listener posts nothing for 0.
+//
+// Published by inventory_service after WarehouseTransferCreate commits; financial_account_service posts the expense.
+// `event_id` is `warehouse-transfer-created:<transfer_id>`.
+//
+// ⚠ Money is `double`, unlike the restock events beside it (stock-money-is-float64-compared-at-4-digits names the
+// transfer's costs): a new event gets the decided type on day one, since changing a published field's type later is a
+// wire break.
+message WarehouseTransferCreated {
+  option (event_config).topic = "warehouse-transfer-created";
+
+  uint64 transfer_id = 1;
+  // The selling team that owns the goods and pays the trip.
+  uint64 team_id = 2;
+  // A and B.
+  uint64 from_warehouse_id = 3;
+  uint64 to_warehouse_id = 4;
+  // The account that paid; 0 when the cost is 0.
+  uint64 finance_account_id = 5;
+  // The shipping cost, rupiah. Never in a unit's price (a-transfer-never-changes-a-units-price).
+  double amount = 6;
+  uint64 actor_id = 7;
+  int64 created_at_unix = 8;
+}
+
+// WarehouseTransferUpdated announces an edit that changed the shipping cost or the account that paid it — until the
+// transfer is accepted (the-shipping-expense-reaches-the-account-by-event). Not sent for an edit that changed neither.
+//
+// Both sides are carried, as RestockUpdated: the same account means post new − old; a different account means the old
+// one gets old_amount back and the new one pays new_amount. `event_id` is
+// `warehouse-transfer-updated:<transfer_id>:<cost_revision>` — one per edit that moved money.
+message WarehouseTransferUpdated {
+  option (event_config).topic = "warehouse-transfer-updated";
+
+  uint64 transfer_id = 1;
+  uint64 team_id = 2;
+  uint64 old_finance_account_id = 3;
+  uint64 new_finance_account_id = 4;
+  double old_amount = 5;
+  double new_amount = 6;
+  uint64 actor_id = 7;
+  int64 updated_at_unix = 8;
+}
+
+// WarehouseTransferCancelled announces a transfer called off while created
+// (cancel-before-processed-lost-only-in-transit) — whatever was posted for its shipping comes back to the account that
+// paid. `event_id` is `warehouse-transfer-cancelled:<transfer_id>` — a transfer is cancelled once.
+message WarehouseTransferCancelled {
+  option (event_config).topic = "warehouse-transfer-cancelled";
+
+  uint64 transfer_id = 1;
+  uint64 team_id = 2;
+  // The account that paid and the amount it gets back; 0 = nothing was posted.
+  uint64 finance_account_id = 3;
+  double amount = 4;
+  uint64 actor_id = 5;
+  int64 cancelled_at_unix = 6;
+}
+
+// WarehouseTransferAccepted announces B counted the box in, and the courier's charge B paid at its door
+// (balance-posts-the-transfers-on-site-debt-from-the-event). Published after EVERY accept, a charge of 0 included; the
+// selling team owes B the charge, and nothing for 0.
+//
+// `event_id` is `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once. ⚠ Balance does not listen
+// yet: the source type it posts under is open (balance context Q13) — never INCIDENTAL_FEE keyed by the transfer id,
+// which collides with a restock's of the same number.
+message WarehouseTransferAccepted {
+  option (event_config).topic = "warehouse-transfer-accepted";
+
+  uint64 transfer_id = 1;
+  // The selling team — the debtor.
+  uint64 team_id = 2;
+  // A, and B — the warehouse that paid the courier, the creditor.
+  uint64 from_warehouse_id = 3;
+  uint64 to_warehouse_id = 4;
+  // The courier's charge at B's door, rupiah, and its note (an-incidental-line-must-say-what-it-was-for); 0 = none.
+  double warehouse_additional_cost = 5;
+  string warehouse_additional_cost_note = 6;
+  // Who counted it in — read from the stored transfer, never from the envelope's identity.
+  uint64 actor_id = 7;
+  int64 accepted_at_unix = 8;
+}
+
+// LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the
+// money was there (a-team-payment-posts-on-accept). Published by liability_service after LiabilityPaymentConfirm
+// commits; the financial accounts post one `team_payment` row out of `from_account_id` and one into
+// `to_account_id`, sharing a group.
+//
+// Recording and rejecting publish nothing: a claim moves no account. And there is no reverse to follow
+// (an-accepted-payment-is-final). `event_id` is `liability-payment-accepted:<payment_id>` — a payment is accepted
+// once. The envelope's `occurred_at` is when it was accepted, which is the day both rows count on.
+message LiabilityPaymentAccepted {
+  option (event_config).topic = "liability-payment-accepted";
+
+  uint64 payment_id = 1;
+  uint64 payer_team_id = 2;
+  uint64 creditor_team_id = 3;
+  // Whole rupiah, always positive — direction is the two accounts, never a sign.
+  int64 amount = 4;
+  // The payer's account. 0 on a payment recorded before *Paid from* existed: only the `to` leg posts.
+  uint64 from_account_id = 5;
+  // The creditor's account, named on accept. Never 0.
+  uint64 to_account_id = 6;
+  // Who accepted — the creditor's person, read from the payment row. The person who decided the money landed.
+  uint64 actor_id = 7;
 }

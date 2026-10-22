@@ -12,71 +12,63 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 )
 
-// BatchList reads the deliveries of stock as COST LAYERS (#209) — one row per batch (one product's
-// units from one delivery). It backs both the product detail's Batches tab (filtered to one product)
-// and the warehouse-wide batch list, so it carries the search, supplier and expiry filters both use.
+// BatchList reads a warehouse's batches as COST LAYERS (#209) — one row per batch of the batch ledger. It backs both
+// the product detail's Batches tab (filtered to one product) and the warehouse-wide batch list, so it carries the
+// search, supplier and expiry filters both use.
 //
-// Newest delivery first: the list is read top-down as "what came in recently", while FIFO cost draw
-// (oldest first) is a property of the PICK, not of how the list is ordered.
+// Newest batch first: the list is read top-down as "what came in recently", while the oldest-first draw is a property
+// of the take, not of how the list is ordered.
 //
-// The identity/receipt/supplier come from the delivery the batch was accepted on; sku/name are the
-// restock line's snapshot; Ready is Σ shelf_batch.qty and Used is what is left of Arrived once damage
-// and Ready are taken out.
+// The delivery and receipt come from the restock whose accept minted the batch, sku and name from its line (or the
+// transfer line, for a batch a transfer minted) — see batchQuery.
 func (s *Service) BatchList(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.BatchListRequest],
 ) (*connect.Response[inventoryv1.BatchListResponse], error) {
 	warehouseID := req.Msg.GetTeamId()
+	filter := req.Msg.GetFilter()
 	page := req.Msg.GetPage()
 
-	// The shared shape of the list query and the aggregate query — same WHERE, different projection.
 	base := func() *gorm.DB {
-		q := s.db.
-			WithContext(ctx).
-			Table("stock_batches AS b").
-			Joins("JOIN restock_request_items i ON i.id = b.restock_request_item_id").
-			Joins("JOIN restock_requests r ON r.id = b.delivery_id").
-			Where("b.warehouse_id = ?", warehouseID)
+		q := batchQuery(s.db.WithContext(ctx)).Where("b.warehouse_id = ?", warehouseID)
 
-		if productID := req.Msg.GetFilter().GetProductId(); productID != 0 {
+		if productID := filter.GetProductId(); productID != 0 {
 			q = q.Where("b.product_id = ?", productID)
 		}
 
-		// A batch id and a receipt share the delivery number, so one box searches both. A leading '#' is
-		// how the number reads on screen — stripped so "#3007" and "3007" match the same row.
-		if search := req.Msg.GetFilter().GetSearch(); search != "" {
+		// The delivery number (with or without its #) or the receipt.
+		if search := filter.GetSearch(); search != "" {
 			like := "%" + search + "%"
 			bare := "%" + trimHash(search) + "%"
-			q = q.Where("CAST(b.delivery_id AS TEXT) ILIKE ? OR r.receipt ILIKE ?", bare, like)
+			q = q.Where("(CAST(r.id AS TEXT) ILIKE ? OR r.receipt ILIKE ?)", bare, like)
 		}
 
-		if supplierID := req.Msg.GetFilter().GetSupplierId(); supplierID != 0 {
-			q = q.Where("r.supplier_id = ?", supplierID)
+		if supplierID := filter.GetSupplierId(); supplierID != 0 {
+			q = q.Where("b.supplier_id = ?", supplierID)
 		}
 
-		switch req.Msg.GetFilter().GetExpiry() {
+		switch filter.GetExpiry() {
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_EXPIRING_SOON:
-			q = q.Where("b.expires_on IS NOT NULL AND b.expires_on <= ?", soonCutoff())
+			q = q.Where("b.expired_at IS NOT NULL AND b.expired_at <= ?", soonCutoff())
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_NO_EXPIRY:
-			q = q.Where("b.expires_on IS NULL")
+			q = q.Where("b.expired_at IS NULL")
 		}
 
-		// A date range on one date field (#217). Applied to the accepted-at (arrived) or the expiry.
-		// An EXPIRING range implicitly excludes no-expiry batches (a NULL never satisfies a bound).
 		var dateCol string
-		switch req.Msg.GetFilter().GetDateField() {
+
+		switch filter.GetDateField() {
 		case inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED:
-			// created_at is when the batch was minted = when the delivery was accepted (accepted_at is
-			// never set). This is the "arrived" date the list and receipt show.
 			dateCol = "b.created_at"
 		case inventoryv1.BatchDateField_BATCH_DATE_FIELD_EXPIRING:
-			dateCol = "b.expires_on"
+			dateCol = "b.expired_at"
 		}
+
 		if dateCol != "" {
-			if from := req.Msg.GetFilter().GetFromUnix(); from > 0 {
+			if from := filter.GetFromUnix(); from > 0 {
 				q = q.Where(dateCol+" >= ?", time.Unix(from, 0))
 			}
-			if to := req.Msg.GetFilter().GetToUnix(); to > 0 {
+
+			if to := filter.GetToUnix(); to > 0 {
 				q = q.Where(dateCol+" <= ?", time.Unix(to, 0))
 			}
 		}
@@ -91,42 +83,12 @@ func (s *Service) BatchList(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// The ready quantity for a batch is a correlated sum over its shelf rows; the aggregate tiles need
-	// it too, so it is one scalar subquery reused in both projections.
-	const readyExpr = "COALESCE((SELECT SUM(sb.qty) FROM stock_shelf_batches sb WHERE sb.batch_id = b.id), 0)"
-
-	type row struct {
-		ID         uint64
-		DeliveryID uint64
-		ReceiptNo  string
-		ProductID  uint64
-		SKU        string
-		Name       string
-		SupplierID uint64
-		UnitCost   *int64
-		Arrived    int64
-		Damaged    int64
-		Lost       int64
-		Ready      int64
-		ExpiresOn  *time.Time
-		CreatedAt  time.Time
-		AcceptedAt time.Time
-		CreatedBy  uint64
-		AcceptedBy uint64
-	}
-
-	var rows []row
+	var rows []batchRow
 
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = base().
-		Select(`
-			b.id, b.delivery_id, r.receipt AS receipt_no,
-			b.product_id, i.sku, i.name, COALESCE(r.supplier_id, 0) AS supplier_id,
-			b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
-			` + lostExpr + ` AS lost,
-			` + readyExpr + ` AS ready,
-			b.expires_on, b.created_at, b.accepted_at, b.created_by, b.accepted_by`).
+		Select(batchSelect).
 		Order("b.id DESC").
 		Offset(offset).
 		Limit(int(page.GetLimit())).
@@ -136,21 +98,19 @@ func (s *Service) BatchList(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// The header tiles over the WHOLE filtered set (not the page): total ready value and how many are
-	// expiring soon. Ready value skips unknown-cost batches (their value is Unknown, not 0, #74).
-	type agg struct {
-		ReadyValue   int64
+	// Over the WHOLE filtered set, not this page: the header's "ready value" and "expiring soon" count every batch the
+	// filter matched.
+	var agg struct {
+		ReadyValue   float64
 		ExpiringSoon int64
 	}
 
-	var a agg
-
 	err = base().
 		Select(`
-			COALESCE(SUM(CASE WHEN b.unit_cost IS NOT NULL THEN `+readyExpr+` * b.unit_cost ELSE 0 END), 0) AS ready_value,
-			COALESCE(SUM(CASE WHEN b.expires_on IS NOT NULL AND b.expires_on <= ? THEN 1 ELSE 0 END), 0) AS expiring_soon`,
+			COALESCE(SUM(b.stock_valuation), 0) AS ready_value,
+			COALESCE(SUM(CASE WHEN b.expired_at IS NOT NULL AND b.expired_at <= ? THEN 1 ELSE 0 END), 0) AS expiring_soon`,
 			soonCutoff()).
-		Scan(&a).
+		Scan(&agg).
 		Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -158,51 +118,7 @@ func (s *Service) BatchList(
 
 	batches := make([]*inventoryv1.StockBatch, 0, len(rows))
 	for i := range rows {
-		r := &rows[i]
-
-		costKnown := r.UnitCost != nil
-		var unitCost int64
-		if costKnown {
-			unitCost = *r.UnitCost
-		}
-
-		out := &inventoryv1.StockBatch{
-			Id:         r.ID,
-			DeliveryId: r.DeliveryID,
-			ReceiptNo:  r.ReceiptNo,
-			ProductId:  r.ProductID,
-			// The scope, restated on the row (#232). Every row's answer is the same here, but a batch
-			// that says which building it is in is the same message the owner's list returns, and a
-			// field that is only populated by one of two callers is a field nobody can trust.
-			WarehouseId: warehouseID,
-			Sku:         r.SKU,
-			Name:       r.Name,
-			SupplierId: r.SupplierID,
-			UnitCost:   unitCost,
-			CostKnown:  costKnown,
-			Arrived: r.Arrived,
-			// Damaged split into broken vs lost (#227): lost from the typed damage records, broken the
-			// remainder — so broken + lost = damaged and the arrived identity holds.
-			Broken: r.Damaged - r.Lost,
-			Lost:   r.Lost,
-			Ready:  r.Ready,
-			// Used = arrived − damaged − ready. What is neither damaged nor still on a shelf has left.
-			Used:           r.Arrived - r.Damaged - r.Ready,
-			LineCost:       r.Arrived * unitCost,
-			ReadyValue:     r.Ready * unitCost,
-			CreatedAtUnix:  r.CreatedAt.Unix(),
-			AcceptedAtUnix: r.AcceptedAt.Unix(),
-			CreatedBy:      r.CreatedBy,
-			AcceptedBy:     r.AcceptedBy,
-			// Every batch today is minted from a restock delivery (#230).
-			Origin: inventoryv1.BatchOrigin_BATCH_ORIGIN_RESTOCK,
-		}
-
-		if r.ExpiresOn != nil {
-			out.ExpiresOnUnix = r.ExpiresOn.Unix()
-		}
-
-		batches = append(batches, out)
+		batches = append(batches, batchRowToProto(&rows[i]))
 	}
 
 	items, ids := batchListItems(batches, req.Msg.GetDataRequest())
@@ -215,8 +131,8 @@ func (s *Service) BatchList(
 			TotalPage:   pageCount(total, page.GetLimit()),
 			TotalItems:  uint64(total),
 		},
-		ReadyValueTotal:   a.ReadyValue,
-		ExpiringSoonCount: uint64(a.ExpiringSoon),
+		ReadyValueTotal:   int64(math.Round(agg.ReadyValue)),
+		ExpiringSoonCount: uint64(agg.ExpiringSoon),
 	}), nil
 }
 

@@ -59,6 +59,7 @@ the prototype these screens grew from was accepted
 | [mutasi-per-jenis-breathes](#mutasi-per-jenis-breathes) | Mutasi per Jenis gets a little more air — the types 10px apart, a group 12px from its neighbours |
 | [a-phone-period-lists-a-type-a-line](#a-phone-period-lists-a-type-a-line) | on a phone a period's types are one per line — the badge and its amount together |
 | [a-phone-breakdown-row-shows-its-opening](#a-phone-breakdown-row-shows-its-opening) | on a phone each row of Saldo per Penyedia dan Akun shows its *Saldo awal* under the name |
+| [the-archive-and-lainnya-are-served](#the-archive-and-lainnya-are-served) | the server lists and counts the archived alone, and opens type Lainnya — both pending marks and the Lainnya warning are gone; the domain's `pending.ts` is deleted |
 
 ## the-accounts-subtitle-sits-under-the-title
 
@@ -1104,3 +1105,29 @@ Saldo awal Rp 10.750.000       +Rp 1.293.500
 | read as | the Rincian view's rows — the period table has no opening balance on a desktop either, so the line went where the desktop has it. If it was meant for a period's block, it moves there |
 | the badge | a provider's badge keeps its own width in that column (it had stretched to the column's width) |
 
+## the-archive-and-lainnya-are-served
+
+> Owner, in chat (2026-10-14): *"in storybook 2 parts of this screen are not implemented yet, can we implemented
+> now ?"* — then, of the accounts list, *"2 parts of this screen are not implemented yet still exist in financial
+> account list"*. It lifts *"aku tidak akan mengubah be nya"* (2026-10-06) for these two parts.
+
+```mermaid
+flowchart LR
+  A["Arsip — the archive view"] -->|"FinancialAccountList archived_only"| L["the archived alone, counted and paged by the server"]
+  A -->|"FinancialAccountOverview archived"| T["the type tabs count the archived"]
+  N["New Account — type Lainnya"] -->|"type and provider unknown, number optional"| C["FinancialAccountCreate opens it"]
+```
+
+| | |
+| --- | --- |
+| the archive list | `FinancialAccountListFilter.archived_only` — the archived ALONE, winning over `include_archived`. The page asks for one page at a time; no 200-account window, nothing missed past it |
+| the archive's tabs | `FinancialAccountOverviewFilter.archived` — TYPE_TOTAL counts the archived instead of the active. ⚠ The tabs now count every archived account of the team, as the active view's tabs count every active one; before, they counted only the archived the search and shop filter let through |
+| type Lainnya | `FinancialAccountCreate` takes type `UNKNOWN` with provider `UNKNOWN` — as a pair, the type setting the provider, refused half-matched — its number optional and, when given, unique like any other. It is then allowed what the listener's unknown accounts are ([the-type-decides-the-provider](../../business/financial_account/context_decision.md#the-type-decides-the-provider)) |
+| Tentukan Rekening | still refuses Lainnya as a fill-in — it exists to make an account real |
+| the screens | the `archivedOnly` and `otherType` marks, the summary strip on the accounts page and the warning under type Lainnya are gone; `features/financialAccount/pending.ts` and its `financialAccounts.pending` copy are deleted. The report's own Export mark stays |
+
+**What it replaces** — the ⚠ lines that said the backend is not changed:
+[the-archive-is-its-own-view](#the-archive-is-its-own-view) (*⚠ unimplemented*),
+[lainnya-is-offered-with-a-warning](#lainnya-is-offered-with-a-warning) (*the real server still refuses it*) and
+[the-form-asks-the-type-first](#the-form-asks-the-type-first) (*the mark*). The business side:
+[lainnya-is-opened-by-the-server](../../business/financial_account/context_decision.md#lainnya-is-opened-by-the-server).

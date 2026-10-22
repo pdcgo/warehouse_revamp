@@ -13,7 +13,6 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 
 /** One unwired part of the screen. The id is also its i18n key (`orderDetail.pending.<id>`). */
 export type PendingId =
-  | "statusSet"
   | "notes"
   | "productImage"
   | "externalName"
@@ -22,14 +21,9 @@ export type PendingId =
   | "receiptCode"
   | "shippingTracking"
   | "returnShipment"
-  | "withdrawal"
-  | "lifecycle";
+  | "withdrawal";
 
 const PARTS: PendingPart<PendingId>[] = [
-  // ⚠ THE SAME EIGHT-VERSUS-SIX GAP THE LIST HAS. `OrderStatus` is still `placed · confirmed ·
-  // picking · packed · shipped · cancelled`, so the four statuses the owner added — completed,
-  // problem, lost, return — can never appear here either, and the timeline can never show them.
-  { id: "statusSet", kind: "missing" },
   // ⚠ AN ORDER HAS ONE NOTE AND NOBODY CAN CHANGE IT. The owner: *"catatan harusnya bisa diedit,
   // catatan bisa lebih dari 1 dan catatan itu ada tipenya, dari sistem dan dari user"*. `Order.note` is
   // one string written at creation — no list, no author, no type, no edit RPC. Adding and editing work
@@ -69,8 +63,7 @@ const PARTS: PendingPart<PendingId>[] = [
   { id: "shippingTracking", kind: "missing" },
   // ⚠ A PARCEL CAN TRAVEL TWICE, AND THE CONTRACT KNOWS ABOUT NEITHER TRIP (owner: *"resi bisa 2 dan
   // jejak pengiriman juga bisa 2, dari order dan return"*). The return leg has its own courier, its own
-  // number and its own trail — and there is no return at all today: no status (`statusSet`), no
-  // number, no trail. A separate entry from `receiptCode`/`shippingTracking`, which are about the leg
+  // number and its own trail — and there is no return record yet: no number, no trail. A separate entry from `receiptCode`/`shippingTracking`, which are about the leg
   // that does half-exist; this one is a whole missing record.
   //
   // Invented for order 108 only, so the two-leg shape can be seen populated once.
@@ -79,14 +72,10 @@ const PARTS: PendingPart<PendingId>[] = [
   // settlement itu, jadi aku masih bingung di sini"*.
   //
   // Withdrawal in the owner's sense is a WALLET → BANK movement: a shop-level cash event that names no
-  // order. Settlement's ledger is the opposite — every entry there is required to name one. So the two
-  // are not the same thing, and the columns asked for here (tgl import, tgl wd, sumber, nilai, negara
-  // lain, deskripsi) have no home in either today. See `docs/technical/order/design_clarify.md`.
+  // order. Settlement Imports now records it — on the SHOP (withdrawal-is-a-settlement-type) — and brings the
+  // order's payouts into its ledger, but nothing gives one order a withdrawal figure, so the columns asked
+  // for here (tgl import, tgl wd, sumber, nilai, negara lain, deskripsi) still have no per-order source.
   { id: "withdrawal", kind: "missing" },
-  // ⚠ AN ORDER'S LIFE ENDS AT "SHIPPED" IN THE CONTRACT. The actions here are the list's table, so
-  // they inherit its gap: four of them — Retur Barang, Selesaikan Order, Jadikan Lost, Selesaikan
-  // Sengketa — have no RPC to call.
-  { id: "lifecycle", kind: "dropped" },
 ];
 
 /** What the badges and the summary on this screen read. `ns` is where its copy lives. */

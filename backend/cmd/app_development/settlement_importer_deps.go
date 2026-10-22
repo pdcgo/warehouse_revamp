@@ -1,11 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"io"
-	"net/http"
 
 	"connectrpc.com/connect"
 
@@ -108,7 +104,7 @@ func (a *importerOrders) OrdersByRefs(ctx context.Context, teamID uint64, refs [
 						OrderID:         order.GetOrderId(),
 						ShopID:          order.GetShopId(),
 						CreatedByUserID: order.GetCreatedByUserId(),
-						Cancelled:       order.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_CANCELLED,
+						Cancelled:       order.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_CANCEL,
 					})
 				}
 			}
@@ -135,49 +131,16 @@ func NewImporterStatementStore(
 	return &importerStatements{documents: documents, http: client}
 }
 
-// StoreStatement is RequestUpload → PUT → ConfirmUpload, exactly as a browser runs it — the importer is
-// document_service's client, never a second door into its storage.
+// StoreStatement is the two-phase upload (uploadDocument) — the importer is document_service's client, never a second
+// door into its storage.
 func (a *importerStatements) StoreStatement(ctx context.Context, teamID uint64, filename string, content []byte) (string, error) {
-	upload, err := a.documents.RequestUpload(ctx, connect.NewRequest(&documentv1.RequestUploadRequest{
-		TeamId:       teamID,
-		ResourceType: documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT,
-		ContentType:  xlsxType,
-		SizeBytes:    int64(len(content)),
-		Filename:     filename,
-	}))
-	if err != nil {
-		return "", err
-	}
-
-	put, err := http.NewRequestWithContext(ctx, upload.Msg.GetMethod(), upload.Msg.GetUploadUrl(), bytes.NewReader(content))
-	if err != nil {
-		return "", err
-	}
-
-	for name, value := range upload.Msg.GetHeaders() {
-		put.Header.Set(name, value)
-	}
-
-	resp, err := a.http.Do(put)
-	if err != nil {
-		return "", fmt.Errorf("uploading the statement: %w", err)
-	}
-
-	_, _ = io.Copy(io.Discard, resp.Body)
-	_ = resp.Body.Close()
-
-	if resp.StatusCode/100 != 2 {
-		return "", fmt.Errorf("uploading the statement: the store answered %s", resp.Status)
-	}
-
-	confirmed, err := a.documents.ConfirmUpload(ctx, connect.NewRequest(&documentv1.ConfirmUploadRequest{
-		UploadToken: upload.Msg.GetUploadToken(),
-	}))
-	if err != nil {
-		return "", err
-	}
-
-	return confirmed.Msg.GetDocument().GetId(), nil
+	return uploadDocument(ctx, a.documents, a.http, documentUpload{
+		teamID:       teamID,
+		resourceType: documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT,
+		contentType:  xlsxType,
+		filename:     filename,
+		content:      content,
+	})
 }
 
 // ── the ledger — SettlementPost, source importer ────────────────────────────────────────────────────

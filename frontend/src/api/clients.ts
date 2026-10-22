@@ -5,6 +5,7 @@ import { ProductService } from "../gen/warehouse/product/v1/product_pb";
 import { ShopService } from "../gen/warehouse/selling/v1/selling_pb";
 import { OrderService } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
+import { TeamReturnConfigurationService } from "../gen/warehouse/selling/v1/return_configuration_pb";
 import { ShipmentChannelService } from "../gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptService } from "../gen/warehouse/shipment/v1/receipt_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
@@ -13,6 +14,7 @@ import { InventoryService } from "../gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { WarehouseTransferService } from "../gen/warehouse/inventory/v1/warehouse_transfer_pb";
+import { OpnameService } from "../gen/warehouse/inventory/v1/opname_pb";
 import { SupplierService } from "../gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../gen/warehouse/supplier/v1/supplier_channel_pb";
 import { SupplierAnalyticService } from "../gen/warehouse/supplier/v1/supplier_analytic_pb";
@@ -46,6 +48,8 @@ export const orderClient = createClient(OrderService, transport);
 // Drafts are PERSONAL as well as team-scoped (#192): the server narrows every call to the caller,
 // so a draft never appears for a colleague however the client asks.
 export const orderDraftClient = createClient(OrderDraftService, transport);
+// Where a selling team's returns are received (the-return-warehouse-lives-in-team-return-configurations).
+export const teamReturnConfigurationClient = createClient(TeamReturnConfigurationService, transport);
 // The ONE courier catalogue (docs/business/shipment) — public reads, root writes.
 export const shipmentChannelClient = createClient(ShipmentChannelService, transport);
 // Reads an uploaded shipping label (receipt-check-is-shipments) — signed in, stores nothing.
@@ -62,9 +66,11 @@ export const supplierAnalyticClient = createClient(SupplierAnalyticService, tran
 // Racks belong to ONE warehouse — the team in the request body IS that warehouse (#129).
 export const rackClient = createClient(RackService, transport);
 export const restockClient = createClient(RestockRequestService, transport);
-// A selling team moving its own stock between two warehouses (docs/business/inventory/warehouse_transfer.md). A
-// prototype until design_accept: the real server answers Unimplemented, Storybook plays the decided rules.
+// A selling team moving its own stock between two warehouses (docs/business/inventory/warehouse_transfer.md), served by
+// inventory_service on the decided ledgers; Storybook's stub plays the same rules.
 export const warehouseTransferClient = createClient(WarehouseTransferService, transport);
+// The stock count — a prototype until design_accept: the server answers Unimplemented, Storybook's stub plays it.
+export const opnameClient = createClient(OpnameService, transport);
 // Global reference data — regions are the same for everyone, so no team travels with these calls.
 export const regionClient = createClient(RegionService, transport);
 export const expenseClient = createClient(ExpenseService, transport);

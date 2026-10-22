@@ -1,48 +1,95 @@
 # Inside Order Creation.
-
+## Reference.
+1. before create order, order service check dept threeshold. for reference [read this](../balance/context.md)
 ```mermaid
 stateDiagram-v2
 direction LR
+
+fe: Frontend
+state fe{
+    state "Order Need Created" as needc
+    state "Filling Order Form" as fill
+    state "Duplicate Warning Check" as dup
+    state dupfound <<choice>>
+    state "Show Warning, Open It or Still Create" as warn
+    state "Create Idempotency Key" as idem
+    state "Create Order" as cre
+    state "Waiting for the Answer, Form Locked" as wait
+    state answer <<choice>>
+    state "Open the Created Order" as done
+
+    [*]-->needc
+    needc-->fill
+    fill-->dup
+    dup-->dupfound
+    dupfound-->idem: nothing found
+    dupfound-->warn: found an order or a draft
+    warn-->idem: still create
+    warn-->[*]: open that order or draft
+    idem-->cre
+    cre-->wait
+    wait-->answer
+    answer-->done: the order
+    answer-->fill: an error, the form keeps what was typed
+    answer-->warn: no answer, Try Again re-checks and always warns
+    done-->[*]
+}
+
+fe-->rpc: bring idempotency key
+
 state "Create RPC called" as rpc
+state "Check the Request" as reqcheck
+state "Product Owners Lookup" as owners
+state "Product Service" as prod
+state "Debt Threshold Check" as ordcheck
+state "Balance Service" as bal
+state limit_ok <<choice>>
+state "Refuse the Create" as refuse
 state create_err <<choice>>
 
-rpc-->tx
+rpc-->reqcheck
+reqcheck-->refuse: ref, platform_total or courier missing, or the team has no return warehouse
+reqcheck-->owners: product ids
+owners-->prod: whose product is each one
+prod-->owners: each product owning team
+owners-->refuse: lookup failed, or a borrowed product has no return map
+owners-->ordcheck: creditors - the warehouse, and each team a shared product belongs to
+ordcheck-->bal: the ordering team and its creditors
+bal-->ordcheck: each pair committed debt and limit
+ordcheck-->limit_ok
+limit_ok-->refuse: a creditor at or over its limit - name it, the debt and the limit
+limit_ok-->tx: every creditor under its limit
+refuse-->[*]: an error to the form
 
 tx: Open Database Transaction
 
 note right of tx
-    If Any Step Fails, Rollback Transaction and Return Error 
+    If Any Step Fails, Rollback Transaction and Return Error
 end note
 
 state tx {
     direction TB
 
-    
-
     state "Order Created" as create
     state "Insert Order Table" as ordtable
     state "Insert Order Item Table" as orditem
+    state "Delete Draft Order, if from a draft" as draft
     state "Warehouse Fee" as whfee
-    state "Subtotal info Product" as sub
-
+    state "Lines and goods_cost" as sub
     state "Inventory Service" as inv
     state "Warehouse Service" as wh
 
-    [*]-->inv: call for take stock & placement 
-    inv-->sub: returning subtotal info.
-    sub-->wh: call for get warehouse fee
-    
+    [*]-->inv: take stock and placement - idempotency key, team_id, warehouse_id, lines
+    inv-->sub: each line - owner_team_id, unit_cost, markup, total
+    sub-->wh: goods_cost, for the warehouse fee
     wh-->whfee
-
-    whfee-->ordtable: bring warehouse fee
-    sub-->ordtable: bring total & subtotal
-    ordtable-->orditem: bring `order_id`
-    sub-->orditem: bring detail order items
-    
-    ordtable-->create
-    orditem-->create
+    whfee-->ordtable: warehouse_fee, and total_cost is goods_cost plus warehouse_fee
+    sub-->ordtable: goods_cost
+    ordtable-->orditem: bring order_id
+    sub-->orditem: the lines
+    orditem-->draft
+    draft-->create
     create-->[*]
-
 }
 
 srv: Other Service
@@ -68,10 +115,7 @@ state srv {
         [*]-->bwebhook: receiving event by push subscribe
         bwebhook-->bocreate: receive order create event
         bocreate-->b: Post Balance
-
     }
-
-    
 
     settle: Settlement Service
     state settle {
@@ -87,16 +131,14 @@ state srv {
 
 tx-->create_err
 state "Order Created Event" as createdevt
-state "Inventory Tx Cancel Compensate Event" as cominvevt
-state "Delete Draft Order" as draft
+state "InventoryTxCancel Compensate Event" as cominvevt
 
-create_err-->createdevt: if success
-create_err-->draft: if success
-create_err-->cominvevt: if error
+create_err-->createdevt: if success, and bring idempotency key
+create_err-->cominvevt: if error, and bring idempotency key
 createdevt-->srv
 cominvevt-->srv
-
 ```
+
 
 ## How We Call Inventory Service to Take Stock.
 Propossed Contracts.
@@ -107,6 +149,8 @@ message ProductItem {
 }
 
 message OrderTransactionCreateRequest {
+    string                  idempotency_key
+    uint64                  team_id          // the ordering team
     uint64                  warehouse_id
     repeated ProductItem    items
 }
@@ -114,7 +158,7 @@ message OrderTransactionCreateRequest {
 
 message TransactionItem {
     uint64 product_id
-    uint64 team_id
+    uint64 owner_team_id         
     uint32 qty
     double unit_cost                // price product, if cross, price before markup
     double unit_cost_with_markup    // price product, if cross, price after markup

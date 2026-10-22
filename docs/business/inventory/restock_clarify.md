@@ -3,6 +3,51 @@
 [restock.md](./restock.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [restock_decision.md](./restock_decision.md).
 
+> 🔄 **Re-examined after your §Restock Created Flow edit (2026-10-16).** The create now upserts `warehouse_products`
+> before its transaction. ✅ Nothing opened: it matches your stock design's *"not critical ops"*, and a restock that fails
+> or is cancelled leaving its link is harmless, because the link says the warehouse was asked to handle the product, not
+> that it holds any. The table's own points are in [context Q17](./context_clarify.md#question).
+
+> ✅ **design_accept passed (2026-10-15)** — [the-restock-prototype-is-accepted](./restock_decision.md#the-restock-prototype-is-accepted). No
+> question is open. Next: backend analysis.
+>
+> **Re-examined after *"do it all"* (2026-10-14).** ✅ [Q23](#question): b — [a-box-nobody-raised-comes-in-by-the-teams-restock](./restock_decision.md#a-box-nobody-raised-comes-in-by-the-teams-restock).
+> **No question is open in restock.** Left in your text: [restock-md-lags-the-decided-tables](#restock-md-lags-the-decided-tables).
+>
+> **Re-examined after your answer *"a"* and opname side by side (2026-10-14).** ✅ Recorded:
+> [the-decided-ledgers-come-before-the-restock-accept](./restock_decision.md#the-decided-ledgers-come-before-the-restock-accept), against
+> my *build on today's tables*. 🔄 [Q23](#question): now **b**, the rule you gave opname for a unit nobody brought in
+> ([a-unit-never-stocked-here-comes-in-by-restock](./opname_decision.md#a-unit-never-stocked-here-comes-in-by-restock)). ⚠ The
+> accept prototype does not yet refuse a rack that is being counted, which opname requires
+> ([a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)). **Open now: Q23.**
+>
+> **Re-examined after your answer *"b"* (2026-10-14).** ✅ [Q22](#question): *all qty* is every unit ordered, and a broken or
+> missing unit carries the landed price — [all-qty-is-every-unit-ordered](./restock_decision.md#all-qty-is-every-unit-ordered),
+> against my lean to C. It also answers [product Q2](../product/context_clarify.md#question). **Open now: Q23.**
+>
+> **Corrected after your question in chat (2026-10-14).** My Q22 called the door's broken and missing units "lost", and
+> argued from a rack breakage: [q22-mixed-the-door-and-the-rack](#q22-mixed-the-door-and-the-rack). 🔄 [Q22](#question)
+> rewritten with that argument withdrawn. I now **lean C**, and ask what *all qty* meant. **Open now: Q22, Q23.**
+>
+> **Re-examined after your §Calculating Price Unit When Restock Accepted (2026-10-14).** ✅ Recorded:
+> [unit-price-is-line-price-plus-costs-per-unit](./restock_decision.md#unit-price-is-line-price-plus-costs-per-unit). It
+> answers [technical stock Q3](../../technical/stock/design_clarify.md#question) (the whole restock, by quantity) and rules out
+> my A in [Q22](#question). 🔄 Q22 narrows to **B or C**: does *all qty* count the units broken or missing at the door? ⚠ The prototype
+> already disagrees with your section, because it divides the goods by good units, not by the line's own count.
+> **Open now: Q22, Q23.**
+>
+> **Re-examined after you deleted context.md's receiving flow (2026-10-14).** ✅ [two-drawings-of-receiving](#two-drawings-of-receiving)
+> resolved: restock.md is the only drawing. ➡ Its two open points moved here: 🆕 [Q22](#question), the divisor and what a problem
+> row is worth (the prototype counts a receiving loss twice), and 🆕 [Q23](#question), a box nobody raised. **Open now: Q22, Q23.**
+>
+> **Re-examined after your §Restock Accepted Flow, and your answer in chat (2026-10-14).** Your diagram has balance hear
+> *Restock Accepted*, while [the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept)
+> kept the debt off the event. ✅ You chose the diagram: [balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event),
+> a reversal ([the-couriers-debt-drawn-two-ways](#the-couriers-debt-drawn-two-ways)). **No question is open.** Left in your
+> text: [restock-md-lags-the-decided-tables](#restock-md-lags-the-decided-tables) (six decided fields) and
+> [two-drawings-of-receiving](#two-drawings-of-receiving). The ripple, the transfer's on-site charge, was asked where it is
+> answered, and it followed *(2026-10-15)*: [balance-posts-the-transfers-on-site-debt-from-the-event](./warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event).
+>
 > **The frontend gap analysis (2026-10-09)** raised [Q20](#question) — all five parts now answered, c as three notes with one
 > writer each. **No question is open in restock.** ⚠ restock.md still lacks `restocks.note`, `restock_problem_items.note`, and the
 > courier's-charge note.
@@ -139,7 +184,7 @@
 | **7** | ✅ **Answered** — [a-line-is-typed-as-its-total](./restock_decision.md#a-line-is-typed-as-its-total) | — |
 | **8** | ✅ **Answered** — [a-restock-carries-its-tracking-number](./restock_decision.md#a-restock-carries-its-tracking-number) | — |
 | **9** | ✅ **Answered** — [every-status-change-is-logged](./restock_decision.md#every-status-change-is-logged) | — |
-| **10** | ✅ **Answered** — [the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept) | — |
+| **10** | ✅ **Answered** — 🔄 [balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event), which reversed [the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept) | — |
 | **11** | ✅ **Answered by your supplier edit** — `supplier_service` writes the product-to-channel link and its daily report ([restock-accepted-links-the-product-to-its-channel](../supplier/context_decision.md#restock-accepted-links-the-product-to-its-channel), [a-supplier-is-measured-per-product-per-day](../supplier/context_decision.md#a-supplier-is-measured-per-product-per-day)) | what the event carries — [Q10c](#question) |
 | **12** | 🔄 *(2026-10-08)* **Answered for one accept** — both logs point at a transaction, and `restocks.transaction_id` points the restock at it ([every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction)). A shelf that gained 8 units can now find its delivery. ⚠ One column holds one transaction, so a count corrected after accept has nowhere to go | `ref_id` on the transaction instead — asked where it is answered, [context Q13a](./context_clarify.md#question) |
 | **13** | **The three branches are drawn side by side, but one transaction runs them in turn** — and two accepts of the same product, by the pair working one stock level, update the same placement rows. In different orders, they deadlock. | lines in `product_id` order, shelves in `placement_id` order. Not a question — the concurrency audit checks it |
@@ -154,10 +199,12 @@ still name different stores (a forwarder consolidating several sellers is one pa
 are separate restocks. Every status in restock.md is then true of the whole restock, which is what the flow already
 assumes.
 
-**And what costs money stays in the transaction; what is cosmetic rides the event.** Under
-[no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)
-an event can, rarely, be lost. A lost product link is redrawn by the next restock of that product; a lost debt leaves
-the warehouse out of pocket with no record.
+🔄 *(2026-10-14)* **What costs money is RECORDED in the accept's transaction; another service's posting rides the event.**
+Under [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)
+an event can, rarely, be lost. The courier's charge is saved on the restock in the accept's transaction, so a lost
+*Restock Accepted* leaves balance's debt unposted but never unrecorded
+([balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event)).
+This replaces *"what costs money stays in the transaction"*, which put another service's rows inside inventory's commit.
 
 ## Question
 
@@ -179,7 +226,8 @@ the warehouse out of pocket with no record.
 9. ✅ *(2026-10-09)* **Answered: yes** — [every-status-change-is-logged](./restock_decision.md#every-status-change-is-logged).
 
 10. ✅ *(2026-10-09)* **Answered, as recommended** — the link (10a, earlier) ·
-    [the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept) ·
+    [the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept) (🔄 reversed by
+    [balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event)) ·
     [restock-accepted-carries-every-line](./restock_decision.md#restock-accepted-carries-every-line) ·
     [a-restock-names-its-paying-account](./restock_decision.md#a-restock-names-its-paying-account).
 
@@ -214,6 +262,13 @@ the warehouse out of pocket with no record.
     [edits-are-in-the-same-trail](./restock_decision.md#edits-are-in-the-same-trail) · [there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile).
 
 21. ✅ *(2026-10-09)* **Answered: yes, a new line only** — [a-line-added-after-arrival-names-its-supplier](./restock_decision.md#a-line-added-after-arrival-names-its-supplier).
+
+22. ✅ *(2026-10-14)* **Answered: B, every unit ordered** — [all-qty-is-every-unit-ordered](./restock_decision.md#all-qty-is-every-unit-ordered).
+    A broken or missing unit at the door carries the same landed price as a good one. Moved here from
+    [context Q1](./context_clarify.md#question); the formula is [unit-price-is-line-price-plus-costs-per-unit](./restock_decision.md#unit-price-is-line-price-plus-costs-per-unit).
+
+23. ✅ *(2026-10-14)* **Answered: b, the team brings it in by a restock** — [a-box-nobody-raised-comes-in-by-the-teams-restock](./restock_decision.md#a-box-nobody-raised-comes-in-by-the-teams-restock),
+    the rule opname already has. Moved here from [context Q3](./context_clarify.md#question).
 
 ## Proposed Design
 
@@ -270,6 +325,12 @@ One box, one resi, so one restock ([a-restock-is-one-parcel](./restock_decision.
 
 ✅ *(2026-10-09)* **Decided: one invoice per restock** — [a-restock-has-one-invoice](./restock_decision.md#a-restock-has-one-invoice). A restock's lines share a store in practice.
 
+### Q22, worked
+
+✅ *(2026-10-14)* **Decided B** — the worked example and its spec moved to
+[all-qty-is-every-unit-ordered](./restock_decision.md#all-qty-is-every-unit-ordered). What went wrong on the way is kept in
+[q22-mixed-the-door-and-the-rack](#q22-mixed-the-door-and-the-rack).
+
 ### lifecycle
 
 ```mermaid
@@ -287,63 +348,66 @@ stateDiagram-v2
   cancel --> [*]
 ```
 
-### the tables
+### the tables, as decided
+
+🔄 *(2026-10-14)* Redrawn from [restock.md](./restock.md)'s tables plus every decision since. **NEW** marks what restock.md
+does not have yet ([restock-md-lags-the-decided-tables](#restock-md-lags-the-decided-tables)). The column names for the
+NEW fields are mine; yours win.
 
 ```mermaid
 erDiagram
   restocks ||--o{ restock_items : "orders"
-  restocks ||--o{ restock_cost_lines : "the warehouse paid at the door"
-  restocks ||--o{ restock_logs : "every status change"
+  restocks ||--o{ restock_logs : "every status change and edit"
   restock_items ||--o{ restock_problem_items : "broken or missing"
   restocks {
     bigint id PK
     bigint team_id "the selling team that bought"
     bigint warehouse_id "the warehouse team it goes to"
+    bigint transaction_id "the accept's inventory transaction"
+    bigint finance_account_id "the paying account"
+    text invoice_ref_id "the store's invoice - one per restock"
+    bigint shipment_id "the courier"
+    text receipt "the tracking number"
+    text receipt_file "a photo of the label"
     text status "ongoing arrived accepted lost cancel"
-    bigint paid_from_account_id "NEW - required, see Contradiction"
-    text courier "NEW"
-    text tracking_number "NEW - the resi on the label"
+    text note "NEW - the selling team's"
     money shipment_cost "freight, paid by the selling team"
-    money subtotal "sum of restock_items.total"
-    money total "subtotal plus shipment_cost - what the account paid"
-    money warehouse_additional_cost "sum of restock_cost_lines.amount"
+    money warehouse_additional_cost "the courier's charge at the door"
+    text warehouse_additional_cost_note "NEW - required above 0"
+    money subtotal "sum of the lines"
+    money total "subtotal plus shipment_cost"
     timestamptz created_at
     timestamptz updated_at
   }
   restock_items {
     bigint id PK
     bigint restock_id FK
-    bigint product_id "decided - unique per restock"
+    bigint product_id "once per restock"
     bigint supplier_id "NEW - optional"
-    bigint supplier_channel_id "optional - must be the supplier's"
+    bigint supplier_channel_id "optional - the supplier's store"
     bigint count "ordered"
-    bigint received_count "decided - counted at accept"
-    money total "typed - as the invoice prints it"
+    bigint received_count "NEW - counted at accept"
+    money total "typed as the invoice prints it"
     money price_unit "derived - total over count"
+    text note "the selling team's"
   }
   restock_problem_items {
     bigint id PK
     bigint restock_id FK
-    bigint product_id "finds its line - once per restock"
+    bigint product_id "finds its line"
+    bigint supplier_channel_id "optional"
     text problem_type "broken or missing"
     bigint count
-    money price_unit "copied from the line"
+    money price_unit "filled by the system"
     money total
-    timestamptz created_at
-  }
-  restock_cost_lines {
-    bigint id PK
-    bigint restock_id FK
-    money amount
-    text note "required"
-    bigint actor_id
+    text note "NEW - the warehouse's, optional"
     timestamptz created_at
   }
   restock_logs {
     bigint id PK
     bigint restock_id FK
-    text status_from
-    text status_to
+    text from_status
+    text to_status "the same as from for an edit"
     bigint actor_id
     text description
     timestamptz created_at
@@ -352,9 +416,11 @@ erDiagram
 
 `money` stands for whatever type [stock Q4](../../technical/stock/design_clarify.md#question) settles.
 
-### what accept writes — yours, plus three
+### what accept writes
 
-Yours as drawn; the three marked NEW are what I would add inside the same transaction.
+🔄 *(2026-10-14)* Yours as drawn, plus the status and trail row of [every-status-change-is-logged](./restock_decision.md#every-status-change-is-logged).
+The debt is no longer inside: balance posts it from the event
+([balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event)).
 
 ```mermaid
 stateDiagram-v2
@@ -362,34 +428,92 @@ stateDiagram-v2
   state "Accept RPC called" as rpc
   state "one database transaction" as tx {
     state "Inv Transaction - tx_type restock, ref_id the restock" as inv
-    state "NEW - status to accepted, a restock_logs row" as st
+    state "status to accepted, a restock_logs row" as st
     state "restock_problem_items - missing worked out, broken typed, price filled" as prob
-    state "NEW - restock_cost_lines, the courier's ask with a note" as cost
+    state "the courier's charge and its note, on the restock" as cost
     state "Batch Ledger - one batch per line, landed price_unit" as bl
     state "Placement Ledger - good units on their shelves" as pl
-    state "NEW - the selling team owes the warehouse the cost lines" as owe
     [*] --> inv
     inv --> st
     st --> prob
     prob --> cost
     cost --> bl
     bl --> pl
-    pl --> owe
-    owe --> [*]
+    pl --> [*]
   }
-  state "Restock Accepted event" as evt
-  state "supplier_service - the product-to-channel link and the daily report, per line" as sup
+  state "Restock Accepted event - every line, and the courier's charge" as evt
+  state "supplier_service - the product-to-channel link and the daily report" as sup
+  state "balance - the selling team owes the warehouse the charge" as bal
   rpc --> tx
   tx --> evt: after commit
   evt --> sup
+  evt --> bal
 ```
 
-The order inside is the one the price needs: the cost lines and the problem rows exist before a batch's `price_unit`
-is computed.
+The order inside is the one the price needs: the charge and the problem rows exist before a batch's `price_unit` is
+computed.
 
 # Contradiction
 
+## q22-mixed-the-door-and-the-rack
+
+✅ *(2026-10-16)* **Settled — found by you, fixed 2026-10-14.** At the door the words are `broken` and `missing` ([a-short-unit-at-the-door-is-missing](./restock_decision.md#a-short-unit-at-the-door-is-missing)); `lost` is a parcel that never came. My text had mixed them.
+
+## restock-md-lags-the-decided-tables
+
+*(2026-10-14)* Six decided fields are not in [restock.md](./restock.md) §Table Should We Have In Restock. Nothing about them
+is open, but a reader building from restock.md alone would leave them out.
+
+| field | decided by | restock.md |
+| --- | --- | --- |
+| `restocks.note` | [three-notes-one-writer-each](./restock_decision.md#three-notes-one-writer-each) | absent |
+| the courier's charge's note | [the-courier-is-paid-once-per-restock](./restock_decision.md#the-courier-is-paid-once-per-restock) | absent |
+| `restock_items.supplier_id` | [a-line-may-name-a-supplier-without-a-channel](./restock_decision.md#a-line-may-name-a-supplier-without-a-channel) | absent |
+| `restock_items.received_count` | [any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived) | absent |
+| `restock_problem_items.note` | [three-notes-one-writer-each](./restock_decision.md#three-notes-one-writer-each) | absent |
+| `restock_logs`, the whole table | [every-status-change-is-logged](./restock_decision.md#every-status-change-is-logged) · [edits-are-in-the-same-trail](./restock_decision.md#edits-are-in-the-same-trail) | absent |
+
+**One cause:** the decisions were taken in chat, one at a time, and only the decision file was written each time.
+**→ Recommend:** copy the NEW fields from [the tables, as decided](#the-tables-as-decided) into restock.md, or tell me to
+make that one edit. Any field name of mine you do not like is yours to change.
+
+```mermaid
+flowchart LR
+  C["chat answers"] --> D["restock_decision.md - six fields"]
+  C -.->|"not carried"| R["restock.md tables"]
+  D --> B["the backend step's migration"]
+  R -.->|"a reader builds from this"| B
+```
+
+## the-couriers-debt-drawn-two-ways
+
+✅ *(2026-10-14)* **Resolved by your answer: the diagram wins.**
+
+| | says |
+| --- | --- |
+| [the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept) — 2026-10-09, 16:15 | *"written inside the accept's database transaction … not on Restock Accepted"* |
+| [restock.md](./restock.md) §Restock Accepted Flow — 2026-10-09, 17:28 | **Balance Service** hears *Restock Accepted* |
+
+**The decision was the wrong one.** It put balance's rows inside inventory's commit, which today's code does only by
+passing the transaction across a service boundary. The diagram keeps each service's data its own.
+**→ Recommend (done):** [balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event).
+**Why it slipped:** your edit landed after that day's pass had read restock.md, and the clarify still said *"no question is
+open"*. **What stops it recurring:** a pass that writes a decision re-reads the owner's doc's `git log` before it closes.
+
+```mermaid
+flowchart LR
+  OLD["debt inside the accept's transaction"] -->|"reversed"| NEW["balance posts it from Restock Accepted"]
+  NEW --> T["the transfer's on-site charge - followed, 2026-10-15"]
+  NEW --> S["the backend step - the event gains the charge, the port goes"]
+```
+
 ## two-drawings-of-receiving
+
+✅ *(2026-10-14)* **Resolved: you deleted context.md's flow**
+([each-flow-draws-its-own-receiving](./context_decision.md#each-flow-draws-its-own-receiving)), so restock.md is the only
+drawing. Its two open points moved here as [Q22 and Q23](#question). The guard below was not applied: §Stock loss 1
+still has no scope, and that is now [the-receiving-boundary-gap](./context_clarify.md#the-receiving-boundary-gap), parked
+with return. As first recorded:
 
 | where | says |
 | --- | --- |
@@ -404,6 +528,12 @@ order is what [inventory Q1, Q2](./context_clarify.md#question) question. restoc
 allowing broken **and** lost on one delivery; if you meant that, inventory Q2 closes.
 **→ Recommend:** context.md's procedure points at §Restock Accepted Flow instead of drawing its own order — the person's
 steps and the transaction's steps then cannot disagree.
+🔄 *(2026-10-14)* **Still recommended, with one guard.** Your §General now points at restock.md and return.md, one doc per
+flow, which is this recommendation's direction. But the receiving flow's title, *"Stock / Return"*, is what defines
+*"at receiving"* as covering returns ([the-receiving-boundary-gap](./context_clarify.md#the-receiving-boundary-gap)).
+Delete the flow and that definition goes with it. **→ So:** §Stock loss 1 reads *"Selling Team bears the loss at receiving
+— a restock or a return"*, and then the flow can go. Its two open points were then context Q1 (the divisor) and context
+Q3 (goods nobody raised), now [Q22 and Q23](#question) here.
 
 ```mermaid
 flowchart LR

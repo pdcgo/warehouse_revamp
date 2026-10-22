@@ -862,7 +862,7 @@ export function useInvalidateStock() {
 
 // ── Writes (#177) ───────────────────────────────────────────────────────────────────────────────
 //
-// The three ways stock changes by hand. All of them go through `useInvalidateStock` above, which is
+// The way stock is corrected by hand. It goes through `useInvalidateStock` above, which is
 // the cross-domain fan-out #177 warns is the thing that gets missed — and it is why these hooks are
 // worth having at all rather than each dialog invalidating for itself. A dialog that reached for
 // `["inventory"]` alone would leave the rack page showing what was on the shelf before the move.
@@ -873,33 +873,14 @@ export function useInvalidateStock() {
 
 // The vars are taken FROM THE CLIENT METHOD rather than restated here. The `place` field is a
 // generated oneof whose shape differs per request message, and a hand-written copy of it is a second
-// definition that silently stops matching the day the proto changes.
-export function useReceiveStock() {
-  const invalidate = useInvalidateStock();
-
-  return useMutation({
-    mutationFn: (vars: Parameters<typeof inventoryClient.stockReceive>[0]) =>
-      inventoryClient.stockReceive(vars),
-    onSuccess: () => invalidate(),
-  });
-}
-
+// definition that silently stops matching the day the proto changes. A move is the rack's own write
+// (features/racks useRackMove); goods come in only by a restock.
 export function useAdjustStock() {
   const invalidate = useInvalidateStock();
 
   return useMutation({
     mutationFn: (vars: Parameters<typeof inventoryClient.stockAdjust>[0]) =>
       inventoryClient.stockAdjust(vars),
-    onSuccess: () => invalidate(),
-  });
-}
-
-export function useMoveStock() {
-  const invalidate = useInvalidateStock();
-
-  return useMutation({
-    mutationFn: (vars: Parameters<typeof inventoryClient.stockMove>[0]) =>
-      inventoryClient.stockMove(vars),
     onSuccess: () => invalidate(),
   });
 }

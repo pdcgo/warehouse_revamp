@@ -53,7 +53,8 @@ func TestRestockActorList_ThePeopleOnTheRows(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctxUser(author), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: team, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 2, Total: 200},
+				// Each team its own product: a restock carries only the team's own (a-restock-carries-only-the-teams-own-products).
+				{ProductId: 100 + team, Sku: "SKU1", Name: "Widget", Count: 2, Total: 200},
 			},
 		}))
 		if err != nil {
@@ -79,7 +80,7 @@ func TestRestockActorList_ThePeopleOnTheRows(t *testing.T) {
 	stamp := func(r *inventoryv1.RestockRequest, created time.Time) {
 		t.Helper()
 
-		err := db.Exec("UPDATE restock_requests SET created_at = ?, accepted_at = CASE WHEN accepted_at IS NULL THEN NULL ELSE ?::timestamptz END WHERE id = ?",
+		err := db.Exec("UPDATE restocks SET created_at = ?, accepted_at = CASE WHEN accepted_at IS NULL THEN NULL ELSE ?::timestamptz END WHERE id = ?",
 			created, created.Add(time.Hour), r.GetId()).Error
 		if err != nil {
 			t.Fatalf("stamp: %v", err)
@@ -157,7 +158,7 @@ func TestRestockActorList_ZeroIsNobody(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	err = db.Exec("UPDATE restock_requests SET created_by_user_id = 0 WHERE id = ?", resp.Msg.GetRequest().GetId()).Error
+	err = db.Exec("UPDATE restocks SET created_by_user_id = 0 WHERE id = ?", resp.Msg.GetRequest().GetId()).Error
 	if err != nil {
 		t.Fatalf("clear the author: %v", err)
 	}

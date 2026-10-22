@@ -17,8 +17,16 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | [every-shop-call-is-scoped-to-its-team](#every-shop-call-is-scoped-to-its-team) | every request names its team and every query is held to it — another team's shop reads as not found | as built | [critique 4](./context_clarify.md#critique) — the team's type |
 | [managers-write-shops-and-cs-reads-them](#managers-write-shops-and-cs-reads-them) | owner and admin create, edit, delete and grant · customer service only reads | as built | — |
 | [a-shop-is-a-name-a-code-and-a-marketplace](#a-shop-is-a-name-a-code-and-a-marketplace) | the record — a code unique among the team's live shops, a marketplace required | as built | [Q5](./context_clarify.md#question) — no platform name |
-| [every-shop-field-stays-editable](#every-shop-field-stays-editable) | an edit writes only the fields it sends — the marketplace included | as built | [Q4](./context_clarify.md#question) |
-| [delete-is-soft-and-frees-the-code](#delete-is-soft-and-frees-the-code) | delete flags the row, frees its code, and hides the shop from every read | as built | [Q3](./context_clarify.md#question) |
+| [superseded-every-shop-field-stays-editable](#superseded-every-shop-field-stays-editable) | ⛔ marketplace half superseded by [a-shops-marketplace-and-team-are-fixed](#a-shops-marketplace-and-team-are-fixed) — an edit writes only the fields it sends — the marketplace included | as built | [Q4](./context_clarify.md#question) |
+| [superseded-delete-is-soft-and-frees-the-code](#superseded-delete-is-soft-and-frees-the-code) | ⛔ superseded by [a-shop-is-closed-never-deleted](#a-shop-is-closed-never-deleted) — delete flags the row, frees its code, and hides the shop from every read | as built | [Q3](./context_clarify.md#question) |
+| [a-shop-is-closed-never-deleted](#a-shop-is-closed-never-deleted) | a shop is closed, never deleted — hidden by default, its payouts keep working; the deleted ones become closed | chat, Q3a, 2026-10-19 | — |
+| [a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling) | a closed shop refuses an order, a draft push and the picker — money still runs; `ShopAccessCheck` returns the status and each caller decides | chat, Q3b, 2026-10-19 | — |
+| [a-close-leaves-the-drafts-waiting](#a-close-leaves-the-drafts-waiting) | the close goes through; its drafts stay listed and cannot be finalized until deleted or the shop reopens | chat, Q3c, 2026-10-19 | — |
+| [a-shop-code-is-unique-among-open-shops](#a-shop-code-is-unique-among-open-shops) | closing frees the code; reopening is refused while an open shop holds it | chat, Q3d, 2026-10-19 | — |
+| [a-closed-shop-locks-all-but-its-grants](#a-closed-shop-locks-all-but-its-grants) | owner and admin close and reopen; a closed shop keeps its grants and primary CS editable, the rest locked | chat, Q3e, 2026-10-19 | — |
+| [a-shops-marketplace-and-team-are-fixed](#a-shops-marketplace-and-team-are-fixed) | marketplace and team are set at creation and never change — a wrong marketplace is closed and re-opened | chat, Q4, 2026-10-19 | — |
+| [the-picked-shop-is-trusted-no-platform-ref](#the-picked-shop-is-trusted-no-platform-ref) | no `platform_shop_ref` — the import trusts the picked shop, the ref check is the safety net | chat, Q5, 2026-10-19 | — |
+| [a-grant-goes-only-to-a-team-member](#a-grant-goes-only-to-a-team-member) | `ShopUserAdd` refuses a person outside the shop's team — no dormant grants | chat, Q6, 2026-10-19 | — |
 | [the-shop-list-is-paged-and-searched](#the-shop-list-is-paged-and-searched) | a team's live shops, newest first, a page at a time, searched by name or code | as built | [critique 8](./context_clarify.md#critique) |
 | [a-grant-is-idempotent-and-listed-as-ids](#a-grant-is-idempotent-and-listed-as-ids) | adding or removing a grant twice changes nothing · the list returns user ids | as built | 🔄 a grant now gates writes — [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) · [Q6](./context_clarify.md#question) |
 | [an-order-needs-a-live-shop-of-its-team](#an-order-needs-a-live-shop-of-its-team) | an order is placed only on a live shop of its own team, checked before any stock moves | as built | 🔄 gains a grant check — [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) |
@@ -203,7 +211,10 @@ erDiagram
 
 ⚠ **Under review** — nothing records who the shop is ON the platform: [Q5](./context_clarify.md#question).
 
-## every-shop-field-stays-editable
+## superseded-every-shop-field-stays-editable
+
+> ⛔ **SUPERSEDED 2026-10-19, the marketplace half** — by [a-shops-marketplace-and-team-are-fixed](#a-shops-marketplace-and-team-are-fixed):
+> the marketplace is fixed at creation. This records what the code still does until that is built.
 
 > 🏗 As built — [shop_update.go](../../../backend/services/selling_service/selling_v1/shop_update.go),
 > [selling.proto:162](../../../proto/warehouse/selling/v1/selling.proto#L162). Recorded 2026-09-28 for review.
@@ -240,7 +251,10 @@ sequenceDiagram
 ⚠ **Under review** — [Q4](./context_clarify.md#question) recommends the marketplace fixed at creation: it picks the
 import's reader and labels every past order.
 
-## delete-is-soft-and-frees-the-code
+## superseded-delete-is-soft-and-frees-the-code
+
+> ⛔ **SUPERSEDED 2026-10-19** by [a-shop-is-closed-never-deleted](#a-shop-is-closed-never-deleted): a shop is closed, never
+> deleted. This records what the code still does until the close is built.
 
 > 🏗 As built — [shop_delete.go](../../../backend/services/selling_service/selling_v1/shop_delete.go), and the partial
 > index in [00001_create_shops.sql](../../../backend/services/selling_service/db_migrations/00001_create_shops.sql).
@@ -355,7 +369,8 @@ sequenceDiagram
 > Recorded 2026-09-28 for review.
 
 **The verdict.** An order is placed only on a shop that is **live and belongs to the order's team** — checked first,
-before any stock moves, so a bad shop is a refused request and never a stock draw to undo. A draft promoted to an
+before any stock moves, so a bad shop is a refused request and never a stock draw to undo. 🔄 *(2026-10-19)* *Live* now
+means **open** — a closed shop is refused here ([a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling)). A draft promoted to an
 order passes the same check and, if refused, stays a draft to fix.
 
 ```mermaid
@@ -656,3 +671,241 @@ flowchart LR
   creation ([Q4](./context_clarify.md#question)), the platform name ([Q5](./context_clarify.md#question)), grants that
   end with membership ([Q6](./context_clarify.md#question)). The move is the cheapest moment for all four: every shop
   RPC is rewritten anyway.
+
+---
+
+## a-shop-is-closed-never-deleted
+
+> Owner, in chat (2026-10-19): *"yes, i choose 1"* — to [Q3](./context_clarify.md#question) part **3a**, *"close instead of
+> delete, or keep a delete for a shop made by mistake?"*, option 1 — close only. As recommended. Supersedes the as-built
+> [superseded-delete-is-soft-and-frees-the-code](#superseded-delete-is-soft-and-frees-the-code).
+
+**The verdict.** A shop is never deleted. It is **closed**: `status = closed`, hidden from the default list, and its history
+and its payouts keep working — the platform pays a shop's last orders after it stops selling. A shop made by mistake is
+closed too. There is no real delete, not even for a shop with no history.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> open: ShopCreate
+  open --> closed: Close
+  closed --> open: Reopen
+  note right of closed
+    hidden from the default list
+    its payouts, settlement and accounts keep working
+  end note
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the row | `status` (`open` · `closed`) and `closed_at` — replacing `deleted` |
+| the list | shows `open` by default, `closed` by a filter |
+| a real delete | none — *"it has no history"* would mean asking five services while a draft can land mid-check |
+| shops already deleted | become `closed`, `closed_at` = their `updated_at` — their payouts unblock, and report rows get their names back |
+| still open in Q3 | what a closed shop refuses (3b), its drafts (3c), its code (3d), who closes and what stays editable (3e) |
+
+---
+
+## a-closed-shop-refuses-only-new-selling
+
+> Owner, in chat (2026-10-19): *"yes, i follow your recomendation"* — to [Q3](./context_clarify.md#question) part **3b**,
+> *"what does a closed shop refuse?"*. As recommended.
+
+**The verdict.** A closed shop refuses **only new selling** — an order, a draft pushed by the third-party app, and the order
+form's shop picker. Everything about money still runs on it: the settlement import of its last statements, settlement and
+the accounts, expenses. `ShopAccessCheck` stops answering `NotFound` for a closed shop; it returns the shop **with its
+`status`**, and **each caller decides** — what a closed shop may do is that caller's rule.
+
+```mermaid
+flowchart LR
+  C["ShopAccessCheck - the shop and its status"] --> R["order, draft push, order form picker - refuse closed"]
+  C --> A["settlement import, settlement, accounts, expenses - accept closed"]
+```
+
+**The spec.**
+
+| caller | a closed shop |
+| --- | --- |
+| order create | refused — *"the shop is closed"* |
+| the third-party app's draft push | refused |
+| the order form's shop picker | not listed |
+| the settlement importer | accepted — the last payouts arrive after the close |
+| settlement, the accounts, expenses | accepted |
+| grants and the primary CS | 3e, still open |
+| `ShopAccessCheck` | returns a closed shop with `status`; `NotFound` only for a shop that does not exist or is another team's |
+
+---
+
+## a-close-leaves-the-drafts-waiting
+
+> Owner, in chat (2026-10-19): *"okay, i follow your recomendation"* — to [Q3](./context_clarify.md#question) part **3c**,
+> *"its drafts still waiting?"*. As recommended.
+
+**The verdict.** Closing a shop **goes through** whatever drafts it has. Its drafts stay in the draft list; finalizing one is
+refused — *"the shop is closed"* — by [a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling).
+Customer service deletes them, or the owner reopens the shop and they are finalized.
+
+```mermaid
+flowchart LR
+  C["Close - 3 drafts waiting"] --> OK["closed"]
+  OK --> D["the drafts stay listed"]
+  D -->|"finalize"| R["refused - the shop is closed"]
+  D -->|"customer service"| X["deleted"]
+  D -->|"the owner"| RO["reopen - then finalize"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the close | never refused for drafts — one forgotten draft does not keep a shop open |
+| the drafts | kept, never deleted by the close — nothing a buyer paid for disappears unseen |
+| finalizing one | refused while the shop is closed |
+| the way out | customer service deletes the draft, or the owner reopens the shop |
+
+---
+
+## a-shop-code-is-unique-among-open-shops
+
+> Owner, in chat (2026-10-19): *"i follow you recomedation"* — to [Q3](./context_clarify.md#question) part **3d**, *"its
+> `shop_code`?"*. As recommended.
+
+**The verdict.** A `shop_code` is unique among the team's **open** shops, as it was among its live ones. Closing a shop frees
+its code; a new shop may take it. Reopening a shop is **refused** while an open shop of the team holds its code — rename one,
+then reopen.
+
+```mermaid
+flowchart LR
+  A["MLT-SHP - closed"] --> F["the code is free"]
+  F --> N["a new shop takes MLT-SHP"]
+  N --> R{"reopen the old one?"}
+  R -->|"an open shop holds MLT-SHP"| X["refused - rename one, then reopen"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| unique | `(team_id, shop_code)` among `status = open` — the partial index moves from `deleted = false` |
+| closing | frees the code |
+| reopening | refused while an open shop of the team holds the code, naming that shop |
+| why a label may be reused | orders, settlement and expenses keep the shop's id, never its code; `ShopUpdate` already edits it |
+| the migration | rewrites no codes — those reused after a delete stay as they are |
+
+---
+
+## a-closed-shop-locks-all-but-its-grants
+
+> Owner, in chat (2026-10-19): *"yes, agree"* — to [Q3](./context_clarify.md#question) part **3e**, *"who closes it, and what
+> still works on it?"*. As recommended. It closes Q3.
+
+**The verdict.** The **owner and admin** close and reopen a shop — the roles that deleted one. On a closed shop, its **grants
+and its primary CS stay editable**, so someone can still import its last statements
+([a-shop-with-no-primary-cs-cannot-import](../settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)).
+Everything else — name, code, marketplace, description — is locked until it is reopened: a closed shop is being paid out,
+not changed.
+
+```mermaid
+flowchart LR
+  M["owner or admin"] -->|"Close, Reopen"| CL["closed shop"]
+  CL --> G["grants and the primary CS - editable"]
+  G --> I["its last statements can still be imported"]
+  CL --> N["name, code, marketplace, description - locked until reopened"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| Close · Reopen | owner, admin — [managers-write-shops-and-cs-reads-them](#managers-write-shops-and-cs-reads-them) |
+| grants, the primary CS | editable on a closed shop |
+| `ShopUpdate` on a closed shop | refused — *"reopen the shop first"* |
+| Q3, whole | [a-shop-is-closed-never-deleted](#a-shop-is-closed-never-deleted) · [a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling) · [a-close-leaves-the-drafts-waiting](#a-close-leaves-the-drafts-waiting) · [a-shop-code-is-unique-among-open-shops](#a-shop-code-is-unique-among-open-shops) · this |
+
+---
+
+## a-shops-marketplace-and-team-are-fixed
+
+> Owner, in chat (2026-10-19): *"yes, i follow your recomendation"* — to [Q4](./context_clarify.md#question), *"are a shop's
+> marketplace and team fixed once it exists?"*. As recommended. Supersedes the marketplace half of the as-built
+> [superseded-every-shop-field-stays-editable](#superseded-every-shop-field-stays-editable).
+
+**The verdict.** A shop's **marketplace** and **team** are fixed when it is created. `ShopUpdate` stops accepting
+`marketplace`; a shop never moves between teams — already true in the build, now a rule. A marketplace picked wrongly is fixed
+by closing the shop ([a-shop-is-closed-never-deleted](#a-shop-is-closed-never-deleted)) and opening the right one.
+
+```mermaid
+flowchart LR
+  C["ShopCreate - marketplace and team set"] --> F["fixed for the shop's life"]
+  F --> I["the import reads the marketplace - which statement format"]
+  F --> S["settlement freezes shop_id and team_id on every row"]
+  W["marketplace picked wrongly"] --> X["close it, open the right one"]
+```
+
+**The spec.**
+
+| field | after creation |
+| --- | --- |
+| `marketplace` | fixed — `ShopUpdate` no longer takes it |
+| `team_id` | fixed — no RPC moves a shop between teams |
+| name, code, description | editable on an open shop ([a-closed-shop-locks-all-but-its-grants](#a-closed-shop-locks-all-but-its-grants)) |
+| a wrong marketplace | close the shop, open a new one |
+
+---
+
+## the-picked-shop-is-trusted-no-platform-ref
+
+> Owner, in chat (2026-10-19): *"no need platform shop_ref, shop_id already covered it right ?"* — to [Q5](./context_clarify.md#question),
+> *"does a shop record who it is on the platform?"*, after *"when importing, we also select shop_id"*. As my revised
+> recommendation — against my first, *add `platform_shop_ref`*.
+
+**The verdict.** A shop does **not** record its name on the platform. The import trusts the **shop the person picks**
+(`shop_id`), and the importer's existing check — the file's order refs against the shop's orders — catches a wrong pick
+whenever the file has refs to compare.
+
+```mermaid
+flowchart LR
+  P["the person picks shop 57"] --> R{"the file's refs match shop 57's orders?"}
+  R -->|"yes"| OK["imported"]
+  R -->|"refs of another shop"| X["caught"]
+  R -->|"no refs to compare"| G["trusted - the accepted gap"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `platform_shop_ref` | not added — no field on the shop, its forms or the import |
+| the import | trusts the picked `shop_id`; the ref check is the safety net |
+| the accepted gaps | a wrong pick on a file with no order refs to compare · one storefront registered by two teams. Both rare; if either turns up in practice, this is renamed and the field added |
+
+---
+
+## a-grant-goes-only-to-a-team-member
+
+> Owner, in chat (2026-10-19): *"yes, refuse outside team member"* — to [Q6](./context_clarify.md#question), *"may a grant be
+> made to somebody who is not in the shop's team?"*. As recommended. The other half —
+> [removing-a-member-drops-their-shop-access](../user/context_decision.md#removing-a-member-drops-their-shop-access) — was
+> decided and built earlier.
+
+**The verdict.** `ShopUserAdd` refuses a person who is not a member of the shop's team. A shop's access list is always people
+who can work there, and a grant never waits dormant to wake up the day someone joins.
+
+```mermaid
+flowchart LR
+  G["owner grants Budi on Melati Store"] --> Q{"Budi is a member of Melati's team?"}
+  Q -->|"yes"| OK["granted"]
+  Q -->|"no"| R["refused - add Budi to the team first"]
+  L["Budi leaves the team"] --> D["his grants are dropped - built"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `ShopUserAdd` | checks team membership first; a non-member is refused, naming the person |
+| leaving the team | drops the person's grants in it — already built |
+| rejoining | starts with no grants; access is given again, on purpose |
+| *Make primary* | the primary CS is a grant, so the same rule holds |

@@ -59,7 +59,7 @@ func balanceOf(t *testing.T, db *gorm.DB, teamID, counterpartyID uint64) int64 {
 // silently wrong the first time anybody forgot the other.
 func TestPostEntry_WritesBothLegs(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	groupID, err := post(t, svc, db, codFee(15000, 77))
 	if err != nil {
@@ -98,7 +98,7 @@ func TestPostEntry_WritesBothLegs(t *testing.T) {
 // least once. A redelivered movement must be a normal answer the consumer can ACK.
 func TestPostEntry_RefusesTheSameMovementTwice(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	_, err := post(t, svc, db, codFee(15000, 77))
 	if err != nil {
@@ -116,7 +116,7 @@ func TestPostEntry_RefusesTheSameMovementTwice(t *testing.T) {
 // swallowed and the fee is never returned.
 func TestPostEntry_AReversalIsNotADuplicate(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	_, err := post(t, svc, db, codFee(15000, 77))
 	if err != nil {
@@ -163,7 +163,7 @@ func TestPostEntry_AReversalIsNotADuplicate(t *testing.T) {
 // team — so the key includes the counterparty. Keyed on source_id alone, the second would vanish.
 func TestPostEntry_OneSourceCanOweSeveralCounterparties(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	const owner uint64 = 5
 
@@ -196,7 +196,7 @@ func TestPostEntry_OneSourceCanOweSeveralCounterparties(t *testing.T) {
 // cannot be audited — so this recomputes it the way an auditor would.
 func TestPostEntry_TheBalanceIsRecomputableFromTheEntries(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	for i, amount := range []int64{15000, 4000, 9000} {
 		_, err := post(t, svc, db, codFee(amount, uint64(100+i)))
@@ -227,7 +227,7 @@ func TestPostEntry_TheBalanceIsRecomputableFromTheEntries(t *testing.T) {
 // when the pair is square — which is what makes "oldest unsettled 47 days" mean anything.
 func TestPostEntry_TheAgeingClockStartsAndStops(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	_, err := post(t, svc, db, codFee(15000, 77))
 	if err != nil {
@@ -300,7 +300,7 @@ func readBalance(
 // than loudly, which is why they are refused at the door.
 func TestPostEntry_RefusesPostingsThatCannotMeanAnything(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	cases := []struct {
 		name string
@@ -344,7 +344,7 @@ func TestPostEntry_RefusesPostingsThatCannotMeanAnything(t *testing.T) {
 // take the ledger entry with it. If it did not, a failed acceptance would leave a debt nobody owes.
 func TestPostEntry_RollsBackWithItsCallersTransaction(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	sentinel := errors.New("the caller's work failed")
 

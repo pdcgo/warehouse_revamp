@@ -8,7 +8,6 @@ import {
   Button,
   Checkbox,
   Flex,
-  SegmentGroup,
   Heading,
   Icon,
   Spacer,
@@ -40,10 +39,11 @@ import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrders, useOrderStat } from "../../features/orders/queries";
+import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
 import { summariseOrderStat } from "../../features/orders/stat";
 import { useTeams } from "../../features/teams/queries";
-import { PROCESSED_STEPS } from "../../features/orders/stages";
+import { ORDER_STATUSES, orderStatusLabelKey } from "../../components/badges/OrderStatusBadge";
 import {
   AwbCell,
   DateAgoCell,
@@ -53,12 +53,8 @@ import {
 } from "../../features/orders/OrderRowCells";
 import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orders/deadlineMock";
 import { useTypists } from "../../features/orders/typists";
-import {
-  mockMarketplaceCreated,
-  mockQuantity,
-  mockReceiptCode,
-  mockSellerShop,
-} from "../../features/orders/rowMock";
+import { mockMarketplaceCreated, mockReceiptCode } from "../../features/orders/rowMock";
+import { NO_SHOPS, useShopsByIds, type ShopNames } from "../../features/shops/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useIsMobile } from "../../layouts/shell";
@@ -67,7 +63,7 @@ import { useDebounced } from "../../lib/useDebounced";
 import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { WAREHOUSE_ORDERS_PENDING } from "./pending";
 import type { WarehouseStep } from "./steps";
-import { commonMoves, isBack, rpcFor, stepLabelKey, stepOfStatus } from "./steps";
+import { commonMoves, isBack, stepLabelKey, stepOfStatus } from "./steps";
 import { useStepMove } from "./useStepMove";
 import { RowActions } from "./components/RowActions";
 import { StepBackDialog } from "./components/StepBackDialog";
@@ -78,25 +74,31 @@ import { ValidationScanDialog } from "./components/ValidationScanDialog";
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // THE WAREHOUSE'S TABS ARE THE STEPS OF ITS WORK, not the order's statuses (owner —
-// `the-warehouse-tabs-are-the-processed-steps`). The order's statuses (Menunggu, Diproses, Dikirim, …)
-// are what a seller and a buyer read; inside the building the order is one of the four steps of
-// `processed`, preceded by the job the warehouse must accept first, and followed by nothing it acts on.
+// `the-warehouse-tabs-are-the-processed-steps`). The order's statuses (Menunggu, Dikirim, …) are what a
+// seller and a buyer read; inside the building the order is one of the warehouse's steps, preceded by the
+// job it must accept first, and followed by nothing it acts on. Each step IS an order status now (00015),
+// so every tab narrows the list and carries its count:
 //
-//   Perlu konfirmasi   PLACED — the warehouse's first job, so the screen opens here
-//   Dikonfirmasi · Diambil · Dikemas · Sudah diserahkan
-//                      the four steps of `processed` — `PROCESSED_STEPS`, the same names the seller's step
-//                      filter uses. Handed over has no status yet: disabled, with the ⚠
+//   Perlu konfirmasi   pending — the warehouse's first job, so the screen opens here
+//   Dikonfirmasi       processed — confirmed, being picked
+//   Sudah diambil      picked — waiting for the handover
+//   Sudah diserahkan   shipping — handed to the courier
 //   Semua              not a status — no narrowing, for looking an old order up
+//
+// "Sedang diambil" and "Dikemas" are gone with the statuses that held them: being picked is processed,
+// and packed is picked.
 interface WarehouseTab {
   id: string;
   labelKey: string;
-  /** Undefined: a step the contract has no status for. UNSPECIFIED: no narrowing. */
-  status?: OrderStatus;
+  /** UNSPECIFIED: no narrowing. */
+  status: OrderStatus;
 }
 
 const WAREHOUSE_TABS: WarehouseTab[] = [
-  { id: "toConfirm", labelKey: "warehouseOrders.tab.toConfirm", status: OrderStatus.PLACED },
-  ...PROCESSED_STEPS.map((step) => ({ id: step.id, labelKey: `orders.step.${step.id}`, status: step.status })),
+  { id: "toConfirm", labelKey: "warehouseOrders.tab.toConfirm", status: OrderStatus.PENDING },
+  { id: "confirm", labelKey: "orders.step.confirm", status: OrderStatus.PROCESSED },
+  { id: "picked", labelKey: "orders.step.picked", status: OrderStatus.PICKED },
+  { id: "handover", labelKey: "orders.step.handover", status: OrderStatus.SHIPPING },
   { id: "all", labelKey: "warehouseOrders.tab.all", status: OrderStatus.UNSPECIFIED },
 ];
 
@@ -107,32 +109,15 @@ const WAREHOUSE_TABS: WarehouseTab[] = [
 function warehouseLabelKey(status: OrderStatus): string | undefined {
   const tab = WAREHOUSE_TABS.find((item) => item.status === status && status !== OrderStatus.UNSPECIFIED);
   if (tab) return tab.labelKey;
-  if (status === OrderStatus.SHIPPED) return "orders.stage.shipped";
-  if (status === OrderStatus.CANCELLED) return "orders.stage.cancel";
-  return undefined;
+  return orderStatusLabelKey(status);
 }
 
-/** Whether a handed-over parcel has started moving — a shipment's state, not the order's. */
-type ShipmentState = "any" | "notMoving" | "inTransit";
-const SHIPMENT_STATES: ShipmentState[] = ["any", "notMoving", "inTransit"];
-
-/** The tabs a handed-over parcel can be listed under — the only ones the shipment filter means anything on. */
-const SHIPMENT_TABS = new Set(["handover", "all"]);
-
-// Only a tab that can be opened is read back from the URL — a step with no status is disabled on screen.
-const TAB_CODEC = oneOfCodec(WAREHOUSE_TABS.filter((item) => item.status !== undefined).map((item) => item.id));
+// Every tab is a status now, so any of them is read back from the URL.
+const TAB_CODEC = oneOfCodec(WAREHOUSE_TABS.map((item) => item.id));
 const MARKETPLACE_CODEC = enumCodec(MARKETPLACES);
-const SHIPMENT_CODEC = oneOfCodec(SHIPMENT_STATES);
 
-/** Every status an order can be in today — what "Semua" counts. */
-const EVERY_STATUS = [
-  OrderStatus.PLACED,
-  OrderStatus.CONFIRMED,
-  OrderStatus.PICKING,
-  OrderStatus.PACKED,
-  OrderStatus.SHIPPED,
-  OrderStatus.CANCELLED,
-];
+/** Every status an order can be in — what "Semua" counts. */
+const EVERY_STATUS = ORDER_STATUSES.map((meta) => meta.status);
 
 // THE WAREHOUSE'S ORDER LIST — the old system's columns (`the-warehouse-row-is-the-old-systems-columns`),
 // a PREVIEW of `/warehouse-orders`.
@@ -157,13 +142,11 @@ export function PickQueueNextPage() {
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useUrlState("q", "", textCodec);
   const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
-  // ⚠ THE FOUR BELOW REACH NOTHING YET — `OrderListFilter` takes a status, a search, a shop and a date
-  // window, and no seller team, marketplace, courier or shipment state. They are on screen so the strip
-  // can be judged, each with its ⚠ (`teamFilter`, `marketplaceFilter`, `courierFilter`, `shipmentStatus`).
+  // The crew's three filters — seller team, marketplace, courier (the-filter-gains-seller-marketplace-and-courier).
+  // The shipment-state switch is gone: the status tabs are it.
   const [sellerId, setSellerId] = useUrlState("team", 0n, idCodec);
   const [marketplace, setMarketplace] = useUrlState("marketplace", Marketplace.UNSPECIFIED, MARKETPLACE_CODEC);
   const [courier, setCourier] = useUrlState("courier", "", textCodec);
-  const [shipment, setShipment] = useUrlState<ShipmentState>("shipment", "any", SHIPMENT_CODEC);
 
   // ── THE WORKBENCH (`a-warehouse-step-moves-by-the-old-systems-table`, `scanning-is-the-crews-hands`) ──
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -179,15 +162,22 @@ export function PickQueueNextPage() {
   const debouncedSearch = useDebounced(search.trim());
   const filters: OrderFilters = useMemo(() => {
     const { fromUnix, toUnix } = resolveRange(range);
-    return { search: debouncedSearch, shopId: 0n, fromUnix, toUnix };
-  }, [debouncedSearch, range]);
+    return {
+      search: debouncedSearch,
+      shopId: 0n,
+      fromUnix,
+      toUnix,
+      sellerTeamId: sellerId,
+      marketplace,
+      shippingCode: courier,
+    };
+  }, [debouncedSearch, range, sellerId, marketplace, courier]);
   const filterCount = [
     search.trim() !== "",
     !isAllDates(range),
     sellerId > 0n,
     marketplace !== Marketplace.UNSPECIFIED,
     courier !== "",
-    shipment !== "any",
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
@@ -198,6 +188,8 @@ export function PickQueueNextPage() {
   const stat = summariseOrderStat(useOrderStat({ teamId: warehouseId, filters }).data);
   const teams = useTeams({ page: 1, pageSize: 200, reference: true });
   const teamName = (id: bigint) => teams.data?.teams.find((team) => team.id === id)?.name ?? "";
+  // The page's shops, named across teams in one read (the-warehouse-row-fills-from-shop-and-user-by-ids).
+  const shopNames = useShopsByIds({ shopIds: (query.data?.orders ?? []).map((order) => order.shopId) }).data ?? NO_SHOPS;
 
   const orders = query.data?.orders ?? [];
   // Who typed each order in — one UserByIDs for the page.
@@ -215,6 +207,7 @@ export function PickQueueNextPage() {
 
   const { move } = useStepMove(warehouseId);
   const selectedOrders = orders.filter((order) => selected.has(String(order.id)));
+  const exporter = useOrderExport();
   const allOnPageSelected = orders.length > 0 && orders.every((order) => selected.has(String(order.id)));
 
   function toggle(id: bigint) {
@@ -245,26 +238,9 @@ export function PickQueueNextPage() {
     void applyMove(list, to);
   }
 
-  async function applyMove(list: Order[], to: WarehouseStep) {
-    if (list.length === 1) {
-      await move(list[0]!, to);
-      return;
-    }
-
-    let done = 0;
-    let unbuilt = 0;
-
-    for (const order of list) {
-      const from = stepOfStatus(order.status);
-      if (from && rpcFor(from, to) === undefined) {
-        unbuilt += 1;
-        continue;
-      }
-      if (await move(order, to, true)) done += 1;
-    }
-
-    if (done > 0) toaster.create({ type: "success", title: `${t("warehouseOrders.moved", { step: t(stepLabelKey(to)) })} (${done})` });
-    if (unbuilt > 0) toaster.create({ type: "info", title: t("warehouseOrders.pending.stepMove.reason") });
+  // ONE CALL for the whole list, each order with its own result — the toast says what did not move.
+  async function applyMove(list: Order[], to: WarehouseStep, note = "") {
+    await move(list, to, { note });
     setSelected(new Set());
   }
 
@@ -282,12 +258,11 @@ export function PickQueueNextPage() {
   }
 
   function handOverSelected() {
-    const packed = selectedOrders.filter((order) => order.status === OrderStatus.PACKED);
-    const skipped = selectedOrders.length - packed.length;
+    const picked = selectedOrders.filter((order) => order.status === OrderStatus.PICKED);
+    const skipped = selectedOrders.length - picked.length;
 
     if (skipped > 0) toaster.create({ type: "warning", title: t("warehouseOrders.bulk.skipped", { count: skipped }) });
-    // ⚠ One call per parcel (`bulkHandover`).
-    if (packed.length > 0) void applyMove(packed, "handover");
+    if (picked.length > 0) void applyMove(picked, "handover");
   }
 
   function rowActions(order: Order): ReactNode {
@@ -303,7 +278,7 @@ export function PickQueueNextPage() {
     );
   }
 
-  function sayPending(id: "printMerge" | "exportFile") {
+  function sayPending(id: "printMerge") {
     toaster.create({ type: "info", title: t(`warehouseOrders.pending.${id}.reason`) });
   }
 
@@ -363,7 +338,6 @@ export function PickQueueNextPage() {
             setSellerId(0n);
             setMarketplace(Marketplace.UNSPECIFIED);
             setCourier("");
-            setShipment("any");
           })
         }
       >
@@ -379,78 +353,37 @@ export function PickQueueNextPage() {
 
         {/* WHOSE ORDER — the selling team. A search select: sellers grow with the business. */}
         <FilterField w="15rem" testId="warehouse-orders-team-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <TeamSelect
-                teamType={TeamType.SELLING}
-                value={sellerId > 0n ? sellerId : undefined}
-                placeholder={t("warehouseOrders.filter.team")}
-                onChange={(id) => refilter(() => setSellerId(id))}
-              />
-            </Box>
-            <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="teamFilter" />
-          </Flex>
+          <TeamSelect
+            teamType={TeamType.SELLING}
+            value={sellerId > 0n ? sellerId : undefined}
+            placeholder={t("warehouseOrders.filter.team")}
+            onChange={(id) => refilter(() => setSellerId(id))}
+          />
         </FilterField>
 
         <FilterField w="15rem" testId="warehouse-orders-marketplace-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <MarketplaceSelect
-                value={marketplace}
-                placeholder={t("orders.marketplaceAll")}
-                onChange={(m) => refilter(() => setMarketplace(m))}
-              />
-            </Box>
-            <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="marketplaceFilter" />
-          </Flex>
+          <MarketplaceSelect
+            value={marketplace}
+            placeholder={t("orders.marketplaceAll")}
+            onChange={(m) => refilter(() => setMarketplace(m))}
+          />
         </FilterField>
 
         {/* THE COURIER — what parcels are grouped by before a pickup. */}
         <FilterField w="15rem" testId="warehouse-orders-courier-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <ShippingSelect
-                value={courier}
-                placeholder={t("warehouseOrders.filter.courier")}
-                onChange={(code) => refilter(() => setCourier(code))}
-              />
-            </Box>
-            <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="courierFilter" />
-          </Flex>
+          <ShippingSelect
+            value={courier}
+            placeholder={t("warehouseOrders.filter.courier")}
+            onChange={(code) => refilter(() => setCourier(code))}
+          />
         </FilterField>
 
-        {/* WHETHER THE PARCEL HAS STARTED MOVING — it only means something once it has been handed to the
-            courier, so it is offered only where such parcels are listed (owner). */}
-        {SHIPMENT_TABS.has(tab) && (
-          <FilterField w="auto" testId="warehouse-orders-shipment-filter">
-            <Flex align="center" gap="1">
-              <SegmentGroup.Root
-                size="xs"
-                value={shipment}
-                onValueChange={(e) => e.value && refilter(() => setShipment(e.value as ShipmentState))}
-                aria-label={t("warehouseOrders.filter.shipment")}
-              >
-                <SegmentGroup.Indicator />
-                {SHIPMENT_STATES.map((state) => (
-                  <SegmentGroup.Item key={state} value={state} data-testid={`warehouse-orders-shipment-${state}`}>
-                    <SegmentGroup.ItemText>{t(`warehouseOrders.filter.shipmentState.${state}`)}</SegmentGroup.ItemText>
-                    <SegmentGroup.ItemHiddenInput />
-                  </SegmentGroup.Item>
-                ))}
-              </SegmentGroup.Root>
-              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="shipmentStatus" />
-            </Flex>
-          </FilterField>
-        )}
       </FilterBar>
 
       <Tabs.Root
         value={tab}
         onValueChange={(e) => {
           setTab(e.value);
-          // ⚠ The shipment filter belongs to its tabs — carried to another it would filter, invisibly,
-          // something nobody can see the control for.
-          if (!SHIPMENT_TABS.has(e.value)) setShipment("any");
           setSelected(new Set());
           setPage(1);
         }}
@@ -465,7 +398,6 @@ export function PickQueueNextPage() {
                 value={item.id}
                 flexShrink="0"
                 whiteSpace="nowrap"
-                disabled={item.status === undefined}
                 data-testid={`pick-tab-${item.id}`}
               >
                 {t(item.labelKey)}
@@ -474,7 +406,6 @@ export function PickQueueNextPage() {
                     {count}
                   </Badge>
                 )}
-                {item.status === undefined && <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="statusSet" />}
               </Tabs.Trigger>
             );
           })}
@@ -497,7 +428,23 @@ export function PickQueueNextPage() {
               onMove={(to) => requestMove(selectedOrders, to)}
               onPrint={() => sayPending("printMerge")}
               onHandover={handOverSelected}
-              onExport={() => sayPending("exportFile")}
+              exportLabel={
+                exporter.progress
+                  ? t("orders.export.running", { done: exporter.progress.done, total: exporter.progress.total })
+                  : undefined
+              }
+              onExport={() =>
+                warehouseId !== undefined &&
+                void exporter.start({
+                  teamId: warehouseId,
+                  filters,
+                  status,
+                  view: OrderExportView.WAREHOUSE,
+                  // The bar's selection when there is one, else every row the filters show
+                  // (the-bulk-actions-are-always-on-screen).
+                  orderIds: selectedOrders.map((order) => order.id),
+                })
+              }
               onClear={() => setSelected(new Set())}
             />
 
@@ -512,6 +459,7 @@ export function PickQueueNextPage() {
                         key={String(order.id)}
                         order={order}
                         team={teamName(order.teamId)}
+                        shops={shopNames}
                         typist={typistOf(order.createdByUserId)}
                         selected={selected.has(String(order.id))}
                         onToggle={() => toggle(order.id)}
@@ -545,7 +493,6 @@ export function PickQueueNextPage() {
                           <Table.ColumnHeader>
                             <Flex align="center" gap="1">
                               {t("warehouseOrders.col.shop")}
-                              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="shop" />
                             </Flex>
                           </Table.ColumnHeader>
                           <Table.ColumnHeader>
@@ -557,7 +504,6 @@ export function PickQueueNextPage() {
                           <Table.ColumnHeader textAlign="end">
                             <Flex align="center" gap="1" justify="flex-end">
                               {t("orders.qty")}
-                              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="quantity" />
                             </Flex>
                           </Table.ColumnHeader>
                           <Table.ColumnHeader>{t("picking.table.status")}</Table.ColumnHeader>
@@ -574,7 +520,7 @@ export function PickQueueNextPage() {
                       </Table.Header>
                       <Table.Body>
                         {orders.map((order) => {
-                          const facts = rowFacts(order, teamName(order.teamId));
+                          const facts = rowFacts(order, shopNames);
 
                           return (
                             <Table.Row
@@ -665,26 +611,28 @@ export function PickQueueNextPage() {
         open={goingBack !== null}
         count={goingBack?.length ?? 0}
         onClose={() => setGoingBack(null)}
-        onConfirm={() => {
-          // ⚠ The reason has nowhere to go yet, and neither does the move (`stepMove`).
+        onConfirm={(reason) => {
+          // The reason travels with the move and is kept on each order's history.
           const list = goingBack ?? [];
           setGoingBack(null);
-          void applyMove(list, "confirm");
+          void applyMove(list, "toConfirm", reason);
         }}
       />
     </Stack>
   );
 }
 
-/** The row's invented facts, in one place — each one carries a mark on its column. */
-function rowFacts(order: Order, team: string) {
+/** The row's facts in one place. The invented ones (resi, MP date, deadline) carry a mark on their column. */
+function rowFacts(order: Order, shops: ShopNames) {
   const back = mockMarketplaceCreated(order.id, order.orderExternalRefId);
   const deadline = mockDeadline(order.id, order.status);
 
   return {
-    shop: mockSellerShop(order.id, order.orderExternalRefId, team),
+    // ShopByIds, one read per page (the-warehouse-row-fills-from-shop-and-user-by-ids).
+    shop: shops.get(order.shopId.toString()),
     resi: mockReceiptCode(order.id, order.status),
-    quantity: mockQuantity(order.id),
+    // Summed by the list query — the lines themselves never travel with a list.
+    quantity: Number(order.itemQuantity),
     mpCreated: back === undefined ? undefined : order.createdAtUnix - back,
     deadline,
     overdue: deadline !== undefined && deadlineUrgency(hoursFromNow(deadline)) === "overdue",
@@ -698,6 +646,7 @@ function rowFacts(order: Order, team: string) {
 function OrderBlock({
   order,
   team,
+  shops,
   typist,
   selected,
   onToggle,
@@ -706,6 +655,8 @@ function OrderBlock({
 }: {
   order: Order;
   team: string;
+  /** The page's shops by id, from ShopByIds. */
+  shops: ShopNames;
   /** Who typed it in; "" when that was never recorded. */
   typist: string;
   selected: boolean;
@@ -714,8 +665,8 @@ function OrderBlock({
   actions: ReactNode;
 }) {
   const { t } = useTranslation();
-  const facts = rowFacts(order, team);
-  const mark = (id: "shop" | "receiptCode" | "quantity" | "mpDate" | "deadline") => (
+  const facts = rowFacts(order, shops);
+  const mark = (id: "receiptCode" | "mpDate" | "deadline") => (
     <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id={id} />
   );
 
@@ -749,7 +700,6 @@ function OrderBlock({
             <Text fontSize="xs" color="fg.muted">
               {t("orders.qty")} {facts.quantity}
             </Text>
-            {mark("quantity")}
           </Flex>
           <Box onClick={(e) => e.stopPropagation()}>{actions}</Box>
         </Flex>
@@ -758,7 +708,6 @@ function OrderBlock({
           <Text fontSize="sm" lineClamp={1}>
             {facts.shop?.name ?? "—"}
           </Text>
-          {mark("shop")}
           {order.orderExternalRefId && <CopyText value={order.orderExternalRefId} fontSize="xs" />}
         </Flex>
         <Flex align="center" gap="1.5" wrap="wrap">
@@ -822,6 +771,7 @@ function BulkBar({
   onPrint,
   onHandover,
   onExport,
+  exportLabel,
   onClear,
 }: {
   count: number;
@@ -830,6 +780,8 @@ function BulkBar({
   onPrint: () => void;
   onHandover: () => void;
   onExport: () => void;
+  /** "Exporting 200 / 456" while an export runs; undefined otherwise. */
+  exportLabel?: string;
   onClear: () => void;
 }) {
   const { t } = useTranslation();
@@ -863,7 +815,6 @@ function BulkBar({
           <Button size="xs" variant="outline" disabled={count === 0 || moves.length === 0} data-testid="pick-queue-bulk-move">
             <Icon as={ArrowRight} boxSize="4" />
             {t("warehouseOrders.bulk.changeStep")}
-            <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="stepMove" />
           </Button>
         </Menu.Trigger>
         <Portal>
@@ -871,8 +822,8 @@ function BulkBar({
             <Menu.Content>
               {moves.map((to) => (
                 <Menu.Item key={to} value={to} data-testid={`pick-queue-bulk-move-${to}`} onClick={() => onMove(to)}>
-                  <Icon as={to === "confirm" ? Undo2 : ArrowRight} boxSize="4" />
-                  {t(to === "confirm" ? "warehouseOrders.row.backTo" : "warehouseOrders.row.moveTo", {
+                  <Icon as={to === "toConfirm" ? Undo2 : ArrowRight} boxSize="4" />
+                  {t(to === "toConfirm" ? "warehouseOrders.row.backTo" : "warehouseOrders.row.moveTo", {
                     step: t(stepLabelKey(to)),
                   })}
                 </Menu.Item>
@@ -891,14 +842,20 @@ function BulkBar({
       <Button size="xs" variant="outline" disabled={count === 0} data-testid="pick-queue-bulk-handover" onClick={onHandover}>
         <Icon as={Truck} boxSize="4" />
         {t("warehouseOrders.bulk.handover")}
-        <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="bulkHandover" />
       </Button>
 
       {/* Never off: the selection when there is one, else every order the filters show. */}
-      <Button size="xs" variant="outline" colorPalette="gray" data-testid="pick-queue-bulk-export" onClick={onExport}>
+      <Button
+        size="xs"
+        variant="outline"
+        colorPalette="gray"
+        data-testid="pick-queue-bulk-export"
+        loading={exportLabel !== undefined}
+        loadingText={exportLabel}
+        onClick={onExport}
+      >
         <Icon as={Download} boxSize="4" />
         {count > 0 ? t("warehouseOrders.bulk.exportSelected", { count }) : t("warehouseOrders.bulk.exportAll")}
-        <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="exportFile" />
       </Button>
 
       <Spacer />

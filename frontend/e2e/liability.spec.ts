@@ -107,6 +107,38 @@ async function uploadProof(page: Page, ownerTeam: string, shareWith: string, fil
   return confirmed.body.document.id as string;
 }
 
+// *Restock Accepted* as the broker pushes it to liability's listener (balance-posts-the-couriers-debt-from-the-event).
+// The e2e broker has no push subscriptions, so the route, the decode, the claim and the posting are what is
+// exercised — built from the restock the server returned, never from what this spec sent. The restock is the
+// server's protojson: every 64-bit field a string, money a number.
+function pushRestockAccepted(restock: Record<string, string | number>) {
+  const acceptedAt = new Date(Number(restock.acceptedAtUnix) * 1000);
+  const event = {
+    eventId: `restock-accepted:${restock.id}`,
+    occurredAt: acceptedAt.toISOString(),
+    aggregateId: `restock:${restock.id}`,
+    restockAccepted: {
+      restockId: restock.id,
+      teamId: restock.requestingTeamId,
+      warehouseId: restock.warehouseId,
+      acceptedOn: acceptedAt.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+      acceptedAtUnix: restock.acceptedAtUnix,
+      warehouseAdditionalCost: restock.warehouseAdditionalCost,
+      warehouseAdditionalCostNote: restock.warehouseAdditionalCostNote,
+      actorId: restock.acceptedByUserId,
+    },
+  };
+
+  return {
+    message: {
+      data: Buffer.from(JSON.stringify(event)).toString("base64"),
+      attributes: { event_type: "warehouse.events.v1.RestockAccepted" },
+      messageId: `${event.eventId}-${Date.now()}`,
+    },
+    subscription: "projects/warehouse-dev/subscriptions/liability-restock-accepted",
+  };
+}
+
 // A COD restock, accepted — the one obligation this system creates today. Team 1 (root) plays the
 // requesting team; team 1 cannot owe itself, so the warehouse is a separate id.
 const WAREHOUSE_TEAM = 1;
@@ -119,6 +151,7 @@ test.describe.configure({ mode: "serial" });
 
 test("Liability: a COD acceptance creates the debt every test below reads (#185)", async ({
   page,
+  request,
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
@@ -134,40 +167,62 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
 
   warehouseId = String(wh.body.team.id);
 
+  // What a restock needs before it can be raised and counted in: a shelf for the good units
+  // (there-is-no-unplaced-pile), one of team 1's own products (a-restock-carries-only-the-teams-own-products), and
+  // the account that paid (a-restock-must-name-the-account-that-paid).
+  const rack = await call(page, "inventory.v1.RackService/RackCreate", {
+    teamId: warehouseId,
+    code: "e2e-cod",
+    name: "E2E COD shelf",
+  });
+  expect(rack.status).toBe(200);
+
+  const category = await call(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Settle ${SUFFIX}` });
+  expect(category.status).toBe(200);
+
+  const product = await call(page, "product.v1.ProductService/ProductCreate", {
+    teamId: String(WAREHOUSE_TEAM),
+    sku: SKU,
+    name: "Widget",
+    categoryId: category.body.category.id,
+  });
+  expect(product.status).toBe(200);
+
+  // Opened at 0, so team 1's accounts still add up to what the financial accounts spec expects.
+  const paidFrom = await openAccount(page, String(WAREHOUSE_TEAM), `E2E COD ${SUFFIX}`, `E2E-COD-${SUFFIX}`, 0);
+
   const created = await call(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
     teamId: String(WAREHOUSE_TEAM),
     warehouseId,
-    shippingCode: "jne",
-    items: [{ productId: "100", sku: SKU, name: "Widget", quantity: 10, totalPrice: "500000" }],
+    financeAccountId: paidFrom,
+    items: [{ productId: product.body.product.id, sku: SKU, name: "Widget", count: 10, total: 500000 }],
   });
   expect(created.status).toBe(200);
 
-  const request = created.body.request;
+  const raised = created.body.request;
 
-  // The warehouse accepts, paying the courier at the door. THIS is what creates the obligation.
-  const accepted = await call(page, "inventory.v1.RestockRequestService/RestockRequestFulfill", {
+  // The warehouse counts the box in, paying the courier at the door — one charge, its note required
+  // (the-courier-is-paid-once-per-restock).
+  const accepted = await call(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
     teamId: warehouseId,
-    requestId: String(request.id),
-    // ⚠ `INCIDENTAL`, and the NOTE IS REQUIRED. The kinds collapsed to one
-    // (the-ledger-speaks-the-business-words) and the note rule stopped being conditional with them:
-    // every line is now the untyped case, so the words are the only thing saying what the money was
-    // (an-incidental-line-must-say-what-it-was-for).
-    costLines: [
-      {
-        kind: "RESTOCK_COST_KIND_INCIDENTAL",
-        amount: String(COD_FEE),
-        note: "courier asked at the door",
-      },
-    ],
-    lines: request.items.map((item: { id: string; quantity: number }) => ({
+    requestId: String(raised.id),
+    warehouseAdditionalCost: COD_FEE,
+    warehouseAdditionalCostNote: "courier asked at the door",
+    lines: raised.items.map((item: { id: string; count: string }) => ({
       itemId: item.id,
-      receivedQuantity: item.quantity,
-      // "unplaced" is a REAL PLACE in this system (#135), not a rack id of zero — the contract makes
-      // that a oneof so an empty row cannot masquerade as a partial put-away.
-      placements: [{ unplaced: true, quantity: String(item.quantity) }],
+      receivedCount: item.count,
+      placements: [{ placementId: rack.body.rack.id, quantity: item.count }],
     })),
   });
   expect(accepted.status).toBe(200);
+
+  // THIS is what creates the obligation: liability posts the courier's charge from *Restock Accepted*, after the
+  // accept committed (balance-posts-the-couriers-debt-from-the-event) — once, however often the event arrives.
+  const route = "http://localhost:8081/event/liability-restock-accepted/push";
+  for (let i = 0; i < 2; i++) {
+    const res = await request.post(route, { data: pushRestockAccepted(accepted.body.request) });
+    expect(res.status()).toBe(200);
+  }
 
   // ⚠ NO SCREEN ASSERTION HERE ANY MORE. This test used to read the debt off `/settlement`, which is
   // deleted — the word now means the MARKETPLACE PAYOUT, and this ledger reads at `/liability`. What
@@ -250,6 +305,68 @@ test("Liability redesign: the counterparty detail opens with the ledger and its 
   await expect(page.getByTestId("record-amount")).toBeVisible();
 });
 
+// a-team-payment-posts-on-accept: each side names its OWN account — the payer the one the transfer left, the
+// creditor the one it landed in. Opened through the real contract, so liability's check is asked of the real
+// financial accounts, under the caller's token.
+async function openAccount(page: Page, teamId: string, name: string, accountNumber: string, opening: number) {
+  const res = await call(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+    teamId,
+    type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+    provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+    name,
+    holderName: "E2E",
+    accountNumber,
+    openingBalance: opening,
+    // The day the opening figure was true — today, in the system's calendar.
+    openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+  });
+  expect(res.status).toBe(200);
+
+  return String(res.body.account.id);
+}
+
+async function accountBalance(page: Page, teamId: string, accountId: string) {
+  const res = await call(page, "financial_account.v1.FinancialAccountService/FinancialAccountOverview", {
+    teamId,
+    filter: { accountIds: [accountId] },
+    metricRequest: ["FINANCIAL_ACCOUNT_METRIC_DATA_TYPE_BALANCE"],
+  });
+  expect(res.status).toBe(200);
+
+  // proto3 JSON leaves a zero out, so an absent balance IS zero.
+  return Number(res.body.items?.[0]?.balance?.mapData?.[accountId]?.balance ?? 0);
+}
+
+// liability's acceptance, as the broker pushes it to the accounts' listener. The e2e broker has no push
+// subscriptions, so the route, the decode, the claim and both legs are what is exercised — built from the
+// payment the server returned, never from what this spec sent.
+// The payment is the server's protojson — every 64-bit field a string.
+function pushAccepted(payment: Record<string, string>) {
+  const event = {
+    eventId: `liability-payment-accepted:${payment.id}`,
+    occurredAt: new Date(Number(payment.confirmedAtUnix) * 1000).toISOString(),
+    aggregateId: `liability-payment:${payment.id}`,
+    liabilityPaymentAccepted: {
+      paymentId: payment.id,
+      payerTeamId: payment.payerTeamId,
+      creditorTeamId: payment.creditorTeamId,
+      amount: payment.amount,
+      fromAccountId: payment.fromAccountId,
+      toAccountId: payment.toAccountId,
+      actorId: payment.confirmedBy,
+    },
+  };
+
+  return {
+    message: {
+      data: Buffer.from(JSON.stringify(event)).toString("base64"),
+      attributes: { event_type: "warehouse.events.v1.LiabilityPaymentAccepted" },
+      messageId: `${event.eventId}-${Date.now()}`,
+    },
+    subscription: "projects/warehouse-dev/subscriptions/financial-account-team-payment",
+  };
+}
+
 // §Payment Flow, end to end — the diagram in `balance_context.md`:
 //
 //   Team A sees what it owes → creates a Payment WITH PROOF → Team B checks manually
@@ -260,8 +377,14 @@ test("Liability redesign: the counterparty detail opens with the ledger and its 
 // for money that never moved.
 test("Liability: a payment is claimed with proof, refused, then paid again and accepted", async ({
   page,
+  request,
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // The payer's account opens at the 5.000 it is about to pay, so team 1's accounts end where they began — the
+  // financial accounts spec totals them.
+  const paidFrom = await openAccount(page, String(WAREHOUSE_TEAM), `E2E Payer ${SUFFIX}`, `66${SUFFIX}01`, 5000);
+  const receivedInto = await openAccount(page, warehouseId, `E2E Creditor ${SUFFIX}`, `66${SUFFIX}02`, 0);
 
   // The debt the earlier tests created runs the other way: the warehouse is owed by team 1. So team 1
   // is the PAYER here and the warehouse is the CREDITOR — which is also why every act below is scoped
@@ -277,8 +400,21 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
     amount: "5000",
     note: "no slip attached",
     documentIds: [],
+    fromAccountId: paidFrom,
   });
   expect(noProof.status).toBe(400);
+
+  // ⚠ THE PAYER CANNOT NAME THE CREDITOR'S ACCOUNT as the one the money left — liability asks the accounts, and
+  // the creditor's is not one of team 1's.
+  const notMine = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
+    teamId: String(WAREHOUSE_TEAM),
+    creditorTeamId: warehouseId,
+    amount: "5000",
+    note: "from somebody else's bank",
+    documentIds: [proofId],
+    fromAccountId: receivedInto,
+  });
+  expect(notMine.status).toBe(400);
 
   // A claim the creditor will refuse.
   const claimed = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
@@ -287,6 +423,7 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
     amount: "5000",
     note: "transfer BCA",
     documentIds: [proofId],
+    fromAccountId: paidFrom,
   });
   expect(claimed.status).toBe(200);
   expect(claimed.body.payment.status).toBe("LIABILITY_PAYMENT_STATUS_RECORDED");
@@ -321,6 +458,7 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   const reconfirm = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentConfirm", {
     teamId: warehouseId,
     paymentId: claimed.body.payment.id,
+    toAccountId: receivedInto,
   });
   expect(reconfirm.status).toBe(400);
 
@@ -333,15 +471,27 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
     amount: "5000",
     note: "transfer BCA, again",
     documentIds: [proofId2],
+    fromAccountId: paidFrom,
   });
   expect(second.status).toBe(200);
+
+  // ⚠ NOR CAN THE CREDITOR LAND IT IN THE PAYER'S ACCOUNT — and the refused accept leaves the claim waiting.
+  const intoTheirs = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentConfirm", {
+    teamId: warehouseId,
+    paymentId: second.body.payment.id,
+    toAccountId: paidFrom,
+  });
+  expect(intoTheirs.status).toBe(400);
 
   const confirmed = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentConfirm", {
     teamId: warehouseId,
     paymentId: second.body.payment.id,
+    toAccountId: receivedInto,
   });
   expect(confirmed.status).toBe(200);
   expect(confirmed.body.payment.status).toBe("LIABILITY_PAYMENT_STATUS_CONFIRMED");
+  expect(confirmed.body.payment.fromAccountId).toBe(paidFrom);
+  expect(confirmed.body.payment.toAccountId).toBe(receivedInto);
 
   // ✅ THIS one posted. The debt fell by exactly the amount paid.
   const afterConfirm = await call(page, "liability.v1.LiabilityService/LiabilityPositionList", {
@@ -349,6 +499,16 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
     page: { page: 1, limit: 50 },
   });
   expect(Number(afterConfirm.body.totalPayable)).toBe(Number(owedBefore) - 5000);
+
+  // ✅ AND THE ACCOUNTS HEAR IT: out of the payer's, into the creditor's — ONCE, however often it arrives.
+  const route = "http://localhost:8081/event/financial-account-team-payment/push";
+  for (let i = 0; i < 2; i++) {
+    const res = await request.post(route, { data: pushAccepted(confirmed.body.payment) });
+    expect(res.status()).toBe(200);
+  }
+
+  expect(await accountBalance(page, String(WAREHOUSE_TEAM), paidFrom)).toBe(0);
+  expect(await accountBalance(page, warehouseId, receivedInto)).toBe(5000);
 });
 
 // ⛔ THE BRIDGE, AND IT IS LOAD-BEARING. The cross-product markup left the balance screens because it

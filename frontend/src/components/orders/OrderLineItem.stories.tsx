@@ -34,12 +34,12 @@ export const Default: Story = {};
 
 // The ordinary state of a fresh order — placed hours or days before the courier issues a code.
 export const NotShippedYet: Story = {
-  args: { status: OrderStatus.PLACED, receiptCode: "" },
+  args: { status: OrderStatus.PENDING, receiptCode: "" },
 };
 
 // An order taken over the phone has no reference and never will, so the parentheses are simply absent.
 export const NoOrderRef: Story = {
-  args: { orderRefId: "", status: OrderStatus.PLACED, receiptCode: "" },
+  args: { orderRefId: "", status: OrderStatus.PENDING, receiptCode: "" },
 };
 
 // A SCRAPED DRAFT: no id of ours yet, so its own ref is the only name it has.
@@ -48,15 +48,15 @@ export const DraftHasOnlyItsRef: Story = {
 };
 
 export const Confirmed: Story = {
-  args: { status: OrderStatus.CONFIRMED, receiptCode: "" },
+  args: { status: OrderStatus.PROCESSED, receiptCode: "" },
 };
 
 export const Picking: Story = {
-  args: { status: OrderStatus.PICKING, receiptCode: "" },
+  args: { status: OrderStatus.PROCESSED, receiptCode: "" },
 };
 
 export const Cancelled: Story = {
-  args: { status: OrderStatus.CANCELLED, receiptCode: "" },
+  args: { status: OrderStatus.CANCEL, receiptCode: "" },
 };
 
 // Nothing but our own number: an order typed in by hand and not yet shipped.
@@ -82,8 +82,8 @@ export const WithAction: Story = {
 export const InAList: Story = {
   render: () => (
     <Stack gap="4" w="lg">
-      <OrderLineItem id={1042n} orderRefId="INV-250815-004" status={OrderStatus.PLACED} />
-      <OrderLineItem id={1041n} status={OrderStatus.PICKING} />
+      <OrderLineItem id={1042n} orderRefId="INV-250815-004" status={OrderStatus.PENDING} />
+      <OrderLineItem id={1041n} status={OrderStatus.PROCESSED} />
       <OrderLineItem
         id={1040n}
         orderRefId="INV-250814-118"
@@ -91,7 +91,7 @@ export const InAList: Story = {
         receiptCode={RESI}
       />
       <OrderLineItem id={0n} orderRefId="250815PXKM7TDNQF" />
-      <OrderLineItem id={1039n} status={OrderStatus.CANCELLED} />
+      <OrderLineItem id={1039n} status={OrderStatus.CANCEL} />
     </Stack>
   ),
 };
@@ -210,14 +210,14 @@ export const NoStatusRendersNoBadge: Story = {
 };
 
 // The status comes from the shared badge, so the colour and the wording are the ones the tabs above
-// the list use. A locally-written label here is how one screen starts calling PICKING something else.
+// the list use. A locally-written label here is how one screen starts calling PROCESSED something else.
 export const StatusUsesTheSharedBadge: Story = {
-  args: { status: OrderStatus.PICKING, testId: "j" },
+  args: { status: OrderStatus.PROCESSED, testId: "j" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByTestId(`order-status-${OrderStatus.PICKING}`)).toHaveTextContent(
-      "Picking",
+    await expect(canvas.getByTestId(`order-status-${OrderStatus.PROCESSED}`)).toHaveTextContent(
+      "Processed",
     );
   },
 };
@@ -264,7 +264,7 @@ export const LongCodeIsNotClamped: Story = {
 // before the courier issues one, so a marker on every unshipped order is the noise that trains people
 // to stop reading the field.
 export const MissingCodeRendersNothing: Story = {
-  args: { receiptCode: "", status: OrderStatus.PLACED, testId: "n" },
+  args: { receiptCode: "", status: OrderStatus.PENDING, testId: "n" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

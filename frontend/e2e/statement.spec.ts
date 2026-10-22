@@ -213,7 +213,9 @@ test("Statement: the last day's running total is the period's profit", async ({ 
     .innerText();
 
   const digits = lastRunning.replace(/[^0-9]/g, "");
-  const running = (lastRunning.includes("-") ? -1 : 1) * Number(digits);
+  // Either minus, as money() reads it: the page prints U+2212, and a `-`-only test read a loss as a profit the
+  // first time the period went negative (order fees reach the statement once the emulator pushes).
+  const running = (/[-−]/.test(lastRunning) ? -1 : 1) * Number(digits);
 
   expect(running).toBe(await money(page, "statement-footer-profit"));
 });

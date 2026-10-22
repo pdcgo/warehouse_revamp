@@ -7,26 +7,21 @@ import (
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
 // OwnerStockByIds answers, for a set of the CALLER'S OWN products, what stock exists behind each one
 // across every warehouse holding it (or one warehouse, with the lens set).
 //
-// ── Why the joins look like this ────────────────────────────────────────────────────────────────
+// ── Who owns it ─────────────────────────────────────────────────────────────────────────────────
 //
-// inventory_service does not know who owns a product: `product_id` is an opaque id and stock rows
-// carry no owner. What it does know is how stock GOT here — every unit arrived on an accepted restock
-// line, and a restock names the team that raised it. So ownership is derived, not asserted:
-//
-//	stock_shelf_batches → stock_batches → restock_request_items → restock_requests.requesting_team_id
-//
-// That chain is the authorization. A caller passing another team's product id joins to none of its
-// rows and gets nothing back — no ownership table, no trust in the client, and no new column that
-// could disagree with the restock it came from.
+// A batch carries its owner, written at mint (a-batch-carries-its-owner): `batches.team_id`. A caller
+// passing another team's product id matches none of its batches and gets nothing back — no trust in
+// the client.
 //
 // ── Why four queries and not one ────────────────────────────────────────────────────────────────
 //
-// Ready, the cost spread and the oldest batch come off the SHELF grain; ongoing comes off restock
+// Ready, the cost spread and the oldest batch come off the BATCH grain; ongoing comes off restock
 // lines that have no shelves yet. Fusing them would need a FULL OUTER JOIN between "what is here" and
 // "what is coming", and every product that is only one of the two would land in the null half. Four
 // aggregates keyed by product, merged in Go, stay readable and each stays a plain GROUP BY.
@@ -89,9 +84,8 @@ type ownerReadyScan struct {
 
 // ownerReadyRows fills ready_qty / ready_value / the cost spread / oldest_batch_unix.
 //
-// The value and the spread deliberately disagree about which rows they look at: SUM(qty * unit_cost)
-// skips unknown-cost batches (they add units, not money), while MIN/MAX only ever see the batches
-// that HAVE a cost. Both are the same rule stated twice — an unknown cost is not a zero.
+// Every batch carries its price, so the spread is always known. Only batches still holding units count: an emptied
+// batch is not stock, and dating the "oldest batch" from it would date goods that left months ago.
 func ownerReadyRows(
 	db *gorm.DB,
 	teamID, warehouseID uint64,
@@ -101,21 +95,16 @@ func ownerReadyRows(
 	var rows []ownerReadyScan
 
 	query := db.
-		Table("stock_shelf_batches AS sb").
+		Table("batches AS b").
 		Select(`b.product_id AS product_id,
-		        COALESCE(SUM(sb.qty), 0) AS qty,
-		        COALESCE(SUM(sb.qty * COALESCE(b.unit_cost, 0)), 0) AS value,
-		        MIN(b.unit_cost) AS cost_min,
-		        MAX(b.unit_cost) AS cost_max,
-		        EXTRACT(EPOCH FROM MIN(b.accepted_at))::bigint AS oldest_unix`).
-		Joins("JOIN stock_batches b ON b.id = sb.batch_id").
-		Joins("JOIN restock_request_items ri ON ri.id = b.restock_request_item_id").
-		Joins("JOIN restock_requests r ON r.id = ri.restock_request_id").
-		Where("r.requesting_team_id = ?", teamID).
+		        COALESCE(SUM(b.stock_count), 0) AS qty,
+		        ROUND(COALESCE(SUM(b.stock_valuation), 0))::bigint AS value,
+		        ROUND(MIN(b.price_unit))::bigint AS cost_min,
+		        ROUND(MAX(b.price_unit))::bigint AS cost_max,
+		        EXTRACT(EPOCH FROM MIN(b.created_at))::bigint AS oldest_unix`).
+		Where("b.team_id = ?", teamID).
 		Where("b.product_id IN ?", productIDs).
-		// A shelf row at 0 is not stock — it is a shelf that used to hold some. Counting it would date
-		// the "oldest batch" from goods that left months ago.
-		Where("sb.qty > 0").
+		Where("b.stock_count > 0").
 		Group("b.product_id")
 
 	if warehouseID > 0 {
@@ -153,8 +142,8 @@ type ownerOngoingScan struct {
 }
 
 // ownerOngoingRows fills ongoing_qty / ongoing_value_est from restock lines the warehouse has not
-// accepted yet. `total_price` is the LINE total, which is exactly what "what will this cost me" means
-// here — no per-unit division, and therefore no rounding to argue about later.
+// accepted yet. `total` is the LINE total, which is exactly what "what will this cost me" means here — no per-unit
+// division. Rounded to the rupiah only because this contract is still whole rupiah; the restock's own is double.
 func ownerOngoingRows(
 	db *gorm.DB,
 	teamID, warehouseID uint64,
@@ -164,12 +153,12 @@ func ownerOngoingRows(
 	var rows []ownerOngoingScan
 
 	query := db.
-		Table("restock_request_items AS ri").
+		Table("restock_items AS ri").
 		Select(`ri.product_id AS product_id,
-		        COALESCE(SUM(ri.quantity), 0) AS qty,
-		        COALESCE(SUM(ri.total_price), 0) AS value`).
-		Joins("JOIN restock_requests r ON r.id = ri.restock_request_id").
-		Where("r.requesting_team_id = ?", teamID).
+		        COALESCE(SUM(ri.count), 0) AS qty,
+		        ROUND(COALESCE(SUM(ri.total), 0))::bigint AS value`).
+		Joins("JOIN restocks r ON r.id = ri.restock_id").
+		Where("r.team_id = ?", teamID).
 		Where("r.status IN ?", restockInboundStatuses).
 		Where("ri.product_id IN ?", productIDs).
 		Group("ri.product_id")
@@ -199,8 +188,9 @@ type ownerLastRestockScan struct {
 
 // ownerLastRestockRows fills last_restock_unix: when stock for this product last ARRIVED.
 //
-// Over batches rather than over ready shelf rows, unlike the oldest-batch figure above: a delivery
-// that has since sold out still happened, and "last restocked in March" is the answer either way.
+// Over every batch a RESTOCK minted, emptied ones included, unlike the oldest-batch figure above: a delivery that has
+// since sold out still happened, and "last restocked in March" is the answer either way. A transfer's batch is not a
+// restock.
 func ownerLastRestockRows(
 	db *gorm.DB,
 	teamID, warehouseID uint64,
@@ -210,12 +200,11 @@ func ownerLastRestockRows(
 	var rows []ownerLastRestockScan
 
 	query := db.
-		Table("stock_batches AS b").
+		Table("batches AS b").
 		Select(`b.product_id AS product_id,
-		        EXTRACT(EPOCH FROM MAX(b.accepted_at))::bigint AS unix`).
-		Joins("JOIN restock_request_items ri ON ri.id = b.restock_request_item_id").
-		Joins("JOIN restock_requests r ON r.id = ri.restock_request_id").
-		Where("r.requesting_team_id = ?", teamID).
+		        EXTRACT(EPOCH FROM MAX(b.created_at))::bigint AS unix`).
+		Joins("JOIN inventory_transactions t ON t.id = b.transaction_id").
+		Where("b.team_id = ? AND t.tx_type = ?", teamID, string(inventory_service_models.TxRestock)).
 		Where("b.product_id IN ?", productIDs).
 		Group("b.product_id")
 

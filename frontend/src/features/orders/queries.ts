@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { orderClient } from "../../api/clients";
+import { orderClient, teamReturnConfigurationClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { useInvalidateStock } from "../inventory/queries";
 import { peopleFor, WHO_FILTER_SIZE } from "../users/queries";
 import { orderListRowData, ordersFromList } from "./adapt";
 
@@ -23,6 +25,12 @@ export interface OrderFilters {
   toUnix: bigint;
   /** Only orders this person typed in. 0n or absent = anybody. */
   createdByUserId?: bigint;
+  /** Only this selling team's orders — the warehouse's filter (the-filter-gains-seller-marketplace-and-courier). 0n or absent = any. */
+  sellerTeamId?: bigint;
+  /** Only orders whose shop is on this marketplace. UNSPECIFIED or absent = any. */
+  marketplace?: Marketplace;
+  /** Only orders with this courier (`shipping_code`). "" or absent = any. */
+  shippingCode?: string;
 }
 
 export const NO_ORDER_FILTERS: OrderFilters = {
@@ -40,14 +48,23 @@ const filterKey = (f: OrderFilters) => ({
   fromUnix: f.fromUnix.toString(),
   toUnix: f.toUnix.toString(),
   createdByUserId: (f.createdByUserId ?? 0n).toString(),
+  sellerTeamId: (f.sellerTeamId ?? 0n).toString(),
+  marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
+  shippingCode: f.shippingCode ?? "",
 });
 
-const filterMsg = (f: OrderFilters) => ({
+const filterMsg = (f: OrderFilters) => orderListFilterMsg(f);
+
+/** The OrderListFilter fields for these filters — what the list, the stat and the export all send. */
+export const orderListFilterMsg = (f: OrderFilters) => ({
   search: f.search,
   shopId: f.shopId,
   createdFromUnix: f.fromUnix,
   createdToUnix: f.toUnix,
   createdByUserId: f.createdByUserId ?? 0n,
+  sellerTeamId: f.sellerTeamId ?? 0n,
+  marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
+  shippingCode: f.shippingCode ?? "",
 });
 
 export function useOrders(args: {
@@ -173,7 +190,7 @@ export function useInvalidateOrders() {
 //     start invalidating stock, and it is the reason the write lives here rather than in the page.
 //   - `OrderCancel` reverses no stock or money either — that is #70, and it waits on #69.
 //
-// The fulfilment steps (pick/pack/ship) DO move goods, and they are in src/picking/queries.ts.
+// Every other status move — the warehouse's and customer service's alike — is `useOrderStatusChange` below.
 
 export function useCreateOrder() {
   const invalidate = useInvalidateOrders();
@@ -184,11 +201,10 @@ export function useCreateOrder() {
   });
 }
 
-// There is no useConfirmOrder here any more (owner). Confirming is the WAREHOUSE accepting the job, so
-// it lives with the crew's other three steps in features/picking/queries.ts — one hook that advances an
-// order and invalidates STOCK alongside orders, which this one never did because a selling-side confirm
-// moved no goods. A second confirm hook here would be a second way to make the same call, and the one
-// that skips the stock invalidation is the one somebody would reach for by name.
+// There is no useConfirmOrder, and no per-step fulfilment hook: confirming is one of the plain moves, and
+// every plain move is `useOrderStatusChange` (one-status-change-for-every-plain-move). A second hook for one
+// step would be a second way to make the same call — and the one somebody reached for by name would be the
+// one that forgot to invalidate stock.
 
 export function useCancelOrder() {
   const invalidate = useInvalidateOrders();
@@ -196,5 +212,77 @@ export function useCancelOrder() {
   return useMutation({
     mutationFn: (vars: Parameters<typeof orderClient.orderCancel>[0]) => orderClient.orderCancel(vars),
     onSuccess: () => invalidate(),
+  });
+}
+
+// ONE MOVE FOR MANY ORDERS (one-status-change-for-every-plain-move) — the warehouse's confirm, pick, hand
+// back and handover, and customer service's shipped, completed, problem, lost and forced return. Cancel
+// keeps `useCancelOrder`: it does more than move a status.
+//
+// ⚠ IT RESOLVES EVEN WHEN SOME ORDERS WERE REFUSED. Each order has its own result — a handover scan of
+// 30 where 2 were never picked moves the 28 — so the caller reads `results` and says what did not move.
+// Only a failed CALL (no team, the network) rejects.
+//
+// ⚠ IT INVALIDATES STOCK TOO. No move here takes stock off a shelf today (the take happens at create),
+// but the stock screens read an order's status for their "reserved / waiting" numbers, and a rule like
+// "only these moves stale stock" is one the next person editing this has to remember. Broad is cheap.
+export function useOrderStatusChange() {
+  const invalidateOrders = useInvalidateOrders();
+  const invalidateStock = useInvalidateStock();
+
+  return useMutation({
+    mutationFn: async (vars: Parameters<typeof orderClient.orderStatusChange>[0]) =>
+      (await orderClient.orderStatusChange(vars)).results,
+    onSuccess: () => Promise.all([invalidateOrders(), invalidateStock()]),
+  });
+}
+
+// ── The return warehouse (the-return-warehouse-lives-in-team-return-configurations) ─────────────────
+//
+// Where a selling team's returned parcels are received — one row per team, in the order context, because
+// order create is what will refuse a team without one (create-refuses-a-team-with-no-return-warehouse).
+
+/** The team's return configuration, or `null` when it has not set one — a normal state, not an error. */
+export function useTeamReturnConfiguration(args: { teamId: bigint | undefined }) {
+  const { teamId } = args;
+
+  return useQuery({
+    queryKey: key.returnConfiguration(teamId),
+    enabled: teamId !== undefined && teamId > 0n,
+    queryFn: async () => {
+      const res = await teamReturnConfigurationClient.teamReturnConfigurationDetail({ teamId: teamId! });
+
+      return res.configuration ?? null;
+    },
+  });
+}
+
+/** Set — or replace — the team's return warehouse. There is no clear: a team without one is what create refuses. */
+export function useSetTeamReturnConfiguration() {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (vars: { teamId: bigint; warehouseId: bigint }) =>
+      (await teamReturnConfigurationClient.teamReturnConfigurationSet(vars)).configuration,
+    onSuccess: () => client.invalidateQueries({ queryKey: ["returnConfiguration"] }),
+  });
+}
+
+/**
+ * Which of these teams HAVE set a return warehouse — root's Teams list marks the selling teams that have not
+ * (root-sees-which-teams-have-no-return-warehouse). Root and the Administrator only: the read is unscoped, so
+ * pass `enabled: false` for anybody else rather than collecting a refusal.
+ */
+export function useTeamsWithReturnWarehouse(args: { teamIds: bigint[]; enabled: boolean }) {
+  const { teamIds, enabled } = args;
+
+  return useQuery({
+    queryKey: key.returnConfiguration(undefined, { teamIds: teamIds.map(String).join(",") }),
+    enabled: enabled && teamIds.length > 0,
+    queryFn: async () => {
+      const res = await teamReturnConfigurationClient.teamReturnConfigurationByIds({ filter: { ids: teamIds } });
+
+      return new Set(Object.keys(res.items).map((id) => BigInt(id)));
+    },
   });
 }

@@ -399,9 +399,9 @@ export const LastCheckedIsAlwaysSaid: Story = {
 
 /**
  * THE ARCHIVE IS ITS OWN VIEW (owner, `the-archive-is-its-own-view`) — the Archive button beside New Account turns
- * this screen into the archived list: no totals, no Filter panel, the search, the shop and the type tabs, and the
- * pending mark saying the contract cannot list archived accounts alone. An archived row offers Restore and
- * nothing else. Active Accounts goes back.
+ * this screen into the archived list: no totals, no Filter panel, the search, the shop and the type tabs. The server
+ * lists the archived alone (`archived_only`) and counts them per type for the tabs — no window, no mark. An archived
+ * row offers Restore and nothing else. Active Accounts goes back.
  */
 export const ArchivedAccountsAreHiddenUntilAsked: Story = {
   play: async ({ canvasElement }) => {
@@ -417,7 +417,9 @@ export const ArchivedAccountsAreHiddenUntilAsked: Story = {
     await expect(canvas.queryByTestId("account-options-trigger")).toBeNull();
     await expect(canvas.getByTestId("account-search")).toBeVisible();
     await expect(canvas.getByTestId("account-type-tab-all")).toHaveTextContent("1");
-    await expect(canvas.getByLabelText(/Not implemented, number 1/)).toBeVisible();
+    // Served, not worked out on screen — nothing on the view says otherwise any more.
+    await expect(canvas.queryByLabelText(/Not implemented/)).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
 
     // Restore is the only thing an archived account offers — a button, and no menu.
     await expect(canvas.getByTestId(`account-restore-button-${BNI.id}`)).toBeVisible();
@@ -602,7 +604,7 @@ export const ANewAccountOpensWithItsBalance: Story = {
 /**
  * THE TYPE DECIDES THE PROVIDER (owner, `the-type-decides-the-provider`) — a bank account picks among BCA, BNI and
  * Jago; a digital wallet among ShopeePay; a cash box is Kas by itself; type Lainnya is Lainnya by itself, its number
- * optional — and marked unimplemented, the server refusing it.
+ * optional, and the server takes it as that pair.
  */
 export const TheTypeDecidesTheProvider: Story = {
   play: async ({ canvasElement }) => {
@@ -628,16 +630,15 @@ export const TheTypeDecidesTheProvider: Story = {
     await userEvent.click(screen.getByTestId(`account-type-${FinancialAccountType.UNKNOWN}`));
     await expect(screen.queryByTestId("account-provider")).toBeNull();
     await expect(screen.getByTestId("account-number")).toBeVisible();
-    const warning = screen.getByTestId("account-other-type-warning");
-    await expect(warning).toHaveTextContent("does not accept type Other yet");
-    await expect(within(warning).getByLabelText(/Not implemented, number 2/)).toBeInTheDocument();
+    // No warning: the server opens a Lainnya account now.
+    await expect(screen.queryByLabelText(/Not implemented/)).toBeNull();
   },
 };
 
 /**
- * THE DEMO OF LAINNYA (owner: *"untuk lainnya buat aja dulu demonya saja"*) — Mandiri Usaha, type Lainnya, provider
- * Lainnya: shown by its own name with its holder under it, no warning (it holds no shop's withdrawals), counted
- * under Other. And in the demo a new one saves without a number — the real server does not accept it yet.
+ * A LAINNYA ACCOUNT (owner, `the-type-decides-the-provider`) — Mandiri Usaha, type Lainnya, provider Lainnya: shown
+ * by its own name with its holder under it, no warning (it holds no shop's withdrawals), counted under Other. A new one
+ * saves without a number, as on the server.
  */
 export const AnotherBankReadsOtherInTheDemo: Story = {
   play: async ({ canvasElement }) => {

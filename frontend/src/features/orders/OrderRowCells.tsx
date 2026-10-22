@@ -204,8 +204,8 @@ export function MpDateCell({ unix, deadline }: { unix?: bigint; deadline?: bigin
 /**
  * A DATE ON ITS OWN — the status-transition date.
  *
- * ⚠ THE SHAPE EXISTS AND THE LIST CANNOT READ IT. `OrderEvent` is already `kind` + `at_unix`, which is
- * exactly this, but events are populated by `OrderDetail` only.
+ * ⚠ THE SHAPE EXISTS AND THE LIST CANNOT READ IT. `OrderTimelineLog` is already `status` + `created_at_unix`,
+ * which is exactly this, but the timeline is populated by `OrderDetail` only.
  */
 export function DateCell({ unix, testId }: { unix?: bigint; testId?: string }) {
   if (unix === undefined || unix <= 0n) {

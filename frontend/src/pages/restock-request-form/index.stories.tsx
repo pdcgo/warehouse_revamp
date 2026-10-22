@@ -68,7 +68,7 @@ function arrivedWithoutBeras() {
 }
 
 const meta = {
-  title: "Pages/Restock/RestockRequestForm",
+  title: "Pages/Inventory/Restock/RestockRequestForm",
   component: Create,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {
@@ -343,19 +343,15 @@ export const AnAcceptedRestockIsNotEditable: Story = {
   },
 };
 
-// The fields the backend does not store yet carry their marks, and the strip at the top names them.
-export const UnstoredFieldsAreMarked: Story = {
+// EVERY FIELD IS STORED (00024, restock stage 1–3): the form carries no "not implemented" mark and no strip. A mark
+// that comes back is a field that stopped being kept — this fails the day it does.
+export const NothingIsMarkedNotImplemented: Story = {
   render: () => <EditOngoing />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, "restock-edit-page");
 
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeInTheDocument();
-    await expect(canvas.getByTestId("not-implemented-financeAccount")).toBeInTheDocument();
-    await expect(canvas.getByTestId("not-implemented-shipment")).toBeInTheDocument();
-    await expect(canvas.getByTestId("not-implemented-receiptFile")).toBeInTheDocument();
-    // One per line.
-    await expect(canvas.getAllByTestId("not-implemented-lineSupplier")).toHaveLength(ONGOING.items.length);
-    await expect(canvas.getAllByTestId("not-implemented-lineNote")).toHaveLength(ONGOING.items.length);
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(canvas.queryAllByTestId(/^not-implemented-/)).toHaveLength(0);
   },
 };
 

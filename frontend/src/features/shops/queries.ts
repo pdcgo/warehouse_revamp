@@ -3,7 +3,7 @@ import { shopClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
-import { ShopRowSort } from "../../gen/warehouse/selling/v1/selling_pb";
+import { ShopByIdsDataType, ShopRowSort } from "../../gen/warehouse/selling/v1/selling_pb";
 import type { SortState } from "../../components/chrome/SortableHeader";
 import { peopleFor } from "../users/queries";
 import { shopListRowData, shopsFromList } from "./adapt";
@@ -221,5 +221,45 @@ export function useSetShopPrimary() {
   return useMutation({
     mutationFn: (vars: { teamId: bigint; shopId: bigint; userId: bigint }) => shopClient.shopUserSetPrimary(vars),
     onSuccess: () => invalidate(),
+  });
+}
+
+/** A shop's name and marketplace, by shop id as a string — what an order row names its shop with. */
+export type ShopNames = Map<string, { name: string; marketplace: Marketplace }>;
+
+/** An empty answer, shared so a row never re-renders over a new empty Map. */
+export const NO_SHOPS: ShopNames = new Map();
+
+/**
+ * Shops by id, ACROSS TEAMS (the-warehouse-row-fills-from-shop-and-user-by-ids) — a warehouse ships other teams'
+ * orders, and its row names each order's shop. One read per page, never one per row.
+ *
+ * `referenceQuery`: it LABELS rows; a shop's name changing is cosmetic, and the page re-reads on every mount anyway.
+ */
+export function useShopsByIds(args: { shopIds: bigint[] }) {
+  const ids = [...new Set(args.shopIds.filter((id) => id > 0n).map(String))].sort();
+
+  return useQuery({
+    ...referenceQuery,
+    queryKey: key.shops(undefined, { byIds: ids.join(",") }),
+    enabled: ids.length > 0,
+    queryFn: async (): Promise<ShopNames> => {
+      const res = await shopClient.shopByIds({
+        filter: { ids: ids.map((id) => BigInt(id)) },
+        dataRequest: [ShopByIdsDataType.BASIC],
+      });
+
+      const out: ShopNames = new Map();
+      for (const [id, list] of Object.entries(res.items)) {
+        for (const item of list.items) {
+          if (item.d.case === "basic") {
+            const shop = item.d.value.mapData[id];
+            if (shop) out.set(id, { name: shop.name, marketplace: shop.marketplace });
+          }
+        }
+      }
+
+      return out;
+    },
   });
 }

@@ -19,24 +19,12 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 service InventoryService {
   rpc StockList(StockListRequest) returns (StockListResponse);
   rpc StockHistory(StockHistoryRequest) returns (StockHistoryResponse);
-  rpc StockReceive(StockReceiveRequest) returns (StockReceiveResponse);
   rpc StockAdjust(StockAdjustRequest) returns (StockAdjustResponse);
   // A STOCK OPNAME — count a whole shelf in one act, and correct every line of it together.
   rpc StockOpname(StockOpnameRequest) returns (StockOpnameResponse);
-  rpc StockTransfer(StockTransferRequest) returns (StockTransferResponse);
-  // Move stock between places INSIDE one warehouse: shelve what arrived, or re-organise a shelf (#136).
-  rpc StockMove(StockMoveRequest) returns (StockMoveResponse);
-  // Take stock out for an order (#69/#149) — the selling side's draw against a warehouse.
-  rpc StockPick(StockPickRequest) returns (StockPickResponse);
 
-  // What a pick WOULD find — the read half of StockPick, so the order form can show what it is about
-  // to take before it takes it (#90).
-  //
-  // ⚠ NOT OwnerStockByIds, and the difference is the reason this exists. That one derives OWNERSHIP
-  // from the restock a unit arrived on, so stock that reached a shelf any other way — a direct
-  // receive, an adjustment, a transfer — belongs to nobody and reads as 0. A pick does not care: it
-  // drains `stock_levels` for the warehouse. Showing the ownership figure beside a Create button would
-  // block orders the warehouse can plainly fill, which is a worse lie than showing nothing.
+  // What an order's take WOULD find — the read half of OrderTransactionCreate, so the order form can show what it is
+  // about to take before it takes it (#90): the product's batches in the warehouse, summed.
   rpc StockAvailability(StockAvailabilityRequest) returns (StockAvailabilityResponse);
 
   // WHAT THIS WAREHOUSE CAN SELL — the paginated list behind the order form's product picker.
@@ -46,8 +34,6 @@ service InventoryService {
   // paging happens. Filtering a catalogue page after it loads would show two rows out of ten while
   // the pager went on counting all ten.
   rpc StockedProductList(StockedProductListRequest) returns (StockedProductListResponse);
-  // Put a pick BACK: a cancelled order (#70), or an order that died after its stock was taken (#149).
-  rpc StockReturn(StockReturnRequest) returns (StockReturnResponse);
   // What products COST this warehouse, for an order to freeze as its COGS (#74).
   rpc StockCost(StockCostRequest) returns (StockCostResponse);
 
@@ -268,32 +254,6 @@ message StockHistoryResponse {
 
 // -------------------------------------------------------------------------- writes
 
-message StockReceiveRequest {
-  // Receiving goods is a floor task — staff may do it.
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN,
-      ROLE_WAREHOUSE_STAFF
-    ]
-  };
-
-  uint64 warehouse_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  int64 quantity = 3 [(buf.validate.field).int64.gt = 0];
-  string reason = 4 [(buf.validate.field).string.max_len = 200];
-  string ref = 5 [(buf.validate.field).string.max_len = 100];
-}
-
-message StockReceiveResponse {
-  StockMovement movement = 1;
-}
-
 // Why a shelf's count is being corrected (#211). The reason drives the model: a RECOUNT reconciles the
 // whole shelf (its delta lands on the oldest batch, FIFO), while DAMAGED/LOST/FOUND touch a SPECIFIC
 // batch's units. APPEND ONLY.
@@ -497,105 +457,6 @@ message StockPlace {
   }
 }
 
-message StockMoveRequest {
-  // Moving stock around inside a warehouse is warehouse work, staff included — they are the ones
-  // carrying the box. Unlike StockTransfer (which moves stock OUT of a warehouse, and is a manager
-  // action), nothing leaves the building here and the total does not change.
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN,
-      ROLE_WAREHOUSE_STAFF
-    ]
-  };
-
-  uint64 warehouse_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-
-  // Where it is now, and where it is going. Both required — a move has two ends, and the whole point
-  // of this RPC is that it never guesses either of them.
-  //
-  // The two cases the issue names are both just values here: `from: unplaced, to: rack` is shelving
-  // what arrived, and `from: rack, to: rack` is re-organising. One verb, because they are one act.
-  StockPlace from = 3 [(buf.validate.field).required = true];
-  StockPlace to = 4 [(buf.validate.field).required = true];
-
-  // How much to move. Moving MORE than the source holds is refused — the ledger must never record
-  // goods leaving a place that did not have them.
-  int64 quantity = 5 [(buf.validate.field).int64.gt = 0];
-  string reason = 6 [(buf.validate.field).string.max_len = 200];
-
-  // WHICH BATCH's units are moving (#209/#210). Stock is per (shelf × batch), so a move relocates one
-  // delivery's units and the batch travels with them — refused if the from-shelf does not hold that
-  // many OF THAT BATCH. 0 keeps the pre-batch behaviour (move the shelf total, no batch tracked) for
-  // legacy stock that predates batches; the Move dialog always sends a real batch.
-  uint64 batch_id = 7;
-}
-
-message StockMoveResponse {
-  // Both legs, in order: off the source, onto the destination. Each carries its own place's new
-  // balance — that is what a movement means now (#135).
-  StockMovement from_movement = 1;
-  StockMovement to_movement = 2;
-}
-
-// One line of a pick: how much of a product an order takes.
-message StockPickLine {
-  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
-  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
-}
-
-message StockPickRequest {
-  // Write: the SELLING team's people, because placing the order is what takes the stock — the same
-  // roles that may call OrderCreate.
-  //
-  // ⚠ THE SCOPE IS THE SELLING TEAM, NOT THE WAREHOUSE, and that is the whole design (#149).
-  //
-  // Any team may draw stock from any warehouse (owner, 2026-07-20), so there is no per-warehouse
-  // permission to check — and there could not be one anyway: nobody in a selling team will ever hold a
-  // role inside a warehouse, so scoping this to `warehouse_id` would deny every real caller. The
-  // question worth asking is "are you a legitimate member of the team placing this order?", which is
-  // exactly what scoping to team_id asks.
-  //
-  // It must stay scoped to SOMETHING. A team-level role on a message with no `use_scope` field is
-  // evaluated against the root team and becomes a DEAD LETTER — an unscoped StockPick would quietly
-  // authorize nobody while looking like working code (see CLAUDE.md, authorization).
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_SELLING_CS
-    ]
-  };
-
-  // The SELLING team whose order this is — the caller must have a role here.
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-
-  // Whose stock is being drawn. An ordinary parameter, deliberately NOT use_scope — see above.
-  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
-
-  repeated StockPickLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
-
-  // What this draw is for, written onto every movement so the ledger can be traced back to the order.
-  string ref = 4 [(buf.validate.field).string.max_len = 100];
-}
-
-message StockPickResponse {
-  // Every movement the pick produced — one per PLACE drawn, so a line satisfied from two shelves
-  // yields two. This is what makes the drain auditable: it says exactly which shelves were emptied.
-  repeated StockMovement movements = 1;
-}
-
 // ── What this warehouse can actually sell ─────────────────────────────────────────────────────────
 
 message StockedProductListFilter {
@@ -707,43 +568,6 @@ message StockAvailabilityResponse {
   repeated StockAvailabilityItem items = 1;
 }
 
-message StockReturnRequest {
-  // Write: the same selling-team roles that may pick, for the same reason — the team that took the
-  // stock is the team that gives it back. Scoped to the SELLING team, exactly as StockPick is.
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_SELLING_CS
-    ]
-  };
-
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
-
-  // WHICH pick to undo. The caller names the reference it picked under, and every PICK movement
-  // carrying it is reversed — same product, same shelf, same quantity, opposite sign.
-  //
-  // Reversing the RECORDED movements rather than being told quantities is what makes this exact: the
-  // stock goes back precisely where it came from, including the split across shelves that the drain
-  // order produced. A caller passing its own numbers could disagree with what was actually taken, and
-  // the ledger would have no way to notice.
-  string ref = 3 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 100
-  }];
-}
-
-message StockReturnResponse {
-  // The RETURN movements written — one per place the stock went back to.
-  repeated StockMovement movements = 1;
-}
-
 // What one product cost a warehouse, per unit.
 message StockCostLine {
   uint64 product_id = 1;
@@ -805,33 +629,6 @@ message StockCostResponseList {
 
 message StockCostResponse {
   map<uint64, StockCostResponseList> items = 1;
-}
-
-message StockTransferRequest {
-  // Moving stock out of a warehouse is a manager action; scope is the SOURCE warehouse.
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
-    ]
-  };
-
-  // The source. use_scope: you must have a role in the warehouse you are moving stock OUT of.
-  uint64 from_warehouse_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-  uint64 to_warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
-  uint64 product_id = 3 [(buf.validate.field).uint64.gt = 0];
-  int64 quantity = 4 [(buf.validate.field).int64.gt = 0];
-  string reason = 5 [(buf.validate.field).string.max_len = 200];
-}
-
-message StockTransferResponse {
-  StockMovement out_movement = 1;
-  StockMovement in_movement = 2;
 }
 
 // StockPickLocations answers the pick screen's only hard question (#151): WHICH SHELF does the picker

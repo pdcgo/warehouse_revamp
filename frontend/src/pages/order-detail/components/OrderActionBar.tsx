@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { MoreHorizontal } from "lucide-react";
 
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
 import { useOrderActions } from "../../../features/orders/useOrderActions";
 import type { RowAction } from "../../../features/orders/rowActions";
 import type { OrderStageId } from "../../../features/orders/stages";
@@ -72,14 +71,12 @@ export function splitActions(
 export function OrderActionBar({
   teamId,
   orderId,
-  status,
   stage,
   warehouseId,
   compact = false,
 }: {
   teamId: bigint | undefined;
   orderId: bigint;
-  status: OrderStatus;
   stage: OrderStageId | undefined;
   warehouseId: bigint;
   /** A phone: icons, and past two every action in `⋯`. */
@@ -90,7 +87,6 @@ export function OrderActionBar({
   const { actions, press, dialog } = useOrderActions({
     teamId,
     orderId,
-    status,
     stage,
     warehouseId,
     pendingNs: ORDER_DETAIL_PENDING.ns,

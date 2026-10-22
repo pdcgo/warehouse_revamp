@@ -438,7 +438,7 @@ func TestRestockRequestList_Search(t *testing.T) {
 // THE REQUESTING-TEAM LENS — the warehouse side's mirror of the warehouse lens above (owner).
 //
 // The load-bearing assertion is the last one, and it is about SCOPE rather than filtering. The list's
-// scope is `requesting_team_id = team OR warehouse_id = team`, so a warehouse naming a selling team
+// scope is `team_id = team OR warehouse_id = team`, so a warehouse naming a selling team
 // must get that team's restocks ADDRESSED TO ITSELF — not that team's whole book. A filter written as
 // a replacement for the scope instead of a narrowing of it passes every other assertion here and
 // hands one warehouse another's inbound queue.
@@ -625,7 +625,8 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 	// would have done and what this table exists to avoid.
 	for _, qty := range []int64{12, 15} {
 		_, updErr := svc.RestockRequestUpdate(buyerCtx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
-			TeamId: sellingTeam, RequestId: id, WarehouseId: warehouse,
+			FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
+			TeamId:           sellingTeam, RequestId: id, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
 				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: qty, Total: 1000},
 			},

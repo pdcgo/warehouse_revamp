@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package warehouse.selling.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
+
+// TeamReturnConfigurationService — WHERE A SELLING TEAM'S RETURNS ARE RECEIVED
+// (the-return-warehouse-lives-in-team-return-configurations). One row per team, owned by the order context,
+// because the order context is what reads it: order create refuses a team with none
+// (create-refuses-a-team-with-no-return-warehouse) — a check switched on only after every team has a row.
+//
+// Any warehouse may be named (a-team-may-pick-any-return-warehouse). It replaced team_infos.return_warehouse_id,
+// which nothing read and is dropped.
+service TeamReturnConfigurationService {
+  rpc TeamReturnConfigurationDetail(TeamReturnConfigurationDetailRequest) returns (TeamReturnConfigurationDetailResponse);
+  rpc TeamReturnConfigurationSet(TeamReturnConfigurationSetRequest) returns (TeamReturnConfigurationSetResponse);
+  rpc TeamReturnConfigurationByIds(TeamReturnConfigurationByIdsRequest) returns (TeamReturnConfigurationByIdsResponse);
+}
+
+// One team's return warehouse.
+message TeamReturnConfiguration {
+  uint64 team_id = 1;
+  // The warehouse a returned parcel of this team is received at.
+  uint64 warehouse_id = 2;
+  // When it was last set.
+  int64 updated_at_unix = 3;
+}
+
+// The team's own row.
+message TeamReturnConfigurationDetailRequest {
+  // Read: everyone in the selling team who works its orders, customer service included — the order form
+  // will need to say why a create was refused.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+}
+
+message TeamReturnConfigurationDetailResponse {
+  // ABSENT when the team has not set one — the state create will refuse, once the check is on.
+  TeamReturnConfiguration configuration = 1;
+}
+
+// Set — or replace — the team's return warehouse.
+message TeamReturnConfigurationSetRequest {
+  // Write: the team's managers, as for its other settings.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Any warehouse (a-team-may-pick-any-return-warehouse). There is no "clear": a team without one is the
+  // state create refuses.
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message TeamReturnConfigurationSetResponse {
+  TeamReturnConfiguration configuration = 1;
+}
+
+// ---------------------------------------------------------------------------- by ids
+
+// Which of these teams have set a return warehouse — root's Teams list marks the selling teams that have not, so
+// the owner can see when every team is done and the create check can be turned on
+// (root-sees-which-teams-have-no-return-warehouse). The ids are TEAM ids: a configuration is keyed by its team.
+// A team with no row is ABSENT from the answer, and that absence is what the list marks.
+message TeamReturnConfigurationByIdsRequest {
+  // Unscoped — it reads many teams at once — so only the platform's own roles may ask.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  TeamReturnConfigurationByIdsFilter filter = 1 [(buf.validate.field).required = true];
+  // Empty defaults to the CONFIGURATION slice.
+  repeated TeamReturnConfigurationByIdsDataType data_request = 2;
+}
+
+message TeamReturnConfigurationByIdsFilter {
+  // Team ids.
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum TeamReturnConfigurationByIdsDataType {
+  TEAM_RETURN_CONFIGURATION_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  TEAM_RETURN_CONFIGURATION_BY_IDS_DATA_TYPE_CONFIGURATION = 1;
+}
+
+// A team's configuration, keyed by team id.
+message TeamReturnConfigurationMapItem {
+  map<uint64, TeamReturnConfiguration> map_data = 1;
+}
+
+message TeamReturnConfigurationByIdsResponseItem {
+  oneof d {
+    TeamReturnConfigurationMapItem configuration = 1;
+  }
+}
+
+message TeamReturnConfigurationByIdsResponseList {
+  repeated TeamReturnConfigurationByIdsResponseItem items = 1;
+}
+
+// Keyed by team id. A team that has set none is absent.
+message TeamReturnConfigurationByIdsResponse {
+  map<uint64, TeamReturnConfigurationByIdsResponseList> items = 1;
+}

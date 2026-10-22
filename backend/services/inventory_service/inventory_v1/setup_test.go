@@ -17,7 +17,7 @@ func newService(t *testing.T, db *gorm.DB) *inventory_v1.Service {
 
 	// nil posters — NewService substitutes no-ops, so a test receiving a box onto a shelf does not
 	// have to construct a liability ledger (#184) or an expense ledger (#211) it has no opinion about.
-	return inventory_v1.NewService(db, nil, nil, nil, nil)
+	return inventory_v1.NewService(db, nil, nil, nil, nil, nil)
 }
 
 // fakeSuppliers is the SupplierChecker fake: supplier id → live. A deleted supplier is false; an id that
@@ -28,11 +28,47 @@ func (f fakeSuppliers) SupplierIsLive(_ context.Context, _ uint64, supplierID ui
 	return f[supplierID], nil
 }
 
+// Stores: fakeSuppliers knows no store, so a line naming one is refused as not found.
+func (f fakeSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	return map[uint64]inventory_v1.SupplierStore{}, nil
+}
+
 // newServiceWithSuppliers is newService with suppliers to name — a restock naming one asks supplier_service.
 func newServiceWithSuppliers(t *testing.T, db *gorm.DB, suppliers fakeSuppliers) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, nil, nil, suppliers, nil)
+	return inventory_v1.NewService(db, nil, nil, suppliers, nil, nil)
+}
+
+// fakeSupplierService is fakeSuppliers plus the stores it knows: store id → its supplier and whether it is live. A store
+// id absent from the map exists nowhere.
+type fakeSupplierService struct {
+	fakeSuppliers
+	stores map[uint64]inventory_v1.SupplierStore
+}
+
+func (f fakeSupplierService) Stores(_ context.Context, _ uint64, ids []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	out := make(map[uint64]inventory_v1.SupplierStore, len(ids))
+
+	for _, id := range ids {
+		if store, ok := f.stores[id]; ok {
+			out[id] = store
+		}
+	}
+
+	return out, nil
+}
+
+// newServiceWithStores is newService with suppliers AND their stores to name.
+func newServiceWithStores(
+	t *testing.T,
+	db *gorm.DB,
+	suppliers fakeSuppliers,
+	stores map[uint64]inventory_v1.SupplierStore,
+) *inventory_v1.Service {
+	t.Helper()
+
+	return inventory_v1.NewService(db, nil, nil, fakeSupplierService{fakeSuppliers: suppliers, stores: stores}, nil, nil)
 }
 
 // recordingExpense captures the stock-loss values an adjust posts, so a test can assert on WHAT was
@@ -56,13 +92,12 @@ func (e *recordingExpense) PostStockLoss(_ context.Context, warehouseID uint64, 
 func newServiceWithExpense(t *testing.T, db *gorm.DB, expense inventory_v1.ExpensePoster) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, nil, expense, nil, nil)
+	return inventory_v1.NewService(db, nil, expense, nil, nil, nil)
 }
 
-// recordingPoster captures the COD obligations a fulfil posts, so a test can assert on WHAT was
-// recorded rather than on whether some other service's table changed.
+// recordingPoster captures the stock-damage reimbursements an adjust or a count posts, so a test can assert on WHAT
+// was recorded rather than on whether some other service's table changed.
 type recordingPoster struct {
-	posted  []codPosting
 	damaged []damagePosting
 	fail    error
 }
@@ -72,35 +107,6 @@ type recordingPoster struct {
 // (an-incidental-line-must-say-what-it-was-for) — so every accept that charges anything says what the money was.
 const courierNote = "courier at the door"
 
-type codPosting struct {
-	sellingTeamID    uint64
-	warehouseID      uint64
-	restockRequestID uint64
-	actorID          uint64
-	amount           int64
-}
-
-func (p *recordingPoster) PostRestockOutlay(
-	_ context.Context,
-	_ *gorm.DB,
-	sellingTeamID, warehouseID, restockRequestID, actorID uint64,
-	amount int64,
-) error {
-	if p.fail != nil {
-		return p.fail
-	}
-
-	p.posted = append(p.posted, codPosting{
-		sellingTeamID:    sellingTeamID,
-		warehouseID:      warehouseID,
-		restockRequestID: restockRequestID,
-		actorID:          actorID,
-		amount:           amount,
-	})
-
-	return nil
-}
-
 // newServiceWithLiability is for the tests that care what reached the ledger (#184).
 func newServiceWithLiability(
 	t *testing.T,
@@ -109,7 +115,7 @@ func newServiceWithLiability(
 ) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, poster, nil, nil, nil)
+	return inventory_v1.NewService(db, poster, nil, nil, nil, nil)
 }
 
 // page1 is the first page at a generous limit — enough for the tiny fixtures here. Every inventory

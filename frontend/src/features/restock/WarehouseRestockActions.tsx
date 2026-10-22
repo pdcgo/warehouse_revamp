@@ -9,8 +9,6 @@ import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useArriveRestockRequest } from "./queries";
-import type { PendingList } from "../../features/pending/registry";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 
@@ -59,11 +57,9 @@ export interface WarehouseRestockActionsProps {
    * header. `menu` — one ⋯ trigger, for a phone header.
    */
   variant: "row" | "buttons" | "menu";
-  /** The screen's pending list — it must carry `signForBox`. */
-  pending: PendingList<string>;
 }
 
-export function WarehouseRestockActions({ request, teamId, variant, pending }: WarehouseRestockActionsProps) {
+export function WarehouseRestockActions({ request, teamId, variant }: WarehouseRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [signing, setSigning] = useState(false);
@@ -91,8 +87,6 @@ export function WarehouseRestockActions({ request, teamId, variant, pending }: W
     }
   }
 
-  const mark = (action: WarehouseAction) =>
-    action === "signForBox" ? <NotImplemented list={pending} id="signForBox" /> : null;
 
   return (
     <>
@@ -120,7 +114,6 @@ export function WarehouseRestockActions({ request, teamId, variant, pending }: W
                   >
                     <Icon as={LOOK[action].icon} boxSize="4" />
                     {t(LOOK[action].labelKey)}
-                    {mark(action)}
                   </Menu.Item>
                 ))}
               </Menu.Content>
@@ -140,14 +133,13 @@ export function WarehouseRestockActions({ request, teamId, variant, pending }: W
             >
               <Icon as={LOOK[action].icon} boxSize="4" />
               {t(LOOK[action].labelKey)}
-              {mark(action)}
             </Button>
           ))}
         </HStack>
       )}
 
       {signing && (
-        <SignForBoxDialog request={request} teamId={teamId} pending={pending} onClose={() => setSigning(false)} />
+        <SignForBoxDialog request={request} teamId={teamId} onClose={() => setSigning(false)} />
       )}
     </>
   );
@@ -158,12 +150,10 @@ export function WarehouseRestockActions({ request, teamId, variant, pending }: W
 function SignForBoxDialog({
   request,
   teamId,
-  pending,
   onClose,
 }: {
   request: RestockRequest;
   teamId: bigint;
-  pending: PendingList<string>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -194,7 +184,6 @@ function SignForBoxDialog({
         {request.receipt
           ? t("restock.actions.sign.tracking", { receipt: request.receipt })
           : t("restock.actions.sign.noTracking")}
-        <NotImplemented list={pending} id="signForBox" />
       </HStack>
     </ConfirmDialog>
   );

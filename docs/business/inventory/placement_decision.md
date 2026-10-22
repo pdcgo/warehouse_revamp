@@ -25,6 +25,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-sample-is-recorded-on-rack-detail](#a-sample-is-recorded-on-rack-detail) | staff record a sample with a *Record Sample* action on Rack detail, so the rack is the one they are looking at | chat, 2026-10-12 — asked before the Storybook pass, as recommended |
 | [the-move-dialog-shows-stock-count-only-for-now](#the-move-dialog-shows-stock-count-only-for-now) | the Move dialog shows `stock_count` and *max = stock_count*, with no waiting note, like the rack screen | chat, 2026-10-12 — resolves [the-move-dialog-still-explains-waiting-units](./placement_clarify.md#the-move-dialog-still-explains-waiting-units), as recommended; amends the dialog row of [a-move-leaves-sold-units-on-their-rack](#a-move-leaves-sold-units-on-their-rack) |
 | [the-placement-prototype-is-accepted](#the-placement-prototype-is-accepted) | the Racks page and Rack detail as prototyped, with their contract, are the design to build, including the three choices left to the review | chat, 2026-10-12 — design_accept |
+| [a-placement-deletes-at-zero-stock](#a-placement-deletes-at-zero-stock) | a placement at 0 stock can be deleted; no check for a sold unit still waiting — staff and admin talk it over first | chat, 2026-10-16 — answers Q5, option b, against my a |
 
 ---
 
@@ -208,6 +209,9 @@ flowchart LR
 **What it does NOT settle**: who bears the sample, and whether a member of the owning team must agree first
 ([transaction Q6](./transaction_clarify.md#question)).
 
+✅ *(2026-10-12)* Settled: nobody pays anybody and nobody has to agree —
+[a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value).
+
 ## a-handed-over-sample-is-final
 
 > Owner, in chat *(2026-10-12)*: *"for 1b and 1c follow your recomendation"*. It answers
@@ -274,6 +278,9 @@ flowchart LR
 **What it does NOT settle**: whether a rack whose product is locked by a count is skipped
 ([opname Q4](./opname_clarify.md#question)) · what Rak A's screen shows while its unit waits for the picker
 ([placement Q4](./placement_clarify.md#question)).
+
+🔄 *(2026-10-13)* **Amended by [a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)**: fewest first holds among the **unlocked** racks;
+a rack whose product is being counted comes last, and its pick-list line waits for the count.
 
 ## any-warehouse-member-may-move-goods
 
@@ -581,7 +588,7 @@ flowchart LR
 | Rack detail, per product | `stock_count` |
 | Racks list, per rack | the sum of `stock_count` |
 | a sold unit not yet picked | not shown on any rack screen |
-| a rack delete refused because a sold unit waits on it | the refusal's error says why and names the order: [a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#a-placement-deletes-only-when-nothing-waits-on-it) still holds, so the explanation moves from the screen into the error |
+| a rack delete refused because a sold unit waits on it | the refusal's error says why and names the order: [superseded-a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#superseded-a-placement-deletes-only-when-nothing-waits-on-it) still holds, so the explanation moves from the screen into the error |
 | *for now* | revisit when staff report that a rack's number disagrees with its shelf |
 
 **What it closes and moves.** Q4b, *what counts as waiting*, is no longer a rack-screen question; its finding, that a
@@ -591,6 +598,9 @@ transfer out also waits until Warehouse A processes it, moves to the count, whic
 **What it does NOT settle**: whether the Move dialog drops its waiting note too
 ([the-move-dialog-still-explains-waiting-units](./placement_clarify.md#the-move-dialog-still-explains-waiting-units)) · where *picked* is stored, which the count still needs
 ([transaction Q8](./transaction_clarify.md#question)).
+
+🔄 *(2026-10-16)* **Amended by [a-placement-deletes-at-zero-stock](#a-placement-deletes-at-zero-stock)**: a rack delete is no longer
+refused for a sold unit waiting on it, so the row naming the order in the refusal is gone.
 
 ## a-sample-is-recorded-on-rack-detail
 
@@ -619,6 +629,10 @@ flowchart LR
 **What it does NOT settle**: who bears a sample and whether a member of the owning team must be named
 ([transaction Q6](./transaction_clarify.md#question)); the prototype marks that field as pending · what the dialog records
 about the person who received it, judged at the prototype.
+
+✅ *(2026-10-12)* Settled: no member is named, so the field and its pending mark are gone —
+[a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value). Where the
+recipient is kept is [transaction Q9](./transaction_clarify.md#question).
 
 ## the-move-dialog-shows-stock-count-only-for-now
 
@@ -672,3 +686,38 @@ flowchart LR
 | the Products tab | the column keeps the label *On this rack*, now meaning the stock count |
 | still pending on the screen | the count's lock ([opname Q4](./opname_clarify.md#question)) · who on the owning team agreed to a sample ([transaction Q6](./transaction_clarify.md#question)) |
 | next | backend analysis, which the ledgers come before ([the-decided-ledgers-come-before-the-transfer](./warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)) |
+
+✅ *(2026-10-12)* The sample's pending mark is gone: no member of the owning team is named
+([a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)). Only the
+count's lock stays pending on the screen.
+
+## a-placement-deletes-at-zero-stock
+
+> Owner, in chat (2026-10-16): *"b its okay, its rarely happen, almost no happen. because warehouse staff already aware
+> about that. in real before deleting placement, staff / admin discussing first."* — answering
+> [placement_clarify Q5](./placement_clarify.md#question), *how does a rack delete learn that a sold unit still waits on
+> it?*, with option **b**, against my *ask the order service*.
+
+**The verdict.** A placement is deleted when its stock is **0**, and that is the whole check. The system does not look for
+a sold unit still waiting to be picked. Deleting a placement is something staff and the admin talk over first, and that
+conversation is the check for the rare case. It supersedes
+[superseded-a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#superseded-a-placement-deletes-only-when-nothing-waits-on-it),
+and inventory never calls the order service.
+
+```mermaid
+flowchart LR
+  T["staff and admin agree"] --> D["delete Rak 3"]
+  D --> Z{"every product at 0?"}
+  Z -->|"no"| X["refused"]
+  Z -->|"yes"| OK["soft-deleted"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| allowed when | every `product_placements` row on it is at 0 |
+| not checked | a sold unit not yet picked; *picked* is the order's ([picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)) |
+| the delete | soft, as §Placements says |
+| the human check | staff and the admin talk it over before a placement is deleted — outside the system |
+| the accepted case | an order taken from Rak 3 and not yet picked when Rak 3 is deleted: the pick page still shows Rak 3's code (the delete is soft), and the unit is still on it |

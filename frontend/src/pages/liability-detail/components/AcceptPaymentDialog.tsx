@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CloseButton, Dialog, Field, Flex, Portal, Stack, Text } from "@chakra-ui/react";
+import { Button, CloseButton, Dialog, Field, Portal, Stack, Text } from "@chakra-ui/react";
 
 import { rpcError } from "../../../api/clients";
 import { formatRupiah } from "../../../lib/money";
 import { useConfirmPayment } from "../../../features/liability/queries";
 import { FinancialAccountSelect } from "../../../components/pickers/FinancialAccountSelect";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import type { LiabilityPayment } from "../../../gen/warehouse/liability/v1/liability_pb";
-import { LIABILITY_DETAIL_PENDING } from "../pending";
 
 interface AcceptPaymentDialogProps {
   /** The payment being accepted, or null when the dialog is closed. */
@@ -28,10 +26,8 @@ interface AcceptPaymentDialogProps {
 // half, and only the creditor can name it — they are the one who looked at their bank and saw it.
 //
 // ⚠ AND IT IS FINAL (an-accepted-payment-is-final). Nothing reverses an accept, so the account is
-// required rather than defaulted: a wrong one stays wrong until a reconcile finds the gap.
-//
-// ⛔ The account is DROPPED today — `LiabilityPaymentConfirmRequest` has no `to_account_id`. The mark
-// on the field says so; see `../pending.ts`.
+// required rather than defaulted: a wrong one stays wrong until a reconcile finds the gap. The server
+// refuses an account that is not one of this team's active ones.
 export function AcceptPaymentDialog({ target, onClose, teamId }: AcceptPaymentDialogProps) {
   const { t } = useTranslation();
   const confirm = useConfirmPayment();
@@ -57,8 +53,7 @@ export function AcceptPaymentDialog({ target, onClose, teamId }: AcceptPaymentDi
     setError("");
 
     confirm.mutate(
-      // ⛔ `toAccountId` is not sent — the request has no field for it yet (pending: toAccount).
-      { teamId, paymentId: target.id },
+      { teamId, paymentId: target.id, toAccountId },
       {
         onSuccess: onClose,
         onError: (err) => setError(rpcError(err)),
@@ -92,12 +87,7 @@ export function AcceptPaymentDialog({ target, onClose, teamId }: AcceptPaymentDi
                   </Text>
 
                   <Field.Root required invalid={error !== ""}>
-                    <Field.Label>
-                      <Flex align="center" gap="2" wrap="wrap">
-                        {t("liabilityDetail.confirmToAccount")}
-                        <NotImplemented list={LIABILITY_DETAIL_PENDING} id="toAccount" />
-                      </Flex>
-                    </Field.Label>
+                    <Field.Label>{t("liabilityDetail.confirmToAccount")}</Field.Label>
                     <FinancialAccountSelect
                       teamId={teamId}
                       value={toAccountId}

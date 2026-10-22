@@ -285,3 +285,41 @@ flowchart LR
 **What it does NOT settle:** whether the divisor is the ordered or the arrived quantity ([Q2](./context_clarify.md#question)),
 and how freight and the ask split across a restock's lines — by quantity or by value
 ([stock Q3](../../technical/stock/design_clarify.md#question)).
+
+---
+
+## the-reserve-stops-other-teams-at-low-stock
+
+> Owner, in chat (2026-10-15): *"for 1., simple stock >= reserve, for 2., it only stops other teams, and that reserved mainly
+> used for. to prevent other team create order with our stock if we have few stock left"* — answering
+> [Q3](./context_clarify.md#question), *what is the reserve, and does it bind the owner's own orders?* Binding only other
+> teams is as recommended; the boundary is **against** my `stock − wanted ≥ reserve`. Earlier the same day: the stock is
+> the total across every warehouse, checked by inventory before its take
+> ([the-reserve-is-read-before-the-take](../inventory/order_decision.md#the-reserve-is-read-before-the-take)).
+
+**The verdict.** The reserve is a **low-stock line**, not a floor. While the product's total stock is at or above it,
+another team may borrow; once it is below, only the owner may sell. The quantity wanted is not part of the test, and the
+owner's own orders are never stopped by it. It exists so that when the owner is down to its last few units, those units
+go to its own orders.
+
+```mermaid
+flowchart LR
+  L["a line on another team's product"] --> Q{"owner's total stock at or above the reserve?"}
+  Q -->|"yes"| A["allowed - whatever the quantity"]
+  Q -->|"no"| N["Product Not Allowed"]
+  O["a line on the team's own product"] --> Y["allowed - the reserve never applies"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the test | `total stock ≥ reserve` — allowed; below it, refused |
+| total stock | the product's stock in every warehouse ([the-reserve-is-read-before-the-take](../inventory/order_decision.md#the-reserve-is-read-before-the-take)) |
+| the quantity wanted | not counted — stock 11, reserve 10, a borrowed 5 is allowed and leaves 6 |
+| who it stops | other teams only; the owner sells its own stock to zero |
+| who sets it | the selling Owner and Admin ([the-selling-owner-and-admin-set-markup-reserve-and-lock](../user/context_decision.md#the-selling-owner-and-admin-set-markup-reserve-and-lock)) |
+| where it is checked | inventory's take, before its transaction ([the-take-checks-the-product-first](../inventory/order_decision.md#the-take-checks-the-product-first)) |
+
+**What it costs — accepted.** A borrowed order can end below the reserve — by its own quantity, or by another borrower's in
+the same moment. The line stops the **next** borrower, not this one.

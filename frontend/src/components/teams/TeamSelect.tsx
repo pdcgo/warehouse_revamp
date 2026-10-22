@@ -31,6 +31,12 @@ export interface TeamSelectProps {
    * (owner: *"select gudang tidak perlu badge di select activenya"*).
    */
   showType?: boolean;
+  /**
+   * Render the list in a portal (the default) or inline. Pass `false` inside a modal Dialog: a portalled listbox
+   * renders OUTSIDE the dialog, where the modal makes it inert and aria-hidden — unclickable, and absent from the a11y
+   * tree (the reason RackSelect and ShopSelect never portal). Kept on by default so every page-level use is unchanged.
+   */
+  portalled?: boolean;
 }
 
 // TeamSelect is the shared team picker (#49): a Chakra Combobox so the list is searchable, matching
@@ -59,6 +65,7 @@ export function TeamSelect({
   teamType,
   excludeTeamIds,
   showType = true,
+  portalled = true,
 }: TeamSelectProps) {
 
 
@@ -243,7 +250,7 @@ export function TeamSelect({
         </Combobox.IndicatorGroup>
       </Combobox.Control>
 
-      <Portal>
+      <Portal disabled={!portalled}>
         <Combobox.Positioner>
           <Combobox.Content>
             {loading ? (

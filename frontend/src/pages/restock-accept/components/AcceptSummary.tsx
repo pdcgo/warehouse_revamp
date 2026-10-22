@@ -5,13 +5,11 @@ import type { RestockRequest } from "../../../gen/warehouse/inventory/v1/restock
 import { ShippingBadge } from "../../../components/badges/ShippingBadge";
 import { TeamItem } from "../../../components/entity/TeamItem";
 import { UserItem } from "../../../components/entity/UserItem";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { useRestockActors } from "../../../features/restock/queries";
 import { committedValue, goodsTotal } from "../../../features/restock/summary";
 import { useShipmentChannelsByIds } from "../../../features/shipment/queries";
 import { useTeamDetail } from "../../../features/teams/queries";
-import { formatRupiah } from "../../../lib/money";
-import { RESTOCK_ACCEPT_PENDING } from "../pending";
+import { formatRupiahNumber } from "../../../lib/money";
 
 function formatDate(unix: bigint): string {
   if (unix <= 0n) return "";
@@ -29,7 +27,7 @@ function formatDate(unix: bigint): string {
 // The money card keeps the courier's charge OUT of the total (the-couriers-charge-stays-out-of-total): the total is
 // what the selling team paid when it raised the restock, and the charge the warehouse paid at the door is its own debt,
 // shown on its own line as owed by the selling team.
-export function AcceptSummary({ request, courierCharge }: { request: RestockRequest; courierCharge: bigint }) {
+export function AcceptSummary({ request, courierCharge }: { request: RestockRequest; courierCharge: number }) {
   const { t } = useTranslation();
 
   const requester = useTeamDetail({ teamId: request.requestingTeamId, enabled: request.requestingTeamId > 0n });
@@ -109,7 +107,6 @@ export function AcceptSummary({ request, courierCharge }: { request: RestockRequ
                   <Text fontSize="xs" color="fg.muted">
                     {t("restock.accept.summary.courier")}
                   </Text>
-                  <NotImplemented list={RESTOCK_ACCEPT_PENDING} id="courier" />
                 </Flex>
                 <Box data-testid="accept-courier-name">
                   <ShippingBadge code={courier?.code ?? ""} />
@@ -153,18 +150,18 @@ export function AcceptSummary({ request, courierCharge }: { request: RestockRequ
             <SimpleGrid columns={2} gap="card">
               <Stat.Root size="sm">
                 <Stat.Label>{t("restock.accept.summary.goods")}</Stat.Label>
-                <Stat.ValueText data-testid="accept-goods-total">{formatRupiah(goodsTotal(request.items))}</Stat.ValueText>
+                <Stat.ValueText data-testid="accept-goods-total">{formatRupiahNumber(goodsTotal(request.items))}</Stat.ValueText>
               </Stat.Root>
 
               <Stat.Root size="sm">
                 <Stat.Label>{t("restock.accept.summary.shipping")}</Stat.Label>
-                <Stat.ValueText data-testid="accept-shipping-total">{formatRupiah(request.shipmentCost)}</Stat.ValueText>
+                <Stat.ValueText data-testid="accept-shipping-total">{formatRupiahNumber(request.shipmentCost)}</Stat.ValueText>
               </Stat.Root>
             </SimpleGrid>
 
             <Stat.Root size="md">
               <Stat.Label>{t("restock.accept.summary.total")}</Stat.Label>
-              <Stat.ValueText data-testid="accept-grand-total">{formatRupiah(committedValue(request))}</Stat.ValueText>
+              <Stat.ValueText data-testid="accept-grand-total">{formatRupiahNumber(committedValue(request))}</Stat.ValueText>
               <Stat.HelpText>{t("restock.accept.summary.totalHint")}</Stat.HelpText>
             </Stat.Root>
 
@@ -173,7 +170,7 @@ export function AcceptSummary({ request, courierCharge }: { request: RestockRequ
             {/* OUTSIDE the total, on purpose — the warehouse paid it, later, from its own money. */}
             <Stat.Root size="sm">
               <Stat.Label>{t("restock.accept.summary.courierOwed")}</Stat.Label>
-              <Stat.ValueText data-testid="accept-courier-owed">{formatRupiah(courierCharge)}</Stat.ValueText>
+              <Stat.ValueText data-testid="accept-courier-owed">{formatRupiahNumber(courierCharge)}</Stat.ValueText>
               <Stat.HelpText>{t("restock.accept.summary.courierOwedHint")}</Stat.HelpText>
             </Stat.Root>
           </Stack>

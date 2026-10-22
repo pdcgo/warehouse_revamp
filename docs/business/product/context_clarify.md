@@ -4,6 +4,9 @@ The pricing rules I read out of [product_context.md](./context.md), and
 what they do not yet decide. **That doc is yours — this one is mine.** Answered points are **deleted**,
 so this file is always the current open set.
 
+> **Re-examined after your answer on restock Q22 (2026-10-14).** ✅ [Q2](#question): `AllProductQtyRestock` is the **ordered**
+> quantity ([all-qty-is-every-unit-ordered](../inventory/restock_decision.md#all-qty-is-every-unit-ordered)), against my *arrived*.
+>
 > **Re-examined after your answer in chat (2026-10-07).** ✅ **Closed:** [Q6](#question). The courier's ask stays in
 > the unit price ([the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price)),
 > against my recommendation. The [contradiction](#additionalwarehousefee-is-capitalised-into-unitprice-and-balance_contextmd-has-now-defined-it-as-a-tip)
@@ -211,7 +214,7 @@ flowchart LR
 | is `AllProductQtyRestock` the **ordered** or the **arrived** quantity | here ([Critique 1](#critique)) |
 | what event **consumes** a FIFO layer, at what moment, and where the cost freezes | here ([Critique 3](#critique)) |
 | what price a **returned** unit re-enters at — the formula was deleted, the diagram still asks for it | here ([Contradiction](#the-return-path-prices-the-unit-as-the-borrowers-while-the-order-path-leaves-it-the-owners)) |
-| who sets the reserve, in what unit, and whether it binds the owner's own orders | here ([Critique 5](#critique)) |
+| who sets the reserve, in what unit, and whether it binds the owner's own orders | ✅ [the-reserve-stops-other-teams-at-low-stock](./context_decision.md#the-reserve-stops-other-teams-at-low-stock) |
 | when the fee freezes, and how the percent rounds | here ([Critique 7](#critique), [Critique 8](#critique)) |
 | **which role** may set a markup, a reserve or a lock | [user_context](../user/context_clarify.md#question) |
 
@@ -225,7 +228,7 @@ flowchart LR
 | **2** | **Freight is spread by COUNT, so a heavy item and a tiny one absorb the same rupiah.** 100 phone cases and 2 rice cookers on one delivery share the freight equally per piece: the cases become expensive, the cookers cheap, and every margin computed off them is wrong in opposite directions. | Fine as a v1 rule **if stated as a deliberate simplification** rather than read as an accounting truth. If deliveries routinely mix very different goods, spread by **line value** — same formula shape, different divisor. Say which, because it is invisible once it is inside a batch. |
 | **3** | **[batch-fifo-pricing](#batch-fifo-pricing) names the method and nothing else.** FIFO is a *consumption* rule, and the doc never says what consumes: the order being **created**, the goods being **picked**, or the parcel being **shipped** — hours apart. Nor what happens when a draw **spans two layers** (one line, two costs). Two orders drawing the last layer in the same second is the normal case here, not an edge case. | Consume at the moment stock is **committed to the order**, and **freeze the resulting cost on the line** — a cost still being recomputed hours later is a cost two screens can disagree about. A multi-layer draw produces a **weighted line cost**, frozen once. |
 | **4** | **An unstocked product still has no cost.** An order for it has no COGS, so margin, the cross fee and the reimbursement in [warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price) are all zero — and a zero cost reads as "free" rather than "unknown". | Say what the business does with an **unpriced** product: refuse the order, allow it with cost **unknown** and flag it, or require a manual cost. **I would allow it and flag it** — refusing a real sale over a bookkeeping gap costs more than the gap — but "unknown" must never be stored as `0`. |
-| **5** | **[reserved-stock-is-never-shared](#reserved-stock-is-never-shared) has no number, no owner and no scope.** *"when stock < several"* — several of what? A count per product, a percentage, or one figure for the team? Does it bind **the owner's own orders**, or only other teams'? If only others, it is a lending limit; if everyone, it is safety stock and a different feature. | **A per-product integer, set by the owning team, binding only OTHER teams' orders** — that matches the section's own title, *For Fair Sharing*, and keeps the owner able to sell down its own goods. Also decide the boundary: `stock < reserve` or `stock − requested < reserve`? Only the second actually protects the reserve, because the first still lets one big cross order empty it. |
+| **5** | ✅ *(2026-10-15)* **Answered** — [the-reserve-stops-other-teams-at-low-stock](./context_decision.md#the-reserve-stops-other-teams-at-low-stock): a per-product count set by the selling Owner and Admin, `total stock ≥ reserve`, other teams only. Kept as a row so the numbers hold | — |
 | **6** | **[shared-lock-stops-sharing-entirely](#shared-lock-stops-sharing-entirely) has no scope and no timing.** Per **product** only, or aimable at one counterparty? And what happens to **orders already placed** by another team when it goes on — honoured, or cut? A switch that cancels somebody else's live orders is a very different feature from one that stops new ones. | **Per product, all-or-nothing, affecting only NEW orders.** Retroactive cancellation would let one team break another's promise to a customer. If per-counterparty blocking is ever wanted, make it an explicit second control, never an overload of this one. |
 | **7** | **Nothing says the fee is FROZEN.** The owner edits the markup from 10% to 15%. Do last month's orders, already shipped and already owed, change? If the fee is recomputed on read, an invoice changes after both teams agreed it — and with a [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) able to block a team, a retroactive rate change can block somebody retroactively. **The `(COGS)` edit raises the stakes**: a frozen line COGS is now also the price a *return* re-enters at, so an unfrozen fee would rewrite stock valuations too. | State: **the fee is computed once, when the order consumes the stock, and stored.** A rate change applies to future orders only. One sentence can cover this and the cost freeze in [Critique 3](#critique). |
 | **8** | **Two divisions and a percentage, and no rounding rule anywhere.** `(ShipmentFee + AdditionalWarehouseFee) / AllProductQtyRestock` rarely divides evenly into whole rupiah, and `UnitPrice × markup` almost never does. Rounding per unit versus per line changes the total on a line of 7, and two teams reconciling to the rupiah will find that difference. | Round **once, half-up, on the line total**, never per unit, and store whole rupiah. Keep the rate a percent — the rate is not the money. And say where the remainder goes when freight does not divide evenly: I would put it on the **first** unit rather than lose it. |
@@ -249,14 +252,9 @@ flowchart LR
    **→ I recommend the BORROWER's stock, because that is the only shelf on which your chosen price is what
    its owner paid.** If you mean it to go home to the owner, the price clause needs the owner's cost instead
    — the two answers travel together and cannot be picked separately.
-2. **Is `AllProductQtyRestock` the ordered or the arrived quantity?** ([Critique 1](#critique))
-   **→ I recommend arrived.**
-   ⚠ **`inventory/context.md`'s new receiving flow answers this by arrow order, and it answers ORDERED**:
-   *Calculate Unit Price* runs **before** *Is Any Lost* and *Calculate valid Qty*. That contradicts the
-   recommendation above, so the question is now *"is that sequence deliberate?"* —
-   [inventory_context Q1](../inventory/context_clarify.md#question).
-3. **What is the reserve — a per-product count set by the owner, and does it bind the owner's own orders?**
-   ([Critique 5](#critique)) **→ I recommend a per-product count, binding only other teams.**
+2. ✅ *(2026-10-14)* **Answered: ordered** — [all-qty-is-every-unit-ordered](../inventory/restock_decision.md#all-qty-is-every-unit-ordered), and a
+   broken or missing unit carries the same landed price. As first asked: **Is `AllProductQtyRestock` the ordered or the arrived quantity?** ([Critique 1](#critique))
+3. ✅ *(2026-10-15)* **Answered: a low-stock line — `total stock ≥ reserve`, every warehouse, other teams only** — [the-reserve-stops-other-teams-at-low-stock](./context_decision.md#the-reserve-stops-other-teams-at-low-stock). Kept as a line so the numbers hold.
 4. **Does turning on the shared lock affect orders already placed?** ([Critique 6](#critique))
    **→ I recommend no — new orders only.**
 5. **What moment consumes a FIFO layer, and is the fee frozen there too?**

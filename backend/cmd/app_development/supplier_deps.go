@@ -24,23 +24,32 @@ import (
 // Both over Connect under the CALLER's token — a client, not the handler in-process, so the services stay
 // independent and the Wire graph has no cycle.
 
-// NewSupplierClient is how other services ask the supplier — under the caller's own token.
-func NewSupplierClient(cfg *Config, client *internalHTTPClient) supplierv1connect.SupplierServiceClient {
-	return supplierv1connect.NewSupplierServiceClient(
-		client,
-		cfg.InternalBaseURL,
-		connect.WithInterceptors(san_auth.ForwardBearer()),
-	)
+// SupplierClients is how other services ask the supplier — its suppliers and its stores, both under the caller's
+// own token. One value, because the one asker (inventory) needs both, and one provider keeps the Wire graph as it was.
+type SupplierClients struct {
+	Suppliers supplierv1connect.SupplierServiceClient
+	Channels  supplierv1connect.SupplierChannelServiceClient
 }
 
-// inventorySuppliers answers inventory's SupplierChecker with SupplierByIds — the one supplier read that
-// returns a deleted supplier, marked, so "deleted" and "unknown" are told apart here and refused alike.
+// NewSupplierClient builds both supplier_service clients over the internal HTTP client.
+func NewSupplierClient(cfg *Config, client *internalHTTPClient) SupplierClients {
+	opts := connect.WithInterceptors(san_auth.ForwardBearer())
+
+	return SupplierClients{
+		Suppliers: supplierv1connect.NewSupplierServiceClient(client, cfg.InternalBaseURL, opts),
+		Channels:  supplierv1connect.NewSupplierChannelServiceClient(client, cfg.InternalBaseURL, opts),
+	}
+}
+
+// inventorySuppliers answers inventory's SupplierChecker with SupplierByIds and SupplierChannelByIds — the reads that
+// return a deleted supplier or store, marked, so "deleted" and "unknown" are told apart here and refused alike.
 type inventorySuppliers struct {
 	suppliers supplierv1connect.SupplierServiceClient
+	channels  supplierv1connect.SupplierChannelServiceClient
 }
 
-func NewInventorySupplierChecker(suppliers supplierv1connect.SupplierServiceClient) inventory_v1.SupplierChecker {
-	return &inventorySuppliers{suppliers: suppliers}
+func NewInventorySupplierChecker(clients SupplierClients) inventory_v1.SupplierChecker {
+	return &inventorySuppliers{suppliers: clients.Suppliers, channels: clients.Channels}
 }
 
 func (c *inventorySuppliers) SupplierIsLive(ctx context.Context, teamID, supplierID uint64) (bool, error) {
@@ -59,6 +68,29 @@ func (c *inventorySuppliers) SupplierIsLive(ctx context.Context, teamID, supplie
 	}
 
 	return false, nil
+}
+
+// Stores answers inventory's question about the stores restock lines name with SupplierChannelByIds — deleted stores
+// included, marked, so "deleted" and "unknown" are told apart here.
+func (c *inventorySuppliers) Stores(
+	ctx context.Context,
+	teamID uint64,
+	storeIDs []uint64,
+) (map[uint64]inventory_v1.SupplierStore, error) {
+	resp, err := c.channels.SupplierChannelByIds(ctx, connect.NewRequest(&supplierv1.SupplierChannelByIdsRequest{
+		TeamId: teamID,
+		Ids:    storeIDs,
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[uint64]inventory_v1.SupplierStore, len(resp.Msg.GetChannels()))
+	for id, store := range resp.Msg.GetChannels() {
+		out[id] = inventory_v1.SupplierStore{SupplierID: store.GetSupplierId(), Live: !store.GetDeleted()}
+	}
+
+	return out, nil
 }
 
 // supplierSellingTeams answers supplier's SellingTeams with TeamByIds. NewTeamClient forwards no token —

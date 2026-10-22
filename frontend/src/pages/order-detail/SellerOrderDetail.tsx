@@ -25,9 +25,9 @@ import { useTeams } from "../../features/teams/queries";
 import { useShopOptions } from "../../features/shops/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { StageBadge } from "../../features/orders/StageBadge";
+import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { stageOfStatus } from "../../features/orders/stages";
-import { TIMELINE_TITLE, timelineKindSlug } from "./components/TimelinePanel";
+import { timelineFromKey, timelineSlug, timelineTitleKey } from "./components/TimelinePanel";
 import { SettlementTab } from "./components/SettlementTab";
 import { orderSpend } from "../../features/orders/margin";
 import { ReceiptFile } from "./components/ReceiptCard";
@@ -125,7 +125,7 @@ export function SellerOrderDetailPage() {
   const loading = query.isPending && id !== 0n;
 
   // The people on the timeline. The ids come from the EVENTS — the order row records no actor at all.
-  const actors = useActors(order?.events.map((event) => event.actorUserId) ?? []);
+  const actors = useActors(order?.timelineLogs.map((log) => log.actorId) ?? []);
 
   // The selling team's name, for the items table's Team column. One batched read.
   const teamOptions = useTeams({ page: 1, pageSize: 200, reference: true });
@@ -405,26 +405,26 @@ export function SellerOrderDetailPage() {
       id={sectionDomId("timeline")}
       icon={sectionIcon("timeline")}
       testId="section-timeline"
-      marks={<NotImplemented list={ORDER_DETAIL_PENDING} id="statusSet" />}
     >
-      {order.events.length === 0 ? (
+      {order.timelineLogs.length === 0 ? (
         <SectionEmpty>{t("orderDetail.timeline.empty")}</SectionEmpty>
       ) : (
         // THE SAME RAIL AS THE COURIER TRAIL, newest first — a sequence of moments is drawn one way
-        // on this page. The event names are the built timeline's own map (`TIMELINE_TITLE`), and an
-        // actor of 0 is "not recorded", so it names nobody rather than inventing one.
+        // on this page. The row names are the built timeline's own (`timelineTitleKey`), each row says which
+        // side wrote it, and an actor of 0 is "not recorded", so it names nobody rather than inventing one.
         <Rail
           testId="timeline-rail"
-          items={[...order.events].reverse().map((event) => {
-            const who = actors.data?.get(event.actorUserId.toString())?.name ?? "";
+          items={[...order.timelineLogs].reverse().map((log) => {
+            const who = actors.data?.get(log.actorId.toString())?.name ?? "";
+            const fromKey = timelineFromKey(log.from);
 
             return {
-              key: event.id.toString(),
-              testId: `order-timeline-${timelineKindSlug(event.kind)}`,
-              title: t(TIMELINE_TITLE[event.kind] ?? "orders.timeline.unknown"),
-              meta: who
-                ? `${formatUnixDateTime(event.atUnix)} · ${who}`
-                : formatUnixDateTime(event.atUnix),
+              key: log.id.toString(),
+              testId: `order-timeline-${timelineSlug(log)}`,
+              title: t(timelineTitleKey(log, order.timelineLogs.indexOf(log))),
+              meta: [formatUnixDateTime(log.createdAtUnix), fromKey ? t(fromKey) : "", who, log.note]
+                .filter(Boolean)
+                .join(" · "),
             };
           })}
         />
@@ -543,10 +543,6 @@ export function SellerOrderDetailPage() {
       </Flex>
     ) : null;
 
-  // The life of an order past "shipped" has no RPCs — retur, selesai, lost, sengketa. Marked always,
-  // like every other gap, not only when this order happens to offer one.
-  const lifecycleMark = <NotImplemented list={ORDER_DETAIL_PENDING} id="lifecycle" />;
-
   return (
     // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
     <Stack
@@ -590,7 +586,7 @@ export function SellerOrderDetailPage() {
                 <CopyText value={`#${order.id.toString()}`} fontSize="lg" />
               </Flex>
             </Heading>
-            {stage && <StageBadge stage={stage} />}
+            {stage && <OrderStatusBadge status={stage.status} />}
             {/* ⚠ THE DEADLINE IS INVENTED, so its mark rides beside it — in the header, where it is most
                 prominent, not only on the shipping card further down. On a phone it is the first line
                 UNDER the header instead: see `deadlineLine`. */}
@@ -602,12 +598,10 @@ export function SellerOrderDetailPage() {
               <OrderActionBar
                 teamId={teamId}
                 orderId={order.id}
-                status={order.status}
                 stage={stage?.id}
                 warehouseId={order.warehouseId}
                 compact={mobile}
               />
-              {!mobile && lifecycleMark}
             </Flex>
           </Flex>
 
@@ -629,10 +623,6 @@ export function SellerOrderDetailPage() {
         <Box flex="1" minW="0">
           <StageStepper stage={stage} />
         </Box>
-        {/* "Selesai" is a step no order can reach until the enum grows past the old six. */}
-        <NotImplemented list={ORDER_DETAIL_PENDING} id="statusSet" />
-        {/* On a phone the lifecycle mark sits here, on the steps it is about — retur, selesai, lost. */}
-        {mobile && lifecycleMark}
       </Flex>
 
       {/* ② FOUR NUMBERS TO LAND ON — the answer before the working. */}

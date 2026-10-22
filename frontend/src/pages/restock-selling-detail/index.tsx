@@ -8,14 +8,12 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
 import { useRestockRequest } from "../../features/restock/queries";
 import { shortfall } from "../../features/restock/summary";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { useIsMobile } from "../../layouts/shell";
 import { InfoPanel } from "./components/InfoPanel";
 import { ProductsPanel } from "./components/ProductsPanel";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
-import { RESTOCK_SELLING_DETAIL_PENDING } from "./pending";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -137,7 +135,7 @@ export function RestockSellingDetailPage() {
               request={request}
               teamId={teamId}
               variant="menu"
-              pending={RESTOCK_SELLING_DETAIL_PENDING}
+             
             />
           </Flex>
           {missingBadge && <Box>{missingBadge}</Box>}
@@ -160,13 +158,12 @@ export function RestockSellingDetailPage() {
               request={request}
               teamId={teamId}
               variant="buttons"
-              pending={RESTOCK_SELLING_DETAIL_PENDING}
+             
             />
           </Flex>
         </>
       )}
 
-      <NotImplementedSummary list={RESTOCK_SELLING_DETAIL_PENDING} />
 
       <Tabs.Root
         defaultValue="info"

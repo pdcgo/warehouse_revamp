@@ -36,12 +36,12 @@ export interface TransferLineFixture {
   name: string;
   count: bigint;
   /** The value the out-leg took — exact, from A's batches. */
-  total: bigint;
+  total: number;
   picks: TransferPlacementFixture[];
   // Filled by the accept.
   arrivedCount: bigint;
   placements: TransferPlacementFixture[];
-  problems: { type: WarehouseTransferProblemType; count: bigint; total: bigint; note: string }[];
+  problems: { type: WarehouseTransferProblemType; count: bigint; total: number; note: string }[];
 }
 
 export interface TransferLogFixture {
@@ -64,9 +64,9 @@ export interface TransferFixture {
   shipmentId: bigint;
   receipt: string;
   receiptFile: string;
-  shipmentCost: bigint;
+  shipmentCost: number;
   financeAccountId: bigint;
-  warehouseAdditionalCost: bigint;
+  warehouseAdditionalCost: number;
   warehouseAdditionalCostNote: string;
   outboundTransactionId: bigint;
   inboundTransactionId: bigint;
@@ -108,7 +108,7 @@ function line(
     id: BigInt(id),
     ...product,
     count: BigInt(count),
-    total: BigInt(total),
+    total,
     picks,
     arrivedCount: 0n,
     placements: [],
@@ -127,9 +127,9 @@ function transfer(
     shipmentId: 0n,
     receipt: "",
     receiptFile: "",
-    shipmentCost: 0n,
+    shipmentCost: 0,
     financeAccountId: 0n,
-    warehouseAdditionalCost: 0n,
+    warehouseAdditionalCost: 0,
     warehouseAdditionalCostNote: "",
     outboundTransactionId: 0n,
     inboundTransactionId: 0n,
@@ -199,7 +199,7 @@ export const transferFixtures: TransferFixture[] = [
     createdAtUnix: daysAgo(4),
     shipmentId: 91n,
     receipt: "JNE7788990011",
-    shipmentCost: 18000n,
+    shipmentCost: 18000,
     financeAccountId: 1301n,
     outboundTransactionId: 9603n,
     processedByUserId: 62n,
@@ -224,7 +224,7 @@ export const transferFixtures: TransferFixture[] = [
     createdAtUnix: daysAgo(5),
     shipmentId: 92n,
     receipt: "JNT5544332211",
-    shipmentCost: 15000n,
+    shipmentCost: 15000,
     financeAccountId: 1301n,
     outboundTransactionId: 9604n,
     processedByUserId: 62n,
@@ -251,9 +251,9 @@ export const transferFixtures: TransferFixture[] = [
     createdAtUnix: daysAgo(9),
     shipmentId: 93n,
     receipt: "SCP2233445566",
-    shipmentCost: 20000n,
+    shipmentCost: 20000,
     financeAccountId: 1301n,
-    warehouseAdditionalCost: 5000n,
+    warehouseAdditionalCost: 5000,
     warehouseAdditionalCostNote: "Biaya bongkar kurir",
     outboundTransactionId: 9605n,
     inboundTransactionId: 9615n,
@@ -271,8 +271,8 @@ export const transferFixtures: TransferFixture[] = [
         arrivedCount: 5n,
         placements: [at(44n, 4)],
         problems: [
-          { type: BROKEN, count: 1n, total: 65000n, note: "Karung sobek" },
-          { type: MISSING, count: 1n, total: 65000n, note: "" },
+          { type: BROKEN, count: 1n, total: 65000, note: "Karung sobek" },
+          { type: MISSING, count: 1n, total: 65000, note: "" },
         ],
       },
       {
@@ -309,7 +309,7 @@ export const transferFixtures: TransferFixture[] = [
     createdAtUnix: daysAgo(12),
     shipmentId: 92n,
     receipt: "JNT1122334455",
-    shipmentCost: 12000n,
+    shipmentCost: 12000,
     financeAccountId: 1301n,
     outboundTransactionId: 9607n,
     processedByUserId: 62n,
@@ -337,7 +337,7 @@ export const transferFixtures: TransferFixture[] = [
     createdAtUnix: daysAgo(3),
     shipmentId: 93n,
     receipt: "SCP9988776655",
-    shipmentCost: 10000n,
+    shipmentCost: 10000,
     financeAccountId: 1301n,
     outboundTransactionId: 9608n,
     processedByUserId: 64n,

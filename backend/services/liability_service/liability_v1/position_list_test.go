@@ -38,7 +38,7 @@ func positions(
 // screens to answer one question.
 func TestPositionList_ShowsBothDirectionsWithTheSignIntact(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	const other uint64 = 7
 
@@ -84,7 +84,7 @@ func TestPositionList_ShowsBothDirectionsWithTheSignIntact(t *testing.T) {
 // the old ones, and making them scroll for that answers a different question.
 func TestPositionList_OrdersTheOldestDebtFirst(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	const newer uint64 = 7
 
@@ -127,7 +127,7 @@ func TestPositionList_OrdersTheOldestDebtFirst(t *testing.T) {
 // would fill with zeros and bury the rows somebody opened the screen for.
 func TestPositionList_CanHideSettledPairs(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	_, err := svc.PostEntry(context.Background(), db, codFee(15000, 77))
 	if err != nil {
@@ -163,7 +163,7 @@ func TestPositionList_CanHideSettledPairs(t *testing.T) {
 // caller's OWN rows — it can never reach a pair the caller is not part of.
 func TestPositionList_ACounterpartyFilterIsNotAScope(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	const outsider uint64 = 7
 
@@ -220,7 +220,7 @@ func summarizeOnePage(
 // PAGINATED list, so it can never compute its own scope and the server has to hand it the whole set.
 func TestPositionList_TheSummaryIsTheWHOLESetNotThePage(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	// Three counterparties owe the selling team 1000, 2000 and 3000.
 	for i, amount := range []int64{1000, 2000, 3000} {
@@ -259,7 +259,7 @@ func TestPositionList_TheSummaryIsTheWHOLESetNotThePage(t *testing.T) {
 // The oldest tile names a TEAM, not just an age — so the id has to travel with the timestamp.
 func TestPositionList_TheOldestTileKnowsWhoseDebtItIs(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	_, err := svc.PostEntry(context.Background(), db, liability_v1.Posting{
 		DebtorTeamID: 101, CreditorTeamID: selling, Amount: 1000,
@@ -284,7 +284,7 @@ func TestPositionList_TheOldestTileKnowsWhoseDebtItIs(t *testing.T) {
 // oldest lookup finds nothing — both are ordinary, and neither is an error.
 func TestPositionList_AnEmptySetSummarizesToZero(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	msg := summarizeOnePage(t, svc, 4242, 1, 50)
 

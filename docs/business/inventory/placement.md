@@ -12,7 +12,6 @@
     - `name`
     - `code`, code is unique with warehouse_id
     - `description`
-    - `locked`
     - `deleted_at`, for soft delete
     - `updated_at`
     - `created_at`
@@ -57,6 +56,10 @@
     - `transfer_in`
     - `transfer_out`
     - `adjustment`
+    - `move`
+    - `broken`
+    - `lost`
+    - `found`
 
 
 

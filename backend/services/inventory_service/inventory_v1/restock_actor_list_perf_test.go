@@ -23,22 +23,22 @@ func TestPerf_RestockActorList(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 
 	now := time.Now()
-	rows := make([]inventory_service_models.RestockRequest, 0, 50_000)
+	rows := make([]inventory_service_models.Restock, 0, 50_000)
 
 	for i := range 50_000 {
 		team := uint64(2 + i%5)
-		row := inventory_service_models.RestockRequest{
-			RequestingTeamID: team,
-			WarehouseID:      uint64(900 + i%3),
-			Status:           "pending",
-			CreatedByUserID:  1000*team + uint64(i%40),
-			CreatedAt:        now.Add(-time.Duration(i) * time.Minute),
-			UpdatedAt:        now,
+		row := inventory_service_models.Restock{
+			TeamID:          team,
+			WarehouseID:     uint64(900 + i%3),
+			Status:          "ongoing",
+			CreatedByUserID: 1000*team + uint64(i%40),
+			CreatedAt:       now.Add(-time.Duration(i) * time.Minute),
+			UpdatedAt:       now,
 		}
 
 		if i%2 == 0 {
 			at := row.CreatedAt.Add(time.Hour)
-			row.Status = "fulfilled"
+			row.Status = "accepted"
 			row.AcceptedByUserID = uint64(5000 + i%20)
 			row.AcceptedAt = &at
 		}

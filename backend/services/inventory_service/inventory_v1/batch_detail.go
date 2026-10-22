@@ -3,6 +3,7 @@ package inventory_v1
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"connectrpc.com/connect"
@@ -10,53 +11,71 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// batchRow is the resolved shape of a batch — its delivery/line joins plus the derived Ready — shared
-// by BatchList and BatchDetail so the two cannot disagree about what a batch looks like.
+// THE BATCH, READ FROM THE BATCH LEDGER. A batch knows its own price, units and value; what it came in on — the
+// delivery, its receipt, the line's broken and missing units, a sku and name — is the transaction that minted it: a
+// restock's accept (`restocks.transaction_id`) or a transfer's in-leg (`warehouse_transfers.inbound_transaction_id`).
+// A product appears once per restock (a-product-appears-once-per-restock), so a batch finds its restock line by product.
+
+// batchRow is the resolved shape of a batch, shared by BatchList, BatchDetail and OwnerBatchList so they cannot disagree
+// about what a batch looks like.
 type batchRow struct {
-	ID          uint64
-	DeliveryID  uint64
-	WarehouseID uint64
-	ReceiptNo   string
-	ProductID  uint64
-	SKU        string
-	Name       string
-	SupplierID uint64
-	UnitCost   *int64
-	Arrived    int64
-	Damaged    int64
-	Lost       int64
-	Ready      int64
-	ExpiresOn  *time.Time
-	CreatedAt  time.Time
-	AcceptedAt time.Time
-	CreatedBy  uint64
-	AcceptedBy uint64
+	ID             uint64
+	DeliveryID     uint64
+	WarehouseID    uint64
+	ReceiptNo      string
+	ProductID      uint64
+	SKU            string
+	Name           string
+	SupplierID     uint64
+	PriceUnit      float64
+	InitStockCount int64
+	Ready          int64
+	StockValuation float64
+	Broken         int64
+	Lost           int64
+	ExpiredAt      *time.Time
+	CreatedAt      time.Time
+	CreatedBy      uint64
+	AcceptedBy     uint64
+	TxType         string
 }
 
-// lostExpr sums the units recorded LOST (missing/shrinkage) at acceptance; the rest of the damaged
-// bucket is broken (#227). restock_damaged_units carries the per-reason type and damaged_qty is their
-// total, so the split needs no schema change: broken = damaged − lost, and the identity
-// arrived = broken + lost + used + ready still holds.
-const lostExpr = `COALESCE((SELECT SUM(du.quantity) FROM restock_damaged_units du WHERE du.restock_request_item_id = b.restock_request_item_id AND du.damage_type = 'lost'), 0)`
+// The restock line's problem rows, by kind (#227): missing is LOST on this screen, broken is BROKEN. A problem row is
+// keyed by restock and product, which is how it finds the batch's line.
+const (
+	brokenExpr = `COALESCE((SELECT SUM(p.count) FROM restock_problem_items p WHERE p.restock_id = r.id AND p.product_id = b.product_id AND p.problem_type = 'broken'), 0)`
+	lostExpr   = `COALESCE((SELECT SUM(p.count) FROM restock_problem_items p WHERE p.restock_id = r.id AND p.product_id = b.product_id AND p.problem_type = 'missing'), 0)`
+)
 
-// batchSelect is the projection over `stock_batches AS b` joined to its line and delivery. The caller
-// adds the WHERE (warehouse + product for the list, warehouse + id for the detail) and the paging.
+// batchSelect is the projection over batchQuery. The caller adds the WHERE and the paging.
 const batchSelect = `
-	b.id, b.delivery_id, b.warehouse_id, r.receipt AS receipt_no,
-	b.product_id, i.sku, i.name, COALESCE(r.supplier_id, 0) AS supplier_id,
-	b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
+	b.id, COALESCE(r.id, 0) AS delivery_id, b.warehouse_id, COALESCE(r.receipt, '') AS receipt_no,
+	b.product_id, COALESCE(i.sku, wti.sku, '') AS sku, COALESCE(i.name, wti.name, '') AS name, b.supplier_id,
+	b.price_unit, b.init_stock_count, b.stock_count AS ready, b.stock_valuation,
+	` + brokenExpr + ` AS broken,
 	` + lostExpr + ` AS lost,
-	COALESCE((SELECT SUM(sb.qty) FROM stock_shelf_batches sb WHERE sb.batch_id = b.id), 0) AS ready,
-	b.expires_on, b.created_at, b.accepted_at, b.created_by, b.accepted_by`
+	b.expired_at, b.created_at,
+	COALESCE(r.created_by_user_id, t.create_by_user_id) AS created_by, t.create_by_user_id AS accepted_by, t.tx_type`
 
+// batchQuery is a batch joined to the transaction that minted it and, through it, to its restock line or transfer line.
+func batchQuery(db *gorm.DB) *gorm.DB {
+	return db.
+		Table("batches AS b").
+		Joins("JOIN inventory_transactions t ON t.id = b.transaction_id").
+		Joins("LEFT JOIN restocks r ON r.transaction_id = b.transaction_id").
+		Joins("LEFT JOIN restock_items i ON i.restock_id = r.id AND i.product_id = b.product_id").
+		Joins("LEFT JOIN warehouse_transfers wt ON wt.inbound_transaction_id = b.transaction_id").
+		Joins("LEFT JOIN warehouse_transfer_items wti ON wti.transfer_id = wt.id AND wti.product_id = b.product_id")
+}
+
+// batchRowToProto maps a batch. Arrived = broken + lost + used + ready: the good units minted plus what the door found
+// wrong; used is what has left since. Every batch carries its price, so the cost is always known. Money is whole rupiah
+// on this contract until it turns `double` (money-is-double-in-the-api-too).
 func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
-	costKnown := r.UnitCost != nil
-	var unitCost int64
-	if costKnown {
-		unitCost = *r.UnitCost
-	}
+	arrived := r.InitStockCount + r.Broken + r.Lost
 
 	out := &inventoryv1.StockBatch{
 		Id:             r.ID,
@@ -67,45 +86,51 @@ func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 		Sku:            r.SKU,
 		Name:           r.Name,
 		SupplierId:     r.SupplierID,
-		UnitCost:       unitCost,
-		CostKnown:      costKnown,
-		Arrived: r.Arrived,
-		// Damaged split into its two reasons (#227): lost is what the damage records typed as lost, and
-		// broken is the remainder of the bucket.
-		Broken:         r.Damaged - r.Lost,
+		UnitCost:       int64(math.Round(r.PriceUnit)),
+		CostKnown:      true,
+		Arrived:        arrived,
+		Broken:         r.Broken,
 		Lost:           r.Lost,
 		Ready:          r.Ready,
-		Used:           r.Arrived - r.Damaged - r.Ready,
-		LineCost:       r.Arrived * unitCost,
-		ReadyValue:     r.Ready * unitCost,
+		Used:           r.InitStockCount - r.Ready,
+		LineCost:       int64(math.Round(float64(arrived) * r.PriceUnit)),
+		ReadyValue:     int64(math.Round(r.StockValuation)),
 		CreatedAtUnix:  r.CreatedAt.Unix(),
-		AcceptedAtUnix: r.AcceptedAt.Unix(),
+		AcceptedAtUnix: r.CreatedAt.Unix(),
 		CreatedBy:      r.CreatedBy,
 		AcceptedBy:     r.AcceptedBy,
-		// Every batch today is minted from a restock delivery (#230); returns do not yet mint batches.
-		Origin: inventoryv1.BatchOrigin_BATCH_ORIGIN_RESTOCK,
+		Origin:         batchOriginOf(r.TxType),
 	}
 
-	if r.ExpiresOn != nil {
-		out.ExpiresOnUnix = r.ExpiresOn.Unix()
+	if r.ExpiredAt != nil {
+		out.ExpiresOnUnix = r.ExpiredAt.Unix()
 	}
 
 	return out
 }
 
-// BatchDetail is one batch's full record (#209), scoped to the warehouse — a batch of another warehouse
-// reads as NotFound, so its id cannot be used to probe another building's stock.
+// batchOriginOf names how a batch came to exist from the transaction that minted it (#218). A transfer's or an
+// adjustment's batch has no origin of its own on this contract yet, and reads as unspecified.
+func batchOriginOf(txType string) inventoryv1.BatchOrigin {
+	switch inventory_service_models.TxType(txType) {
+	case inventory_service_models.TxRestock:
+		return inventoryv1.BatchOrigin_BATCH_ORIGIN_RESTOCK
+	case inventory_service_models.TxReturn:
+		return inventoryv1.BatchOrigin_BATCH_ORIGIN_RETURN
+	default:
+		return inventoryv1.BatchOrigin_BATCH_ORIGIN_UNSPECIFIED
+	}
+}
+
+// BatchDetail is one batch's full record (#209), scoped to the warehouse — a batch of another warehouse reads as
+// NotFound, so its id cannot be used to probe another building's stock.
 func (s *Service) BatchDetail(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.BatchDetailRequest],
 ) (*connect.Response[inventoryv1.BatchDetailResponse], error) {
 	var r batchRow
 
-	err := s.db.
-		WithContext(ctx).
-		Table("stock_batches AS b").
-		Joins("JOIN restock_request_items i ON i.id = b.restock_request_item_id").
-		Joins("JOIN restock_requests r ON r.id = b.delivery_id").
+	err := batchQuery(s.db.WithContext(ctx)).
 		Select(batchSelect).
 		Where("b.id = ? AND b.warehouse_id = ?", req.Msg.GetBatchId(), req.Msg.GetTeamId()).
 		Take(&r).
@@ -113,27 +138,26 @@ func (s *Service) BatchDetail(
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("batch not found"))
 	}
+
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Return summary (#228): how many of this batch's units came BACK (RETURN movements) and when the
-	// last one did. Aggregated server-side — the ledger is paginated, so the client cannot total it.
-	type retAgg struct {
+	// UNITS THAT CAME BACK — an order's take released back into this batch. An order's transaction only ever takes, so
+	// its positive rows on the batch are its rollback (a-rollback-reverses-its-log-rows).
+	var returned struct {
 		Qty  int64
 		Last *time.Time
 	}
 
-	var ra retAgg
-
 	err = s.db.
 		WithContext(ctx).
-		Table("stock_movements").
-		Select("COALESCE(SUM(delta), 0) AS qty, MAX(created_at) AS last").
-		Where("batch_id = ? AND kind = ?",
-			req.Msg.GetBatchId(),
-			int32(inventoryv1.MovementKind_MOVEMENT_KIND_RETURN)).
-		Scan(&ra).
+		Table("batch_logs AS l").
+		Joins("JOIN inventory_transactions t ON t.id = l.transaction_id").
+		Select("COALESCE(SUM(l.change_count), 0) AS qty, MAX(l.created_at) AS last").
+		Where("l.batch_id = ? AND t.tx_type = ? AND l.change_count > 0",
+			req.Msg.GetBatchId(), string(inventory_service_models.TxOrder)).
+		Scan(&returned).
 		Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -141,17 +165,20 @@ func (s *Service) BatchDetail(
 
 	resp := &inventoryv1.BatchDetailResponse{
 		Batch:       batchRowToProto(&r),
-		ReturnedQty: ra.Qty,
+		ReturnedQty: returned.Qty,
 	}
-	if ra.Last != nil {
-		resp.LastReturnUnix = ra.Last.Unix()
+
+	if returned.Last != nil {
+		resp.LastReturnUnix = returned.Last.Unix()
 	}
 
 	return connect.NewResponse(resp), nil
 }
 
-// BatchPlacementList is where a batch's ready units sit right now (#209) — the batch-detail Placements
-// tab. Only shelves that still hold some of it; scoped to the warehouse via the batch.
+// BatchPlacementList is WHERE A BATCH'S UNITS WERE PUT AWAY when it was minted — the batch-detail Placements tab
+// (a-batch-shows-the-racks-it-was-put-on). A rack counts units per product, never per batch, so where they sit NOW is
+// the product's racks; this is the minting transaction's own rack rows for the batch's product, with when each rack
+// was last counted. Scoped to the warehouse through the batch.
 func (s *Service) BatchPlacementList(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.BatchPlacementListRequest],
@@ -161,9 +188,10 @@ func (s *Service) BatchPlacementList(
 	base := func() *gorm.DB {
 		return s.db.
 			WithContext(ctx).
-			Table("stock_shelf_batches AS sb").
-			Joins("JOIN stock_batches b ON b.id = sb.batch_id").
-			Where("sb.batch_id = ? AND b.warehouse_id = ? AND sb.qty > 0", req.Msg.GetFilter().GetBatchId(), req.Msg.GetTeamId())
+			Table("batches AS b").
+			Joins("JOIN product_placement_logs l ON l.transaction_id = b.transaction_id AND l.product_id = b.product_id").
+			Where("b.id = ? AND b.warehouse_id = ? AND l.stock_change > 0",
+				req.Msg.GetFilter().GetBatchId(), req.Msg.GetTeamId())
 	}
 
 	var total int64
@@ -173,26 +201,20 @@ func (s *Service) BatchPlacementList(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	type row struct {
-		RackID     *uint64
+	var rows []struct {
+		RackID     uint64
 		Qty        int64
 		LastOpname *time.Time
 	}
 
-	var rows []row
-
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
-	// Last opname (#226): when this shelf was last COUNTED — the last ADJUST on (this warehouse, this
-	// product, this rack), the same rule the product placement tab uses. Batch-agnostic on purpose: a
-	// shelf recount reconciles every batch on it, so the count is a fact about the RACK.
 	err = base().
-		Select(`sb.rack_id, sb.qty,
-			(SELECT MAX(m.created_at) FROM stock_movements m
-			   WHERE m.warehouse_id = b.warehouse_id AND m.product_id = b.product_id
-			     AND m.rack_id IS NOT DISTINCT FROM sb.rack_id AND m.kind = ?) AS last_opname`,
-			int32(inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST)).
-		Order("sb.rack_id ASC NULLS LAST").
+		Select(`l.placement_id AS rack_id, l.stock_change AS qty,
+			(SELECT MAX(c.created_at) FROM product_placement_logs c
+			   WHERE c.product_id = l.product_id AND c.placement_id = l.placement_id AND c.change_type = ?) AS last_opname`,
+			string(inventory_service_models.TxAdjustment)).
+		Order("l.placement_id ASC").
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Scan(&rows).
@@ -203,13 +225,11 @@ func (s *Service) BatchPlacementList(
 
 	shelves := make([]*inventoryv1.BatchShelf, 0, len(rows))
 	for i := range rows {
-		shelf := &inventoryv1.BatchShelf{Qty: rows[i].Qty}
-		if rows[i].RackID != nil {
-			shelf.RackId = *rows[i].RackID
-		}
+		shelf := &inventoryv1.BatchShelf{RackId: rows[i].RackID, Qty: rows[i].Qty}
 		if rows[i].LastOpname != nil {
 			shelf.LastOpnameUnix = rows[i].LastOpname.Unix()
 		}
+
 		shelves = append(shelves, shelf)
 	}
 

@@ -166,6 +166,9 @@ export function useRecordPayment() {
       // ⚠ AT LEAST ONE, and the server refuses without (a-payment-must-carry-proof). Each must
       // already be SHARED with the creditor — see useProofUpload, which does both.
       documentIds: string[];
+      // *Paid from* — one of the payer's own active accounts (a-team-payment-posts-on-accept). The
+      // server asks the financial accounts and refuses any other.
+      fromAccountId: bigint;
     }) =>
       liabilityPaymentClient.liabilityPaymentRecord({
         teamId: args.teamId,
@@ -173,6 +176,7 @@ export function useRecordPayment() {
         amount: args.amount,
         note: args.note,
         documentIds: args.documentIds,
+        fromAccountId: args.fromAccountId,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["liability"] });
@@ -187,10 +191,13 @@ export function useConfirmPayment() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (args: { teamId: bigint; paymentId: bigint }) =>
+    // `toAccountId` — *Received into*, one of the creditor's own active accounts. Accepting is final, so it
+    // is required and never defaulted (a-team-payment-posts-on-accept).
+    mutationFn: (args: { teamId: bigint; paymentId: bigint; toAccountId: bigint }) =>
       liabilityPaymentClient.liabilityPaymentConfirm({
         teamId: args.teamId,
         paymentId: args.paymentId,
+        toAccountId: args.toAccountId,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["liability"] });

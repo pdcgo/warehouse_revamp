@@ -367,18 +367,18 @@ export const daysAgo = (days: number): bigint => BigInt(Math.floor(Date.now() / 
 // WE quoted and the marketplace figure is what the buyer paid the platform after its own vouchers and
 // subsidies. A fixture where they matched would make every settlement screen look right by accident.
 export const orders = [
-  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PLACED, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, marketplaceTotal: 245_000n, cogs: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
-  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PLACED, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, marketplaceTotal: 176_500n, cogs: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(2) },
-  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.CONFIRMED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, marketplaceTotal: 92_000n, cogs: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(3) },
-  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PICKING, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, marketplaceTotal: 413_000n, cogs: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdByUserId: 63n, createdAtUnix: daysAgo(4) },
-  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PACKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", subtotal: 296_000n, shippingCost: 14_000n, total: 310_000n, marketplaceTotal: 303_500n, cogs: 189_440n, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(5) },
-  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPED, customerName: "Pak Firman", customerPhone: "0812-3456-0006", subtotal: 129_000n, shippingCost: 11_000n, total: 140_000n, marketplaceTotal: 137_000n, cogs: 82_560n, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(6) },
-  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCELLED, customerName: "Bu Gita", customerPhone: "0812-3456-0007", subtotal: 66_000n, shippingCost: 9_000n, total: 75_000n, shippingCode: "jne", createdByUserId: 0n, createdAtUnix: daysAgo(8) },
-  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPED, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", subtotal: 480_000n, shippingCost: 20_000n, total: 500_000n, cogs: 307_200n, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdByUserId: 62n, createdAtUnix: daysAgo(120) },
-  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.CONFIRMED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", subtotal: 252_000n, shippingCost: 13_000n, total: 265_000n, marketplaceTotal: 258_000n, cogs: 161_280n, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PENDING, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, marketplaceTotal: 245_000n, cogs: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PENDING, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, marketplaceTotal: 176_500n, cogs: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(2) },
+  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PROCESSED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, marketplaceTotal: 92_000n, cogs: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(3) },
+  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, marketplaceTotal: 413_000n, cogs: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdByUserId: 63n, createdAtUnix: daysAgo(4) },
+  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PICKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", subtotal: 296_000n, shippingCost: 14_000n, total: 310_000n, marketplaceTotal: 303_500n, cogs: 189_440n, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(5) },
+  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPING, customerName: "Pak Firman", customerPhone: "0812-3456-0006", subtotal: 129_000n, shippingCost: 11_000n, total: 140_000n, marketplaceTotal: 137_000n, cogs: 82_560n, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(6) },
+  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCEL, customerName: "Bu Gita", customerPhone: "0812-3456-0007", subtotal: 66_000n, shippingCost: 9_000n, total: 75_000n, shippingCode: "jne", createdByUserId: 0n, createdAtUnix: daysAgo(8) },
+  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPING, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", subtotal: 480_000n, shippingCost: 20_000n, total: 500_000n, cogs: 307_200n, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdByUserId: 62n, createdAtUnix: daysAgo(120) },
+  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", subtotal: 252_000n, shippingCost: 13_000n, total: 265_000n, marketplaceTotal: 258_000n, cogs: 161_280n, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
 
-  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PLACED, customerName: "Pak Joko", customerPhone: "0813-9999-0001", subtotal: 618_000n, shippingCost: 22_000n, total: 640_000n, marketplaceTotal: 628_000n, cogs: 395_520n, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdByUserId: 61n, createdAtUnix: daysAgo(2) },
-  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PACKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", subtotal: 198_000n, shippingCost: 12_000n, total: 210_000n, shippingCode: "jne", createdByUserId: 61n, createdAtUnix: daysAgo(3) },
+  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PENDING, customerName: "Pak Joko", customerPhone: "0813-9999-0001", subtotal: 618_000n, shippingCost: 22_000n, total: 640_000n, marketplaceTotal: 628_000n, cogs: 395_520n, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdByUserId: 61n, createdAtUnix: daysAgo(2) },
+  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PICKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", subtotal: 198_000n, shippingCost: 12_000n, total: 210_000n, shippingCode: "jne", createdByUserId: 61n, createdAtUnix: daysAgo(3) },
 ];
 
 // ── What a DETAIL read adds, and a list row never carries ───────────────────────────────────────
@@ -405,7 +405,8 @@ export const orderDetailExtras: Record<
     note?: string;
     orderExternalRefId?: string;
     items?: { id: bigint; productId: bigint; sku: string; name: string; quantity: number; unitPrice: bigint; unitCost: bigint }[];
-    events?: { id: bigint; kind: number; actorUserId: bigint; atUnix: bigint }[];
+    /** The timeline (order-timeline-logs-replaces-order-events): status 0 = a note; from 1 = warehouse, 2 = selling. */
+    timelineLogs?: { id: bigint; status: number; note?: string; from: number; actorId: bigint; createdAtUnix: bigint }[];
     address?: Record<string, string>;
     receipt?: { documentId: string; filename: string; mimeType: string };
   }
@@ -427,9 +428,9 @@ export const orderDetailExtras: Record<
       { id: 2n, productId: 302n, sku: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitPrice: 75_000n, unitCost: 46_000n },
       { id: 3n, productId: 303n, sku: "TOP-01", name: "Topi Rajut", quantity: 1, unitPrice: 10_000n, unitCost: 6_000n },
     ],
-    events: [
-      { id: 1n, kind: 1, actorUserId: 61n, atUnix: daysAgo(1) },
-      { id: 2n, kind: 2, actorUserId: 62n, atUnix: daysAgo(1) + 3_600n },
+    timelineLogs: [
+      { id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: daysAgo(1) },
+      { id: 2n, status: 2, from: 1, actorId: 62n, createdAtUnix: daysAgo(1) + 3_600n },
     ],
     address: {
       provinsiCode: "32", provinsiName: "Jawa Barat",
@@ -448,21 +449,20 @@ export const orderDetailExtras: Record<
   // says it does not have — the same order reading as costed on one screen and uncosted on the next.
   // The row is the source of truth for the money; extras add what a list row cannot carry.
   "107": {
-    events: [
-      { id: 1n, kind: 1, actorUserId: 61n, atUnix: daysAgo(8) },
-      { id: 2n, kind: 3, actorUserId: 63n, atUnix: daysAgo(7) },
+    timelineLogs: [
+      { id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: daysAgo(8) },
+      { id: 2n, status: 3, from: 2, actorId: 63n, createdAtUnix: daysAgo(7) },
     ],
   },
 
-  // NO ACTOR AT ALL — every event backfilled by the history migration is in this state, and 0 is
-  // "not recorded", not "user zero". The page must show the step and stay silent about who took it,
-  // rather than inventing a name or hiding the step.
+  // NO ACTOR AT ALL — 0 is "not recorded", not "user zero". The page must show the step and stay silent
+  // about who took it, rather than inventing a name or hiding the step.
   "108": {
     marketplaceTotal: 0n,
     cogs: 310_000n,
-    events: [
-      { id: 1n, kind: 1, actorUserId: 0n, atUnix: daysAgo(120) },
-      { id: 2n, kind: 6, actorUserId: 0n, atUnix: daysAgo(119) },
+    timelineLogs: [
+      { id: 1n, status: 1, from: 2, actorId: 0n, createdAtUnix: daysAgo(120) },
+      { id: 2n, status: 6, from: 1, actorId: 0n, createdAtUnix: daysAgo(119) },
     ],
   },
 };
@@ -508,7 +508,7 @@ export function orderDetailFor(id: bigint) {
         unitCost: row.cogs ?? 0n,
       },
     ],
-    events: extra.events ?? [{ id: 1n, kind: 1, actorUserId: 61n, atUnix: row.createdAtUnix }],
+    timelineLogs: extra.timelineLogs ?? [{ id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: row.createdAtUnix }],
   };
 }
 
@@ -759,11 +759,13 @@ export const liabilityEntries = [
 // ⚠ EVERY PAYMENT CARRIES PROOF, because the contract requires at least one document
 // (a-payment-must-carry-proof). A fixture with an empty `documentIds` would be a payment the server
 // would have refused, and it would let a story pass against a screen that cannot happen.
+// And each names the account it LEFT (a-team-payment-posts-on-accept) — 1307 BCA Gudang is team 11's,
+// 1301 BCA Operasional team 12's — and, once accepted, the one it LANDED in; 0 until then.
 export const liabilityPayments = [
-  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000n, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n, documentIds: ["doc-601"], reason: "" },
-  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000n, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "" },
+  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000n, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n, documentIds: ["doc-601"], reason: "", fromAccountId: 1307n, toAccountId: 1301n },
+  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000n, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "", fromAccountId: 1301n, toAccountId: 0n },
   // A REFUSED CLAIM — status 4, nothing posted, and the reason the payer has to read.
-  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000n, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_400_000n, confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account" },
+  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000n, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_400_000n, confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account", fromAccountId: 1301n, toAccountId: 0n },
 ];
 
 // ── The settlement reports ──────────────────────────────────────────────────────────────────────

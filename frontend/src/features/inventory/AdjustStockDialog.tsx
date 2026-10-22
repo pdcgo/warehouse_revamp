@@ -18,7 +18,7 @@ import type { StockAdjustRequest } from "../../gen/warehouse/inventory/v1/invent
 import { StockAdjustReason } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/feedback/Toaster";
-import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
+import { RackSelect } from "../../components/pickers/RackSelect";
 import { useAdjustStock, useProductBatches, useProductPlaces } from "./queries";
 import { QuantityInput } from "../../components/inputs/QuantityInput";
 
@@ -33,11 +33,8 @@ const REASON_ENUM: Record<Reason, StockAdjustReason> = {
   found: StockAdjustReason.FOUND,
 };
 
+// Every unit is on a rack (there-is-no-unplaced-pile), so the place is always a rack.
 function placeToOneof(place: string): StockAdjustRequest["place"] {
-  if (place === UNPLACED) {
-    return { case: "unplaced", value: true };
-  }
-
   return { case: "rackId", value: BigInt(place) };
 }
 
@@ -81,7 +78,7 @@ export function AdjustStockDialog({
 
   function shelfOnHand(p: string): bigint {
     if (p === "") return 0n;
-    const rackId = p === UNPLACED ? 0n : BigInt(p);
+    const rackId = BigInt(p);
     return places.find((x) => x.rackId === rackId)?.onHand ?? 0n;
   }
 
@@ -173,7 +170,7 @@ export function AdjustStockDialog({
 
                   <Field.Root required>
                     <Field.Label>{t("inventory.placeCounted")}</Field.Label>
-                    <RackSelect warehouseId={warehouseId} value={place} onChange={setPlace} />
+                    <RackSelect warehouseId={warehouseId} value={place} onChange={setPlace} allowUnplaced={false} />
                     <Field.HelperText>{t("inventory.placeCountedHelper")}</Field.HelperText>
                   </Field.Root>
 

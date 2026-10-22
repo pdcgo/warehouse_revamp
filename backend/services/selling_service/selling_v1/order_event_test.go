@@ -230,7 +230,7 @@ func TestOrderCancel_SurvivesAPublishFailure(t *testing.T) {
 		t.Fatalf("a broker outage must not fail the cancel: %v", err)
 	}
 
-	if res.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCELLED {
+	if res.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCEL {
 		t.Fatalf("order status = %v, want CANCELLED", res.Msg.GetOrder().GetStatus())
 	}
 }

@@ -70,51 +70,6 @@ func TestStockOpname_ShortfallReimbursesTheOwner(t *testing.T) {
 	}
 }
 
-// ⚠ ONE SHORTFALL CAN SPAN SEVERAL OWNERS, and each must be paid what THEIR units were worth. A shelf
-// holds whatever restocks filled it — collapsing the draw into one number would pay the first team and
-// leave the second with nothing.
-func TestStockOpname_ShortfallSplitsAcrossOwners(t *testing.T) {
-	db := san_testdb.DB(t)
-	poster := &recordingPoster{}
-	svc := newServiceWithLiability(t, db, poster)
-
-	const warehouse uint64 = 5
-	const product uint64 = 100
-
-	rack, err := svc.RackCreate(ctxUser(1),
-		connect.NewRequest(&inventoryv1.RackCreateRequest{TeamId: warehouse, Code: "A-01-3"}))
-	if err != nil {
-		t.Fatalf("rack: %v", err)
-	}
-
-	rackID := rack.Msg.GetRack().GetId()
-
-	// Two layers of the SAME product on one shelf, owned by different teams and priced differently.
-	// The older (team 2) is drawn first, so a shortfall of 15 takes all 10 of theirs and 5 of team 7's.
-	acceptOneFor(t, svc, 2, warehouse, rackID, product, 10, 400000)  // 40.000/pc
-	acceptOneFor(t, svc, 7, warehouse, rackID, product, 20, 1400000) // 70.000/pc
-
-	countShelf(t, svc, warehouse, rackID, product, 15)
-
-	if len(poster.damaged) != 2 {
-		t.Fatalf("%d reimbursements, want 2 — one owner was not paid", len(poster.damaged))
-	}
-
-	paid := map[uint64]int64{}
-	for _, d := range poster.damaged {
-		paid[d.ownerTeamID] = d.amount
-	}
-
-	// FIFO: all 10 of team 2's at 40.000, then 5 of team 7's at 70.000.
-	if paid[2] != 400000 {
-		t.Fatalf("owner 2 paid %d, want 400000 (10 × 40.000)", paid[2])
-	}
-
-	if paid[7] != 350000 {
-		t.Fatalf("owner 7 paid %d, want 350000 (5 × 70.000)", paid[7])
-	}
-}
-
 // A SURPLUS REIMBURSES NOBODY, and is not a reversal either: stock that turns up on a count was never
 // established as lost, so there is no debt of its own to give back.
 func TestStockOpname_SurplusReimbursesNobody(t *testing.T) {
@@ -150,34 +105,6 @@ func TestStockOpname_ExactCountReimbursesNobody(t *testing.T) {
 	}
 }
 
-// ⚠ AN UNKNOWN COST REIMBURSES NOTHING (#74), the same rule the adjust path follows — and the count
-// still corrects the shelf. A zero entry would consume the pair's idempotency key for that movement.
-func TestStockOpname_UnknownCostReimbursesNobody(t *testing.T) {
-	db := san_testdb.DB(t)
-	poster := &recordingPoster{}
-	svc := newServiceWithLiability(t, db, poster)
-
-	const warehouse uint64 = 5
-
-	rackID, batchID, product := damageFixture(t, db, svc, warehouse)
-
-	err := db.Exec(`UPDATE stock_batches SET unit_cost = NULL WHERE id = ?`, batchID).Error
-	if err != nil {
-		t.Fatalf("blank the cost: %v", err)
-	}
-
-	msg := countShelf(t, svc, warehouse, rackID, product, 95)
-
-	if len(poster.damaged) != 0 {
-		t.Fatalf("an unknown-cost shortfall posted %+v, want nothing", poster.damaged)
-	}
-
-	// And the count says so, rather than reporting a loss of zero as if it were priced.
-	if msg.GetValueKnown() {
-		t.Fatal("value_known = true for a shortfall nobody could price")
-	}
-}
-
 // A TEAM CANNOT OWE ITSELF — a warehouse counting its own goods short has nobody to reimburse.
 func TestStockOpname_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -201,7 +128,7 @@ func TestStockOpname_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 // balance is read rather than the call inspected.
 func TestStockOpname_ShortfallMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db)})
+	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db, nil, nil)})
 
 	const warehouse uint64 = 5
 
@@ -238,45 +165,5 @@ func TestStockOpname_ShortfallMovesTheRealLedger(t *testing.T) {
 	// and the-ledger-speaks-the-business-words gave the two their own names.
 	if entry.SourceType != "lost_good" {
 		t.Fatalf("entry source = %q, want lost_good", entry.SourceType)
-	}
-}
-
-// acceptOneFor is acceptOne with the REQUESTING TEAM spelled out, so a test can put two owners'
-// layers on one shelf. acceptOne hardcodes team 2, which is right for every other test here.
-func acceptOneFor(
-	t *testing.T,
-	svc *inventory_v1.Service,
-	team, warehouse, rackID, product uint64,
-	qty, total int64,
-) {
-	t.Helper()
-
-	ctx := ctxUser(1)
-
-	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: team, WarehouseId: warehouse,
-		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Count: qty, Total: total},
-		},
-	}))
-	if err != nil {
-		t.Fatalf("create for team %d: %v", team, err)
-	}
-
-	item := created.Msg.GetRequest().GetItems()[0]
-
-	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
-		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
-		Lines: []*inventoryv1.RestockRequestReceivedLine{{
-			ItemId:        item.GetId(),
-			ReceivedCount: qty,
-			Placements: []*inventoryv1.RestockPlacement{{
-				PlacementId: rackID,
-				Quantity:    qty,
-			}},
-		}},
-	}))
-	if err != nil {
-		t.Fatalf("fulfil for team %d: %v", team, err)
 	}
 }

@@ -48,7 +48,7 @@ func (s *Service) OrderProductActivityByIds(
 			time.Now().Add(-activityWindow)).
 		Joins("JOIN orders o ON o.id = i.order_id").
 		Where("o.team_id = ?", teamID).
-		Where("o.status <> ?", orderStatusCancelled).
+		Where("o.status <> ?", orderStatusCancel).
 		Where("i.product_id IN ?", productIDs).
 		Group("i.product_id").
 		Scan(&rows).
@@ -118,7 +118,7 @@ func (s *Service) OrderActivityStat(
 		        COUNT(*) FILTER (WHERE created_at >= ?) AS orders30`,
 			time.Now().Add(-activityWindow)).
 		Where("team_id = ?", teamID).
-		Where("status <> ?", orderStatusCancelled).
+		Where("status <> ?", orderStatusCancel).
 		Scan(&row).
 		Error
 	if err != nil {

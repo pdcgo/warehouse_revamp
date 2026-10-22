@@ -182,17 +182,7 @@
     "recordFromAccountHelp": "The account the transfer left. When they accept, the amount comes out of it.",
     "confirmToAccount": "Received into",
     "confirmToAccountPlaceholder": "Select the account it arrived in",
-    "confirmToAccountHelp": "The account you saw the money arrive in. Accepting is final, so check it against your bank first.",
-    "pending": {
-      "fromAccount": {
-        "label": "Paid from",
-        "reason": "A payment does not carry an account yet, so the one you pick is not saved. Once it does, accepting the payment takes the amount out of this account."
-      },
-      "toAccount": {
-        "label": "Received into",
-        "reason": "Accepting does not carry an account yet, so the one you pick is not saved. Once it does, the amount is added to this account."
-      }
-    }
+    "confirmToAccountHelp": "The account you saw the money arrive in. Accepting is final, so check it against your bank first."
   },
   "common": {
     "perPage": "Per page",
@@ -582,22 +572,23 @@
     "actions": "Actions",
     "viewDetail": "View Detail",
     "step": {
-      "all": "All steps",
       "confirm": "Confirmed",
-      "picking": "Picking",
       "picked": "Picked",
-      "packed": "Packed",
       "handover": "Handed over"
     },
     "stage": {
       "pending": "Pending",
       "processed": "Processed",
+      "picked": "Picked",
+      "shipping": "Handed over",
       "shipped": "Shipped",
       "completed": "Completed",
       "problem": "Problem",
       "lost": "Lost",
       "return": "Return",
-      "cancel": "Cancelled"
+      "return_completed": "Return received",
+      "cancel": "Cancelled",
+      "unknown": "Unknown"
     },
     "summary": {
       "tx": "Tx",
@@ -618,7 +609,11 @@
     "warehouseAll": "All warehouses",
     "creatorAll": "Anyone",
     "export": {
-      "action": "Export"
+      "action": "Export",
+      "running": "Exporting {{done}} / {{total}}",
+      "ready": "Export ready — the file is downloading",
+      "failed": "The export could not be finished",
+      "noFile": "The export ended without a file"
     },
     "import": {
       "action": "Import",
@@ -627,17 +622,13 @@
       "chooseFile": "The file {{marketplace}} exported — CSV or Excel.",
       "updatesTitle": "What this file changes",
       "updatesStatus": "Each order it names is moved to the status the marketplace reports.",
-      "updatesWithdrawal": "The payout the marketplace released is recorded against the order.",
+      "moneyFromSettlement": "Payouts and withdrawals are not read from this file — import the marketplace's statement on Settlement Imports.",
       "noFile": "No file chosen",
       "dropHere": "Drop the file here, or click to choose one",
       "back": "Another Marketplace",
       "submit": "Import"
     },
     "pending": {
-      "statusSet": {
-        "label": "The status set",
-        "reason": "The contract still carries the old six statuses, so completed, problem, lost and return can never be anything but 0, and Processed counts but cannot narrow the table."
-      },
       "summaryCost": {
         "label": "Purchase value and margin",
         "reason": "The per-status census sums the order total and nothing else, so the goods’ value, the cost and the count of orders with no cost are sample figures."
@@ -645,10 +636,6 @@
       "summaryItems": {
         "label": "Item count and UPT",
         "reason": "The list returns no order lines and nothing counts them server-side, so both are sample figures."
-      },
-      "export": {
-        "label": "Export",
-        "reason": "Nothing builds a file yet — which columns, and whether it is this page or every row the filters match, is still open."
       },
       "import": {
         "label": "Import",
@@ -664,7 +651,7 @@
       },
       "stageDate": {
         "label": "Status change date",
-        "reason": "The order event already has the right shape (kind + when), but events are only sent with an order's detail — the list cannot read when an order entered the status you are filtering by."
+        "reason": "The order's timeline already records when it entered each status, but the timeline is only sent with an order's detail — the list cannot read when an order entered the status you are filtering by."
       },
       "receiptCode": {
         "label": "Tracking number",
@@ -672,23 +659,15 @@
       },
       "deadline": {
         "label": "Ship-by deadline",
-        "reason": "Nothing carries one: the order has no deadline, the shipment channel has no lead time, and an order event records what happened rather than what is due. Every badge in the column is invented, and its colour bands are a guess."
+        "reason": "Nothing carries one: the order has no deadline, the shipment channel has no lead time, and the order's timeline records what happened rather than what is due. Every badge in the column is invented, and its colour bands are a guess."
       },
       "totalFee": {
         "label": "Warehouse fee in the total",
         "reason": "The total is the goods plus what fulfilling them costs, and nothing carries that fee per order: it is a liability entry keyed by order, and the liability list can only be asked by counterparty. The goods are real, the fee is a sample."
       },
-      "lifecycle": {
-        "label": "Actions after shipping",
-        "reason": "The contract writes only cancel and ship, so Return Goods, Complete Order, Mark as Lost and Resolve Dispute have nothing to call — the same half of the lifecycle whose four status tabs read 0."
-      },
-      "marketplaceFilter": {
-        "label": "Marketplace filter",
-        "reason": "Not on the list filter either — it would mean every shop on that marketplace."
-      },
       "withdrawal": {
         "label": "Withdrawal value",
-        "reason": "A wallet-to-bank withdrawal is a shop-level cash event naming no order, so nothing in the system has a home for it yet — not even settlement, where every entry must name one."
+        "reason": "Settlement Imports records withdrawals now, but per shop: a wallet-to-bank withdrawal names no order, so an order still has no withdrawal figure for Edit Withdrawal to change."
       }
     },
     "title": "Orders",
@@ -776,15 +755,6 @@
     "searchPlaceholder": "Search customer, phone or order #",
     "shopAll": "All shops",
     "clearFilters": "Clear Filters",
-    "statusName": {
-      "placed": "Placed",
-      "confirmed": "Confirmed",
-      "picking": "Picking",
-      "packed": "Packed",
-      "shipped": "Shipped",
-      "cancelled": "Cancelled",
-      "unknown": "Unknown"
-    },
     "tab": {
       "allStatus": "All Status",
       "drafts": "Drafts"
@@ -824,18 +794,30 @@
     "timeline": {
       "placed": "Order placed",
       "confirmed": "Order confirmed",
-      "picking": "Picking started",
-      "packed": "Packed",
-      "shipped": "Handed to the courier",
+      "picked": "Picked",
+      "shipping": "Handed to the courier",
+      "shipped": "On its way",
+      "completed": "Order completed",
+      "problem": "A delivery problem",
+      "lost": "Parcel lost",
+      "return": "Return started",
+      "returnCompleted": "Return received by the warehouse",
       "cancelled": "Order cancelled",
+      "handedBack": "Handed back to pending",
+      "note": "Note",
+      "from": {
+        "warehouse": "Warehouse",
+        "selling": "Seller"
+      },
       "unknown": "Something happened",
       "userRef": "User #{{id}}",
       "awaitingConfirm": "Waiting to be confirmed",
-      "awaitingPick": "Waiting for the warehouse",
-      "awaitingPack": "Being picked",
-      "awaitingShip": "Waiting for the courier"
+      "awaitingPick": "Waiting to be picked",
+      "awaitingShip": "Waiting for the courier",
+      "awaitingShipped": "Waiting to show as moving on the platform",
+      "awaitingDelivery": "On its way to the buyer",
+      "awaitingReturn": "Waiting for the goods to come back"
     },
-    "orderShipped": "Order marked as shipped",
     "rowAction": {
       "cancel": "Cancel Order",
       "editReceipt": "Edit Tracking Number",
@@ -873,7 +855,8 @@
     "orderIdColumn": "Order ID",
     "orderTitleLabel": "Order",
     "noOrdersHint": "Orders appear here once they are created or imported.",
-    "noWarehouseOrdersHint": "Orders the selling teams ship from this warehouse appear here."
+    "noWarehouseOrdersHint": "Orders the selling teams ship from this warehouse appear here.",
+    "statusMoved": "Order moved to {{status}}"
   },
   "orderDetail": {
     "nav": {
@@ -934,10 +917,6 @@
       "title": "Recipient"
     },
     "pending": {
-      "statusSet": {
-        "label": "The eight statuses",
-        "reason": "The contract still carries the old six, so Completed, Problem, Lost and Return can never appear — here or on the timeline."
-      },
       "notes": {
         "label": "Notes",
         "reason": "An order stores ONE note, written when it is created — no list, no author, no system or user type, and no way to edit it. Notes added or edited here disappear on reload."
@@ -972,11 +951,7 @@
       },
       "withdrawal": {
         "label": "Withdrawals into the settlement ledger",
-        "reason": "Nothing imports the marketplace's withdrawals yet, so a payout only appears in the ledger when somebody posts it by hand, and Edit Withdrawal has no RPC."
-      },
-      "lifecycle": {
-        "label": "Actions after shipping",
-        "reason": "The contract writes only cancel and ship, so Return Goods, Complete Order, Mark as Lost and Resolve Dispute have nothing to call."
+        "reason": "Settlement Imports brings the marketplace's payouts into this ledger and its withdrawals onto the shop — but a withdrawal names no order, so this section has no per-order figure to show, and Edit Withdrawal has no RPC."
       }
     },
     "stepper": {
@@ -1037,10 +1012,6 @@
     "deleteOneMessage": "Delete draft {{ref}}? This cannot be undone, and the app that pushed it may push it again.",
     "updated": "Updated",
     "pending": {
-      "statusSet": {
-        "label": "The status set",
-        "reason": "The strip carries the owner's eight stages, but the contract still has the old six statuses, so completed, problem, lost and return can never be anything but 0."
-      },
       "readyCount": {
         "label": "Ready count",
         "reason": "Counted over the drafts on this page only. The whole set needs a draft aggregate on the server, which does not exist yet."
@@ -1077,25 +1048,7 @@
     "teamRef": "Team #{{id}}",
     "warehouseRef": "Warehouse #{{id}}",
     "selling": {
-      "searchPlaceholder": "Search restock, tracking, invoice or SKU",
-      "pending": {
-        "lineSupplier": {
-          "label": "Supplier",
-          "reason": "A line's supplier and store are not stored yet, and store names are not served yet — the real server shows every row as not connected."
-        },
-        "courier": {
-          "label": "Courier",
-          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
-        },
-        "moneyReturned": {
-          "label": "Did the money come back?",
-          "reason": "Cancel asks it, but the answer is not sent on to the paying account yet."
-        },
-        "markLost": {
-          "label": "Mark Lost",
-          "reason": "Marking a restock lost is not built on the server yet — it answers \"not implemented\"."
-        }
-      }
+      "searchPlaceholder": "Search restock, tracking, invoice or SKU"
     },
     "searchPlaceholder": "Search restock, tracking, order or SKU",
     "warehouseAll": "All warehouses",
@@ -1131,17 +1084,7 @@
       "actorCreated": "Raised by",
       "actorAccepted": "Counted by",
       "actorAll": "Anyone",
-      "restocksHint": "on their way or at the door",
-      "pending": {
-        "courier": {
-          "label": "Courier",
-          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
-        },
-        "signForBox": {
-          "label": "Sign for Box",
-          "reason": "Signing for the box is not built on the server yet — it answers \"not implemented\". Accepting still works straight from ongoing."
-        }
-      }
+      "restocksHint": "on their way or at the door"
     },
     "detail": {
       "title": "Restock Request",
@@ -1189,45 +1132,7 @@
       "problemWorth": "worth {{amount}}",
       "goodOfOrdered": "Good units into stock",
       "missingBadge_one": "{{count}} missing",
-      "missingBadge_other": "{{count}} missing",
-      "pending": {
-        "payingAccount": {
-          "label": "Paid from",
-          "reason": "Picked on the form but not stored yet — the real server returns no account until the backend step."
-        },
-        "courier": {
-          "label": "Courier",
-          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
-        },
-        "receiptPhoto": {
-          "label": "Photo of the label",
-          "reason": "Not stored yet — the real server returns no photo."
-        },
-        "lineSupplier": {
-          "label": "Line supplier and store",
-          "reason": "A line's supplier and store are not stored yet, and store names are not served yet — the real server shows every line as not connected."
-        },
-        "lineNote": {
-          "label": "Line note",
-          "reason": "The selling team's note on a line is not stored yet."
-        },
-        "problemNotes": {
-          "label": "Broken and missing notes",
-          "reason": "The warehouse's note on a broken or missing row is not stored yet. The counts and what they were worth are real."
-        },
-        "moneyReturned": {
-          "label": "Did the money come back?",
-          "reason": "Cancel asks it, but the answer is not sent on to the paying account yet."
-        },
-        "markLost": {
-          "label": "Mark Lost",
-          "reason": "Marking a restock lost is not built on the server yet — it answers \"not implemented\"."
-        },
-        "signForBox": {
-          "label": "Sign for Box",
-          "reason": "Signing for the box is not built on the server yet — it answers \"not implemented\". Accepting still works straight from ongoing."
-        }
-      }
+      "missingBadge_other": "{{count}} missing"
     },
     "timeline": {
       "created": "Restock raised",
@@ -1355,28 +1260,6 @@
         "lines": "at least one product",
         "count": "a count of at least 1 on every line",
         "newLineNote": "a note on every product added after the box arrived"
-      },
-      "pending": {
-        "lineSupplier": {
-          "label": "A line's supplier and store",
-          "reason": "accepted by the server but not stored until the backend step, and the store names are not served yet"
-        },
-        "lineNote": {
-          "label": "A line's note",
-          "reason": "accepted by the server but not stored until the backend step"
-        },
-        "financeAccount": {
-          "label": "Paid from",
-          "reason": "required, but not stored until the backend step — the payment is not posted to the account yet"
-        },
-        "shipment": {
-          "label": "Courier",
-          "reason": "accepted by the server but not stored until the backend step"
-        },
-        "receiptFile": {
-          "label": "Photo of the label",
-          "reason": "the photo uploads, but the restock does not keep it until the backend step"
-        }
       }
     },
     "cancel": {
@@ -1512,24 +1395,6 @@
         "note": "What it was for",
         "notePlaceholder": "e.g. COD handling fee",
         "noteRequired": "Say what the courier's charge was for."
-      },
-      "pending": {
-        "courier": {
-          "label": "Courier",
-          "reason": "the restock's courier is not stored yet, so a real restock shows none"
-        },
-        "lineSupplier": {
-          "label": "Where each line was bought",
-          "reason": "a line's supplier and store are not stored yet, and store names cannot be read — a real line shows \"not connected\""
-        },
-        "lineNote": {
-          "label": "The selling team's line note",
-          "reason": "a line's note (\"extra stock\") is not stored yet"
-        },
-        "problemNotes": {
-          "label": "Notes on broken and missing units",
-          "reason": "they are sent with the accept but not kept yet"
-        }
       }
     },
     "createdByAll": "Anyone who raised it",
@@ -1797,11 +1662,7 @@
       "pending": {
         "countLock": {
           "label": "Count lock",
-          "reason": "A product being counted is locked at 0 here, but what a count's lock blocks is not decided yet (opname Q4), and the stock count is not built — only the prototype ever sets it."
-        },
-        "sampleAgreedBy": {
-          "label": "Who agreed to the sample",
-          "reason": "Who on the owning team agreed to a sample is not on the form: who bears a sample is still open (transaction Q6)."
+          "reason": "A product being counted is locked at 0 here — a count stops units moving (decided), but the stock count is not built, so only the prototype ever sets it."
         }
       }
     },
@@ -2196,6 +2057,7 @@
   },
   "teams": {
     "name": "Name",
+    "noReturnWarehouse": "No return warehouse",
     "description": "Description",
     "type": "Type",
     "code": "Code",
@@ -2439,7 +2301,6 @@
       "onHand": "On hand",
       "actions": "Actions"
     },
-    "receive": "Receive",
     "adjust": "Adjust",
     "returnsTitle": "Returns",
     "returnsComingSoon": "Returns are coming soon",
@@ -2448,11 +2309,8 @@
     "opnameComingSoon": "Stock opname is coming soon",
     "opnameBody": "A physical stock count reconciled against the system — count a shelf, record what is really there, and post the corrections — will live here once the opname flow is designed.",
     "quantityPositiveError": "Quantity must be a positive whole number.",
-    "receivedToast": "Received {{qty}} × {{sku}}",
-    "receiveStockTitle": "Receive Stock",
     "quantity": "Quantity",
     "reason": "Reason",
-    "receiveReasonPlaceholder": "e.g. PO #123, supplier delivery",
     "cancel": "Cancel",
     "countedOnHandError": "Counted on-hand must be zero or a positive whole number.",
     "placeRequiredError": "Choose the place you counted — a rack, or the unplaced pile.",
@@ -2485,10 +2343,7 @@
     "moveFromHelper": "Where the stock sits now — a rack, or the unplaced pile.",
     "moveTo": "To",
     "moveToHelper": "Where it is going. The warehouse total does not change — only where the goods sit.",
-    "moveBatch": "Batch",
-    "moveBatchPlaceholder": "Which delivery's units…",
     "moveBatchOption": "#{{id}} · {{ready}} ready",
-    "moveBatchHelper": "Stock is tracked per delivery — the batch travels with the units you move.",
     "moveQuantityHelper": "How many to move. Moving more than the source place holds is refused.",
     "moveReasonPlaceholder": "e.g. put away, shelf reorganised",
     "movePlacesRequiredError": "Choose both places — where the stock is now, and where it is going.",
@@ -2657,7 +2512,11 @@
     "defaultWarehouse": "Default Shipping Warehouse",
     "defaultWarehouseHint": "New orders start with this warehouse selected. You can still change it on any order.",
     "warehouse": "Warehouse",
-    "defaultWarehouseSaved": "Default warehouse saved"
+    "defaultWarehouseSaved": "Default warehouse saved",
+    "returnWarehouse": "Return Warehouse",
+    "returnWarehouseHint": "Returned parcels of this team are received at this warehouse. Any warehouse can be chosen.",
+    "returnWarehouseNotSet": "No return warehouse is set. Orders will require one soon.",
+    "returnWarehouseSaved": "Return warehouse saved"
   },
   "picking": {
     "title": "Orders",
@@ -2668,9 +2527,8 @@
     "tab": {
       "new": "New",
       "toPick": "To Pick",
-      "picking": "Picking",
-      "packed": "Packed",
-      "shipped": "Shipped",
+      "picked": "Picked",
+      "handover": "Handed Over",
       "all": "All"
     },
     "table": {
@@ -2685,9 +2543,8 @@
     },
     "action": {
       "confirm": "Confirm Order",
-      "startPicking": "Start Picking",
-      "markPacked": "Mark Packed",
-      "markShipped": "Mark Shipped"
+      "markPicked": "Mark Picked",
+      "markHandedOver": "Mark Handed Over"
     },
     "detail": {
       "title": "Order #{{id}}",
@@ -2698,9 +2555,8 @@
     },
     "toast": {
       "confirmed": "Order confirmed",
-      "picking": "Picking started",
-      "packed": "Marked packed",
-      "shipped": "Marked shipped",
+      "picked": "Marked picked",
+      "handedOver": "Marked handed over",
       "stepFailed": "Could not record that step"
     }
   },
@@ -2765,11 +2621,11 @@
     "lost": "Lost",
     "used": "Used",
     "ready": "Ready",
-    "tabPlacements": "Placements",
+    "tabPlacements": "Put Away at Accept",
     "tabHistory": "History",
     "place": "Place",
-    "readyHere": "Ready here",
-    "noPlacements": "None of this batch is on a shelf right now.",
+    "readyHere": "Put away",
+    "noPlacements": "This batch was put on no rack when it came in. Where the product sits now is on its Racks tab.",
     "when": "At",
     "what": "Type",
     "change": "Change",
@@ -3308,21 +3164,9 @@
       "mpDate": "Marketplace date"
     },
     "pending": {
-      "statusSet": {
-        "label": "Handed over",
-        "reason": "Handed over is the warehouse's last step, but the contract has no status for it yet — its tab cannot narrow anything."
-      },
-      "shop": {
-        "label": "The seller's shop",
-        "reason": "The order carries only the shop id, and a warehouse cannot read the seller's shops."
-      },
       "receiptCode": {
         "label": "Tracking number",
         "reason": "The order stores the courier, not the printed tracking number."
-      },
-      "quantity": {
-        "label": "Quantity",
-        "reason": "A list result carries no items, so the row cannot count units."
       },
       "mpDate": {
         "label": "Marketplace date",
@@ -3332,33 +3176,9 @@
         "label": "Ship-by deadline",
         "reason": "No order carries a ship-by deadline yet."
       },
-      "teamFilter": {
-        "label": "Team filter",
-        "reason": "The order list has no seller-team filter yet — picking a team narrows nothing."
-      },
-      "marketplaceFilter": {
-        "label": "Marketplace filter",
-        "reason": "The order list has no marketplace filter yet — picking one narrows nothing."
-      },
-      "courierFilter": {
-        "label": "Courier filter",
-        "reason": "The order list has no courier filter yet — picking one narrows nothing."
-      },
-      "shipmentStatus": {
-        "label": "Shipment state",
-        "reason": "Whether a handed-over parcel is moving belongs to a shipment record, which does not exist yet."
-      },
-      "stepMove": {
-        "label": "Moving a step",
-        "reason": "The server only moves an order one step forward. Skipping a step, moving back, or moving into Picked does nothing yet."
-      },
       "resiLookup": {
         "label": "Finding by tracking number",
         "reason": "No RPC finds an order by its tracking number, so the handover scan looks only in the orders this screen has loaded."
-      },
-      "bulkHandover": {
-        "label": "Bulk handover",
-        "reason": "There is no bulk handover RPC — a mass pickup hands the parcels over one call at a time."
       },
       "barcode": {
         "label": "Barcode",
@@ -3367,10 +3187,6 @@
       "printMerge": {
         "label": "Printing labels together",
         "reason": "Nothing merges several receipt files into one document yet."
-      },
-      "exportFile": {
-        "label": "Export",
-        "reason": "There is no export RPC yet."
       }
     },
     "tab": {
@@ -3379,13 +3195,7 @@
     },
     "filter": {
       "team": "All teams",
-      "courier": "All couriers",
-      "shipment": "Shipment state",
-      "shipmentState": {
-        "any": "Any",
-        "notMoving": "Not moving yet",
-        "inTransit": "In transit"
-      }
+      "courier": "All couriers"
     },
     "header": {
       "scanHandover": "Scan Handover"
@@ -3429,7 +3239,7 @@
       "massOn": "Scans collect into the list; hand them over together.",
       "massOff": "Each good scan is handed over at once.",
       "ready": "Ready",
-      "wrongStep": "Not packed — {{step}}",
+      "wrongStep": "Not picked — {{step}}",
       "notFound": "Not found",
       "handedOver": "Handed over",
       "failed": "Failed",
@@ -3454,7 +3264,9 @@
       "next": "Move to {{step}}",
       "loading": "Loading the order's items…"
     },
-    "moved": "Moved to {{step}}"
+    "moved": "Moved to {{step}}",
+    "notMoved_one": "{{count}} order not moved",
+    "notMoved_other": "{{count}} orders not moved"
   },
   "settlementImports": {
     "title": "Settlement Imports",
@@ -3723,8 +3535,7 @@
       "namePlaceholder": "e.g. BCA Operasional",
       "numberPlaceholder": "e.g. 1234567890",
       "holderPlaceholder": "e.g. PT Melati Sejahtera",
-      "descriptionPlaceholder": "e.g. Takes the shops' withdrawals and pays restocks",
-      "otherTypeWarning": "The server does not accept type Other yet — saving this account will be refused."
+      "descriptionPlaceholder": "e.g. Takes the shops' withdrawals and pays restocks"
     },
     "transfer": {
       "title": "Transfer From {{name}}",
@@ -3860,16 +3671,6 @@
       "title": "Archived Accounts",
       "subtitle": "Accounts closed at zero. Restore one to use it again.",
       "back": "Active Accounts"
-    },
-    "pending": {
-      "archivedOnly": {
-        "label": "The archive list",
-        "reason": "The contract can only add archived accounts to the active ones, not list the archived alone — so this view asks for the first 200 accounts and keeps the archived itself. Past 200 accounts some are missed, and the counts and pages here are worked out on screen."
-      },
-      "otherType": {
-        "label": "Type Other",
-        "reason": "New Account offers type Other — its provider Other, its number optional — but the contract and the server still refuse type and provider Other, so saving one is refused until the backend allows it. The Storybook demo accepts it."
-      }
     },
     "operationalDialog": {
       "markTitle": "Mark {{name}} as Operational",
@@ -4308,7 +4109,7 @@
       "pending": {
         "costEvent": {
           "label": "Shipping cost",
-          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
         }
       }
     },
@@ -4344,7 +4145,7 @@
       "pending": {
         "costEvent": {
           "label": "Shipping cost",
-          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
         }
       }
     },
@@ -4375,7 +4176,7 @@
       "pending": {
         "costEvent": {
           "label": "Shipping cost",
-          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
         },
         "labelPhoto": {
           "label": "Label photo",
@@ -4431,7 +4232,7 @@
       "pending": {
         "courierDebt": {
           "label": "Courier's charge",
-          "reason": "The amount is real, but where the selling team's debt to this warehouse is held is not decided yet — the same open point as the restock's."
+          "reason": "The charge is saved and announced at accept, but balance does not post the selling team's debt to this warehouse yet — which kind of entry it posts as is still open."
         }
       }
     }
@@ -4439,5 +4240,229 @@
   "emptyHint": {
     "noMatch": "Try another word, or clear the filters.",
     "otherPeriod": "Try another date range."
+  },
+  "opnameSession": {
+    "title": "Stock Count",
+    "subtitle": "Plan a count, count each rack blind, and finalize the differences into the stock-problem register.",
+    "selectTeam": "Select a warehouse team to see its stock counts.",
+    "back": "Back",
+    "empty": "No stock count here yet.",
+    "tabs": {
+      "all": "All"
+    },
+    "status": {
+      "unspecified": "Unknown",
+      "active": "Active",
+      "finish": "Finished",
+      "cancel": "Cancelled"
+    },
+    "plan": {
+      "unspecified": "Unknown",
+      "all": "All racks",
+      "team": "One team",
+      "product": "One product",
+      "placement": "One rack"
+    },
+    "rowState": {
+      "created": "Not counted",
+      "revealed": "Revealed",
+      "counted": "Counted"
+    },
+    "draft": {
+      "unspecified": "Draft",
+      "broken": "Broken",
+      "lost": "Lost",
+      "surplus": "Surplus",
+      "noReason": "Reason not written yet"
+    },
+    "active": {
+      "title": "Count #{{id}} is active",
+      "progress": "{{counted}} of {{rows}} rows counted, on {{racks}} racks",
+      "oneAtATime": "A warehouse runs one count at a time — finalize or cancel this one before planning another.",
+      "count": "Count",
+      "open": "Open"
+    },
+    "table": {
+      "session": "Count",
+      "plan": "Plan",
+      "status": "Status",
+      "progress": "Counted",
+      "progressValue": "{{counted}} / {{rows}} rows",
+      "scope": "{{racks}} racks · {{products}} products",
+      "createdBy": "Planned by",
+      "finalized": "Finalized"
+    },
+    "create": {
+      "open": "New Count",
+      "title": "New Stock Count",
+      "plan": "What to count",
+      "team": "Team",
+      "teamPlaceholder": "Select a selling team",
+      "product": "Product",
+      "productPlaceholder": "e.g. Beras Pandan Wangi",
+      "rack": "Rack",
+      "rackPlaceholder": "Select a rack",
+      "rackHelp": "Its products are counted on every rack that holds them, so a move between racks nets out.",
+      "scope": {
+        "all": "Every rack of this warehouse is counted, empty ones too.",
+        "team": "Every rack holding the team's products is counted.",
+        "product": "Every rack holding the product is counted.",
+        "placement": "The rack is counted, and every other rack holding its products."
+      },
+      "lock": "Those rows are locked — goods do not move on them — until the count is finalized or cancelled.",
+      "submit": "Start Count",
+      "dismiss": "Cancel",
+      "done": "Count #{{id}} started"
+    },
+    "detail": {
+      "title": "Count #{{id}}",
+      "started": "Planned by {{who}}, {{when}}",
+      "finalizedBy": "finalized by {{who}}, {{when}}",
+      "notFound": "This count was not found.",
+      "managersOnly": "Only the warehouse's Owner or Admin sees a count's figures — staff count blind.",
+      "finalize": "Finalize",
+      "finalizeWaits": "Finalize opens once every row is counted — {{left}} to go.",
+      "cancel": "Cancel Count",
+      "cancelTitle": "Cancel Count #{{id}}?",
+      "cancelMessage": "Its rows are released and nothing is posted. The counts already made are dropped.",
+      "cancelled": "Count #{{id}} cancelled",
+      "actions": "Actions",
+      "summary": {
+        "counted": "Rows counted",
+        "countedLine": "marked counted by staff",
+        "differences": "Differences",
+        "differencesLine": "counted rows apart from the book",
+        "racks": "Racks",
+        "products": "Products"
+      },
+      "search": "Search a product by name or SKU",
+      "rackAll": "Every rack",
+      "onlyDifferences": "Only differences",
+      "tabs": {
+        "all": "All",
+        "created": "Not counted",
+        "counted": "Counted"
+      },
+      "empty": "No row matches.",
+      "table": {
+        "rack": "Rack",
+        "product": "Product",
+        "state": "State",
+        "book": "Book",
+        "count": "Count",
+        "difference": "Difference",
+        "drafts": "Drafts and reasons",
+        "actions": "Actions"
+      },
+      "bookCount": "Book {{book}} · counted {{count}}",
+      "countedBy": "Counted by {{who}}",
+      "sendBack": "Send Back to Count",
+      "sendBackTitle": "Send Back to Count?",
+      "sendBackMessage": "{{product}} on {{code}} goes back to counting: its count and its drafts are cleared, and staff count it again.",
+      "sentBack": "Sent back to counting on {{code}}"
+    },
+    "count": {
+      "title": "Count #{{id}}",
+      "closed": "This count is closed — nothing more is counted.",
+      "pickRack": "Pick the rack you are standing at",
+      "pickRackHelp": "Count rack by rack. An empty rack is listed too — add what you find on it.",
+      "rackSearch": "Search a rack code",
+      "rackProgress": "{{counted}} of {{rows}} counted",
+      "rackEmpty": "Nothing expected",
+      "changeRack": "Change Rack",
+      "sellableOnly": "Count sellable units only. A torn one comes off the rack — say so as broken after the reveal.",
+      "nothingExpected": "The book expects nothing on this rack. Add what you find.",
+      "countLabel": "Counted",
+      "recountLabel": "Recount",
+      "submit": "Submit Count",
+      "submitRecount": "Submit Recount",
+      "expected": "Expected",
+      "counted": "Counted",
+      "difference": "Difference",
+      "recount": "Recount Once",
+      "brokenLabel": "Of the missing, how many are broken?",
+      "brokenHelp": "Broken units are taken off the rack and thrown away. The rest of the shortage is lost.",
+      "why": "why?",
+      "brokenExample": "e.g. sack torn, thrown away",
+      "lostExample": "e.g. not found, checked under the rack",
+      "surplusExample": "e.g. tucked behind the Gula Pasir",
+      "markCounted": "Mark Counted",
+      "needsReason": "Write a reason for every draft to mark it counted.",
+      "readOnly": "Counted — the admin can send it back to count again",
+      "foundHere": "found here",
+      "yourCount": "Your Count",
+      "theDifference": "The Difference",
+      "countFirst": "Count first",
+      "hidden": "hidden",
+      "revealHint": "The book figure and the difference show here once your count is in.",
+      "recounting": "Submit the recount — the difference follows it.",
+      "matches": "Matches the book — nothing to explain.",
+      "actions": "Rack actions",
+      "rackState": {
+        "empty": "Empty",
+        "done": "Done",
+        "inProgress": "In progress",
+        "notStarted": "Not started"
+      }
+    },
+    "found": {
+      "open": "Add a Product Found Here",
+      "title": "Product Found on {{code}}",
+      "help": "A product on this rack that the list does not name. It joins the count at 0 here, and its other racks join too.",
+      "product": "Product",
+      "productPlaceholder": "e.g. Minyak Goreng Sawit 2L",
+      "submit": "Add Product",
+      "done": "{{product}} added to {{code}}",
+      "neverHereTitle": "Its team never had this product in this warehouse",
+      "neverHereBody": "It is not stock here yet. Take it off the rack and tell the selling team — they create a restock for it, and the warehouse accepts it."
+    },
+    "finalize": {
+      "title": "Finalize Count #{{id}}",
+      "subtitle": "What finalizing posts, per product. Finalizing agrees the debt: the warehouse pays the teams for what is broken or lost.",
+      "block": {
+        "notActive": "This count is not active.",
+        "rowsNotCounted": "{{left}} rows are not counted yet.",
+        "ownCount": "You counted rows in this count — another Owner or Admin finalizes it."
+      },
+      "summary": {
+        "owed": "The warehouse owes",
+        "owedLine": "broken and lost, at their batch prices",
+        "claimed": "Claimed back",
+        "claimedLine": "old losses found again",
+        "minted": "New batches",
+        "mintedLine": "surplus with nothing to claim",
+        "products": "Products",
+        "productsLine": "with a difference or a rack change"
+      },
+      "nothing": "Every product matches its book — finalizing only releases the racks.",
+      "outcome": {
+        "short": "Short",
+        "over": "Over",
+        "brokenOnly": "Broken",
+        "move": "Moved between racks"
+      },
+      "arithmetic": "Book {{book}} · sellable {{sellable}} · broken {{broken}} · the rest",
+      "racksChanged_one": "{{count}} rack corrected",
+      "racksChanged_other": "{{count}} racks corrected",
+      "lines": {
+        "type": "Posts",
+        "batch": "Batch",
+        "units": "Units",
+        "price": "Price",
+        "amount": "Amount",
+        "newBatch": "New batch",
+        "claims": "claims loss #{{id}}"
+      },
+      "post": {
+        "unspecified": "—",
+        "broken": "Broken",
+        "lost": "Lost",
+        "claim": "Claimed back",
+        "mint": "New batch"
+      },
+      "confirmTitle": "Finalize Count #{{id}}?",
+      "confirmMessage": "This posts every line above and releases the racks. The warehouse owes {{owed}}. It cannot be undone.",
+      "done": "Count #{{id}} finalized"
+    }
   }
 }
