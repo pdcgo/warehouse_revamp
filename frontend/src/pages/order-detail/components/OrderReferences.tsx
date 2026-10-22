@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import { Box, Flex, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { CopyText } from "../../../components/chrome/CopyText";
-import { ORDER_DETAIL_PENDING } from "../pending";
 
 // THE TWO NUMBERS THAT LEAVE THE APP — first thing in the first card (owner: *"resi lumayan penting di
 // atas agar kelihatan"*, and *"jangan di sticky"*).
@@ -39,11 +37,7 @@ export function OrderReferences({
   return (
     <Stack gap="3" data-testid="order-references">
       <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-        <Reference
-          label={t("orders.receiptColumn")}
-          mark={<NotImplemented list={ORDER_DETAIL_PENDING} id="receiptCode" />}
-          testId="order-reference-receipt"
-        >
+        <Reference label={t("orders.receiptColumn")} testId="order-reference-receipt">
           {receiptCode ? (
             <Flex gap="2" align="center" wrap="wrap">
               {courier && (

@@ -43,6 +43,8 @@ import (
 	user_service "github.com/pdcgo/warehouse_revamp/backend/services/user_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
+	warehouse_service "github.com/pdcgo/warehouse_revamp/backend/services/warehouse_service"
+	warehouse_v1 "github.com/pdcgo/warehouse_revamp/backend/services/warehouse_service/warehouse_v1"
 )
 
 // NewServeMux mounts every service handler.
@@ -67,6 +69,7 @@ func NewServeMux(
 	importerService *settlement_importer_v1.Service,
 	accountService *financial_account_v1.Service,
 	supplierService *supplier_v1.Service,
+	warehouseService *warehouse_v1.Service,
 	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
@@ -116,6 +119,7 @@ func NewServeMux(
 		settlement_importer_service.NewRegister(mux, importerService, opts),
 		financial_account_service.NewRegister(mux, accountService, opts),
 		supplier_service.NewRegister(mux, supplierService, opts),
+		warehouse_service.NewRegister(mux, warehouseService, opts),
 	)
 
 	return mux, nil

@@ -4,6 +4,10 @@ The pricing rules I read out of [product_context.md](./context.md), and
 what they do not yet decide. **That doc is yours — this one is mine.** Answered points are **deleted**,
 so this file is always the current open set.
 
+> **Re-examined after you added `## Responsbility.` 2 (2026-10-22)** — product_service manages bundles too. Nothing here
+> changes. A bundle is still catalogue, with no quantity on hand and no price, so [Critique 12](#critique)'s boundary holds.
+> The bundle questions are in [product_bundle_clarify.md](./product_bundle_clarify.md).
+>
 > **Re-examined after your answer on restock Q22 (2026-10-14).** ✅ [Q2](#question): `AllProductQtyRestock` is the **ordered**
 > quantity ([all-qty-is-every-unit-ordered](../inventory/restock_decision.md#all-qty-is-every-unit-ordered)), against my *arrived*.
 >

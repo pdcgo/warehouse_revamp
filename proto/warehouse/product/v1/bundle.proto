@@ -1,0 +1,299 @@
+syntax = "proto3";
+
+package warehouse.product.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1";
+
+// BundleService owns `bundles` and `bundle_products` — a selling team's PICKING RECIPES
+// (docs/business/product/product_bundle.md, product_bundle_decision.md).
+//
+// A bundle is "2 Kopi + 1 Teh": which products, and how many of each in ONE bundle. It never sits on a shelf — no
+// stock, no batch, no price. The order form expands it into ordinary product lines, and the order keeps nothing that
+// says a bundle was involved (the-order-keeps-only-product-lines). So nothing here is read by any other service.
+//
+// Accepted with the screens it was derived from (the-bundle-prototype-is-accepted) — a change to it is a new pass.
+//
+// WHO (the-creator-or-an-admin-edits-a-bundle):
+//   read     every selling role of the team — warehouse roles have none: they only ever see product lines
+//   create   the selling Owner, Admin and CS — so the CS can turn a package listing into a bundle on the spot
+//   change   the same roles in the policy, and then the HANDLER narrows it: a caller whose only role in the team is
+//            SELLING_CS must be the bundle's creator. The proto cannot say "only your own" — see BundleUpdateRequest.
+service BundleService {
+  // A page of the team's bundles, each with its lines. Feeds the Bundles page and the order form's bundle search.
+  rpc BundleList(BundleListRequest) returns (BundleListResponse);
+  // The team's bundles by id. Feeds the bundle page.
+  rpc BundleByIds(BundleByIdsRequest) returns (BundleByIdsResponse);
+  rpc BundleCreate(BundleCreateRequest) returns (BundleCreateResponse);
+  // Replaces the name, the description and ALL the lines at once.
+  rpc BundleUpdate(BundleUpdateRequest) returns (BundleUpdateResponse);
+  // A HARD delete — no order refers to a bundle (the-order-keeps-only-product-lines).
+  rpc BundleDelete(BundleDeleteRequest) returns (BundleDeleteResponse);
+}
+
+// ── The bundle, as it is read ─────────────────────────────────────────────────────────────────────
+
+// BundleLine is one product of a bundle and how many units of it go into ONE bundle
+// (a-bundle-line-carries-its-quantity).
+//
+// ⚠ IT CARRIES NO PRODUCT FIELDS — no name, no owner, no lock (a-bundle-line-reads-its-owner-from-the-product). A
+// caller resolves the ids with ProductByIds, which already serves the name, the owning team, `cross_locked` and
+// `deleted` — and still returns a deleted product, which is what lets a line say *(archived)*. A copy here would be
+// a second answer to the same question.
+message BundleLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // At least 1. The ceiling is a typing rail, not a business rule: a bundle with ten thousand of one product is a
+  // typo, and a rail catches it before an order expands it.
+  uint32 quantity = 2 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 9999
+  }];
+}
+
+// BundleRowItem is the BUNDLE slice — the whole bundle. Small enough that a list carries all of it: the lines ARE
+// what tells two bundles apart, since a name may repeat (bundle-names-may-repeat).
+message BundleRowItem {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  string name = 3;
+  string description = 4;
+  // Who created it — set from the token on create, never changed. user_service's id (no FK, HARD RULE 3); a screen
+  // names the person with UserByIDs.
+  uint64 created_by_user_id = 5;
+  int64 created_at_unix = 6;
+  int64 updated_at_unix = 7;
+  // In the order they were saved. Never empty (a-bundle-has-at-least-one-line).
+  repeated BundleLine lines = 8;
+}
+
+message BundleRowMapItem {
+  map<uint64, BundleRowItem> map_data = 1;
+}
+
+// ── BundleList (guideline "List View") ────────────────────────────────────────────────────────────
+
+enum BundleListDataType {
+  BUNDLE_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  // GENERAL: the shared id+name slice.
+  BUNDLE_LIST_DATA_TYPE_GENERAL = 1;
+  // BUNDLE: the whole bundle, lines included (BundleRowMapItem).
+  BUNDLE_LIST_DATA_TYPE_BUNDLE = 2;
+}
+
+enum BundleRowSort {
+  BUNDLE_ROW_SORT_UNSPECIFIED = 0;
+  BUNDLE_ROW_SORT_NAME = 1;
+  // The last change — the default, newest first: the bundle somebody just made is the one they look for.
+  BUNDLE_ROW_SORT_UPDATED_AT = 2;
+}
+
+// The NON-scope filters (the scoped team_id stays top-level — see warehouse/common/v1/list.proto).
+message BundleListFilter {
+  // Over the bundle's name AND its products' names and codes — "which bundle has the Kopi in it?" is asked as often
+  // as its name, and a name may repeat.
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+}
+
+message BundleListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    BundleRowSort bundle = 3;
+  }
+}
+
+message BundleListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    BundleRowMapItem bundle = 2;
+  }
+}
+
+message BundleListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  BundleListFilter filter = 2;
+  BundleListFilterSort sort = 3;
+  repeated BundleListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message BundleListResponse {
+  repeated BundleListResponseItem items = 1;
+  // The bundle ids in sorted order — the authoritative order of the page.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── BundleByIds (guideline "Collection Detail") ───────────────────────────────────────────────────
+
+enum BundleByIdsDataType {
+  BUNDLE_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  BUNDLE_BY_IDS_DATA_TYPE_GENERAL = 1;
+  BUNDLE_BY_IDS_DATA_TYPE_BUNDLE = 2;
+}
+
+message BundleByIdsFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message BundleByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    BundleRowMapItem bundle = 2;
+  }
+}
+
+message BundleByIdsResponseList {
+  repeated BundleByIdsResponseItem items = 1;
+}
+
+message BundleByIdsRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // ONLY this team's bundles come back — unlike ProductByIds, nothing outside the team ever holds a bundle id.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  BundleByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Empty defaults to the BUNDLE slice.
+  repeated BundleByIdsDataType data_request = 3;
+}
+
+message BundleByIdsResponse {
+  // Keyed by bundle id. An id that is not the team's, or no longer exists, is simply ABSENT.
+  map<uint64, BundleByIdsResponseList> items = 1;
+}
+
+// ── The writes ────────────────────────────────────────────────────────────────────────────────────
+//
+// The LINES are checked by the handler as well as by the fields below, because three rules are not field rules:
+//   - each product once per bundle — UNIQUE (bundle_id, product_id) (a-bundle-line-carries-its-quantity)
+//   - a product the save ADDS exists and is not archived
+//   - another team's product the save ADDS only while it is SHAREABLE: not cross-locked
+//     (a-borrowed-product-never-blocks-its-owner). The reserve is NOT checked here — it is a stock fact, checked when
+//     an order takes the stock.
+// Each refusal is InvalidArgument naming the product.
+//
+// ⚠ "ADDS" — a line ALREADY in the bundle whose product has since been locked or archived is KEPT by an update. The
+// owner's action never changes the bundle, and renaming a bundle must not first demand that its creator clear a line
+// somebody else made unavailable. The screen shows such a line as unavailable and offers to remove it.
+
+message BundleCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // May repeat within the team (bundle-names-may-repeat).
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string description = 3 [(buf.validate.field).string.max_len = 2000];
+  repeated BundleLine lines = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+  }];
+}
+
+message BundleCreateResponse {
+  BundleRowItem bundle = 1;
+}
+
+message BundleUpdateRequest {
+  // The same roles as create — and the handler narrows them: a caller whose only role in the team is SELLING_CS is
+  // refused with PermissionDenied unless they created the bundle (the-creator-or-an-admin-edits-a-bundle). A
+  // creator who has left the team cannot reach this at all; from then on only an Admin or Owner can.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 bundle_id = 2 [(buf.validate.field).uint64.gt = 0];
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string description = 4 [(buf.validate.field).string.max_len = 2000];
+  // REPLACES every line. Removing the last one is refused, as an empty create is — to get rid of a bundle, delete it.
+  repeated BundleLine lines = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+  }];
+}
+
+message BundleUpdateResponse {
+  BundleRowItem bundle = 1;
+}
+
+message BundleDeleteRequest {
+  // The same narrowing as BundleUpdateRequest: a CS deletes only a bundle they created.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 bundle_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message BundleDeleteResponse {}

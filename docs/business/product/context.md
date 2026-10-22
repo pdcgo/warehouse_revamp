@@ -6,6 +6,7 @@
 
 ## Responsbility.
 1. provide product service that can manage the team products.
+2. product service manage bundle to. for reference see [this](./product_bundle.md)
 
 
 ## Attribute / Field That Product Must Have

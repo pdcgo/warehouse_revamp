@@ -6,7 +6,6 @@ import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useOrders } from "../../../features/orders/queries";
-import { mockReceiptCode } from "../../../features/orders/rowMock";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { beep } from "../../../lib/beep";
 import { WAREHOUSE_ORDERS_PENDING } from "../pending";
@@ -59,8 +58,9 @@ export function HandoverScanDialog({
   const [entries, setEntries] = useState<Entry[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // ⚠ WHERE A LABEL IS LOOKED UP (`resiLookup`): no RPC finds an order by its tracking number, so the
-  // dialog reads the warehouse's orders once and matches the label against them.
+  // ⚠ WHERE A LABEL IS LOOKED UP (`resiLookup`): the dialog reads the warehouse's orders once and matches the
+  // label against their tracking numbers and refs (a-label-scan-reads-the-ref-or-the-receipt) — so only the
+  // 200 it loaded can match. OrderList's search reaches `receipt_code` server-side; the dialog does not ask it yet.
   const lookup = useOrders({
     teamId: open ? warehouseId : undefined,
     page: 1,
@@ -70,7 +70,7 @@ export function HandoverScanDialog({
   const byLabel = useMemo(() => {
     const map = new Map<string, Order>();
     for (const order of lookup.data?.orders ?? []) {
-      map.set(mockReceiptCode(order.id, order.status), order);
+      if (order.receiptCode) map.set(order.receiptCode, order);
       if (order.orderExternalRefId) map.set(order.orderExternalRefId, order);
     }
     return map;

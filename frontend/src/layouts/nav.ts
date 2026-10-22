@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  ArrowLeftRight, Boxes, Building2, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, Package, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  ArrowLeftRight, Boxes, Building2, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, Package, PackageOpen, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
@@ -168,6 +168,9 @@ const PRODUCTS_GROUP: MenuGroup = {
   children: [
     { to: "/products", label: "nav.myProduct", icon: Package },
     { to: "/products/discover", label: "nav.discoverProduct", icon: Compass },
+    // The team's picking recipes (docs/business/product/product_bundle.md) — a catalogue thing: which products go
+    // together, never stock.
+    { to: "/products/bundles", label: "nav.bundles", icon: PackageOpen },
   ],
 };
 

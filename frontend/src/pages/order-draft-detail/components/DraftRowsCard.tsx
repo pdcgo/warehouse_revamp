@@ -18,12 +18,11 @@ import { Layers, PackagePlus, Plus, Trash2, TriangleAlert } from "lucide-react";
 
 import { ProductSelect } from "../../../components/products/ProductSelect";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
-import { toaster } from "../../../components/feedback/Toaster";
+import { newBundleLink } from "../../../features/bundles/prefill";
 import type { Availability, Costs, LineDraft } from "../../../features/orders/lines";
 import { lineStock, unitCost } from "../../../features/orders/lines";
 import { BundleSearch, SlotBox } from "../../../features/orders/form/BundleCard";
 import { fillFor } from "../../../features/orders/form/bundles";
-import { BUNDLES } from "../../../features/orders/form/mockData";
 import { ImagePreview } from "../../../features/orders/form/ImagePreview";
 import type { PreviewTarget } from "../../../features/orders/form/ImagePreview";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
@@ -268,11 +267,9 @@ function RowBlock({
             ) : (
               <Box maxW="sm">
                 <BundleSearch
+                  teamId={teamId}
                   disabled={warehouseId <= 0n}
-                  onAdd={(templateId) => {
-                    const template = BUNDLES.find((b) => b.id === templateId);
-                    if (template) onPatch({ bundle: bundleForRow(template, row) });
-                  }}
+                  onAdd={(picked) => onPatch({ bundle: bundleForRow(picked, row) })}
                 />
               </Box>
             )}
@@ -522,20 +519,31 @@ function SplitMapping({
         </Button>
 
         {/* THE SUGGESTION (owner): a split is allowed, but a listing sold this way again is a bundle
-            waiting to be defined. Offered, never required. */}
+            waiting to be defined. Offered, never required.
+
+            It opens the bundle form in a NEW TAB, prefilled with the listing's name and these parts — so the
+            mapping on this page is not lost (a draft keeps no mapping: a-draft-stores-no-mapping). Back here,
+            the new bundle is in the Bundle search, which reads the server fresh every time it opens. */}
         <Button
           type="button"
           size="xs"
           variant="ghost"
           colorPalette="primary"
+          disabled={!row.parts.some((part) => part.productId > 0n)}
           data-testid={`draft-row-${index}-make-bundle`}
           onClick={() =>
-            toaster.create({ type: "info", title: t("orderForm.pending.makeBundle.reason") })
+            window.open(
+              newBundleLink({
+                name: row.externalName,
+                lines: row.parts.map((part) => ({ productId: part.productId, quantity: part.quantity })),
+              }),
+              "_blank",
+              "noopener",
+            )
           }
         >
           <Icon as={Layers} boxSize="4" />
           {t("orderDraftForm.items.makeBundle")}
-          <NotImplemented list={ORDER_DRAFT_PENDING} id="makeBundle" />
         </Button>
       </Flex>
     </Stack>

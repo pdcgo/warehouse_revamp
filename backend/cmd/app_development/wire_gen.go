@@ -22,6 +22,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/warehouse_service/warehouse_v1"
 )
 
 // Injectors from wire.go:
@@ -71,7 +72,10 @@ func InitializeApp() (*App, error) {
 	selling_v1CreditChecker := NewCreditChecker(liability_v1Service)
 	selling_v1RoleReader := NewRoleReader(roleResolver)
 	orderExportStore := NewOrderExportStore(config, mainInternalHTTPClient, documentServiceClient)
-	selling_v1Service := selling_v1.NewService(db, selling_v1StockPicker, eventSender, selling_v1ProductCatalog, selling_v1CreditChecker, selling_v1RoleReader, orderExportStore)
+	warehouseNamer := NewWarehouseNamer(config, mainInternalHTTPClient)
+	warehouse_v1Service := warehouse_v1.NewService(db, warehouseNamer)
+	selling_v1WarehouseFeePricer := NewWarehouseFeePricer(warehouse_v1Service)
+	selling_v1Service := selling_v1.NewService(db, selling_v1StockPicker, eventSender, selling_v1ProductCatalog, selling_v1CreditChecker, selling_v1RoleReader, orderExportStore, selling_v1WarehouseFeePricer)
 	category_v1Service := category_v1.NewService(db)
 	docstoreConfig := NewDocumentConfig(config)
 	document_v1Service := document_v1.NewService(db, docstoreConfig)
@@ -92,7 +96,7 @@ func InitializeApp() (*App, error) {
 	sellingTeams := NewSupplierSellingTeams(teamServiceClient)
 	supplier_v1ReplayBroker := NewSupplierReplayBroker(client)
 	supplier_v1Service := supplier_v1.NewService(db, sellingTeams, supplier_v1ReplayBroker)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, supplier_v1Service, docstoreConfig, roleResolver, signer)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, supplier_v1Service, warehouse_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

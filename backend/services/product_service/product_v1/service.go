@@ -1,4 +1,5 @@
-// Package product_v1 implements warehouse.product.v1.ProductService — a team's product catalogue.
+// Package product_v1 implements warehouse.product.v1.ProductService — a team's product catalogue — and BundleService,
+// its picking recipes.
 //
 // Every RPC is team-scoped: the request carries team_id (use_scope), and each query is constrained
 // to that team, so a caller can never read or mutate another team's product by id.
@@ -19,8 +20,12 @@ type Service struct {
 	db *gorm.DB
 }
 
-// compile-time proof Service satisfies the generated handler interface.
-var _ productv1connect.ProductServiceHandler = (*Service)(nil)
+// compile-time proof Service satisfies the generated handler interfaces — the catalogue and its bundles
+// (docs/business/product/product_bundle.md). A forgotten RPC fails the build here instead of answering Unimplemented.
+var (
+	_ productv1connect.ProductServiceHandler = (*Service)(nil)
+	_ productv1connect.BundleServiceHandler  = (*Service)(nil)
+)
 
 func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}

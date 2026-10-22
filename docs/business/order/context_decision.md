@@ -101,6 +101,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [what-an-order-proves-is-already-kept](#what-an-order-proves-is-already-kept) | an order's history needs nothing new: its creator, door, frozen lines and timeline already show it |
 | [a-found-lost-parcel-is-a-found-stock-in](#a-found-lost-parcel-is-a-found-stock-in) | a parcel back after `lost` is a `found` stock-in naming the order; the order stays lost, the money is settled by hand |
 | [cod-and-shipping-are-the-platforms](#cod-and-shipping-are-the-platforms) | buyer shipping and COD need nothing on the order: COD is only ever the marketplace's, paid out like any order |
+| [platform-created-at-is-required-at-finalize](#platform-created-at-is-required-at-finalize) | an order cannot be finalized without the buyer's order time on the platform; a draft may hold it empty |
+| [the-shipment-deadline-is-the-platforms-and-optional](#the-shipment-deadline-is-the-platforms-and-optional) | the ship-by is the marketplace's, stored on the order and the draft; optional — none means no urgency shown |
 
 ---
 
@@ -3508,3 +3510,66 @@ flowchart LR
 | the read | `TeamReturnConfigurationByIds(filter.ids = team ids)` — the guideline's ByIds shape; a team that has set none is **absent**. One indexed query: 0.7 ms for 200 teams |
 | no flash | nothing is marked until the answer is in, so a slow read never marks a team that has one |
 | ✅ built *(2026-10-21)* | pinned by `team_return_configuration_by_ids_test.go` and the story *Pages/Teams/TeamTable* |
+
+---
+
+## platform-created-at-is-required-at-finalize
+
+> Owner (2026-10-22): **"Required"** to *"is `platform_created_at` required when an order is created?"* — after adding
+> `platform_created_at` beside `created_at` on `orders` and on `order_drafts` (§Table That Must Have). As recommended.
+
+**The verdict.** An order cannot be finalized without `platform_created_at` — when the buyer ordered on the storefront.
+Every order comes from a platform (the ref and `platform_total` are never empty), so every order has one, and the person
+reads it off the same storefront page as the ref and the total. Same rule as
+[platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize).
+
+```mermaid
+flowchart LR
+  A["the app's push"] --> D["order_drafts.platform_created_at - may be empty"]
+  T["the typed form"] --> F{"platform_created_at present?"}
+  D -->|"Promote"| F
+  F -->|"no"| R["finalize REFUSES"]
+  F -->|"yes"| O["orders.platform_created_at - beside created_at"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the two dates | `platform_created_at` is the buyer's order time on the storefront; `created_at` is when we wrote the row. An order taken on Saturday and typed in on Monday carries both |
+| checked at | finalize, on **both** doors — the typed order and the promoted draft |
+| a draft | may hold it empty while it is being worked on. The app pushes it with the ref and the total; Promote copies it |
+| on screen | the order list's **Tgl MP** column ([every-date-gets-its-own-column](../../technical/frontend/order_list_decision.md#every-date-gets-its-own-column)) and the create form's order date — both `sample`/`dropped` marks until it is built |
+| not decided here | which date the order list's date filter reads |
+| ✅ built *(2026-10-22)* | `orders.platform_created_at` and `order_drafts.platform_created_at` (selling `00020`), `platform_created_at_unix` on `Order`, `OrderCreateRequest`, `OrderDraft`, `OrderDraftPush` and `OrderDraftUpdate`. `placeOrder`'s shared rule refuses an order without it — *"an order must say when the buyer ordered it on the marketplace"* — so OrderCreate and Promote meet the same check. The form's order date is required (Create off until set); the draft page stores it and lists it among Promote's reasons when empty. The Tgl MP column, the warehouse row and the order detail read it, and the export carries it. Orders before 00020 have none |
+
+---
+
+## the-shipment-deadline-is-the-platforms-and-optional
+
+> Owner (2026-10-22): added `platform_shipment_deadline` to `orders` and `order_drafts` (§Table That Must Have), then
+> **"Optional"** to *"is it required at finalize, like `platform_total` and `platform_created_at`?"* — against my
+> *required*.
+
+**The verdict.** An order's ship-by deadline is the **marketplace's own** — its *"kirim sebelum"*, stored as
+`platform_shipment_deadline` on the order and on the draft. Nothing computes it. It is **optional**: finalize does not
+refuse without it, and an order that has none shows no urgency.
+
+```mermaid
+flowchart LR
+  A["the app's push"] --> D["order_drafts.platform_shipment_deadline"]
+  T["the typed form"] --> O["orders.platform_shipment_deadline"]
+  D -->|"Promote copies it"| O
+  O -->|"set"| U["the list's urgency bands"]
+  O -->|"empty"| N["no deadline shown"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the source | the marketplace — pushed by the app, or read off the storefront by the CS. Never derived from the channel or from `platform_created_at` |
+| empty | allowed at finalize. The row shows nothing, as [a-deadline-is-loud-or-it-is-nothing](../../technical/frontend/order_list_decision.md#a-deadline-is-loud-or-it-is-nothing) allows |
+| the clock stops | at handover (`shipping`) — an order already out of the building shows no deadline |
+| unlike the other two | `platform_total` and `platform_created_at` are required at finalize; this one is not |
+| ✅ built *(2026-10-22)* | `orders.platform_shipment_deadline` and `order_drafts.platform_shipment_deadline` (selling `00020`), `platform_shipment_deadline_unix` on the same five messages, optional everywhere. The form's ship-by field sends it; the app's push and the draft page store it; Promote copies it. The list's urgency badge, the warehouse row and the order detail read it through `orderDeadline`, which stops the clock from `shipping` on; the export carries it |

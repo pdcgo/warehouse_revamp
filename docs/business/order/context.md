@@ -42,6 +42,11 @@ when order created. its bring 4 things.
     - `goods_cost`, goods only, used for warehouse fee charge calculation
     - `total_cost`, goods + warehouse fee
     - `platform_total`, is total that outside platform given. Its used for post the settlement later.
+    - `platform_created_at`
+    - `platform_shipment_deadline`
+
+    - `created_at`
+
 
 2. `order_items`,
 
@@ -99,6 +104,10 @@ when order created. its bring 4 things.
     - `platform_total`
     - `receipt`
     - `receipt_file`
+    
+    - `platform_shipment_deadline`
+    - `platform_created_at`
+    - `created_at`
 
 6. `order_draft_platform_items`
 

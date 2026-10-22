@@ -42,6 +42,32 @@ the same order at once was tested: exactly one move lands.
 
 The seller list has 10 parts still waiting and the warehouse list 6; each needs a decision or a bigger piece (the fee).
 
+**And then:** files download under their real names (an export is `orders-….xlsx`, not a storage code), and the **warehouse fee** got its first of five steps — each warehouse can now set what it charges per order (a percent with a floor and an optional cap) on its Settings. Nothing charges from it yet; orders keep paying the old flat fee until step 4. Detail: [teams/warehouse/context.md](teams/warehouse/context.md).
+
+**2026-10-22:** six more marks gone from the seller's order list — it is down to 4.
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **The tracking number is kept** | the number typed on the order form is saved, shows on both order lists, the order page and the export, and the search finds an order by it |
+| **The warehouse filter works** | picking a warehouse on the seller list narrows the rows and the counts |
+| **The status date is real** | under a status tab, each row says when the order got there |
+| **The warehouse fee is real** | each new order is priced by its warehouse and keeps that fee; the order form shows it before you save. A warehouse that never set its fee cannot take orders, and the form says so |
+| **The summary's figures are real** | items, units per order, purchase value and margin come from the server |
+
+Behind it, steps 2 and 3 of the warehouse fee: each warehouse's old flat fee became its rate (the same amount), and orders now freeze the fee. The ledger still charges the old flat fee until step 4. ⚠ In the dev database only Dev Warehouse had a flat fee, so the other warehouses there refuse orders until they set one.
+
+Still waiting on the seller list: the import's file, the marketplace's order date and the ship-by deadline (you added both fields today), and the withdrawal figure.
+
+**Later the same day:** the marketplace's two dates are real, so the seller list is down to **2** marks — the import (Q19) and the withdrawal (Q20), both waiting on your answer.
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **The marketplace order date** | every new order must have it — the order form will not create without it, and a draft cannot be promoted without it. It shows on both lists, the order page and the export |
+| **The ship-by deadline** | the marketplace's own "kirim sebelum", optional. When set it colours the row: overdue, under 6 hours, under 24 hours |
+| **The date filter switch** | the order list's date filter reads either *Dibuat* (the default) or *Tgl MP* |
+
+Orders placed before today have neither date, so they show nothing there and never match a *Tgl MP* filter.
+
 Detail: [order/context.md](order/context.md).
 
 ---

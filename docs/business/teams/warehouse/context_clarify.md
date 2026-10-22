@@ -99,7 +99,7 @@ fee = clamp( goods_cost * fee_percent / 100 , min_fee , max_fee )
 | --- | --- | --- |
 | `fee_percent` | `double` | 2.5 = 2.5%, as your payload has it |
 | `min_fee` | `double` | ✅ decided, default 0 = no floor. Above `max_fee` is refused when saved; equal means a flat fee |
-| `max_fee` | `optional double` | ⚠ **absent = uncapped, and `0` must be REFUSED.** `liability_terms.credit_limit` already carries this trap — nil is unlimited, 0 is nothing — and it is the one field in that table with a warning comment on it |
+| `max_fee` | `optional double` | ✅ *(2026-10-21)* decided as proposed — [an-empty-cap-means-no-cap](./context_decision.md#an-empty-cap-means-no-cap): **absent = uncapped, and `0` is REFUSED.** `liability_terms.credit_limit` already carries this trap — nil is unlimited, 0 is nothing — and it is the one field in that table with a warning comment on it |
 | no row at all | — | 🔄 **refused**, never charged nothing ([a-warehouse-with-no-rate-takes-no-orders](./context_decision.md#a-warehouse-with-no-rate-takes-no-orders)). `0%` is how a warehouse charges nothing |
 
 ### the-payload-as-i-would-write-it

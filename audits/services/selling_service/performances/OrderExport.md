@@ -62,8 +62,8 @@ asked for — then a size cap or a background job, which is a design question, n
 
 ## Open questions
 
-- [ ] None for performance. The file's NAME is a separate, open question (it downloads under its storage key) — asked in chat
-  2026-10-21
+✅ None. The file's NAME, raised beside this audit, was answered the same day: it downloads as `orders-….xlsx`
+([a-download-keeps-its-files-name](../../../../docs/technical/frontend/warehouse_order_list_decision.md#a-download-keeps-its-files-name)).
 
 ---
 

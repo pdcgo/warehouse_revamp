@@ -6,13 +6,44 @@ reads every team's orders**, **settlement listens to the order events** (and the
 return warehouse's table and screen**. Decisions: [context_decision.md](../../business/order/context_decision.md) — the
 order context has **nothing open, critiqued, contradicted or awaiting**.
 
+**Second pass (2026-10-22):** the order list's six decided-but-unbuilt marks, at the owner's *"build 6 decided"* — the
+warehouse filter, the summary's units, the status date, the tracking number, the frozen warehouse fee and the summary's
+money. The fee is step 3 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)
+(step 2, the carry-over, with it — [teams/warehouse/context.md](../teams/warehouse/context.md)).
+
+| | built 2026-10-22 |
+| --- | --- |
+| tracking number | `orders.receipt` (selling `00018`) = `Order.receipt_code`, written at create (form field, already on screen, now sent); searched; on the seller and warehouse rows, the detail, Find Parcel, the handover scan and the export |
+| status date | `Order.status_at_unix` — the newest timeline row into the current status, per page row; the list's *Tgl \<status\>* column |
+| warehouse filter | `warehouse_id` on `OrderListFilter` + `OrderStatFilter` ([the-seller-list-filters-by-warehouse](../../technical/frontend/order_list_decision.md#the-seller-list-filters-by-warehouse)) |
+| frozen fee | `orders.warehouse_fee` (selling `00019`, DOUBLE PRECISION, NULL = never priced): `placeOrder` prices it with `WarehouseFeeCalculate` on `cogs` before its transaction and refuses a warehouse with no rate ([rpc.md](../../services/selling_service/rpc.md)). The form and the draft page show the real fee (`useWarehouseFeeQuote`); Beli, the detail's money and the export read it |
+| census | `OrderStatusCount` gains `item_count` and, over the measurable orders only (cost + MP figure + fee), `mp_value` · `cogs` · `fees` · `margin_unknown`. `summaryMock.ts` and the row mocks for resi / fee / stage date are deleted |
+| marks left | seller list **4** (import, mpDate, deadline, withdrawal) · warehouse list **5** · order detail **7** · order form drops `receiptCode` and `warehouseFee` |
+| dev DB | selling migrated to 19; `warehouse_fees` has Dev Warehouse at 0% / 15.000 / 15.000 (its old flat fee). ⚠ Every other warehouse there has no rate and now refuses orders until it sets one |
+
+**Third pass (2026-10-22):** the platform's two dates, at the owner's *"can we implement the two decided"* —
+[platform-created-at-is-required-at-finalize](../../business/order/context_decision.md#platform-created-at-is-required-at-finalize),
+[the-shipment-deadline-is-the-platforms-and-optional](../../business/order/context_decision.md#the-shipment-deadline-is-the-platforms-and-optional),
+[the-date-filter-switches-created-or-platform](../../technical/frontend/order_list_decision.md#the-date-filter-switches-created-or-platform),
+[the-urgency-bands-are-6-and-24-hours](../../technical/frontend/order_list_decision.md#the-urgency-bands-are-6-and-24-hours).
+
+| | built 2026-10-22 |
+| --- | --- |
+| schema | selling `00020`: `platform_created_at`, `platform_shipment_deadline` on `orders` AND `order_drafts`, NULL before |
+| the rule | `placeOrder` refuses an order without the platform date — both doors; a draft may be without it until Promote |
+| drafts | push stores both, an edit marks each touched, Promote copies both |
+| list | the date filter's *Dibuat · Tgl MP* switch (`OrderDateField`), the Tgl MP column, the deadline badge from the real field (bands 6 h / 24 h in `features/orders/deadline.ts`, `deadlineMock.ts` deleted) |
+| form | the order date is required (Create off until set); the ship-by field is the marketplace's deadline; both sent, and both saved with Save as Draft |
+| marks left | seller list **2** (import — Q19, withdrawal — Q20) · warehouse list **3** · order detail **6** · order form **10** |
+| ⚠ the e2e and the stories | every flow that places an order now picks the order date first (`pickOrderDate`) |
+
 ## What exists
 
 | | |
 | --- | --- |
 | statuses | `OrderStatus` is the eleven: pending · processed · picked · shipping · shipped · completed · problem · lost · return · return_completed · cancel — numbers kept aligned with the old six, `4` reserved. Selling `00015` moved every order and history row (`placed → pending`, `confirmed`/`picking → processed`, `packed → picked`, `shipped → shipping`, `cancelled → cancel`). Selling `00017` then replaced `order_events` with the owner's `order_timeline_logs` (status, note, `from` warehouse/selling, actor) — [order-timeline-logs-replaces-order-events](../../business/order/context_decision.md#order-timeline-logs-replaces-order-events); nothing carried over, and nothing writes a note-only row yet |
 | the move | `OrderStatusChange(team_id, order_ids 1–200, to, note)` — one per-order result, the table `orderMoves` (from → to → which side), a note required back to pending, the whole batch saved in one transaction of four statements locked in id order ([a-batch-move-saves-in-one-transaction](../../technical/frontend/warehouse_order_list_decision.md#a-batch-move-saves-in-one-transaction)). Cancel (`OrderCancel`, pending only) and the return accept keep their own RPCs. `OrderConfirm` · `OrderPick` · `OrderPack` · `OrderShip` are removed ([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)) |
-| list filters and row | `OrderListFilter` and `OrderStatFilter` gained `seller_team_id`, `marketplace`, `shipping_code`; `Order.item_quantity` is summed by the list query; `ShopByIds` names shops across teams — [the-filter-gains-seller-marketplace-and-courier](../../technical/frontend/warehouse_order_list_decision.md#the-filter-gains-seller-marketplace-and-courier), [the-warehouse-row-fills-from-shop-and-user-by-ids](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-row-fills-from-shop-and-user-by-ids). The seller list's strip is **10** parts, the warehouse list's **6** |
+| list filters and row | `OrderListFilter` and `OrderStatFilter` gained `seller_team_id`, `marketplace`, `shipping_code`; `Order.item_quantity` is summed by the list query; `ShopByIds` names shops across teams — [the-filter-gains-seller-marketplace-and-courier](../../technical/frontend/warehouse_order_list_decision.md#the-filter-gains-seller-marketplace-and-courier), [the-warehouse-row-fills-from-shop-and-user-by-ids](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-row-fills-from-shop-and-user-by-ids). The seller list's strip was **10** parts, the warehouse list's **6** — **4** and **5** after the second pass above |
 | export | `OrderExport`, a server stream: the list's filter and tab (or the warehouse bar's ticked rows, `order_ids`), the reader's columns, .xlsx with ids and phones as text, stored as a private `order_export` document (document `00008`) as the caller, an expiring link — [one-export-is-the-list-as-a-file](../../technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file), flow in [rpc.md](../../services/selling_service/rpc.md#the-list-as-a-file--orderexport). Only real data: no invented tracking number, MP date or deadline |
 | root | `OrderList` / `OrderDetail` drop the team clause for the root team (`readsEveryTeam`) |
 | settlement | `OrderPlaced` carries `shop_id` + `marketplace_total`, `OrderCancelled` carries `shop_id`; settlement's `OrderSaleHandler` opens and cancels the sale, idempotent on its key. Selling no longer calls settlement |
@@ -36,7 +67,9 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | `OrderStatusChange` · concurrency | ✅ safe — 140/140 at `-count=20`, the interleave shows the row lock holding and B re-reading; re-run 80/80 on the one-transaction save ([lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |
 | `TeamReturnConfigurationSet` · concurrency | ✅ safe — the first set's phantom insert is serialised by the unique index, proved by interleave |
 | `OrderStatusChange` · performance | ✅ [resolved](../../../audits/services/selling_service/performances/OrderStatusChange.md) — was 4 queries per order, 248 ms for 200; the owner took the set-based save: **4 queries, 11 ms** for 200 |
-| `OrderList` (root) · performance | 🟡 [heavy by the rule](../../../audits/services/selling_service/performances/OrderList.md) — the total seq-scans the table, 5 ms at 50 000. Accept until ~500 000 |
+| `OrderList` (root) · performance | 🔴 [re-audited 2026-10-22](../../../audits/services/selling_service/performances/OrderList.md) — pages 4–6 ms at 50 000; a deep OFFSET page was 252 ms after `status_at` and is **20 ms** with the page chosen first (fixed, no contract change). Still 🔴: the **search** seq-scans the scope with four ILIKEs, 112–120 ms — the fix is a trigram index, a schema question for the owner |
+| `OrderStat` · performance | 🔴 [new report](../../../audits/services/selling_service/performances/OrderStat.md) — 190 ms at 50 000 orders, ~80% the `item_count` correlated sum (`loops=50000`, JIT). The recommended fix stores the unit count on the order, which reopens [the-warehouse-row-fills-from-shop-and-user-by-ids](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-row-fills-from-shop-and-user-by-ids) — the owner's to decide |
+| `OrderCreate` · concurrency + performance | ✅ the fee is one read before the transaction (the unique `warehouse_id` index) and a field of the same insert — no new shared row, no new lock |
 | `TeamReturnConfigurationDetail` · `Set` · performance | 1 query each, under 1 ms over 10 000 rows — not heavy |
 
 ## Decided, not built
@@ -46,6 +79,8 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | the create check for a return warehouse | rollout steps **2** (each team sets its own — [each-team-sets-its-own-return-warehouse](../../business/order/context_decision.md#each-team-sets-its-own-return-warehouse)) and **3** (create refuses a team without one) — [create-refuses-a-team-with-no-return-warehouse](../../business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse). Step 1 is this pass |
 | the return accept | `return → return_completed`, its own RPC — refused by `OrderStatusChange` today. Its inventory half is [return.md](../../business/inventory/return.md)'s brief |
 | the total-required create check | [platform-total-is-required-at-finalize](../../business/order/context_decision.md#platform-total-is-required-at-finalize) — until it lands, settlement's handler skips a total of 0 |
+| *Edit Resi* | [the-seller-edits-the-resi-until-handover](../../technical/frontend/order_list_decision.md#the-seller-edits-the-resi-until-handover) — `receipt_code` and the file exist; the edit RPC and the menu wiring do not |
+| the event's fee | `OrderPlaced.warehouse_fee` and liability posting it — step 4 of the fee rollout |
 
 ## Asks for a yes
 

@@ -221,6 +221,12 @@ type callerRoleCtxKey struct{}
 // different question — *on whose behalf* was the call allowed. A handler re-deriving permission from
 // it would be a second, drifting copy of the policy the proto already declares.
 //
+// THE ONE OTHER USE: NARROWING what the proto cannot say. A policy lists roles; it cannot say "only
+// your own". A handler may refuse a call the policy let in — never admit one it refused — on a rule
+// the proto has no words for: BundleUpdate and BundleDelete let a SELLING_CS change only a bundle
+// she created (product_v1.mayChangeBundle, the-creator-or-an-admin-edits-a-bundle). That is not a
+// copy of the policy, so it cannot drift from it.
+//
 // ⚠ ROLE_UNSPECIFIED HERE MEANS "OUTSIDE THE TEAM", which is the useful signal: the request got in,
 // so it was authorized, and holding no role in the scoped team means it was authorized by the
 // root-team bypass instead. That is precisely the definition of an OVERRIDE in

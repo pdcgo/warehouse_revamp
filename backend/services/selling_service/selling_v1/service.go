@@ -42,6 +42,13 @@ type Service struct {
 	// Where an export's file goes, and the names its rows need (one-export-is-the-list-as-a-file) — document_service,
 	// team_service and user_service, behind an interface this service owns. nil = OrderExport is Unimplemented.
 	exports OrderExportStore
+	// What the fulfilling warehouse charges, priced once at create and frozen on the order (the-flat-rate-is-dropped-last
+	// step 3) — warehouse_service, behind an interface this service owns. See warehouse_fee_pricer.go.
+	//
+	// ⚠ nil PRICES NOTHING: the order is written with no fee (NULL, "never priced") and no warehouse is refused. That is
+	// for a unit test about something else, and it is NOT the production default — the composition root wires the real
+	// one, which refuses a warehouse with no rate.
+	fees WarehouseFeePricer
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
@@ -60,6 +67,7 @@ func NewService(
 	credit CreditChecker,
 	roles RoleReader,
 	exports OrderExportStore,
+	fees WarehouseFeePricer,
 ) *Service {
 	// A nil sender would panic on the first order placed, which is a long way from where the mistake
 	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
@@ -89,6 +97,7 @@ func NewService(
 		credit:  credit,
 		roles:   roles,
 		exports: exports,
+		fees:    fees,
 	}
 }
 

@@ -94,21 +94,21 @@ func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
 	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil)
 }
 
 // newServiceWithEvents is for the tests that care WHICH EVENT was published (#153).
 func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil)
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil)
 }
 
 // newServiceWithCatalog is for the tests where a product died underneath a draft (#194).
@@ -119,7 +119,7 @@ func newServiceWithCatalog(
 ) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, nil, nil, nil)
 }
 
 // insertShop seeds an active shop directly and returns its id.
@@ -160,7 +160,8 @@ func placeOrderAs(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: teamID, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
@@ -195,9 +196,40 @@ func (f *fakeCredit) Check(
 	return f.block, f.err
 }
 
+// fakeFees stands in for warehouse_service's WarehouseFeeCalculate (the-flat-rate-is-dropped-last step 3).
+//
+// It prices a flat percent of the goods cost, so a test can assert the fee was computed FROM the order's cogs rather
+// than invented; `err` makes the refusal of a warehouse with no rate reachable; `asked` records the basis it was given.
+type fakeFees struct {
+	percent float64
+	err     error
+	asked   []float64
+}
+
+func (f *fakeFees) Price(_ context.Context, _, _ uint64, goodsCost float64) (float64, error) {
+	f.asked = append(f.asked, goodsCost)
+
+	if f.err != nil {
+		return 0, f.err
+	}
+
+	return goodsCost * f.percent / 100, nil
+}
+
+// newServiceWithFees is for the tests about the frozen fee: a picker that knows costs, and a pricer.
+func newServiceWithFees(t *testing.T, db *gorm.DB, picker *fakePicker, fees selling_v1.WarehouseFeePricer) *selling_v1.Service {
+	t.Helper()
+
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, fees)
+}
+
 // newServiceWithCredit is for the tests that care whether an order is REFUSED (#189).
 func newServiceWithCredit(t *testing.T, db *gorm.DB, credit selling_v1.CreditChecker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, nil, nil, nil)
 }
+
+// testPlatformDate is when the buyer of every test order ordered on the storefront — REQUIRED at placement
+// (platform-created-at-is-required-at-finalize). A fixed moment, so a test asserting on it asserts on one value.
+const testPlatformDate int64 = 1_790_000_000

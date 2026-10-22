@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package warehouse.warehouse.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/warehouse/v1;warehousev1";
+
+// WarehouseFeeService — WHAT A WAREHOUSE CHARGES PER ORDER (warehouse-prices-balance-records). warehouse_service owns the
+// fee configuration and the calculation, and nothing else: it never posts, never records, never knows an order exists.
+// The order calls WarehouseFeeCalculate and keeps the answer; balance is told the amount.
+//
+// ONE RATE PER WAREHOUSE, the same for every seller (one-rate-per-warehouse):
+//   fee = clamp(goods_cost × fee_percent / 100, min_fee, max_fee)   (the-fee-has-a-floor-and-a-cap)
+// with an empty max_fee meaning no cap (an-empty-cap-means-no-cap). A warehouse that never set its fee takes no orders
+// (a-warehouse-with-no-rate-takes-no-orders); 0% is a rate.
+//
+// Money is double (rupiah-is-floating-point).
+//
+// ⚠ The role_base options are written with a LEADING DOT: inside package warehouse.warehouse, a bare
+// warehouse.role_base would resolve to warehouse.warehouse.role_base.
+service WarehouseFeeService {
+  rpc WarehouseFeeDetail(WarehouseFeeDetailRequest) returns (WarehouseFeeDetailResponse);
+  rpc WarehouseFeeSet(WarehouseFeeSetRequest) returns (WarehouseFeeSetResponse);
+  rpc WarehouseFeeCalculate(WarehouseFeeCalculateRequest) returns (WarehouseFeeCalculateResponse);
+}
+
+// One warehouse's fee configuration.
+message WarehouseFee {
+  uint64 warehouse_id = 1;
+  // 2.5 = 2.5%.
+  double fee_percent = 2;
+  // The floor. 0 = no floor.
+  double min_fee = 3;
+  // The cap. ABSENT = no cap (an-empty-cap-means-no-cap).
+  optional double max_fee = 4;
+  int64 updated_at_unix = 5;
+}
+
+// The warehouse's own configuration — for its settings screen.
+message WarehouseFeeDetailRequest {
+  // Read: everyone in the warehouse.
+  option (.warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse team.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (.warehouse.role_base.v1.use_scope) = true
+  ];
+}
+
+message WarehouseFeeDetailResponse {
+  // ABSENT when the warehouse has never set its fee — the state that takes no orders.
+  WarehouseFee fee = 1;
+}
+
+// Set — or replace — the warehouse's fee.
+message WarehouseFeeSetRequest {
+  // Write: the warehouse's managers, as for its other settings.
+  option (.warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The warehouse team.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (.warehouse.role_base.v1.use_scope) = true
+  ];
+  double fee_percent = 2 [(buf.validate.field).double = {
+    gte: 0
+    lte: 100
+  }];
+  double min_fee = 3 [(buf.validate.field).double.gte = 0];
+  // Empty = no cap. 0 is refused — it would make every fee 0 (an-empty-cap-means-no-cap). A floor above the cap is
+  // refused by the handler; equal is a flat fee.
+  optional double max_fee = 4 [(buf.validate.field).double.gt = 0];
+}
+
+message WarehouseFeeSetResponse {
+  WarehouseFee fee = 1;
+}
+
+// PRICE ONE ORDER at one warehouse (the-fee-is-priced-one-warehouse-at-a-time). Called by the order form and by order
+// create — as the selling team that orders, which is the request's scope only: the rate never depends on it.
+message WarehouseFeeCalculateRequest {
+  option (.warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The ordering team — the permission scope only (one-rate-per-warehouse).
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (.warehouse.role_base.v1.use_scope) = true
+  ];
+  // The basis: the order's goods_cost, Σ line total (the-fee-is-priced-on-goods-cost). Named as the owner's payload names
+  // it; renaming it goods_cost is the owner's to do.
+  double order_total = 2 [(buf.validate.field).double.gte = 0];
+  uint64 warehouse_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+// The fee and the rate it used, so a charge can be explained later. A warehouse with no rate gets FailedPrecondition,
+// never a number (a-warehouse-with-no-rate-takes-no-orders).
+message WarehouseFeeCalculateResponse {
+  uint64 warehouse_id = 1;
+  double order_total = 2;
+  double fee_percent = 3;
+  double min_fee = 4;
+  // Absent = no cap.
+  optional double max_fee = 5;
+  double calculated_warehouse_fee = 6;
+}

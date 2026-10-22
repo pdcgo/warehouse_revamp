@@ -1,7 +1,6 @@
 import { Badge, Box, Flex, Separator, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import {
   formatMarginPct,
   orderMargin,
@@ -9,7 +8,6 @@ import {
   orderSpend,
 } from "../../../features/orders/margin";
 import { formatRupiah } from "../../../lib/money";
-import { ORDER_DETAIL_PENDING } from "../pending";
 import { MarginBar } from "./MarginBar";
 
 // THE PERINCIAN UNDER THE LINES — the owner's derivation, written out one step at a time.
@@ -32,9 +30,9 @@ import { MarginBar } from "./MarginBar";
 // as written, a healthy order would read as a loss on every row, so it is rendered as the list does
 // it and the wording is a question rather than a silent correction.
 //
-// ⚠ IT IS AN ESTIMATE AND SAYS SO (owner: *"margin yang masih estimasi"*). Two reasons, and they are
-// different: the warehouse fee is invented, and what the marketplace actually deducts beyond the price
-// only lands weeks later on the settlement ledger.
+// ⚠ IT IS AN ESTIMATE AND SAYS SO (owner: *"margin yang masih estimasi"*): what the marketplace actually
+// deducts beyond the price only lands weeks later on the settlement ledger. The warehouse fee is the order's
+// own, frozen when it was placed; an order placed before fees were frozen has none, and the totals refuse.
 export function MoneyBreakdown({
   productCost,
   fees,
@@ -42,15 +40,15 @@ export function MoneyBreakdown({
 }: {
   /** Σ line `unit_cost × quantity` — what the goods cost us. 0 = never recorded. */
   productCost: bigint;
-  /** The warehouse's fee for fulfilling this order. SAMPLE. */
-  fees: bigint;
+  /** The warehouse's fee, frozen on the order (`orderFee`). `null` = never priced: placed before fees were frozen. */
+  fees: bigint | null;
   /** `marketplace_total` — what the buyer paid the platform. 0 = not recorded. */
   marketplaceTotal: bigint;
 }) {
   const { t } = useTranslation();
 
   const known = productCost > 0n;
-  const spend = orderSpend(productCost, fees, known);
+  const spend = orderSpend(productCost, fees ?? 0n, known && fees !== null);
   const margin = orderMargin(marketplaceTotal, spend);
   const pct = formatMarginPct(orderMarginPct(marketplaceTotal, spend));
 
@@ -72,11 +70,7 @@ export function MoneyBreakdown({
     <Stack gap="3">
       <Line label={t("orderDetail.money.productTotal")} value={known ? productCost : null} />
 
-      <Line
-        label={t("orderDetail.money.fees")}
-        value={fees}
-        mark={<NotImplemented list={ORDER_DETAIL_PENDING} id="totalFee" />}
-      />
+      <Line label={t("orderDetail.money.fees")} value={fees} testId="money-fees" />
 
       <Separator />
 

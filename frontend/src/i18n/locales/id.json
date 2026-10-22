@@ -37,7 +37,8 @@
     "warehouseTransfer": "Transfer Stok",
     "sectionOperations": "Operasional",
     "sectionFinance": "Keuangan",
-    "sectionTeam": "Tim"
+    "sectionTeam": "Tim",
+    "bundles": "Bundel"
   },
   "menu": {
     "theme": "Tema",
@@ -538,6 +539,98 @@
     "allWarehouses": "Semua gudang",
     "archive": "Arsipkan"
   },
+  "bundles": {
+    "title": "Bundel",
+    "lead": "Resep paket yang dipakai tim ini saat membuat pesanan — produk apa dan berapa banyak masing-masing. Bundel tidak punya stok atau harga sendiri.",
+    "selectTeam": "Pilih tim untuk melihat bundelnya.",
+    "sellingOnly": "Hanya tim penjual yang punya bundel.",
+    "newBundle": "Bundel Baru",
+    "search": "Cari bundel, atau produk di dalamnya",
+    "empty": "Belum ada bundel.",
+    "none": "Tidak ada bundel yang cocok.",
+    "edit": "Ubah",
+    "delete": "Hapus",
+    "deleteTitle": "Hapus Bundel",
+    "deleteConfirm": "Hapus \"{{name}}\"? Pesanan yang sudah dibuat tetap menyimpan produknya — bundel hanya dipakai saat mengisi pesanan.",
+    "deleted": "Bundel \"{{name}}\" dihapus",
+    "deleteFailed": "Gagal menghapus",
+    "productNumber": "Produk #{{id}}",
+    "archivedSuffix": "(diarsipkan)",
+    "unavailableCount_other": "{{count}} tidak tersedia",
+    "table": {
+      "bundle": "Bundel",
+      "products": "Produk",
+      "createdBy": "Dibuat oleh",
+      "updated": "Diubah",
+      "actions": "Aksi"
+    },
+    "sort": {
+      "label": "Urutkan",
+      "default": "Terakhir diubah dulu",
+      "name": {
+        "asc": "Nama, A ke Z",
+        "desc": "Nama, Z ke A"
+      },
+      "updated": {
+        "desc": "Terakhir diubah dulu",
+        "asc": "Paling lama diubah dulu"
+      }
+    },
+    "form": {
+      "newTitle": "Bundel Baru",
+      "editTitle": "Bundel",
+      "back": "Kembali ke bundel",
+      "more": "Aksi lainnya",
+      "createdBy": "Dibuat oleh {{name}} · diubah {{when}}",
+      "readOnly": "Hanya {{name}}, pembuatnya, atau Admin yang bisa mengubah bundel ini.",
+      "notFound": "Bundel tidak ditemukan.",
+      "products": "Produk",
+      "productsHelp": "Jumlah masing-masing untuk SATU bundel. Di pesanan, setiap jumlah dikalikan dengan jumlah bundel yang dipesan.",
+      "addProducts": "Tambah Produk",
+      "noProducts": "Tambahkan minimal satu produk.",
+      "perBundle": "Per bundel",
+      "perBundleRead_other": "{{count}} per bundel",
+      "removeProduct": "Hapus produk",
+      "locked": "Dikunci pemiliknya — di pesanan, slot ini diisi produk lain.",
+      "archived": "Diarsipkan — di pesanan, slot ini diisi produk lain.",
+      "unavailableBanner_other": "{{count}} produk di sini tidak bisa dipakai lagi. Produk itu tetap ada sampai Anda menghapusnya — di pesanan, slotnya diisi produk lain.",
+      "details": "Detail",
+      "name": "Nama",
+      "namePlaceholder": "Contoh: Paket Hemat Lebaran",
+      "nameHelp": "Nama boleh sama — produk di dalamnya yang membedakan dua bundel.",
+      "description": "Deskripsi",
+      "descriptionPlaceholder": "Contoh: untuk listing beli 2 gratis 1 di Shopee",
+      "create": "Buat Bundel",
+      "saveChanges": "Simpan Perubahan",
+      "created": "Bundel \"{{name}}\" dibuat",
+      "saved": "Bundel disimpan",
+      "missing": {
+        "title": "Masih kurang:",
+        "name": "nama",
+        "lines": "minimal satu produk",
+        "quantity": "jumlah 1 sampai 9999 di setiap produk"
+      }
+    },
+    "detail": {
+      "stockTitle": "Yang Bisa Dibuat dari Stok",
+      "pickWarehouse": "Pilih gudang",
+      "canMake": "Bisa dibuat",
+      "bundles_other": "{{count}} bundel",
+      "atWarehouse": "di {{name}}",
+      "col": {
+        "product": "Produk",
+        "perBundle": "Per bundel",
+        "ready": "Siap",
+        "enoughFor": "Cukup untuk"
+      },
+      "runsOutFirst": "Habis duluan",
+      "belowReserve": "Di bawah cadangan {{team}} — pesanan akan ditolak",
+      "itsOwner": "pemiliknya",
+      "lockedShort": "Dikunci pemiliknya",
+      "archivedShort": "Diarsipkan",
+      "sum": "{{per}} per bundel · {{ready}} siap · cukup untuk {{enough}}"
+    }
+  },
   "orders": {
     "recipient": "Penerima",
     "placed": "Dipesan",
@@ -604,41 +697,9 @@
       "submit": "Impor"
     },
     "pending": {
-      "summaryCost": {
-        "label": "Nilai belanja dan margin",
-        "reason": "Sensus per status baru menjumlahkan total pesanan saja, jadi nilai barang, HPP, dan jumlah pesanan tanpa HPP semuanya angka contoh."
-      },
-      "summaryItems": {
-        "label": "Jumlah item dan UPT",
-        "reason": "Daftar pesanan tidak mengembalikan barisnya dan belum ada yang menghitung di server, jadi keduanya angka contoh."
-      },
       "import": {
         "label": "Impor",
         "reason": "File hanya ditampilkan namanya: belum diunggah, belum diurai, dan tiap marketplace butuh pengurai sendiri."
-      },
-      "warehouseFilter": {
-        "label": "Filter gudang",
-        "reason": "Filter daftar pesanan belum punya kolom gudang, jadi memilih gudang tidak mengubah tabelnya."
-      },
-      "mpDate": {
-        "label": "Tanggal order marketplace",
-        "reason": "Pesanan hanya menyimpan kapan KITA mencatatnya; tanggal pembeli memesan di marketplace belum punya kolom, jadi baris kedua di bawah tanggal itu karangan."
-      },
-      "stageDate": {
-        "label": "Tanggal perubahan status",
-        "reason": "Log status sudah punya bentuk yang tepat (jenis + kapan), tapi baru dikirim bersama detail pesanan — daftar ini belum bisa membaca kapan sebuah pesanan masuk ke status yang sedang difilter."
-      },
-      "receiptCode": {
-        "label": "Nomor resi",
-        "reason": "Pesanan menyimpan kurir dan FILE resinya, tapi bukan nomor yang tercetak di slip — nomor yang tampil itu karangan dan tidak akan ditemukan kurir mana pun."
-      },
-      "deadline": {
-        "label": "Deadline kirim",
-        "reason": "Belum ada yang menyimpannya: pesanan tidak punya deadline, channel pengiriman tidak punya lead time, dan log status mencatat yang sudah terjadi bukan yang jatuh tempo. Semua badge di kolom ini karangan, dan batas warnanya masih perkiraan."
-      },
-      "totalFee": {
-        "label": "Biaya gudang di dalam total",
-        "reason": "Total di sini adalah harga barang ditambah biaya mengerjakannya, dan biaya itu belum bisa dibaca per pesanan: tercatat sebagai liabilitas dengan kunci pesanan, sementara daftarnya hanya bisa ditanya per pihak. Harga barangnya nyata, biayanya angka contoh."
       },
       "withdrawal": {
         "label": "Nilai pencairan",
@@ -829,7 +890,11 @@
     },
     "orderIdColumn": "ID Order",
     "orderTitleLabel": "Pesanan",
-    "statusMoved": "Pesanan dipindah ke {{status}}"
+    "statusMoved": "Pesanan dipindah ke {{status}}",
+    "dateField": {
+      "created": "Dibuat",
+      "platform": "Tgl MP"
+    }
   },
   "orderDetail": {
     "nav": {
@@ -846,7 +911,8 @@
       "title": "Info order",
       "createdAt": "Dicatat",
       "returnReceipt": "Resi retur",
-      "warehouseRef": "Gudang #{{id}}"
+      "warehouseRef": "Gudang #{{id}}",
+      "platformCreatedAt": "Dipesan di marketplace"
     },
     "notes": {
       "title": "Catatan",
@@ -901,18 +967,6 @@
       "externalName": {
         "label": "Judul produk marketplace",
         "reason": "Draft menyimpan judul produk dari marketplace — bukti untuk mengecek pemetaan produk — tapi baris pesanan tidak punya kolomnya, jadi saat draft dipromosikan judul itu hilang. Judul yang tampil karangan."
-      },
-      "totalFee": {
-        "label": "Biaya gudang di total sistem",
-        "reason": "Belum ada yang menyimpan biaya per pesanan: tercatat sebagai liabilitas dengan kunci pesanan, sementara daftarnya hanya bisa ditanya per pihak. Total produknya nyata, biayanya angka contoh."
-      },
-      "deadline": {
-        "label": "Deadline kirim",
-        "reason": "Belum ada yang menyimpannya — tidak di pesanan, tidak di channel pengiriman. Badge-nya karangan."
-      },
-      "receiptCode": {
-        "label": "Nomor resi",
-        "reason": "Pesanan menyimpan kurir dan FILE resinya, tapi bukan nomor yang tercetak di slip. Nomor yang tampil itu karangan."
       },
       "shippingTracking": {
         "label": "Jejak pengiriman",
@@ -1003,7 +1057,8 @@
       },
       "ready": "Siap",
       "onThisPage": "di halaman ini"
-    }
+    },
+    "missingOrderDate": "Tanggal pesanan marketplace belum diisi."
   },
   "restock": {
     "title": "Permintaan Restok",
@@ -2286,7 +2341,22 @@
     "returnWarehouse": "Gudang Retur",
     "returnWarehouseHint": "Paket retur tim ini diterima di gudang ini. Gudang mana pun dapat dipilih.",
     "returnWarehouseNotSet": "Gudang retur belum diatur. Pesanan akan segera membutuhkannya.",
-    "returnWarehouseSaved": "Gudang retur disimpan"
+    "returnWarehouseSaved": "Gudang retur disimpan",
+    "warehouseFee": {
+      "title": "Biaya Gudang",
+      "hint": "Biaya untuk setiap pesanan yang dikirim dari gudang ini: persen dari harga barang, tidak di bawah batas bawah dan tidak di atas batas atas. Sama untuk setiap penjual.",
+      "notSet": "Biaya belum diatur, jadi belum ada pesanan yang bisa dikirim dari gudang ini sampai biaya diatur.",
+      "percent": "Persen dari barang",
+      "percentInvalid": "Persen dari 0 sampai 100.",
+      "floor": "Batas bawah",
+      "floorAboveCap": "Batas bawah tidak boleh di atas batas atas. Sama berarti biaya tetap.",
+      "cap": "Batas atas",
+      "noCap": "Tanpa batas",
+      "capHint": "Kosongkan untuk tanpa batas atas.",
+      "capZero": "Batas atas 0 berarti tidak ada biaya — kosongkan untuk tanpa batas.",
+      "notLive": "Setiap pesanan baru dihitung dengan biaya ini dan menyimpannya. Pembukuan masih menagih biaya tetap dari Ketentuan Kredit sampai beralih ke biaya milik pesanan.",
+      "saved": "Biaya gudang disimpan"
+    }
   },
   "picking": {
     "title": "Pesanan",
@@ -2928,21 +2998,9 @@
       "mpDate": "Tanggal MP"
     },
     "pending": {
-      "receiptCode": {
-        "label": "Nomor resi",
-        "reason": "Order menyimpan kurir, bukan nomor resi yang tercetak."
-      },
-      "mpDate": {
-        "label": "Tanggal MP",
-        "reason": "Order belum punya field untuk kapan pembeli memesan di marketplace."
-      },
-      "deadline": {
-        "label": "Deadline kirim",
-        "reason": "Belum ada order yang membawa deadline kirim."
-      },
       "resiLookup": {
         "label": "Mencari lewat resi",
-        "reason": "Belum ada RPC untuk mencari order lewat nomor resi, jadi scan serah kurir hanya mencari di order yang sudah dimuat layar ini."
+        "reason": "Scan serah kurir hanya mencari di order yang sudah dimuat layar ini. Belum bertanya ke server, padahal pencarian order kini bisa menemukan order lewat nomor resi."
       },
       "barcode": {
         "label": "Barcode",
@@ -3439,10 +3497,6 @@
   },
   "orderForm": {
     "pending": {
-      "bundle": {
-        "label": "Grup bundel",
-        "reason": "Bundel menaruh produknya sebagai baris biasa; grupnya sendiri belum tersimpan."
-      },
       "returnMap": {
         "label": "Pemetaan retur",
         "reason": "Peta tautan produk belum dibangun."
@@ -3459,29 +3513,13 @@
         "label": "Ongkos kirim",
         "reason": "Belum ada yang menentukan harga pengiriman, jadi kolomnya disembunyikan dan total kurang satu komponen."
       },
-      "warehouseFee": {
-        "label": "Biaya gudang",
-        "reason": "Layar ini belum membaca ketentuan gudang."
-      },
       "invoice": {
         "label": "Tagihan",
-        "reason": "Butuh markup tiap tim dan biaya gudang."
-      },
-      "orderDate": {
-        "label": "Tanggal order",
-        "reason": "Pesanan tercatat pada saat diketik, dan belum punya kolom untuk kapan sebenarnya dibeli."
-      },
-      "deadline": {
-        "label": "Tenggat pesanan",
-        "reason": "Pesanan belum punya kolomnya."
+        "reason": "Butuh markup tiap tim."
       },
       "buyerUsername": {
         "label": "Username pembeli",
         "reason": "Pesanan belum punya kolomnya."
-      },
-      "receiptCode": {
-        "label": "Nomor resi",
-        "reason": "Pesanan menyimpan kurir dan file resinya, tapi nomornya sendiri belum ada kolomnya."
       },
       "receiptScan": {
         "label": "Pemeriksaan file resi",
@@ -3497,7 +3535,7 @@
       },
       "draftKeeps": {
         "label": "Yang disimpan draft",
-        "reason": "Draft hanya menyimpan toko, gudang, customer, kurir dan baris. Resi, referensi, nomor resi, catatan, tanggal dan username pembeli tidak disimpan."
+        "reason": "Draft menyimpan toko, gudang, customer, kurir, baris dan dua tanggal dari marketplace. Resi, referensi, nomor resi, catatan dan username pembeli tidak disimpan."
       },
       "rowBundle": {
         "label": "Baris dipetakan ke bundle",
@@ -3506,10 +3544,6 @@
       "rowSplit": {
         "label": "Baris dipecah ke beberapa produk",
         "reason": "Baris draft hanya menyimpan satu produk, jadi pecahan tampil dan dihitung tapi disimpan sebagai belum dipetakan, dan memblokir Promote."
-      },
-      "makeBundle": {
-        "label": "Jadikan bundle",
-        "reason": "Template bundle masih sampel, jadi belum ada tempat menyimpan bundle baru."
       },
       "sellPrice": {
         "label": "Harga jual",
@@ -3533,15 +3567,16 @@
     "bundles": {
       "title": "Bundel",
       "help": "Bundel menaruh produknya ke pesanan. Tiap slot bisa diisi produk lain — batasnya ketentuan bundel dikali jumlah bundel yang dipesan.",
-      "slotCount_one": "{{count}} slot",
-      "slotCount_other": "{{count}} slot",
       "empty": "Belum ada bundel di pesanan ini.",
       "qty": "Bundel",
       "remove": "Hapus bundel",
       "rule": "{{qty}} per bundel",
       "substitute": "Ganti Produk",
       "search": "Cari bundel",
-      "noMatch": "Tidak ada bundel yang cocok"
+      "noMatch": "Tidak ada bundel yang cocok",
+      "searching": "Mencari…",
+      "slotLocked": "Dikunci pemiliknya — isi slot ini dengan produk lain.",
+      "slotArchived": "Diarsipkan — isi slot ini dengan produk lain."
     },
     "returnMap": {
       "title": "Pemetaan Retur",
@@ -3558,8 +3593,8 @@
     "extra": {
       "title": "Data Tambahan",
       "help": "Opsional, dan keduanya belum menjadi bagian dari pesanan.",
-      "deadline": "Tenggat pesanan",
-      "deadlineHelp": "Kapan pembeli membutuhkannya.",
+      "deadline": "Batas kirim",
+      "deadlineHelp": "Batas “kirim sebelum” dari marketplace, seperti yang tertera di toko.",
       "buyerUsername": "Username pembeli",
       "buyerUsernamePlaceholder": "Namanya di marketplace",
       "buyerUsernameHelp": "Siapa yang membeli, sesuai tampilan toko."

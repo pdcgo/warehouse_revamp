@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Badge,
   Box,
@@ -6,6 +6,7 @@ import {
   Card,
   Combobox,
   Flex,
+  HStack,
   Icon,
   IconButton,
   Portal,
@@ -14,7 +15,7 @@ import {
   useListCollection,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { Package, Replace, X } from "lucide-react";
+import { Archive, Lock, Package, Replace, X } from "lucide-react";
 
 import { AllProductPicker } from "../../../components/products/AllProductPicker";
 import { ProductListItem } from "../../../components/products/ProductListItem";
@@ -23,13 +24,11 @@ import type { PickedProduct } from "../../../components/products/ProductSelect";
 import type { Availability, Costs } from "../../../features/orders/lines";
 import { lineTotal } from "../../../features/orders/lines";
 import { formatRupiah } from "../../../lib/money";
-import type { BundleDraft, SlotDraft } from "./bundles";
-import { slotCap, slotFilled } from "./bundles";
-import type { BundleTemplate } from "./mockData";
-import { BUNDLES } from "./mockData";
+import { useBundleProducts, useBundleSearch } from "../../../features/bundles/queries";
+import { useDebounced } from "../../../lib/useDebounced";
+import type { BundleDraft, PickedBundle, SlotDraft } from "./bundles";
+import { pickedBundle, slotCap, slotFilled } from "./bundles";
 import { coverFor } from "./mockImages";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "./pending";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
 
@@ -50,7 +49,7 @@ interface BundleCardProps {
   bundles: BundleDraft[];
   stock?: Availability;
   costs?: Costs;
-  onAdd: (templateId: string) => void;
+  onAdd: (bundle: PickedBundle) => void;
   onQuantity: (key: string, quantity: string) => void;
   onRemove: (key: string) => void;
   onFill: (key: string, slotId: string, products: PickedProduct[]) => void;
@@ -82,15 +81,12 @@ export function BundleCard({
         <Stack gap="card">
           <Flex align="start" gap="card" wrap="wrap" justify="space-between">
             <Stack gap="0.5" minW="0">
-              <Flex align="center" gap="2" wrap="wrap">
-                <Card.Title>{t("orderForm.bundles.title")}</Card.Title>
-                <NotImplemented list={ORDER_FORM_PENDING} id="bundle" />
-              </Flex>
+              <Card.Title>{t("orderForm.bundles.title")}</Card.Title>
               <Card.Description>{t("orderForm.bundles.help")}</Card.Description>
             </Stack>
 
             <Box minW={{ base: "full", sm: "72" }}>
-              <BundleSearch disabled={noWarehouse} onAdd={onAdd} />
+              <BundleSearch teamId={teamId} disabled={noWarehouse} onAdd={onAdd} />
             </Box>
           </Flex>
 
@@ -180,37 +176,49 @@ export function BundleCard({
 
 // A SEARCH BOX, NOT A MENU (owner: "bundles can be very many").
 //
-// A menu listing every template stops working at twenty, and the catalogue is expected to be far
-// larger. This is a combobox in its *search and add* form: it holds no value of its own — picking one
-// puts the bundle on the order and empties the input, ready for the next.
+// A menu listing every bundle stops working at twenty. This is a combobox in its *search and add*
+// form: it holds no value of its own — picking one puts the bundle on the order and empties the input,
+// ready for the next.
 //
-// Each option carries the slot labels under the name, because two bundles called "Hampers …"
-// differ by what is IN them, and that has to be readable before the pick rather than after.
+// THE SEARCH IS THE SERVER'S — `BundleList(q)`, debounced (HARD RULE 9: the set grows). It matches a
+// bundle's name AND its products' names and codes, because somebody after the bundle with the coffee
+// in it types "kopi", not a name they are trying to find. Opened empty it offers the last changed.
 //
-// ⚠ THE FILTERING IS LOCAL because the list is local. A real catalogue reads `BundleList(q, page)`
-// (HARD RULE 9: it grows), and this control then searches server-side exactly as ProductSelect does —
-// the markup below does not change, only where `collection` comes from.
+// Each option carries what is IN it under the name, because a name may repeat
+// (bundle-names-may-repeat) and the difference has to be readable before the pick rather than after.
 // Exported for the draft page, where picking a bundle MAPS a scraped row rather than adding a bundle.
-export function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (id: string) => void }) {
+export function BundleSearch({
+  teamId,
+  disabled,
+  onAdd,
+}: {
+  teamId: bigint;
+  disabled: boolean;
+  onAdd: (bundle: PickedBundle) => void;
+}) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
+  const [open, setOpen] = useState(false);
 
-  const { collection, filter } = useListCollection<BundleTemplate>({
-    initialItems: BUNDLES,
-    itemToString: (bundle) => bundle.name,
-    itemToValue: (bundle) => bundle.id,
-    filter: (_itemText, filterText, bundle) => {
-      const q = filterText.trim().toLowerCase();
-      if (q === "") return true;
-
-      // The slot labels are searchable too: somebody looking for the bundle with the coffee in it
-      // types "coffee", not the bundle's name — which they are trying to find.
-      return (
-        bundle.name.toLowerCase().includes(q) ||
-        bundle.slots.some((slot) => slot.label.toLowerCase().includes(q))
-      );
-    },
+  const q = useDebounced(input.trim());
+  const found = useBundleSearch({ teamId, q, enabled: open && !disabled });
+  const products = useBundleProducts({
+    teamId,
+    productIds: (found.data ?? []).flatMap((b) => b.lines.map((l) => l.productId)),
   });
+
+  const { collection, set } = useListCollection<PickedBundle>({
+    initialItems: [],
+    itemToString: (bundle) => bundle.name,
+    itemToValue: (bundle) => bundle.id.toString(),
+  });
+
+  // The options wait for their products: an option is read by what is in it, and "#74" reads as nothing.
+  useEffect(() => {
+    const bundles = found.data ?? [];
+    const ready = bundles.every((b) => b.lines.length === 0) || products.data !== undefined;
+    set(ready ? bundles.map((b) => pickedBundle(b, products.data)) : []);
+  }, [found.data, products.data, set]);
 
   return (
     <Combobox.Root
@@ -226,17 +234,14 @@ export function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (i
       // that matches what this control is for: pick, add, type the next one.
       selectionBehavior="clear"
       inputValue={input}
-      onInputValueChange={(e) => {
-        setInput(e.inputValue);
-        filter(e.inputValue);
-      }}
+      onOpenChange={(e) => setOpen(e.open)}
+      onInputValueChange={(e) => setInput(e.inputValue)}
       onValueChange={(e) => {
-        const picked = e.value[0];
-        if (picked !== undefined) onAdd(picked);
+        const picked = collection.items.find((b) => b.id.toString() === e.value[0]);
+        if (picked) onAdd(picked);
 
-        // Empty it, and reset the filter with it — otherwise the next open shows yesterday's search.
+        // Empty it — otherwise the next open shows yesterday's search.
         setInput("");
-        filter("");
       }}
       data-testid="bundle-search"
     >
@@ -250,16 +255,17 @@ export function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (i
       <Portal>
         <Combobox.Positioner>
           <Combobox.Content>
-            <Combobox.Empty>{t("orderForm.bundles.noMatch")}</Combobox.Empty>
+            <Combobox.Empty>
+              {found.isFetching || products.isFetching ? t("orderForm.bundles.searching") : t("orderForm.bundles.noMatch")}
+            </Combobox.Empty>
             {collection.items.map((bundle) => (
-              <Combobox.Item item={bundle} key={bundle.id} data-testid={`bundle-option-${bundle.id}`}>
+              <Combobox.Item item={bundle} key={bundle.id.toString()} data-testid={`bundle-option-${bundle.id}`}>
                 <Stack gap="0.5" minW="0">
                   <Text fontWeight="medium" lineClamp={1}>
                     {bundle.name}
                   </Text>
                   <Text fontSize="xs" color="fg.muted" lineClamp={1}>
-                    {t("orderForm.bundles.slotCount", { count: bundle.slots.length })} ·{" "}
-                    {bundle.slots.map((slot) => slot.label).join(", ")}
+                    {bundle.slots.map((slot) => `${slot.ruleQty} × ${slot.name}`).join(" · ")}
                   </Text>
                 </Stack>
                 <Combobox.ItemIndicator />
@@ -326,6 +332,17 @@ export function SlotBox({
           {filled} / {cap}
         </Badge>
       </Flex>
+
+      {/* The bundle's own product cannot be used — its owner locked it, or it was archived — so the slot started
+          empty and is the CS's to fill (a-borrowed-product-never-blocks-its-owner). */}
+      {slot.unavailable && (
+        <HStack gap="1.5" color="warning.fg" data-testid={`slot-unavailable-${bundle.key}-${slot.id}`}>
+          <Icon as={slot.unavailable === "locked" ? Lock : Archive} boxSize="4" />
+          <Text fontSize="sm">
+            {slot.unavailable === "locked" ? t("orderForm.bundles.slotLocked") : t("orderForm.bundles.slotArchived")}
+          </Text>
+        </HStack>
+      )}
 
       <Stack gap="2">
         {slot.fills.map((fill) => {

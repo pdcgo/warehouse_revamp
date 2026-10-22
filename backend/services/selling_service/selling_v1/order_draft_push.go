@@ -136,7 +136,10 @@ func createDraft(
 		AddressLine:   address.GetAddressLine(),
 		ShippingCode:  msg.GetShippingCode(),
 		ShippingCost:  msg.GetShippingCost(),
-		Items:         draftItemModels(msg.GetItems()),
+		// As the app read them off the storefront; 0 = it could not see one.
+		PlatformCreatedAt:        timeOrNil(msg.GetPlatformCreatedAtUnix()),
+		PlatformShipmentDeadline: timeOrNil(msg.GetPlatformShipmentDeadlineUnix()),
+		Items:                    draftItemModels(msg.GetItems()),
 	}
 
 	return tx.Create(draft).Error
@@ -218,6 +221,17 @@ func mergeDraft(
 	if !touched[draftFieldShippingCost] {
 		updates["shipping_cost"] = msg.GetShippingCost()
 		draft.ShippingCost = msg.GetShippingCost()
+	}
+
+	// The platform's dates follow the same rule: the app's latest reading, unless a person has corrected one.
+	if !touched[draftFieldPlatformCreatedAt] {
+		draft.PlatformCreatedAt = timeOrNil(msg.GetPlatformCreatedAtUnix())
+		updates["platform_created_at"] = draft.PlatformCreatedAt
+	}
+
+	if !touched[draftFieldPlatformShipmentDeadline] {
+		draft.PlatformShipmentDeadline = timeOrNil(msg.GetPlatformShipmentDeadlineUnix())
+		updates["platform_shipment_deadline"] = draft.PlatformShipmentDeadline
 	}
 
 	err := tx.

@@ -21,6 +21,9 @@ const CUSTOMER = `E2E Customer ${SUFFIX}`;
 // The marketplace's own id for the order — shaped like one a storefront actually issues, and made
 // unique per run so the search that finds it cannot match a leftover from an earlier one.
 const MARKETPLACE_REF = `250815MP${SUFFIX}`;
+// The number printed on the slip — invented in a courier's shape, and unlike the ref in every way the form's
+// refs-distinct check reads, so the two cannot be mistaken for each other.
+const TRACKING_NUMBER = `JX9${SUFFIX}Q4`;
 // An order names the warehouse that ships it (#72), so this spec creates its own rather than
 // depending on warehouses.spec.ts having run first.
 const WH_CODE = `OWH${SUFFIX}`.slice(0, 10);
@@ -90,6 +93,22 @@ async function tickProduct(page: Page, sku: string) {
   await row.locator('[data-part="control"]').click();
 }
 
+// THE MARKETPLACE'S ORDER DATE — required to place (platform-created-at-is-required-at-finalize). Picked off the
+// calendar: the trigger opens it, today's cell sets the day at 00:00, Escape closes it. Today, in the browser's own
+// clock, which is the one the picker's cells are labelled in.
+async function pickOrderDate(page: Page) {
+  await page.getByTestId("order-create-order-date").click();
+  const today = await page.evaluate(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  await page
+    .getByTestId("order-create-order-date-content")
+    .locator(`[data-part="table-cell-trigger"][data-value="${today}"]`)
+    .click();
+  await page.keyboard.press("Escape");
+}
+
 // Adds products to the order through the picker dialog (#165's pattern, now the order form's too).
 async function addProducts(page: Page, skus: string[]) {
   await page.getByTestId("order-create-add-line").click();
@@ -116,6 +135,7 @@ async function placeOrderViaForm(page: Page, customer: string) {
   await page.getByTestId(`team-select-option-${WH_CODE}`).click();
   await addProducts(page, [SKU]);
   await page.getByTestId("order-line-qty-0").fill("1");
+  await pickOrderDate(page);
   // No price: a line is valued at the warehouse HPP, which this fixture's product has none of.
   await page.getByTestId("order-create-save").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
@@ -275,6 +295,15 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       ],
     });
 
+    // THE WAREHOUSE'S FEE — without one it takes no orders (a-warehouse-with-no-rate-takes-no-orders), and order create
+    // prices every order on it and freezes the answer (the-flat-rate-is-dropped-last step 3). A percent with a FLOOR, so
+    // on goods at Rp 0 the fee is exactly the floor: Rp 1.500, a figure the create test can pin end to end.
+    await call("warehouse.v1.WarehouseFeeService/WarehouseFeeSet", {
+      teamId: warehouse.id,
+      feePercent: 2.5,
+      minFee: 1500,
+    });
+
     return { warehouse: warehouse.id, product: product.id };
   }, [WH_CODE, SKU]);
 
@@ -430,6 +459,9 @@ test("Create: place an order through the form; money computes; the detail opens"
   // is what lets anybody find this order again on the storefront.
   await page.getByTestId("order-external-ref-id").fill(MARKETPLACE_REF);
 
+  // THE TRACKING NUMBER printed on the slip — its own field now (`receipt_code`), kept beside the slip itself.
+  await page.getByTestId("order-receipt-code").fill(TRACKING_NUMBER);
+
   // THE SHIPPING RECEIPT (owner): the courier's slip or the marketplace's PDF, attached to the order.
   // The bytes go to document_service the moment the file is picked — two phases, straight to storage
   // — and what the order stores is the document's id. Driving the hidden input directly is how a
@@ -446,13 +478,17 @@ test("Create: place an order through the form; money computes; the detail opens"
   // Attached, and named — the upload has finished by the time the row appears.
   await expect(page.getByTestId("order-receipt-attached")).toContainText("resi-jne.pdf");
 
-  // The total is the goods PLUS the warehouse's handling fee — no shipping (owner), and the marketplace
-  // figure was never in the sum. The fee is a SAMPLE until the form reads the warehouse's terms (its
-  // pending mark says so), so it is read off the screen rather than pinned: with the goods at Rp 0,
-  // the total is exactly the fee. The fee is not sent — the create request carries the goods alone.
+  // The total is the goods PLUS the warehouse's fee — no shipping (owner), and the marketplace figure was never in
+  // the sum. The warehouse PRICES the fee (WarehouseFeeCalculate): 2.5% of Rp 0 is below the floor, so it is the
+  // floor set in setup. The server prices it again at create and freezes that — the detail below reads it back.
   await expect(page.getByTestId("order-create-products-total")).toHaveText("Rp 0");
-  const fee = (await page.getByTestId("order-create-warehouse-fee").textContent()) ?? "";
-  await expect(page.getByTestId("order-create-total")).toHaveText(fee);
+  await expect(page.getByTestId("order-create-warehouse-fee")).toHaveText("Rp 1.500");
+  await expect(page.getByTestId("order-create-total")).toHaveText("Rp 1.500");
+
+  // THE MARKETPLACE'S ORDER DATE is required (platform-created-at-is-required-at-finalize): everything else is
+  // filled, and Create still waits for it.
+  await expect(page.getByTestId("order-create-save")).toBeDisabled();
+  await pickOrderDate(page);
 
   await expect(page.getByTestId("order-create-save")).toBeEnabled();
   await page.getByTestId("order-create-save").click();
@@ -465,9 +501,14 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("section-items")).toContainText(SKU);
   // The marketplace figure survived onto the order, as its own tile beside ours and not inside it.
   await expect(page.getByTestId("tile-mp")).toContainText("Rp 58.000");
+  // THE FEE WAS FROZEN ON THE ORDER (the-flat-rate-is-dropped-last step 3) — the figure the warehouse priced at
+  // create, read back from the order itself rather than from the form.
+  await expect(page.getByTestId("money-fees")).toContainText("Rp 1.500");
   // …and so did the storefront's own id for it, verbatim — the whole point of the field is that the
   // number a buyer quotes is readable on the order they are asking about.
   await expect(page.getByTestId("order-reference-mp")).toContainText(MARKETPLACE_REF);
+  // …and the tracking number, as typed.
+  await expect(page.getByTestId("order-reference-receipt")).toContainText(TRACKING_NUMBER);
 
   // The receipt travelled with the order: the detail names the file and offers to open it. The
   // document itself is PRIVATE, so there is no URL on the page to assert — the button fetches a
@@ -503,6 +544,11 @@ test("Create: place an order through the form; money computes; the detail opens"
   await page.getByTestId("order-detail-back").click();
   await expect(page.getByTestId("orders-table")).toBeVisible();
   await expect(page.getByTestId("orders-table")).toContainText(MARKETPLACE_REF);
+
+  // The search finds it by the tracking number on the slip (a-label-scan-reads-the-ref-or-the-receipt).
+  await page.getByTestId("orders-search").fill(TRACKING_NUMBER);
+  await expect(page.getByTestId("orders-table")).toContainText(TRACKING_NUMBER);
+  await expect(page.getByTestId("orders-table").locator('[data-testid^="order-row-"]')).toHaveCount(1);
 });
 
 // THE SETTLEMENT REPORT is wired end to end: the route, the analytics RPCs and their policy.
@@ -1310,10 +1356,9 @@ test("Export: the order list downloads as an .xlsx file", async ({ page }) => {
   await page.getByTestId("orders-export").click();
   const download = await downloading;
 
-  // ⚠ The NAME is the storage key, not `orders-….xlsx`: the signed link is on another origin, where a browser ignores
-  // the anchor's `download` name, and document_service sends no Content-Disposition — true of every document download
-  // today, asked of the owner rather than changed here. So the test pins the type and the content, not the name.
-  expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
+  // The file's OWN name, not its storage key (a-download-keeps-its-files-name): the link is on another origin, where a
+  // browser ignores the anchor's `download` name, so the name comes from the storage's Content-Disposition.
+  expect(download.suggestedFilename()).toMatch(/^orders-.*\.xlsx$/);
 
   const path = await download.path();
   expect(statSync(path).size).toBeGreaterThan(0);

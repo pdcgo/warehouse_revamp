@@ -151,6 +151,20 @@ func applyDraftEdit(
 		touched[draftFieldShippingCost] = true
 	}
 
+	// The platform's dates, as a person read them off the storefront. 0 clears one — and still marks it touched: a
+	// person who emptied a wrong date has claimed the field as surely as one who corrected it.
+	if msg.PlatformCreatedAtUnix != nil {
+		draft.PlatformCreatedAt = timeOrNil(msg.GetPlatformCreatedAtUnix())
+		updates["platform_created_at"] = draft.PlatformCreatedAt
+		touched[draftFieldPlatformCreatedAt] = true
+	}
+
+	if msg.PlatformShipmentDeadlineUnix != nil {
+		draft.PlatformShipmentDeadline = timeOrNil(msg.GetPlatformShipmentDeadlineUnix())
+		updates["platform_shipment_deadline"] = draft.PlatformShipmentDeadline
+		touched[draftFieldPlatformShipmentDeadline] = true
+	}
+
 	if msg.GetItems() != nil {
 		err := applyDraftLines(tx, msg.GetItems().GetLines(), draft)
 		if err != nil {

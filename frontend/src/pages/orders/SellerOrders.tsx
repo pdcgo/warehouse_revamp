@@ -17,7 +17,7 @@ import {
 } from "@chakra-ui/react";
 import { Download, Plus, Upload } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { OrderDateField, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
@@ -42,7 +42,7 @@ import {
   ReceiptCell,
   SpendCell,
 } from "../../features/orders/OrderRowCells";
-import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orders/deadlineMock";
+import { deadlineUrgency, hoursFromNow, orderDeadline, orderPlatformDate } from "../../features/orders/deadline";
 import { OrderRowActions } from "./components/OrderRowActions";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeams } from "../../features/teams/queries";
@@ -71,13 +71,7 @@ import {
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { useDebounced } from "../../lib/useDebounced";
 import { OrderSummary } from "../../features/orders/OrderSummary";
-import { withSampleCosts } from "./summaryMock";
-import {
-  mockMarketplaceCreated,
-  mockReceiptCode,
-  mockStageOffset,
-  mockWarehouseFee,
-} from "../../features/orders/rowMock";
+import { orderFee } from "../../features/orders/margin";
 import { ImportOrdersDialog } from "./components/ImportOrdersDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -95,9 +89,8 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // while this is looked at; when it is accepted this page replaces it, exactly as `order-create-next`
 // became the order form. Nothing here is routed — it is reached from Storybook.
 //
-// ⚠ ONE OF THE FOUR NEW FILTERS NARROWS NOTHING. `OrderListFilter` has no warehouse field. It is on screen so
-// the SHAPE of the bar can be judged, carrying the mark that says so — see `pending.ts`. The marketplace filter
-// is real (the-filter-gains-seller-marketplace-and-courier).
+// All four filters reach the server: the marketplace (the-filter-gains-seller-marketplace-and-courier), and the
+// warehouse, which `OrderListFilter.warehouse_id` carries for exactly this list.
 //
 // WHY THEY ARE SEARCH SELECTS (owner). A picker over data that grows is typed into; only a static,
 // small set stays a plain dropdown. Warehouse and creator and shop all grow, so all three search.
@@ -114,9 +107,8 @@ export function SellerOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // The filters above the tabs. The four that REACH THE SERVER are search, shop, the date window and the creator
-  // — the list is paginated, so a client-side filter would narrow the loaded page only and leave the
-  // pager counting the whole set. The other two reach nothing at all yet.
+  // The filters above the tabs. Every one REACHES THE SERVER — the list is paginated, so a client-side filter
+  // would narrow the loaded page only and leave the pager counting the whole set.
   const [search, setSearch] = useState("");
   const [shopId, setShopId] = useState(0n);
   const [warehouseId, setWarehouseId] = useState(0n);
@@ -125,6 +117,8 @@ export function SellerOrdersPage() {
     Marketplace.UNSPECIFIED,
   );
   const [range, setRange] = useState<DateRange>(ALL_DATES);
+  // Which date the window reads — created, by default (the-date-filter-switches-created-or-platform).
+  const [dateField, setDateField] = useState<OrderDateField>(OrderDateField.CREATED);
 
   const [importing, setImporting] = useState(false);
 
@@ -152,9 +146,6 @@ export function SellerOrdersPage() {
   const filters: OrderFilters = useMemo(() => {
     const { fromUnix, toUnix } = resolveRange(range);
 
-    // ⚠ `warehouseId` is deliberately NOT here. There is nowhere on `OrderListFilter` to put it, and inventing a
-    // field the server ignores would make the screen look wired while the rows stayed the same — the exact lie the
-    // marks are there to prevent. The marketplace IS here (the-filter-gains-seller-marketplace-and-courier).
     return {
       search: debouncedSearch,
       shopId: canFilterByShop ? shopId : 0n,
@@ -162,8 +153,10 @@ export function SellerOrdersPage() {
       toUnix,
       createdByUserId: creatorId ?? 0n,
       marketplace,
+      warehouseId,
+      dateField,
     };
-  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId, marketplace]);
+  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId, marketplace, warehouseId, dateField]);
 
   // The "created by" filter's people: everyone who typed in an order this team may list
   // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
@@ -198,9 +191,6 @@ export function SellerOrdersPage() {
   // Whether ANYTHING is narrowing the list. Read off the live controls rather than off `filters`, so
   // Clear appears the moment somebody types instead of after the debounce.
   //
-  // ⚠ The two unwired pickers COUNT here, even though they narrow nothing. Clear is "put this bar
-  // back to where it started", and a picker left holding a warehouse after Clear would be a control
-  // the button visibly skipped.
   // How many controls are narrowing the list — the number on the phone's Filter button.
   const filterCount = [
     search.trim() !== "",
@@ -262,22 +252,11 @@ export function SellerOrdersPage() {
       : undefined;
   }
 
-  // ⚠ Both are OFFSETS applied to the order's own creation, never absolute: a mocked date that
-  // landed before the order existed would be a preview arguing with itself.
-  function mpCreatedOf(createdAt: bigint, id: bigint, externalRef: string) {
-    const back = mockMarketplaceCreated(id, externalRef);
-
-    return back === undefined ? undefined : createdAt - back;
-  }
-
-  function stageDateOf(createdAt: bigint, id: bigint) {
-    if (!stage) {
-      return undefined;
-    }
-
-    const on = mockStageOffset(id, stage.id);
-
-    return on === undefined ? undefined : createdAt + on;
+  // WHEN IT ENTERED THE STATUS BEING FILTERED (a-filtered-status-shows-its-own-date) — the order's own
+  // `status_at_unix`. Under a status tab every row IS in that status, so its current-status date answers the
+  // column. 0 is "no timeline row records the move", shown as nothing rather than as 1970.
+  function stageDateOf(statusAt: bigint) {
+    return statusAt > 0n ? statusAt : undefined;
   }
 
   function stageBadgeFor(status: OrderStatus) {
@@ -295,17 +274,14 @@ export function SellerOrdersPage() {
   const stat = summariseOrderStat(statQuery.data);
 
   // THE SUMMARY'S OWN READING of the same census, one row per status in tab order so the strip and
-  // the tabs read down the page in the same sequence.
-  //
-  // ⚠ `withSampleCosts` INVENTS four of the seven columns — see `summaryMock.ts` and the two marks
-  // it earns on screen. `orderSummaryRows` on its own returns nulls, which is the honest answer and
-  // also a row of dashes nobody can judge a layout from.
+  // the tabs read down the page in the same sequence. Every figure is the server's: the units, and the
+  // margin's inputs over exactly the orders it can be taken over (`OrderStatusCount`).
   const summaryRows = useMemo(
     () =>
       orderSummaryRows(
         statQuery.data,
         ORDER_STAGES.map((item) => ({ key: item.id, statuses: item.statuses })),
-      ).map(withSampleCosts),
+      ),
     [statQuery.data],
   );
 
@@ -433,6 +409,7 @@ export function SellerOrdersPage() {
             setCreatorId(undefined);
             setMarketplace(Marketplace.UNSPECIFIED);
             setRange(ALL_DATES);
+            setDateField(OrderDateField.CREATED);
           })
         }
       >
@@ -446,17 +423,12 @@ export function SellerOrdersPage() {
         {/* WHICH BUILDING THE GOODS LEAVE FROM. A search select over every warehouse — the list grows
             with the company, so it is typed into rather than scrolled. */}
         <FilterField w="15rem" testId="orders-warehouse-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <TeamSelect
-                teamType={TeamType.WAREHOUSE}
-                value={warehouseId > 0n ? warehouseId : undefined}
-                placeholder={t("orders.warehouseAll")}
-                onChange={(id) => refilter(() => setWarehouseId(id))}
-              />
-            </Box>
-            <NotImplemented list={ORDERS_LIST_PENDING} id="warehouseFilter" />
-          </Flex>
+          <TeamSelect
+            teamType={TeamType.WAREHOUSE}
+            value={warehouseId > 0n ? warehouseId : undefined}
+            placeholder={t("orders.warehouseAll")}
+            onChange={(id) => refilter(() => setWarehouseId(id))}
+          />
         </FilterField>
 
         {/* WHO TYPED THE ORDER — the people on this team's orders, answered by selling_service
@@ -499,13 +471,19 @@ export function SellerOrdersPage() {
           </FilterField>
         )}
 
-        {/* No `fields` segment: an order has exactly one date that means anything to the person
-            filtering — when it was placed. When fulfilment starts stamping picked_at / shipped_at,
-            THAT is when this grows a which-timestamp choice. */}
+        {/* WHICH DATE, THEN WHICH WINDOW (the-date-filter-switches-created-or-platform): when we wrote it down —
+            the default — or when the buyer ordered on the storefront. One control, because the two answer
+            different questions about the same orders: "what came in today" against "the buyers' Saturday". */}
         <FilterField w="auto">
-          <DateRangePicker
+          <DateRangePicker<OrderDateField>
             value={range}
             onChange={(r) => refilter(() => setRange(r))}
+            fields={[
+              { value: OrderDateField.CREATED, label: t("orders.dateField.created") },
+              { value: OrderDateField.PLATFORM_CREATED, label: t("orders.dateField.platform") },
+            ]}
+            field={dateField}
+            onFieldChange={(f) => refilter(() => setDateField(f))}
             testId="orders-date"
           />
         </FilterField>
@@ -547,12 +525,6 @@ export function SellerOrdersPage() {
 
           return item ? <OrderStatusBadge status={item.status} /> : null;
         }}
-        marks={
-          <>
-            <NotImplemented list={ORDERS_LIST_PENDING} id="summaryCost" />
-            <NotImplemented list={ORDERS_LIST_PENDING} id="summaryItems" />
-          </>
-        }
       />
 
       <Tabs.Root value={tab}>
@@ -588,12 +560,7 @@ export function SellerOrdersPage() {
                           The id survives as the row's link target and its testid, not as a column. */}
                         <Table.ColumnHeader>{t("orders.orderIdColumn")}</Table.ColumnHeader>
 
-                        <Table.ColumnHeader>
-                          <Flex gap="1" align="center">
-                            {t("orders.receiptColumn")}
-                            <NotImplemented list={ORDERS_LIST_PENDING} id="receiptCode" />
-                          </Flex>
-                        </Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("orders.receiptColumn")}</Table.ColumnHeader>
 
                         <Table.ColumnHeader>
                           {rowShowsShop ? t("orders.shop") : t("orders.team")}
@@ -606,37 +573,23 @@ export function SellerOrdersPage() {
                         </Table.ColumnHeader>
 
                         {/* ⚠ THE DEADLINE LIVES UNDER THIS ONE (owner) — and causally, not just for
-                          room: the ship-by window runs FROM the storefront's order time. Two marks,
-                          because the date has no field and the deadline has none either. */}
-                        <Table.ColumnHeader>
-                          <Flex gap="1" align="center">
-                            {t("orders.placedMpColumn")}
-                            <NotImplemented list={ORDERS_LIST_PENDING} id="mpDate" />
-                            <NotImplemented list={ORDERS_LIST_PENDING} id="deadline" />
-                          </Flex>
-                        </Table.ColumnHeader>
+                          room: the ship-by window runs FROM the storefront's order time. Both are the
+                          platform's own, `platform_created_at` and `platform_shipment_deadline`. */}
+                        <Table.ColumnHeader>{t("orders.placedMpColumn")}</Table.ColumnHeader>
 
                         {/* ⚠ ONLY WHILE A STATUS IS FILTERED. "When did this ship" is a question you
                           ask while looking at shipped orders; on every other tab the column would be
                           blank, and a permanently blank column is one people stop reading. */}
                         {stage && (
                           <Table.ColumnHeader>
-                            <Flex gap="1" align="center">
-                              {t("orders.stageDateColumn", {
-                                status: t(`orders.stage.${stage.id}`),
-                              })}
-                              <NotImplemented list={ORDERS_LIST_PENDING} id="stageDate" />
-                            </Flex>
+                            {t("orders.stageDateColumn", {
+                              status: t(`orders.stage.${stage.id}`),
+                            })}
                           </Table.ColumnHeader>
                         )}
 
-                        {/* total beli = subtotal produk + biaya. The `biaya` half is sampled. */}
-                        <Table.ColumnHeader textAlign="end">
-                          <Flex gap="1" align="center" justify="flex-end">
-                            {t("orders.cost")}
-                            <NotImplemented list={ORDERS_LIST_PENDING} id="totalFee" />
-                          </Flex>
-                        </Table.ColumnHeader>
+                        {/* total beli = subtotal produk + biaya — the order's cogs and its frozen warehouse fee. */}
+                        <Table.ColumnHeader textAlign="end">{t("orders.cost")}</Table.ColumnHeader>
 
                         {/* ⚠ THE MARGIN IS THE SECOND LINE HERE (owner: *"margin ikut total mp saja"*),
                           because this is the figure it is measured against. */}
@@ -652,7 +605,8 @@ export function SellerOrdersPage() {
 
                     <Table.Body>
                       {orders.map((o) => {
-                        const deadline = mockDeadline(o.id, o.status);
+                        // The marketplace's own ship-by time — undefined when it set none, or once the parcel has left.
+                        const deadline = orderDeadline(o);
                         const overdue =
                           deadline !== undefined && deadlineUrgency(hoursFromNow(deadline)) === "overdue";
 
@@ -680,10 +634,9 @@ export function SellerOrdersPage() {
                               />
                             </Table.Cell>
 
-                            {/* ⚠ SAMPLE — `Order` has no field for the printed tracking number, only
-                              the carrier and the attached slip. See `rowMock`. */}
+                            {/* The number printed on the slip — `receipt_code`, beside the slip itself. */}
                             <Table.Cell>
-                              <ReceiptCell code={mockReceiptCode(o.id, o.status)} />
+                              <ReceiptCell code={o.receiptCode} />
                             </Table.Cell>
 
                             <Table.Cell>
@@ -697,27 +650,23 @@ export function SellerOrdersPage() {
                               <CreatedCell unix={o.createdAtUnix} by={typistOf(o.createdByUserId)} />
                             </Table.Cell>
 
-                            {/* ⚠ BOTH HALVES ARE INVENTED, for different reasons: `mp_created` has no
-                              field, and no deadline exists anywhere in the contract. */}
+                            {/* When the buyer ordered, and when it has to be out — both the platform's. */}
                             <Table.Cell>
-                              <MpDateCell
-                                unix={mpCreatedOf(o.createdAtUnix, o.id, o.orderExternalRefId)}
-                                deadline={deadline}
-                              />
+                              <MpDateCell unix={orderPlatformDate(o)} deadline={deadline} />
                             </Table.Cell>
 
                             {stage && (
                               <Table.Cell>
                                 <DateCell
-                                  unix={stageDateOf(o.createdAtUnix, o.id)}
+                                  unix={stageDateOf(o.statusAtUnix)}
                                   testId="order-placed-stage"
                                 />
                               </Table.Cell>
                             )}
 
-                            {/* total beli = cogs + biaya. */}
+                            {/* total beli = cogs + the frozen fee. */}
                             <Table.Cell textAlign="end">
-                              <SpendCell cogs={o.cogs} fees={mockWarehouseFee(o.id)} />
+                              <SpendCell cogs={o.cogs} fees={orderFee(o)} />
                             </Table.Cell>
 
                             {/* ⚠ THE MARGIN RIDES WITH THIS FIGURE (owner), because it is measured
@@ -726,7 +675,7 @@ export function SellerOrdersPage() {
                               <MpTotalCell
                                 marketplaceTotal={o.marketplaceTotal}
                                 cogs={o.cogs}
-                                fees={mockWarehouseFee(o.id)}
+                                fees={orderFee(o)}
                               />
                             </Table.Cell>
 

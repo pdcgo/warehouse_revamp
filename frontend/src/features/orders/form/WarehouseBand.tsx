@@ -27,10 +27,16 @@ export function WarehouseBand({
   value,
   onChange,
   disabled,
+  refusal,
 }: {
   value: bigint;
   onChange: (warehouseId: bigint) => void;
   disabled?: boolean;
+  /**
+   * Why this warehouse takes no orders — its fee was never set (a-warehouse-with-no-rate-takes-no-orders). The server's
+   * own sentence, shown under the picker it is about; the page keeps Save off while it stands.
+   */
+  refusal?: string | null;
 }) {
   const { t } = useTranslation();
   const chosen = value > 0n;
@@ -66,14 +72,24 @@ export function WarehouseBand({
 
         {/* The picker keeps the id the rest of the app knows it by: the e2e fills this input, and the
             prefill story reads it. */}
-        <Box w={{ base: "full", md: "80" }} data-testid="order-warehouse">
-          <TeamSelect
-            teamType={TeamType.WAREHOUSE}
-            value={value}
-            onChange={onChange}
-            disabled={disabled}
-          />
-        </Box>
+        <Stack gap="1" w={{ base: "full", md: "80" }}>
+          <Box data-testid="order-warehouse">
+            <TeamSelect
+              teamType={TeamType.WAREHOUSE}
+              value={value}
+              onChange={onChange}
+              disabled={disabled}
+            />
+          </Box>
+
+          {/* UNDER THE PICKER IT IS ABOUT, in the error role: this is the one thing stopping the order, and the
+              fix is choosing another warehouse or asking this one to set its fee. */}
+          {refusal && (
+            <Text fontSize="xs" color="error.fg" data-testid="order-warehouse-fee-refused">
+              {refusal}
+            </Text>
+          )}
+        </Stack>
       </Flex>
     </Box>
   );

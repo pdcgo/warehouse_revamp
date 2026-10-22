@@ -44,11 +44,11 @@ import type { AddressValue } from "../../components/customers/AddressPicker";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { DatePicker } from "../../components/datetime/DatePicker";
-import { todayDateInput } from "../../lib/datetime";
+import { dateTimeInputToUnix, todayDateInput, unixToDateTimeInput } from "../../lib/datetime";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { lineTotal, toRupiah } from "../../features/orders/lines";
-import { mockTerms } from "../../features/orders/form/mockData";
+import { useWarehouseFeeQuote } from "../../features/warehouse/queries";
 import { creditRows, invoiceRows } from "../../features/orders/form/money";
 import { WarehouseBand } from "../../features/orders/form/WarehouseBand";
 import { ShippingReceiptCard } from "../../features/orders/form/ShippingReceiptCard";
@@ -62,7 +62,6 @@ import { NoteAndSubmitCard } from "../../features/orders/form/NoteAndSubmitCard"
 import { OrderChecksDialog } from "../../features/orders/form/OrderChecksDialog";
 import type { CheckFinding } from "../../features/orders/form/checks";
 import { runOrderChecks } from "../../features/orders/form/checks";
-import { ORDER_FORM_PENDING } from "../../features/orders/form/pending";
 import { ORDER_DRAFT_PENDING } from "./pending";
 import type { DraftRow } from "./rows";
 import {
@@ -105,6 +104,9 @@ interface Baseline {
   address: AddressValue;
   shippingCode: string;
   rows: DraftRow[];
+  // The platform's two dates, as the DatePicker holds them (`yyyy-mm-ddThh:mm`, "" = none).
+  orderDate: string;
+  deadline: string;
 }
 
 function addressOf(draft: OrderDraft): AddressValue {
@@ -153,13 +155,14 @@ export function OrderDraftDetailPage() {
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [shippingCode, setShippingCode] = useState("");
   const [rows, setRows] = useState<DraftRow[]>([]);
+  // The platform's two dates (00020): the order date Promote requires, and the ship-by deadline it does not.
+  const [orderDate, setOrderDate] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [baseline, setBaseline] = useState<Baseline | null>(null);
 
   // ── What it does not (on screen, ⚠ draftKeeps) ──
   const [receipt, setReceipt] = useState<ReceiptValue>(emptyReceipt);
   const [receiptCode, setReceiptCode] = useState("");
-  const [orderDate, setOrderDate] = useState("");
-  const [deadline, setDeadline] = useState("");
   const [buyerUsername, setBuyerUsername] = useState("");
   const [note, setNote] = useState("");
   // THE SELL PRICE, AS TYPED — `null` while nobody has typed one, and then it FOLLOWS the rows' platform
@@ -189,6 +192,8 @@ export function OrderDraftDetailPage() {
       address: addressOf(from),
       shippingCode: from.shippingCode,
       rows: rowsFromDraft(from),
+      orderDate: unixToDateTimeInput(from.platformCreatedAtUnix),
+      deadline: unixToDateTimeInput(from.platformShipmentDeadlineUnix),
     };
 
     setMarketplace((prev) => ({ ...prev, shopId: next.shopId }));
@@ -198,6 +203,8 @@ export function OrderDraftDetailPage() {
     setAddress(next.address);
     setShippingCode(next.shippingCode);
     setRows(next.rows);
+    setOrderDate(next.orderDate);
+    setDeadline(next.deadline);
     setBaseline(next);
   }
 
@@ -245,7 +252,11 @@ export function OrderDraftDetailPage() {
   // 0 when the app read no prices and nobody typed one — the profit then reads no sell price at all.
   const sellPrice = toRupiah(sellPriceInput);
   const productsTotal = allLines.reduce((sum, l) => sum + lineTotal(l, costs), 0n);
-  const warehouseFee = warehouseId > 0n ? mockTerms(warehouseId).handlingFee : 0n;
+  // Priced by the warehouse on the goods' cost — what Promote will freeze on the order (the-flat-rate-is-dropped-last
+  // step 3). A warehouse with no rate refuses, and Promote stays off with its sentence as the reason.
+  const feeQuote = useWarehouseFeeQuote({ teamId, warehouseId, goodsCost: productsTotal });
+  const warehouseFee = feeQuote.data?.fee ?? 0n;
+  const feeRefusal = warehouseId > 0n ? (feeQuote.data?.refusal ?? null) : null;
   const orderTotal = productsTotal + warehouseFee;
   const invoice = invoiceRows({ lines: allLines, owners, costs, teamId, warehouseId, warehouseFee, teamName });
   const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0n);
@@ -279,6 +290,8 @@ export function OrderDraftDetailPage() {
       customerPhone !== baseline.customerPhone ||
       JSON.stringify(address) !== JSON.stringify(baseline.address) ||
       shippingCode !== baseline.shippingCode ||
+      orderDate !== baseline.orderDate ||
+      deadline !== baseline.deadline ||
       !sameStoredRows(rows, baseline.rows));
 
   // ── Promote: refused until the order could be placed ──
@@ -286,8 +299,12 @@ export function OrderDraftDetailPage() {
   const reasons: string[] = [];
   if (shopId <= 0n) reasons.push(t("orderDrafts.missingShop"));
   if (warehouseId <= 0n) reasons.push(t("orderDrafts.missingWarehouse"));
+  // The server's own sentence — "Gudang A has not set its fee" (a-warehouse-with-no-rate-takes-no-orders).
+  if (feeRefusal) reasons.push(feeRefusal);
   if (customerName.trim() === "") reasons.push(t("orderDrafts.missingCustomer"));
   if (rows.length === 0) reasons.push(t("orderDrafts.missingLines"));
+  // platform-created-at-is-required-at-finalize — a draft may hold it empty, an order may not.
+  if (orderDate === "") reasons.push(t("orderDrafts.missingOrderDate"));
   if (rows.some((row) => !rowMapped(row))) reasons.push(t("orderDraftForm.gaps.unmapped"));
   if (rows.some((row) => row.mode !== "product")) reasons.push(t("orderDraftForm.gaps.notStorable"));
   if (shortRows > 0) reasons.push(t("orderDrafts.missingStock"));
@@ -311,6 +328,9 @@ export function OrderDraftDetailPage() {
         customerPhone: customerPhone !== baseline.customerPhone ? customerPhone : undefined,
         address: JSON.stringify(address) !== JSON.stringify(baseline.address) ? address : undefined,
         shippingCode: shippingCode !== baseline.shippingCode ? shippingCode : undefined,
+        // A date cleared is sent as 0 — the person has claimed the field as surely as by correcting it.
+        platformCreatedAtUnix: orderDate !== baseline.orderDate ? dateTimeInputToUnix(orderDate) : undefined,
+        platformShipmentDeadlineUnix: deadline !== baseline.deadline ? dateTimeInputToUnix(deadline) : undefined,
         items: sameStoredRows(rows, baseline.rows)
           ? undefined
           : {
@@ -460,7 +480,7 @@ export function OrderDraftDetailPage() {
 
       <NotImplementedSummary list={ORDER_DRAFT_PENDING} />
 
-      <WarehouseBand value={warehouseId} onChange={setWarehouseId} />
+      <WarehouseBand value={warehouseId} onChange={setWarehouseId} refusal={feeRefusal} />
 
       <Grid templateColumns={{ base: "minmax(0, 1fr)", lg: "minmax(0, 2fr) minmax(0, 1fr)" }} gap="section" alignItems="start">
         <GridItem minW="0">
@@ -530,12 +550,12 @@ export function OrderDraftDetailPage() {
                       </Field.HelperText>
                     </Field.Root>
                   </Stack>
-                  <Field.Root>
+                  {/* REQUIRED TO PROMOTE, not to save (platform-created-at-is-required-at-finalize): a draft may hold
+                      it empty while it is worked on, and Promote names it among its reasons until it is set. */}
+                  <Field.Root required>
                     <Field.Label>
-                      <Flex align="center" gap="2" wrap="wrap">
-                        {t("orderForm.source.orderDate")}
-                        <NotImplemented list={ORDER_FORM_PENDING} id="orderDate" />
-                      </Flex>
+                      {t("orderForm.source.orderDate")}
+                      <Field.RequiredIndicator />
                     </Field.Label>
                     <DatePicker
                       value={orderDate}

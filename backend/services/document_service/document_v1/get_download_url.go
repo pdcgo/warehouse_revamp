@@ -61,7 +61,8 @@ func (s *Service) GetDownloadUrl(
 	expiry := time.Now().Add(s.cfg.URLTTL)
 
 	return connect.NewResponse(&documentv1.GetDownloadUrlResponse{
-		Url:           s.signer.SignedGetURL(doc.ObjectKey),
+		// The link carries the document's own name, so it downloads as that (a-download-keeps-its-files-name).
+		Url:           s.signer.SignedGetURL(doc.ObjectKey, doc.Filename),
 		ExpiresAtUnix: expiry.Unix(),
 		Public:        false,
 	}), nil

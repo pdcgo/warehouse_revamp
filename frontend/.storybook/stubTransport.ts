@@ -21,7 +21,10 @@ import { DocumentResourceType, DocumentService } from "../src/gen/warehouse/docu
 import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
-import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
+import { ProductService, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
+import { BundleService } from "../src/gen/warehouse/product/v1/bundle_pb";
+import { productsNow } from "./productScenario";
+import { bundleService } from "./bundleStub";
 import { SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
 import { SupplierAnalyticService } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
@@ -33,7 +36,7 @@ import {
   LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
-import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
+import { OrderDateField, OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptCheckResult, ReceiptService } from "../src/gen/warehouse/shipment/v1/receipt_pb";
@@ -67,6 +70,8 @@ import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
+import { warehouseFeeService } from "./warehouseFeeStub";
+import { WarehouseFeeService } from "../src/gen/warehouse/warehouse/v1/warehouse_fee_pb";
 import { TeamReturnConfigurationService } from "../src/gen/warehouse/selling/v1/return_configuration_pb";
 import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
@@ -598,19 +603,42 @@ type OrderScopeFilter =
       sellerTeamId?: bigint;
       marketplace?: Marketplace;
       shippingCode?: string;
+      // The seller list's warehouse filter.
+      warehouseId?: bigint;
+      // Which date the window reads (the-date-filter-switches-created-or-platform).
+      dateField?: OrderDateField;
     }
   | undefined;
 
-// Free text over the customer's NAME, their PHONE, and — only when the term is ALL DIGITS — the
-// order id, matched WHOLE. Substring-matching the id would make "1" select every order, which is
-// neither what the server does nor what somebody quoting an order number means.
+// The moment the date window is measured against — the order's creation, or the buyer's order on the storefront.
+// An order with no platform date has nothing to fall inside a platform window, as on the server.
+function windowDate(o: (typeof orders)[number], filter: OrderScopeFilter): bigint {
+  return filter?.dateField === OrderDateField.PLATFORM_CREATED ? o.platformCreatedAtUnix : o.createdAtUnix;
+}
+
+// Free text over the customer's NAME, their PHONE, the marketplace REF, the TRACKING NUMBER and — only
+// when the term is ALL DIGITS — the order id, matched WHOLE. Substring-matching the id would make "1"
+// select every order, which is neither what the server does nor what somebody quoting an order number means.
 function matchOrder(q: string | undefined, o: (typeof orders)[number]): boolean {
   const needle = (q ?? "").trim().toLowerCase();
   if (!needle) return true;
 
   if (/^\d+$/.test(needle) && o.id.toString() === needle) return true;
 
-  return [o.customerName, o.customerPhone].some((f) => f.toLowerCase().includes(needle));
+  return [o.customerName, o.customerPhone, o.orderExternalRefId ?? "", o.receiptCode].some((f) =>
+    f.toLowerCase().includes(needle),
+  );
+}
+
+// Whether the margin can be taken over this order — the server's `orderMeasurable`: a known cost, a recorded
+// marketplace figure and a frozen fee, all three.
+function measurable(o: (typeof orders)[number]): boolean {
+  return (o.cogs ?? 0n) > 0n && (o.marketplaceTotal ?? 0n) > 0n && o.warehouseFee !== undefined;
+}
+
+// The order's units, summed from its lines — what the server's correlated sum reads.
+function unitsOf(id: bigint): bigint {
+  return BigInt((orderDetailFor(id)?.items ?? []).reduce((n, it) => n + it.quantity, 0));
 }
 
 function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
@@ -620,14 +648,15 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .filter((o) => matchOrder(filter?.search, o))
     .filter((o) => !filter?.shopId || o.shopId === filter.shopId)
     // 0 on a side is an OPEN end, so {0,0} means every date.
-    .filter((o) => !filter?.createdFromUnix || o.createdAtUnix >= filter.createdFromUnix)
-    .filter((o) => !filter?.createdToUnix || o.createdAtUnix <= filter.createdToUnix)
+    .filter((o) => !filter?.createdFromUnix || (windowDate(o, filter) > 0n && windowDate(o, filter) >= filter.createdFromUnix))
+    .filter((o) => !filter?.createdToUnix || (windowDate(o, filter) > 0n && windowDate(o, filter) <= filter.createdToUnix))
     // Who typed it in; 0 is anybody, and an unrecorded creator (0) is nobody's.
     .filter((o) => !filter?.createdByUserId || o.createdByUserId === filter.createdByUserId)
     // The seller team, the marketplace its shop is on, the courier — as the server's scopedOrders applies them.
     .filter((o) => !filter?.sellerTeamId || o.teamId === filter.sellerTeamId)
     .filter((o) => !filter?.marketplace || shops.find((s) => s.id === o.shopId)?.marketplace === filter.marketplace)
     .filter((o) => !filter?.shippingCode || o.shippingCode === filter.shippingCode)
+    .filter((o) => !filter?.warehouseId || o.warehouseId === filter.warehouseId)
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
@@ -803,6 +832,8 @@ export const transport = createRouterTransport(({ service }) => {
   service(WarehouseTransferService, warehouseTransferService);
   // The stock count — a prototype: opnameStub.ts plays the decided opname rules (opname_decision.md).
   service(OpnameService, opnameService);
+  // Bundles — a prototype: bundleStub.ts plays the decided bundle rules (product_bundle_decision.md).
+  service(BundleService, bundleService);
 
   // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
   service(SupplierService, supplierService);
@@ -814,6 +845,7 @@ export const transport = createRouterTransport(({ service }) => {
   // rackStub.ts plays them, writeable, with the placement decisions.
   service(RackService, rackService);
   service(TeamReturnConfigurationService, returnConfigurationService);
+  service(WarehouseFeeService, warehouseFeeService);
 
   service(CategoryService, {
     // The one full-tree read the pagination rule exempts (a picker needs every node to assemble the
@@ -952,7 +984,13 @@ export const transport = createRouterTransport(({ service }) => {
     productList: (req) =>
       pagedColumnar(
         "product",
-        products.filter((p) => p.teamId === req.teamId && match(req.filter?.q, p.name, p.sku)),
+        // The ACTIVE or the ARCHIVED half, as the server answers it (an unset status is ACTIVE).
+        productsNow().filter(
+          (p) =>
+            p.teamId === req.teamId &&
+            p.deleted === (req.filter?.status === ProductStatus.ARCHIVED) &&
+            match(req.filter?.q, p.name, p.sku),
+        ),
         req.page,
       ),
     // Discovery looks ACROSS teams — that is the whole difference from ProductList, so `team_id` is
@@ -970,8 +1008,12 @@ export const transport = createRouterTransport(({ service }) => {
     productDiscover: (req) =>
       pagedColumnar(
         "product",
-        products.filter(
+        productsNow().filter(
           (p) =>
+            // Never an archived product, and never one its owner has locked — the server leaves both out
+            // (product_discover.go), so a picker cannot offer what a borrower may not take.
+            !p.deleted &&
+            !p.crossLocked &&
             (req.ownerTeamId === 0n || p.teamId === req.ownerTeamId) &&
             (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
             // ⚠ THE PRIORITY PARTITION, and an EMPTY LIST IS NO NARROWING on both — exactly as the
@@ -984,7 +1026,8 @@ export const transport = createRouterTransport(({ service }) => {
         ),
         req.page,
       ),
-    productByIds: (req) => byIds("product", products, req.filter?.ids ?? []),
+    // An archived product IS answered, as the server does — a line holding it still names it.
+    productByIds: (req) => byIds("product", productsNow(), req.filter?.ids ?? []),
   });
 
   service(InventoryService, {
@@ -1139,10 +1182,7 @@ export const transport = createRouterTransport(({ service }) => {
             (o) => !req.filter?.status || o.status === req.filter.status,
           )
           // The row's unit count, summed from the order's lines as the server's query does.
-          .map((o) => ({
-            ...o,
-            itemQuantity: BigInt((orderDetailFor(o.id)?.items ?? []).reduce((n, it) => n + it.quantity, 0)),
-          })),
+          .map((o) => ({ ...o, itemQuantity: unitsOf(o.id) })),
         req.page,
       ),
 
@@ -1237,16 +1277,50 @@ export const transport = createRouterTransport(({ service }) => {
     orderStat: (req) => {
       const rows = visibleOrders(req.teamId, req.filter);
 
-      const counts = new Map<OrderStatus, { status: OrderStatus; count: bigint; value: bigint }>();
+      // Per status, as the server's census: the units over every order, and the margin's inputs over the
+      // MEASURABLE ones only, with how many it left out.
+      const counts = new Map<
+        OrderStatus,
+        {
+          status: OrderStatus;
+          count: bigint;
+          value: bigint;
+          itemCount: bigint;
+          mpValue: bigint;
+          cogs: bigint;
+          fees: number;
+          marginUnknown: bigint;
+        }
+      >();
       for (const o of rows) {
-        const row = counts.get(o.status) ?? { status: o.status, count: 0n, value: 0n };
-        counts.set(o.status, { status: o.status, count: row.count + 1n, value: row.value + o.total });
+        const row = counts.get(o.status) ?? {
+          status: o.status,
+          count: 0n,
+          value: 0n,
+          itemCount: 0n,
+          mpValue: 0n,
+          cogs: 0n,
+          fees: 0,
+          marginUnknown: 0n,
+        };
+        const measured = measurable(o);
+
+        counts.set(o.status, {
+          status: o.status,
+          count: row.count + 1n,
+          value: row.value + o.total,
+          itemCount: row.itemCount + unitsOf(o.id),
+          mpValue: row.mpValue + (measured ? (o.marketplaceTotal ?? 0n) : 0n),
+          cogs: row.cogs + (measured ? (o.cogs ?? 0n) : 0n),
+          fees: row.fees + (measured ? (o.warehouseFee ?? 0) : 0),
+          marginUnknown: row.marginUnknown + (measured ? 0n : 1n),
+        });
       }
 
       // The money half: a rolling 30 days, CANCELLED excluded — a cancelled order is not a sale, and
       // counting one would let a team read revenue it never took.
       const cutoff = BigInt(Math.floor(Date.now() / 1000) - 30 * 86_400);
-      const recent = rows.filter((o) => o.status !== OrderStatus.CANCELLED && o.createdAtUnix >= cutoff);
+      const recent = rows.filter((o) => o.status !== OrderStatus.CANCEL && o.createdAtUnix >= cutoff);
 
       return {
         preview: {

@@ -52,6 +52,11 @@ type OrderDraft struct {
 	// from the mapped lines, and COGS has no meaning until the lines name real products.
 	ShippingCost int64
 
+	// THE PLATFORM'S TWO DATES (00020), as the app pushed them or a person corrected them. Either may be nil on a draft:
+	// Promote refuses a missing order date (platform-created-at-is-required-at-finalize), never a missing deadline.
+	PlatformCreatedAt        *time.Time
+	PlatformShipmentDeadline *time.Time
+
 	// The lines; loaded on demand (OrderDraftDetail).
 	Items []OrderDraftItem `gorm:"foreignKey:DraftID"`
 

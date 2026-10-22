@@ -2,12 +2,17 @@ package document_v1_test
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 
 	documentv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
 )
 
 // The private happy path: request → PUT → confirm → download a short-lived signed URL.
@@ -52,6 +57,41 @@ func TestUploadFlow_PrivateDocument(t *testing.T) {
 	if dl.Msg.GetPublic() || dl.Msg.GetExpiresAtUnix() == 0 || dl.Msg.GetUrl() == "" {
 		t.Fatalf("private download should be non-public, time-limited, non-empty: %+v", dl.Msg)
 	}
+
+	// THE LINK CARRIES THE FILE'S OWN NAME (a-download-keeps-its-files-name), and the storage answers with it: inline,
+	// so a PDF still previews, named, so a download is not called after its object key.
+	if !strings.Contains(dl.Msg.GetUrl(), "filename=receipt.pdf") {
+		t.Fatalf("download url %q does not carry the file's name", dl.Msg.GetUrl())
+	}
+
+	parsed, err := url.Parse(dl.Msg.GetUrl())
+	if err != nil {
+		t.Fatalf("parse the download url: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	docstore.NewLocalFileHandler(cfg).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, docstore.LocalMountPath+
+		strings.TrimPrefix(parsed.Path, strings.TrimRight(mustPath(t, cfg.BaseURL), "/")+"/")+"?"+parsed.RawQuery, nil))
+
+	if got := rec.Header().Get("Content-Disposition"); got != `inline; filename=receipt.pdf` {
+		t.Fatalf("Content-Disposition = %q, want inline with the file's name", got)
+	}
+
+	if rec.Body.String() != "hello, world" {
+		t.Fatalf("served %q", rec.Body.String())
+	}
+}
+
+// mustPath is a base URL's path, so a signed URL can be turned back into the key the file handler serves.
+func mustPath(t *testing.T, raw string) string {
+	t.Helper()
+
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		t.Fatalf("parse %q: %v", raw, err)
+	}
+
+	return parsed.Path
 }
 
 // The public path: a profile picture gets a stable public URL and no expiry.
