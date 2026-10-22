@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { categoryClient, inventoryClient, orderClient, productClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
-import { ProductListDataType, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
+import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
+import { ProductListDataType, ProductRowSort, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
+import type { SortState } from "../../components/chrome/SortableHeader";
 import {
   activityFromByIds,
   batchesFromList,
@@ -35,7 +37,14 @@ interface ProductListArgs {
    * that day changes the queryFn only.
    */
   warehouseId?: bigint;
+  /** `null` = the list's own order, newest first; otherwise by name, A to Z or back (the server sorts). */
+  sort?: SortState<ProductSortKey> | null;
 }
+
+/** The column the product list sorts from its heading — the one the contract orders the catalogue by that the row shows first. */
+export type ProductSortKey = "name";
+
+const SORT_COLUMN: Record<ProductSortKey, ProductRowSort> = { name: ProductRowSort.NAME };
 
 // The team's catalogue — or, for a WAREHOUSE, what it has been asked to hold.
 //
@@ -55,11 +64,20 @@ export function useProducts({
   pageSize,
   status = ProductStatus.ACTIVE,
   warehouseId = 0n,
+  sort = null,
 }: ProductListArgs) {
   return useQuery({
     // `status` is in the key because the two tabs are two different answers: caching the archived
     // page under the active one would show a dead SKU where the live catalogue belongs.
-    queryKey: key.products(teamId, { isWarehouse, q, page, pageSize, status, warehouseId: warehouseId.toString() }),
+    queryKey: key.products(teamId, {
+      isWarehouse,
+      q,
+      page,
+      pageSize,
+      status,
+      warehouseId: warehouseId.toString(),
+      sort: sort ? `${sort.by}:${sort.dir}` : "",
+    }),
     ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
@@ -88,6 +106,12 @@ export function useProducts({
       const res = await productClient.productList({
         teamId: teamId!,
         filter: { q, status },
+        sort: sort
+          ? {
+              sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
+              s: { case: "product", value: SORT_COLUMN[sort.by] },
+            }
+          : undefined,
         dataRequest: productListRowData(),
         page: { page, limit: pageSize },
       });
@@ -518,15 +542,19 @@ export function useArchiveProduct() {
 // It is a plain ProductUpdate carrying only `cross_locked`, which works because every other field on
 // that message is absent-means-untouched. A dedicated RPC would have bought nothing except a second
 // place for the scope check to be got wrong.
-export function useSetProductLocked() {
+// THE LOCK, as one write (`one-lock-three-ways`): whether another team may order the product — `crossLocked` — and the
+// minimum total stock under which it may not — `reservedStock`. Both are ProductUpdate's optional fields, so the rest of
+// the product is left alone; a `reservedStock` left out keeps the minimum the product already had.
+export function useSetProductLock() {
   const invalidate = useInvalidateProducts();
 
   return useMutation({
-    mutationFn: (vars: { teamId: bigint; productId: bigint; locked: boolean }) =>
+    mutationFn: (vars: { teamId: bigint; productId: bigint; crossLocked: boolean; reservedStock?: number }) =>
       productClient.productUpdate({
         teamId: vars.teamId,
         productId: vars.productId,
-        crossLocked: vars.locked,
+        crossLocked: vars.crossLocked,
+        reservedStock: vars.reservedStock,
       }),
     onSuccess: () => invalidate(),
   });

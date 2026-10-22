@@ -436,6 +436,57 @@
     "totalStat": "Total products",
     "noTeam": "Select a team to manage its products.",
     "newProduct": "New Product",
+    "archiveView": {
+      "open": "Archive",
+      "title": "Archived Products",
+      "lead": "Products taken out of the catalogue — no picker or new order offers them. Restore one to sell it again."
+    },
+    "filter": {
+      "lockAll": "Any lock",
+      "lockedNow": "Locked now",
+      "stockAgeAll": "Any stock age",
+      "stockAgeAtLeast": "{{days}} days or more"
+    },
+    "pending": {
+      "lockFilter": {
+        "label": "Lock filter",
+        "reason": "The product list cannot filter by lock yet — the pick is kept, but every product still shows."
+      },
+      "stockAgeFilter": {
+        "label": "Stock age filter",
+        "reason": "The product list cannot filter by stock age yet — the age lives with the stock, so the pick is kept, but every product still shows."
+      }
+    },
+    "lock": {
+      "title": "Lock",
+      "edit": "Change Lock",
+      "mode": {
+        "open": "Open",
+        "min": "Minimum stock",
+        "always": "Always locked"
+      },
+      "short": {
+        "open": "Open",
+        "always": "Always locked"
+      },
+      "minShort": "Min {{n}} pcs",
+      "minLabel": "Minimum stock",
+      "minRequired": "Enter a minimum stock of at least 1.",
+      "help": {
+        "open": "Any team may sell it on its own order, and pays you the markup.",
+        "min": "Other teams stop ordering it while the total stock in every warehouse is below this — your own orders never stop.",
+        "always": "No other team can order it, and it stays out of their discovery."
+      },
+      "lockedNow": "Locked",
+      "lockedNowHint": "Total stock {{total}} is below the minimum {{min}} — other teams cannot order it now",
+      "saved": "Lock saved"
+    },
+    "lead": "This team's catalogue — what it sells, what is on a shelf, and what is on its way.",
+    "leadWarehouse": "The products other teams keep on this warehouse's shelves.",
+    "none": "No products yet.",
+    "emptyHint": "Add the first product to start selling it — its stock follows once a restock arrives.",
+    "emptyArchivedHint": "An archived product waits here until it is restored.",
+    "emptyWarehouseHint": "Products the selling teams keep in this warehouse appear here.",
     "searchPlaceholder": "Search SKU or name",
     "empty": "No products found.",
     "backToProducts": "Back to Products",
@@ -455,7 +506,16 @@
       "oldestBatch": "Oldest batch",
       "lastOrder": "Last order",
       "lastRestock": "Last restock",
+      "stockAge": "Stock age",
+      "noOrderYet": "No order yet",
+      "neverRestocked": "Never restocked",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "stockAgeTitle": "The oldest units on a shelf arrived {{date}}",
+      "staleHint": "On a shelf for {{days}} days or more — stock that has stopped moving",
+      "quietHint": "Not sold for {{days}} days or more",
       "cross": "Cross",
+      "crossPriceHint": "Cross price — what another team pays",
       "locked": "Locked",
       "priceRange": "Cost range"
     },
@@ -506,6 +566,10 @@
       "layerEmpty": "No stock on a shelf, so nothing to price.",
       "layerTotal": "Stock at known cost: {{value}}",
       "batchEmpty": "No deliveries of this product yet.",
+      "batchEmptyHint": "A delivery appears here once a restock of this product is accepted onto a shelf.",
+      "layerEmptyHint": "The prices appear once a delivery of this product is on a shelf.",
+      "historyEmptyHint": "Every receipt, pick and correction of this product is listed here as it happens.",
+      "emptyInWarehouse": "Try another warehouse, or all of them.",
       "batchTotal": "Ready at known cost: {{value}}",
       "historyEmpty": "Nothing has moved yet."
     },
@@ -521,6 +585,9 @@
     "form": {
       "editTitle": "Edit Product",
       "newTitle": "New Product",
+      "skuPlaceholder": "e.g. SKU-KOPI-250",
+      "namePlaceholder": "e.g. Arabica Coffee 250g",
+      "descriptionPlaceholder": "e.g. ground arabica in a 250 g pouch, medium roast, best before 12 months",
       "categoryPlaceholder": "Select a category",
       "categoryHelp": "Every product is filed under an end category.",
       "crossMarkupHelp": "What another team pays over your cost when it sells this product on its own order. Leave empty for none.",

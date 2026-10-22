@@ -37,9 +37,10 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByTestId("current-user")).toHaveText(username);
 }
 
+// The list, or — before the first product — its hint (an-empty-list-shows-a-hint).
 async function gotoProducts(page: Page) {
   await page.goto("/products");
-  await expect(page.getByTestId("products-table")).toBeVisible();
+  await expect(page.getByTestId("products-table").or(page.getByTestId("products-empty"))).toBeVisible();
 }
 
 test.describe.configure({ mode: "serial" });

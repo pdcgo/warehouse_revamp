@@ -431,6 +431,57 @@
     "totalStat": "Total produk",
     "noTeam": "Pilih tim untuk mengelola produknya.",
     "newProduct": "Produk Baru",
+    "archiveView": {
+      "open": "Arsip",
+      "title": "Arsip Produk",
+      "lead": "Produk yang dikeluarkan dari katalog — tidak muncul di picker maupun pesanan baru. Pulihkan untuk menjualnya lagi."
+    },
+    "filter": {
+      "lockAll": "Semua kunci",
+      "lockedNow": "Terkunci sekarang",
+      "stockAgeAll": "Semua umur stok",
+      "stockAgeAtLeast": "{{days}} hari atau lebih"
+    },
+    "pending": {
+      "lockFilter": {
+        "label": "Filter kunci",
+        "reason": "Daftar produk belum bisa disaring menurut kunci — pilihannya disimpan, tapi semua produk tetap tampil."
+      },
+      "stockAgeFilter": {
+        "label": "Filter umur stok",
+        "reason": "Daftar produk belum bisa disaring menurut umur stok — umurnya ada di data stok, jadi pilihannya disimpan, tapi semua produk tetap tampil."
+      }
+    },
+    "lock": {
+      "title": "Kunci",
+      "edit": "Ubah Kunci",
+      "mode": {
+        "open": "Terbuka",
+        "min": "Stok minimum",
+        "always": "Selalu dikunci"
+      },
+      "short": {
+        "open": "Terbuka",
+        "always": "Selalu dikunci"
+      },
+      "minShort": "Min {{n}} pcs",
+      "minLabel": "Stok minimum",
+      "minRequired": "Masukkan stok minimum, paling sedikit 1.",
+      "help": {
+        "open": "Tim mana pun boleh menjualnya di pesanan mereka, dan membayar markup kepada Anda.",
+        "min": "Tim lain berhenti bisa memesannya selama total stok di semua gudang di bawah angka ini — pesanan Anda sendiri tidak pernah berhenti.",
+        "always": "Tim lain tidak bisa memesannya, dan produk ini tidak muncul di pencarian mereka."
+      },
+      "lockedNow": "Terkunci",
+      "lockedNowHint": "Total stok {{total}} di bawah minimum {{min}} — tim lain tidak bisa memesannya sekarang",
+      "saved": "Kunci disimpan"
+    },
+    "lead": "Katalog tim ini — yang dijual, yang ada di rak, dan yang sedang dikirim.",
+    "leadWarehouse": "Produk milik tim lain yang disimpan di rak gudang ini.",
+    "none": "Belum ada produk.",
+    "emptyHint": "Tambahkan produk pertama untuk mulai menjualnya — stoknya menyusul begitu restok tiba.",
+    "emptyArchivedHint": "Produk yang diarsipkan menunggu di sini sampai dipulihkan.",
+    "emptyWarehouseHint": "Produk yang disimpan tim penjual di gudang ini muncul di sini.",
     "searchPlaceholder": "Cari SKU atau nama",
     "empty": "Produk tidak ditemukan.",
     "backToProducts": "Kembali ke Produk",
@@ -445,12 +496,20 @@
       "actions": "Aksi",
       "product": "Produk",
       "ready": "Siap",
-      "ongoing": "Masuk",
+      "ongoing": "Dikirim",
       "reserved": "Dipesan",
       "oldestBatch": "Batch terlama",
       "lastOrder": "Pesanan terakhir",
       "lastRestock": "Restock terakhir",
+      "stockAge": "Umur stok",
+      "noOrderYet": "Belum ada pesanan",
+      "neverRestocked": "Belum pernah restock",
+      "days_other": "{{count}} hari",
+      "stockAgeTitle": "Unit tertua di rak tiba {{date}}",
+      "staleHint": "Di rak {{days}} hari atau lebih — stok yang sudah tidak bergerak",
+      "quietHint": "Tidak laku {{days}} hari atau lebih",
       "cross": "Cross",
+      "crossPriceHint": "Harga cross — yang dibayar tim lain",
       "locked": "Terkunci",
       "priceRange": "Rentang HPP"
     },
@@ -501,6 +560,10 @@
       "layerEmpty": "Tidak ada stok di rak, jadi tidak ada yang dihargai.",
       "layerTotal": "Stok dengan modal diketahui: {{value}}",
       "batchEmpty": "Belum ada pengiriman produk ini.",
+      "batchEmptyHint": "Pengiriman muncul di sini begitu restok produk ini diterima ke rak.",
+      "layerEmptyHint": "Harganya muncul begitu ada pengiriman produk ini di rak.",
+      "historyEmptyHint": "Setiap penerimaan, pengambilan, dan koreksi produk ini tercatat di sini saat terjadi.",
+      "emptyInWarehouse": "Coba gudang lain, atau semua gudang.",
       "batchTotal": "Siap dengan modal diketahui: {{value}}",
       "historyEmpty": "Belum ada pergerakan."
     },
@@ -516,6 +579,9 @@
     "form": {
       "editTitle": "Ubah Produk",
       "newTitle": "Produk Baru",
+      "skuPlaceholder": "Contoh: SKU-KOPI-250",
+      "namePlaceholder": "Contoh: Kopi Arabika 250g",
+      "descriptionPlaceholder": "Contoh: kopi arabika bubuk kemasan 250 g, sangrai medium, tahan 12 bulan",
       "categoryPlaceholder": "Pilih kategori",
       "categoryHelp": "Setiap produk dikelompokkan di bawah kategori akhir.",
       "crossMarkupHelp": "Tambahan yang dibayar tim lain di atas harga modal Anda saat menjual produk ini di pesanan mereka. Kosongkan jika tidak ada.",
@@ -534,7 +600,7 @@
     "stat": {
       "ready": "Siap",
       "readyHint": "harga modal",
-      "ongoing": "Masuk",
+      "ongoing": "Dikirim",
       "ongoingHint": "perkiraan, harga modal",
       "pcs": "{{n}} pcs",
       "pending": "Menunggu layanan stok",

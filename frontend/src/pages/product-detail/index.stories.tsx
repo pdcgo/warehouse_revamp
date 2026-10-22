@@ -27,10 +27,12 @@ function asAnggrekOwner() {
 const routes = [
   { path: "/products/:productId", element: <ProductDetailPage /> },
   marker("/products", "at-products"),
+  marker("/products/archived", "at-products-archive"),
   marker("/products/:productId/edit", "at-product-edit"),
 ];
 const At = (productId: number) => routedPage(routes, `/products/${productId}`);
 const AtMinyak = At(700);
+const AtTepung = At(702);
 const AtArchivedPack = At(790);
 const AtOtherTeams = At(74);
 
@@ -100,7 +102,9 @@ export const TheInfoTabIsTheRecord: Story = {
 
     await expect(canvas.getByTestId("product-detail-images")).toBeVisible();
     await expect(canvas.getByTestId("product-detail-image-1")).toBeInTheDocument();
-    await expect(canvas.getByTestId("product-detail-reserved")).toHaveTextContent("4 pcs");
+    // The lock, one setting (one-lock-three-ways) — a minimum of 4, the 79 ready well above it, so no badge.
+    await expect(canvas.getByTestId("product-detail-lock")).toHaveTextContent("Min 4 pcs");
+    await expect(canvas.queryByTestId("product-detail-lock-control-now")).toBeNull();
     await expect(canvas.getByTestId("product-detail-info-markup")).toHaveTextContent("12.5%");
     await expect(canvas.getByTestId("product-detail-page")).toHaveTextContent("Minyak goreng kelapa sawit");
   },
@@ -139,6 +143,37 @@ export const TheBatchTabAndItsLens: Story = {
     await pickTeam(canvas.getByTestId("pd-batch-warehouse-filter"), "WH-02");
     await waitFor(() => expect(canvas.queryByTestId("pd-batch-row-7001")).toBeNull());
     await expect(canvas.getByTestId("pd-batch-row-7002")).toBeVisible();
+  },
+};
+
+/** A delivery row lights up under the pointer, every cell (a-table-row-lights-up). */
+export const ABatchRowLightsUp: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openTab(canvas, "batch");
+
+    const row = await canvas.findByTestId("pd-batch-row-7001");
+    const cells = within(row).getAllByRole("cell");
+    const resting = getComputedStyle(cells[0]!).backgroundColor;
+    row.setAttribute("data-hover", "");
+    await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
+    row.removeAttribute("data-hover");
+  },
+};
+
+/** A product with nothing on a shelf says why on every tab — the empty hint, never a bare grey line
+ * (an-empty-list-shows-a-hint). */
+export const NothingOnAShelfSaysWhy: Story = {
+  render: () => <AtTepung />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await openTab(canvas, "price");
+    await expect(await canvas.findByTestId("pd-price-empty")).toHaveTextContent("No stock on a shelf");
+    await openTab(canvas, "batch");
+    await expect(await canvas.findByTestId("pd-batch-empty")).toHaveTextContent("once a restock of this product");
+    await openTab(canvas, "history");
+    await expect(await canvas.findByTestId("pd-history-empty")).toHaveTextContent("Nothing has moved yet.");
   },
 };
 
@@ -204,6 +239,17 @@ export const BackGoesToTheList: Story = {
 
     await userEvent.click(canvas.getByTestId("product-detail-back"));
     await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
+  },
+};
+
+/** An archived product's Back returns to the archive it was opened from (the-archive-is-a-page-of-its-own). */
+export const AnArchivedProductGoesBackToTheArchive: Story = {
+  render: () => <AtArchivedPack />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("product-detail-back"));
+    await waitFor(() => expect(canvas.getByTestId("at-products-archive")).toBeInTheDocument());
   },
 };
 

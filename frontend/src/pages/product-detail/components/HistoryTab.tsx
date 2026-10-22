@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, Flex, Stack, Text } from "@chakra-ui/react";
+import { History } from "lucide-react";
 
-import { Pagination } from "../../../components/chrome/Pagination";
+import { GrowingPager } from "../../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { MovementTable, type MovementRow } from "../../../features/inventory/MovementTable";
 import { useOwnerStockHistory } from "../../../features/products/queries";
@@ -94,16 +95,24 @@ export function HistoryTab({
               // across cities.
               afterLabel={t("products.detail.history.afterInWarehouse")}
               emptyText={t("products.detail.historyEmpty")}
+              // The empty hint and the lit rows (an-empty-list-shows-a-hint, a-table-row-lights-up).
+              emptyIcon={History}
+              emptyDescription={
+                warehouseId > 0n ? t("products.detail.emptyInWarehouse") : t("products.detail.historyEmptyHint")
+              }
               warehouseLabel={warehouseLabel}
             />
           </RefreshOverlay>
 
+          {/* THE PAGES GROW AS THEY ARE OPENED (every-list-pages-with-the-growing-pager). */}
           <Flex justify="flex-end">
-            <Pagination
-              count={history.data?.totalItems ?? 0}
-              pageSize={PAGE_SIZE}
+            <GrowingPager
               page={page}
               onPageChange={setPage}
+              hasNext={history.isPlaceholderData ? undefined : page * PAGE_SIZE < (history.data?.totalItems ?? 0)}
+              resetKey={warehouseId.toString()}
+              pageSize={PAGE_SIZE}
+              testId="pd-history-pager"
             />
           </Flex>
         </Stack>

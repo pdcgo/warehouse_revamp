@@ -15,6 +15,8 @@ export interface QuantityInputProps {
   /** The BOX's width — the two buttons sit outside it. Defaults to a table cell's narrow field. */
   width?: string;
   size?: "xs" | "sm" | "md";
+  /** Shown while the box is empty — a form field's **0**, never its value (every-form-field-shows-an-example). */
+  placeholder?: string;
   "aria-label"?: string;
   testId?: string;
 }
@@ -47,6 +49,7 @@ export function QuantityInput({
   disabled,
   width = "12",
   size = "xs",
+  placeholder,
   testId,
   ...rest
 }: QuantityInputProps) {
@@ -89,6 +92,7 @@ export function QuantityInput({
           w={width}
           textAlign="center"
           px="1"
+          placeholder={placeholder}
           data-testid={testId}
           aria-label={rest["aria-label"]}
         />

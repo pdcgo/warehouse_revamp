@@ -16,7 +16,8 @@
 //   - 700, the product the screens open, as a WHOLE record — two pictures, a description, a 12.5% markup, 4 held back;
 //   - the figures below, invented but CONSISTENT: a product's ready stock is the sum of its batches' ready, its
 //     cost range their unit costs, its layers one per batch still holding stock, its movements their receipts and
-//     picks. Every sixth product has nothing on a shelf, every fourth has a restock on its way.
+//     picks. Every sixth product has nothing on a shelf, SKU-ANG-006, -012, -018 … came in ONE delivery (one price, not
+//     a range), every fourth has a restock on its way.
 //
 // WRITEABLE: preview.tsx calls `resetProductStub()` in its `beforeEach`.
 
@@ -299,8 +300,12 @@ function batchesOf(productId: bigint): SampleBatch[] {
   const n = Number(productId % 997n);
   if (n % 6 === 0) return [];
   const cost = BigInt(8_000 + ((n * 911) % 40_000));
+  const first: SampleBatch = { id: productId * 10n + 1n, warehouseId: GUDANG_PUSAT, arrived: 60n, ready: BigInt(10 + ((n * 7) % 40)), unitCost: cost, acceptedAt: NOW - BigInt(20 + (n % 30)) * DAY };
+  // ONE DELIVERY, so ONE PRICE — ids 705, 711, 717 … (SKU-ANG-006, -012, -018 …), so the list shows a single cost beside
+  // the ranges rather than a range on every row.
+  if (n % 6 === 3) return [first];
   const out: SampleBatch[] = [
-    { id: productId * 10n + 1n, warehouseId: GUDANG_PUSAT, arrived: 60n, ready: BigInt(10 + ((n * 7) % 40)), unitCost: cost, acceptedAt: NOW - BigInt(20 + (n % 30)) * DAY },
+    first,
     { id: productId * 10n + 2n, warehouseId: GUDANG_CABANG, arrived: 40n, ready: BigInt(5 + ((n * 11) % 30)), unitCost: cost + 1_500n, acceptedAt: NOW - BigInt(5 + (n % 10)) * DAY },
   ];
   if (n % 2 === 0) {

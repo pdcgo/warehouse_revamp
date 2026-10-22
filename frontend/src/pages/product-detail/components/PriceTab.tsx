@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Card, Flex, SimpleGrid, Stack, Switch, Table, Text } from "@chakra-ui/react";
+import { Badge, Card, Flex, SimpleGrid, Stack, Table, Text } from "@chakra-ui/react";
+import { Layers } from "lucide-react";
 
-import { Pagination } from "../../../components/chrome/Pagination";
+import { GrowingPager } from "../../../components/chrome/GrowingPager";
+import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import type { OwnerStockRow } from "../../../features/products/adapt";
 import { useOwnerCostLayers } from "../../../features/products/queries";
@@ -10,7 +12,8 @@ import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
 import { formatMarkup } from "../../../lib/markup";
 import { formatRupiah } from "../../../lib/money";
 import { Stat } from "../../../features/products/RecordField";
-import { Pending, WarehouseFilter, WarehouseNote } from "./parts";
+import { ProductLockControl } from "../../../features/products/ProductLock";
+import { LIGHTS_UP, Pending, WarehouseFilter, WarehouseNote } from "./parts";
 
 // The PRICE tab — the batches GROUPED BY WHAT THEY COST.
 //
@@ -93,8 +96,7 @@ export function PriceTab({
   warehouseId,
   warehouseName,
   onWarehouseChange,
-  onToggleLocked,
-  lockPending,
+  onSaveLock,
 }: {
   teamId: bigint | undefined;
   product: Product;
@@ -103,8 +105,8 @@ export function PriceTab({
   warehouseId: bigint;
   warehouseName?: string;
   onWarehouseChange: (id: bigint) => void;
-  onToggleLocked: (locked: boolean) => void;
-  lockPending: boolean;
+  /** The lock's write (one-lock-three-ways) — resolves whether it took. */
+  onSaveLock: (fields: { crossLocked: boolean; reservedStock?: number }) => Promise<boolean>;
 }) {
   const { t } = useTranslation();
 
@@ -167,6 +169,18 @@ export function PriceTab({
             </SimpleGrid>
 
             <RefreshOverlay busy={layers.isFetching && !layers.isPending}>
+              {rows.length === 0 ? (
+                // AN EMPTY LIST SAYS WHY (an-empty-list-shows-a-hint) — `sm`, inside the tab's card.
+                <EmptyHint
+                  size="sm"
+                  icon={Layers}
+                  title={t("products.detail.layerEmpty")}
+                  description={
+                    warehouseId > 0n ? t("products.detail.emptyInWarehouse") : t("products.detail.layerEmptyHint")
+                  }
+                  testId="pd-price-empty"
+                />
+              ) : (
               <Table.Root size="sm" data-testid="pd-price-table">
                 <Table.Header>
                   <Table.Row>
@@ -184,7 +198,7 @@ export function PriceTab({
                 </Table.Header>
                 <Table.Body>
                   {rows.map((layer, i) => (
-                    <Table.Row key={i} data-testid={`pd-price-row-${i}`}>
+                    <Table.Row key={i} data-testid={`pd-price-row-${i}`} css={LIGHTS_UP}>
                       <Table.Cell>
                         <LayerCost unitCost={layer.unitCost} costKnown={layer.costKnown} />
                       </Table.Cell>
@@ -206,32 +220,28 @@ export function PriceTab({
                       </Table.Cell>
                     </Table.Row>
                   ))}
-
-                  {rows.length === 0 && (
-                    <Table.Row>
-                      <Table.Cell colSpan={4} color="fg.muted" data-testid="pd-price-empty">
-                        {t("products.detail.layerEmpty")}
-                      </Table.Cell>
-                    </Table.Row>
-                  )}
                 </Table.Body>
               </Table.Root>
+              )}
             </RefreshOverlay>
 
             {/* The value of every KNOWN-cost layer. Unknown layers are absent from it by design, and
                 the table above shows them so the two can be read together rather than reconciled. */}
-            <Flex justify="space-between" wrap="wrap" gap="card">
+            <Flex justify="space-between" align="center" wrap="wrap" gap="card">
               <Text fontSize="sm" color="fg.muted" data-testid="pd-price-total">
                 {t("products.detail.layerTotal", {
                   value: formatRupiah(layers.data?.totalValue ?? 0n),
                 })}
               </Text>
 
-              <Pagination
-                count={layers.data?.totalItems ?? 0}
-                pageSize={PAGE_SIZE}
+              {/* THE PAGES GROW AS THEY ARE OPENED (every-list-pages-with-the-growing-pager). */}
+              <GrowingPager
                 page={page}
                 onPageChange={setPage}
+                hasNext={layers.isPlaceholderData ? undefined : page * PAGE_SIZE < (layers.data?.totalItems ?? 0)}
+                resetKey={warehouseId.toString()}
+                pageSize={PAGE_SIZE}
+                testId="pd-price-pager"
               />
             </Flex>
           </Stack>
@@ -259,25 +269,17 @@ export function PriceTab({
                 </Badge>
               </Stat>
 
-              {/* Editable in place, exactly as it is on the list — locking is a one-bit decision and
-                  a dialog for it would be ceremony. An archived product is out of circulation
-                  anyway, so the switch is dead there. */}
-              <Stat
-                label={t("products.table.locked")}
-                hint={t("products.detail.lockedHint")}
-                testId="product-detail-locked"
-              >
-                <Switch.Root
-                  size="sm"
-                  checked={product.crossLocked}
-                  disabled={archived || lockPending}
-                  colorPalette="brand"
-                  data-testid={`pd-locked-${product.sku}`}
-                  onCheckedChange={(e) => onToggleLocked(e.checked)}
-                >
-                  <Switch.HiddenInput aria-label={t("products.table.locked")} />
-                  <Switch.Control />
-                </Switch.Root>
+              {/* THE LOCK — one setting, three ways (one-lock-three-ways), edited in place exactly as it is on
+                  the list. An archived product is out of circulation anyway, so it only reads here. A minimum in
+                  force is badged on the total stock — not while the lens shows one warehouse. */}
+              <Stat label={t("products.lock.title")} testId="product-detail-locked">
+                <ProductLockControl
+                  product={product}
+                  totalReady={warehouseId === 0n ? stock?.readyQty : undefined}
+                  editable={!archived}
+                  onSave={onSaveLock}
+                  testId="pd-lock-control"
+                />
               </Stat>
             </SimpleGrid>
           </Stack>

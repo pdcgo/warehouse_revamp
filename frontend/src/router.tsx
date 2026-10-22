@@ -304,6 +304,8 @@ export const router = createBrowserRouter([
       // The courier catalogue — shipment_service (docs/business/shipment). Root only, from the nav.
       { path: "shipping", element: <ShipmentChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
+      // The archive, a page of its own (the-archive-is-a-page-of-its-own) — reached from the list's Arsip button.
+      { path: "products/archived", element: <ProductsPage archived /> },
       { path: "products/discover", element: <DiscoverProductsPage /> },
       { path: "products/discover/:productId", element: <DiscoverProductDetailPage /> },
       { path: "products/new", element: <ProductEditPage /> },

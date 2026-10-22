@@ -119,12 +119,64 @@ export const TheEditFormArrivesFilled: Story = {
     );
     await waitFor(() => expect(canvas.getByTestId("category-select")).toHaveTextContent("Rumah Tangga"));
     await expect(canvas.getByTestId("product-edit-cross-markup")).toHaveValue("12.5");
-    await expect(canvas.getByTestId("product-edit-reserved-stock")).toHaveValue("4");
-    await expect(within(canvas.getByTestId("product-edit-cross-locked")).getByRole("checkbox")).not.toBeChecked();
+    // The lock arrives as the way its two fields say — a minimum of 4 (one-lock-three-ways).
+    await expect(canvas.getByTestId("product-edit-lock-mode-min")).toHaveAttribute("data-state", "checked");
+    await expect(canvas.getByTestId("product-edit-lock-minimum")).toHaveValue("4");
 
     await expect(canvas.getByTestId("product-image-1")).toBeVisible();
     await expect(canvas.getByTestId("product-image-0").parentElement!).toHaveTextContent("Cover");
     await expect(canvas.getByTestId("product-image-1").parentElement!).not.toHaveTextContent("Cover");
+  },
+};
+
+/** Every typed field shows an example (every-form-field-shows-an-example); the two figures keep their 0, the category
+ * says what to pick. */
+export const EveryFieldShowsAnExample: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("product-edit-sku")).toHaveAttribute("placeholder", "e.g. SKU-KOPI-250");
+    await expect(canvas.getByTestId("product-edit-name")).toHaveAttribute("placeholder", "e.g. Arabica Coffee 250g");
+    await expect(canvas.getByTestId("product-edit-description").getAttribute("placeholder")).toMatch(/^e\.g\. /);
+    await expect(canvas.getByTestId("product-edit-cross-markup")).toHaveAttribute("placeholder", "0");
+    // A new product is OPEN; the minimum shows — with its 0 — once that way is picked.
+    await expect(canvas.getByTestId("product-edit-lock-mode-open")).toHaveAttribute("data-state", "checked");
+    await userEvent.click(canvas.getByTestId("product-edit-lock-mode-min"));
+    await expect(await canvas.findByTestId("product-edit-lock-minimum")).toHaveAttribute("placeholder", "0");
+  },
+};
+
+/** The minimum is a QUANTITY, so it is `QuantityInput` — a − and a + either side of the box, never a typed number field
+ * that changes on a scroll. */
+export const TheMinimumSteps: Story = {
+  render: () => <AtEditMinyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+    const box = canvas.getByTestId("product-edit-lock-minimum");
+
+    await expect(box).toHaveValue("4");
+    await userEvent.click(canvas.getByTestId("product-edit-lock-minimum-plus"));
+    await waitFor(() => expect(box).toHaveValue("5"));
+    await userEvent.click(canvas.getByTestId("product-edit-lock-minimum-minus"));
+    await userEvent.click(canvas.getByTestId("product-edit-lock-minimum-minus"));
+    await waitFor(() => expect(box).toHaveValue("3"));
+  },
+};
+
+/** The lock's three ways each say what they mean for another team, and the minimum is asked for only when it is the
+ * way chosen (one-lock-three-ways). */
+export const TheLockSaysWhatEachWayMeans: Story = {
+  render: () => <AtEditMinyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+    const help = canvas.getByTestId("product-edit-lock-help");
+
+    await expect(help).toHaveTextContent("total stock in every warehouse");
+    await userEvent.click(canvas.getByTestId("product-edit-lock-mode-always"));
+    await waitFor(() => expect(help).toHaveTextContent("No other team can order it"));
+    await expect(canvas.queryByTestId("product-edit-lock-minimum")).toBeNull();
+    await userEvent.click(canvas.getByTestId("product-edit-lock-mode-open"));
+    await waitFor(() => expect(help).toHaveTextContent("Any team may sell it"));
   },
 };
 
@@ -144,8 +196,8 @@ export const SaveWaitsForTheRequired: Story = {
   },
 };
 
-/** A markup that is not a usable percent, or a hold-back that is not a whole count, says so and holds the save —
- * never read as 0, which would be a discount, or a hold-back, nobody chose. */
+/** A markup that is not a usable percent, or a minimum that is not a whole count of at least one, says so and holds the
+ * save — never read as 0, which would be a discount, or an open lock, nobody chose. */
 export const AnUnusableFigureHoldsTheSave: Story = {
   render: () => <AtEditMinyak />,
   play: async ({ canvasElement }) => {
@@ -159,9 +211,14 @@ export const AnUnusableFigureHoldsTheSave: Story = {
     await retype(canvas.getByTestId("product-edit-cross-markup"), "15");
     await expect(save).toBeEnabled();
 
-    await retype(canvas.getByTestId("product-edit-reserved-stock"), "1.5");
-    await waitFor(() => expect(canvasElement).toHaveTextContent("Enter a whole number of units"));
-    await expect(save).toBeDisabled();
+    // The minimum is a NumberInput, whose value settles a beat after the keystroke — each read waits for it. A 0 is the
+    // case the rule exists for (Open under another name); a decimal was dropped from here because a "." typed at
+    // machine speed under a loaded runner could land as "15", a valid minimum, and the story flaked.
+    await retype(canvas.getByTestId("product-edit-lock-minimum"), "0");
+    await waitFor(() => expect(canvasElement).toHaveTextContent("Enter a minimum stock of at least 1."));
+    await waitFor(() => expect(save).toBeDisabled());
+    await retype(canvas.getByTestId("product-edit-lock-minimum"), "6");
+    await waitFor(() => expect(save).toBeEnabled());
   },
 };
 
@@ -173,9 +230,11 @@ export const CreatingLandsOnTheList: Story = {
     await userEvent.type(canvas.getByTestId("product-edit-sku"), "SKU-ANG-045", { delay: 30 });
     await userEvent.type(canvas.getByTestId("product-edit-name"), "Minyak Goreng Sawit 5L — Jeriken", { delay: 30 });
     await pickDapur(canvas);
-    await userEvent.type(canvas.getByTestId("product-edit-reserved-stock"), "3", { delay: 30 });
     await userEvent.type(canvas.getByTestId("product-edit-cross-markup"), "7.5", { delay: 30 });
-    await userEvent.click(canvas.getByTestId("product-edit-cross-locked"));
+    // A minimum of 3, then Always — which keeps the 3 (one-lock-three-ways).
+    await userEvent.click(canvas.getByTestId("product-edit-lock-mode-min"));
+    await userEvent.type(await canvas.findByTestId("product-edit-lock-minimum"), "3", { delay: 30 });
+    await userEvent.click(canvas.getByTestId("product-edit-lock-mode-always"));
     await attach(canvasElement, [await picture("jeriken.png", "#facc15")]);
     await waitFor(() => expect(canvas.getByTestId("product-image-0")).toBeVisible());
 

@@ -14,8 +14,6 @@ import {
   Icon,
   Image,
   SimpleGrid,
-  Spacer,
-  Spinner,
   Stack,
   Tabs,
   Text,
@@ -23,8 +21,11 @@ import {
 import { Archive, ArrowLeft, Pencil, RotateCcw } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../api/clients";
+import { CompactActions } from "../../components/chrome/CompactActions";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { toaster } from "../../components/feedback/Toaster";
+import { useIsMobile } from "../../layouts/shell";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -33,9 +34,10 @@ import {
   useProductActivity,
   useProductDetail,
   useRestoreProduct,
-  useSetProductLocked,
+  useSetProductLock,
 } from "../../features/products/queries";
 import { RestoreProductDialog } from "../../features/products/RestoreProductDialog";
+import { ProductLockControl } from "../../features/products/ProductLock";
 import { pathToRoot } from "../../features/categories/categoryTree";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { formatMarkup } from "../../lib/markup";
@@ -58,9 +60,10 @@ function parseProductId(raw: string | undefined): bigint {
 // reached by clicking a product row.
 //
 // It is the SELLING team's view: the team that owns the catalogue entry, as opposed to the warehouse
-// that happens to hold the goods (which reads /inventories/products/:id instead). Three vertical tabs
-// down the left, the same shape the rack and warehouse-product details use, because they are the same
-// kind of screen — one record, read section by section:
+// that happens to hold the goods (which reads /inventories/products/:id instead). Its tabs run down the
+// left on a desktop, the same shape the rack and warehouse-product details use, because they are the same
+// kind of screen — one record, read section by section — and across the top on a phone
+// (`the-product-screens-follow-the-screen-rules`):
 //
 //   INFO   the catalogue record itself: identity, category, description, images, and the hold-back
 //          buffer, which is a decision about the ITEM and so belongs here rather than under money.
@@ -73,6 +76,7 @@ export function ProductDetailPage() {
   const navigate = useNavigate();
   const { current } = useTeam();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   const id = parseProductId(productId);
   const teamId = current?.teamId;
@@ -100,7 +104,7 @@ export function ProductDetailPage() {
   const activityQuery = useProductActivity({ teamId, productId: id, warehouseId });
   const archiveProduct = useArchiveProduct();
   const restoreProduct = useRestoreProduct();
-  const setLocked = useSetProductLocked();
+  const setLock = useSetProductLock();
 
   // The one restore failure the user has to act on: archiving frees the SKU, so another product may
   // hold it by now. Null while there is no conflict to resolve.
@@ -164,19 +168,24 @@ export function ProductDetailPage() {
 
   // Locking is edited in place, so it has no dialog and no save button — the switch falls back to the
   // server's answer on the refetch, and a failure is only noticeable as a toast.
-  async function toggleLocked(target: Product, locked: boolean) {
+  // THE LOCK, from its popover (`one-lock-three-ways`). Resolves whether it took, so the popover stays open on a
+  // failure; the page follows the server's answer on the refetch.
+  async function saveLock(target: Product, fields: { crossLocked: boolean; reservedStock?: number }): Promise<boolean> {
     if (teamId === undefined) {
-      return;
+      return false;
     }
 
     try {
-      await setLocked.mutateAsync({ teamId, productId: target.id, locked });
+      await setLock.mutateAsync({ teamId, productId: target.id, ...fields });
+      toaster.create({ type: "success", title: t("products.lock.saved") });
+      return true;
     } catch (err) {
       toaster.create({
         type: "error",
         title: t("products.toast.lockFailed"),
         description: rpcError(err),
       });
+      return false;
     }
   }
 
@@ -191,8 +200,9 @@ export function ProductDetailPage() {
     );
   }
 
+  // The page's shape while the product loads, not a spinner on an empty page (motion-is-small-quick-and-shared).
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading rows={3} testId="product-detail-loading" />;
   }
 
   if (error || !product) {
@@ -228,39 +238,53 @@ export function ProductDetailPage() {
   const archived = product.deleted;
 
   return (
-    <Stack gap="section" data-testid="product-detail-page">
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack gap="section" animationStyle="enter" data-testid="product-detail-page">
       <Button
         size="xs"
         variant="ghost"
         alignSelf="flex-start"
         data-testid="product-detail-back"
-        onClick={() => navigate("/products")}
+        // An archived product goes back to the archive it was opened from (the-archive-is-a-page-of-its-own).
+        onClick={() => navigate(archived ? "/products/archived" : "/products")}
       >
         <Icon as={ArrowLeft} boxSize="4" />
         {t("products.backToProducts")}
       </Button>
 
-      <Flex align="center" gap="card" wrap="wrap">
-        <Stack gap="0.5" minW="0">
-          <HStack gap="2">
-            <Heading size="md" data-testid="product-detail-name">
+      {/* THE NAME AND ITS ACTIONS — one row; on a phone it stays one row, the name cut to fit and the actions their
+          icons (the-phone-header-is-one-row, a-phone-header-action-is-an-icon). The SKU and category under it. */}
+      <Flex align="center" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
+        <Stack gap="0.5" flex="1 1 16rem" minW="0">
+          <HStack gap="2" minW="0">
+            <Heading size="md" truncate={isMobile} minW="0" data-testid="product-detail-name">
               {product.name}
             </Heading>
             {archived && (
-              <Badge colorPalette="gray" data-testid="product-detail-archived">
+              <Badge colorPalette="gray" flexShrink={0} data-testid="product-detail-archived">
                 {t("products.tab.archived")}
               </Badge>
             )}
           </HStack>
-          <Text fontSize="sm" color="fg.muted">
+          <Text fontSize="sm" color="fg.muted" truncate={isMobile}>
             {product.sku}
             {categoryLabel && ` · ${categoryLabel}`}
           </Text>
         </Stack>
 
-        <Spacer />
-
-        {archived ? (
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("products.table.actions")}
+            actions={
+              archived
+                ? [{ id: "restore", label: t("products.restore"), icon: RotateCcw, testId: "product-detail-restore", onClick: () => restore(product) }]
+                : [
+                    { id: "edit", label: t("products.edit"), icon: Pencil, testId: "product-detail-edit", onClick: () => navigate(`/products/${product.id}/edit`) },
+                    { id: "archive", label: t("products.archive"), icon: Archive, danger: true, testId: "product-detail-archive", onClick: () => setArchiving(true) },
+                  ]
+            }
+          />
+        ) : archived ? (
           /* UNARCHIVE. No confirmation: putting a product back into the catalogue is the reversible
              direction, and the only thing that can go wrong — the SKU being taken — is caught by the
              server and answered with a dialog that resolves it. */
@@ -319,8 +343,16 @@ export function ProductDetailPage() {
         onRestore={(sku) => restore(product, sku)}
       />
 
-      <Tabs.Root defaultValue="info" orientation="vertical" data-testid="pd-tabs">
-        <Tabs.List minW="48">
+      {/* Four tabs down the left on a desktop; ACROSS THE TOP on a phone, where a 12rem column of tabs would leave the
+          record a strip beside it — a phone gets its own arrangement, not the desktop's squeezed. One underline slides to
+          the picked tab (motion-is-small-quick-and-shared). */}
+      <Tabs.Root defaultValue="info" orientation={isMobile ? "horizontal" : "vertical"} data-testid="pd-tabs">
+        <Tabs.List
+          minW={isMobile ? undefined : "48"}
+          flexWrap="nowrap"
+          overflowX={isMobile ? "auto" : undefined}
+          overflowY={isMobile ? "hidden" : undefined}
+        >
           <Tabs.Trigger value="info" data-testid="pd-tab-info">
             {t("products.detail.tab.info")}
           </Tabs.Trigger>
@@ -333,6 +365,7 @@ export function ProductDetailPage() {
           <Tabs.Trigger value="history" data-testid="pd-tab-history">
             {t("products.detail.tab.stockHistory")}
           </Tabs.Trigger>
+          <Tabs.Indicator />
         </Tabs.List>
 
         {/* INFO — the catalogue record. What the thing IS, which is the half of a product that lives
@@ -469,34 +502,31 @@ export function ProductDetailPage() {
                         because it is a decision about the ITEM ("this one is fragile / always
                         miscounted"), taken once by whoever owns the catalogue, and it holds wherever
                         the thing is stocked. There is no money to put under it. */}
-                    <Stat
-                      label={t("products.field.reservedStock")}
-                      hint={t("products.detail.reservedHint")}
-                      testId="product-detail-reserved"
-                    >
-                      {t("products.stat.pcs", { n: product.reservedStock.toString() })}
+                    {/* THE LOCK — one setting, three ways (one-lock-three-ways): whether another team may order it,
+                        and the minimum total stock under which it may not. Changed here as on the list; a minimum in
+                        force right now is badged, judged on the total, so not while a lens shows one warehouse. */}
+                    <Stat label={t("products.lock.title")} testId="product-detail-lock">
+                      <ProductLockControl
+                        product={product}
+                        totalReady={warehouseId === 0n ? activityQuery.data?.stock?.readyQty : undefined}
+                        editable={!archived}
+                        onSave={(fields) => saveLock(product, fields)}
+                        testId="product-detail-lock-control"
+                      />
                     </Stat>
 
                     {/* The markup is repeated from the Price tab on purpose. It is the one commercial
                         term a person checks WITHOUT wanting the money screen — "am I letting other
                         teams have this, and at what?" — and making them change tabs to read one badge
-                        is how a summary stops summarising. Locked rides along, because the markup is
-                        meaningless if nobody may order it. */}
+                        is how a summary stops summarising. The lock is its own field beside it. */}
                     <Stat
                       label={t("products.field.crossMarkup")}
                       hint={t("products.detail.crossMarkupHint")}
                       testId="product-detail-info-markup"
                     >
-                      <HStack gap="2">
-                        <Badge colorPalette={product.crossMarkupBps > 0 ? "brand" : "gray"}>
-                          {formatMarkup(product.crossMarkupBps)}
-                        </Badge>
-                        {product.crossLocked && (
-                          <Badge colorPalette="gray" variant="outline">
-                            {t("products.table.locked")}
-                          </Badge>
-                        )}
-                      </HStack>
+                      <Badge colorPalette={product.crossMarkupBps > 0 ? "brand" : "gray"}>
+                        {formatMarkup(product.crossMarkupBps)}
+                      </Badge>
                     </Stat>
 
                     {/* WHEN, not what. Both are recency, and recency is the question a catalogue owner
@@ -540,8 +570,7 @@ export function ProductDetailPage() {
             warehouseId={warehouseId}
             warehouseName={warehouseName}
             onWarehouseChange={setWarehouseId}
-            onToggleLocked={(locked) => toggleLocked(product, locked)}
-            lockPending={setLocked.isPending}
+            onSaveLock={(fields) => saveLock(product, fields)}
           />
         </Tabs.Content>
 

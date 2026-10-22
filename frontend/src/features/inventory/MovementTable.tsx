@@ -1,6 +1,8 @@
+import type { ElementType, ReactNode } from "react";
 import { Stack, Table, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
+import { EmptyHint } from "../../components/feedback/EmptyHint";
 import type { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRfc3339DateTime } from "../../lib/datetime";
 import { kindLabel } from "./movementKind";
@@ -75,6 +77,13 @@ export interface MovementTableProps {
   /** Shown instead of rows when there are none. Page-specific: a shelf, a batch and a product each
    *  have their own honest way of saying "nothing happened here". */
   emptyText: string;
+  /**
+   * OPT-IN, per screen: with an icon the empty ledger is an `EmptyHint` — the icon, `emptyText` as its title and this
+   * line under it (an-empty-list-shows-a-hint) — and its rows light up under the pointer (a-table-row-lights-up). A
+   * screen takes both the day it is reworked; without the icon it keeps the plain grey line and resting rows.
+   */
+  emptyIcon?: ElementType;
+  emptyDescription?: ReactNode;
   /** Required by the `by` column. */
   actorNames?: Map<string, string>;
   /** Required by the `place` column. */
@@ -92,6 +101,8 @@ export function MovementTable({
   columns = [],
   afterLabel,
   emptyText,
+  emptyIcon,
+  emptyDescription,
   actorNames,
   rackLabel,
   warehouseLabel,
@@ -99,6 +110,8 @@ export function MovementTable({
   striped,
 }: MovementTableProps) {
   const { t } = useTranslation();
+  // A reworked screen's ledger — the hint and the lit rows come together (see `emptyIcon`).
+  const reworked = emptyIcon !== undefined;
 
   const header: Record<MovementContextColumn, string> = {
     by: t("inventory.movement.by"),
@@ -130,6 +143,12 @@ export function MovementTable({
     }
   }
 
+  if (reworked && movements.length === 0) {
+    return (
+      <EmptyHint size="sm" icon={emptyIcon} title={emptyText} description={emptyDescription} testId={`${testId}-empty`} />
+    );
+  }
+
   return (
     <Stack gap="card">
       <Table.Root size="sm" striped={striped} data-testid={`${testId}-table`}>
@@ -149,7 +168,11 @@ export function MovementTable({
 
         <Table.Body>
           {movements.map((m) => (
-            <Table.Row key={m.id.toString()} data-testid={`${testId}-row-${m.id}`}>
+            <Table.Row
+              key={m.id.toString()}
+              data-testid={`${testId}-row-${m.id}`}
+              css={reworked ? { _hover: { "& > td": { bg: "bg.muted" } } } : undefined}
+            >
               <Table.Cell>{formatRfc3339DateTime(m.createdAt)}</Table.Cell>
               <Table.Cell>{kindLabel(t, m.kind)}</Table.Cell>
               {columns.map((c) => (
