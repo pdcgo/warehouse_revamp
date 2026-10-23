@@ -3854,6 +3854,18 @@
       "looksLike": "This reference looks like",
       "useIt": "Use {{name}}"
     },
+    "contents": {
+      "label": "Order contents",
+      "items": "Items",
+      "bundles": "Bundles",
+      "toItemsTitle": "Switch to Items?",
+      "toBundlesTitle": "Switch to Bundles?",
+      "dropItems_one": "The item picked will be removed — an order holds items or bundles, not both.",
+      "dropItems_other": "The {{count}} items picked will be removed — an order holds items or bundles, not both.",
+      "dropBundles_one": "The bundle added will be removed — an order holds items or bundles, not both.",
+      "dropBundles_other": "The {{count}} bundles added will be removed — an order holds items or bundles, not both.",
+      "switch": "Switch"
+    },
     "bundles": {
       "title": "Bundles",
       "help": "A bundle puts its products on the order. Each slot can be filled with something else — what it may hold is the bundle's own rule times how many bundles were ordered.",
@@ -3865,6 +3877,8 @@
       "rule": "{{qty}} per bundle",
       "substitute": "Substitute",
       "search": "Search bundles",
+      "add": "Add Bundle",
+      "pickerTitle": "Choose Bundles",
       "noMatch": "No bundle matches that"
     },
     "returnMap": {

@@ -244,6 +244,48 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
 
 // ── WHAT THE REBUILT FORM ADDED (owner) ─────────────────────────────────────────────────────────
 
+/** Add bundles as items are added (bundles-are-added-like-items) — Tambah Bundel, tick them in the dialog, confirm. */
+async function addBundles(canvas: ReturnType<typeof within>, ids: string[]) {
+  await userEvent.click(await canvas.findByTestId("bundle-add"));
+  const dialog = await screen.findByTestId("bundle-picker-dialog");
+  await waitFor(() => expect(dialog).toBeVisible());
+  for (const id of ids) await userEvent.click(within(dialog).getByTestId(`bundle-pick-${id}`));
+  await userEvent.click(within(dialog).getByTestId("bundle-picker-confirm"));
+  await waitFor(() => expect(screen.queryByTestId("bundle-picker-dialog")).toBeNull());
+}
+
+// BUNDLES ARE ADDED THE WAY ITEMS ARE (owner: *"tambah bundle buat seperti item"*, bundles-are-added-like-items) — a
+// Tambah Bundel button under the card's title opening a dialog: a search that also reads the slot labels, ticked rows,
+// Kosongkan · Batal · Konfirmasi. Several at once; Confirm waits for a tick.
+export const BundlesAreAddedLikeItems: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
+
+    await userEvent.click(await canvas.findByTestId("bundle-add"));
+    const dialog = await screen.findByTestId("bundle-picker-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    const inDialog = within(dialog);
+    await expect(inDialog.getByTestId("bundle-picker-confirm")).toBeDisabled();
+
+    // The search reads a slot's label — "rice" finds Paket Dapur, not Hampers.
+    const height = dialog.getBoundingClientRect().height;
+    await userEvent.type(inDialog.getByTestId("bundle-picker-search"), "rice", { delay: 30 });
+    await waitFor(() => expect(inDialog.queryByTestId("bundle-pick-hampers")).toBeNull());
+    await expect(inDialog.getByTestId("bundle-pick-kitchen")).toBeVisible();
+    // A FIXED HEIGHT (a-picker-dialog-keeps-its-height) — the list narrowed, the panel did not.
+    await expect(dialog.getBoundingClientRect().height).toBe(height);
+    await userEvent.clear(inDialog.getByTestId("bundle-picker-search"));
+
+    // Two at once.
+    await userEvent.click(await inDialog.findByTestId("bundle-pick-hampers"));
+    await userEvent.click(inDialog.getByTestId("bundle-pick-kitchen"));
+    await userEvent.click(inDialog.getByTestId("bundle-picker-confirm"));
+
+    await waitFor(() => expect(canvas.getAllByTestId(/^bundle-(hampers|kitchen)-\d+$/)).toHaveLength(2));
+  },
+};
+
 // ⚠ A BUNDLE'S PRODUCTS ARE REAL LINES. They are drawn from the same warehouse, judged by the same
 // rule and SENT with the order — only the grouping has nowhere to live (mark 1). The short-line
 // alert is the proof: a slot asking for more than the shelf holds blocks Create exactly as a
@@ -253,11 +295,9 @@ export const ABundlesProductsAreOrderedLikeAnyOther: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(within(canvas.getByTestId("bundle-search")).getByRole("combobox"));
-
-    const hampers = await screen.findByTestId("bundle-option-hampers");
-    await waitFor(() => expect(hampers).toBeVisible());
-    await userEvent.click(hampers);
+    // Bundles are the other way to fill an order (an-order-holds-items-or-bundles) — picked first.
+    await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
+    await addBundles(canvas, ["hampers"]);
 
     // Teh Melati (72) has THREE on the shelf in the fixtures.
     const qty = await canvas.findByTestId("slot-qty-72");
@@ -266,6 +306,45 @@ export const ABundlesProductsAreOrderedLikeAnyOther: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("order-create-short")).toBeInTheDocument());
     await expect(canvas.getByTestId("order-create-save")).toBeDisabled();
+  },
+};
+
+// AN ORDER HOLDS ITEMS OR BUNDLES, NEVER BOTH (owner: *"order create items dan bundle cuma boleh pilih salah satu"*,
+// an-order-holds-items-or-bundles). One radio pill picks the card — Items first, and only that card shows. Leaving an
+// empty card is immediate; leaving one that holds something asks first, and the confirm empties it.
+export const AnOrderHoldsItemsOrBundles: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("order-items-help")).toBeVisible();
+    await expect(canvas.queryByTestId("bundle-add")).toBeNull();
+
+    // An empty items card — the switch is immediate.
+    await userEvent.click(canvas.getByTestId("order-contents-bundles"));
+    await expect(await canvas.findByTestId("bundle-add")).toBeVisible();
+    await expect(canvas.queryByTestId("order-items-help")).toBeNull();
+
+    await addBundles(canvas, ["hampers"]);
+    await canvas.findByTestId("slot-qty-72");
+
+    // A card holding a bundle — the switch asks, and Cancel keeps it.
+    await userEvent.click(canvas.getByTestId("order-contents-items"));
+    let dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog).toHaveTextContent("will be removed");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await expect(canvas.getByTestId("slot-qty-72")).toBeVisible();
+
+    // …and the confirm empties it and switches.
+    await userEvent.click(canvas.getByTestId("order-contents-items"));
+    dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await expect(await canvas.findByTestId("order-items-help")).toBeVisible();
+
+    await userEvent.click(canvas.getByTestId("order-contents-bundles"));
+    await expect(await canvas.findByTestId("bundle-empty")).toBeVisible();
   },
 };
 

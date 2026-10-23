@@ -3840,6 +3840,16 @@
       "looksLike": "Referensi ini sepertinya",
       "useIt": "Pakai {{name}}"
     },
+    "contents": {
+      "label": "Isi pesanan",
+      "items": "Item",
+      "bundles": "Bundel",
+      "toItemsTitle": "Ganti ke Item?",
+      "toBundlesTitle": "Ganti ke Bundel?",
+      "dropItems_other": "{{count}} item yang sudah dipilih akan dihapus — satu pesanan berisi item atau bundel, tidak keduanya.",
+      "dropBundles_other": "{{count}} bundel yang sudah ditambahkan akan dihapus — satu pesanan berisi item atau bundel, tidak keduanya.",
+      "switch": "Ganti"
+    },
     "bundles": {
       "title": "Bundel",
       "help": "Bundel menaruh produknya ke pesanan. Tiap slot bisa diisi produk lain — batasnya ketentuan bundel dikali jumlah bundel yang dipesan.",
@@ -3851,6 +3861,8 @@
       "rule": "{{qty}} per bundel",
       "substitute": "Ganti Produk",
       "search": "Cari bundel",
+      "add": "Tambah Bundel",
+      "pickerTitle": "Pilih Bundel",
       "noMatch": "Tidak ada bundel yang cocok"
     },
     "returnMap": {

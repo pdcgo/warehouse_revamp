@@ -44,6 +44,10 @@ import type { PickedProduct } from "../../components/products/ProductSelect";
 import { emptyAddress } from "../../components/customers/AddressPicker";
 import type { AddressValue } from "../../components/customers/AddressPicker";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { RadioPills } from "../../components/inputs/RadioPills";
+
+/** What the order is filled from — its own lines, or bundles — and never both (an-order-holds-items-or-bundles). */
+type OrderContents = "items" | "bundles";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { DatePicker } from "../../components/datetime/DatePicker";
 import { todayDateInput } from "../../lib/datetime";
@@ -251,6 +255,12 @@ export function OrderCreatePage() {
   // marked on its card and listed at the top of the page. The exception is the bundle: its
   // products ARE placed, as ordinary lines (see `allLines`); only the grouping is lost.
   const [bundles, setBundles] = useState<BundleDraft[]>([]);
+  // ITEMS OR BUNDLES, NEVER BOTH (owner: *"order create items dan bundle cuma boleh pilih salah satu"*,
+  // `an-order-holds-items-or-bundles`) — one radio pill chooses which card the order is filled from. Items first: a draft
+  // seeds items, and most orders are typed line by line. Leaving a card that already holds something asks first
+  // (`switchingTo`), because the switch empties it.
+  const [contents, setContents] = useState<OrderContents>("items");
+  const [switchingTo, setSwitchingTo] = useState<OrderContents | null>(null);
   const [mapping, setMapping] = useState<Map<string, MappedProduct>>(new Map());
   // WHEN THE ORDER HAPPENED — and it starts EMPTY (owner).
   //
@@ -505,6 +515,31 @@ export function OrderCreatePage() {
 
   function setBundleQuantity(key: string, quantity: string) {
     setBundles((prev) => prev.map((b) => (b.key === key ? { ...b, quantity } : b)));
+  }
+
+  // ── Items or bundles ──────────────────────────────────────────────────────────────────────────
+  //
+  // A switch from an empty card is immediate; from one that holds lines or bundles it waits for the confirm, which then
+  // empties the card being left — an order never carries both (an-order-holds-items-or-bundles).
+  function chooseContents(next: OrderContents) {
+    if (next === contents) return;
+
+    const holding = contents === "items" ? lines.length : bundles.length;
+    if (holding > 0) {
+      setSwitchingTo(next);
+      return;
+    }
+
+    setContents(next);
+  }
+
+  async function confirmSwitch() {
+    if (switchingTo === null) return;
+
+    if (contents === "items") setLines([]);
+    else setBundles([]);
+    setContents(switchingTo);
+    setSwitchingTo(null);
   }
 
   function removeBundle(key: string) {
@@ -1205,33 +1240,51 @@ export function OrderCreatePage() {
                 it is read while the products below are picked. Nothing without `?draft=`. */}
             {draft && draft.items.length > 0 && <DraftProductHints items={draft.items} source={draft.source} />}
 
-            {/* WHAT IS BEING SOLD — the items card. */}
-            <OrderItemCard
-              teamId={cardTeamId}
-              warehouseId={warehouseId}
-              lines={lines}
-              stock={stock}
-              costs={costs}
-              onPick={pickProducts}
-              onPatch={patchLine}
-              onRemove={removeLine}
-            />
+            {/* WHAT IS BEING SOLD — as ITEMS or as BUNDLES, never both (an-order-holds-items-or-bundles): one radio
+                pill picks the card, and only that card shows. */}
+            <Stack gap="1.5" data-testid="order-contents-field">
+              <Text fontSize="xs" fontWeight="bold" color="fg.label">
+                {t("orderForm.contents.label")}
+              </Text>
+              <RadioPills
+                value={contents}
+                onChange={chooseContents}
+                ariaLabel={t("orderForm.contents.label")}
+                testId="order-contents"
+                options={[
+                  { value: "items", label: t("orderForm.contents.items"), testId: "order-contents-items" },
+                  { value: "bundles", label: t("orderForm.contents.bundles"), testId: "order-contents-bundles" },
+                ]}
+              />
+            </Stack>
 
-            {/* …AND THE SAME QUESTION ASKED IN BUNDLES. A second card rather than a section of the
-                one above: a bundle's slots are edited against a ceiling, and that does not fit a
-                table of flat lines. The products it contributes are counted with the rest. */}
-            <BundleCard
-              teamId={cardTeamId}
-              warehouseId={warehouseId}
-              bundles={bundles}
-              stock={stock}
-              costs={costs}
-              onAdd={addBundle}
-              onQuantity={setBundleQuantity}
-              onRemove={removeBundle}
-              onFill={fillSlot}
-              onFillQuantity={setFillQuantity}
-            />
+            {contents === "items" ? (
+              <OrderItemCard
+                teamId={cardTeamId}
+                warehouseId={warehouseId}
+                lines={lines}
+                stock={stock}
+                costs={costs}
+                onPick={pickProducts}
+                onPatch={patchLine}
+                onRemove={removeLine}
+              />
+            ) : (
+              /* THE SAME QUESTION ASKED IN BUNDLES. Its own card: a bundle's slots are edited against a ceiling, and
+                 that does not fit a table of flat lines. The products it contributes are the order's lines. */
+              <BundleCard
+                teamId={cardTeamId}
+                warehouseId={warehouseId}
+                bundles={bundles}
+                stock={stock}
+                costs={costs}
+                onAdd={addBundle}
+                onQuantity={setBundleQuantity}
+                onRemove={removeBundle}
+                onFill={fillSlot}
+                onFillQuantity={setFillQuantity}
+              />
+            )}
 
             {/* WHERE A RETURN WOULD LAND — only for goods belonging to another team, so the card is
                 empty on an ordinary own-catalogue order. */}
@@ -1345,6 +1398,22 @@ export function OrderCreatePage() {
         placing={saving}
         onClose={() => setGate([])}
         onPlaceAnyway={() => void place()}
+      />
+
+      {/* Leaving a card that holds something empties it — asked first (an-order-holds-items-or-bundles). */}
+      <ConfirmDialog
+        open={switchingTo !== null}
+        onOpenChange={(open) => {
+          if (!open) setSwitchingTo(null);
+        }}
+        title={t(switchingTo === "bundles" ? "orderForm.contents.toBundlesTitle" : "orderForm.contents.toItemsTitle")}
+        message={
+          contents === "items"
+            ? t("orderForm.contents.dropItems", { count: lines.length })
+            : t("orderForm.contents.dropBundles", { count: bundles.length })
+        }
+        confirmLabel={t("orderForm.contents.switch")}
+        onConfirm={confirmSwitch}
       />
 
       <ConfirmDialog

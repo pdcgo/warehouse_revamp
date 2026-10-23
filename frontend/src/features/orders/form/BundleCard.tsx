@@ -4,14 +4,11 @@ import {
   Box,
   Button,
   Card,
-  Combobox,
   Flex,
   Icon,
   IconButton,
-  Portal,
   Stack,
   Text,
-  useListCollection,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Package, Replace, X } from "lucide-react";
@@ -25,8 +22,8 @@ import { lineTotal } from "../../../features/orders/lines";
 import { formatRupiah } from "../../../lib/money";
 import type { BundleDraft, SlotDraft } from "./bundles";
 import { slotCap, slotFilled } from "./bundles";
-import type { BundleTemplate } from "./mockData";
 import { BUNDLES } from "./mockData";
+import { BundlePicker } from "./BundlePicker";
 import { coverFor } from "./mockImages";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { ORDER_FORM_PENDING } from "./pending";
@@ -80,26 +77,30 @@ export function BundleCard({
     <Card.Root>
       <Card.Body>
         <Stack gap="card">
+          {/* THE ITEMS CARD'S SHAPE (owner: *"tambah bundle buat seperti item"*, bundles-are-added-like-items) — the
+              title and what the card is for, and on the right the button that opens the picker; the two cards are the
+              two ways to fill one order (an-order-holds-items-or-bundles), so they read alike. */}
           <Flex align="start" gap="card" wrap="wrap" justify="space-between">
             <Stack gap="0.5" minW="0">
               <Flex align="center" gap="2" wrap="wrap">
-                <Card.Title>{t("orderForm.bundles.title")}</Card.Title>
+                {/* One step larger, as the items card's title is — it holds the order's goods in its place. */}
+                <Card.Title textStyle="xl">{t("orderForm.bundles.title")}</Card.Title>
                 <NotImplemented list={ORDER_FORM_PENDING} id="bundle" />
               </Flex>
               <Card.Description>{t("orderForm.bundles.help")}</Card.Description>
             </Stack>
 
-            <Box minW={{ base: "full", sm: "72" }}>
-              <BundleSearch disabled={noWarehouse} onAdd={onAdd} />
-            </Box>
-          </Flex>
+            <Flex align="center" gap="card" wrap="wrap">
+              <BundlePicker bundles={BUNDLES} disabled={noWarehouse} onAdd={(ids) => ids.forEach(onAdd)} />
 
-          {/* Same rule as the items card: with no warehouse, every figure on a slot would be blank. */}
-          {noWarehouse && (
-            <Text fontSize="sm" color="warning.fg">
-              {t("orders.pickWarehouseFirst")}
-            </Text>
-          )}
+              {/* WHY it is disabled, beside the disabled thing — with no warehouse every figure on a slot is blank. */}
+              {noWarehouse && (
+                <Text fontSize="sm" color="warning.fg" data-testid="bundle-need-warehouse">
+                  {t("orders.pickWarehouseFirst")}
+                </Text>
+              )}
+            </Flex>
+          </Flex>
 
           {bundles.length === 0 && !noWarehouse && (
             <Text fontSize="sm" color="fg.muted" data-testid="bundle-empty">
@@ -177,100 +178,6 @@ export function BundleCard({
 }
 
 // ── Choosing a bundle ───────────────────────────────────────────────────────────────────────────
-
-// A SEARCH BOX, NOT A MENU (owner: "bundles can be very many").
-//
-// A menu listing every template stops working at twenty, and the catalogue is expected to be far
-// larger. This is a combobox in its *search and add* form: it holds no value of its own — picking one
-// puts the bundle on the order and empties the input, ready for the next.
-//
-// Each option carries the slot labels under the name, because two bundles called "Hampers …"
-// differ by what is IN them, and that has to be readable before the pick rather than after.
-//
-// ⚠ THE FILTERING IS LOCAL because the list is local. A real catalogue reads `BundleList(q, page)`
-// (HARD RULE 9: it grows), and this control then searches server-side exactly as ProductSelect does —
-// the markup below does not change, only where `collection` comes from.
-// Its own component, so a bundle can be picked somewhere other than this card.
-export function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (id: string) => void }) {
-  const { t } = useTranslation();
-  const [input, setInput] = useState("");
-
-  const { collection, filter } = useListCollection<BundleTemplate>({
-    initialItems: BUNDLES,
-    itemToString: (bundle) => bundle.name,
-    itemToValue: (bundle) => bundle.id,
-    filter: (_itemText, filterText, bundle) => {
-      const q = filterText.trim().toLowerCase();
-      if (q === "") return true;
-
-      // The slot labels are searchable too: somebody looking for the bundle with the coffee in it
-      // types "coffee", not the bundle's name — which they are trying to find.
-      return (
-        bundle.name.toLowerCase().includes(q) ||
-        bundle.slots.some((slot) => slot.label.toLowerCase().includes(q))
-      );
-    },
-  });
-
-  return (
-    <Combobox.Root
-      openOnClick
-      collection={collection}
-      disabled={disabled}
-      // NO VALUE, EVER. The control is an action, not a field: what it produces is a bundle on the
-      // order below, and a combobox left displaying the last thing added would read as a filter.
-      value={[]}
-      // ⚠ AND THE INPUT HAS TO BE CLEARED BY ZAG, not by us. The default selection behaviour is
-      // "replace" — it writes the picked item's name into the input AFTER `onValueChange` runs, so
-      // emptying it there left "Hampers Lebaran" sitting in the search box. "clear" is the setting
-      // that matches what this control is for: pick, add, type the next one.
-      selectionBehavior="clear"
-      inputValue={input}
-      onInputValueChange={(e) => {
-        setInput(e.inputValue);
-        filter(e.inputValue);
-      }}
-      onValueChange={(e) => {
-        const picked = e.value[0];
-        if (picked !== undefined) onAdd(picked);
-
-        // Empty it, and reset the filter with it — otherwise the next open shows yesterday's search.
-        setInput("");
-        filter("");
-      }}
-      data-testid="bundle-search"
-    >
-      <Combobox.Control>
-        <Combobox.Input placeholder={t("orderForm.bundles.search")} />
-        <Combobox.IndicatorGroup>
-          <Combobox.Trigger />
-        </Combobox.IndicatorGroup>
-      </Combobox.Control>
-
-      <Portal>
-        <Combobox.Positioner>
-          <Combobox.Content>
-            <Combobox.Empty>{t("orderForm.bundles.noMatch")}</Combobox.Empty>
-            {collection.items.map((bundle) => (
-              <Combobox.Item item={bundle} key={bundle.id} data-testid={`bundle-option-${bundle.id}`}>
-                <Stack gap="0.5" minW="0">
-                  <Text fontWeight="medium" lineClamp={1}>
-                    {bundle.name}
-                  </Text>
-                  <Text fontSize="xs" color="fg.muted" lineClamp={1}>
-                    {t("orderForm.bundles.slotCount", { count: bundle.slots.length })} ·{" "}
-                    {bundle.slots.map((slot) => slot.label).join(", ")}
-                  </Text>
-                </Stack>
-                <Combobox.ItemIndicator />
-              </Combobox.Item>
-            ))}
-          </Combobox.Content>
-        </Combobox.Positioner>
-      </Portal>
-    </Combobox.Root>
-  );
-}
 
 // ── One slot ────────────────────────────────────────────────────────────────────────────────────
 

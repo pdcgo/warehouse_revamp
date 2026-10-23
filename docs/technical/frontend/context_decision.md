@@ -69,6 +69,7 @@ when it applies one of these.
 | [a-one-type-picker-shows-the-name-alone](#a-one-type-picker-shows-the-name-alone) | a team filter that offers ONE type (warehouses, selling teams) shows its pick as the name alone — no type badge | the supplier screens, the seller's orders |
 | [a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes) | an × and Hapus Filter fade in as they appear, the phone's Filter count pops when it changes, a chip's pick turns in 120ms — the results never fade | every `FilterBar` |
 | [motion-is-small-quick-and-shared](#motion-is-small-quick-and-shared) | motion is pure CSS from the theme: a page rises and fades in, a swap fades in place, a first load is a skeleton, one tab underline slides, a hover answers in 120ms — and a refresh moves nothing | the supplier screens first |
+| [a-picker-dialog-keeps-its-height](#a-picker-dialog-keeps-its-height) | a picker dialog has a FIXED height — `min(88dvh, 48rem)`, on a desktop and a phone alike — and only its list scrolls | the product picker, then the bundle picker |
 | [a-counted-line-is-three-columns](#a-counted-line-is-three-columns) | a screen that counts line by line gives each line Accept Delivery's frame — what it is · what you type · what it means — in a fixed shape, under a sticky header | Accept Delivery, then the stock count's Count page |
 
 ## a-list-summary-is-the-order-lists-card-strip
@@ -1545,6 +1546,29 @@ sticky:  ←  Count #15 · A-01-1  [All racks]            1 of 3 counted  [Chang
 | stacks | below `lg` on the Count page (its columns are light); Accept Delivery keeps `xl` — a placement picker needs the room |
 | not a card in a card | the two typed columns are bordered boxes inside the line's card, as Accept Delivery's are — the one pattern the owner pointed at |
 | was | the Count page stacked every field on the left, each card a different shape by state — *"so weird"* |
+
+## a-picker-dialog-keeps-its-height
+
+> Owner, in chat (2026-10-23), on the order form's bundle picker: *"modal bundelnya heightnya fix kan seperti produk"* —
+> the product picker's rule (*"ONLY THE TABLE SCROLLS"*, said on that picker and kept in its code) asked for a second
+> time, so it is a rule for every picker.
+
+```
+┌ Pilih … ─────────────────── × ┐   pinned
+│ [⌕ search            ]        │   pinned — a filter you cannot see cannot be cleared
+│ ╭ rows ─────────────── ▲ ╮    │   THE ONLY SCROLLER, its bar on the dialog's edge
+│ ╰─────────────────────── ╯    │
+│ Kosongkan     Batal Konfirmasi │   pinned
+└───────────────────────────────┘   height: min(88dvh, 48rem) — whatever the rows
+```
+
+| | |
+| --- | --- |
+| the height | **fixed** — `min(88dvh, 48rem)` on the dialog's content: a full panel on a laptop, never more than the screen on a phone (`dvh` survives the address bar sliding away) |
+| a phone | **the same rule** — at a phone's height the `88dvh` side wins, so the dialog fills most of the screen and keeps that size |
+| why fixed | a fitted dialog changes height as a search narrows the list or a page turns — the footer, and Confirm in it, moves out from under the pointer that just used it. A browse surface that keeps its shape is worth the empty space a short list leaves |
+| what scrolls | only the rows — the header, the search and the footer stay put (`layerStyle="scrollList"`, the box pulled out through the body's padding so its bar rides the dialog's edge) |
+| applied to | `ProductPickerShell` (every product picker), `BundlePicker` (the order form) |
 
 ## Recorded elsewhere
 
