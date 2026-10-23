@@ -188,6 +188,7 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [tanda-pisah-membedakan-nama-rak](#tanda-pisah-membedakan-nama-rak) | `A-01`, `A01` dan `a 01` tiga rak berbeda — unik tetap `lower(name)`, hanya beda huruf besar-kecil yang dianggap sama |
 | [nama-rak-dicari-lewat-kunci](#nama-rak-dicari-lewat-kunci) | filter nama cari rak mencocokkan `rack_name_key` — huruf kecil, selain huruf dan angka dibuang — di DB, hanya untuk pencarian, bukan untuk aturan unik |
 | [nama-persis-selalu-pertama](#nama-persis-selalu-pertama) | saat nama diisi, rak yang nama aslinya persis sama (tanpa beda huruf) selalu di baris pertama, lalu urutan pilihan, lalu `id` |
+| [satu-retur-berjalan-per-order](#satu-retur-berjalan-per-order) | Create Return ditolak selama order itu punya retur yang status terakhirnya bukan `cancelled` — dicek di bawah kunci per order, seperti resi restock, tanpa `UNIQUE` |
 
 ---
 
@@ -5502,3 +5503,61 @@ flowchart LR
   C -->|"ya"| P["A01 — baris pertama"]
   C -->|"tidak"| U["A-01, a 01 — urutan pilihan, lalu id"]
 ```
+
+---
+
+## satu-retur-berjalan-per-order
+
+> Chat 2026-10-22 — *"jangan di unique, ketentuannya sama dengan restock, lihat dulu log statusnya"* · lalu *"oke untuk
+> ketentuan yang terakhir kita bahas ini tolong di catat"*. Menjawab retur dobel dari dua pembuat — CS dan gudang
+> ([return_flow.md](./return_flow.md) baris 34–37). Rekomendasi saya `UNIQUE` pada `ref_order_id`; Anda memilih aturan resi
+> restock ([satu-resi-satu-restock-berjalan](#satu-resi-satu-restock-berjalan)), yang masih membolehkan retur baru sesudah
+> yang lama `cancelled`.
+
+**Putusannya.** Create Return untuk sebuah order **ditolak** selama order itu sudah punya transaksi retur yang status
+terakhirnya **bukan** `cancelled`. Tidak ada `UNIQUE` di tabel. Pemeriksaannya di dalam transaksi DB, di bawah kunci per
+order — pola yang sama dengan *kunci resi* restock ([restock_flow.md](./restock_flow.md) baris 160).
+
+```mermaid
+flowchart LR
+  R["Create Return - order 78"] --> L["DB transaction - kunci retur:78"]
+  L --> Q{"ada retur order 78, status terakhir bukan cancelled?"}
+  Q -->|"tidak ada"| C["buat retur, log ongoing"]
+  Q -->|"ada, sudah cancelled"| C
+  Q -->|"ada, ongoing, arrived atau approved"| X["tolak"]
+```
+
+| retur order 78 yang sudah ada | status terakhirnya | Create Return order 78 yang baru |
+| --- | --- | --- |
+| tidak ada | — | dibuat |
+| tx 501 | `cancelled` | dibuat |
+| tx 501 | `ongoing`, `arrived` atau `approved` | ditolak |
+| Ani (CS) dan Budi (gudang) mengklaim di detik yang sama | — | yang pertama dibuat; yang kedua menunggu kunci, lalu melihat tx 501 `ongoing` — ditolak |
+
+**Spesifikasinya.**
+
+```sql
+select pg_advisory_xact_lock(hashtextextended('retur:' || $1::text, 0));   -- $1 = ref_order_id
+
+select t.id
+from transactions t
+where t.type = 'return'
+  and t.ref_order_id = $1
+  and (select l.status
+       from transaction_status_logs l
+       where l.tx_id = t.id
+       order by l.created_at desc, l.id desc
+       limit 1) <> 'cancelled';
+```
+
+| | |
+| --- | --- |
+| kunci | `pg_advisory_xact_lock`, per `ref_order_id`, lepas sendiri saat transaksi DB selesai. Tanpa kunci, dua klaim di detik yang sama sama-sama melihat *belum ada retur* |
+| prefiks | `retur:` — terpisah dari `resi:` restock, jadi keduanya tidak saling menunggu |
+| status terakhir | baris `TRANSACTION_STATUS_LOGS` terbaru — `created_at`, lalu `id` |
+| `UNIQUE` | tidak ada, baik di `ref_order_id` maupun di kolom lain |
+
+⚠ **Yang TIDAK ikut diputuskan:** apa yang dikembalikan saat retur yang berjalan sudah ada — *tolak* seperti restock, atau
+`tx_id` yang sudah ada, supaya Order Service yang mengulang panggilan sesudah timeout tidak mengira returnya gagal (saran
+saya) · alur **pembatalan** retur belum ditulis, jadi cabang `cancelled` di atas belum bisa terjadi · apakah `take_ref` disimpan
+di transaksi retur.

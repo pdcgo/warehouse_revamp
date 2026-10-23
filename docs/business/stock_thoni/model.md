@@ -41,7 +41,11 @@ RACKS {
 
 TRANSACTIONS {
     int id pk
+
     int ref_order_id "ref to order_id when return, nullable"
+    string return_source "cs | warehouse, hanya retur, nullable"
+    string take_ref "idempotency_key order, hanya retur, nullable"
+
     int created_by "ref to user"
     int team_id "ref to user team"
     int shipping_id "ref to shipping_agent_id"
@@ -153,8 +157,10 @@ ORDER_SLOT_MAP {
     int id pk
     int order_id "ref to ORDER_TAKES"
     int slot_id fk "ref to SKU_SLOT"
-    int count
     string type "taken | released"
+
+    int count
+    bigint unit_fee
 }
 
 ```
