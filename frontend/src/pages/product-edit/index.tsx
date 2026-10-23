@@ -17,12 +17,15 @@ import {
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus, Save } from "lucide-react";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { productClient, rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useSaveProduct } from "../../features/products/queries";
 import { CategorySelect } from "../../components/pickers/CategorySelect";
+import { CharCount } from "../../components/inputs/CharCount";
+import { PRODUCT_LIMITS } from "../../features/products/limits";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { formatMarkupValue, parseMarkupPercent } from "../../lib/markup";
 import { parseQuantity } from "../../lib/quantity";
@@ -63,6 +66,9 @@ export function ProductEditPage() {
   const [loading, setLoading] = useState(editing);
   const saving = saveProduct.isPending;
   const [error, setError] = useState("");
+  // THE SKU THE SERVER REFUSED as already held by another live product of this team — kept as the value refused, so
+  // the error stands under the SKU field until that value is changed, and returns if it is typed back.
+  const [takenSku, setTakenSku] = useState<string | null>(null);
 
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");
@@ -138,6 +144,10 @@ export function ProductEditPage() {
     // The two fields the lock writes; Always with no minimum typed leaves the stored one as it is on an edit.
     const lock = lockFieldsOf(lockMode, parseQuantity(minimum) ?? 0);
 
+    // TRIMMED, because the server stores what it is sent: "KOPI-01 " would be a second SKU beside "KOPI-01", one that
+    // nobody can tell apart on a screen.
+    const record = { sku: sku.trim(), name: name.trim(), description: description.trim() };
+
     setError("");
 
     try {
@@ -152,9 +162,7 @@ export function ProductEditPage() {
               productId: BigInt(productId),
               fields: {
                 teamId,
-                sku,
-                name,
-                description,
+                ...record,
                 categoryId,
                 // Always sent from this form, because the form always shows it — "absent = leave
                 // alone" is for callers that do not have the field on screen.
@@ -168,9 +176,7 @@ export function ProductEditPage() {
           : {
               fields: {
                 teamId,
-                sku,
-                name,
-                description,
+                ...record,
                 categoryId,
                 crossMarkupBps: markupBps,
                 reservedStock: lock.reservedStock ?? 0,
@@ -182,7 +188,7 @@ export function ProductEditPage() {
 
       toaster.create({
         type: "success",
-        title: editing ? t("products.toast.saved") : t("products.toast.created", { sku }),
+        title: editing ? t("products.toast.saved") : t("products.toast.created", { sku: record.sku }),
       });
 
       // SAVE still goes to the list, while BACK returns to the product. They are different journeys:
@@ -190,6 +196,13 @@ export function ProductEditPage() {
       // Back is "I did not mean to be here" and should undo the step that got you here.
       void navigate("/products");
     } catch (err) {
+      // A TAKEN SKU IS SAID UNDER THE SKU (owner). The server answers it with its own code — AlreadyExists, the only
+      // one a product write gives for a duplicate (`dbError`) — so it is told apart from every other failure, which
+      // stays a sentence at the top of the page.
+      if (err instanceof ConnectError && err.code === Code.AlreadyExists) {
+        setTakenSku(record.sku);
+        return;
+      }
       setError(rpcError(err));
     }
   }
@@ -218,17 +231,22 @@ export function ProductEditPage() {
   // decimal is not a count. Same treatment as the markup: block it rather than coerce it.
   const lockUsable = lockMode !== "min" || minimumIsUsable(minimum);
 
+  // The SKU the server refused, while it is still the one typed.
+  const skuTaken = takenSku !== null && sku.trim() === takenSku;
+
   // Category is required; SKU and name too. The backend enforces all three regardless.
   const canSave =
     sku.trim() !== "" &&
     name.trim() !== "" &&
     categoryId > 0n &&
     crossMarkupBps !== null &&
-    lockUsable;
+    lockUsable &&
+    !skuTaken;
 
   return (
-    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
-    <Stack gap="section" maxW="5xl" animationStyle="enter" data-testid="product-edit-page">
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared). At the canvas's LEFT edge, not
+    // centred (a-narrowed-page-stays-at-the-left).
+    <Stack gap="section" animationStyle="enter" data-testid="product-edit-page">
       <Flex align="center" gap="card">
         <IconButton
           size="xs"
@@ -250,55 +268,96 @@ export function ProductEditPage() {
 
       <form onSubmit={save} noValidate>
         <Stack gap="section">
-          {/* Gallery left, details right — the two are read side by side, not one after the other:
-              the picture is what tells you the fields describe the right thing, so it leads. They
-              collapse to one column below lg, where two columns would leave neither enough room.
-              `alignItems=start` keeps the shorter card its own height instead of stretching it. */}
-          <Grid templateColumns={{ base: "1fr", lg: "2fr 3fr" }} gap="section" alignItems="start">
-            <Card.Root>
+          {/* THE FORM FILLS THE CANVAS, IN THREE CARDS (owner: *"kanan terlalu sepi"*, *"kurang, tidak penuh"*,
+              *"gambar terlalu besar"*, then *"deskripsi masuk info produk"*, `the-form-fills-the-canvas-in-three-cards`) —
+              what it looks like, what it is, and who else may sell it:
+
+                xl and up   [ Gambar 22rem ] [ Info Produk 1.25 ] [ Penjualan Tim Lain 1 ]
+                lg          [ Gambar 18rem ] [ Info Produk        ]
+                                             [ Penjualan Tim Lain ]   under Info, the left left empty
+                below lg    one column, in the same order
+
+              Info Produk is a little wider than Penjualan Tim Lain on a wide screen — it holds the longer text (owner:
+              *"info produk kasih sedikit lebih besar"*); at `lg` the second card lines up under it, never under the
+              picture (*"sejajar dengan info produk, ada gap di kiri"*).
+
+              THE GALLERY'S COLUMN IS FIXED, so the cover is a picture to check, not a poster — the text columns take the
+              rest of the width. The cards STRETCH to their row, so every row ends on one line. */}
+          <Grid
+            templateColumns={{
+              base: "minmax(0, 1fr)",
+              lg: "18rem minmax(0, 1fr)",
+              xl: "22rem minmax(0, 1.25fr) minmax(0, 1fr)",
+            }}
+            templateAreas={{
+              base: `"gallery" "info" "cross"`,
+              lg: `"gallery info" ". cross"`,
+              xl: `"gallery info cross"`,
+            }}
+            gap="section"
+          >
+            <Card.Root gridArea="gallery" data-testid="product-edit-images-card">
               <Card.Body>
                 <Stack gap="card">
-                  <Text fontWeight="medium">{t("products.images")}</Text>
+                  <Card.Title>{t("products.images")}</Card.Title>
                   <ProductImagesInput teamId={teamId ?? 0n} value={images} onChange={setImages} />
                 </Stack>
               </Card.Body>
             </Card.Root>
 
-            <Card.Root>
+            <Card.Root gridArea="info" data-testid="product-edit-info-card">
               <Card.Body>
                 <Stack gap="card">
+                  <Card.Title>{t("products.form.infoTitle")}</Card.Title>
                   {/* EVERY TYPED FIELD SHOWS AN EXAMPLE (every-form-field-shows-an-example) — a realistic value, gone as
                       soon as something is typed; the two figures keep their 0, the category says what to pick. */}
-                  <Field.Root required>
+                  {/* EVERY LIMIT IS SHOWN, as "5/64" under its field (a-limited-field-shows-its-count) — the box stops at
+                      the server's `max_len`, so the limit is met while typing, never as a refusal after Save. */}
+                  <Field.Root required invalid={skuTaken}>
                     <Field.Label>{t("products.field.sku")}</Field.Label>
                     <Input
                       value={sku}
+                      maxLength={PRODUCT_LIMITS.sku}
                       placeholder={t("products.form.skuPlaceholder")}
                       data-testid="product-edit-sku"
                       onChange={(e) => setSku(e.target.value)}
                     />
+                    <Flex justify="space-between" align="start" gap="2" w="full">
+                      {skuTaken ? (
+                        <Field.ErrorText data-testid="product-edit-sku-taken">{t("products.form.skuTaken")}</Field.ErrorText>
+                      ) : (
+                        <span />
+                      )}
+                      <CharCount value={sku} max={PRODUCT_LIMITS.sku} testId="product-edit-sku-count" />
+                    </Flex>
                   </Field.Root>
 
                   <Field.Root required>
                     <Field.Label>{t("products.field.name")}</Field.Label>
                     <Input
                       value={name}
+                      maxLength={PRODUCT_LIMITS.name}
                       placeholder={t("products.form.namePlaceholder")}
                       data-testid="product-edit-name"
                       onChange={(e) => setName(e.target.value)}
                     />
+                    <CharCount value={name} max={PRODUCT_LIMITS.name} testId="product-edit-name-count" />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("products.field.description")}</Field.Label>
-                    {/* Roomy on purpose: a catalogue description is a paragraph, not a line, and a
-                        two-row box makes people write to the box instead of to the product. */}
                     <Textarea
                       value={description}
-                      rows={6}
+                      rows={4}
+                      maxLength={PRODUCT_LIMITS.description}
                       placeholder={t("products.form.descriptionPlaceholder")}
                       data-testid="product-edit-description"
                       onChange={(e) => setDescription(e.target.value)}
+                    />
+                    <CharCount
+                      value={description}
+                      max={PRODUCT_LIMITS.description}
+                      testId="product-edit-description-count"
                     />
                   </Field.Root>
 
@@ -312,6 +371,18 @@ export function ProductEditPage() {
                     />
                     <Field.HelperText>{t("products.form.categoryHelp")}</Field.HelperText>
                   </Field.Root>
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+
+            {/* WHO ELSE MAY SELL IT — the markup and the lock are one question, so they are one card of their own. */}
+            <Card.Root gridArea="cross" data-testid="product-edit-cross-card">
+              <Card.Body>
+                <Stack gap="card">
+                  <Stack gap="0.5">
+                    <Card.Title>{t("products.form.crossTitle")}</Card.Title>
+                    <Card.Description>{t("products.form.crossDescription")}</Card.Description>
+                  </Stack>
 
                   {/* CROSS: another team sells this product on its own order, out of our stock, and
                       pays us this much over our cost. Typed as a percent — the wire keeps basis
@@ -353,7 +424,15 @@ export function ProductEditPage() {
             </Card.Root>
           </Grid>
 
-          <Flex justify="end">
+          {/* THE FOOT: Back beside Save, at the right (owner: *"di bawah ada tombol kembali, buat ada iconnya"*, then
+              *"kembali di sebelah buat, buat plus saja"*) — somebody who scrolled to the end of the form leaves it from
+              there, not by climbing back to the arrow at the top. Back goes where the top arrow goes; both carry their
+              icon (an-action-button-carries-its-icon) — Buat its plus, Simpan its disk. */}
+          <Flex justify="end" gap="3">
+            <Button type="button" variant="outline" data-testid="product-edit-back-foot" onClick={() => navigate(backTo)}>
+              <Icon as={ArrowLeft} boxSize="4" />
+              {t("products.form.back")}
+            </Button>
             <Button
               type="submit"
               colorPalette="brand"
@@ -361,6 +440,7 @@ export function ProductEditPage() {
               disabled={!canSave}
               data-testid="product-edit-save"
             >
+              <Icon as={editing ? Save : Plus} boxSize="4" />
               {editing ? t("products.save") : t("products.create")}
             </Button>
           </Flex>

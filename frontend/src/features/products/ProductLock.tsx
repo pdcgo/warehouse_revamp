@@ -7,6 +7,7 @@ import { QuantityInput } from "../../components/inputs/QuantityInput";
 import { RadioPills } from "../../components/inputs/RadioPills";
 import { useIsMobile } from "../../layouts/shell";
 import { parseQuantity } from "../../lib/quantity";
+import { PRODUCT_LIMITS } from "./limits";
 
 export const description =
   "A product's LOCK — whether another selling team may put it on its own order — as ONE setting with three ways (`one-lock-three-ways`): Terbuka (open), Stok minimum (closed while the total stock in every warehouse is under a number) and Selalu dikunci (always), picked as radio pills. It maps onto the two fields a product already has — `cross_locked` and `reserved_stock` — so no contract changed. `ProductLockControl` reads the setting on a row and edits it in a popover; `LockModeField` is the editor itself, which the product form uses as a field; a minimum that is in force right now carries a Terkunci badge.";
@@ -119,7 +120,7 @@ export function LockModeField({
               value={minimum}
               onChange={onMinimumChange}
               min={0}
-              max={1_000_000}
+              max={PRODUCT_LIMITS.reservedStock}
               size="sm"
               width="24"
               placeholder="0"
@@ -145,10 +146,11 @@ export function LockModeField({
   );
 }
 
-/** A minimum that can be saved — a whole number of at least one; 0 would be the open way under another name. */
+/** A minimum that can be saved — a whole number of at least one (0 would be the open way under another name), and no
+ * more than the server takes. */
 export function minimumIsUsable(minimum: string): boolean {
   const n = parseQuantity(minimum);
-  return n !== null && n >= 1;
+  return n !== null && n >= 1 && n <= PRODUCT_LIMITS.reservedStock;
 }
 
 // ── The row's control ────────────────────────────────────────────────────────────────────────────────────────────────

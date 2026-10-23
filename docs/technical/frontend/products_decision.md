@@ -24,6 +24,10 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [a-phone-edits-the-lock-in-a-modal](#a-phone-edits-the-lock-in-a-modal) | on a phone the lock sits in the block's foot on Ubah's left, and opens **Ubah Kunci** as a modal, not a popover |
 | [the-lock-ways-are-radio-pills](#the-lock-ways-are-radio-pills) | the lock's three ways are picked as **radio pills**, not a segmented switch; the middle way reads **Stok minimum** |
 | [one-lock-three-ways](#one-lock-three-ways) | the lock is ONE setting — **Terbuka**, **Di bawah stok minimum** (N pcs), **Selalu dikunci** — a **Kunci** column beside Cross, edited from a popover, a Terkunci badge while a minimum is in force; Dipesan and the Terkunci switch are gone, the last order moves under Siap |
+| [a-taken-sku-is-said-under-the-sku](#a-taken-sku-is-said-under-the-sku) | the form shows its limits as counts (5/64), sends its text trimmed, and a SKU another live product holds is said under the SKU field, holding Save until it changes |
+| [the-product-form-leaves-from-its-foot](#the-product-form-leaves-from-its-foot) | the form's foot carries **Kembali** with its arrow right beside **Buat** (a plus) or **Simpan** (a disk), at the right |
+| [the-gallery-is-a-cover-and-four](#the-gallery-is-a-cover-and-four) | the form's gallery is five boxes — the cover big, four small under it; files are dropped anywhere on it or picked from an empty box; ★ makes a small one the cover |
+| [the-form-fills-the-canvas-in-three-cards](#the-form-fills-the-canvas-in-three-cards) | the form fills the canvas in three cards — **Gambar** in a fixed 22rem column, **Info Produk** (SKU, name, description, category), **Penjualan Tim Lain** (markup, lock) — all one height; the minimum's stepper turns red as one control |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -440,3 +444,99 @@ stateDiagram-v2
 
 **What it replaces** (HARD RULE 11): [the-product-screens-follow-the-screen-rules](#the-product-screens-follow-the-screen-rules)
 kept the *Aktif · Arsip* tabs under the strip — they are gone; its sketch is stale on that point.
+
+## a-taken-sku-is-said-under-the-sku
+
+> Owner, in chat (2026-10-23), on the product form, to the gaps I listed: *"oke, karena aku tahu ada batas di sini,
+> inputnya harus kasih tahu batas juga misal 5/64"* ([a-limited-field-shows-its-count](context_decision.md#a-limited-field-shows-its-count)),
+> and *"error sku kalau memang bisa oke, tapi gimana mekanismenya?"*.
+
+```mermaid
+sequenceDiagram
+  participant F as the product form
+  participant S as product_service
+  F->>S: ProductCreate or ProductUpdate, the SKU trimmed
+  S-->>F: AlreadyExists - another live product of this team holds the SKU
+  F->>F: the error under the SKU field, Save shut
+  F->>F: the SKU is changed - the error and the hold clear
+```
+
+| | |
+| --- | --- |
+| the limits | SKU **64**, name **200**, description **1000** — a count under each, the box stopping there; the minimum's stepper stops at **1.000.000** and a larger one holds Save. All four mirrored from product.proto in `features/products/limits.ts` |
+| trimmed | the SKU, the name and the description are sent without their outer spaces — the server stores what it is sent, so *"KOPI-01 "* would be a second SKU nobody can tell apart |
+| the mechanism | the server already answers a taken SKU with its own code, **AlreadyExists** (`dbError` in product_service) — no API change. The form reads that code and puts the reason under the SKU; every other failure stays a sentence at the top |
+| while it stands | the field is red and **Save is shut** for that SKU; typing another clears both, typing it back brings them back |
+| an archived product's SKU | free to take — the rule is one SKU among the LIVE products of a team; restoring the old one is what collides |
+| not chosen | checking while typing — a read per pause in typing, a race with the other half of a pair saving at the same second, and the save would still have to check |
+| ✅ built *(2026-10-23)* | [product-edit/index.tsx](../../../frontend/src/pages/product-edit/index.tsx), the stories `EveryLimitIsShown`, `WhatIsSentIsTrimmed`, `ATakenSkuIsSaidUnderTheSku` |
+
+## the-product-form-leaves-from-its-foot
+
+> Owner, in chat (2026-10-23): *"di bawah ada tombol kembali, buat ada iconnya"* — then, seeing it on the left:
+> *"kembali di sebelah buat, buat plus saja"*.
+
+```
+                                          [ ← Kembali ] [ + Buat ]       a new product
+                                          [ ← Kembali ] [ 💾 Simpan ]    an edit
+```
+
+| | |
+| --- | --- |
+| Kembali | outlined, with its arrow, **right beside** the main button at the foot's right — goes where the top arrow goes: an edit back to the product's page, a new one to the list |
+| the main button | **Buat** with a **plus** on a new product; **Simpan** with a disk on an edit ([an-action-button-carries-its-icon](context_decision.md#an-action-button-carries-its-icon)) |
+| the top arrow | stays — the foot is for somebody who scrolled to the end of the form |
+| the page | fills the canvas ([the-form-fills-the-canvas-in-three-cards](#the-form-fills-the-canvas-in-three-cards)) — it was centred for a moment, then back at the left (*"ga jadi, kembalikan ke kiri"*), then widened to the full canvas |
+| ✅ built *(2026-10-23)* | the stories `BackAtTheFootGoesWhereTheArrowGoes` and `CreateCarriesAPlus`; the stories are titled **Pages/Products/ProductForm** now (owner: *"di story jadi form aja namanya"*) |
+
+## the-gallery-is-a-cover-and-four
+
+> Owner, in chat (2026-10-23): *"untuk gambar aku ingin form drag drop juga, tampilkan 5 kotak, 1 kotak besar sebagai
+> gambar utama, kotak kecil di bawahnya sesuaikan atau kasih aku gambaran dulu"* — then *"oke coba dulu"* to the sketch
+> below and to ★ instead of a drag for the cover.
+
+```
+┌─────────────────────────────┐
+│ Sampul                    ✕ │   the cover — always the first image, always the big box
+│                             │
+└─────────────────────────────┘
+[ img ★ ✕ ] [ img ★ ✕ ] [ + ] [ + ]   the other four, one row, equal width
+```
+
+| | |
+| --- | --- |
+| the boxes | always five: the big one (square, the card's width) and four small ones in one row — on a phone too |
+| one size | the gallery is the card's full width in every state — empty, uploading, filled — so no box changes size as a picture lands (owner: *"tengahkan, ukurannya tidak konsisten, saat kosong, loading upload dan setelahnya"*) |
+| empty | the big box reads *"Seret gambar ke sini, atau klik untuk memilih"* with its icon; a small one is dashed with a + |
+| a drop | anywhere on the gallery, several files at once — they fill the empty boxes in order; over five, the first that fit are kept and a toast says so. While a file is dragged over it, the gallery is outlined in the main tone |
+| a click | an EMPTY box opens the file picker; a picture does not — its ★ and ✕ sit on it |
+| uploading | each file spins in the box it will fill |
+| the cover | **★ on a small box** moves it into the big one; the others keep their order, so the old cover becomes the first small box |
+| not chosen | dragging a box onto the big one — a reorder by drag does not work under a finger, and the app has no drag-to-sort library; ★ works everywhere |
+| removing | ✕ on any box; removing the cover makes the next one the cover, as before |
+| ✅ built *(2026-10-23)* | [ProductImagesInput.tsx](../../../frontend/src/pages/product-edit/components/ProductImagesInput.tsx) on Chakra's FileUpload dropzone; the stories `AnEmptyGalleryAsksForADrop`, `DroppedFilesFillTheBoxes`, `AStarMakesTheCover`, `TheGalleryHoldsFive` |
+
+## the-form-fills-the-canvas-in-three-cards
+
+> Owner, in chat (2026-10-23), on the product form held to `5xl` at the left: *"kanan terlalu sepi, ada ide?"* — *"oke"*
+> to three cards — then *"kurang, tidak penuh, info produk jadi yang paling panjang"*, *"gambar terlalu besar, sama input
+> stok minimum itu"*, and *"deskripsi masuk info produk"* — then *"di layar lebih kecil, penjualan tim lain sejajar dengan
+> info produk ada gap di kiri, di layar lebih besar, info produk kasih sedikit lebih besar daripada penjualan tim lain"*.
+
+```
+xl and up   [ Gambar 22rem ] [ Info Produk  1.25fr ] [ Penjualan Tim Lain 1fr ]    one row, one height
+lg          [ Gambar 18rem ] [ Info Produk                               ]
+                             [ Penjualan Tim Lain                        ]    under Info; the left is empty
+below lg    Gambar · Info Produk · Penjualan Tim Lain, one column
+```
+
+| | |
+| --- | --- |
+| the width | the form **fills the canvas** — no `maxW`; the old `5xl` left the right of a wide screen empty |
+| Gambar | a **fixed column** — 22rem from `xl`, 18rem at `lg` — so the cover is a picture to check, never a poster; where the card is the whole width (a tablet), the boxes stop at 20rem |
+| Info Produk | SKU, name, description (4 rows), category — the record in reading order; the description stays here (*"deskripsi masuk info produk"*) after a round as a wide card of its own |
+| Penjualan Tim Lain | the markup and the lock, under one title and a line on what they decide — *"Apakah tim lain boleh menjual produk ini di pesanan mereka, dan berapa yang mereka bayar di atas modal Anda."* |
+| the proportions | from `xl`, Info Produk is **1.25×** Penjualan Tim Lain — it holds the longer text. At `lg`, Penjualan Tim Lain sits in Info's column under it, never under the picture; the space under the gallery stays empty |
+| one height | the cards stretch to their row, so the row ends on one line |
+| the minimum | an invalid minimum turns the **whole stepper** red — the − and + take the box's edge — instead of a red box inside a grey control; a rule of `QuantityInput` itself, so every stepper in a field gets it |
+| ✅ built *(2026-10-23)* | [product-edit/index.tsx](../../../frontend/src/pages/product-edit/index.tsx), `QuantityInput`'s story `InvalidIsTheWholeControl` |

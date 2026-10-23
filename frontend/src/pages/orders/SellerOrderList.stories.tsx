@@ -364,7 +364,7 @@ export const ClearAppearsOnlyWhileFilteringAndRestoresEverything: Story = {
 
     await expect(canvas.queryByTestId("orders-filters-clear")).toBeNull();
 
-    await userEvent.type(canvas.getByTestId("orders-search"), "Ani", { delay: 40 });
+    await userEvent.type(await canvas.findByTestId("orders-search", {}, { timeout: 4000 }), "Ani", { delay: 40 });
 
     // On a phone Clear is in the sheet's footer, beside Done.
     const controls = await filterControls(canvasElement);
@@ -373,9 +373,14 @@ export const ClearAppearsOnlyWhileFilteringAndRestoresEverything: Story = {
     await userEvent.click(controls.getByTestId("orders-filters-clear"));
 
     await waitFor(() => expect(controls.queryByTestId("orders-filters-clear")).toBeNull());
-    for (const o of OWN) {
-      await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
-    }
+    // The narrowed rows stay on screen while the whole list is read again (keepPreviousData), so the rows are WAITED
+    // for — under a loaded runner that read is slower than the click.
+    await waitFor(
+      () => {
+        for (const o of OWN) expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
+      },
+      { timeout: 4000 },
+    );
   },
 };
 

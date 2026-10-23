@@ -72,6 +72,8 @@ when it applies one of these.
 | [a-picker-dialog-keeps-its-height](#a-picker-dialog-keeps-its-height) | a picker dialog has a FIXED height — `min(88dvh, 48rem)`, on a desktop and a phone alike — and only its list scrolls | the product picker, then the bundle picker |
 | [a-counted-line-is-three-columns](#a-counted-line-is-three-columns) | a screen that counts line by line gives each line Accept Delivery's frame — what it is · what you type · what it means — in a fixed shape, under a sticky header | Accept Delivery, then the stock count's Count page |
 | [a-date-type-is-picked-inside-the-range-panel](#a-date-type-is-picked-inside-the-range-panel) | a date filter that can mean several dates picks WHICH date as radio pills at the top of its own panel, and the trigger names it — *Sudah diserahkan · 1 bulan terakhir*; it REPLACES the field segment of [a-date-range-filter-is-the-order-lists-picker](#a-date-range-filter-is-the-order-lists-picker) | [the order list](order_list_decision.md#the-order-list-filters-by-seven-dates), then every `DateRangePicker` with `fields` |
+| [a-limited-field-shows-its-count](#a-limited-field-shows-its-count) | a text field with a limit shows how much is used — **5/64** under it, at its end — and stops at the limit | [the product form](products_decision.md#a-taken-sku-is-said-under-the-sku), then every limited field as its screen is next touched |
+| [a-narrowed-page-stays-at-the-left](#a-narrowed-page-stays-at-the-left) | a page held narrower than the canvas — a form, a detail — stays at the canvas's LEFT edge; centring it was tried on the product form and withdrawn | every narrowed page |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1598,6 +1600,42 @@ sticky:  ←  Count #15 · A-01-1  [All racks]            1 of 3 counted  [Chang
 | a type the screen cannot filter on | offered with its ⚠ inside the pill (`DateField.mark`, `RadioPillOption.mark`) |
 | one type | **shown, not offered** — named on the trigger and in the row as plain text; a single radio is a choice with no alternative (the settlement list's *Terakhir bergerak*) |
 | applied to | the order list, batches, returns, restock (both sides), the settlement list — every `DateRangePicker` given `fields` |
+
+## a-limited-field-shows-its-count
+
+> Owner, in chat (2026-10-23), on the product form: *"karena aku tahu ada batas di sini, inputnya harus kasih tahu batas
+> juga misal 5/64, ini keputusan untuk tampilan lainnya nanti tapi kita kerjakan di form produk dulu"*.
+
+```
+SKU *
+[ SKU-ANG-001                         ]
+                                  11/64      ← muted; amber once full
+```
+
+| | |
+| --- | --- |
+| which fields | every **text** field the server limits (`max_len` in the proto) — a SKU, a name, a description, a note |
+| the count | **used/limit**, under the field at its end, in the muted colour; **amber at the limit**, saying why nothing more goes in |
+| the box | `maxLength` is the same number, so a value the server would refuse cannot be typed — the limit is met while typing, never as a refusal after Save |
+| where the number lives | mirrored once per domain beside the proto rule it copies (`features/products/limits.ts`), never typed into a screen |
+| component | [`CharCount`](../../../frontend/src/components/inputs/CharCount.tsx) (`Components/Inputs/CharCount`) |
+| not | a number field — its limit is the stepper's `max`, not a count |
+| rollout | the product form first; every other limited field when its screen is next touched |
+
+## a-narrowed-page-stays-at-the-left
+
+> Owner, in chat (2026-10-23), on the product form: *"oke tengahkan formnya, untuk kasus seperti ini juga di masa
+> depan"* — then, having seen it centred: *"ga jadi, kembalikan ke kiri"*.
+
+```
+│[ form, max 5xl          ]                 │      at the left edge, beside the sidebar — as every page starts
+```
+
+| | |
+| --- | --- |
+| the rule | a page whose root is held to a `maxW` narrower than the canvas keeps it at the **left edge** — no `mx="auto"` |
+| why it is written down | centring was asked, built and withdrawn the same day; without this a later screen would propose it again |
+| applies to | the product form, the bundle form and detail, the restock request form, a warehouse's edit page — and every narrowed page after them |
 
 ## Recorded elsewhere
 

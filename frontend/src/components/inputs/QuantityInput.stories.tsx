@@ -40,6 +40,26 @@ export const InsideAField: Story = {
   },
 };
 
+// INVALID IS THE WHOLE CONTROL (owner, on the product form's minimum): in an invalid field the − and + take the box's red
+// edge, so the three still read as one control rather than a red box set inside a grey one.
+export const InvalidIsTheWholeControl: Story = {
+  render: (args) => (
+    <Field.Root w="40" invalid>
+      <Field.Label>Minimum</Field.Label>
+      <QuantityInput {...args} value="0" min={0} />
+      <Field.ErrorText>Enter at least 1.</Field.ErrorText>
+    </Field.Root>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const edge = (el: HTMLElement) => getComputedStyle(el).borderTopColor;
+    const box = edge(canvas.getByTestId("qty"));
+
+    await expect(edge(canvas.getByTestId("qty-minus"))).toBe(box);
+    await expect(edge(canvas.getByTestId("qty-plus"))).toBe(box);
+  },
+};
+
 // THE STEPPERS ARE OURS, and that is the whole reason this component exists: a native
 // `type="number"` draws two 8px arrows in Chrome, a different pair in Safari and NOTHING on a phone —
 // so on a table of quantities, ±1 was a thing you typed.

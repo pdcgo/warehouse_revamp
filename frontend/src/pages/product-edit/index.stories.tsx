@@ -29,8 +29,10 @@ const routes = [
 const AtNew = routedPage(routes, "/products/new");
 const AtEditMinyak = routedPage(routes, "/products/700/edit");
 
+// "ProductForm" (owner: *"di story jadi form aja namanya"*): one page creates AND edits a product, so the sidebar names
+// it for what it is rather than for one of its two routes.
 const meta = {
-  title: "Pages/Products/ProductEdit",
+  title: "Pages/Products/ProductForm",
   component: AtNew,
   parameters: { signedIn: true, dataRouter: true },
   beforeEach: asAnggrekOwner,
@@ -80,6 +82,32 @@ async function picture(name: string, colour: string): Promise<File> {
   return new File([blob], name, { type: "image/png" });
 }
 
+/**
+ * Drop files on the gallery, as a browser does — dragenter, dragover, drop, each carrying the files.
+ *
+ * ⚠ A DataTransfer BUILT BY A SCRIPT has no file-system entry behind its items (`webkitGetAsEntry()` is null in
+ * Chromium), and the dropzone reads files through that entry — so a scripted drop would arrive empty. For the length
+ * of the drop, each item answers with the plain file entry a drag from the desktop carries.
+ */
+async function drop(canvasElement: HTMLElement, files: File[]) {
+  const zone = canvasElement.querySelector<HTMLElement>('[data-testid="product-images-dropzone"]');
+  await expect(zone).not.toBeNull();
+  const data = new DataTransfer();
+  for (const file of files) data.items.add(file);
+
+  const original = DataTransferItem.prototype.webkitGetAsEntry;
+  DataTransferItem.prototype.webkitGetAsEntry = function (this: DataTransferItem) {
+    return { isFile: true, isDirectory: false, name: this.getAsFile()?.name ?? "" } as unknown as FileSystemEntry;
+  };
+  try {
+    for (const type of ["dragenter", "dragover", "drop"]) {
+      zone!.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data }));
+    }
+  } finally {
+    DataTransferItem.prototype.webkitGetAsEntry = original;
+  }
+}
+
 async function attach(canvasElement: HTMLElement, files: File[]) {
   const input = canvasElement.querySelector<HTMLInputElement>('[data-testid="product-images-input"] input[type="file"]');
   await expect(input).not.toBeNull();
@@ -126,6 +154,9 @@ export const TheEditFormArrivesFilled: Story = {
     await expect(canvas.getByTestId("product-image-1")).toBeVisible();
     await expect(canvas.getByTestId("product-image-0").parentElement!).toHaveTextContent("Cover");
     await expect(canvas.getByTestId("product-image-1").parentElement!).not.toHaveTextContent("Cover");
+    // The cover is the BIG box; the second picture is a small one (the-gallery-is-a-cover-and-four).
+    await expect(canvas.getByTestId("product-image-0").parentElement!).toHaveAttribute("data-slot", "cover");
+    await expect(canvas.getByTestId("product-image-1").parentElement!).toHaveAttribute("data-slot", "small");
   },
 };
 
@@ -255,8 +286,9 @@ export const CreatingLandsOnTheList: Story = {
   },
 };
 
-/** A SKU a live product already holds is refused by the server — the reason shows, and the form stays as typed. */
-export const ATakenSkuIsRefused: Story = {
+/** A SKU a live product already holds is refused by the server — and said UNDER THE SKU, not at the top of the page: the
+ * field turns red, Save stays shut while that SKU stands, and changing it clears both. The form stays as typed. */
+export const ATakenSkuIsSaidUnderTheSku: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
@@ -265,9 +297,52 @@ export const ATakenSkuIsRefused: Story = {
     await pickDapur(canvas);
     await userEvent.click(canvas.getByTestId("product-edit-save"));
 
-    await waitFor(() => expect(canvas.getByTestId("product-edit-error")).toHaveTextContent("already exists"));
+    await waitFor(() => expect(canvas.getByTestId("product-edit-sku-taken")).toHaveTextContent("already uses this SKU"));
+    await expect(canvas.queryByTestId("product-edit-error")).toBeNull();
     await expect(canvas.queryByTestId("at-products")).toBeNull();
     await expect(canvas.getByTestId("product-edit-name")).toHaveValue("Minyak Goreng Sawit 2L — Karton Baru");
+    await expect(canvas.getByTestId("product-edit-save")).toBeDisabled();
+
+    await userEvent.type(canvas.getByTestId("product-edit-sku"), "B", { delay: 30 });
+    await waitFor(() => expect(canvas.queryByTestId("product-edit-sku-taken")).toBeNull());
+    await expect(canvas.getByTestId("product-edit-save")).toBeEnabled();
+  },
+};
+
+/** EVERY LIMIT IS SHOWN (a-limited-field-shows-its-count) — "5/64" under the SKU, the name and the description, the box
+ * stopping at the server's limit; an edit counts what it arrived with. */
+export const EveryLimitIsShown: Story = {
+  render: () => <AtEditMinyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+
+    await expect(canvas.getByTestId("product-edit-sku-count")).toHaveTextContent("11/64");
+    await expect(canvas.getByTestId("product-edit-name-count")).toHaveTextContent(
+      `${"Minyak Goreng Sawit 2L — Satuan".length}/200`,
+    );
+    await expect(canvas.getByTestId("product-edit-description-count")).toHaveTextContent(/^\d+\/1000$/);
+
+    await expect(canvas.getByTestId("product-edit-sku")).toHaveAttribute("maxLength", "64");
+    await expect(canvas.getByTestId("product-edit-name")).toHaveAttribute("maxLength", "200");
+    await expect(canvas.getByTestId("product-edit-description")).toHaveAttribute("maxLength", "1000");
+
+    await retype(canvas.getByTestId("product-edit-sku"), "KOPI");
+    await waitFor(() => expect(canvas.getByTestId("product-edit-sku-count")).toHaveTextContent("4/64"));
+  },
+};
+
+/** What is sent is TRIMMED — a space typed before or after a SKU would otherwise store a second SKU nobody can see. */
+export const WhatIsSentIsTrimmed: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("product-edit-sku"), "  SKU-ANG-046 ", { delay: 30 });
+    await userEvent.type(canvas.getByTestId("product-edit-name"), " Gula Aren Cair 500ml ", { delay: 30 });
+    await pickDapur(canvas);
+    await userEvent.click(canvas.getByTestId("product-edit-save"));
+    await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
+
+    await expect(liveProducts().find((p) => p.sku === "SKU-ANG-046")).toMatchObject({ name: "Gula Aren Cair 500ml" });
   },
 };
 
@@ -305,7 +380,7 @@ export const RemovingTheCoverPromotesTheNext: Story = {
   },
 };
 
-/** The gallery holds five — once full, Add is shut. */
+/** The gallery holds five — once full, no empty box is left to pick into. */
 export const TheGalleryHoldsFive: Story = {
   render: () => <AtEditMinyak />,
   play: async ({ canvasElement }) => {
@@ -318,7 +393,76 @@ export const TheGalleryHoldsFive: Story = {
       await picture("rak.png", "#0284c7"),
     ]);
     await waitFor(() => expect(canvas.getByTestId("product-image-4")).toBeVisible());
-    await expect(canvas.getByTestId("add-product-image")).toBeDisabled();
+    await expect(canvas.queryByTestId("add-product-image")).toBeNull();
+    await expect(canvas.getByTestId("product-images-help")).toHaveTextContent("5/5");
+  },
+};
+
+/** A NEW PRODUCT'S GALLERY: one big box asking for a drop, four small empty ones (the-gallery-is-a-cover-and-four). */
+export const AnEmptyGalleryAsksForADrop: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const add = canvas.getByTestId("add-product-image");
+
+    await expect(add).toHaveAttribute("data-slot", "cover");
+    await expect(add).toHaveTextContent("Drop images here, or click to choose");
+    for (const i of [1, 2, 3, 4]) {
+      await expect(canvas.getByTestId(`product-image-empty-${i}`)).toHaveAttribute("data-slot", "small");
+    }
+  },
+};
+
+/** FILES DROPPED ON THE GALLERY fill the boxes in order — the first one the cover, the next the first small box. And
+ * THE BOXES KEEP THEIR SIZE (owner: *"ukurannya tidak konsisten, saat kosong, loading upload dan setelahnya"*): the
+ * gallery is the card's width empty, while uploading and filled, so nothing jumps as a picture lands. */
+export const DroppedFilesFillTheBoxes: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    // Read afresh each time: the picker remounts after every upload (pickerKey), so a kept element would be detached.
+    const zone = () => canvas.getByTestId("product-images-dropzone");
+    const card = canvas.getByTestId("product-images-input");
+    const size = (el: Element) => Math.round(el.getBoundingClientRect().width);
+    const coverBox = () => canvasElement.querySelector('[data-testid="product-images-dropzone"] [data-slot="cover"]')!;
+    const smallBox = () => canvasElement.querySelector('[data-testid="product-images-dropzone"] [data-slot="small"]')!;
+
+    // Measured once the page has laid out — it arrives with a short entrance.
+    await waitFor(() => expect(size(zone())).toBeGreaterThan(0));
+    await expect(size(zone())).toBe(size(card));
+    const cover = size(coverBox());
+    const small = size(smallBox());
+
+    await drop(canvasElement, [await picture("depan.png", "#16a34a"), await picture("samping.png", "#9333ea")]);
+
+    await waitFor(() => expect(canvas.getByTestId("product-image-1")).toBeVisible(), { timeout: 4000 });
+    await expect(canvas.getByTestId("product-image-0").parentElement!).toHaveAttribute("data-slot", "cover");
+    await expect(canvas.getByTestId("product-image-1").parentElement!).toHaveAttribute("data-slot", "small");
+    await expect(canvas.getByTestId("add-product-image")).toHaveAttribute("data-slot", "small");
+    await expect(canvas.getByTestId("product-images-help")).toHaveTextContent("2/5");
+
+    await expect(size(zone())).toBe(size(card));
+    await expect(size(coverBox())).toBe(cover);
+    await expect(size(smallBox())).toBe(small);
+  },
+};
+
+/** ★ MAKES A SMALL ONE THE COVER — it moves into the big box, and the old cover becomes the first small box; the
+ * product's cover follows once saved. */
+export const AStarMakesTheCover: Story = {
+  render: () => <AtEditMinyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+    const front = canvas.getByTestId("product-image-0").getAttribute("src")!;
+    const label = canvas.getByTestId("product-image-1").getAttribute("src")!;
+
+    await expect(canvas.queryByTestId("make-cover-product-image-0")).toBeNull();
+    await userEvent.click(canvas.getByTestId("make-cover-product-image-1"));
+
+    await waitFor(() => expect(canvas.getByTestId("product-image-0")).toHaveAttribute("src", label));
+    await expect(canvas.getByTestId("product-image-1")).toHaveAttribute("src", front);
+
+    await userEvent.click(canvas.getByTestId("product-edit-save"));
+    await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
+    await expect(liveProducts().find((p) => p.id === 700n)!.defaultImageUrl).toBe(label);
   },
 };
 
@@ -333,12 +477,43 @@ export const BackFromAnEditReturnsToTheProduct: Story = {
   },
 };
 
+/** Creating is **Buat** with a plus — the icon of adding a thing, where an edit's Simpan carries a disk. */
+export const CreateCarriesAPlus: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const create = canvas.getByTestId("product-edit-save");
+
+    await expect(create).toHaveTextContent("Create");
+    await expect(create.querySelector("svg")).toHaveClass("lucide-plus");
+  },
+};
+
 export const BackFromANewOneReturnsToTheList: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("product-edit-back"));
     await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
+  },
+};
+
+/** BACK IS AT THE FOOT TOO, with its arrow, right beside Save — and goes where the top arrow goes. */
+export const BackAtTheFootGoesWhereTheArrowGoes: Story = {
+  render: () => <AtEditMinyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+    const back = canvas.getByTestId("product-edit-back-foot");
+
+    await expect(back).toHaveTextContent("Back");
+    await expect(back.querySelector("svg")).not.toBeNull();
+    // Beside it, not across the page: the two share a parent and Back comes first.
+    const save = canvas.getByTestId("product-edit-save");
+    await expect(back.parentElement).toBe(save.parentElement);
+    await expect(back.nextElementSibling).toBe(save);
+    await expect(save.querySelector("svg")).not.toBeNull();
+
+    await userEvent.click(back);
+    await waitFor(() => expect(canvas.getByTestId("at-product-detail")).toBeInTheDocument());
   },
 };
 
