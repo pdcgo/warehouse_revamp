@@ -4,9 +4,9 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orderDetailFor, orders, teams } from "../../../.storybook/fixtures";
 import { orderExportScenario } from "../../../.storybook/sessionScenario";
-import { mockReceiptCode } from "../../features/orders/rowMock";
+
 import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
-import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orders/deadlineMock";
+import { deadlineUrgency, hoursFromNow, orderDeadline } from "../../features/orders/deadline";
 import { WAREHOUSE_ORDERS_PENDING } from "./pending";
 import { PickQueueNextPage } from "./index";
 
@@ -42,13 +42,13 @@ const SELLER = teams[1]!; // Toko Melati (12)
 const HERE = orders.filter((o) => o.warehouseId === WAREHOUSE.id);
 const NEW_HERE = HERE.filter((o) => o.status === OrderStatus.PENDING);
 const OVERDUE = NEW_HERE.find((o) => {
-  const deadline = mockDeadline(o.id, o.status);
+  const deadline = orderDeadline(o);
   return deadline !== undefined && deadlineUrgency(hoursFromNow(deadline)) === "overdue";
 });
 const WITH_REF = NEW_HERE.find((o) => (o.orderExternalRefId ?? "") !== "")!;
 const PICKED_HERE = HERE.find((o) => o.status === OrderStatus.PICKED)!;
 const PROCESSED_HERE = HERE.find((o) => o.status === OrderStatus.PROCESSED)!;
-const resiOf = (o: { id: bigint; status: OrderStatus }) => mockReceiptCode(o.id, o.status);
+const resiOf = (o: { receiptCode: string }) => o.receiptCode;
 const REF = WITH_REF.orderExternalRefId ?? "";
 
 const Routed = routedPage(

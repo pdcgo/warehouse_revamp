@@ -59,7 +59,7 @@ type exportRun struct {
 func export(t *testing.T, db *gorm.DB, store *fakeExports, req *sellingv1.OrderExportRequest) exportRun {
 	t.Helper()
 
-	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, nil, store)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, nil, store, nil)
 
 	mux := http.NewServeMux()
 	mux.Handle(sellingv1connect.NewOrderServiceHandler(svc))
@@ -101,9 +101,10 @@ func phoneOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64, ph
 	t.Helper()
 
 	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: teamID, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", CustomerPhone: phone, ShippingCode: "jne",
-		OrderExternalRefId: "5780000000000000001", Subtotal: 10000, Total: 10000,
+		OrderExternalRefId: "5780000000000000001", ReceiptCode: "JP0012345678", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 3, UnitPrice: 10000}},
 	}))
 	if err != nil {
@@ -159,8 +160,18 @@ func TestOrderExport_TheSellersFile(t *testing.T) {
 		t.Fatalf("marketplace ref = %q", run.rows[1][1])
 	}
 
-	if run.rows[1][10] != "3" {
-		t.Fatalf("qty = %q, want 3", run.rows[1][10])
+	if run.rows[1][10] != "JP0012345678" {
+		t.Fatalf("tracking number = %q, want the one typed at create", run.rows[1][10])
+	}
+
+	if run.rows[1][11] != "3" {
+		t.Fatalf("qty = %q, want 3", run.rows[1][11])
+	}
+
+	// Never priced (this service has no pricer), so the fee cell is EMPTY — not a 0, which would read as a warehouse
+	// that charged nothing.
+	if len(run.rows[1]) > 13 && run.rows[1][13] != "" {
+		t.Fatalf("warehouse fee = %q, want empty for an order never priced", run.rows[1][13])
 	}
 
 	last := run.messages[len(run.messages)-1]
@@ -208,7 +219,7 @@ func TestOrderExport_TheWarehousesFileHonoursTheFilter(t *testing.T) {
 		View:   sellingv1.OrderExportView_ORDER_EXPORT_VIEW_WAREHOUSE,
 	})
 
-	if len(processed.rows) != 2 || processed.rows[1][9] != "processed" {
+	if len(processed.rows) != 2 || processed.rows[1][10] != "processed" {
 		t.Fatalf("the processed tab's file = %v — want only Kenanga's processed order", processed.rows)
 	}
 

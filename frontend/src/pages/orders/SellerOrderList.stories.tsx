@@ -502,3 +502,72 @@ export const ExportSendsTheListAsAFile: Story = {
     await expect(asked.rows).toBe(OWN.length);
   },
 };
+
+// THE WAREHOUSE FILTER NARROWS THE TABLE — "only the ones leaving Gudang Cabang". It reaches the server
+// (`OrderListFilter.warehouse_id`), so the rows that ship from Gudang Pusat leave and the two that ship from Cabang stay.
+export const TheWarehouseFilterNarrowsTheTable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const cabang = teams.find((team) => team.teamCode === "WH-02")!;
+    const fromCabang = OWN.filter((o) => o.warehouseId === cabang.id);
+    const fromPusat = OWN.find((o) => o.warehouseId !== cabang.id)!;
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${fromPusat.id}`)).toBeInTheDocument());
+
+    // TeamSelect portals, so its option is on the screen whether the picker is inline or in the phone's sheet.
+    const controls = await filterControls(canvasElement);
+    const input = within(controls.getByTestId("orders-warehouse-filter")).getByRole("combobox");
+    await userEvent.type(input, "WH-02", { delay: 40 });
+    const option = await screen.findByTestId("team-select-option-WH-02");
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${fromPusat.id}`)).toBeNull());
+    for (const o of fromCabang) {
+      await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
+    }
+  },
+};
+
+// THE TRACKING NUMBER IS THE ORDER'S OWN — `receipt_code`, the number typed at create, copyable from the row.
+export const TheRowShowsTheOrdersOwnTrackingNumber: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const order = OWN[0]!;
+
+    const row = await canvas.findByTestId(`order-row-${order.id}`);
+    await expect(within(row).getByTestId("order-receipt")).toHaveTextContent(order.receiptCode);
+  },
+};
+
+// THE DATE FILTER SWITCHES WHICH DATE IT READS (the-date-filter-switches-created-or-platform). On *Dibuat*, the default,
+// the last month holds #107, typed in 8 days ago; on *Tanggal order* it leaves, because #107 carries no marketplace date
+// to fall inside the window. An order with one stays either way. The type is picked inside the range panel
+// (a-date-type-is-picked-inside-the-range-panel), and — unlike a status date — it sends its window.
+export const TheDateSwitchReadsTheMarketplaceDate: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const noPlatformDate = OWN.find((o) => o.id === 107n)!;
+    const recent = OWN[0]!;
+
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("orders-date"));
+    const lastMonth = await screen.findByTestId("orders-date-quick-1m");
+    await waitFor(() => expect(lastMonth).toBeVisible());
+    await userEvent.click(lastMonth);
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${noPlatformDate.id}`)).toBeInTheDocument(), { timeout: 4000 });
+
+    await userEvent.click(controls.getByTestId("orders-date"));
+    const platform = await screen.findByTestId("orders-date-field-mp");
+    await waitFor(() => expect(platform).toBeVisible());
+    // Real — no ⚠ on it, as there is on a status date.
+    await expect(within(platform).queryByTestId(/^not-implemented-/)).toBeNull();
+    await userEvent.click(platform);
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${noPlatformDate.id}`)).toBeNull(), { timeout: 4000 });
+    await expect(canvas.getByTestId(`order-row-${recent.id}`)).toBeInTheDocument();
+  },
+};

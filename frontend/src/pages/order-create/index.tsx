@@ -50,17 +50,17 @@ import { RadioPills } from "../../components/inputs/RadioPills";
 type OrderContents = "items" | "bundles";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { DatePicker } from "../../components/datetime/DatePicker";
-import { todayDateInput } from "../../lib/datetime";
+import { dateTimeInputToUnix, todayDateInput } from "../../lib/datetime";
 import { useProductsByIds } from "../../features/products/queries";
 import { useTeams } from "../../features/teams/queries";
 import type { BundleDraft } from "../../features/orders/form/bundles";
-import { bundleFor, bundleLines, fillFor } from "../../features/orders/form/bundles";
-import { BUNDLES, forgetLink, mockTerms, rememberLink, rememberedLink } from "../../features/orders/form/mockData";
+import { type PickedBundle, bundleFor, bundleLines, fillFor } from "../../features/orders/form/bundles";
+import { forgetLink, rememberLink, rememberedLink } from "../../features/orders/form/mockData";
+import { useWarehouseFeeQuote } from "../../features/warehouse/queries";
 import { BundleCard } from "../../features/orders/form/BundleCard";
 import { CreditLimitPanel } from "../../features/orders/form/CreditLimitPanel";
 import type { CreditRow } from "../../features/orders/form/CreditLimitPanel";
 import { creditRows, invoiceRows } from "../../features/orders/form/money";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDER_FORM_PENDING } from "../../features/orders/form/pending";
 import { NoteAndSubmitCard } from "../../features/orders/form/NoteAndSubmitCard";
@@ -221,7 +221,7 @@ export function OrderCreatePage() {
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
   const [shippingCode, setShippingCode] = useState("");
   // The resi as TEXT — the number the buyer is given, beside the courier and the file it is printed
-  // on. Not sent: the order stores the courier and the receipt document, and has no field for this.
+  // on. Sent as `receipt_code`, the order's own field for it.
   const [receiptCode, setReceiptCode] = useState("");
   // WHAT THE RECEIPT FILE SAYS (owner, rule 1) — read once per attached file and kept, because it is
   // used twice: to fill what is still empty, and to question what was typed when Create is pressed.
@@ -505,12 +505,9 @@ export function OrderCreatePage() {
 
   // ── Bundles ───────────────────────────────────────────────────────────────────────────────────
 
-  function addBundle(templateId: string) {
-    const template = BUNDLES.find((b) => b.id === templateId);
-    if (!template) return;
-
-    // A key per ADDED bundle: the same template can sit on one order twice, at different quantities.
-    setBundles((prev) => [...prev, bundleFor(template, `${templateId}-${prev.length + 1}`)]);
+  function addBundle(picked: PickedBundle) {
+    // A key per ADDED bundle: the same bundle can sit on one order twice, at different quantities.
+    setBundles((prev) => [...prev, bundleFor(picked, `${picked.id}-${prev.length + 1}`)]);
   }
 
   function setBundleQuantity(key: string, quantity: string) {
@@ -633,7 +630,13 @@ export function OrderCreatePage() {
     [allLines, costs],
   );
 
-  const warehouseFee = warehouseId > 0n ? mockTerms(warehouseId).handlingFee : 0n;
+  // THE WAREHOUSE'S FEE, priced by the warehouse itself on the goods' cost — the same call order create makes before
+  // it freezes the fee (the-flat-rate-is-dropped-last step 3). 0 while it is being asked, never a guess.
+  const feeQuote = useWarehouseFeeQuote({ teamId, warehouseId, goodsCost: productsTotal });
+  const warehouseFee = feeQuote.data?.fee ?? 0n;
+  // A warehouse that never set its fee takes no orders (a-warehouse-with-no-rate-takes-no-orders): its sentence is
+  // shown under the picker and Save stays off, because the server would refuse the order anyway.
+  const feeRefusal = warehouseId > 0n ? (feeQuote.data?.refusal ?? null) : null;
   // ⚠ NO SHIPPING TERM (owner hid the field): nothing prices a shipment, so the total is the goods
   // and the fee. It is listed as a MISSING part rather than quietly summed as zero — the profit
   // estimate below is computed from this number and therefore reads high until shipping exists.
@@ -721,7 +724,12 @@ export function OrderCreatePage() {
     (l) => !mapping.has(l.productId.toString()),
   ).length;
 
-  const canSave = canSubmit({ customerName, shopId, warehouseId, lines: allLines, stock });
+  // The marketplace's order date is required to place (platform-created-at-is-required-at-finalize) — marked on its
+  // field like the customer's name, so a disabled Create always has a red asterisk to point at.
+  const canSave =
+    canSubmit({ customerName, shopId, warehouseId, lines: allLines, stock }) &&
+    feeRefusal === null &&
+    orderDate !== "";
 
   // How many lines the chosen warehouse cannot fill. Summarised at the top as well as marked on each
   // line: on a long order the failing line can be off screen, and "Create is disabled and I cannot see
@@ -844,6 +852,13 @@ export function OrderCreatePage() {
         // Trimmed, so a reference of nothing but whitespace is stored as none at all — the same
         // treatment `note` gets, and for the same reason: "" and "   " must not be two states.
         orderExternalRefId: marketplace.orderExternalRefId.trim(),
+        // The number printed on the slip (`receipt_code`), trimmed for the same reason. Typed, or filled from the
+        // file's scan — either way what the person confirmed is what is kept.
+        receiptCode: receiptCode.trim(),
+        // WHEN THE BUYER ORDERED — required (platform-created-at-is-required-at-finalize), which `canSave` already
+        // holds the form to — and the marketplace's ship-by time, optional. Local time, to the minute.
+        platformCreatedAtUnix: dateTimeInputToUnix(orderDate),
+        platformShipmentDeadlineUnix: dateTimeInputToUnix(deadline),
         // ⚠ `allLines`, so a bundle's products are really ordered. The GROUPING is what is not
         // stored (mark 1) — the goods themselves are ordinary lines and must reach the warehouse,
         // or the totals above would promise stock the order never draws.
@@ -924,6 +939,9 @@ export function OrderCreatePage() {
         customerPhone,
         address: addressTouched(address) ? address : undefined,
         shippingCode,
+        // The platform's two dates travel with the draft now (00020); 0 where nothing was typed.
+        platformCreatedAtUnix: dateTimeInputToUnix(orderDate),
+        platformShipmentDeadlineUnix: dateTimeInputToUnix(deadline),
         items: lines.map((l) => ({
           id: 0n,
           // The catalogue's own SKU and name stand in for what a scrape would have read off the
@@ -1088,7 +1106,7 @@ export function OrderCreatePage() {
               yet — and it is read before anybody starts. This is the first thing about the ORDER.
               Above it, the warehouse would be answered before the reader knew what they were looking
               at. */}
-          <WarehouseBand value={warehouseId} onChange={setWarehouseId} />
+          <WarehouseBand value={warehouseId} onChange={setWarehouseId} refusal={feeRefusal} />
 
       {/* ⚠ `minmax(0, 1fr)` ON A PHONE TOO, not `1fr`. A track's minimum is `auto` — its widest child —
           so a wide lines table pushed the whole column past a 390px screen instead of scrolling inside
@@ -1206,12 +1224,12 @@ export function OrderCreatePage() {
                         so it sits with the shop and the storefront's reference rather than with the
                         delivery deadline further down. The two dates answer opposite questions: this
                         one is when it happened, that one is when it must arrive. */}
-                    <Field.Root>
+                    {/* REQUIRED (platform-created-at-is-required-at-finalize): every order comes from a platform,
+                        and the person reads this off the same storefront page as the ref. */}
+                    <Field.Root required>
                       <Field.Label>
-                        <Flex align="center" gap="2" wrap="wrap">
-                          {t("orderForm.source.orderDate")}
-                          <NotImplemented list={ORDER_FORM_PENDING} id="orderDate" />
-                        </Flex>
+                        {t("orderForm.source.orderDate")}
+                        <Field.RequiredIndicator />
                       </Field.Label>
                       {/* WITH THE CLOCK (owner). A marketplace stamps an order to the minute, and
                           two orders on one morning are told apart by nothing else — so the field

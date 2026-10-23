@@ -19,6 +19,7 @@ import {
   Landmark,
   Layers,
   Package,
+  PackageOpen,
   Receipt,
   Scale,
   Settings,
@@ -254,6 +255,9 @@ const PRODUCTS_GROUP: MenuGroup = {
   children: [
     { to: "/products", label: "nav.myProduct", icon: Package },
     { to: "/products/discover", label: "nav.discoverProduct", icon: Compass },
+    // The team's picking recipes (docs/business/product/product_bundle.md) — a catalogue thing: which products go
+    // together, never stock.
+    { to: "/products/bundles", label: "nav.bundles", icon: PackageOpen },
   ],
 };
 

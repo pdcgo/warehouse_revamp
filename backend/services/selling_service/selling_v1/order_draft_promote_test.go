@@ -43,6 +43,9 @@ func readyDraft(t *testing.T, svc *selling_v1.Service, db *gorm.DB, shopID uint6
 		WarehouseId:  u64(testWarehouse),
 		CustomerName: str("Budi"),
 		Items:        &sellingv1.OrderDraftLines{Lines: lines},
+		// The storefront's order date, read off the page by the person finishing it — required to promote
+		// (platform-created-at-is-required-at-finalize).
+		PlatformCreatedAtUnix: i64(testPlatformDate),
 	})
 
 	return draftID
@@ -192,6 +195,8 @@ func TestOrderDraftPromote_RunsTheSameValidationOrderCreateDoes(t *testing.T) {
 		{"no lines", func(r *sellingv1.OrderDraftUpdateRequest) {
 			r.Items = &sellingv1.OrderDraftLines{}
 		}},
+		// platform-created-at-is-required-at-finalize — a draft may hold it empty, an order may not.
+		{"no platform order date", func(r *sellingv1.OrderDraftUpdateRequest) { r.PlatformCreatedAtUnix = i64(0) }},
 	}
 
 	for _, tc := range cases {

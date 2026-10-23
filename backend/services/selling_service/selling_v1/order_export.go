@@ -38,9 +38,9 @@ var wib = time.FixedZone("WIB", 7*60*60)
 // filter — scopedOrders, the status tab included — every page of them, in the reader's columns, as .xlsx. A server
 // stream (code-implementation-guideline.md): every step a message, the progress on each, the link on the last.
 //
-// ONLY REAL DATA. A column the screen fills with an invented figure behind a ⚠ (the tracking number, the marketplace
-// date, the deadline) is left out: a spreadsheet cannot carry the mark, so an invented value would read as a fact. Each
-// joins the file the day its field exists.
+// ONLY REAL DATA. A column the screen fills with an invented figure behind a ⚠ is left out: a spreadsheet cannot carry
+// the mark, so an invented value would read as a fact. Each joins the file the day its field exists — as the tracking
+// number, the frozen warehouse fee and the platform's two dates have.
 func (s *Service) OrderExport(
 	ctx context.Context,
 	req *connect.Request[sellingv1.OrderExportRequest],
@@ -215,10 +215,12 @@ type exportSheet struct {
 var (
 	sellerColumns = []string{
 		"Order ID", "Marketplace ref", "Shop", "Marketplace", "Status", "Created", "Created by",
-		"Customer", "Phone", "Courier", "Qty", "Goods cost", "Marketplace total",
+		"Customer", "Phone", "Courier", "Tracking number", "Qty", "Goods cost", "Warehouse fee", "Marketplace total",
+		"Marketplace date", "Ship-by",
 	}
 	warehouseColumns = []string{
-		"Order ID", "Created", "Created by", "Seller", "Shop", "Marketplace", "Marketplace ref", "Courier", "Qty", "Status",
+		"Order ID", "Created", "Created by", "Seller", "Shop", "Marketplace", "Marketplace ref", "Courier",
+		"Tracking number", "Qty", "Status", "Marketplace date", "Ship-by",
 	}
 )
 
@@ -272,8 +274,11 @@ func (s *exportSheet) write(order *selling_service_models.Order, names exportRow
 			shop.Marketplace,
 			order.OrderExternalRefID,
 			order.ShippingCode,
+			order.Receipt,
 			order.ItemQuantity,
 			order.Status,
+			momentOrEmpty(order.PlatformCreatedAt),
+			momentOrEmpty(order.PlatformShipmentDeadline),
 		})
 	}
 
@@ -288,10 +293,34 @@ func (s *exportSheet) write(order *selling_service_models.Order, names exportRow
 		order.CustomerName,
 		order.CustomerPhone,
 		order.ShippingCode,
+		order.Receipt,
 		order.ItemQuantity,
 		moneyOrEmpty(order.COGS),
+		feeOrEmpty(order.WarehouseFee),
 		moneyOrEmpty(order.MarketplaceTotal),
+		momentOrEmpty(order.PlatformCreatedAt),
+		momentOrEmpty(order.PlatformShipmentDeadline),
 	})
+}
+
+// momentOrEmpty writes one of the platform's dates in the readers' own clock, and a date never recorded as an empty
+// cell rather than as 1970.
+func momentOrEmpty(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+
+	return t.In(wib).Format("2006-01-02 15:04")
+}
+
+// feeOrEmpty writes a frozen fee as it was frozen, and an order never priced as an empty cell — never a 0, which would
+// read as a warehouse that charged nothing.
+func feeOrEmpty(fee *float64) any {
+	if fee == nil {
+		return ""
+	}
+
+	return *fee
 }
 
 func (s *exportSheet) bytes() ([]byte, error) {

@@ -17,7 +17,8 @@ func courierOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64, 
 	t.Helper()
 
 	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: teamID, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", ShippingCode: courier, Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: qty, UnitPrice: 5000},
@@ -134,5 +135,82 @@ func TestOrderList_TheRowCarriesItsUnitCount(t *testing.T) {
 
 	if got := detail.Msg.GetOrder().GetItemQuantity(); got != 5 {
 		t.Fatalf("detail item_quantity = %d, want 5", got)
+	}
+}
+
+// THE SELLER LIST'S WAREHOUSE FILTER — "only the ones leaving Gudang Pusat": the list and the strip above it narrow
+// together, and a warehouse naming ANOTHER warehouse reads nothing rather than reaching orders it does not ship.
+func TestOrderList_TheSellerFiltersByWarehouse(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	shop := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
+
+	const otherWarehouse uint64 = 901
+
+	here := courierOrder(t, svc, 2, shop, "jne", 1)
+
+	req := feeOrderReq(shop)
+	req.WarehouseId = otherWarehouse
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("create at the other warehouse: %v", err)
+	}
+
+	there := created.Msg.GetOrder().GetId()
+
+	wantOrders(t, listFiltered(t, svc, 2, &sellingv1.OrderListFilter{}), here, there)
+	wantOrders(t, listFiltered(t, svc, 2, &sellingv1.OrderListFilter{WarehouseId: otherWarehouse}), there)
+
+	stat, err := svc.OrderStat(context.Background(), connect.NewRequest(&sellingv1.OrderStatRequest{
+		TeamId: 2, Filter: &sellingv1.OrderStatFilter{WarehouseId: otherWarehouse},
+	}))
+	if err != nil {
+		t.Fatalf("OrderStat: %v", err)
+	}
+
+	if got := pendingRow(t, stat.Msg).GetCount(); got != 1 {
+		t.Fatalf("the strip counts %d pending for the other warehouse, want 1 — the row below it", got)
+	}
+
+	wantOrders(t, listFiltered(t, svc, testWarehouse, &sellingv1.OrderListFilter{WarehouseId: otherWarehouse}))
+}
+
+// WHEN IT ENTERED ITS STATUS (a-filtered-status-shows-its-own-date): a fresh order dates its pending from when it was
+// placed; once moved, the row carries the move's own moment — the list and the detail agree.
+func TestOrderList_TheRowCarriesWhenItEnteredItsStatus(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	shop := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
+
+	id := courierOrder(t, svc, 2, shop, "jne", 1)
+
+	rows := orderRows(listFiltered(t, svc, 2, &sellingv1.OrderListFilter{}))
+	if len(rows) != 1 || rows[0].GetStatusAtUnix() == 0 || rows[0].GetStatusAtUnix() != rows[0].GetCreatedAtUnix() {
+		t.Fatalf("rows %+v — a pending order entered pending when it was placed", rows)
+	}
+
+	moveOrder(t, svc, testWarehouse, id, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED, "")
+
+	detail, err := svc.OrderDetail(context.Background(), connect.NewRequest(&sellingv1.OrderDetailRequest{TeamId: 2, OrderId: id}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	var movedAt int64
+
+	for _, log := range detail.Msg.GetOrder().GetTimelineLogs() {
+		if log.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_PROCESSED {
+			movedAt = log.GetCreatedAtUnix()
+		}
+	}
+
+	rows = orderRows(listFiltered(t, svc, 2, &sellingv1.OrderListFilter{Status: sellingv1.OrderStatus_ORDER_STATUS_PROCESSED}))
+	if len(rows) != 1 || movedAt == 0 || rows[0].GetStatusAtUnix() != movedAt {
+		t.Fatalf("rows %+v — want the processed move's own moment %d", rows, movedAt)
+	}
+
+	if got := detail.Msg.GetOrder().GetStatusAtUnix(); got != movedAt {
+		t.Fatalf("detail status_at = %d, want %d — the same as the list", got, movedAt)
 	}
 }

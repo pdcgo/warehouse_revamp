@@ -134,14 +134,16 @@ state "Order Created Event" as createdevt
 state "InventoryTxCancel Compensate Event" as cominvevt
 
 create_err-->createdevt: if success, and bring idempotency key
-create_err-->cominvevt: if error, and bring idempotency key
+create_err-->cominvevt: if error, and bring idempotency key and transaction_id if exist
 createdevt-->srv
 cominvevt-->srv
 ```
 
 
 ## How We Call Inventory Service to Take Stock.
+
 Propossed Contracts.
+
 ```proto
 message ProductItem {
     uint64 product_id
@@ -152,6 +154,8 @@ message OrderTransactionCreateRequest {
     string                  idempotency_key
     uint64                  team_id          // the ordering team
     uint64                  warehouse_id
+    uint64                  team_id
+    string                  idempotency_key
     repeated ProductItem    items
 }
 

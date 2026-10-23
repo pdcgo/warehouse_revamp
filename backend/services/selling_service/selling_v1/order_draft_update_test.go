@@ -31,6 +31,8 @@ func str(s string) *string { return &s }
 
 func u64(v uint64) *uint64 { return &v }
 
+func i64(v int64) *int64 { return &v }
+
 // THE HALF THAT MAKES #191's MERGE MEAN ANYTHING. An edit marks the fields it wrote, and nothing
 // else — mark too much and the first save freezes the whole draft against the app forever.
 func TestOrderDraftUpdate_MarksOnlyWhatItWrote(t *testing.T) {

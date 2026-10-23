@@ -21,28 +21,21 @@ import type { PendingList, PendingPart } from "../../pending/registry";
 
 /** One unwired part of the screen. The id is also its i18n key (`orderForm.pending.<id>`). */
 export type PendingId =
-  | "bundle"
   | "returnMap"
   | "creditLimit"
   | "profit"
   | "shippingCost"
-  | "warehouseFee"
   | "invoice"
-  | "orderDate"
-  | "receiptCode"
   | "receiptScan"
   | "refsDistinct"
   | "formatRules"
-  | "deadline"
   | "buyerUsername";
 
 // The four KINDS and the numbering live in `features/pending` — this file is only this screen's
 // list, because "what is missing" is a fact about this screen and nothing else.
 const PARTS: PendingPart<PendingId>[] = [
-  // ⚠ THE PRODUCTS ARE ORDERED, THE GROUPING IS NOT. A bundle puts ordinary lines on the order and
-  // they are submitted like any other (see `allLines` on the page); what has nowhere to live is the
-  // fact that they arrived together, so that is what this entry is about.
-  { id: "bundle", kind: "dropped" },
+  // (The Bundles card's mark is gone: the bundles are BundleList's, and the order keeps no trace of one
+  // BY DESIGN — the-order-keeps-only-product-lines.)
   { id: "returnMap", kind: "dropped" },
   { id: "creditLimit", kind: "sample" },
   { id: "profit", kind: "derived" },
@@ -50,17 +43,9 @@ const PARTS: PendingPart<PendingId>[] = [
   // left as a box to guess into. The entry survives the control, because the ORDER TOTAL is now
   // missing a term and the profit estimate therefore reads high — which is invisible unless said.
   { id: "shippingCost", kind: "missing" },
-  { id: "warehouseFee", kind: "sample" },
+  // The warehouse fee on the invoice is real (WarehouseFeeCalculate, frozen by order create); what is sampled is
+  // each owner's MARKUP, which a debtor cannot read off another team's terms.
   { id: "invoice", kind: "sample" },
-  // ⚠ NOT `created_at`. The order carries one timestamp, written by the server when the row is — so
-  // an order taken on Saturday and typed in on Monday is dated Monday, and the orders list, which
-  // filters on exactly that field, files it under the wrong day. WHEN THE CUSTOMER BOUGHT IT is a
-  // different fact from when we wrote it down, and the contract has nowhere to put it.
-  { id: "orderDate", kind: "dropped" },
-  // ⚠ THE COURIER IS STORED, THE NUMBER IS NOT. `shipping_code` on the order is the CARRIER (`jne`),
-  // and the receipt is a FILE — there is no field anywhere for the tracking number itself, which is
-  // the one thing a buyer asks for by name.
-  { id: "receiptCode", kind: "dropped" },
   // ⚠ THE FILE IS READ BY A SERVICE THAT IS NOT BUILT YET. `scanReceipt` calls shipment's ReceiptCheck
   // (receipt-check-is-shipments), which answers in Storybook from the stub and nowhere else until the
   // backend lands — so outside it, the autofill and the "does this match the file?" check see nothing.
@@ -71,7 +56,6 @@ const PARTS: PendingPart<PendingId>[] = [
   // The courier and marketplace FORMATS are a table in `checks.ts`, written from what we have seen
   // rather than from anything official. They warn; they never refuse.
   { id: "formatRules", kind: "derived" },
-  { id: "deadline", kind: "dropped" },
   { id: "buyerUsername", kind: "dropped" },
 ];
 

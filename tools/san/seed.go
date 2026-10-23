@@ -46,6 +46,8 @@ func seedCommand() *cli.Command {
 				Usage: "populate the all-teams DEVELOPMENT fixture",
 				Description: "Creates sample teams, an all-teams superuser, and a few scoped users so the UI\n" +
 					"has something to show. Idempotent — safe to re-run.\n\n" +
+					"Gives Dev Warehouse a fee only while it has none: its default flat fee carried over when\n" +
+					"it has one, else 2.5% with a floor of 2000 and a cap of 20000. Never replaces a rate.\n\n" +
 					"HARD-REFUSES a Production target. This fixture ships known credentials on\n" +
 					"purpose, so it must never touch production — the guard is by construction, not\n" +
 					"by remembering. It also lives here in `seed`, never in a migration (migrations\n" +
@@ -354,6 +356,20 @@ func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 			return fmt.Errorf("membership %s@%d: %w", m.user, m.teamID, err)
 		}
 	}
+
+	// Dev Warehouse's rate, through warehouse_service's own write — never replacing one, and never ahead of its real
+	// flat fee (see seedDevWarehouseFee).
+	gdb, err := gormOn(db)
+	if err != nil {
+		return err
+	}
+
+	feeLine, err := seedDevWarehouseFee(ctx, gdb, whID)
+	if err != nil {
+		return fmt.Errorf("dev warehouse fee: %w", err)
+	}
+
+	log.Print(feeLine)
 
 	log.Printf("dev fixture seeded (target=%s): teams DEVWH/DEVSELL, users dev/wh_owner/wh_staff/seller, password=%q",
 		target, password)

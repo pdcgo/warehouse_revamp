@@ -2,10 +2,12 @@ import { createClient } from "@connectrpc/connect";
 import { AuthService, UserService } from "../gen/warehouse/user/v1/user_pb";
 import { TeamService } from "../gen/warehouse/team/v1/team_pb";
 import { ProductService } from "../gen/warehouse/product/v1/product_pb";
+import { BundleService } from "../gen/warehouse/product/v1/bundle_pb";
 import { ShopService } from "../gen/warehouse/selling/v1/selling_pb";
 import { OrderService } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
 import { TeamReturnConfigurationService } from "../gen/warehouse/selling/v1/return_configuration_pb";
+import { WarehouseFeeService } from "../gen/warehouse/warehouse/v1/warehouse_fee_pb";
 import { ShipmentChannelService } from "../gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptService } from "../gen/warehouse/shipment/v1/receipt_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
@@ -43,6 +45,8 @@ export const authClient = createClient(AuthService, transport);
 export const userClient = createClient(UserService, transport);
 export const teamClient = createClient(TeamService, transport);
 export const productClient = createClient(ProductService, transport);
+// A selling team's picking recipes (docs/business/product/product_bundle.md).
+export const bundleClient = createClient(BundleService, transport);
 export const shopClient = createClient(ShopService, transport);
 export const orderClient = createClient(OrderService, transport);
 // Drafts are PERSONAL as well as team-scoped (#192): the server narrows every call to the caller,
@@ -50,6 +54,8 @@ export const orderClient = createClient(OrderService, transport);
 export const orderDraftClient = createClient(OrderDraftService, transport);
 // Where a selling team's returns are received (the-return-warehouse-lives-in-team-return-configurations).
 export const teamReturnConfigurationClient = createClient(TeamReturnConfigurationService, transport);
+// What a warehouse charges per order (warehouse-prices-balance-records).
+export const warehouseFeeClient = createClient(WarehouseFeeService, transport);
 // The ONE courier catalogue (docs/business/shipment) — public reads, root writes.
 export const shipmentChannelClient = createClient(ShipmentChannelService, transport);
 // Reads an uploaded shipping label (receipt-check-is-shipments) — signed in, stores nothing.

@@ -100,6 +100,10 @@ func (s *Service) OrderDraftPromote(
 		},
 		shippingCode: draft.ShippingCode,
 		shippingCost: draft.ShippingCost,
+		// COPIED, as pushed or corrected (platform-created-at-is-required-at-finalize). A draft still missing its order
+		// date is refused by placeOrder's own rule — the one the typed form meets.
+		platformCreatedAt:        unixOrZero(draft.PlatformCreatedAt),
+		platformShipmentDeadline: unixOrZero(draft.PlatformShipmentDeadline),
 		// The money is RECOMPUTED from the mapped lines rather than carried over. A draft's totals are
 		// whatever the marketplace page said, and the lines a person actually mapped may not add up to
 		// it — one line removed, a quantity corrected. An order's `subtotal` and `total` must agree

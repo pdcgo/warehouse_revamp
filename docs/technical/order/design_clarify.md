@@ -398,34 +398,21 @@ flowchart LR
    sentence somebody has to write on the screen forever.
    ⚠ Its three Analytic RPCs are already audited 🔴 HEAVY and the fix is not applied.
 
-2. **Where does a wallet → bank withdrawal live?** Now that the sense is settled, the home is not.
-   Already open in two files; this is a third screen waiting on it.
-   **→ Recommend `order_service`** — the wallet is fed by that shop's orders and the withdrawal is
-   reconciled against them. That is the standing recommendation in both other files, unchanged.
+2. ✅ *(2026-10-22)* **Overtaken: a shop-level settlement row, its cash side deferred** —
+   [withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type); the order list's leftovers are Q20.
+   Kept as a line so the numbers hold.
 
-3. **Can one order's warehouse fee be read at all?** The fee is posted and attributable and no filter
-   reaches it, so the list cannot show it even as a column.
-   **→ Recommend one `order_id` filter on `LiabilityLogListFilter`** — never a second copy of the fee
-   on the order. Same recommendation as [balance Q9](../../business/balance/context_clarify.md#question).
+3. ✅ *(2026-10-22)* **Overtaken: the fee is frozen on the order, `orders.warehouse_fee`** —
+   [the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee).
+   Kept as a line so the numbers hold.
 
-4. **Is "sudah diserahkan" a status, or the absence of one?** It is the step the owner folded into
-   `processed`, and it is the step three of the row actions hang on — Jadikan Dikirim, Retur Barang,
-   Selesaikan Order. It has no enum value, so the menu gates on `PACKED` instead and offers them one
-   step early.
-   **→ Recommend a `HANDED_OVER` value** in the same migration that adds the four missing statuses.
-   It is the boundary between "we are still holding it" and "the courier is", which is the moment
-   responsibility moves — the only reason the four steps of `processed` are distinguishable at all.
-   ⚠ The alternative, gating on the presence of a tracking number, needs a field that also does not
-   exist.
+4. ✅ *(2026-10-22)* **Overtaken: yes — `shipping` is the handover** —
+   [picked-and-shipping-are-order-statuses](../../business/order/context_decision.md#picked-and-shipping-are-order-statuses).
+   Kept as a line so the numbers hold.
 
-5. **Is "Edit Resi" the seller's or the warehouse's?** The ongkir is now the warehouse's to set, and
-   a tracking number is issued at handover — by the building. But the old table put Edit Resi on
-   `created` and `process`, where the parcel has not moved and a CS is the one pasting the number
-   off the marketplace.
-   **→ Recommend both, with different sources:** the seller pastes a marketplace-issued number before
-   handover, the warehouse writes the courier's at handover. One field, two moments.
-   ⚠ It is academic until there IS a field — `shipping_code` is the carrier and `OrderReceipt` is the
-   attached file; the printed number is nowhere.
+5. ✅ *(2026-10-22)* **Answered: the seller's, until handover — the number, the file, or both** —
+   [the-seller-edits-the-resi-until-handover](../frontend/order_list_decision.md#the-seller-edits-the-resi-until-handover).
+   Kept as a line so the numbers hold.
 
 6. ✅ *(2026-10-19)* **Answered: yes, the root scope reads every team** —
    [root-reads-every-teams-orders](../frontend/order_list_decision.md#root-reads-every-teams-orders). As recommended.
@@ -439,28 +426,17 @@ flowchart LR
    it is not the current one. Three of those fit where three of the current form do not.
    ⚠ This is app-wide — `formatUnixDateTime` is shared — so it is asked rather than changed here.
 
-8. **What is the revenue of an order the marketplace never priced?** The margin is measured against
-   `harga MP`, and two kinds of order have none: a PHONE order (no storefront took anything) and a
-   marketplace order nobody recorded a figure for (fixture 108). Both currently show an em-dash for
-   beli, margin and percentage — so a real sale reads as unmeasured.
-   **→ Recommend splitting them:** a phone order's revenue is our own `subtotal` (there is no platform
-   in the middle, so our quote IS the sale), while an unrecorded marketplace figure stays UNKNOWN —
-   guessing there would silently substitute our quote for the platform's payment, which is the one
-   substitution settlement exists to prevent.
-   ⚠ Today the code refuses both, which is honest and leaves phone orders out of every margin.
+8. ✅ *(2026-10-22)* **Overtaken: no such order — every order needs a platform ref and `platform_total`** —
+   [platform-total-is-required-at-finalize](../../business/order/context_decision.md#platform-total-is-required-at-finalize).
+   Kept as a line so the numbers hold.
 
-9. **Where do the deadline's urgency boundaries come from?** The column bands at 6 hours ("not for the
-   next shift") and 24 hours ("today's problem"), and both are my guess.
-   **→ Recommend they come from the CHANNEL, not from a constant:** a same-day courier and a regular
-   one do not deserve the same amber. That needs a lead time on `ShipmentChannel`, which it has no
-   field for either.
-   ⚠ And the deadline itself has no field anywhere — see the `deadline` mark on the column.
+9. ✅ *(2026-10-22)* **Answered: fixed 6 h and 24 h** —
+   [the-urgency-bands-are-6-and-24-hours](../frontend/order_list_decision.md#the-urgency-bands-are-6-and-24-hours).
+   Kept as a line so the numbers hold.
 
-10. **Does promoting a draft keep the marketplace's product title?** `OrderDraftItem` carries
-    `external_name` + `external_sku` — *"never overwritten … the evidence of what the buyer actually
-    ordered"* — and `OrderItem` has neither, so promote throws the evidence away at the moment the goods
-    start being picked against the mapping. The detail preview shows it per line (invented).
-    **→ Recommend** both fields on `OrderItem`, copied verbatim at promote and empty on a typed order.
+10. ✅ *(2026-10-22)* **Answered: no — the title is a reference on the draft only** —
+    [an-order-line-keeps-no-platform-title](../frontend/order_detail_decision.md#an-order-line-keeps-no-platform-title).
+    Kept as a line so the numbers hold.
 
 11. **What is a return shipment?** A parcel can travel twice (owner: *"resi bisa 2 dan jejak pengiriman
     juga bisa 2, dari order dan return"*), each leg with its own courier, number and trail. Today there is
@@ -482,20 +458,13 @@ flowchart LR
     ⚠ Contract: `Order.note` is one string; this needs an `order_notes` table (`kind`, `author_user_id`,
     `text`, `created_at`, `edited_at`) and create/update RPCs.
 
-14. **What does a draft line map to?** A scraped row can now be mapped to a product, a bundle (with its slot fills),
-    or several products ([a-draft-row-maps-to-a-product-a-bundle-or-a-split](../frontend/order_draft_decision.md#a-draft-row-maps-to-a-product-a-bundle-or-a-split)),
-    but `OrderDraftItem` holds one `product_id` — so a bundle or split mapping is lost on save and blocks Promote.
-    **→ Recommend** a mapping on the draft line with a kind: `product` (today's `product_id`), `bundle`
-    (`bundle_id` + the slot fills), `split` (child lines of product + quantity per unit) — and the same grouping on
-    `OrderItem`, which the create form's `bundle` mark already asks for, so Promote can carry it into the order.
-    ⚠ Bundles need a contract of their own first; this question waits on that one.
+14. ✅ *(2026-10-22)* **Answered: nothing — the form maps, the draft stores no mapping** —
+    [a-draft-stores-no-mapping](../frontend/order_draft_decision.md#a-draft-stores-no-mapping).
+    Kept as a line so the numbers hold.
 
-15. **Should a draft carry a sell price from the start?** The app reads the order's total off the marketplace as well
-    as each line's price, and the draft page lets the sell price be typed over (owner: *"bisa juga kita masuk di
-    kontrak awal atau 0"*) — but `OrderDraft` has no field, so a typed one is lost (`sellPrice` ⚠).
-    **→ Recommend** `marketplace_total` on `OrderDraft` and `OrderDraftPush` (0 = not read), editable through
-    `OrderDraftUpdate` like any other field, and carried into the order by Promote. The rows' sum stays the seed
-    when the app sends none.
+15. ✅ *(2026-10-22)* **Answered: the draft carries `platform_total`, and a typed price lands on the order** —
+    [the-draft-price-is-platform-total](../frontend/order_draft_decision.md#the-draft-price-is-platform-total).
+    Kept as a line so the numbers hold.
 
 16. ✅ *(2026-10-19)* **Answered: `ShopByIds` and `UserByIDs` per page, `item_quantity` on the list row** —
     [the-warehouse-row-fills-from-shop-and-user-by-ids](../frontend/warehouse_order_list_decision.md#the-warehouse-row-fills-from-shop-and-user-by-ids). Your proposal, replacing my copy onto the order.
@@ -530,3 +499,36 @@ flowchart LR
     **→ Recommend** it takes the author's line in the *Dibuat* cell — `via <app>` instead of `oleh <name>`. Per
     [drafts-exist-only-for-the-third-party-app](../../business/order/context_decision.md#drafts-exist-only-for-the-third-party-app)
     the app IS the author, and the user id on the draft is only whoever owns the token it pushed with.
+
+19. **What may the order Import move?** [the-order-import-moves-statuses-only](../frontend/order_list_decision.md#the-order-import-moves-statuses-only)
+    left one thing open: which marketplace status maps to which of ours. The Import is §Order Shipments' manual CS check done
+    in bulk, so the risk is in three places — a **cancel** (releases stock, reverses the fee, cancels the settlement), any
+    move **before handover** (the file cannot see the building), and a **ref matching two orders**
+    ([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)).
+    **→ Recommend A — only the CS moves after handover**, along the status diagram's edges; everything else is listed in
+    the import's result with its reason, never applied:
+
+    | platform says | → ours | when ours is |
+    | --- | --- | --- |
+    | awaiting / ready to ship | no move | — that state is the warehouse's |
+    | in transit | `shipped` | `shipping` |
+    | delivered / completed | `completed` | `shipped`, `problem` |
+    | failed delivery / dispute | `problem` | `shipped` |
+    | return | `return` | `shipping`, `shipped`, `problem`, `completed` |
+    | cancelled | listed | the CS cancels a `pending` one; a later one goes back through the warehouse |
+    | — | `lost` | never from a file |
+
+    The alternatives: **B** also cancels a `pending` order the platform cancelled; **C** applies whatever the file says.
+    Each marketplace's own words become a per-marketplace parser table, drafted for review rather than asked word by word.
+
+20. **What happens to the order list's withdrawal leftovers?** Both meanings of "withdrawal" have left the order: the
+    per-order figure is settlement's payout row
+    ([settlement-replaces-withdrawal-on-the-order](../frontend/order_detail_decision.md#settlement-replaces-withdrawal-on-the-order)),
+    and wallet → bank is a shop-level settlement row
+    ([withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type)), its
+    cash side deferred (order context §Whats Not). Two menu items still assume the old per-order `wd_total`.
+    **→ Recommend:** remove *Edit Withdrawal* from a completed order, and the `withdrawal` mark with it — Settlement Imports
+    posts the payout, and a typed figure would be a second record of the same money. And bring *Selesaikan Order* back on a
+    `return` when settlement shows a payout above zero for that order
+    ([finish-order-on-a-return-waits-for-the-withdrawal](../frontend/order_list_decision.md#finish-order-on-a-return-waits-for-the-withdrawal)
+    was waiting on exactly that figure) — which needs `return → completed` in the owner's status diagram.

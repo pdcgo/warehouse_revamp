@@ -19,7 +19,9 @@ func NewRegister(
 ) san_grpc.RegisterHandler {
 	return func() san_grpc.ServiceReflectNames {
 		mux.Handle(productv1connect.NewProductServiceHandler(product, opts))
+		// The same Service serves a team's bundles — they live in product_service's own tables.
+		mux.Handle(productv1connect.NewBundleServiceHandler(product, opts))
 
-		return san_grpc.ServiceReflectNames{productv1connect.ProductServiceName}
+		return san_grpc.ServiceReflectNames{productv1connect.ProductServiceName, productv1connect.BundleServiceName}
 	}
 }

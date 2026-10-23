@@ -236,7 +236,9 @@ func (g *gate) authorize(ctx context.Context, message proto.Message) (context.Co
 	// ⚠ NOT FOR AUTHORIZATION — every decision below is made here. It exists so a write can record
 	// whether it was an OVERRIDE: ROLE_UNSPECIFIED means the caller holds no role in the scoped
 	// team and therefore got in by the root-team bypass at step 8, which is exactly what
-	// terms-are-team-scoped-root-is-global defines an override to be.
+	// terms-are-team-scoped-root-is-global defines an override to be. The one other use is a
+	// handler NARROWING a policy past what the proto can say ("only your own") — see
+	// san_auth.GetCallerRole.
 	ctx = san_auth.WithCallerRole(ctx, access.Role)
 
 	// 6. SUSPENDED accounts are refused — whatever their roles say, and whatever token they

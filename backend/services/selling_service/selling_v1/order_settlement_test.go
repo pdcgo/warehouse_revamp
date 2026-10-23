@@ -34,7 +34,8 @@ func createMarketplaceOrder(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
 		MarketplaceTotal: marketplaceTotal,
 		Items: []*sellingv1.OrderItem{

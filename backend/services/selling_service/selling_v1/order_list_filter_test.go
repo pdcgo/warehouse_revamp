@@ -35,7 +35,8 @@ func namedOrder(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: name, CustomerPhone: phone, Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
@@ -185,7 +186,8 @@ func TestOrderList_SearchNeverLeaksAnotherTeamsOrders(t *testing.T) {
 	ours := namedOrder(t, svc, mine, "Budi Santoso", "081200001111")
 
 	_, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 3, ShopId: theirs, WarehouseId: 901,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                3, ShopId: theirs, WarehouseId: 901,
 		CustomerName: "Budi Santoso", CustomerPhone: "081200001111", Subtotal: 500, Total: 500,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 500},

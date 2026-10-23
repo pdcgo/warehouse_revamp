@@ -19,6 +19,8 @@ each old heading there now points here.
 | [the-listing-is-information-the-mapping-sets-the-count](#the-listing-is-information-the-mapping-sets-the-count) | a row's scraped quantity and price are shown, not edited; the count is set on the mapping, and a different one is flagged — ⚠ replaced by [the-draft-opens-in-the-order-form](#the-draft-opens-in-the-order-form) |
 | [the-draft-opens-in-the-order-form](#the-draft-opens-in-the-order-form) | a draft opens IN the order form — `/orders/new?draft=ID`, seeded from the draft; its scraped lines a text list above the products; Create places the order and deletes the draft |
 | [the-draft-preview-became-the-draft-page](#the-draft-preview-became-the-draft-page) | `/order-drafts/:id` IS the draft page in the order form's clothes now — the built page is gone — ⚠ replaced by [the-draft-opens-in-the-order-form](#the-draft-opens-in-the-order-form) |
+| [the-draft-price-is-platform-total](#the-draft-price-is-platform-total) | the draft's price is the pushed `platform_total`; a typed-over price goes onto the order at create, never back to the draft |
+| [a-draft-stores-no-mapping](#a-draft-stores-no-mapping) | a draft's rows are a reference; the create form maps each to a product, a bundle or a split, in one sitting, straight into `order_items` |
 
 ## the-draft-list-is-the-drafts-tab
 
@@ -329,3 +331,61 @@ Pesanan yang belum selesai — dikirim aplikasi lain, atau disimpan dari form pe
 | a phone | the bar keeps its one Orders tab, which lights on the drafts too (it claims `/order-drafts`); the drafts are in More's menu |
 | the stories | their own file, kept in the Order group — `Pages/Order/OrderDraftsPage` (owner: *"storynya bagian dari order, tidak masalah"*) |
 | a mark | the strip's ⚠ (`statusSet`) left with the strip; the summary's ⚠ is now the page's first |
+---
+
+## the-draft-price-is-platform-total
+
+> Owner, in chat (2026-10-22): **"yes"** to *"close Q15?"* — [technical order Q15](../order/design_clarify.md#question),
+> *"should a draft carry a sell price from the start?"*, which I read as answered by order context §Table That Must Have
+> (`order_drafts.platform_total`) and §Order Draft Behavior point 3 (finalizing is done in the frontend). As recommended.
+
+**The verdict.** A draft's price is its **`platform_total`** — the buyer-paid total the app pushes with it. The create
+form is seeded from it and the CS may type over it; whatever the form holds is saved as the **order's** `platform_total`
+at create. Nothing is saved back to the draft, which is deleted.
+
+```mermaid
+flowchart LR
+  A["the app's push"] -->|"platform_total"| D["the draft"]
+  D -->|"seeds"| F["the create form - the CS may type over it"]
+  F -->|"at create"| O["orders.platform_total - required"]
+  F --> X["the draft is deleted"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the seed | `order_drafts.platform_total`. When the app sends none, the rows' platform prices summed, as [the-draft-sell-price-starts-from-the-rows](#the-draft-sell-price-starts-from-the-rows) has it |
+| a typed price | kept — on the order, not the draft |
+| the mark | `sellPrice` on the draft page goes |
+
+---
+
+## a-draft-stores-no-mapping
+
+> Owner, in chat (2026-10-22): **"yes"** to *"close Q14?"* — [technical order Q14](../order/design_clarify.md#question),
+> *"what does a draft line map to?"*, which I read as answered by order context §Table That Must Have
+> (`order_draft_platform_items` carries no product) and §Order Draft Behavior points 3–5. As recommended.
+
+**The verdict.** A draft stores **no mapping**. Its rows (`order_draft_platform_items`) are a reference. The CS maps each
+row in the **create form** — to a product, a bundle, or a split, as
+[a-draft-row-maps-to-a-product-a-bundle-or-a-split](#a-draft-row-maps-to-a-product-a-bundle-or-a-split) describes — and
+the result goes straight into `order_items` when the order is created. The draft is then deleted.
+
+```mermaid
+flowchart LR
+  R["order_draft_platform_items - title, price, qty, total"] -->|"seed, reference only"| F["the create form - map each row"]
+  F -->|"product, bundle or split"| O["order_items"]
+  F --> X["the draft is deleted"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the draft | keeps no `product_id` and no bundle or split on its rows |
+| one sitting | a mapping half done and abandoned is lost — accepted with this decision |
+| the draft page | its mapping Save goes, and with it the marks `rowBundle`, `rowSplit`, `listingQty` |
+| ⚠ supersedes | the *storing* row of [a-draft-row-maps-to-a-product-a-bundle-or-a-split](#a-draft-row-maps-to-a-product-a-bundle-or-a-split) — the three ways to map stand, storing them does not |
+| a bundle on the order | how a bundle lands on `order_items` is the bundle design's ([product_bundle.md](../../business/product/product_bundle.md)), not this |
+| the build | still saves and promotes on the server — [the-build-lets-a-person-draft-and-promotes-on-the-server](../../business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server) |

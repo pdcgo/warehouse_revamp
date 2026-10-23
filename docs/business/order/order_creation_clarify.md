@@ -85,6 +85,35 @@ points are deleted, so this file is always the current open set. Decisions land 
 > here now** — what is left is your doc: the contradictions below, and the debt-check box
 > ([the drawing](./context_clarify.md#proposed--the-debt-check-as-decided)).
 
+> ✅ **Answered and deleted (2026-10-12 16:38):** `does-the-order-keep-the-take-id` — the Order Cancel carries K
+> ([every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key)), so the order needs no
+> `transaction_id` from inventory; inventory stores K as `ORDER_TAKES.take_ref`
+> ([take-ref-dari-idempotency-key](../stock_thoni/context_decision.md#take-ref-dari-idempotency-key)). Inventory's own flow
+> still says Order Cancel sends `transaction_id` — reported there as a contradiction.
+
+> 🔄 **Re-examined 2026-10-12 17:12** — lines 109 and 111: *Order Created* now carries `transaction_id` beside K, and
+> the compensation carries it *"if exist"*. 🆕 `who-reads-the-transaction-id` (✅ [the-take-id-rides-only-the-compensation](./context_decision.md#the-take-id-rides-only-the-compensation)) and the
+> critique `the-compensation-names-the-take-twice`. ✅ Closed — mine, left stale since 16:38:
+> `the-key-reached-the-diagram-and-nothing-else`. The contract has carried `idempotency_key` since then (line 129), and
+> both sentences it named are now marked amended in the decision log
+> ([the-take-is-never-retried](./context_decision.md#the-take-is-never-retried) ·
+> [every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key) §What it amends).
+
+> ✅ **2026-10-12 17:22–17:26 — answered and deleted:** `who-reads-the-transaction-id`. Inventory's compensation webhook
+> reads it beside K ([provide](../stock_thoni/order_creation_provide.md) lines 80–82), and line 109 dropped it from
+> *Order Created* — [the-take-id-rides-only-the-compensation](./context_decision.md#the-take-id-rides-only-the-compensation).
+> How the two are used together is the inventory doc's to say, so `the-compensation-names-the-take-twice` is re-routed
+> there as [keduanya-dipakai-bagaimana](../stock_thoni/order_creation_provide_clarify.md#critique).
+
+> 🔄 **Re-examined 2026-10-13 16:04** — line 129: `team_id` on the take request, the ordering team
+> ([the-take-request-carries-the-ordering-team](./context_decision.md#the-take-request-carries-the-ordering-team)) — the
+> request half of `team-id-is-ambiguous`, as recommended, and the answer to inventory's
+> `sendiri-atau-silang-diketahui-dari-mana`. Left: `TransactionItem.team_id` (line 137) — now the **same name** for a
+> **different team** in one contract, which makes `which-team-is-team-id` sharper, not smaller.
+
+> ✅ **2026-10-13 16:58 — answered and deleted:** `which-team-is-team-id` and `team-id-is-ambiguous`. Line 137 now reads
+> *"item owner team_id"* — the owner, as recommended; the name stays, the comment says which team ([the-line-team-is-the-owner](./context_decision.md#the-line-team-is-the-owner)).
+
 Siblings: [order context](./context_clarify.md) · [event_context](./event_context.md) ·
 [warehouse](../teams/warehouse/context_clarify.md) · [inventory](../inventory/context_clarify.md).
 
@@ -122,6 +151,7 @@ sequenceDiagram
 | the release | one path, by K, for `InventoryTxCancel` and the Order Cancel — [every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key) |
 | the pre-transaction checks | ✅ drawn *(2026-10-17)* — *Check the Request*, the owners lookup, the debt check |
 | the resend shortcut | ✅ **gone** — a used key is refused, never answered with an order: [the-order-refuses-a-used-key](./context_decision.md#the-order-refuses-a-used-key) |
+| `transaction_id` | on the compensation only, when the take answered — [the-take-id-rides-only-the-compensation](./context_decision.md#the-take-id-rides-only-the-compensation) |
 
 ### The whole diagram, ready to paste
 
@@ -142,6 +172,7 @@ hazard is re-routed to [inventory Q11](../inventory/context_clarify.md#question)
 
 | | Problem | → Recommend |
 | --- | --- | --- |
+| **the-request-names-the-key-twice** 🆕 | *(2026-10-17, found testing the merge of `backup/inventory`; widened 2026-10-20 by the next merge)* `OrderTransactionCreateRequest` in [order_creation.md](./order_creation.md) now declares **both** fields twice — `idempotency_key` on lines 154 and 158, `team_id` on lines 155 and 157. Each branch added the same two fields, and the merge kept both copies. A message with two fields of one name does not compile, and a reader cannot tell whether the second pair was meant to be different fields | delete lines 157–158 — keep the pair on 154–155, which carries the comment *the ordering team* |
 | **one-line-many-batches** | FIFO can draw one line from two batches at different costs, so a single `unit_cost` × `qty` only approximates `total` | `total` is authoritative; `unit_cost` is informational |
 | **the-fee-call-is-inside-the-transaction** | `WarehouseFeeCalculate` holds the order's transaction open across a network call | acceptable, since its basis only exists after the take — but it is a pure calculation, so reading the rate before the transaction and computing locally removes the call. 🔄 *(2026-10-19)* The call can now refuse, for a warehouse with no rate ([a-warehouse-with-no-rate-takes-no-orders](../teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)): your rollback undoes the take, so no new box. Rare once every warehouse has a rate |
 

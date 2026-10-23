@@ -135,6 +135,8 @@ export const ASellingTeamGetsTheSellingMenu: Story = {
     await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.products"));
     await waitFor(() => expect(canvas.getByRole("link", { name: "My Product" })).toBeVisible());
     await expect(canvas.getByRole("link", { name: "Discover Product" })).toBeVisible();
+    // …and the team's bundles — picking recipes, a catalogue thing (docs/business/product/product_bundle.md).
+    await expect(canvas.getByRole("link", { name: "Bundles" })).toHaveAttribute("href", "/products/bundles");
 
     // A rack belongs to the building that holds it, not to the team that raises the restock — so a
     // selling team gets no placement screen at all (the-racks-page-is-the-placement-list).

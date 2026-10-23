@@ -5,13 +5,14 @@ import {
   Button,
   Card,
   Flex,
+  HStack,
   Icon,
   IconButton,
   Stack,
   Text,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { Package, Replace, X } from "lucide-react";
+import { Archive, Lock, Package, Replace, X } from "lucide-react";
 
 import { AllProductPicker } from "../../../components/products/AllProductPicker";
 import { ProductListItem } from "../../../components/products/ProductListItem";
@@ -20,13 +21,10 @@ import type { PickedProduct } from "../../../components/products/ProductSelect";
 import type { Availability, Costs } from "../../../features/orders/lines";
 import { lineTotal } from "../../../features/orders/lines";
 import { formatRupiah } from "../../../lib/money";
-import type { BundleDraft, SlotDraft } from "./bundles";
+import type { BundleDraft, PickedBundle, SlotDraft } from "./bundles";
 import { slotCap, slotFilled } from "./bundles";
-import { BUNDLES } from "./mockData";
 import { BundlePicker } from "./BundlePicker";
 import { coverFor } from "./mockImages";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "./pending";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
 
@@ -47,7 +45,7 @@ interface BundleCardProps {
   bundles: BundleDraft[];
   stock?: Availability;
   costs?: Costs;
-  onAdd: (templateId: string) => void;
+  onAdd: (bundle: PickedBundle) => void;
   onQuantity: (key: string, quantity: string) => void;
   onRemove: (key: string) => void;
   onFill: (key: string, slotId: string, products: PickedProduct[]) => void;
@@ -82,16 +80,13 @@ export function BundleCard({
               two ways to fill one order (an-order-holds-items-or-bundles), so they read alike. */}
           <Flex align="start" gap="card" wrap="wrap" justify="space-between">
             <Stack gap="0.5" minW="0">
-              <Flex align="center" gap="2" wrap="wrap">
-                {/* One step larger, as the items card's title is — it holds the order's goods in its place. */}
-                <Card.Title textStyle="xl">{t("orderForm.bundles.title")}</Card.Title>
-                <NotImplemented list={ORDER_FORM_PENDING} id="bundle" />
-              </Flex>
+              {/* One step larger, as the items card's title is — it holds the order's goods in its place. */}
+              <Card.Title textStyle="xl">{t("orderForm.bundles.title")}</Card.Title>
               <Card.Description>{t("orderForm.bundles.help")}</Card.Description>
             </Stack>
 
             <Flex align="center" gap="card" wrap="wrap">
-              <BundlePicker bundles={BUNDLES} disabled={noWarehouse} onAdd={(ids) => ids.forEach(onAdd)} />
+              <BundlePicker teamId={teamId} disabled={noWarehouse} onAdd={(picked) => picked.forEach(onAdd)} />
 
               {/* WHY it is disabled, beside the disabled thing — with no warehouse every figure on a slot is blank. */}
               {noWarehouse && (
@@ -233,6 +228,17 @@ export function SlotBox({
           {filled} / {cap}
         </Badge>
       </Flex>
+
+      {/* The bundle's own product cannot be used — its owner locked it, or it was archived — so the slot started
+          empty and is the CS's to fill (a-borrowed-product-never-blocks-its-owner). */}
+      {slot.unavailable && (
+        <HStack gap="1.5" color="warning.fg" data-testid={`slot-unavailable-${bundle.key}-${slot.id}`}>
+          <Icon as={slot.unavailable === "locked" ? Lock : Archive} boxSize="4" />
+          <Text fontSize="sm">
+            {slot.unavailable === "locked" ? t("orderForm.bundles.slotLocked") : t("orderForm.bundles.slotArchived")}
+          </Text>
+        </HStack>
+      )}
 
       <Stack gap="2">
         {slot.fills.map((fill) => {

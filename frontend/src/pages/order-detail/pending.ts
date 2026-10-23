@@ -5,8 +5,9 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 //
 // This is a PREVIEW of the screen the owner specified: seven sections down one page, rather than the
 // three tabs the built detail page has. Most of what the sections need is real — the order, its lines,
-// its events, its address. What is missing clusters in three places: the money below the lines, the
-// tracking on the shipment, and the withdrawal import the settlement ledger still waits on.
+// its events, its address, its tracking number and its frozen warehouse fee. What is missing clusters in
+// three places: the lines' picture and marketplace title, the parcel's trail, and the withdrawal figure the
+// settlement ledger still has no per-order source for.
 //
 // The list shrinks by one entry each time something behind it lands. See `features/pending` for the
 // four kinds and for why the badge's number is the position in this array.
@@ -16,9 +17,6 @@ export type PendingId =
   | "notes"
   | "productImage"
   | "externalName"
-  | "totalFee"
-  | "deadline"
-  | "receiptCode"
   | "shippingTracking"
   | "returnShipment"
   | "withdrawal";
@@ -44,26 +42,16 @@ const PARTS: PendingPart<PendingId>[] = [
   // The fix is the two fields on `OrderItem`, copied verbatim at promote. The titles on screen are
   // invented, and only on orders that came from a storefront.
   { id: "externalName", kind: "sample" },
-  // ⚠ NOTHING CARRIES THE WAREHOUSE FEE PER ORDER, so "total produk + biaya = total sistem" is a real
-  // subtotal plus an invented fee. Same cause and same sample as the list's Beli column: the charge is
-  // a liability row keyed by `source_id = order id`, and `LiabilityLogListFilter` takes a counterparty
-  // and nothing else (balance Q9).
-  { id: "totalFee", kind: "sample" },
-  // The ship-by clock. No field anywhere — not on the order, not on the channel.
-  { id: "deadline", kind: "sample" },
-  // ⚠ THE COURIER IS STORED, THE TRACKING NUMBER IS NOT. `shipping_code` is the carrier (`jne`) and
-  // `OrderReceipt` is the attached FILE; the number printed on the slip has no field.
-  { id: "receiptCode", kind: "sample" },
-  // ⚠ AND THE REST OF THE SHIPMENT IS NOT MODELLED AT ALL — where the parcel is, when the courier
+  // ⚠ THE TRACKING NUMBER IS STORED NOW (`receipt_code`), BUT THE REST OF THE SHIPMENT IS NOT MODELLED AT ALL — where the parcel is, when the courier
   // scanned it, what it weighed, what the postage cost. The owner expects this section to be EMPTY
   // most of the time ("kebanyakan tidak ada"), which is a design fact worth keeping: the section says
   // "no tracking recorded" rather than hiding, because an absent parcel trail is itself the news.
   //
-  // A separate entry from `receiptCode`: that is one missing FIELD, this is a missing INTEGRATION.
+  // The number was one missing FIELD and has landed; this is a missing INTEGRATION.
   { id: "shippingTracking", kind: "missing" },
   // ⚠ A PARCEL CAN TRAVEL TWICE, AND THE CONTRACT KNOWS ABOUT NEITHER TRIP (owner: *"resi bisa 2 dan
   // jejak pengiriman juga bisa 2, dari order dan return"*). The return leg has its own courier, its own
-  // number and its own trail — and there is no return record yet: no number, no trail. A separate entry from `receiptCode`/`shippingTracking`, which are about the leg
+  // number and its own trail — and there is no return record yet: no number, no trail. A separate entry from `shippingTracking`, which is about the leg
   // that does half-exist; this one is a whole missing record.
   //
   // Invented for order 108 only, so the two-leg shape can be seen populated once.

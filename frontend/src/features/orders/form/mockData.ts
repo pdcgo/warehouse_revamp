@@ -1,66 +1,13 @@
 // THE NUMBERS NOTHING SERVES YET.
 //
-// Everything here stands in for a read that does not exist: bundle templates (no contract), and a
-// creditor's terms toward this team (`LiabilityTerms` is scoped to the team that OWNS the terms, so
-// a debtor cannot ask what limit it is under — see the plan). The page is not routed, so these
+// Everything here stands in for a read that does not exist: a creditor's terms toward this team
+// (`LiabilityTerms` is scoped to the team that OWNS the terms, so a debtor cannot ask what limit it is
+// under — see the plan). The page is not routed, so these
 // figures never appear in front of a real operator; they exist so the layout can be reviewed with
 // money on it rather than a page of em dashes.
 //
 // ⚠ NOT FIXTURES. `.storybook/fixtures.ts` is what the stub transport serves — real shapes for real
 // RPCs. This file is the opposite: values for calls that have no RPC at all.
-
-// ── Bundles ─────────────────────────────────────────────────────────────────────────────────────
-
-/**
- * One slot of a bundle: what goes in it, and HOW MANY per bundle.
- *
- * The slot is the unit the owner described — "one product empty → substitute another, several
- * products allowed, max qty = the bundle's rule × the bundle qty". So the rule lives on the slot and
- * the products filling it are a list, not a field.
- */
-export interface BundleSlotTemplate {
-  id: string;
-  /** What the slot is FOR, in the bundle's own words — "Coffee", not the product's name. */
-  label: string;
-  /** How many units of this slot go in ONE bundle. The cap is this × the bundle quantity. */
-  ruleQty: number;
-  /** What normally fills it. Substituting replaces it; the slot keeps its rule. */
-  productId: bigint;
-  sku: string;
-  name: string;
-}
-
-export interface BundleTemplate {
-  id: string;
-  name: string;
-  slots: BundleSlotTemplate[];
-}
-
-// The product ids are the Storybook fixtures' (71–74), so a slot's stock and HPP resolve through the
-// SAME reads the manual lines use and the card shows real figures rather than invented ones.
-//
-// Both templates deliberately contain a product owned by ANOTHER team (73 is Toko Kenanga's, 74 is
-// Toko Melati's) — that is what makes the return-mapping card and the per-creditor invoice fill on a
-// screen somebody is only looking at.
-export const BUNDLES: BundleTemplate[] = [
-  {
-    id: "hampers",
-    name: "Hampers Lebaran",
-    slots: [
-      { id: "coffee", label: "Coffee", ruleQty: 2, productId: 71n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g" },
-      { id: "tea", label: "Tea", ruleQty: 1, productId: 72n, sku: "SKU-TEH-100", name: "Teh Melati 100g" },
-      { id: "sugar", label: "Sugar", ruleQty: 1, productId: 73n, sku: "SKU-GULA-1K", name: "Gula Pasir 1kg" },
-    ],
-  },
-  {
-    id: "kitchen",
-    name: "Paket Dapur",
-    slots: [
-      { id: "rice", label: "Rice", ruleQty: 1, productId: 74n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg" },
-      { id: "sugar", label: "Sugar", ruleQty: 2, productId: 73n, sku: "SKU-GULA-1K", name: "Gula Pasir 1kg" },
-    ],
-  },
-];
 
 // ── A creditor's terms toward this team ─────────────────────────────────────────────────────────
 

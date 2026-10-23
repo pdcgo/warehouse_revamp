@@ -286,6 +286,46 @@ export function canSetLiabilityTerms(role: Role | undefined): boolean {
   }
 }
 
+// canCreateBundle mirrors BundleCreate's policy: every selling role, the CS included — so the CS can turn a package
+// listing into a bundle while mapping a draft (the-creator-or-an-admin-edits-a-bundle).
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canCreateBundle(role: Role | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
+    case Role.SELLING_CS:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+// canChangeBundle mirrors BundleUpdate and BundleDelete: the selling Owner and Admin, Root and the Administrator change
+// any bundle of the team; a CS changes only a bundle they created (the-creator-or-an-admin-edits-a-bundle).
+//
+// ⚠ THIS IS UX ONLY — and the creator half is not even in the proto: the handler checks it. Never move a check from
+// the backend into here.
+export function canChangeBundle(args: { role: Role | undefined; createdByUserId: bigint; me: bigint | undefined }): boolean {
+  switch (args.role) {
+    case Role.ROOT:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
+      return true;
+
+    case Role.SELLING_CS:
+      return args.me !== undefined && args.createdByUserId === args.me;
+
+    default:
+      return false;
+  }
+}
+
 // isGlobalAdmin: only root/admin may act outside a team (list all users, delete, suspend).
 export function isGlobalAdmin(role: Role | undefined): boolean {
   return role === Role.ROOT || role === Role.ADMINISTRATOR;

@@ -131,6 +131,14 @@ are deleted, so this file is always the current open set. Decisions land in
 > and is stale twice over — the warehouse comes from the configuration, and the diagram’s own first box already
 > read it.
 
+> 🔄 **2026-10-14 — from the inventory side (stock_thoni).** Inventory proposes that the return transaction is created at the
+> **claim** (`return`, or the warehouse's *force*), and that the warehouse person **accepts in inventory's receiving page**,
+> the same page a restock uses — racks, broken and lost are inventory's. Inventory then tells order service, which sets
+> `return_completed`. That moves §Order Return Flow's *"Call Inventory Service to Create Return Transaction"* from the
+> accept to the claim. Argued, with the step-by-step, at
+> `retur-dibuat-saat-klaim-atau-saat-diterima`. ✅ **The stock owner chose it the same day** —
+> [retur-berjalan-seperti-restock](../stock_thoni/context_decision.md#retur-berjalan-seperti-restock) — but it changes this doc, so it still needs the order service developer.
+
 Siblings: [order context](./context_clarify.md) · [order_creation](./order_creation_clarify.md) ·
 [inventory](../inventory/context_clarify.md) · [product](../product/context_clarify.md).
 

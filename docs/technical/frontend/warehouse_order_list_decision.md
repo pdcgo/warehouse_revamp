@@ -22,6 +22,7 @@ each old heading there now points here.
 | [a-warehouse-prints-the-labels-of-orders-it-ships](#a-warehouse-prints-the-labels-of-orders-it-ships) | `OrderLabels(team_id, order_ids)` merges the labels of orders this warehouse ships into one PDF; access follows the order, nothing is shared |
 | [a-batch-move-saves-in-one-transaction](#a-batch-move-saves-in-one-transaction) | a batch status move saves in one transaction of four statements; refusals stay per order, a database failure moves nothing |
 | [one-export-is-the-list-as-a-file](#one-export-is-the-list-as-a-file) | one `OrderExport(team_id, filter)` for both lists: the list's rows, the reader's columns, .xlsx, streamed with progress |
+| [a-download-keeps-its-files-name](#a-download-keeps-its-files-name) | every private document downloads under its own name — the link carries it, the storage answers inline with it |
 
 ## the-two-ends-are-two-screens
 
@@ -346,6 +347,7 @@ flowchart LR
 | the search | today: customer name, phone, MP order ref, order id. Plus the tracking number once `orders.receipt` is built ([a-label-scan-reads-the-ref-or-the-receipt](../../business/inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)) |
 | the stat | the same filter feeds `OrderStat` through `scopedOrders`, so the counts match the rows |
 | ✅ built *(2026-10-21)* | `seller_team_id`, `marketplace`, `shipping_code` on `OrderListFilter` **and** `OrderStatFilter`, applied in `scopedOrders`. The warehouse list's three filters and the seller list's marketplace filter now narrow the rows; their marks are gone. The tracking-number search waits on `orders.receipt` |
+| ✅ the tracking number, built *(2026-10-22)* | `orders.receipt` (selling `00018`), `Order.receipt_code` on the wire, written at create. The search matches it beside the name, phone, ref and id; the row's AWB cell, Find Parcel and the handover scan read it, and the `receiptCode` mark is gone from this list. ⚠ The handover scan still matches only the 200 orders it loaded (`resiLookup`), and the search's ILIKE reads every order in scope — [OrderList.md](../../../audits/services/selling_service/performances/OrderList.md) |
 
 ---
 
@@ -450,6 +452,8 @@ sequenceDiagram
 | one for both | the seller's Export and the warehouse's Export call the same RPC |
 | the link | expiring, like any other document link |
 | ✅ built *(2026-10-21)* | `OrderExport` ([order_export.go](../../../backend/services/selling_service/selling_v1/order_export.go)), a server stream of 200-row steps; the file is a private `order_export` document (document `00008`) stored as the caller. Both lists' Export buttons run it, with their progress on the button. Two things the spec did not say, built so: **only real data** — the tracking number, the marketplace date and the deadline are invented on screen behind a ⚠, which a spreadsheet cannot carry, so they join the file when their fields exist; and **`order_ids`**, so the warehouse bar exports the ticked rows ([the-bulk-actions-are-always-on-screen](#the-bulk-actions-are-always-on-screen)). Flow: [rpc.md](../../services/selling_service/rpc.md#the-list-as-a-file--orderexport) |
+| ✅ two columns joined the file *(2026-10-22)* | **Tracking number** in both views and **Warehouse fee** in the seller's, as their fields landed. A fee never priced is an empty cell, never 0 |
+| ✅ and two more *(2026-10-22)* | **Marketplace date** and **Ship-by** at the end of both views, in WIB, empty when the order has none. With them nothing on either list is left out of the file for being invented |
 
 ---
 
@@ -489,3 +493,39 @@ sequenceDiagram
 | an id sent twice | refused by the proto; a direct caller's second copy reads *"already …"* |
 | measured | 200 orders: 248 ms and 800 queries before, **11 ms and 4 queries** after. 20 orders: 22 ms → 2.4 ms |
 | ✅ built *(2026-10-21)* | `moveOrders` in [order_status_change.go](../../../backend/services/selling_service/selling_v1/order_status_change.go) and `setOrdersStatus` in order_transition.go — every status write, cancel's included, goes through it. The race tests pass 80/80 at `-count=20` ([lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |
+
+---
+
+## a-download-keeps-its-files-name
+
+> Owner, in chat (2026-10-21): *"go ahead"* — to *"every document download arrives named after its storage key
+> (`77b07e61….xlsx`), because the link is on another site and document_service never sends a name. Should
+> document_service send each file's own name with its download link, for every file type?"*. As recommended. Found while
+> building [one-export-is-the-list-as-a-file](#one-export-is-the-list-as-a-file); it applies to **every** document.
+
+**The verdict.** A private document's download link carries the document's own name, and the storage answers with
+`Content-Disposition: inline; filename=…`. An export downloads as `orders-2026-10-21-150207.xlsx`, a receipt as the name it
+was uploaded with.
+
+```mermaid
+sequenceDiagram
+    participant B as the browser
+    participant D as document_service
+    participant S as the storage
+    B->>D: GetDownloadUrl - the document id
+    D-->>B: the signed link, carrying the document's filename
+    B->>S: GET the link
+    S-->>B: the bytes, Content-Disposition inline with the filename
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | `Signer.SignedGetURL(key, filename)`; `GetDownloadUrl` passes the document's stored `filename` |
+| inline, not attachment | a receipt PDF or an image still previews where a page shows it; a file the browser cannot show (an .xlsx) downloads under the name |
+| why the page cannot do it | the link is on another origin, and a browser ignores an anchor's `download` name there — only the storage's header names the file |
+| a non-ASCII name | encoded as `filename*` (RFC 2231), so an Indonesian or accented name survives |
+| public files | unchanged — avatars and product images are shown, never downloaded, at their stable URL |
+| a cloud store | the day one replaces the local backend, its signer passes the same name as the provider's response-disposition parameter |
+| ✅ built *(2026-10-21)* | [docstore](../../../backend/services/document_service/docstore/local.go) and [get_download_url.go](../../../backend/services/document_service/document_v1/get_download_url.go); pinned by `TestUploadFlow_PrivateDocument` and the orders e2e's Export, which now expects `orders-….xlsx` |

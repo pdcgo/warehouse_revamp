@@ -325,6 +325,62 @@ message Order {
   // HOW MANY UNITS — the sum of the order's line quantities (the-warehouse-row-fills-from-shop-and-user-by-ids),
   // computed by the query, so OrderList carries it without carrying the lines. OrderDetail fills it too.
   int64 item_quantity = 24;
+
+  // THE TRACKING NUMBER — the one printed on the slip: the owner's `orders.receipt` (order context.md), what a buyer
+  // chases a parcel by, and what a label scan matches beside the marketplace ref
+  // (a-label-scan-reads-the-ref-or-the-receipt).
+  //
+  // Named apart from `receipt` above, which is the FILE the number is printed on — the two travel together and are
+  // different facts: a slip can be photographed before anybody types its number, and a number can be pasted off the
+  // storefront before any file exists. Stored verbatim, never parsed: every courier formats its own.
+  //
+  // "" = not recorded. Written at create. The seller may change it — the number, the file, or both — while the parcel
+  // is still in the building, and never from `shipping` on (the-seller-edits-the-resi-until-handover); that edit RPC
+  // is not built yet.
+  string receipt_code = 25;
+
+  // WHEN IT ENTERED ITS CURRENT STATUS — the newest timeline row moving it into `status`
+  // (a-filtered-status-shows-its-own-date). OrderList fills it, so a status tab can date each row by its own step
+  // without carrying the whole timeline. An order moved back into a status it held before reads the LATER move.
+  //
+  // 0 = no timeline row records the move: an order whose status changed before order_timeline_logs existed.
+  int64 status_at_unix = 26;
+
+  // THE WAREHOUSE'S FEE for fulfilling this order, FROZEN at create (the-flat-rate-is-dropped-last, step 3): priced
+  // once by warehouse_service's WarehouseFeeCalculate on the order's goods cost (the-fee-is-priced-on-goods-cost) and
+  // never recomputed, so a rate changed later cannot rewrite what an order cost. The owner's `warehouse_fee`.
+  //
+  // Unrounded rupiah, a double like the rate it came from (rupiah-is-floating-point) — when a frozen figure is rounded
+  // is not decided, so it is not rounded.
+  //
+  // ABSENT = never priced: an order placed before fees were frozen. Never 0 for that — 0 is a warehouse that chose to
+  // charge nothing, which is a price.
+  optional double warehouse_fee = 27;
+
+  // WHEN THE BUYER ORDERED on the storefront — the owner's `platform_created_at`, beside `created_at_unix`, which is
+  // when WE wrote the row (platform-created-at-is-required-at-finalize). An order taken on Saturday and typed in on
+  // Monday carries both. Required at create on both doors, so every order placed since carries one.
+  //
+  // 0 = not recorded: an order placed before the field existed.
+  int64 platform_created_at_unix = 28;
+
+  // The marketplace's own SHIP-BY time — its "kirim sebelum", the owner's `platform_shipment_deadline`
+  // (the-shipment-deadline-is-the-platforms-and-optional). Nothing here computes it: it is the platform's promise,
+  // read off the storefront or pushed by the app.
+  //
+  // 0 = none, which is allowed: an order with no deadline shows no urgency.
+  int64 platform_shipment_deadline_unix = 29;
+}
+
+// WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
+// questions — "what came in today" against "the buyers' Saturday orders" — and an order carries both.
+enum OrderDateField {
+  // The default, and the same as CREATED: when we wrote the row down.
+  ORDER_DATE_FIELD_UNSPECIFIED = 0;
+  // `created_at` — when the order was typed in or promoted.
+  ORDER_DATE_FIELD_CREATED = 1;
+  // `platform_created_at` — when the buyer ordered on the storefront.
+  ORDER_DATE_FIELD_PLATFORM_CREATED = 2;
 }
 
 message OrderCreateRequest {
@@ -391,6 +447,17 @@ message OrderCreateRequest {
   // reference that fits in a draft must fit in the order that draft becomes.
   string order_external_ref_id = 16 [(buf.validate.field).string.max_len = 128];
 
+  // The tracking number printed on the slip, as the person read it — off the storefront or off the label. Optional;
+  // "" = not known yet. See Order.receipt_code.
+  string receipt_code = 17 [(buf.validate.field).string.max_len = 64];
+
+  // When the buyer ordered on the storefront, read off the same page as the ref. REQUIRED
+  // (platform-created-at-is-required-at-finalize) — refused when 0 by the placement rule both doors share, so the
+  // message names what is missing rather than a field number. See Order.platform_created_at_unix.
+  int64 platform_created_at_unix = 18 [(buf.validate.field).int64.gte = 0];
+  // The marketplace's ship-by time. Optional; 0 = none. See Order.platform_shipment_deadline_unix.
+  int64 platform_shipment_deadline_unix = 19 [(buf.validate.field).int64.gte = 0];
+
   // At least one line; `id` on each is ignored.
   repeated OrderItem items = 10 [(buf.validate.field).repeated.min_items = 1];
 
@@ -449,11 +516,13 @@ message OrderListFilter {
   // same set or the tabs would total a different population than the table shows. `status` is the one
   // filter deliberately NOT mirrored, because it IS the tab.
 
-  // Free text over the customer's NAME, their PHONE, and — when the term is all digits — the ORDER
-  // ID. Case-insensitive, substring. "" = no filter.
+  // Free text over the customer's NAME, their PHONE, the MARKETPLACE REF, the TRACKING NUMBER
+  // (`receipt_code`) and — when the term is all digits — the ORDER ID. Case-insensitive, substring.
+  // "" = no filter.
   //
-  // Those three and no more. A CS person looking an order up has one of them in front of them: the
-  // buyer said their name, the buyer rang from a number, or somebody quoted an order number. Widening
+  // Those and no more. A person looking an order up has one of them in front of them: the buyer said
+  // their name, the buyer rang from a number, somebody quoted an order number, or a parcel is in their
+  // hand with its slip on it (a-label-scan-reads-the-ref-or-the-receipt). Widening
   // it to the address or the line items would make the same term match orders for reasons the person
   // searching cannot see, and every extra column is another one the query cannot use an index for.
   string search = 3 [(buf.validate.field).string.max_len = 100];
@@ -489,6 +558,18 @@ message OrderListFilter {
   warehouse.marketplace.v1.Marketplace marketplace = 9 [(buf.validate.field).enum.defined_only = true];
   // Only orders with this courier — `shipping_code` (jne, jnt …). Empty = any.
   string shipping_code = 10 [(buf.validate.field).string.max_len = 50];
+
+  // Only orders shipping FROM this warehouse — the order's `warehouse_id`. 0 = any.
+  //
+  // The SELLING list's question ("only the ones leaving Gudang Pusat"). A warehouse reading its own queue leaves it at
+  // 0: the scope already narrows it to the orders it ships, and naming another warehouse here matches nothing.
+  uint64 warehouse_id = 11;
+
+  // WHICH DATE `created_from_unix` / `created_to_unix` read (the-date-filter-switches-created-or-platform):
+  // UNSPECIFIED or CREATED = when we wrote the row, PLATFORM_CREATED = when the buyer ordered. The window's fields keep
+  // their names; this says which column they are measured against. An order with no platform date never matches a
+  // platform-date window — it has no date there to fall inside.
+  OrderDateField date_field = 12 [(buf.validate.field).enum.defined_only = true];
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -830,6 +911,12 @@ message OrderStatFilter {
   uint64 seller_team_id = 7;
   warehouse.marketplace.v1.Marketplace marketplace = 8 [(buf.validate.field).enum.defined_only = true];
   string shipping_code = 9 [(buf.validate.field).string.max_len = 50];
+
+  // The seller list's warehouse filter, as on OrderListFilter.
+  uint64 warehouse_id = 10;
+
+  // Which date the window reads, as on OrderListFilter — so the tab counts total what the table shows.
+  OrderDateField date_field = 11 [(buf.validate.field).enum.defined_only = true];
 }
 
 message OrderStatRequest {
@@ -866,6 +953,28 @@ message OrderStatusCount {
   int64 count = 2;
   // The sum of those orders' `total`, whole rupiah — what the buyers are paying for them.
   int64 value = 3;
+
+  // Σ line quantity over EVERY order in the pile — units, not lines, because units are what UPT counts
+  // (the-summary-follows-the-tab: UPT = item_count ÷ count).
+  int64 item_count = 4;
+
+  // ── The margin's inputs (the-margin-is-mp-minus-total-beli) ───────────────────────────────────────────────────
+  //
+  // ⚠ SUMMED OVER THE MEASURABLE ORDERS ONLY — an order with a cost (`cogs` > 0), a marketplace figure
+  // (`marketplace_total` > 0) and a frozen `warehouse_fee`. The margin needs all three, and summing every order's
+  // revenue against only the costed orders' cost is what once put a 36% margin at 48%. Only the server knows the size
+  // of what it leaves out, so it does the leaving out.
+  //
+  //   total beli = cogs + fees        margin = mp_value − total beli        % = margin ÷ mp_value
+
+  // Σ marketplace_total — what the buyers paid the platform.
+  int64 mp_value = 5;
+  // Σ cogs — what the goods cost.
+  int64 cogs = 6;
+  // Σ warehouse_fee — what fulfilling them cost. Unrounded rupiah, like the frozen fees it adds.
+  double fees = 7;
+  // How many of `count` are NOT measurable, so the reader is told what the three sums above left out.
+  int64 margin_unknown = 8;
 }
 
 // OrderStatPreview is the MONEY half — a rolling 30-day window, which is what a person means by "how

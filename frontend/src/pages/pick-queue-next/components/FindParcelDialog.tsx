@@ -4,10 +4,7 @@ import { Box, CloseButton, Dialog, Flex, Icon, Portal, Stack, Text } from "@chak
 import { CircleCheck, CircleX } from "lucide-react";
 
 import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
-import { mockReceiptCode } from "../../../features/orders/rowMock";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { beep } from "../../../lib/beep";
-import { WAREHOUSE_ORDERS_PENDING } from "../pending";
 import { ScanInput } from "./ScanInput";
 
 // FINDING ONE PARCEL IN A SACK (owner — `scanning-is-the-crews-hands`).
@@ -22,7 +19,8 @@ export function FindParcelDialog({ order, onClose }: { order: Order | null; onCl
   const { t } = useTranslation();
   const [last, setLast] = useState<{ code: string; match: boolean } | null>(null);
 
-  const resi = order ? mockReceiptCode(order.id, order.status) : "";
+  // The tracking number typed at create (`receipt_code`). "" when nobody recorded one: the ref and the id still match.
+  const resi = order?.receiptCode ?? "";
   const targets = order ? [resi, order.orderExternalRefId, String(order.id)].filter((value) => value !== "") : [];
 
   function scan(code: string) {
@@ -58,9 +56,8 @@ export function FindParcelDialog({ order, onClose }: { order: Order | null; onCl
                   </Text>
                   <Flex align="center" gap="1">
                     <Text fontFamily="mono" fontSize="lg" fontWeight="bold" data-testid="find-parcel-resi">
-                      {resi}
+                      {resi || "—"}
                     </Text>
-                    <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="receiptCode" />
                   </Flex>
                   <Text fontSize="sm" color="fg.muted">
                     {order?.orderExternalRefId || `#${order?.id ?? ""}`}

@@ -16,7 +16,10 @@ import {
 } from "@chakra-ui/react";
 import { Boxes, Search } from "lucide-react";
 
-import type { BundleTemplate } from "./mockData";
+import { useBundleProducts, useBundleSearch } from "../../bundles/queries";
+import { useDebounced } from "../../../lib/useDebounced";
+import type { PickedBundle } from "./bundles";
+import { pickedBundle } from "./bundles";
 
 // ADD BUNDLES THE WAY ITEMS ARE ADDED (owner: *"tambah bundle buat seperti item"*, `bundles-are-added-like-items`) — a
 // button under the card's title opening a DIALOG, the shape the items card's product picker has: a search, the bundles as
@@ -25,32 +28,42 @@ import type { BundleTemplate } from "./mockData";
 //
 // The ticks are WHICH BUNDLES TO ADD NOW, not which are on the order — the same bundle can sit on one order twice, at
 // different quantities, so a tick never mirrors a row below; every open starts with none ticked.
+//
+// THE SEARCH IS THE SERVER'S — `BundleList(q)`, debounced, read only while the dialog is open (HARD RULE 9: the set
+// grows). It matches a bundle's name AND its products' names and codes, because somebody after the bundle with the
+// coffee in it types "kopi", not a name they are trying to find. Each row says what is IN it under the name, because a
+// name may repeat (bundle-names-may-repeat) and the difference has to be readable before the pick.
 export function BundlePicker({
-  bundles,
+  teamId,
   disabled,
   onAdd,
 }: {
-  /** The bundles a team can sell. */
-  bundles: BundleTemplate[];
+  /** The selling team whose bundles are offered. */
+  teamId: bigint;
   /** No warehouse yet — every figure on a slot would be blank, so the picker does not open. */
   disabled: boolean;
   /** Add these bundles, in the order they are listed. */
-  onAdd: (templateIds: string[]) => void;
+  onAdd: (bundles: PickedBundle[]) => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [ticked, setTicked] = useState<Set<string>>(new Set());
 
-  // The slot labels are searchable too: somebody looking for the bundle with the coffee in it types "coffee", not the
-  // bundle's name — which they are trying to find.
+  const q = useDebounced(query.trim());
+  const found = useBundleSearch({ teamId, q, enabled: open });
+  const products = useBundleProducts({
+    teamId,
+    productIds: (found.data ?? []).flatMap((b) => b.lines.map((l) => l.productId)),
+  });
+
+  // A row waits for its products: a bundle is read by what is in it, and "#74" reads as nothing.
   const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (q === "") return bundles;
-    return bundles.filter(
-      (bundle) => bundle.name.toLowerCase().includes(q) || bundle.slots.some((slot) => slot.label.toLowerCase().includes(q)),
-    );
-  }, [bundles, query]);
+    const bundles = found.data ?? [];
+    const ready = bundles.every((b) => b.lines.length === 0) || products.data !== undefined;
+    return ready ? bundles.map((b) => pickedBundle(b, products.data)) : [];
+  }, [found.data, products.data]);
+  const searching = found.isFetching || products.isFetching;
 
   function onOpenChange(next: boolean) {
     if (next) {
@@ -70,7 +83,7 @@ export function BundlePicker({
   }
 
   function confirm() {
-    onAdd(bundles.filter((bundle) => ticked.has(bundle.id)).map((bundle) => bundle.id));
+    onAdd(shown.filter((bundle) => ticked.has(bundle.id.toString())));
     setOpen(false);
   }
 
@@ -109,17 +122,17 @@ export function BundlePicker({
                     body's padding) — as the product picker's rows are. */}
                 <Box flex="1" minH="0" layerStyle="scrollList" me="-6" pe="6" data-testid="bundle-picker-scroll">
                   {shown.length === 0 ? (
-                    <Text color="fg.muted" data-testid="bundle-picker-empty">
-                      {t("orderForm.bundles.noMatch")}
+                    <Text color="fg.muted" data-testid={searching ? "bundle-picker-searching" : "bundle-picker-empty"}>
+                      {searching ? t("orderForm.bundles.searching") : t("orderForm.bundles.noMatch")}
                     </Text>
                   ) : (
                     <Stack gap="0">
                       {shown.map((bundle) => (
                         // The row IS the checkbox's label, so the whole row ticks.
                         <Checkbox.Root
-                          key={bundle.id}
-                          checked={ticked.has(bundle.id)}
-                          onCheckedChange={() => toggle(bundle.id)}
+                          key={bundle.id.toString()}
+                          checked={ticked.has(bundle.id.toString())}
+                          onCheckedChange={() => toggle(bundle.id.toString())}
                           alignItems="center"
                           gap="3"
                           py="2.5"
@@ -138,8 +151,7 @@ export function BundlePicker({
                                 {bundle.name}
                               </Text>
                               <Text fontSize="xs" color="fg.muted" fontWeight="normal" lineClamp={1}>
-                                {t("orderForm.bundles.slotCount", { count: bundle.slots.length })} ·{" "}
-                                {bundle.slots.map((slot) => slot.label).join(", ")}
+                                {bundle.slots.map((slot) => `${slot.ruleQty} × ${slot.name}`).join(" · ")}
                               </Text>
                             </Stack>
                           </Checkbox.Label>

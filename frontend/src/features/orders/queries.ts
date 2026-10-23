@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderClient, teamReturnConfigurationClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { OrderDateField } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useInvalidateStock } from "../inventory/queries";
 import { peopleFor, WHO_FILTER_SIZE } from "../users/queries";
@@ -31,6 +32,13 @@ export interface OrderFilters {
   marketplace?: Marketplace;
   /** Only orders with this courier (`shipping_code`). "" or absent = any. */
   shippingCode?: string;
+  /** Only orders shipping from this warehouse — the seller list's filter. 0n or absent = any. */
+  warehouseId?: bigint;
+  /**
+   * Which date `fromUnix`/`toUnix` read — when we wrote the row (the default) or when the buyer ordered on the
+   * storefront (the-date-filter-switches-created-or-platform). Absent = created.
+   */
+  dateField?: OrderDateField;
 }
 
 export const NO_ORDER_FILTERS: OrderFilters = {
@@ -51,6 +59,8 @@ const filterKey = (f: OrderFilters) => ({
   sellerTeamId: (f.sellerTeamId ?? 0n).toString(),
   marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
   shippingCode: f.shippingCode ?? "",
+  warehouseId: (f.warehouseId ?? 0n).toString(),
+  dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
 });
 
 const filterMsg = (f: OrderFilters) => orderListFilterMsg(f);
@@ -65,6 +75,8 @@ export const orderListFilterMsg = (f: OrderFilters) => ({
   sellerTeamId: f.sellerTeamId ?? 0n,
   marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
   shippingCode: f.shippingCode ?? "",
+  warehouseId: f.warehouseId ?? 0n,
+  dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
 });
 
 export function useOrders(args: {

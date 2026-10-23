@@ -27,6 +27,7 @@ import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import { BatchOrigin, MovementKind } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
 import { products as productFixtures } from "./fixtures";
+import { productScenario } from "./productScenario";
 
 type Image = { url: string; thumbnailUrl: string };
 type ProductRow = (typeof productFixtures)[number] & { images: Image[] };
@@ -99,8 +100,18 @@ export function patchProduct(productId: bigint, patch: Partial<ProductRow>) {
   Object.assign(rows.find((r) => r.id === productId)!, patch);
 }
 
+// THE ROWS AS A STORY SEES THEM — with `productScenario`'s overrides applied (`withProductState`: locked, archived, a
+// reserve), so a story written against that helper reaches these rows too. Applied on READ only: a write still lands
+// on the row, and the next story's reset clears both.
+function rowsNow(): ProductRow[] {
+  return rows.map((r) => {
+    const state = productScenario.overrides[r.id.toString()];
+    return state ? { ...r, ...state } : r;
+  });
+}
+
 /** The live catalogue — what every other stub (and every picker) reads. */
-export const liveProducts = () => rows.filter((r) => !r.deleted);
+export const liveProducts = () => rowsNow().filter((r) => !r.deleted);
 
 type PageReq = { page?: bigint; limit?: bigint } | undefined;
 
@@ -154,7 +165,7 @@ export const productService = {
     const archived = req.filter?.status === ProductStatus.ARCHIVED;
     const by = req.sort?.s?.case === "product" ? (req.sort.s.value as ProductRowSort) : ProductRowSort.UNSPECIFIED;
     const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
-    const list = rows
+    const list = rowsNow()
       .filter((p) => p.teamId === req.teamId && p.deleted === archived && matches(req.filter?.q, p.name, p.sku))
       .sort((a, b) =>
         by === ProductRowSort.NAME
@@ -181,6 +192,9 @@ export const productService = {
       "product",
       liveProducts().filter(
         (p) =>
+          // Never one its owner has locked — the server leaves it out (product_discover.go), so a picker cannot offer
+          // what a borrower may not take. (An archived one is already out of the live catalogue.)
+          !p.crossLocked &&
           (req.ownerTeamId === 0n || p.teamId === req.ownerTeamId) &&
           (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
           (req.ownerTeamIds.length === 0 || req.ownerTeamIds.includes(p.teamId)) &&
@@ -194,8 +208,9 @@ export const productService = {
   // Any team's, archived or not — an unknown id is simply ABSENT.
   productByIds: (req: { filter?: { ids?: bigint[] } }) => {
     const items: Record<string, unknown> = {};
+    const now = rowsNow();
     for (const id of req.filter?.ids ?? []) {
-      const row = rows.find((r) => r.id === id);
+      const row = now.find((r) => r.id === id);
       if (row) items[id.toString()] = { items: [{ d: { case: "product", value: { mapData: { [id.toString()]: row } } } }] };
     }
     return { items };

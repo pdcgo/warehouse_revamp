@@ -13,6 +13,7 @@ each old heading there now points here.
 | [the-detail-margin-is-mp-minus-system](#the-detail-margin-is-mp-minus-system) | margin = total MP − total sistem, the list's formula read from the detail |
 | [the-detail-preview-became-the-order-detail](#the-detail-preview-became-the-order-detail) | a seller's `/orders/:id` IS the approved page now — and it keeps the two wired features the preview lacked |
 | [settlement-replaces-withdrawal-on-the-order](#settlement-replaces-withdrawal-on-the-order) | the order's money-back section IS the settlement ledger; withdrawals stay a shop-level question |
+| [an-order-line-keeps-no-platform-title](#an-order-line-keeps-no-platform-title) | the marketplace's product title is a reference while the draft is finished, and is not kept on the order line |
 
 ## the-order-detail-is-one-page-of-sections
 
@@ -143,3 +144,31 @@ flowchart LR
 
 ⚠ The owner said *mungkin*. Built as decided because the recommendation was the same, and it can be
 reversed by bringing a section back. The ledger itself is unchanged.
+
+---
+
+## an-order-line-keeps-no-platform-title
+
+> Owner, in chat (2026-10-22): *"for q10, no"* — to [technical order Q10](../order/design_clarify.md#question), *"does an
+> order line keep the marketplace's product title?"*, after I read order context §Order Draft Behavior points 4 and 5 as
+> already saying no. As recommended.
+
+**The verdict.** The marketplace's product title (`order_draft_platform_items.platform_title`) is a **reference** the CS
+reads while mapping a draft's rows to our products. It is not copied onto `order_items`, and it goes with the draft,
+which is deleted when the order is created.
+
+```mermaid
+flowchart LR
+  A["the app's push"] --> P["order_draft_platform_items - platform_title, platform_price"]
+  P -->|"shown as a reference"| F["the create form - the CS maps each row"]
+  F --> O["order_items - our product only"]
+  F --> D["the draft is deleted"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `order_items` | no platform title, no platform SKU — our product, as the owner's §Table That Must Have lists it |
+| the order detail | shows our product's name on each line. The `externalName` mark and its invented titles go |
+| a wrong mapping | is not checkable from the order once the draft is gone. Accepted with this decision |

@@ -1,24 +1,64 @@
 import type { PickedProduct } from "../../../components/products/ProductSelect";
+import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
+import { type BundleRecord, lineState, unavailable } from "../../bundles/adapt";
 import type { LineDraft } from "../lines";
 import { lineFor, toQty } from "../lines";
-import type { BundleTemplate } from "./mockData";
 
 // A BUNDLE ON AN ORDER, as the screen holds it while it is being edited.
 //
-// ⚠ THE ORDER STILL HOLDS PRODUCTS. A bundle is a TEMPLATE — it puts product lines on the order and
-// says how many of each — not a thing the warehouse stocks. Everything downstream already works in
-// products: stock is drawn per product, HPP is recorded per product, the cross-team fee is charged
-// per owning team's products, and a return comes back as products. Making a bundle a catalogue
-// entity would mean teaching all four about a unit that never sits on a shelf.
+// ⚠ THE ORDER STILL HOLDS PRODUCTS. A bundle is a RECIPE — it puts product lines on the order and
+// says how many of each — not a thing the warehouse stocks (the-order-keeps-only-product-lines).
+// Everything downstream already works in products: stock is drawn per product, HPP is recorded per
+// product, the cross-team fee is charged per owning team's products, and a return comes back as
+// products.
 //
-// What follows from that, and it is the reason the card can exist at all today: a substituted slot
-// re-totals BY ITSELF, because the money side is the sum of what actually went in. A bundle needs no
-// price of its own.
+// What follows from that: a substituted slot re-totals BY ITSELF, because the money side is the sum
+// of what actually went in. A bundle needs no price of its own.
+
+/**
+ * A bundle as it is picked — from BundleList, each line with the product it names (ProductByIds). One
+ * slot per line, named by its default product: a bundle has no slot labels of its own.
+ */
+export interface PickedBundle {
+  id: bigint;
+  name: string;
+  slots: {
+    productId: bigint;
+    sku: string;
+    name: string;
+    ruleQty: number;
+    /** Locked by its owner, or archived — the slot starts EMPTY, for the CS to fill with something else. */
+    unavailable?: "locked" | "archived";
+  }[];
+}
+
+/** A bundle and its resolved products, as a pick. A product not resolved is named by its id. */
+export function pickedBundle(bundle: BundleRecord, products: Map<string, Product> | undefined): PickedBundle {
+  return {
+    id: bundle.id,
+    name: bundle.name,
+    slots: bundle.lines.map((line) => {
+      const product = products?.get(line.productId.toString());
+      const state = lineState(product, bundle.teamId);
+
+      return {
+        productId: line.productId,
+        sku: product?.sku ?? "",
+        name: product?.name ?? `#${line.productId}`,
+        ruleQty: line.quantity,
+        unavailable: unavailable(state) ? (state as "locked" | "archived") : undefined,
+      };
+    }),
+  };
+}
 
 /** One slot of an added bundle: the rule it carries, and the products currently filling it. */
 export interface SlotDraft {
   id: string;
+  /** The default product's name — what the slot is for, even once it is filled with something else. */
   label: string;
+  /** Why the default product cannot be used: the slot starts empty (a-borrowed-product-never-blocks-its-owner). */
+  unavailable?: "locked" | "archived";
   /** Units per ONE bundle. The cap is this × the bundle's quantity. */
   ruleQty: number;
   /**
@@ -30,33 +70,37 @@ export interface SlotDraft {
 }
 
 export interface BundleDraft {
-  /** Unique per ADDED bundle: the same template can go on one order twice. */
+  /** Unique per ADDED bundle: the same bundle can go on one order twice. */
   key: string;
-  templateId: string;
+  bundleId: bigint;
   name: string;
   /** Kept as a string while editing — an empty input is not 0. */
   quantity: string;
   slots: SlotDraft[];
 }
 
-export function bundleFor(template: BundleTemplate, key: string): BundleDraft {
+export function bundleFor(picked: PickedBundle, key: string): BundleDraft {
   return {
     key,
-    templateId: template.id,
-    name: template.name,
+    bundleId: picked.id,
+    name: picked.name,
     quantity: "1",
-    slots: template.slots.map((slot) => ({
-      id: slot.id,
-      label: slot.label,
+    slots: picked.slots.map((slot) => ({
+      id: slot.productId.toString(),
+      label: slot.name,
+      unavailable: slot.unavailable,
       ruleQty: slot.ruleQty,
       // The default product, at the rule's quantity for one bundle. Substituting is untick/tick in
       // the same picker the order's own lines use, so a slot is filled the way a line is picked.
-      fills: [
-        {
-          ...lineFor({ id: slot.productId, sku: slot.sku, name: slot.name }),
-          quantity: String(slot.ruleQty),
-        },
-      ],
+      // An UNAVAILABLE one starts empty — an order cannot take it, so the CS fills the slot instead.
+      fills: slot.unavailable
+        ? []
+        : [
+            {
+              ...lineFor({ id: slot.productId, sku: slot.sku, name: slot.name }),
+              quantity: String(slot.ruleQty),
+            },
+          ],
     })),
   };
 }

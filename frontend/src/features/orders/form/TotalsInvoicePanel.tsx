@@ -60,11 +60,10 @@ export function TotalsInvoicePanel({
       <Card.Header pb={compact ? "0" : undefined}>
         <Flex align="center" gap="2" wrap="wrap">
           <Card.Title>{t("orderForm.totals.title")}</Card.Title>
-          {/* THREE MARKS, THREE NUMBERS — the missing shipping term, the fee that is a sample, and
-              the invoice that needs liability's markup. They sit on the title because two of them
-              have no row of their own to sit on. */}
+          {/* TWO MARKS, TWO NUMBERS — the missing shipping term, and the invoice that needs liability's markup.
+              They sit on the title because neither has a row of its own to sit on. The warehouse fee is real:
+              the warehouse prices it, and order create freezes the same figure. */}
           <NotImplemented list={ORDER_FORM_PENDING} id="shippingCost" />
-          <NotImplemented list={ORDER_FORM_PENDING} id="warehouseFee" />
           <NotImplemented list={ORDER_FORM_PENDING} id="invoice" />
         </Flex>
         {!compact && <Card.Description>{t("orderForm.totals.help")}</Card.Description>}

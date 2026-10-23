@@ -24,9 +24,13 @@ each old heading there now points here.
 | [shipping-is-cyan-and-picked-is-sky](#shipping-is-cyan-and-picked-is-sky) | picked joins processed in sky; shipping, the handover, gets its own cyan |
 | [pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed) | return completed is pink, *Retur Diterima*'s colour; return is red |
 | [the-order-import-moves-statuses-only](#the-order-import-moves-statuses-only) | the order list's Import moves statuses only; payouts and withdrawals come from Settlement Imports |
-| [the-order-list-filters-by-seven-dates](#the-order-list-filters-by-seven-dates) | the date filter can mean Dibuat, Tanggal order, or the first entry into Diproses, Sudah diambil, Sudah diserahkan, Selesai or Retur; only Dibuat reaches the server, the rest carry a ⚠ |
+| [the-order-list-filters-by-seven-dates](#the-order-list-filters-by-seven-dates) | the date filter can mean Dibuat, Tanggal order, or the first entry into Diproses, Sudah diambil, Sudah diserahkan, Selesai or Retur; Dibuat and Tanggal order reach the server, the five status dates carry a ⚠ |
 | [the-status-tabs-carry-no-counts](#the-status-tabs-carry-no-counts) | the order list's status tabs carry no counts — how many sit in each status is the statistics' to say |
 | [the-statistics-are-shut-and-read-when-opened](#the-statistics-are-shut-and-read-when-opened) | the statistics open shut on every visit, are read only once opened and then follow the filters; open or shut is page state, never kept |
+| [the-seller-edits-the-resi-until-handover](#the-seller-edits-the-resi-until-handover) | Edit Resi is the seller's, on pending, processed and picked; it changes the number, the label file, or both; frozen from shipping |
+| [the-seller-list-filters-by-warehouse](#the-seller-list-filters-by-warehouse) | one warehouse narrows the seller list and its tab counts; the warehouse's own list leaves it at any |
+| [the-date-filter-switches-created-or-platform](#the-date-filter-switches-created-or-platform) | the date filter reads created or the platform date, created by default; the tab counts follow it |
+| [the-urgency-bands-are-6-and-24-hours](#the-urgency-bands-are-6-and-24-hours) | urgent within 6 hours, today within 24 — fixed, the same for every channel |
 
 ## status-colours-are-carried-over-verbatim
 
@@ -117,6 +121,11 @@ keyed by `source_id = order id`, and `LiabilityLogListFilter` takes a counterpar
 ⚠ **A `cogs` of 0 makes the whole cell refuse.** It is UNKNOWN, not free (`order.proto`), so total
 beli is an em-dash rather than a fee-only figure that would read as a suspiciously cheap order.
 
+✅ *Built 2026-10-22:* the `biaya` half is the order's own frozen `warehouse_fee` (selling `00019`, step 3 of
+[the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)) — the
+sample and its `totalFee` mark are gone. An order placed before fees were frozen has none, and the cell refuses for it
+exactly as for an unknown cost. The liability-filter route above was not needed: the owner's `orders` table carries the fee.
+
 ## the-margin-is-mp-minus-total-beli
 
 > Owner, same message: *"persentase adalah dari margin ke harga mp, margin adalah harga mp - total
@@ -165,6 +174,11 @@ than a bug to tune.** The census gives the sample Σ `total` and a count, so an 
 be charged the pile's average size — and the excluded one here (#108) is the largest of the nine. Only
 the server knows the size of what it left out, which is the argument for making these columns real.
 
+✅ *Built 2026-10-22:* the columns are real. `OrderStatusCount` carries `mp_value` (Σ `marketplace_total`), `cogs` and
+`fees` (Σ `warehouse_fee`) over the MEASURABLE orders only — a cost, a marketplace figure AND a frozen fee — and
+`margin_unknown`, how many it left out. The ~11% gap is gone with `summaryMock.ts`, and so is the `summaryCost` mark.
+⚠ A third way to be unmeasurable joined the two above: a fee never priced.
+
 ## every-date-gets-its-own-column
 
 > Owner, in chat (2026-09-28): *"tanggal bedakan saja columnnya"*.
@@ -181,6 +195,10 @@ each date answers a different question anyway.
 
 **`oleh` stays paired with the created date** because it is the same event: who wrote it down, and when.
 That is one fact read twice, which is exactly what the pairing rule allows.
+
+✅ *Built 2026-10-22:* all three are real — **Tgl MP** is `platform_created_at_unix`
+([platform-created-at-is-required-at-finalize](../../business/order/context_decision.md#platform-created-at-is-required-at-finalize)),
+with the ship-by deadline under it; **Tgl `<status>`** is `status_at_unix`. The `mpDate` mark is gone.
 
 ⚠ **THE TWO ABSENCES ARE DIFFERENT, and the row must not conflate them:**
 
@@ -210,6 +228,12 @@ so carrying it on every tab would be a mostly-blank column.
 ⚠ **The shape exists and the list cannot read it.** `OrderEvent` is already `kind` + `at_unix`,
 which is exactly this — but events are populated by `OrderDetail` only. The fix is not a new field,
 it is the list carrying the one event the active filter asks about.
+
+✅ *Built 2026-10-22:* `Order.status_at_unix` — when the order entered its CURRENT status, the newest
+`order_timeline_logs` row moving it there, selected per page row (a correlated `MAX` on
+`order_timeline_logs_order_idx`) and read off the timeline on a detail. Under a status tab every row is in that status,
+so it answers the column; the `stageDate` mark is gone. 0 — shown as nothing — for an order whose move predates 00017,
+which carried no history over.
 
 ## harga-beli-team-and-gudang-are-on-the-row
 
@@ -390,6 +414,12 @@ flowchart LR
   With `auto-fit` the drafts page's three cards fill the row, so a draft card is no longer the width of an order
   card. The shape is shared; the width follows how many cards share the row, on every tab alike.
 - The cost-unknown note stays, under whichever strip is showing.
+
+✅ *Built 2026-10-22:* every card's figure is the server's — `OrderStatusCount.item_count` (Σ line quantity over the
+pile) gives the items and UPT, and the margin's inputs come from the same census. The `summaryItems` and
+`summaryCost` marks are gone. ⚠ `item_count` is a correlated sum per order in scope and audits 🔴 at 50 000 orders
+(190 ms) — [OrderStat.md](../../../audits/services/selling_service/performances/OrderStat.md); its fix is an open
+question because it reopens [the-warehouse-row-fills-from-shop-and-user-by-ids](warehouse_order_list_decision.md#the-warehouse-row-fills-from-shop-and-user-by-ids).
 
 ---
 
@@ -577,11 +607,11 @@ flowchart LR
 ```mermaid
 flowchart LR
   P["the range panel - Tanggal row"] --> C["Dibuat"]
-  P --> M["Tanggal order ⚠"]
+  P --> M["Tanggal order"]
   P --> S["Diproses · Sudah diambil · Sudah diserahkan · Selesai · Retur ⚠"]
   C --> W["the window is sent - created_at"]
-  M --> N["no window is sent - the list is not narrowed"]
-  S --> N
+  M --> W2["the window is sent - platform_created_at"]
+  S --> N["no window is sent - the list is not narrowed"]
   S --> K["the extra date column dates that status"]
 ```
 
@@ -589,9 +619,9 @@ flowchart LR
 | --- | --- |
 | the types | **Dibuat** (`created_at`), **Tanggal order** (the date the form asks for), and the first entry into **Diproses, Sudah diambil, Sudah diserahkan, Selesai, Retur** — the statuses a person asks *when* about. Menunggu, Dikirim, Bermasalah, Hilang, Retur diterima and Batal are left out: seven pills already wrap twice |
 | a status's date | the FIRST time the order entered it — an order bounced back into Diproses keeps the day it was first processed |
-| what reaches the server | **Dibuat only.** `OrderListFilter` dates `created_at` and nothing else, so any other type sends **no window** — the list is honestly unnarrowed rather than narrowed by the wrong date while the trigger names the right one |
-| the ⚠ | one pending entry, `dateType` (dropped), on all six pills: the order date needs a field (`mpDate`), the status dates need the filter to read the timeline (`stageDate`) |
-| the date column | a status type gets the *Tgl {status}* column (sampled, `stageDate`), as a status tab already did; with Dibuat or Tanggal order — both columns already — it follows the tab |
+| what reaches the server | **Dibuat and Tanggal order** — `OrderDateField` `CREATED` / `PLATFORM_CREATED` ([the-date-filter-switches-created-or-platform](#the-date-filter-switches-created-or-platform), merged from the other branch on 2026-10-23; until then only Dibuat did). A status date sends **no window** — the list is honestly unnarrowed rather than narrowed by the wrong date while the trigger names the right one |
+| the ⚠ | one pending entry, `dateType` (dropped), on the five status pills: the filter cannot read the timeline |
+| the date column | a status type gets the *Tgl {status}* column, as a status tab already does. It reads the order's real `status_at_unix` — when it entered its CURRENT status — so a row in another status shows nothing there, and the column carries the `dateType` ⚠ unless a tab narrows to that same status. With Dibuat or Tanggal order — both columns already — it follows the tab |
 | the URL | `?date=<type>`, default `created` ([a-lists-filters-live-in-the-url](context_decision.md#a-lists-filters-live-in-the-url)); Hapus Filter puts it back to Dibuat. A type with no window is not counted as a filter — it narrows nothing |
 | ✅ built *(2026-10-23)* | [SellerOrders.tsx](../../../frontend/src/pages/orders/SellerOrders.tsx), the story `AStatusDateIsOfferedButNarrowsNothingYet` |
 
@@ -610,6 +640,7 @@ after    Semua Status · Menunggu · Diproses · …            the tab picks a 
 | how many per status | the statistics' piles, once opened ([the-statistics-are-shut-and-read-when-opened](#the-statistics-are-shut-and-read-when-opened)) |
 | why | the counts were the one reason the census was read on every visit and every filter change; without them the page costs the list alone |
 | the warehouse's list | keeps its counted tabs ([warehouse_order_list_decision.md](warehouse_order_list_decision.md)) — said of the seller's list only |
+| ⚠ supersedes | *"the tab counts follow it"* in [the-seller-list-filters-by-warehouse](#the-seller-list-filters-by-warehouse) and [the-date-filter-switches-created-or-platform](#the-date-filter-switches-created-or-platform) (merged in the same day): the counts they meant now live in the statistics, which follow the same filters |
 | ✅ built *(2026-10-23)* | `StageTabs` takes no `count`; the e2e read the counts off the opened strip |
 
 ## the-statistics-are-shut-and-read-when-opened
@@ -635,3 +666,122 @@ stateDiagram-v2
 | where open/shut lives | **page state only** — not the URL, not storage; every visit opens shut, a refresh included |
 | the ⚠ marks | the strip's two (`summaryCost`, `summaryItems`) show only while it is open; the folded summary at the top still lists them |
 | ✅ built *(2026-10-23)* | [SellerOrders.tsx](../../../frontend/src/pages/orders/SellerOrders.tsx) (`useOrderStat` gained `enabled`), the story `TheStatisticsAreShutAndUnreadUntilOpened` counts the census calls |
+---
+
+## the-seller-edits-the-resi-until-handover
+
+> Owner, in chat (2026-10-22): *"choose first option, but we can edit receipt text or receipt file only"* — to
+> [technical order Q5](../order/design_clarify.md#question), *"who may change an order's tracking number after it is
+> placed?"*, against my option *"seller, until handover — the number and the label file replaced together"*. Taken, with
+> one change: the two are edited **independently**.
+
+**The verdict.** *Edit Resi* is the **selling team's** action, offered while the parcel is still in the building —
+`pending`, `processed`, `picked`. It changes the tracking number (`receipt_code`), the label file (`receipt`), or both, and
+nothing else on the order. From `shipping` on it is gone: the courier has scanned that number, so a different one is a
+different parcel, not an edit.
+
+```mermaid
+flowchart LR
+  P["pending"] --> E["Edit Resi - the number, the file, or both"]
+  R["processed"] --> E
+  K["picked"] --> E
+  E --> T["a timeline row - the old and the new"]
+  S["shipping and after"] -.->|"no Edit Resi"| X["frozen - the courier's record"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who | the order's selling team. The warehouse does not edit it — the marketplace issues the number on the seller's label |
+| when | `pending`, `processed`, `picked`. The server refuses from `shipping` on, and on `cancel` |
+| what | `receipt_code`, `receipt`, or both — each optional, each on its own. No other field rides on this edit |
+| the record | each edit writes an `order_timeline_logs` row with the status unchanged and a note naming the old and the new value |
+| the menu | [the-action-menu-is-a-table-keyed-by-status](#the-action-menu-is-a-table-keyed-by-status)'s Edit Resi rows, plus `picked`, which that table predates |
+| ⚠ not decided here | a number changed without its file (or the reverse) can leave the two disagreeing, and a label scan matches on the number ([a-label-scan-reads-the-ref-or-the-receipt](../../business/inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)). Whether the edit warns when they differ is open |
+| not built | `receipt_code` is written at create only (selling `00018`, uncommitted) |
+
+---
+
+## the-seller-list-filters-by-warehouse
+
+> Owner, in chat (2026-10-22): *"Keep as built"* — to *"the seller's order list gets a Warehouse filter (one warehouse,
+> and the tab counts follow it). Keep it as built?"*. As recommended. It was built before it was asked; this records it.
+
+**The verdict.** A selling team can narrow its order list to the orders leaving **one warehouse** — *"what is waiting at
+Gudang Pusat"*. The tab counts follow the same filter, so the tabs total what the table shows.
+
+```mermaid
+flowchart LR
+  F["seller list - Warehouse filter"] --> L["OrderListFilter.warehouse_id"]
+  F --> S["OrderStatFilter.warehouse_id"]
+  L --> R["the rows"]
+  S --> C["the tab counts - the same population"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the field | `warehouse_id` on `OrderListFilter` and `OrderStatFilter` — the order's own `warehouse_id`. `0` = any |
+| the warehouse's own list | leaves it at `0`: its scope already narrows the list to the orders it ships, and naming another warehouse matches nothing |
+| the mark | `warehouseFilter` on [pages/orders/pending.ts](../../../frontend/src/pages/orders/pending.ts) goes when the screen reads it |
+
+---
+
+## the-date-filter-switches-created-or-platform
+
+> Owner, in chat (2026-10-22): *"Switch, default created"* — to *"which date does the order list's date filter use, now
+> that every order has both?"*. As recommended. Follows
+> [platform-created-at-is-required-at-finalize](../../business/order/context_decision.md#platform-created-at-is-required-at-finalize).
+
+**The verdict.** The order list's date filter has a switch: **created** (when we wrote the row) or **platform date**
+(when the buyer ordered on the storefront). It starts on **created**. *"What came in today"* and *"the buyers' Saturday
+orders"* are both answerable, and they are different questions.
+
+```mermaid
+flowchart LR
+  S{"date filter - which date"} -->|"created - the default"| C["orders.created_at"]
+  S -->|"platform date"| P["orders.platform_created_at"]
+  C --> R["the rows and the tab counts"]
+  P --> R
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the switch | beside the date range: *Dibuat* · *Tgl MP*. Default *Dibuat* |
+| the counts | `OrderStatFilter` takes the same choice, so the tabs total what the table shows |
+| the contract | the filter's from/to range plus which date it reads — the created range that exists today, generalised |
+| every order has both | `platform_created_at` is required at finalize, so filtering on it hides no order |
+| ✅ built *(2026-10-22)* | `OrderDateField date_field` on `OrderListFilter` (12) and `OrderStatFilter` (11): `UNSPECIFIED`/`CREATED` read `created_at`, `PLATFORM_CREATED` reads `platform_created_at`, applied in `scopedOrders` so the rows and the tab counts read the same date. The seller list's DateRangePicker carries the *Dibuat · Tgl MP* segment, *Dibuat* by default; Clear puts it back. ⚠ An order placed before `00020` has no platform date and never matches a Tgl MP window |
+
+---
+
+## the-urgency-bands-are-6-and-24-hours
+
+> Owner, in chat (2026-10-22): *"Fixed 6h and 24h"* — to [technical order Q9](../order/design_clarify.md#question),
+> *"where do the deadline's urgency boundaries come from?"*, against my earlier *from the channel*. As re-recommended.
+
+**The verdict.** The two boundaries of [a-deadline-is-loud-or-it-is-nothing](#a-deadline-is-loud-or-it-is-nothing) are
+**fixed**: urgent within **6 hours** (before the next shift), today within **24 hours**. Urgency is how long the warehouse
+has left, not which courier carries it — an instant order due in 3 hours is urgent, and reads so.
+
+```mermaid
+flowchart LR
+  D["platform_shipment_deadline"] --> O{"time left"}
+  O -->|"passed"| R["overdue - solid error, the row tinted"]
+  O -->|"under 6h"| W["urgent - solid warning"]
+  O -->|"under 24h"| Q["today - quiet warning"]
+  O -->|"more"| P["plain gray"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the constants | 6 h and 24 h, named once in the frontend — no setting, no per-channel field |
+| the deadline | `platform_shipment_deadline` ([the-shipment-deadline-is-the-platforms-and-optional](../../business/order/context_decision.md#the-shipment-deadline-is-the-platforms-and-optional)); empty = no band |
+| ⚠ supersedes | the guess note under [a-deadline-is-loud-or-it-is-nothing](#a-deadline-is-loud-or-it-is-nothing) — the values are now the owner's |
+| ✅ built *(2026-10-22)* | `URGENT_WITHIN_HOURS = 6` and `TODAY_WITHIN_HOURS = 24` in [features/orders/deadline.ts](../../../frontend/src/features/orders/deadline.ts), which replaced `deadlineMock.ts`; the badge reads the order's own `platform_shipment_deadline_unix` through `orderDeadline`. The `deadline` marks are gone from the order list, the warehouse list and the order detail |

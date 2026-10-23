@@ -31,6 +31,20 @@
 // Label it as margin wherever it is shown.
 
 /**
+ * THE WAREHOUSE'S FEE ON ONE ORDER, as the margin arithmetic takes it — or `null` when it was NEVER PRICED.
+ *
+ * `Order.warehouse_fee` is frozen at create (`the-flat-rate-is-dropped-last`, step 3), unrounded, as a double. Absent
+ * means the order was placed before fees were frozen, which is unknown rather than free — so it is `null` here and
+ * the total beli it belongs to refuses, exactly as an unknown cost does.
+ *
+ * ⚠ ROUNDED TO WHOLE RUPIAH FOR THE ARITHMETIC ONLY. Every other figure on the row is bigint rupiah; the frozen value
+ * on the order is left exactly as it was priced (when a frozen fee is rounded is not decided — `rupiah-is-floating-point`).
+ */
+export function orderFee(order: { warehouseFee?: number }): bigint | null {
+  return order.warehouseFee === undefined ? null : BigInt(Math.round(order.warehouseFee));
+}
+
+/**
  * `cost of goods + fees`, or `null` when the cost is not a measurement.
  *
  * `costKnown` is the CALLER's answer to "is this cost real?", because the two callers answer it

@@ -196,6 +196,46 @@ The product's batches in the warehouse, summed — the rows the order's take cou
 one owner, so they are its owner's batches whoever asks; the take's other refusals (a locked product, the reserve) are
 its own and are not repeated here.
 
+## The warehouse prices the order, and the order keeps the price — `WarehouseFeeCalculate` (step 3)
+
+Step 3 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last):
+`placeOrder` — both doors, `OrderCreate` and `OrderDraftPromote` — asks warehouse_service what the fulfilling
+warehouse charges for the order's goods, and freezes the answer as `orders.warehouse_fee`. The order form asks the same
+RPC while the order is typed, so the figure on screen is the figure kept.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form
+    participant SELL as selling_service
+    participant WH as warehouse_service
+    participant INV as inventory_service
+
+    UI->>WH: WarehouseFeeCalculate(team, warehouse, goods cost) — the preview
+    WH-->>UI: the fee, or FailedPrecondition — Save stays off
+    UI->>SELL: OrderCreate
+    SELL->>INV: UnitCosts — what each line cost, so cogs
+    SELL->>SELL: credit check
+    SELL->>WH: WarehouseFeeCalculate(team, warehouse, cogs) — in-process
+    alt the warehouse never set its fee
+        WH-->>SELL: FailedPrecondition, naming it
+        SELL-->>UI: the same refusal — nothing taken, nothing written
+    else priced
+        WH-->>SELL: the fee
+        SELL->>SELL: open tx, insert the order with warehouse_fee frozen
+        SELL->>INV: take the stock — key order:id
+        SELL-->>UI: the order, its fee on it
+    end
+```
+
+| | |
+| --- | --- |
+| the basis | `cogs` — Σ quantity × the line's frozen unit cost ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost)). A cost nobody recorded is 0, so a percent warehouse charges its floor on it |
+| when | before the transaction, beside the cost read and the credit check — another service's read, never under the order's row lock. The refusal therefore lands before any stock moves; the owner's flow rolls a taken stock back on a failed step, and refusing first reaches the same end with nothing to roll back |
+| the refusal | `FailedPrecondition`, the warehouse's own sentence passed through unchanged ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)). An unreachable warehouse_service is `Unavailable` — no order at a fee nobody computed |
+| the wiring | `selling_v1.WarehouseFeePricer`, adapted in the composition root (`warehouse_fee_pricer.go`) to the handler itself |
+| not yet | the event. `OrderPlaced` does not carry the fee until step 4 ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)), so liability still posts its flat `handling_fee` |
+
 ## The pick screen's reads (#151)
 
 The crew's screen is a join of things that already existed — but two of the reads it needs were
@@ -411,7 +451,7 @@ sequenceDiagram
     participant R as revenue_service
 
     CS->>D: OrderDraftPromote — team_id, draft_id
-    D->>D: every line mapped? shop, warehouse, customer?
+    D->>D: every line mapped? shop, warehouse, customer, the marketplace order date?
     D->>P: ProductByIds — the mapped ids
     P-->>D: sku + name for each that still exists
     Note over D: an id that resolves to nothing is a<br/>DEAD REFERENCE — the answer names it
@@ -431,6 +471,13 @@ payoff the separate drafts table was chosen for: what counts as a placeable orde
 the draft door cannot quietly accept an order the form would refuse. `placeOrder` re-checks the field
 rules that proto validation covers for `OrderCreate`, because promote's request carries only a draft
 id and none of those rules ran.
+
+**The platform's two dates travel with the draft** (`00020`). The app pushes them; a person may correct either on the
+draft page, which marks it touched so the next push leaves it alone; Promote copies both. The ORDER DATE is required by
+`placeOrder`'s shared rule ([platform-created-at-is-required-at-finalize](../../business/order/context_decision.md#platform-created-at-is-required-at-finalize))
+— so a draft may sit without one, and is refused at Promote, and an `OrderCreate` without one is refused the same way
+with the same sentence. The deadline is never required
+([the-shipment-deadline-is-the-platforms-and-optional](../../business/order/context_decision.md#the-shipment-deadline-is-the-platforms-and-optional)).
 
 **One transaction, not two.** `orders` and `order_drafts` are the same service in the same database,
 so the order is written and the draft deleted together. A refused promote leaves the draft intact to

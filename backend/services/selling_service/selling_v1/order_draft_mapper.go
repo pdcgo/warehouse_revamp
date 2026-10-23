@@ -22,6 +22,9 @@ const (
 	draftFieldShippingCode  = "shipping_code"
 	draftFieldShippingCost  = "shipping_cost"
 	draftFieldItems         = "items"
+	// The platform's two dates, each its own field: correcting the order date says nothing about the deadline.
+	draftFieldPlatformCreatedAt        = "platform_created_at_unix"
+	draftFieldPlatformShipmentDeadline = "platform_shipment_deadline_unix"
 )
 
 // decodeTouched reads the jsonb column into a set.
@@ -143,6 +146,9 @@ func draftToProto(d *selling_service_models.OrderDraft) *sellingv1.OrderDraft {
 		Items:         draftItemsToProto(d.Items),
 		CreatedAtUnix: d.CreatedAt.Unix(),
 		UpdatedAtUnix: d.UpdatedAt.Unix(),
+		// The platform's two dates; 0 = not known yet.
+		PlatformCreatedAtUnix:        unixOrZero(d.PlatformCreatedAt),
+		PlatformShipmentDeadlineUnix: unixOrZero(d.PlatformShipmentDeadline),
 	}
 }
 

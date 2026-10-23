@@ -254,12 +254,7 @@ export function ShippingReceiptCard({
             </Field.Root>
 
             <Field.Root>
-              <Field.Label>
-                <Flex align="center" gap="2" wrap="wrap">
-                  {t("orderForm.resi.trackingNumber")}
-                  <NotImplemented list={ORDER_FORM_PENDING} id="receiptCode" />
-                </Flex>
-              </Field.Label>
+              <Field.Label>{t("orderForm.resi.trackingNumber")}</Field.Label>
               {/* RAW. What is typed is what is stored: it is pasted into the courier's tracking box,
                   and one we have "tidied" is one that comes back not found. */}
               <Input

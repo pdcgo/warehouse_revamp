@@ -5,8 +5,14 @@ import { Text } from "@chakra-ui/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { products, receiptLabel, receiptLabelFile, shops } from "../../../.storybook/fixtures";
+import { bundleFixture } from "../../../.storybook/bundleFixtures";
+import { products, receiptLabel, receiptLabelFile, shops, users } from "../../../.storybook/fixtures";
 import { asTeam } from "../../../.storybook/pageStory";
+import { withProductState } from "../../../.storybook/productScenario";
+import { asRole } from "../../../.storybook/sessionScenario";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import { formatRupiah } from "../../lib/money";
+import { todayDateInput } from "../../lib/datetime";
 import { OrderCreatePage } from "./index";
 
 // The FIRST page storied, rather than another shared component — and the reason is that this screen
@@ -102,6 +108,21 @@ async function pickProduct(canvasElement: HTMLElement, productId: bigint) {
   await userEvent.click(option);
 
   await userEvent.click(await screen.findByTestId("product-picker-confirm"));
+}
+
+// THE MARKETPLACE'S ORDER DATE — required to place (platform-created-at-is-required-at-finalize). Picked off the
+// calendar the way a person picks it: the trigger opens it, today's cell sets the day (at 00:00), Escape closes it.
+async function pickOrderDate(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+
+  await userEvent.click(canvas.getByTestId("order-create-order-date"));
+
+  const content = await screen.findByTestId("order-create-order-date-content");
+  await waitFor(() => expect(content).toBeVisible());
+
+  const today = content.querySelector<HTMLElement>(`[data-part="table-cell-trigger"][data-value="${todayDateInput()}"]`);
+  await userEvent.click(today!);
+  await userEvent.keyboard("{Escape}");
 }
 
 // THE WAREHOUSE ARRIVES PRE-FILLED, from the team's configured default (#145) — and the picker is
@@ -231,6 +252,7 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
 
     // Product 71: 40 on the shelf against a quantity of 1, so nothing is short.
     await pickProduct(canvasElement, products[0]!.id);
+    await pickOrderDate(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled());
@@ -244,20 +266,31 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
 
 // ── WHAT THE REBUILT FORM ADDED (owner) ─────────────────────────────────────────────────────────
 
+// Toko Melati's own bundles (BundleList) — the CS places orders and reads the team's bundles.
+const HEMAT = bundleFixture("Paket Hemat", users[0]!.id);
+const DAPUR = bundleFixture("Paket Dapur", users[1]!.id);
+const SARAPAN = bundleFixture("Paket Sarapan", users[0]!.id);
+
 /** Add bundles as items are added (bundles-are-added-like-items) — Tambah Bundel, tick them in the dialog, confirm. */
-async function addBundles(canvas: ReturnType<typeof within>, ids: string[]) {
+async function addBundles(canvas: ReturnType<typeof within>, ids: bigint[]) {
   await userEvent.click(await canvas.findByTestId("bundle-add"));
   const dialog = await screen.findByTestId("bundle-picker-dialog");
   await waitFor(() => expect(dialog).toBeVisible());
-  for (const id of ids) await userEvent.click(within(dialog).getByTestId(`bundle-pick-${id}`));
+  // The rows are the server's search (BundleList), so they arrive a beat after the dialog.
+  for (const id of ids) await userEvent.click(await within(dialog).findByTestId(`bundle-pick-${id}`, {}, { timeout: 4000 }));
   await userEvent.click(within(dialog).getByTestId("bundle-picker-confirm"));
   await waitFor(() => expect(screen.queryByTestId("bundle-picker-dialog")).toBeNull());
 }
 
 // BUNDLES ARE ADDED THE WAY ITEMS ARE (owner: *"tambah bundle buat seperti item"*, bundles-are-added-like-items) — a
-// Tambah Bundel button under the card's title opening a dialog: a search that also reads the slot labels, ticked rows,
-// Kosongkan · Batal · Konfirmasi. Several at once; Confirm waits for a tick.
+// Tambah Bundel button under the card's title opening a dialog: the team's bundles searched on the server (a bundle's
+// products are searched too), ticked rows, Kosongkan · Batal · Konfirmasi. Several at once; Confirm waits for a tick.
 export const BundlesAreAddedLikeItems: Story = {
+  // Toko Melati's bundles, read by its CS (the-creator-or-an-admin-edits-a-bundle).
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_CS)();
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
@@ -267,42 +300,50 @@ export const BundlesAreAddedLikeItems: Story = {
     await waitFor(() => expect(dialog).toBeVisible());
     const inDialog = within(dialog);
     await expect(inDialog.getByTestId("bundle-picker-confirm")).toBeDisabled();
+    await inDialog.findByTestId(`bundle-pick-${HEMAT.id}`, {}, { timeout: 4000 });
 
-    // The search reads a slot's label — "rice" finds Paket Dapur, not Hampers.
+    // The search reads what is IN a bundle — "tepung" finds Paket Dapur, not Paket Hemat.
     const height = dialog.getBoundingClientRect().height;
-    await userEvent.type(inDialog.getByTestId("bundle-picker-search"), "rice", { delay: 30 });
-    await waitFor(() => expect(inDialog.queryByTestId("bundle-pick-hampers")).toBeNull());
-    await expect(inDialog.getByTestId("bundle-pick-kitchen")).toBeVisible();
+    await userEvent.type(inDialog.getByTestId("bundle-picker-search"), "tepung", { delay: 30 });
+    await waitFor(() => expect(inDialog.queryByTestId(`bundle-pick-${HEMAT.id}`)).toBeNull(), { timeout: 4000 });
+    await expect(await inDialog.findByTestId(`bundle-pick-${DAPUR.id}`)).toBeVisible();
     // A FIXED HEIGHT (a-picker-dialog-keeps-its-height) — the list narrowed, the panel did not.
     await expect(dialog.getBoundingClientRect().height).toBe(height);
     await userEvent.clear(inDialog.getByTestId("bundle-picker-search"));
 
     // Two at once.
-    await userEvent.click(await inDialog.findByTestId("bundle-pick-hampers"));
-    await userEvent.click(inDialog.getByTestId("bundle-pick-kitchen"));
+    await userEvent.click(await inDialog.findByTestId(`bundle-pick-${HEMAT.id}`, {}, { timeout: 4000 }));
+    await userEvent.click(inDialog.getByTestId(`bundle-pick-${SARAPAN.id}`));
     await userEvent.click(inDialog.getByTestId("bundle-picker-confirm"));
 
-    await waitFor(() => expect(canvas.getAllByTestId(/^bundle-(hampers|kitchen)-\d+$/)).toHaveLength(2));
+    await waitFor(() => expect(canvas.getByTestId(`bundle-${HEMAT.id}-1`)).toBeInTheDocument());
+    await expect(canvas.getByTestId(`bundle-${SARAPAN.id}-2`)).toBeInTheDocument();
   },
 };
 
 // ⚠ A BUNDLE'S PRODUCTS ARE REAL LINES. They are drawn from the same warehouse, judged by the same
-// rule and SENT with the order — only the grouping has nowhere to live (mark 1). The short-line
-// alert is the proof: a slot asking for more than the shelf holds blocks Create exactly as a
-// hand-picked line does. If bundles were decorative, this would pass in silence and the totals would
-// promise stock the order never draws.
+// rule and SENT with the order — and nothing else is: the order keeps no trace of the bundle
+// (the-order-keeps-only-product-lines). The short-line alert is the proof: a slot asking for more than
+// the shelf holds blocks Create exactly as a hand-picked line does. If bundles were decorative, this
+// would pass in silence and the totals would promise stock the order never draws.
+//
+
 export const ABundlesProductsAreOrderedLikeAnyOther: Story = {
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_CS)();
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     // Bundles are the other way to fill an order (an-order-holds-items-or-bundles) — picked first.
     await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
-    await addBundles(canvas, ["hampers"]);
+    await addBundles(canvas, [HEMAT.id]);
 
-    // Teh Melati (72) has THREE on the shelf in the fixtures.
-    const qty = await canvas.findByTestId("slot-qty-72");
+    // Gula Pasir (73) has TWELVE on the shelf in the fixtures.
+    const qty = await canvas.findByTestId("slot-qty-73");
     await userEvent.clear(qty);
-    await userEvent.type(qty, "5", { delay: 40 });
+    await userEvent.type(qty, "20", { delay: 40 });
 
     await waitFor(() => expect(canvas.getByTestId("order-create-short")).toBeInTheDocument());
     await expect(canvas.getByTestId("order-create-save")).toBeDisabled();
@@ -313,6 +354,10 @@ export const ABundlesProductsAreOrderedLikeAnyOther: Story = {
 // an-order-holds-items-or-bundles). One radio pill picks the card — Items first, and only that card shows. Leaving an
 // empty card is immediate; leaving one that holds something asks first, and the confirm empties it.
 export const AnOrderHoldsItemsOrBundles: Story = {
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_CS)();
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -324,8 +369,8 @@ export const AnOrderHoldsItemsOrBundles: Story = {
     await expect(await canvas.findByTestId("bundle-add")).toBeVisible();
     await expect(canvas.queryByTestId("order-items-help")).toBeNull();
 
-    await addBundles(canvas, ["hampers"]);
-    await canvas.findByTestId("slot-qty-72");
+    await addBundles(canvas, [HEMAT.id]);
+    await canvas.findByTestId("slot-qty-74");
 
     // A card holding a bundle — the switch asks, and Cancel keeps it.
     await userEvent.click(canvas.getByTestId("order-contents-items"));
@@ -334,7 +379,7 @@ export const AnOrderHoldsItemsOrBundles: Story = {
     await expect(dialog).toHaveTextContent("will be removed");
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    await expect(canvas.getByTestId("slot-qty-72")).toBeVisible();
+    await expect(canvas.getByTestId("slot-qty-74")).toBeVisible();
 
     // …and the confirm empties it and switches.
     await userEvent.click(canvas.getByTestId("order-contents-items"));
@@ -345,6 +390,28 @@ export const AnOrderHoldsItemsOrBundles: Story = {
 
     await userEvent.click(canvas.getByTestId("order-contents-bundles"));
     await expect(await canvas.findByTestId("bundle-empty")).toBeVisible();
+  },
+};
+
+// A BUNDLE'S PRODUCT ITS OWNER HAS SINCE LOCKED (a-borrowed-product-never-blocks-its-owner): the bundle still has the
+// line, but an order cannot take it — so its slot starts EMPTY and says why, for the CS to fill with something else.
+export const ALockedProductLeavesItsSlotEmpty: Story = {
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_CS)();
+    withProductState(73n, { crossLocked: true })();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
+    await addBundles(canvas, [HEMAT.id]);
+
+    const note = await canvas.findByTestId(/^slot-unavailable-.*-73$/);
+    await expect(note).toHaveTextContent("Locked by its owner");
+    await expect(canvas.queryByTestId("slot-qty-73")).toBeNull();
+    // The usable product still went in.
+    await expect(canvas.getByTestId("slot-qty-74")).toBeInTheDocument();
   },
 };
 
@@ -474,6 +541,7 @@ export const TheSameNumberInBothBoxesRefusesToPlace: Story = {
     await userEvent.click(shop);
 
     await pickProduct(canvasElement, products[0]!.id);
+    await pickOrderDate(canvasElement);
 
     // The same reference typed into both — the case the rule exists for.
     await userEvent.type(canvas.getByTestId("order-external-ref-id"), "JP2026081500471183", {
@@ -510,6 +578,7 @@ export const AThinMarginAsksFirstAndThenPlaces: Story = {
     await userEvent.click(shop);
 
     await pickProduct(canvasElement, products[0]!.id);
+    await pickOrderDate(canvasElement);
 
     // Sold for less than it cost — comfortably under the 35% floor.
     await userEvent.type(canvas.getByTestId("order-marketplace-total"), "1000", { delay: 10 });
@@ -621,5 +690,77 @@ export const DeletingTheDraftGoesBackToTheList: Story = {
 
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
     await waitFor(() => expect(canvas.getByTestId("at-drafts")).toBeInTheDocument());
+  },
+};
+
+// ── THE WAREHOUSE FEE (the-flat-rate-is-dropped-last, step 3) ──────────────────────────────────────
+
+// THE WAREHOUSE PRICES IT, on the goods' cost (the-fee-is-priced-on-goods-cost) — the very call order create makes
+// before freezing the fee, so the figure here is the one the order keeps. Gudang Pusat charges 2.5% with a floor of
+// 2.000: one Kopi at an HPP of 18.500 is 462,50 by the percent, so the FLOOR is what it pays.
+export const TheWarehouseFeeIsPricedByTheWarehouse: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await pickProduct(canvasElement, products[0]!.id);
+
+    await waitFor(() =>
+      expect(canvas.getByTestId("order-create-warehouse-fee")).toHaveTextContent(formatRupiah(2000n)),
+    );
+  },
+};
+
+// A WAREHOUSE WITH NO RATE TAKES NO ORDERS (a-warehouse-with-no-rate-takes-no-orders): its own sentence appears under
+// the picker and Create turns off — on an order that was placeable a moment earlier at the other warehouse.
+export const AWarehouseWithNoRateRefusesTheOrder: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
+    await waitFor(() => expect(shop).toBeVisible());
+    await userEvent.click(shop);
+    await pickProduct(canvasElement, products[0]!.id);
+    await pickOrderDate(canvasElement);
+
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled());
+    await expect(canvas.queryByTestId("order-warehouse-fee-refused")).toBeNull();
+
+    // Gudang Cabang never set its fee. TeamSelect portals, so its option is found on the screen.
+    const input = within(canvas.getByTestId("order-warehouse")).getByRole("combobox");
+    await userEvent.clear(input);
+    await userEvent.type(input, "WH-02", { delay: 40 });
+    const option = await screen.findByTestId("team-select-option-WH-02");
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() =>
+      expect(canvas.getByTestId("order-warehouse-fee-refused")).toHaveTextContent("has not set its fee"),
+    );
+    await expect(create).toBeDisabled();
+  },
+};
+
+// THE MARKETPLACE'S ORDER DATE IS REQUIRED TO PLACE (platform-created-at-is-required-at-finalize): an order complete in
+// every other way keeps Create off until it is set, and the field carries the red asterisk that says why.
+export const TheMarketplaceOrderDateIsRequiredToPlace: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
+    await waitFor(() => expect(shop).toBeVisible());
+    await userEvent.click(shop);
+    await pickProduct(canvasElement, products[0]!.id);
+
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
+    await expect(create).toBeDisabled();
+
+    await pickOrderDate(canvasElement);
+    await waitFor(() => expect(create).toBeEnabled());
   },
 };

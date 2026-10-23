@@ -11,7 +11,7 @@
 // error box in its place. This is what makes it visible.
 //
 // Run: npm run lint:mermaid   (from frontend/)
-import { chromium } from "playwright";
+import { chromium } from "@playwright/test";
 import { createServer } from "node:http";
 import { readFileSync, existsSync, statSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";

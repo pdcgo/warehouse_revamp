@@ -51,9 +51,8 @@ import {
   PersonTeamCell,
   ShopRefCell,
 } from "../../features/orders/OrderRowCells";
-import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orders/deadlineMock";
+import { deadlineUrgency, hoursFromNow, orderDeadline, orderPlatformDate } from "../../features/orders/deadline";
 import { useTypists } from "../../features/orders/typists";
-import { mockMarketplaceCreated, mockReceiptCode } from "../../features/orders/rowMock";
 import { NO_SHOPS, useShopsByIds, type ShopNames } from "../../features/shops/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
@@ -498,7 +497,6 @@ export function PickQueueNextPage() {
                           <Table.ColumnHeader>
                             <Flex align="center" gap="1">
                               {t("warehouseOrders.col.awb")}
-                              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="receiptCode" />
                             </Flex>
                           </Table.ColumnHeader>
                           <Table.ColumnHeader textAlign="end">
@@ -509,11 +507,7 @@ export function PickQueueNextPage() {
                           <Table.ColumnHeader>{t("picking.table.status")}</Table.ColumnHeader>
                           <Table.ColumnHeader>{t("warehouseOrders.col.created")}</Table.ColumnHeader>
                           <Table.ColumnHeader>
-                            <Flex align="center" gap="1">
-                              {t("warehouseOrders.col.mpDate")}
-                              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="mpDate" />
-                              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="deadline" />
-                            </Flex>
+                            {t("warehouseOrders.col.mpDate")}
                           </Table.ColumnHeader>
                           <Table.ColumnHeader w="1" />
                         </Table.Row>
@@ -622,18 +616,20 @@ export function PickQueueNextPage() {
   );
 }
 
-/** The row's facts in one place. The invented ones (resi, MP date, deadline) carry a mark on their column. */
+/** The row's facts in one place — every one of them the order's own now. */
 function rowFacts(order: Order, shops: ShopNames) {
-  const back = mockMarketplaceCreated(order.id, order.orderExternalRefId);
-  const deadline = mockDeadline(order.id, order.status);
+  // The marketplace's ship-by time while the parcel is still here; nothing once it has left.
+  const deadline = orderDeadline(order);
 
   return {
     // ShopByIds, one read per page (the-warehouse-row-fills-from-shop-and-user-by-ids).
     shop: shops.get(order.shopId.toString()),
-    resi: mockReceiptCode(order.id, order.status),
+    // The tracking number typed at create (`receipt_code`); "" when nobody recorded one.
+    resi: order.receiptCode,
     // Summed by the list query — the lines themselves never travel with a list.
     quantity: Number(order.itemQuantity),
-    mpCreated: back === undefined ? undefined : order.createdAtUnix - back,
+    // When the buyer ordered on the storefront.
+    mpCreated: orderPlatformDate(order),
     deadline,
     overdue: deadline !== undefined && deadlineUrgency(hoursFromNow(deadline)) === "overdue",
   };
@@ -666,9 +662,6 @@ function OrderBlock({
 }) {
   const { t } = useTranslation();
   const facts = rowFacts(order, shops);
-  const mark = (id: "receiptCode" | "mpDate" | "deadline") => (
-    <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id={id} />
-  );
 
   return (
     <Box
@@ -682,7 +675,6 @@ function OrderBlock({
       data-testid={`pick-queue-block-${order.id}`}
       data-overdue={facts.overdue ? "true" : undefined}
     >
-      {/* Every invented fact keeps its ⚠ here too — there are no column headers on a phone to carry them. */}
       <Stack gap="1.5">
         <Flex align="center" gap="2" wrap="wrap">
           <Box onClick={(e) => e.stopPropagation()}>
@@ -690,10 +682,7 @@ function OrderBlock({
           </Box>
           <WarehouseStatusBadge status={order.status} />
           {facts.deadline !== undefined && (
-            <Flex align="center" gap="1">
-              <DeadlineCell unix={facts.deadline} />
-              {mark("deadline")}
-            </Flex>
+            <DeadlineCell unix={facts.deadline} />
           )}
           <Spacer />
           <Flex align="center" gap="1">
@@ -712,8 +701,7 @@ function OrderBlock({
         </Flex>
         <Flex align="center" gap="1.5" wrap="wrap">
           {order.shippingCode && <ShippingBadge code={order.shippingCode} />}
-          <CopyText value={facts.resi} mono fontSize="xs" />
-          {mark("receiptCode")}
+          {facts.resi && <CopyText value={facts.resi} mono fontSize="xs" />}
         </Flex>
         <Flex align="center" gap="1" wrap="wrap">
           <Text fontSize="xs" color="fg.muted">
@@ -722,12 +710,9 @@ function OrderBlock({
           </Text>
         </Flex>
         {facts.mpCreated !== undefined && (
-          <Flex align="center" gap="1" wrap="wrap">
-            <Text fontSize="xs" color="fg.muted">
-              {t("warehouseOrders.col.mpDate")} {formatUnixDateTime(facts.mpCreated)} ({formatUnixRelative(facts.mpCreated)})
-            </Text>
-            {mark("mpDate")}
-          </Flex>
+          <Text fontSize="xs" color="fg.muted">
+            {t("warehouseOrders.col.mpDate")} {formatUnixDateTime(facts.mpCreated)} ({formatUnixRelative(facts.mpCreated)})
+          </Text>
         )}
       </Stack>
     </Box>

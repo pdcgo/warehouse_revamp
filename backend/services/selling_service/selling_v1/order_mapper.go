@@ -2,6 +2,7 @@ package selling_v1
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -187,7 +188,57 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		CreatedAtUnix:      o.CreatedAt.Unix(),
 		CreatedByUserId:    o.CreatedByUserID,
 		ItemQuantity:       itemQuantity,
+		// The number printed on the receipt — the proto's `receipt` being the file it is printed on.
+		ReceiptCode:  o.Receipt,
+		StatusAtUnix: statusAtUnix(o),
+		// Absent stays absent: a nil fee is "never priced", never a fee of 0.
+		WarehouseFee: o.WarehouseFee,
+		// The platform's two dates; 0 = not recorded.
+		PlatformCreatedAtUnix:        unixOrZero(o.PlatformCreatedAt),
+		PlatformShipmentDeadlineUnix: unixOrZero(o.PlatformShipmentDeadline),
 	}
+}
+
+// unixOrZero is a nullable moment as unix seconds — 0 when it was never recorded, which is how the contract spells
+// "none" for the platform's dates.
+func unixOrZero(t *time.Time) int64 {
+	if t == nil {
+		return 0
+	}
+
+	return t.Unix()
+}
+
+// timeOrNil is the other direction: 0 from the wire is "none", stored as NULL — never as 1970.
+func timeOrNil(unix int64) *time.Time {
+	if unix <= 0 {
+		return nil
+	}
+
+	t := time.Unix(unix, 0)
+
+	return &t
+}
+
+// statusAtUnix is when the order entered its CURRENT status (a-filtered-status-shows-its-own-date): the list selects it
+// with a subquery, a detail finds it on the timeline it loaded — the newest row moving the order into its status, so
+// an order moved back into a status reads the later move. 0 when no row records it.
+func statusAtUnix(o *selling_service_models.Order) int64 {
+	if o.StatusAt != nil {
+		return o.StatusAt.Unix()
+	}
+
+	var at int64
+
+	for i := range o.TimelineLogs {
+		log := &o.TimelineLogs[i]
+
+		if log.Status == o.Status && log.CreatedAt.Unix() >= at {
+			at = log.CreatedAt.Unix()
+		}
+	}
+
+	return at
 }
 
 // orderAddressToProto reads the frozen address off the order row. Always returns a message (never
