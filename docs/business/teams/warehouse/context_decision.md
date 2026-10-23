@@ -13,6 +13,7 @@ the old one, never an edit to it (HARD RULE 12). The open set lives in [context_
 | [a-warehouse-with-no-rate-takes-no-orders](#a-warehouse-with-no-rate-takes-no-orders) | An order at a warehouse that never set its fee is refused. `0%` is a rate |
 | [the-fee-is-priced-one-warehouse-at-a-time](#the-fee-is-priced-one-warehouse-at-a-time) | `WarehouseFeeCalculate` prices one warehouse per call, as your payload has it |
 | [the-flat-rate-is-dropped-last](#the-flat-rate-is-dropped-last) | `liability_terms.handling_fee` is dropped, as the last of five steps. Tech balance Q8 is moot |
+| [an-empty-cap-means-no-cap](#an-empty-cap-means-no-cap) | `max_fee` is optional: empty = no cap, and a cap of 0 is refused when saved |
 | [the-event-carries-the-warehouse-fee](#the-event-carries-the-warehouse-fee) | `OrderPlaced` carries the frozen `warehouse_fee`; balance posts it and computes nothing |
 
 ---
@@ -154,7 +155,7 @@ flowchart LR
 | the configuration | `fee_percent` and `max_fee`, per warehouse ([one-rate-per-warehouse](#one-rate-per-warehouse)) |
 | a small order | pays its percent: 10.000 at 2.5% is 250 |
 | today's flat fee | **can't be carried over.** With no floor and one rate per warehouse, a flat amount has no percent form, so every seller's charge changes on the day the percent goes live: [is-the-old-flat-rate-column-dropped](./context_clarify.md#is-the-old-flat-rate-column-dropped) |
-| `max_fee` unset | not decided. I propose absent = uncapped and `0` refused ([the-fee-is-a-percent-with-a-cap](./context_clarify.md#the-fee-is-a-percent-with-a-floor-and-a-cap)) |
+| `max_fee` unset | 🔄 *(2026-10-21)* decided: empty = no cap, 0 refused — [an-empty-cap-means-no-cap](#an-empty-cap-means-no-cap). Was: not decided. I propose absent = uncapped and `0` refused ([the-fee-is-a-percent-with-a-cap](./context_clarify.md#the-fee-is-a-percent-with-a-floor-and-a-cap)) |
 
 ---
 
@@ -190,7 +191,8 @@ flowchart LR
 | `min_fee` above `max_fee` | refused when saved. Equal is allowed, and means a flat fee |
 | the response | echoes `min_fee` beside `fee_percent` and `max_fee`, so a charge can be explained later |
 | today's flat fee | a warehouse's **default** flat fee carries over exactly: `fee_percent` 0, `min_fee` = `max_fee` = the flat fee. A seller's own flat row has no equivalent ([one-rate-per-warehouse](#one-rate-per-warehouse)): [is-the-old-flat-rate-column-dropped](./context_clarify.md#is-the-old-flat-rate-column-dropped) |
-| `max_fee` unset | not decided. I propose absent = uncapped and `0` refused ([the-fee-is-a-percent-with-a-floor-and-a-cap](./context_clarify.md#the-fee-is-a-percent-with-a-floor-and-a-cap)) |
+| `max_fee` unset | 🔄 *(2026-10-21)* decided: empty = no cap, 0 refused — [an-empty-cap-means-no-cap](#an-empty-cap-means-no-cap). Was: not decided. I propose absent = uncapped and `0` refused ([the-fee-is-a-percent-with-a-floor-and-a-cap](./context_clarify.md#the-fee-is-a-percent-with-a-floor-and-a-cap)) |
+| ✅ built *(2026-10-21)* | the formula in [warehouse_v1/service.go](../../../../backend/services/warehouse_service/warehouse_v1/service.go), pinned on the worked examples above; a floor above the cap is refused by the handler and the table |
 
 ---
 
@@ -220,6 +222,8 @@ flowchart LR
 | in order create | the fee call fails the transaction, and the take is rolled back like any failed step. [order_creation.md](../../order/order_creation.md) already says *"If Any Step Fails, Rollback Transaction and Return Error"*, so it needs no new box |
 | the order form | proposed: a warehouse with no rate is shown disabled, with the reason, so a seller rarely meets the refusal |
 | the rollout | proposed, the same as [create-refuses-a-team-with-no-return-warehouse](../../order/context_decision.md#create-refuses-a-team-with-no-return-warehouse): 1. the fee table and its screen · 2. a rate for every warehouse, where the carry-over gives one to each warehouse with a default flat fee today · 3. the refusal. Never in one commit |
+| ✅ the refusal in the calculation, built *(2026-10-21)* | `WarehouseFeeCalculate` answers `FailedPrecondition` naming the warehouse. The settings card warns a warehouse with no fee. Order create does not call it yet — step 3 |
+| ✅ the refusal in order create, built *(2026-10-22)* | the refusal reaches the form unchanged, before any stock moves — so nothing is rolled back because nothing was taken. The form shows it under the warehouse picker and keeps Save off; the draft page lists it among Promote's reasons. The proposed *"shown disabled"* in the picker was not built — it is a proposal |
 
 ---
 
@@ -252,6 +256,8 @@ flowchart LR
 | the order form | calls it once for the chosen warehouse. That replaces the mock fee in [order-create/index.tsx](../../../../frontend/src/pages/order-create/index.tsx) (`mockTerms(warehouseId).handlingFee`) |
 | a refusal on the form | its message is shown and Save stays off ([a-warehouse-with-no-rate-takes-no-orders](#a-warehouse-with-no-rate-takes-no-orders)) |
 | later | a list can be added if a screen ever compares warehouses. Adding a field is cheap |
+| ✅ built *(2026-10-21)* | `WarehouseFeeCalculate` ([warehouse_fee_calculate.go](../../../../backend/services/warehouse_service/warehouse_v1/warehouse_fee_calculate.go)), echoing the percent, floor and cap it used. The order form still shows its mock fee: that call lands with step 3, so the form never shows a fee the ledger is not yet charging |
+| ✅ the form and order create call it *(2026-10-22)* | the form through `useWarehouseFeeQuote` (fed Σ quantity × HPP), order create once per order in-process, before its transaction. ⚠ Between step 3 and step 4 the form shows the warehouse's fee while the ledger still posts the flat fee — the same amount for a carried-over warehouse, a different one for a warehouse that set its own percent |
 
 ---
 
@@ -285,6 +291,9 @@ flowchart TD
 | when | step 5, after step 4 has switched balance to the frozen amount. Each step ships on its own |
 | the switch-over day | a seller on the warehouse's default flat fee pays the same ([the-fee-has-a-floor-and-a-cap](#the-fee-has-a-floor-and-a-cap)). A seller with its own flat row pays the warehouse's rate from then on, and is told beforehand |
 | technical/balance Q8 | moot: the column is dropped, not renamed to `order_fee` |
+| ✅ step 1 built *(2026-10-21)* | `warehouse_service`: `warehouse_fees` (warehouse `00001`), `WarehouseFeeDetail` · `WarehouseFeeSet` · `WarehouseFeeCalculate`, and the **Warehouse Fee** card on a warehouse's Settings, which says the rate is not charged yet. Nothing charges from it. Steps 2–5 are not built |
+| ✅ step 2 built *(2026-10-22)* | `san warehouse carry-over-fees`, also a step of `san dev setup`: each WAREHOUSE team's default `liability_terms` row (`counterparty_id = 0`) becomes `0%`, floor = cap = its `handling_fee`; a default of 0 becomes `0%`, no floor, no cap — it charges nothing today and still does. A warehouse that already has a rate is never overwritten; a second run carries nothing. Read through `liability_v1.DefaultHandlingFees` and `team_v1.WarehouseTeamIDs`, written by `warehouse_v1.CarryOverFlatFees` ([docs/tools/san.md](../../../tools/san.md)). `seed dev` gives Dev Warehouse its own flat fee carried, or the worked example 2.5% / 2.000 / 20.000 when it has none |
+| ✅ step 3 built *(2026-10-22)* | `placeOrder` (both doors) calls `WarehouseFeeCalculate` on the order's `cogs` and freezes `orders.warehouse_fee` (selling `00019`), refusing a warehouse with no rate before any stock moves. The order form and the draft page show the real fee and keep Save / Promote off on a refusal; `mockTerms`' fee is gone. The list's Beli, its summary and the order detail read the frozen fee. Flow: [selling rpc.md](../../../services/selling_service/rpc.md). Steps 4–5 are not built: the ledger still posts the flat fee |
 
 ---
 
@@ -314,3 +323,30 @@ flowchart LR
 | a fee of 0 | posts no row, as today |
 | the cancel | reverses what was posted. `ReverseOrder` already reads back the charge, so no amount rides on the cancel |
 | the same event change | each line gains its `total` ([the-ledger-charges-the-frozen-line-total](../../../technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)) |
+
+---
+
+## an-empty-cap-means-no-cap
+
+> Owner, in chat (2026-10-21): *"i follow your recomendation"* — to *"if a warehouse leaves `max_fee` empty, is the fee
+> uncapped?"*, the row [the-fee-has-a-floor-and-a-cap](#the-fee-has-a-floor-and-a-cap) left *not decided*. As recommended.
+
+**The verdict.** `max_fee` is **optional**. Empty means **no cap**. A cap of **0 is refused** when saved: it would make every
+fee 0, and `0%` is already how a warehouse charges nothing.
+
+```mermaid
+flowchart LR
+  E["max_fee empty"] --> U["no cap - the fee is the percent, never below the floor"]
+  C["max_fee 20.000"] --> K["the fee never above 20.000"]
+  Z["max_fee 0"] --> R["refused - leave it empty for no cap"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `max_fee` | `optional double`, `> 0` when present |
+| the formula | `max(goods_cost × fee_percent / 100, min_fee)`, then `min(…, max_fee)` only when a cap is set |
+| `min_fee` above `max_fee` | refused when saved, as decided; equal is a flat fee |
+| why not 0 = no cap | `liability_terms.credit_limit` already carries that trap — nil is unlimited, 0 is nothing — and it is the one field in that table that needed a warning comment |
+| ✅ built *(2026-10-21)* | `max_fee` is `optional double` with `gt: 0` in the proto and `CHECK (max_fee > 0)` in `warehouse_fees`; the settings card refuses a 0 before sending and sends an empty cap as no cap |

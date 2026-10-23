@@ -116,9 +116,9 @@ export const TheStatCountsBothSellingTeamsWork: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const placed = SHIPPING_FROM_HERE.filter((o) => o.status === OrderStatus.PLACED);
+    const placed = SHIPPING_FROM_HERE.filter((o) => o.status === OrderStatus.PENDING);
     const held = SHIPPING_FROM_HERE.filter((o) =>
-      [OrderStatus.CONFIRMED, OrderStatus.PICKING, OrderStatus.PACKED].includes(o.status),
+      [OrderStatus.PROCESSED, OrderStatus.PICKED].includes(o.status),
     );
 
     // 3, not 2: one of them is Kenanga's. A selling-team-only read would say 2 here and the crew
@@ -132,18 +132,18 @@ export const TheStatCountsBothSellingTeamsWork: Story = {
   },
 };
 
-// The status tabs ARE the crew's steps — placed → confirmed → picking → packed → shipped — so this
-// strip is the pick queue read one stage at a time.
+// The status tabs ARE the order's statuses — pending → processed → picked → shipping → … — so this strip
+// is the pick queue read one status at a time.
 export const TheStatusTabNarrowsToOneStageOfTheCrewsWork: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const packed = SHIPPING_FROM_HERE.find((o) => o.status === OrderStatus.PACKED)!;
-    const placed = SHIPPING_FROM_HERE.find((o) => o.status === OrderStatus.PLACED)!;
+    const picked = SHIPPING_FROM_HERE.find((o) => o.status === OrderStatus.PICKED)!;
+    const placed = SHIPPING_FROM_HERE.find((o) => o.status === OrderStatus.PENDING)!;
 
-    await userEvent.click(canvas.getByTestId("orders-tab-packed"));
+    await userEvent.click(canvas.getByTestId("orders-tab-picked"));
 
-    await waitFor(() => expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${picked.id}`)).toBeInTheDocument());
     await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
   },
 };
@@ -156,7 +156,7 @@ export const AnEmptyStatusNamesTheStatus: Story = {
     const canvas = within(canvasElement);
 
     // Nothing shipping from here is cancelled — 107 is Melati's, and it is.
-    await userEvent.click(canvas.getByTestId("orders-tab-cancelled"));
+    await userEvent.click(canvas.getByTestId("orders-tab-cancel"));
 
     const empty = await canvas.findByTestId("orders-empty");
     await expect(empty).toHaveTextContent(/cancelled/i);

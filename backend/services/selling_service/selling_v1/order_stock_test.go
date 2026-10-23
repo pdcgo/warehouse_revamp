@@ -14,7 +14,8 @@ import (
 
 func orderReq(shopID uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 3, UnitPrice: 10000},
@@ -155,7 +156,7 @@ func TestOrderCancel_FailedReturnLeavesTheOrderLive(t *testing.T) {
 		t.Fatalf("detail: %v", err)
 	}
 
-	if got := detail.Msg.GetOrder().GetStatus(); got != sellingv1.OrderStatus_ORDER_STATUS_PLACED {
+	if got := detail.Msg.GetOrder().GetStatus(); got != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 		t.Fatalf("order status = %v, want still PLACED — a cancel whose stock did not come back "+
 			"must not stand", got)
 	}

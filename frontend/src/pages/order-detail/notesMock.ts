@@ -59,7 +59,7 @@ export function mockNotes(order: {
     });
   }
 
-  if (order.status === OrderStatus.SHIPPED) {
+  if (order.status === OrderStatus.SHIPPING || order.status === OrderStatus.SHIPPED) {
     notes.push({
       id: `${order.id}-label`,
       kind: "system",
@@ -70,7 +70,7 @@ export function mockNotes(order: {
 
   // A later request from a person, on the orders that are still being worked — so the list shows a user
   // note NEWER than a system one, and the ordering is visible.
-  if (order.status === OrderStatus.PLACED || order.status === OrderStatus.CONFIRMED) {
+  if (order.status === OrderStatus.PENDING || order.status === OrderStatus.PROCESSED) {
     notes.push({
       id: `${order.id}-cs`,
       kind: "user",

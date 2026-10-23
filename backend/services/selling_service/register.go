@@ -18,7 +18,7 @@ import (
 const MemberRemovedSubscription = "selling-member-removed"
 
 // NewRegister mounts selling_service's Connect handlers (ShopService + OrderService +
-// OrderDraftService, all served by the one selling impl) under the shared interceptor chain and
+// OrderDraftService + TeamReturnConfigurationService, all served by the one selling impl) under the shared interceptor chain and
 // reports them for reflection.
 func NewRegister(
 	mux *http.ServeMux,
@@ -29,6 +29,7 @@ func NewRegister(
 		mux.Handle(sellingv1connect.NewShopServiceHandler(selling, opts))
 		mux.Handle(sellingv1connect.NewOrderServiceHandler(selling, opts))
 		mux.Handle(sellingv1connect.NewOrderDraftServiceHandler(selling, opts))
+		mux.Handle(sellingv1connect.NewTeamReturnConfigurationServiceHandler(selling, opts))
 
 		// THE LISTENER — /event/<sub_id>/push. A plain HTTP route, not a Connect RPC, so the roling ACL does not
 		// reach it: it is the broker's door, restricted at the ingress like the other listeners.
@@ -38,6 +39,7 @@ func NewRegister(
 			sellingv1connect.ShopServiceName,
 			sellingv1connect.OrderServiceName,
 			sellingv1connect.OrderDraftServiceName,
+			sellingv1connect.TeamReturnConfigurationServiceName,
 		}
 	}
 }

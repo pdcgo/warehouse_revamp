@@ -21,7 +21,10 @@ import { DocumentResourceType, DocumentService } from "../src/gen/warehouse/docu
 import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
-import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
+import { ProductService, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
+import { BundleService } from "../src/gen/warehouse/product/v1/bundle_pb";
+import { productsNow } from "./productScenario";
+import { bundleService } from "./bundleStub";
 import { SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
 import { SupplierAnalyticService } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
@@ -33,7 +36,7 @@ import {
   LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
-import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
+import { OrderDateField, OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptCheckResult, ReceiptService } from "../src/gen/warehouse/shipment/v1/receipt_pb";
@@ -52,7 +55,7 @@ import {
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
-import { sessionScenario, teamCreateScenario } from "./sessionScenario";
+import { orderExportScenario, sessionScenario, teamCreateScenario } from "./sessionScenario";
 import { userStub } from "./userStub";
 import {
   FinancialAccountAnalyticService,
@@ -66,6 +69,10 @@ import { warehouseTransferService } from "./warehouseTransferStub";
 import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { rackService } from "./rackStub";
+import { returnConfigurationService } from "./returnConfigurationStub";
+import { warehouseFeeService } from "./warehouseFeeStub";
+import { WarehouseFeeService } from "../src/gen/warehouse/warehouse/v1/warehouse_fee_pb";
+import { TeamReturnConfigurationService } from "../src/gen/warehouse/selling/v1/return_configuration_pb";
 import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
@@ -586,19 +593,52 @@ const WAREHOUSE_ID = teams[0]!.id;
 // table, so if the two narrowed differently the tab counts would describe a different population
 // than the rows under them — and nothing on screen would explain the gap.
 type OrderScopeFilter =
-  | { search?: string; shopId?: bigint; createdFromUnix?: bigint; createdToUnix?: bigint; createdByUserId?: bigint }
+  | {
+      search?: string;
+      shopId?: bigint;
+      createdFromUnix?: bigint;
+      createdToUnix?: bigint;
+      createdByUserId?: bigint;
+      // The warehouse's three (the-filter-gains-seller-marketplace-and-courier).
+      sellerTeamId?: bigint;
+      marketplace?: Marketplace;
+      shippingCode?: string;
+      // The seller list's warehouse filter.
+      warehouseId?: bigint;
+      // Which date the window reads (the-date-filter-switches-created-or-platform).
+      dateField?: OrderDateField;
+    }
   | undefined;
 
-// Free text over the customer's NAME, their PHONE, and — only when the term is ALL DIGITS — the
-// order id, matched WHOLE. Substring-matching the id would make "1" select every order, which is
-// neither what the server does nor what somebody quoting an order number means.
+// The moment the date window is measured against — the order's creation, or the buyer's order on the storefront.
+// An order with no platform date has nothing to fall inside a platform window, as on the server.
+function windowDate(o: (typeof orders)[number], filter: OrderScopeFilter): bigint {
+  return filter?.dateField === OrderDateField.PLATFORM_CREATED ? o.platformCreatedAtUnix : o.createdAtUnix;
+}
+
+// Free text over the customer's NAME, their PHONE, the marketplace REF, the TRACKING NUMBER and — only
+// when the term is ALL DIGITS — the order id, matched WHOLE. Substring-matching the id would make "1"
+// select every order, which is neither what the server does nor what somebody quoting an order number means.
 function matchOrder(q: string | undefined, o: (typeof orders)[number]): boolean {
   const needle = (q ?? "").trim().toLowerCase();
   if (!needle) return true;
 
   if (/^\d+$/.test(needle) && o.id.toString() === needle) return true;
 
-  return [o.customerName, o.customerPhone].some((f) => f.toLowerCase().includes(needle));
+  return [o.customerName, o.customerPhone, o.orderExternalRefId ?? "", o.receiptCode].some((f) =>
+    f.toLowerCase().includes(needle),
+  );
+}
+
+// Whether the margin can be taken over this order — the server's `orderMeasurable`: a known cost, a recorded
+// marketplace figure and a frozen fee, all three.
+function measurable(o: (typeof orders)[number]): boolean {
+  return (o.cogs ?? 0n) > 0n && (o.marketplaceTotal ?? 0n) > 0n && o.warehouseFee !== undefined;
+}
+
+// The order's units, summed from its lines — what the server's correlated sum reads.
+function unitsOf(id: bigint): bigint {
+  return BigInt((orderDetailFor(id)?.items ?? []).reduce((n, it) => n + it.quantity, 0));
 }
 
 function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
@@ -608,20 +648,17 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .filter((o) => matchOrder(filter?.search, o))
     .filter((o) => !filter?.shopId || o.shopId === filter.shopId)
     // 0 on a side is an OPEN end, so {0,0} means every date.
-    .filter((o) => !filter?.createdFromUnix || o.createdAtUnix >= filter.createdFromUnix)
-    .filter((o) => !filter?.createdToUnix || o.createdAtUnix <= filter.createdToUnix)
+    .filter((o) => !filter?.createdFromUnix || (windowDate(o, filter) > 0n && windowDate(o, filter) >= filter.createdFromUnix))
+    .filter((o) => !filter?.createdToUnix || (windowDate(o, filter) > 0n && windowDate(o, filter) <= filter.createdToUnix))
     // Who typed it in; 0 is anybody, and an unrecorded creator (0) is nobody's.
     .filter((o) => !filter?.createdByUserId || o.createdByUserId === filter.createdByUserId)
+    // The seller team, the marketplace its shop is on, the courier — as the server's scopedOrders applies them.
+    .filter((o) => !filter?.sellerTeamId || o.teamId === filter.sellerTeamId)
+    .filter((o) => !filter?.marketplace || shops.find((s) => s.id === o.shopId)?.marketplace === filter.marketplace)
+    .filter((o) => !filter?.shippingCode || o.shippingCode === filter.shippingCode)
+    .filter((o) => !filter?.warehouseId || o.warehouseId === filter.warehouseId)
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
-}
-
-// The order a fulfilment step acts on — found only from the WAREHOUSE side it ships from.
-function fulfilmentOrder(req: { teamId: bigint; orderId: bigint }) {
-  const order = orders.find((o) => o.id === req.orderId && o.warehouseId === req.teamId);
-  if (!order) throw new ConnectError("order not found", Code.NotFound);
-
-  return order;
 }
 
 // ── The daily statement, from three services at once ────────────────────────────────────────────
@@ -763,6 +800,30 @@ export const transport = createRouterTransport(({ service }) => {
 
   service(ShopService, {
     shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
+    // Across teams, basic fields only (the-warehouse-row-fills-from-shop-and-user-by-ids).
+    shopByIds: (req) => ({
+      items: Object.fromEntries(
+        shops
+          .filter((s) => (req.filter?.ids ?? []).includes(s.id))
+          .map((s) => [
+            s.id.toString(),
+            {
+              items: [
+                {
+                  d: {
+                    case: "basic" as const,
+                    value: {
+                      mapData: {
+                        [s.id.toString()]: { id: s.id, teamId: s.teamId, name: s.name, marketplace: s.marketplace },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ]),
+      ),
+    }),
   });
 
   // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
@@ -771,6 +832,8 @@ export const transport = createRouterTransport(({ service }) => {
   service(WarehouseTransferService, warehouseTransferService);
   // The stock count — a prototype: opnameStub.ts plays the decided opname rules (opname_decision.md).
   service(OpnameService, opnameService);
+  // Bundles — a prototype: bundleStub.ts plays the decided bundle rules (product_bundle_decision.md).
+  service(BundleService, bundleService);
 
   // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
   service(SupplierService, supplierService);
@@ -781,6 +844,8 @@ export const transport = createRouterTransport(({ service }) => {
   // The rack registry (scoped by the warehouse, as the server is), Rack detail's reads and the two prototype writes —
   // rackStub.ts plays them, writeable, with the placement decisions.
   service(RackService, rackService);
+  service(TeamReturnConfigurationService, returnConfigurationService);
+  service(WarehouseFeeService, warehouseFeeService);
 
   service(CategoryService, {
     // The one full-tree read the pagination rule exempts (a picker needs every node to assemble the
@@ -919,7 +984,13 @@ export const transport = createRouterTransport(({ service }) => {
     productList: (req) =>
       pagedColumnar(
         "product",
-        products.filter((p) => p.teamId === req.teamId && match(req.filter?.q, p.name, p.sku)),
+        // The ACTIVE or the ARCHIVED half, as the server answers it (an unset status is ACTIVE).
+        productsNow().filter(
+          (p) =>
+            p.teamId === req.teamId &&
+            p.deleted === (req.filter?.status === ProductStatus.ARCHIVED) &&
+            match(req.filter?.q, p.name, p.sku),
+        ),
         req.page,
       ),
     // Discovery looks ACROSS teams — that is the whole difference from ProductList, so `team_id` is
@@ -937,8 +1008,12 @@ export const transport = createRouterTransport(({ service }) => {
     productDiscover: (req) =>
       pagedColumnar(
         "product",
-        products.filter(
+        productsNow().filter(
           (p) =>
+            // Never an archived product, and never one its owner has locked — the server leaves both out
+            // (product_discover.go), so a picker cannot offer what a borrower may not take.
+            !p.deleted &&
+            !p.crossLocked &&
             (req.ownerTeamId === 0n || p.teamId === req.ownerTeamId) &&
             (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
             // ⚠ THE PRIORITY PARTITION, and an EMPTY LIST IS NO NARROWING on both — exactly as the
@@ -951,7 +1026,8 @@ export const transport = createRouterTransport(({ service }) => {
         ),
         req.page,
       ),
-    productByIds: (req) => byIds("product", products, req.filter?.ids ?? []),
+    // An archived product IS answered, as the server does — a line holding it still names it.
+    productByIds: (req) => byIds("product", productsNow(), req.filter?.ids ?? []),
   });
 
   service(InventoryService, {
@@ -1099,11 +1175,14 @@ export const transport = createRouterTransport(({ service }) => {
     orderList: (req) =>
       pagedColumnar(
         "order",
-        visibleOrders(req.teamId, req.filter).filter(
-          // UNSPECIFIED is the ABSENCE of a status filter (the "All Status" tab), never a status an
-          // order can hold — so it must not be compared against one.
-          (o) => !req.filter?.status || o.status === req.filter.status,
-        ),
+        visibleOrders(req.teamId, req.filter)
+          .filter(
+            // UNSPECIFIED is the ABSENCE of a status filter (the "All Status" tab), never a status an
+            // order can hold — so it must not be compared against one.
+            (o) => !req.filter?.status || o.status === req.filter.status,
+          )
+          // The row's unit count, summed from the order's lines as the server's query does.
+          .map((o) => ({ ...o, itemQuantity: unitsOf(o.id) })),
         req.page,
       ),
 
@@ -1127,16 +1206,43 @@ export const transport = createRouterTransport(({ service }) => {
       return { order };
     },
 
-    // The crew's four steps. STATELESS on purpose: the page reads the new status back through the
-    // invalidation, and a stub that remembered a step would leak it into the next story. So a story
-    // asserts the step was ACCEPTED (the toast), not that the badge moved.
+    // Every plain move (one-status-change-for-every-plain-move). STATELESS on purpose: the page reads the
+    // new status back through the invalidation, and a stub that remembered a move would leak it into the
+    // next story. So a story asserts the move was ACCEPTED (the toast), not that the badge moved.
     //
-    // The scope is the WAREHOUSE side only — the crew advances what ships from its building, and a
-    // selling team pressing these would be refused by the policy long before the handler.
-    orderConfirm: (req) => ({ order: fulfilmentOrder(req) }),
-    orderPick: (req) => ({ order: fulfilmentOrder(req) }),
-    orderPack: (req) => ({ order: fulfilmentOrder(req) }),
-    orderShip: (req) => ({ order: fulfilmentOrder(req) }),
+    // One result per order, like the server: an order at either end of the caller's scope moves, any
+    // other is refused — and a refusal never fails the call. The who-may-make-which-move table is the
+    // server's and is not copied here.
+    // THE LIST AS A FILE (one-export-is-the-list-as-a-file): progress, then a link. The link is an empty data: URL, so
+    // the download a story triggers goes nowhere. What was asked is kept for the story to read.
+    orderExport: async function* (req) {
+      const rows = visibleOrders(req.teamId, req.filter)
+        .filter((o) => !req.filter?.status || o.status === req.filter.status)
+        .filter((o) => req.orderIds.length === 0 || req.orderIds.includes(o.id));
+      const total = BigInt(rows.length);
+
+      orderExportScenario.last = { view: req.view, status: req.filter?.status ?? 0, orderIds: req.orderIds, rows: rows.length };
+
+      yield { message: "exporting orders", done: 0n, total };
+      yield {
+        message: "the file is ready",
+        done: total,
+        total,
+        downloadUrl: "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,",
+        filename: "orders.xlsx",
+      };
+    },
+    orderStatusChange: (req) => ({
+      results: req.orderIds.map((orderId) => {
+        const order = orders.find(
+          (o) => o.id === orderId && (o.teamId === req.teamId || o.warehouseId === req.teamId),
+        );
+
+        return order
+          ? { orderId, moved: true, status: req.to }
+          : { orderId, moved: false, refusedReason: "not one of this team's orders" };
+      }),
+    }),
 
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were
@@ -1171,16 +1277,50 @@ export const transport = createRouterTransport(({ service }) => {
     orderStat: (req) => {
       const rows = visibleOrders(req.teamId, req.filter);
 
-      const counts = new Map<OrderStatus, { status: OrderStatus; count: bigint; value: bigint }>();
+      // Per status, as the server's census: the units over every order, and the margin's inputs over the
+      // MEASURABLE ones only, with how many it left out.
+      const counts = new Map<
+        OrderStatus,
+        {
+          status: OrderStatus;
+          count: bigint;
+          value: bigint;
+          itemCount: bigint;
+          mpValue: bigint;
+          cogs: bigint;
+          fees: number;
+          marginUnknown: bigint;
+        }
+      >();
       for (const o of rows) {
-        const row = counts.get(o.status) ?? { status: o.status, count: 0n, value: 0n };
-        counts.set(o.status, { status: o.status, count: row.count + 1n, value: row.value + o.total });
+        const row = counts.get(o.status) ?? {
+          status: o.status,
+          count: 0n,
+          value: 0n,
+          itemCount: 0n,
+          mpValue: 0n,
+          cogs: 0n,
+          fees: 0,
+          marginUnknown: 0n,
+        };
+        const measured = measurable(o);
+
+        counts.set(o.status, {
+          status: o.status,
+          count: row.count + 1n,
+          value: row.value + o.total,
+          itemCount: row.itemCount + unitsOf(o.id),
+          mpValue: row.mpValue + (measured ? (o.marketplaceTotal ?? 0n) : 0n),
+          cogs: row.cogs + (measured ? (o.cogs ?? 0n) : 0n),
+          fees: row.fees + (measured ? (o.warehouseFee ?? 0) : 0),
+          marginUnknown: row.marginUnknown + (measured ? 0n : 1n),
+        });
       }
 
       // The money half: a rolling 30 days, CANCELLED excluded — a cancelled order is not a sale, and
       // counting one would let a team read revenue it never took.
       const cutoff = BigInt(Math.floor(Date.now() / 1000) - 30 * 86_400);
-      const recent = rows.filter((o) => o.status !== OrderStatus.CANCELLED && o.createdAtUnix >= cutoff);
+      const recent = rows.filter((o) => o.status !== OrderStatus.CANCEL && o.createdAtUnix >= cutoff);
 
       return {
         preview: {

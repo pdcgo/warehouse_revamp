@@ -26,11 +26,11 @@ import { useTeams } from "../../features/teams/queries";
 import { useShopOptions } from "../../features/shops/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { StageBadge } from "../../features/orders/StageBadge";
+import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { stageOfStatus } from "../../features/orders/stages";
-import { TIMELINE_TITLE, timelineKindSlug } from "./components/TimelinePanel";
+import { timelineFromKey, timelineSlug, timelineTitleKey } from "./components/TimelinePanel";
 import { SettlementTab } from "./components/SettlementTab";
-import { orderSpend } from "../../features/orders/margin";
+import { orderFee, orderSpend } from "../../features/orders/margin";
 import { ReceiptFile } from "./components/ReceiptCard";
 import type { OrderAddress } from "../../gen/warehouse/selling/v1/order_pb";
 import { ProductListItem } from "../../components/products/ProductListItem";
@@ -38,8 +38,7 @@ import { CustomerLineItem } from "../../components/customers/CustomerLineItem";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
-import { mockDeadline } from "../../features/orders/deadlineMock";
-import { mockReceiptCode } from "../../features/orders/rowMock";
+import { orderDeadline } from "../../features/orders/deadline";
 import { DeadlineCell } from "../../features/orders/OrderRowCells";
 import { Fact, Section, SectionEmpty } from "./components/Section";
 import { OrderActionBar } from "./components/OrderActionBar";
@@ -125,7 +124,7 @@ export function SellerOrderDetailPage() {
   const loading = query.isPending && id !== 0n;
 
   // The people on the timeline. The ids come from the EVENTS — the order row records no actor at all.
-  const actors = useActors(order?.events.map((event) => event.actorUserId) ?? []);
+  const actors = useActors(order?.timelineLogs.map((log) => log.actorId) ?? []);
 
   // The selling team's name, for the items table's Team column. One batched read.
   const teamOptions = useTeams({ page: 1, pageSize: 200, reference: true });
@@ -203,8 +202,10 @@ export function SellerOrderDetailPage() {
   }
 
   const stage = stageOfStatus(order.status);
-  const deadline = mockDeadline(order.id, order.status);
-  const receiptCode = mockReceiptCode(order.id, order.status);
+  // The marketplace's ship-by time while the parcel is still in the building; nothing once it has left.
+  const deadline = orderDeadline(order);
+  // The number printed on the slip, as it was typed at create. "" = not recorded, shown as such.
+  const receiptCode = order.receiptCode;
   const outboundTrail = mockOutboundTrail(order.id, order.status, order.createdAtUnix);
   const returnLeg = mockReturnLeg(order.id, order.createdAtUnix);
 
@@ -217,9 +218,9 @@ export function SellerOrderDetailPage() {
   );
   const anyCostMissing = order.items.some((item) => item.unitCost <= 0n);
 
-  // ⚠ SAMPLE, and the same figure the list's Beli column adds. Flat per order, matching `mockTerms`
-  // on the order form, so the three screens do not each invent a different fee.
-  const fees = BigInt(2000 + (Number(order.id) % 5) * 500);
+  // The warehouse's fee as it was frozen at create — the same figure the list's Beli column adds. `null` on an
+  // order placed before fees were frozen, and every total built on it then refuses.
+  const fees = orderFee(order);
 
   // ── The sections, built once and placed by the layout below.
   // ── 1. INFO ORDER — the facts the create form asked for, read back ────────────────────────
@@ -246,10 +247,14 @@ export function SellerOrderDetailPage() {
             {shop ? <MarketplaceBadge marketplace={shop.marketplace} size="sm" /> : undefined}
           </Fact>
           <Fact label={t("orderDetail.info.createdAt")}>{formatUnixDateTime(order.createdAtUnix)}</Fact>
+          {/* WHEN THE BUYER ORDERED, beside when we wrote it down — two facts, and an order typed in on Monday for a
+              Saturday sale carries both (platform-created-at-is-required-at-finalize). */}
+          <Fact label={t("orderDetail.info.platformCreatedAt")}>
+            {order.platformCreatedAtUnix > 0n ? formatUnixDateTime(order.platformCreatedAtUnix) : undefined}
+          </Fact>
           <Fact label={t("orders.warehouse")}>{warehouseName}</Fact>
-          {/* THE RECEIPT DOCUMENT — real, uploaded on the order form and opened through a signed URL.
-              Carried over from the page this replaced: the resi CODE above is still a sample, but the
-              slip itself is not, and the seller's page must not lose it. */}
+          {/* THE RECEIPT DOCUMENT — real, uploaded on the order form and opened through a signed URL. Carried over
+              from the page this replaced, beside the resi code above: the slip and the number on it. */}
           {order.receipt?.documentId ? (
             <Fact label={t("orders.receipt")} full>
               <ReceiptFile order={order} teamId={teamId} />
@@ -404,26 +409,26 @@ export function SellerOrderDetailPage() {
       id={sectionDomId("timeline")}
       icon={sectionIcon("timeline")}
       testId="section-timeline"
-      marks={<NotImplemented list={ORDER_DETAIL_PENDING} id="statusSet" />}
     >
-      {order.events.length === 0 ? (
+      {order.timelineLogs.length === 0 ? (
         <SectionEmpty>{t("orderDetail.timeline.empty")}</SectionEmpty>
       ) : (
         // THE SAME RAIL AS THE COURIER TRAIL, newest first — a sequence of moments is drawn one way
-        // on this page. The event names are the built timeline's own map (`TIMELINE_TITLE`), and an
-        // actor of 0 is "not recorded", so it names nobody rather than inventing one.
+        // on this page. The row names are the built timeline's own (`timelineTitleKey`), each row says which
+        // side wrote it, and an actor of 0 is "not recorded", so it names nobody rather than inventing one.
         <Rail
           testId="timeline-rail"
-          items={[...order.events].reverse().map((event) => {
-            const who = actors.data?.get(event.actorUserId.toString())?.name ?? "";
+          items={[...order.timelineLogs].reverse().map((log) => {
+            const who = actors.data?.get(log.actorId.toString())?.name ?? "";
+            const fromKey = timelineFromKey(log.from);
 
             return {
-              key: event.id.toString(),
-              testId: `order-timeline-${timelineKindSlug(event.kind)}`,
-              title: t(TIMELINE_TITLE[event.kind] ?? "orders.timeline.unknown"),
-              meta: who
-                ? `${formatUnixDateTime(event.atUnix)} · ${who}`
-                : formatUnixDateTime(event.atUnix),
+              key: log.id.toString(),
+              testId: `order-timeline-${timelineSlug(log)}`,
+              title: t(timelineTitleKey(log, order.timelineLogs.indexOf(log))),
+              meta: [formatUnixDateTime(log.createdAtUnix), fromKey ? t(fromKey) : "", who, log.note]
+                .filter(Boolean)
+                .join(" · "),
             };
           })}
         />
@@ -451,10 +456,8 @@ export function SellerOrderDetailPage() {
           extra={{
             label: t("orderDetail.shipping.deadline"),
             value: deadline !== undefined ? formatUnixDateTime(deadline) : undefined,
-            mark: <NotImplemented list={ORDER_DETAIL_PENDING} id="deadline" />,
           }}
           trail={outboundTrail}
-          receiptMark={<NotImplemented list={ORDER_DETAIL_PENDING} id="receiptCode" />}
           trailMark={<NotImplemented list={ORDER_DETAIL_PENDING} id="shippingTracking" />}
           testId="shipment-outbound"
         />
@@ -528,7 +531,7 @@ export function SellerOrderDetailPage() {
         shopId={order.shopId}
         orderRef={order.orderExternalRefId || String(order.id)}
         // The SAME total sistem the money section shows, so the ledger's margins and the page's agree.
-        totalBeli={orderSpend(productCost, fees, !anyCostMissing) ?? undefined}
+        totalBeli={orderSpend(productCost, fees ?? 0n, !anyCostMissing && fees !== null) ?? undefined}
       />
     </Section>
   );
@@ -538,13 +541,8 @@ export function SellerOrderDetailPage() {
     deadline !== undefined ? (
       <Flex gap="1" align="center" data-testid="order-detail-deadline">
         <DeadlineCell unix={deadline} />
-        <NotImplemented list={ORDER_DETAIL_PENDING} id="deadline" />
       </Flex>
     ) : null;
-
-  // The life of an order past "shipped" has no RPCs — retur, selesai, lost, sengketa. Marked always,
-  // like every other gap, not only when this order happens to offer one.
-  const lifecycleMark = <NotImplemented list={ORDER_DETAIL_PENDING} id="lifecycle" />;
 
   return (
     <Stack
@@ -587,7 +585,7 @@ export function SellerOrderDetailPage() {
                 <CopyText value={`#${order.id.toString()}`} fontSize="lg" />
               </Flex>
             </Heading>
-            {stage && <StageBadge stage={stage} />}
+            {stage && <OrderStatusBadge status={stage.status} />}
             {/* ⚠ THE DEADLINE IS INVENTED, so its mark rides beside it — in the header, where it is most
                 prominent, not only on the shipping card further down. On a phone it is the first line
                 UNDER the header instead: see `deadlineLine`. */}
@@ -599,12 +597,10 @@ export function SellerOrderDetailPage() {
               <OrderActionBar
                 teamId={teamId}
                 orderId={order.id}
-                status={order.status}
                 stage={stage?.id}
                 warehouseId={order.warehouseId}
                 compact={mobile}
               />
-              {!mobile && lifecycleMark}
             </Flex>
           </Flex>
 
@@ -626,10 +622,6 @@ export function SellerOrderDetailPage() {
         <Box flex="1" minW="0">
           <StageStepper stage={stage} />
         </Box>
-        {/* "Selesai" is a step no order can reach until the enum grows past the old six. */}
-        <NotImplemented list={ORDER_DETAIL_PENDING} id="statusSet" />
-        {/* On a phone the lifecycle mark sits here, on the steps it is about — retur, selesai, lost. */}
-        {mobile && lifecycleMark}
       </Flex>
 
       {/* ② FOUR NUMBERS TO LAND ON — the answer before the working. */}

@@ -135,7 +135,7 @@ func raceOrderOn(shopID uint64) func(tx *gorm.DB) error {
 			TeamID:       raceShopTeam,
 			ShopID:       shopID,
 			WarehouseID:  testWarehouse,
-			Status:       "placed",
+			Status:       "pending",
 			CustomerName: "Race",
 		}).Error
 	}

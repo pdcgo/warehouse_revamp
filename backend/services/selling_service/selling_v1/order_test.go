@@ -19,7 +19,8 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S1", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", CustomerPhone: "0812-000",
 		Address: &sellingv1.OrderAddress{
 			ProvinsiCode: "11", ProvinsiName: "Aceh",
@@ -36,7 +37,7 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OrderCreate: %v", err)
 	}
-	if created.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PLACED {
+	if created.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 		t.Fatalf("new order status = %v, want PLACED", created.Msg.GetOrder().GetStatus())
 	}
 
@@ -79,7 +80,8 @@ func TestOrder_CreateWithoutAddress(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S-NOADDR", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Tanpa Alamat", ShippingCode: "jne",
 		Subtotal: 10000, ShippingCost: 0, Total: 10000,
 		Items: []*sellingv1.OrderItem{
@@ -113,7 +115,8 @@ func TestOrder_CreateWithNote(t *testing.T) {
 	const note = "Kirim setelah jam 5 sore.\nBungkus yang kaca."
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Note: note,
 		Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
@@ -141,7 +144,8 @@ func TestOrder_CreateWithNote(t *testing.T) {
 
 	// No note is "" rather than anything else — every order predating the column is in that state.
 	plain, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Tanpa Catatan", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
@@ -172,7 +176,8 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 	const ref = "250815ABCD1234"
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", OrderExternalRefId: ref,
 		Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
@@ -201,7 +206,8 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 	// An order taken over the phone has NO marketplace reference, and "" is how it says so — not a
 	// placeholder, and nothing to back-fill.
 	phone, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Lewat Telepon", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
@@ -255,7 +261,8 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 	}
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Receipt: receipt,
 		Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
@@ -282,7 +289,8 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 
 	// No receipt is an EMPTY message, never nil — the same convention the address follows.
 	plain, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Tanpa Resi", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
@@ -309,7 +317,8 @@ func TestOrder_CreateShopNotInTeam(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S2", "shopee")
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 3, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: "X", Subtotal: 1, Total: 1,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                3, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: "X", Subtotal: 1, Total: 1,
 		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1, UnitPrice: 1}},
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
@@ -326,7 +335,8 @@ func TestOrder_ListScopedAndCrossTeamDetail(t *testing.T) {
 
 	create := func(name string) uint64 {
 		r, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-			TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: name, Subtotal: 100, Total: 100,
+			PlatformCreatedAtUnix: testPlatformDate,
+			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: name, Subtotal: 100, Total: 100,
 			Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1, UnitPrice: 100}},
 		}))
 		if err != nil {
@@ -368,7 +378,8 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shop, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
@@ -397,7 +408,8 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 	// An order that names no warehouse is refused. Proto validation rejects it at the boundary, but
 	// unit tests bypass the interceptor — which is exactly why the handler re-checks.
 	_, err = svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shop,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shop,
 		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{
 			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},

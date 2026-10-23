@@ -14,15 +14,15 @@ import (
 // THE ORDER'S HISTORY (00011) — every transition leaves a step, and the step names the person.
 //
 // The property under test is that the history is written by the TRANSITION rather than by the
-// handlers: setOrderStatus is the one choke point all five moves pass through, so a sixth transition
-// added later gets its step for free. A test per handler would pass while proving only that today's
-// five handlers each remembered to call it.
+// handlers: setOrderStatus is the one choke point all five moves pass through, so a move added
+// later gets its step for free. A test per handler would pass while proving only that today's handlers
+// each remembered to call it.
 func timeline(
 	t *testing.T,
 	svc *selling_v1.Service,
 	ctx context.Context,
 	teamID, orderID uint64,
-) []*sellingv1.OrderEvent {
+) []*sellingv1.OrderTimelineLog {
 	t.Helper()
 
 	resp, err := svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
@@ -32,7 +32,7 @@ func timeline(
 		t.Fatalf("OrderDetail: %v", err)
 	}
 
-	return resp.Msg.GetOrder().GetEvents()
+	return resp.Msg.GetOrder().GetTimelineLogs()
 }
 
 // A fresh order has exactly ONE step, and it is attributed. The placement event is written inside the
@@ -49,14 +49,14 @@ func TestOrderTimeline_PlacementIsTheFirstStep(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("a new order has %d events, want exactly 1 (placed): %+v", len(events), events)
 	}
-	if events[0].GetKind() != sellingv1.OrderEventKind_ORDER_EVENT_KIND_PLACED {
-		t.Fatalf("first event kind = %v, want PLACED", events[0].GetKind())
+	if events[0].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
+		t.Fatalf("first event kind = %v, want PENDING", events[0].GetStatus())
 	}
-	if events[0].GetActorUserId() != 41 {
-		t.Fatalf("placed by user %d, want 41", events[0].GetActorUserId())
+	if events[0].GetActorId() != 41 {
+		t.Fatalf("placed by user %d, want 41", events[0].GetActorId())
 	}
 	// The event's moment is the ORDER's moment, not a second clock read at the insert.
-	if events[0].GetAtUnix() == 0 {
+	if events[0].GetCreatedAtUnix() == 0 {
 		t.Fatal("placed event has no timestamp")
 	}
 }
@@ -74,47 +74,41 @@ func TestOrderTimeline_EveryTransitionLeavesAStep(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S1", "shopee")
 	orderID := placeOrderAs(t, svc, seller, 2, shopID)
 
-	// The warehouse's FOUR steps, and the crew takes all of them (owner). Confirm is the first: the
-	// building accepting the job. It is attributed to `crew`, not `seller`, which is the point of doing
-	// it here — the timeline has to name the person who actually did each step, and confirm changed
-	// hands. Scoped to the WAREHOUSE, like the three after it, because the crew holds no role in the
-	// team that placed the order.
-	_, err := svc.OrderConfirm(crew, connect.NewRequest(&sellingv1.OrderConfirmRequest{
-		TeamId: testWarehouse, OrderId: orderID,
-	}))
-	if err != nil {
-		t.Fatalf("OrderConfirm: %v", err)
+	// The warehouse's three moves, and the crew makes all of them: confirm (the building accepting the
+	// job), Set Picked and the handover. Each is attributed to `crew`, not `seller` — the timeline has to
+	// name the person who actually did each step. Scoped to the WAREHOUSE, because the crew holds no role
+	// in the team that placed the order. Then customer service sees it moving on the platform.
+	moves := []struct {
+		ctx  context.Context
+		team uint64
+		to   sellingv1.OrderStatus
+	}{
+		{crew, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED},
+		{crew, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_PICKED},
+		{crew, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_SHIPPING},
+		{seller, 2, sellingv1.OrderStatus_ORDER_STATUS_SHIPPED},
 	}
 
-	_, err = svc.OrderPick(crew, connect.NewRequest(&sellingv1.OrderPickRequest{
-		TeamId: testWarehouse, OrderId: orderID,
-	}))
-	if err != nil {
-		t.Fatalf("OrderPick: %v", err)
-	}
-
-	_, err = svc.OrderPack(crew, connect.NewRequest(&sellingv1.OrderPackRequest{
-		TeamId: testWarehouse, OrderId: orderID,
-	}))
-	if err != nil {
-		t.Fatalf("OrderPack: %v", err)
-	}
-
-	_, err = svc.OrderShip(crew, connect.NewRequest(&sellingv1.OrderShipRequest{
-		TeamId: testWarehouse, OrderId: orderID,
-	}))
-	if err != nil {
-		t.Fatalf("OrderShip: %v", err)
+	for _, m := range moves {
+		res, err := svc.OrderStatusChange(m.ctx, connect.NewRequest(&sellingv1.OrderStatusChangeRequest{
+			TeamId: m.team, OrderIds: []uint64{orderID}, To: m.to,
+		}))
+		if err != nil {
+			t.Fatalf("OrderStatusChange to %v: %v", m.to, err)
+		}
+		if !res.Msg.GetResults()[0].GetMoved() {
+			t.Fatalf("move to %v refused: %s", m.to, res.Msg.GetResults()[0].GetRefusedReason())
+		}
 	}
 
 	events := timeline(t, svc, seller, 2, orderID)
 
-	wantKinds := []sellingv1.OrderEventKind{
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PLACED,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_CONFIRMED,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PICKING,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PACKED,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPED,
+	wantKinds := []sellingv1.OrderStatus{
+		sellingv1.OrderStatus_ORDER_STATUS_PENDING,
+		sellingv1.OrderStatus_ORDER_STATUS_PROCESSED,
+		sellingv1.OrderStatus_ORDER_STATUS_PICKED,
+		sellingv1.OrderStatus_ORDER_STATUS_SHIPPING,
+		sellingv1.OrderStatus_ORDER_STATUS_SHIPPED,
 	}
 
 	if len(events) != len(wantKinds) {
@@ -122,28 +116,39 @@ func TestOrderTimeline_EveryTransitionLeavesAStep(t *testing.T) {
 	}
 
 	for i, want := range wantKinds {
-		if events[i].GetKind() != want {
-			t.Fatalf("event %d = %v, want %v", i, events[i].GetKind(), want)
+		if events[i].GetStatus() != want {
+			t.Fatalf("event %d = %v, want %v", i, events[i].GetStatus(), want)
 		}
 	}
 
-	// WHO did what — the point of the tab. THE SELLER ONLY PLACED IT; the crew did all four warehouse
-	// steps, confirm included (owner). The two ends of the order are told apart by the history rather
-	// than guessed at from the status — and this row is what that separation looks like now: one event
-	// belongs to the seller, four to the building.
-	wantActors := []uint64{7, 9, 9, 9, 9}
+	// WHO did what — the point of the tab. The seller placed it and followed it on the platform; the
+	// crew did the three warehouse moves. The two ends are told apart by the history rather than guessed
+	// at from the status.
+	wantActors := []uint64{7, 9, 9, 9, 7}
 
 	for i, want := range wantActors {
-		if events[i].GetActorUserId() != want {
+		if events[i].GetActorId() != want {
 			t.Fatalf("event %d (%v) by user %d, want %d",
-				i, events[i].GetKind(), events[i].GetActorUserId(), want)
+				i, events[i].GetStatus(), events[i].GetActorId(), want)
+		}
+	}
+
+	// And FROM WHICH SIDE (order-timeline-logs-replaces-order-events): the seller placed it and saw it shipped,
+	// the warehouse confirmed, picked and handed it over.
+	selling := sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_SELLING
+	warehouse := sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_WAREHOUSE
+	wantFrom := []sellingv1.OrderTimelineFrom{selling, warehouse, warehouse, warehouse, selling}
+
+	for i, want := range wantFrom {
+		if events[i].GetFrom() != want {
+			t.Fatalf("event %d (%v) from %v, want %v", i, events[i].GetStatus(), events[i].GetFrom(), want)
 		}
 	}
 
 	// Non-decreasing in time — the preload orders by `at`, and a timeline that ran backwards would
 	// render the steps out of sequence while every individual step looked right.
 	for i := 1; i < len(events); i++ {
-		if events[i].GetAtUnix() < events[i-1].GetAtUnix() {
+		if events[i].GetCreatedAtUnix() < events[i-1].GetCreatedAtUnix() {
 			t.Fatalf("event %d is older than the one before it", i)
 		}
 	}
@@ -170,11 +175,11 @@ func TestOrderTimeline_CancelIsRecorded(t *testing.T) {
 	if len(events) != 2 {
 		t.Fatalf("%d events after cancel, want 2 (placed, cancelled): %+v", len(events), events)
 	}
-	if events[1].GetKind() != sellingv1.OrderEventKind_ORDER_EVENT_KIND_CANCELLED {
-		t.Fatalf("last event = %v, want CANCELLED", events[1].GetKind())
+	if events[1].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCEL {
+		t.Fatalf("last event = %v, want CANCEL", events[1].GetStatus())
 	}
-	if events[1].GetActorUserId() != 13 {
-		t.Fatalf("cancelled by user %d, want 13", events[1].GetActorUserId())
+	if events[1].GetActorId() != 13 {
+		t.Fatalf("cancelled by user %d, want 13", events[1].GetActorId())
 	}
 }
 
@@ -195,7 +200,7 @@ func TestOrderTimeline_UnknownActorIsRecordedAsZero(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("%d events, want 1: %+v", len(events), events)
 	}
-	if events[0].GetActorUserId() != 0 {
-		t.Fatalf("actor = %d, want 0 (not recorded)", events[0].GetActorUserId())
+	if events[0].GetActorId() != 0 {
+		t.Fatalf("actor = %d, want 0 (not recorded)", events[0].GetActorId())
 	}
 }

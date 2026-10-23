@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { statSync } from "node:fs";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 
 // #68 — Order list + read-only detail. #90 — the order CREATE form.
@@ -20,6 +21,9 @@ const CUSTOMER = `E2E Customer ${SUFFIX}`;
 // The marketplace's own id for the order — shaped like one a storefront actually issues, and made
 // unique per run so the search that finds it cannot match a leftover from an earlier one.
 const MARKETPLACE_REF = `250815MP${SUFFIX}`;
+// The number printed on the slip — invented in a courier's shape, and unlike the ref in every way the form's
+// refs-distinct check reads, so the two cannot be mistaken for each other.
+const TRACKING_NUMBER = `JX9${SUFFIX}Q4`;
 // An order names the warehouse that ships it (#72), so this spec creates its own rather than
 // depending on warehouses.spec.ts having run first.
 const WH_CODE = `OWH${SUFFIX}`.slice(0, 10);
@@ -89,6 +93,22 @@ async function tickProduct(page: Page, sku: string) {
   await row.locator('[data-part="control"]').click();
 }
 
+// THE MARKETPLACE'S ORDER DATE — required to place (platform-created-at-is-required-at-finalize). Picked off the
+// calendar: the trigger opens it, today's cell sets the day at 00:00, Escape closes it. Today, in the browser's own
+// clock, which is the one the picker's cells are labelled in.
+async function pickOrderDate(page: Page) {
+  await page.getByTestId("order-create-order-date").click();
+  const today = await page.evaluate(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  await page
+    .getByTestId("order-create-order-date-content")
+    .locator(`[data-part="table-cell-trigger"][data-value="${today}"]`)
+    .click();
+  await page.keyboard.press("Escape");
+}
+
 // Adds products to the order through the picker dialog (#165's pattern, now the order form's too).
 async function addProducts(page: Page, skus: string[]) {
   await page.getByTestId("order-create-add-line").click();
@@ -115,6 +135,7 @@ async function placeOrderViaForm(page: Page, customer: string) {
   await page.getByTestId(`team-select-option-${WH_CODE}`).click();
   await addProducts(page, [SKU]);
   await page.getByTestId("order-line-qty-0").fill("1");
+  await pickOrderDate(page);
   // No price: a line is valued at the warehouse HPP, which this fixture's product has none of.
   await page.getByTestId("order-create-save").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
@@ -274,6 +295,15 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       ],
     });
 
+    // THE WAREHOUSE'S FEE — without one it takes no orders (a-warehouse-with-no-rate-takes-no-orders), and order create
+    // prices every order on it and freezes the answer (the-flat-rate-is-dropped-last step 3). A percent with a FLOOR, so
+    // on goods at Rp 0 the fee is exactly the floor: Rp 1.500, a figure the create test can pin end to end.
+    await call("warehouse.v1.WarehouseFeeService/WarehouseFeeSet", {
+      teamId: warehouse.id,
+      feePercent: 2.5,
+      minFee: 1500,
+    });
+
     return { warehouse: warehouse.id, product: product.id };
   }, [WH_CODE, SKU]);
 
@@ -429,6 +459,9 @@ test("Create: place an order through the form; money computes; the detail opens"
   // is what lets anybody find this order again on the storefront.
   await page.getByTestId("order-external-ref-id").fill(MARKETPLACE_REF);
 
+  // THE TRACKING NUMBER printed on the slip — its own field now (`receipt_code`), kept beside the slip itself.
+  await page.getByTestId("order-receipt-code").fill(TRACKING_NUMBER);
+
   // THE SHIPPING RECEIPT (owner): the courier's slip or the marketplace's PDF, attached to the order.
   // The bytes go to document_service the moment the file is picked — two phases, straight to storage
   // — and what the order stores is the document's id. Driving the hidden input directly is how a
@@ -445,13 +478,17 @@ test("Create: place an order through the form; money computes; the detail opens"
   // Attached, and named — the upload has finished by the time the row appears.
   await expect(page.getByTestId("order-receipt-attached")).toContainText("resi-jne.pdf");
 
-  // The total is the goods PLUS the warehouse's handling fee — no shipping (owner), and the marketplace
-  // figure was never in the sum. The fee is a SAMPLE until the form reads the warehouse's terms (its
-  // pending mark says so), so it is read off the screen rather than pinned: with the goods at Rp 0,
-  // the total is exactly the fee. The fee is not sent — the create request carries the goods alone.
+  // The total is the goods PLUS the warehouse's fee — no shipping (owner), and the marketplace figure was never in
+  // the sum. The warehouse PRICES the fee (WarehouseFeeCalculate): 2.5% of Rp 0 is below the floor, so it is the
+  // floor set in setup. The server prices it again at create and freezes that — the detail below reads it back.
   await expect(page.getByTestId("order-create-products-total")).toHaveText("Rp 0");
-  const fee = (await page.getByTestId("order-create-warehouse-fee").textContent()) ?? "";
-  await expect(page.getByTestId("order-create-total")).toHaveText(fee);
+  await expect(page.getByTestId("order-create-warehouse-fee")).toHaveText("Rp 1.500");
+  await expect(page.getByTestId("order-create-total")).toHaveText("Rp 1.500");
+
+  // THE MARKETPLACE'S ORDER DATE is required (platform-created-at-is-required-at-finalize): everything else is
+  // filled, and Create still waits for it.
+  await expect(page.getByTestId("order-create-save")).toBeDisabled();
+  await pickOrderDate(page);
 
   await expect(page.getByTestId("order-create-save")).toBeEnabled();
   await page.getByTestId("order-create-save").click();
@@ -464,9 +501,14 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("section-items")).toContainText(SKU);
   // The marketplace figure survived onto the order, as its own tile beside ours and not inside it.
   await expect(page.getByTestId("tile-mp")).toContainText("Rp 58.000");
+  // THE FEE WAS FROZEN ON THE ORDER (the-flat-rate-is-dropped-last step 3) — the figure the warehouse priced at
+  // create, read back from the order itself rather than from the form.
+  await expect(page.getByTestId("money-fees")).toContainText("Rp 1.500");
   // …and so did the storefront's own id for it, verbatim — the whole point of the field is that the
   // number a buyer quotes is readable on the order they are asking about.
   await expect(page.getByTestId("order-reference-mp")).toContainText(MARKETPLACE_REF);
+  // …and the tracking number, as typed.
+  await expect(page.getByTestId("order-reference-receipt")).toContainText(TRACKING_NUMBER);
 
   // The receipt travelled with the order: the detail names the file and offers to open it. The
   // document itself is PRIVATE, so there is no URL on the page to assert — the button fetches a
@@ -482,13 +524,19 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(address).toContainText("Kabupaten Aceh Selatan");
   await expect(address).toContainText(KODE_POS);
 
-  // THE ORDER OPENED ITS OWN SETTLEMENT ACCOUNT (settlement #order-service-calls-settlement). Nobody
-  // typed anything in the Settlement section — placing an order with a marketplace total is what posts
-  // its `initial_total`, after the commit, in-process. The section reading the sale back is the whole
-  // seam, proven against the real server and database rather than a fake poster.
-  await expect(page.getByTestId("order-ledger-panel")).toBeVisible();
+  // THE ORDER OPENED ITS OWN SETTLEMENT ACCOUNT (settlement-opens-the-sale-from-the-order-event). Nobody
+  // typed anything in the Settlement section — placing an order with a marketplace total publishes *Order
+  // Placed*, and the emulator PUSHES it to settlement, which posts its `initial_total`. The section reading
+  // the sale back is the whole seam, proven through the real broker, server and database.
+  //
+  // ⚠ IT IS ASYNCHRONOUS, so the page is reloaded until the push has landed — the account opens a moment
+  // after the order does, which is the design, not a race to hide.
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByTestId("order-ledger-panel")).toBeVisible();
+    await expect(page.getByTestId("settlement-summary")).toContainText("Rp 58.000", { timeout: 1000 });
+  }).toPass({ timeout: 20_000 });
   await expect(page.getByTestId("settlement-absent")).toHaveCount(0);
-  await expect(page.getByTestId("settlement-summary")).toContainText("Rp 58.000");
   await expect(page.getByTestId("ledger-table").locator('[data-testid^="entry-"]')).toHaveCount(1);
 
   // And it now shows in the list — by the marketplace's id for it, which is what a row leads with now
@@ -496,13 +544,18 @@ test("Create: place an order through the form; money computes; the detail opens"
   await page.getByTestId("order-detail-back").click();
   await expect(page.getByTestId("orders-table")).toBeVisible();
   await expect(page.getByTestId("orders-table")).toContainText(MARKETPLACE_REF);
+
+  // The search finds it by the tracking number on the slip (a-label-scan-reads-the-ref-or-the-receipt).
+  await page.getByTestId("orders-search").fill(TRACKING_NUMBER);
+  await expect(page.getByTestId("orders-table")).toContainText(TRACKING_NUMBER);
+  await expect(page.getByTestId("orders-table").locator('[data-testid^="order-row-"]')).toHaveCount(1);
 });
 
 // THE SETTLEMENT REPORT is wired end to end: the route, the analytics RPCs and their policy.
 //
-// ⚠ The e2e server runs NO broker, so nothing is folded and every figure reads 0. That is still a real
-// assertion: the report lays out EVERY day of the window as a row, so the series table exists only if
-// AnalyticTimeSearch answered — a policy or mounting mistake shows as the error line instead.
+// The report lays out EVERY day of the window as a row, so the series table exists only if
+// AnalyticTimeSearch answered — a policy or mounting mistake shows as the error line instead. (The
+// emulator pushes now, so the fold runs too; the figures are not what this asserts.)
 test("Settlement report: the report screen answers from the analytics RPCs", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
@@ -582,7 +635,7 @@ let lifecycleOrderId = "";
 // The SELLING seat's half of an order's life: it can call the order off, and that is all.
 //
 // Confirming used to be here too (#91). It is now the WAREHOUSE's first step (owner) — see the
-// fulfilment test below — so this seat offers exactly one action and the order sits at Placed until
+// fulfilment test below — so this seat offers exactly one action and the order sits at Pending until
 // the building takes it on.
 test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
@@ -590,13 +643,12 @@ test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", 
   lifecycleOrderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
   const detail = page.getByTestId("order-detail-page");
 
-  // A fresh order is PLACED — the owner's "Pending" stage — and waiting on the warehouse rather than
-  // on this seat.
+  // A fresh order is PENDING and waiting on the warehouse rather than on this seat.
   await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "pending");
   await expect(page.getByTestId("order-action-cancel")).toBeVisible();
   await expect(page.getByTestId("order-action-confirm")).toHaveCount(0);
 
-  // Cancel goes through the confirm dialog (destructive) -> CANCELLED, a terminal state with no actions.
+  // Cancel goes through the confirm dialog (destructive) -> CANCEL, a terminal state with no actions.
   await page.getByTestId("order-action-cancel").click();
   await page.getByTestId("confirm-action").click();
   await expect(detail).toContainText("Cancelled");
@@ -735,14 +787,14 @@ async function switchToWarehouse(page: Page) {
 }
 
 // #151 — the crew's whole job, end to end: find the order the moment it arrives, open it, ACCEPT IT,
-// read WHICH SHELF to walk to, and walk it through picking → packed → shipped.
+// read WHICH SHELF to walk to, and walk it through picked → handed over (the-status-move-is-the-only-journey).
 //
-// All four steps belong to the warehouse (owner). The selling seat only places the order here — it
+// All three moves belong to the warehouse (owner). The selling seat only places the order here — it
 // never confirms, which is the change that made a just-placed order visible to the building at all.
-test("Fulfilment: the warehouse takes an order from placed through to shipped (#151)", async ({ page }) => {
+test("Fulfilment: the warehouse takes an order from pending through to the handover (#151)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  // Placed from the SELLING seat and left there — PLACED, untouched, waiting on the warehouse.
+  // Placed from the SELLING seat and left there — PENDING, untouched, waiting on the warehouse.
   await placeOrderViaForm(page, `${CUSTOMER} picking`);
   await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "pending");
 
@@ -751,7 +803,7 @@ test("Fulfilment: the warehouse takes an order from placed through to shipped (#
   await page.goto("/warehouse-orders");
 
   // The screen opens on NEW — orders this building has not accepted yet. This is the tab that was
-  // missing: the order below is PLACED, and before it existed the crew's screen opened on To Pick and
+  // missing: the order below is PENDING, and before it existed the crew's screen opened on To Pick and
   // showed an empty table.
   const row = page.getByTestId("pick-queue-table").getByText(`${CUSTOMER} picking`);
   await expect(row).toBeVisible();
@@ -763,27 +815,24 @@ test("Fulfilment: the warehouse takes an order from placed through to shipped (#
   await expect(pickList).toContainText(PRODUCT_NAME);
   await expect(pickList).toContainText("e2e-seed");
 
-  // Forward, one step at a time — and the button always reads as the single next thing that happened.
-  // FOUR steps now, not three: the first is this building accepting the job.
+  // Forward, one move at a time — and the button always reads as the single next thing that happens.
+  // THREE moves: this building accepting the job, Set Picked, and the handover.
   const advance = page.getByTestId("pick-order-advance");
 
   await expect(advance).toContainText("Confirm Order");
   await advance.click();
-  await expect(page.getByTestId("pick-order-advance")).toContainText("Start Picking");
+  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Picked");
 
   await page.getByTestId("pick-order-advance").click();
-  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Packed");
-
-  await page.getByTestId("pick-order-advance").click();
-  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Shipped");
+  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Handed Over");
 
   await page.getByTestId("pick-order-advance").click();
 
-  // SHIPPED is the end of the warehouse's work: the goods have left the building, so there is no next
-  // step to offer and the button goes away entirely.
+  // THE HANDOVER is the end of the warehouse's work: the goods have left the building, so there is no
+  // next step to offer and the button goes away entirely.
   await expect(page.getByTestId("pick-order-advance")).toBeHidden();
 
-  // THE HISTORY THOSE FIVE CLICKS WROTE (00011). This is the only place the whole sequence can be
+  // THE HISTORY THE PLACEMENT AND THOSE THREE CLICKS WROTE (00011). This is the only place the whole sequence can be
   // checked end to end: each step is recorded by the transition that performed it, so nothing short of
   // actually walking an order through picking proves the steps land, land in order, and land attributed.
   //
@@ -804,18 +853,18 @@ test("Fulfilment: the warehouse takes an order from placed through to shipped (#
   const timeline = page.getByTestId("order-detail-timeline");
   await expect(timeline).toBeVisible();
 
-  for (const step of ["placed", "confirmed", "picking", "packed", "shipped"]) {
+  for (const step of ["pending", "processed", "picked", "shipping"]) {
     await expect(page.getByTestId(`order-timeline-${step}`)).toBeVisible();
   }
 
   // WHO — the steps name the person who took them, which is the half the status column can never
   // carry. Everything in this run is done by the same root account, so the assertion is that the
   // attribution is THERE at all: an event written with actor 0 would render no person.
-  await expect(page.getByTestId("order-timeline-shipped-by")).toBeVisible();
+  await expect(page.getByTestId("order-timeline-shipping-by")).toBeVisible();
 
-  // SHIPPED is an ending, so nothing is pending under it. A waiting step here would promise work
-  // nobody is going to do.
-  await expect(page.getByTestId("order-timeline-awaiting")).toBeHidden();
+  // THE HANDOVER IS THE WAREHOUSE'S END, NOT THE ORDER'S: customer service still marks it moving on the
+  // platform, so the timeline says what it is waiting for.
+  await expect(page.getByTestId("order-timeline-awaiting")).toBeVisible();
 });
 
 // #151 — the queue belongs to a WAREHOUSE. A selling team places orders but has no shelves and nobody
@@ -1294,4 +1343,25 @@ test.skip("Revenue: cancelling an order stops it counting, but the row stays vis
 
   // But the total has DROPPED — it no longer counts an order that fell through.
   await expect(page.getByTestId("revenue-total-revenue")).not.toHaveText(before);
+});
+
+// THE LIST AS A FILE (one-export-is-the-list-as-a-file) — the whole chain on a real server: the stream, the file stored
+// in document_service as the person exporting, and the expiring link the browser downloads.
+test("Export: the order list downloads as an .xlsx file", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto("/orders");
+  await expect(page.getByTestId("orders-export")).toBeVisible();
+
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("orders-export").click();
+  const download = await downloading;
+
+  // The file's OWN name, not its storage key (a-download-keeps-its-files-name): the link is on another origin, where a
+  // browser ignores the anchor's `download` name, so the name comes from the storage's Content-Disposition.
+  expect(download.suggestedFilename()).toMatch(/^orders-.*\.xlsx$/);
+
+  const path = await download.path();
+  expect(statSync(path).size).toBeGreaterThan(0);
+
+  await expect(page.getByText("Export ready — the file is downloading")).toBeVisible();
 });

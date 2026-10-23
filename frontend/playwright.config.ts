@@ -34,7 +34,10 @@ export default defineConfig({
       timeout: 120_000,
       env: {
         DATABASE_URL: TEST_DSN,
-        ADDR: "localhost:8081",
+        // Loopback by default; CI sets E2E_API_ADDR=0.0.0.0:8081 so the Pub/Sub emulator's container can push.
+        ADDR: process.env.E2E_API_ADDR || "localhost:8081",
+        // Its own emulator project — never the dev server's (e2e/pubsub.ts, PUBSUB_PROJECT).
+        PUBSUB_PROJECT: "warehouse-e2e",
         ALLOWED_ORIGINS: "http://localhost:5175",
         // Services call EACH OTHER over Connect at this URL. It must point at THIS backend's port,
         // or a cross-service RPC (e.g. TeamAccessList → team_service) silently hits the dev :8080.

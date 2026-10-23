@@ -73,6 +73,10 @@ func TestDevSetupDatabaseIsRepeatable(t *testing.T) {
 	}{
 		{"dev logins", `SELECT count(*) FROM users WHERE username IN ('dev', 'wh_owner', 'wh_staff', 'seller')`, 4},
 		{"dev teams", `SELECT count(*) FROM teams WHERE team_code IN ('DEVWH', 'DEVSELL')`, 2},
+		// A fresh database has no flat fee to carry, so Dev Warehouse gets the worked example — once.
+		{"the dev warehouse fee", `SELECT count(*) FROM warehouse_fees f JOIN teams t ON t.id = f.warehouse_id
+		                           WHERE t.team_code = 'DEVWH'
+		                             AND f.fee_percent = 2.5 AND f.min_fee = 2000 AND f.max_fee = 20000`, 1},
 		{"categories", `SELECT count(*) FROM categories`, countCategories(seeds.categories)},
 		{"regions", `SELECT count(*) FROM regions`, len(seeds.regions)},
 	}

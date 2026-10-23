@@ -1,35 +1,21 @@
-import type { ReactNode } from "react";
-import { Badge, Box, Flex, Tabs } from "@chakra-ui/react";
+import { Badge, Flex, Tabs } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-import { ALL_STAGE, ORDER_STAGES, stageIsOnTheWire } from "./stages";
+import { ALL_STAGE, ORDER_STAGES } from "./stages";
 
 /** The value the DRAFTS tab carries — not a stage: a draft is a different record in a different table. */
 export const DRAFTS_TAB = "drafts";
 
-// THE STATUS FILTER, OVER THE OWNER'S EIGHT (owner).
-//
-// `docs/business/order/context.md` §Order Status decided the set; this strip is that set, in that
-// order, whatever the contract can currently serve. The alternative — tabs that mirror the six enum
-// values the build happens to have — would put a vocabulary on screen that the owner's own doc
-// already records as stale, and the screen would have to be rebuilt when the migration lands.
-//
-// ⚠ FOUR OF THE EIGHT CAN NEVER BE ANYTHING BUT 0 TODAY, and one more counts but cannot filter. Both
-// are the same cause — the enum has not migrated — so both carry ONE mark, `statusSet`, rather than
-// five. See `pending.ts`.
+// THE STATUS FILTER: one tab per status, plus All (one-tab-per-status), in the status diagram's order.
+// Every tab is a real status now (00015), so each carries its count — a 0 is a measurement.
 //
 // ⚠ TWO SCREENS DRAW IT — the seller's order list and the drafts screen, which is that list's Drafts
-// tab (`the-draft-list-is-the-drafts-tab`). The warehouse's list still draws the old six-status
-// `OrderTabs`; it has not been redesigned.
-//
-// ⚠ THE ⚠ IS THE CALLER'S (`mark`). The strip's gap is the same on both screens, but each screen's
-// pending list is its own, and a feature reaching into a page for one is backwards.
+// tab (`the-draft-list-is-the-drafts-tab`). The warehouse's list draws its own steps.
 export function StageTabs({
   value,
   onSelect,
   count,
   draftCount,
-  mark,
 }: {
   /** The active tab: a stage id, `ALL_STAGE`, or `DRAFTS_TAB`. */
   value: string;
@@ -38,8 +24,6 @@ export function StageTabs({
   count: (value: string) => number;
   /** Undefined hides the badge — a screen that has not counted them shows no number, not a 0. */
   draftCount?: number;
-  /** The strip's single ⚠ — `statusSet`, from the calling screen's own pending list. */
-  mark?: ReactNode;
 }) {
   const { t } = useTranslation();
 
@@ -51,25 +35,14 @@ export function StageTabs({
         flex="1"
         minW="0"
       >
-        {/* ⚠ ONE ROW (owner). Three things were traded to get there, and the order matters:
-  
-          1. It SCROLLED first — wrong, because four of the eight statuses cannot hold a row yet and are
-             on screen precisely so a reader knows they are coming. Scrolling put those four off the
-             edge with nothing saying they exist.
-          2. Then it WRAPPED — honest, but two rows at laptop width and four on a phone.
-          3. Now the four identical marks are ONE mark on the strip. They all pointed at the same
-             pending entry, so saying it four times bought nothing but width.
+        {/* ⚠ ONE ROW (owner), AND IT SCROLLS SIDEWAYS when it does not fit (one-tab-per-status) — thirteen
+            tabs do not fit a laptop, let alone a phone. Scrolling was refused once, while four of the
+            tabs could hold no order and would have hidden off the edge with nothing saying they exist;
+            every tab is a real status now, so that reason is gone and wrapping to three rows is not.
 
-          MEASURED, at the end: one row from 1100px up — every laptop including 1366×768. Two rows at
-          1024, four at 360. The single mark shares the strip's row, so it costs back some of the
-          ~140px it saved; that is why the break lands at 1100 rather than the 993px of content alone.
-  
-          ⚠ IT STILL WRAPS ON A PHONE, and that is arithmetic rather than a decision — 993px will never
-          fit 360. `flexWrap` stays so the overflow lands as a second row rather than off the edge.
-  
-          ⚠ A TRIGGER MUST REFUSE TO SHRINK. A flex child shrinks before it wraps, so without
-          `flexShrink="0"` the labels squashed into each other instead of moving to the next line. */}
-        <Tabs.List flexWrap="wrap" maxW="full" rowGap="1">
+            ⚠ A TRIGGER MUST REFUSE TO SHRINK. A flex child shrinks before it scrolls, so without
+            `flexShrink="0"` the labels squash into each other instead. */}
+        <Tabs.List flexWrap="nowrap" overflowX="auto" overflowY="hidden" maxW="full">
           <Tabs.Trigger
             value={ALL_STAGE}
             flexShrink="0"
@@ -95,19 +68,9 @@ export function StageTabs({
               data-testid={`orders-tab-${stage.id}`}
             >
               {t(`orders.stage.${stage.id}`)}
-
-              {/* A stage the contract cannot hold shows NO COUNT at all. A "0" there is a measurement —
-                "no orders are completed" — and this is not one: nothing can ever be. The absence is
-                the honest rendering, and the strip's single mark says why. */}
-              {stageIsOnTheWire(stage) && (
-                <Badge
-                  size="xs"
-                  variant="subtle"
-                  data-testid={`orders-tab-count-${stage.id}`}
-                >
-                  {count(stage.id)}
-                </Badge>
-              )}
+              <Badge size="xs" variant="subtle" data-testid={`orders-tab-count-${stage.id}`}>
+                {count(stage.id)}
+              </Badge>
             </Tabs.Trigger>
           ))}
 
@@ -133,9 +96,6 @@ export function StageTabs({
         </Tabs.List>
       </Tabs.Root>
 
-      {/* ONE MARK FOR THE WHOLE STRIP, not one per empty tab. Four badges saying the same sentence is
-          four times the width for no extra information. */}
-      {mark && <Box flexShrink="0">{mark}</Box>}
     </Flex>
   );
 }

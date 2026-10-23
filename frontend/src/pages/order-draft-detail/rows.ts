@@ -2,9 +2,8 @@ import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 import type { PickedProduct } from "../../components/products/ProductSelect";
 import type { Availability, Costs, LineDraft } from "../../features/orders/lines";
 import { lineFor, lineStock, lineTotal, toQty, toRupiah } from "../../features/orders/lines";
-import type { BundleDraft } from "../../features/orders/form/bundles";
+import type { BundleDraft, PickedBundle } from "../../features/orders/form/bundles";
 import { bundleFor, slotCap, slotFilled } from "../../features/orders/form/bundles";
-import type { BundleTemplate } from "../../features/orders/form/mockData";
 
 // ONE SCRAPED ROW, AND WHAT IT BECOMES (`a-draft-row-maps-to-a-product-a-bundle-or-a-split`).
 //
@@ -12,7 +11,7 @@ import type { BundleTemplate } from "../../features/orders/form/mockData";
 // Kopi + Teh × 1". What leaves the warehouse for it is one of three things:
 //
 //   product   one of our products, at the row's quantity
-//   bundle    a bundle template, its slots filled — slot cap = rule × the row's quantity
+//   bundle    one of our bundles, its slots filled — slot cap = rule × the row's quantity
 //   split     several products directly, each at a quantity PER LISTING UNIT (× the row's quantity),
 //             for a listing no bundle describes — the screen suggests making it a bundle
 //
@@ -99,8 +98,8 @@ export function productFor(picked: PickedProduct): LineDraft {
  * A bundle mapped onto a row. Its quantity is the row's count, and each slot starts full for it —
  * rule × count — because that is what the listing says was bought.
  */
-export function bundleForRow(template: BundleTemplate, row: DraftRow): BundleDraft {
-  const bundle = bundleFor(template, `${row.key}-bundle`);
+export function bundleForRow(picked: PickedBundle, row: DraftRow): BundleDraft {
+  const bundle = bundleFor(picked, `${row.key}-bundle`);
   const qty = Math.max(1, toQty(row.count));
 
   return {

@@ -204,15 +204,9 @@ hazard is re-routed to [inventory Q11](../inventory/context_clarify.md#question)
 
 ## settlement-subscribes-here-and-is-called-in-its-own-doc
 
-Settlement is a push subscriber of *Order Created Event* here (lines 92–101), while
-[settlement/context.md](../settlement/context.md) §Type `initial_total` says *"`order_service` calling -->
-`settlement_service`"*. **→ Recommend** the settlement doc changes, and its reversal is recorded there.
-
-```mermaid
-flowchart LR
-  D["order_creation.md — redrawn 2026-10-17"] --> A["its own diagram — agrees"]
-  D --> C["settlement/context.md: order calls settlement — stale"]
-```
+✅ *(2026-10-21)* **Resolved by your edit** — [settlement/context.md](../settlement/context.md) now has settlement receive the order
+events ([settlement-opens-the-sale-from-the-order-event](../settlement/context_decision.md#settlement-opens-the-sale-from-the-order-event)).
+Kept as a heading so the links into it hold.
 
 ## the-request-check-misses-the-return-warehouse
 

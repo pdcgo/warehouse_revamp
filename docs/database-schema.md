@@ -36,8 +36,6 @@ erDiagram
     team_infos {
         bigserial   id                  PK
         bigint      team_id             FK "unique, on delete cascade"
-        bigint      return_warehouse_id "nullable opaque cross-service id"
-        bigint      return_user_id      "nullable opaque cross-service id"
         bigint      default_warehouse_id "nullable, the warehouse a SELLING team ships from by default (#145)"
         text        contact_number "no bank — dropped by 00008, a team's bank is a financial account"
         timestamptz created_at
@@ -79,8 +77,11 @@ erDiagram
     ⚠ **How root SETS it is not designed yet** (owner) — the column and the read path landed first, so
     no RPC writes it today.
 - **`team_infos`** — 1:1 with `teams` (`UNIQUE (team_id)`, which is what makes `TeamInfoUpdate` a
-  real `ON CONFLICT` upsert). `return_warehouse_id` / `return_user_id` are opaque ids owned by other
-  services — no FK is possible across the service boundary.
+  real `ON CONFLICT` upsert).
+  - **No return warehouse and no return user (00009).** The return warehouse is the order context's
+    `team_return_configurations` (selling_service, below), which order create reads without calling
+    this service; the return user was read by nothing. Both columns were dropped, not copied — nothing
+    had read them.
   - **`default_warehouse_id`** (#145) — the warehouse a SELLING team ships from by default. Every
     order must name a warehouse (#72), and a team almost always ships from the same building, so this
     is that answer held once rather than asked every time.
@@ -213,6 +214,8 @@ render as the raw code until root creates that channel.
 ```mermaid
 erDiagram
     products ||--o{ product_images : "product_id"
+    bundles ||--o{ bundle_products : "bundle_id"
+    products ||--o{ bundle_products : "product_id"
 
     products {
         bigserial   id                          PK
@@ -240,6 +243,23 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+
+    bundles {
+        bigserial   id                 PK
+        bigint      team_id            "owning selling team, opaque cross-service id, no FK"
+        text        name               "required, MAY REPEAT within a team"
+        text        description
+        bigint      created_by_user_id "who made it, user_service id, no FK"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    bundle_products {
+        bigserial id         PK
+        bigint    bundle_id  FK "-> bundles(id), ON DELETE CASCADE"
+        bigint    product_id FK "-> products(id)"
+        int       quantity   "units in ONE bundle, 1 to 9999"
+    }
 ```
 
 - **`products`** — a team's catalogue items. Every RPC is team-scoped (`team_id` carries
@@ -256,6 +276,14 @@ erDiagram
   `document_service` upload (resource type `PRODUCT_IMAGE`, served at a stable public URL) and stored
   verbatim. `ProductUpdate` replaces the whole set when its `images` wrapper is present. `ON DELETE
   CASCADE` covers a hard delete; products are normally soft-deleted, so images stay with them.
+- **`bundles`** (`00006`) — a selling team's **picking recipes** ([product_bundle.md](business/product/product_bundle.md)):
+  no stock, no price. The name **may repeat** within a team, so there is no unique index on it. A bundle is
+  **hard-deleted**, because no order refers to one — the order form expands it into product lines and keeps no link
+  back. `bundles_team_updated_idx (team_id, updated_at DESC, id DESC)` serves BundleList's default order.
+- **`bundle_products`** — one product per bundle and how many go into one bundle: `UNIQUE (bundle_id, product_id)`,
+  `CHECK (quantity BETWEEN 1 AND 9999)`. Whose product it is comes from `products.team_id` — **no copy** on the line.
+  `product_id` is a real FK (same service); a product is only ever archived, so the FK never blocks, and an archived
+  product's line keeps naming it. `bundle_products_product_idx (product_id)` serves the search's join.
 
 ---
 
@@ -268,8 +296,9 @@ erDiagram
     shops ||--o{ shop_users : "shop_id"
     shops ||--o{ orders : "shop_id"
     orders ||--o{ order_items : "order_id"
-    orders ||--o{ order_events : "order_id"
+    orders ||--o{ order_timeline_logs : "order_id"
     order_drafts ||--o{ order_draft_items : "draft_id"
+    team_return_configurations
 
     shops {
         bigserial   id          PK
@@ -295,7 +324,7 @@ erDiagram
         bigserial   id               PK
         bigint      team_id          "owning SELLING team, opaque, no FK"
         bigint      shop_id          FK "-> shops(id)"
-        text        status           "OrderStatus as text (placed/confirmed/picking/packed/shipped/cancelled); no CHECK"
+        text        status           "OrderStatus as text, the eleven (00015) — default pending; no CHECK"
         text        customer_name    "required"
         text        customer_phone
         text        provinsi_code    "frozen address snapshot: opaque region_service code, no FK"
@@ -320,6 +349,10 @@ erDiagram
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
         text        receipt_filename    "snapshot of what the receipt was called when attached"
         text        receipt_mime_type   "image/* or application/pdf — how to render it without fetching it"
+        text        receipt             "the TRACKING NUMBER printed on that slip (00018), verbatim — the owner's orders.receipt, Order.receipt_code on the wire. '' = not recorded. Searched with ILIKE, not indexed"
+        double      warehouse_fee       "the warehouse's fee, FROZEN at create from WarehouseFeeCalculate on cogs (00019, step 3 of the-flat-rate-is-dropped-last). Unrounded. NULL = never priced, placed before 00019. 0 = a warehouse charging nothing. CHECK >= 0"
+        timestamptz platform_created_at        "when the BUYER ordered on the storefront (00020) — required at placement, checked in code. NULL only before 00020"
+        timestamptz platform_shipment_deadline "the marketplace's own ship-by time, its kirim sebelum (00020). Optional, NULL = none"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -336,13 +369,14 @@ erDiagram
         timestamptz created_at
     }
 
-    order_events {
-        bigserial   id            PK
-        bigint      order_id      FK "-> orders(id), ON DELETE CASCADE"
-        text        kind          "OrderEventKind as text (placed/confirmed/picking/packed/shipped/cancelled); no CHECK"
-        bigint      actor_user_id "who did it — opaque user_service id, no FK; 0 = not recorded"
-        timestamptz at            "WHEN IT HAPPENED — not when the row was written"
-        timestamptz created_at
+    order_timeline_logs {
+        bigserial   id         PK
+        bigint      order_id   FK "-> orders(id), ON DELETE CASCADE"
+        text        status     "OrderStatus as text, the status moved into; '' = a note only (00017)"
+        text        note       "why a move needed a reason, or the note itself"
+        text        from       "warehouse or selling — the side that wrote it; quoted, an SQL keyword"
+        bigint      actor_id   "who wrote it — opaque user_service id, no FK; 0 = not recorded"
+        timestamptz created_at "when it happened — the row is written at that moment"
     }
 
     order_drafts {
@@ -368,6 +402,8 @@ erDiagram
         text        address_line
         text        shipping_code
         bigint      shipping_cost  "as scraped, whole rupiah — promote recomputes the money"
+        timestamptz platform_created_at        "when the buyer ordered on the storefront, as pushed or corrected (00020). NULL allowed on a draft — Promote refuses it"
+        timestamptz platform_shipment_deadline "the marketplace's ship-by time (00020). Optional everywhere"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -380,6 +416,14 @@ erDiagram
         bigint      product_id    "0 until a person maps it — the unmapped line IS the incompleteness"
         int         quantity      "no CHECK, unlike order_items — a scrape may not have read it"
         bigint      unit_price
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    team_return_configurations {
+        bigserial   id           PK
+        bigint      team_id      "the SELLING team — UNIQUE, opaque, no FK (00016)"
+        bigint      warehouse_id "where its returns are received — any warehouse, CHECK > 0, opaque, no FK"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -410,28 +454,27 @@ erDiagram
   order_external_ref_id <> ''`, for `OrderByExternalRefs`: the settlement importer resolves a whole
   statement's refs to orders in one query. **Not unique, by decision** — two live orders may share a ref, and the
   form warns instead ([a-duplicate-ref-is-warned-not-refused](business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)).
-- **`order_events`** — the order's own history, one **append-only** row per thing that happened to it,
-  read by the Timeline tab of the order detail. Nothing here is ever updated or deleted: an event is a
-  claim that something happened at a moment, and a mutable history is not a history.
-  - **The events and `orders.status` are BOTH kept, and neither derives the other.** The column says
-    where the order is NOW — which is what the list filters, sorts and counts on, and what a child
-    table cannot do cheaply — while the events say what happened, when, and *by whom*. The column has
-    never carried a person; the row is the only thing that can.
-  - **Written at ONE choke point.** Every transition passes through `setOrderStatus`, which stamps the
-    status and appends the event under the same timestamp, inside the same transaction. Placement
-    appends its own in `placeOrder`, so both doors into `orders` (the form and a promoted draft) open
-    the same history. A handler that had to remember the line would eventually not, and the gap is
-    invisible until somebody opens the order weeks later.
-  - **`actor_user_id = 0` means "not recorded"**, never "nobody" — every row the 00011 backfill wrote
-    is in that state, because the orders table never captured who did anything. The timeline renders
-    such a step with its date and no person rather than guessing.
-  - **A short history is honest, not missing data.** The backfill could write at most two events per
-    old order — `placed` from `created_at`, and its current status from `updated_at` — so an order that
-    shipped last month shows two steps, not six. The steps in between were never written down, and
-    inventing plausible ones would make every step untrustworthy rather than just those.
-  - **No `UNIQUE (order_id, kind)`.** The lifecycle keeps `confirmed` singular (only a placed order can
-    be confirmed), exactly as it is what keeps `status` honest — and a future kind that legitimately
-    repeats must not need a migration to be allowed.
+- **`order_timeline_logs`** (00017) — the order's timeline, the owner's own table
+  ([order-timeline-logs-replaces-order-events](business/order/context_decision.md#order-timeline-logs-replaces-order-events)):
+  one **append-only** row per status change, or per **note** written while working the order (*no goods on Rak A*),
+  with who wrote it and **from which side**. Read by the Timeline tab of the order detail.
+  - **It replaced `order_events`, which 00017 DROPPED, not migrated** — the owner's decision carries nothing over,
+    so an order placed before 00017 starts its timeline empty.
+  - **The timeline and `orders.status` are BOTH kept, and neither derives the other.** The column says where the
+    order is NOW — what the list filters, sorts and counts on — while the timeline says what happened, when, by whom
+    and from which side.
+  - **Written at ONE choke point.** Every move passes through `setOrdersStatus`, which stamps the status and appends
+    the rows under one timestamp, in the same transaction; a batch move is one multi-row INSERT
+    ([a-batch-move-saves-in-one-transaction](technical/frontend/warehouse_order_list_decision.md#a-batch-move-saves-in-one-transaction)).
+    Placement appends its own `pending` row in `placeOrder`, from `selling`.
+  - **`from`** is the end of the order that made the move — `selling` for placement and cancel, the warehouse's moves
+    `warehouse`. A team that is both ends, making a move either may make, writes `warehouse`. `from` is an SQL
+    keyword, so a hand-written query quotes it.
+  - **`CHECK (status <> '' OR note <> '')`** — a row is a move, a note, or both; never nothing.
+  - **`actor_id = 0` means "not recorded"**, never "nobody".
+  - **Statuses repeat**: a warehouse hands an order back to `pending` and confirms it again, so `pending` and
+    `processed` can each appear twice. No unique key on `(order_id, status)`.
+  - ⚠ **Nothing writes a note-only row yet** — the table and the screen take one; no RPC adds one.
 - **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.cogs`
   as their total. `unit_price` is what the buyer pays; `unit_cost` is what we paid, so
   **`margin = total − cogs − shipping_cost`** is computable from the order alone.
@@ -455,11 +498,39 @@ erDiagram
     rather than returning zero for them, precisely to keep the two apart.
   - `cogs` is denormalised onto the header because `OrderList` returns a summary **without** lines; it
     cannot drift, because the lines it was computed from are frozen too — exactly like `subtotal`.
+- **An order freezes what the WAREHOUSE charges for it** (`00019`, step 3 of the-flat-rate-is-dropped-last) —
+  `orders.warehouse_fee`, priced once at create by warehouse_service's `WarehouseFeeCalculate` on `cogs`
+  (the-fee-is-priced-on-goods-cost) and never recomputed, so a rate changed later cannot rewrite what an order cost.
+  - **Priced before the transaction**, beside the cost read and the credit check: a warehouse that never set its fee
+    refuses the order (a-warehouse-with-no-rate-takes-no-orders) before any stock moves.
+  - **`DOUBLE PRECISION`, unrounded** (rupiah-is-floating-point) — when a frozen fee is rounded is not decided.
+  - **NULL is NEVER PRICED, 0 is a price.** Every order before `00019` is NULL and is not back-filled: the flat fee
+    those orders paid is a liability row the order cannot read. The list's money and the census treat NULL as an
+    unknown total beli, exactly as a `cogs` of 0.
+  - ⚠ **Not yet what the ledger posts.** Liability still charges its flat `handling_fee` from `OrderPlaced` until step 4
+    switches it to this column — for a warehouse carried over from its flat fee the two are the same amount.
+- **The platform's two dates** (`00020`), on `orders` and `order_drafts` — the owner's `platform_created_at` and
+  `platform_shipment_deadline`. Both NULL on every row before the column; not back-filled.
+  - **`platform_created_at` is required to PLACE** (platform-created-at-is-required-at-finalize), by `placeOrder`'s
+    shared rule, so both doors meet it. A draft may hold it NULL while it is worked on.
+  - **`platform_shipment_deadline` is optional** (the-shipment-deadline-is-the-platforms-and-optional): the marketplace's
+    promise, never computed.
+  - The order list's date window reads either `created_at` or `platform_created_at`
+    (the-date-filter-switches-created-or-platform). Neither is indexed — the window is read over rows the team scope
+    has already narrowed.
+  - On a draft each date is its own `touched_fields` name, so a person's correction survives the app's next push.
+- **`orders.receipt`** (`00018`) — the TRACKING NUMBER printed on the slip, beside the `receipt_*` columns that name
+  the FILE it is printed on. The owner's `orders.receipt`; on the wire `Order.receipt_code`, because the proto's
+  `receipt` is the file. Written at create; the seller's *Edit Resi* (pending, processed, picked —
+  the-seller-edits-the-resi-until-handover) is decided and not built.
+  The list's search reaches it with ILIKE, which no b-tree serves (see audits/…/OrderList.md).
 - **`orders`** / **`order_items`** — the SELLING side of an order (#67): who ordered, from which
   shop, and the frozen money (whole rupiah). Team-scoped (`team_id` opaque); `shop_id` is a real FK
-  (same service). `status` is the `OrderStatus` enum as text (`placed`/`confirmed`/`cancelled` —
-  selling-side only; fulfillment states wait on the warehouse core), no `CHECK` (mapper + proto
-  guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name`/`unit_price` frozen
+  (same service). `status` is the `OrderStatus` enum as text — the eleven of the status diagram
+  (`pending`, `processed`, `picked`, `shipping`, `shipped`, `completed`, `problem`, `lost`, `return`,
+  `return_completed`, `cancel`), default `pending` since 00015, which moved every old row:
+  `placed → pending`, `confirmed`/`picking → processed`, `packed → picked`, `shipped → shipping` (the old
+  `shipped` was the handover), `cancelled → cancel`. No `CHECK` (mapper + proto guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name`/`unit_price` frozen
   at order time), `ON DELETE CASCADE`. `OrderCreate` does **not** touch inventory (that is #69), and
   COGS/margin are the revenue side (#74). The UI is #68.
 - **The order's delivery address is a SNAPSHOT** (#118) — the ten `provinsi_*` … `address_line`
@@ -503,6 +574,18 @@ erDiagram
     `team_id` with `use_scope`, because a team-level policy without a scope is a dead letter.
     `shop_id` / `warehouse_id` / a mapped `product_id` have **no FK** and can go stale underneath a
     draft; promote re-checks them and names which reference died.
+- **`team_return_configurations`** (00016) — where a selling team's returned parcels are received
+  ([the-return-warehouse-lives-in-team-return-configurations](business/order/context_decision.md#the-return-warehouse-lives-in-team-return-configurations)).
+  One row per team; **no row = not set**, the state order create will refuse once its check is on
+  ([create-refuses-a-team-with-no-return-warehouse](business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse)).
+  - **In the order context, not in `team_infos`**, because order create is what reads it — its own
+    table, no call to team_service. It replaced `team_infos.return_warehouse_id` (dropped by team 00009).
+  - **`UNIQUE (team_id)` is what makes the Set one `INSERT … ON CONFLICT DO UPDATE`**, so two managers
+    saving at once leave one row holding the later warehouse.
+  - **Any warehouse** ([a-team-may-pick-any-return-warehouse](business/order/context_decision.md#a-team-may-pick-any-return-warehouse)):
+    nothing checks the pair. `CHECK (warehouse_id > 0)` because there is no clear — a team without one
+    has no row.
+  - Starts **empty**: the rollout is the table and its screen, a row for every team, then the check.
 
 `backend/services/category_service/db_migrations/`
 
@@ -541,7 +624,7 @@ erDiagram
     documents {
         text        id            PK "uuid"
         bigint      team_id       "owning team, opaque cross-service id, no FK"
-        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement (CHECK)"
+        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement | order_export (CHECK)"
         text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
@@ -573,7 +656,9 @@ erDiagram
   signed URL rather than a stable public one. So is `payment_proof` (a-payment-must-carry-proof): a
   transfer slip names an account number. And `settlement_statement` (`00006`) — the .xlsx the settlement
   importer stores under the hash of its bytes before it reads it: it lists every order and what the
-  platform took. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
+  platform took. And `order_export` (`00008`) — an order list exported as .xlsx
+  ([one-export-is-the-list-as-a-file](technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)),
+  stored as the person who exported it: it names buyers and their phone numbers. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
   `ProfilePictureErase` ([erase-deletes-the-photo-file](business/user/context_decision.md#erase-deletes-the-photo-file)),
   which deletes every photo one person uploaded — removing their share rows first, deliberately, since `RESTRICT`
   would otherwise refuse it.
@@ -1063,9 +1148,8 @@ erDiagram
     suppliers ||--o{ restock_items : "supplier_id, opaque via RPC"
 ```
 
-`user_team_roles.team_id`, `products.team_id`, `documents.team_id`,
-`team_infos.return_warehouse_id`, and `team_infos.return_user_id` point at rows owned by other
-services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
+`user_team_roles.team_id`, `products.team_id`, `documents.team_id`, and
+`team_return_configurations.team_id` / `.warehouse_id` point at rows owned by other services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
 the owning service resolves them over Connect RPC.
 
 ---
@@ -1843,3 +1927,40 @@ write path reads them.
 **Not here yet:** `supplier_channel_products` — the store-to-product link
 (restock-accepted-links-the-product-to-its-channel) needs a store on each restock line, which the restock does not
 record yet.
+
+---
+
+## warehouse_service
+
+`backend/services/warehouse_service/db_migrations/`
+
+```mermaid
+erDiagram
+    warehouse_fees {
+        bigserial        id           PK
+        bigint           warehouse_id "the warehouse team - UNIQUE, opaque, no FK"
+        double_precision fee_percent  "2.5 = 2.5 percent, 0 to 100"
+        double_precision min_fee      "the floor, default 0 = no floor"
+        double_precision max_fee      "the cap - NULL = no cap, never 0"
+        timestamptz      created_at
+        timestamptz      updated_at
+    }
+```
+
+- **`warehouse_fees`** (`00001`) — what a warehouse charges per order
+  ([warehouse-prices-balance-records](business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)): the
+  owner's §Property 3 plus the decided floor. **One row per warehouse**, the same rate for every seller
+  ([one-rate-per-warehouse](business/teams/warehouse/context_decision.md#one-rate-per-warehouse)):
+  `fee = clamp(goods_cost × fee_percent / 100, min_fee, max_fee)`
+  ([the-fee-has-a-floor-and-a-cap](business/teams/warehouse/context_decision.md#the-fee-has-a-floor-and-a-cap)).
+  - **`max_fee` NULL is no cap, and 0 is refused** by `CHECK (max_fee > 0)`
+    ([an-empty-cap-means-no-cap](business/teams/warehouse/context_decision.md#an-empty-cap-means-no-cap)).
+    `CHECK (max_fee IS NULL OR min_fee <= max_fee)`: equal is a flat fee.
+  - **No row = the warehouse never set its fee**, and takes no orders
+    ([a-warehouse-with-no-rate-takes-no-orders](business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders));
+    `0%` is a rate, a missing row is not.
+  - **`UNIQUE (warehouse_id)`** makes `WarehouseFeeSet` one `INSERT … ON CONFLICT DO UPDATE`, so two managers saving at once
+    leave one row.
+  - **Money is `DOUBLE PRECISION`** ([rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point)).
+  - ⚠ **Step 1 of five** ([the-flat-rate-is-dropped-last](business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)):
+    nothing charges from this table yet. Liability still charges `liability_terms.handling_fee` until step 4.

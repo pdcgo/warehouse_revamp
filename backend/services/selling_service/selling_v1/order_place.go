@@ -37,6 +37,12 @@ type orderPlacement struct {
 	// The shipping receipt already uploaded to document_service, if any. Recorded as given — the id
 	// is not verified, see OrderCreateRequest.receipt for why.
 	receipt *sellingv1.OrderReceipt
+	// The tracking number printed on that receipt, verbatim. "" = not known yet. A promoted draft carries
+	// none: a draft does not keep one (the-draft-page-wears-the-order-form).
+	receiptCode string
+	// The platform's two dates, unix seconds, 0 = none. The order date is REQUIRED (validate); the deadline is not.
+	platformCreatedAt        int64
+	platformShipmentDeadline int64
 
 	subtotal     int64
 	shippingCost int64
@@ -63,6 +69,9 @@ var (
 	errOrderNoCustomer = errors.New("an order must name a customer")
 	errOrderNoItems    = errors.New("an order must have at least one line")
 	errOrderBadLine    = errors.New("every line must name a product and a quantity of at least one")
+	// platform-created-at-is-required-at-finalize: every order comes from a platform, so every order has the moment
+	// its buyer ordered there — read off the same storefront page as the ref.
+	errOrderNoPlatformDate = errors.New("an order must say when the buyer ordered it on the marketplace")
 )
 
 // validate is the one definition of a placeable order.
@@ -84,6 +93,12 @@ func (p *orderPlacement) validate() error {
 
 	if p.customerName == "" {
 		return errOrderNoCustomer
+	}
+
+	// Checked HERE, the one definition both doors share, so a promoted draft cannot slip through without the date the
+	// typed form is refused for (platform-created-at-is-required-at-finalize). A draft may hold it empty; an order may not.
+	if p.platformCreatedAt <= 0 {
+		return errOrderNoPlatformDate
 	}
 
 	if len(p.items) == 0 {
@@ -152,6 +167,21 @@ func (s *Service) placeOrder(
 		return nil, creditBlocked(block)
 	}
 
+	// The goods' cost — what each line's frozen unit cost adds up to, and the basis the warehouse prices its fee on
+	// (the-fee-is-priced-on-goods-cost). Computed once, here, so the fee and the header's `cogs` cannot be two sums.
+	cogs := orderGoodsCost(p.items, costs)
+
+	// THE WAREHOUSE FEE, priced once and frozen (the-flat-rate-is-dropped-last step 3).
+	//
+	// BEFORE the transaction, for the reason the cost and the credit reads are: it is another service's read, and
+	// holding the order's row lock across it buys nothing. It also lands the refusal of a warehouse with no rate
+	// (a-warehouse-with-no-rate-takes-no-orders) before any stock moves — the owner's flow takes the stock first and
+	// rolls it back on a failed step; refusing before the take reaches the same end with nothing to roll back.
+	warehouseFee, err := s.priceWarehouseFee(ctx, p.teamID, p.warehouseID, cogs)
+	if err != nil {
+		return nil, err
+	}
+
 	var (
 		order selling_service_models.Order
 		// Whether the stock draw was ATTEMPTED. See the compensation block below for why "attempted"
@@ -168,7 +198,7 @@ func (s *Service) placeOrder(
 			// The warehouse this order ships from (#72), as chosen by whoever typed it — copied onto
 			// the order, never looked up later, so it reads the same forever.
 			WarehouseID:   p.warehouseID,
-			Status:        orderStatusPlaced,
+			Status:        orderStatusPending,
 			CustomerName:  p.customerName,
 			CustomerPhone: p.customerPhone,
 			// FROZEN at order time: the names are copied, not resolved later, so this order reads the
@@ -189,10 +219,18 @@ func (s *Service) placeOrder(
 			ReceiptDocumentID: p.receipt.GetDocumentId(),
 			ReceiptFilename:   p.receipt.GetFilename(),
 			ReceiptMimeType:   p.receipt.GetMimeType(),
-			Subtotal:          p.subtotal,
-			ShippingCost:      p.shippingCost,
-			Total:             p.total,
-			MarketplaceTotal:  p.marketplaceTotal,
+			// Verbatim — a courier's number is never reshaped.
+			Receipt: p.receiptCode,
+			// The platform's two dates, as read off the storefront. The deadline may be absent; the order date may not.
+			PlatformCreatedAt:        timeOrNil(p.platformCreatedAt),
+			PlatformShipmentDeadline: timeOrNil(p.platformShipmentDeadline),
+			Subtotal:                 p.subtotal,
+			// What the warehouse charges for it, frozen as it was priced a moment ago. nil only on a service built
+			// without a pricer.
+			WarehouseFee:     warehouseFee,
+			ShippingCost:     p.shippingCost,
+			Total:            p.total,
+			MarketplaceTotal: p.marketplaceTotal,
 			// Verbatim, exactly as the person read it off the storefront — never trimmed into a
 			// shape, never parsed.
 			OrderExternalRefID: p.orderExternalRefID,
@@ -203,13 +241,14 @@ func (s *Service) placeOrder(
 			Items:           orderItemModels(p.items),
 		}
 
-		// Stamp each line's cost and total it onto the header (#74). Done here rather than in
+		// Stamp each line's cost, and the total of them onto the header (#74). Done here rather than in
 		// orderItemModels because the cost comes from the WAREHOUSE, not from the request — a client
 		// supplying it would be writing its own margin.
 		for i := range order.Items {
 			order.Items[i].UnitCost = costs[order.Items[i].ProductID]
-			order.COGS += int64(order.Items[i].Quantity) * order.Items[i].UnitCost
 		}
+
+		order.COGS = cogs
 
 		// GORM inserts the order and its items in this transaction, stamping their OrderID.
 		createErr := tx.Create(&order).Error
@@ -217,16 +256,22 @@ func (s *Service) placeOrder(
 			return createErr
 		}
 
-		// THE FIRST EVENT ON ITS HISTORY (00011). Both doors into `orders` run this function, so a
-		// promoted draft gets the same opening step as a typed-in order — recorded here rather than in
-		// the two handlers precisely so they cannot differ.
+		// THE FIRST ROW ON ITS TIMELINE (order-timeline-logs-replaces-order-events), from the selling team that
+		// placed it. Both doors into `orders` run this function, so a promoted draft gets the same opening row
+		// as a typed-in order — recorded here rather than in the two handlers precisely so they cannot differ.
 		//
 		// `order.CreatedAt` is the order's own moment, stamped by GORM on the insert above, not a fresh
-		// time.Now(): the event says when the order came into being, and the two must be the same
-		// instant or the timeline disagrees with the header beside it.
-		eventErr := recordOrderEvent(tx, order.ID, orderEventPlaced, eventActor(ctx), order.CreatedAt)
-		if eventErr != nil {
-			return eventErr
+		// time.Now(): the row says when the order came into being, and the two must be the same instant or
+		// the timeline disagrees with the header beside it.
+		logErr := recordTimelineLogs(tx, []selling_service_models.OrderTimelineLog{{
+			OrderID:   order.ID,
+			Status:    orderStatusPending,
+			From:      timelineFromSelling,
+			ActorID:   eventActor(ctx),
+			CreatedAt: order.CreatedAt,
+		}})
+		if logErr != nil {
+			return logErr
 		}
 
 		// Whatever the caller needs done atomically with the order. For promote (#194) this is the
@@ -317,6 +362,10 @@ func (s *Service) placeOrder(
 				// this event causes are posted by a consumer with no request context to read one from
 				// (every-entry-names-who-posted-it).
 				ActorId: eventActor(ctx),
+				// What settlement opens the order's account from — the order never calls settlement
+				// (settlement-opens-the-sale-from-the-order-event).
+				ShopId:           order.ShopID,
+				MarketplaceTotal: order.MarketplaceTotal,
 			},
 		},
 	})
@@ -329,46 +378,47 @@ func (s *Service) placeOrder(
 		)
 	}
 
-	// THE SETTLEMENT ACCOUNT OPENS (settlement #order-service-calls-settlement) — a CALL, not a
-	// subscription, so the account exists the moment the order does.
-	//
-	// After the commit and NEVER FATAL (#the-order-commits-without-settlement): the buyer has already
-	// paid on the marketplace, and refusing the order would lose the only record of that sale. A missing
-	// account is repaired by hand from the order page (#a-missing-account-is-fixed-by-hand), and the
-	// adapter keys the post on the order id, so a repeat cannot open it twice.
-	//
-	// ⚠ SKIPPED WHEN marketplace_total IS 0, because 0 means NOT RECORDED — an order taken over the phone
-	// has no marketplace sale to settle, and an account opened at 0 is an account nothing can compute
-	// against.
-	s.openSettlement(ctx, &order)
-
 	return &order, nil
 }
 
-// openSettlement asks settlement_service to open this order's account, and logs rather than returns a
-// failure — see the call site for why an order is never failed by its ledger.
-func (s *Service) openSettlement(ctx context.Context, order *selling_service_models.Order) {
-	if order.MarketplaceTotal <= 0 {
-		return
+// orderGoodsCost is Σ quantity × the line's frozen unit cost — the order's `cogs`. A product with no known cost adds 0,
+// which is why a cogs of 0 reads as UNKNOWN rather than free (see costKnown).
+func orderGoodsCost(items []*sellingv1.OrderItem, costs map[uint64]int64) int64 {
+	var total int64
+
+	for _, item := range items {
+		total += int64(item.GetQuantity()) * costs[item.GetProductId()]
 	}
 
-	err := s.settlement.OpenSale(ctx, SaleOpening{
-		TeamID:           order.TeamID,
-		ShopID:           order.ShopID,
-		OrderID:          order.ID,
-		MarketplaceTotal: order.MarketplaceTotal,
-		CreatedByUserID:  order.CreatedByUserID,
-		PlacedAt:         order.CreatedAt,
-	})
-	if err != nil {
-		slog.ErrorContext(ctx, "order placed but its settlement account did not open — "+
-			"post its initial_total by hand from the order page",
-			"order_id", order.ID,
-			"team_id", order.TeamID,
-			"marketplace_total", order.MarketplaceTotal,
-			"error", err,
-		)
+	return total
+}
+
+// priceWarehouseFee is the fee the fulfilling warehouse charges for goods costing `cogs`, or nil when this service was
+// built without a pricer (see Service.fees).
+//
+// A REFUSAL PASSES THROUGH AS IT CAME: the pricer's FailedPrecondition already names the warehouse with no rate, which
+// is exactly what the order form shows (a-warehouse-with-no-rate-takes-no-orders). Anything else is the pricer being
+// unreachable, and an order is not placed at a fee nobody could compute.
+//
+// ⚠ A COST NOBODY RECORDED IS PRICED AS 0, so a percentage warehouse charges its floor on such an order. The fee's
+// basis is the goods' cost by decision (the-fee-is-priced-on-goods-cost); an unknown cost has no better basis to offer.
+func (s *Service) priceWarehouseFee(ctx context.Context, teamID, warehouseID uint64, cogs int64) (*float64, error) {
+	if s.fees == nil {
+		return nil, nil
 	}
+
+	fee, err := s.fees.Price(ctx, teamID, warehouseID, float64(cogs))
+	if err != nil {
+		var refusal *connect.Error
+		if errors.As(err, &refusal) && refusal.Code() == connect.CodeFailedPrecondition {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New(refusal.Message()))
+		}
+
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("the warehouse fee could not be priced: %w", err))
+	}
+
+	return &fee, nil
 }
 
 // costKnown reports whether EVERY line's cost was actually known (#74/#153).

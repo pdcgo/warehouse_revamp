@@ -62,11 +62,11 @@ func TestOrderStat_CountsAndValuesEachStatus(t *testing.T) {
 
 	placeOrder(t, svc, 2, shop) // PLACED, 10_000
 	placeOrder(t, svc, 2, shop) // PLACED, 10_000
-	confirmedOrder(t, svc, shop)
+	processedOrder(t, svc, shop)
 
 	got := orderStat(t, svc, 2, 0)
 
-	placedCount, placedValue := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PLACED)
+	placedCount, placedValue := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PENDING)
 	if placedCount != 2 {
 		t.Fatalf("placed count = %d, want 2", placedCount)
 	}
@@ -74,7 +74,7 @@ func TestOrderStat_CountsAndValuesEachStatus(t *testing.T) {
 		t.Fatalf("placed value = %d, want 20000", placedValue)
 	}
 
-	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
+	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
 	if confirmedCount != 1 {
 		t.Fatalf("confirmed count = %d, want 1", confirmedCount)
 	}
@@ -82,7 +82,7 @@ func TestOrderStat_CountsAndValuesEachStatus(t *testing.T) {
 	// A status nobody is in is absent, not a zero row — the contract says so, and the frontend renders
 	// the gaps from the enum it already knows.
 	for _, row := range got.GetByStatus() {
-		if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_CANCELLED {
+		if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_CANCEL {
 			t.Fatalf("cancelled has a row with no cancelled orders: %v", row)
 		}
 	}
@@ -102,7 +102,7 @@ func TestOrderStat_CancelledCountsInTheCensusButNotTheRevenue(t *testing.T) {
 
 	got := orderStat(t, svc, 2, 0)
 
-	cancelledCount, cancelledValue := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_CANCELLED)
+	cancelledCount, cancelledValue := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_CANCEL)
 	if cancelledCount != 1 {
 		t.Fatalf("cancelled count = %d, want 1", cancelledCount)
 	}
@@ -126,11 +126,11 @@ func TestOrderStat_TheWarehouseSeesTheOrdersShippingFromIt(t *testing.T) {
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	confirmedOrder(t, svc, shop)
+	processedOrder(t, svc, shop)
 
 	got := orderStat(t, svc, testWarehouse, 0)
 
-	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
+	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
 	if confirmedCount != 1 {
 		t.Fatalf("the warehouse's confirmed count = %d, want 1", confirmedCount)
 	}
@@ -155,16 +155,16 @@ func TestOrderStat_ProductFilterNarrowsIt(t *testing.T) {
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	placeOrder(t, svc, 2, shop)  // product 1
-	confirmedOrder(t, svc, shop) // product 100 (orderReq)
+	processedOrder(t, svc, shop) // product 100 (orderReq)
 
 	onlyProduct1 := orderStat(t, svc, 2, 1)
 
-	placedCount, _ := statusCount(onlyProduct1, sellingv1.OrderStatus_ORDER_STATUS_PLACED)
+	placedCount, _ := statusCount(onlyProduct1, sellingv1.OrderStatus_ORDER_STATUS_PENDING)
 	if placedCount != 1 {
 		t.Fatalf("product 1 placed count = %d, want 1", placedCount)
 	}
 
-	confirmedCount, _ := statusCount(onlyProduct1, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
+	confirmedCount, _ := statusCount(onlyProduct1, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
 	if confirmedCount != 0 {
 		t.Fatalf("product 1 confirmed count = %d, want 0 — that order carries product 100", confirmedCount)
 	}
@@ -185,7 +185,8 @@ func TestOrderCreate_MarketplaceTotalIsANoteNotATerm(t *testing.T) {
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	res, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shop, WarehouseId: testWarehouse,
+		PlatformCreatedAtUnix: testPlatformDate,
+		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
 		Subtotal:     10_000,
 		ShippingCost: 5_000,
@@ -218,5 +219,73 @@ func TestOrderCreate_MarketplaceTotalIsANoteNotATerm(t *testing.T) {
 	if got.GetPreview().GetRevenue_30D() != 15_000 {
 		t.Fatalf("revenue_30d = %d, want 15000 — revenue counts `total`, never the marketplace note",
 			got.GetPreview().GetRevenue_30D())
+	}
+}
+
+// pendingRow is the census's pending row, failing when there is none.
+func pendingRow(t *testing.T, res *sellingv1.OrderStatResponse) *sellingv1.OrderStatusCount {
+	t.Helper()
+
+	for _, row := range res.GetByStatus() {
+		if row.GetStatus() == sellingv1.OrderStatus_ORDER_STATUS_PENDING {
+			return row
+		}
+	}
+
+	t.Fatalf("no pending row in %v", res.GetByStatus())
+
+	return nil
+}
+
+// THE SUMMARY'S UNITS AND THE MARGIN'S INPUTS (the-summary-follows-the-tab, the-margin-is-mp-minus-total-beli): the units
+// are every order's, while the marketplace value, the cost and the fees cover only the orders the margin can be taken
+// over — and the census says how many it left out, one per missing fact.
+func TestOrderStat_SumsTheUnitsAndTheMeasurableOrdersMoney(t *testing.T) {
+	db := san_testdb.DB(t)
+	priced := newServiceWithFees(t, db, knownCosts(), &fakeFees{percent: 2.5})
+	unpriced := newServiceWithFees(t, db, knownCosts(), nil)
+	shop := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
+
+	place := func(svc *selling_v1.Service, req *sellingv1.OrderCreateRequest) {
+		t.Helper()
+
+		_, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	// Measurable: cost 14.000, the marketplace's 25.000, a frozen fee of 350. 3 units.
+	measured := feeOrderReq(shop)
+	measured.MarketplaceTotal = 25000
+	place(priced, measured)
+
+	// No marketplace figure. 3 units.
+	place(priced, feeOrderReq(shop))
+
+	// No known cost — product 3 is unknown to the picker, so cogs is 0. 1 unit.
+	unknownCost := feeOrderReq(shop)
+	unknownCost.MarketplaceTotal = 20000
+	unknownCost.Items = []*sellingv1.OrderItem{{ProductId: 3, Sku: "SKU3", Name: "Mystery", Quantity: 1, UnitPrice: 20000}}
+	place(priced, unknownCost)
+
+	// Never priced: cost and marketplace figure both known, but no fee was frozen. 3 units.
+	neverPriced := feeOrderReq(shop)
+	neverPriced.MarketplaceTotal = 30000
+	place(unpriced, neverPriced)
+
+	row := pendingRow(t, orderStat(t, priced, 2, 0))
+
+	if row.GetCount() != 4 || row.GetItemCount() != 10 {
+		t.Fatalf("count %d, units %d — want 4 orders and 10 units, every order's", row.GetCount(), row.GetItemCount())
+	}
+
+	if row.GetMpValue() != 25000 || row.GetCogs() != 14000 || row.GetFees() != 350 {
+		t.Fatalf("mp %d, cogs %d, fees %v — want only the measurable order's 25000, 14000 and 350",
+			row.GetMpValue(), row.GetCogs(), row.GetFees())
+	}
+
+	if row.GetMarginUnknown() != 3 {
+		t.Fatalf("margin_unknown = %d, want 3 — no marketplace figure, no cost, never priced", row.GetMarginUnknown())
 	}
 }

@@ -10,8 +10,6 @@ import {
 } from "../../../features/orders/margin";
 import { formatRupiah } from "../../../lib/money";
 import { CopyText } from "../../../components/chrome/CopyText";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_DETAIL_PENDING } from "../pending";
 
 // FOUR NUMBERS TO LAND ON — "is this order OK" before any scrolling.
 //
@@ -38,12 +36,13 @@ export function SummaryTiles({
   marketplaceTotal: bigint;
   /** Σ line cost; 0 when any line's cost is unknown — the tiles then refuse, like the panel. */
   productCost: bigint;
-  fees: bigint;
+  /** The frozen warehouse fee, or `null` when never priced — the totals then refuse. */
+  fees: bigint | null;
   itemCount: number;
 }) {
   const { t } = useTranslation();
 
-  const spend = orderSpend(productCost, fees, productCost > 0n);
+  const spend = orderSpend(productCost, fees ?? 0n, productCost > 0n && fees !== null);
   const margin = orderMargin(marketplaceTotal, spend);
   const pct = formatMarginPct(orderMarginPct(marketplaceTotal, spend));
   const tone = margin === null ? undefined : margin < 0n ? "error" : "success";
@@ -54,22 +53,13 @@ export function SummaryTiles({
         {marketplaceTotal > 0n ? <Amount value={marketplaceTotal} /> : "—"}
       </Tile>
 
-      {/* ⚠ BOTH THIS AND THE MARGIN CARRY THE FEE MARK — each is built on the invented warehouse fee.
-          A big confident number at the top of the page is the last place a sample may go unmarked. */}
-      <Tile
-        label={t("orderDetail.money.systemTotal")}
-        mark={<NotImplemented list={ORDER_DETAIL_PENDING} id="totalFee" />}
-        testId="tile-system"
-      >
+      {/* Built on the order's own frozen fee — and refusing when there is none, rather than printing the goods
+          alone as if fulfilling them had been free. */}
+      <Tile label={t("orderDetail.money.systemTotal")} testId="tile-system">
         {spend === null ? "—" : <Amount value={spend} />}
       </Tile>
 
-      <Tile
-        label={t("orderDetail.money.margin")}
-        tone={tone}
-        mark={<NotImplemented list={ORDER_DETAIL_PENDING} id="totalFee" />}
-        testId="tile-margin"
-      >
+      <Tile label={t("orderDetail.money.margin")} tone={tone} testId="tile-margin">
         <Flex gap="2" align="center" wrap="wrap">
           {margin === null ? "—" : <Amount value={margin} />}
           {pct !== null && tone && (

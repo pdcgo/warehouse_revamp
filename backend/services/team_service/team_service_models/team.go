@@ -36,10 +36,9 @@ type TeamInfo struct {
 	ID     uint64 `gorm:"primaryKey"`
 	TeamID uint64
 
-	// Owned by other services. Pointers because NULL means "unset", which is different from 0.
-	ReturnWarehouseID *uint64
-	ReturnUserID      *uint64
-	// The warehouse this SELLING team ships from by default (#145). NULL = not configured.
+	// The warehouse this SELLING team ships from by default (#145). NULL = not configured. A pointer
+	// because NULL means "unset", which is different from 0. (The return warehouse and return user that sat
+	// beside it were dropped in 00009: the-return-warehouse-lives-in-team-return-configurations.)
 	DefaultWarehouseID *uint64
 
 	ContactNumber string

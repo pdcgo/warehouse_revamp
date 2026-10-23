@@ -14,10 +14,10 @@ import (
 // NewShopClient is how other services ask the shop — ShopAccessCheck, over Connect, under the CALLER's
 // own token (san_auth.ForwardBearer).
 //
-// ⚠ A CLIENT, not the handler in-process, and deliberately: the shop lives in selling_service, which
-// calls settlement on every placed order, so settlement holding *selling_v1.Service would be a cycle in
-// the Wire graph. When the shop moves to its own service (the-shop-gets-its-own-service), only this
-// client's target changes.
+// ⚠ A CLIENT, not the handler in-process, and deliberately: when the shop moves to its own service
+// (the-shop-gets-its-own-service), only this client's target changes. (It also once broke a Wire cycle —
+// selling called settlement on every placed order — which is gone now that settlement listens to the
+// order's events instead: settlement-opens-the-sale-from-the-order-event.)
 func NewShopClient(cfg *Config, client *internalHTTPClient) sellingv1connect.ShopServiceClient {
 	return sellingv1connect.NewShopServiceClient(
 		client,

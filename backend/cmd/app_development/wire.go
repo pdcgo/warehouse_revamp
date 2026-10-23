@@ -21,6 +21,7 @@ import (
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
+	warehouse_v1 "github.com/pdcgo/warehouse_revamp/backend/services/warehouse_service/warehouse_v1"
 )
 
 // InitializeApp is the composition root. Regenerate after changing it:
@@ -74,9 +75,6 @@ func InitializeApp() (*App, error) {
 		// caller's token. See shop_primary.go.
 		NewShopClient,
 		NewShopPrimary,
-		// Joins selling to settlement — an order opens and cancels its marketplace account. See
-		// settlement_poster.go.
-		NewSettlementPoster,
 		// The subscription settlement's replay seeks — see replay_broker.go.
 		NewReplayBroker,
 		// The settlement importer, and its four services as clients under the uploader's token — see
@@ -88,6 +86,7 @@ func InitializeApp() (*App, error) {
 		NewImporterShopChecker,
 		NewImporterOrderFinder,
 		NewImporterStatementStore,
+		NewOrderExportStore,
 		NewImporterLedger,
 		// Joins inventory to liability (#184) — see liability_poster.go.
 		NewLiabilityPoster,
@@ -105,6 +104,13 @@ func InitializeApp() (*App, error) {
 		// is a selling team, is asked of team_service — see supplier_deps.go.
 		supplier_v1.NewService,
 		NewSupplierSellingTeams,
+		// What a warehouse charges per order (warehouse-prices-balance-records); its one outside question, a warehouse's
+		// name for a refusal, is asked of team_service — see warehouse_deps.go.
+		warehouse_v1.NewService,
+		NewWarehouseNamer,
+		// Joins selling to warehouse: order create prices and freezes the warehouse fee (the-flat-rate-is-dropped-last
+		// step 3) — see warehouse_fee_pricer.go.
+		NewWarehouseFeePricer,
 		// Its figures' replay seeks the fold's own subscription — see replay_broker.go.
 		NewSupplierReplayBroker,
 

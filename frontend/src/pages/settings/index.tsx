@@ -6,6 +6,8 @@ import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useUpdateTeam, useSaveTeamInfo, useTeamDetail } from "../../features/teams/queries";
 import { TeamPicture } from "./components/TeamPicture";
+import { ReturnWarehouseCard } from "./components/ReturnWarehouseCard";
+import { WarehouseFeeCard } from "./components/WarehouseFeeCard";
 import { toaster } from "../../components/feedback/Toaster";
 import { isTeamManager } from "../../lib/roles";
 import { TeamSelect } from "../../components/teams/TeamSelect";
@@ -199,6 +201,12 @@ export function SettingsPage() {
           </Card.Body>
         </Card.Root>
       )}
+
+      {/* Where this team's returns are received — a SELLING team's setting, for the reason the card above is. */}
+      {current.teamType === TeamType.SELLING && <ReturnWarehouseCard teamId={current.teamId} canEdit={canEdit} />}
+
+      {/* What this warehouse charges per order (warehouse-prices-balance-records) — a WAREHOUSE's setting only. */}
+      {current.teamType === TeamType.WAREHOUSE && <WarehouseFeeCard teamId={current.teamId} canEdit={canEdit} />}
     </Stack>
   );
 }

@@ -120,6 +120,13 @@ message OrderDraft {
   // Lines still carrying product_id = 0. Non-zero means this draft CANNOT be promoted: an unmapped
   // line is precisely what makes it a draft.
   uint32 unmapped_item_count = 18;
+
+  // WHEN THE BUYER ORDERED on the storefront (platform-created-at-is-required-at-finalize). 0 = not known yet: a draft
+  // may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto the order.
+  int64 platform_created_at_unix = 19;
+  // The marketplace's own SHIP-BY time, its "kirim sebelum" (the-shipment-deadline-is-the-platforms-and-optional).
+  // 0 = none, which is allowed all the way through. Promote copies it.
+  int64 platform_shipment_deadline_unix = 20;
 }
 
 message OrderDraftListRequest {
@@ -284,6 +291,11 @@ message OrderDraftUpdateRequest {
 
   // The lines, if this edit touches them at all.
   OrderDraftLines items = 10;
+
+  // The two platform dates, as a person read them off the storefront. Set = edited and marked touched, so the app's
+  // next push leaves them alone; 0 clears one.
+  optional int64 platform_created_at_unix = 11 [(buf.validate.field).int64.gte = 0];
+  optional int64 platform_shipment_deadline_unix = 12 [(buf.validate.field).int64.gte = 0];
 }
 
 message OrderDraftUpdateResponse {
@@ -390,6 +402,12 @@ message OrderDraftPushRequest {
   // rewriting the lines altogether. Per-line merging would need a per-line touched mark, and the
   // rule that matters — a re-scrape never destroys a mapping — is satisfied without it.
   repeated OrderDraftItem items = 11;
+
+  // The two platform dates, as the app read them off the storefront. 0 = the app could not see one. Neither is
+  // required here: a draft is allowed to be missing things (platform-created-at-is-required-at-finalize checks the
+  // order date at Promote, and the-shipment-deadline-is-the-platforms-and-optional never requires the deadline).
+  int64 platform_created_at_unix = 12 [(buf.validate.field).int64.gte = 0];
+  int64 platform_shipment_deadline_unix = 13 [(buf.validate.field).int64.gte = 0];
 }
 
 message OrderDraftPushResponse {

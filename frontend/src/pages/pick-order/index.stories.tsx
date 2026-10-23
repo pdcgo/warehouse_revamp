@@ -19,16 +19,17 @@ import { PickOrderPage } from "./index";
 //   | UnplacedIsAPlace                | rack 0 is said in words, not left blank                     |
 //   | NoRecordedDrawSaysSo            | an order from before #149 has no shelf — and says so         |
 //   | TheNoteIsReadBeforeTheWalk      | the packing instruction sits on the crew's screen            |
-//   | ThereIsOneNextStep              | PLACED → "Confirm Order", and it is recorded                 |
-//   | AShippedOrderHasNoStepLeft      | the last step leaves nothing to press                        |
+//   | ThereIsOneNextStep              | PENDING → "Confirm Order", and it is recorded                |
+//   | AShippedOrderHasNoStepLeft      | a handed-over order leaves nothing to press                  |
 //   | AnOrderShippingElsewhereIsNot…  | the scope is this building                                   |
 //   | ASellingTeamIsTurnedAway        | no shelves, no pick list                                     |
 
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const SELLER = teams[1]!; // Toko Melati (12)
 
-const FULL = orderDetailFor(101n)!; // PLACED, three lines, a note, an address
-const SHIPPED = orders.find((o) => o.warehouseId === WAREHOUSE.id && o.status === OrderStatus.SHIPPED)!;
+const FULL = orderDetailFor(101n)!; // PENDING, three lines, a note, an address
+// Handed over — the warehouse's last step, so nothing is left to press.
+const SHIPPED = orders.find((o) => o.warehouseId === WAREHOUSE.id && o.status === OrderStatus.SHIPPING)!;
 const ELSEWHERE = orders.find((o) => o.warehouseId !== WAREHOUSE.id)!; // 107, Gudang Cabang's
 
 const Routed = (path: string) =>

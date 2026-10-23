@@ -39,6 +39,9 @@ const DiscoverProductsPage = lazy(() =>
 const DiscoverProductDetailPage = lazy(() =>
   import("./pages/product-discover-detail").then((m) => ({ default: m.DiscoverProductDetailPage })),
 );
+const BundlesPage = lazy(() => import("./pages/bundles").then((m) => ({ default: m.BundlesPage })));
+const BundleEditPage = lazy(() => import("./pages/bundle-edit").then((m) => ({ default: m.BundleEditPage })));
+const BundleDetailPage = lazy(() => import("./pages/bundle-detail").then((m) => ({ default: m.BundleDetailPage })));
 const ShopsPage = lazy(() => import("./pages/shops").then((m) => ({ default: m.ShopsPage })));
 const ShopDetailPage = lazy(() =>
   import("./pages/shop-detail").then((m) => ({ default: m.ShopDetailPage })),
@@ -310,6 +313,12 @@ export const router = createBrowserRouter([
       { path: "products/discover", element: <DiscoverProductsPage /> },
       { path: "products/discover/:productId", element: <DiscoverProductDetailPage /> },
       { path: "products/new", element: <ProductEditPage /> },
+      // A selling team's bundles (docs/business/product/product_bundle.md). The
+      // static segment outranks `products/:productId`, so "bundles" is never read as a product id.
+      { path: "products/bundles", element: <BundlesPage /> },
+      { path: "products/bundles/new", element: <BundleEditPage /> },
+      { path: "products/bundles/:bundleId", element: <BundleDetailPage /> },
+      { path: "products/bundles/:bundleId/edit", element: <BundleEditPage /> },
       { path: "products/:productId", element: <ProductDetailPage /> },
       { path: "products/:productId/edit", element: <ProductEditPage /> },
       { path: "shops", element: <ShopsPage /> },

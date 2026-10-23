@@ -81,6 +81,23 @@ type Order struct {
 	ReceiptFilename   string
 	ReceiptMimeType   string
 
+	// THE TRACKING NUMBER printed on that slip (00018) — the owner's `orders.receipt`: what a buyer chases a parcel by
+	// and what a label scan matches beside the marketplace ref (a-label-scan-reads-the-ref-or-the-receipt). Verbatim,
+	// never parsed. '' = not recorded. The proto calls it `receipt_code`, because `receipt` there is the file.
+	Receipt string
+
+	// THE WAREHOUSE'S FEE, frozen at create (00019, the-flat-rate-is-dropped-last step 3): WarehouseFeeCalculate on the
+	// goods cost, never recomputed. Unrounded rupiah (rupiah-is-floating-point).
+	//
+	// ⚠ nil is NEVER PRICED — an order placed before fees were frozen. 0 is a warehouse that chose to charge nothing.
+	WarehouseFee *float64
+
+	// THE PLATFORM'S TWO DATES (00020). PlatformCreatedAt is when the buyer ordered on the storefront — required when an
+	// order is placed (platform-created-at-is-required-at-finalize), nil only on orders placed before the column.
+	// PlatformShipmentDeadline is the marketplace's ship-by time, optional (the-shipment-deadline-is-the-platforms-and-optional).
+	PlatformCreatedAt        *time.Time
+	PlatformShipmentDeadline *time.Time
+
 	// A free-text note about this order, written by whoever took it (owner). The one column here that
 	// nothing in the system reads: it carries the instructions to a PERSON that no structured field
 	// holds ("deliver after 5pm", "wrap the glass one"). "" = nothing was written down.
@@ -94,16 +111,26 @@ type Order struct {
 	// recorded.
 	CreatedByUserID uint64
 
+	// HOW MANY UNITS — the sum of the lines' quantities (the-warehouse-row-fills-from-shop-and-user-by-ids). Not a
+	// column: OrderList selects it with a subquery, and OrderDetail sums the lines it loads. Read-only to GORM.
+	ItemQuantity int64 `gorm:"->;-:migration"`
+
+	// WHEN IT ENTERED ITS CURRENT STATUS — the newest timeline row moving it into Status
+	// (a-filtered-status-shows-its-own-date). Not a column: OrderList selects it with a subquery, OrderDetail reads it
+	// off the timeline it loads. nil = no row records the move. Read-only to GORM.
+	StatusAt *time.Time `gorm:"->;-:migration"`
+
 	// The lines; loaded on demand (OrderDetail).
 	Items []OrderItem `gorm:"foreignKey:OrderID"`
 
-	// What has happened to this order, oldest first; loaded on demand (OrderDetail), like Items.
+	// The order's timeline, oldest first; loaded on demand (OrderDetail), like Items
+	// (order-timeline-logs-replaces-order-events).
 	//
-	// ⚠ The events are the HISTORY; `Status` above is the CURRENT STATE, and both are kept. The list
+	// ⚠ The timeline is the HISTORY; `Status` above is the CURRENT STATE, and both are kept. The list
 	// filters, sorts and counts on the column — which a child table cannot do cheaply — while the
 	// timeline reads these. Neither is derivable from the other: the column cannot say when or by whom,
 	// and rebuilding "where is it now" by replaying rows on every list query would be absurd.
-	Events []OrderEvent `gorm:"foreignKey:OrderID"`
+	TimelineLogs []OrderTimelineLog `gorm:"foreignKey:OrderID"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

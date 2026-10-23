@@ -262,8 +262,14 @@ type OrderDraft struct {
 	// Lines still carrying product_id = 0. Non-zero means this draft CANNOT be promoted: an unmapped
 	// line is precisely what makes it a draft.
 	UnmappedItemCount uint32 `protobuf:"varint,18,opt,name=unmapped_item_count,json=unmappedItemCount,proto3" json:"unmapped_item_count,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// WHEN THE BUYER ORDERED on the storefront (platform-created-at-is-required-at-finalize). 0 = not known yet: a draft
+	// may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto the order.
+	PlatformCreatedAtUnix int64 `protobuf:"varint,19,opt,name=platform_created_at_unix,json=platformCreatedAtUnix,proto3" json:"platform_created_at_unix,omitempty"`
+	// The marketplace's own SHIP-BY time, its "kirim sebelum" (the-shipment-deadline-is-the-platforms-and-optional).
+	// 0 = none, which is allowed all the way through. Promote copies it.
+	PlatformShipmentDeadlineUnix int64 `protobuf:"varint,20,opt,name=platform_shipment_deadline_unix,json=platformShipmentDeadlineUnix,proto3" json:"platform_shipment_deadline_unix,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *OrderDraft) Reset() {
@@ -418,6 +424,20 @@ func (x *OrderDraft) GetItemCount() uint32 {
 func (x *OrderDraft) GetUnmappedItemCount() uint32 {
 	if x != nil {
 		return x.UnmappedItemCount
+	}
+	return 0
+}
+
+func (x *OrderDraft) GetPlatformCreatedAtUnix() int64 {
+	if x != nil {
+		return x.PlatformCreatedAtUnix
+	}
+	return 0
+}
+
+func (x *OrderDraft) GetPlatformShipmentDeadlineUnix() int64 {
+	if x != nil {
+		return x.PlatformShipmentDeadlineUnix
 	}
 	return 0
 }
@@ -1074,9 +1094,13 @@ type OrderDraftUpdateRequest struct {
 	ShippingCode *string       `protobuf:"bytes,8,opt,name=shipping_code,json=shippingCode,proto3,oneof" json:"shipping_code,omitempty"`
 	ShippingCost *int64        `protobuf:"varint,9,opt,name=shipping_cost,json=shippingCost,proto3,oneof" json:"shipping_cost,omitempty"`
 	// The lines, if this edit touches them at all.
-	Items         *OrderDraftLines `protobuf:"bytes,10,opt,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Items *OrderDraftLines `protobuf:"bytes,10,opt,name=items,proto3" json:"items,omitempty"`
+	// The two platform dates, as a person read them off the storefront. Set = edited and marked touched, so the app's
+	// next push leaves them alone; 0 clears one.
+	PlatformCreatedAtUnix        *int64 `protobuf:"varint,11,opt,name=platform_created_at_unix,json=platformCreatedAtUnix,proto3,oneof" json:"platform_created_at_unix,omitempty"`
+	PlatformShipmentDeadlineUnix *int64 `protobuf:"varint,12,opt,name=platform_shipment_deadline_unix,json=platformShipmentDeadlineUnix,proto3,oneof" json:"platform_shipment_deadline_unix,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *OrderDraftUpdateRequest) Reset() {
@@ -1177,6 +1201,20 @@ func (x *OrderDraftUpdateRequest) GetItems() *OrderDraftLines {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *OrderDraftUpdateRequest) GetPlatformCreatedAtUnix() int64 {
+	if x != nil && x.PlatformCreatedAtUnix != nil {
+		return *x.PlatformCreatedAtUnix
+	}
+	return 0
+}
+
+func (x *OrderDraftUpdateRequest) GetPlatformShipmentDeadlineUnix() int64 {
+	if x != nil && x.PlatformShipmentDeadlineUnix != nil {
+		return *x.PlatformShipmentDeadlineUnix
+	}
+	return 0
 }
 
 type OrderDraftUpdateResponse struct {
@@ -1369,9 +1407,14 @@ type OrderDraftPushRequest struct {
 	// `items` is one field for the touched rule: once a person has edited any line, the app stops
 	// rewriting the lines altogether. Per-line merging would need a per-line touched mark, and the
 	// rule that matters — a re-scrape never destroys a mapping — is satisfied without it.
-	Items         []*OrderDraftItem `protobuf:"bytes,11,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Items []*OrderDraftItem `protobuf:"bytes,11,rep,name=items,proto3" json:"items,omitempty"`
+	// The two platform dates, as the app read them off the storefront. 0 = the app could not see one. Neither is
+	// required here: a draft is allowed to be missing things (platform-created-at-is-required-at-finalize checks the
+	// order date at Promote, and the-shipment-deadline-is-the-platforms-and-optional never requires the deadline).
+	PlatformCreatedAtUnix        int64 `protobuf:"varint,12,opt,name=platform_created_at_unix,json=platformCreatedAtUnix,proto3" json:"platform_created_at_unix,omitempty"`
+	PlatformShipmentDeadlineUnix int64 `protobuf:"varint,13,opt,name=platform_shipment_deadline_unix,json=platformShipmentDeadlineUnix,proto3" json:"platform_shipment_deadline_unix,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *OrderDraftPushRequest) Reset() {
@@ -1479,6 +1522,20 @@ func (x *OrderDraftPushRequest) GetItems() []*OrderDraftItem {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *OrderDraftPushRequest) GetPlatformCreatedAtUnix() int64 {
+	if x != nil {
+		return x.PlatformCreatedAtUnix
+	}
+	return 0
+}
+
+func (x *OrderDraftPushRequest) GetPlatformShipmentDeadlineUnix() int64 {
+	if x != nil {
+		return x.PlatformShipmentDeadlineUnix
+	}
+	return 0
 }
 
 type OrderDraftPushResponse struct {
@@ -1660,7 +1717,7 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"product_id\x18\x04 \x01(\x04R\tproductId\x12\x1a\n" +
 	"\bquantity\x18\x05 \x01(\rR\bquantity\x12\x1d\n" +
 	"\n" +
-	"unit_price\x18\x06 \x01(\x03R\tunitPrice\"\xa6\x05\n" +
+	"unit_price\x18\x06 \x01(\x03R\tunitPrice\"\xa6\x06\n" +
 	"\n" +
 	"OrderDraft\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
@@ -1683,7 +1740,9 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\x0fupdated_at_unix\x18\x10 \x01(\x03R\rupdatedAtUnix\x12\x1d\n" +
 	"\n" +
 	"item_count\x18\x11 \x01(\rR\titemCount\x12.\n" +
-	"\x13unmapped_item_count\x18\x12 \x01(\rR\x11unmappedItemCount\"\xe6\x02\n" +
+	"\x13unmapped_item_count\x18\x12 \x01(\rR\x11unmappedItemCount\x127\n" +
+	"\x18platform_created_at_unix\x18\x13 \x01(\x03R\x15platformCreatedAtUnix\x12E\n" +
+	"\x1fplatform_shipment_deadline_unix\x18\x14 \x01(\x03R\x1cplatformShipmentDeadlineUnix\"\xe6\x02\n" +
 	"\x15OrderDraftListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12B\n" +
 	"\x06filter\x18\x02 \x01(\v2*.warehouse.selling.v1.OrderDraftListFilterR\x06filter\x12B\n" +
@@ -1727,7 +1786,7 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\n" +
 	"unit_price\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\tunitPrice\"Q\n" +
 	"\x0fOrderDraftLines\x12>\n" +
-	"\x05lines\x18\x01 \x03(\v2(.warehouse.selling.v1.OrderDraftLineEditR\x05lines\"\xe6\x04\n" +
+	"\x05lines\x18\x01 \x03(\v2(.warehouse.selling.v1.OrderDraftLineEditR\x05lines\"\xc3\x06\n" +
 	"\x17OrderDraftUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\bdraft_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\adraftId\x12\x1c\n" +
@@ -1739,7 +1798,9 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\rshipping_code\x18\b \x01(\tB\a\xbaH\x04r\x02\x18(H\x04R\fshippingCode\x88\x01\x01\x121\n" +
 	"\rshipping_cost\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x05R\fshippingCost\x88\x01\x01\x12;\n" +
 	"\x05items\x18\n" +
-	" \x01(\v2%.warehouse.selling.v1.OrderDraftLinesR\x05items:\v\x92\xb5\x18\a\n" +
+	" \x01(\v2%.warehouse.selling.v1.OrderDraftLinesR\x05items\x12E\n" +
+	"\x18platform_created_at_unix\x18\v \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x06R\x15platformCreatedAtUnix\x88\x01\x01\x12S\n" +
+	"\x1fplatform_shipment_deadline_unix\x18\f \x01(\x03B\a\xbaH\x04\"\x02(\x00H\aR\x1cplatformShipmentDeadlineUnix\x88\x01\x01:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05B\n" +
 	"\n" +
 	"\b_shop_idB\x0f\n" +
@@ -1747,7 +1808,9 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\x0e_customer_nameB\x11\n" +
 	"\x0f_customer_phoneB\x10\n" +
 	"\x0e_shipping_codeB\x10\n" +
-	"\x0e_shipping_cost\"R\n" +
+	"\x0e_shipping_costB\x1b\n" +
+	"\x19_platform_created_at_unixB\"\n" +
+	" _platform_shipment_deadline_unix\"R\n" +
 	"\x18OrderDraftUpdateResponse\x126\n" +
 	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\"u\n" +
 	"\x17OrderDraftDeleteRequest\x12$\n" +
@@ -1756,7 +1819,7 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10dR\bdraftIds:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"4\n" +
 	"\x18OrderDraftDeleteResponse\x12\x18\n" +
-	"\adeleted\x18\x01 \x01(\rR\adeleted\"\x8b\x04\n" +
+	"\adeleted\x18\x01 \x01(\rR\adeleted\"\x9d\x05\n" +
 	"\x15OrderDraftPushRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12!\n" +
 	"\x06source\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x06source\x12+\n" +
@@ -1771,7 +1834,9 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\rshipping_code\x18\t \x01(\tB\a\xbaH\x04r\x02\x18(R\fshippingCode\x12,\n" +
 	"\rshipping_cost\x18\n" +
 	" \x01(\x03B\a\xbaH\x04\"\x02(\x00R\fshippingCost\x12:\n" +
-	"\x05items\x18\v \x03(\v2$.warehouse.selling.v1.OrderDraftItemR\x05items:\v\x92\xb5\x18\a\n" +
+	"\x05items\x18\v \x03(\v2$.warehouse.selling.v1.OrderDraftItemR\x05items\x12@\n" +
+	"\x18platform_created_at_unix\x18\f \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x15platformCreatedAtUnix\x12N\n" +
+	"\x1fplatform_shipment_deadline_unix\x18\r \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x1cplatformShipmentDeadlineUnix:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"j\n" +
 	"\x16OrderDraftPushResponse\x126\n" +
 	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\x12\x18\n" +

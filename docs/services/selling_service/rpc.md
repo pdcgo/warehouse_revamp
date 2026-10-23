@@ -1,125 +1,156 @@
 # selling_service — RPC & order lifecycle
 
-## The order lifecycle (#67, #91, #149, #70, #150)
+## The order lifecycle (#67, #91, #149, #70, #150, 00015)
 
 An order is owned by a SELLING team but **fulfilled by a WAREHOUSE**, and the lifecycle is split along
-exactly that line: the selling side decides *whether* an order stands, the warehouse side records
-*what has physically been done to it*.
+exactly that line: the warehouse records *what has physically been done to it*, and the selling team's
+customer service records *what the platform shows* after the handover. The eleven statuses and who makes
+each move are the owner's status diagram ([the-status-move-is-the-only-journey](../../business/order/context_decision.md#the-status-move-is-the-only-journey)).
 
-> ⚠ **CONFIRM MOVED** (owner). It was the selling team's click (#91) and is now the WAREHOUSE's first
-> step — the building accepting the job. The team that TYPED an order in has nothing left to decide
-> about it, so its confirm asserted nothing; the warehouse's means the goods are there and the work is
-> taken on. A PLACED order is therefore waiting on the **warehouse**, not on the seller.
+> ⚠ **CONFIRM IS THE WAREHOUSE'S** (owner). It was the selling team's click (#91) and is the warehouse's
+> first move — the building accepting the job. A `pending` order is waiting on the **warehouse**.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PLACED: OrderCreate (selling) — takes the stock (#149)
-    PLACED --> CONFIRMED: OrderConfirm (WAREHOUSE)
-    CONFIRMED --> PICKING: OrderPick (WAREHOUSE)
-    PICKING --> PACKED: OrderPack (WAREHOUSE)
-    PACKED --> SHIPPED: OrderShip (WAREHOUSE)
-    SHIPPED --> [*]
-
-    PLACED --> CANCELLED: OrderCancel — returns the stock (#70)
-    CONFIRMED --> CANCELLED: OrderCancel
-    PICKING --> CANCELLED: OrderCancel
-    PACKED --> CANCELLED: OrderCancel
-    CANCELLED --> [*]
-
-    note right of SHIPPED
-        A cancel is REFUSED here (#150).
-        The goods have left the building —
-        what comes back is a RETURN, which
-        is a different event with different
-        money.
-    end note
+    [*] --> pending: OrderCreate (selling) - takes the stock (#149)
+    pending --> processed: warehouse - confirms
+    processed --> pending: warehouse - goods on no rack, a note
+    processed --> picked: warehouse - Set Picked
+    picked --> pending: warehouse - platform cancelled, a note
+    picked --> shipping: warehouse - the handover scan
+    shipping --> shipped: customer service
+    shipping --> return: customer service, or the warehouse
+    shipped --> completed: customer service
+    shipped --> problem: customer service
+    shipped --> lost: customer service
+    shipped --> return: customer service, or the warehouse
+    problem --> completed: customer service
+    problem --> lost: customer service
+    problem --> return: customer service, or the warehouse
+    completed --> return: customer service, or the warehouse
+    return --> return_completed: the return accept - not built
+    return --> lost: customer service
+    pending --> cancel: OrderCancel (selling) - returns the stock (#70)
+    cancel --> [*]
+    lost --> [*]
+    return_completed --> [*]
 ```
+
+### One RPC for every plain move — `OrderStatusChange`
+
+Every edge above except two goes through **`OrderStatusChange(team_id, order_ids, to, note)`**
+([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)).
+It replaced `OrderConfirm`, `OrderPick`, `OrderPack` and `OrderShip`, which only ever changed the status.
+The two that keep their own RPC do more than move a status: `OrderCancel` returns the stock and cancels
+the sale, and the return accept (not built) records the warehouse and relabels borrowed units.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as caller - warehouse or customer service
+    participant S as OrderStatusChange
+    participant DB as orders, order_timeline_logs
+
+    C->>S: team_id, order_ids 1..200, to, note
+    Note over S,DB: ONE transaction for the batch
+    S->>DB: SELECT ... WHERE id IN the batch, team_id or warehouse_id = the caller, ORDER BY id FOR UPDATE
+    loop each order, in the order sent
+        S->>S: orderMoves - is from to to an edge, is it the caller's end, a note if back
+        alt refused
+            S-->>S: the reason, in words, and the order left as it was
+        end
+    end
+    S->>DB: setOrdersStatus - one UPDATE of the movable orders, one INSERT of their history rows
+    S-->>C: one result per order, in the order sent
+```
+
+| | |
+| --- | --- |
+| the table | `orderMoves` in [order_transition.go](../../../backend/services/selling_service/selling_v1/order_transition.go), from → to → which end may make it, and whether it needs a note |
+| which end the caller is | per order, from the scope: `team_id` = the order's `warehouse_id` is the warehouse, = its `team_id` is the selling team |
+| a refusal | never blocks the rest and never fails the call: `moved: false` with a sentence (*"processed cannot move to shipping"*, *"only the warehouse moves …"*, *"a note is required …"*) |
+| not the caller's order | refused as *"not one of this team's orders"*, with no status, so a caller cannot probe ids |
+| `to: cancel`, `to: return_completed` | refused here: each has its own action |
+| a note | required for a move back to `pending`; written to the history row with the move |
+| two crew, one parcel, one second | the row lock serialises them: the second reads the status the first wrote and is refused as *"already shipping"* |
+| the save | one transaction of four statements for any batch ([a-batch-move-saves-in-one-transaction](../../technical/frontend/warehouse_order_list_decision.md#a-batch-move-saves-in-one-transaction)). Locked in **id order**, so two batches over the same orders queue rather than deadlock. A database failure rolls the batch back and every order answers *"could not be saved — try again"* |
 
 ### Who may move it, and why the scope differs
 
-| Step | Scoped to | Because |
+| Move | Scoped to | Because |
 | --- | --- | --- |
 | Create / Cancel | the **selling team** | the team that owns the order decides whether it stands |
-| **Confirm** / Pick / Pack / Ship | the **order's warehouse** (#72) | the crew doing the work holds no role in the selling team |
+| confirm, Set Picked, back to pending, the handover | the **order's warehouse** (#72) | the crew doing the work holds no role in the selling team |
+| shipped, completed, problem, lost | the **selling team** | customer service reads the platform |
+| a forced return | either | customer service claims it, or the warehouse forces it |
 
-**This asymmetry is the design, not an inconsistency.** Scoping the fulfilment steps to the selling
-team would deny every real caller — a picker is a member of the warehouse, not of the shop whose order
-they are packing. So `OrderPick`/`Pack`/`Ship` carry the **warehouse** as their `use_scope` field and
-find the order by `(order_id, warehouse_id)`. Another warehouse's order reads as **NotFound**, never
-PermissionDenied, so a crew cannot discover that an id belongs to someone else's building.
+**This asymmetry is the design, not an inconsistency.** A picker is a member of the warehouse, not of
+the shop whose order they are packing, so the warehouse's moves carry the **warehouse** as their
+`use_scope` field. Another team's order reads as refused-not-ours, never PermissionDenied, so a crew
+cannot discover that an id belongs to someone else's building.
 
-It mirrors `RestockRequestAccept`, where the warehouse also acts on a record a selling team created.
-
-### Forward only, one step at a time
-
-Each step names the state it must find and refuses anything else with **FailedPrecondition**. You
-cannot pack what was never picked: a skipped state means somebody is guessing at what happened.
-
-The row is locked and the state re-checked **inside** the transaction, so two crew members hitting the
-same button at once cannot both see `CONFIRMED` and both advance it — the loser finds the state already
-moved.
-
-### Every move leaves a step — the order's history (`order_events`)
+### Every move leaves a step — the order's timeline (`order_timeline_logs`)
 
 The lifecycle above is drawn as states, but a state is a fact about *now*. Nothing in `orders` could
 say **when** an order was confirmed, **how long** it then sat before the crew picked it, or **who** did
 either — the row carries `status`, `created_at` and `updated_at`, and no actor at all. So each
-transition appends a row to `order_events`, and the detail page's **Timeline** tab reads those.
+transition appends a row to `order_timeline_logs`, saying which side made it
+([order-timeline-logs-replaces-order-events](../../business/order/context_decision.md#order-timeline-logs-replaces-order-events)),
+and the detail page's **Timeline** tab reads those.
 
 **The append happens at the single choke point**, not in the handlers:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant H as OrderCancel (selling) / Confirm, Pick, Pack, Ship (warehouse)
-    participant S as setOrderStatus
+    participant H as OrderCancel (selling) / OrderStatusChange (either end)
+    participant S as setOrdersStatus
     participant O as orders
-    participant E as order_events
+    participant E as order_timeline_logs
 
-    H->>S: (tx, order, newStatus, eventActor(ctx))
+    H->>S: (tx, the orders and the side each move is from, newStatus, eventActor(ctx), note)
     Note over S: one now := time.Now() for everything below
-    S->>O: UPDATE status, updated_at
-    S->>E: INSERT kind=newStatus, actor, at=now
+    S->>O: UPDATE status, updated_at WHERE id IN the batch
+    S->>E: INSERT one row per order - status=newStatus, from, actor, note, created_at=now
     S-->>H: order updated in memory too
 ```
 
-- **One clock, one moment.** The status stamp, the event's `at` and the domain event a caller may
+- **One clock, one moment.** The status stamp, the row's `created_at` and the domain event a caller may
   publish afterwards all read the same `now`. Two clock reads for one fact would file a midnight
   transition on different days depending on who looked.
-- **`placeOrder` appends its own `placed` step**, so an order typed into the form and one promoted from
-  a draft start the same history — the two doors cannot differ.
+- **`placeOrder` appends its own `pending` row, from `selling`**, so an order typed into the form and one
+  promoted from a draft start the same timeline — the two doors cannot differ.
 - **The actor is `eventActor(ctx)` — 0 when unidentifiable, and that never fails the call.** This is a
   deliberate contrast with `draftAuthor`, which refuses the request outright: a draft is personal, so an
   unidentifiable caller has no correct answer to receive, whereas an event is a byproduct and the
   record-keeping must not be able to veto the work.
-- **`OrderDetail` is the only RPC that returns them**, preloaded ordered by `at` — never by `id`, since
-  the 00011 backfill inserted every order's `placed` row before any later one. `OrderList` stays a
-  summary: a page of 20 orders carrying 20 whole lifecycles is a list that grows with history.
+- **`OrderDetail` is the only RPC that returns them** (`timeline_logs`), preloaded by `created_at`, then `id`.
+  `OrderList` stays a summary: a page of 20 orders carrying 20 whole lifecycles is a list that grows with history.
 
-See [database-schema.md](../../database-schema.md) for the table, the backfill's honest two-event
-ceiling, and why the status column is kept beside the events rather than replaced by them.
+See [database-schema.md](../../database-schema.md) for the table, and why the status column is kept beside the
+timeline rather than replaced by it.
 
 ### Picking does NOT move stock
 
 The stock was deducted when the order was **placed** (#149, "deduct at placement" — the choice that
 makes oversell impossible). Picking records that a person is collecting what the system already
-committed. **There is no inventory call in `OrderPick` and there must not be one** — a second deduction
+committed. **There is no inventory call in the pick move and there must not be one** — a second deduction
 would take the goods twice.
 
 ### The cancel window (#70/#150)
 
-Cancel is allowed while the goods are still in the building, and returns the stock **exactly where it
-came from** — same racks, same batches, because the release (`OrderTransactionRelease`, by the order's key) reverses the
+Cancel is allowed from **`pending` only**, and returns the stock **exactly where it came from** — same racks, same batches, because the release (`OrderTransactionRelease`, by the order's key) reverses the
 take's own ledger rows rather than trusting quantities (a-rollback-reverses-its-log-rows).
 
-It is **refused once SHIPPED**. Putting the stock back then would book goods onto a shelf while they
-are on a courier's van; the count would say something untrue until a human noticed. What comes back
+A `processed` or `picked` order is first handed back to `pending` by the warehouse — the moment the goods
+are unpacked and re-shelved — so the stock a cancel returns is really on a shelf. **After the handover a
+cancel is refused**: putting the stock back then would book goods onto a shelf while they are on a
+courier's van; the count would say something untrue until a human noticed. What comes back
 after shipping is a **return** — a different event, with different money — and calling it a cancel
 would hide that rather than record it.
 
-> A cancel mid-pick leaves physical goods in a picker's hands that the books have already returned to
-> their racks. Re-shelving them is `RackMove`'s job (#136). The books are right; the shelf needs a
-> person.
+> The hand-back to `pending` is what keeps the shelf honest: the books return the goods only once a
+> person has put them back. Re-shelving onto a different rack is `RackMove`'s job (#136).
 
 ---
 
@@ -165,6 +196,46 @@ The product's batches in the warehouse, summed — the rows the order's take cou
 one owner, so they are its owner's batches whoever asks; the take's other refusals (a locked product, the reserve) are
 its own and are not repeated here.
 
+## The warehouse prices the order, and the order keeps the price — `WarehouseFeeCalculate` (step 3)
+
+Step 3 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last):
+`placeOrder` — both doors, `OrderCreate` and `OrderDraftPromote` — asks warehouse_service what the fulfilling
+warehouse charges for the order's goods, and freezes the answer as `orders.warehouse_fee`. The order form asks the same
+RPC while the order is typed, so the figure on screen is the figure kept.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form
+    participant SELL as selling_service
+    participant WH as warehouse_service
+    participant INV as inventory_service
+
+    UI->>WH: WarehouseFeeCalculate(team, warehouse, goods cost) — the preview
+    WH-->>UI: the fee, or FailedPrecondition — Save stays off
+    UI->>SELL: OrderCreate
+    SELL->>INV: UnitCosts — what each line cost, so cogs
+    SELL->>SELL: credit check
+    SELL->>WH: WarehouseFeeCalculate(team, warehouse, cogs) — in-process
+    alt the warehouse never set its fee
+        WH-->>SELL: FailedPrecondition, naming it
+        SELL-->>UI: the same refusal — nothing taken, nothing written
+    else priced
+        WH-->>SELL: the fee
+        SELL->>SELL: open tx, insert the order with warehouse_fee frozen
+        SELL->>INV: take the stock — key order:id
+        SELL-->>UI: the order, its fee on it
+    end
+```
+
+| | |
+| --- | --- |
+| the basis | `cogs` — Σ quantity × the line's frozen unit cost ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost)). A cost nobody recorded is 0, so a percent warehouse charges its floor on it |
+| when | before the transaction, beside the cost read and the credit check — another service's read, never under the order's row lock. The refusal therefore lands before any stock moves; the owner's flow rolls a taken stock back on a failed step, and refusing first reaches the same end with nothing to roll back |
+| the refusal | `FailedPrecondition`, the warehouse's own sentence passed through unchanged ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)). An unreachable warehouse_service is `Unavailable` — no order at a fee nobody computed |
+| the wiring | `selling_v1.WarehouseFeePricer`, adapted in the composition root (`warehouse_fee_pricer.go`) to the handler itself |
+| not yet | the event. `OrderPlaced` does not carry the fee until step 4 ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)), so liability still posts its flat `handling_fee` |
+
 ## The pick screen's reads (#151)
 
 The crew's screen is a join of things that already existed — but two of the reads it needs were
@@ -173,7 +244,7 @@ The crew's screen is a join of things that already existed — but two of the re
 ### Both ends of an order
 
 `OrderList` and `OrderDetail` matched `team_id` alone. The write side landed in #150 (`OrderPick` /
-`OrderPack` / `OrderShip`, all scoped to the **warehouse**) without the read side following, so a crew
+`OrderPack` / `OrderShip`, all scoped to the **warehouse** — since 00015 one `OrderStatusChange`) without the read side following, so a crew
 could record work on an order it was not allowed to look at.
 
 Both now match **either end**, and `team_id` means *"the team you hold a role in"* rather than *"the
@@ -181,6 +252,16 @@ team whose orders you get"*:
 
 ```sql
 WHERE (team_id = ? OR warehouse_id = ?)
+```
+
+**Except the root team, which reads every team** ([root-reads-every-teams-orders](../../technical/frontend/order_list_decision.md#root-reads-every-teams-orders)).
+Only ROOT and ADMIN hold that scope, so `readsEveryTeam` drops the clause for `OrderList`, `OrderStat`, the creator
+picker (all three share `scopedOrders`) and `OrderDetail`. Reads only. It is the rule settlement's reports already use.
+
+```mermaid
+flowchart LR
+  Q{"team_id"} -->|"the root team"| A["no team clause - every order"]
+  Q -->|"any other team"| B["team_id = ? OR warehouse_id = ?"]
 ```
 
 `OrderList` also takes a **status filter**, which is what makes it a queue rather than a list.
@@ -370,7 +451,7 @@ sequenceDiagram
     participant R as revenue_service
 
     CS->>D: OrderDraftPromote — team_id, draft_id
-    D->>D: every line mapped? shop, warehouse, customer?
+    D->>D: every line mapped? shop, warehouse, customer, the marketplace order date?
     D->>P: ProductByIds — the mapped ids
     P-->>D: sku + name for each that still exists
     Note over D: an id that resolves to nothing is a<br/>DEAD REFERENCE — the answer names it
@@ -390,6 +471,13 @@ payoff the separate drafts table was chosen for: what counts as a placeable orde
 the draft door cannot quietly accept an order the form would refuse. `placeOrder` re-checks the field
 rules that proto validation covers for `OrderCreate`, because promote's request carries only a draft
 id and none of those rules ran.
+
+**The platform's two dates travel with the draft** (`00020`). The app pushes them; a person may correct either on the
+draft page, which marks it touched so the next push leaves it alone; Promote copies both. The ORDER DATE is required by
+`placeOrder`'s shared rule ([platform-created-at-is-required-at-finalize](../../business/order/context_decision.md#platform-created-at-is-required-at-finalize))
+— so a draft may sit without one, and is refused at Promote, and an `OrderCreate` without one is refused the same way
+with the same sentence. The deadline is never required
+([the-shipment-deadline-is-the-platforms-and-optional](../../business/order/context_decision.md#the-shipment-deadline-is-the-platforms-and-optional)).
 
 **One transaction, not two.** `orders` and `order_drafts` are the same service in the same database,
 so the order is written and the draft deleted together. A refused promote leaves the draft intact to
@@ -511,3 +599,41 @@ cancelled orders and other shops' included. A ref nothing carries is absent. The
 counts: the order in its own shop — live first — and a ref found only in another shop fails the file
 ([a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)).
 It reads `orders_team_external_ref_idx` (`00014`); up to 2,000 refs a call.
+
+## The list as a file — `OrderExport`
+
+[one-export-is-the-list-as-a-file](../../technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file):
+one server stream for both lists. It takes the list's own filter and tab, so the file holds exactly the rows the list
+holds, every page of them, and it writes them in the reader's columns as .xlsx.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as a list's Export - seller or warehouse
+    participant S as OrderExport
+    participant DB as orders, order_items, shops
+    participant T as team_service and user_service
+    participant D as document_service
+
+    C->>S: team_id, the list's filter and tab, the view, the ticked ids if any
+    S->>DB: COUNT through scopedOrders
+    S-->>C: exporting orders - 0 of N
+    loop 200 rows at a time, newest first, keyset on id
+        S->>DB: the page, with each row's item_quantity, and its shops
+        S->>T: TeamByIds and UserByIDs - the sellers' and creators' names, as the caller
+        S->>S: write the rows - ids and phones as text
+        S-->>C: rows written - done of N
+    end
+    S->>D: RequestUpload ORDER_EXPORT, PUT, ConfirmUpload, GetDownloadUrl - as the caller
+    S-->>C: the file is ready - the expiring link and the filename
+```
+
+| | |
+| --- | --- |
+| the rows | `scopedOrders` with the list's filter and status — the same set as `OrderList` and `OrderStat`. With `order_ids` (the warehouse bar's ticked rows, [the-bulk-actions-are-always-on-screen](../../technical/frontend/warehouse_order_list_decision.md#the-bulk-actions-are-always-on-screen)), only those, still inside the scope |
+| the columns | **seller**: order id, marketplace ref, shop, marketplace, status, created, created by, customer, phone, courier, qty, goods cost, marketplace total. **Warehouse**: order id, created, created by, seller, shop, marketplace, marketplace ref, courier, qty, status |
+| only real data | the tracking number, the marketplace date and the deadline are invented on screen behind a ⚠. A spreadsheet cannot carry the mark, so they are left out until their fields exist |
+| text cells | ids, refs and phone numbers are strings, so `0812…` keeps its 0 and a long marketplace id never becomes `5.78E+17`. A money figure of 0 means "not recorded" and is left empty |
+| the clock | WIB (UTC+7), the people reading it keep that time |
+| as the caller | the names and the upload go through clients that forward the caller's token (`san_auth.ForwardBearer`): the file is stored under the caller's team, as them, as a private `order_export` document behind an expiring signed link |
+| the stream | the guideline's long-task shape ([code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md)): every step a slog line sent as `message`, with `done` and `total` on each, the link on the last |

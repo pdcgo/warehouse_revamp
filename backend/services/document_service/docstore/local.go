@@ -4,12 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+// DownloadNameParam is the query parameter a signed GET URL carries the file's name in; the file handler answers it
+// with a Content-Disposition (a-download-keeps-its-files-name).
+const DownloadNameParam = "filename"
 
 // LocalMountPath is where the FileHandler is mounted; a Config.BaseURL should end with the same
 // path (minus the trailing slash), so the signer's URLs and the handler agree.
@@ -32,8 +38,14 @@ func (s *LocalSigner) url(key string) string {
 }
 
 func (s *LocalSigner) SignedPutURL(key, _ string) string { return s.url(key) }
-func (s *LocalSigner) SignedGetURL(key string) string    { return s.url(key) }
-func (s *LocalSigner) PublicURL(key string) string       { return s.url(key) }
+func (s *LocalSigner) SignedGetURL(key, filename string) string {
+	if filename == "" {
+		return s.url(key)
+	}
+
+	return s.url(key) + "?" + url.Values{DownloadNameParam: {filename}}.Encode()
+}
+func (s *LocalSigner) PublicURL(key string) string { return s.url(key) }
 
 // --- object store ---
 
@@ -157,6 +169,15 @@ func NewLocalFileHandler(cfg Config) http.Handler {
 			w.WriteHeader(http.StatusOK)
 
 		case http.MethodGet, http.MethodHead:
+			// THE FILE'S OWN NAME (a-download-keeps-its-files-name). INLINE, not attachment: a receipt PDF or an
+			// image still previews where the page shows it, and a file the browser cannot show — an .xlsx —
+			// downloads under this name. FormatMediaType quotes it, and encodes a non-ASCII name as filename*.
+			if name := r.URL.Query().Get(DownloadNameParam); name != "" {
+				if disposition := mime.FormatMediaType("inline", map[string]string{"filename": name}); disposition != "" {
+					w.Header().Set("Content-Disposition", disposition)
+				}
+			}
+
 			http.ServeFile(w, r, path)
 
 		default:

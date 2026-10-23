@@ -246,8 +246,9 @@ export function useDeleteTeam() {
   });
 }
 
-// The team's INFO — contact, returns, and the default warehouse (#145). It holds no bank: a team's
-// bank is a financial account (owner, 2026-09-30).
+// The team's INFO — contact and the default warehouse (#145). It holds no bank: a team's bank is a
+// financial account (owner, 2026-09-30), and no return warehouse: that is the order context's
+// team_return_configurations (features/orders, useTeamReturnConfiguration).
 //
 // Teams ONLY: `info` is carried by TeamDetail and nothing else — no user query returns it, so
 // invalidating `["users"]` here would refetch lists that cannot have changed.
@@ -261,8 +262,8 @@ export function useDeleteTeam() {
 // contact number, saving a default warehouse would send it present-and-empty and wipe the contact
 // of the team that saved it.
 //
-// The ids stay optional for the mirror-image reason: `present & 0` is how the contract says CLEAR,
-// so a caller that means "leave the return warehouse alone" must omit it rather than send 0.
+// The id stays optional for the mirror-image reason: `present & 0` is how the contract says CLEAR,
+// so a caller that means "leave the default warehouse alone" must omit it rather than send 0.
 export function useSaveTeamInfo() {
   const invalidate = useInvalidateTeams();
 
@@ -270,8 +271,6 @@ export function useSaveTeamInfo() {
     mutationFn: (vars: {
       teamId: bigint;
       contactNumber?: string;
-      returnWarehouseId?: bigint;
-      returnUserId?: bigint;
       defaultWarehouseId?: bigint;
     }) => teamClient.teamInfoUpdate(vars),
     onSuccess: () => invalidate(),

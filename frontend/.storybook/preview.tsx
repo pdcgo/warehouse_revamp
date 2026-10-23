@@ -26,7 +26,11 @@ import { resetSupplierStub } from "./supplierStub";
 import { resetRestockStub } from "./restockStub";
 import { resetWarehouseTransferStub } from "./warehouseTransferStub";
 import { resetOpnameStub } from "./opnameStub";
+import { resetBundleStub } from "./bundleStub";
+import { resetProductScenario } from "./productScenario";
 import { resetRackStub } from "./rackStub";
+import { resetReturnConfigurationStub } from "./returnConfigurationStub";
+import { resetWarehouseFeeStub } from "./warehouseFeeStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
 import type { Lang } from "../src/i18n/language";
@@ -394,8 +398,15 @@ const preview: Preview = {
     resetWarehouseTransferStub();
     // …and the stock count, which every count, send-back and finalize writes to.
     resetOpnameStub();
+    // …and the bundles, which a create, an edit or a delete writes to — and any product a story locked or archived.
+    resetBundleStub();
+    resetProductScenario();
     // …and the shelves, which a move or a sample on Rack detail writes to.
     resetRackStub();
+    // …and the return warehouses, which the settings card saves.
+    resetReturnConfigurationStub();
+    // …and the warehouses' fees, which the settings card saves.
+    resetWarehouseFeeStub();
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
     // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
     stubUploads();

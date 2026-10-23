@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -46,6 +47,20 @@ func noDockerFlag() cli.Flag {
 // backend/cmd/app_development/event_sender.go. The emulator does not authenticate, so any stable id
 // works, but it has to be the SAME id, or the topics are made where nothing publishes.
 const devPubsubProject = "warehouse-dev"
+
+// devPushBaseURL is where the emulator PUSHES the dev server's events — the dev API on :8080, reached
+// from inside the emulator's container as host.docker.internal (docker-compose maps it on Linux too).
+// With push, a consumer's handler runs locally as it does in production: settlement opens an order's
+// account, liability charges its fees, the reports fold (settlement-opens-the-sale-from-the-order-event).
+// PUBSUB_PUSH_BASE_URL overrides it.
+func devPushBaseURL() string {
+	url := os.Getenv("PUBSUB_PUSH_BASE_URL")
+	if url != "" {
+		return url
+	}
+
+	return "http://host.docker.internal:8080"
+}
 
 // devDocker is the docker half of both dev commands: the containers, then the emulator's topics.
 func devDocker(ctx context.Context, root string, out io.Writer, noDocker bool) error {
@@ -110,7 +125,7 @@ func ensureDevEvents(ctx context.Context, out io.Writer, started bool) error {
 
 	defer func() { _ = client.Close() }()
 
-	err = ensureEvents(ctx, out, client, eventSetup{project: devPubsubProject})
+	err = ensureEvents(ctx, out, client, eventSetup{project: devPubsubProject, pushBaseURL: devPushBaseURL()})
 	if err != nil {
 		return fmt.Errorf("pubsub ensure: %w", err)
 	}

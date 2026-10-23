@@ -17,8 +17,8 @@ import {
   orderMarginPct,
   orderSpend,
 } from "./margin";
-import type { Urgency } from "./deadlineMock";
-import { deadlineUrgency, hoursFromNow } from "./deadlineMock";
+import type { Urgency } from "./deadline";
+import { deadlineUrgency, hoursFromNow } from "./deadline";
 import { CopyText } from "../../components/chrome/CopyText";
 
 // THE CELLS THE ORDER TABLE HAS NO SHARED COMPONENT FOR.
@@ -179,8 +179,9 @@ export function CreatedCell({ unix, by }: { unix: bigint; by?: string }) {
  * twice rather than two things sharing a cell — which is where the deadline sat for one round, under
  * the resi, until it was clear the resi exists from the start and answers a different question.
  *
- * ⚠ BOTH HALVES ARE INVENTED, for different reasons: `mp_created` has no field at all, and no deadline
- * exists anywhere in the contract. Two marks, on this one header.
+ * Both halves are the platform's own: `platform_created_at_unix` (required on every order since it existed —
+ * platform-created-at-is-required-at-finalize) and `platform_shipment_deadline_unix` (optional). An order placed before
+ * either field shows nothing on that line.
  */
 export function MpDateCell({ unix, deadline }: { unix?: bigint; deadline?: bigint }) {
   const has = unix !== undefined && unix > 0n;
@@ -204,8 +205,8 @@ export function MpDateCell({ unix, deadline }: { unix?: bigint; deadline?: bigin
 /**
  * A DATE ON ITS OWN — the status-transition date.
  *
- * ⚠ THE SHAPE EXISTS AND THE LIST CANNOT READ IT. `OrderEvent` is already `kind` + `at_unix`, which is
- * exactly this, but events are populated by `OrderDetail` only.
+ * ⚠ THE SHAPE EXISTS AND THE LIST CANNOT READ IT. `OrderTimelineLog` is already `status` + `created_at_unix`,
+ * which is exactly this, but the timeline is populated by `OrderDetail` only.
  */
 export function DateCell({ unix, testId }: { unix?: bigint; testId?: string }) {
   if (unix === undefined || unix <= 0n) {
@@ -226,14 +227,13 @@ export function DateCell({ unix, testId }: { unix?: bigint; testId?: string }) {
  * total beli = subtotal produk (the COST) + biaya (the warehouse's fee)
  * ```
  *
- * ⚠ THE FEE HALF IS A SAMPLE. Nothing carries a warehouse fee per order: it is a liability row keyed by
- * `source_id = order id`, and `LiabilityLogListFilter` takes a counterparty and nothing else.
+ * The fee is the order's own, frozen when it was placed (`orderFee`).
  *
- * ⚠ A `cogs` OF 0 IS UNKNOWN, NOT FREE (`order.proto`), so the cell refuses rather than printing a
- * fee-only figure that would read as a suspiciously cheap order.
+ * ⚠ TWO WAYS TO BE UNKNOWN, AND EITHER REFUSES. A `cogs` of 0 is unknown, not free (`order.proto`), and a `null` fee is
+ * an order placed before fees were frozen — printing the half that IS known would read as a suspiciously cheap order.
  */
-export function SpendCell({ cogs, fees }: { cogs: bigint; fees: bigint }) {
-  const spend = orderSpend(cogs, fees, cogs > 0n);
+export function SpendCell({ cogs, fees }: { cogs: bigint; fees: bigint | null }) {
+  const spend = orderSpend(cogs, fees ?? 0n, cogs > 0n && fees !== null);
 
   return (
     <Text whiteSpace="nowrap" data-testid="order-spend">
@@ -254,9 +254,10 @@ export function SpendCell({ cogs, fees }: { cogs: bigint; fees: bigint }) {
  * Under Beli the percentage read as a share of the cost — a mark-up, which is a different number that
  * looks the same.
  *
- * ⚠ IT NEEDS TWO FACTS, SO IT HAS TWO WAYS TO BE UNKNOWN. A `marketplace_total` of 0 is NOT RECORDED,
- * not a sale of nothing, and a `cogs` of 0 is unknown rather than free — either one missing and the
- * margin refuses. A full-price order with no recorded platform payment would otherwise read as −100%.
+ * ⚠ IT NEEDS THREE FACTS, SO IT HAS THREE WAYS TO BE UNKNOWN. A `marketplace_total` of 0 is NOT RECORDED,
+ * not a sale of nothing; a `cogs` of 0 is unknown rather than free; a `null` fee was never priced — any one
+ * missing and the margin refuses. A full-price order with no recorded platform payment would otherwise read
+ * as −100%. The strip's census leaves out exactly the same orders (`OrderStatusCount.margin_unknown`).
  */
 export function MpTotalCell({
   marketplaceTotal,
@@ -265,9 +266,10 @@ export function MpTotalCell({
 }: {
   marketplaceTotal: bigint;
   cogs: bigint;
-  fees: bigint;
+  /** The order's frozen fee, or `null` when it was never priced — then there is no total beli to take a margin from. */
+  fees: bigint | null;
 }) {
-  const spend = orderSpend(cogs, fees, cogs > 0n);
+  const spend = orderSpend(cogs, fees ?? 0n, cogs > 0n && fees !== null);
   const margin = orderMargin(marketplaceTotal, spend);
   const pct = formatMarginPct(orderMarginPct(marketplaceTotal, spend));
 
@@ -315,8 +317,8 @@ const URGENCY_STYLE: Record<Urgency, { palette: string; solid: boolean }> = {
  * | today | within 24 hours | quiet warning |
  * | later | beyond that | plain, in the gray of any other date |
  *
- * ⚠ NO ORDER HAS A DEADLINE FIELD. Every figure here is invented (`deadlineMock`) and the column
- * carries a mark. What it stands in for is the marketplace's ship-by clock, which is per storefront.
+ * The deadline is the marketplace's own ship-by time, `platform_shipment_deadline_unix`, read through `orderDeadline`,
+ * which also stops the clock at handover. The bands are fixed (the-urgency-bands-are-6-and-24-hours).
  */
 export function DeadlineCell({ unix }: { unix: bigint }) {
   const { t } = useTranslation();

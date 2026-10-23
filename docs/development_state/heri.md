@@ -7,6 +7,71 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-10-21 · order lifecycle
+
+**Orders now move through the eleven statuses the business uses**, from *pending* to *completed*, *problem*, *lost* or
+*return*, instead of the old six. Every plain move is one action for any number of orders: a crew scanning 30 parcels
+at the van moves the 28 that are ready and is told why the other two did not move.
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **One status move** for the warehouse and customer service | confirm, pick, hand over, hand back with a reason, shipped, completed, problem, lost and forced return are all one action. Each order says whether it moved and, if not, why |
+| **One tab per status** on the order lists | an order is found under the status it is actually in |
+| **Root sees every team's orders** | the platform owner can look across all teams without switching |
+| **Settlement opens from the order event** | an order's settlement account appears a moment after the order. The order no longer waits on settlement to be created |
+| **Return warehouse setting** (Settings → Return Warehouse) | a selling team names where its returns are received. Nothing requires it yet |
+
+**Checked:** unit tests, all 1 405 component stories, and the orders, statement and settlement e2e. Two people moving
+the same order at once was tested: exactly one move lands.
+
+**Waiting on you:**
+1. ✅ *Decided and built the same day:* moving many orders now saves them together — 200 orders in 11 ms instead of
+   a quarter of a second ([audit](../../audits/services/selling_service/performances/OrderStatusChange.md)).
+2. ✅ *Decided the same day:* picked is sky, shipping cyan, return red, and return completed takes your pink of *Retur Diterima*.
+3. ✅ *Decided the same day:* every selling team sets its own return warehouse on Settings — nothing is filled in for
+   them. Orders start requiring one once every team has set it, and the Teams list badges the teams still missing one.
+
+**Later the same day:** the order lists lost six of their 'not implemented' marks.
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Export** on both order lists | the list downloads as a spreadsheet, exactly the rows on screen (or the ticked ones on the warehouse list) |
+| **Marketplace, seller and courier filters** | they now narrow the list. They were on screen before but did nothing |
+| **The warehouse row's shop and unit count** | real now; before they were sample values |
+| **Each timeline step says which side did it** | Warehouse or Seller, on every row of an order's timeline |
+
+The seller list has 10 parts still waiting and the warehouse list 6; each needs a decision or a bigger piece (the fee).
+
+**And then:** files download under their real names (an export is `orders-….xlsx`, not a storage code), and the **warehouse fee** got its first of five steps — each warehouse can now set what it charges per order (a percent with a floor and an optional cap) on its Settings. Nothing charges from it yet; orders keep paying the old flat fee until step 4. Detail: [teams/warehouse/context.md](teams/warehouse/context.md).
+
+**2026-10-22:** six more marks gone from the seller's order list — it is down to 4.
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **The tracking number is kept** | the number typed on the order form is saved, shows on both order lists, the order page and the export, and the search finds an order by it |
+| **The warehouse filter works** | picking a warehouse on the seller list narrows the rows and the counts |
+| **The status date is real** | under a status tab, each row says when the order got there |
+| **The warehouse fee is real** | each new order is priced by its warehouse and keeps that fee; the order form shows it before you save. A warehouse that never set its fee cannot take orders, and the form says so |
+| **The summary's figures are real** | items, units per order, purchase value and margin come from the server |
+
+Behind it, steps 2 and 3 of the warehouse fee: each warehouse's old flat fee became its rate (the same amount), and orders now freeze the fee. The ledger still charges the old flat fee until step 4. ⚠ In the dev database only Dev Warehouse had a flat fee, so the other warehouses there refuse orders until they set one.
+
+Still waiting on the seller list: the import's file, the marketplace's order date and the ship-by deadline (you added both fields today), and the withdrawal figure.
+
+**Later the same day:** the marketplace's two dates are real, so the seller list is down to **2** marks — the import (Q19) and the withdrawal (Q20), both waiting on your answer.
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **The marketplace order date** | every new order must have it — the order form will not create without it, and a draft cannot be promoted without it. It shows on both lists, the order page and the export |
+| **The ship-by deadline** | the marketplace's own "kirim sebelum", optional. When set it colours the row: overdue, under 6 hours, under 24 hours |
+| **The date filter switch** | the order list's date filter reads either *Dibuat* (the default) or *Tgl MP* |
+
+Orders placed before today have neither date, so they show nothing there and never match a *Tgl MP* filter.
+
+Detail: [order/context.md](order/context.md).
+
+---
+
 ## 2026-08-31 · baseline
 
 **The first entry is a baseline, not a slice.** Scopes were assigned today, and the work predates

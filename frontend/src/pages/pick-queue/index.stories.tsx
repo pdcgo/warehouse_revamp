@@ -26,9 +26,9 @@ const OTHER_WAREHOUSE = teams[3]!; // Gudang Cabang (14)
 const SELLER = teams[1]!; // Toko Melati (12)
 
 const HERE = orders.filter((o) => o.warehouseId === WAREHOUSE.id);
-const NEW_HERE = HERE.filter((o) => o.status === OrderStatus.PLACED); // 101, 102, 110
+const NEW_HERE = HERE.filter((o) => o.status === OrderStatus.PENDING); // 101, 102, 110
 // Kenanga's — a seller whose own list Melati never sees, shipping from this floor.
-const KENANGAS = HERE.find((o) => o.teamId === teams[2]!.id && o.status === OrderStatus.PLACED)!; // 110
+const KENANGAS = HERE.find((o) => o.teamId === teams[2]!.id && o.status === OrderStatus.PENDING)!; // 110
 // Melati's, but shipping from Gudang Cabang: somebody else's job.
 const SHIPS_ELSEWHERE = orders.find((o) => o.warehouseId === OTHER_WAREHOUSE.id)!; // 107
 
@@ -105,7 +105,7 @@ export const EachTabIsOneStep: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const confirmed = HERE.find((o) => o.status === OrderStatus.CONFIRMED)!; // 103
+    const confirmed = HERE.find((o) => o.status === OrderStatus.PROCESSED)!; // 103
 
     await waitFor(() => expect(canvas.getByTestId(`pick-queue-row-${NEW_HERE[0]!.id}`)).toBeInTheDocument());
     await userEvent.click(canvas.getByTestId("pick-tab-topick"));

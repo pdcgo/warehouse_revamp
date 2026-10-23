@@ -2,8 +2,10 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { orderDraftItems, teams } from "../../../.storybook/fixtures";
-import { BUNDLES } from "../../features/orders/form/mockData";
+import { bundleFixture } from "../../../.storybook/bundleFixtures";
+import { orderDraftItems, teams, users } from "../../../.storybook/fixtures";
+import { asRole } from "../../../.storybook/sessionScenario";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OrderDraftDetailPage } from "./index";
 
 // THE DRAFT PAGE IN THE ORDER FORM'S CLOTHES (`the-draft-page-wears-the-order-form`) — `/order-drafts/:id`.
@@ -14,7 +16,7 @@ import { OrderDraftDetailPage } from "./index";
 //   | TheScrapedTextStaysAboveTheMap          | the evidence is never replaced by the mapping            |
 //   | TheSellPriceStartsFromTheRows           | Σ qty × MP price, typed over, reset back to the rows     |
 //   | ACountThatDiffersFromTheListingIsFlagged | listing qty/price are info; a different count is flagged  |
-//   | ARowMapsToABundle                       | Bundle → the template's slots, and Promote refuses it    |
+//   | ARowMapsToABundle                       | Bundle → the bundle's slots, and Promote refuses it      |
 //   | ARowSplitsAndSuggestsABundle            | Pecah → parts, and "Make It a Bundle" is offered         |
 //   | AnEditMustBeSavedBeforePromote          | Save any state; Promote refuses unsaved work             |
 //   | AShortLineIsCalledOutOnTop              | one over the shelf → the alert above both columns        |
@@ -128,19 +130,26 @@ export const TheSellPriceStartsFromTheRows: Story = {
   },
 };
 
-/** A ROW MAPPED TO A BUNDLE — the template's slots open under it, and Promote says it cannot take it. */
+/** A ROW MAPPED TO A BUNDLE — one of the team's bundles (BundleList), its slots open under it, and Promote says it cannot take it. */
+const HEMAT = bundleFixture("Paket Hemat", users[0]!.id);
+
 export const ARowMapsToABundle: Story = {
+  // The CS maps drafts — and reads the team's bundles (the-creator-or-an-admin-edits-a-bundle).
+  beforeEach: () => {
+    asTeam(SELLER.id)();
+    asRole(Role.SELLING_CS)();
+  },
   play: async ({ canvasElement }) => {
     const canvas = await ready(canvasElement);
 
     await userEvent.click(canvas.getByTestId("draft-row-mode-2-bundle"));
     await userEvent.click(within(canvas.getByTestId("draft-row-2")).getByRole("combobox"));
 
-    const option = await screen.findByTestId(`bundle-option-${BUNDLES[0]!.id}`);
+    const option = await screen.findByTestId(`bundle-option-${HEMAT.id}`, {}, { timeout: 4000 });
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
-    await waitFor(() => expect(canvas.getByTestId("draft-row-bundle-2")).toHaveTextContent(BUNDLES[0]!.name));
+    await waitFor(() => expect(canvas.getByTestId("draft-row-bundle-2")).toHaveTextContent(HEMAT.name));
     await expect(canvas.getByTestId("draft-row-2")).toHaveAttribute("data-mode", "bundle");
     await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("cannot be promoted yet");
   },
@@ -267,7 +276,7 @@ export const EveryDraftGapIsMarkedOnScreen: Story = {
     await userEvent.click(canvas.getByTestId("draft-row-mode-0-split"));
     await waitFor(() => expect(canvas.getByTestId("draft-row-0-make-bundle")).toBeInTheDocument());
 
-    for (const id of ["draftKeeps", "sellPrice", "rowBundle", "rowSplit", "makeBundle"]) {
+    for (const id of ["draftKeeps", "sellPrice", "rowBundle", "rowSplit"]) {
       await expect(canvas.queryAllByTestId(`not-implemented-${id}`).length).toBeGreaterThan(0);
     }
   },

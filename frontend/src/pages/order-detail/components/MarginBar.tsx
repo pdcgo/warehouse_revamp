@@ -25,11 +25,12 @@ export function MarginBar({
 }: {
   marketplaceTotal: bigint;
   productCost: bigint;
-  fees: bigint;
+  /** `null` = never priced: there is no total to draw the margin against, so no bar. */
+  fees: bigint | null;
 }) {
   const { t } = useTranslation();
 
-  if (marketplaceTotal <= 0n || productCost <= 0n) {
+  if (marketplaceTotal <= 0n || productCost <= 0n || fees === null) {
     return null;
   }
 

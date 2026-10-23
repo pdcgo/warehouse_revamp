@@ -8,7 +8,7 @@ import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { beep } from "../../../lib/beep";
 import { WAREHOUSE_ORDERS_PENDING } from "../pending";
 import type { WarehouseStep } from "../steps";
-import { rpcFor, stepLabelKey, stepOfStatus } from "../steps";
+import { stepLabelKey, stepOfStatus } from "../steps";
 import { ScanInput } from "./ScanInput";
 
 // PROVING EVERY LINE IS EXACT BEFORE THE ORDER MOVES ON (owner — `scanning-is-the-crews-hands`).
@@ -38,8 +38,8 @@ export function ValidationScanDialog({
   const [problem, setProblem] = useState("");
 
   const from = order ? stepOfStatus(order.status) : undefined;
-  // The next step forward: Sedang diambil → Sudah diambil, Sudah diambil → Dikemas.
-  const next: WarehouseStep | undefined = from === "picking" ? "picked" : from === "picked" ? "packed" : undefined;
+  // The next step forward: Dikonfirmasi (being picked) → Sudah diambil.
+  const next: WarehouseStep | undefined = from === "confirm" ? "picked" : undefined;
 
   const complete = useMemo(
     () => items.length > 0 && items.every((item) => (counts.get(String(item.id)) ?? 0) === item.quantity),
@@ -164,7 +164,6 @@ export function ValidationScanDialog({
                   }}
                 >
                   {t("warehouseOrders.validate.next", { step: t(stepLabelKey(next)) })}
-                  {rpcFor(from, next) === undefined && <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="stepMove" />}
                 </Button>
               </Dialog.Footer>
             )}

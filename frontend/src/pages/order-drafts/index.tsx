@@ -42,7 +42,6 @@ import { ALL_STAGE, ORDER_STAGES, orderStage } from "../../features/orders/stage
 import { CreatedCell, DateCell, OrderRefCell, OwnerCell } from "../../features/orders/OrderRowCells";
 import { useShopOptions } from "../../features/shops/queries";
 import { useActors } from "../../features/users/queries";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDER_DRAFTS_PENDING } from "./pending";
 import { DraftSummary } from "./components/DraftSummary";
@@ -259,7 +258,6 @@ export function OrderDraftsPage() {
           value={DRAFTS_TAB}
           count={stageCount}
           draftCount={totalItems}
-          mark={<NotImplemented list={ORDER_DRAFTS_PENDING} id="statusSet" />}
           onSelect={leaveTo}
         />
       )}

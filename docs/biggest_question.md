@@ -14,8 +14,12 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**121 open questions across 34 files.** The three below are shown; **118 are not** — they are not
+**114 open questions across 35 files.** The three below are shown; **111 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
+
+🔄 **Merged into `thoni` again** (2026-10-23) — `backup/inventory` is now at **105** across **39** (bundle, order list and
+technical order closed questions; `product_bundle_clarify.md` added at 0). The same two changes as before give 105 − 4 + 13 =
+**114** across **35**; stock_thoni's clarify files are unchanged since the first merge.
 
 🔄 **Merged into `thoni`** (2026-10-20). This file is `backup/inventory`'s fresh re-rank of 2026-10-19, with two changes for this
 branch. Heri's `business/inventory/` rows are removed — eight files, 4 open, all in `adjustment_clarify.md` — because that
@@ -31,6 +35,21 @@ this merge is in commit `4a02dbb8`.
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- 🔄 *(2026-10-22)* **105**: bundle — the last critiques closed, none of them a counted question: `owner_team_id` dropped ([a-bundle-line-reads-its-owner-from-the-product](business/product/product_bundle_decision.md#a-bundle-line-reads-its-owner-from-the-product)); names may repeat ([bundle-names-may-repeat](business/product/product_bundle_decision.md#bundle-names-may-repeat)), against my *unique within the team*; a bundle has at least one line ([a-bundle-has-at-least-one-line](business/product/product_bundle_decision.md#a-bundle-has-at-least-one-line)). Net zero.
+- 🔄 *(2026-10-22)* **105**: bundle — anyone may create one, only its creator or an Admin and above may change it, via your new `created_by_user_id` ([the-creator-or-an-admin-edits-a-bundle](business/product/product_bundle_decision.md#the-creator-or-an-admin-edits-a-bundle)), beyond my option A. **Bundle has no open question left.** Net −1.
+- 🔄 *(2026-10-22)* **106**: bundle — another team's product in a bundle never blocks its owner; a locked or deleted one leaves the line unavailable for the CS to fill ([a-borrowed-product-never-blocks-its-owner](business/product/product_bundle_decision.md#a-borrowed-product-never-blocks-its-owner)), as recommended. Net −1.
+- 🔄 *(2026-10-22)* **107**: bundle — the order keeps only product lines, a bundle is hard-deleted ([the-order-keeps-only-product-lines](business/product/product_bundle_decision.md#the-order-keeps-only-product-lines)), as recommended. Net −1.
+- 🔄 *(2026-10-22)* **108**: bundle — a line carries its `quantity` ([a-bundle-line-carries-its-quantity](business/product/product_bundle_decision.md#a-bundle-line-carries-its-quantity)), as recommended. Net −1.
+- 🆕 *(2026-10-22)* **109**: your new [product_bundle.md](business/product/product_bundle.md) — four questions opened in [product_bundle_clarify.md](business/product/product_bundle_clarify.md#question): a line's quantity, whether the order remembers the bundle, a borrowed product that gets locked or deleted, who may write a bundle. None of them ranks into the three: no pass on bundles is in progress, and the order form's bundle card runs on samples. Net +4.
+- 🔄 *(2026-10-22)* **105**: technical order Q5 closed — Edit Resi is the seller's until handover, the number, the file or both ([the-seller-edits-the-resi-until-handover](technical/frontend/order_list_decision.md#the-seller-edits-the-resi-until-handover)); Q9 closed — the urgency bands stay a fixed 6 h and 24 h ([the-urgency-bands-are-6-and-24-hours](technical/frontend/order_list_decision.md#the-urgency-bands-are-6-and-24-hours)), against my per-channel; Q10 closed — an order line keeps no platform title, the draft's is a reference only ([an-order-line-keeps-no-platform-title](technical/frontend/order_detail_decision.md#an-order-line-keeps-no-platform-title)); Q15 closed — the draft's price is its `platform_total` ([the-draft-price-is-platform-total](technical/frontend/order_draft_decision.md#the-draft-price-is-platform-total)); Q14 closed — a draft stores no mapping, the form maps ([a-draft-stores-no-mapping](technical/frontend/order_draft_decision.md#a-draft-stores-no-mapping)); Q2, Q3, Q4 and Q8 closed as overtaken by decisions already made; Q19 and Q20 opened, left open for later — what the order Import may move, and the order list's withdrawal leftovers. Also decided, none of them a counted question: the seller list's warehouse filter, `platform_created_at` required at finalize, `platform_shipment_deadline` the platform's and optional, the date filter's created/platform switch. Net −7.
+- ✅ *(2026-10-21)* **112**: **built** — the eleven statuses with one `OrderStatusChange` for every plain move ([one-status-change-for-every-plain-move](technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)); settlement opens and cancels the sale from the order events ([settlement-opens-the-sale-from-the-order-event](business/settlement/context_decision.md#settlement-opens-the-sale-from-the-order-event)), the emulator now pushing locally ([the-emulator-pushes-locally](technical/event_architecture/context_decision.md#the-emulator-pushes-locally)); root reads every team's orders; the return warehouse table and its Settings card, `team_infos`' two return columns dropped — order_return's Contradiction resolved. The two ⛔/⚠ notes below on the old statuses and `OpenSale` are done. Net zero.
+- 🔄 *(2026-10-21)* **112**: order context's Awaiting emptied — buyer shipping and COD need nothing on the order, COD being only ever the marketplace's ([cod-and-shipping-are-the-platforms](business/order/context_decision.md#cod-and-shipping-are-the-platforms)). **Order context has nothing open, critiqued, contradicted or awaiting.** Net zero.
+- 🔄 *(2026-10-21)* **112**: order context's Awaiting — a parcel back after `lost` is a `found` stock-in naming the order ([a-found-lost-parcel-is-a-found-stock-in](business/order/context_decision.md#a-found-lost-parcel-is-a-found-stock-in)), as recommended. Not a counted question. Net zero.
+- 🔄 *(2026-10-21)* **112**: your settlement §Type `initial_total` now has settlement receive the order events, not be called ([settlement-opens-the-sale-from-the-order-event](business/settlement/context_decision.md#settlement-opens-the-sale-from-the-order-event)); order creation's last contradiction resolved. ⛔ The build still calls `OpenSale`, and `OrderPlaced` lacks `shop_id` and the platform total. Net zero.
+- 🔄 *(2026-10-21)* **112**: your balance §Balance Policy 2 now checks the warehouse and each lending team on every order; order context's `the-debt-check-skips-the-warehouse` resolved. Net zero.
+- 🔄 *(2026-10-21)* **112**: order context's critique `what-an-order-must-prove` closed as covered ([what-an-order-proves-is-already-kept](business/order/context_decision.md#what-an-order-proves-is-already-kept)). Net zero.
+- 🔄 *(2026-10-21)* **112**: the order list gets one tab per status plus All, `return_completed` its own ([one-tab-per-status](technical/frontend/order_list_decision.md#one-tab-per-status)), as recommended; order context's `the-warehouse-steps-rule-met-the-return-status` resolved. ⚠ The tabs and the proto enum still carry the six old statuses. Net zero.
+- 🔄 *(2026-10-21)* **112**: order context's last contradiction row closed — a `return` order's menu drops *Selesaikan Order* until settlement shows the withdrawal ([finish-order-on-a-return-waits-for-the-withdrawal](technical/frontend/order_list_decision.md#finish-order-on-a-return-waits-for-the-withdrawal)), as recommended. Net zero.
 - 🔄 *(2026-10-19)* **112**: #1, an adjustment counts on the day of the expense it fixes, so the wrong month becomes right, visibly ([an-adjustment-counts-on-the-day-it-fixes](business/analytic/context_decision.md#an-adjustment-counts-on-the-day-it-fixes)), as recommended. Left: `ExpenseVoid`, a reducing adjustment. Net zero.
 - 🔄 *(2026-10-19)* **112**: #1, half answered — an expense is never edited; a correction is a new row ([an-expense-is-never-edited](business/analytic/context_decision.md#an-expense-is-never-edited)), against my *edit, logged*. Left: the adjustment's date, `ExpenseVoid`, a reducing adjustment. Net zero.
 - ✅ *(2026-10-19)* **112**: **#1 closed as a row** — export is one `OrderExport(team_id, filter)` for both lists ([one-export-is-the-list-as-a-file](technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)), as recommended; the workbench contract is settled. Q18 stays open and counted for the barcode alone, ⏸ parked by you. The rest move up one. Three rows shown.
@@ -195,17 +214,18 @@ flowchart LR
 [member Q1, Q2, Q4](business/project/member_clarify.md#question) — who owns ledger · [shipment Q1](business/shipment/context_clarify.md#question)
 — eight couriers live orders use have no channel, and an order now needs one.
 
-## Where the other 118 are
+## Where the other 111 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **121**, the whole set, not to 118. *Feeds* names the row of the seven a file's questions are part of.
+the column sums to **114**, the whole set, not to 111. *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Feeds |
 | --- | ---: | --- |
-| [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 15 |  |
 | [business/stock_thoni/context_clarify.md](business/stock_thoni/context_clarify.md#question) | 12 |  |
+| [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 8 |  |
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 5 |  |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 9 |  |
+| [business/product/product_bundle_clarify.md](business/product/product_bundle_clarify.md#question) | 0 |  |
 | [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 9 |  |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 0 |  |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 0 |  |
@@ -240,5 +260,5 @@ the column sums to **121**, the whole set, not to 118. *Feeds* names the row of 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **121** across **34** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **114** across **35** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.

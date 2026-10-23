@@ -26,22 +26,21 @@ import { usePickQueue } from "../../features/picking/queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-// The crew's day, in the order they work it: what has just come in, what is waiting, what is in hand,
-// what is boxed, what has gone. Each tab is a STATE OF THE BUILDING rather than a filter someone chose
-// — which is why "shipped" is last and not a tab anybody starts from.
+// The crew's day, in the order they work it: what has just come in, what is waiting to be picked, what
+// is picked and waiting for the courier, what has gone. Each tab is a STATE OF THE BUILDING rather than a
+// filter someone chose — which is why "handed over" is last and not a tab anybody starts from.
 //
 // NEW is first AND the default (owner). Confirming is the warehouse's own first step, so a just-placed
 // order is work waiting on THIS building — it is the top of the crew's day, not somebody else's problem.
 //
-// ⚠ This is the bug the screen had: it opened on To Pick (CONFIRMED only) while every freshly placed
-// order sat at PLACED, which no tab matched. A warehouse that had just been sent an order opened its
+// ⚠ This is the bug the screen had: it opened on To Pick (processed only) while every freshly placed
+// order sat at pending, which no tab matched. A warehouse that had just been sent an order opened its
 // Orders screen and found it empty, and the only way to see the order at all was the All tab.
 const STATUS_TABS = [
-  { value: "new", labelKey: "picking.tab.new", status: OrderStatus.PLACED },
-  { value: "topick", labelKey: "picking.tab.toPick", status: OrderStatus.CONFIRMED },
-  { value: "picking", labelKey: "picking.tab.picking", status: OrderStatus.PICKING },
-  { value: "packed", labelKey: "picking.tab.packed", status: OrderStatus.PACKED },
-  { value: "shipped", labelKey: "picking.tab.shipped", status: OrderStatus.SHIPPED },
+  { value: "new", labelKey: "picking.tab.new", status: OrderStatus.PENDING },
+  { value: "topick", labelKey: "picking.tab.toPick", status: OrderStatus.PROCESSED },
+  { value: "picked", labelKey: "picking.tab.picked", status: OrderStatus.PICKED },
+  { value: "handover", labelKey: "picking.tab.handover", status: OrderStatus.SHIPPING },
   { value: "all", labelKey: "picking.tab.all", status: OrderStatus.UNSPECIFIED },
 ];
 

@@ -35,14 +35,20 @@ type Service struct {
 	// order line freezes the sku and name — see product_catalog.go for why they cannot come from the
 	// request the way OrderCreate's do.
 	catalog ProductCatalog
-	// Opens and cancels an order's marketplace settlement account, AFTER the order commits
-	// (settlement #order-service-calls-settlement). An interface this service owns, so selling_service
-	// never imports settlement_service — see settlement_poster.go.
-	settlement SettlementPoster
 	// A user's role in a team — what ShopAccessCheck needs to tell a manager, who writes on any shop,
 	// from everyone else, who needs a grant (a-write-needs-a-grant-or-a-manager). An interface this
 	// service owns, so selling_service never imports user_service — see role_reader.go.
 	roles RoleReader
+	// Where an export's file goes, and the names its rows need (one-export-is-the-list-as-a-file) — document_service,
+	// team_service and user_service, behind an interface this service owns. nil = OrderExport is Unimplemented.
+	exports OrderExportStore
+	// What the fulfilling warehouse charges, priced once at create and frozen on the order (the-flat-rate-is-dropped-last
+	// step 3) — warehouse_service, behind an interface this service owns. See warehouse_fee_pricer.go.
+	//
+	// ⚠ nil PRICES NOTHING: the order is written with no fee (NULL, "never priced") and no warehouse is refused. That is
+	// for a unit test about something else, and it is NOT the production default — the composition root wires the real
+	// one, which refuses a warehouse with no rate.
+	fees WarehouseFeePricer
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
@@ -59,8 +65,9 @@ func NewService(
 	events event_source.EventSender,
 	catalog ProductCatalog,
 	credit CreditChecker,
-	settlement SettlementPoster,
 	roles RoleReader,
+	exports OrderExportStore,
+	fees WarehouseFeePricer,
 ) *Service {
 	// A nil sender would panic on the first order placed, which is a long way from where the mistake
 	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
@@ -76,11 +83,6 @@ func NewService(
 		credit = noCredit{}
 	}
 
-	// Same reasoning as the checker: an order must not depend on a downstream ledger being wired up.
-	if settlement == nil {
-		settlement = noSettlement{}
-	}
-
 	// With no role reader nobody is a manager, so only a grant opens a shop — the direction that fails
 	// closed. The composition root wires the real one.
 	if roles == nil {
@@ -88,13 +90,14 @@ func NewService(
 	}
 
 	return &Service{
-		db:         db,
-		stock:      stock,
-		events:     events,
-		catalog:    catalog,
-		credit:     credit,
-		settlement: settlement,
-		roles:      roles,
+		db:      db,
+		stock:   stock,
+		events:  events,
+		catalog: catalog,
+		credit:  credit,
+		roles:   roles,
+		exports: exports,
+		fees:    fees,
 	}
 }
 

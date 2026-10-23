@@ -1,4 +1,4 @@
-import type { OrderStatResponse } from "../../gen/warehouse/selling/v1/order_pb";
+import type { OrderStatResponse, OrderStatusCount } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { orderMargin, orderMarginPct, orderSpend } from "./margin";
 
@@ -24,10 +24,12 @@ export interface OrderStatSummary {
   avgOrder: bigint;
 }
 
-// The statuses that mean "the warehouse has this". CONFIRMED is in here deliberately: the selling side
-// has finished with it and it is waiting on the crew, which is the same answer to "who is this
-// sitting with" as picking and packed.
-const IN_WAREHOUSE = [OrderStatus.CONFIRMED, OrderStatus.PICKING, OrderStatus.PACKED];
+// The statuses that mean "the warehouse has this": confirmed and being picked, or picked and waiting for
+// the handover. Both are sitting with the crew, which is the answer to "who is this sitting with".
+const IN_WAREHOUSE = [OrderStatus.PROCESSED, OrderStatus.PICKED];
+
+// The statuses that mean "it has left the building": handed to the courier, or seen moving on the platform.
+const LEFT_THE_BUILDING = [OrderStatus.SHIPPING, OrderStatus.SHIPPED];
 
 export function summariseOrderStat(res: OrderStatResponse | undefined): OrderStatSummary {
   const counts = new Map<OrderStatus, number>();
@@ -43,9 +45,9 @@ export function summariseOrderStat(res: OrderStatResponse | undefined): OrderSta
 
   return {
     count,
-    toConfirm: count(OrderStatus.PLACED),
+    toConfirm: count(OrderStatus.PENDING),
     inWarehouse: IN_WAREHOUSE.reduce((sum, s) => sum + count(s), 0),
-    shipped: count(OrderStatus.SHIPPED),
+    shipped: LEFT_THE_BUILDING.reduce((sum, s) => sum + count(s), 0),
     orders30d,
     revenue30d,
     avgOrder: orders30d > 0 ? revenue30d / BigInt(orders30d) : 0n,
@@ -63,10 +65,10 @@ export function summariseOrderStat(res: OrderStatResponse | undefined): OrderSta
 // is the one figure that does NOT, which is why the strip that reads this does not show it: two
 // windows on one screen get read as one.
 //
-// ⚠ A NULL IS "THE CONTRACT DOES NOT CARRY THIS", NOT ZERO. `OrderStatusCount` sums `total` and
-// nothing else today — no goods value, no cost, no line count — so those four arrive as `null` and
-// render as an em-dash rather than as a confident 0. A preview may fill them with sample figures; it
-// then owes the reader a mark saying so.
+// ⚠ A NULL IS "THE CONTRACT CANNOT ANSWER THIS", NOT ZERO. `OrderStatusCount` carries the units and the
+// margin's inputs now — Σ marketplace_total, Σ cogs and Σ fees over the measurable orders, and how many it
+// left out — so a pile the contract holds reads real figures, zeroes included. Only a pile with no proto
+// status (`onTheWire` false) stays null and renders as an em-dash.
 export interface OrderSummaryRow {
   /**
    * What this row IS — a caller's own name for the pile, not a proto value.
@@ -137,18 +139,23 @@ export interface OrderSummaryGroup {
   statuses: OrderStatus[];
 }
 
-/** An empty row for a pile nothing is sitting in — absent from the response reads as zero. */
+/**
+ * An empty row for a pile nothing is sitting in — absent from the response reads as zero.
+ *
+ * ⚠ ZERO ONLY WHERE THE CONTRACT COULD HAVE SAID OTHERWISE. A pile with a proto status and no orders is a
+ * real "nothing here"; a pile with no proto status can never read anything, so its figures stay null.
+ */
 function emptyRow(key: string, onTheWire: boolean): OrderSummaryRow {
   return {
     key,
     onTheWire,
     count: 0,
     value: 0n,
-    mpValue: null,
-    cogs: null,
-    fees: null,
-    marginUnknown: null,
-    itemCount: null,
+    mpValue: onTheWire ? 0n : null,
+    cogs: onTheWire ? 0n : null,
+    fees: onTheWire ? 0n : null,
+    marginUnknown: onTheWire ? 0 : null,
+    itemCount: onTheWire ? 0 : null,
   };
 }
 
@@ -163,10 +170,10 @@ export function orderSummaryRows(
   res: OrderStatResponse | undefined,
   groups: OrderSummaryGroup[],
 ): OrderSummaryRow[] {
-  const census = new Map<OrderStatus, { count: number; value: bigint }>();
+  const census = new Map<OrderStatus, OrderStatusCount>();
 
   for (const row of res?.byStatus ?? []) {
-    census.set(row.status, { count: Number(row.count), value: row.value });
+    census.set(row.status, row);
   }
 
   return groups.map((group) => {
@@ -178,8 +185,14 @@ export function orderSummaryRows(
       const entry = census.get(status);
 
       if (entry) {
-        row.count += entry.count;
+        row.count += Number(entry.count);
         row.value += entry.value;
+        row.itemCount = (row.itemCount ?? 0) + Number(entry.itemCount);
+        row.mpValue = (row.mpValue ?? 0n) + entry.mpValue;
+        row.cogs = (row.cogs ?? 0n) + entry.cogs;
+        // The fees arrive unrounded (rupiah-is-floating-point); whole rupiah here, for the bigint arithmetic only.
+        row.fees = (row.fees ?? 0n) + BigInt(Math.round(entry.fees));
+        row.marginUnknown = (row.marginUnknown ?? 0) + Number(entry.marginUnknown);
       }
     }
 

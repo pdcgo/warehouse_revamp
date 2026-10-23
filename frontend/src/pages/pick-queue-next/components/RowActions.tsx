@@ -6,7 +6,7 @@ import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { WAREHOUSE_ORDERS_PENDING } from "../pending";
 import type { WarehouseStep } from "../steps";
-import { STEP_MOVES, isBack, rpcFor, stepLabelKey, stepOfStatus } from "../steps";
+import { STEP_MOVES, isBack, stepLabelKey, stepOfStatus } from "../steps";
 
 // ONE ORDER'S ACTIONS — the moves its step allows, by the owner's table, then the scans and the label.
 //
@@ -62,12 +62,11 @@ export function RowActions({
                   {t(isBack(from, to) ? "warehouseOrders.row.backTo" : "warehouseOrders.row.moveTo", {
                     step: t(stepLabelKey(to)),
                   })}
-                  {rpcFor(from, to) === undefined && <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="stepMove" />}
                 </Menu.Item>
               ))}
 
             {/* While the goods are being taken off the shelves — the scan that proves every line is exact. */}
-            {(from === "picking" || from === "picked") && (
+            {from === "confirm" && (
               <Menu.Item value="validate" data-testid={`pick-queue-validate-${order.id}`} onClick={onValidate}>
                 <Icon as={ScanLine} boxSize="4" />
                 {t("warehouseOrders.row.validate")}
@@ -76,7 +75,7 @@ export function RowActions({
             )}
 
             {/* Once it is boxed it goes into a sack — finding it again is a scan through the pile. */}
-            {(from === "packed" || from === "handover") && (
+            {(from === "picked" || from === "handover") && (
               <Menu.Item value="find" data-testid={`pick-queue-find-${order.id}`} onClick={onFind}>
                 <Icon as={PackageSearch} boxSize="4" />
                 {t("warehouseOrders.row.findParcel")}

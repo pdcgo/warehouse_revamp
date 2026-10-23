@@ -19,6 +19,15 @@ each old heading there now points here.
 | [the-preview-became-the-order-list](#the-preview-became-the-order-list) | a seller's `/orders` IS this screen now — the preview page is gone |
 | [the-summary-follows-the-tab](#the-summary-follows-the-tab) | All Status shows the piles; a status tab shows its own figures as cards; the measure line is gone. The cards fill the row again |
 | [root-reads-every-teams-orders](#root-reads-every-teams-orders) | a request scoped to the root team reads every team's orders: the list, its counts and order detail |
+| [finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) | a `return` order's menu drops *Selesaikan Order* until settlement can show the withdrawal |
+| [one-tab-per-status](#one-tab-per-status) | one tab per decided status plus All, in the status diagram's order; `return_completed` has its own |
+| [shipping-is-cyan-and-picked-is-sky](#shipping-is-cyan-and-picked-is-sky) | picked joins processed in sky; shipping, the handover, gets its own cyan |
+| [pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed) | return completed is pink, *Retur Diterima*'s colour; return is red |
+| [the-order-import-moves-statuses-only](#the-order-import-moves-statuses-only) | the order list's Import moves statuses only; payouts and withdrawals come from Settlement Imports |
+| [the-seller-edits-the-resi-until-handover](#the-seller-edits-the-resi-until-handover) | Edit Resi is the seller's, on pending, processed and picked; it changes the number, the label file, or both; frozen from shipping |
+| [the-seller-list-filters-by-warehouse](#the-seller-list-filters-by-warehouse) | one warehouse narrows the seller list and its tab counts; the warehouse's own list leaves it at any |
+| [the-date-filter-switches-created-or-platform](#the-date-filter-switches-created-or-platform) | the date filter reads created or the platform date, created by default; the tab counts follow it |
+| [the-urgency-bands-are-6-and-24-hours](#the-urgency-bands-are-6-and-24-hours) | urgent within 6 hours, today within 24 — fixed, the same for every channel |
 
 ## status-colours-are-carried-over-verbatim
 
@@ -36,7 +45,7 @@ were. Nothing was re-picked.
 | `completed` | **green** | `completed` — Selesai |
 | `problem` | **purple** | `problem` — Bermasalah |
 | `lost` | **purple** | `return_problem` — Lost |
-| `return` | **pink** | `return_completed` — Retur Diterima |
+| `return` | **pink** | `return_completed` — Retur Diterima. 🔄 *(2026-10-21)* pink moved with its meaning to `return_completed`, and `return` is red — [pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed) |
 | `cancel` | **rose** | `cancel` — Batal |
 
 **Why verbatim.** People have been reading these colours for years. A fresh palette would spend that
@@ -109,6 +118,11 @@ keyed by `source_id = order id`, and `LiabilityLogListFilter` takes a counterpar
 ⚠ **A `cogs` of 0 makes the whole cell refuse.** It is UNKNOWN, not free (`order.proto`), so total
 beli is an em-dash rather than a fee-only figure that would read as a suspiciously cheap order.
 
+✅ *Built 2026-10-22:* the `biaya` half is the order's own frozen `warehouse_fee` (selling `00019`, step 3 of
+[the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)) — the
+sample and its `totalFee` mark are gone. An order placed before fees were frozen has none, and the cell refuses for it
+exactly as for an unknown cost. The liability-filter route above was not needed: the owner's `orders` table carries the fee.
+
 ## the-margin-is-mp-minus-total-beli
 
 > Owner, same message: *"persentase adalah dari margin ke harga mp, margin adalah harga mp - total
@@ -157,6 +171,11 @@ than a bug to tune.** The census gives the sample Σ `total` and a count, so an 
 be charged the pile's average size — and the excluded one here (#108) is the largest of the nine. Only
 the server knows the size of what it left out, which is the argument for making these columns real.
 
+✅ *Built 2026-10-22:* the columns are real. `OrderStatusCount` carries `mp_value` (Σ `marketplace_total`), `cogs` and
+`fees` (Σ `warehouse_fee`) over the MEASURABLE orders only — a cost, a marketplace figure AND a frozen fee — and
+`margin_unknown`, how many it left out. The ~11% gap is gone with `summaryMock.ts`, and so is the `summaryCost` mark.
+⚠ A third way to be unmeasurable joined the two above: a fee never priced.
+
 ## every-date-gets-its-own-column
 
 > Owner, in chat (2026-09-28): *"tanggal bedakan saja columnnya"*.
@@ -173,6 +192,10 @@ each date answers a different question anyway.
 
 **`oleh` stays paired with the created date** because it is the same event: who wrote it down, and when.
 That is one fact read twice, which is exactly what the pairing rule allows.
+
+✅ *Built 2026-10-22:* all three are real — **Tgl MP** is `platform_created_at_unix`
+([platform-created-at-is-required-at-finalize](../../business/order/context_decision.md#platform-created-at-is-required-at-finalize)),
+with the ship-by deadline under it; **Tgl `<status>`** is `status_at_unix`. The `mpDate` mark is gone.
 
 ⚠ **THE TWO ABSENCES ARE DIFFERENT, and the row must not conflate them:**
 
@@ -203,6 +226,12 @@ so carrying it on every tab would be a mostly-blank column.
 which is exactly this — but events are populated by `OrderDetail` only. The fix is not a new field,
 it is the list carrying the one event the active filter asks about.
 
+✅ *Built 2026-10-22:* `Order.status_at_unix` — when the order entered its CURRENT status, the newest
+`order_timeline_logs` row moving it there, selected per page row (a correlated `MAX` on
+`order_timeline_logs_order_idx`) and read off the timeline on a detail. Under a status tab every row is in that status,
+so it answers the column; the `stageDate` mark is gone. 0 — shown as nothing — for an order whose move predates 00017,
+which carried no history over.
+
 ## harga-beli-team-and-gudang-are-on-the-row
 
 > Owner, in chat (2026-09-27): *"harga beli, team dan gudang? … 3nya diputuskan untuk ada"*.
@@ -228,7 +257,7 @@ selling team", so root and admin get Team instead of a Shop column that would be
 and sees an empty list — the column would be correct and the table empty. That is a server change,
 not a column; it is open in the clarify file.
 
-🔄 *(2026-10-19)* **Decided:** [root-reads-every-teams-orders](#root-reads-every-teams-orders). Buildable now, not built.
+🔄 *(2026-10-19)* **Decided:** [root-reads-every-teams-orders](#root-reads-every-teams-orders). ✅ Built 2026-10-21.
 
 ## the-action-menu-is-a-table-keyed-by-status
 
@@ -244,7 +273,7 @@ traced through branches. Mapped onto the decided eight:
 | shipped | Retur Barang · Selesaikan Order | neither |
 | completed | Edit Withdrawal | no |
 | problem | Selesaikan Sengketa | no |
-| return | Jadikan Lost · Selesaikan Order (only when `wd_total` is above zero) | neither, and no `wd_total` |
+| return | Jadikan Lost · ~~Selesaikan Order (only when `wd_total` is above zero)~~ 🔄 *(2026-10-21)* dropped: [finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) | neither, and no `wd_total` |
 | lost · cancel | — | the owner listed none, and both are ends |
 
 **Two of the owner's rows fold into one stage**, and this is the only judgement call:
@@ -383,6 +412,12 @@ flowchart LR
   card. The shape is shared; the width follows how many cards share the row, on every tab alike.
 - The cost-unknown note stays, under whichever strip is showing.
 
+✅ *Built 2026-10-22:* every card's figure is the server's — `OrderStatusCount.item_count` (Σ line quantity over the
+pile) gives the items and UPT, and the margin's inputs come from the same census. The `summaryItems` and
+`summaryCost` marks are gone. ⚠ `item_count` is a correlated sum per order in scope and audits 🔴 at 50 000 orders
+(190 ms) — [OrderStat.md](../../../audits/services/selling_service/performances/OrderStat.md); its fix is an open
+question because it reopens [the-warehouse-row-fills-from-shop-and-user-by-ids](warehouse_order_list_decision.md#the-warehouse-row-fills-from-shop-and-user-by-ids).
+
 ---
 
 ## root-reads-every-teams-orders
@@ -410,4 +445,271 @@ flowchart LR
 | who | ROOT and ADMIN in the root team, the only ones the interceptor lets hold that scope |
 | any other team | `(team_id = ? OR warehouse_id = ?)`, as today |
 | the screen | the Team column ([harga-beli-team-and-gudang-are-on-the-row](#harga-beli-team-and-gudang-are-on-the-row)) gets its rows |
-| not built | [order_list.go](../../../backend/services/selling_service/selling_v1/order_list.go) has no root case today |
+| ✅ built *(2026-10-21)* | `readsEveryTeam` in [order_list.go](../../../backend/services/selling_service/selling_v1/order_list.go), used by `scopedOrders` (list, stat, creator picker) and [order_detail.go](../../../backend/services/selling_service/selling_v1/order_detail.go). Pinned by `TestOrderList_TheRootTeamReadsEveryTeam` |
+
+---
+
+## finish-order-on-a-return-waits-for-the-withdrawal
+
+> Owner, in chat (2026-10-21): *"okay, i follow your recomendation"* — to *"does the order list keep Selesaikan Order on an
+> order in `return`?"*, the last row of
+> [the-order-menu-and-the-status-move-disagree-after-the-handover](../../business/order/context_clarify.md#the-order-menu-and-the-status-move-disagree-after-the-handover).
+> As recommended.
+
+**The verdict.** A `return` order's menu **drops *Selesaikan Order***. It needed the withdrawal figure (`wd_total`), which
+settlement doesn't have yet, and the status diagram has no `return → completed`. When settlement can show an order's
+withdrawal, the edge and the item come back together.
+
+```mermaid
+flowchart LR
+  R["an order in return"] --> L["Jadikan Lost - return to lost"]
+  R --> A["the warehouse's accept - return to return_completed"]
+  R -.->|"later, with the withdrawal figure"| C["Selesaikan Order - return to completed"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the `return` row of the menu | *Jadikan Lost* only |
+| *Selesaikan Order* on `return` | removed |
+| when it comes back | once settlement shows an order's withdrawal, with `return → completed` added to the status diagram in the same change |
+| the other rows | unchanged ([the-action-menu-is-a-table-keyed-by-status](#the-action-menu-is-a-table-keyed-by-status)) |
+| ✅ built *(2026-10-21)* | the `return` row of [rowActions.ts](../../../frontend/src/features/orders/rowActions.ts) is *Jadikan Lost* only |
+
+---
+
+## one-tab-per-status
+
+> Owner, in chat (2026-10-21): *"yes, i follow your recomendation"* — to *"which tabs does the order list show, and does
+> `return_completed` get its own?"*, the last point of
+> [the-warehouse-steps-rule-met-the-return-status](../../business/order/context_clarify.md#the-warehouse-steps-rule-met-the-return-status).
+> As recommended.
+
+**The verdict.** The order list shows **one tab per status, plus *All***, in the status diagram's order
+([the-status-move-is-the-only-journey](../../business/order/context_decision.md#the-status-move-is-the-only-journey)).
+`return_completed` has its own tab beside `return`. Statuses are never grouped, because each is a different queue with a
+different person acting on it.
+
+```mermaid
+flowchart LR
+  A["All"] --> P["pending"] --> PR["processed"] --> PK["picked"] --> SH["shipping"] --> SD["shipped"] --> C["completed"]
+  C --> PB["problem"] --> L["lost"] --> R["return"] --> RC["return_completed"] --> X["cancel"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the tabs | All · pending · processed · picked · shipping · shipped · completed · problem · lost · return · return_completed · cancel |
+| *All* | shows every pile at once ([the-summary-follows-the-tab](#the-summary-follows-the-tab)) |
+| a phone | the tab row scrolls sideways |
+| the warehouse's own list | keeps its own tabs ([the-warehouse-tabs-are-the-processed-steps](warehouse_order_list_decision.md#the-warehouse-tabs-are-the-processed-steps)) |
+| ✅ built *(2026-10-21)* | the proto `OrderStatus` carries the eleven (00015 migrated every order), [statusTabs.ts](../../../frontend/src/features/orders/statusTabs.ts) and `StageTabs` draw one tab each in one row that scrolls sideways, and the step filter under Diproses is gone |
+
+---
+
+## shipping-is-cyan-and-picked-is-sky
+
+> Owner, in chat (2026-10-21): *"i follow your recomendation"* — to *"what colour are picked, shipping and return completed?"*,
+> the three statuses [status-colours-are-carried-over-verbatim](#status-colours-are-carried-over-verbatim) never coloured. As
+> recommended, which changed my own build: it had put shipping in sky too.
+
+**The verdict.** **Picked** is **sky**, with processed: both are the order inside the building. **Shipping** is **cyan**, its own
+hue: the goods have been handed to the courier and left. Return completed is settled by
+[pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed).
+
+```mermaid
+flowchart LR
+  P["pending - amber"] --> PR["processed - sky"] --> PK["picked - sky"] --> SH["shipping - cyan"] --> SD["shipped - blue"] --> C["completed - green"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| picked | `sky`, the same as processed. The label tells the two apart |
+| shipping | `cyan`. In the *All* list, *has it left us?* is what the crew scans for, so it must not look like an order still on the shelf |
+| the order of hues | sky → cyan → blue runs in journey order: in the building, handed over, on the road |
+| where | the one map `ORDER_STATUSES` in [OrderStatusBadge.tsx](../../../frontend/src/components/badges/OrderStatusBadge.tsx). The tabs, the stepper and the timeline all read it |
+| ✅ built *(2026-10-21)* | shipping moved from sky to cyan. Storybook: *Components/Badges/OrderStatusBadge → All Statuses* |
+
+---
+
+## pink-follows-retur-diterima-to-return-completed
+
+> Owner, in chat (2026-10-21): *"yes a"* — to *"pink is your colour for Retur Diterima. Should it stay on return, or move to
+> return completed, which is what Retur Diterima now means?"*, option A. As recommended. Raised because the build had already
+> made this move **without asking**, and my first question reported return as the owner's red when the record says pink.
+
+**The verdict.** **Return completed** is **pink**, *Retur Diterima*'s colour, carried over verbatim to the status that now means
+it ([the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed)).
+**Return** (claimed, the parcel on its way back, nothing settled) is **red**.
+
+```mermaid
+flowchart LR
+  OLD["Retur Diterima - pink"] -->|"2026-09-24, eight statuses"| R1["return"]
+  OLD -->|"2026-10-21, after return_completed split off"| RC["return_completed - pink"]
+  R2["return - claimed, coming back"] --> RED["red"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| return completed | `pink`. Its timeline row is pink too, as an ending |
+| return | `red` |
+| the near pair | return's red sits next to cancel's rose: the same kind of accepted near-neighbours as processed's sky and shipped's blue. The label carries which |
+| what it amends | the `return` row of [status-colours-are-carried-over-verbatim](#status-colours-are-carried-over-verbatim). The rule there still holds: pink went where its meaning went |
+| ✅ built *(2026-10-21)* | already so in [OrderStatusBadge.tsx](../../../frontend/src/components/badges/OrderStatusBadge.tsx); its comment no longer calls it a proposal |
+
+---
+
+## the-order-import-moves-statuses-only
+
+> Owner, in chat (2026-10-21): *"okay, i follow your recomendation"* — to *"the order list's Import promises to move each order
+> to the marketplace's status AND to record the payout against the order. The payout is what Settlement Imports already does.
+> Keep the payout promise?"*. As recommended: drop it.
+
+**The verdict.** The order list's **Import** reads the marketplace's **order export** and moves statuses — nothing else. Money
+always comes from the marketplace's **statement**, through **Settlement Imports**: each order's payout and fees onto its
+settlement, each wallet → bank withdrawal onto the shop
+([withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type)). One file,
+one job, and no payout can be posted from two screens.
+
+```mermaid
+flowchart LR
+  OE["the marketplace's order export"] --> OI["Orders - Import"] --> S["each order's status"]
+  ST["the marketplace's statement"] --> SI["Settlement Imports"] --> P["payouts and fees - per order"]
+  SI --> W["withdrawals - per shop"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the dialog | keeps *"each order it names is moved to the status the marketplace reports"*. The payout line is gone, and in its place: *payouts and withdrawals are not read from this file — import the statement on Settlement Imports* |
+| why not both | the importer refuses a repeated row only by the row's key from the statement. A payout read from a different file would carry a different key and be posted twice |
+| the `withdrawal` pending entry | **stays** — it no longer explains the dialog, but it still explains a completed order's **Edit Withdrawal**: settlement records withdrawals per shop, so an order still has no withdrawal figure ([finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) waits on the same figure). The strip stays at 12 |
+| the status half | still not built, and which marketplace status maps to which of ours is not decided |
+| ✅ built *(2026-10-21)* | the dialog line in [ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx). The stale reasons found with it — the list's Export and Withdrawal, the order detail's Withdrawal — now say what is true |
+
+---
+
+## the-seller-edits-the-resi-until-handover
+
+> Owner, in chat (2026-10-22): *"choose first option, but we can edit receipt text or receipt file only"* — to
+> [technical order Q5](../order/design_clarify.md#question), *"who may change an order's tracking number after it is
+> placed?"*, against my option *"seller, until handover — the number and the label file replaced together"*. Taken, with
+> one change: the two are edited **independently**.
+
+**The verdict.** *Edit Resi* is the **selling team's** action, offered while the parcel is still in the building —
+`pending`, `processed`, `picked`. It changes the tracking number (`receipt_code`), the label file (`receipt`), or both, and
+nothing else on the order. From `shipping` on it is gone: the courier has scanned that number, so a different one is a
+different parcel, not an edit.
+
+```mermaid
+flowchart LR
+  P["pending"] --> E["Edit Resi - the number, the file, or both"]
+  R["processed"] --> E
+  K["picked"] --> E
+  E --> T["a timeline row - the old and the new"]
+  S["shipping and after"] -.->|"no Edit Resi"| X["frozen - the courier's record"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who | the order's selling team. The warehouse does not edit it — the marketplace issues the number on the seller's label |
+| when | `pending`, `processed`, `picked`. The server refuses from `shipping` on, and on `cancel` |
+| what | `receipt_code`, `receipt`, or both — each optional, each on its own. No other field rides on this edit |
+| the record | each edit writes an `order_timeline_logs` row with the status unchanged and a note naming the old and the new value |
+| the menu | [the-action-menu-is-a-table-keyed-by-status](#the-action-menu-is-a-table-keyed-by-status)'s Edit Resi rows, plus `picked`, which that table predates |
+| ⚠ not decided here | a number changed without its file (or the reverse) can leave the two disagreeing, and a label scan matches on the number ([a-label-scan-reads-the-ref-or-the-receipt](../../business/inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)). Whether the edit warns when they differ is open |
+| not built | `receipt_code` is written at create only (selling `00018`, uncommitted) |
+
+---
+
+## the-seller-list-filters-by-warehouse
+
+> Owner, in chat (2026-10-22): *"Keep as built"* — to *"the seller's order list gets a Warehouse filter (one warehouse,
+> and the tab counts follow it). Keep it as built?"*. As recommended. It was built before it was asked; this records it.
+
+**The verdict.** A selling team can narrow its order list to the orders leaving **one warehouse** — *"what is waiting at
+Gudang Pusat"*. The tab counts follow the same filter, so the tabs total what the table shows.
+
+```mermaid
+flowchart LR
+  F["seller list - Warehouse filter"] --> L["OrderListFilter.warehouse_id"]
+  F --> S["OrderStatFilter.warehouse_id"]
+  L --> R["the rows"]
+  S --> C["the tab counts - the same population"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the field | `warehouse_id` on `OrderListFilter` and `OrderStatFilter` — the order's own `warehouse_id`. `0` = any |
+| the warehouse's own list | leaves it at `0`: its scope already narrows the list to the orders it ships, and naming another warehouse matches nothing |
+| the mark | `warehouseFilter` on [pages/orders/pending.ts](../../../frontend/src/pages/orders/pending.ts) goes when the screen reads it |
+
+---
+
+## the-date-filter-switches-created-or-platform
+
+> Owner, in chat (2026-10-22): *"Switch, default created"* — to *"which date does the order list's date filter use, now
+> that every order has both?"*. As recommended. Follows
+> [platform-created-at-is-required-at-finalize](../../business/order/context_decision.md#platform-created-at-is-required-at-finalize).
+
+**The verdict.** The order list's date filter has a switch: **created** (when we wrote the row) or **platform date**
+(when the buyer ordered on the storefront). It starts on **created**. *"What came in today"* and *"the buyers' Saturday
+orders"* are both answerable, and they are different questions.
+
+```mermaid
+flowchart LR
+  S{"date filter - which date"} -->|"created - the default"| C["orders.created_at"]
+  S -->|"platform date"| P["orders.platform_created_at"]
+  C --> R["the rows and the tab counts"]
+  P --> R
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the switch | beside the date range: *Dibuat* · *Tgl MP*. Default *Dibuat* |
+| the counts | `OrderStatFilter` takes the same choice, so the tabs total what the table shows |
+| the contract | the filter's from/to range plus which date it reads — the created range that exists today, generalised |
+| every order has both | `platform_created_at` is required at finalize, so filtering on it hides no order |
+| ✅ built *(2026-10-22)* | `OrderDateField date_field` on `OrderListFilter` (12) and `OrderStatFilter` (11): `UNSPECIFIED`/`CREATED` read `created_at`, `PLATFORM_CREATED` reads `platform_created_at`, applied in `scopedOrders` so the rows and the tab counts read the same date. The seller list's DateRangePicker carries the *Dibuat · Tgl MP* segment, *Dibuat* by default; Clear puts it back. ⚠ An order placed before `00020` has no platform date and never matches a Tgl MP window |
+
+---
+
+## the-urgency-bands-are-6-and-24-hours
+
+> Owner, in chat (2026-10-22): *"Fixed 6h and 24h"* — to [technical order Q9](../order/design_clarify.md#question),
+> *"where do the deadline's urgency boundaries come from?"*, against my earlier *from the channel*. As re-recommended.
+
+**The verdict.** The two boundaries of [a-deadline-is-loud-or-it-is-nothing](#a-deadline-is-loud-or-it-is-nothing) are
+**fixed**: urgent within **6 hours** (before the next shift), today within **24 hours**. Urgency is how long the warehouse
+has left, not which courier carries it — an instant order due in 3 hours is urgent, and reads so.
+
+```mermaid
+flowchart LR
+  D["platform_shipment_deadline"] --> O{"time left"}
+  O -->|"passed"| R["overdue - solid error, the row tinted"]
+  O -->|"under 6h"| W["urgent - solid warning"]
+  O -->|"under 24h"| Q["today - quiet warning"]
+  O -->|"more"| P["plain gray"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the constants | 6 h and 24 h, named once in the frontend — no setting, no per-channel field |
+| the deadline | `platform_shipment_deadline` ([the-shipment-deadline-is-the-platforms-and-optional](../../business/order/context_decision.md#the-shipment-deadline-is-the-platforms-and-optional)); empty = no band |
+| ⚠ supersedes | the guess note under [a-deadline-is-loud-or-it-is-nothing](#a-deadline-is-loud-or-it-is-nothing) — the values are now the owner's |
+| ✅ built *(2026-10-22)* | `URGENT_WITHIN_HOURS = 6` and `TODAY_WITHIN_HOURS = 24` in [features/orders/deadline.ts](../../../frontend/src/features/orders/deadline.ts), which replaced `deadlineMock.ts`; the badge reads the order's own `platform_shipment_deadline_unix` through `orderDeadline`. The `deadline` marks are gone from the order list, the warehouse list and the order detail |

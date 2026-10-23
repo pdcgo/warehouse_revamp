@@ -37,7 +37,8 @@
     "warehouseTransfer": "Transfers",
     "sectionOperations": "Operations",
     "sectionFinance": "Finance",
-    "sectionTeam": "Team"
+    "sectionTeam": "Team",
+    "bundles": "Bundles"
   },
   "menu": {
     "theme": "Theme",
@@ -541,6 +542,102 @@
     "allWarehouses": "All warehouses",
     "archive": "Archive"
   },
+  "bundles": {
+    "title": "Bundles",
+    "lead": "Picking recipes this team uses on an order — which products, and how many of each. A bundle has no stock and no price of its own.",
+    "selectTeam": "Select a team to see its bundles.",
+    "sellingOnly": "Only a selling team has bundles.",
+    "newBundle": "New Bundle",
+    "search": "Search a bundle, or a product in it",
+    "empty": "No bundles yet.",
+    "none": "No bundles match.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete Bundle",
+    "deleteConfirm": "Delete \"{{name}}\"? Orders already made keep their products — a bundle is only used while an order is filled in.",
+    "deleted": "Bundle \"{{name}}\" deleted",
+    "deleteFailed": "Delete failed",
+    "productNumber": "Product #{{id}}",
+    "archivedSuffix": "(archived)",
+    "unavailableCount_one": "{{count}} unavailable",
+    "unavailableCount_other": "{{count}} unavailable",
+    "table": {
+      "bundle": "Bundle",
+      "products": "Products",
+      "createdBy": "Created by",
+      "updated": "Changed",
+      "actions": "Actions"
+    },
+    "sort": {
+      "label": "Sort",
+      "default": "Last changed first",
+      "name": {
+        "asc": "Name, A to Z",
+        "desc": "Name, Z to A"
+      },
+      "updated": {
+        "desc": "Last changed first",
+        "asc": "Changed longest ago first"
+      }
+    },
+    "form": {
+      "newTitle": "New Bundle",
+      "editTitle": "Bundle",
+      "back": "Back to bundles",
+      "more": "More actions",
+      "createdBy": "Created by {{name}} · changed {{when}}",
+      "readOnly": "Only {{name}}, who created it, or an Admin can change this bundle.",
+      "notFound": "Bundle not found.",
+      "products": "Products",
+      "productsHelp": "How many of each go into ONE bundle. On an order, each is multiplied by how many bundles were ordered.",
+      "addProducts": "Add Products",
+      "noProducts": "Add at least one product.",
+      "perBundle": "Per bundle",
+      "perBundleRead_one": "{{count}} per bundle",
+      "perBundleRead_other": "{{count}} per bundle",
+      "removeProduct": "Remove product",
+      "locked": "Locked by its owner — on an order, this slot is filled with something else.",
+      "archived": "Archived — on an order, this slot is filled with something else.",
+      "unavailableBanner_one": "{{count}} product here can no longer be used. It stays until you remove it — on an order, its slot is filled with something else.",
+      "unavailableBanner_other": "{{count}} products here can no longer be used. They stay until you remove them — on an order, their slots are filled with something else.",
+      "details": "Details",
+      "name": "Name",
+      "namePlaceholder": "e.g. Paket Hemat Lebaran",
+      "nameHelp": "Names may repeat — the products in it tell two bundles apart.",
+      "description": "Description",
+      "descriptionPlaceholder": "e.g. for the buy 2 get 1 listing on Shopee",
+      "create": "Create Bundle",
+      "saveChanges": "Save Changes",
+      "created": "Bundle \"{{name}}\" created",
+      "saved": "Bundle saved",
+      "missing": {
+        "title": "Still missing:",
+        "name": "a name",
+        "lines": "at least one product",
+        "quantity": "a quantity from 1 to 9999 on every product"
+      }
+    },
+    "detail": {
+      "stockTitle": "What Stock Can Make",
+      "pickWarehouse": "Select a warehouse",
+      "canMake": "Can make",
+      "bundles_one": "{{count}} bundle",
+      "bundles_other": "{{count}} bundles",
+      "atWarehouse": "at {{name}}",
+      "col": {
+        "product": "Product",
+        "perBundle": "Per bundle",
+        "ready": "Ready",
+        "enoughFor": "Enough for"
+      },
+      "runsOutFirst": "Runs out first",
+      "belowReserve": "Below {{team}}’s reserve — an order would be refused",
+      "itsOwner": "its owner",
+      "lockedShort": "Locked by its owner",
+      "archivedShort": "Archived",
+      "sum": "{{per}} per bundle · {{ready}} ready · enough for {{enough}}"
+    }
+  },
   "orders": {
     "recipient": "Recipient",
     "placed": "Placed",
@@ -550,22 +647,23 @@
     "actions": "Actions",
     "viewDetail": "View Detail",
     "step": {
-      "all": "All steps",
       "confirm": "Confirmed",
-      "picking": "Picking",
       "picked": "Picked",
-      "packed": "Packed",
       "handover": "Handed over"
     },
     "stage": {
       "pending": "Pending",
       "processed": "Processed",
+      "picked": "Picked",
+      "shipping": "Handed over",
       "shipped": "Shipped",
       "completed": "Completed",
       "problem": "Problem",
       "lost": "Lost",
       "return": "Return",
-      "cancel": "Cancelled"
+      "return_completed": "Return received",
+      "cancel": "Cancelled",
+      "unknown": "Unknown"
     },
     "summary": {
       "tx": "Tx",
@@ -586,7 +684,11 @@
     "warehouseAll": "All warehouses",
     "creatorAll": "Anyone",
     "export": {
-      "action": "Export"
+      "action": "Export",
+      "running": "Exporting {{done}} / {{total}}",
+      "ready": "Export ready — the file is downloading",
+      "failed": "The export could not be finished",
+      "noFile": "The export ended without a file"
     },
     "import": {
       "action": "Import",
@@ -595,68 +697,20 @@
       "chooseFile": "The file {{marketplace}} exported — CSV or Excel.",
       "updatesTitle": "What this file changes",
       "updatesStatus": "Each order it names is moved to the status the marketplace reports.",
-      "updatesWithdrawal": "The payout the marketplace released is recorded against the order.",
+      "moneyFromSettlement": "Payouts and withdrawals are not read from this file — import the marketplace's statement on Settlement Imports.",
       "noFile": "No file chosen",
       "dropHere": "Drop the file here, or click to choose one",
       "back": "Another Marketplace",
       "submit": "Import"
     },
     "pending": {
-      "statusSet": {
-        "label": "The status set",
-        "reason": "The contract still carries the old six statuses, so completed, problem, lost and return can never be anything but 0, and Processed counts but cannot narrow the table."
-      },
-      "summaryCost": {
-        "label": "Purchase value and margin",
-        "reason": "The per-status census sums the order total and nothing else, so the goods’ value, the cost and the count of orders with no cost are sample figures."
-      },
-      "summaryItems": {
-        "label": "Item count and UPT",
-        "reason": "The list returns no order lines and nothing counts them server-side, so both are sample figures."
-      },
-      "export": {
-        "label": "Export",
-        "reason": "Nothing builds a file yet — which columns, and whether it is this page or every row the filters match, is still open."
-      },
       "import": {
         "label": "Import",
         "reason": "The file is named on screen and goes no further: no upload, no parser, and each marketplace needs its own."
       },
-      "warehouseFilter": {
-        "label": "Warehouse filter",
-        "reason": "The list filter has no warehouse field, so picking one leaves the table as it was."
-      },
-      "mpDate": {
-        "label": "Marketplace order date",
-        "reason": "An order stores only when WE wrote it down; the date the buyer ordered on the storefront has no field, so the second line under the date is invented."
-      },
-      "stageDate": {
-        "label": "Status change date",
-        "reason": "The order event already has the right shape (kind + when), but events are only sent with an order's detail — the list cannot read when an order entered the status you are filtering by."
-      },
-      "receiptCode": {
-        "label": "Tracking number",
-        "reason": "The order stores the courier and the receipt FILE, but not the number printed on the slip — the one shown is invented and will not be found by any courier."
-      },
-      "deadline": {
-        "label": "Ship-by deadline",
-        "reason": "Nothing carries one: the order has no deadline, the shipment channel has no lead time, and an order event records what happened rather than what is due. Every badge in the column is invented, and its colour bands are a guess."
-      },
-      "totalFee": {
-        "label": "Warehouse fee in the total",
-        "reason": "The total is the goods plus what fulfilling them costs, and nothing carries that fee per order: it is a liability entry keyed by order, and the liability list can only be asked by counterparty. The goods are real, the fee is a sample."
-      },
-      "lifecycle": {
-        "label": "Actions after shipping",
-        "reason": "The contract writes only cancel and ship, so Return Goods, Complete Order, Mark as Lost and Resolve Dispute have nothing to call — the same half of the lifecycle whose four status tabs read 0."
-      },
-      "marketplaceFilter": {
-        "label": "Marketplace filter",
-        "reason": "Not on the list filter either — it would mean every shop on that marketplace."
-      },
       "withdrawal": {
         "label": "Withdrawal value",
-        "reason": "A wallet-to-bank withdrawal is a shop-level cash event naming no order, so nothing in the system has a home for it yet — not even settlement, where every entry must name one."
+        "reason": "Settlement Imports records withdrawals now, but per shop: a wallet-to-bank withdrawal names no order, so an order still has no withdrawal figure for Edit Withdrawal to change."
       }
     },
     "title": "Orders",
@@ -744,15 +798,6 @@
     "searchPlaceholder": "Search customer, phone or order #",
     "shopAll": "All shops",
     "clearFilters": "Clear Filters",
-    "statusName": {
-      "placed": "Placed",
-      "confirmed": "Confirmed",
-      "picking": "Picking",
-      "packed": "Packed",
-      "shipped": "Shipped",
-      "cancelled": "Cancelled",
-      "unknown": "Unknown"
-    },
     "tab": {
       "allStatus": "All Status",
       "drafts": "Drafts"
@@ -792,18 +837,30 @@
     "timeline": {
       "placed": "Order placed",
       "confirmed": "Order confirmed",
-      "picking": "Picking started",
-      "packed": "Packed",
-      "shipped": "Handed to the courier",
+      "picked": "Picked",
+      "shipping": "Handed to the courier",
+      "shipped": "On its way",
+      "completed": "Order completed",
+      "problem": "A delivery problem",
+      "lost": "Parcel lost",
+      "return": "Return started",
+      "returnCompleted": "Return received by the warehouse",
       "cancelled": "Order cancelled",
+      "handedBack": "Handed back to pending",
+      "note": "Note",
+      "from": {
+        "warehouse": "Warehouse",
+        "selling": "Seller"
+      },
       "unknown": "Something happened",
       "userRef": "User #{{id}}",
       "awaitingConfirm": "Waiting to be confirmed",
-      "awaitingPick": "Waiting for the warehouse",
-      "awaitingPack": "Being picked",
-      "awaitingShip": "Waiting for the courier"
+      "awaitingPick": "Waiting to be picked",
+      "awaitingShip": "Waiting for the courier",
+      "awaitingShipped": "Waiting to show as moving on the platform",
+      "awaitingDelivery": "On its way to the buyer",
+      "awaitingReturn": "Waiting for the goods to come back"
     },
-    "orderShipped": "Order marked as shipped",
     "rowAction": {
       "cancel": "Cancel Order",
       "editReceipt": "Edit Tracking Number",
@@ -839,7 +896,12 @@
       }
     },
     "orderIdColumn": "Order ID",
-    "orderTitleLabel": "Order"
+    "orderTitleLabel": "Order",
+    "statusMoved": "Order moved to {{status}}",
+    "dateField": {
+      "created": "Created",
+      "platform": "Marketplace date"
+    }
   },
   "orderDetail": {
     "nav": {
@@ -856,7 +918,8 @@
       "title": "Order info",
       "createdAt": "Written down",
       "returnReceipt": "Return receipt no.",
-      "warehouseRef": "Warehouse #{{id}}"
+      "warehouseRef": "Warehouse #{{id}}",
+      "platformCreatedAt": "Ordered on the marketplace"
     },
     "notes": {
       "title": "Notes",
@@ -900,10 +963,6 @@
       "title": "Recipient"
     },
     "pending": {
-      "statusSet": {
-        "label": "The eight statuses",
-        "reason": "The contract still carries the old six, so Completed, Problem, Lost and Return can never appear — here or on the timeline."
-      },
       "notes": {
         "label": "Notes",
         "reason": "An order stores ONE note, written when it is created — no list, no author, no system or user type, and no way to edit it. Notes added or edited here disappear on reload."
@@ -916,18 +975,6 @@
         "label": "Marketplace product title",
         "reason": "The order draft keeps the title the marketplace gave each product — the evidence a mapping is checked against — but an order line has no field for it, so promoting a draft throws it away. The titles shown are invented."
       },
-      "totalFee": {
-        "label": "Warehouse fee in the system total",
-        "reason": "Nothing carries the fee per order: it is a liability entry keyed by order, and the liability list can only be asked by counterparty. The product total is real, the fee is a sample."
-      },
-      "deadline": {
-        "label": "Ship-by deadline",
-        "reason": "Nothing carries one — not the order, not the shipment channel. The badge is invented."
-      },
-      "receiptCode": {
-        "label": "Tracking number",
-        "reason": "The order stores the courier and the receipt FILE, but not the number printed on the slip. The one shown is invented."
-      },
       "shippingTracking": {
         "label": "Tracking trail",
         "reason": "Where the parcel is, when it was scanned, what it weighed and what the postage cost are not modelled at all. The owner expects this section to be empty most of the time."
@@ -938,11 +985,7 @@
       },
       "withdrawal": {
         "label": "Withdrawals into the settlement ledger",
-        "reason": "Nothing imports the marketplace's withdrawals yet, so a payout only appears in the ledger when somebody posts it by hand, and Edit Withdrawal has no RPC."
-      },
-      "lifecycle": {
-        "label": "Actions after shipping",
-        "reason": "The contract writes only cancel and ship, so Return Goods, Complete Order, Mark as Lost and Resolve Dispute have nothing to call."
+        "reason": "Settlement Imports brings the marketplace's payouts into this ledger and its withdrawals onto the shop — but a withdrawal names no order, so this section has no per-order figure to show, and Edit Withdrawal has no RPC."
       }
     },
     "stepper": {
@@ -1003,10 +1046,6 @@
     "deleteOneMessage": "Delete draft {{ref}}? This cannot be undone, and the app that pushed it may push it again.",
     "updated": "Updated",
     "pending": {
-      "statusSet": {
-        "label": "The status set",
-        "reason": "The strip carries the owner's eight stages, but the contract still has the old six statuses, so completed, problem, lost and return can never be anything but 0."
-      },
       "readyCount": {
         "label": "Ready count",
         "reason": "Counted over the drafts on this page only. The whole set needs a draft aggregate on the server, which does not exist yet."
@@ -1025,7 +1064,8 @@
       },
       "ready": "Ready",
       "onThisPage": "on this page"
-    }
+    },
+    "missingOrderDate": "The marketplace order date is missing."
   },
   "restock": {
     "title": "Restock Requests",
@@ -1879,6 +1919,7 @@
   },
   "teams": {
     "name": "Name",
+    "noReturnWarehouse": "No return warehouse",
     "description": "Description",
     "type": "Type",
     "code": "Code",
@@ -2304,7 +2345,26 @@
     "defaultWarehouse": "Default Shipping Warehouse",
     "defaultWarehouseHint": "New orders start with this warehouse selected. You can still change it on any order.",
     "warehouse": "Warehouse",
-    "defaultWarehouseSaved": "Default warehouse saved"
+    "defaultWarehouseSaved": "Default warehouse saved",
+    "returnWarehouse": "Return Warehouse",
+    "returnWarehouseHint": "Returned parcels of this team are received at this warehouse. Any warehouse can be chosen.",
+    "returnWarehouseNotSet": "No return warehouse is set. Orders will require one soon.",
+    "returnWarehouseSaved": "Return warehouse saved",
+    "warehouseFee": {
+      "title": "Warehouse Fee",
+      "hint": "What each order shipped from this warehouse is charged: a percent of the goods' cost, never below the floor and never above the cap. The same for every seller.",
+      "notSet": "No fee is set, so no order can ship from this warehouse until one is.",
+      "percent": "Percent of the goods",
+      "percentInvalid": "A percent from 0 to 100.",
+      "floor": "Floor",
+      "floorAboveCap": "The floor cannot be above the cap. Equal is a flat fee.",
+      "cap": "Cap",
+      "noCap": "No cap",
+      "capHint": "Leave empty for no cap.",
+      "capZero": "A cap of 0 would charge nothing — leave it empty for no cap.",
+      "notLive": "Every new order is priced at this fee and keeps it. The ledger still charges the flat fee from Credit Terms until it switches over to the order’s own fee.",
+      "saved": "Warehouse fee saved"
+    }
   },
   "picking": {
     "title": "Orders",
@@ -2315,9 +2375,8 @@
     "tab": {
       "new": "New",
       "toPick": "To Pick",
-      "picking": "Picking",
-      "packed": "Packed",
-      "shipped": "Shipped",
+      "picked": "Picked",
+      "handover": "Handed Over",
       "all": "All"
     },
     "table": {
@@ -2332,9 +2391,8 @@
     },
     "action": {
       "confirm": "Confirm Order",
-      "startPicking": "Start Picking",
-      "markPacked": "Mark Packed",
-      "markShipped": "Mark Shipped"
+      "markPicked": "Mark Picked",
+      "markHandedOver": "Mark Handed Over"
     },
     "detail": {
       "title": "Order #{{id}}",
@@ -2345,9 +2403,8 @@
     },
     "toast": {
       "confirmed": "Order confirmed",
-      "picking": "Picking started",
-      "packed": "Marked packed",
-      "shipped": "Marked shipped",
+      "picked": "Marked picked",
+      "handedOver": "Marked handed over",
       "stepFailed": "Could not record that step"
     }
   },
@@ -2955,57 +3012,9 @@
       "mpDate": "Marketplace date"
     },
     "pending": {
-      "statusSet": {
-        "label": "Handed over",
-        "reason": "Handed over is the warehouse's last step, but the contract has no status for it yet — its tab cannot narrow anything."
-      },
-      "shop": {
-        "label": "The seller's shop",
-        "reason": "The order carries only the shop id, and a warehouse cannot read the seller's shops."
-      },
-      "receiptCode": {
-        "label": "Tracking number",
-        "reason": "The order stores the courier, not the printed tracking number."
-      },
-      "quantity": {
-        "label": "Quantity",
-        "reason": "A list result carries no items, so the row cannot count units."
-      },
-      "mpDate": {
-        "label": "Marketplace date",
-        "reason": "The order has no field for when the buyer ordered on the marketplace."
-      },
-      "deadline": {
-        "label": "Ship-by deadline",
-        "reason": "No order carries a ship-by deadline yet."
-      },
-      "teamFilter": {
-        "label": "Team filter",
-        "reason": "The order list has no seller-team filter yet — picking a team narrows nothing."
-      },
-      "marketplaceFilter": {
-        "label": "Marketplace filter",
-        "reason": "The order list has no marketplace filter yet — picking one narrows nothing."
-      },
-      "courierFilter": {
-        "label": "Courier filter",
-        "reason": "The order list has no courier filter yet — picking one narrows nothing."
-      },
-      "shipmentStatus": {
-        "label": "Shipment state",
-        "reason": "Whether a handed-over parcel is moving belongs to a shipment record, which does not exist yet."
-      },
-      "stepMove": {
-        "label": "Moving a step",
-        "reason": "The server only moves an order one step forward. Skipping a step, moving back, or moving into Picked does nothing yet."
-      },
       "resiLookup": {
         "label": "Finding by tracking number",
-        "reason": "No RPC finds an order by its tracking number, so the handover scan looks only in the orders this screen has loaded."
-      },
-      "bulkHandover": {
-        "label": "Bulk handover",
-        "reason": "There is no bulk handover RPC — a mass pickup hands the parcels over one call at a time."
+        "reason": "The handover scan looks only in the orders this screen has loaded. It does not ask the server yet, although the order search now finds an order by its tracking number."
       },
       "barcode": {
         "label": "Barcode",
@@ -3014,10 +3023,6 @@
       "printMerge": {
         "label": "Printing labels together",
         "reason": "Nothing merges several receipt files into one document yet."
-      },
-      "exportFile": {
-        "label": "Export",
-        "reason": "There is no export RPC yet."
       }
     },
     "tab": {
@@ -3026,13 +3031,7 @@
     },
     "filter": {
       "team": "All teams",
-      "courier": "All couriers",
-      "shipment": "Shipment state",
-      "shipmentState": {
-        "any": "Any",
-        "notMoving": "Not moving yet",
-        "inTransit": "In transit"
-      }
+      "courier": "All couriers"
     },
     "header": {
       "scanHandover": "Scan Handover"
@@ -3076,7 +3075,7 @@
       "massOn": "Scans collect into the list; hand them over together.",
       "massOff": "Each good scan is handed over at once.",
       "ready": "Ready",
-      "wrongStep": "Not packed — {{step}}",
+      "wrongStep": "Not picked — {{step}}",
       "notFound": "Not found",
       "handedOver": "Handed over",
       "failed": "Failed",
@@ -3101,7 +3100,9 @@
       "next": "Move to {{step}}",
       "loading": "Loading the order's items…"
     },
-    "moved": "Moved to {{step}}"
+    "moved": "Moved to {{step}}",
+    "notMoved_one": "{{count}} order not moved",
+    "notMoved_other": "{{count}} orders not moved"
   },
   "settlementImports": {
     "title": "Settlement Imports",
@@ -3511,10 +3512,6 @@
   },
   "orderForm": {
     "pending": {
-      "bundle": {
-        "label": "Bundle grouping",
-        "reason": "A bundle places its products as ordinary lines; the grouping itself is not stored."
-      },
       "returnMap": {
         "label": "Return mapping",
         "reason": "The product link map is not built."
@@ -3531,29 +3528,13 @@
         "label": "Shipping cost",
         "reason": "Nothing prices a shipment, so the field is off the screen and the total is short a term."
       },
-      "warehouseFee": {
-        "label": "Warehouse fee",
-        "reason": "This screen does not read the warehouse's terms yet."
-      },
       "invoice": {
         "label": "Invoice",
-        "reason": "It needs each team's markup and the warehouse fee."
-      },
-      "orderDate": {
-        "label": "Order date",
-        "reason": "An order is dated when it was typed in, and has no field for when it was actually bought."
-      },
-      "deadline": {
-        "label": "Order deadline",
-        "reason": "The order has no field for it."
+        "reason": "It needs each team’s markup."
       },
       "buyerUsername": {
         "label": "Buyer username",
         "reason": "The order has no field for it."
-      },
-      "receiptCode": {
-        "label": "Tracking number",
-        "reason": "The order stores the courier and the receipt file, but not the number itself."
       },
       "receiptScan": {
         "label": "Receipt file check",
@@ -3569,7 +3550,7 @@
       },
       "draftKeeps": {
         "label": "What a draft keeps",
-        "reason": "A draft stores the shop, the warehouse, the customer, the courier and the rows. The receipt, the references, the tracking number, the note, the dates and the buyer's username are not kept."
+        "reason": "A draft stores the shop, the warehouse, the customer, the courier, the rows and the marketplace’s two dates. The receipt, the references, the tracking number, the note and the buyer’s username are not kept."
       },
       "rowBundle": {
         "label": "A row mapped to a bundle",
@@ -3578,10 +3559,6 @@
       "rowSplit": {
         "label": "A row split into several products",
         "reason": "A draft line holds one product, so a split is shown and counted but saved unmapped, and it blocks Promote."
-      },
-      "makeBundle": {
-        "label": "Make it a bundle",
-        "reason": "Bundle templates are still a sample, so there is nowhere to save a new one."
       },
       "sellPrice": {
         "label": "The sell price",
@@ -3605,15 +3582,16 @@
     "bundles": {
       "title": "Bundles",
       "help": "A bundle puts its products on the order. Each slot can be filled with something else — what it may hold is the bundle's own rule times how many bundles were ordered.",
-      "slotCount_one": "{{count}} slot",
-      "slotCount_other": "{{count}} slots",
       "empty": "No bundles on this order.",
       "qty": "Bundles",
       "remove": "Remove bundle",
       "rule": "{{qty}} per bundle",
       "substitute": "Substitute",
       "search": "Search bundles",
-      "noMatch": "No bundle matches that"
+      "noMatch": "No bundle matches that",
+      "searching": "Searching…",
+      "slotLocked": "Locked by its owner — fill this slot with something else.",
+      "slotArchived": "Archived — fill this slot with something else."
     },
     "returnMap": {
       "title": "Return Mapping",
@@ -3630,8 +3608,8 @@
     "extra": {
       "title": "Extra Details",
       "help": "Optional, and neither is part of an order yet.",
-      "deadline": "Order deadline",
-      "deadlineHelp": "When the buyer needs it.",
+      "deadline": "Ship-by deadline",
+      "deadlineHelp": "The marketplace’s own “ship before” time, as the storefront shows it.",
       "buyerUsername": "Buyer username",
       "buyerUsernamePlaceholder": "Their name on the marketplace",
       "buyerUsernameHelp": "Who bought it, as the storefront shows them."

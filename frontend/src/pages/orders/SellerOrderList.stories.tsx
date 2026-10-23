@@ -3,7 +3,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, shops, teams, users } from "../../../.storybook/fixtures";
-import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { orderExportScenario } from "../../../.storybook/sessionScenario";
+import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
 
 // THE ORDER LIST AS THE SELLING TEAM SEES IT — Toko Melati, standing in front of the orders it took.
@@ -218,7 +219,7 @@ export const TheSummaryFollowsTheFilterBar: Story = {
     const canvas = within(canvasElement);
 
     // `pending` is the owner's name for what the contract still calls PLACED.
-    const placed = OWN.filter((o) => o.status === OrderStatus.PLACED);
+    const placed = OWN.filter((o) => o.status === OrderStatus.PENDING);
     await waitFor(() =>
       expect(canvas.getByTestId("order-summary-row-pending")).toHaveTextContent(
         `${placed.length} tx`,
@@ -246,44 +247,32 @@ export const ATabNarrowsTheTableButNeverTheCounts: Story = {
     await waitFor(() => expect(before).not.toHaveTextContent("0"));
     const count = before.textContent;
 
-    await userEvent.click(canvas.getByTestId("orders-tab-shipped"));
+    await userEvent.click(canvas.getByTestId("orders-tab-shipping"));
 
-    const shipped = OWN.find((o) => o.status === OrderStatus.SHIPPED)!;
-    const placed = OWN.find((o) => o.status === OrderStatus.PLACED)!;
-    await waitFor(() => expect(canvas.getByTestId(`order-row-${shipped.id}`)).toBeInTheDocument());
+    const handedOver = OWN.find((o) => o.status === OrderStatus.SHIPPING)!;
+    const placed = OWN.find((o) => o.status === OrderStatus.PENDING)!;
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${handedOver.id}`)).toBeInTheDocument());
     await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
 
-    // The Placed tab still says how many are waiting, from the tab you are standing on.
+    // The Pending tab still says how many are waiting, from the tab you are standing on.
     await expect(canvas.getByTestId("orders-tab-count-pending")).toHaveTextContent(count!);
   },
 };
 
-// ⚠ …AND "DIPROSES" CANNOT NARROW AT ALL, WHICH IS WHY THE STEP FILTER EXISTS. The owner folded four
-// warehouse steps into one status and `OrderListFilter.status` takes exactly one enum value — so the
-// tab can COUNT its three (confirmed, picking, packed) and cannot narrow to them. Picking a step does
-// what the tab cannot.
-//
-// ⚠ THIS TEST IS PINNED TO A GAP, ON PURPOSE. It is the `statusSet` mark written as an assertion, so
-// the day the enum gains a single `PROCESSED` value this fails and somebody re-reads the step filter's
-// reason for existing.
-export const DiprosesCountsButOnlyAStepCanNarrow: Story = {
+// EVERY TAB NARROWS TO ITS ONE STATUS (one-tab-per-status). This replaced a test pinned to a gap on
+// purpose: "Diproses" used to sum three old statuses and could not narrow, so a step filter did it — the
+// enum now has one `PROCESSED`, the test failed as it promised to, and the step filter went.
+export const EveryTabNarrowsToItsStatus: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const packed = OWN.find((o) => o.status === OrderStatus.PACKED)!;
-    const placed = OWN.find((o) => o.status === OrderStatus.PLACED)!;
+    const processed = OWN.find((o) => o.status === OrderStatus.PROCESSED)!;
+    const placed = OWN.find((o) => o.status === OrderStatus.PENDING)!;
 
     await userEvent.click(canvas.getByTestId("orders-tab-processed"));
 
-    // The tab alone leaves the table as it was — the pending order is still listed.
-    await waitFor(() => expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument());
-    await expect(canvas.getByTestId(`order-row-${placed.id}`)).toBeInTheDocument();
-
-    // One step IS one enum value, so it narrows.
-    await userEvent.click(canvas.getByTestId("processed-step-filter-packed"));
-
     await waitFor(() => expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull());
-    await expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument();
+    await expect(canvas.getByTestId(`order-row-${processed.id}`)).toBeInTheDocument();
   },
 };
 
@@ -419,5 +408,89 @@ export const OnAPhoneTheFiltersAreASheet: Story = {
 
     await userEvent.click(controls.getByTestId("orders-filters-done"));
     await waitFor(() => expect(screen.queryByTestId("orders-filters-sheet")).toBeNull());
+  },
+};
+
+// THE LIST AS A FILE (one-export-is-the-list-as-a-file): Export sends the list's own tab in the seller's columns, and
+// says when the file is on its way.
+export const ExportSendsTheListAsAFile: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${OWN[0]!.id}`)).toBeInTheDocument());
+    await userEvent.click(canvas.getByTestId("orders-export"));
+
+    await expect(await screen.findByText("Export ready — the file is downloading")).toBeInTheDocument();
+
+    const asked = orderExportScenario.last!;
+    await expect(asked.view).toBe(OrderExportView.SELLER);
+    await expect(asked.orderIds).toHaveLength(0);
+    await expect(asked.rows).toBe(OWN.length);
+  },
+};
+
+// THE WAREHOUSE FILTER NARROWS THE TABLE — "only the ones leaving Gudang Cabang". It reaches the server
+// (`OrderListFilter.warehouse_id`), so the rows that ship from Gudang Pusat leave and the two that ship from Cabang stay.
+export const TheWarehouseFilterNarrowsTheTable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const cabang = teams.find((team) => team.teamCode === "WH-02")!;
+    const fromCabang = OWN.filter((o) => o.warehouseId === cabang.id);
+    const fromPusat = OWN.find((o) => o.warehouseId !== cabang.id)!;
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${fromPusat.id}`)).toBeInTheDocument());
+
+    // TeamSelect portals, so its option is on the screen whether the picker is inline or in the phone's sheet.
+    const controls = await filterControls(canvasElement);
+    const input = within(controls.getByTestId("orders-warehouse-filter")).getByRole("combobox");
+    await userEvent.type(input, "WH-02", { delay: 40 });
+    const option = await screen.findByTestId("team-select-option-WH-02");
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${fromPusat.id}`)).toBeNull());
+    for (const o of fromCabang) {
+      await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
+    }
+  },
+};
+
+// THE TRACKING NUMBER IS THE ORDER'S OWN — `receipt_code`, the number typed at create, copyable from the row.
+export const TheRowShowsTheOrdersOwnTrackingNumber: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const order = OWN[0]!;
+
+    const row = await canvas.findByTestId(`order-row-${order.id}`);
+    await expect(within(row).getByTestId("order-receipt")).toHaveTextContent(order.receiptCode);
+  },
+};
+
+// THE DATE FILTER SWITCHES WHICH DATE IT READS (the-date-filter-switches-created-or-platform). On *Dibuat*, the default,
+// the last 30 days hold #107, typed in 8 days ago; on *Tgl MP* it leaves, because #107 carries no marketplace date to
+// fall inside the window. An order with one stays either way.
+export const TheDateSwitchReadsTheMarketplaceDate: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const noPlatformDate = OWN.find((o) => o.id === 107n)!;
+    const recent = OWN[0]!;
+
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("orders-date"));
+    const last30 = await screen.findByTestId("orders-date-quick-30");
+    await waitFor(() => expect(last30).toBeVisible());
+    await userEvent.click(last30);
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${noPlatformDate.id}`)).toBeInTheDocument());
+
+    await userEvent.click(controls.getByTestId("orders-date-field"));
+    const platform = await screen.findByRole("menuitem", { name: /Marketplace date/ });
+    await waitFor(() => expect(platform).toBeVisible());
+    await userEvent.click(platform);
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${noPlatformDate.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`order-row-${recent.id}`)).toBeInTheDocument();
   },
 };

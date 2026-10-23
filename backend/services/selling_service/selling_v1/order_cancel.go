@@ -14,8 +14,8 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
-// OrderCancel moves a PLACED or CONFIRMED order to CANCELLED (terminal), scoped to the team, and PUTS
-// ITS STOCK BACK (#70). Cancelling an already cancelled order is rejected (FailedPrecondition).
+// OrderCancel moves a PENDING order to CANCEL (terminal), scoped to the selling team, and PUTS ITS STOCK
+// BACK (#70). Any other status — an already cancelled order included — is rejected (FailedPrecondition).
 //
 // The stock goes back exactly where it came from — same shelves, same split — because the inventory
 // side reverses the movements it recorded rather than trusting quantities from here. That matters for
@@ -42,22 +42,24 @@ func (s *Service) OrderCancel(
 			return loadErr
 		}
 
-		if order.Status == orderStatusCancelled {
+		if order.Status == orderStatusCancel {
 			return errAlreadyCancelled
 		}
 
-		// CANCEL UP TO PACKED; REFUSED ONCE SHIPPED (#150, owner's call). While the goods are still in
-		// the building a cancel is honest: the stock goes back on the books and the physical goods get
-		// re-shelved (#136). Once the courier has them, putting the stock back would book goods onto a
-		// shelf while they are on a van — the count would say something untrue until a human noticed.
+		// PENDING ONLY (who-may-cancel-a-pending-order). The status diagram's one cancel edge is
+		// pending → cancel: a processed or picked order is first handed back to pending by the
+		// warehouse, which is the moment the goods are unpacked and re-shelved (#136), so the stock this
+		// returns is stock that is really on a shelf. Once the courier has it, putting the stock back
+		// would book goods onto a shelf while they are on a van.
 		//
 		// What comes back after shipping is a RETURN: a different event with different money, and
 		// calling it a cancel would hide that distinction rather than record it.
-		if order.Status == orderStatusShipped {
-			return errShippedCannotCancel
+		if order.Status != orderStatusPending {
+			return errOnlyPendingCancels
 		}
 
-		statusErr := setOrderStatus(tx, &order, orderStatusCancelled, eventActor(ctx))
+		// A cancel is the selling team's (who-may-cancel-a-pending-order).
+		statusErr := setOrderStatus(tx, &order, orderStatusCancel, timelineFromSelling, eventActor(ctx), "")
 		if statusErr != nil {
 			return statusErr
 		}
@@ -106,6 +108,9 @@ func (s *Service) OrderCancel(
 				// different person, so the reversal entries name this one
 				// (every-entry-names-who-posted-it).
 				ActorId: eventActor(ctx),
+				// The shop whose account settlement cancels the sale on — the order never calls
+				// settlement (settlement-opens-the-sale-from-the-order-event).
+				ShopId: order.ShopID,
 			},
 		},
 	})
@@ -115,28 +120,6 @@ func (s *Service) OrderCancel(
 			"order_id", order.ID,
 			"team_id", order.TeamID,
 			"error", publishErr,
-		)
-	}
-
-	// THE SALE IS UNDONE ON THE SETTLEMENT ACCOUNT (settlement #a-cancel-is-an-opposite-row), after the
-	// commit and never fatal, for the same reasons the opening call is.
-	//
-	// `CancelledAt` is the instant setOrderStatus WROTE onto the row — the act's own date, not the clock
-	// at this call — because the cancel's key is derived from it (#the-cancel-key-is-order-plus-act-date).
-	// A retry that crosses midnight must produce the same key, or it credits the account twice.
-	cancelErr := s.settlement.CancelSale(ctx, SaleCancel{
-		TeamID:      order.TeamID,
-		ShopID:      order.ShopID,
-		OrderID:     order.ID,
-		ActorID:     eventActor(ctx),
-		CancelledAt: order.UpdatedAt,
-	})
-	if cancelErr != nil {
-		slog.ErrorContext(ctx, "order cancelled but its settlement sale was not cancelled — "+
-			"the account still carries a live sale and must be corrected by hand",
-			"order_id", order.ID,
-			"team_id", order.TeamID,
-			"error", cancelErr,
 		)
 	}
 

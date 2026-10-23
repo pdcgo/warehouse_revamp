@@ -181,8 +181,8 @@ update_cache-->e
 
 
 ## Type `initial_total` and `initial_total_cancel`
-1. its trigered on order created, `order_service` calling --> `settlement_service`
-2. when order cancel, its create `initial_total_cancel` and make opposite of `initial_total`, `order_service` calling --> `settlement_service`
+1. its trigered on order created, `settlement_service` receives the order created event (push subscribe)
+2. when order cancel, its create `initial_total_cancel` and make opposite of `initial_total`, `settlement_service` receives the order cancelled event (push subscribe)
 
 
 

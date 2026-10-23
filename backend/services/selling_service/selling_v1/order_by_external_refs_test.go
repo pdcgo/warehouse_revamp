@@ -44,11 +44,11 @@ func TestOrderByExternalRefs_ResolvesAStatementsRefs(t *testing.T) {
 	shopB := insertShop(t, db, 2, "Mawar", "M2", "shopee")
 	foreign := insertShop(t, db, 3, "Other", "O1", "shopee")
 
-	live := insertRefOrder(t, db, 2, shopA, "2509AAA", "placed", 7)
-	cancelled := insertRefOrder(t, db, 2, shopA, "2509BBB", "cancelled", 8)
-	reentered := insertRefOrder(t, db, 2, shopA, "2509BBB", "confirmed", 9)
-	otherShop := insertRefOrder(t, db, 2, shopB, "2509CCC", "shipped", 7)
-	insertRefOrder(t, db, 3, foreign, "2509AAA", "placed", 50) // another team — never answered
+	live := insertRefOrder(t, db, 2, shopA, "2509AAA", "pending", 7)
+	cancelled := insertRefOrder(t, db, 2, shopA, "2509BBB", "cancel", 8)
+	reentered := insertRefOrder(t, db, 2, shopA, "2509BBB", "processed", 9)
+	otherShop := insertRefOrder(t, db, 2, shopB, "2509CCC", "shipping", 7)
+	insertRefOrder(t, db, 3, foreign, "2509AAA", "pending", 50) // another team — never answered
 
 	resp, err := svc.OrderByExternalRefs(context.Background(), connect.NewRequest(&sellingv1.OrderByExternalRefsRequest{
 		TeamId: 2,
@@ -73,7 +73,7 @@ func TestOrderByExternalRefs_ResolvesAStatementsRefs(t *testing.T) {
 	}
 
 	if a[live].GetShopId() != shopA || a[live].GetCreatedByUserId() != 7 ||
-		a[live].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PLACED {
+		a[live].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 		t.Errorf("2509AAA = %+v", a[live])
 	}
 
@@ -82,7 +82,7 @@ func TestOrderByExternalRefs_ResolvesAStatementsRefs(t *testing.T) {
 		t.Fatalf("2509BBB = %v, want the cancelled order and its re-entry", b)
 	}
 
-	if b[cancelled].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCELLED {
+	if b[cancelled].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCEL {
 		t.Errorf("the cancelled order reads %v", b[cancelled].GetStatus())
 	}
 

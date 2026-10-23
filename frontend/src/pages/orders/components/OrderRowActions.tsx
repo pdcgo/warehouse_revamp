@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { Eye, MoreHorizontal } from "lucide-react";
 
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
 import { useOrderActions } from "../../../features/orders/useOrderActions";
 import type { OrderStageId } from "../../../features/orders/stages";
 import { ORDERS_LIST_PENDING } from "../pending";
@@ -19,21 +18,19 @@ import { ORDERS_LIST_PENDING } from "../pending";
 // person and the table. The detail page is about ONE order and has the room, so it shows buttons and
 // folds only the overflow.
 //
-// ⚠ TWO OF THE NINE ARE REAL. Cancel calls `OrderCancel`; Ship calls `OrderShip`, for the warehouse
-// holding the parcel. The other six say so twice — the ⚠ on the item, and a toast naming the reason.
+// ⚠ SIX OF THE EIGHT ARE REAL: cancel calls `OrderCancel`, and the moves call `OrderStatusChange`. The
+// other two — Edit Resi and Edit Withdrawal — say so twice: the ⚠ on the item, and a toast naming why.
 
 export function OrderRowActions({
   teamId,
   orderId,
-  status,
   stage,
   warehouseId,
 }: {
   /** The team whose list this is — the caller, not the order's owner. */
   teamId: bigint | undefined;
   orderId: bigint;
-  status: OrderStatus;
-  /** Which of the owner's eight the order is in — the key to the action table. */
+  /** Which status the order is in — the key to the action table. */
   stage: OrderStageId | undefined;
   /** The warehouse fulfilling it. Equal to `teamId` when a crew is reading its own queue. */
   warehouseId: bigint;
@@ -44,7 +41,6 @@ export function OrderRowActions({
   const { actions, press, dialog } = useOrderActions({
     teamId,
     orderId,
-    status,
     stage,
     warehouseId,
     pendingNs: ORDERS_LIST_PENDING.ns,

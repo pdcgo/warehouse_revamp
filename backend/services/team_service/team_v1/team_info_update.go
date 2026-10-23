@@ -46,14 +46,6 @@ func (s *Service) TeamInfoUpdate(
 		updates["default_warehouse_id"] = nullableID(req.Msg.GetDefaultWarehouseId())
 	}
 
-	if req.Msg.ReturnWarehouseId != nil {
-		updates["return_warehouse_id"] = nullableID(req.Msg.GetReturnWarehouseId())
-	}
-
-	if req.Msg.ReturnUserId != nil {
-		updates["return_user_id"] = nullableID(req.Msg.GetReturnUserId())
-	}
-
 	var info team_service_models.TeamInfo
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -111,15 +103,7 @@ func applyInfoValues(row *team_service_models.TeamInfo, updates map[string]any) 
 		row.ContactNumber = v
 	}
 
-	// Present return ids are stored as *uint64 (nullableID gives nil for a present-zero clear).
-	if v, ok := updates["return_warehouse_id"].(uint64); ok {
-		row.ReturnWarehouseID = &v
-	}
-
-	if v, ok := updates["return_user_id"].(uint64); ok {
-		row.ReturnUserID = &v
-	}
-
+	// A present id is stored as *uint64 (nullableID gives nil for a present-zero clear).
 	if v, ok := updates["default_warehouse_id"].(uint64); ok {
 		row.DefaultWarehouseID = &v
 	}

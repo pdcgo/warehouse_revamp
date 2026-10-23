@@ -46,7 +46,7 @@ func (b *replayBroker) ReplayWindow(ctx context.Context) (time.Duration, error) 
 		return b.window, nil
 	}
 
-	window, err := event_source.SubscriptionReplayWindow(ctx, b.client, devProjectID, b.subscription)
+	window, err := event_source.SubscriptionReplayWindow(ctx, b.client, b.client.Project(), b.subscription)
 	if err != nil {
 		return 0, err
 	}
@@ -58,5 +58,5 @@ func (b *replayBroker) ReplayWindow(ctx context.Context) (time.Duration, error) 
 }
 
 func (b *replayBroker) Seek(ctx context.Context, to time.Time) error {
-	return event_source.SeekSubscription(ctx, b.client, devProjectID, b.subscription, to)
+	return event_source.SeekSubscription(ctx, b.client, b.client.Project(), b.subscription, to)
 }

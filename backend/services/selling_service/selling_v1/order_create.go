@@ -18,19 +18,23 @@ func (s *Service) OrderCreate(
 	req *connect.Request[sellingv1.OrderCreateRequest],
 ) (*connect.Response[sellingv1.OrderCreateResponse], error) {
 	order, err := s.placeOrder(ctx, &orderPlacement{
-		teamID:           req.Msg.GetTeamId(),
-		shopID:           req.Msg.GetShopId(),
-		warehouseID:      req.Msg.GetWarehouseId(),
-		customerName:     req.Msg.GetCustomerName(),
-		customerPhone:    req.Msg.GetCustomerPhone(),
-		address:          req.Msg.GetAddress(),
-		shippingCode:     req.Msg.GetShippingCode(),
-		note:             req.Msg.GetNote(),
-		receipt:          req.Msg.GetReceipt(),
-		subtotal:         req.Msg.GetSubtotal(),
-		shippingCost:     req.Msg.GetShippingCost(),
-		total:            req.Msg.GetTotal(),
-		marketplaceTotal: req.Msg.GetMarketplaceTotal(),
+		teamID:        req.Msg.GetTeamId(),
+		shopID:        req.Msg.GetShopId(),
+		warehouseID:   req.Msg.GetWarehouseId(),
+		customerName:  req.Msg.GetCustomerName(),
+		customerPhone: req.Msg.GetCustomerPhone(),
+		address:       req.Msg.GetAddress(),
+		shippingCode:  req.Msg.GetShippingCode(),
+		note:          req.Msg.GetNote(),
+		receipt:       req.Msg.GetReceipt(),
+		receiptCode:   req.Msg.GetReceiptCode(),
+		// The platform's two dates (platform-created-at-is-required-at-finalize — placeOrder refuses a missing one).
+		platformCreatedAt:        req.Msg.GetPlatformCreatedAtUnix(),
+		platformShipmentDeadline: req.Msg.GetPlatformShipmentDeadlineUnix(),
+		subtotal:                 req.Msg.GetSubtotal(),
+		shippingCost:             req.Msg.GetShippingCost(),
+		total:                    req.Msg.GetTotal(),
+		marketplaceTotal:         req.Msg.GetMarketplaceTotal(),
 		// The storefront's own id for this order, as typed. OrderDraftPromote leaves this empty for
 		// now — a draft's `external_id` is its idempotency key (and is a minted `form-…` id for a
 		// draft this form made), so carrying it across would fill the field with something that is

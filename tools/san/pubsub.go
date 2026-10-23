@@ -219,6 +219,19 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "order-cancelled",
 			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
 		},
+		// settlement_service's order account — mirrors settlement_service.OrderPlacedSubscription and
+		// OrderCancelledSubscription (settlement-opens-the-sale-from-the-order-event). The SAME topics as
+		// liability's, their OWN subscriptions.
+		{
+			ID:     "settlement-order-placed",
+			Topic:  "order-placed",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderPlaced"`,
+		},
+		{
+			ID:     "settlement-order-cancelled",
+			Topic:  "order-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
+		},
 		// settlement_service's fold — mirrors settlement_service.FoldSubscription. Its replay SEEKS this
 		// subscription, reaching back as far as the topic's 31-day retention.
 		{

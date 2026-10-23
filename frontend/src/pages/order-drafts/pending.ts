@@ -8,10 +8,9 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // page on screen.
 
 /** One unwired part of the screen. The id is also its i18n key (`orderDrafts.pending.<id>`). */
-export type PendingId = "statusSet" | "readyCount";
+export type PendingId = "readyCount";
 
 const PARTS: PendingPart<PendingId>[] = [
-  { id: "statusSet", kind: "missing" },
   // Real readiness, wrong scope: counted over this page, not the whole set.
   { id: "readyCount", kind: "derived" },
 ];

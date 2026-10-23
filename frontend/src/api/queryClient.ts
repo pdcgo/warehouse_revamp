@@ -114,12 +114,19 @@ export const key = {
   expenses: (teamId: bigint | undefined, params?: Params) => scope("expenses", teamId, params),
   revenue: (teamId: bigint | undefined, params?: Params) => scope("revenue", teamId, params),
   products: (teamId: bigint | undefined, params?: Params) => scope("products", teamId, params),
+  // A team's bundles (picking recipes). Its own prefix: no product write changes a bundle, and no bundle write changes
+  // a product or an order (the-order-keeps-only-product-lines).
+  bundles: (teamId: bigint | undefined, params?: Params) => scope("bundles", teamId, params),
   orders: (teamId: bigint | undefined, params?: Params) => scope("orders", teamId, params),
   // Drafts are their OWN domain, not a filter on orders (#195). A draft is not an order, and sharing
   // the `orders` prefix would mean promoting one invalidates every order query and vice versa —
   // which is exactly the entanglement the separate table was chosen to avoid.
   orderDrafts: (teamId: bigint | undefined, params?: Params) => scope("orderDrafts", teamId, params),
   shops: (teamId: bigint | undefined, params?: Params) => scope("shops", teamId, params),
+  // The team's return warehouse. Its own prefix: a save changes no order, so it must not refetch them.
+  returnConfiguration: (teamId: bigint | undefined, params?: Params) => scope("returnConfiguration", teamId, params),
+  // A warehouse's fee. Its own prefix: saving a rate changes no order and no list.
+  warehouseFee: (teamId: bigint | undefined, params?: Params) => scope("warehouseFee", teamId, params),
   inventory: (teamId: bigint | undefined, params?: Params) => scope("inventory", teamId, params),
   racks: (teamId: bigint | undefined, params?: Params) => scope("racks", teamId, params),
   restock: (teamId: bigint | undefined, params?: Params) => scope("restock", teamId, params),

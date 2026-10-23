@@ -54,8 +54,10 @@ func DefaultConfig(cfg Config) Config {
 type Signer interface {
 	// SignedPutURL is where the client PUTs the bytes for a not-yet-confirmed object.
 	SignedPutURL(key, contentType string) string
-	// SignedGetURL is a time-limited URL to read a private object.
-	SignedGetURL(key string) string
+	// SignedGetURL is a time-limited URL to read a private object. It carries the file's own NAME
+	// (a-download-keeps-its-files-name): the storage answers with `Content-Disposition: inline; filename=…`, so a
+	// file the browser cannot show downloads under that name rather than the object key. "" = no name.
+	SignedGetURL(key, filename string) string
 	// PublicURL is the stable URL of a public object.
 	PublicURL(key string) string
 }

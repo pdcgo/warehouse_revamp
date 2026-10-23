@@ -13,7 +13,6 @@ export type PendingId =
   | "sellPrice"
   | "rowBundle"
   | "rowSplit"
-  | "makeBundle"
   | "listingQty";
 
 const DRAFT_PARTS: PendingPart<PendingId>[] = [
@@ -30,8 +29,6 @@ const DRAFT_PARTS: PendingPart<PendingId>[] = [
   { id: "rowBundle", kind: "dropped" },
   // …and so is a row split into several products.
   { id: "rowSplit", kind: "dropped" },
-  // "Make it a bundle" has nowhere to write a bundle — templates are still a sample.
-  { id: "makeBundle", kind: "missing" },
   // A draft line holds ONE quantity. A count that differs from the listing is saved over it, so the
   // listing's own number — and the warning comparing the two — is gone the next time the draft opens.
   { id: "listingQty", kind: "dropped" },

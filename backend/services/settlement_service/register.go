@@ -19,6 +19,14 @@ import (
 // IMMUTABLE, so it has to be right at creation.
 const FoldSubscription = "settlement-fold"
 
+// The push subscriptions that open and cancel an order's account (settlement-opens-the-sale-from-the-order-event):
+// settlement's OWN subscriptions on the order's topics, beside liability's on the same ones, so each consumer
+// keeps its own delivery state. `pubsub ensure` declares the same ids, each filtered on event_type.
+const (
+	OrderPlacedSubscription    = "settlement-order-placed"
+	OrderCancelledSubscription = "settlement-order-cancelled"
+)
+
 // NewRegister mounts settlement_service's Connect handlers under the shared interceptor chain, mounts
 // the fold's push route, and reports the Connect services for reflection.
 //
@@ -40,6 +48,11 @@ func NewRegister(
 		// nobody, by decision (#the-event-webhook-is-open): a forged event can only corrupt a projection
 		// AnalyticReplayCompute rebuilds, never the ledger. Restrict the path at the ingress.
 		mux.Handle("/event/"+FoldSubscription+"/push", event_source.NewMuxPushHandler(settlement.FoldHandler()))
+		// The order's account, opened and cancelled from the order's own events — one handler, switching on
+		// the variant, behind both routes (the same rule liability's handler follows).
+		sale := event_source.NewMuxPushHandler(settlement.OrderSaleHandler())
+		mux.Handle("/event/"+OrderPlacedSubscription+"/push", sale)
+		mux.Handle("/event/"+OrderCancelledSubscription+"/push", sale)
 
 		return san_grpc.ServiceReflectNames{
 			settlementv1connect.SettlementServiceName,

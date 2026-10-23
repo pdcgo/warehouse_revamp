@@ -10,7 +10,10 @@ import (
 	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_marketplace"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -34,12 +37,27 @@ type orderScopeFilter interface {
 	GetCreatedFromUnix() int64
 	GetCreatedToUnix() int64
 	GetCreatedByUserId() uint64
+	GetSellerTeamId() uint64
+	GetMarketplace() marketplacev1.Marketplace
+	GetShippingCode() string
+	GetWarehouseId() uint64
+	GetDateField() sellingv1.OrderDateField
 }
 
 // A literal `%`, `_` or `\` typed into the search box must match ITSELF, not act as a wildcard.
 // Without this, a lone "%" matches every order in the team — a search that silently returns everything
 // reads as "no filter applied" rather than as a bad query.
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// readsEveryTeam reports whether a read is scoped to the ROOT team, and so crosses every team
+// (root-reads-every-teams-orders). The root team is the one scope only ROOT and ADMIN hold, so this is
+// no new permission — it is the rule settlement's reports already use (isRootScope). Without it a root
+// reader matched neither leg of the scope and got an empty list under its Team column.
+//
+// READS ONLY. A write scoped to the root team still names the order's own team or warehouse.
+func readsEveryTeam(teamID uint64) bool {
+	return teamID == san_auth.RootTeamID
+}
 
 // scopedOrders builds the set of orders a team may see — the WHOLE set, before any status filter.
 //
@@ -48,7 +66,7 @@ var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 // table describing a different set of orders, which is worse than no header at all.
 func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.DB {
 	// BOTH SIDES (#151): the team that placed the order, or the warehouse shipping it. The latter is
-	// the pick queue.
+	// the pick queue. The root team reads every team's orders and skips the clause.
 	//
 	// The parentheses are written explicitly even though GORM does not need them here — it wraps a
 	// chained Where containing an OR before AND-ing the next one, so the generated SQL is already
@@ -56,7 +74,9 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// assumed.) They stay because the correctness of the status filter added later should be readable
 	// from THIS line rather than resting on an ORM behaviour: precedence is what makes an OR-plus-
 	// filter go wrong, and hand-built SQL a refactor away would not be so forgiving.
-	query = query.Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID)
+	if !readsEveryTeam(teamID) {
+		query = query.Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID)
+	}
 
 	// Only orders carrying THIS product on a line (#159). An EXISTS subquery rather than a JOIN: a join
 	// against a one-to-many would return the order once PER MATCHING LINE, so an order listing the same
@@ -92,27 +112,39 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		// number a person is most often holding when they come looking: it is what the buyer quotes,
 		// what a payout report lists, and what the storefront's own support asks for. A field that can
 		// only be read once you have already found the order would not have been worth typing.
+		//
+		// The TRACKING NUMBER for the same reason, from the other end: a parcel in somebody's hand carries
+		// its slip, and the slip's number is what a scan or a buyer's "where is it" gives you
+		// (a-label-scan-reads-the-ref-or-the-receipt).
 		clause := `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\'` +
-			` OR order_external_ref_id ILIKE @like ESCAPE '\')`
+			` OR order_external_ref_id ILIKE @like ESCAPE '\' OR receipt ILIKE @like ESCAPE '\')`
 
 		id, err := strconv.ParseUint(term, 10, 64)
 		if err == nil && id > 0 {
 			clause = `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\'` +
-				` OR order_external_ref_id ILIKE @like ESCAPE '\' OR id = @id)`
+				` OR order_external_ref_id ILIKE @like ESCAPE '\' OR receipt ILIKE @like ESCAPE '\' OR id = @id)`
 			args["id"] = id
 		}
 
 		query = query.Where(clause, args)
 	}
 
-	// When the order was PLACED, inclusive on both ends. 0 on a side is an OPEN end, so a one-sided
-	// window ("everything since March") is expressible rather than needing a far-future upper bound.
+	// The date window, inclusive on both ends. 0 on a side is an OPEN end, so a one-sided window ("everything since
+	// March") is expressible rather than needing a far-future upper bound.
+	//
+	// WHICH DATE is the filter's choice (the-date-filter-switches-created-or-platform): when we wrote the row, by
+	// default, or when the buyer ordered. The column is picked from a closed set here, never interpolated from input.
+	dateColumn := "created_at"
+	if filter.GetDateField() == sellingv1.OrderDateField_ORDER_DATE_FIELD_PLATFORM_CREATED {
+		dateColumn = "platform_created_at"
+	}
+
 	if from := filter.GetCreatedFromUnix(); from > 0 {
-		query = query.Where("created_at >= ?", time.Unix(from, 0))
+		query = query.Where(dateColumn+" >= ?", time.Unix(from, 0))
 	}
 
 	if to := filter.GetCreatedToUnix(); to > 0 {
-		query = query.Where("created_at <= ?", time.Unix(to, 0))
+		query = query.Where(dateColumn+" <= ?", time.Unix(to, 0))
 	}
 
 	// WHO TYPED IT IN. An order whose creator was never recorded (0) matches nobody: the guard is the
@@ -121,8 +153,37 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		query = query.Where("created_by_user_id = ?", createdBy)
 	}
 
+	// The warehouse's three filters (the-filter-gains-seller-marketplace-and-courier).
+	if sellerTeam := filter.GetSellerTeamId(); sellerTeam > 0 {
+		query = query.Where("team_id = ?", sellerTeam)
+	}
+
+	// A shop's marketplace never changes (a-shops-marketplace-and-team-are-fixed), so the order's shop answers it:
+	// a subquery on shops, which live in this database.
+	if marketplace := filter.GetMarketplace(); marketplace != marketplacev1.Marketplace_MARKETPLACE_UNSPECIFIED {
+		query = query.Where("shop_id IN (SELECT id FROM shops WHERE marketplace = ?)", san_marketplace.ToText(marketplace))
+	}
+
+	if courier := strings.TrimSpace(filter.GetShippingCode()); courier != "" {
+		query = query.Where("shipping_code = ?", courier)
+	}
+
+	// The seller list's warehouse filter — the building the order ships FROM. ANDed with the scope, so a warehouse
+	// naming another warehouse here reads nothing rather than reaching orders it does not ship.
+	if warehouseID := filter.GetWarehouseId(); warehouseID > 0 {
+		query = query.Where("warehouse_id = ?", warehouseID)
+	}
+
 	return query
 }
+
+// orderListColumns is what a list row selects: the order, plus the two facts it carries without its children — the
+// unit count over its lines (the-warehouse-row-fills-from-shop-and-user-by-ids) and when it entered its current status
+// (a-filtered-status-shows-its-own-date). Each is one correlated lookup per row of the PAGE, on an index led by
+// order_id: order_items_order_idx and order_timeline_logs_order_idx.
+const orderListColumns = "orders.*, " +
+	"(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = orders.id) AS item_quantity, " +
+	"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at"
 
 // OrderList returns the scoped team's orders, newest first, paginated. Summaries only — the lines
 // come from OrderDetail.
@@ -158,10 +219,22 @@ func (s *Service) OrderList(
 
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
-	err = query.
+	// THE PAGE FIRST, THEN ITS FACTS. The bare page is chosen in a derived table, and only then are the unit count and
+	// the status date (orderListColumns) computed — for the page's rows alone. Selected in one pass, each correlated
+	// lookup also ran for every row the OFFSET skipped: 50 000 of them on a last page, about two-thirds of its 252 ms
+	// (audits/services/selling_service/performances/OrderList.md). The sort is applied again outside because a derived
+	// table promises no order.
+	pageRows := query.
+		Select("orders.*").
 		Order(orderOrderClause(req.Msg.GetSort())).
 		Offset(offset).
-		Limit(int(page.GetLimit())).
+		Limit(int(page.GetLimit()))
+
+	err = s.db.
+		WithContext(ctx).
+		Table("(?) AS orders", pageRows).
+		Select(orderListColumns).
+		Order(orderOrderClause(req.Msg.GetSort())).
 		Find(&orders).
 		Error
 	if err != nil {
