@@ -71,6 +71,7 @@ when it applies one of these.
 | [motion-is-small-quick-and-shared](#motion-is-small-quick-and-shared) | motion is pure CSS from the theme: a page rises and fades in, a swap fades in place, a first load is a skeleton, one tab underline slides, a hover answers in 120ms — and a refresh moves nothing | the supplier screens first |
 | [a-picker-dialog-keeps-its-height](#a-picker-dialog-keeps-its-height) | a picker dialog has a FIXED height — `min(88dvh, 48rem)`, on a desktop and a phone alike — and only its list scrolls | the product picker, then the bundle picker |
 | [a-counted-line-is-three-columns](#a-counted-line-is-three-columns) | a screen that counts line by line gives each line Accept Delivery's frame — what it is · what you type · what it means — in a fixed shape, under a sticky header | Accept Delivery, then the stock count's Count page |
+| [a-date-type-is-picked-inside-the-range-panel](#a-date-type-is-picked-inside-the-range-panel) | a date filter that can mean several dates picks WHICH date as radio pills at the top of its own panel, and the trigger names it — *Sudah diserahkan · 1 bulan terakhir*; it REPLACES the field segment of [a-date-range-filter-is-the-order-lists-picker](#a-date-range-filter-is-the-order-lists-picker) | [the order list](order_list_decision.md#the-order-list-filters-by-seven-dates), then every `DateRangePicker` with `fields` |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1569,6 +1570,34 @@ sticky:  ←  Count #15 · A-01-1  [All racks]            1 of 3 counted  [Chang
 | why fixed | a fitted dialog changes height as a search narrows the list or a page turns — the footer, and Confirm in it, moves out from under the pointer that just used it. A browse surface that keeps its shape is worth the empty space a short list leaves |
 | what scrolls | only the rows — the header, the search and the footer stay put (`layerStyle="scrollList"`, the box pulled out through the body's padding so its bar rides the dialog's edge) |
 | applied to | `ProductPickerShell` (every product picker), `BundlePicker` (the order form) |
+
+## a-date-type-is-picked-inside-the-range-panel
+
+> Owner, in chat (2026-10-23), on the order list's date filter: *"boleh, tapi apa bisa dijadikan 1 dengan panel, atau ada
+> keterbatasannya?"* — then *"oke, begitu saja"* to the date type as radio pills inside the panel, as the picker's ONLY
+> shape, every screen with `fields` moving with it.
+
+```
+[ 📅 Sudah diserahkan · 1 bulan terakhir ▾ ]      the trigger names both
+┌──────────────────────────────────────────┐
+│ Tanggal                                  │
+│ (○ Dibuat) (○ Tanggal order ⚠) (◉ …)     │      picked first — the panel stays open
+├─────────────────────────┬────────────────┤
+│ Rentang tanggal         │ Rentang cepat  │      the window, as before
+│ calendar · Terapkan     │ Hari ini …     │
+└─────────────────────────┴────────────────┘
+```
+
+| | |
+| --- | --- |
+| where the type is | a **Tanggal** row of `RadioPills` across the top of the panel, over both panes. It was a Menu segment fused to the trigger's left — a second popover beside the first, for one question |
+| why one panel | "which orders went to the courier last month" is ONE question; the type and the window are answered in one place, the type first because it decides what the window means |
+| picking a type | keeps the panel open — the window is the next thing to answer. A quick range or Terapkan closes it, as before |
+| the trigger | *{type} · {window}*, the type in the muted colour — the choice is readable with the panel shut |
+| many types | the pills wrap inside the width the two panes give the panel (`w="0" minW="full"`); they never widen it |
+| a type the screen cannot filter on | offered with its ⚠ inside the pill (`DateField.mark`, `RadioPillOption.mark`) |
+| one type | **shown, not offered** — named on the trigger and in the row as plain text; a single radio is a choice with no alternative (the settlement list's *Terakhir bergerak*) |
+| applied to | the order list, batches, returns, restock (both sides), the settlement list — every `DateRangePicker` given `fields` |
 
 ## Recorded elsewhere
 

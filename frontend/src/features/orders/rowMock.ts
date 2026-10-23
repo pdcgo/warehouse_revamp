@@ -84,6 +84,8 @@ export function mockMarketplaceCreated(id: bigint, externalRef: string): bigint 
 export function mockStageOffset(id: bigint, stageId: string): bigint | undefined {
   const steps: Record<string, number> = {
     processed: 3 * 3600,
+    picked: 9 * 3600,
+    shipping: 20 * 3600,
     shipped: 26 * 3600,
     completed: 4 * 86400,
     problem: 3 * 86400,

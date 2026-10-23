@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Box, Button, Flex, Icon, Menu, Popover, Portal, Stack, Text } from "@chakra-ui/react";
+import { useState, type ReactNode } from "react";
+import { Box, Button, Flex, Icon, Popover, Portal, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { Calendar, Check, ChevronDown, X } from "lucide-react";
+import { Calendar, ChevronDown, X } from "lucide-react";
 import { endOfDay, parseLocalDate, startOfDay, unixSeconds } from "../../lib/datetime";
+import { RadioPills } from "../inputs/RadioPills";
 import { RangeCalendar } from "./RangeCalendar";
 
 /**
@@ -92,21 +93,24 @@ export function isAllDates(range: DateRange): boolean {
 }
 
 export const description =
-  "Grafana-style date range picker (#224): a Popover with quick relative ranges (\"Last 7 days\" up to two weeks, then 1, 3 and 6 months and 1 year, counted on the calendar — live/rolling) beside an absolute From–To picked on a month-grid RangeCalendar. Emits a DateRange union — a relative range stays live because it stores the day count, not resolved dates. `resolveRange(value)` turns it into a unix-seconds {fromUnix,toUnix} window. Pass `fields` to prepend a time-type segment to the trigger (e.g. Created vs Arrived), so one control picks BOTH which timestamp and which window.";
+  "Grafana-style date range picker (#224): a Popover with quick relative ranges (\"Last 7 days\" up to two weeks, then 1, 3 and 6 months and 1 year, counted on the calendar — live/rolling) beside an absolute From–To picked on a month-grid RangeCalendar. Emits a DateRange union — a relative range stays live because it stores the day count, not resolved dates. `resolveRange(value)` turns it into a unix-seconds {fromUnix,toUnix} window. Pass `fields` and the panel opens on a Date row of radio pills (e.g. Created vs Arrived) above the two panes, and the trigger reads \"Arrived · Last 7 days\" — one control, one panel, picks BOTH which timestamp and which window. Picking a date type keeps the panel open.";
 
-/** One selectable time-type for the trigger's field segment — e.g. `{ value: ARRIVED, label: "Arrived" }`. */
+/** One selectable date type for the panel's Date row — e.g. `{ value: ARRIVED, label: "Arrived" }`. */
 export interface DateField<T extends string | number = string> {
   value: T;
   /** Already-localised label — the picker does not translate it. */
   label: string;
+  /** A ⚠ after the label — a date the screen offers but cannot filter on yet (`features/pending`). */
+  mark?: ReactNode;
 }
 
 export interface DateRangePickerProps<T extends string | number = string> {
   value: DateRange;
   onChange: (value: DateRange) => void;
   /**
-   * Optional time-type choices. When present, the trigger grows a leading segment that picks WHICH
-   * timestamp the window filters on (`field`/`onFieldChange`). Omit for a plain, date-only picker.
+   * Optional date types. When present, the panel opens on a Date row that picks WHICH timestamp the
+   * window filters on (`field`/`onFieldChange`), and the trigger names it. One field is shown, not
+   * offered — it only says which date the window means. Omit for a plain, date-only picker.
    */
   fields?: DateField<T>[];
   field?: T;
@@ -119,10 +123,16 @@ export interface DateRangePickerProps<T extends string | number = string> {
 // current window; opening it reveals the two ways to set one — a live relative shortcut, or an
 // explicit From/To — side by side. It emits a DateRange and lets the caller `resolveRange` it.
 //
-// Optionally it also carries the TIME-TYPE (#225): pass `fields` and the trigger prepends a menu
-// segment choosing which timestamp the window means (Created, Arrived, …). That segment is its own
-// Menu — clicking it never opens the range popover. The field is kept SEPARATE from DateRange (it is
-// "which column", not "which window"), so `resolveRange` is unchanged.
+// Optionally it also carries the DATE TYPE (#225): pass `fields` and the panel opens on a row of radio pills
+// choosing which timestamp the window means (Created, Arrived, …).
+//
+// THE DATE TYPE IS INSIDE THE PANEL (owner: *"apa bisa dijadikan 1 dengan panel"*, `a-date-type-is-picked-inside-the-range-panel`)
+// — it was a Menu segment fused to the trigger's left, a second popover beside the first. A date type and a window are
+// one question ("which orders went to the courier last month"), so they are answered in one panel: the type first, the
+// window under it. Picking a type does NOT close the panel — the window is the next thing to answer. The trigger names
+// both, "Handed over · Last 1 month", so the choice is readable without opening it.
+//
+// The field is kept SEPARATE from DateRange (it is "which column", not "which window"), so `resolveRange` is unchanged.
 export function DateRangePicker<T extends string | number = string>({
   value,
   onChange,
@@ -145,6 +155,9 @@ export function DateRangePicker<T extends string | number = string>({
       ? d.toLocaleDateString(i18n.language, { day: "numeric", month: "short", year: "numeric" })
       : "";
   };
+
+  // The date type in force — the one passed, or the first when none is.
+  const chosen = fields && fields.length > 0 ? (fields.find((f) => f.value === field) ?? fields[0]) : undefined;
 
   function triggerLabel(): string {
     if (value.kind === "relative") {
@@ -195,77 +208,20 @@ export function DateRangePicker<T extends string | number = string>({
       onOpenChange={(e) => openChange(e.open)}
       positioning={{ placement: "bottom-start" }}
     >
-      {fields && fields.length > 0 ? (
-        // Segmented trigger: [ field ▾ │ 📅 range ▾ ]. The field segment is a Menu of its own, so it
-        // never opens the range popover; a divider fuses the two into one control.
-        <Flex
-          borderWidth="1px"
-          borderColor="border"
-          borderRadius="l2"
-          overflow="hidden"
-          align="stretch"
-          opacity={disabled ? 0.6 : undefined}
-        >
-          <Menu.Root>
-            <Menu.Trigger asChild>
-              <Button
-                variant="ghost"
-                borderRadius="0"
-                disabled={disabled}
-                data-testid={testId ? `${testId}-field` : undefined}
-              >
-                <Text truncate>
-                  {fields.find((f) => f.value === field)?.label ?? fields[0].label}
-                </Text>
-                <Icon as={ChevronDown} boxSize="4" color="fg.muted" />
-              </Button>
-            </Menu.Trigger>
-            <Portal>
-              <Menu.Positioner>
-                <Menu.Content>
-                  {fields.map((f) => (
-                    <Menu.Item
-                      key={String(f.value)}
-                      value={String(f.value)}
-                      onSelect={() => onFieldChange?.(f.value)}
-                    >
-                      <Icon
-                        as={Check}
-                        boxSize="4"
-                        visibility={f.value === field ? "visible" : "hidden"}
-                      />
-                      {f.label}
-                    </Menu.Item>
-                  ))}
-                </Menu.Content>
-              </Menu.Positioner>
-            </Portal>
-          </Menu.Root>
-          <Box borderRightWidth="1px" borderColor="border" />
-          <Popover.Trigger asChild>
-            <Button
-              variant="ghost"
-              borderRadius="0"
-              disabled={disabled}
-              data-testid={testId}
-              minW="44"
-              justifyContent="start"
-            >
-              <Icon as={Calendar} boxSize="4" />
-              <Text truncate>{triggerLabel()}</Text>
-              <Icon as={ChevronDown} boxSize="4" ml="auto" color="fg.muted" />
-            </Button>
-          </Popover.Trigger>
-        </Flex>
-      ) : (
-        <Popover.Trigger asChild>
-          <Button variant="outline" disabled={disabled} data-testid={testId} minW="52" justifyContent="start">
-            <Icon as={Calendar} boxSize="4" />
-            <Text truncate>{triggerLabel()}</Text>
-            <Icon as={ChevronDown} boxSize="4" ml="auto" color="fg.muted" />
-          </Button>
-        </Popover.Trigger>
-      )}
+      <Popover.Trigger asChild>
+        <Button variant="outline" disabled={disabled} data-testid={testId} minW="52" justifyContent="start">
+          <Icon as={Calendar} boxSize="4" />
+          <Text truncate>
+            {chosen ? (
+              <Box as="span" color="fg.muted" data-testid={testId ? `${testId}-field-label` : undefined}>
+                {chosen.label} ·{" "}
+              </Box>
+            ) : null}
+            {triggerLabel()}
+          </Text>
+          <Icon as={ChevronDown} boxSize="4" ml="auto" color="fg.muted" />
+        </Button>
+      </Popover.Trigger>
 
       {/* Portalled so the panel escapes any clipping/stacking ancestor — an overflow container or a
           table below it would otherwise crop the calendar (a filter popover renders above content). */}
@@ -273,6 +229,37 @@ export function DateRangePicker<T extends string | number = string>({
       <Popover.Positioner>
         <Popover.Content width="auto">
           <Popover.Body p="0">
+            {chosen && fields ? (
+              // THE DATE ROW — over both panes, answered first. `w="0" minW="full"` keeps the pills from widening the
+              // panel: they wrap inside the width the two panes give it, however many types a screen offers.
+              <Stack gap="2" p="card" w="0" minW="full" borderBottomWidth="1px" borderColor="border">
+                <Text fontWeight="semibold" fontSize="sm">
+                  {t("dateRange.field")}
+                </Text>
+                {fields.length > 1 ? (
+                  <RadioPills
+                    value={String(chosen.value)}
+                    onChange={(next) => {
+                      const picked = fields.find((f) => String(f.value) === next);
+                      if (picked) onFieldChange?.(picked.value);
+                    }}
+                    options={fields.map((f) => ({
+                      value: String(f.value),
+                      label: f.label,
+                      mark: f.mark,
+                      testId: testId ? `${testId}-field-${String(f.value)}` : undefined,
+                    }))}
+                    ariaLabel={t("dateRange.field")}
+                    testId={testId ? `${testId}-field` : undefined}
+                  />
+                ) : (
+                  // One date is SHOWN, not offered — a single radio is a choice with no alternative.
+                  <Text fontSize="sm" data-testid={testId ? `${testId}-field` : undefined}>
+                    {chosen.label}
+                  </Text>
+                )}
+              </Stack>
+            ) : null}
             <Flex align="stretch">
               {/* Absolute pane — a calendar range, committed on Apply. */}
               <Stack gap="card" p="card" minW="72" borderRightWidth="1px" borderColor="border">

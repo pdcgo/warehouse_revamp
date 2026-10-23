@@ -294,7 +294,7 @@ export function ReturnsPage() {
             }}
           />
         </Box>
-        {/* The range picker carries the time-type itself (#225): its `fields` segment chooses WHICH
+        {/* The range picker carries the date type itself (#225): its `fields` row, inside the panel, chooses WHICH
             date the window filters on — return created / order created / accepted. */}
         <DateRangePicker
           value={range}

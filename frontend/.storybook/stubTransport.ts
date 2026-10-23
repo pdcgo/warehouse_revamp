@@ -52,7 +52,7 @@ import {
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
-import { orderExportScenario, sessionScenario, teamCreateScenario } from "./sessionScenario";
+import { orderExportScenario, orderStatScenario, sessionScenario, teamCreateScenario } from "./sessionScenario";
 import { userStub } from "./userStub";
 import {
   FinancialAccountAnalyticService,
@@ -1198,6 +1198,7 @@ export const transport = createRouterTransport(({ service }) => {
     },
 
     orderStat: (req) => {
+      orderStatScenario.calls += 1;
       const rows = visibleOrders(req.teamId, req.filter);
 
       const counts = new Map<OrderStatus, { status: OrderStatus; count: bigint; value: bigint }>();

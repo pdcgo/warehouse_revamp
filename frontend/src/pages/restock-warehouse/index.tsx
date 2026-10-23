@@ -297,8 +297,8 @@ export function RestockWarehousePage() {
             onChange={(id) => refilter(() => setRequesterFilter(id))}
           />
         </Box>
-        {/* The range picker carries the DATE TYPE itself (#224): its `fields` segment chooses which of
-            a restock's three timestamps the window filters on. Without that, a range would silently
+        {/* The range picker carries the DATE TYPE itself (#224): its `fields` row, inside the panel, chooses which of
+            a restock's timestamps the window filters on. Without that, a range would silently
             pick one and mislabel the other two. Defaults to the last 7 days — see DEFAULT_RANGE. */}
         <DateRangePicker
           value={range}
@@ -310,7 +310,7 @@ export function RestockWarehousePage() {
         />
 
         {/* BY PERSON — the role segment and the picker read as ONE control (owner), so they sit in one
-            bordered group the way the range picker carries its date-type segment.
+            bordered group.
 
             THE ROLE DECIDES WHO IS OFFERED: the people who did THAT on this warehouse's restocks
             (a-who-filter-lists-the-people-on-its-rows), answered by inventory_service. "Raised by" is
@@ -324,9 +324,9 @@ export function RestockWarehousePage() {
 
             "Counted by" also implies an accepted restock: nobody counted an ongoing one, so pairing it
             with the Ongoing tab returns nothing. That is the honest answer, not a fault. */}
-        {/* ONE FORM GROUP: [ Raised by ▾ │ 🔍 person ]. The same shape DateRangePicker uses for its
-            date-field segment — an outer bordered Flex, a ghost Menu button with square corners, a
-            1px divider, and the real control with its own border dropped (`flush`). Two separate
+        {/* ONE FORM GROUP: [ Raised by ▾ │ 🔍 person ] — an outer bordered Flex, a ghost Menu button with square
+            corners, a 1px divider, and the real control with its own border dropped (`flush`). (DateRangePicker had
+            this shape for its date type until that moved inside its panel.) Two separate
             bordered boxes read as two independent filters; one box says the left half names what the
             right half is asking. */}
         <Flex

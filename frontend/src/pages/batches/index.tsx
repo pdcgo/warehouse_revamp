@@ -159,8 +159,8 @@ export function BatchesPage() {
           <NativeSelect.Indicator />
         </NativeSelect.Root>
 
-        {/* Date range on the Arrived or Expiring date (#217/#225) — the time-type segment and the window
-            live in one control now: find what came in, or expires, in a window. */}
+        {/* Date range on the Arrived or Expiring date (#217/#225) — the date type and the window are one control,
+            one panel (a-date-type-is-picked-inside-the-range-panel): find what came in, or expires, in a window. */}
         <DateRangePicker
           value={dateRange}
           testId="batches-date-range"

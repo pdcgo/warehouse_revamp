@@ -38,9 +38,10 @@ export const OpenEnded: Story = {
 
 export const Disabled: Story = { args: { value: { kind: "relative", days: 30 }, disabled: true } };
 
-// With `fields`, the trigger grows a leading segment choosing WHICH timestamp the window filters on
-// (#225) — so one control picks both the column and the range.
-export const WithATimeTypeSegment: Story = {
+// With `fields`, the panel opens on a Date row choosing WHICH timestamp the window filters on (#225), and the
+// trigger names it — one control, one panel, picks both the column and the range
+// (a-date-type-is-picked-inside-the-range-panel).
+export const WithADateType: Story = {
   args: {
     value: { kind: "relative", days: 7 },
     fields: [
@@ -49,6 +50,58 @@ export const WithATimeTypeSegment: Story = {
     ],
     field: "created",
     onFieldChange: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("range")).toHaveTextContent("Created · Last 7 days");
+
+    await userEvent.click(canvas.getByTestId("range"));
+    const arrived = await screen.findByTestId("range-field-arrived");
+    await waitFor(() => expect(arrived).toBeVisible());
+    await userEvent.click(arrived);
+
+    await expect(args.onFieldChange).toHaveBeenCalledWith("arrived");
+    // ⚠ PICKING A TYPE KEEPS THE PANEL OPEN — the window is the next thing to answer, so the panel waits for it.
+    await expect(screen.getByTestId("range-quick-7")).toBeVisible();
+    await expect(args.onChange).not.toHaveBeenCalled();
+  },
+};
+
+// One date type is SHOWN, not offered: the trigger and the panel name it, and there is no radio to pick.
+export const WithOneDateType: Story = {
+  args: {
+    value: { kind: "relative", months: 1 },
+    fields: [{ value: "moved", label: "Last moved" }],
+    field: "moved",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("range")).toHaveTextContent("Last moved · Last 1 month");
+
+    await userEvent.click(canvas.getByTestId("range"));
+    const field = await screen.findByTestId("range-field");
+    await waitFor(() => expect(field).toBeVisible());
+    await expect(field).toHaveTextContent("Last moved");
+    await expect(screen.queryByRole("radio")).toBeNull();
+  },
+};
+
+// A date type the screen offers but cannot filter on yet carries its ⚠ beside its label, inside the pill.
+export const ADateTypeCanCarryAMark: Story = {
+  args: {
+    value: ALL_DATES,
+    fields: [
+      { value: "created", label: "Created" },
+      { value: "shipped", label: "Shipped", mark: <span data-testid="shipped-mark">⚠</span> },
+    ],
+    field: "created",
+    onFieldChange: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByTestId("range"));
+    const shipped = await screen.findByTestId("range-field-shipped");
+    await waitFor(() => expect(shipped).toBeVisible());
+    await expect(within(shipped).getByTestId("shipped-mark")).toBeInTheDocument();
   },
 };
 

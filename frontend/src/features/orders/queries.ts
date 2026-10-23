@@ -115,8 +115,10 @@ export function useOrderStat(args: {
   teamId: bigint | undefined;
   productId?: bigint;
   filters?: OrderFilters;
+  /** False holds the read — the seller's list asks only while its statistics are open. */
+  enabled?: boolean;
 }) {
-  const { teamId, productId = 0n, filters = NO_ORDER_FILTERS } = args;
+  const { teamId, productId = 0n, filters = NO_ORDER_FILTERS, enabled = true } = args;
 
   return useQuery({
     queryKey: key.orders(teamId, {
@@ -124,7 +126,7 @@ export function useOrderStat(args: {
       productId: productId.toString(),
       ...filterKey(filters),
     }),
-    enabled: teamId !== undefined,
+    enabled: enabled && teamId !== undefined,
     queryFn: () =>
       orderClient.orderStat({ teamId: teamId!, filter: { productId, ...filterMsg(filters) } }),
   });

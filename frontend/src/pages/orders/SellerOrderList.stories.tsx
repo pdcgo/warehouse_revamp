@@ -3,7 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, shops, teams, users } from "../../../.storybook/fixtures";
-import { orderExportScenario } from "../../../.storybook/sessionScenario";
+import { orderExportScenario, orderStatScenario } from "../../../.storybook/sessionScenario";
 import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
 
@@ -218,6 +218,8 @@ export const TheSummaryFollowsTheFilterBar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    await userEvent.click(await canvas.findByTestId("order-summary-toggle", {}, { timeout: 4000 }));
+
     // `pending` is the owner's name for what the contract still calls PLACED.
     const placed = OWN.filter((o) => o.status === OrderStatus.PENDING);
     await waitFor(() =>
@@ -236,26 +238,42 @@ export const TheSummaryFollowsTheFilterBar: Story = {
   },
 };
 
-// …and the TAB does the opposite, deliberately. It narrows the table only: the counts are what you
-// read to decide which tab to open next, so recomputing them per tab would empty the very number you
-// were about to click.
-export const ATabNarrowsTheTableButNeverTheCounts: Story = {
+// THE STATISTICS ARE SHUT, AND UNREAD, UNTIL ASKED (the-statistics-are-shut-and-read-when-opened). Entering the page asks
+// for the list and not for the census; opening the strip asks, and it then follows the filters; shut, nothing is drawn.
+// And the tabs carry no counts (the-status-tabs-carry-no-counts) — how many sit in each status is the strip's to say.
+export const TheStatisticsAreShutAndUnreadUntilOpened: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const before = canvas.getByTestId("orders-tab-count-pending");
-    await waitFor(() => expect(before).not.toHaveTextContent("0"));
-    const count = before.textContent;
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${OWN[0]!.id}`)).toBeInTheDocument(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("order-summary")).toBeNull();
+    await expect(canvas.queryByTestId(/^orders-tab-count-/)).toBeNull();
+    await expect(orderStatScenario.calls).toBe(0);
 
-    await userEvent.click(canvas.getByTestId("orders-tab-shipping"));
+    const toggle = canvas.getByTestId("order-summary-toggle");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(toggle);
+
+    await waitFor(() => expect(canvas.getByTestId("order-summary")).toBeInTheDocument());
+    await expect(orderStatScenario.calls).toBe(1);
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(toggle);
+    await waitFor(() => expect(canvas.queryByTestId("order-summary")).toBeNull());
+  },
+};
+
+// …and the TAB narrows the table only.
+export const ATabNarrowsTheTable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("orders-tab-shipping", {}, { timeout: 4000 }));
 
     const handedOver = OWN.find((o) => o.status === OrderStatus.SHIPPING)!;
     const placed = OWN.find((o) => o.status === OrderStatus.PENDING)!;
     await waitFor(() => expect(canvas.getByTestId(`order-row-${handedOver.id}`)).toBeInTheDocument());
     await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
-
-    // The Pending tab still says how many are waiting, from the tab you are standing on.
-    await expect(canvas.getByTestId("orders-tab-count-pending")).toHaveTextContent(count!);
   },
 };
 
@@ -295,6 +313,45 @@ export const TheDateWindowHidesTheOldOrder: Story = {
 
     await waitFor(() => expect(canvas.queryByTestId(`order-row-${old.id}`)).toBeNull());
     await expect(canvas.getByTestId(`order-row-${recent.id}`)).toBeInTheDocument();
+  },
+};
+
+// THE WINDOW CAN MEAN SEVEN DATES AND ASK ABOUT ONE (the-order-list-filters-by-seven-dates). Picked inside the panel
+// (a-date-type-is-picked-inside-the-range-panel), a status date keeps the panel open, is named on the trigger, kept in
+// the URL and given its date column — and, carrying its ⚠, sends NO window: the old order comes back rather than
+// being hidden by its created date while the trigger says Processed.
+const AtOrdersWithUrl = routedPage(
+  [{ path: "/orders", element: <><OrdersPage /><LocationProbe /></> }],
+  "/orders",
+);
+
+export const AStatusDateIsOfferedButNarrowsNothingYet: Story = {
+  render: () => <AtOrdersWithUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const old = OWN.find((o) => o.id === 108n)!; // 120 days back
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${old.id}`)).toBeInTheDocument(), { timeout: 4000 });
+
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("orders-date"));
+    const lastMonth = await screen.findByTestId("orders-date-quick-1m");
+    await waitFor(() => expect(lastMonth).toBeVisible());
+    await userEvent.click(lastMonth);
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${old.id}`)).toBeNull(), { timeout: 4000 });
+
+    await userEvent.click(controls.getByTestId("orders-date"));
+    const processed = await screen.findByTestId("orders-date-field-processed");
+    await waitFor(() => expect(processed).toBeVisible());
+    await expect(within(screen.getByTestId("orders-date-field-created")).queryByTestId(/^not-implemented-/)).toBeNull();
+    await expect(within(processed).getByTestId(/^not-implemented-/)).toBeInTheDocument();
+    await userEvent.click(processed);
+
+    await expect(screen.getByTestId("orders-date-quick-1m")).toBeVisible();
+    await waitFor(() => expect(controls.getByTestId("orders-date")).toHaveTextContent("Processed · Last 1 month"));
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("date=processed"));
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${old.id}`)).toBeInTheDocument(), { timeout: 4000 });
+    await waitFor(() => expect(canvas.getByRole("columnheader", { name: /processed on/i })).toBeInTheDocument());
   },
 };
 

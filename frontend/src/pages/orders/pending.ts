@@ -18,6 +18,7 @@ export type PendingId =
   | "warehouseFilter"
   | "mpDate"
   | "stageDate"
+  | "dateType"
   | "receiptCode"
   | "deadline"
   | "totalFee"
@@ -52,6 +53,11 @@ const PARTS: PendingPart<PendingId>[] = [
   // which is exactly "when did it enter this status" — but the timeline is populated by `OrderDetail` only, so
   // the fix here is not a new field, it is the list carrying the one row the filter asks about.
   { id: "stageDate", kind: "sample" },
+  // ⚠ THE DATE FILTER OFFERS SEVEN DATES AND CAN ASK ABOUT ONE (`the-order-list-filters-by-seven-dates`). `OrderListFilter`'s
+  // window is `created_at` and nothing else, so picking Tanggal order or a status date sends NO window at all — the list
+  // is honestly unnarrowed rather than narrowed by the wrong date. One cause, so one entry for the six marked pills: the
+  // order date needs a field (`mpDate`), the status dates need the filter to read the timeline (`stageDate`).
+  { id: "dateType", kind: "dropped" },
   // ⚠ THE COURIER IS STORED, THE TRACKING NUMBER IS NOT. `shipping_code` is the CARRIER (`jne`) and
   // `OrderReceipt` is the attached FILE — there is no field for the number printed on the slip,
   // which is the one thing a buyer chases an order by.

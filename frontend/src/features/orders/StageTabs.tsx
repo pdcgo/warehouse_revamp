@@ -1,23 +1,23 @@
-import { Badge, Flex, Tabs } from "@chakra-ui/react";
+import { Flex, Tabs } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { ALL_STAGE, ORDER_STAGES } from "./stages";
 
 // THE STATUS FILTER: one tab per status, plus All (one-tab-per-status), in the status diagram's order.
-// Every tab is a real status now (00015), so each carries its count — a 0 is a measurement.
+//
+// ⚠ NO COUNTS ON THE TABS (owner: *"tabs gaada angkanya"*, `the-status-tabs-carry-no-counts`). A count is a census read
+// on every visit and every filter change, for twelve badges somebody glances past on the way to a tab. How many orders
+// sit in each status is what the statistics answer — shut until asked (`the-statistics-are-shut-and-read-when-opened`).
 //
 // The seller's order list draws it. Drafts is not on it — the drafts are a list of their own, reached from the menu
 // (`the-drafts-are-a-list-of-their-own`). The warehouse's list draws its own steps.
 export function StageTabs({
   value,
   onSelect,
-  count,
 }: {
   /** The active tab: a stage id, or `ALL_STAGE`. */
   value: string;
   onSelect: (value: string) => void;
-  /** The badge for one tab. */
-  count: (value: string) => number;
 }) {
   const { t } = useTranslation();
 
@@ -44,13 +44,6 @@ export function StageTabs({
             data-testid={`orders-tab-${ALL_STAGE}`}
           >
             {t("orders.tab.allStatus")}
-            <Badge
-              size="xs"
-              variant="subtle"
-              data-testid={`orders-tab-count-${ALL_STAGE}`}
-            >
-              {count(ALL_STAGE)}
-            </Badge>
           </Tabs.Trigger>
 
           {ORDER_STAGES.map((stage) => (
@@ -62,9 +55,6 @@ export function StageTabs({
               data-testid={`orders-tab-${stage.id}`}
             >
               {t(`orders.stage.${stage.id}`)}
-              <Badge size="xs" variant="subtle" data-testid={`orders-tab-count-${stage.id}`}>
-                {count(stage.id)}
-              </Badge>
             </Tabs.Trigger>
           ))}
 

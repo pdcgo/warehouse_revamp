@@ -29,7 +29,7 @@ export interface UserSelectProps {
   // "who" filter is neither: it is PersonFilterSelect (a-who-filter-lists-the-people-on-its-rows).
   teamId?: bigint;
   // Drop the picker's OWN border and corner rounding so it can sit INSIDE a bordered group — a type
-  // segment fused to it, the way DateRangePicker fuses its date-field segment to its trigger. Without
+  // segment fused to it, as the restock list's [ Raised by ▾ │ person ] group has it. Without
   // it the group draws a box and the picker draws a second one inside it.
   //
   // The focus ring deliberately STAYS. It is the only thing that says which half of a fused control

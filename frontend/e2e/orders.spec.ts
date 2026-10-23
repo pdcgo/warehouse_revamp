@@ -628,6 +628,12 @@ test("Orders: the summary counts each stage and the tabs filter by it", async ({
   await page.goto("/orders");
   await expect(page.getByTestId("orders-table")).toBeVisible();
 
+  // The statistics are shut until asked (the-statistics-are-shut-and-read-when-opened), and the tabs carry no counts
+  // (the-status-tabs-carry-no-counts) — so the counts are read off the strip, opened.
+  await expect(page.getByTestId("order-summary")).toHaveCount(0);
+  await expect(page.getByTestId(/^orders-tab-count-/)).toHaveCount(0);
+  await page.getByTestId("order-summary-toggle").click();
+
   // The summary on the All tab: one card per stage plus the total, each a COUNT of orders ("N tx").
   // The 30-day tiles are gone (owner) — every figure follows the filter bar's date range instead.
   // Its lines are valued at an UNRECORDED HPP and the form takes no shipping cost, so the money is
@@ -637,20 +643,12 @@ test("Orders: the summary counts each stage and the tabs filter by it", async ({
   await expect(page.getByTestId("order-summary-row-cancel")).toContainText("1 tx");
   await expect(page.getByTestId("order-summary-row-shipped")).toContainText("0 tx");
 
-  // The tabs are the owner's stages: a fresh order is PENDING, a cancelled one CANCEL.
-  await expect(page.getByTestId("orders-tab-count-all")).toHaveText("2");
-  await expect(page.getByTestId("orders-tab-count-pending")).toHaveText("1");
-  await expect(page.getByTestId("orders-tab-count-cancel")).toHaveText("1");
-  await expect(page.getByTestId("orders-tab-count-shipped")).toHaveText("0");
-
-  // The tab narrows the TABLE and leaves the tab counts alone: the counts are what you read to decide
-  // which tab to open, so a tab that rewrote them would erase its own signpost.
+  // The tabs are the owner's stages: a fresh order is PENDING, a cancelled one CANCEL. The tab narrows the TABLE.
   await page.getByTestId("orders-tab-cancel").click();
   await expect(page.getByTestId(`order-row-${lifecycleOrderId}`)).toBeVisible();
   // One row, not two: the placed order is genuinely filtered out server-side rather than the tab
   // merely highlighting it.
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(1);
-  await expect(page.getByTestId("orders-tab-count-all")).toHaveText("2");
   // …while the SUMMARY follows the tab: it now reads the chosen stage's own figures.
   await expect(page.getByTestId("order-summary")).toHaveAttribute("data-pile", "cancel");
   await expect(page.getByTestId("order-summary-measure-tx")).toContainText("1");
@@ -674,6 +672,9 @@ test("Orders: the filter bar narrows the table AND the counts together", async (
   await page.goto("/orders");
   await expect(page.getByTestId("orders-table")).toBeVisible();
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(2);
+  // The counts are the statistics' — shut until opened (the-statistics-are-shut-and-read-when-opened).
+  await page.getByTestId("order-summary-toggle").click();
+  await expect(page.getByTestId("order-summary-total")).toContainText("2 tx");
 
   // Search for the cancelled order alone. The two customers share a prefix, so "lifecycle" is the
   // only term that separates them — which also makes this a real substring match rather than an
@@ -683,12 +684,12 @@ test("Orders: the filter bar narrows the table AND the counts together", async (
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(1);
   await expect(page.getByTestId(`order-row-${lifecycleOrderId}`)).toBeVisible();
 
-  // ⚠ The counts moved WITH the table. This is the assertion the whole test exists for: 2 → 1 on
-  // "All", and the placed order's tab down to 0, because the search is a filter on the screen rather
+  // ⚠ The counts moved WITH the table. This is the assertion the whole test exists for: 2 → 1 in the
+  // total, and the placed order's pile down to 0, because the search is a filter on the screen rather
   // than on the table alone.
-  await expect(page.getByTestId("orders-tab-count-all")).toHaveText("1");
-  await expect(page.getByTestId("orders-tab-count-pending")).toHaveText("0");
-  await expect(page.getByTestId("orders-tab-count-cancel")).toHaveText("1");
+  await expect(page.getByTestId("order-summary-total")).toContainText("1 tx");
+  await expect(page.getByTestId("order-summary-row-pending")).toContainText("0 tx");
+  await expect(page.getByTestId("order-summary-row-cancel")).toContainText("1 tx");
 
   // A term nothing matches says so AS A FILTER result, never as "no orders yet" — the second would
   // tell somebody their orders had vanished when they are one Clear away.
@@ -698,7 +699,7 @@ test("Orders: the filter bar narrows the table AND the counts together", async (
   // Clearing puts everything back — both the rows and the counts.
   await page.getByTestId("orders-filters-clear").click();
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(2);
-  await expect(page.getByTestId("orders-tab-count-all")).toHaveText("2");
+  await expect(page.getByTestId("order-summary-total")).toContainText("2 tx");
 
   // The date window, driven by the shared Grafana-style picker. Everything here was placed today, so
   // "Today" keeps both orders and a window that ENDED before today keeps none — which is what pins
@@ -714,7 +715,7 @@ test("Orders: the filter bar narrows the table AND the counts together", async (
   await page.getByTestId("shop-select").click();
   await page.getByTestId(/^shop-select-option-/).first().click();
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(2);
-  await expect(page.getByTestId("orders-tab-count-all")).toHaveText("2");
+  await expect(page.getByTestId("order-summary-total")).toContainText("2 tx");
 });
 
 // Opening an order FROM THE LIST, which is the way anybody actually reaches it — every other detail

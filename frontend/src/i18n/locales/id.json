@@ -212,6 +212,7 @@
     "lastNDays": "{{count}} hari terakhir",
     "absolute": "Rentang tanggal",
     "quick": "Rentang cepat",
+    "field": "Tanggal",
     "from": "Dari",
     "to": "Sampai",
     "apply": "Terapkan Rentang",
@@ -662,6 +663,7 @@
       "spend": "Nilai belanja",
       "margin": "Margin kotor",
       "total": "Total",
+      "toggle": "Statistik",
       "costNone_one": "Pesanan ini belum punya HPP atau harga MP-nya, jadi belum ada margin yang bisa ditampilkan.",
       "costNone_other": "Tidak satu pun dari {{total}} pesanan ini punya HPP sekaligus harga MP, jadi belum ada margin yang bisa ditampilkan.",
       "marginUnknown_one": "{{count}} dari {{total}} pesanan belum punya HPP atau harga MP-nya — margin di atas dihitung dari sisanya.",
@@ -713,6 +715,10 @@
       "stageDate": {
         "label": "Tanggal perubahan status",
         "reason": "Log status sudah punya bentuk yang tepat (jenis + kapan), tapi baru dikirim bersama detail pesanan — daftar ini belum bisa membaca kapan sebuah pesanan masuk ke status yang sedang difilter."
+      },
+      "dateType": {
+        "label": "Filter menurut tanggal order atau tanggal status",
+        "reason": "Rentang tanggal daftar ini hanya menyaring kapan pesanan dibuat. Tanggal order marketplace belum punya kolom, dan tanggal status ada di log status yang tidak bisa ditanya filter — jadi kalau salah satunya dipilih, rentangnya tidak menyaring apa pun."
       },
       "receiptCode": {
         "label": "Nomor resi",
@@ -897,6 +903,10 @@
     },
     "receiptColumn": "Resi",
     "placedMpColumn": "Tgl MP",
+    "dateType": {
+      "created": "Dibuat",
+      "mp": "Tanggal order"
+    },
     "stageDateColumn": "Tgl {{status}}",
     "totalMpColumn": "Total MP",
     "deadline": {

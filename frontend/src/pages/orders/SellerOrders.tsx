@@ -5,16 +5,19 @@ import {
   Badge,
   Box,
   Button,
+  Collapsible,
   Flex,
   Heading,
+  HStack,
   Icon,
+  Skeleton,
   Spacer,
   Stack,
   Table,
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { Download, Plus, SearchX, ShoppingCart, Upload } from "lucide-react";
+import { BarChart3, ChevronDown, Download, Plus, SearchX, ShoppingCart, Upload } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
@@ -23,11 +26,7 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useOrderCreators, useOrders, useOrderStat } from "../../features/orders/queries";
 import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
-import {
-  orderSummaryRows,
-  orderSummaryTotal,
-  summariseOrderStat,
-} from "../../features/orders/stat";
+import { orderSummaryRows, orderSummaryTotal } from "../../features/orders/stat";
 import { ALL_STAGE, ORDER_STAGES, orderStage, stageOfStatus } from "../../features/orders/stages";
 import { StageTabs } from "../../features/orders/StageTabs";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
@@ -96,6 +95,19 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const STAGE_CODEC = oneOfCodec<string>([ALL_STAGE, ...ORDER_STAGES.map((item) => item.id)]);
 const CREATOR_CODEC = optionalCodec(idCodec);
 
+// THE DATES THE WINDOW CAN MEAN (`the-order-list-filters-by-seven-dates`) — when it was created, the order date the form
+// asks for, and the FIRST time it entered each status a person asks "when" about. The others (Menunggu, Dikirim,
+// Bermasalah, Hilang, Retur diterima, Batal) are left out: nobody looks for "the orders that went missing last week" by
+// the day they went missing, and seven pills already wrap twice. Only `created` reaches the server — see `pending.ts`.
+const ORDER_DATE_TYPES = ["created", "mp", "processed", "picked", "shipping", "completed", "return"] as const;
+type OrderDateType = (typeof ORDER_DATE_TYPES)[number];
+const DATE_TYPE_CODEC = oneOfCodec<OrderDateType>([...ORDER_DATE_TYPES]);
+
+/** The status a date type is the entry into, or undefined for Dibuat and Tanggal order. */
+function dateTypeStage(type: OrderDateType) {
+  return type === "created" || type === "mp" ? undefined : orderStage(type);
+}
+
 // THE ORDERS LIST, WITH WHAT THE OWNER ASKED IT TO GROW — a PREVIEW (owner).
 //
 // This is `pages/orders/` plus four things, none of which has a backend yet:
@@ -137,8 +149,13 @@ export function SellerOrdersPage() {
   const [creatorId, setCreatorId] = useUrlState<bigint | undefined>("creator", undefined, CREATOR_CODEC);
   const [marketplace, setMarketplace] = useUrlState("market", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
+  const [dateType, setDateType] = useUrlState<OrderDateType>("date", "created", DATE_TYPE_CODEC);
 
   const [importing, setImporting] = useState(false);
+
+  // THE STATISTICS ARE SHUT UNTIL ASKED (owner, `the-statistics-are-shut-and-read-when-opened`) — page state, never the
+  // URL or storage: every visit opens on the list with the figures shut, and nothing is read for them until they open.
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const teamId = current?.teamId;
 
@@ -162,7 +179,10 @@ export function SellerOrdersPage() {
   const debouncedSearch = useDebounced(search.trim());
 
   const filters: OrderFilters = useMemo(() => {
-    const { fromUnix, toUnix } = resolveRange(range);
+    // ⚠ ONLY "DIBUAT" SENDS A WINDOW. `OrderListFilter` dates a created_at and nothing else, and sending the window for
+    // any other pick would narrow by the wrong date while the trigger named the right one — so it narrows nothing, and
+    // the pill's mark says so (`dateType` in pending.ts).
+    const { fromUnix, toUnix } = dateType === "created" ? resolveRange(range) : { fromUnix: 0n, toUnix: 0n };
 
     // ⚠ `warehouseId` is deliberately NOT here. There is nowhere on `OrderListFilter` to put it, and inventing a
     // field the server ignores would make the screen look wired while the rows stayed the same — the exact lie the
@@ -175,13 +195,17 @@ export function SellerOrdersPage() {
       createdByUserId: creatorId ?? 0n,
       marketplace,
     };
-  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId, marketplace]);
+  }, [debouncedSearch, shopId, canFilterByShop, range, dateType, creatorId, marketplace]);
 
   // The "created by" filter's people: everyone who typed in an order this team may list
   // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
   const creators = useOrderCreators({ teamId });
 
   const stage = orderStage(tab);
+
+  // WHICH STATUS THE EXTRA DATE COLUMN DATES. A status date type wins — it is the date the window is about, so the
+  // rows show it; with Dibuat or Tanggal order (both already columns) it is the tab's status, as before.
+  const dateStage = dateTypeStage(dateType) ?? stage;
 
   // A tab IS one status (one-tab-per-status), so it always narrows the table; All narrows nothing.
   const listStatus = stage ? stage.status : OrderStatus.UNSPECIFIED;
@@ -195,7 +219,9 @@ export function SellerOrdersPage() {
     status: listStatus,
     filters,
   });
-  const statQuery = useOrderStat({ teamId, filters });
+  // ⚠ READ ONLY WHILE OPEN. Shut, the census is not asked at all — entering the page costs the list and nothing else.
+  // Open, it follows the filter bar like the list does (its key carries the filters); shut again, it stops.
+  const statQuery = useOrderStat({ teamId, filters, enabled: statsOpen });
 
 
   // Any filter change restarts at page 1: the page number belongs to the old result set, and page 4
@@ -222,8 +248,6 @@ export function SellerOrdersPage() {
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
-  // `stat` survives for the TAB BADGES alone — the counts on the triggers, which every order screen
-  // feeds the same way.
   // ── WHOSE ORDER IS THIS: two lookups, only one of which ever runs ───────────────────────────────
   //
   // A selling team resolves SHOPS; a warehouse resolves TEAMS. Neither list carries the other's
@@ -281,11 +305,11 @@ export function SellerOrdersPage() {
   }
 
   function stageDateOf(createdAt: bigint, id: bigint) {
-    if (!stage) {
+    if (!dateStage) {
       return undefined;
     }
 
-    const on = mockStageOffset(id, stage.id);
+    const on = mockStageOffset(id, dateStage.id);
 
     return on === undefined ? undefined : createdAt + on;
   }
@@ -301,8 +325,6 @@ export function SellerOrdersPage() {
       ? { teamId: id, ...teamNames.get(id.toString()) }
       : undefined;
   }
-
-  const stat = summariseOrderStat(statQuery.data);
 
   // THE SUMMARY'S OWN READING of the same census, one row per status in tab order so the strip and
   // the tabs read down the page in the same sequence.
@@ -331,22 +353,6 @@ export function SellerOrdersPage() {
   const typistOf = useTypists(orders);
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
-
-  // The badge on a tab. A stage sums every proto status it covers, so `processed` reads three at once
-  // — the count is the one half of it the census CAN answer.
-  function tabCount(value: string): number {
-    if (value === ALL_STAGE) {
-      return ORDER_STAGES.reduce(
-        (sum, item) =>
-          sum + item.statuses.reduce((n, s) => n + stat.count(s), 0),
-        0,
-      );
-    }
-
-    const item = orderStage(value);
-
-    return item ? item.statuses.reduce((n, s) => n + stat.count(s), 0) : 0;
-  }
 
   if (!current) {
     return (
@@ -441,7 +447,7 @@ export function SellerOrdersPage() {
       </Flex>
 
       {/* The filter bar sits ABOVE the tabs, and the order is the meaning: these narrow which orders
-          exist for the whole screen — the tab counts included — while the tab picks one status out of
+          exist for the whole screen — the statistics included — while the tab picks one status out of
           what is left. A filter inside the tab panel would read as belonging to that tab alone.
 
           It is the shared FilterBar rather than a hand-rolled Flex: six controls is exactly the width
@@ -458,6 +464,7 @@ export function SellerOrdersPage() {
             setCreatorId(undefined);
             setMarketplace(Marketplace.UNSPECIFIED);
             setRange(ALL_DATES);
+            setDateType("created");
           })
         }
       >
@@ -528,13 +535,19 @@ export function SellerOrdersPage() {
           </FilterField>
         )}
 
-        {/* No `fields` segment: an order has exactly one date that means anything to the person
-            filtering — when it was placed. When fulfilment starts stamping picked_at / shipped_at,
-            THAT is when this grows a which-timestamp choice. */}
+        {/* WHICH DATE, THEN WHICH WINDOW — one panel (`a-date-type-is-picked-inside-the-range-panel`). Dibuat is real;
+            the order date and the status dates are offered with their ⚠, because the list cannot ask about them yet. */}
         <FilterField w="auto">
           <DateRangePicker
             value={range}
             onChange={(r) => refilter(() => setRange(r))}
+            fields={ORDER_DATE_TYPES.map((type) => ({
+              value: type,
+              label: type === "created" || type === "mp" ? t(`orders.dateType.${type}`) : t(`orders.stage.${type}`),
+              mark: type === "created" ? undefined : <NotImplemented list={ORDERS_LIST_PENDING} id="dateType" />,
+            }))}
+            field={dateType}
+            onFieldChange={(v) => refilter(() => setDateType(v))}
             testId="orders-date"
           />
         </FilterField>
@@ -542,7 +555,6 @@ export function SellerOrdersPage() {
 
       <StageTabs
         value={tab}
-        count={tabCount}
         onSelect={(value) => {
           setTab(value);
           setPage(1);
@@ -559,22 +571,52 @@ export function SellerOrdersPage() {
           ⚠ NO 30-DAY TILES any more. Every figure follows the filter bar's date range, so the screen
           has ONE window instead of two; the old pair was labelled "30d" while the filter silently
           narrowed them to whatever was picked. */}
-      <OrderSummary
-        rows={summaryRows}
-        total={summaryTotal}
-        selectedKey={tab}
-        badge={(row) => {
-          const item = orderStage(row.key);
+      {/* SHUT BY DEFAULT (`the-statistics-are-shut-and-read-when-opened`): a button under the tabs, and the strip is
+          mounted — and read — only while it is open. */}
+      <Collapsible.Root open={statsOpen} onOpenChange={(e) => setStatsOpen(e.open)} lazyMount unmountOnExit>
+        <Collapsible.Trigger asChild>
+          <Button variant="ghost" size="xs" alignSelf="flex-start" data-testid="order-summary-toggle">
+            <Icon as={BarChart3} boxSize="4" />
+            {t("orders.summary.toggle")}
+            <Icon
+              as={ChevronDown}
+              boxSize="4"
+              color="fg.muted"
+              transform={statsOpen ? "rotate(180deg)" : undefined}
+              transition="transform 120ms"
+            />
+          </Button>
+        </Collapsible.Trigger>
+        <Collapsible.Content>
+          <Box pt="card">
+            {statQuery.isPending ? (
+              // The first read after opening: the strip's shape, not a strip of zeros that reads as "nothing sold".
+              <HStack gap="card" role="status" aria-label={t("common.loading")} data-testid="order-summary-loading">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Skeleton key={i} h="20" flex="1" borderRadius="l2" />
+                ))}
+              </HStack>
+            ) : (
+              <OrderSummary
+                rows={summaryRows}
+                total={summaryTotal}
+                selectedKey={tab}
+                badge={(row) => {
+                  const item = orderStage(row.key);
 
-          return item ? <OrderStatusBadge status={item.status} /> : null;
-        }}
-        marks={
-          <>
-            <NotImplemented list={ORDERS_LIST_PENDING} id="summaryCost" />
-            <NotImplemented list={ORDERS_LIST_PENDING} id="summaryItems" />
-          </>
-        }
-      />
+                  return item ? <OrderStatusBadge status={item.status} /> : null;
+                }}
+                marks={
+                  <>
+                    <NotImplemented list={ORDERS_LIST_PENDING} id="summaryCost" />
+                    <NotImplemented list={ORDERS_LIST_PENDING} id="summaryItems" />
+                  </>
+                }
+              />
+            )}
+          </Box>
+        </Collapsible.Content>
+      </Collapsible.Root>
 
       <Tabs.Root value={tab}>
         <Tabs.Content value={tab}>
@@ -640,14 +682,14 @@ export function SellerOrdersPage() {
                           </Flex>
                         </Table.ColumnHeader>
 
-                        {/* ⚠ ONLY WHILE A STATUS IS FILTERED. "When did this ship" is a question you
-                          ask while looking at shipped orders; on every other tab the column would be
-                          blank, and a permanently blank column is one people stop reading. */}
-                        {stage && (
+                        {/* ⚠ ONLY WHILE A STATUS IS FILTERED — by its tab, or by the date filter's type. "When did
+                          this ship" is a question you ask while looking at shipped orders; on every other tab the
+                          column would be blank, and a permanently blank column is one people stop reading. */}
+                        {dateStage && (
                           <Table.ColumnHeader>
                             <Flex gap="1" align="center">
                               {t("orders.stageDateColumn", {
-                                status: t(`orders.stage.${stage.id}`),
+                                status: t(`orders.stage.${dateStage.id}`),
                               })}
                               <NotImplemented list={ORDERS_LIST_PENDING} id="stageDate" />
                             </Flex>
@@ -730,7 +772,7 @@ export function SellerOrdersPage() {
                               />
                             </Table.Cell>
 
-                            {stage && (
+                            {dateStage && (
                               <Table.Cell>
                                 <DateCell
                                   unix={stageDateOf(o.createdAtUnix, o.id)}

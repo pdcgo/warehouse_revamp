@@ -212,6 +212,7 @@
     "lastNDays": "Last {{count}} days",
     "absolute": "Absolute range",
     "quick": "Quick ranges",
+    "field": "Date",
     "from": "From",
     "to": "To",
     "apply": "Apply Range",
@@ -668,6 +669,7 @@
       "spend": "Purchase value",
       "margin": "Gross margin",
       "total": "Total",
+      "toggle": "Statistics",
       "costNone_one": "This order is missing a cost or a marketplace figure, so there is no margin to show.",
       "costNone_other": "None of these {{total}} orders has both a cost and a marketplace figure, so there is no margin to show.",
       "marginUnknown_one": "{{count}} of {{total}} orders is missing a cost or a marketplace figure — the margin above is taken over the rest.",
@@ -719,6 +721,10 @@
       "stageDate": {
         "label": "Status change date",
         "reason": "The order's timeline already records when it entered each status, but the timeline is only sent with an order's detail — the list cannot read when an order entered the status you are filtering by."
+      },
+      "dateType": {
+        "label": "Filtering by order date or a status date",
+        "reason": "The list's date window filters on when an order was created and nothing else. The marketplace order date has no field, and the status dates sit in the timeline, which the filter cannot ask — so with one of those picked, the window narrows nothing."
       },
       "receiptCode": {
         "label": "Tracking number",
@@ -903,6 +909,10 @@
     },
     "receiptColumn": "Tracking no.",
     "placedMpColumn": "MP date",
+    "dateType": {
+      "created": "Created",
+      "mp": "Order date"
+    },
     "stageDateColumn": "{{status}} on",
     "totalMpColumn": "MP total",
     "deadline": {

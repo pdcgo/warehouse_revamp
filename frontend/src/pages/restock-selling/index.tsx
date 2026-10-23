@@ -289,8 +289,8 @@ export function RestockSellingPage() {
             onChange={(id) => refilter(() => setAcceptedByFilter(id ?? 0n))}
           />
         </Box>
-        {/* The range picker carries the DATE TYPE itself (#224): its `fields` segment chooses which
-            of a restock's three timestamps the window filters on. Without that, a range would
+        {/* The range picker carries the DATE TYPE itself (#224): its `fields` row, inside the panel, chooses which
+            of a restock's timestamps the window filters on. Without that, a range would
             silently pick one and mislabel the other two. */}
         <DateRangePicker
           value={range}

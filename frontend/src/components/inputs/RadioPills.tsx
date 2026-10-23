@@ -1,11 +1,14 @@
+import type { ReactNode } from "react";
 import { HStack, RadioCard } from "@chakra-ui/react";
 
 export const description =
-  "One choice among two to four, on a form: rounded pills, each with its radio mark and its label, the chosen one drawn in the main tone. A radio, not a segmented switch — it reads as a field to answer, and each option keeps its own width. Emits the option's value.";
+  "One choice among two to four, on a form: rounded pills, each with its radio mark and its label, the chosen one drawn in the main tone. A radio, not a segmented switch — it reads as a field to answer, and each option keeps its own width. Emits the option's value. An option may carry a `mark` (a ⚠ after its label) for a choice the screen holds but cannot act on yet.";
 
 export interface RadioPillOption<V extends string> {
   value: V;
   label: string;
+  /** A ⚠ after the label — an option the screen holds but cannot act on yet (`features/pending`). */
+  mark?: ReactNode;
   testId?: string;
 }
 
@@ -44,6 +47,7 @@ export function RadioPills<V extends string>({ value, onChange, options, ariaLab
             <RadioCard.ItemControl px="3" py="1.5" gap="2" alignItems="center">
               <RadioCard.ItemIndicator />
               <RadioCard.ItemText>{option.label}</RadioCard.ItemText>
+              {option.mark}
             </RadioCard.ItemControl>
           </RadioCard.Item>
         ))}

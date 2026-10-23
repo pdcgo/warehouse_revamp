@@ -24,6 +24,9 @@ each old heading there now points here.
 | [shipping-is-cyan-and-picked-is-sky](#shipping-is-cyan-and-picked-is-sky) | picked joins processed in sky; shipping, the handover, gets its own cyan |
 | [pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed) | return completed is pink, *Retur Diterima*'s colour; return is red |
 | [the-order-import-moves-statuses-only](#the-order-import-moves-statuses-only) | the order list's Import moves statuses only; payouts and withdrawals come from Settlement Imports |
+| [the-order-list-filters-by-seven-dates](#the-order-list-filters-by-seven-dates) | the date filter can mean Dibuat, Tanggal order, or the first entry into Diproses, Sudah diambil, Sudah diserahkan, Selesai or Retur; only Dibuat reaches the server, the rest carry a ⚠ |
+| [the-status-tabs-carry-no-counts](#the-status-tabs-carry-no-counts) | the order list's status tabs carry no counts — how many sit in each status is the statistics' to say |
+| [the-statistics-are-shut-and-read-when-opened](#the-statistics-are-shut-and-read-when-opened) | the statistics open shut on every visit, are read only once opened and then follow the filters; open or shut is page state, never kept |
 
 ## status-colours-are-carried-over-verbatim
 
@@ -563,3 +566,72 @@ flowchart LR
 | the `withdrawal` pending entry | **stays** — it no longer explains the dialog, but it still explains a completed order's **Edit Withdrawal**: settlement records withdrawals per shop, so an order still has no withdrawal figure ([finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) waits on the same figure). The strip stays at 12 |
 | the status half | still not built, and which marketplace status maps to which of ours is not decided |
 | ✅ built *(2026-10-21)* | the dialog line in [ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx). The stale reasons found with it — the list's Export and Withdrawal, the order detail's Withdrawal — now say what is true |
+
+## the-order-list-filters-by-seven-dates
+
+> Owner, in chat (2026-10-23): *"di order list, filter tanggal bisa saja by tipe tanggal dari timeline"*, then, of the dates
+> an order has: *"created_at, order date seperti di form bisa dan per status"* — and *"oke, begitu saja"* to a short status
+> list, dated by the first entry into each, picked inside the range panel
+> ([a-date-type-is-picked-inside-the-range-panel](context_decision.md#a-date-type-is-picked-inside-the-range-panel)).
+
+```mermaid
+flowchart LR
+  P["the range panel - Tanggal row"] --> C["Dibuat"]
+  P --> M["Tanggal order ⚠"]
+  P --> S["Diproses · Sudah diambil · Sudah diserahkan · Selesai · Retur ⚠"]
+  C --> W["the window is sent - created_at"]
+  M --> N["no window is sent - the list is not narrowed"]
+  S --> N
+  S --> K["the extra date column dates that status"]
+```
+
+| | |
+| --- | --- |
+| the types | **Dibuat** (`created_at`), **Tanggal order** (the date the form asks for), and the first entry into **Diproses, Sudah diambil, Sudah diserahkan, Selesai, Retur** — the statuses a person asks *when* about. Menunggu, Dikirim, Bermasalah, Hilang, Retur diterima and Batal are left out: seven pills already wrap twice |
+| a status's date | the FIRST time the order entered it — an order bounced back into Diproses keeps the day it was first processed |
+| what reaches the server | **Dibuat only.** `OrderListFilter` dates `created_at` and nothing else, so any other type sends **no window** — the list is honestly unnarrowed rather than narrowed by the wrong date while the trigger names the right one |
+| the ⚠ | one pending entry, `dateType` (dropped), on all six pills: the order date needs a field (`mpDate`), the status dates need the filter to read the timeline (`stageDate`) |
+| the date column | a status type gets the *Tgl {status}* column (sampled, `stageDate`), as a status tab already did; with Dibuat or Tanggal order — both columns already — it follows the tab |
+| the URL | `?date=<type>`, default `created` ([a-lists-filters-live-in-the-url](context_decision.md#a-lists-filters-live-in-the-url)); Hapus Filter puts it back to Dibuat. A type with no window is not counted as a filter — it narrows nothing |
+| ✅ built *(2026-10-23)* | [SellerOrders.tsx](../../../frontend/src/pages/orders/SellerOrders.tsx), the story `AStatusDateIsOfferedButNarrowsNothingYet` |
+
+## the-status-tabs-carry-no-counts
+
+> Owner, in chat (2026-10-23), on the order list: *"tabs gaada angkanya"*.
+
+```
+before   Semua Status 9 · Menunggu 2 · Diproses 3 · …      a census read on every visit, for twelve badges
+after    Semua Status · Menunggu · Diproses · …            the tab picks a status, and only that
+```
+
+| | |
+| --- | --- |
+| the tabs | the label alone — no count badge on any of the twelve |
+| how many per status | the statistics' piles, once opened ([the-statistics-are-shut-and-read-when-opened](#the-statistics-are-shut-and-read-when-opened)) |
+| why | the counts were the one reason the census was read on every visit and every filter change; without them the page costs the list alone |
+| the warehouse's list | keeps its counted tabs ([warehouse_order_list_decision.md](warehouse_order_list_decision.md)) — said of the seller's list only |
+| ✅ built *(2026-10-23)* | `StageTabs` takes no `count`; the e2e read the counts off the opened strip |
+
+## the-statistics-are-shut-and-read-when-opened
+
+> Owner, in chat (2026-10-23), on the order list: *"statistic collapsed default, tidak panggil api dari awal, saat masuk ke
+> page dan baru panggil api dan reaktif saat dibuka, tidak simpan statenya, state cuma di halaman"*.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Shut: entering the page - no census read
+  Shut --> Open: Statistik
+  Open --> Open: a filter or the tab changes - read again
+  Open --> Shut: Statistik
+  Shut --> [*]: leaving - nothing kept
+```
+
+| | |
+| --- | --- |
+| the control | a **Statistik** button with its chart icon and a chevron, under the status tabs; the strip opens below it |
+| entering the page | shut, and **OrderStat is not asked** — only the list is read |
+| opened | the census is read (a skeleton of cards until it lands) and then follows the filter bar and the tab, as the list does |
+| shut again | the strip unmounts and the read stops |
+| where open/shut lives | **page state only** — not the URL, not storage; every visit opens shut, a refresh included |
+| the ⚠ marks | the strip's two (`summaryCost`, `summaryItems`) show only while it is open; the folded summary at the top still lists them |
+| ✅ built *(2026-10-23)* | [SellerOrders.tsx](../../../frontend/src/pages/orders/SellerOrders.tsx) (`useOrderStat` gained `enabled`), the story `TheStatisticsAreShutAndUnreadUntilOpened` counts the census calls |

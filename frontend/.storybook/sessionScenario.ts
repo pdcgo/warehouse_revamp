@@ -34,12 +34,19 @@ export const orderExportScenario = {
   last: undefined as undefined | { view: number; status: number; orderIds: bigint[]; rows: number },
 };
 
+/**
+ * How many times the order census (OrderStat) was asked — so a story can pin that the seller's list reads its
+ * statistics only once they are opened (the-statistics-are-shut-and-read-when-opened).
+ */
+export const orderStatScenario = { calls: 0 };
+
 export function resetSessionScenario() {
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
   sessionScenario.memberOf = null;
   sessionScenario.teamNames = {};
   teamCreateScenario.last = undefined;
   orderExportScenario.last = undefined;
+  orderStatScenario.calls = 0;
 }
 
 /** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */
