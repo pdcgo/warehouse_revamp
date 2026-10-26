@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { fromHere } from "../../../lib/cameFrom";
 import { Badge, Box, Button, Flex, HStack, Icon, Portal, SimpleGrid, Stack, Table, Text, Tooltip } from "@chakra-ui/react";
 import { Archive, Package, Pencil, Plus, RotateCcw, SearchX } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
@@ -30,6 +31,7 @@ import { formatRupiah } from "../../../lib/money";
 import { PRESSABLE } from "../../../lib/motion";
 import { RestoreProductDialog } from "../../../features/products/RestoreProductDialog";
 import { ProductLockControl } from "../../../features/products/ProductLock";
+import { QUIET_SALE_DAYS, STALE_STOCK_DAYS, daysAgo } from "../../../features/products/stockAge";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -221,17 +223,8 @@ function CrossCell({ markupBps }: { markupBps: number }) {
 // when stock last arrived is the second line of what is on its way (Dikirim). AS A DATE, not "3 hari yang lalu" (owner:
 // *"pakai tanggal aja, jangan beberapa hari lalu dsb, umur stok tetap hari"*, `a-row-date-reads-as-a-date`).
 
-/** Days on a shelf from which the oldest units read as stock that has stopped moving — the owner's to tune. */
-export const STALE_STOCK_DAYS = 60;
-/** Days without an order from which a product reads as quiet — the owner's to tune. */
-export const QUIET_SALE_DAYS = 30;
-
-const DAY_SECONDS = 86_400;
-
-/** Whole days from `unix` to now — never negative, so a clock a minute ahead does not read "-0 days". */
-function daysAgo(unix: bigint): number {
-  return Math.max(0, Math.floor((Date.now() / 1000 - Number(unix)) / DAY_SECONDS));
-}
+// The thresholds and the day count live in features/products/stockAge — the product page's tile reads them too.
+export { QUIET_SALE_DAYS, STALE_STOCK_DAYS } from "../../../features/products/stockAge";
 
 // HOW LONG THE OLDEST UNITS ON A SHELF HAVE SAT — the oldest batch still holding ready units (FIFO draws it next), in
 // days. Past STALE_STOCK_DAYS it is in the warning tone; the day it arrived is on its title.
@@ -374,6 +367,8 @@ export function ProductsTable({
   onCreate,
 }: ProductsTableProps) {
   const navigate = useNavigate();
+  // The list as it stands — handed to the form, so its Back returns here with the filters kept (the-form-returns-where-it-was-opened).
+  const location = useLocation();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -558,7 +553,7 @@ export function ProductsTable({
               size="xs"
               variant="outline"
               data-testid={`edit-${product.sku}`}
-              onClick={() => navigate(`/products/${product.id}/edit`)}
+              onClick={() => navigate(`/products/${product.id}/edit`, { state: fromHere(location) })}
             >
               <Icon as={Pencil} boxSize="4" />
               {t("products.edit")}

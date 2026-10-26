@@ -216,7 +216,7 @@ export function SuppliersPage() {
           icon={Factory}
           title={t("suppliers.empty")}
           description={canManage ? t("suppliers.emptyHint") : undefined}
-          action={canManage ? <SupplierFormDialog /> : undefined}
+          action={canManage ? <SupplierFormDialog testId="open-create-supplier-empty" /> : undefined}
           testId="suppliers-empty"
         />
       );

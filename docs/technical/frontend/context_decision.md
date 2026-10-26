@@ -74,6 +74,8 @@ when it applies one of these.
 | [a-date-type-is-picked-inside-the-range-panel](#a-date-type-is-picked-inside-the-range-panel) | a date filter that can mean several dates picks WHICH date as radio pills at the top of its own panel, and the trigger names it — *Sudah diserahkan · 1 bulan terakhir*; it REPLACES the field segment of [a-date-range-filter-is-the-order-lists-picker](#a-date-range-filter-is-the-order-lists-picker) | [the order list](order_list_decision.md#the-order-list-filters-by-seven-dates), then every `DateRangePicker` with `fields` |
 | [a-limited-field-shows-its-count](#a-limited-field-shows-its-count) | a text field with a limit shows how much is used — **5/64** under it, at its end — and stops at the limit | [the product form](products_decision.md#a-taken-sku-is-said-under-the-sku), then every limited field as its screen is next touched |
 | [a-narrowed-page-stays-at-the-left](#a-narrowed-page-stays-at-the-left) | a page held narrower than the canvas — a form, a detail — stays at the canvas's LEFT edge; centring it was tried on the product form and withdrawn | every narrowed page |
+| [sticky-sticks-to-the-window](#sticky-sticks-to-the-window) | the desktop shell lets the window scroll, so `<main>` is `overflowX="clip"`, never `overflow="auto"` — anything else made every sticky header inside a page never stick | every desktop page |
+| [a-nav-jump-blinks-where-it-lands](#a-nav-jump-blinks-where-it-lands) | a detail page's section nav scrolls to the clicked section and that card BLINKS — a pale tint of the main tone, once, no ring or border | the product page and the order detail, every page on the shared `SectionNav` |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1636,6 +1638,48 @@ SKU *
 | the rule | a page whose root is held to a `maxW` narrower than the canvas keeps it at the **left edge** — no `mx="auto"` |
 | why it is written down | centring was asked, built and withdrawn the same day; without this a later screen would propose it again |
 | applies to | the product form, the bundle form and detail, the restock request form, a warehouse's edit page — and every narrowed page after them |
+
+## sticky-sticks-to-the-window
+
+> Found on the product page (2026-10-24): *"di halaman asli yang heading stickynya tidak muncul"* — sticky in Storybook,
+> never in the app.
+
+| | |
+| --- | --- |
+| why | the desktop shell lets the **window** scroll (the sidebar sticks to it), so `<main>` grows with the page and never scrolls itself. `overflow: auto` on it still made it a SCROLL CONTAINER, and every `position: sticky` inside a page stuck to that box — which never moved — instead of the window: it never stuck |
+| the rule | the desktop `<main>` is `overflowX="clip"` — a page still cannot scroll sideways, and clip is not a scroll container |
+| what it fixed | the product page's sticky bar, the order detail's header, the stock count's and Accept Delivery's sticky blocks — all broken on a desktop, all fine in Storybook, where there is no shell |
+| the phone | unchanged — its shell is a fixed frame and `<main>` really scrolls, so sticky works against it |
+| where | [DesktopLayout.tsx](../../../frontend/src/layouts/desktop/DesktopLayout.tsx) |
+
+## a-nav-jump-blinks-where-it-lands
+
+> Owner, in chat (2026-10-26), on the product page: *"kalau navigate lewat navigasi di kiri, yang di klik kasih blink
+> highlight"*, then, on the first version (a ring in the main tone, twice): *"ga perlu border, jangan terlalu
+> mencolok"*.
+
+```mermaid
+sequenceDiagram
+  participant N as SectionNav
+  participant S as useScrollSpy
+  participant C as the section card
+  N->>S: a click on a section
+  S->>C: scroll it into view
+  S->>S: wait for scrollend, or at once when nothing had to scroll
+  S->>C: set data-flash
+  C->>C: section-flash, 1.2s — a pale tint of the main tone comes up once and fades
+  S->>C: remove data-flash
+```
+
+| | |
+| --- | --- |
+| when | a click in the section nav — the desktop column or the phone's chips; never on scrolling |
+| what | the card it lands on takes a **pale tint** of the main tone (`brand.subtle`), **once**, and fades (`section-flash` in theme.ts, 1.2s) — so the eye finds the card it was taken to, most of all when the page cannot scroll far enough to put it at the top |
+| ⚠ not loud | **no ring, no border, no second pulse** — the card keeps its own grey border throughout. The first version ringed it in `brand.solid` twice and was too loud; a hint where you landed, not an alarm |
+| when it starts | once the jump has landed (`scrollend`), at once when nothing had to scroll, after the scroll lock at the latest |
+| a second click | restarts the blink |
+| where | `useScrollSpy` sets `data-flash`, `DetailSection`'s card animates on it — every page built on the shared kit gets it: the product page and the order detail today |
+| ✅ built *(2026-10-26)* | the product page's story `EverySectionIsOnThePage` waits for the blink and for it to end |
 
 ## Recorded elsewhere
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Button,
   Card,
@@ -26,6 +26,7 @@ import { useSaveProduct } from "../../features/products/queries";
 import { CategorySelect } from "../../components/pickers/CategorySelect";
 import { CharCount } from "../../components/inputs/CharCount";
 import { PRODUCT_LIMITS } from "../../features/products/limits";
+import { cameFrom } from "../../lib/cameFrom";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { formatMarkupValue, parseMarkupPercent } from "../../lib/markup";
 import { parseQuantity } from "../../lib/quantity";
@@ -43,11 +44,15 @@ export function ProductEditPage() {
   const { productId } = useParams<{ productId: string }>();
   const editing = productId !== undefined;
 
-  // Where Back and a successful Save go. EDITING returns to the product's own page, because that is
-  // the only place an edit can have been started from — you open a product, then change it — and
-  // landing on the list instead loses the thing you were working on and makes you find it again.
-  // CREATING has no detail page to return to, so it goes to the list, where the new row is.
-  const backTo = editing ? `/products/${productId}` : "/products";
+  // WHERE BACK AND A SUCCESSFUL SAVE GO — back to the screen the form was opened from (owner: *"kembalinya bisa ga baca
+  // route sebelumnya, kalau sebelumnya di detail maka ke situ, jika tidak ke list"*, `the-form-returns-where-it-was-opened`).
+  // Opened from the product's own page, it goes back there; from anywhere else — the list, a pasted link — to the list,
+  // and to the list AS IT WAS when that is where it came from, its filters and search kept.
+  const location = useLocation();
+  const from = cameFrom(location);
+  const detail = editing ? `/products/${productId}` : undefined;
+  const fromList = from !== undefined && (from === "/products" || from.startsWith("/products?"));
+  const backTo = from !== undefined && from === detail ? detail : fromList ? from : "/products";
   const { current } = useTeam();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -191,10 +196,10 @@ export function ProductEditPage() {
         title: editing ? t("products.toast.saved") : t("products.toast.created", { sku: record.sku }),
       });
 
-      // SAVE still goes to the list, while BACK returns to the product. They are different journeys:
-      // saving finishes the job and the list is where you see it landed among the others, whereas
-      // Back is "I did not mean to be here" and should undo the step that got you here.
-      void navigate("/products");
+      // SAVE GOES WHERE BACK GOES (owner: *"kembali di button edit samakan dengan yang atas routenya"*,
+      // `the-form-returns-where-it-was-opened`): to the screen the form was opened from — the product's page, or the
+      // list as it was. One destination per form, whichever button leaves it.
+      void navigate(backTo);
     } catch (err) {
       // A TAKEN SKU IS SAID UNDER THE SKU (owner). The server answers it with its own code — AlreadyExists, the only
       // one a product write gives for a duplicate (`dbError`) — so it is told apart from every other failure, which

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Flex, HStack, Stack, Table, Text } from "@chakra-ui/react";
+import { Flex, HStack, Stack, Table, Text } from "@chakra-ui/react";
 import { PackageOpen } from "lucide-react";
 
 import { GrowingPager } from "../../../components/chrome/GrowingPager";
@@ -11,9 +11,14 @@ import type { StockBatch as OwnerBatchRow } from "../../../gen/warehouse/invento
 import { useIsMobile } from "../../../layouts/shell";
 import { formatUnixDate } from "../../../lib/datetime";
 import { formatRupiah } from "../../../lib/money";
-import { LIGHTS_UP, WarehouseFilter, WarehouseNote } from "./parts";
+import { LIGHTS_UP } from "./parts";
 
-// The BATCH tab — one product's units from one delivery, each with its own frozen cost.
+// The BATCH section — one product's units from one delivery, each with its own frozen cost. Its card and title are the
+// page's (the-product-page-is-one-page-of-sections).
+//
+// ⚠ EVERY WAREHOUSE, ALWAYS — never read through the page's warehouse picker (owner: *"karena batch datanya semua
+// gudang, tidak perlu difilter"*, `the-warehouse-picker-splits-the-page`). It is where the product came from, and each
+// row already names its warehouse; it sits above the picker for that reason.
 //
 // This is where "how much do I have, and where" is actually answered for a catalogue owner. Stock is
 // held per warehouse and a batch names which one, so the WAREHOUSE is a column on every row rather
@@ -22,19 +27,13 @@ import { LIGHTS_UP, WarehouseFilter, WarehouseNote } from "./parts";
 
 const PAGE_SIZE = 20;
 
-export function BatchTab({
+export function BatchSection({
   teamId,
   productId,
-  warehouseId,
-  warehouseName,
-  onWarehouseChange,
   warehouseLabel,
 }: {
   teamId: bigint | undefined;
   productId: bigint;
-  warehouseId: bigint;
-  warehouseName?: string;
-  onWarehouseChange: (id: bigint) => void;
   warehouseLabel: (id: bigint) => string;
 }) {
   const { t } = useTranslation();
@@ -42,8 +41,13 @@ export function BatchTab({
 
   const [page, setPage] = useState(1);
 
-  const batches = useOwnerBatches({ teamId, productId, warehouseId, page, pageSize: PAGE_SIZE });
+  const batches = useOwnerBatches({ teamId, productId, warehouseId: 0n, page, pageSize: PAGE_SIZE });
   const rows = batches.data?.batches ?? [];
+
+  // ON PAGE 1, A LIST THAT FITS HAS NO PAGER (owner: *"harga modal dan batch tidak ada paginasi kalau jumlah datanya kurang
+  // dari limit, di halaman 1 ya"*, `a-short-section-hides-its-pager`) — inside a section of the product's page, "1" and
+  // two dead arrows under three rows are furniture. From page 2 on it always shows, so the way back is never lost.
+  const fits = page === 1 && (batches.data?.totalItems ?? 0) <= PAGE_SIZE;
 
   // Unknown cost is Unknown, never Rp 0 (#74) — and the value goes with it.
   const unitCost = (b: OwnerBatchRow) =>
@@ -64,7 +68,7 @@ export function BatchTab({
           size="sm"
           icon={PackageOpen}
           title={t("products.detail.batchEmpty")}
-          description={warehouseId > 0n ? t("products.detail.emptyInWarehouse") : t("products.detail.batchEmptyHint")}
+          description={t("products.detail.batchEmptyHint")}
           testId="pd-batch-empty"
         />
       );
@@ -129,28 +133,10 @@ export function BatchTab({
   }
 
   return (
-    <Card.Root>
-      <Card.Body>
         <Stack gap="card">
-          <Flex gap="card" align="flex-end" justify="space-between" wrap="wrap">
-            <Stack gap="0.5">
-              <Text fontWeight="medium">{t("products.detail.batchHeading")}</Text>
-              <Text fontSize="sm" color="fg.muted">
-                {t("products.detail.batchHelp")}
-              </Text>
-            </Stack>
-
-            <WarehouseFilter
-              value={warehouseId}
-              onChange={(id) => {
-                onWarehouseChange(id);
-                setPage(1);
-              }}
-              testId="pd-batch-warehouse-filter"
-            />
-          </Flex>
-
-          <WarehouseNote warehouseId={warehouseId} warehouseName={warehouseName} />
+          <Text fontSize="sm" color="fg.muted">
+            {t("products.detail.batchHelp")}
+          </Text>
 
           <RefreshOverlay busy={batches.isFetching && !batches.isPending}>{list()}</RefreshOverlay>
 
@@ -161,18 +147,19 @@ export function BatchTab({
               })}
             </Text>
 
-            {/* THE PAGES GROW AS THEY ARE OPENED (every-list-pages-with-the-growing-pager). */}
-            <GrowingPager
-              page={page}
-              onPageChange={setPage}
-              hasNext={batches.isPlaceholderData ? undefined : page * PAGE_SIZE < (batches.data?.totalItems ?? 0)}
-              resetKey={warehouseId.toString()}
-              pageSize={PAGE_SIZE}
-              testId="pd-batch-pager"
-            />
+            {/* THE PAGES GROW AS THEY ARE OPENED (every-list-pages-with-the-growing-pager) — and only when there is
+                more than one page to open (a-short-section-hides-its-pager). */}
+            {!fits && (
+              <GrowingPager
+                page={page}
+                onPageChange={setPage}
+                hasNext={batches.isPlaceholderData ? undefined : page * PAGE_SIZE < (batches.data?.totalItems ?? 0)}
+                resetKey="all"
+                pageSize={PAGE_SIZE}
+                testId="pd-batch-pager"
+              />
+            )}
           </Flex>
         </Stack>
-      </Card.Body>
-    </Card.Root>
   );
 }

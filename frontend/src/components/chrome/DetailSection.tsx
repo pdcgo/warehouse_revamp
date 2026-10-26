@@ -2,9 +2,13 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Box, Card, Flex, Heading, Icon, Spacer, Stack, Text } from "@chakra-ui/react";
 
-// ONE SECTION OF THE ORDER, AS A CARD.
+export const description =
+  "One section of a detail page, as a card: an icon and a title (the same icon its `SectionNav` item shows), the ⚠ marks beside the title, an action at the far edge, then the content. `SectionEmpty` is what a section says when it has nothing — a sentence, never a blank card; `Fact` is a labelled value that shows — when absent. A detail page is one page of these, with a SectionNav beside them, never tabs.";
+
+// ONE SECTION OF A DETAIL PAGE, AS A CARD — the order detail first, then the product's page (owner: *"untuk detail
+// kurang lebih aku ingin mirip dengan order detail"*), which is when it moved here from the order detail's folder.
 //
-// ⚠ SEVEN SECTIONS DOWN ONE PAGE, NOT THREE TABS (owner). The built detail page files the same facts
+// ⚠ SEVEN SECTIONS DOWN ONE PAGE, NOT THREE TABS (owner, on the order detail). The built detail page files the same facts
 // under Info / Timeline / Settlement, and the owner described a single column: info, items, timeline,
 // shipping, recipient, withdrawal. The difference is not cosmetic — a tab asks the reader to know
 // which drawer a fact is in, and the question this screen answers ("what happened with this order")
@@ -24,9 +28,9 @@ export function Section({
   children,
   testId,
 }: {
-  /** The DOM id the left navigation scrolls to — `sectionDomId(key)`. */
+  /** The DOM id the left navigation scrolls to. */
   id?: string;
-  /** The section's icon — `sectionIcon(key)`, the same one its nav item shows. */
+  /** The section's icon — the same one its nav item shows. */
   icon?: LucideIcon;
   title: string;
   /**
@@ -44,11 +48,14 @@ export function Section({
   return (
     // ⚠ `scrollMarginTop` CLEARS THE STICKY HEADER. Without it a jump from the nav lands the section's
     // title UNDER the header, so the click appears to have scrolled to the wrong place. The header's
-    // height is measured by the page and published as `--order-header-h`, because it grows when the
+    // height is measured by the page and published as `--detail-header-h`, because it grows when the
     // actions wrap onto a second line.
     <Card.Root
       id={id}
-      scrollMarginTop="calc(var(--order-header-h, 0px) + 1rem)"
+      scrollMarginTop="calc(var(--detail-header-h, 0px) + 1rem)"
+      // A NAV CLICK LANDS HERE AND BLINKS (a-nav-jump-blinks-where-it-lands) — a soft tint of the main tone comes up and
+      // fades, once, no ring; useScrollSpy sets `data-flash` once the jump has landed.
+      css={{ "&[data-flash]": { animationName: "section-flash", animationDuration: "1.2s", animationTimingFunction: "ease-out" } }}
       data-testid={testId}
     >
       <Card.Body>

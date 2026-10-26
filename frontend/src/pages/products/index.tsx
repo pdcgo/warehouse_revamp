@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { fromHere } from "../../lib/cameFrom";
 import { Badge, Box, Button, Flex, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
 import { Archive, ArrowLeft, Plus } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -54,6 +55,7 @@ const AGE_CODEC = optionalCodec(oneOfCodec(AGE_FILTERS));
 export function ProductsPage({ archived = false }: { archived?: boolean }) {
   const { current } = useTeam();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -121,7 +123,8 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
     );
   }
 
-  const openCreate = () => navigate("/products/new");
+  // The list as it stands rides along, so the form's Back returns to it filtered (the-form-returns-where-it-was-opened).
+  const openCreate = () => navigate("/products/new", { state: fromHere(location) });
   const openArchive = () => navigate("/products/archived");
 
   return (

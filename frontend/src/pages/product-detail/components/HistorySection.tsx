@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Flex, Stack, Text } from "@chakra-ui/react";
+import { Flex, Stack, Text } from "@chakra-ui/react";
 import { History } from "lucide-react";
 
 import { GrowingPager } from "../../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { MovementTable, type MovementRow } from "../../../features/inventory/MovementTable";
 import { useOwnerStockHistory } from "../../../features/products/queries";
-import { WarehouseFilter, WarehouseNote } from "./parts";
 
-// The STOCK HISTORY tab — every movement of this product: what arrived, what shipped, what was
-// counted, adjusted, damaged or found, newest first. The Batch tab says what the owner HAS; this says
-// how it got that way, which is the tab somebody opens when a number looks wrong.
+// The STOCK HISTORY section — every movement of this product: what arrived, what shipped, what was
+// counted, adjusted, damaged or found, newest first. The Batch section says what the owner HAS; this says
+// how it got that way, which is the section somebody reads when a number looks wrong. Its card, title and the
+// warehouse lens are the page's (the-product-page-is-one-page-of-sections).
 //
 // The columns are deliberately NOT the warehouse's (#209/#232). That table carries a Place — the shelf
 // a movement touched — because moving between two shelves is the warehouse's whole job. A catalogue
@@ -21,24 +21,29 @@ import { WarehouseFilter, WarehouseNote } from "./parts";
 
 const PAGE_SIZE = 20;
 
-export function HistoryTab({
+export function HistorySection({
   teamId,
   productId,
   warehouseId,
-  warehouseName,
-  onWarehouseChange,
   warehouseLabel,
 }: {
   teamId: bigint | undefined;
   productId: bigint;
+  /** The page's warehouse lens — 0n is everywhere. */
   warehouseId: bigint;
-  warehouseName?: string;
-  onWarehouseChange: (id: bigint) => void;
   warehouseLabel: (id: bigint) => string;
 }) {
   const { t } = useTranslation();
 
   const [page, setPage] = useState(1);
+
+  // A NEW LENS IS A NEW SET OF ROWS, so page 2 of the old one means nothing — the page's warehouse picker changed it,
+  // and the section starts again at page 1 (state adjusted during render, React's own pattern for a prop that resets it).
+  const [lens, setLens] = useState(warehouseId);
+  if (lens !== warehouseId) {
+    setLens(warehouseId);
+    setPage(1);
+  }
 
   const history = useOwnerStockHistory({ teamId, productId, warehouseId, page, pageSize: PAGE_SIZE });
 
@@ -60,29 +65,15 @@ export function HistoryTab({
     [history.data],
   );
 
+  // ON PAGE 1, A LIST THAT FITS HAS NO PAGER (`a-short-section-hides-its-pager`, then owner: *"yang masih ada di riwayat
+  // stok"*) — the rule Price and Batch already follow. From page 2 on it always shows, so the way back is never lost.
+  const fits = page === 1 && (history.data?.totalItems ?? 0) <= PAGE_SIZE;
+
   return (
-    <Card.Root>
-      <Card.Body>
         <Stack gap="card">
-          <Flex gap="card" align="flex-end" justify="space-between" wrap="wrap">
-            <Stack gap="0.5">
-              <Text fontWeight="medium">{t("products.detail.historyHeading")}</Text>
-              <Text fontSize="sm" color="fg.muted">
-                {t("products.detail.historyHelp")}
-              </Text>
-            </Stack>
-
-            <WarehouseFilter
-              value={warehouseId}
-              onChange={(id) => {
-                onWarehouseChange(id);
-                setPage(1);
-              }}
-              testId="pd-history-warehouse-filter"
-            />
-          </Flex>
-
-          <WarehouseNote warehouseId={warehouseId} warehouseName={warehouseName} />
+          <Text fontSize="sm" color="fg.muted">
+            {t("products.detail.historyHelp")}
+          </Text>
 
           <RefreshOverlay busy={history.isFetching && !history.isPending}>
             <MovementTable
@@ -104,19 +95,20 @@ export function HistoryTab({
             />
           </RefreshOverlay>
 
-          {/* THE PAGES GROW AS THEY ARE OPENED (every-list-pages-with-the-growing-pager). */}
-          <Flex justify="flex-end">
-            <GrowingPager
-              page={page}
-              onPageChange={setPage}
-              hasNext={history.isPlaceholderData ? undefined : page * PAGE_SIZE < (history.data?.totalItems ?? 0)}
-              resetKey={warehouseId.toString()}
-              pageSize={PAGE_SIZE}
-              testId="pd-history-pager"
-            />
-          </Flex>
+          {/* THE PAGES GROW AS THEY ARE OPENED (every-list-pages-with-the-growing-pager) — and only when there is
+              more than one page to open (a-short-section-hides-its-pager). */}
+          {!fits && (
+            <Flex justify="flex-end">
+              <GrowingPager
+                page={page}
+                onPageChange={setPage}
+                hasNext={history.isPlaceholderData ? undefined : page * PAGE_SIZE < (history.data?.totalItems ?? 0)}
+                resetKey={warehouseId.toString()}
+                pageSize={PAGE_SIZE}
+                testId="pd-history-pager"
+              />
+            </Flex>
+          )}
         </Stack>
-      </Card.Body>
-    </Card.Root>
   );
 }

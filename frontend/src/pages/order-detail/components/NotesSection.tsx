@@ -6,7 +6,7 @@ import { Cog, Pencil, UserRound } from "lucide-react";
 
 import { formatUnixDateTime } from "../../../lib/datetime";
 import type { OrderNote } from "../notesMock";
-import { SectionEmpty } from "./Section";
+import { SectionEmpty } from "../../../components/chrome/DetailSection";
 
 // THE ORDER'S NOTES — a list, two kinds, and the person's ones editable (owner: *"catatan harusnya bisa
 // diedit, catatan bisa lebih dari 1 dan catatan itu ada tipenya, dari sistem dan dari user"*).

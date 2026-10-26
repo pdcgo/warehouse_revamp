@@ -40,12 +40,12 @@ import { formatRupiah } from "../../lib/money";
 import { mockDeadline } from "../../features/orders/deadlineMock";
 import { mockReceiptCode } from "../../features/orders/rowMock";
 import { DeadlineCell } from "../../features/orders/OrderRowCells";
-import { Fact, Section, SectionEmpty } from "./components/Section";
+import { Fact, Section, SectionEmpty } from "../../components/chrome/DetailSection";
 import { OrderActionBar } from "./components/OrderActionBar";
-import { SectionNav } from "./components/SectionNav";
-import { sectionDomId, sectionIcon } from "./sections";
+import { SectionNav } from "../../components/chrome/SectionNav";
+import { SECTION_KEYS, SECTIONS, sectionDomId, sectionIcon } from "./sections";
 import type { SectionKey } from "./sections";
-import { useScrollSpy } from "./useScrollSpy";
+import { useScrollSpy } from "../../lib/useScrollSpy";
 import { useIsMobile } from "../../layouts/shell";
 import { MoneyBreakdown } from "./components/MoneyBreakdown";
 import { ORDER_DETAIL_PENDING } from "./pending";
@@ -148,16 +148,21 @@ export function SellerOrderDetailPage() {
   // ── The layout's own state. All of it before the early returns: hooks may not be conditional.
   const mobile = useIsMobile();
   // The side column only where there is room for it beside the nav: Chakra's `xl`.
-  const wide = useBreakpointValue({ base: false, xl: true }) ?? false;
+  // `ssr: false` READS THE SCREEN ON THE FIRST RENDER. By default the hook answers its `base` value first and the real
+  // one a frame later, so a wide screen painted the one-column layout — Info the full width, its picture large — and then
+  // jumped (owner, on the product page: *"ukuran gambarnya tidak konsisten, besar di awal dan jadi sesuai … tiba-tiba"*).
+  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
 
-  // THE STICKY HEADER'S HEIGHT, measured and published as `--order-header-h`. The sections' scroll
+  // THE STICKY HEADER'S HEIGHT, measured and published as `--detail-header-h`. The sections' scroll
   // margin and the nav's sticky offset both read it, so a jump lands the title just below the header
   // however tall the header has grown — it gains a line when the action buttons wrap, and on a phone
   // it carries the section chips too.
   const header = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
 
-  const { active, scrollTo } = useScrollSpy(order !== null, header, wide ? MAIN_COLUMN : undefined);
+  const { active, scrollTo } = useScrollSpy(order !== null, header, SECTION_KEYS, sectionDomId, wide ? MAIN_COLUMN : undefined);
+  // The nav's items — the short labels, translated (the card keeps its full title).
+  const navSections = SECTIONS.map((s) => ({ key: s.key, label: t(s.navKey), icon: s.icon }));
 
   useEffect(() => {
     const el = header.current;
@@ -549,7 +554,7 @@ export function SellerOrderDetailPage() {
       gap="section"
       animationStyle="enter"
       data-testid="order-detail-page"
-      style={{ ["--order-header-h" as string]: `${headerHeight}px` }}
+      style={{ ["--detail-header-h" as string]: `${headerHeight}px` }}
     >
       {/* THE HEADER IS THE ORDER ITSELF — its number, where it has got to, when it must be out, and
           what can be done to it — and it STAYS while the sections scroll under it. On a long page the
@@ -606,7 +611,15 @@ export function SellerOrderDetailPage() {
           </Flex>
 
           {/* On a phone the navigation lives IN the sticky block, as chips — there is no left. */}
-          {mobile && <SectionNav compact active={active} onSelect={scrollTo} />}
+          {mobile && (
+            <SectionNav
+              compact
+              sections={navSections}
+              ariaLabel={t("orderDetail.nav.label")}
+              active={active}
+              onSelect={scrollTo}
+            />
+          )}
         </Stack>
       </Box>
 
@@ -645,8 +658,8 @@ export function SellerOrderDetailPage() {
         alignItems="start"
       >
         {!mobile && (
-          <Box position="sticky" top="calc(var(--order-header-h, 0px) + 1rem)">
-            <SectionNav active={active} onSelect={scrollTo} />
+          <Box position="sticky" top="calc(var(--detail-header-h, 0px) + 1rem)">
+            <SectionNav sections={navSections} ariaLabel={t("orderDetail.nav.label")} active={active} onSelect={scrollTo} />
           </Box>
         )}
 

@@ -81,6 +81,9 @@ export function ChannelsPanel({
         teamId={teamId}
         supplierId={supplierId}
         actions={canManage ? <SupplierChannelFormDialog supplierId={supplierId} /> : undefined}
+        emptyAction={
+          canManage ? <SupplierChannelFormDialog supplierId={supplierId} testId="add-channel-empty" /> : undefined
+        }
         rowActions={canManage ? rowActions : undefined}
         figureMarks={figureMarks}
         exportMark={exportMark}

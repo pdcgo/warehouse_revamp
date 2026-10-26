@@ -27,7 +27,19 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [a-taken-sku-is-said-under-the-sku](#a-taken-sku-is-said-under-the-sku) | the form shows its limits as counts (5/64), sends its text trimmed, and a SKU another live product holds is said under the SKU field, holding Save until it changes |
 | [the-product-form-leaves-from-its-foot](#the-product-form-leaves-from-its-foot) | the form's foot carries **Kembali** with its arrow right beside **Buat** (a plus) or **Simpan** (a disk), at the right |
 | [the-gallery-is-a-cover-and-four](#the-gallery-is-a-cover-and-four) | the form's gallery is five boxes — the cover big, four small under it; files are dropped anywhere on it or picked from an empty box; ★ makes a small one the cover |
+| [the-form-returns-where-it-was-opened](#the-form-returns-where-it-was-opened) | Back and Save both return to the screen the form was opened from — the product's page, or the list as it was; anything else (a pasted link) to the list |
+| [the-product-page-is-one-page-of-sections](#the-product-page-is-one-page-of-sections) | a product's page takes the order detail's shape — a sticky header, ONE warehouse lens, four figures, a nav beside one page of sections (Info, Harga, Batch, Riwayat stok; Penjualan Tim Lain and Aktivitas beside them) — the tabs are gone |
+| [a-short-section-hides-its-pager](#a-short-section-hides-its-pager) | on the product's page, Harga Modal and Batch show no pager on page 1 when everything fits — an exception to the-pager-is-always-on-screen — ⚠ widened by [no-list-on-the-product-page-pages-when-it-fits](#no-list-on-the-product-page-pages-when-it-fits) |
+| [the-warehouse-picker-splits-the-page](#the-warehouse-picker-splits-the-page) | the warehouse picker sits under the product-wide sections and splits the page: above it every warehouse (Info with the name and the total figures, Batch, Pemasok ⚠, the side cards, Produk Turunan ⚠), below it the chosen warehouse (its figures, Harga Modal, Keluar Masuk Harian ⚠, Riwayat Stok); only the name sticks |
+| [the-title-row-is-the-sticky-bar](#the-title-row-is-the-sticky-bar) | the product's name is the title above the Info card — back as an icon beside it, the SKU under it, the actions on the right — and the sticky bar is that same row in small; Info holds the category and the four totals as one list, down, and the side cards sit beside it |
+| [the-warehouse-zone-is-tabs](#the-warehouse-zone-is-tabs) | below the product-wide sections, ONE warehouse card: the picker in its header and four tabs — Overview (its figures as a stat group, then Pemasok), Harga Modal, Keluar Masuk Harian, Riwayat Stok — only the open one loads; Produk Turunan shows the count and three lines, the rest behind See All — ⚠ Pemasok moved to its own tab by [the-suppliers-are-a-tab-of-their-own](#the-suppliers-are-a-tab-of-their-own) |
+| [the-stock-headline-stands-out](#the-stock-headline-stands-out) | Info leads with ONE large figure — *79 pcs siap* — and a status chip (Habis, Di bawah minimum, Mengendap, Aman), what is on its way and what the ready units cost under it; the list below it no longer repeats Siap and Dikirim |
+| [the-stock-chip-says-how-much-is-left](#the-stock-chip-says-how-much-is-left) | the stock chip has three states — Habis (0), Hampir habis (under 5 pcs), Aman — the age and the lock leave it |
+| [the-overview-reads-like-info](#the-overview-reads-like-info) | the warehouse Overview reads like Info — the large ready figure with its chip for that warehouse, then cost range and stock age as a list; Harga Modal drops its figures above the table; the derived-products dialog shows each product's picture |
+| [the-overview-is-small-details](#the-overview-is-small-details) | the warehouse Overview is small details only — Siap, Dikirim, Rentang HPP, Umur stok as a list; the large figure and its chip are Info's alone; a derived product's line says just "N pcs", its meaning in a tooltip |
 | [the-form-fills-the-canvas-in-three-cards](#the-form-fills-the-canvas-in-three-cards) | the form fills the canvas in three cards — **Gambar** in a fixed 22rem column, **Info Produk** (SKU, name, description, category), **Penjualan Tim Lain** (markup, lock) — all one height; the minimum's stepper turns red as one control |
+| [no-list-on-the-product-page-pages-when-it-fits](#no-list-on-the-product-page-pages-when-it-fits) | every paged list on the product's page — Riwayat Stok now too — shows no pager on page 1 when everything fits; it WIDENS a-short-section-hides-its-pager |
+| [the-suppliers-are-a-tab-of-their-own](#the-suppliers-are-a-tab-of-their-own) | Pemasok leaves the Overview for a warehouse tab of its own, after Harga Modal — Overview, Harga Modal, Pemasok ⚠, Keluar Masuk Harian ⚠, Riwayat Stok |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -483,7 +495,7 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| Kembali | outlined, with its arrow, **right beside** the main button at the foot's right — goes where the top arrow goes: an edit back to the product's page, a new one to the list |
+| Kembali | outlined, with its arrow, **right beside** the main button at the foot's right — goes where the top arrow goes: the screen the form was opened from ([the-form-returns-where-it-was-opened](#the-form-returns-where-it-was-opened)) |
 | the main button | **Buat** with a **plus** on a new product; **Simpan** with a disk on an edit ([an-action-button-carries-its-icon](context_decision.md#an-action-button-carries-its-icon)) |
 | the top arrow | stays — the foot is for somebody who scrolled to the end of the form |
 | the page | fills the canvas ([the-form-fills-the-canvas-in-three-cards](#the-form-fills-the-canvas-in-three-cards)) — it was centred for a moment, then back at the left (*"ga jadi, kembalikan ke kiri"*), then widened to the full canvas |
@@ -540,3 +552,332 @@ below lg    Gambar · Info Produk · Penjualan Tim Lain, one column
 | one height | the cards stretch to their row, so the row ends on one line |
 | the minimum | an invalid minimum turns the **whole stepper** red — the − and + take the box's edge — instead of a red box inside a grey control; a rule of `QuantityInput` itself, so every stepper in a field gets it |
 | ✅ built *(2026-10-23)* | [product-edit/index.tsx](../../../frontend/src/pages/product-edit/index.tsx), `QuantityInput`'s story `InvalidIsTheWholeControl` |
+
+## the-form-returns-where-it-was-opened
+
+> Owner, in chat (2026-10-23): *"kembali di button edit samakan dengan yang atas routenya"* — then, finding that every
+> way out of an edit now led to the product's page: *"oh ternyata ke detail semua, kembalinya bisa ga baca route
+> sebelumnya, kalau sebelumnya di detail maka ke situ, jika tidak ke list"*.
+
+```mermaid
+flowchart LR
+  D["the product's page - Ubah"] --> F["the form"]
+  L["the list, filtered - a row's Ubah or Produk Baru"] --> F
+  X["a pasted link"] --> F
+  F -->|"Simpan, Buat, Kembali, the top arrow - opened from the page"| D2["the product's page"]
+  F -->|"opened from the list"| L2["the list, its filters kept"]
+  F -->|"no screen opened it"| L3["the list"]
+```
+
+| | |
+| --- | --- |
+| the rule | every way out of the form — Simpan or Buat, the foot's Kembali, the top arrow — goes to **one** place: the screen it was opened from |
+| from the product's page | back to that page, where the change is seen in place |
+| from the list | back to the list **as it was** — its search and filters kept |
+| otherwise | a pasted link, a refresh: to the list |
+| how | the opening screen hands its own path in the navigation's state (`fromHere`, [lib/cameFrom.ts](../../../frontend/src/lib/cameFrom.ts)); the form reads it (`cameFrom`). Not the browser history — a step back after a save would land on the form's own past, and a pasted link has no past |
+| superseded | the first answer, *an edit's Save goes to the product's page* — right only when the edit was opened there |
+| ✅ built *(2026-10-23)* | the stories `BackFromAnEditReturnsToTheProduct`, `BackFromAnEditOpenedFromTheListReturnsToTheList`, `ASaveFromTheListReturnsToTheList`, `AnEditReachedByALinkReturnsToTheList` |
+
+## the-product-page-is-one-page-of-sections
+
+> Owner, in chat (2026-10-23): *"untuk detail kurang lebih aku ingin mirip dengan order detail"* — then *"coba"* to the
+> sketch below and to one warehouse picker for the whole page.
+
+```
+┌ sticky ── ← Kembali ke Produk   Minyak Goreng Sawit 2L — Satuan  [Arsip]      [✎ Ubah] [Arsipkan] ┐
+│           SKU-ANG-001 ⧉ · Rumah Tangga                                                            │
+└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+Gudang [ Semua gudang ▾ ]
+[ Siap 79 pcs ] [ Dikirim 12 pcs ] [ Rentang HPP Rp 45.700 – Rp 47.200 ] [ Umur stok 45 hari ]
+┌ nav ─────┐ ┌ Info Produk ── pictures · SKU · category · description ───────────────────┐
+│ Info     │ └────────────────────────────────────────────────────────────────────────────┘
+│ Harga    │ ┌ Harga Modal ─────────────────────────┐ ┌ Penjualan Tim Lain ─┐
+│ Batch    │ ├ Batch ───────────────────────────────┤ │ markup · kunci      │
+│ Riwayat  │ ├ Riwayat Stok ────────────────────────┤ ├ Aktivitas ──────────┤
+│ Tim lain │ └──────────────────────────────────────┘ │ order · restock     │
+│ Aktivitas│                                           └─────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the header | **sticky**, and the product itself: back, the name, the archived badge, the SKU to copy and the category under it, Ubah and Arsipkan (Pulihkan when archived). On a phone one row, the actions in ⋯, the section chips under it |
+| one lens | ONE warehouse picker, above the figures, over the tiles and Harga, Batch and Riwayat stok — it was one per tab, and on one page four pickers could leave the tiles and a table answering about different buildings. The note says when the figures are one warehouse's. Info and Aktivitas's last sale are not lensed |
+| the figures | four `SummaryCard`s — Siap, Dikirim, Rentang HPP (the cross price under it), Umur stok (warning tone from 60 days, as the list) — the same figures as the product's row |
+| the sections | the shared `Section` and `SectionNav` (`Components/Chrome`) and `useScrollSpy` (`lib/`), promoted from the order detail for this: one page of cards, the nav lighting the one being read; Info full width; Harga, Batch, Riwayat in the main column, Penjualan Tim Lain and Aktivitas beside them from `xl`; one column in the nav's order below that |
+| moved | the markup and the lock out of Info and Harga into Penjualan Tim Lain; the last order and restock out of Info into Aktivitas |
+| no API change | every figure was already read |
+| ✅ built *(2026-10-23)* | [product-detail/index.tsx](../../../frontend/src/pages/product-detail/index.tsx), the stories `EverySectionIsOnThePage`, `TheFiguresOnTop`, `OneLensOverEveryFigure` |
+
+**What it replaces** (HARD RULE 11): [the-product-screens-follow-the-screen-rules](#the-product-screens-follow-the-screen-rules)
+gave the page four tabs, down the left on a desktop and across the top on a phone — they are gone; its sketch is stale on
+that point.
+
+## a-short-section-hides-its-pager
+
+> Owner, in chat (2026-10-24): *"harga modal dan batch tidak ada paginasi kalau jumlah datanya kurang dari limit, di
+> halaman 1 ya"*.
+
+```mermaid
+flowchart LR
+  S["Harga Modal or Batch"] --> Q{"page 1 and every row fits?"}
+  Q -->|"yes"| N["no pager - the total line alone"]
+  Q -->|"no - more rows, or page 2 and on"| P["the GrowingPager"]
+```
+
+| | |
+| --- | --- |
+| where | the product's page, **Harga Modal** and **Batch** — sections inside a page, where a pager under three rows is furniture |
+| the rule | on page 1, with no more rows than one page holds (20), the pager is not drawn; the total line stays |
+| from page 2 | the pager always shows, so the way back is never lost |
+| ✅ built *(2026-10-24)* | [PriceSection.tsx](../../../frontend/src/pages/product-detail/components/PriceSection.tsx), [BatchSection.tsx](../../../frontend/src/pages/product-detail/components/BatchSection.tsx); the stories `PriceListsTheLayers` and `OneLensOverEveryFigure` assert the pager is absent |
+
+**What it narrows** (HARD RULE 11): [the-pager-is-always-on-screen](context_decision.md#the-pager-is-always-on-screen)
+says every paged list keeps its pager on one page and on none. For these two sections that no longer holds; every other
+list — Riwayat Stok on the same page included — still keeps it.
+
+## the-warehouse-picker-splits-the-page
+
+> Owner, in chat (2026-10-24): *"judul produk di produk info, di situ juga ada ready, ongoing, hpp dan umur stok, nama
+> produk sticky, header kembali ke produk dan action tidak perlu sticky, filter gudang di bawah info produk, batch harusnya
+> tidak masuk warehouse context … yang kurang adalah riwayat keluar masuk harian, suppliers list dan produk turunan
+> (retur), kasih unimplemented"* — then *"harusnya ada overview di bawah pilih gudang, apinya seperti ready, ongoing, hpp
+> di atas"* and *"karena batch datanya semua gudang, tidak perlu difilter"*.
+
+```
+← Kembali ke Produk                                        [✎ Ubah] [Arsipkan]     scrolls away
+┌ nav ───────┐  ┌ Info Produk ─ [gambar] Minyak Goreng Sawit 2L — Satuan ─────────────────────┐
+│ Info       │  │                SKU ⧉ · Kategori                                            │
+│ Batch      │  │                Siap · Dikirim · Rentang HPP · Umur stok   ← TOTAL           │
+│ Pemasok ⚠  │  │                Deskripsi                                                    │
+│ Tim lain   │  └──────────────────────────────────────────────────────────────────────────────┘
+│ Aktivitas  │  ┌ Batch (semua gudang) ──────────────┐ ┌ Penjualan Tim Lain ┐
+│ Turunan ⚠  │  ├ Pemasok ⚠ ─────────────────────────┤ ├ Aktivitas ─────────┤
+│ Per gudang │  └────────────────────────────────────┘ ├ Produk Turunan ⚠ ──┤
+│ Harga      │  Per Gudang  [ Semua gudang ▾ ]
+│ Harian ⚠   │  [ Siap ] [ Dikirim ] [ Rentang HPP ] [ Umur stok ]           ← that warehouse
+│ Riwayat    │  ┌ Harga Modal ┐ ┌ Keluar Masuk Harian ⚠ ┐ ┌ Riwayat Stok ┐
+```
+
+| | |
+| --- | --- |
+| above the picker | the product across **every** warehouse — Info (the **name** as its headline, the SKU, the category, the four figures as **totals**, the description), Batch (every row names its warehouse; never filtered), Pemasok ⚠, and beside them Penjualan Tim Lain (the lock's badge on the total), Aktivitas, Produk Turunan ⚠ |
+| the picker | **Per Gudang** — the warehouse picker and its **overview**: the same four figures as the summary cards, for the chosen warehouse (the same read as Info's totals, with the warehouse; one read while it is every warehouse) |
+| below the picker | that warehouse — Harga Modal, Keluar Masuk Harian ⚠, Riwayat Stok |
+| sticky | **only the name**, and only once Info's name has gone behind the bar — a bar drawn over the page, so its appearing moves nothing. Decided on every scroll from where the bar is drawn; an IntersectionObserver whose margin followed the bar's own height flipped it back and forth (owner: *"judul stickynya ngebug di bolak balik"*). Back and the actions sit at the top and scroll away. On a phone the section chips always stick, the name bar under them |
+| in Info | the figures are plain figures, not summary cards — a card in a card ([never a card inside a card](../../../CLAUDE.md)) |
+| ⚠ sections | Pemasok, Produk Turunan, Keluar Masuk Harian — each with its mark, listed in the page's `NotImplementedSummary` ([pages/product-detail/pending.ts](../../../frontend/src/pages/product-detail/pending.ts)). **Pemasok and Produk Turunan carry SAMPLE rows** (owner: *"pemasok dan turunan yang masih kosong tolong diisi"*): the suppliers as a table (deliveries, units, last cost, last delivery), the derived products **both ways** — *Turunan dari* (at most one) and *Turunannya* — because a return to another team links two products and the one on screen can be either end. Keluar Masuk Harian is still a sentence |
+| ✅ built *(2026-10-24)* | the stories `TheFiguresTwice`, `ThePickerSplitsThePage`, `OnlyTheNameSticks`, `EveryGapIsMarked` |
+
+**What it replaces** (HARD RULE 11): [the-product-page-is-one-page-of-sections](#the-product-page-is-one-page-of-sections) had
+the whole header sticky, the picker above the figures and over every section (Batch included), and the figures only
+once, lensed. Its sections and its nav stand; those three rows are stale.
+
+## the-title-row-is-the-sticky-bar
+
+> Owner, in chat (2026-10-24): *"judul di atas card info produk … yang data stat ready, ongoing jangan jadi 4, 1 1 ke
+> bawah, info produk tidak penuh jadi penjualan tim lain ke bawah jadi disebelahnya"*, *"skunya di bawah nama produk,
+> kategori samakan seperti siap, dikirim"*, *"di stickynya juga ada skuid"* — *"sku di sticky taruh bawahnya, bawah
+> judul"* — and *"kembali dan actionnya juga, jadi default icon di sebelah judul, yang actionnya di nempel di kanan, di
+> stickynya juga ada"*.
+
+```
+[←] Minyak Goreng Sawit 2L — Satuan  [Arsip]                         [✎ Ubah] [Arsipkan]
+    SKU-ANG-001 ⧉
+┌ Info Produk ────────────────────────────────────┐ ┌ Penjualan Tim Lain ┐
+│ [gambar]  Kategori    Rumah Tangga › Dapur       │ ├ Aktivitas ─────────┤
+│           Siap        79 pcs  Rp 3.667.000 · …   │ ├ Produk Turunan ⚠ ──┤
+│           Dikirim     12 pcs  Rp 548.400 · …     │
+│           Rentang HPP Rp 45.700 – Rp 47.200 …    │
+│           Umur stok   45 hari  …                 │
+│           Deskripsi                              │
+└──────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the title row | above the Info card: **back as an icon** beside the name, the **SKU to copy under the name**, and the **actions held to the right** (Ubah, Arsipkan — Pulihkan when archived; ⋯ on a phone). There is no separate back-and-actions row any more |
+| the sticky bar | **the same row, in small** — back, the name with the SKU under it, the actions — shown once the title has gone behind it. ⚠ Measured against where the bar STANDS once stuck (the scroller's top + the bar's height), not where it is drawn at that moment: at the top of the page the bar sits just above the title, and measured there it showed from the start (owner: *"stickymu bermasalah, muncul terus"*) |
+| Info | the record as **one list, down** — Kategori first, read like the figures, then Siap, Dikirim, Rentang HPP, Umur stok as **totals** (a label, the figure, what it is worth beside it), then the description. Not four across |
+| Info's width | in the main column, **not full width** — Penjualan Tim Lain, Aktivitas and Produk Turunan sit **beside** it from `xl`, Batch and Pemasok under it |
+| first paint | the wide layout is read on the FIRST render (`useBreakpointValue(…, { ssr: false })`) — by default it answered the one-column layout first, so the picture painted large and then jumped (owner: *"ukuran gambarnya tidak konsisten, besar di awal"*). The order detail had the same jump and takes the same fix |
+| ✅ built *(2026-10-24)* | the stories `TheProductsName`, `TheHeaderRowSticks` |
+
+**What it replaces** (HARD RULE 11): [the-warehouse-picker-splits-the-page](#the-warehouse-picker-splits-the-page) put the
+name inside Info with the figures four across, Info full width, and back and the actions in their own row that scrolled
+away with only the name sticking. Its two zones stand; those rows are stale.
+
+## the-warehouse-zone-is-tabs
+
+> Owner, in chat (2026-10-24): *"keluar masuk harian kasih juga data dummynya, yang pergudang jadikan per tab biar ga load
+> semuanya, yang statistik itu ganti design jadi overview dan tab pertama, supplier juga masuk ke tab itu, masalah di
+> produk turunan, masalahnya dia bisa banyak design sekarang kalau kepanjangan membingungkan"*.
+
+```
+┌ Per Gudang ─────────────────────────────────────────────────────── [ Semua gudang ▾ ] ┐
+│ Overview │ Harga Modal │ Keluar Masuk Harian ⚠ │ Riwayat Stok                            │
+│ ─────────                                                                              │
+│ Siap 79 pcs │ Dikirim 12 pcs │ Rentang HPP Rp 45.700 – 47.200 │ Umur stok 45 hari        │
+│ Pemasok ⚠                                                                              │
+│  CV Tani Jaya · 4 kiriman · 120 pcs · Rp 45.100 · 19 Okt 2026                          │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the card | ONE card for the warehouse zone, below the product-wide sections: the warehouse picker in its header (under the title on a phone), the note when one warehouse is chosen, then the tabs |
+| its width | **the main column**, as wide as Info and Batch, with the side cards beside them (owner: *"per gudang selebar batch dan info"*) |
+| the tabs | **Overview** (first), **Harga Modal**, **Keluar Masuk Harian** ⚠, **Riwayat Stok** — `lazyMount` + `unmountOnExit`, so only the open tab is mounted and only its rows are read |
+| Overview | the four figures redesigned as ONE group of Chakra `Stat`s divided by rules — not a strip of summary cards, and no box of its own inside the card — then **Pemasok** ⚠ (moved here from the product-wide zone) |
+| Keluar Masuk Harian | SAMPLE rows now — the last fourteen days: date, in, out, on hand ([sampleMock.ts](../../../frontend/src/pages/product-detail/sampleMock.ts)); its ⚠ rides on the tab |
+| Produk Turunan | it can be MANY, and a block per product made the side card long and confusing. Now: *Turunan dari* as one line; *Turunannya* with its **count** and the **first three as one line each** — team, SKU and the derived product's **READY STOCK**, **no date** (owner: *"Produk Turunan, tidak perlu dikasih tanggal"*, *"pcs stok readynya bukan diretur sejumlah"*); **Lihat Semua (N)** opens the whole list in a dialog, as a table: product and SKU, team, stock ready |
+| Aktivitas | not a card any more — **the last order and the last restock are the last two rows of Info's list**, under the figures (owner: *"aktivitas masukkan ke info produk"*) |
+| the nav | Info, Batch, Tim lain, Turunan, Per gudang — the tabs are not nav items |
+| ✅ built *(2026-10-24)* | the stories `TheWarehouseTabsLoadOnlyWhenOpened`, `SamplesFillTheGaps`, `EveryGapIsMarked` |
+
+**What it replaces** (HARD RULE 11): [the-warehouse-picker-splits-the-page](#the-warehouse-picker-splits-the-page) had the
+picker and its overview as summary cards in the open, then Harga Modal, Keluar Masuk Harian and Riwayat Stok as cards
+one after another, and Pemasok in the product-wide zone. The two zones stand; that arrangement is stale.
+
+## the-stock-headline-stands-out
+
+> Owner, in chat (2026-10-24): *"karena tidak ada yang menonjol selain gambar, aku ingin sesuatu yang menonjol, apa yang
+> kamu sarankan"* — then *"yups"* to the proposal.
+
+```
+[gambar]   79 pcs siap   ● Aman
+           +12 pcs dalam pengiriman · modal Rp 3.667.000
+           ───────────────────────────────────────────────
+           Kategori · Rentang HPP · Umur stok · Pesanan terakhir · Restock terakhir · Deskripsi
+```
+
+```mermaid
+flowchart LR
+  S["the stock, every warehouse"] --> A{"ready = 0?"}
+  A -->|"yes"| O["Habis - error"]
+  A -->|"no"| B{"minimum lock in force?"}
+  B -->|"yes"| M["Di bawah minimum - warning"]
+  B -->|"no"| C{"oldest units 60 days or more?"}
+  C -->|"yes"| T["Mengendap - warning"]
+  C -->|"no"| K["Aman - success"]
+```
+
+| | |
+| --- | --- |
+| the figure | **ready stock**, large, beside the picture — the answer to why somebody opens a product's page; across every warehouse, as the rest of Info |
+| the chip | the FIRST rule that holds: nothing ready → **Habis**; the minimum lock in force (ready under `reserved_stock`, [one-lock-three-ways](#one-lock-three-ways)) → **Di bawah minimum**; the oldest units on a shelf for 60 days or more (the list's threshold) → **Mengendap**; else **Aman**. Each in its role's tone; the reason is on its title. No chip while the stock read is in flight |
+| under it | *+N pcs dalam pengiriman · modal Rp …* — what is on its way and what the ready units cost |
+| the list | Siap and Dikirim leave it — the highlight says them; Kategori, Rentang HPP, Umur stok, the last order and restock stay |
+| no API change | every input was already read |
+| ✅ built *(2026-10-24)* | [StockHighlight.tsx](../../../frontend/src/pages/product-detail/components/StockHighlight.tsx), the stories `TheStockHeadlineStandsOut`, `OutOfStockReadsRed` |
+
+## the-stock-chip-says-how-much-is-left
+
+> Owner, in chat (2026-10-24): *"stok bisa aman, habis dan hampir habis jika kurang dari berapa enaknya? order kebanyakan
+> cuma 1-2"* — then *"oke di bawah 5"* to the proposal.
+
+```mermaid
+flowchart LR
+  S["ready, every warehouse"] --> A{"0?"}
+  A -->|"yes"| O["Habis - error"]
+  A -->|"no"| B{"under 5 pcs?"}
+  B -->|"yes"| L["Hampir habis - warning"]
+  B -->|"no"| K["Aman - success"]
+```
+
+| | |
+| --- | --- |
+| the states | **Habis** (nothing ready), **Hampir habis** (fewer than **5 pcs** ready — two or three orders, which are mostly 1–2 units), **Aman** |
+| the number | `LOW_STOCK_PCS = 5` in [features/products/stockAge.ts](../../../frontend/src/features/products/stockAge.ts), beside the stock-age threshold — the owner's to tune |
+| not chosen | a threshold from the product's own sales (ready under seven days of them) — proposed, and the owner chose the fixed number |
+| left the chip | **Mengendap** — the Umur stok row already turns to the warning tone from 60 days; **Di bawah minimum** — the lock's own control already badges a minimum in force. The chip answers one question: is there enough |
+| ✅ built *(2026-10-24)* | the stories `TheStockChipRules` (0, 1, 4 and 5 pcs), `OutOfStockReadsRed`, `TheStockHeadlineStandsOut` |
+
+**What it replaces** (HARD RULE 11): [the-stock-headline-stands-out](#the-stock-headline-stands-out)'s four-state chip and its
+flowchart; the figure, the line under it and the list stand.
+
+## the-overview-reads-like-info
+
+> Owner, in chat (2026-10-24): *"produk turunan di modal ada gambarnya, yang pergudang overview siap dsb kaya kurang,
+> harga modal pun yang di atas kayak kurang, atau gausah dikasih aja yang harga modal"*.
+
+```
+Overview │ Harga Modal │ Keluar Masuk Harian ⚠ │ Riwayat Stok
+25 pcs siap   ● Aman                          ← this warehouse
++12 pcs dalam pengiriman · modal Rp 1.180.000
+Rentang HPP   Rp 47.200   Cross Rp 53.100
+Umur stok     54 hari     Unit tertua di rak tiba …
+Pemasok ⚠ …
+```
+
+| | |
+| --- | --- |
+| Overview | the same **headline** as Info — the large ready figure and its status chip ([the-stock-chip-says-how-much-is-left](#the-stock-chip-says-how-much-is-left)) — for the **chosen warehouse**, then **Rentang HPP** and **Umur stok** as the same list Info uses, then Pemasok. It replaced a row of four equal stats that said nothing louder than the others |
+| Harga Modal | **no figures above the table** — the cost range and the cross price were already said by Info and the Overview; the tab is the help line and the layers |
+| Produk Turunan's dialog | each derived product with its **picture**, beside its name and SKU (the sample lends it the product's own) |
+| shared | `FigureRows` is the one list both Info and the Overview draw; `StockHighlight` takes a test-id base so the two headlines on the page stay apart |
+| ✅ built *(2026-10-24)* | the stories `TheFiguresTwice`, `ThePickerSplitsThePage`, `SamplesFillTheGaps` |
+
+**What it replaces** (HARD RULE 11): [the-warehouse-zone-is-tabs](#the-warehouse-zone-is-tabs)'s Overview as a group of four
+`Stat`s, and Harga Modal's two figures above its table. The tabs and the card stand.
+
+## the-overview-is-small-details
+
+> Owner, in chat (2026-10-26): *"cuma pcs aja di produk turunan, siapnya jadi tooltip aja"* and *"di overview tidak perlu
+> ada aman, dan pcs siap yang besar, cuma detail kecil aja di sana"*.
+
+| | |
+| --- | --- |
+| Overview | **small details only** — Siap, Dikirim, Rentang HPP, Umur stok for the chosen warehouse, as the list Info draws (`FigureRows`); **no large figure and no status chip** — those are Info's alone, so the page has one thing that stands out, not two |
+| a derived product's line | just **"N pcs"** — the derived product's ready stock; what the number is (*Stok siap*) is its **tooltip**, and its spoken label |
+| ✅ built *(2026-10-26)* | the stories `TheFiguresTwice`, `ThePickerSplitsThePage`, `SamplesFillTheGaps` |
+
+**What it replaces** (HARD RULE 11): [the-overview-reads-like-info](#the-overview-reads-like-info)'s headline and chip in the
+Overview, and the derived line's *"N pcs siap"*. Harga Modal without figures and the dialog's pictures stand.
+
+## no-list-on-the-product-page-pages-when-it-fits
+
+> Owner, in chat (2026-10-26): *"untuk halaman detail produk tidak perlu menampilkan paginasi kalau di halaman 1 total
+> itemnya kurang dari limit, yang masih ada di riwayat stok"*.
+
+```mermaid
+flowchart LR
+  S["Harga Modal, Batch or Riwayat Stok"] --> Q{"page 1 and every row fits?"}
+  Q -->|"yes"| N["no pager"]
+  Q -->|"no - more rows, or page 2 and on"| P["the GrowingPager"]
+```
+
+| | |
+| --- | --- |
+| where | **every** paged list on the product's page — Harga Modal, Batch and now **Riwayat Stok** |
+| the rule | unchanged from [a-short-section-hides-its-pager](#a-short-section-hides-its-pager): on page 1, with no more rows than one page holds (20), the pager is not drawn; from page 2 it always shows |
+| a new list on this page | follows it from the start — the page is one set of sections, and a pager under a short list is furniture in any of them |
+| ✅ built *(2026-10-26)* | [HistorySection.tsx](../../../frontend/src/pages/product-detail/components/HistorySection.tsx); the story `StockHistoryListsEveryMovement` asserts the pager is absent |
+
+**What it replaces** (HARD RULE 11): [a-short-section-hides-its-pager](#a-short-section-hides-its-pager)'s closing line,
+*"Riwayat Stok on the same page included — still keeps it"*. Outside the product's page,
+[the-pager-is-always-on-screen](context_decision.md#the-pager-is-always-on-screen) still holds.
+
+## the-suppliers-are-a-tab-of-their-own
+
+> Owner, in chat (2026-10-26): *"pemasok beda tab sama overview"*, then *"harga sebelum pemasok"*.
+
+```
+┌ Per Gudang ─────────────────────────────────────────────────────────────── [ Semua gudang ▾ ] ┐
+│ Overview │ Harga Modal │ Pemasok ⚠ │ Keluar Masuk Harian ⚠ │ Riwayat Stok                        │
+│ ─────────                                                                                      │
+│ Siap 79 pcs · Dikirim 12 pcs · Rentang HPP · Umur stok        ← the Overview, alone            │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the tabs | **Overview**, **Harga Modal**, **Pemasok** ⚠, **Keluar Masuk Harian** ⚠, **Riwayat Stok** — Harga Modal before Pemasok |
+| Overview | the warehouse's four figures and nothing under them ([the-overview-is-small-details](#the-overview-is-small-details)) |
+| Pemasok | the same sample table, in a panel of its own — no heading inside it, the tab names it; its ⚠ rides on the **tab**, as Keluar Masuk Harian's does |
+| loading | like every tab, mounted only when opened (`lazyMount` + `unmountOnExit`) |
+| ✅ built *(2026-10-26)* | [index.tsx](../../../frontend/src/pages/product-detail/index.tsx), [sections.ts](../../../frontend/src/pages/product-detail/sections.ts); the stories `EverySectionIsOnThePage` (the tab order), `EveryGapIsMarked` (the ⚠ on the tab), `SamplesFillTheGaps` (no supplier in Overview, the rows once the tab is opened) |
+
+**What it replaces** (HARD RULE 11): [the-warehouse-zone-is-tabs](#the-warehouse-zone-is-tabs)'s *"Overview … then
+Pemasok"* and [the-overview-reads-like-info](#the-overview-reads-like-info)'s *"then Pemasok"*. The card, the picker and
+the other tabs stand.

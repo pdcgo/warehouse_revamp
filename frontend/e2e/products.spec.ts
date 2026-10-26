@@ -185,6 +185,7 @@ test("Edit: edit is a PAGE, pre-filled; the rename persists", async ({ page }) =
   await page.getByTestId("product-edit-name").fill(`${NAME} renamed`);
   await page.getByTestId("product-edit-save").click();
 
+  // Opened from the list, the save returns to the list (the-form-returns-where-it-was-opened).
   await expect(page.getByTestId("products-table")).toBeVisible();
   await expect(page.getByTestId(`product-row-${SKU}`)).toContainText(`${NAME} renamed`);
 });

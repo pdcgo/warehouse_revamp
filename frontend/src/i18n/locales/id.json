@@ -523,22 +523,9 @@
       "noTeam": "Pilih tim untuk melihat produknya.",
       "notFound": "Produk tidak ditemukan.",
       "noImages": "Tidak ada gambar.",
-      "tab": {
-        "info": "Info",
-        "price": "Harga",
-        "batch": "Batch",
-        "stockHistory": "Riwayat stok"
-      },
       "reservedHint": "Tidak pernah dijual, di gudang mana pun produk ini disimpan.",
-      "costHeading": "Biaya produk ini",
       "costHelp": "Produk tidak punya harga jual — harga yang dibayar pembeli ditentukan per pesanan, di toko yang menjualnya. Ini dua angka yang memang melekat pada katalog.",
-      "crossPrice": "Yang dibayar tim lain",
-      "crossPriceHint": "Harga modal Anda plus markup, per unit.",
-      "crossHeading": "Cross-sell",
-      "crossHelp": "Tim lain menjual produk ANDA lewat tokonya sendiri: barang keluar dari stok Anda, dan mereka membayar harga modal Anda plus markup.",
-      "crossMarkupHint": "Di atas harga modal Anda, per unit.",
       "lockedHint": "Terkunci membuatnya tidak muncul di pencarian tim lain — hanya milik Anda.",
-      "batchHeading": "Pengiriman",
       "batchHelp": "Setiap batch adalah satu pengiriman produk ini ke satu gudang, dan masing-masing membekukan harga modal unitnya.",
       "batch": {
         "delivery": "Pengiriman",
@@ -548,13 +535,29 @@
         "ready": "Siap",
         "value": "Nilai"
       },
-      "historyHeading": "Semua pergerakan",
       "historyHelp": "Yang tiba, terkirim, dihitung, disesuaikan, rusak atau ditemukan — terbaru dulu. Perpindahan antar rak di satu gudang adalah urusan gudang dan tidak ditampilkan di sini.",
       "history": {
         "afterInWarehouse": "Sisa di gudang itu"
       },
       "showImage": "Tampilkan gambar {{n}}",
       "warehouseNote": "Semua angka di bawah hanya untuk {{warehouse}} — bukan total Anda.",
+      "lensLabel": "Gudang",
+      "nothingOnAShelf": "tidak ada di rak",
+      "nav": {
+        "label": "Bagian produk",
+        "info": "Info",
+        "batch": "Batch",
+        "cross": "Tim lain",
+        "derived": "Turunan",
+        "warehouse": "Per gudang"
+      },
+      "section": {
+        "info": "Info Produk",
+        "batch": "Batch",
+        "cross": "Penjualan Tim Lain",
+        "derived": "Produk Turunan",
+        "warehouse": "Per Gudang"
+      },
       "layer": {
         "unitCost": "Harga modal",
         "ready": "Siap",
@@ -570,7 +573,68 @@
       "historyEmptyHint": "Setiap penerimaan, pengambilan, dan koreksi produk ini tercatat di sini saat terjadi.",
       "emptyInWarehouse": "Coba gudang lain, atau semua gudang.",
       "batchTotal": "Siap dengan modal diketahui: {{value}}",
-      "historyEmpty": "Belum ada pergerakan."
+      "historyEmpty": "Belum ada pergerakan.",
+      "pending": {
+        "suppliers": {
+          "label": "Pemasok",
+          "reason": "Setiap batch mencatat pemasoknya, tapi batch dibaca per halaman — daftar semua pemasok perlu dikelompokkan oleh server. Baris yang tampil adalah contoh."
+        },
+        "derived": {
+          "label": "Produk turunan",
+          "reason": "Barang yang diretur ke tim lain selain pemiliknya menjadi produk tim itu. Tautan itu belum dicatat, dan baris yang tampil — dua arah — adalah contoh."
+        },
+        "daily": {
+          "label": "Keluar masuk harian",
+          "reason": "Setiap pergerakan ada di Riwayat Stok, tapi belum ada yang menjumlahkannya per hari — yang masuk, yang keluar, dan sisa stok di akhir hari. Baris yang tampil adalah contoh."
+        }
+      },
+      "suppliers": {
+        "supplier": "Pemasok",
+        "deliveries": "Kiriman",
+        "units": "Unit",
+        "lastCost": "Modal terakhir",
+        "last": "Kiriman terakhir",
+        "deliveriesCount_other": "{{count}} kiriman"
+      },
+      "derived": {
+        "from": "Turunan dari",
+        "fromNone": "Produk ini bukan turunan dari produk tim lain.",
+        "to": "Turunannya",
+        "toNone": "Belum ada tim lain yang membuat produk dari produk ini.",
+        "seeAll": "Lihat Semua ({{count}})",
+        "product": "Produk",
+        "team": "Tim",
+        "units": "Stok siap",
+        "ready": "{{n}} pcs siap"
+      },
+      "tab": {
+        "overview": "Overview",
+        "suppliers": "Pemasok",
+        "price": "Harga Modal",
+        "daily": "Keluar Masuk Harian",
+        "history": "Riwayat Stok"
+      },
+      "daily": {
+        "date": "Tanggal",
+        "in": "Masuk",
+        "out": "Keluar",
+        "balance": "Sisa"
+      },
+      "highlight": {
+        "ready": "{{n}} pcs siap",
+        "ongoing": "+{{n}} pcs dalam pengiriman",
+        "value": "modal {{value}}",
+        "status": {
+          "out": "Habis",
+          "low": "Hampir habis",
+          "ok": "Aman"
+        },
+        "why": {
+          "out": "Tidak ada stok siap di rak gudang mana pun.",
+          "low": "Stok siap kurang dari {{n}} pcs di semua gudang.",
+          "ok": "Stok siap {{n}} pcs atau lebih di semua gudang."
+        }
+      }
     },
     "field": {
       "sku": "SKU",

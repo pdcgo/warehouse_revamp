@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { SectionKey } from "./sections";
-import { SECTIONS, sectionDomId } from "./sections";
-
-// WHICH SECTION YOU ARE READING — and a way to jump to one.
+// WHICH SECTION YOU ARE READING — and a way to jump to one. Shared by the detail pages that are one page of sections
+// with a SectionNav beside them (the order detail, the product's page).
+//
+// ⚠ `keys`, `domId` AND `candidates` MUST BE STABLE — module constants, or memoised — because the listener is
+// re-attached whenever one of them changes identity.
 //
 // THE RULE: the active section is the last one whose top has passed the READING LINE, a little below
 // the sticky header — the line your eye is on when the header is out of the way. When the page can
@@ -15,9 +16,9 @@ import { SECTIONS, sectionDomId } from "./sections";
 // on a normal screen is while you are still reading Shipping: a wheel scroll went Items → Withdrawal and
 // skipped three sections.
 //
-// ⚠ IT FINDS ITS OWN SCROLLER. In the app the desktop shell scrolls `<main>`; in Storybook the window
-// scrolls. The listener is captured on `window` — scroll does not bubble, but it CAN be captured, so one
-// listener hears whichever ancestor is moving — and the end test walks up from the sections to the
+// ⚠ IT FINDS ITS OWN SCROLLER. The desktop shell and Storybook scroll the window; the phone shell scrolls `<main>`.
+// The listener is captured on `window` — scroll does not bubble, but it CAN be captured, so one listener hears
+// whichever ancestor is moving — and the end test walks up from the sections to the
 // nearest ancestor that actually scrolls. Nested scrollers BELOW the page (a table's own box, the phone's
 // chip strip) are not ancestors and so can never be mistaken for it.
 //
@@ -30,8 +31,51 @@ const LINE_OFFSET = 24;
 /** How long a click's smooth scroll is allowed before position takes over again. */
 const LOCK_MS = 1000;
 
+/** How long the landed section blinks — the `section-flash` keyframes in theme.ts run this long. */
+const FLASH_MS = 1200;
+
+/**
+ * THE SECTION A NAV CLICK LANDS ON BLINKS (owner: *"kalau navigate lewat navigasi di kiri, yang di klik kasih blink
+ * highlight"*, `a-nav-jump-blinks-where-it-lands`) — so the eye finds which card it was taken to, which matters most
+ * when the page could not scroll far enough to put it at the top. A data attribute the section's card animates on
+ * (DetailSection), removed again when the blink is over; removing and re-adding it restarts the blink on a second click.
+ */
+function flash(el: HTMLElement) {
+  el.removeAttribute("data-flash");
+  void el.offsetWidth; // a reflow, so the same animation starts again
+  el.setAttribute("data-flash", "");
+  window.setTimeout(() => el.removeAttribute("data-flash"), FLASH_MS);
+}
+
+/**
+ * Blink once the smooth scroll has landed: on `scrollend` where the browser sends it; at once when nothing scrolled
+ * (the section was already in place); and after the lock at the latest, for a browser with no `scrollend`.
+ */
+function flashWhenLanded(el: HTMLElement) {
+  let moved = false;
+  let done = false;
+
+  const onScroll = () => {
+    moved = true;
+  };
+  const land = () => {
+    if (done) return;
+    done = true;
+    window.removeEventListener("scroll", onScroll, { capture: true });
+    window.removeEventListener("scrollend", land, { capture: true });
+    flash(el);
+  };
+
+  window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+  window.addEventListener("scrollend", land, { capture: true });
+  window.setTimeout(() => {
+    if (!moved) land();
+  }, 120);
+  window.setTimeout(land, LOCK_MS + 200);
+}
+
 /** The element whose scrolling moves `el` — the nearest scrollable ancestor, else the document. */
-function scrollerOf(el: Element): Element {
+export function scrollerOf(el: Element): Element {
   for (let node = el.parentElement; node; node = node.parentElement) {
     const { overflowY } = getComputedStyle(node);
 
@@ -43,9 +87,13 @@ function scrollerOf(el: Element): Element {
   return document.scrollingElement ?? document.documentElement;
 }
 
-export function useScrollSpy(
+export function useScrollSpy<K extends string>(
   ready: boolean,
   headerRef: { current: HTMLElement | null },
+  /** Every section, in the page's order. */
+  keys: readonly K[],
+  /** The DOM id a section carries — what a click scrolls to. */
+  domId: (key: K) => string,
   /**
    * The sections scrolling may light. Omitted = all of them.
    *
@@ -53,15 +101,15 @@ export function useScrollSpy(
    * the main column, so their tops pass the reading line early and one of them would win while the
    * reader is halfway down the items. They light when clicked; scrolling tracks the column being read.
    */
-  candidates?: SectionKey[],
+  candidates?: readonly K[],
 ): {
-  active: SectionKey;
-  scrollTo: (key: SectionKey) => void;
+  active: K;
+  scrollTo: (key: K) => void;
 } {
-  const first = SECTIONS[0]!.key;
-  const last = SECTIONS[SECTIONS.length - 1]!.key;
+  const first = keys[0]!;
+  const last = keys[keys.length - 1]!;
 
-  const [active, setActive] = useState<SectionKey>(first);
+  const [active, setActive] = useState<K>(first);
   const lockedUntil = useRef(0);
 
   useEffect(() => {
@@ -77,7 +125,7 @@ export function useScrollSpy(
         return;
       }
 
-      const firstEl = document.getElementById(sectionDomId(first));
+      const firstEl = document.getElementById(domId(first));
 
       if (!firstEl) {
         return;
@@ -99,19 +147,19 @@ export function useScrollSpy(
       // page is no longer one stack: Penerima (side) can sit higher on screen than Timeline (main) while
       // coming later in the list, so "last in the list whose top has passed" lit a side card while the
       // reader was in the middle of the main column.
-      let current: SectionKey = first;
+      let current: K = first;
       let best = -Infinity;
 
-      for (const section of SECTIONS) {
-        if (candidates && !candidates.includes(section.key)) {
+      for (const key of keys) {
+        if (candidates && !candidates.includes(key)) {
           continue;
         }
 
-        const top = document.getElementById(sectionDomId(section.key))?.getBoundingClientRect().top;
+        const top = document.getElementById(domId(key))?.getBoundingClientRect().top;
 
         if (top !== undefined && top <= line && top > best) {
           best = top;
-          current = section.key;
+          current = key;
         }
       }
 
@@ -131,10 +179,10 @@ export function useScrollSpy(
       window.removeEventListener("scroll", onScroll, { capture: true });
       cancelAnimationFrame(frame);
     };
-  }, [ready, first, last, headerRef, candidates]);
+  }, [ready, first, last, headerRef, candidates, keys, domId]);
 
-  const scrollTo = useCallback((key: SectionKey) => {
-    const el = document.getElementById(sectionDomId(key));
+  const scrollTo = useCallback((key: K) => {
+    const el = document.getElementById(domId(key));
 
     if (!el) {
       return;
@@ -148,7 +196,8 @@ export function useScrollSpy(
 
     // `scrollMarginTop` on the section keeps its title clear of the sticky header.
     el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-  }, []);
+    flashWhenLanded(el);
+  }, [domId]);
 
   return { active, scrollTo };
 }

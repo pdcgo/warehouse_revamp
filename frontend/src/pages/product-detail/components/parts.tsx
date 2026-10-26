@@ -49,7 +49,8 @@ export function WhenOrNever({ unix }: { unix?: bigint }) {
   return <Text>{formatUnixDate(unix)}</Text>;
 }
 
-// The WAREHOUSE LENS control, on each of the three tabs whose figures are per-warehouse.
+// The WAREHOUSE LENS control — ONE on the page, over the figures and every section that is per-warehouse
+// (the-product-page-is-one-page-of-sections); it was one per tab while the page had tabs.
 //
 // The shared TeamSelect restricted to WAREHOUSE teams — the same picker the product list uses, not a
 // second dropdown of this page's own. It carries its own ✕ (every-filter-clears-from-its-own-x), so there is

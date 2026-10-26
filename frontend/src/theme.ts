@@ -254,6 +254,13 @@ const customConfig = defineConfig({
         "60%": { scale: "1.15" },
         "100%": { scale: "1" },
       },
+      // A section a nav click landed on — a soft tint of the main tone comes up and fades, once; no ring (owner: *"ga perlu
+      // border, jangan terlalu mencolok"*, a-nav-jump-blinks-where-it-lands).
+      "section-flash": {
+        "0%": { background: "transparent" },
+        "25%": { background: "var(--chakra-colors-brand-subtle)" },
+        "100%": { background: "transparent" },
+      },
     },
     // ── A SCROLLING LIST KEEPS AWAY FROM ITS SCROLLBAR (owner) ────────────────────────────────────
     //

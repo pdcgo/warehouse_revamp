@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { liveProducts } from "../../../.storybook/productStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -27,7 +27,20 @@ const routes = [
   marker("/products/:productId", "at-product-detail"),
 ];
 const AtNew = routedPage(routes, "/products/new");
+// Reached by a pasted link — no screen opened it, so there is no "came from" (the-form-returns-where-it-was-opened).
 const AtEditMinyak = routedPage(routes, "/products/700/edit");
+// Opened from the product's own page, as its Ubah does.
+const AtEditFromDetail = routedPage(routes, { pathname: "/products/700/edit", state: { from: "/products/700" } });
+// Opened from a filtered list, as a row's Ubah does — the list route shows its query, to see it came back filtered.
+const AtEditFromList = routedPage(
+  [
+    routes[0]!,
+    routes[1]!,
+    { path: "/products", element: <><span data-testid="at-products" /><LocationProbe /></> },
+    marker("/products/:productId", "at-product-detail"),
+  ],
+  { pathname: "/products/700/edit", state: { from: "/products?q=minyak" } },
+);
 
 // "ProductForm" (owner: *"di story jadi form aja namanya"*): one page creates AND edits a product, so the sidebar names
 // it for what it is rather than for one of its two routes.
@@ -346,15 +359,16 @@ export const WhatIsSentIsTrimmed: Story = {
   },
 };
 
-/** Saving an edit writes it and lands on the list — the gallery sent back as it stands, so it is kept, not dropped. */
-export const SavingAnEditLandsOnTheList: Story = {
-  render: () => <AtEditMinyak />,
+/** Saving an edit writes it and lands on THE PRODUCT'S PAGE — where it was opened from, as Back goes too (the-form-returns-where-it-was-opened) —
+ * the gallery sent back as it stands, so it is kept, not dropped. */
+export const SavingAnEditReturnsToTheProduct: Story = {
+  render: () => <AtEditFromDetail />,
   play: async ({ canvasElement }) => {
     const canvas = await loadedMinyak(canvasElement);
 
     await retype(canvas.getByTestId("product-edit-name"), "Minyak Goreng Sawit 2L — Botol");
     await userEvent.click(canvas.getByTestId("product-edit-save"));
-    await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId("at-product-detail")).toBeInTheDocument());
 
     const saved = liveProducts().find((p) => p.id === 700n)!;
     await expect(saved).toMatchObject({ name: "Minyak Goreng Sawit 2L — Botol", crossMarkupBps: 1250, reservedStock: 4 });
@@ -466,9 +480,10 @@ export const AStarMakesTheCover: Story = {
   },
 };
 
-/** Back returns to where the form was opened from: an edit to the product's page, a new one to the list. */
+/** BACK RETURNS TO WHERE THE FORM WAS OPENED FROM (the-form-returns-where-it-was-opened): from the product's page, back
+ * there; from a filtered list, back to that list with its query; reached by a link, to the list. */
 export const BackFromAnEditReturnsToTheProduct: Story = {
-  render: () => <AtEditMinyak />,
+  render: () => <AtEditFromDetail />,
   play: async ({ canvasElement }) => {
     const canvas = await loadedMinyak(canvasElement);
 
@@ -488,6 +503,39 @@ export const CreateCarriesAPlus: Story = {
   },
 };
 
+export const BackFromAnEditOpenedFromTheListReturnsToTheList: Story = {
+  render: () => <AtEditFromList />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("product-edit-back-foot"));
+    await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
+    await expect(canvas.getByTestId("location-search")).toHaveTextContent("?q=minyak");
+  },
+};
+
+export const ASaveFromTheListReturnsToTheList: Story = {
+  render: () => <AtEditFromList />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+
+    await retype(canvas.getByTestId("product-edit-name"), "Minyak Goreng Sawit 2L — Botol");
+    await userEvent.click(canvas.getByTestId("product-edit-save"));
+    await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
+    await expect(canvas.getByTestId("location-search")).toHaveTextContent("?q=minyak");
+  },
+};
+
+export const AnEditReachedByALinkReturnsToTheList: Story = {
+  render: () => <AtEditMinyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("product-edit-back"));
+    await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
+  },
+};
+
 export const BackFromANewOneReturnsToTheList: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -499,7 +547,7 @@ export const BackFromANewOneReturnsToTheList: Story = {
 
 /** BACK IS AT THE FOOT TOO, with its arrow, right beside Save — and goes where the top arrow goes. */
 export const BackAtTheFootGoesWhereTheArrowGoes: Story = {
-  render: () => <AtEditMinyak />,
+  render: () => <AtEditFromDetail />,
   play: async ({ canvasElement }) => {
     const canvas = await loadedMinyak(canvasElement);
     const back = canvas.getByTestId("product-edit-back-foot");

@@ -1,9 +1,16 @@
 import { useEffect, useRef } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Box, Button, Flex, Icon, Stack } from "@chakra-ui/react";
-import { useTranslation } from "react-i18next";
 
-import type { SectionKey } from "../sections";
-import { SECTIONS } from "../sections";
+export const description =
+  "The left navigation of a detail page — one item per section, the one being read lit by a rule on its left edge; a click scrolls to it. On a phone it is a strip of chips under the sticky header instead (`compact`), the lit chip kept in view. The page passes its sections, in order, and the active key from `useScrollSpy`.";
+
+/** One item: the section's key, its SHORT label (already translated), and the icon its card shows. */
+export interface NavSection<K extends string> {
+  key: K;
+  label: string;
+  icon: LucideIcon;
+}
 
 // THE LEFT NAVIGATION — one item per section, and the one you are reading lit (owner: *"navigasi di
 // kiri untuk auto scroll"*).
@@ -16,17 +23,22 @@ import { SECTIONS } from "../sections";
 // ⚠ THE ITEMS ARE BUTTONS, NOT LINKS. They scroll within the page and change no URL; an `<a href="#…">`
 // would add a history entry per click and fight the data router over the hash.
 
-export function SectionNav({
+export function SectionNav<K extends string>({
+  sections,
   active,
   onSelect,
+  ariaLabel,
   compact = false,
 }: {
-  active: SectionKey;
-  onSelect: (key: SectionKey) => void;
+  /** The sections, in the page's order — the one list the nav and the page both read. */
+  sections: NavSection<K>[];
+  active: K;
+  onSelect: (key: K) => void;
+  /** The landmark's spoken name — "Bagian pesanan", "Bagian produk". */
+  ariaLabel: string;
   /** The phone's horizontal strip rather than the desktop column. */
   compact?: boolean;
 }) {
-  const { t } = useTranslation();
   const strip = useRef<HTMLDivElement>(null);
 
   // ⚠ ON A PHONE THE ACTIVE CHIP IS KEPT IN VIEW, by scrolling the STRIP rather than the chip. A chip's
@@ -46,9 +58,9 @@ export function SectionNav({
 
   if (compact) {
     return (
-      <Box as="nav" aria-label={t("orderDetail.nav.label")} data-testid="section-nav-strip">
+      <Box as="nav" aria-label={ariaLabel} data-testid="section-nav-strip">
         <Flex ref={strip} gap="2" overflowX="auto" pb="1" css={{ scrollbarWidth: "none" }}>
-          {SECTIONS.map((section) => {
+          {sections.map((section) => {
             const on = section.key === active;
 
             return (
@@ -65,7 +77,7 @@ export function SectionNav({
                 onClick={() => onSelect(section.key)}
               >
                 <Icon as={section.icon} boxSize="3.5" />
-                {t(section.navKey)}
+                {section.label}
               </Button>
             );
           })}
@@ -75,9 +87,9 @@ export function SectionNav({
   }
 
   return (
-    <Box as="nav" aria-label={t("orderDetail.nav.label")} data-testid="section-nav">
+    <Box as="nav" aria-label={ariaLabel} data-testid="section-nav">
       <Stack gap="0.5">
-        {SECTIONS.map((section) => {
+        {sections.map((section) => {
           const on = section.key === active;
 
           return (
@@ -100,7 +112,7 @@ export function SectionNav({
               onClick={() => onSelect(section.key)}
             >
               <Icon as={section.icon} boxSize="4" color={on ? "brand.fg" : "fg.subtle"} />
-              {t(section.navKey)}
+              {section.label}
             </Button>
           );
         })}

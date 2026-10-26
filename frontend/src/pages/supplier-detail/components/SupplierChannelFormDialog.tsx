@@ -39,11 +39,14 @@ export function SupplierChannelFormDialog({
   supplierId,
   channel,
   open: openProp,
+  testId = "add-channel",
   onOpenChange,
 }: {
   supplierId: bigint;
   channel?: SupplierChannelRecord;
   open?: boolean;
+  /** The create trigger's test id — the empty list's second trigger passes its own (ChannelBrowser `emptyAction`). */
+  testId?: string;
   /**
    * The dialog's open state changed — including the close that follows a successful save.
    *
@@ -134,7 +137,7 @@ export function SupplierChannelFormDialog({
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       {!isControlled && (
         <Dialog.Trigger asChild>
-          <Button size="xs" colorPalette="brand" data-testid="add-channel">
+          <Button size="xs" colorPalette="brand" data-testid={testId}>
             <Icon as={Plus} boxSize="4" />
             {t("supplierChannel.form.addChannel")}
           </Button>

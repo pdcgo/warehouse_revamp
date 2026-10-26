@@ -529,22 +529,9 @@
       "noTeam": "Select a team to view its products.",
       "notFound": "Product not found.",
       "noImages": "No images.",
-      "tab": {
-        "info": "Info",
-        "price": "Price",
-        "batch": "Batch",
-        "stockHistory": "Stock history"
-      },
       "reservedHint": "Never offered for sale, wherever this product is stocked.",
-      "costHeading": "What it costs you",
       "costHelp": "A product has no selling price — what a buyer pays is set per order, on the shop that sells it. These are the two figures the catalogue entry itself carries.",
-      "crossPrice": "What another team pays",
-      "crossPriceHint": "Your cost plus the markup, per unit.",
-      "crossHeading": "Cross-sell",
-      "crossHelp": "Another team selling YOUR product through its own shop: the goods leave your stock, and it pays you your cost plus a markup.",
-      "crossMarkupHint": "Over your cost, per unit.",
       "lockedHint": "Locked keeps it out of other teams' discovery — yours only.",
-      "batchHeading": "Deliveries",
       "batchHelp": "Every batch is one delivery of this product into one warehouse, and each froze the cost its units carry.",
       "batch": {
         "delivery": "Delivery",
@@ -554,13 +541,29 @@
         "ready": "Ready",
         "value": "Value"
       },
-      "historyHeading": "Every movement",
       "historyHelp": "What arrived, shipped, was counted, adjusted, damaged or found — newest first. A move between two shelves of one warehouse is the warehouse's business and is not listed here.",
       "history": {
         "afterInWarehouse": "After, in that warehouse"
       },
       "showImage": "Show image {{n}}",
       "warehouseNote": "Every figure below is {{warehouse}} only — not your total.",
+      "lensLabel": "Warehouse",
+      "nothingOnAShelf": "nothing on a shelf",
+      "nav": {
+        "label": "Product sections",
+        "info": "Info",
+        "batch": "Batches",
+        "cross": "Other teams",
+        "derived": "Derived",
+        "warehouse": "Per warehouse"
+      },
+      "section": {
+        "info": "Product Info",
+        "batch": "Batches",
+        "cross": "Sales by Other Teams",
+        "derived": "Derived Products",
+        "warehouse": "Per Warehouse"
+      },
       "layer": {
         "unitCost": "Unit cost",
         "ready": "Ready",
@@ -576,7 +579,69 @@
       "historyEmptyHint": "Every receipt, pick and correction of this product is listed here as it happens.",
       "emptyInWarehouse": "Try another warehouse, or all of them.",
       "batchTotal": "Ready at known cost: {{value}}",
-      "historyEmpty": "Nothing has moved yet."
+      "historyEmpty": "Nothing has moved yet.",
+      "pending": {
+        "suppliers": {
+          "label": "Suppliers",
+          "reason": "Every batch names its supplier, but the batches are read a page at a time — a list of every supplier needs the server to group them. The rows shown are samples."
+        },
+        "derived": {
+          "label": "Derived products",
+          "reason": "Goods returned to a team other than their owner become a product of that team. Nothing records that link yet, and the rows shown — both ways — are samples."
+        },
+        "daily": {
+          "label": "Daily in and out",
+          "reason": "Every movement is listed under Stock History, but nothing sums them per day — what came in, what went out, and the stock at the end of the day. The rows shown are samples."
+        }
+      },
+      "suppliers": {
+        "supplier": "Supplier",
+        "deliveries": "Deliveries",
+        "units": "Units",
+        "lastCost": "Last cost",
+        "last": "Last delivery",
+        "deliveriesCount_one": "{{count}} delivery",
+        "deliveriesCount_other": "{{count}} deliveries"
+      },
+      "derived": {
+        "from": "Derived from",
+        "fromNone": "This product is not derived from another team’s.",
+        "to": "Derived products",
+        "toNone": "No other team has made a product of this one.",
+        "seeAll": "See All ({{count}})",
+        "product": "Product",
+        "team": "Team",
+        "units": "Ready",
+        "ready": "{{n}} pcs ready"
+      },
+      "tab": {
+        "overview": "Overview",
+        "suppliers": "Suppliers",
+        "price": "Cost Price",
+        "daily": "Daily In and Out",
+        "history": "Stock History"
+      },
+      "daily": {
+        "date": "Date",
+        "in": "In",
+        "out": "Out",
+        "balance": "On hand"
+      },
+      "highlight": {
+        "ready": "{{n}} pcs ready",
+        "ongoing": "+{{n}} pcs on the way",
+        "value": "cost {{value}}",
+        "status": {
+          "out": "Out of stock",
+          "low": "Almost out",
+          "ok": "Healthy"
+        },
+        "why": {
+          "out": "Nothing ready on a shelf in any warehouse.",
+          "low": "Fewer than {{n}} pcs ready across every warehouse.",
+          "ok": "{{n}} pcs or more ready across every warehouse."
+        }
+      }
     },
     "field": {
       "sku": "SKU",

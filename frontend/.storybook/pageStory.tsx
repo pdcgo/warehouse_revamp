@@ -50,7 +50,10 @@ export function asTeam(teamId: bigint) {
  * `parameters: { dataRouter: true }` so `preview.tsx` stands its shared `<MemoryRouter>` down —
  * react-router refuses to render one router inside another.
  */
-export function routedPage(routes: RouteObject[], initialEntry: string) {
+/** Where a story opens: a path, or a path with the navigation `state` the screen that opened it would carry. */
+export type StoryEntry = string | { pathname: string; search?: string; state?: unknown };
+
+export function routedPage(routes: RouteObject[], initialEntry: StoryEntry) {
   return function RoutedPage() {
     const router = useMemo(
       () => createMemoryRouter(routes, { initialEntries: [initialEntry] }),

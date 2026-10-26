@@ -1,27 +1,32 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { fromHere } from "../../lib/cameFrom";
 import {
   Badge,
   Box,
   Button,
-  Card,
   Carousel,
   Flex,
   Grid,
   Heading,
   HStack,
   Icon,
+  IconButton,
   Image,
-  SimpleGrid,
   Stack,
   Tabs,
   Text,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { Archive, ArrowLeft, Pencil, RotateCcw } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../api/clients";
 import { CompactActions } from "../../components/chrome/CompactActions";
+import { CopyText } from "../../components/chrome/CopyText";
+import { Fact, Section } from "../../components/chrome/DetailSection";
+import { SectionNav } from "../../components/chrome/SectionNav";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { toaster } from "../../components/feedback/Toaster";
@@ -39,13 +44,201 @@ import {
 import { RestoreProductDialog } from "../../features/products/RestoreProductDialog";
 import { ProductLockControl } from "../../features/products/ProductLock";
 import { pathToRoot } from "../../features/categories/categoryTree";
+import { STALE_STOCK_DAYS, daysAgo } from "../../features/products/stockAge";
+import type { OwnerStockRow } from "../../features/products/adapt";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import { formatUnixDate } from "../../lib/datetime";
 import { formatMarkup } from "../../lib/markup";
-import { BatchTab } from "./components/BatchTab";
-import { HistoryTab } from "./components/HistoryTab";
-import { PriceTab } from "./components/PriceTab";
-import { Field, Stat } from "../../features/products/RecordField";
-import { WhenOrNever } from "./components/parts";
+import { formatRupiah } from "../../lib/money";
+import { scrollerOf, useScrollSpy } from "../../lib/useScrollSpy";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { PRODUCT_DETAIL_PENDING } from "./pending";
+import { BatchSection } from "./components/BatchSection";
+import { DailySection } from "./components/DailySection";
+import { DerivedSection } from "./components/DerivedSection";
+import { StockHighlight } from "./components/StockHighlight";
+import { SuppliersSection } from "./components/SuppliersSection";
+import { sampleDaily, sampleDerived, sampleSuppliers } from "./sampleMock";
+import { HistorySection } from "./components/HistorySection";
+import { PriceSection } from "./components/PriceSection";
+import { WarehouseFilter, WarehouseNote, WhenOrNever } from "./components/parts";
+import {
+  PRODUCT_MAIN_SECTIONS,
+  PRODUCT_SECTION_KEYS,
+  PRODUCT_SECTIONS,
+  WAREHOUSE_TABS,
+  productSection,
+  productSectionDomId,
+} from "./sections";
+import type { ProductSectionKey, WarehouseTab } from "./sections";
+
+/** A cost range, said once — one price when every unit cost the same. */
+function costRange(min: bigint, max: bigint): string {
+  return min === max ? formatRupiah(min) : `${formatRupiah(min)} – ${formatRupiah(max)}`;
+}
+
+// THE FOUR STOCK FIGURES — the same ones the product's row on the list shows: what is ready, what is on its way, what it
+// cost (the cross price under it), and how old the oldest units are. Said TWICE on the page, from the same read
+// (the-warehouse-picker-splits-the-page): in Info as the product's TOTAL across every warehouse, and under the warehouse
+// picker as that warehouse's. Unknown is a dash with the reason, never a 0 (#74).
+interface StockFigure {
+  key: "ready" | "ongoing" | "cost" | "age";
+  label: string;
+  value: ReactNode;
+  line: string;
+}
+
+function useStockFigures(stock: OwnerStockRow | undefined, markupBps: number): StockFigure[] {
+  const { t } = useTranslation();
+  const pending = t("products.stat.pending");
+  const withMarkup = (cost: bigint) => cost + (cost * BigInt(markupBps)) / 10_000n;
+  const days = stock && stock.oldestBatchUnix > 0n ? daysAgo(stock.oldestBatchUnix) : undefined;
+  const stale = days !== undefined && days >= STALE_STOCK_DAYS;
+
+  return [
+    {
+      key: "ready",
+      label: t("products.stat.ready"),
+      value: stock ? t("products.stat.pcs", { n: stock.readyQty.toString() }) : "—",
+      line: stock ? `${formatRupiah(stock.readyValue)} · ${t("products.stat.readyHint")}` : pending,
+    },
+    {
+      key: "ongoing",
+      label: t("products.stat.ongoing"),
+      value: stock ? t("products.stat.pcs", { n: stock.ongoingQty.toString() }) : "—",
+      line: stock ? `${formatRupiah(stock.ongoingValueEst)} · ${t("products.stat.ongoingHint")}` : pending,
+    },
+    {
+      key: "cost",
+      label: t("products.table.priceRange"),
+      value: stock?.costKnown ? costRange(stock.costMin, stock.costMax) : "—",
+      line: stock?.costKnown
+        ? `${t("products.table.cross")} ${costRange(withMarkup(stock.costMin), withMarkup(stock.costMax))}`
+        : pending,
+    },
+    {
+      key: "age",
+      label: t("products.table.stockAge"),
+      value:
+        days === undefined ? (
+          "—"
+        ) : (
+          <Text as="span" color={stale ? "warning.fg" : undefined} data-stale={stale || undefined}>
+            {t("products.table.days", { count: days })}
+          </Text>
+        ),
+      line:
+        days === undefined
+          ? stock
+            ? t("products.detail.nothingOnAShelf")
+            : pending
+          : t("products.table.stockAgeTitle", { date: formatUnixDate(stock!.oldestBatchUnix) }),
+    },
+  ];
+}
+
+/** One row of a figures list — a label, the figure, and what it means beside it. */
+interface FigureRow {
+  key: string;
+  label: string;
+  value: ReactNode;
+  line?: string;
+  testId?: string;
+}
+
+/** A list of figures, ONE PER LINE, DOWN — Info's record and the warehouse Overview read the same way. */
+function FigureRows({ rows, prefix }: { rows: FigureRow[]; prefix: string }) {
+  return (
+    <Stack gap="0" data-testid={prefix}>
+      {rows.map((f) => (
+        <Grid
+          key={f.key}
+          templateColumns="8rem minmax(0, 1fr)"
+          gap="card"
+          alignItems="baseline"
+          py="2"
+          borderBottomWidth="1px"
+          borderColor="border.muted"
+          data-testid={`${prefix}-${f.key}`}
+        >
+          <Text fontSize="xs" fontWeight="bold" color="fg.label">
+            {f.label}
+          </Text>
+          <HStack gap="2" minW="0" align="baseline" wrap="wrap">
+            <Box fontWeight="bold" data-testid={f.testId}>
+              {f.value || "—"}
+            </Box>
+            {f.line && (
+              <Text fontSize="xs" color="fg.muted" minW="0">
+                {f.line}
+              </Text>
+            )}
+          </HStack>
+        </Grid>
+      ))}
+    </Stack>
+  );
+}
+
+/**
+ * THE OVERVIEW — the chosen warehouse's four figures as SMALL DETAILS, the list Info draws (owner: *"di overview tidak
+ * perlu ada aman, dan pcs siap yang besar, cuma detail kecil aja di sana"*, `the-overview-is-small-details`): Siap,
+ * Dikirim, Rentang HPP, Umur stok. The one large figure and its chip are Info's alone — the page has one thing that stands
+ * out, not two. Inside the warehouse card's first tab, so no box of its own (never a card inside a card).
+ */
+function OverviewFigures({ stock, markupBps }: { stock?: OwnerStockRow; markupBps: number }) {
+  const figures = useStockFigures(stock, markupBps);
+
+  return (
+    <Box data-testid="pd-overview">
+      <FigureRows rows={figures} prefix="pd-overview-row" />
+    </Box>
+  );
+}
+
+/**
+ * In Info: the product's totals, as plain figures — a card inside the Info card would be a card in a card. ONE PER LINE,
+ * DOWN (owner: *"data stat ready, ongoing jangan jadi 4, 1 1 ke bawah"*): the label, then the figure and what it is
+ * worth beside it, so the four read as a list down the record rather than a strip across it.
+ */
+function TotalFigures({
+  stock,
+  markupBps,
+  category,
+  lastOrderUnix,
+}: {
+  stock?: OwnerStockRow;
+  markupBps: number;
+  /** The category's path — the list's first row, read like the figures under it (owner: *"kategori samakan seperti siap, dikirim"*). */
+  category: ReactNode;
+  /** When it last sold — undefined while the read is in flight, 0 for never. */
+  lastOrderUnix?: bigint;
+}) {
+  const { t } = useTranslation();
+  const figures = useStockFigures(stock, markupBps);
+  const rows: FigureRow[] = [
+    { key: "category", label: t("products.field.category"), value: category, testId: "product-detail-category" },
+    // Siap and Dikirim are the HIGHLIGHT above this list (the-stock-headline-stands-out), so the list carries the rest.
+    ...figures.filter((f) => f.key !== "ready" && f.key !== "ongoing"),
+    // WHEN IT LAST MOVED, at the foot of the same list (owner: *"aktivitas masukkan ke info produk"*) — is it still
+    // selling, and has stock come in behind the sales. Across every warehouse, as the rest of Info.
+    {
+      key: "lastOrder",
+      label: t("products.stat.lastOrder"),
+      value: <WhenOrNever unix={lastOrderUnix} />,
+      testId: "product-detail-last-order",
+    },
+    {
+      key: "lastRestock",
+      label: t("products.stat.lastRestock"),
+      value: <WhenOrNever unix={stock?.lastRestockUnix} />,
+      testId: "product-detail-last-restock",
+    },
+  ];
+
+  return <FigureRows rows={rows} prefix="pd-total" />;
+}
 
 function parseProductId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -56,24 +249,24 @@ function parseProductId(raw: string | undefined): bigint {
   }
 }
 
-// ProductDetailPage is the read-only detail route for a product (#83) — a PAGE, not a dialog,
-// reached by clicking a product row.
+// ProductDetailPage is the read-only detail route for a product (#83) — a PAGE, not a dialog, reached by clicking a
+// product row. It is the SELLING team's view: the team that owns the catalogue entry, as opposed to the warehouse that
+// happens to hold the goods (which reads /inventories/products/:id instead).
 //
-// It is the SELLING team's view: the team that owns the catalogue entry, as opposed to the warehouse
-// that happens to hold the goods (which reads /inventories/products/:id instead). Its tabs run down the
-// left on a desktop, the same shape the rack and warehouse-product details use, because they are the same
-// kind of screen — one record, read section by section — and across the top on a phone
-// (`the-product-screens-follow-the-screen-rules`):
+// THE ORDER DETAIL'S SHAPE (owner: *"untuk detail kurang lebih aku ingin mirip dengan order detail"*,
+// `the-product-page-is-one-page-of-sections`): back and the actions at the top, only the NAME sticking, a navigation
+// on the left beside ONE PAGE OF SECTIONS — never tabs — in TWO ZONES split by the warehouse picker
+// (`the-warehouse-picker-splits-the-page`):
 //
-//   INFO   the catalogue record itself: identity, category, description, images, and the hold-back
-//          buffer, which is a decision about the ITEM and so belongs here rather than under money.
-//   PRICE  what the thing costs and what another team pays for it. A product deliberately has NO
-//          selling price — that lives on the order line — so this tab is the cost story plus the
-//          cross-sell markup, which is the one price a product genuinely carries.
-//   BATCH  the deliveries the units came from, each with its own frozen cost.
+//   every warehouse     INFO (the name, pictures, record, the four TOTAL figures), BATCH, PEMASOK ⚠ — and beside them
+//                       PENJUALAN TIM LAIN (markup, lock), AKTIVITAS, PRODUK TURUNAN ⚠
+//   ── the picker ──    the chosen warehouse's four figures
+//   that warehouse      HARGA MODAL (the cost layers), RIWAYAT HARIAN ⚠, RIWAYAT STOK
 export function ProductDetailPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  // This page, handed to the form it opens — so the form's Back and Save return here (the-form-returns-where-it-was-opened).
+  const location = useLocation();
   const { current } = useTeam();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -81,13 +274,11 @@ export function ProductDetailPage() {
   const id = parseProductId(productId);
   const teamId = current?.teamId;
 
-  // The WAREHOUSE LENS, shared by Price, Batch and Stock history. 0n = everywhere.
+  // The WAREHOUSE LENS, over the overview and the Harga Modal and Riwayat Stok sections. 0n = everywhere.
   //
-  // One piece of state behind three controls, not three: stock is held per warehouse, so "which
-  // building am I asking about" is one question the whole money-and-movement half of this page is
-  // answering — and a lens that silently reset when you moved from the layers to the deliveries they
-  // came from would make the two tabs disagree about what you had just asked. Info is deliberately
-  // outside it: a SKU, a category and a picture are not facts about a building.
+  // ONE piece of state behind ONE control: stock is held per warehouse, so "which building am I asking about" is one
+  // question the whole money-and-movement half of this page is answering. Info is deliberately outside it: a SKU, a
+  // category and a picture are not facts about a building.
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
   const warehouses = useTeams({ teamType: TeamType.WAREHOUSE, page: 1, pageSize: 100, reference: true });
   const warehouseName = warehouses.data?.teams.find((w) => w.id === warehouseId)?.name;
@@ -102,6 +293,9 @@ export function ProductDetailPage() {
   // Its own entry, so an inventory or selling hiccup costs the stock figures and not the product's
   // name — see the hook.
   const activityQuery = useProductActivity({ teamId, productId: id, warehouseId });
+  // The product across every warehouse — Info's figures, the lock's badge, Aktivitas. The same entry as the lens's
+  // while the lens is "every warehouse", so it is one read until a warehouse is chosen.
+  const totalsQuery = useProductActivity({ teamId, productId: id, warehouseId: 0n });
   const archiveProduct = useArchiveProduct();
   const restoreProduct = useRestoreProduct();
   const setLock = useSetProductLock();
@@ -189,6 +383,98 @@ export function ProductDetailPage() {
     }
   }
 
+  // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
+  // The side column only where there is room for it beside the nav: Chakra's `xl`, as on the order detail.
+  // `ssr: false` READS THE SCREEN ON THE FIRST RENDER. By default the hook answers its `base` value first and the real
+  // one a frame later, so a wide screen painted the one-column layout — Info the full width, its picture large — and then
+  // jumped (owner, on the product page: *"ukuran gambarnya tidak konsisten, besar di awal dan jadi sesuai … tiba-tiba"*).
+  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
+
+  // ONLY THE NAME STICKS (owner: *"nama produk sticky, header kembali ke produk dan action tidak perlu sticky"*) — and only
+  // once the name in Info has scrolled away, so the page never shows it twice. The bar is drawn OVER the page rather
+  // than in its flow, so appearing moves nothing; on a phone it sits under the section chips, which always stick.
+  const sticky = useRef<HTMLDivElement>(null);
+  const nameBar = useRef<HTMLDivElement>(null);
+  const infoName = useRef<HTMLHeadingElement>(null);
+  const [pastName, setPastName] = useState(false);
+  // WHICH WAREHOUSE TAB IS OPEN — Overview first. Only that tab is mounted, so only its rows are read
+  // (the-warehouse-zone-is-tabs): the cost layers and the movements wait until somebody opens them.
+  const [warehouseTab, setWarehouseTab] = useState<WarehouseTab>("overview");
+  const [stickyHeight, setStickyHeight] = useState(0);
+  const { active, scrollTo } = useScrollSpy(
+    product !== null,
+    nameBar,
+    PRODUCT_SECTION_KEYS,
+    productSectionDomId,
+    wide ? PRODUCT_MAIN_SECTIONS : undefined,
+  );
+  const navSections = PRODUCT_SECTIONS.map((s) => ({ key: s.key, label: t(s.navKey), icon: s.icon }));
+
+  // What a jump has to clear: the chips (a phone) plus the name bar — published as `--detail-header-h`.
+  useEffect(() => {
+    const bar = nameBar.current;
+    const strip = sticky.current;
+
+    if (!bar || !strip) {
+      return;
+    }
+
+    const measure = () => setStickyHeight(strip.getBoundingClientRect().height + bar.getBoundingClientRect().height);
+    const observer = new ResizeObserver(measure);
+
+    measure();
+    observer.observe(bar);
+    observer.observe(strip);
+
+    return () => observer.disconnect();
+  }, [product !== null, isMobile]);
+
+  // WHETHER THE NAME IN INFO HAS GONE BEHIND THE BAR — the moment the bar takes over saying it. Measured on every
+  // scroll against WHERE THE BAR IS DRAWN, not with an IntersectionObserver: the observer's margin had to follow the
+  // bar's own height, so the bar appearing re-armed it and it flipped back and forth (owner: *"judul stickynya ngebug di
+  // bolak balik"*), and the page's entrance moves the name without the observer hearing it. Captured on `window`, so
+  // whichever ancestor scrolls — `<main>` in the app, the window in Storybook — is heard, as useScrollSpy does.
+  useEffect(() => {
+    if (product === null) {
+      return;
+    }
+
+    let frame = 0;
+
+    const decide = () => {
+      const name = infoName.current;
+      const bar = nameBar.current;
+
+      if (!name || !bar) {
+        return;
+      }
+
+      // WHERE THE BAR STANDS ONCE IT STICKS — the top of whatever scrolls (`<main>` in the app, the document in
+      // Storybook), plus the strip above it on a phone, plus the bar's own height. NOT where the bar is drawn right now:
+      // at the top of the page the bar sits just above the title, and measured there the title read as already behind
+      // it, so the bar showed from the start (owner: *"stickymu bermasalah, muncul terus"*).
+      const scroller = scrollerOf(name);
+      const top = scroller === document.scrollingElement ? 0 : scroller.getBoundingClientRect().top;
+      const strip = isMobile ? (sticky.current?.getBoundingClientRect().height ?? 0) : 0;
+      setPastName(name.getBoundingClientRect().bottom <= top + strip + bar.getBoundingClientRect().height);
+    };
+
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(decide);
+    };
+
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", onScroll);
+    decide();
+
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      window.removeEventListener("resize", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, [product !== null, isMobile]);
+
   if (!current) {
     return (
       <Stack gap="section">
@@ -236,96 +522,347 @@ export function ProductDetailPage() {
   // Editing is not the way back: ProductUpdate only touches live rows, so Edit is withdrawn here and
   // Restore takes its place.
   const archived = product.deleted;
+  const totalStock = totalsQuery.data?.stock;
+  const lensStock = activityQuery.data?.stock;
+  const openEdit = () => navigate(`/products/${product.id}/edit`, { state: fromHere(location) });
 
-  return (
-    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
-    <Stack gap="section" animationStyle="enter" data-testid="product-detail-page">
-      <Button
-        size="xs"
-        variant="ghost"
-        alignSelf="flex-start"
-        data-testid="product-detail-back"
-        // An archived product goes back to the archive it was opened from (the-archive-is-a-page-of-its-own).
-        onClick={() => navigate(archived ? "/products/archived" : "/products")}
+  /** A section card, keyed by its entry in `sections.ts` — its id, icon and title come from there. */
+  const section = (key: ProductSectionKey, children: ReactNode, marks?: ReactNode) => {
+    const entry = productSection(key);
+
+    return (
+      <Section
+        id={productSectionDomId(key)}
+        icon={entry.icon}
+        title={t(entry.titleKey)}
+        marks={marks}
+        testId={`pd-section-${key}`}
       >
-        <Icon as={ArrowLeft} boxSize="4" />
-        {t("products.backToProducts")}
-      </Button>
+        {children}
+      </Section>
+    );
+  };
 
-      {/* THE NAME AND ITS ACTIONS — one row; on a phone it stays one row, the name cut to fit and the actions their
-          icons (the-phone-header-is-one-row, a-phone-header-action-is-an-icon). The SKU and category under it. */}
-      <Flex align="center" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
-        <Stack gap="0.5" flex="1 1 16rem" minW="0">
+  // ── PRODUK TURUNAN, filled with SAMPLE rows so its shape can be judged — with its ⚠ (sample). ──────────────────────
+  const derivedSection = section(
+    "derived",
+    <DerivedSection
+      derived={sampleDerived(product.id, product.name, product.sku, product.defaultImageThumbnailUrl || product.defaultImageUrl)}
+    />,
+    <NotImplemented list={PRODUCT_DETAIL_PENDING} id="derived" />,
+  );
+
+  // ── INFO — the product across every warehouse: its name, the pictures, the record, and the four TOTAL figures. Not
+  // read through the warehouse picker, which sits below the product-wide sections (the-warehouse-picker-splits-the-page).
+  // The gallery a quarter of the row, so the picture identifies the product without becoming a poster. ─────────────────
+  const infoSection = section(
+    "info",
+    <Grid templateColumns={{ base: "1fr", md: "minmax(0, 1fr) minmax(0, 3fr)" }} gap="section" alignItems="start">
+      <Box>
+        {product.images.length === 0 ? (
+          <Text color="fg.muted" fontSize="sm" data-testid="product-detail-no-images">
+            {t("products.detail.noImages")}
+          </Text>
+        ) : product.images.length === 1 ? (
+          /* ONE image is not a carousel — arrows and a single indicator would promise a second picture. */
+          <Box data-testid="product-detail-images">
+            <Image
+              src={product.images[0].url || product.images[0].thumbnailUrl}
+              alt={`${product.name} image 1`}
+              aspectRatio={1}
+              objectFit="cover"
+              w="full"
+              borderWidth="1px"
+              borderRadius="md"
+              data-testid="product-detail-image-0"
+            />
+          </Box>
+        ) : (
+          /* SEVERAL images — one at full width at a time, with THUMBNAILS as the indicators: a thumbnail says which
+             picture you are about to get, which is the whole reason to look at a second one. Position 0 is the cover. */
+          <Carousel.Root slideCount={product.images.length} slidesPerPage={1} loop allowMouseDrag data-testid="product-detail-images">
+            <Carousel.ItemGroup>
+              {product.images.map((img, i) => (
+                <Carousel.Item key={`${img.url}-${i}`} index={i}>
+                  <Image
+                    src={img.url || img.thumbnailUrl}
+                    alt={`${product.name} image ${i + 1}`}
+                    aspectRatio={1}
+                    objectFit="cover"
+                    w="full"
+                    borderWidth="1px"
+                    borderRadius="md"
+                    data-testid={`product-detail-image-${i}`}
+                  />
+                </Carousel.Item>
+              ))}
+            </Carousel.ItemGroup>
+            <Carousel.IndicatorGroup display="flex" gap="2" mt="2" flexWrap="wrap" justifyContent="flex-start">
+              {product.images.map((img, i) => (
+                <Carousel.Indicator
+                  key={`${img.url}-thumb-${i}`}
+                  index={i}
+                  unstyled
+                  aria-label={t("products.detail.showImage", { n: i + 1 })}
+                  cursor="pointer"
+                  boxSize="10"
+                  p="0"
+                  borderRadius="md"
+                  overflow="hidden"
+                  borderWidth="2px"
+                  borderColor="transparent"
+                  opacity="0.55"
+                  transition="opacity 0.15s, border-color 0.15s"
+                  _hover={{ opacity: 1 }}
+                  css={{ "&[data-current]": { opacity: 1, borderColor: "colorPalette.solid" } }}
+                  colorPalette="brand"
+                >
+                  <Image src={img.thumbnailUrl || img.url} alt="" w="full" h="full" objectFit="cover" />
+                </Carousel.Indicator>
+              ))}
+            </Carousel.IndicatorGroup>
+          </Carousel.Root>
+        )}
+      </Box>
+
+      <Stack gap="section" minW="0">
+        {/* THE ONE THING THAT STANDS OUT — how much is ready, and whether the stock is healthy
+            (the-stock-headline-stands-out). */}
+        <StockHighlight stock={totalStock} />
+
+        {/* THE RECORD AS ONE LIST, DOWN — the category first, read like the figures under it, then Siap, Dikirim, Rentang
+            HPP and Umur stok as the product's TOTALS (owner: *"kategori samakan seperti siap, dikirim gitu"*). */}
+        <TotalFigures
+          stock={totalStock}
+          markupBps={product.crossMarkupBps}
+          category={categoryLabel}
+          lastOrderUnix={totalsQuery.data?.activity?.lastOrderUnix}
+        />
+
+        <Fact label={t("products.field.description")} full>
+          {product.description}
+        </Fact>
+      </Stack>
+    </Grid>,
+  );
+
+  // ── THE HEADER ROW — back, the product's name with its SKU under it, and the actions held to the right (owner:
+  // *"kembali dan actionnya juga, jadi default icon di sebelah judul, yang actionnya di nempel di kanan, di stickynya juga
+  // ada"*). ONE builder, drawn twice: as the page's title right above the Info card, and as the sticky bar once that title
+  // has scrolled behind it — so the bar is the same row in small, and nothing can be done from one that the other lacks.
+  // The sticky copy's test ids carry `-sticky`, so the page's own stay unique. ────────────────────────────────────────
+  const headerRow = (stuck: boolean) => {
+    const id = (base: string) => (stuck ? base.replace("product-detail-", "product-detail-sticky-") : base);
+
+    return (
+      <Flex align="center" gap={stuck ? "2" : "card"} minW="0">
+        {/* BACK, as an icon beside the name. An archived product goes back to the archive it was opened from
+            (the-archive-is-a-page-of-its-own). */}
+        <IconButton
+          size="sm"
+          variant="ghost"
+          flexShrink={0}
+          aria-label={t("products.backToProducts")}
+          title={t("products.backToProducts")}
+          data-testid={id("product-detail-back")}
+          onClick={() => navigate(archived ? "/products/archived" : "/products")}
+        >
+          <Icon as={ArrowLeft} boxSize="4" />
+        </IconButton>
+
+        <Stack gap={stuck ? "0" : "1"} minW="0" flex="1">
           <HStack gap="2" minW="0">
-            <Heading size="md" truncate={isMobile} minW="0" data-testid="product-detail-name">
+            <Heading
+              ref={stuck ? undefined : infoName}
+              size={stuck ? "md" : "lg"}
+              truncate={stuck}
+              minW="0"
+              data-testid={stuck ? undefined : "product-detail-name"}
+            >
               {product.name}
             </Heading>
             {archived && (
-              <Badge colorPalette="gray" flexShrink={0} data-testid="product-detail-archived">
+              <Badge colorPalette="gray" flexShrink={0} data-testid={id("product-detail-archived")}>
                 {t("products.tab.archived")}
               </Badge>
             )}
           </HStack>
-          <Text fontSize="sm" color="fg.muted" truncate={isMobile}>
-            {product.sku}
-            {categoryLabel && ` · ${categoryLabel}`}
-          </Text>
+          {/* The SKU to copy, UNDER the name (owner: *"skunya di bawah nama produk"*, *"sku di sticky taruh bawahnya"*). */}
+          <Box fontSize="sm" color="fg.muted" data-testid={stuck ? "product-detail-sticky-sku" : undefined}>
+            <CopyText value={product.sku} testId={stuck ? undefined : "product-detail-sku"} />
+          </Box>
         </Stack>
 
+        {/* THE ACTIONS, held to the right. On a phone they fold into ⋯ (a-phone-header-action-is-an-icon). */}
         {isMobile ? (
           <CompactActions
             menuLabel={t("products.table.actions")}
             actions={
               archived
-                ? [{ id: "restore", label: t("products.restore"), icon: RotateCcw, testId: "product-detail-restore", onClick: () => restore(product) }]
+                ? [{ id: "restore", label: t("products.restore"), icon: RotateCcw, testId: id("product-detail-restore"), onClick: () => restore(product) }]
                 : [
-                    { id: "edit", label: t("products.edit"), icon: Pencil, testId: "product-detail-edit", onClick: () => navigate(`/products/${product.id}/edit`) },
-                    { id: "archive", label: t("products.archive"), icon: Archive, danger: true, testId: "product-detail-archive", onClick: () => setArchiving(true) },
+                    { id: "edit", label: t("products.edit"), icon: Pencil, testId: id("product-detail-edit"), onClick: openEdit },
+                    { id: "archive", label: t("products.archive"), icon: Archive, danger: true, testId: id("product-detail-archive"), onClick: () => setArchiving(true) },
                   ]
             }
           />
         ) : archived ? (
-          /* UNARCHIVE. No confirmation: putting a product back into the catalogue is the reversible
-             direction, and the only thing that can go wrong — the SKU being taken — is caught by the
-             server and answered with a dialog that resolves it. */
-          <Button
-            size="xs"
-            variant="outline"
-            loading={restoreProduct.isPending}
-            data-testid="product-detail-restore"
-            onClick={() => restore(product)}
-          >
+          /* UNARCHIVE. No confirmation: putting a product back is the reversible direction, and the only thing that can
+             go wrong — the SKU being taken — is caught by the server and answered with a dialog. */
+          <Button size="xs" variant="outline" flexShrink={0} loading={restoreProduct.isPending} data-testid={id("product-detail-restore")} onClick={() => restore(product)}>
             <Icon as={RotateCcw} boxSize="4" />
             {t("products.restore")}
           </Button>
         ) : (
-          <HStack gap="2">
-            <Button
-              size="xs"
-              variant="outline"
-              data-testid="product-detail-edit"
-              onClick={() => navigate(`/products/${product.id}/edit`)}
-            >
+          <HStack gap="2" flexShrink={0}>
+            <Button size="xs" variant="outline" data-testid={id("product-detail-edit")} onClick={openEdit}>
               <Icon as={Pencil} boxSize="4" />
               {t("products.edit")}
             </Button>
-
-            {/* ARCHIVE confirms, because it takes the product out of the pickers, out of new orders
-                and out of restocks — nothing is deleted, but the catalogue changes under everyone
-                using it. It also frees the SKU, which is what makes coming back able to fail. */}
-            <Button
-              size="xs"
-              variant="outline"
-              colorPalette="error"
-              data-testid="product-detail-archive"
-              onClick={() => setArchiving(true)}
-            >
+            {/* ARCHIVE confirms: it takes the product out of the pickers, new orders and restocks. */}
+            <Button size="xs" variant="outline" colorPalette="error" data-testid={id("product-detail-archive")} onClick={() => setArchiving(true)}>
               <Icon as={Archive} boxSize="4" />
               {t("products.archive")}
             </Button>
           </HStack>
         )}
       </Flex>
+    );
+  };
+  const title = headerRow(false);
+
+  // ── WHERE IT CAME FROM — the deliveries across every warehouse (each row names its own), so above the picker. ─────
+  const batchSection = section(
+    "batch",
+    <BatchSection teamId={teamId} productId={product.id} warehouseLabel={warehouseLabel} />,
+  );
+
+  // ── WHO ELSE MAY SELL IT — the markup and the lock. A minimum in force is badged on the TOTAL stock
+  // (one-lock-three-ways); an archived product only reads it. ──────────────────────────────────────────────────────────
+  const crossSection = section(
+    "cross",
+    <Stack gap="card">
+      <Fact label={t("products.field.crossMarkup")}>
+        <Badge colorPalette={product.crossMarkupBps > 0 ? "brand" : "gray"} data-testid="product-detail-markup">
+          {formatMarkup(product.crossMarkupBps)}
+        </Badge>
+      </Fact>
+      <Fact label={t("products.lock.title")}>
+        <Box data-testid="product-detail-lock">
+          <ProductLockControl
+            product={product}
+            totalReady={totalStock?.readyQty}
+            editable={!archived}
+            onSave={(fields) => saveLock(product, fields)}
+            testId="product-detail-lock-control"
+          />
+        </Box>
+      </Fact>
+    </Stack>,
+  );
+
+  // ── THE WAREHOUSE ZONE — ONE card: the warehouse picker in its header, and under it TABS for what that warehouse
+  // holds, OVERVIEW FIRST (owner: *"yang pergudang jadikan per tab biar ga load semuanya, yang statistik itu ganti design
+  // jadi overview dan tab pertama"*, `the-warehouse-zone-is-tabs`; Pemasok then its own tab, *"pemasok beda tab sama
+  // overview"*, `the-suppliers-are-a-tab-of-their-own`). Only the open tab is
+  // mounted, so only its rows are read. Everything above this card is the product across every warehouse
+  // (the-warehouse-picker-splits-the-page). On a phone the picker drops under the title, the full width. ───────────────
+  const picker = <WarehouseFilter value={warehouseId} onChange={setWarehouseId} testId="pd-warehouse-filter" />;
+  const warehouseEntry = productSection("warehouse");
+  const warehouseSection = (
+    <Section
+      id={productSectionDomId("warehouse")}
+      icon={warehouseEntry.icon}
+      title={t(warehouseEntry.titleKey)}
+      action={isMobile ? undefined : picker}
+      testId="pd-section-warehouse"
+    >
+      {isMobile && picker}
+      <WarehouseNote warehouseId={warehouseId} warehouseName={warehouseName} />
+
+      <Tabs.Root
+        value={warehouseTab}
+        onValueChange={(e) => setWarehouseTab(e.value as WarehouseTab)}
+        lazyMount
+        unmountOnExit
+        data-testid="pd-warehouse-tabs"
+      >
+        <Tabs.List flexWrap="nowrap" overflowX="auto" overflowY="hidden">
+          {WAREHOUSE_TABS.map((key) => (
+            <Tabs.Trigger key={key} value={key} flexShrink={0} whiteSpace="nowrap" data-testid={`pd-tab-${key}`}>
+              {t(`products.detail.tab.${key}`)}
+              {(key === "suppliers" || key === "daily") && <NotImplemented list={PRODUCT_DETAIL_PENDING} id={key} />}
+            </Tabs.Trigger>
+          ))}
+          <Tabs.Indicator />
+        </Tabs.List>
+
+        {/* OVERVIEW — the warehouse's four figures, alone. */}
+        <Tabs.Content value="overview" data-testid="pd-panel-overview">
+          <OverviewFigures stock={lensStock} markupBps={product.crossMarkupBps} />
+        </Tabs.Content>
+
+        {/* PEMASOK — who supplies it, a tab of its own (owner: *"pemasok beda tab sama overview"*); the tab names it, so
+            the panel carries no heading, and its ⚠ rides on the tab, as Keluar Masuk Harian's does. */}
+        <Tabs.Content value="suppliers" data-testid="pd-panel-suppliers">
+          <SuppliersSection suppliers={sampleSuppliers(product.id)} />
+        </Tabs.Content>
+
+        <Tabs.Content value="price" data-testid="pd-panel-price">
+          <PriceSection teamId={teamId} product={product} warehouseId={warehouseId} />
+        </Tabs.Content>
+
+        <Tabs.Content value="daily" data-testid="pd-panel-daily">
+          <DailySection days={sampleDaily(product.id, Number(lensStock?.readyQty ?? 0n))} />
+        </Tabs.Content>
+
+        <Tabs.Content value="history" data-testid="pd-panel-history">
+          <HistorySection teamId={teamId} productId={product.id} warehouseId={warehouseId} warehouseLabel={warehouseLabel} />
+        </Tabs.Content>
+      </Tabs.Root>
+    </Section>
+  );
+
+  return (
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack
+      gap="section"
+      animationStyle="enter"
+      data-testid="product-detail-page"
+      style={{ ["--detail-header-h" as string]: `${stickyHeight}px` }}
+    >
+      <NotImplementedSummary list={PRODUCT_DETAIL_PENDING} />
+
+      {/* THE STICKY STRIP — the section chips on a phone (always), and the header bar under them, drawn over the page once
+          the title has gone behind it. On a desktop the strip itself has no height: the bar overlays, nothing moves. */}
+      <Box ref={sticky} position="sticky" top="0" zIndex={10} h={isMobile ? undefined : "0"} data-testid="product-detail-header">
+        {isMobile && (
+          <Box bg="bg" py="2" borderBottomWidth="1px" borderColor="border">
+            <SectionNav compact sections={navSections} ariaLabel={t("products.detail.nav.label")} active={active} onSelect={scrollTo} />
+          </Box>
+        )}
+        <Box
+          ref={nameBar}
+          position="absolute"
+          top={isMobile ? "100%" : "0"}
+          left="0"
+          right="0"
+          bg="bg"
+          py="2"
+          borderBottomWidth="1px"
+          borderColor="border"
+          opacity={pastName ? 1 : 0}
+          visibility={pastName ? "visible" : "hidden"}
+          transition="opacity 120ms"
+          aria-hidden={!pastName}
+          data-testid="product-detail-name-bar"
+          data-shown={pastName || undefined}
+        >
+          {/* THE SAME ROW, IN SMALL — back, the name with the SKU under it, the actions on the right (owner: *"di stickynya
+              juga ada"*). */}
+          {headerRow(true)}
+        </Box>
+      </Box>
 
       <ConfirmDialog
         open={archiving}
@@ -343,259 +880,47 @@ export function ProductDetailPage() {
         onRestore={(sku) => restore(product, sku)}
       />
 
-      {/* Four tabs down the left on a desktop; ACROSS THE TOP on a phone, where a 12rem column of tabs would leave the
-          record a strip beside it — a phone gets its own arrangement, not the desktop's squeezed. One underline slides to
-          the picked tab (motion-is-small-quick-and-shared). */}
-      <Tabs.Root defaultValue="info" orientation={isMobile ? "horizontal" : "vertical"} data-testid="pd-tabs">
-        <Tabs.List
-          minW={isMobile ? undefined : "48"}
-          flexWrap="nowrap"
-          overflowX={isMobile ? "auto" : undefined}
-          overflowY={isMobile ? "hidden" : undefined}
-        >
-          <Tabs.Trigger value="info" data-testid="pd-tab-info">
-            {t("products.detail.tab.info")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="price" data-testid="pd-tab-price">
-            {t("products.detail.tab.price")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="batch" data-testid="pd-tab-batch">
-            {t("products.detail.tab.batch")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="history" data-testid="pd-tab-history">
-            {t("products.detail.tab.stockHistory")}
-          </Tabs.Trigger>
-          <Tabs.Indicator />
-        </Tabs.List>
+      {/* THE NAVIGATION, THEN THE SECTIONS — the order detail's shape. ⚠ \`minmax(0, 1fr)\` so a wide table scrolls in its
+          own box instead of pushing the column, and \`alignItems="start"\` so the nav's cell can stick. */}
+      <Grid templateColumns={isMobile ? "minmax(0, 1fr)" : "13rem minmax(0, 1fr)"} gap="section" alignItems="start">
+        {!isMobile && (
+          <Box position="sticky" top="calc(var(--detail-header-h, 0px) + 1rem)">
+            <SectionNav sections={navSections} ariaLabel={t("products.detail.nav.label")} active={active} onSelect={scrollTo} />
+          </Box>
+        )}
 
-        {/* INFO — the catalogue record. What the thing IS, which is the half of a product that lives
-            in product_service and answers without asking any other service. */}
-        <Tabs.Content value="info" flex="1" data-testid="pd-info-panel">
-          {/* Gallery LEFT, the record RIGHT, in two EQUAL columns. A product is a thing you look at
-              before you read anything about it, and stacking the images under the fields put the one
-              identifying part of the page below the fold. Below `md` it stacks — two columns in a
-              phone's width is one unreadable column each.
-
-              The split is 1:3, not even. A square image that grows with its column becomes a poster
-              on a wide monitor — the picture has to identify the product, not dominate the record
-              beside it — and the record is the part with several fields to lay out. A quarter of the
-              row is enough to recognise a thing by. */}
-          <Grid
-            templateColumns={{ base: "1fr", md: "1fr 3fr" }}
-            gap="card"
-            alignItems="start"
-          >
-            <Card.Root>
-              <Card.Body>
-                {/* No "Images" heading — a card holding nothing but pictures does not need to be told
-                    apart from one that isn't. */}
-                <Stack gap="card">
-                  {product.images.length === 0 ? (
-                    <Text color="fg.muted" fontSize="sm" data-testid="product-detail-no-images">
-                      {t("products.detail.noImages")}
-                    </Text>
-                  ) : product.images.length === 1 ? (
-                    /* ONE image is not a carousel. Arrows and a single indicator would be chrome
-                       promising a second picture that does not exist. */
-                    <Box data-testid="product-detail-images">
-                      <Image
-                        src={product.images[0].url || product.images[0].thumbnailUrl}
-                        alt={`${product.name} image 1`}
-                        aspectRatio={1}
-                        objectFit="cover"
-                        w="full"
-                        borderWidth="1px"
-                        borderRadius="md"
-                        data-testid="product-detail-image-0"
-                      />
-                    </Box>
-                  ) : (
-                    /* SEVERAL images — one at full width at a time, swiped or arrowed through.
-                       A row of equal thumbnails would shrink every picture to make room for the
-                       others, which is the wrong trade on the one tab whose job is showing what the
-                       product looks like. Position 0 is the cover, so the carousel opens on it. */
-                    <Carousel.Root
-                      slideCount={product.images.length}
-                      slidesPerPage={1}
-                      loop
-                      allowMouseDrag
-                      data-testid="product-detail-images"
-                    >
-                      <Carousel.ItemGroup>
-                        {product.images.map((img, i) => (
-                          <Carousel.Item key={`${img.url}-${i}`} index={i}>
-                            <Image
-                              src={img.url || img.thumbnailUrl}
-                              alt={`${product.name} image ${i + 1}`}
-                              aspectRatio={1}
-                              objectFit="cover"
-                              w="full"
-                              borderWidth="1px"
-                              borderRadius="md"
-                              data-testid={`product-detail-image-${i}`}
-                            />
-                          </Carousel.Item>
-                        ))}
-                      </Carousel.ItemGroup>
-
-                      {/* THUMBNAILS as the indicators, not dots and not arrows. A dot says only "there
-                          are four of these"; a thumbnail says which one you are about to get, which
-                          is the whole reason to look at a second picture of a product. It doubles as
-                          the navigation, so the prev/next arrows come out — with every slide one
-                          click away they were chrome for a trip nobody needs to make in order. */}
-                      <Carousel.IndicatorGroup
-                        display="flex"
-                        gap="2"
-                        mt="2"
-                        flexWrap="wrap"
-                        justifyContent="flex-start"
-                      >
-                        {product.images.map((img, i) => (
-                          <Carousel.Indicator
-                            key={`${img.url}-thumb-${i}`}
-                            index={i}
-                            unstyled
-                            aria-label={t("products.detail.showImage", { n: i + 1 })}
-                            cursor="pointer"
-                            boxSize="10"
-                            p="0"
-                            borderRadius="md"
-                            overflow="hidden"
-                            borderWidth="2px"
-                            borderColor="transparent"
-                            opacity="0.55"
-                            transition="opacity 0.15s, border-color 0.15s"
-                            _hover={{ opacity: 1 }}
-                            css={{
-                              "&[data-current]": {
-                                opacity: 1,
-                                borderColor: "colorPalette.solid",
-                              },
-                            }}
-                            colorPalette="brand"
-                          >
-                            <Image
-                              src={img.thumbnailUrl || img.url}
-                              alt=""
-                              w="full"
-                              h="full"
-                              objectFit="cover"
-                            />
-                          </Carousel.Indicator>
-                        ))}
-                      </Carousel.IndicatorGroup>
-                    </Carousel.Root>
-                  )}
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-
-            <Card.Root minW="0">
-              <Card.Body>
-                <Stack gap="card">
-                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-                    <Field label={t("products.field.sku")} value={product.sku} />
-                    <Field label={t("products.field.category")} value={categoryLabel} />
-
-                    {/* RESERVED is a COUNT and nothing else — the units never offered for sale, so
-                        that `available = on hand − reserved`. It sits under Info rather than Price
-                        because it is a decision about the ITEM ("this one is fragile / always
-                        miscounted"), taken once by whoever owns the catalogue, and it holds wherever
-                        the thing is stocked. There is no money to put under it. */}
-                    {/* THE LOCK — one setting, three ways (one-lock-three-ways): whether another team may order it,
-                        and the minimum total stock under which it may not. Changed here as on the list; a minimum in
-                        force right now is badged, judged on the total, so not while a lens shows one warehouse. */}
-                    <Stat label={t("products.lock.title")} testId="product-detail-lock">
-                      <ProductLockControl
-                        product={product}
-                        totalReady={warehouseId === 0n ? activityQuery.data?.stock?.readyQty : undefined}
-                        editable={!archived}
-                        onSave={(fields) => saveLock(product, fields)}
-                        testId="product-detail-lock-control"
-                      />
-                    </Stat>
-
-                    {/* The markup is repeated from the Price tab on purpose. It is the one commercial
-                        term a person checks WITHOUT wanting the money screen — "am I letting other
-                        teams have this, and at what?" — and making them change tabs to read one badge
-                        is how a summary stops summarising. The lock is its own field beside it. */}
-                    <Stat
-                      label={t("products.field.crossMarkup")}
-                      hint={t("products.detail.crossMarkupHint")}
-                      testId="product-detail-info-markup"
-                    >
-                      <Badge colorPalette={product.crossMarkupBps > 0 ? "brand" : "gray"}>
-                        {formatMarkup(product.crossMarkupBps)}
-                      </Badge>
-                    </Stat>
-
-                    {/* WHEN, not what. Both are recency, and recency is the question a catalogue owner
-                        asks of a product they have opened: is this thing still moving, and has stock
-                        come in behind the sales. The order and the delivery themselves are other
-                        screens' subjects. */}
-                    <Stat
-                      label={t("products.stat.lastOrder")}
-                      hint={t("products.stat.lastOrderHint")}
-                      testId="product-detail-last-order"
-                    >
-                      <WhenOrNever unix={activityQuery.data?.activity?.lastOrderUnix} />
-                    </Stat>
-
-                    <Stat
-                      label={t("products.stat.lastRestock")}
-                      hint={t("products.stat.lastRestockHint")}
-                      testId="product-detail-last-restock"
-                    >
-                      <WhenOrNever unix={activityQuery.data?.stock?.lastRestockUnix} />
-                    </Stat>
-                  </SimpleGrid>
-
-                  <Field label={t("products.field.description")} value={product.description} />
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          </Grid>
-        </Tabs.Content>
-
-        {/* PRICE, BATCH and STOCK HISTORY each live in their own file under components/ (#232).
-            They were inline while they were three empty tables with a note explaining why; now that
-            each one loads, pages and refreshes its own rows, each is a screen-sized thing of its own
-            and the page reads as what it is — a header, four tabs, and the record itself. */}
-        <Tabs.Content value="price" flex="1" data-testid="pd-price-panel">
-          <PriceTab
-            teamId={teamId}
-            product={product}
-            stock={activityQuery.data?.stock}
-            archived={archived}
-            warehouseId={warehouseId}
-            warehouseName={warehouseName}
-            onWarehouseChange={setWarehouseId}
-            onSaveLock={(fields) => saveLock(product, fields)}
-          />
-        </Tabs.Content>
-
-        <Tabs.Content value="batch" flex="1" data-testid="pd-batch-panel">
-          <BatchTab
-            teamId={teamId}
-            productId={product.id}
-            warehouseId={warehouseId}
-            warehouseName={warehouseName}
-            onWarehouseChange={setWarehouseId}
-            warehouseLabel={warehouseLabel}
-          />
-        </Tabs.Content>
-
-        <Tabs.Content value="history" flex="1" data-testid="pd-history-panel">
-          <HistoryTab
-            teamId={teamId}
-            productId={product.id}
-            warehouseId={warehouseId}
-            warehouseName={warehouseName}
-            onWarehouseChange={setWarehouseId}
-            warehouseLabel={warehouseLabel}
-          />
-        </Tabs.Content>
-      </Tabs.Root>
+        {/* TWO ZONES (the-warehouse-picker-splits-the-page). ABOVE, the product across every warehouse: the title, Info
+            and Batch, with the short reference cards BESIDE Info on a wide screen (owner: *"info produk tidak penuh jadi
+            penjualan tim lain ke bawah jadi disebelahnya"*). BELOW, the warehouse card and its tabs
+            (the-warehouse-zone-is-tabs). A JS branch, so no card exists twice. */}
+        {wide ? (
+          <Stack gap="section" minW="0">
+            {title}
+            <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
+              {/* The warehouse card is as wide as Info and Batch (owner: *"per gudang selebar batch dan info"*) — the
+                  main column, the side cards beside it. */}
+              <Stack gap="section" minW="0">
+                {infoSection}
+                {batchSection}
+                {warehouseSection}
+              </Stack>
+              <Stack gap="section" minW="0">
+                {crossSection}
+                {derivedSection}
+              </Stack>
+            </Grid>
+          </Stack>
+        ) : (
+          <Stack gap="section" minW="0" w="full">
+            {title}
+            {infoSection}
+            {batchSection}
+            {crossSection}
+            {derivedSection}
+            {warehouseSection}
+          </Stack>
+        )}
+      </Grid>
     </Stack>
   );
 }

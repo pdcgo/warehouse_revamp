@@ -61,6 +61,11 @@ export interface ChannelBrowserProps {
   supplierId: bigint;
   /** Page actions in the filter bar's action slot — Add Store on the manage page. */
   actions?: ReactNode;
+  /**
+   * The empty list's own action — Add Store again, under "no stores yet". ⚠ Its OWN node, never `actions` mounted a
+   * second time: the same trigger twice puts two elements behind one test id, which fails every spec that clicks it.
+   */
+  emptyAction?: ReactNode;
   /** Per-row actions; absent = read-only, as on the discover detail. */
   rowActions?: (channel: SupplierChannelRecord) => ReactNode;
   /** The page's own pending mark for the Description column, if it has one. */
@@ -93,6 +98,7 @@ export function ChannelBrowser({
   teamId,
   supplierId,
   actions,
+  emptyAction,
   rowActions,
   descriptionMark,
   figureMarks,
@@ -149,7 +155,7 @@ export function ChannelBrowser({
           size="sm"
           title={t("supplierChannel.section.empty")}
           description={t("supplierChannel.section.emptyHint")}
-          action={actions}
+          action={emptyAction}
           testId="channels-empty"
         />
       );
