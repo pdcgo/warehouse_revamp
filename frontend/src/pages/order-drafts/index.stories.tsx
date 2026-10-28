@@ -15,6 +15,7 @@ import { OrderDraftsPage } from "./index";
 //   | ------------------------------- | ---------------------------------------------------------- |
 //   | Default                         | the stage strip with Drafts active, one row per draft       |
 //   | EachRowSaysWhatIsLeft           | "1 of 3 unmapped" / "Ready" — not a bare yes/no              |
+//   | NoDateOrNoPriceIsNotReady       | Promote refuses both, so the list never calls either ready   |
 //   | TheSummaryCountsWhatItCan       | total and oldest are real; ready is this page, and marked    |
 //   | WhatIsLeftSitsUnderTheReference | first gap named, the rest counted, all on the title          |
 //   | TheRowIsRealFieldsOnly          | shop and author are the draft's own — no invented cell       |
@@ -30,6 +31,9 @@ const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 
 const UNMAPPED = orderDrafts.find((d) => d.unmappedItemCount > 0)!; // 201
 const READY = orderDrafts.find((d) => d.unmappedItemCount === 0)!; // 202
+// Each one field short of READY — the two Promote refusals a summary row can read.
+const NO_DATE = orderDrafts.find((d) => d.unmappedItemCount === 0 && d.platformCreatedAtUnix === 0n)!; // 203
+const NO_PRICE = orderDrafts.find((d) => d.unmappedItemCount === 0 && d.platformTotal === 0n)!; // 204
 
 const Routed = routedPage(
   [
@@ -96,6 +100,27 @@ export const EachRowSaysWhatIsLeft: Story = {
 };
 
 /**
+ * NOT READY WITHOUT THE ORDER DATE OR THE SELL PRICE — Promote refuses both
+ * (platform-created-at-is-required-at-finalize, platform-total-is-required-at-finalize), so a list that called either
+ * draft Ready would send somebody to a button that turns them away. Each is one field short, every line mapped.
+ */
+export const NoDateOrNoPriceIsNotReady: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const noDate = await canvas.findByTestId(`draft-gaps-${NO_DATE.id}`);
+    await expect(noDate).toHaveTextContent("Order date");
+    await expect(noDate).not.toHaveTextContent("+");
+    await expect(canvas.queryByTestId(`draft-ready-${NO_DATE.id}`)).toBeNull();
+
+    const noPrice = canvas.getByTestId(`draft-gaps-${NO_PRICE.id}`);
+    await expect(noPrice).toHaveTextContent("Sell price");
+    await expect(noPrice).not.toHaveTextContent("+");
+    await expect(canvas.queryByTestId(`draft-ready-${NO_PRICE.id}`)).toBeNull();
+  },
+};
+
+/**
  * A DRAFT HAS ONE SIDE — unlike an order, which a warehouse reads from the shipping end.
  *
  * Both of Melati's drafts name Gudang Pusat as their warehouse, and Gudang Pusat still sees none:
@@ -127,21 +152,27 @@ export const TheSummaryCountsWhatItCan: Story = {
     await waitFor(() => expect(canvas.getByTestId("draft-summary-oldest-value")).toHaveTextContent("2 days"));
 
     const ready = canvas.getByTestId("draft-summary-ready");
-    await expect(within(ready).getByTestId("draft-summary-ready-value")).toHaveTextContent("1 of 2");
+    // Only 202 is ready — 203 and 204 are each one Promote refusal short.
+    await expect(within(ready).getByTestId("draft-summary-ready-value")).toHaveTextContent(
+      `1 of ${orderDrafts.length}`,
+    );
     await expect(within(ready).getByTestId("not-implemented-readyCount")).toBeInTheDocument();
   },
 };
 
 /**
  * WHAT IS LEFT SITS UNDER THE REFERENCE — where the order list puts the stage. The first gap is named
- * and the rest counted, so the cell stays two lines; every gap is on the badge's title.
+ * and the rest counted, so the cell stays two lines; every gap is on the badge's title. 201 is short of three,
+ * named in the order the detail page's Promote reasons list them.
  */
 export const WhatIsLeftSitsUnderTheReference: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const row = await canvas.findByTestId(`draft-row-${UNMAPPED.id}`);
 
-    await expect(within(row).getByTestId(`draft-gaps-${UNMAPPED.id}`)).toHaveTextContent("Unmapped lines");
+    const gaps = within(row).getByTestId(`draft-gaps-${UNMAPPED.id}`);
+    await expect(gaps).toHaveTextContent("Order date +2");
+    await expect(gaps).toHaveAttribute("title", "Order date · Sell price · Unmapped lines");
     await expect(within(row).getByTestId("order-ref")).toHaveTextContent(UNMAPPED.externalId);
   },
 };

@@ -46,6 +46,9 @@ const (
 	// LiabilityServiceLiabilityDailyProcedure is the fully-qualified name of the LiabilityService's
 	// LiabilityDaily RPC.
 	LiabilityServiceLiabilityDailyProcedure = "/warehouse.liability.v1.LiabilityService/LiabilityDaily"
+	// LiabilityServiceLiabilityCreditByIdsProcedure is the fully-qualified name of the
+	// LiabilityService's LiabilityCreditByIds RPC.
+	LiabilityServiceLiabilityCreditByIdsProcedure = "/warehouse.liability.v1.LiabilityService/LiabilityCreditByIds"
 	// LiabilityPaymentServiceLiabilityPaymentRecordProcedure is the fully-qualified name of the
 	// LiabilityPaymentService's LiabilityPaymentRecord RPC.
 	LiabilityPaymentServiceLiabilityPaymentRecordProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentRecord"
@@ -80,6 +83,9 @@ type LiabilityServiceClient interface {
 	LiabilityLogList(context.Context, *connect.Request[v1.LiabilityLogListRequest]) (*connect.Response[v1.LiabilityLogListResponse], error)
 	// What the ledger moved PER DAY — a warehouse's income half of the daily statement.
 	LiabilityDaily(context.Context, *connect.Request[v1.LiabilityDailyRequest]) (*connect.Response[v1.LiabilityDailyResponse], error)
+	// The DEBTOR's side of a limit (the-debtor-sees-the-limits-set-on-it): for each team the asking team owes,
+	// the limit that team set on it, the debt it already carries, and how close it stands.
+	LiabilityCreditByIds(context.Context, *connect.Request[v1.LiabilityCreditByIdsRequest]) (*connect.Response[v1.LiabilityCreditByIdsResponse], error)
 }
 
 // NewLiabilityServiceClient constructs a client for the warehouse.liability.v1.LiabilityService
@@ -111,6 +117,12 @@ func NewLiabilityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityDaily")),
 			connect.WithClientOptions(opts...),
 		),
+		liabilityCreditByIds: connect.NewClient[v1.LiabilityCreditByIdsRequest, v1.LiabilityCreditByIdsResponse](
+			httpClient,
+			baseURL+LiabilityServiceLiabilityCreditByIdsProcedure,
+			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityCreditByIds")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -119,6 +131,7 @@ type liabilityServiceClient struct {
 	liabilityPositionList *connect.Client[v1.LiabilityPositionListRequest, v1.LiabilityPositionListResponse]
 	liabilityLogList      *connect.Client[v1.LiabilityLogListRequest, v1.LiabilityLogListResponse]
 	liabilityDaily        *connect.Client[v1.LiabilityDailyRequest, v1.LiabilityDailyResponse]
+	liabilityCreditByIds  *connect.Client[v1.LiabilityCreditByIdsRequest, v1.LiabilityCreditByIdsResponse]
 }
 
 // LiabilityPositionList calls warehouse.liability.v1.LiabilityService.LiabilityPositionList.
@@ -136,6 +149,11 @@ func (c *liabilityServiceClient) LiabilityDaily(ctx context.Context, req *connec
 	return c.liabilityDaily.CallUnary(ctx, req)
 }
 
+// LiabilityCreditByIds calls warehouse.liability.v1.LiabilityService.LiabilityCreditByIds.
+func (c *liabilityServiceClient) LiabilityCreditByIds(ctx context.Context, req *connect.Request[v1.LiabilityCreditByIdsRequest]) (*connect.Response[v1.LiabilityCreditByIdsResponse], error) {
+	return c.liabilityCreditByIds.CallUnary(ctx, req)
+}
+
 // LiabilityServiceHandler is an implementation of the warehouse.liability.v1.LiabilityService
 // service.
 type LiabilityServiceHandler interface {
@@ -145,6 +163,9 @@ type LiabilityServiceHandler interface {
 	LiabilityLogList(context.Context, *connect.Request[v1.LiabilityLogListRequest]) (*connect.Response[v1.LiabilityLogListResponse], error)
 	// What the ledger moved PER DAY — a warehouse's income half of the daily statement.
 	LiabilityDaily(context.Context, *connect.Request[v1.LiabilityDailyRequest]) (*connect.Response[v1.LiabilityDailyResponse], error)
+	// The DEBTOR's side of a limit (the-debtor-sees-the-limits-set-on-it): for each team the asking team owes,
+	// the limit that team set on it, the debt it already carries, and how close it stands.
+	LiabilityCreditByIds(context.Context, *connect.Request[v1.LiabilityCreditByIdsRequest]) (*connect.Response[v1.LiabilityCreditByIdsResponse], error)
 }
 
 // NewLiabilityServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -172,6 +193,12 @@ func NewLiabilityServiceHandler(svc LiabilityServiceHandler, opts ...connect.Han
 		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityDaily")),
 		connect.WithHandlerOptions(opts...),
 	)
+	liabilityServiceLiabilityCreditByIdsHandler := connect.NewUnaryHandler(
+		LiabilityServiceLiabilityCreditByIdsProcedure,
+		svc.LiabilityCreditByIds,
+		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityCreditByIds")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.liability.v1.LiabilityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case LiabilityServiceLiabilityPositionListProcedure:
@@ -180,6 +207,8 @@ func NewLiabilityServiceHandler(svc LiabilityServiceHandler, opts ...connect.Han
 			liabilityServiceLiabilityLogListHandler.ServeHTTP(w, r)
 		case LiabilityServiceLiabilityDailyProcedure:
 			liabilityServiceLiabilityDailyHandler.ServeHTTP(w, r)
+		case LiabilityServiceLiabilityCreditByIdsProcedure:
+			liabilityServiceLiabilityCreditByIdsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -199,6 +228,10 @@ func (UnimplementedLiabilityServiceHandler) LiabilityLogList(context.Context, *c
 
 func (UnimplementedLiabilityServiceHandler) LiabilityDaily(context.Context, *connect.Request[v1.LiabilityDailyRequest]) (*connect.Response[v1.LiabilityDailyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityService.LiabilityDaily is not implemented"))
+}
+
+func (UnimplementedLiabilityServiceHandler) LiabilityCreditByIds(context.Context, *connect.Request[v1.LiabilityCreditByIdsRequest]) (*connect.Response[v1.LiabilityCreditByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityService.LiabilityCreditByIds is not implemented"))
 }
 
 // LiabilityPaymentServiceClient is a client for the warehouse.liability.v1.LiabilityPaymentService

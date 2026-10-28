@@ -128,16 +128,8 @@ export function TermsEditDialog({
         teamId,
         counterpartyId: BigInt(counterpartyId),
         handlingFee: BigInt(handlingFee || "0"),
-        // ⚠ PASSED THROUGH UNCHANGED, NEVER 0 — and this is not tidiness, it is what stops this dialog
-        // silently wiping a fee. The cross-product markup is `product_service`'s (owner), so it is no
-        // longer EDITED here; but `LiabilityTermsSet` is an upsert that writes
-        // `product_markup_bp = EXCLUDED.product_markup_bp` unconditionally, and `order_fees.go` still
-        // charges the cross fee from that column. Sending 0 because the field left the form would
-        // zero the markup on every unrelated limit edit.
-        //
-        // ⚠ DELETE THIS LINE ONLY WHEN THE COLUMN GOES. It is a bridge, and it is load-bearing until
-        // the charge is moved to the product's own `cross_markup_bps`.
-        productMarkupBp: editing?.productMarkupBp ?? 0n,
+        // No markup rides along any more: the column is gone, and the product fee is the order lines' frozen totals,
+        // priced at each product's own `cross_markup_bps` (the-ledger-charges-the-frozen-line-total).
         creditLimit,
         reason: reason.trim(),
       });
@@ -240,10 +232,11 @@ export function TermsEditDialog({
                     <Field.HelperText>{t("terms.handlingFeeHelp")}</Field.HelperText>
                   </Field.Root>
 
-                  {/* ⛔ THE CROSS-PRODUCT MARKUP IS GONE FROM THIS FORM (owner): it is a property of
-                      the PRODUCT, not of a credit relationship, and `products.cross_markup_bps`
-                      already exists in product_service. Setting it here made a rate that varies
-                      per product look like one rate per counterparty. */}
+                  {/* ⛔ THE CROSS-PRODUCT MARKUP IS NOT A TERM (owner): it is a property of the
+                      PRODUCT, not of a credit relationship — `products.cross_markup_bps` in
+                      product_service, frozen on each order line by the take. Setting it here made a
+                      rate that varies per product look like one rate per counterparty, and the terms
+                      no longer carry one at all (the-ledger-charges-the-frozen-line-total). */}
 
                   <Field.Root required={needsReason}>
                     <Field.Label>{t("terms.reason")}</Field.Label>

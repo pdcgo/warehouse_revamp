@@ -26,7 +26,7 @@ import {
   usePushOrderDraft,
   useUpdateOrderDraft,
 } from "../../features/orderDrafts/queries";
-import { useStockAvailability, useStockCosts } from "../../features/inventory/queries";
+import { useStockTakeQuote } from "../../features/inventory/queries";
 import {
   MarketplaceInfoForm,
   emptyMarketplaceInfo,
@@ -46,18 +46,19 @@ import { useProductsByIds } from "../../features/products/queries";
 import { useTeams } from "../../features/teams/queries";
 import type { BundleDraft } from "../../features/orders/form/bundles";
 import { type PickedBundle, bundleFor, bundleLines, fillFor } from "../../features/orders/form/bundles";
-import { forgetLink, rememberLink, rememberedLink } from "../../features/orders/form/mockData";
 import { useWarehouseFeeQuote } from "../../features/warehouse/queries";
 import { BundleCard } from "../../features/orders/form/BundleCard";
 import { CreditLimitPanel } from "../../features/orders/form/CreditLimitPanel";
 import type { CreditRow } from "../../features/orders/form/CreditLimitPanel";
-import { creditRows, invoiceRows } from "../../features/orders/form/money";
+import { creditReadOf, creditRows, creditorIds, goodsCostOf, invoiceRows } from "../../features/orders/form/money";
+import { useLiabilityCredit } from "../../features/liability/queries";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDER_FORM_PENDING } from "../../features/orders/form/pending";
 import { NoteAndSubmitCard } from "../../features/orders/form/NoteAndSubmitCard";
 import { ProfitEstimatePanel } from "../../features/orders/form/ProfitEstimatePanel";
 import { ReturnMappingCard } from "../../features/orders/form/ReturnMappingCard";
-import type { CrossLine, MappedProduct } from "../../features/orders/form/ReturnMappingCard";
+import type { CrossLine } from "../../features/orders/form/ReturnMappingCard";
+import { useReturnMapping } from "../../features/orders/form/returnMapping";
 import { ShippingReceiptCard } from "../../features/orders/form/ShippingReceiptCard";
 import { WarehouseBand } from "../../features/orders/form/WarehouseBand";
 import { OrderChecksDialog } from "../../features/orders/form/OrderChecksDialog";
@@ -72,11 +73,14 @@ import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
 import { emptyReceipt, hasReceipt } from "../../components/orders/ReceiptUpload";
 import type { ReceiptValue } from "../../components/orders/ReceiptUpload";
 import type { LineDraft } from "../../features/orders/lines";
+import { TakeRefusalAlert } from "../../features/orders/TakeRefusalAlert";
+import { type TakeRefusal, takeRefusalOf } from "../../features/orders/takeRefusal";
 import {
+  availabilityOf,
+  byProduct,
   canSubmit,
   lineFor,
   lineStock,
-  lineTotal,
   toQty,
   toRupiah,
   unitCost,
@@ -204,7 +208,6 @@ export function OrderCreatePage() {
   // marked on its card and listed at the top of the page. The exception is the bundle: its
   // products ARE placed, as ordinary lines (see `allLines`); only the grouping is lost.
   const [bundles, setBundles] = useState<BundleDraft[]>([]);
-  const [mapping, setMapping] = useState<Map<string, MappedProduct>>(new Map());
   // WHEN THE ORDER HAPPENED — and it starts EMPTY (owner).
   //
   // ⚠ NO DEFAULT OF TODAY. It was pre-filled with now, on the argument that most orders are typed in
@@ -222,6 +225,10 @@ export function OrderCreatePage() {
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [error, setError] = useState("");
+  // WHY THE WAREHOUSE REFUSED THE LAST CREATE, when it did (a-refusal-names-its-reason-and-every-line) — kept apart
+  // from `error` because it is not a sentence to print but a reason and the lines it names, each one a line on this
+  // form the person has to change.
+  const [refusal, setRefusal] = useState<TakeRefusal | null>(null);
 
   // The external reference this form's draft is filed under, minted ONCE per visit.
   //
@@ -274,6 +281,10 @@ export function OrderCreatePage() {
   // invoice, the validation AND the order that is written — is about products and has no opinion
   // about how they got here. A bundle is an input device, not a second kind of goods.
   const allLines = useMemo(() => [...lines, ...bundleLines(bundles)], [lines, bundles]);
+  // …and the same goods ONE LINE PER PRODUCT, which is what the order stores: the server merges a product that sits
+  // on two lines (a bundle's slot and a hand-picked line) before the take, and the take costs it once. Every money
+  // figure below is summed over THIS, so the totals on screen are the totals the order keeps.
+  const productLines = useMemo(() => byProduct(allLines), [allLines]);
 
   // ── THE RECEIPT FILE, READ BACK ───────────────────────────────────────────────────────────────
   //
@@ -330,19 +341,19 @@ export function OrderCreatePage() {
     return hit !== undefined && hit !== marketplace.marketplace ? hit : undefined;
   }, [marketplace.orderExternalRefId, marketplace.marketplace]);
 
-  // What the chosen warehouse holds, for every product on the form. ONE batched read for all lines
-  // rather than one per line, and it re-reads when the warehouse changes — which is the point: the
-  // same order is placeable from one building and not from another, so the figures must follow the
-  // warehouse rather than describing whichever one was picked first.
   const productIds = useMemo(() => allLines.map((l) => l.productId), [allLines]);
 
-  const stockQuery = useStockAvailability({ teamId, warehouseId, productIds });
-  const stock = stockQuery.data;
-
-  // The HPP each line is valued at (owner: "we use hpp price"). Its own read, so a cost failure never
-  // blanks the stock figures and vice versa.
-  const costsQuery = useStockCosts({ teamId, warehouseId, productIds });
-  const costs = costsQuery.data;
+  // WHAT THE ORDER WOULD DRAW from the chosen warehouse (an-order-is-costed-at-what-leaves-the-shelf): each line's
+  // cost as the take would draw it — the owner's batches oldest first, the very draw Create then freezes — and what
+  // the warehouse holds against it. ONE batched read for all lines, re-asked when the warehouse or a quantity changes:
+  // the same order is placeable from one building and not from another, and 3 units cost more than 3 × the first one
+  // once they spill into a newer batch. The stock column and the HPP come from the same answer, so they cannot
+  // describe two different reads.
+  const quote = useStockTakeQuote({ teamId, warehouseId, lines: allLines });
+  const costs = quote.data?.costs;
+  const stock = useMemo(() => availabilityOf(costs), [costs]);
+  // A kept answer while a changed quantity is being priced — the lines say so rather than reading as current.
+  const quoteBusy = quote.isFetching && !quote.isPending;
 
   // WHOSE product each line is. The by-ids row carries `teamId`, so cross-team ownership is a FACT
   // rather than a guess — it is what fills the return-mapping card and splits the invoice by team.
@@ -453,15 +464,6 @@ export function OrderCreatePage() {
   }
 
 
-  const subtotal = useMemo(
-    () => allLines.reduce((sum, l) => sum + lineTotal(l, costs), 0n),
-    [allLines, costs],
-  );
-  // The shipping cost is no longer typed on this form (owner), so the total IS the subtotal. The
-  // order still carries a `shipping_cost` — it is simply 0 on everything placed from here, and the
-  // sum is written out rather than collapsed so the missing term is visible when it comes back.
-  const total = subtotal;
-
   // ── Who owns what, and what that costs ────────────────────────────────────────────────────────
 
   // One entry per OTHER team with goods on this order, with what those goods are worth at HPP.
@@ -487,9 +489,13 @@ export function OrderCreatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allLines, owners, teamId, teamNames]);
 
+  // THE GOODS' COST — the order's `goods_cost` as it will be frozen: per PRODUCT, not per line (`productLines`: the
+  // same product on two lines is one draw, priced once), each at what it costs the seller — a borrowed product WITH its
+  // own markup (the-cross-charge-lives-on-the-line). The fee below is asked on exactly this, as Create prices it.
   const productsTotal = useMemo(
-    () => allLines.reduce((sum, l) => sum + lineTotal(l, costs), 0n),
-    [allLines, costs],
+    () => goodsCostOf({ lines: productLines, owners, costs, teamId }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [productLines, owners, costs, teamId],
   );
 
   // THE WAREHOUSE'S FEE, priced by the warehouse itself on the goods' cost — the same call order create makes before
@@ -499,18 +505,18 @@ export function OrderCreatePage() {
   // A warehouse that never set its fee takes no orders (a-warehouse-with-no-rate-takes-no-orders): its sentence is
   // shown under the picker and Save stays off, because the server would refuse the order anyway.
   const feeRefusal = warehouseId > 0n ? (feeQuote.data?.refusal ?? null) : null;
-  // ⚠ NO SHIPPING TERM (owner hid the field): nothing prices a shipment, so the total is the goods
-  // and the fee. It is listed as a MISSING part rather than quietly summed as zero — the profit
-  // estimate below is computed from this number and therefore reads high until shipping exists.
+  // THE GOODS AND THE FEE, and nothing else. No shipping term, by design: the buyer pays the platform for the
+  // courier and none of that money passes through us (an-order-records-no-shipping-cost,
+  // cod-and-shipping-are-the-platforms) — so the profit below is measured against the whole of our cost.
   const orderTotal = productsTotal + warehouseFee;
-  const sellPrice = toRupiah(marketplace.marketplaceTotal);
+  const sellPrice = toRupiah(marketplace.platformTotal);
 
   // WHAT WE OWE, per creditor. The goods of each owning team at HPP, then their markup on top — the
   // same shape `liability` posts, so the preview and the recorded debt cannot disagree.
   const invoice: InvoiceRow[] = useMemo(
-    () => invoiceRows({ lines: allLines, owners, costs, teamId, warehouseId, warehouseFee, teamName }),
+    () => invoiceRows({ lines: productLines, owners, costs, teamId, warehouseId, warehouseFee, teamName }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allLines, owners, costs, teamId, teamNames, warehouseId, warehouseFee],
+    [productLines, owners, costs, teamId, teamNames, warehouseId, warehouseFee],
   );
 
   const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0n);
@@ -522,76 +528,44 @@ export function OrderCreatePage() {
   // moment a building sells its own goods), and then the fee and the goods are two debts to ONE
   // creditor with ONE limit. Listing them separately would show an order as comfortable against a
   // ceiling that the two halves together cross.
+  //
+  // THE FIGURES ARE EACH CREDITOR'S OWN (the-debtor-sees-the-limits-set-on-it): one read for every creditor on the
+  // order, the same reading the create's check makes. A row still reading, or failed, says so — never "unlimited".
+  const creditQuery = useLiabilityCredit(teamId, creditorIds(invoice, warehouseId));
   const creditRowsList: CreditRow[] = useMemo(
-    () => creditRows({ invoice, warehouseId, warehouseFee, teamName }),
+    () =>
+      creditRows({
+        invoice,
+        teamId,
+        warehouseId,
+        warehouseFee,
+        teamName,
+        credit: creditReadOf(creditQuery),
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [invoice, warehouseId, warehouseFee, teamNames],
+    [invoice, teamId, warehouseId, warehouseFee, teamNames, creditQuery.data, creditQuery.isError],
   );
 
-  // ── The return mapping, and what it remembers ─────────────────────────────────────────────────
+  // ── The return mapping ────────────────────────────────────────────────────────────────────────
 
-  // A CROSS LINE ARRIVES WITH LAST TIME'S ANSWER ALREADY IN IT.
-  //
-  // That is the point of the link: the first order carrying another team's product needs a decision,
-  // every order after it does not. The row says it was remembered (`remembered: true`) rather than
-  // pre-filling silently, because an answer nobody gave must not look like one somebody did.
-  //
-  // ⚠ IT ONLY EVER FILLS AN EMPTY ROW. Reading `prev` inside the updater keeps this a one-shot fill
-  // instead of a rule that fights the person: a row somebody has just cleared stays cleared.
-  // ⚠ IT ALSO PRUNES. The mapping is rebuilt from the order's CURRENT cross lines: an answer for a
-  // product that has been taken off the order does not sit in state waiting to reappear. It comes
-  // back from the LINK instead, badged as remembered — which is the behaviour being reviewed, and is
-  // what the next order will do when the link lives in a table rather than in this module.
-  useEffect(() => {
-    setMapping((prev) => {
-      const next = new Map<string, MappedProduct>();
-
-      for (const line of crossLines) {
-        const key = line.productId.toString();
-        const existing = prev.get(key);
-
-        if (existing) {
-          next.set(key, existing);
-          continue;
-        }
-
-        const link = rememberedLink(line.productId);
-        if (link) next.set(key, { productId: link.productId, name: link.name, remembered: true });
-      }
-
-      // Identity check before committing, or this effect would set state on every render: the kept
-      // entries are the very same objects, so an unchanged map compares equal here.
-      const unchanged =
-        next.size === prev.size && [...next].every(([key, value]) => prev.get(key) === value);
-
-      return unchanged ? prev : next;
-    });
-  }, [crossLines]);
-
-  function mapReturn(crossProductId: bigint, mapped: MappedProduct | undefined) {
-    setMapping((prev) => {
-      const next = new Map(prev);
-      if (mapped) next.set(crossProductId.toString(), mapped);
-      else next.delete(crossProductId.toString());
-      return next;
-    });
-
-    // WRITE IT THROUGH, both ways. Answering a row teaches the link; clearing one forgets it, or the
-    // effect above would put the old pair straight back and the row could never be emptied.
-    if (mapped) rememberLink(crossProductId, mapped);
-    else forgetLink(crossProductId);
-  }
-
-  const unmappedReturns = crossLines.filter(
-    (l) => !mapping.has(l.productId.toString()),
-  ).length;
+  // A CROSS LINE ARRIVES WITH LAST TIME'S ANSWER ALREADY IN IT — read by ProductReturnMapByIds, and locked: the first
+  // order carrying another team's product needs a decision, every order after it does not. A pick made here has been
+  // WRITTEN by the card by the time it shows (the-map-is-written-when-it-is-picked), so it stands whether or not this
+  // order is ever placed, and Create only ever checks. The draft page reads the same hook.
+  const returnMapping = useReturnMapping(teamId, crossLines);
+  const unmappedReturns = returnMapping.unmapped;
 
   // The marketplace's order date is required to place (platform-created-at-is-required-at-finalize) — marked on its
-  // field like the customer's name, so a disabled Create always has a red asterisk to point at.
+  // field like the customer's name, so a disabled Create always has a red asterisk to point at. So is the SELL PRICE,
+  // what the buyer paid there (platform-total-is-required-at-finalize): settlement opens the order's account on it.
+  // ⚠ AND EVERY BORROWED PRODUCT NEEDS ITS RETURN MAP (a-borrowed-line-needs-its-map-at-create): the server refuses
+  // the order without one, so Create is held here too, and the line under the button says why.
   const canSave =
     canSubmit({ customerName, shopId, warehouseId, lines: allLines, stock }) &&
     feeRefusal === null &&
-    orderDate !== "";
+    orderDate !== "" &&
+    sellPrice > 0n &&
+    unmappedReturns === 0;
 
   // How many lines the chosen warehouse cannot fill. Summarised at the top as well as marked on each
   // line: on a long order the failing line can be off screen, and "Create is disabled and I cannot see
@@ -613,7 +587,7 @@ export function OrderCreatePage() {
     note.trim() !== "" ||
     hasReceipt(receipt) ||
     addressTouched(address) ||
-    toRupiah(marketplace.marketplaceTotal) > 0n ||
+    toRupiah(marketplace.platformTotal) > 0n ||
     lines.length > 0 ||
     // The cards that do not submit are still WORK: somebody who typed a deadline and a tracking
     // number has something to lose, whether or not the server will ever see it.
@@ -646,10 +620,8 @@ export function OrderCreatePage() {
     const findings = runOrderChecks({
       orderRefId: marketplace.orderExternalRefId,
       trackingCode: receiptCode,
-      shippingCode,
-      marketplace: marketplace.marketplace,
       scan,
-      sellPrice: toRupiah(marketplace.marketplaceTotal),
+      sellPrice: toRupiah(marketplace.platformTotal),
       // ⚠ THE FIGURE THE PANEL SHOWS, not the one the RPC carries. They differ by the warehouse fee,
       // and a dialog that quotes a different margin from the card above it is a dialog nobody trusts.
       orderTotal,
@@ -671,6 +643,7 @@ export function OrderCreatePage() {
     setGate([]);
     setSaving(true);
     setError("");
+    setRefusal(null);
 
     try {
       const res = await createOrder.mutateAsync({
@@ -687,35 +660,36 @@ export function OrderCreatePage() {
         // Sent only when one was actually attached: an empty reference and no reference say the same
         // thing, and the shorter one cannot be mistaken for a document whose id got lost.
         receipt: hasReceipt(receipt) ? receipt : undefined,
-        subtotal,
-        // 0 from this form — the field was removed from it (owner). Sent explicitly rather than
-        // omitted, so the request still states every term of the money it is placing.
-        shippingCost: 0n,
-        total,
-        marketplaceTotal: toRupiah(marketplace.marketplaceTotal),
+        // What the buyer paid on the platform. The order's OWN money — goods_cost, the warehouse fee, total_cost — is
+        // not sent: the server freezes it from the take (an-order-is-costed-at-what-leaves-the-shelf).
+        platformTotal: toRupiah(marketplace.platformTotal),
         // Trimmed, so a reference of nothing but whitespace is stored as none at all — the same
         // treatment `note` gets, and for the same reason: "" and "   " must not be two states.
         orderExternalRefId: marketplace.orderExternalRefId.trim(),
         // The number printed on the slip (`receipt_code`), trimmed for the same reason. Typed, or filled from the
         // file's scan — either way what the person confirmed is what is kept.
         receiptCode: receiptCode.trim(),
+        // The buyer's name on the marketplace — optional, never a reason to refuse (the-buyers-username-is-optional).
+        // Trimmed like the ref; the server trims it again, so spaces alone are none on either side.
+        buyerUsername: buyerUsername.trim(),
         // WHEN THE BUYER ORDERED — required (platform-created-at-is-required-at-finalize), which `canSave` already
         // holds the form to — and the marketplace's ship-by time, optional. Local time, to the minute.
         platformCreatedAtUnix: dateTimeInputToUnix(orderDate),
         platformShipmentDeadlineUnix: dateTimeInputToUnix(deadline),
         // ⚠ `allLines`, so a bundle's products are really ordered. The GROUPING is what is not
         // stored (mark 1) — the goods themselves are ordinary lines and must reach the warehouse,
-        // or the totals above would promise stock the order never draws.
+        // or the totals above would promise stock the order never draws. A product on two lines is
+        // sent twice and merged by the SERVER into one line (both doors, every client) — the two
+        // carry the same sku and name, and the price is the take's, so nothing is lost in the merge.
         items: allLines.map((l) => ({
           id: 0n,
           productId: l.productId,
           sku: l.sku,
           name: l.name,
           quantity: toQty(l.quantity),
-          // The HPP the form displayed. The server still stamps its own `unit_cost` from the
-          // warehouse (#74) — this is what the ORDER is valued at, and the two are read from the
-          // same place so they agree.
-          unitPrice: unitCost(l, costs),
+          // NO PRICE: a line carries none (an-order-line-carries-no-marketplace-price). The server freezes every money
+          // figure of the line from the take's REAL draw (#74, an-order-is-costed-at-what-leaves-the-shelf) — the same
+          // selection the form's quote ran, so the two agree unless another order took the same units first.
         })),
       });
 
@@ -730,10 +704,23 @@ export function OrderCreatePage() {
       const id = res.order?.id;
       void navigate(id ? `/orders/${id}` : "/orders");
     } catch (err) {
-      setError(rpcError(err));
+      // The warehouse refusing the take (short stock, a borrowed product below its reserve) says WHY and names the
+      // lines; anything else is a sentence.
+      const refused = takeRefusalOf(err);
+      if (refused) {
+        setRefusal(refused);
+      } else {
+        setError(rpcError(err));
+      }
     } finally {
       setSaving(false);
     }
+  }
+
+  // What a refused line is called on THIS form — the name the person picked it by, else its id.
+  function productLabel(productId: bigint): string {
+    const line = allLines.find((l) => l.productId === productId);
+    return line?.name || line?.sku || `#${productId.toString()}`;
   }
 
   // SAVE IT AS A DRAFT instead of placing it (owner) — the half-finished order goes to the drafts
@@ -760,6 +747,7 @@ export function OrderCreatePage() {
 
     setSavingDraft(true);
     setError("");
+    setRefusal(null);
 
     try {
       const pushed = await pushDraft.mutateAsync({
@@ -775,6 +763,8 @@ export function OrderCreatePage() {
         // The platform's two dates travel with the draft now (00020); 0 where nothing was typed.
         platformCreatedAtUnix: dateTimeInputToUnix(orderDate),
         platformShipmentDeadlineUnix: dateTimeInputToUnix(deadline),
+        // And the buyer's username (00021), "" where none was typed.
+        buyerUsername: buyerUsername.trim(),
         items: lines.map((l) => ({
           id: 0n,
           // The catalogue's own SKU and name stand in for what a scrape would have read off the
@@ -859,6 +849,8 @@ export function OrderCreatePage() {
         </Text>
       )}
 
+      {refusal && <TakeRefusalAlert refusal={refusal} labelOf={productLabel} testId="order-create-refusal" />}
+
       {/* Full width, above both columns: a line the warehouse cannot fill is a fact about the whole
           order, not about the column the line happens to sit in. */}
       {shortLines > 0 && (
@@ -875,7 +867,8 @@ export function OrderCreatePage() {
         <Stack gap="section">
           {/* WHAT THIS SCREEN CANNOT DO, BEFORE ANYTHING ELSE. It is read once, at the top, and
               repeated as a badge on each card that is affected — so somebody who scrolled straight to
-              a card still learns it there. */}
+              a card still learns it there. Empty since ReceiptCheck landed, so it renders nothing; it stays
+              mounted for the next part built ahead of the system. */}
           <NotImplementedSummary list={ORDER_FORM_PENDING} />
 
           {/* ⚠ THE WAREHOUSE LEADS THE FORM, AND IT IS NOT A CARD (owner). Every figure below is
@@ -922,7 +915,6 @@ export function OrderCreatePage() {
               onTrackingCodeChange={setReceiptCode}
               shippingCode={shippingCode}
               onShippingCodeChange={setShippingCode}
-              marketplace={marketplace.marketplace}
               filledFromFile={filledFromFile}
               scanResult={scan?.result}
             />
@@ -981,13 +973,18 @@ export function OrderCreatePage() {
                         calls the same figure the sell price — two words for one thing on one screen,
                         and the person has to work out they are the same. The sell price wins: it is
                         what the customer paid, which is what the margin is measured against. */}
-                    <Field.Root>
-                      <Field.Label>{t("orderForm.source.sellPrice")}</Field.Label>
+                    {/* REQUIRED (platform-total-is-required-at-finalize) — read off the storefront like the order
+                        date, and Create stays off until it is there. */}
+                    <Field.Root required>
+                      <Field.Label>
+                        {t("orderForm.source.sellPrice")}
+                        <Field.RequiredIndicator />
+                      </Field.Label>
                       <CurrencyInput
-                        value={marketplace.marketplaceTotal}
+                        value={marketplace.platformTotal}
                         data-testid="order-marketplace-total"
-                        onChange={(marketplaceTotal) =>
-                          setMarketplace({ ...marketplace, marketplaceTotal })
+                        onChange={(platformTotal) =>
+                          setMarketplace({ ...marketplace, platformTotal })
                         }
                       />
                       <Field.HelperText>{t("orderForm.source.sellPriceHelp")}</Field.HelperText>
@@ -1053,6 +1050,7 @@ export function OrderCreatePage() {
               lines={lines}
               stock={stock}
               costs={costs}
+              busy={quoteBusy}
               onPick={pickProducts}
               onPatch={patchLine}
               onRemove={removeLine}
@@ -1079,8 +1077,9 @@ export function OrderCreatePage() {
             <ReturnMappingCard
               teamId={cardTeamId}
               lines={crossLines}
-              mapping={mapping}
-              onMap={mapReturn}
+              mapping={returnMapping.mapping}
+              onMap={returnMapping.onMap}
+              checking={returnMapping.checking}
             />
 
             {/* WHO IT IS FOR, WHERE IT GOES, WHAT WAS HANDED OVER — reused whole. */}

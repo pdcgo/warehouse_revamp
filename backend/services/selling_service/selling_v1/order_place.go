@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"strconv"
+	"strings"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -29,10 +31,14 @@ type orderPlacement struct {
 
 	customerName  string
 	customerPhone string
+	// The buyer's marketplace username, as given. Trimmed when the row is written, on both doors; "" = none, and never
+	// a reason to refuse (the-buyers-username-is-optional) — so validate does not look at it.
+	buyerUsername string
 	address       *sellingv1.OrderAddress
 	shippingCode  string
-	// What whoever took the order wrote down for the people who handle it. Never read by anything
-	// here; carried through verbatim. "" = nothing written down.
+	// What whoever took the order wrote down for the people who handle it — written as the order's FIRST NOTE ROW
+	// (a-note-is-a-timeline-row), not a column of the order. Nothing here branches on it. Trimmed when the row is
+	// written; "" (or spaces alone) = nothing written down, and no note row.
 	note string
 	// The shipping receipt already uploaded to document_service, if any. Recorded as given — the id
 	// is not verified, see OrderCreateRequest.receipt for why.
@@ -44,11 +50,10 @@ type orderPlacement struct {
 	platformCreatedAt        int64
 	platformShipmentDeadline int64
 
-	subtotal     int64
-	shippingCost int64
-	total        int64
-	// A NOTE of what the marketplace took, never a term of the sum (owner). 0 = not recorded.
-	marketplaceTotal int64
+	// What the buyer paid on the platform — REQUIRED (validate, platform-total-is-required-at-finalize): it is the figure
+	// settlement opens the account on. The order's own money (goods_cost, warehouse_fee, total_cost) is not here: it is
+	// the take's and the warehouse's, frozen by placeOrder — no door supplies it.
+	platformTotal int64
 	// The marketplace's own id for this order, verbatim. "" = there is none, which is the ordinary
 	// state of an order taken over the phone.
 	orderExternalRefID string
@@ -72,6 +77,9 @@ var (
 	// platform-created-at-is-required-at-finalize: every order comes from a platform, so every order has the moment
 	// its buyer ordered there — read off the same storefront page as the ref.
 	errOrderNoPlatformDate = errors.New("an order must say when the buyer ordered it on the marketplace")
+	// platform-total-is-required-at-finalize: settlement opens the order's account on this figure, so an order without
+	// it could never be settled. Read off the storefront, like the date above.
+	errOrderNoPlatformTotal = errors.New("an order must say what the buyer paid on the marketplace")
 )
 
 // validate is the one definition of a placeable order.
@@ -99,6 +107,12 @@ func (p *orderPlacement) validate() error {
 	// typed form is refused for (platform-created-at-is-required-at-finalize). A draft may hold it empty; an order may not.
 	if p.platformCreatedAt <= 0 {
 		return errOrderNoPlatformDate
+	}
+
+	// The same footing (platform-total-is-required-at-finalize): Promote copies the draft's figure into this field, so
+	// a draft still at 0 meets this rule exactly as a typed order does.
+	if p.platformTotal <= 0 {
+		return errOrderNoPlatformTotal
 	}
 
 	if len(p.items) == 0 {
@@ -129,6 +143,18 @@ func (s *Service) placeOrder(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	// ONE LINE PER PRODUCT, from here on (the-order-keeps-only-product-lines). A product named on two lines — once by
+	// hand and once from a bundle, or on two draft rows mapped to it — is merged into one, its quantities summed, BEFORE
+	// the owner lookup, the return-map check, the credit check and the take: the take draws a product once per order
+	// and refuses one listed twice, and every money figure of the line is that one draw
+	// (an-order-is-costed-at-what-leaves-the-shelf). The one merged line is what is stored. A line's price is not compared:
+	// it is the take's, stamped below (an-order-line-carries-no-marketplace-price). Lines naming one product under two
+	// skus or names are refused rather than merged — see mergeOrderLines.
+	p.items, err = mergeOrderLines(p.items)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	// The shop is checked BEFORE any stock moves. A bad shop is a rejected request, and rejecting it
 	// after taking stock would mean compensating a draw that never needed to happen.
 	shopOK, err := shopExists(s.db.WithContext(ctx), p.teamID, p.shopID)
@@ -140,25 +166,31 @@ func (s *Service) placeOrder(
 		return nil, notFound()
 	}
 
-	// What the goods COST us, frozen onto the order (#74). Read before the transaction — it is a read,
-	// and doing it inside would hold the order's row lock across another service's call for nothing.
-	//
-	// A product with no known cost is ABSENT from this map, which becomes a 0 on the line: "we do not
-	// know what this cost". That is deliberately not the same as free, and the contract says so — a
-	// margin computed over an unknown cost reads as pure profit, so 0 is a flag rather than a figure.
-	costs, err := s.stock.UnitCosts(ctx, p.teamID, p.warehouseID, orderProductIDs(p.items))
+	// WHO OWNS EACH LINE, looked up ONCE — the owner's flow draws it as the first step after the request check, and
+	// both the return-map check and the credit check below read this one answer. A lookup that fails REFUSES the
+	// create (a-failed-owner-lookup-refuses-the-create): without it the order cannot tell a borrowed line from its own,
+	// so it can neither demand the map nor name every creditor.
+	owners, err := s.lineOwners(ctx, p.teamID, p.items)
 	if err != nil {
-		return nil, dbError(err)
+		return nil, err
+	}
+
+	// EVERY BORROWED LINE HAS ITS RETURN MAP (a-borrowed-line-needs-its-map-at-create), checked here — the one rule
+	// both doors share — so a promoted draft meets it exactly as a typed order does. Before anything is taken or
+	// written; an own-only order reads nothing (an-own-line-never-touches-the-map).
+	err = s.requireReturnMaps(ctx, p.teamID, p.items, owners)
+	if err != nil {
+		return nil, err
 	}
 
 	// CREDIT (#189). Every creditor this order would put in debt is checked BEFORE anything is
 	// written: the fulfilling warehouse, and each team whose goods it sells. Any one over its limit
 	// stops the order, naming itself so customer service can say why.
 	//
-	// Before the transaction, for the same reason the cost read is — it is a read, and holding the
-	// order's row lock across another service's call buys nothing. The staleness that allows is
-	// exactly the overshoot the `debt < limit` rule already permits — see CheckCredit.
-	block, err := s.credit.Check(ctx, p.teamID, s.orderCreditors(ctx, p.teamID, p.warehouseID, p.items))
+	// Before the transaction — it is a read, and holding the order's row lock across another service's
+	// call buys nothing. The staleness that allows is exactly the overshoot the `debt < limit` rule
+	// already permits — see CheckCredit.
+	block, err := s.credit.Check(ctx, p.teamID, orderCreditors(p.warehouseID, p.items, owners))
 	if err != nil {
 		return nil, dbError(err)
 	}
@@ -167,26 +199,20 @@ func (s *Service) placeOrder(
 		return nil, creditBlocked(block)
 	}
 
-	// The goods' cost — what each line's frozen unit cost adds up to, and the basis the warehouse prices its fee on
-	// (the-fee-is-priced-on-goods-cost). Computed once, here, so the fee and the header's `cogs` cannot be two sums.
-	cogs := orderGoodsCost(p.items, costs)
-
-	// THE WAREHOUSE FEE, priced once and frozen (the-flat-rate-is-dropped-last step 3).
-	//
-	// BEFORE the transaction, for the reason the cost and the credit reads are: it is another service's read, and
-	// holding the order's row lock across it buys nothing. It also lands the refusal of a warehouse with no rate
-	// (a-warehouse-with-no-rate-takes-no-orders) before any stock moves — the owner's flow takes the stock first and
-	// rolls it back on a failed step; refusing before the take reaches the same end with nothing to roll back.
-	warehouseFee, err := s.priceWarehouseFee(ctx, p.teamID, p.warehouseID, cogs)
-	if err != nil {
-		return nil, err
-	}
-
 	var (
 		order selling_service_models.Order
 		// Whether the stock draw was ATTEMPTED. See the compensation block below for why "attempted"
 		// rather than "succeeded" is the right thing to track.
 		picked bool
+		// What the take drew for each product — the one answer every money figure of the order is frozen from.
+		draw PickDraw
+		// The warehouse's refusal of the fee, or the pricer being unreachable, kept AS IT CAME: priceWarehouseFee has
+		// already shaped it for the form, so it must not be re-wrapped as an internal error on the way out.
+		feeErr error
+		// The take's own answer when it failed — kept apart from the database's errors for the same reason: a take
+		// refused for short stock or a borrowed product below its reserve is the warehouse saying WHY, and the form can
+		// only say it too if the code and the OrderTransactionRefusal detail reach it. See takeError.
+		takeErr error
 	)
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -201,6 +227,8 @@ func (s *Service) placeOrder(
 			Status:        orderStatusPending,
 			CustomerName:  p.customerName,
 			CustomerPhone: p.customerPhone,
+			// Trimmed HERE, where both doors meet, so spaces alone are stored as none whichever way the order came in.
+			BuyerUsername: strings.TrimSpace(p.buyerUsername),
 			// FROZEN at order time: the names are copied, not resolved later, so this order reads the
 			// same forever even after region_service renames or merges the desa (#118).
 			ProvinsiCode:  address.GetProvinsiCode(),
@@ -214,7 +242,6 @@ func (s *Service) placeOrder(
 			KodePos:       address.GetKodePos(),
 			AddressLine:   address.GetAddressLine(),
 			ShippingCode:  p.shippingCode,
-			Note:          p.note,
 			// Getters all the way down: a nil receipt is an order with none, not a crash.
 			ReceiptDocumentID: p.receipt.GetDocumentId(),
 			ReceiptFilename:   p.receipt.GetFilename(),
@@ -224,13 +251,9 @@ func (s *Service) placeOrder(
 			// The platform's two dates, as read off the storefront. The deadline may be absent; the order date may not.
 			PlatformCreatedAt:        timeOrNil(p.platformCreatedAt),
 			PlatformShipmentDeadline: timeOrNil(p.platformShipmentDeadline),
-			Subtotal:                 p.subtotal,
-			// What the warehouse charges for it, frozen as it was priced a moment ago. nil only on a service built
-			// without a pricer.
-			WarehouseFee:     warehouseFee,
-			ShippingCost:     p.shippingCost,
-			Total:            p.total,
-			MarketplaceTotal: p.marketplaceTotal,
+			// `goods_cost`, `warehouse_fee` and `total_cost` are NOT written here: all three come from the take's draw,
+			// which needs this row's id first. They are written below, after the pick, in this same transaction.
+			PlatformTotal: p.platformTotal,
 			// Verbatim, exactly as the person read it off the storefront — never trimmed into a
 			// shape, never parsed.
 			OrderExternalRefID: p.orderExternalRefID,
@@ -241,16 +264,12 @@ func (s *Service) placeOrder(
 			Items:           orderItemModels(p.items),
 		}
 
-		// Stamp each line's cost, and the total of them onto the header (#74). Done here rather than in
-		// orderItemModels because the cost comes from the WAREHOUSE, not from the request — a client
-		// supplying it would be writing its own margin.
-		for i := range order.Items {
-			order.Items[i].UnitCost = costs[order.Items[i].ProductID]
-		}
+		// THE HEADER FIRST, THE LINES AFTER THE PICK. A line's money is written ONCE, complete
+		// (a-lines-money-is-frozen-at-finalize), and its `total` is the take's answer — so the lines wait for it
+		// rather than being inserted short and patched. Held aside here and inserted below, in this same transaction.
+		items := order.Items
+		order.Items = nil
 
-		order.COGS = cogs
-
-		// GORM inserts the order and its items in this transaction, stamping their OrderID.
 		createErr := tx.Create(&order).Error
 		if createErr != nil {
 			return createErr
@@ -263,13 +282,30 @@ func (s *Service) placeOrder(
 		// `order.CreatedAt` is the order's own moment, stamped by GORM on the insert above, not a fresh
 		// time.Now(): the row says when the order came into being, and the two must be the same instant or
 		// the timeline disagrees with the header beside it.
-		logErr := recordTimelineLogs(tx, []selling_service_models.OrderTimelineLog{{
+		logs := []selling_service_models.OrderTimelineLog{{
 			OrderID:   order.ID,
 			Status:    orderStatusPending,
 			From:      timelineFromSelling,
 			ActorID:   eventActor(ctx),
 			CreatedAt: order.CreatedAt,
-		}})
+		}}
+
+		// THE FORM'S NOTE IS THE ORDER'S FIRST NOTE ROW (a-note-is-a-timeline-row): no status, from selling, by the
+		// person placing the order, at the order's own moment — in this transaction, so an order and the instruction
+		// typed with it exist together or not at all. Written in the same INSERT, after the placement row: same
+		// instant, the next id, so a reader ordering by (created_at, id) sees the placement and then the note.
+		note := strings.TrimSpace(p.note)
+		if note != "" {
+			logs = append(logs, selling_service_models.OrderTimelineLog{
+				OrderID:   order.ID,
+				Note:      note,
+				From:      timelineFromSelling,
+				ActorID:   eventActor(ctx),
+				CreatedAt: order.CreatedAt,
+			})
+		}
+
+		logErr := recordTimelineLogs(tx, logs)
 		if logErr != nil {
 			return logErr
 		}
@@ -286,7 +322,7 @@ func (s *Service) placeOrder(
 
 		// THE STOCK, inside the order's still-uncommitted transaction (#149).
 		//
-		// The insert comes first only to get the order's id, which is what the pick is recorded
+		// The header insert comes first only to get the order's id, which is what the pick is recorded
 		// under — the ref is what a later cancel names to put exactly this draw back (#70). The
 		// GUARANTEE is unchanged and is what the owner chose: the pick must succeed before the order
 		// is committed, so not enough stock means this transaction rolls back and NO ORDER EXISTS.
@@ -294,7 +330,81 @@ func (s *Service) placeOrder(
 		// could be placed against the same unit.
 		picked = true
 
-		return s.stock.Pick(ctx, p.teamID, order.WarehouseID, pickLines(p.items), stockRef(order.ID))
+		var pickErr error
+
+		draw, pickErr = s.stock.Pick(ctx, p.teamID, order.WarehouseID, pickLines(p.items), stockRef(order.ID))
+		if pickErr != nil {
+			takeErr = pickErr
+
+			return pickErr
+		}
+
+		// EVERY MONEY FIGURE OF THE ORDER FROM THE ONE DRAW (an-order-is-costed-at-what-leaves-the-shelf): what the units
+		// that left the shelf cost — the owner's batches oldest first — never the shelf's average read before the take.
+		//
+		// Each line freezes what the take priced it at (inventory-computes-the-markup) — the owner's four money columns of
+		// `order_items`: its unit cost; its unit cost with markup and its markup total, which on an own line are the unit
+		// cost and 0; and its total — the goods plus, on a borrowed product, that product's own markup — all copied as
+		// returned. The order applies nothing, and the total is what the product fee is posted from
+		// (the-ledger-charges-the-frozen-line-total). A product the take named no draw for keeps a 0 cost (unknown — see
+		// costKnown) and nil for the rest, never a 0 that reads as free. The cost comes from the WAREHOUSE, never the
+		// request (#74): a client supplying it would be writing its own margin. A line carries no price of its own
+		// (an-order-line-carries-no-marketplace-price): nothing from either door's request is money.
+		for i := range items {
+			items[i].OrderID = order.ID
+
+			line, drawn := draw[items[i].ProductID]
+			if drawn {
+				total := line.Total
+				withMarkup := line.UnitCostWithMarkup
+				markup := line.MarkupTotal
+				items[i].UnitCost = int64(math.Round(line.UnitCost))
+				items[i].Total = &total
+				items[i].UnitCostWithMarkup = &withMarkup
+				items[i].MarkupTotal = &markup
+			}
+		}
+
+		order.GoodsCost = orderGoodsCost(p.items, draw)
+
+		// THE WAREHOUSE FEE, priced on that goods_cost and frozen (the-fee-is-priced-on-goods-cost,
+		// the-flat-rate-is-dropped-last step 3) — so a borrowed line's markup is in the basis, as the goods cost the
+		// seller. AFTER the take and INSIDE this transaction, because its basis is the draw and the draw exists only once
+		// the take has answered. The fee is warehouse_service's to compute, never this service's
+		// (warehouse-prices-balance-records), so it is asked here rather than worked out from a rate read beforehand.
+		//
+		// A warehouse with no rate (a-warehouse-with-no-rate-takes-no-orders), or a pricer nobody can reach, fails this
+		// transaction like any failed step, and the compensation below gives the take back — the owner's own flow. The
+		// order form refuses such a warehouse before Create, so this is the rare path, not the usual one.
+		warehouseFee, priceErr := s.priceWarehouseFee(ctx, p.teamID, p.warehouseID, order.GoodsCost)
+		if priceErr != nil {
+			feeErr = priceErr
+
+			return priceErr
+		}
+
+		order.WarehouseFee = warehouseFee
+		order.TotalCost = orderTotalCost(order.GoodsCost, warehouseFee)
+
+		// THE HEADER'S MONEY, written now that it is known — in the transaction that inserted the row, so no reader ever
+		// sees the order without it. A nil fee only on a service built without a pricer.
+		moneyErr := tx.Model(&order).UpdateColumns(map[string]any{
+			"goods_cost":    order.GoodsCost,
+			"warehouse_fee": order.WarehouseFee,
+			"total_cost":    order.TotalCost,
+		}).Error
+		if moneyErr != nil {
+			return moneyErr
+		}
+
+		itemsErr := tx.Create(&items).Error
+		if itemsErr != nil {
+			return itemsErr
+		}
+
+		order.Items = items
+
+		return nil
 	})
 	if err != nil {
 		// COMPENSATION (#149). The pick runs against another service and commits on its own; if this
@@ -315,6 +425,14 @@ func (s *Service) placeOrder(
 					errors.New("the order failed and its stock could not be returned ("+
 						stockRef(order.ID)+"): "+returnErr.Error()))
 			}
+		}
+
+		if feeErr != nil {
+			return nil, feeErr
+		}
+
+		if takeErr != nil {
+			return nil, takeError(takeErr)
 		}
 
 		if errors.Is(err, errShopMissing) {
@@ -350,22 +468,20 @@ func (s *Service) placeOrder(
 		AggregateId: "order:" + orderRef,
 		Message: &eventsv1.Event_OrderPlaced{
 			OrderPlaced: &eventsv1.OrderPlaced{
-				TeamId:       order.TeamID,
-				OrderId:      order.ID,
-				Revenue:      order.Total,
-				Cogs:         order.COGS,
-				ShippingCost: order.ShippingCost,
-				CostKnown:    costKnown(order.Items, costs),
-				WarehouseId:  order.WarehouseID,
-				Lines:        s.placedLines(ctx, order.TeamID, order.Items),
+				TeamId:      order.TeamID,
+				OrderId:     order.ID,
+				GoodsCost:   order.GoodsCost,
+				CostKnown:   costKnown(order.Items, draw),
+				WarehouseId: order.WarehouseID,
+				Lines:       s.placedLines(ctx, order.TeamID, order.Items),
 				// WHO PLACED IT. The ledger records a person behind every movement, and the two fees
 				// this event causes are posted by a consumer with no request context to read one from
 				// (every-entry-names-who-posted-it).
 				ActorId: eventActor(ctx),
 				// What settlement opens the order's account from — the order never calls settlement
 				// (settlement-opens-the-sale-from-the-order-event).
-				ShopId:           order.ShopID,
-				MarketplaceTotal: order.MarketplaceTotal,
+				ShopId:        order.ShopID,
+				PlatformTotal: order.PlatformTotal,
 			},
 		},
 	})
@@ -381,33 +497,51 @@ func (s *Service) placeOrder(
 	return &order, nil
 }
 
-// orderGoodsCost is Σ quantity × the line's frozen unit cost — the order's `cogs`. A product with no known cost adds 0,
-// which is why a cogs of 0 reads as UNKNOWN rather than free (see costKnown).
-func orderGoodsCost(items []*sellingv1.OrderItem, costs map[uint64]int64) int64 {
-	var total int64
+// orderGoodsCost is the order's `goods_cost`: Σ the lines' frozen `total` — the value of the units that left the shelf
+// (an-order-is-costed-at-what-leaves-the-shelf) plus, on another team's product, that product's own markup — rounded
+// ONCE, to the whole rupiah the column holds. What the goods cost the SELLER (the-cross-charge-lives-on-the-line): a
+// borrowed line is owed to its owner at its total (the-product-fee-is-the-line-total), so it counts at that here too;
+// on an own line the total is the drawn cost. A product the take named no draw for adds 0, which is why a goods_cost of
+// 0 reads as UNKNOWN rather than free (see costKnown). It is also the basis the warehouse prices its fee on
+// (the-fee-is-priced-on-goods-cost) — one figure, so the two cannot be two sums.
+func orderGoodsCost(items []*sellingv1.OrderItem, draw PickDraw) int64 {
+	var total float64
 
-	for _, item := range items {
-		total += int64(item.GetQuantity()) * costs[item.GetProductId()]
+	// In the order's own product order, so the float sum comes out the same every time.
+	for _, id := range orderProductIDs(items) {
+		total += draw[id].Total
+	}
+
+	return int64(math.Round(total))
+}
+
+// orderTotalCost is the order's `total_cost`: goods_cost + the warehouse fee — the owner's "goods + warehouse fee", what
+// the order cost the seller. Unrounded, like the fee. A fee never priced (a service built without a pricer) adds 0.
+func orderTotalCost(goodsCost int64, warehouseFee *float64) float64 {
+	total := float64(goodsCost)
+
+	if warehouseFee != nil {
+		total += *warehouseFee
 	}
 
 	return total
 }
 
-// priceWarehouseFee is the fee the fulfilling warehouse charges for goods costing `cogs`, or nil when this service was
-// built without a pricer (see Service.fees).
+// priceWarehouseFee is the fee the fulfilling warehouse charges for goods costing `goodsCost`, or nil when this service
+// was built without a pricer (see Service.fees).
 //
 // A REFUSAL PASSES THROUGH AS IT CAME: the pricer's FailedPrecondition already names the warehouse with no rate, which
 // is exactly what the order form shows (a-warehouse-with-no-rate-takes-no-orders). Anything else is the pricer being
 // unreachable, and an order is not placed at a fee nobody could compute.
 //
-// ⚠ A COST NOBODY RECORDED IS PRICED AS 0, so a percentage warehouse charges its floor on such an order. The fee's
-// basis is the goods' cost by decision (the-fee-is-priced-on-goods-cost); an unknown cost has no better basis to offer.
-func (s *Service) priceWarehouseFee(ctx context.Context, teamID, warehouseID uint64, cogs int64) (*float64, error) {
+// ⚠ A COST THE TAKE DID NOT ANSWER IS PRICED AS 0, so a percentage warehouse charges its floor on such an order. The
+// fee's basis is the goods' cost by decision (the-fee-is-priced-on-goods-cost); an unknown cost has no better basis.
+func (s *Service) priceWarehouseFee(ctx context.Context, teamID, warehouseID uint64, goodsCost int64) (*float64, error) {
 	if s.fees == nil {
 		return nil, nil
 	}
 
-	fee, err := s.fees.Price(ctx, teamID, warehouseID, float64(cogs))
+	fee, err := s.fees.Price(ctx, teamID, warehouseID, float64(goodsCost))
 	if err != nil {
 		var refusal *connect.Error
 		if errors.As(err, &refusal) && refusal.Code() == connect.CodeFailedPrecondition {
@@ -421,18 +555,37 @@ func (s *Service) priceWarehouseFee(ctx context.Context, teamID, warehouseID uin
 	return &fee, nil
 }
 
-// costKnown reports whether EVERY line's cost was actually known (#74/#153).
+// takeError is what the caller hears when the take failed.
 //
-// A product with no recorded cost is absent from the costs map and lands on its line as 0, which is
+// THE TAKE'S OWN ANSWER PASSES THROUGH AS IT CAME — its code, its message and its details. A refusal (not enough stock,
+// a borrowed product that is private or below its owner's reserve, a used key) is a Connect error carrying an
+// OrderTransactionRefusal detail with the reason and every line it names (a-refusal-names-its-reason-and-every-line),
+// and that detail is exactly what the order form needs to say WHY. Wrapped as a database error it reached the form as
+// Internal, and a person who could fix the order by lowering one quantity was told the system was broken.
+//
+// selling reads nothing in the detail and imports nothing of inventory's: it is the warehouse's sentence, carried. Only
+// an error that is not a Connect error at all — the take never answered in its own terms — is this service's Internal.
+func takeError(err error) error {
+	var answered *connect.Error
+	if errors.As(err, &answered) {
+		return answered
+	}
+
+	return dbError(err)
+}
+
+// costKnown reports whether EVERY line's cost was actually known (#74/#153) — whether the take answered a draw for it.
+//
+// A product the take named no draw for is absent from the map and lands on its line as 0, which is
 // indistinguishable from "free" once it is written down. So the distinction is computed here, while
 // the map is still in hand, and travels with the event as its own field.
 //
-// ALL lines, not some. One unknown line understates the order's COGS, which overstates its margin —
+// ALL lines, not some. One unknown line understates the order's goods_cost, which overstates its margin —
 // and a margin that is wrong is wrong however few lines caused it. A "mostly known" cost is not a
 // thing a report can use.
-func costKnown(items []selling_service_models.OrderItem, costs map[uint64]int64) bool {
+func costKnown(items []selling_service_models.OrderItem, draw PickDraw) bool {
 	for i := range items {
-		_, known := costs[items[i].ProductID]
+		_, known := draw[items[i].ProductID]
 		if !known {
 			return false
 		}
@@ -442,7 +595,7 @@ func costKnown(items []selling_service_models.OrderItem, costs map[uint64]int64)
 }
 
 // placedLines is what liability needs to charge the PRODUCT FEE (#186): per line, who owns the
-// goods and what they cost.
+// goods and the line's frozen total (the-ledger-charges-the-frozen-line-total).
 //
 // The owner is resolved HERE, at placement, and travels on the event — the same choice the money
 // already makes. A consumer that read the catalogue when it processed the event would answer "who
@@ -491,52 +644,74 @@ func (s *Service) placedLines(
 	lines := make([]*eventsv1.OrderPlacedLine, 0, len(items))
 
 	for i := range items {
+		// The line's FROZEN total, as stored — what liability posts the product fee from. 0 when the line froze none.
+		var total float64
+		if items[i].Total != nil {
+			total = *items[i].Total
+		}
+
 		lines = append(lines, &eventsv1.OrderPlacedLine{
 			ProductId: items[i].ProductID,
 			// 0 when unresolved, which liability reads as "nobody to pay".
 			OwningTeamId: owners[items[i].ProductID].TeamID,
 			Quantity:     items[i].Quantity,
 			UnitCost:     items[i].UnitCost,
+			Total:        total,
 		})
 	}
 
 	return lines
 }
 
-// orderCreditors is every team this order would put the buying team in debt to: the warehouse that
-// will fulfil it, plus each team owning a product on it.
+// lineOwners resolves each product on the order to its owning team — the lookup the owner's create flow draws before
+// the debt check, read once and shared by the return-map check and the credit check.
 //
-// ⚠ AN UNRESOLVED OWNER RIDES AS 0 AND IS NOT CHECKED, deliberately. A catalogue that cannot answer
-// must not block a sale — the same call fails open after the commit too (see placedLines), where an
-// unresolved owner becomes "nobody to pay". Failing CLOSED here would mean a catalogue outage stops
-// every order in the system, which is a far worse outcome than one uncharged product fee that #187
-// is built to find.
+// ⚠ A FAILED LOOKUP REFUSES THE CREATE (a-failed-owner-lookup-refuses-the-create). It used to fail open, on the
+// argument that a catalogue outage must not stop every sale; the owner decided the other way, and the return map
+// settles it regardless — an order that cannot tell a borrowed line from its own cannot check that every borrowed line
+// is mapped (a-borrowed-line-needs-its-map-at-create). Unavailable, because trying again is the remedy.
 //
-// This resolves owners a second time rather than sharing placedLines' map, and that is not
-// duplication worth removing: the two calls have OPPOSITE failure semantics. This one runs before
-// anything is written and may refuse the order; that one runs after the commit and must never fail
-// it. Sharing a result would force one of those two rules onto the other.
-func (s *Service) orderCreditors(
+// An id that resolves to nothing is ABSENT from the map — a product nobody owns, which neither check counts as
+// borrowed. A service built without a catalogue (a unit test about something else) knows no owners at all.
+//
+// placedLines resolves the owners a second time, after the commit, and that is not duplication worth removing: it runs
+// once the order exists and must never fail it, so its failure is logged and the owner rides as 0. Sharing this map
+// would force one of those two rules onto the other.
+func (s *Service) lineOwners(
 	ctx context.Context,
-	teamID, warehouseID uint64,
+	teamID uint64,
 	items []*sellingv1.OrderItem,
+) (map[uint64]ProductSnapshot, error) {
+	ids := orderProductIDs(items)
+
+	// nil, not empty: "no catalogue to ask", which orderCreditors tells apart from "asked, and none resolved".
+	if s.catalog == nil || len(ids) == 0 {
+		return nil, nil
+	}
+
+	owners, err := s.catalog.Snapshots(ctx, teamID, ids)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("the products' owners could not be looked up — the order was not placed, try again: %w", err))
+	}
+
+	return owners, nil
+}
+
+// orderCreditors is every team this order would put the buying team in debt to: the warehouse that
+// will fulfil it, plus each team owning a product on it — read off the one owners lookup (lineOwners).
+//
+// An owner that did not resolve rides as 0 and is not checked: a product nobody owns is owed to nobody.
+func orderCreditors(
+	warehouseID uint64,
+	items []*sellingv1.OrderItem,
+	owners map[uint64]ProductSnapshot,
 ) []uint64 {
 	creditors := []uint64{warehouseID}
 
 	ids := orderProductIDs(items)
 
-	if s.catalog == nil || len(ids) == 0 {
-		return creditors
-	}
-
-	owners, err := s.catalog.Snapshots(ctx, teamID, ids)
-	if err != nil {
-		slog.ErrorContext(ctx, "product owners could not be resolved for the credit check — "+
-			"the order proceeds and only the warehouse's limit was applied",
-			"team_id", teamID,
-			"error", err,
-		)
-
+	if owners == nil {
 		return creditors
 	}
 

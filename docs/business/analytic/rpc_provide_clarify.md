@@ -3,12 +3,18 @@
 Critique, questions and a proposed design for [rpc_provide.md](./rpc_provide.md). That doc is yours — this one is
 mine. Answered points are **deleted**, so this file is always the current open set.
 
-> **State (2026-10-27).** 32 decisions in [rpc_provide_decision.md](./rpc_provide_decision.md), two of them superseded.
-> Your doc's contract matches them, `TEAM` and `USER` included. Open: only the guideline's pointer here. Three
-> screen details wait for the screen pass.
->
-> ✏️ My early examples used *stock lost per shop*, which cannot exist; they now use your shop + settlement table, or a
-> product table.
+> **State (2026-10-28).** 45 decisions in [rpc_provide_decision.md](./rpc_provide_decision.md), two of them superseded.
+> The latest: no warehouse group, because a warehouse is a team ([the-team-group-covers-warehouses](./rpc_provide_decision.md#the-team-group-covers-warehouses)),
+> which leaves a tension with the warehouse filter ([Contradiction](#the-team-group-and-the-warehouse-filter-name-one-thing-twice)).
+> Before it: the table and the graph are tabs ([the-table-and-the-graph-are-tabs](./rpc_provide_decision.md#the-table-and-the-graph-are-tabs)).
+> The screen is accepted ([the-analytic-screen-is-accepted](./rpc_provide_decision.md#the-analytic-screen-is-accepted))
+> and `metrics/suppliers` is built on the contract. Your §Analytic UI is decided as
+> [the-graph-draws-the-table](./rpc_provide_decision.md#the-graph-draws-the-table): line charts, one per stat type, the
+> columns as the legend. It gives the startup check a second reason ([a-stat-type-is-checked-at-startup](#a-stat-type-is-checked-at-startup)).
+> **The graph is built** in Storybook on Chakra's charts, on sample figures. One detail of it is a proposal, built so
+> you can see it: [a-time-graph-runs-oldest-first](#a-time-graph-runs-oldest-first).
+> **No question is open.** Still waiting on you: [ads-moved-under-expense](#ads-moved-under-expense), the guideline's
+> pointer, and the slips under [Contradiction](#contradiction). §Composite Metric ? is empty, so it isn't designed yet.
 >
 > ✅ The diagrams parse (`npm run lint:mermaid`).
 
@@ -21,9 +27,45 @@ Siblings: [context_clarify.md](./context_clarify.md) — the fold that fills the
 
 ✅ Resolved by your edits of 2026-10-27: the contract matched the decisions (twelve sites), and `GroupType` gained
 `TEAM` and `USER` ([the-group-enum-grows-with-the-reports](./rpc_provide_decision.md#the-group-enum-grows-with-the-reports)).
-`IDList`'s comment now reads *"SHOP, PRODUCT, SUPPLIER, TEAM, USER and other"* (line 184). One comment trails it:
-`OrderMetricByID` (line 235) still says *"SHOP, PRODUCT, SUPPLIER"* — for this metric it is only the id groups its
-`supported_group_by` lists, which in the example is `SHOP` alone.
+`IDList`'s comment now reads *"SHOP, PRODUCT, SUPPLIER, TEAM, USER and other"* (line 191). Small slips left:
+
+| line | says | → Recommend |
+| --- | --- | --- |
+| 126 | *"// ... other **metric** that listed in `FilterType`"* | *"other **filter**"* — it introduces the filter messages |
+| 135–142 | `FilterType` has no `WAREHOUSE` or `USER` | add both ([the-filters-gain-warehouse-and-user](./rpc_provide_decision.md#the-filters-gain-warehouse-and-user)) |
+| 242 | `OrderMetricByID` *"SHOP, PRODUCT, SUPPLIER"* | only the id groups its `supported_group_by` lists — in the example, `SHOP` alone |
+| 308 | *"we have table that can compose **any** metric"* | *"any metric that can be grouped by the table's group"*: a metric that can't is greyed ([a-metric-that-cannot-group-is-greyed](./rpc_provide_decision.md#a-metric-that-cannot-group-is-greyed)) |
+| 359, 369, 379 | `fiter :` | `filter :` |
+| 389, 394 | `mp_total` in Order Created and Order Cancel | `created_mp_total`, `cancel_mp_total` — the returns already prefix theirs (`return_created_mp_total`) |
+
+## the-team-group-and-the-warehouse-filter-name-one-thing-twice
+
+| decision | says |
+| --- | --- |
+| [the-filters-gain-warehouse-and-user](./rpc_provide_decision.md#the-filters-gain-warehouse-and-user) | *"a warehouse fee has **both** a selling team and a warehouse, so `TEAM` cannot carry both"*, so the filter has its own `WAREHOUSE` |
+| [the-team-group-covers-warehouses](./rpc_provide_decision.md#the-team-group-covers-warehouses) | the group has no `WAREHOUSE`, and `TEAM` carries the warehouse |
+
+The example: a root caller groups warehouse fees by `TEAM`. Is a row a seller or a warehouse? And a seller narrows by
+*Warehouse* but splits by *Team*, two names for the same thing on one screen.
+
+```mermaid
+flowchart LR
+  fee["a warehouse fee"] --> s["the selling team"]
+  fee --> w["the warehouse team"]
+  w -->|"narrow"| fw["FILTER_TYPE_WAREHOUSE"]
+  w -->|"split"| gt["GROUP_TYPE_TEAM"]
+```
+
+**→ Recommend:** no contract change. Every metric that books two teams says in its doc which one its `TEAM` group
+means (Warehouse Fee: the warehouse), and the screen labels that group by what it means (*Warehouse*), not *Team*.
+
+## ads-moved-under-expense
+
+The tree puts **Ads Expense inside Expense** and has no Ads category. The picker opens five: Order, Settlement,
+Inventory, Ads, Expense ([order-opens-the-metric-picker-for-now](./rpc_provide_decision.md#order-opens-the-metric-picker-for-now)).
+
+**→ Recommend:** the picker follows the tree, with four categories and Ads Expense inside Expense. It changes only the
+sample catalogue (`features/analytic/catalogue.ts`) and one story. The contract is untouched.
 
 ## the-guideline-still-sorts-by-enum
 
@@ -46,8 +88,50 @@ flowchart LR
 
 # Critique
 
-✅ **No critique is open** — the last, the body's key, is
-[the-key-lives-in-the-map](./rpc_provide_decision.md#the-key-lives-in-the-map).
+## a-time-graph-runs-oldest-first
+
+[the-graph-draws-the-table](./rpc_provide_decision.md#the-graph-draws-the-table) puts the points *"in the table's
+order"*. That was my spec, and it is wrong for time. A time table lists **newest first** by default (or ranked by a
+figure), so a graph in that order draws the week right to left, and a rising week reads as a falling one.
+
+```mermaid
+flowchart LR
+  t["table - Daily, newest first - 7 Oct down to 1 Oct"] -->|"the table's order"| bad["the line runs 7 Oct to 1 Oct - the trend mirrored"]
+  t -->|"proposed"| good["the line runs 1 Oct to 7 Oct - whatever the table's sort"]
+```
+
+**→ Recommend:** a time group is always drawn oldest first, and an id group keeps the table's order (its ranking). It's
+built that way so you can look at it (story `ByDayGraphRunsOldestFirst`). If you say no, it's one line to change back.
+
+## the-tree-is-the-catalogue-and-misses-three-things
+
+Your §Metric That Exist in Analytic is the first real list of metrics, so the screen will be built from it.
+
+| missing | why it matters | → Recommend |
+| --- | --- | --- |
+| the groups each metric reads by | the picker greys a metric by its groups ([a-metric-that-cannot-group-is-greyed](./rpc_provide_decision.md#a-metric-that-cannot-group-is-greyed)) | a `group :` list per entry, beside `filter :` |
+| filters for Order Cancel, Order Return Created, Order Return Arrived | the screen shows the filters every chosen metric shares | list them, or write *"as Order Created"* |
+| `metrics/suppliers`, already built | a metric missing from the tree is missing from the picker | under **Inventory › Restock** — restock value and broken rate, by supplier and by product |
+
+## a-stat-type-is-checked-at-startup
+
+Your `field_stat_type` ([a-field-declares-its-stat-type](./rpc_provide_decision.md#a-field-declares-its-stat-type)) is what
+the screen needs to show a number — *Rp 1.200.000*, *1.200*, *4,8 %* — instead of guessing from its own copy. Since
+§Analytic UI, it also decides **which graph panel** a field goes into. It is only dependable if nothing can leave it out.
+
+```mermaid
+flowchart LR
+  d["field_stat_type on the descriptor"] --> b["startup - every number field has one"]
+  b --> r["rank_min_sample only on a RATIO"]
+  d --> s["the screen formats the cell by it"]
+```
+
+| | → Recommend |
+| --- | --- |
+| a field without it | refused at startup by `san_metric.ValidateDescriptors`: `UNSPECIFIED` on a metric's number field fails the boot, so the screen never guesses |
+| the graph | needs it too: an `UNSPECIFIED` field has no graph to go into ([the-graph-draws-the-table](./rpc_provide_decision.md#the-graph-draws-the-table)), so it's a second reader that must not guess |
+| `rank_min_sample` | allowed only on a `RATIO` field — a minimum sample means nothing on a count or an amount ([a-rate-ranks-only-above-its-minimum-sample](./rpc_provide_decision.md#a-rate-ranks-only-above-its-minimum-sample)) |
+| what it is NOT | a rule for summing. The screen formats by it and never adds up a column: the headline is the service's `SUMMARY`, so a ratio is worked out there from summed units ([the-headline-is-the-metric-grouped-by-summary](./rpc_provide_decision.md#the-headline-is-the-metric-grouped-by-summary)) |
 
 ---
 
@@ -120,21 +204,37 @@ message PaginationFilter {               // on the request only (a-metric-page-h
   int32 limit = 2;
 }
 
-message FilterItem {
+// One id each (a-filter-names-one-id-and-shares-its-types-number) — the screen narrows by one shop, one product.
+message ProductFilter  { uint64 product_id = 1; }
+message TeamFilter     { uint64 team_id = 1; }       // a dimension, never the caller's scope
+message ShopFilter     { uint64 shop_id = 1; }
+message SupplierFilter { uint64 supplier_id = 1; }
+message WarehouseFilter { uint64 warehouse_id = 1; }  // the warehouse team (the-filters-gain-warehouse-and-user)
+message UserFilter     { uint64 user_id = 1; }       // whom the fact is booked to
+
+message FilterItem {                     // case N is FilterType N
   oneof f {
     DateRangeFilter date_range_filter = 1;
-    // … one case per FilterType
+    // 2 reserved — the keyword (the-generic-keyword-is-removed)
+    ProductFilter   product_filter = 3;
+    TeamFilter      team_filter = 4;
+    ShopFilter      shop_filter = 5;
+    SupplierFilter  supplier_filter = 6;
+    WarehouseFilter warehouse_filter = 7;
+    UserFilter      user_filter = 8;
   }
 }
 
 enum FilterType {                        // no PAGINATION (a-page-is-not-a-filter)
   FILTER_TYPE_UNSPECIFIED = 0;
   FILTER_TYPE_DATE_RANGE = 1;
-  FILTER_TYPE_KEYWORD = 2;
+  reserved 2;                            // the keyword (the-generic-keyword-is-removed)
   FILTER_TYPE_PRODUCT = 3;
   FILTER_TYPE_TEAM = 4;                  // a dimension, never the caller's scope
   FILTER_TYPE_SHOP = 5;
   FILTER_TYPE_SUPPLIER = 6;
+  FILTER_TYPE_WAREHOUSE = 7;             // added with the first metric that lists it
+  FILTER_TYPE_USER = 8;
 }
 
 enum GroupType {                         // the table's (the-table-picks-one-group)
@@ -147,6 +247,8 @@ enum GroupType {                         // the table's (the-table-picks-one-gro
   GROUP_TYPE_PRODUCT = 6;
   GROUP_TYPE_SHOP = 7;
   GROUP_TYPE_SUPPLIER = 8;
+  GROUP_TYPE_TEAM = 9;                   // across teams only for a root-team caller (the-group-enum-grows-with-the-reports)
+  GROUP_TYPE_USER = 10;                  // the user the fact is booked to — each metric's doc says which
 }
 
 message MetricOption {
@@ -165,11 +267,19 @@ message SortOption {
   int64 rank_min_sample = 2;             // a rate (a-rate-ranks-only-above-its-minimum-sample); 0 = none
 }
 
-extend google.protobuf.FieldOptions {
-  SortOption metric_sort = …;            // metric_key removed (the-key-lives-in-the-map)
+enum FieldStatType {                     // what kind of number (a-field-declares-its-stat-type)
+  FIELD_STAT_TYPE_UNSPECIFIED = 0;       // refused at startup — proposed (a-stat-type-is-checked-at-startup)
+  FIELD_STAT_TYPE_RATIO = 1;
+  FIELD_STAT_TYPE_QTY = 2;
+  FIELD_STAT_TYPE_CURRENCY = 3;
 }
 
-message IDList  { repeated uint64 ids = 1; }    // SHOP · PRODUCT · SUPPLIER
+extend google.protobuf.FieldOptions {
+  SortOption metric_sort = 50003;        // metric_key removed (the-key-lives-in-the-map)
+  FieldStatType field_stat_type = 50004; // 50002 is role_base's use_scope
+}
+
+message IDList  { repeated uint64 ids = 1; }    // SHOP · PRODUCT · SUPPLIER · TEAM · USER — at most 200
 message DayList { repeated string days = 1; }   // DAILY … YEARLY — each bucket's first day
 
 message MetricKeys {
@@ -192,8 +302,14 @@ message OrderMetric {
                          GROUP_TYPE_YEARLY, GROUP_TYPE_SHOP, GROUP_TYPE_PRODUCT]
   };
 
-  int64  order_count = 1 [(warehouse.analytic_base.v1.metric_sort) = { can_sort: true }];
-  double order_total = 2 [(warehouse.analytic_base.v1.metric_sort) = { can_sort: true }];
+  int64 order_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = { can_sort: true },
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  double order_total = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = { can_sort: true },
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
 }
 
 message OrderMetricByID  { map<uint64, OrderMetric> items = 1; }
@@ -249,8 +365,7 @@ message MetricDataResponse {
 
 # Question
 
-✅ **No question is open** — Q10 is [the-group-enum-grows-with-the-reports](./rpc_provide_decision.md#the-group-enum-grows-with-the-reports).
+Every question is closed, each one in [rpc_provide_decision.md](./rpc_provide_decision.md). The last was
+a-report-can-group-by-warehouse, now [the-team-group-covers-warehouses](./rpc_provide_decision.md#the-team-group-covers-warehouses).
 
-⏸ **Deferred to the screen pass:** the rows line, the group change removing columns, the 5-line chart cap
-([screen-details-wait-for-the-screen](./rpc_provide_decision.md#screen-details-wait-for-the-screen)). ✅ Every metric has a
-summary ([every-metric-has-a-summary](./rpc_provide_decision.md#every-metric-has-a-summary)).
+✅ **No question is open.**

@@ -103,17 +103,15 @@ func (s *Service) LiabilityTermsHistoryList(
 // reading as "the team was frozen".
 func termsChangeToProto(c *liability_service_models.LiabilityTermsLog) *liabilityv1.LiabilityTermsChange {
 	return &liabilityv1.LiabilityTermsChange{
-		Id:                 c.ID,
-		CounterpartyId:     c.CounterpartyID,
-		ActorId:            c.ActorID,
-		OldCreditLimit:     c.OldCreditLimit,
-		NewCreditLimit:     c.NewCreditLimit,
-		OldHandlingFee:     c.OldHandlingFee,
-		NewHandlingFee:     c.NewHandlingFee,
-		OldProductMarkupBp: c.OldProductMarkupBp,
-		NewProductMarkupBp: c.NewProductMarkupBp,
-		Reason:             c.Reason,
-		Override:           c.Override,
-		ChangedAtUnix:      c.ChangedAt.Unix(),
+		Id:             c.ID,
+		CounterpartyId: c.CounterpartyID,
+		ActorId:        c.ActorID,
+		OldCreditLimit: c.OldCreditLimit,
+		NewCreditLimit: c.NewCreditLimit,
+		OldHandlingFee: c.OldHandlingFee,
+		NewHandlingFee: c.NewHandlingFee,
+		Reason:         c.Reason,
+		Override:       c.Override,
+		ChangedAtUnix:  c.ChangedAt.Unix(),
 	}
 }

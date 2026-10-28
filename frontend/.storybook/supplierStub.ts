@@ -23,11 +23,9 @@ import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SupplierListDataType, SupplierListScope, SupplierRowSort, SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
-import {
-  AnalyticGroupSort,
-  AnalyticTimeframe,
-  SupplierAnalyticService,
-} from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
+import { getOption } from "@bufbuild/protobuf";
+import { SupplierAnalyticService, SupplierMetricSchema } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
+import { type FilterItem, GroupType, SortType, metric_sort } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
 import { CommonSortType, GeneralSort } from "../src/gen/warehouse/common/v1/list_pb";
 import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
 import { teams } from "./fixtures";
@@ -322,13 +320,13 @@ export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelS
 
 // ── SupplierAnalyticService ─────────────────────────────────────────────────────────────────────
 //
-// A supplier's figures, read from supplierFigureFixtures.ts the way supplier_service reads its folded table: every
-// bucket of the window a point, every team's restocks unless one is picked, a deleted supplier ranked with its figures,
-// and — by broken rate — the suppliers under the minimum after the others (rate-ranking-needs-50-units).
+// `metrics/suppliers`, read from supplierFigureFixtures.ts the way supplier_service reads its folded table
+// (docs/business/analytic/rpc_provide.md): MetricSearch ranks the keys that have figures — the key DESC breaking a tie,
+// and by broken rate only the keys with the proto's `rank_min_sample` units ranked, the rest after them in key order —
+// and MetricData fills every asked key, zero when quiet, or reads the SUMMARY headline. Every team's restocks unless one
+// is picked; a deleted supplier keeps its figures.
 
-const RATE_MIN_UNITS = 50n;
-
-type Metric = Omit<FigureFixture, "daysAgo" | "supplierId" | "productId" | "teamId">;
+type Metric = Omit<FigureFixture, "daysAgo" | "supplierId" | "productId" | "teamId"> & { brokenRate: number };
 
 const zeroMetric = (): Metric => ({
   restockCount: 0n,
@@ -337,156 +335,157 @@ const zeroMetric = (): Metric => ({
   shippingLostValuation: 0n,
   shippingBrokenCount: 0n,
   shippingBrokenValuation: 0n,
+  brokenRate: 0,
 });
 
+const unitsOf = (m: Metric) => m.restockCount + m.shippingLostCount + m.shippingBrokenCount;
+
+/** A row added in — its broken rate recomputed from the new sums, never averaged. */
 function addRow(m: Metric, r: FigureFixture): Metric {
-  return {
+  const next = {
     restockCount: m.restockCount + r.restockCount,
     restockValuation: m.restockValuation + r.restockValuation,
     shippingLostCount: m.shippingLostCount + r.shippingLostCount,
     shippingLostValuation: m.shippingLostValuation + r.shippingLostValuation,
     shippingBrokenCount: m.shippingBrokenCount + r.shippingBrokenCount,
     shippingBrokenValuation: m.shippingBrokenValuation + r.shippingBrokenValuation,
+    brokenRate: 0,
   };
+  const units = unitsOf(next);
+
+  return { ...next, brokenRate: units > 0n ? Number(next.shippingBrokenCount) / Number(units) : 0 };
 }
 
-const unitsOf = (m: Metric) => m.restockCount + m.shippingLostCount + m.shippingBrokenCount;
+/** The rows the filters keep — the window (inclusive), whose restocks, one supplier. */
+function figureRowsFor(filters: FilterItem[] | undefined): FigureFixture[] {
+  let start = "";
+  let end = "";
+  let restockTeamId = 0n;
+  let supplierId = 0n;
 
-type Range = { startDate: string; endDate: string } | undefined;
-
-/** The window's rows — inclusive at both ends — narrowed to one restocking team when one is picked. */
-function figureRowsIn(range: Range, restockTeamId: bigint): FigureFixture[] {
-  const start = range?.startDate ?? "";
-  const end = range?.endDate ?? "";
+  for (const item of filters ?? []) {
+    if (item.f.case === "dateRangeFilter") {
+      start = item.f.value.dateMin;
+      end = item.f.value.dateMax;
+    }
+    if (item.f.case === "teamFilter") restockTeamId = item.f.value.teamId;
+    if (item.f.case === "supplierFilter") supplierId = item.f.value.supplierId;
+  }
 
   return figureFixtures.filter((r) => {
     const day = dayAgo(r.daysAgo);
 
-    return day >= start && day <= end && (restockTeamId === 0n || r.teamId === restockTeamId);
+    return (
+      day >= start &&
+      day <= end &&
+      (restockTeamId === 0n || r.teamId === restockTeamId) &&
+      (supplierId === 0n || r.supplierId === supplierId)
+    );
   });
 }
 
-/** The bucket a day rolls up into — the day, the 1st of its month, or 1 January. */
-function bucketOfDay(day: string, timeframe: AnalyticTimeframe): string {
-  if (timeframe === AnalyticTimeframe.MONTHLY) return `${day.slice(0, 7)}-01`;
-  if (timeframe === AnalyticTimeframe.YEARLY) return `${day.slice(0, 4)}-01-01`;
+/** Monday of the week a `yyyy-mm-dd` falls in. */
+function mondayOf(day: string): string {
+  const t = Date.parse(`${day}T00:00:00Z`);
+  const back = (new Date(t).getUTCDay() + 6) % 7;
 
-  return day;
+  return new Date(t - back * 86_400_000).toISOString().slice(0, 10);
 }
 
-/** Every bucket of the window, oldest first — walked in UTC, as calendar labels. */
-function bucketSpine(range: Range, timeframe: AnalyticTimeframe): string[] {
-  const start = Date.parse(`${range?.startDate ?? ""}T00:00:00Z`);
-  const end = Date.parse(`${range?.endDate ?? ""}T00:00:00Z`);
-  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return [];
+/** A row's key for a group — an id, or the first day of its period. */
+function keyOf(r: FigureFixture, group: GroupType): string {
+  const day = dayAgo(r.daysAgo);
 
-  const seen = new Set<string>();
-  for (let t = start; t <= end; t += 86_400_000) {
-    seen.add(bucketOfDay(new Date(t).toISOString().slice(0, 10), timeframe));
+  switch (group) {
+    case GroupType.SUPPLIER:
+      return r.supplierId.toString();
+    case GroupType.PRODUCT:
+      return r.productId.toString();
+    case GroupType.WEEKLY:
+      return mondayOf(day);
+    case GroupType.MONTHLY:
+      return `${day.slice(0, 7)}-01`;
+    case GroupType.YEARLY:
+      return `${day.slice(0, 4)}-01-01`;
+    default:
+      return day;
+  }
+}
+
+const isDayGroup = (group: GroupType) =>
+  group === GroupType.DAILY || group === GroupType.WEEKLY || group === GroupType.MONTHLY || group === GroupType.YEARLY;
+
+function grouped(filters: FilterItem[] | undefined, group: GroupType): Map<string, Metric> {
+  const out = new Map<string, Metric>();
+  for (const r of figureRowsFor(filters)) {
+    const k = keyOf(r, group);
+    out.set(k, addRow(out.get(k) ?? zeroMetric(), r));
   }
 
-  return [...seen];
+  return out;
 }
 
-export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyticService>> = {
-  analyticTimeSearch: (req) => {
-    const timeframe = req.timeframe;
-    const rows = figureRowsIn(req.filter?.dateRange, req.filter?.restockTeamId ?? 0n).filter(
-      (r) => r.supplierId === req.supplierId,
-    );
+/** The larger key first — an id by number, a day by date — the tie-break every sort ends on. */
+const keyDesc = (a: string, b: string) => (a.length !== b.length ? b.length - a.length : b < a ? -1 : b > a ? 1 : 0);
 
-    const byBucket = new Map<string, Metric>();
-    let total = zeroMetric();
-    for (const r of rows) {
-      const at = bucketOfDay(dayAgo(r.daysAgo), timeframe);
-      byBucket.set(at, addRow(byBucket.get(at) ?? zeroMetric(), r));
-      total = addRow(total, r);
+/** A proto field name as the generated message spells it — `restock_valuation` → `restockValuation`. */
+const camel = (field: string) => field.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()) as keyof Metric;
+
+export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyticService>> = {
+  metricSearch: (req) => {
+    const field = req.sort?.field ?? "";
+    const sortable = SupplierMetricSchema.fields.find((f) => f.name === field);
+    if (!sortable || !getOption(sortable, metric_sort).canSort) {
+      throw new ConnectError(`metrics/suppliers cannot be sorted by ${field}`, Code.InvalidArgument);
     }
 
-    let spine = bucketSpine(req.filter?.dateRange, timeframe);
-    if (req.sortType === CommonSortType.DESC) spine = spine.reverse();
+    const asc = req.sort?.sortType === SortType.ASC;
+    const value = (m: Metric) => Number(m[camel(field)]);
+    const minimum = BigInt(getOption(sortable, metric_sort).rankMinSample);
 
-    const { rows: page, pageInfo } = pageOf(spine, req.page as PageReq);
+    const ranked = [...grouped(req.filters, req.groupBy).entries()].sort(([ka, a], [kb, b]) => {
+      const rankedA = unitsOf(a) >= minimum;
+      const rankedB = unitsOf(b) >= minimum;
+      if (rankedA !== rankedB) return rankedA ? -1 : 1;
+      if (rankedA && value(a) !== value(b)) return asc ? value(a) - value(b) : value(b) - value(a);
+
+      return keyDesc(ka, kb);
+    });
+
+    const offset = req.page?.offset ?? 0;
+    const limit = req.page?.limit ?? 20;
+    const page = ranked.slice(offset, offset + limit).map(([k]) => k);
 
     return {
-      datas: page.map((at) => ({ at, metric: byBucket.get(at) ?? zeroMetric() })),
-      pageInfo,
-      total,
+      keys: isDayGroup(req.groupBy)
+        ? { k: { case: "days", value: { days: page } } }
+        : { k: { case: "ids", value: { ids: page.map(BigInt) } } },
+      hasNext: ranked.length > offset + limit,
     };
   },
 
-  analyticProductSearch: (req) => {
-    const rows = figureRowsIn(req.filter?.dateRange, req.filter?.restockTeamId ?? 0n).filter(
-      (r) => r.supplierId === req.supplierId,
-    );
+  metricData: (req) => {
+    if (req.groupBy === GroupType.SUMMARY) {
+      let total = zeroMetric();
+      for (const r of figureRowsFor(req.filters)) total = addRow(total, r);
 
-    const byProduct = new Map<string, { productId: bigint; teamId: bigint; metric: Metric }>();
-    for (const r of rows) {
-      const key = `${r.teamId}|${r.productId}`;
-      const had = byProduct.get(key) ?? { productId: r.productId, teamId: r.teamId, metric: zeroMetric() };
-      byProduct.set(key, { ...had, metric: addRow(had.metric, r) });
+      return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierSummary" as const, value: total } })) };
     }
 
-    const sorted = [...byProduct.values()].sort((a, b) => {
-      if (a.metric.restockValuation !== b.metric.restockValuation) {
-        return a.metric.restockValuation > b.metric.restockValuation ? -1 : 1;
-      }
+    const byKey = grouped(req.filters, req.groupBy);
 
-      return a.productId < b.productId ? -1 : 1;
-    });
+    if (req.keys?.k.case === "days") {
+      const items: Record<string, Metric> = {};
+      for (const day of req.keys.k.value.days) items[day] = byKey.get(day) ?? zeroMetric();
 
-    const { rows: page, pageInfo } = pageOf(sorted, req.page as PageReq);
-
-    return { datas: page, pageInfo };
-  },
-
-  analyticGroupSearch: (req) => {
-    const q = (req.filter?.q ?? "").trim().toLowerCase();
-    // The search finds suppliers as SupplierList does — a deleted one included, since its figures are kept.
-    const found = (supplierId: bigint) => {
-      const s = suppliers.find((x) => x.id === supplierId);
-      if (!s) return q === "";
-
-      return matches(q, s.name, s.address, s.contact, ...liveStoresOf(s.id).map((c) => c.name));
-    };
-
-    const bySupplier = new Map<bigint, Metric>();
-    let total = zeroMetric();
-    for (const r of figureRowsIn(req.filter?.dateRange, req.filter?.restockTeamId ?? 0n)) {
-      if (!found(r.supplierId)) continue;
-      bySupplier.set(r.supplierId, addRow(bySupplier.get(r.supplierId) ?? zeroMetric(), r));
-      total = addRow(total, r);
+      return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierByDay" as const, value: { items } } })) };
     }
 
-    const byRate = req.sort === AnalyticGroupSort.BROKEN_RATE;
-    const rate = (m: Metric) => Number(m.shippingBrokenCount) / Number(unitsOf(m));
-
-    const ranked = [...bySupplier.entries()].sort(([idA, a], [idB, b]) => {
-      if (byRate) {
-        const ratedA = unitsOf(a) >= RATE_MIN_UNITS;
-        const ratedB = unitsOf(b) >= RATE_MIN_UNITS;
-        if (ratedA !== ratedB) return ratedA ? -1 : 1;
-        if (rate(a) !== rate(b)) return rate(b) - rate(a);
-      }
-      if (a.restockValuation !== b.restockValuation) return a.restockValuation > b.restockValuation ? -1 : 1;
-
-      return idA < idB ? -1 : 1;
-    });
-
-    const { rows: page, pageInfo } = pageOf(ranked, req.page as PageReq);
-
-    return { ids: page.map(([id]) => id), pageInfo, total, rateMinUnits: RATE_MIN_UNITS };
-  },
-
-  analyticGroupMetric: (req) => {
-    const metrics: Record<string, Metric> = {};
-    for (const id of req.ids) metrics[id.toString()] = zeroMetric();
-
-    for (const r of figureRowsIn(req.filter?.dateRange, req.filter?.restockTeamId ?? 0n)) {
-      const key = r.supplierId.toString();
-      if (key in metrics) metrics[key] = addRow(metrics[key]!, r);
+    const items: Record<string, Metric> = {};
+    for (const id of req.keys?.k.case === "ids" ? req.keys.k.value.ids : []) {
+      items[id.toString()] = byKey.get(id.toString()) ?? zeroMetric();
     }
 
-    return { metrics };
+    return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierById" as const, value: { items } } })) };
   },
 };

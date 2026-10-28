@@ -16,11 +16,10 @@ type LiabilityTerms struct {
 	CounterpartyID uint64
 
 	// Flat per order, whole rupiah. 0 = charge nothing.
+	//
+	// ⛔ No markup beside it any more: the markup is the PRODUCT's, applied by inventory's take and frozen on each
+	// order line's total (the-ledger-charges-the-frozen-line-total).
 	HandlingFee int64
-
-	// Basis points over the goods' cost (2000 = 20%). Basis points rather than a float for the same
-	// reason money is int64.
-	ProductMarkupBP int64 `gorm:"column:product_markup_bp"`
 
 	// ⚠ nil is UNLIMITED; 0 is NO CREDIT AT ALL. Removing a limit deletes the row.
 	CreditLimit *int64

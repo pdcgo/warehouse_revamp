@@ -340,3 +340,35 @@ export const AcceptingNamesTheAccountItLandedIn: Story = {
   },
 };
 
+
+// ── THE DEBTOR'S SIDE OF THE SAME PAIR (the-debtor-sees-the-limits-set-on-it) ───────────────────────────────────────
+
+// The same pair read from the other end: Toko Melati on its page for Gudang Pusat.
+const RoutedAsDebtor = routedPage(
+  [
+    { path: "/liability/:counterpartyId", element: <LiabilityDetailPage /> },
+    marker("/liability", "at-liability-list"),
+  ],
+  `/liability/${WAREHOUSE.id}`,
+);
+
+// A LIMIT THAT CAN STOP YOUR ORDERS IS NOT KEPT FROM YOU. Melati sees the limit Gudang Pusat set on it, its debt, and
+// the same 80% badge the creditor sees — worded from Melati's side, naming who set it. There is nothing to edit:
+// setting it stays Gudang Pusat's.
+export const TheDebtorSeesTheLimitSetOnIt: Story = {
+  render: () => <RoutedAsDebtor />,
+  beforeEach: () => {
+    asTeam(COUNTERPARTY)();
+    asRole(Role.SELLING_OWNER)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const block = await canvas.findByTestId("limit-on-you", {}, { timeout: 4000 });
+    await expect(within(block).getByTestId("limit-on-you-meter-pct")).toHaveTextContent("87%");
+    await expect(within(block).getByTestId("limit-on-you-meter-warn")).toHaveTextContent(
+      "87% of the limit Gudang Pusat set",
+    );
+    await expect(block).toHaveTextContent("Set by Gudang Pusat");
+  },
+};

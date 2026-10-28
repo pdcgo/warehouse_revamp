@@ -18,11 +18,12 @@ import (
 func feeOrderReq(shopID uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Budi", Subtotal: 30000, Total: 30000,
+		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 2, UnitPrice: 10000},
-			{ProductId: 2, Sku: "SKU2", Name: "Gadget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 2},
+			{ProductId: 2, Sku: "SKU2", Name: "Gadget", Quantity: 1},
 		},
 	}
 }
@@ -45,7 +46,7 @@ func countOrders(t *testing.T, db *gorm.DB) int64 {
 }
 
 // THE FEE IS PRICED ON THE GOODS COST AND FROZEN (the-fee-is-priced-on-goods-cost, the-flat-rate-is-dropped-last step 3):
-// the warehouse is asked once, with the order's cogs as the basis, and what it answered is what the order keeps — on the
+// the warehouse is asked once, with the order's goods_cost as the basis, and what it answered is what the order keeps — on the
 // response, the detail and the list row alike.
 func TestOrderCreate_FreezesTheWarehouseFeeOnTheGoodsCost(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -64,9 +65,14 @@ func TestOrderCreate_FreezesTheWarehouseFeeOnTheGoodsCost(t *testing.T) {
 		t.Fatalf("the warehouse was asked to price %v — want once, on the goods cost 14000", fees.asked)
 	}
 
-	if order.GetCogs() != 14000 || !(order.WarehouseFee != nil) || order.GetWarehouseFee() != 350 {
-		t.Fatalf("order cogs %d, fee %v (set %v) — want 14000 and 350, frozen", order.GetCogs(), order.GetWarehouseFee(),
-			(order.WarehouseFee != nil))
+	if order.GetGoodsCost() != 14000 || !(order.WarehouseFee != nil) || order.GetWarehouseFee() != 350 {
+		t.Fatalf("order goods_cost %d, fee %v (set %v) — want 14000 and 350, frozen", order.GetGoodsCost(),
+			order.GetWarehouseFee(), (order.WarehouseFee != nil))
+	}
+
+	// total_cost — goods + warehouse fee, frozen beside them.
+	if order.GetTotalCost() != 14350 {
+		t.Fatalf("order total_cost %v — want 14000 + 350", order.GetTotalCost())
 	}
 
 	detail, err := svc.OrderDetail(context.Background(), connect.NewRequest(&sellingv1.OrderDetailRequest{
@@ -87,8 +93,10 @@ func TestOrderCreate_FreezesTheWarehouseFeeOnTheGoodsCost(t *testing.T) {
 }
 
 // A WAREHOUSE WITH NO RATE TAKES NO ORDERS (a-warehouse-with-no-rate-takes-no-orders): the refusal reaches the form
-// naming the warehouse, no order is written, and no stock was taken — it is refused before the pick.
-func TestOrderCreate_AWarehouseWithNoRateIsRefusedAndTakesNothing(t *testing.T) {
+// naming the warehouse, no order is written, and the stock the take drew is given back. The fee is priced on the take's
+// draw (an-order-is-costed-at-what-leaves-the-shelf), so it is asked AFTER the pick — and a refusal there fails the
+// order's transaction like any failed step, which is the owner's flow: the take is rolled back.
+func TestOrderCreate_AWarehouseWithNoRateIsRefusedAndGivesTheTakeBack(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := knownCosts()
 	fees := &fakeFees{err: connect.NewError(connect.CodeFailedPrecondition, errors.New("Gudang A has not set its fee"))}
@@ -105,8 +113,8 @@ func TestOrderCreate_AWarehouseWithNoRateIsRefusedAndTakesNothing(t *testing.T) 
 		t.Fatalf("%d orders written — a refused order must not exist", n)
 	}
 
-	if len(picker.picked) != 0 {
-		t.Fatalf("stock was picked %v — the refusal must land before any stock moves", picker.picked)
+	if len(picker.picked) != 1 || len(picker.returned) != 1 || picker.returned[0] != picker.picked[0] {
+		t.Fatalf("picked %v, returned %v — the take must be given back, under the same ref", picker.picked, picker.returned)
 	}
 }
 
@@ -124,8 +132,9 @@ func TestOrderCreate_AnUnreachablePricerPlacesNothing(t *testing.T) {
 		t.Fatalf("err = %v — want Unavailable", err)
 	}
 
-	if n := countOrders(t, db); n != 0 || len(picker.picked) != 0 {
-		t.Fatalf("%d orders written, picked %v — want nothing", n, picker.picked)
+	if n := countOrders(t, db); n != 0 || len(picker.returned) != len(picker.picked) {
+		t.Fatalf("%d orders written, picked %v, returned %v — want no order and every take given back", n,
+			picker.picked, picker.returned)
 	}
 }
 

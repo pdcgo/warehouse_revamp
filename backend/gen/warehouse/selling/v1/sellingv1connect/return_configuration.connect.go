@@ -43,6 +43,12 @@ const (
 	// TeamReturnConfigurationServiceTeamReturnConfigurationByIdsProcedure is the fully-qualified name
 	// of the TeamReturnConfigurationService's TeamReturnConfigurationByIds RPC.
 	TeamReturnConfigurationServiceTeamReturnConfigurationByIdsProcedure = "/warehouse.selling.v1.TeamReturnConfigurationService/TeamReturnConfigurationByIds"
+	// TeamReturnConfigurationServiceProductReturnMapCreateProcedure is the fully-qualified name of the
+	// TeamReturnConfigurationService's ProductReturnMapCreate RPC.
+	TeamReturnConfigurationServiceProductReturnMapCreateProcedure = "/warehouse.selling.v1.TeamReturnConfigurationService/ProductReturnMapCreate"
+	// TeamReturnConfigurationServiceProductReturnMapByIdsProcedure is the fully-qualified name of the
+	// TeamReturnConfigurationService's ProductReturnMapByIds RPC.
+	TeamReturnConfigurationServiceProductReturnMapByIdsProcedure = "/warehouse.selling.v1.TeamReturnConfigurationService/ProductReturnMapByIds"
 )
 
 // TeamReturnConfigurationServiceClient is a client for the
@@ -51,6 +57,8 @@ type TeamReturnConfigurationServiceClient interface {
 	TeamReturnConfigurationDetail(context.Context, *connect.Request[v1.TeamReturnConfigurationDetailRequest]) (*connect.Response[v1.TeamReturnConfigurationDetailResponse], error)
 	TeamReturnConfigurationSet(context.Context, *connect.Request[v1.TeamReturnConfigurationSetRequest]) (*connect.Response[v1.TeamReturnConfigurationSetResponse], error)
 	TeamReturnConfigurationByIds(context.Context, *connect.Request[v1.TeamReturnConfigurationByIdsRequest]) (*connect.Response[v1.TeamReturnConfigurationByIdsResponse], error)
+	ProductReturnMapCreate(context.Context, *connect.Request[v1.ProductReturnMapCreateRequest]) (*connect.Response[v1.ProductReturnMapCreateResponse], error)
+	ProductReturnMapByIds(context.Context, *connect.Request[v1.ProductReturnMapByIdsRequest]) (*connect.Response[v1.ProductReturnMapByIdsResponse], error)
 }
 
 // NewTeamReturnConfigurationServiceClient constructs a client for the
@@ -83,6 +91,18 @@ func NewTeamReturnConfigurationServiceClient(httpClient connect.HTTPClient, base
 			connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("TeamReturnConfigurationByIds")),
 			connect.WithClientOptions(opts...),
 		),
+		productReturnMapCreate: connect.NewClient[v1.ProductReturnMapCreateRequest, v1.ProductReturnMapCreateResponse](
+			httpClient,
+			baseURL+TeamReturnConfigurationServiceProductReturnMapCreateProcedure,
+			connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("ProductReturnMapCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		productReturnMapByIds: connect.NewClient[v1.ProductReturnMapByIdsRequest, v1.ProductReturnMapByIdsResponse](
+			httpClient,
+			baseURL+TeamReturnConfigurationServiceProductReturnMapByIdsProcedure,
+			connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("ProductReturnMapByIds")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -91,6 +111,8 @@ type teamReturnConfigurationServiceClient struct {
 	teamReturnConfigurationDetail *connect.Client[v1.TeamReturnConfigurationDetailRequest, v1.TeamReturnConfigurationDetailResponse]
 	teamReturnConfigurationSet    *connect.Client[v1.TeamReturnConfigurationSetRequest, v1.TeamReturnConfigurationSetResponse]
 	teamReturnConfigurationByIds  *connect.Client[v1.TeamReturnConfigurationByIdsRequest, v1.TeamReturnConfigurationByIdsResponse]
+	productReturnMapCreate        *connect.Client[v1.ProductReturnMapCreateRequest, v1.ProductReturnMapCreateResponse]
+	productReturnMapByIds         *connect.Client[v1.ProductReturnMapByIdsRequest, v1.ProductReturnMapByIdsResponse]
 }
 
 // TeamReturnConfigurationDetail calls
@@ -111,12 +133,26 @@ func (c *teamReturnConfigurationServiceClient) TeamReturnConfigurationByIds(ctx 
 	return c.teamReturnConfigurationByIds.CallUnary(ctx, req)
 }
 
+// ProductReturnMapCreate calls
+// warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapCreate.
+func (c *teamReturnConfigurationServiceClient) ProductReturnMapCreate(ctx context.Context, req *connect.Request[v1.ProductReturnMapCreateRequest]) (*connect.Response[v1.ProductReturnMapCreateResponse], error) {
+	return c.productReturnMapCreate.CallUnary(ctx, req)
+}
+
+// ProductReturnMapByIds calls
+// warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapByIds.
+func (c *teamReturnConfigurationServiceClient) ProductReturnMapByIds(ctx context.Context, req *connect.Request[v1.ProductReturnMapByIdsRequest]) (*connect.Response[v1.ProductReturnMapByIdsResponse], error) {
+	return c.productReturnMapByIds.CallUnary(ctx, req)
+}
+
 // TeamReturnConfigurationServiceHandler is an implementation of the
 // warehouse.selling.v1.TeamReturnConfigurationService service.
 type TeamReturnConfigurationServiceHandler interface {
 	TeamReturnConfigurationDetail(context.Context, *connect.Request[v1.TeamReturnConfigurationDetailRequest]) (*connect.Response[v1.TeamReturnConfigurationDetailResponse], error)
 	TeamReturnConfigurationSet(context.Context, *connect.Request[v1.TeamReturnConfigurationSetRequest]) (*connect.Response[v1.TeamReturnConfigurationSetResponse], error)
 	TeamReturnConfigurationByIds(context.Context, *connect.Request[v1.TeamReturnConfigurationByIdsRequest]) (*connect.Response[v1.TeamReturnConfigurationByIdsResponse], error)
+	ProductReturnMapCreate(context.Context, *connect.Request[v1.ProductReturnMapCreateRequest]) (*connect.Response[v1.ProductReturnMapCreateResponse], error)
+	ProductReturnMapByIds(context.Context, *connect.Request[v1.ProductReturnMapByIdsRequest]) (*connect.Response[v1.ProductReturnMapByIdsResponse], error)
 }
 
 // NewTeamReturnConfigurationServiceHandler builds an HTTP handler from the service implementation.
@@ -144,6 +180,18 @@ func NewTeamReturnConfigurationServiceHandler(svc TeamReturnConfigurationService
 		connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("TeamReturnConfigurationByIds")),
 		connect.WithHandlerOptions(opts...),
 	)
+	teamReturnConfigurationServiceProductReturnMapCreateHandler := connect.NewUnaryHandler(
+		TeamReturnConfigurationServiceProductReturnMapCreateProcedure,
+		svc.ProductReturnMapCreate,
+		connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("ProductReturnMapCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamReturnConfigurationServiceProductReturnMapByIdsHandler := connect.NewUnaryHandler(
+		TeamReturnConfigurationServiceProductReturnMapByIdsProcedure,
+		svc.ProductReturnMapByIds,
+		connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("ProductReturnMapByIds")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.TeamReturnConfigurationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TeamReturnConfigurationServiceTeamReturnConfigurationDetailProcedure:
@@ -152,6 +200,10 @@ func NewTeamReturnConfigurationServiceHandler(svc TeamReturnConfigurationService
 			teamReturnConfigurationServiceTeamReturnConfigurationSetHandler.ServeHTTP(w, r)
 		case TeamReturnConfigurationServiceTeamReturnConfigurationByIdsProcedure:
 			teamReturnConfigurationServiceTeamReturnConfigurationByIdsHandler.ServeHTTP(w, r)
+		case TeamReturnConfigurationServiceProductReturnMapCreateProcedure:
+			teamReturnConfigurationServiceProductReturnMapCreateHandler.ServeHTTP(w, r)
+		case TeamReturnConfigurationServiceProductReturnMapByIdsProcedure:
+			teamReturnConfigurationServiceProductReturnMapByIdsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -171,4 +223,12 @@ func (UnimplementedTeamReturnConfigurationServiceHandler) TeamReturnConfiguratio
 
 func (UnimplementedTeamReturnConfigurationServiceHandler) TeamReturnConfigurationByIds(context.Context, *connect.Request[v1.TeamReturnConfigurationByIdsRequest]) (*connect.Response[v1.TeamReturnConfigurationByIdsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationByIds is not implemented"))
+}
+
+func (UnimplementedTeamReturnConfigurationServiceHandler) ProductReturnMapCreate(context.Context, *connect.Request[v1.ProductReturnMapCreateRequest]) (*connect.Response[v1.ProductReturnMapCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapCreate is not implemented"))
+}
+
+func (UnimplementedTeamReturnConfigurationServiceHandler) ProductReturnMapByIds(context.Context, *connect.Request[v1.ProductReturnMapByIdsRequest]) (*connect.Response[v1.ProductReturnMapByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapByIds is not implemented"))
 }

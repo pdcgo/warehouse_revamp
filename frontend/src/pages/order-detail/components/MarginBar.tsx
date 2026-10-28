@@ -19,22 +19,22 @@ import { useTranslation } from "react-i18next";
 // `success`, the overflow in `error`.
 
 export function MarginBar({
-  marketplaceTotal,
+  platformTotal,
   productCost,
   fees,
 }: {
-  marketplaceTotal: bigint;
+  platformTotal: bigint;
   productCost: bigint;
   /** `null` = never priced: there is no total to draw the margin against, so no bar. */
   fees: bigint | null;
 }) {
   const { t } = useTranslation();
 
-  if (marketplaceTotal <= 0n || productCost <= 0n || fees === null) {
+  if (platformTotal <= 0n || productCost <= 0n || fees === null) {
     return null;
   }
 
-  const mp = Number(marketplaceTotal);
+  const mp = Number(platformTotal);
   const goods = Number(productCost);
   const fee = Number(fees);
   const spend = goods + fee;
@@ -56,7 +56,7 @@ export function MarginBar({
         {underwater ? (
           // The track is the COST; harga MP covers only part of it, and the rest is the loss.
           <>
-            <Box w={pct(mp)} bg="gray.solid" title={t("orderDetail.money.marketplaceTotal")} />
+            <Box w={pct(mp)} bg="gray.solid" title={t("orderDetail.money.platformTotal")} />
             <Box w={pct(spend - mp)} bg="error.solid" title={t("orderDetail.bar.loss")} />
           </>
         ) : (

@@ -35,7 +35,7 @@ func courierLegs(t *testing.T, db *gorm.DB) []liability_service_models.Liability
 // (balance-posts-the-couriers-debt-from-the-event).
 func TestChargeRestockCourier_PostsTheDebtOnceForTheRestock(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	charge := liability_v1.CourierCharge{
 		RestockID: courierRestock, SellingTeamID: courierSellingTeam, WarehouseID: courierWarehouse, Amount: 25000, ActorID: 9,
@@ -57,7 +57,7 @@ func TestChargeRestockCourier_PostsTheDebtOnceForTheRestock(t *testing.T) {
 // No charge, no entry — a zero reads as a debt of nothing.
 func TestChargeRestockCourier_ZeroPostsNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	err := svc.ChargeRestockCourier(context.Background(), liability_v1.CourierCharge{
 		RestockID: courierRestock, SellingTeamID: courierSellingTeam, WarehouseID: courierWarehouse,

@@ -98,10 +98,10 @@ message OrderDraft {
   OrderAddress address = 11;
   string shipping_code = 12;
 
-  // As scraped, whole rupiah. Nothing here is authoritative: promote recomputes the order's money
-  // from the mapped lines, and there is no COGS at all yet — a draft's lines mostly name no product,
-  // so there is nothing whose cost could be looked up.
-  int64 shipping_cost = 13;
+  // 13 was `shipping_cost` — a draft is the platform's header and lines, and an order records no shipping
+  // (an-order-records-no-shipping-cost). Selling 00027 dropped the column.
+  reserved 13;
+  reserved "shipping_cost";
 
   // The lines — populated by OrderDraftDetail (the list returns a summary without them).
   repeated OrderDraftItem items = 14;
@@ -127,6 +127,16 @@ message OrderDraft {
   // The marketplace's own SHIP-BY time, its "kirim sebelum" (the-shipment-deadline-is-the-platforms-and-optional).
   // 0 = none, which is allowed all the way through. Promote copies it.
   int64 platform_shipment_deadline_unix = 20;
+
+  // The buyer's username on the marketplace (the-buyers-username-is-optional). "" = none, which is allowed all the
+  // way through. Promote copies it.
+  string buyer_username = 21;
+
+  // WHAT THE BUYER PAID on the platform, whole rupiah — the owner's `order_drafts.platform_total`
+  // (platform-total-is-required-at-finalize), the figure settlement opens the order's account on. 0 = not known yet: a
+  // draft may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto
+  // Order.platform_total.
+  int64 platform_total = 22;
 }
 
 message OrderDraftListRequest {
@@ -287,7 +297,9 @@ message OrderDraftUpdateRequest {
   // The address is ONE field, whole. Somebody who corrects a kecamatan has corrected the address.
   OrderAddress address = 7;
   optional string shipping_code = 8 [(buf.validate.field).string.max_len = 40];
-  optional int64 shipping_cost = 9 [(buf.validate.field).int64.gte = 0];
+  // 9 was `shipping_cost` (an-order-records-no-shipping-cost).
+  reserved 9;
+  reserved "shipping_cost";
 
   // The lines, if this edit touches them at all.
   OrderDraftLines items = 10;
@@ -296,6 +308,14 @@ message OrderDraftUpdateRequest {
   // next push leaves them alone; 0 clears one.
   optional int64 platform_created_at_unix = 11 [(buf.validate.field).int64.gte = 0];
   optional int64 platform_shipment_deadline_unix = 12 [(buf.validate.field).int64.gte = 0];
+
+  // The buyer's marketplace username, as a person read it. Set = edited and marked touched; "" clears it. Trimmed by
+  // the handler (the-buyers-username-is-optional).
+  optional string buyer_username = 13 [(buf.validate.field).string.max_len = 100];
+
+  // What the buyer paid on the platform, as a person read it or typed it (platform-total-is-required-at-finalize).
+  // Set = edited and marked touched, so the app's next push leaves it alone; 0 clears it.
+  optional int64 platform_total = 14 [(buf.validate.field).int64.gte = 0];
 }
 
 message OrderDraftUpdateResponse {
@@ -392,7 +412,10 @@ message OrderDraftPushRequest {
   string customer_phone = 7 [(buf.validate.field).string.max_len = 40];
   OrderAddress address = 8;
   string shipping_code = 9 [(buf.validate.field).string.max_len = 40];
-  int64 shipping_cost = 10 [(buf.validate.field).int64.gte = 0];
+  // 10 was `shipping_cost` — an order records no shipping (an-order-records-no-shipping-cost). ⚠ A JSON client still
+  // sending `shippingCost` has it DISCARDED silently (Connect ignores unknown JSON fields), never refused.
+  reserved 10;
+  reserved "shipping_cost";
 
   // The scraped lines. NO minimum: a push carrying a customer and an address but no readable lines
   // is still worth keeping — refusing it would throw away everything the app COULD see over the one
@@ -408,6 +431,17 @@ message OrderDraftPushRequest {
   // order date at Promote, and the-shipment-deadline-is-the-platforms-and-optional never requires the deadline).
   int64 platform_created_at_unix = 12 [(buf.validate.field).int64.gte = 0];
   int64 platform_shipment_deadline_unix = 13 [(buf.validate.field).int64.gte = 0];
+
+  // The buyer's marketplace username, as the app read it. "" = the app could not see one — never required
+  // (the-buyers-username-is-optional). Trimmed by the handler.
+  string buyer_username = 14 [(buf.validate.field).string.max_len = 100];
+
+  // What the buyer paid on the platform, as the app read it — JSON `platformTotal`. 0 = the app could not see one. Not
+  // required here — a draft may hold it empty; Promote is where it becomes required
+  // (platform-total-is-required-at-finalize). Renamed from `marketplace_total` on 2026-10-23 with its number kept, so a
+  // binary client is unaffected — ⚠ but a JSON client still sending `marketplaceTotal` has it DISCARDED silently, and
+  // its drafts reach Promote with 0.
+  int64 platform_total = 15 [(buf.validate.field).int64.gte = 0];
 }
 
 message OrderDraftPushResponse {

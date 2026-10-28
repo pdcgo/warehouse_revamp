@@ -227,7 +227,7 @@ export type SettlementPostRequest = Message<"warehouse.settlement.v1.SettlementP
    * ⚠ THE CALLER SUPPLIES IT, because settlement cannot look it up: the shop lives in
    * selling_service's tables and a service does not read another's (HARD RULE 3). It is frozen onto
    * both rows so every list filters by shop without a cross-service call — the same denormalisation
-   * `order.cogs` already is, and safe for the same reason: an order does not move between shops.
+   * `order.goods_cost` already is, and safe for the same reason: an order does not move between shops.
    *
    * On the FIRST post it establishes the account's shop. Later posts must agree — see the handler.
    *
@@ -1093,7 +1093,7 @@ export enum SettlementType {
   UNSPECIFIED = 0,
 
   /**
-   * The sale, frozen from `order.marketplace_total` when the order is created. `change` is NEGATIVE.
+   * The sale, frozen from `order.platform_total` when the order is created. `change` is NEGATIVE.
    * Written only by `order_service` (source `order`) or by hand
    * (#initial-total-is-postable-by-cs-and-owners).
    *
@@ -1507,7 +1507,7 @@ export const AnalyticMetricSortSchema: GenEnum<AnalyticMetricSort> = /*@__PURE__
  * (docs/business/settlement/context_decision.md#the-name-settlement-moves-to-the-payout).
  *
  * THE ONE IDEA THE WHOLE DESIGN RESTS ON. `initial_total` is a frozen copy of
- * `order.marketplace_total` — what the buyer ACTUALLY PAID, a fact and not a prediction
+ * `order.platform_total` — what the buyer ACTUALLY PAID, a fact and not a prediction
  * (#marketplace-total-is-a-fact-not-an-estimate). What is estimated is only the EXPECTATION that all
  * of it reaches us. So the running balance is not "drift from a guess", it is exactly:
  *

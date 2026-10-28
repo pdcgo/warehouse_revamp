@@ -27,7 +27,7 @@ const filled: MarketplaceInfoValue = {
   ...emptyMarketplaceInfo,
   shopId: SHOPEE_SHOP.id,
   orderExternalRefId: REF,
-  marketplaceTotal: "250000",
+  platformTotal: "250000",
 };
 
 const meta = {
@@ -139,7 +139,7 @@ export const PickingAMarketplaceKeepsTheRef: Story = {
 // The total is a NOTE about what the storefront took — grouped with the shop and the reference
 // rather than beside the order's arithmetic, because nothing computes from it.
 export const TotalIsFormattedAsTyped: Story = {
-  args: { value: { ...emptyMarketplaceInfo, marketplaceTotal: "250000" } },
+  args: { value: { ...emptyMarketplaceInfo, platformTotal: "250000" } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -157,7 +157,7 @@ export const TotalEmitsRawDigits: Story = {
 
     await expect(args.onChange).toHaveBeenCalledWith({
       ...emptyMarketplaceInfo,
-      marketplaceTotal: "2",
+      platformTotal: "2",
     });
   },
 };

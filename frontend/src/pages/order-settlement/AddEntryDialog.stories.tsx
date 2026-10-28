@@ -110,7 +110,7 @@ export const TeamAdminCannotAuthorTheSale: Story = {
  *
  * ⚠ This is the answer that REVERSED the earlier proposal that nobody may type it, and the reasoning
  * is the marketplace relationship: CS is who talks to the platform and reads what the buyer actually
- * paid. `noEstimate` is the order that needs it — a phone order whose `marketplace_total` was never
+ * paid. `noEstimate` is the order that needs it — a phone order whose `platform_total` was never
  * recorded, which is exactly the gap a person is there to close.
  */
 export const CustomerServiceMayAuthorTheSale: Story = {

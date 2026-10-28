@@ -76,7 +76,7 @@ func (s *Service) CheckCredit(
 		}
 
 		debt := debts[creditorID]
-		if debt < limit {
+		if !refusesCredit(debt, limit) {
 			continue
 		}
 
@@ -88,6 +88,13 @@ func (s *Service) CheckCredit(
 	}
 
 	return nil, nil
+}
+
+// refusesCredit is THE RULE, written once: the next order is refused when the current debt has reached the limit.
+// CheckCredit blocks on it and LiabilityCreditByIds reports it as AT_LIMIT, so what the order form shows and what
+// the create refuses are one comparison rather than two copies of it.
+func refusesCredit(debt, limit int64) bool {
+	return debt >= limit
 }
 
 // distinctCreditors drops duplicates, the zero id, and the debtor itself — a team fulfilling its own

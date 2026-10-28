@@ -6,6 +6,7 @@ import { PackagePlus } from "lucide-react";
 import { AllProductPicker } from "../products/AllProductPicker";
 import type { PickedProduct } from "../products/ProductSelect";
 import { OrderLineRow } from "../../features/orders/OrderLineRow";
+import { RefreshOverlay } from "../feedback/RefreshOverlay";
 import type { Availability, Costs, LineDraft } from "../../features/orders/lines";
 import { lineStock } from "../../features/orders/lines";
 
@@ -21,8 +22,10 @@ export interface OrderItemCardProps {
   /** What a pick from the chosen warehouse would find. `undefined` = the read has not landed, which
    * is not the same as "none" — each row prints an em dash rather than a confident 0. */
   stock?: Availability;
-  /** productId -> HPP at the chosen warehouse. Absent or 0 = UNKNOWN, never free. */
+  /** productId -> what the chosen warehouse's take would draw (StockTakeQuote). None, or 0, = UNKNOWN, never free. */
   costs?: Costs;
+  /** The figures on the rows are a KEPT answer while a changed quantity is being priced — they dim, and say so. */
+  busy?: boolean;
 
   /** The WHOLE ticked set from the picker, not an addition. The caller reconciles it against the
    * lines it already has (see `OrderCreatePage.pickProducts`) — rebuilding the list here would reset
@@ -61,6 +64,7 @@ export function OrderItemCard({
   lines,
   stock,
   costs,
+  busy = false,
   onPick,
   onPatch,
   onRemove,
@@ -162,35 +166,39 @@ export function OrderItemCard({
 
           {/* It scrolls inside its own box: six columns on a phone would otherwise push the whole page
               sideways. */}
+          {/* The kept figures dim while a changed quantity is priced again (CLAUDE.md rule 10) — the HPP of 3 is
+              not the HPP of 2 once a third unit spills into a newer batch. */}
           {lines.length > 0 && (
-            <Box overflowX="auto">
-              <Table.Root size="sm" data-testid="order-lines-table">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader>{t("orders.product")}</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end">{t("orders.inStock")}</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end">{t("orders.qty")}</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end">{t("orders.hpp")}</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end">{t("orders.lineTotal")}</Table.ColumnHeader>
-                    <Table.ColumnHeader />
-                  </Table.Row>
-                </Table.Header>
+            <RefreshOverlay busy={busy}>
+              <Box overflowX="auto">
+                <Table.Root size="sm" data-testid="order-lines-table">
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.ColumnHeader>{t("orders.product")}</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="end">{t("orders.inStock")}</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="end">{t("orders.qty")}</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="end">{t("orders.hpp")}</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="end">{t("orders.lineTotal")}</Table.ColumnHeader>
+                      <Table.ColumnHeader />
+                    </Table.Row>
+                  </Table.Header>
 
-                <Table.Body>
-                  {lines.map((line, i) => (
-                    <OrderLineRow
-                      key={line.productId.toString()}
-                      index={i}
-                      line={line}
-                      stock={lineStock(line, stock)}
-                      costs={costs}
-                      onPatch={(patch) => onPatch(line.productId, patch)}
-                      onRemove={() => onRemove(line.productId)}
-                    />
-                  ))}
-                </Table.Body>
-              </Table.Root>
-            </Box>
+                  <Table.Body>
+                    {lines.map((line, i) => (
+                      <OrderLineRow
+                        key={line.productId.toString()}
+                        index={i}
+                        line={line}
+                        stock={lineStock(line, stock)}
+                        costs={costs}
+                        onPatch={(patch) => onPatch(line.productId, patch)}
+                        onRemove={() => onRemove(line.productId)}
+                      />
+                    ))}
+                  </Table.Body>
+                </Table.Root>
+              </Box>
+            </RefreshOverlay>
           )}
         </Stack>
       </Card.Body>

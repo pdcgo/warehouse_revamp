@@ -52,6 +52,14 @@ sequenceDiagram
   (image or PDF) names a buyer and where their parcel went, so it is opened through a signed URL by
   somebody who belongs to the team. Adding a type means four edits in step — the proto enum,
   `resourceTypeToText`/`FromText`, `isPublic`, and the `documents_resource_type_valid` CHECK.
+- **One size ceiling, 15 MiB, for every resource type** ([an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once](../../business/shipment/context_decision.md#an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once),
+  raised from 10 MiB on 2026-10-23). `docstore.DefaultMaxSizeBytes`, checked twice: `RequestUpload` on the size the
+  client DECLARES (`InvalidArgument` before a byte is sent), and `ConfirmUpload` on the bytes that LANDED (`Stat`), so a
+  file larger than it claimed is still refused. There is no per-type cap — the owner raised it for an order's file, and
+  a payment proof, a product image, a profile picture and an order export got the same 15 MiB (a settlement statement
+  stays at 10 MB, held by the importer's own `max_len` before it gets here). Nothing in the dev server
+  or `tools/san` sets `MaxSizeBytes`, so the default is the ceiling everywhere. The order form checks the same number
+  first (`ReceiptUpload`'s `MAX_BYTES`); the other uploaders do not check it client-side.
 - **Storage is behind a `Signer`/`ObjectStore` seam** (`docstore`). Dev/tests use a local
   filesystem backend with an unauthenticated `/local-storage` file endpoint (path-traversal
   guarded); a cloud backend implements the same two interfaces and changes nothing else.

@@ -21,7 +21,7 @@ import type { ReceiptValue } from "../orders/ReceiptUpload";
 //
 // The split with `ReceiptUpload` is worth keeping straight: THIS is the section — a title and a box —
 // while `ReceiptUpload` is the CONTROL, which knows about document_service's two-phase upload, the
-// 10 MB ceiling and what to do when a file is refused. A caller with its own framing (a dialog, a
+// 15 MB ceiling and what to do when a file is refused. A caller with its own framing (a dialog, a
 // panel on a draft screen) uses the control directly and skips this.
 //
 // It started life as JSX inline on the create form, which is how the card and its heading ended up

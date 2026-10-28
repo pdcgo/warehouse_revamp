@@ -20,6 +20,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-pick-page-opens-first-by-the-label](#the-pick-page-opens-first-by-the-label) | scanning the `receipt_file` opens ONE page before the walk: each line's racks for the walk, then the item scans back at the table | chat, 2026-10-16 — answers Q11, as recommended |
 | [a-label-scan-reads-the-ref-or-the-receipt](#a-label-scan-reads-the-ref-or-the-receipt) | the label carries several barcodes; a scan of it finds the order by `order_external_ref_id` OR by `receipt`, whichever was scanned | chat, 2026-10-16 — the owner's note |
 | [two-orders-on-one-label-are-shown-not-chosen](#two-orders-on-one-label-are-shown-not-chosen) | a label code matching several orders still in play lists them all; the staff ask the selling team or the warehouse admin which one is processed and which cancelled | chat, 2026-10-16 — answers Q12, against my *the picker chooses* |
+| [the-reserve-is-read-once-for-every-line](#the-reserve-is-read-once-for-every-line) | the reserve check reads every borrowed line's owner stock in ONE grouped query, served by its own index on `batches (team_id, product_id)` — the take and the quote alike | chat, 2026-10-26 — answers the StockTakeQuote audit's open question, as recommended |
 
 ---
 
@@ -543,3 +544,40 @@ flowchart LR
 | none | the wrong sound and *"no order for this label"* |
 | where it applies | every scan of the label: the pick page and the handover |
 | example | `SPX123` finds 9001 `processed` and 8800 `cancel`: 9001 opens. `2410ABC` finds 9001 and 9002, both `processed`: both are shown, and the staff ask |
+
+## the-reserve-is-read-once-for-every-line
+
+> Owner, in chat (2026-10-26): *"i follow your recomendation"* — answering the open question of the
+> [StockTakeQuote performance audit](../../../audits/services/inventory_service/performances/StockTakeQuote.md):
+> *one grouped read (1), an index (2), both, or neither?* Both, as recommended. It keeps
+> [the-reserve-is-read-before-the-take](#the-reserve-is-read-before-the-take) exactly as decided: the same plain read,
+> outside any lock, of the owner's stock across every warehouse.
+
+**The verdict.** The reserve check asks the database **once** per take, however many borrowed lines carry a reserve,
+and that one question has an index that leads with what it filters on. The take (`OrderTransactionCreate`) and the
+form's preview (`StockTakeQuote`) share the rule, so both get it.
+
+```mermaid
+flowchart LR
+  subgraph "before - one read per reserved line"
+    B1["Kaos Biru"] --> Q1["SUM stock of Sinar, Kaos Biru"]
+    B2["Kaos Hijau"] --> Q2["SUM stock of Sinar, Kaos Hijau"]
+    B3["... 20 lines"] --> Q3["... 20 reads"]
+  end
+  subgraph "after - one read for all of them"
+    A1["every reserved borrowed line"] --> QA["SUM stock GROUP BY product, for every owner and product pair"]
+    QA --> IX["batches_owner_product_idx"]
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| which lines | a borrowed line (another team's product), public, with a reserve set — as before; a product listed twice is read once |
+| the read | `SELECT product_id, SUM(stock_count) FROM batches WHERE (team_id, product_id) IN (…) AND stock_count > 0 GROUP BY product_id` — a plain read, before the transaction |
+| a product stocked nowhere | has no row and counts as 0, so any reserve refuses it |
+| the index | `batches_owner_product_idx ON batches (team_id, product_id) WHERE stock_count > 0` — inventory_service `00032`. The `stock_count > 0` filter changes no sum and is what lets the read use the partial index |
+| unchanged | the comparison (`stock ≥ reserve`, the quantity wanted not counted), the refusal (*Product Not Allowed*, every line named), the same-second overlap |
+| measured | 20 reserved borrowed lines: **21 → 2 queries, 10.64 → 1.57 ms**; the reserve read's plan touches 4 buffers, was 163 per line |
+| ✅ built *(2026-10-26)* | `notAllowedLines` gathers the pairs and calls `ownerTotalStocks` once; `TestOrderTransactionCreate_TheReserveIsReadOnceForEveryLine` pins one reserved line and three costing the same statements, and a product stocked nowhere being refused |

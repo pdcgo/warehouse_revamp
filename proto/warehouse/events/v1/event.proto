@@ -209,12 +209,16 @@ message OrderPlaced {
   uint64 team_id = 1;
   uint64 order_id = 2;
 
-  // The frozen money, whole rupiah. revenue is the order's total — what the buyer paid.
-  int64 revenue = 3;
-  int64 cogs = 4;
-  int64 shipping_cost = 5;
+  // 3 was `revenue` (the order's `total`) and 5 `shipping_cost` — both dropped with the order's columns (selling 00027,
+  // an-order-records-no-shipping-cost). Neither had a consumer: what the buyer paid is `platform_total` below.
+  reserved 3, 5;
+  reserved "revenue", "shipping_cost";
 
-  // Whether the goods' cost was actually KNOWN (#74). 0 cogs is ambiguous on its own — it means
+  // The order's frozen `goods_cost`, whole rupiah — Σ its lines' `total`, borrowed lines with their markup
+  // (the-cross-charge-lives-on-the-line). Renamed from `cogs`, same number.
+  int64 goods_cost = 4;
+
+  // Whether the goods' cost was actually KNOWN (#74). A goods_cost of 0 is ambiguous on its own — it means
   // "free" and "never recorded" equally — so the distinction travels as its own field rather than
   // being guessed at by the consumer. A margin computed over an unknown cost reads as pure profit,
   // and the consumer has to be able to say so.
@@ -245,14 +249,16 @@ message OrderPlaced {
   // its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
   // calls settlement, so the event has to carry everything the account needs.
   uint64 shop_id = 10;
-  int64 marketplace_total = 11;
+  // The order's `platform_total` (the-total-is-ours-the-platform-total-is-theirs) — renamed from
+  // `marketplace_total`, same number.
+  int64 platform_total = 11;
 }
 
 // One line of a placed order, as liability_service needs it (#186).
 //
 // Deliberately not the whole OrderItem: an event carries what its consumers need, and sku, name and
 // the buyer-paid price are none of liability_service's business. What it needs is who owns the goods
-// and what they cost.
+// and what the line came to.
 message OrderPlacedLine {
   uint64 product_id = 1;
 
@@ -263,15 +269,23 @@ message OrderPlacedLine {
 
   uint32 quantity = 3;
 
-  // What the goods COST, per unit, frozen at order time (#74) — and the anchor the product fee is a
-  // markup OVER. Server-set and ignored on input, which means that anti-tampering protection guards
-  // the product fee for free.
+  // What the goods COST, per unit, frozen at order time (#74) — the units the take drew ÷ the quantity
+  // (an-order-is-costed-at-what-leaves-the-shelf), before any markup. 0 means UNKNOWN, not free.
   //
-  // 0 means UNKNOWN, not free. Under cost+markup that computes a fee of zero, so the owning team is
-  // silently owed nothing for goods that really left its stock. The decision is to let that stand and
-  // have the reconciliation report name it (#187), rather than refuse a real sale over a bookkeeping
-  // gap.
+  // ⚠ NOT WHAT THE PRODUCT FEE IS COMPUTED FROM any more — that is `total` below
+  // (the-ledger-charges-the-frozen-line-total).
   int64 unit_cost = 4;
+
+  // THE LINE'S FROZEN TOTAL, rupiah (rupiah-is-floating-point) — what inventory's take priced it at: the goods it drew
+  // plus, on another team's product, that product's own cross markup (inventory-computes-the-markup). Frozen on
+  // `order_items.total` in the order's transaction and copied here as stored, never recomputed.
+  //
+  // liability_service posts it AS IT IS: the product fee owed to each owning team is Σ that team's line totals
+  // (the-product-fee-is-the-line-total) — it reads no markup of its own.
+  //
+  // 0 means NOT KNOWN — a line whose take valued nothing, or an order placed before lines froze a total — and is
+  // charged nothing rather than guessed at, which the reconciliation report (#187) is built to find.
+  double total = 5;
 }
 
 // OrderCancelled announces that an order was cancelled (#164).

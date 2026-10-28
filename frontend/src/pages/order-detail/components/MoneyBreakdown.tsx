@@ -21,8 +21,8 @@ import { MarginBar } from "./MarginBar";
 //
 // ⚠ "TOTAL PRODUK" IS THE COST SIDE, and that is an inference worth stating because the owner's words
 // allow two readings. The deciding line is *"lalu ada persentase seperti tabel list"*: the list's
-// percentage is `margin ÷ harga MP` where margin is `harga MP − (cogs + biaya)`. For this panel to
-// show the SAME percentage, its `total sistem` has to be that same `cogs + biaya`. So the lines above
+// percentage is `margin ÷ harga MP` where margin is `harga MP − (goodsCost + biaya)`. For this panel to
+// show the SAME percentage, its `total sistem` has to be that same `goodsCost + biaya`. So the lines above
 // are priced at what we PAID, and the column says `Harga beli` rather than just `Harga`.
 //
 // ⚠ AND THE OWNER WROTE THE SUBTRACTION THE OTHER WAY UP — *"total sistem dikurangi lagi dengan total
@@ -36,21 +36,21 @@ import { MarginBar } from "./MarginBar";
 export function MoneyBreakdown({
   productCost,
   fees,
-  marketplaceTotal,
+  platformTotal,
 }: {
   /** Σ line `unit_cost × quantity` — what the goods cost us. 0 = never recorded. */
   productCost: bigint;
   /** The warehouse's fee, frozen on the order (`orderFee`). `null` = never priced: placed before fees were frozen. */
   fees: bigint | null;
-  /** `marketplace_total` — what the buyer paid the platform. 0 = not recorded. */
-  marketplaceTotal: bigint;
+  /** `platform_total` — what the buyer paid the platform. 0 = not recorded. */
+  platformTotal: bigint;
 }) {
   const { t } = useTranslation();
 
   const known = productCost > 0n;
   const spend = orderSpend(productCost, fees ?? 0n, known && fees !== null);
-  const margin = orderMargin(marketplaceTotal, spend);
-  const pct = formatMarginPct(orderMarginPct(marketplaceTotal, spend));
+  const margin = orderMargin(platformTotal, spend);
+  const pct = formatMarginPct(orderMarginPct(platformTotal, spend));
 
   return (
     // ⚠ A FULL-WIDTH PANEL, NOT A NARROW COLUMN (owner: *"terlalu sempit"*, then *"perbesar
@@ -79,8 +79,8 @@ export function MoneyBreakdown({
       {/* ⚠ 0 IS NOT RECORDED, not "sold for nothing" (`order.proto`) — an order taken over the phone
           has no marketplace figure at all. */}
       <Line
-        label={t("orderDetail.money.marketplaceTotal")}
-        value={marketplaceTotal > 0n ? marketplaceTotal : null}
+        label={t("orderDetail.money.platformTotal")}
+        value={platformTotal > 0n ? platformTotal : null}
         testId="money-mp"
       />
 
@@ -105,7 +105,7 @@ export function MoneyBreakdown({
         </Flex>
       </Flex>
 
-      <MarginBar marketplaceTotal={marketplaceTotal} productCost={productCost} fees={fees} />
+      <MarginBar platformTotal={platformTotal} productCost={productCost} fees={fees} />
 
       <Text fontSize="xs" color="fg.muted" lineHeight="tall">
         {t("orderDetail.money.marginHelp")}

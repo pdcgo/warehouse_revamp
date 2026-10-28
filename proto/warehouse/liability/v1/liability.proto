@@ -53,6 +53,9 @@ service LiabilityService {
   rpc LiabilityLogList(LiabilityLogListRequest) returns (LiabilityLogListResponse);
   // What the ledger moved PER DAY — a warehouse's income half of the daily statement.
   rpc LiabilityDaily(LiabilityDailyRequest) returns (LiabilityDailyResponse);
+  // The DEBTOR's side of a limit (the-debtor-sees-the-limits-set-on-it): for each team the asking team owes,
+  // the limit that team set on it, the debt it already carries, and how close it stands.
+  rpc LiabilityCreditByIds(LiabilityCreditByIdsRequest) returns (LiabilityCreditByIdsResponse);
 }
 
 // Liability is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
@@ -68,8 +71,8 @@ service LiabilityPaymentService {
   rpc LiabilityPaymentList(LiabilityPaymentListRequest) returns (LiabilityPaymentListResponse);
 }
 
-// A creditor's own terms toward its debtors (#189): the handling fee it charges, the markup it takes
-// on its products, and how much it will let a team owe it.
+// A creditor's own terms toward its debtors (#189): the handling fee it charges, and how much it will let a team
+// owe it. The markup on its products is not a term — it is the product's (the-ledger-charges-the-frozen-line-total).
 service LiabilityTermsService {
   rpc LiabilityTermsList(LiabilityTermsListRequest) returns (LiabilityTermsListResponse);
   rpc LiabilityTermsSet(LiabilityTermsSetRequest) returns (LiabilityTermsSetResponse);
@@ -105,7 +108,8 @@ enum LiabilitySourceType {
   LIABILITY_SOURCE_TYPE_ORDER_FEE = 2;
 
   // The order sold a product belonging to ANOTHER team, so the selling team owes that team (#186).
-  // `source_id` is the order. One order can post several of these — one per distinct owning team.
+  // `source_id` is the order. One order can post several of these — one per distinct owning team, each the sum of
+  // that team's frozen line totals (the-ledger-charges-the-frozen-line-total).
   LIABILITY_SOURCE_TYPE_PRODUCT_FEE = 3;
 
   // A confirmed payment (#188). `source_id` is the payment.
@@ -499,6 +503,118 @@ message LiabilityDailyResponse {
   LiabilityDailyTotals totals = 2;
 }
 
+// ── The DEBTOR's side of a limit ─────────────────────────────────────────────────────────────────
+//
+// the-debtor-sees-the-limits-set-on-it: a limit that can stop your orders is not kept from you. Every
+// other terms read is the CREDITOR's ("my books"); this one is asked by the team the limit is set ON, and
+// answers only about the limits set on it — never a limit a creditor set on a third team.
+//
+// ⚠ IT READS EXACTLY WHAT THE ORDER CREATE'S CREDIT CHECK READS — the same limit precedence and the same
+// committed balance, through the same code (`CheckCredit`'s helpers). A form that said "room left" while the
+// create refused would be worse than no figure at all.
+
+// How close the debt stands to the limit.
+enum LiabilityCreditState {
+  LIABILITY_CREDIT_STATE_UNSPECIFIED = 0;
+  // Below 80% of the limit — or no limit at all, which has no ceiling to approach.
+  LIABILITY_CREDIT_STATE_OK = 1;
+  // At 80% of the limit or above, and still below it (the-threshold-warns-at-eighty-percent). Warns only.
+  LIABILITY_CREDIT_STATE_NEAR = 2;
+  // The debt has REACHED the limit: the next order drawing on this creditor is refused. A limit of 0 —
+  // no credit at all — is always here, debt or none.
+  LIABILITY_CREDIT_STATE_AT_LIMIT = 3;
+}
+
+// One creditor's limit on the asking team, and where the asking team stands against it.
+message LiabilityCredit {
+  // The creditor — the team that SET the limit.
+  uint64 creditor_team_id = 1;
+
+  // The creditor's row for this debtor, else its default row (`counterparty_id = 0`), else none.
+  //
+  // ⚠ ABSENT MEANS UNLIMITED, `0` MEANS NO CREDIT AT ALL — exactly as on LiabilityTerms.credit_limit. A
+  // pair row with no limit LIFTS the default for this debtor, so it reads as absent too.
+  optional int64 credit_limit = 2;
+
+  // What the asking team owes this creditor right now, as a POSITIVE number, from the committed balance.
+  // 0 when the pair is square, has never traded, or the creditor is the one that owes — being owed money
+  // is not debt.
+  int64 debt = 3;
+
+  LiabilityCreditState state = 4;
+}
+
+message LiabilityCreditMapItem {
+  map<uint64, LiabilityCredit> map_data = 1;
+}
+
+message LiabilityCreditByIdsFilter {
+  // The CREDITOR teams asked about — on the order form, the warehouse and every team owning goods on it.
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum LiabilityCreditByIdsDataType {
+  LIABILITY_CREDIT_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  // The creditor's name — asked of team_service, which owns it, so only when requested.
+  LIABILITY_CREDIT_BY_IDS_DATA_TYPE_GENERAL = 1;
+  LIABILITY_CREDIT_BY_IDS_DATA_TYPE_CREDIT = 2;
+}
+
+message LiabilityCreditByIdsRequest {
+  // Read: the roles that place an order or read a balance — customer service included, because the order
+  // form is where the limit decides anything.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The DEBTOR — the asking team, and the scope. TOP-LEVEL rather than in the filter: the interceptor
+  // refuses a nested scope field (common/v1/list.proto). A creditor id in the filter is never the scope —
+  // the read answers only about limits set ON this team, so naming somebody else's creditor reveals nothing.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  LiabilityCreditByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Empty defaults to the CREDIT slice.
+  repeated LiabilityCreditByIdsDataType data_request = 3;
+}
+
+message LiabilityCreditByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    LiabilityCreditMapItem credit = 2;
+  }
+}
+
+message LiabilityCreditByIdsResponseList {
+  repeated LiabilityCreditByIdsResponseItem items = 1;
+}
+
+// Keyed by creditor id. NOT PAGED — bounded by the ids asked for, like every ByIds.
+//
+// ⚠ EVERY CREDITOR ASKED ABOUT IS PRESENT, with no limit or no debt alike: absence here could not be told
+// from "unlimited". The one exception is the asking team itself — a team owes nobody by trading with itself
+// and cannot limit itself, so it is dropped exactly as the credit check drops it.
+message LiabilityCreditByIdsResponse {
+  map<uint64, LiabilityCreditByIdsResponseList> items = 1;
+}
+
 // A claim that money moved, and whether the creditor has agreed it arrived (#188).
 enum LiabilityPaymentStatus {
   LIABILITY_PAYMENT_STATUS_UNSPECIFIED = 0;
@@ -756,7 +872,7 @@ message LiabilityPaymentListResponse {
 
 // A CREDITOR'S TERMS toward one debtor — what it charges and how far it will let them run (#189).
 //
-// One row covers both fees and the limit because they are one relationship: the warehouse that
+// One row covers the fee and the limit because they are one relationship: the warehouse that
 // charges you 12k an order is the warehouse that caps you at 50m. Splitting them would mean two
 // screens and two chances to configure half of it.
 message LiabilityTerms {
@@ -771,21 +887,12 @@ message LiabilityTerms {
   // CHARGE NOTHING — a warehouse that has set nothing is not silently billing anybody.
   int64 handling_fee = 3 [(buf.validate.field).int64.gte = 0];
 
-  // The markup this team takes when another team sells ITS product, in BASIS POINTS over the cost
-  // (2000 = 20%). Basis points rather than a float, for the same reason money is int64: a percentage
-  // that cannot be represented exactly is a fee that drifts.
-  //
-  // The anchor is the order line's frozen `unit_cost` (HPP), NOT the buyer-paid price. A markup on
-  // what the buyer paid is a commission model wearing a sale's clothes — on a product that cost
-  // 60.000 and sold for 100.000 at 20%, cost+markup owes the owner 72.000 while
-  // buyer-paid+markup owes 20.000, and the owner loses 40.000 on their own goods.
-  //
-  //   product fee (per owning team) = Σ over that team's lines (unit_cost × quantity) × (1 + markup)
-  //
-  // ⚠ `unit_cost = 0` means UNKNOWN, not free — a product received straight into stock has no
-  // recorded cost, and computes a fee of zero. The decision is to POST THE ZERO and let the
-  // reconciliation report name it (#187), rather than refuse a real sale over a bookkeeping gap.
-  int64 product_markup_bp = 4 [(buf.validate.field).int64.gte = 0];
+  // ⛔ `product_markup_bp` WAS HERE — the markup a team took when another team sold its product. Dropped
+  // (the-ledger-charges-the-frozen-line-total): the markup is the PRODUCT's, `products.cross_markup_bps`, applied once
+  // by inventory's take and frozen on each order line's total, and the product fee posts those totals. A second rate
+  // here was a second answer to one question. Reserved so the number never comes back meaning something else.
+  reserved 4;
+  reserved "product_markup_bp";
 
   // How much this debtor may owe before their next order is refused.
   //
@@ -868,7 +975,9 @@ message LiabilityTermsSetRequest {
   uint64 counterparty_id = 2;
 
   int64 handling_fee = 3 [(buf.validate.field).int64.gte = 0];
-  int64 product_markup_bp = 4 [(buf.validate.field).int64.gte = 0];
+  // ⛔ product_markup_bp — dropped with LiabilityTerms.product_markup_bp (the-ledger-charges-the-frozen-line-total).
+  reserved 4;
+  reserved "product_markup_bp";
   // Omit for unlimited; send 0 to freeze this team's credit entirely.
   optional int64 credit_limit = 5 [(buf.validate.field).int64.gte = 0];
 
@@ -937,12 +1046,15 @@ message LiabilityTermsChange {
   optional int64 old_credit_limit = 4;
   optional int64 new_credit_limit = 5;
 
-  // The other two terms, before and after. No optional here: 0 means "charge nothing" for both, and
-  // there is no third state to lose.
+  // The handling fee, before and after. No optional here: 0 means "charge nothing", and there is no third state
+  // to lose.
   int64 old_handling_fee = 6;
   int64 new_handling_fee = 7;
-  int64 old_product_markup_bp = 8;
-  int64 new_product_markup_bp = 9;
+
+  // ⛔ old/new_product_markup_bp — the log of a term that no longer exists, dropped with it
+  // (the-ledger-charges-the-frozen-line-total). Reserved for the same reason.
+  reserved 8, 9;
+  reserved "old_product_markup_bp", "new_product_markup_bp";
 
   string reason = 10;
 

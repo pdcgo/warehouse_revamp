@@ -36,18 +36,12 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// SupplierAnalyticServiceAnalyticTimeSearchProcedure is the fully-qualified name of the
-	// SupplierAnalyticService's AnalyticTimeSearch RPC.
-	SupplierAnalyticServiceAnalyticTimeSearchProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/AnalyticTimeSearch"
-	// SupplierAnalyticServiceAnalyticProductSearchProcedure is the fully-qualified name of the
-	// SupplierAnalyticService's AnalyticProductSearch RPC.
-	SupplierAnalyticServiceAnalyticProductSearchProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/AnalyticProductSearch"
-	// SupplierAnalyticServiceAnalyticGroupSearchProcedure is the fully-qualified name of the
-	// SupplierAnalyticService's AnalyticGroupSearch RPC.
-	SupplierAnalyticServiceAnalyticGroupSearchProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/AnalyticGroupSearch"
-	// SupplierAnalyticServiceAnalyticGroupMetricProcedure is the fully-qualified name of the
-	// SupplierAnalyticService's AnalyticGroupMetric RPC.
-	SupplierAnalyticServiceAnalyticGroupMetricProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/AnalyticGroupMetric"
+	// SupplierAnalyticServiceMetricSearchProcedure is the fully-qualified name of the
+	// SupplierAnalyticService's MetricSearch RPC.
+	SupplierAnalyticServiceMetricSearchProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/MetricSearch"
+	// SupplierAnalyticServiceMetricDataProcedure is the fully-qualified name of the
+	// SupplierAnalyticService's MetricData RPC.
+	SupplierAnalyticServiceMetricDataProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/MetricData"
 	// SupplierAnalyticMaintenanceServiceAnalyticReplayComputeProcedure is the fully-qualified name of
 	// the SupplierAnalyticMaintenanceService's AnalyticReplayCompute RPC.
 	SupplierAnalyticMaintenanceServiceAnalyticReplayComputeProcedure = "/warehouse.supplier.v1.SupplierAnalyticMaintenanceService/AnalyticReplayCompute"
@@ -59,14 +53,10 @@ const (
 // SupplierAnalyticServiceClient is a client for the warehouse.supplier.v1.SupplierAnalyticService
 // service.
 type SupplierAnalyticServiceClient interface {
-	// One supplier's six figures over time — daily, monthly or yearly — and the window's total.
-	AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error)
-	// One supplier's six figures per product over the window — Product Grouped.
-	AnalyticProductSearch(context.Context, *connect.Request[v1.AnalyticProductSearchRequest]) (*connect.Response[v1.AnalyticProductSearchResponse], error)
-	// Suppliers RANKED over a window — ids only, sorted — and every ranked supplier's total, the report's headline.
-	AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error)
-	// The figures of a set of suppliers the caller already ranked.
-	AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error)
+	// The keys of a page of the table, ranked by one field of `metrics/suppliers` — suppliers, products or periods.
+	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
+	// The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
+	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
 }
 
 // NewSupplierAnalyticServiceClient constructs a client for the
@@ -81,28 +71,16 @@ func NewSupplierAnalyticServiceClient(httpClient connect.HTTPClient, baseURL str
 	baseURL = strings.TrimRight(baseURL, "/")
 	supplierAnalyticServiceMethods := v1.File_warehouse_supplier_v1_supplier_analytic_proto.Services().ByName("SupplierAnalyticService").Methods()
 	return &supplierAnalyticServiceClient{
-		analyticTimeSearch: connect.NewClient[v1.AnalyticTimeSearchRequest, v1.AnalyticTimeSearchResponse](
+		metricSearch: connect.NewClient[v1.MetricSearchRequest, v1.MetricSearchResponse](
 			httpClient,
-			baseURL+SupplierAnalyticServiceAnalyticTimeSearchProcedure,
-			connect.WithSchema(supplierAnalyticServiceMethods.ByName("AnalyticTimeSearch")),
+			baseURL+SupplierAnalyticServiceMetricSearchProcedure,
+			connect.WithSchema(supplierAnalyticServiceMethods.ByName("MetricSearch")),
 			connect.WithClientOptions(opts...),
 		),
-		analyticProductSearch: connect.NewClient[v1.AnalyticProductSearchRequest, v1.AnalyticProductSearchResponse](
+		metricData: connect.NewClient[v1.MetricDataRequest, v1.MetricDataResponse](
 			httpClient,
-			baseURL+SupplierAnalyticServiceAnalyticProductSearchProcedure,
-			connect.WithSchema(supplierAnalyticServiceMethods.ByName("AnalyticProductSearch")),
-			connect.WithClientOptions(opts...),
-		),
-		analyticGroupSearch: connect.NewClient[v1.AnalyticGroupSearchRequest, v1.AnalyticGroupSearchResponse](
-			httpClient,
-			baseURL+SupplierAnalyticServiceAnalyticGroupSearchProcedure,
-			connect.WithSchema(supplierAnalyticServiceMethods.ByName("AnalyticGroupSearch")),
-			connect.WithClientOptions(opts...),
-		),
-		analyticGroupMetric: connect.NewClient[v1.AnalyticGroupMetricRequest, v1.AnalyticGroupMetricResponse](
-			httpClient,
-			baseURL+SupplierAnalyticServiceAnalyticGroupMetricProcedure,
-			connect.WithSchema(supplierAnalyticServiceMethods.ByName("AnalyticGroupMetric")),
+			baseURL+SupplierAnalyticServiceMetricDataProcedure,
+			connect.WithSchema(supplierAnalyticServiceMethods.ByName("MetricData")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -110,43 +88,27 @@ func NewSupplierAnalyticServiceClient(httpClient connect.HTTPClient, baseURL str
 
 // supplierAnalyticServiceClient implements SupplierAnalyticServiceClient.
 type supplierAnalyticServiceClient struct {
-	analyticTimeSearch    *connect.Client[v1.AnalyticTimeSearchRequest, v1.AnalyticTimeSearchResponse]
-	analyticProductSearch *connect.Client[v1.AnalyticProductSearchRequest, v1.AnalyticProductSearchResponse]
-	analyticGroupSearch   *connect.Client[v1.AnalyticGroupSearchRequest, v1.AnalyticGroupSearchResponse]
-	analyticGroupMetric   *connect.Client[v1.AnalyticGroupMetricRequest, v1.AnalyticGroupMetricResponse]
+	metricSearch *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
+	metricData   *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
 }
 
-// AnalyticTimeSearch calls warehouse.supplier.v1.SupplierAnalyticService.AnalyticTimeSearch.
-func (c *supplierAnalyticServiceClient) AnalyticTimeSearch(ctx context.Context, req *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error) {
-	return c.analyticTimeSearch.CallUnary(ctx, req)
+// MetricSearch calls warehouse.supplier.v1.SupplierAnalyticService.MetricSearch.
+func (c *supplierAnalyticServiceClient) MetricSearch(ctx context.Context, req *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error) {
+	return c.metricSearch.CallUnary(ctx, req)
 }
 
-// AnalyticProductSearch calls warehouse.supplier.v1.SupplierAnalyticService.AnalyticProductSearch.
-func (c *supplierAnalyticServiceClient) AnalyticProductSearch(ctx context.Context, req *connect.Request[v1.AnalyticProductSearchRequest]) (*connect.Response[v1.AnalyticProductSearchResponse], error) {
-	return c.analyticProductSearch.CallUnary(ctx, req)
-}
-
-// AnalyticGroupSearch calls warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupSearch.
-func (c *supplierAnalyticServiceClient) AnalyticGroupSearch(ctx context.Context, req *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error) {
-	return c.analyticGroupSearch.CallUnary(ctx, req)
-}
-
-// AnalyticGroupMetric calls warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupMetric.
-func (c *supplierAnalyticServiceClient) AnalyticGroupMetric(ctx context.Context, req *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error) {
-	return c.analyticGroupMetric.CallUnary(ctx, req)
+// MetricData calls warehouse.supplier.v1.SupplierAnalyticService.MetricData.
+func (c *supplierAnalyticServiceClient) MetricData(ctx context.Context, req *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error) {
+	return c.metricData.CallUnary(ctx, req)
 }
 
 // SupplierAnalyticServiceHandler is an implementation of the
 // warehouse.supplier.v1.SupplierAnalyticService service.
 type SupplierAnalyticServiceHandler interface {
-	// One supplier's six figures over time — daily, monthly or yearly — and the window's total.
-	AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error)
-	// One supplier's six figures per product over the window — Product Grouped.
-	AnalyticProductSearch(context.Context, *connect.Request[v1.AnalyticProductSearchRequest]) (*connect.Response[v1.AnalyticProductSearchResponse], error)
-	// Suppliers RANKED over a window — ids only, sorted — and every ranked supplier's total, the report's headline.
-	AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error)
-	// The figures of a set of suppliers the caller already ranked.
-	AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error)
+	// The keys of a page of the table, ranked by one field of `metrics/suppliers` — suppliers, products or periods.
+	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
+	// The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
+	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
 }
 
 // NewSupplierAnalyticServiceHandler builds an HTTP handler from the service implementation. It
@@ -156,40 +118,24 @@ type SupplierAnalyticServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewSupplierAnalyticServiceHandler(svc SupplierAnalyticServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	supplierAnalyticServiceMethods := v1.File_warehouse_supplier_v1_supplier_analytic_proto.Services().ByName("SupplierAnalyticService").Methods()
-	supplierAnalyticServiceAnalyticTimeSearchHandler := connect.NewUnaryHandler(
-		SupplierAnalyticServiceAnalyticTimeSearchProcedure,
-		svc.AnalyticTimeSearch,
-		connect.WithSchema(supplierAnalyticServiceMethods.ByName("AnalyticTimeSearch")),
+	supplierAnalyticServiceMetricSearchHandler := connect.NewUnaryHandler(
+		SupplierAnalyticServiceMetricSearchProcedure,
+		svc.MetricSearch,
+		connect.WithSchema(supplierAnalyticServiceMethods.ByName("MetricSearch")),
 		connect.WithHandlerOptions(opts...),
 	)
-	supplierAnalyticServiceAnalyticProductSearchHandler := connect.NewUnaryHandler(
-		SupplierAnalyticServiceAnalyticProductSearchProcedure,
-		svc.AnalyticProductSearch,
-		connect.WithSchema(supplierAnalyticServiceMethods.ByName("AnalyticProductSearch")),
-		connect.WithHandlerOptions(opts...),
-	)
-	supplierAnalyticServiceAnalyticGroupSearchHandler := connect.NewUnaryHandler(
-		SupplierAnalyticServiceAnalyticGroupSearchProcedure,
-		svc.AnalyticGroupSearch,
-		connect.WithSchema(supplierAnalyticServiceMethods.ByName("AnalyticGroupSearch")),
-		connect.WithHandlerOptions(opts...),
-	)
-	supplierAnalyticServiceAnalyticGroupMetricHandler := connect.NewUnaryHandler(
-		SupplierAnalyticServiceAnalyticGroupMetricProcedure,
-		svc.AnalyticGroupMetric,
-		connect.WithSchema(supplierAnalyticServiceMethods.ByName("AnalyticGroupMetric")),
+	supplierAnalyticServiceMetricDataHandler := connect.NewUnaryHandler(
+		SupplierAnalyticServiceMetricDataProcedure,
+		svc.MetricData,
+		connect.WithSchema(supplierAnalyticServiceMethods.ByName("MetricData")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.supplier.v1.SupplierAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case SupplierAnalyticServiceAnalyticTimeSearchProcedure:
-			supplierAnalyticServiceAnalyticTimeSearchHandler.ServeHTTP(w, r)
-		case SupplierAnalyticServiceAnalyticProductSearchProcedure:
-			supplierAnalyticServiceAnalyticProductSearchHandler.ServeHTTP(w, r)
-		case SupplierAnalyticServiceAnalyticGroupSearchProcedure:
-			supplierAnalyticServiceAnalyticGroupSearchHandler.ServeHTTP(w, r)
-		case SupplierAnalyticServiceAnalyticGroupMetricProcedure:
-			supplierAnalyticServiceAnalyticGroupMetricHandler.ServeHTTP(w, r)
+		case SupplierAnalyticServiceMetricSearchProcedure:
+			supplierAnalyticServiceMetricSearchHandler.ServeHTTP(w, r)
+		case SupplierAnalyticServiceMetricDataProcedure:
+			supplierAnalyticServiceMetricDataHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -199,20 +145,12 @@ func NewSupplierAnalyticServiceHandler(svc SupplierAnalyticServiceHandler, opts 
 // UnimplementedSupplierAnalyticServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedSupplierAnalyticServiceHandler struct{}
 
-func (UnimplementedSupplierAnalyticServiceHandler) AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.AnalyticTimeSearch is not implemented"))
+func (UnimplementedSupplierAnalyticServiceHandler) MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.MetricSearch is not implemented"))
 }
 
-func (UnimplementedSupplierAnalyticServiceHandler) AnalyticProductSearch(context.Context, *connect.Request[v1.AnalyticProductSearchRequest]) (*connect.Response[v1.AnalyticProductSearchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.AnalyticProductSearch is not implemented"))
-}
-
-func (UnimplementedSupplierAnalyticServiceHandler) AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupSearch is not implemented"))
-}
-
-func (UnimplementedSupplierAnalyticServiceHandler) AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupMetric is not implemented"))
+func (UnimplementedSupplierAnalyticServiceHandler) MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.MetricData is not implemented"))
 }
 
 // SupplierAnalyticMaintenanceServiceClient is a client for the

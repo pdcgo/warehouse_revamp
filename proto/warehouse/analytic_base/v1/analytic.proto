@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package warehouse.analytic_base.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1;analytic_basev1";
+
+// HOW A METRIC REACHES THE SCREEN (docs/business/analytic/rpc_provide.md) — the shared half of every service's
+// `MetricSearch` / `MetricData` pair. A report is ONE table: the person picks its group, its metrics (from any number of
+// services), one field to sort by and the filters every chosen metric shares. The service owning the sorted field ranks
+// the keys; every service owning a chosen metric fills the same keys (the-rows-are-the-keys-step-one-sends).
+//
+// A METRIC IS A MESSAGE in its own service, declared by the `metric` option — read by reflection, here at startup
+// (backend/pkgs/san_metric) and by the frontend off the generated descriptor:
+//
+//   message OrderMetric {
+//     option (warehouse.analytic_base.v1.metric) = {
+//       metric_id: "metrics/orders"
+//       supported_filters: [FILTER_TYPE_DATE_RANGE, FILTER_TYPE_SHOP]
+//       required_filters: [FILTER_TYPE_DATE_RANGE]
+//       supported_group_by: [GROUP_TYPE_SUMMARY, GROUP_TYPE_DAILY, GROUP_TYPE_SHOP]
+//     };
+//     int64 order_count = 1 [(warehouse.analytic_base.v1.metric_sort) = { can_sort: true }];
+//   }
+//
+// ⚠ The frontend must IMPORT this file's generated module, or `getOption` reads the option as absent.
+
+// SortType — an unspecified sort reads as DESC, and the key DESC breaks every tie (the-key-breaks-every-tie).
+enum SortType {
+  SORT_TYPE_UNSPECIFIED = 0;
+  SORT_TYPE_DESC = 1;
+  SORT_TYPE_ASC = 2;
+}
+
+// MetricSort — the table's ONE sort (one-sort-field-per-table): a field of a metric, named by its proto name
+// (a-sort-field-is-its-proto-name). The field must carry `metric_sort` with `can_sort`.
+message MetricSort {
+  string metric_id = 1 [(buf.validate.field).string.min_len = 1];
+  string field = 2 [(buf.validate.field).string.min_len = 1];
+  SortType sort_type = 3 [(buf.validate.field).enum.defined_only = true];
+}
+
+// DateRangeFilter — two Jakarta days, both inclusive (a-day-is-a-jakarta-date-string).
+message DateRangeFilter {
+  string date_min = 1 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string date_max = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+}
+
+message ProductFilter {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+// TeamFilter — a DIMENSION (whose figures), never the caller's scope; the scope is the request's `team_id`.
+message TeamFilter {
+  uint64 team_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShopFilter {
+  uint64 shop_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message SupplierFilter {
+  uint64 supplier_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+// FilterItem — one case per FilterType, and each case's NUMBER IS ITS FilterType's, so a set case maps to its type
+// without a table. 2 was the keyword (the-generic-keyword-is-removed) — reserved, so the numbers still match.
+message FilterItem {
+  reserved 2;
+  reserved "keyword_filter";
+
+  oneof f {
+    option (buf.validate.oneof).required = true;
+
+    DateRangeFilter date_range_filter = 1;
+    ProductFilter product_filter = 3;
+    TeamFilter team_filter = 4;
+    ShopFilter shop_filter = 5;
+    SupplierFilter supplier_filter = 6;
+  }
+}
+
+// FilterType — what a metric can be narrowed by. Paging is not a filter (a-page-is-not-a-filter), and neither is a bare
+// keyword, which meant whatever each metric chose (the-generic-keyword-is-removed).
+enum FilterType {
+  reserved 2;
+  reserved "FILTER_TYPE_KEYWORD";
+
+  FILTER_TYPE_UNSPECIFIED = 0;
+  FILTER_TYPE_DATE_RANGE = 1;
+  FILTER_TYPE_PRODUCT = 3;
+  FILTER_TYPE_TEAM = 4;
+  FILTER_TYPE_SHOP = 5;
+  FILTER_TYPE_SUPPLIER = 6;
+}
+
+// PaginationFilter — on the search request only. The response says whether another page follows and never how many
+// (a-metric-page-has-no-total, a-page-says-whether-another-follows).
+message PaginationFilter {
+  int32 offset = 1 [(buf.validate.field).int32.gte = 0];
+  int32 limit = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 200
+  }];
+}
+
+// GroupType — what the table's rows are; the TABLE picks one (the-table-picks-one-group). It grows with the reports
+// (the-group-enum-grows-with-the-reports).
+enum GroupType {
+  GROUP_TYPE_UNSPECIFIED = 0;
+
+  // The headline: the same metric with no keys (the-headline-is-the-metric-grouped-by-summary). Every metric lists it
+  // (every-metric-has-a-summary), and it is never searched.
+  GROUP_TYPE_SUMMARY = 1;
+
+  // Each bucket is keyed by its first day; a week runs Monday to Sunday, Jakarta (a-week-is-monday-to-sunday-jakarta).
+  GROUP_TYPE_DAILY = 2;
+  GROUP_TYPE_WEEKLY = 3;
+  GROUP_TYPE_MONTHLY = 4;
+  GROUP_TYPE_YEARLY = 5;
+
+  GROUP_TYPE_PRODUCT = 6;
+  GROUP_TYPE_SHOP = 7;
+  GROUP_TYPE_SUPPLIER = 8;
+  // Across teams only for a caller scoped to the root team; any other scope yields its own team alone.
+  GROUP_TYPE_TEAM = 9;
+  // The user a fact is booked to — each metric's doc says which user that is.
+  GROUP_TYPE_USER = 10;
+}
+
+// MetricOption — what a metric declares about itself. Checked at startup by san_metric.ValidateDescriptors.
+message MetricOption {
+  repeated FilterType supported_filters = 1;
+  // Every required filter is also supported.
+  repeated FilterType required_filters = 2;
+  // Always includes GROUP_TYPE_SUMMARY (every-metric-has-a-summary).
+  repeated GroupType supported_group_by = 3;
+  // A name, never a route — `metrics/orders` — unique across every service (a-metric-id-is-a-name-not-a-route).
+  string metric_id = 4;
+}
+
+extend google.protobuf.MessageOptions {
+  MetricOption metric = 50003;
+}
+
+// SortOption — on a metric's number field: whether a table may be sorted by it.
+message SortOption {
+  bool can_sort = 1;
+  // A rate ranks only rows with at least this sample; the rest follow, unranked
+  // (a-rate-ranks-only-above-its-minimum-sample). 0 = no minimum.
+  int64 rank_min_sample = 2;
+}
+
+extend google.protobuf.FieldOptions {
+  SortOption metric_sort = 50003;
+}
+
+// IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER. At most a page.
+message IDList {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+// DayList — the keys of a time group: each bucket's first day. At most a page.
+message DayList {
+  repeated string days = 1 [(buf.validate.field).repeated = {
+    max_items: 200
+    unique: true
+    items: {
+      string: {pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+    }
+  }];
+}
+
+// MetricKeys — the rows. Absent for GROUP_TYPE_SUMMARY.
+message MetricKeys {
+  oneof k {
+    IDList ids = 1;
+    DayList days = 2;
+  }
+}

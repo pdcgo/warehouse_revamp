@@ -482,7 +482,7 @@ export function useOwnerStockHistory(args: {
 // `["inventory"]` entry that no `["products"]` invalidation would touch. The rows on that screen ARE
 // products.
 //
-// It does NOT cross into orders: an order line SNAPSHOTS sku/name/unit_price at order time precisely
+// It does NOT cross into orders: an order line SNAPSHOTS sku/name and freezes its money at order time precisely
 // so later catalogue edits never rewrite history, which is the whole point of freezing them.
 export function useSaveProduct() {
   const invalidate = useInvalidateProducts();

@@ -24,6 +24,19 @@ flowchart LR
   T -->|"ok"| OK["transaction_id, per line owner_team_id, cost, markup, total"]
 ```
 
+**2026-10-23 — the take has a read-only twin, `StockTakeQuote`**
+([an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf),
+flow in [rpc.md](../../services/inventory_service/rpc.md#stocktakequote--what-the-take-would-draw)).
+
+| | built 2026-10-23 |
+| --- | --- |
+| the selection | `inventory_ledgers.DrawOldestFirst` is the take's selection alone; `TakeOldestFirst` applies it. `ReadBatches` is `LockBatches` without `FOR UPDATE`, marked read-only so nothing can be taken from it |
+| the quote | `inventory_mutations.QuoteOrder` beside `PostOrder` — same lines, same read, same count, same draw, no writes. The handler reuses `notAllowedLines`; a refused line answers `available` 0, a short one `enough` false, neither a cost |
+| selling | freezes `unit_cost`, the line `total` and `cogs` from the take's answer and prices the fee on that `cogs` after the take — see [order/context.md](../order/context.md) |
+| `StockCost` | unchanged, the average — the rack valuation's. No order reads it |
+| tests | `stock_take_quote_test.go` (5 — 1/2/3 units of a two-batch product match the real take's batches and cost; short reported; ownership/refusals/other warehouse; a product twice; validation) |
+| audits | perf [StockTakeQuote.md](../../../audits/services/inventory_service/performances/StockTakeQuote.md): ✅ fixed 2026-10-26 — the reserve rule shared with the take was an N+1 on borrowed lines (21 queries at 20); now one grouped read (`ownerTotalStocks`) on `batches_owner_product_idx` (`00032`), 2 queries and 1.57 ms at 20 ([the-reserve-is-read-once-for-every-line](../../business/inventory/order_decision.md#the-reserve-is-read-once-for-every-line)) |
+
 ## What was decided
 
 | | |

@@ -20,11 +20,12 @@ const (
 	draftFieldCustomerPhone = "customer_phone"
 	draftFieldAddress       = "address"
 	draftFieldShippingCode  = "shipping_code"
-	draftFieldShippingCost  = "shipping_cost"
 	draftFieldItems         = "items"
 	// The platform's two dates, each its own field: correcting the order date says nothing about the deadline.
 	draftFieldPlatformCreatedAt        = "platform_created_at_unix"
 	draftFieldPlatformShipmentDeadline = "platform_shipment_deadline_unix"
+	draftFieldBuyerUsername            = "buyer_username"
+	draftFieldPlatformTotal            = "platform_total"
 )
 
 // decodeTouched reads the jsonb column into a set.
@@ -142,13 +143,16 @@ func draftToProto(d *selling_service_models.OrderDraft) *sellingv1.OrderDraft {
 			AddressLine:   d.AddressLine,
 		},
 		ShippingCode:  d.ShippingCode,
-		ShippingCost:  d.ShippingCost,
 		Items:         draftItemsToProto(d.Items),
 		CreatedAtUnix: d.CreatedAt.Unix(),
 		UpdatedAtUnix: d.UpdatedAt.Unix(),
 		// The platform's two dates; 0 = not known yet.
 		PlatformCreatedAtUnix:        unixOrZero(d.PlatformCreatedAt),
 		PlatformShipmentDeadlineUnix: unixOrZero(d.PlatformShipmentDeadline),
+		// The buyer's marketplace username; "" = not known, which is allowed.
+		BuyerUsername: d.BuyerUsername,
+		// What the buyer paid; 0 = not known yet, which Promote refuses.
+		PlatformTotal: d.PlatformTotal,
 	}
 }
 

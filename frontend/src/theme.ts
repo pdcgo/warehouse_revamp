@@ -282,6 +282,16 @@ const customConfig = defineConfig({
         defaultVariants: { size: "sm" },
         variants: { variant: { outline: { field: FIELD_OUTLINE } } },
       },
+      // A TAG'S ICON SITS ON THE LABEL'S CENTRE LINE. Chakra gives a tag's start and end elements a fixed box but leaves
+      // them `display: block`, and `<Icon>` is `inline-block` + `vertical-align: middle` — so inside the box the icon is
+      // laid out like a letter on the tag's 21px line and drops ~4px below the label (the Analytic metric chips). A flex
+      // box centres it whatever the line height.
+      tag: {
+        base: {
+          startElement: { display: "flex", alignItems: "center", justifyContent: "center" },
+          endElement: { display: "flex", alignItems: "center", justifyContent: "center" },
+        },
+      },
       // ── THE DATE PICKER'S TRIGGER IS A FIELD, NOT A BUTTON (owner) ──────────────────────────────
       //
       // It is a <button> semantically — it opens a calendar — but it stands in a form row beside

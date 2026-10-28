@@ -46,7 +46,7 @@ func (p *stockPicker) Pick(
 	sellingTeamID, warehouseID uint64,
 	lines []selling_v1.PickLine,
 	ref string,
-) error {
+) (selling_v1.PickDraw, error) {
 	out := make([]*inventoryv1.OrderTransactionLine, 0, len(lines))
 	for _, line := range lines {
 		out = append(out, &inventoryv1.OrderTransactionLine{
@@ -57,14 +57,33 @@ func (p *stockPicker) Pick(
 
 	// THE ORDER'S REF IS ITS KEY until the order form mints one per submit (the-order-take-bridges-its-key-per-order):
 	// `order:<order id>` takes once, and the cancel releases by the same key.
-	_, err := p.inventory.OrderTransactionCreate(ctx, connect.NewRequest(&inventoryv1.OrderTransactionCreateRequest{
+	res, err := p.inventory.OrderTransactionCreate(ctx, connect.NewRequest(&inventoryv1.OrderTransactionCreateRequest{
 		TeamId:         sellingTeamID,
 		IdempotencyKey: ref,
 		WarehouseId:    warehouseID,
 		Lines:          out,
 	}))
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	// WHAT EACH LINE DREW, as the take priced it: the cost of the units that left the shelf — the owner's batches oldest
+	// first (an-order-is-costed-at-what-leaves-the-shelf) — and the total, that cost plus the product's own markup on a
+	// borrowed line (inventory-computes-the-markup) — with the unit price after the markup and the markup itself, the
+	// owner's `unit_cost_with_markup` and `markup_total`. Carried over untouched: the order freezes what inventory
+	// returned. The cost is total − markup_total, which on an own line is the take's value exactly.
+	draw := make(selling_v1.PickDraw, len(res.Msg.GetItems()))
+	for _, item := range res.Msg.GetItems() {
+		draw[item.GetProductId()] = selling_v1.PickedLine{
+			Cost:               item.GetTotal() - item.GetMarkupTotal(),
+			UnitCost:           item.GetUnitCost(),
+			Total:              item.GetTotal(),
+			UnitCostWithMarkup: item.GetUnitCostWithMarkup(),
+			MarkupTotal:        item.GetMarkupTotal(),
+		}
+	}
+
+	return draw, nil
 }
 
 func (p *stockPicker) Return(
@@ -80,33 +99,4 @@ func (p *stockPicker) Return(
 	}))
 
 	return err
-}
-
-func (p *stockPicker) UnitCosts(
-	ctx context.Context,
-	sellingTeamID, warehouseID uint64,
-	productIDs []uint64,
-) (map[uint64]int64, error) {
-	res, err := p.inventory.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId: sellingTeamID,
-		Filter: &inventoryv1.StockCostFilter{WarehouseId: warehouseID, Ids: productIDs},
-	}))
-	if err != nil {
-		return nil, err
-	}
-
-	// Only products with a KNOWN cost come back, so the map is naturally missing the rest — which is
-	// the distinction the caller needs (#74). The by-ids response is keyed by product id; each value
-	// carries the COST slice.
-	costs := make(map[uint64]int64, len(res.Msg.GetItems()))
-	for id, list := range res.Msg.GetItems() {
-		for _, item := range list.GetItems() {
-			line := item.GetCost().GetMapData()[id]
-			if line != nil {
-				costs[id] = line.GetUnitCost()
-			}
-		}
-	}
-
-	return costs, nil
 }

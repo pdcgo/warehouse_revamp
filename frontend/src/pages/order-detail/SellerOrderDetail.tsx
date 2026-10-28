@@ -21,6 +21,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrder } from "../../features/orders/queries";
+import { useProductsByIds } from "../../features/products/queries";
 import { useActors } from "../../features/users/queries";
 import { useTeams } from "../../features/teams/queries";
 import { useShopOptions } from "../../features/shops/queries";
@@ -28,11 +29,12 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { stageOfStatus } from "../../features/orders/stages";
-import { timelineFromKey, timelineSlug, timelineTitleKey } from "./components/TimelinePanel";
+import { timelineSlug, timelineTitleKey } from "./components/TimelinePanel";
+import { statusLogs, timelineFromKey } from "../../features/orders/timelineLogs";
 import { SettlementTab } from "./components/SettlementTab";
-import { orderFee, orderSpend } from "../../features/orders/margin";
+import { lineTotalBeli, lineUnitBeli, linesGoodsCost, orderFee, orderSpend } from "../../features/orders/margin";
 import { ReceiptFile } from "./components/ReceiptCard";
-import type { OrderAddress } from "../../gen/warehouse/selling/v1/order_pb";
+import type { OrderAddress, OrderItem } from "../../gen/warehouse/selling/v1/order_pb";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { CustomerLineItem } from "../../components/customers/CustomerLineItem";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
@@ -49,12 +51,10 @@ import { useScrollSpy } from "./useScrollSpy";
 import { useIsMobile } from "../../layouts/shell";
 import { MoneyBreakdown } from "./components/MoneyBreakdown";
 import { ORDER_DETAIL_PENDING } from "./pending";
-import { mockExternalName, mockOutboundTrail, mockReturnLeg } from "./shipmentMock";
+import { mockOutboundTrail } from "./shipmentMock";
 import { ShipmentLeg } from "./components/ShipmentLeg";
-import { ScrapedName } from "./components/ScrapedName";
 import { OrderReferences } from "./components/OrderReferences";
-import { NotesSection } from "./components/NotesSection";
-import { mockNotes } from "./notesMock";
+import { NotesSection, noteWriter } from "./components/NotesSection";
 import { Rail } from "./components/Rail";
 import { StageStepper } from "./components/StageStepper";
 import { SummaryTiles } from "./components/SummaryTiles";
@@ -64,7 +64,7 @@ import { CopyText } from "../../components/chrome/CopyText";
 // `/orders/:orderId` for every team that is not a warehouse (the picker is `index.tsx`).
 //
 // Sections down one page: info, notes, items (with the money derived under them), timeline, shipping,
-// recipient, settlement, withdrawal. The warehouse's page files its facts under three TABS; the
+// recipient, settlement. The warehouse's page files its facts under three TABS; the
 // difference is argued in `components/Section.tsx`.
 //
 // ⚠ WHAT IS REAL AND WHAT IS NOT is the pending list (`pending.ts`), and every entry has its ⚠ on
@@ -123,7 +123,8 @@ export function SellerOrderDetailPage() {
   const order = query.data ?? null;
   const loading = query.isPending && id !== 0n;
 
-  // The people on the timeline. The ids come from the EVENTS — the order row records no actor at all.
+  // The people on the timeline AND in Catatan — a note is a timeline row too (a-note-is-a-timeline-row), so one
+  // lookup names both. The ids come from the rows; the order itself records no actor at all.
   const actors = useActors(order?.timelineLogs.map((log) => log.actorId) ?? []);
 
   // The selling team's name, for the items table's Team column. One batched read.
@@ -143,6 +144,10 @@ export function SellerOrderDetailPage() {
   // storefront that shop is on lives on the Shop. Same lookup the list uses for its Toko column.
   const shopOptions = useShopOptions({ teamId: order?.teamId ?? 0n });
   const shop = shopOptions.data?.find((item) => item.id === order?.shopId);
+
+  // THE LINES' PICTURES. `OrderItem` carries sku and name but no cover; the cover lives on `Product`, so
+  // the page looks every line's product up in ONE batched `ProductByIds` — never one read per line.
+  const covers = useProductsByIds({ teamId, productIds: order?.items.map((item) => item.productId) ?? [] });
 
   // ── The layout's own state. All of it before the early returns: hooks may not be conditional.
   const mobile = useIsMobile();
@@ -207,20 +212,33 @@ export function SellerOrderDetailPage() {
   // The number printed on the slip, as it was typed at create. "" = not recorded, shown as such.
   const receiptCode = order.receiptCode;
   const outboundTrail = mockOutboundTrail(order.id, order.status, order.createdAtUnix);
-  const returnLeg = mockReturnLeg(order.id, order.createdAtUnix);
 
   // ⚠ THE COST SIDE, summed off the lines — see `MoneyBreakdown` for why this is what "total produk"
-  // means. A line with no recorded cost contributes nothing, and the panel then refuses rather than
-  // showing a total that quietly left a product out.
-  const productCost = order.items.reduce(
-    (sum, item) => sum + item.unitCost * BigInt(item.quantity),
-    0n,
-  );
+  // means. Each line at its HARGA BELI — what the goods cost the seller, a borrowed line WITH its owner's markup
+  // (the-cross-charge-lives-on-the-line) — so the lines add up to the order's `goods_cost`. A line with no recorded
+  // cost contributes nothing, and the panel then refuses rather than showing a total that quietly left a product out.
+  const productCost = linesGoodsCost(order.items);
   const anyCostMissing = order.items.some((item) => item.unitCost <= 0n);
 
   // The warehouse's fee as it was frozen at create — the same figure the list's Beli column adds. `null` on an
   // order placed before fees were frozen, and every total built on it then refuses.
   const fees = orderFee(order);
+
+  // A line's product as `ProductListItem` draws it: the LINE's sku and name — what was ordered, frozen on
+  // the order — and the catalogue's picture from the batched lookup above. While that read is in flight,
+  // or for a product it does not answer for, there is no picture and the component draws its
+  // placeholder: the line reads exactly as it did without the lookup, never blank.
+  const lineProduct = (item: OrderItem) => {
+    const product = covers.data?.get(item.productId.toString());
+
+    return {
+      id: item.productId,
+      sku: item.sku,
+      name: item.name,
+      defaultImageUrl: product?.defaultImageUrl,
+      defaultImageThumbnailUrl: product?.defaultImageThumbnailUrl,
+    };
+  };
 
   // ── The sections, built once and placed by the layout below.
   // ── 1. INFO ORDER — the facts the create form asked for, read back ────────────────────────
@@ -236,7 +254,6 @@ export function SellerOrderDetailPage() {
           courier={order.shippingCode}
           receiptCode={receiptCode}
           orderRefId={order.orderExternalRefId}
-          returnLeg={returnLeg}
         />
 
         <Separator />
@@ -265,22 +282,24 @@ export function SellerOrderDetailPage() {
     </Section>
   );
 
-  // ── CATATAN — several notes, two kinds, the person's ones editable ───────────────────────
-  // Second, right after Info: a note is usually an instruction to the people packing, and it is
-  // read before the lines it is about. `key` resets the local list when the order changes.
+  // ── CATATAN — the order's note rows, newest first, and the box to add one ─────────────────
+  // Second, right after Info: a note is usually an instruction to the people packing, and it is read before the lines
+  // it is about. Never edited, never deleted (a-note-is-a-timeline-row). `key` drops a half-typed note when the
+  // order changes under it.
   const notesSection = (
     <Section
       title={t("orderDetail.notes.title")}
       id={sectionDomId("notes")}
       icon={sectionIcon("notes")}
       testId="section-notes"
-      marks={<NotImplemented list={ORDER_DETAIL_PENDING} id="notes" />}
     >
       <NotesSection
-          key={order.id.toString()}
-          initial={mockNotes(order)}
-          addMark={<NotImplemented list={ORDER_DETAIL_PENDING} id="notes" />}
-        />
+        key={order.id.toString()}
+        teamId={noteWriter(teamId, order)}
+        orderId={order.id}
+        logs={order.timelineLogs}
+        actors={actors.data}
+      />
     </Section>
   );
 
@@ -291,15 +310,6 @@ export function SellerOrderDetailPage() {
       id={sectionDomId("items")}
       icon={sectionIcon("items")}
       testId="section-items"
-      // On a phone there is no column header to carry these, so they ride beside the section title.
-      marks={
-        mobile ? (
-          <>
-            <NotImplemented list={ORDER_DETAIL_PENDING} id="productImage" />
-            <NotImplemented list={ORDER_DETAIL_PENDING} id="externalName" />
-          </>
-        ) : undefined
-      }
     >
       <Stack gap="card">
         {order.items.length === 0 ? (
@@ -319,15 +329,14 @@ export function SellerOrderDetailPage() {
                 borderColor="border"
                 data-testid={`order-item-${item.id}`}
               >
-                <ScrapedName evidence={mockExternalName(order.orderExternalRefId, item.name, index)} />
-                <ProductListItem product={{ id: item.productId, sku: item.sku, name: item.name }} />
+                <ProductListItem product={lineProduct(item)} />
                 <Flex justify="space-between" align="baseline" gap="3" fontSize="sm">
                   <Text color="fg.muted">
-                    {item.unitCost > 0n ? formatRupiah(item.unitCost) : "—"} × {item.quantity}
+                    {item.unitCost > 0n ? formatRupiah(lineUnitBeli(item)) : "—"} × {item.quantity}
                     {teamName ? ` · ${teamName}` : ""}
                   </Text>
                   <Text fontWeight="bold" whiteSpace="nowrap">
-                    {item.unitCost > 0n ? formatRupiah(item.unitCost * BigInt(item.quantity)) : "—"}
+                    {item.unitCost > 0n ? formatRupiah(BigInt(Math.round(lineTotalBeli(item)))) : "—"}
                   </Text>
                 </Flex>
               </Stack>
@@ -340,14 +349,7 @@ export function SellerOrderDetailPage() {
             <Table.Root size="sm" data-testid="order-items-table">
               <Table.Header>
                 <Table.Row>
-                  {/* The picture and the marketplace's title both live in this column, so their marks do. */}
-                  <Table.ColumnHeader>
-                    <Flex gap="1" align="center">
-                      {t("orders.product")}
-                      <NotImplemented list={ORDER_DETAIL_PENDING} id="productImage" />
-                      <NotImplemented list={ORDER_DETAIL_PENDING} id="externalName" />
-                    </Flex>
-                  </Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("orders.product")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("orders.team")}</Table.ColumnHeader>
                   {/* ⚠ HARGA BELI, not the selling price — see `MoneyBreakdown`. */}
                   <Table.ColumnHeader textAlign="end">{t("orderDetail.items.unitCost")}</Table.ColumnHeader>
@@ -357,25 +359,20 @@ export function SellerOrderDetailPage() {
               </Table.Header>
   
               <Table.Body>
-                {order.items.map((item, index) => (
+                {order.items.map((item) => (
                   <Table.Row key={item.id.toString()} data-testid={`order-item-${item.id}`}>
                     <Table.Cell>
-                      <ScrapedName evidence={mockExternalName(order.orderExternalRefId, item.name, index)} />
-                      {/* ⚠ NO PICTURE ON THE WIRE. `OrderItem` carries sku and name; the cover lives on
-                          `Product`, so this renders the placeholder until the page batches a
-                          `ProductByIds`. The component already draws one rather than a gap. */}
-                      <ProductListItem
-                        product={{ id: item.productId, sku: item.sku, name: item.name }}
-                      />
+                      {/* The product "gambar nama sku" — its picture, name and SKU. */}
+                      <ProductListItem product={lineProduct(item)} />
                     </Table.Cell>
                     <Table.Cell>{teamName || "—"}</Table.Cell>
                     <Table.Cell textAlign="end" whiteSpace="nowrap">
-                      {item.unitCost > 0n ? formatRupiah(item.unitCost) : "—"}
+                      {item.unitCost > 0n ? formatRupiah(lineUnitBeli(item)) : "—"}
                     </Table.Cell>
                     <Table.Cell textAlign="end">{item.quantity}</Table.Cell>
                     <Table.Cell textAlign="end" whiteSpace="nowrap">
                       {item.unitCost > 0n
-                        ? formatRupiah(item.unitCost * BigInt(item.quantity))
+                        ? formatRupiah(BigInt(Math.round(lineTotalBeli(item))))
                         : "—"}
                     </Table.Cell>
                   </Table.Row>
@@ -396,13 +393,16 @@ export function SellerOrderDetailPage() {
         <MoneyBreakdown
           productCost={anyCostMissing ? 0n : productCost}
           fees={fees}
-          marketplaceTotal={order.marketplaceTotal}
+          platformTotal={order.platformTotal}
         />
       </Stack>
     </Section>
   );
 
   // ── 3. TIMELINE — when the status changed, and who changed it ─────────────────────────────
+  // ⚠ STATUS ROWS ONLY — a row with no status is a note, and it is in Catatan (a-note-is-a-timeline-row). A status
+  // row's own reason (why it went back to pending) stays on its step.
+  const steps = statusLogs(order.timelineLogs);
   const timelineSection = (
     <Section
       title={t("orderDetail.timeline.title")}
@@ -410,7 +410,7 @@ export function SellerOrderDetailPage() {
       icon={sectionIcon("timeline")}
       testId="section-timeline"
     >
-      {order.timelineLogs.length === 0 ? (
+      {steps.length === 0 ? (
         <SectionEmpty>{t("orderDetail.timeline.empty")}</SectionEmpty>
       ) : (
         // THE SAME RAIL AS THE COURIER TRAIL, newest first — a sequence of moments is drawn one way
@@ -418,14 +418,14 @@ export function SellerOrderDetailPage() {
         // side wrote it, and an actor of 0 is "not recorded", so it names nobody rather than inventing one.
         <Rail
           testId="timeline-rail"
-          items={[...order.timelineLogs].reverse().map((log) => {
+          items={[...steps].reverse().map((log) => {
             const who = actors.data?.get(log.actorId.toString())?.name ?? "";
             const fromKey = timelineFromKey(log.from);
 
             return {
               key: log.id.toString(),
               testId: `order-timeline-${timelineSlug(log)}`,
-              title: t(timelineTitleKey(log, order.timelineLogs.indexOf(log))),
+              title: t(timelineTitleKey(log, steps.indexOf(log))),
               meta: [formatUnixDateTime(log.createdAtUnix), fromKey ? t(fromKey) : "", who, log.note]
                 .filter(Boolean)
                 .join(" · "),
@@ -444,48 +444,21 @@ export function SellerOrderDetailPage() {
       icon={sectionIcon("shipping")}
       testId="section-shipping"
     >
-      {/* TWO LEGS, ONE SHAPE (owner: *"resi bisa 2 dan jejak pengiriman juga bisa 2, dari order dan
-          return"*). Out to the buyer, and back from them under a different number. The return leg is
-          absent on almost every order, so it says so in one line rather than drawing an empty frame. */}
-      {/* SIDE BY SIDE on a wide screen: two legs of the same shape read as a pair, out and back. */}
-      <SimpleGrid columns={{ base: 1, lg: 2 }} gap="section">
-        <ShipmentLeg
-          title={t("orderDetail.shipping.outbound")}
-          courier={order.shippingCode}
-          receiptCode={receiptCode}
-          extra={{
-            label: t("orderDetail.shipping.deadline"),
-            value: deadline !== undefined ? formatUnixDateTime(deadline) : undefined,
-          }}
-          trail={outboundTrail}
-          trailMark={<NotImplemented list={ORDER_DETAIL_PENDING} id="shippingTracking" />}
-          testId="shipment-outbound"
-        />
-
-        {returnLeg ? (
-          <ShipmentLeg
-            title={t("orderDetail.shipping.return")}
-            courier={returnLeg.courier}
-            receiptCode={returnLeg.receiptCode}
-            trail={returnLeg.trail}
-            titleMark={<NotImplemented list={ORDER_DETAIL_PENDING} id="returnShipment" />}
-            receiptMark={<NotImplemented list={ORDER_DETAIL_PENDING} id="returnShipment" />}
-            trailMark={<NotImplemented list={ORDER_DETAIL_PENDING} id="shippingTracking" />}
-            testId="shipment-return"
-          />
-        ) : (
-          <Stack gap="1" data-testid="shipment-return-none">
-            <Flex gap="1" align="center">
-              <Text fontWeight="bold" fontSize="sm">
-                {t("orderDetail.shipping.return")}
-              </Text>
-              {/* "No return" is itself a guess: there is no return record to say otherwise. */}
-              <NotImplemented list={ORDER_DETAIL_PENDING} id="returnShipment" />
-            </Flex>
-            <SectionEmpty>{t("orderDetail.shipping.noReturn")}</SectionEmpty>
-          </Stack>
-        )}
-      </SimpleGrid>
+      {/* THE ORDER'S OWN LEG ONLY — courier, resi, deadline, trail. There is no return shipment record, so
+          no return leg is drawn (the-return-leg-waits-for-tracking): the return resi is asked again when
+          tracking is designed. */}
+      <ShipmentLeg
+        title={t("orderDetail.shipping.outbound")}
+        courier={order.shippingCode}
+        receiptCode={receiptCode}
+        extra={{
+          label: t("orderDetail.shipping.deadline"),
+          value: deadline !== undefined ? formatUnixDateTime(deadline) : undefined,
+        }}
+        trail={outboundTrail}
+        trailMark={<NotImplemented list={ORDER_DETAIL_PENDING} id="shippingTracking" />}
+        testId="shipment-outbound"
+      />
     </Section>
   );
 
@@ -498,6 +471,16 @@ export function SellerOrderDetailPage() {
           the same reading the list's Penerima column had before it came off the row. */}
       <Stack gap="card">
         <CustomerLineItem name={order.customerName} phone="" testId={order.id} />
+        {/* The buyer's name on the MARKETPLACE, under the customer and only when there is one
+            (the-buyers-username-is-optional). It is who to look for in the storefront's chat, and can
+            differ from who the parcel is addressed to; an order without one is ordinary, so no `—` row. */}
+        {order.buyerUsername !== "" && (
+          <Fact label={t("orders.buyerUsername")}>
+            <Text fontSize="sm" data-testid="order-detail-buyer-username">
+              {order.buyerUsername}
+            </Text>
+          </Fact>
+        )}
         {/* The number is something you ACT on — paste into WhatsApp, dial — so it is a copy
             button rather than text beside the name. */}
         <Fact label={t("orders.phone")}>
@@ -512,18 +495,18 @@ export function SellerOrderDetailPage() {
 
   // ── 6. SETTLEMENT — the real ledger, and the seat the withdrawal section had ───────────────────
   // ⚠ WD IS REPLACED BY SETTLEMENT (owner: *"wd mungkin diganti settlement"*). The invented withdrawal
-  // table is gone; money arriving from the marketplace is a PAYOUT row in this ledger. What is still
-  // missing is the import that would write those rows, and that is the `withdrawal` mark on the title.
+  // table is gone; money arriving from the marketplace is a PAYOUT row in this ledger, which Settlement
+  // Imports posts. Nobody types a withdrawal figure onto an order (no-withdrawal-is-typed-on-an-order),
+  // so the title carries no mark.
   //
   // The values passed down are the ones settlement is forbidden to know — it never sees the marketplace
-  // reference, and the cogs belong to selling_service.
+  // reference, and the goods_cost belongs to selling_service.
   const settlementSection = (
     <Section
       title={t("orderDetail.settlement.title")}
       id={sectionDomId("settlement")}
       icon={sectionIcon("settlement")}
       testId="section-settlement"
-      marks={<NotImplemented list={ORDER_DETAIL_PENDING} id="withdrawal" />}
     >
       <SettlementTab
         bare
@@ -626,7 +609,7 @@ export function SellerOrderDetailPage() {
 
       {/* ② FOUR NUMBERS TO LAND ON — the answer before the working. */}
       <SummaryTiles
-        marketplaceTotal={order.marketplaceTotal}
+        platformTotal={order.platformTotal}
         productCost={anyCostMissing ? 0n : productCost}
         fees={fees}
         itemCount={order.items.reduce((sum, item) => sum + item.quantity, 0)}

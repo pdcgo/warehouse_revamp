@@ -103,6 +103,10 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [cod-and-shipping-are-the-platforms](#cod-and-shipping-are-the-platforms) | buyer shipping and COD need nothing on the order: COD is only ever the marketplace's, paid out like any order |
 | [platform-created-at-is-required-at-finalize](#platform-created-at-is-required-at-finalize) | an order cannot be finalized without the buyer's order time on the platform; a draft may hold it empty |
 | [the-shipment-deadline-is-the-platforms-and-optional](#the-shipment-deadline-is-the-platforms-and-optional) | the ship-by is the marketplace's, stored on the order and the draft; optional — none means no urgency shown |
+| [superseded-the-order-requires-the-buyers-username](#superseded-the-order-requires-the-buyers-username) | ⛔ reversed the next day — [the-buyers-username-is-optional](#the-buyers-username-is-optional) |
+| [the-buyers-username-is-optional](#the-buyers-username-is-optional) | the order and the draft carry the buyer's marketplace username when there is one; empty never refuses |
+| [an-order-is-costed-at-what-leaves-the-shelf](#an-order-is-costed-at-what-leaves-the-shelf) | every money figure of an order is the cost of the units that leave the shelf, oldest first — previewed and frozen; the average only values the stock |
+| [an-order-line-carries-no-marketplace-price](#an-order-line-carries-no-marketplace-price) | an order line holds only the take's money — `unit_cost`, `unit_cost_with_markup`, `markup_total`, `total`; the marketplace price stays on the draft's platform row |
 
 ---
 
@@ -500,6 +504,7 @@ whose own name now reads against the vocabulary it described).
 | `frontend/src/` — the order form, the detail panel, the settlement screens, both locale files | 35 |
 | `docs/` — settlement's context and decisions, the schema doc | 64 |
 | a migration renaming the column added by `00008_order_marketplace_total.sql` | 1 |
+| ✅ built *(2026-10-23)* | selling `00026` renames `orders.marketplace_total` and `order_drafts.marketplace_total` → `platform_total`, values kept, and renames the draft's touched mark. Proto: `platform_total` keeps the numbers on `Order` (17), `OrderCreateRequest` (13), `OrderDraft` (22), `OrderDraftUpdateRequest` (14), `OrderDraftPushRequest` (15) and the event `OrderPlaced` (11) — binary-compatible, but a JSON client must send `platformTotal` (a `marketplaceTotal` is silently discarded). Backend, settlement's `openSale`, the stat census (`orderMeasurable`), the export column (*Platform total*), the order form, the draft page, the list's Total MP cell, the detail and the settlement screens read the new field; the WORDS on screen are unchanged (Total MP, the sell price). Settlement's append-only decisions keep the old name in their text |
 
 ⚠ **What it leaves open:** `marketplace_type` still says *marketplace*, so one doc now uses both words.
 Settlement's append-only decisions keep the old name in their text and are renamed by reference, not edited.
@@ -575,6 +580,10 @@ hold it empty while it is still being worked on; finalize is where it becomes re
 arise, so the early return becomes dead code and should be replaced by the finalize check. ⚠ And
 `OrderDraftPromote` passes no total at all, so **every promoted draft is currently a 0** — the draft must
 carry `platform_total` and finalize must copy it.
+
+| | |
+| --- | --- |
+| ✅ built *(2026-10-23)* | `placeOrder`'s shared rule refuses a `marketplace_total` of 0 — *"an order must say what the buyer paid on the marketplace"* — so OrderCreate and Promote meet the same check. `order_drafts.marketplace_total` (selling `00022`, `bigint NOT NULL DEFAULT 0`), `marketplace_total` on `OrderDraft`, `OrderDraftPush` and `OrderDraftUpdate` (`optional` on the update, so an edit marks it touched); Promote copies it. The form's sell price is required (Create off until it is filled); the draft page seeds it from the stored figure, follows the rows while it is 0, saves it when it differs, and lists *"The sell price is missing."* among Promote's reasons while the stored figure is 0. Settlement's `openSale` keeps its skip of a 0 as the guard for orders placed before `00022`. Still named `marketplace_total` — the rename to `platform_total` is its own pass |
 
 ---
 
@@ -659,6 +668,10 @@ flowchart LR
 `subtotal + shipping_cost`, and **`margin = total − cogs − shipping_cost` no longer holds** — with shipping
 gone it becomes `platform_total − total_cost`. The order form's shipping-cost input and the detail panel's
 row go with it.
+
+| | |
+| --- | --- |
+| ✅ built *(2026-10-23)* | selling `00027` drops `orders.shipping_cost`, `orders.subtotal`, `orders.total` and `order_drafts.shipping_cost` (and the draft's touched mark), renames `cogs` → `goods_cost` — now Σ the lines' frozen `total`, a borrowed line with its markup, and the fee's basis — and adds `orders.total_cost` = `goods_cost` + `warehouse_fee`, frozen at create (back-filled with a NULL fee as 0). Proto: the dropped fields' numbers and names are `reserved` on `Order`, `OrderCreateRequest`, `OrderDraft`, `OrderDraftUpdateRequest`, `OrderDraftPushRequest` and `OrderPlaced` (`revenue`, `shipping_cost`); `goods_cost` keeps `cogs`'s numbers; `Order.total_cost = 31` is new. Selling `00028` drops `order_items.unit_price`. The margin is `platform_total − total_cost` everywhere it is drawn; the detail panel's shipping row is gone, and the census's `value` / `revenue_30d` now sum `platform_total` |
 
 ⚠ **It does not touch inbound shipping.** `shipping_fee` and `cod_fee` on a restock or return are the
 warehouse's real outlay and stay exactly as the balance doc describes them — a different journey, in the
@@ -2534,6 +2547,7 @@ flowchart LR
 | --- | --- |
 | asks | `product_service` — product id → owning team |
 | on failure | refuse the create. ⚠ **The build does the opposite** (fails open, `orderCreditors`) — to change when this is built |
+| ✅ built *(2026-10-23)* | the owners are looked up once (`lineOwners`), and both the return-map check and the debt check read that answer; a failed lookup refuses the create (`Unavailable`) instead of letting it through. Landed with [the-return-map-is-selling-services-and-read-by-ids](../../technical/frontend/order_create_decision.md#the-return-map-is-selling-services-and-read-by-ids), which cannot tell a borrowed line from an own one without the owners |
 
 ---
 
@@ -3249,6 +3263,11 @@ flowchart LR
 
 ## a-borrowed-line-needs-its-map-at-create
 
+🔄 *(2026-10-22)* *Where it is mapped* is now decided: on the order form's Return Mapping card, to one of the team's own
+products — [a-borrowed-product-is-mapped-on-the-order-form](../../technical/frontend/order_create_decision.md#a-borrowed-product-is-mapped-on-the-order-form) —
+written by its own call the moment the pick is confirmed, separate from the create
+([the-map-is-written-when-it-is-picked](../../technical/frontend/order_create_decision.md#the-map-is-written-when-it-is-picked)).
+
 > Owner, in chat (2026-10-19): **"yes 2"** — to [when-must-the-map-exist](./order_return_clarify.md#when-must-the-map-exist),
 > option 2: the map is required at order create. As recommended.
 
@@ -3573,3 +3592,184 @@ flowchart LR
 | the clock stops | at handover (`shipping`) — an order already out of the building shows no deadline |
 | unlike the other two | `platform_total` and `platform_created_at` are required at finalize; this one is not |
 | ✅ built *(2026-10-22)* | `orders.platform_shipment_deadline` and `order_drafts.platform_shipment_deadline` (selling `00020`), `platform_shipment_deadline_unix` on the same five messages, optional everywhere. The form's ship-by field sends it; the app's push and the draft page store it; Promote copies it. The list's urgency badge, the warehouse row and the order detail read it through `orderDeadline`, which stops the clock from `shipping` on; the export carries it |
+
+---
+
+## superseded-the-order-requires-the-buyers-username
+
+⛔ *(2026-10-23)* **Reversed** — the username is optional: [the-buyers-username-is-optional](#the-buyers-username-is-optional).
+Kept as it was written, renamed so no reference reads it as current. Its proposed contract is replaced by the new entry's.
+
+> Owner, in chat (2026-10-22): **"its required"** — to *"should an order keep the buyer's marketplace username? I'd say
+> yes: an optional field, stored exactly as typed."* Yes to keeping it, **against** *optional*.
+
+**The verdict.** Every order carries the buyer's username on the marketplace, and an order cannot be finalized without
+it. It is the name the buyer goes by in the marketplace chat, which the shipping label often does not print. Same rule as
+[platform-created-at-is-required-at-finalize](#platform-created-at-is-required-at-finalize): read off the same storefront
+page, required on both doors, and a draft may hold it empty.
+
+```mermaid
+flowchart LR
+  A["the app's push"] --> D["order_drafts.buyer_username - may be empty"]
+  T["the typed form"] --> F{"buyer_username present?"}
+  D -->|"Promote"| F
+  F -->|"no - or only spaces"| R["finalize REFUSES"]
+  F -->|"yes"| O["orders.buyer_username - as typed, trimmed"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| what it is | the buyer's account name on the platform. Not `customer_name`, which is who the parcel is addressed to — the two can differ |
+| stored | as typed, trimmed. Spaces alone are no username |
+| checked at | finalize, on **both** doors — the typed order and the promoted draft |
+| a draft | may hold it empty while it is being worked on |
+| ⚠ not in the owner's doc yet | [context.md](./context.md) §Table That Must Have lists `customer_name` and `customer_phone` only, for `orders` and for `order_drafts` |
+| ✅ on screen *(2026-10-22)* | the form's field is required — a red asterisk, and Create stays off until it is filled. The draft page names it among Promote's reasons. Both still behind the `buyerUsername` mark: the contract has no field, so what is typed is not sent |
+
+**Proposed contract — awaiting the owner's accept** ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)).
+
+| | |
+| --- | --- |
+| `orders.buyer_username` | `text NOT NULL DEFAULT ''` — the default only so orders before it stay valid |
+| `order_drafts.buyer_username` | `text NOT NULL DEFAULT ''` — may stay empty |
+| `buyer_username` on `Order`, `OrderCreateRequest`, `OrderDraft`, `OrderDraftPush`, `OrderDraftUpdate` | `string`, `max_len: 100`. Not `min_len` in the proto — the blank check lives in `placeOrder`'s shared rule, like the order date, so both doors refuse with one sentence |
+| the refusal | *"an order must name the buyer's username on the marketplace"* |
+| Promote | copies it from the draft |
+| the order detail | shows it under the customer |
+| the export | one more column |
+
+---
+
+## the-buyers-username-is-optional
+
+> Owner, in chat (2026-10-23): *"i change my mind, buyer username is optional, not required"* — reversing
+> [superseded-the-order-requires-the-buyers-username](#superseded-the-order-requires-the-buyers-username). Back to the
+> first recommendation.
+
+**The verdict.** An order carries the buyer's username on the marketplace **when there is one**, and an empty one never
+refuses anything. Same footing as
+[the-shipment-deadline-is-the-platforms-and-optional](#the-shipment-deadline-is-the-platforms-and-optional): kept when
+the storefront shows it, absent otherwise.
+
+```mermaid
+flowchart LR
+  A["the app's push"] --> D["order_drafts.buyer_username - may be empty"]
+  T["the typed form"] --> O["orders.buyer_username - as typed, trimmed, or empty"]
+  D -->|"Promote - copied as it is"| O
+  O --> S["the order detail - shown under the customer, when present"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| what it is | the buyer's account name on the platform. Not `customer_name`, which is who the parcel is addressed to — the two can differ |
+| stored | as typed, trimmed. Spaces alone are stored as none |
+| checked at | nowhere — empty is a valid order and a valid draft, on both doors |
+| ⚠ not in the owner's doc yet | [context.md](./context.md) §Table That Must Have lists `customer_name` and `customer_phone` only, for `orders` and for `order_drafts` |
+| ✅ on screen *(2026-10-23)* | the form's field is optional again — no asterisk, Create never waits on it, and the draft page lists no reason for it. Still behind the `buyerUsername` mark: the contract has no field, so what is typed is not sent |
+| ✅ built *(2026-10-23)* | `orders.buyer_username` and `order_drafts.buyer_username` (selling `00021`, `text NOT NULL DEFAULT ''`), `buyer_username` on `Order`, `OrderCreateRequest`, `OrderDraft`, `OrderDraftPush` and `OrderDraftUpdate` (`max_len: 100`, optional — `optional` on the update, so an edit marks it touched). Trimmed by `placeOrder` and by push and update; no rule refuses an empty one. The form sends it on Create and on Save as Draft; the draft page seeds it and saves it when changed; Promote copies it. The order detail shows it under the customer — the seller's recipient section and the warehouse's Info — only when set; the seller's export carries it beside *Customer*. The `buyerUsername` mark is gone |
+
+**The contract — ✅ accepted** ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)).
+
+> Owner, in chat (2026-10-23): *"yes, i accept that proposed"* — `design_accept` for this change; the backend pass may
+> start.
+
+| | |
+| --- | --- |
+| `orders.buyer_username` | `text NOT NULL DEFAULT ''` — `''` is no username |
+| `order_drafts.buyer_username` | `text NOT NULL DEFAULT ''` |
+| `buyer_username` on `Order`, `OrderCreateRequest`, `OrderDraft`, `OrderDraftPush`, `OrderDraftUpdate` | `string`, `max_len: 100`, optional. The handlers trim it |
+| Promote | copies it from the draft |
+| the order detail | shows it under the customer, and nothing when it is empty |
+| the export | one more column, blank when empty |
+
+---
+
+## an-order-is-costed-at-what-leaves-the-shelf
+
+> Owner, in chat (2026-10-23): **"i pick a"** — to *"which cost does an order use: A, what actually leaves the shelf,
+> everywhere; B, the average, everywhere; C, leave the gap?"* As recommended. Completes
+> [inventory-computes-the-markup](#inventory-computes-the-markup)'s *"every figure of a line from the same draw, in one
+> answer"*, which the build had kept for the line total only.
+
+**The verdict.** Every money figure of an order is the cost of **the units that leave the shelf** — the owner's batches
+oldest first, the same draw the take makes. The form previews that draw, and the order freezes it: the line's cost, the
+order's cost of goods, the warehouse fee's basis and the product fee charged to the borrower. The shelf's **average** stays
+what it is for — valuing the stock that remains — and is never an order's cost.
+
+```mermaid
+flowchart LR
+  S["the shelf - Jan 2 at 10.000, Mar 2 at 14.000"] --> Q["the form asks - what would the next 2 cost"]
+  Q -->|"2 x 10.000 = 20.000"| F["the form - line, invoice 22.000, margin, fee"]
+  S --> T["Create - the take draws the same Jan units"]
+  T -->|"20.000"| O["the order freezes it - cost, cogs, fee basis, line total 22.000"]
+  O --> L["the balance - Toko Melati owes 22.000"]
+  A["the average 12.000"] -.->|"only the stock's value, never an order"| V["rack valuation"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the cost of a line | the value of the units the take draws for it — the owner's batches oldest first — divided by its quantity |
+| frozen on the order | `unit_cost`, `cogs` and the line `total` all from the take's answer; the warehouse fee priced on that `cogs` |
+| the form's preview | the same draw, asked for before Create — per line, the batches it would take and their cost |
+| a preview that moved | another order took the same units first: the order freezes the draw it really made; the preview is never charged |
+| the average | stays for the stock's value (rack valuation); no order reads it |
+| over many orders | an order's costs add up to what the goods were bought for — 48.000 for the example, never the 52.000 the average sums to |
+
+**The contract — ✅ accepted** ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)).
+
+> Owner, in chat (2026-10-23): *"yes, continue"* — `design_accept` for this change; the backend pass may start.
+
+| | |
+| --- | --- |
+| the new read | `StockTakeQuote` on inventory_service: the ordering team (scope), the warehouse, and the lines — product and quantity, 1 to 100 |
+| it answers, per line | the cost of the units the take would draw, the batches behind it (`quantity × unit cost`, oldest first), and whether the warehouse has enough. It runs the take's own selection, read-only, so the two cannot disagree |
+| policy | as `StockCost`: Root, Administrator, Selling Owner, Selling Admin, Selling CS |
+| the take | unchanged — it already answers each line's draw cost |
+| `OrderCreate` and Promote | freeze `unit_cost` and `cogs` from the take's answer, and price the warehouse fee on that `cogs`, instead of reading the average before the take |
+| `StockCost` | unchanged, still the average — the rack valuation reads it |
+| ✅ built *(2026-10-23)* | `StockTakeQuote` runs the take's own selection read-only (`QuoteOrder` beside `PostOrder`, one `DrawOldestFirst`); a short line answers `enough` false with no cost, and a line the take would refuse answers nothing available. `placeOrder` freezes `unit_cost`, the line `total` and `cogs` from the take's answer, and prices the fee on that `cogs` AFTER the take, inside the order's transaction — a warehouse with no rate now fails it and the take is released, as [a-warehouse-with-no-rate-takes-no-orders](../teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders) specs it. The order form and the draft page cost each line from the quote, with the split under it when it spans two batches. `unit_cost` stays whole rupiah; `cogs` is the draw's cost rounded once |
+| 🔄 corrected *(2026-10-23)* | the warehouse fee's basis is `goods_cost` = Σ line `total` — borrowed lines WITH their markup, as [the-fee-is-priced-on-goods-cost](../teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost) and [the-cross-charge-lives-on-the-line](#the-cross-charge-lives-on-the-line) say. The first build priced it on the drawn cost without the markup; the alignment pass corrects it |
+
+---
+
+## an-order-line-carries-no-marketplace-price
+
+> Per the owner's [context.md §Table That Must Have](context.md#table-that-must-have) — there is no chat quote. Item 2,
+> `order_items`: *"`unit_cost`, price product, if cross, price before markup · `unit_cost_with_markup`, price product,
+> if cross, price after markup · `markup_total`, total - (unit_cost * qty) · `total`, unit_cost_with_markup * qty"*.
+> Item 6, `order_draft_platform_items`: *"`platform_title` · `platform_price` · `qty` · `total`"* — the only table that
+> names a marketplace price.
+
+**The verdict.** An order line holds only what the take drew and priced it at — `unit_cost`, `unit_cost_with_markup`,
+`markup_total`, `total` ([inventory-computes-the-markup](#inventory-computes-the-markup)). The marketplace's price is
+the draft's platform row's and stays there: Promote no longer carries it onto the line. With no price on the line, two
+rows of one product have nothing to disagree about, so they merge into one line.
+
+```mermaid
+flowchart LR
+  R1["draft platform row - Kopi x 2 at the platform's 50.000"] --> P["Promote"]
+  R2["draft platform row - Kopi x 1 at the platform's 35.000"] --> P
+  P -->|"product and quantity only - Kopi x 3"| T["the take - draws and prices Kopi x 3"]
+  T -->|"unit cost, with markup, markup, total"| L["order line - Kopi x 3, cost fields only"]
+  R1 -.->|"the price stays on the row, deleted with the draft"| X["never on the order line"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| an order line | `unit_cost`, `unit_cost_with_markup`, `markup_total`, `total` — every one from the take's single answer, frozen at finalize ([a-lines-money-is-frozen-at-finalize](#a-lines-money-is-frozen-at-finalize)). No marketplace price |
+| an own line | `unit_cost_with_markup` = the unit cost, `markup_total` = 0 |
+| `markup_total` | `total − unit_cost × qty`, within the rounding of the whole-rupiah `unit_cost` |
+| the marketplace price | the draft row's — the owner's `platform_price`, the build's `order_draft_items.unit_price` — deleted with the draft |
+| two rows of one product at two prices | ONE line, quantities summed. The merge no longer compares a price; one product under two skus or names is still refused |
+| `unit_price` on the line | kept, column and proto field: the take's unit cost on BOTH doors, stamped by `placeOrder`; the request's figure is not read. Old promoted lines keep the price they were given |
+| not decided here | the order's header: Promote's `subtotal` still sums the rows' marketplace prices, `OrderCreate`'s is what the form sends. The owner's `orders` has `goods_cost` and `total_cost`, and no subtotal |
+| ✅ built *(2026-10-23)* | selling `00025` adds `order_items.unit_cost_with_markup` and `markup_total` (`DOUBLE PRECISION`, CHECK >= 0, NULL = never frozen, not back-filled). `PickDraw` carries both from the take; `placeOrder` freezes them beside `unit_cost` and `total` and stamps `unit_price` = `unit_cost`. Promote sends no price; `mergeOrderLines` drops its price refusal. The take now prices the markup on the draw's value, so an own line's is exactly 0. `OrderItem` gains `total`, `unit_cost_with_markup`, `markup_total`, read-only and absent when never frozen — no screen shows the new two |
+| 🔄 corrected *(2026-10-23)* | `unit_price` is DROPPED, column and proto field — the owner's `order_items` has no such field. The *kept* row above was a build-pass choice, not the owner's; old promoted lines lose the marketplace price they held (dev data only) |

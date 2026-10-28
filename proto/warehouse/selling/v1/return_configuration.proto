@@ -14,10 +14,17 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sel
 //
 // Any warehouse may be named (a-team-may-pick-any-return-warehouse). It replaced team_infos.return_warehouse_id,
 // which nothing read and is dropped.
+//
+// It also serves the team's RETURN MAPS (the-return-map-is-selling-services-and-read-by-ids) — which of its own
+// products a borrowed product comes back as. Both are the owner's order_return.md §Table Must Have, both are a selling
+// team's return facts, and order create reads both without calling another service.
 service TeamReturnConfigurationService {
   rpc TeamReturnConfigurationDetail(TeamReturnConfigurationDetailRequest) returns (TeamReturnConfigurationDetailResponse);
   rpc TeamReturnConfigurationSet(TeamReturnConfigurationSetRequest) returns (TeamReturnConfigurationSetResponse);
   rpc TeamReturnConfigurationByIds(TeamReturnConfigurationByIdsRequest) returns (TeamReturnConfigurationByIdsResponse);
+
+  rpc ProductReturnMapCreate(ProductReturnMapCreateRequest) returns (ProductReturnMapCreateResponse);
+  rpc ProductReturnMapByIds(ProductReturnMapByIdsRequest) returns (ProductReturnMapByIdsResponse);
 }
 
 // One team's return warehouse.
@@ -134,4 +141,120 @@ message TeamReturnConfigurationByIdsResponseList {
 // Keyed by team id. A team that has set none is absent.
 message TeamReturnConfigurationByIdsResponse {
   map<uint64, TeamReturnConfigurationByIdsResponseList> items = 1;
+}
+
+// ============================================================================ the return map
+
+// One of the team's return maps: a BORROWED product — another team's, sold by this one — and the team's OWN product a
+// return of it comes back as (a-return-never-clones-a-product). Written once and never re-pointed
+// (a-return-map-is-written-once): units already on a shelf went there under it.
+message ProductReturnMap {
+  uint64 team_id = 1;
+  // The borrowed product — owned by another team.
+  uint64 shared_product_id = 2;
+  // The team's own product a return of it becomes.
+  uint64 own_product_id = 3;
+  // When the pair was written. Nothing updates a row, so it is also when it last changed.
+  int64 created_at_unix = 4;
+}
+
+// Map a borrowed product for returns — at the confirmed pick on the order form, its own call and never part of
+// OrderCreate (the-map-is-written-when-it-is-picked).
+//
+// WRITTEN ONCE. When the team already maps this borrowed product, nothing is overwritten: the pair that stands comes
+// back with `created = false`, and it may name a different own product from the one asked for — two people mapping
+// the same product at the same second leave the first one's pair (the-map-is-unique-on-its-source).
+message ProductReturnMapCreateRequest {
+  // Write: the roles that create orders — the map is made on the order form, by whoever is placing the order.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Another team's product. Refused when it is this team's own — an own line never touches the map
+  // (an-own-line-never-touches-the-map) — or when no such product exists.
+  uint64 shared_product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // This team's product. Refused when it is not — a return never lands on somebody else's product.
+  uint64 own_product_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductReturnMapCreateResponse {
+  // The pair that STANDS — this call's, or the one already written.
+  ProductReturnMap map = 1;
+  // False when the pair already existed and was left as it was.
+  bool created = 2;
+}
+
+// ---------------------------------------------------------------------------- by ids
+
+// The team's maps for these borrowed products — the order form pre-fills and locks a row already mapped. The ids are
+// BORROWED (shared) product ids. A product the team has not mapped is ABSENT from the answer, and that absence is the
+// row the form asks about. Not paged: bounded by the ids.
+message ProductReturnMapByIdsRequest {
+  // Read: the same audience as the write — whoever places the team's orders.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The team whose maps are read — the scope AND the filter: another team's map of the same product is never seen.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  ProductReturnMapByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Empty defaults to the PAIR slice.
+  repeated ProductReturnMapByIdsDataType data_request = 3;
+}
+
+message ProductReturnMapByIdsFilter {
+  // Borrowed product ids — the products on the order that another team owns.
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum ProductReturnMapByIdsDataType {
+  PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_PAIR = 1;
+}
+
+// A borrowed product's map, keyed by the borrowed product's id.
+message ProductReturnMapPairItem {
+  map<uint64, ProductReturnMap> map_data = 1;
+}
+
+message ProductReturnMapByIdsResponseItem {
+  oneof d {
+    ProductReturnMapPairItem pair = 1;
+  }
+}
+
+message ProductReturnMapByIdsResponseList {
+  repeated ProductReturnMapByIdsResponseItem items = 1;
+}
+
+// Keyed by borrowed product id. A product the team has not mapped is absent.
+message ProductReturnMapByIdsResponse {
+  map<uint64, ProductReturnMapByIdsResponseList> items = 1;
 }

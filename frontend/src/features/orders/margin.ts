@@ -5,27 +5,31 @@
 // the row beneath it is two screens disagreeing about the same orders, which is the drift CLAUDE.md
 // names. So the subtraction, the division and the rounding live here and nothing re-types them.
 //
-// ⚠ THE FORMULA IS THE OWNER'S, AND IT IS NOT THE PROTO'S (owner, 2026-09-28):
+// ⚠ THE FORMULA IS THE OWNER'S (owner, 2026-09-28; an-order-records-no-shipping-cost):
 //
 //   total beli = subtotal produk (the COST of the goods) + biaya (the warehouse's fee)
+//              = `goods_cost` + `warehouse_fee` = the order's `total_cost`
 //   margin     = harga MP − total beli
 //   persentase = margin ÷ harga MP
 //
 // Three things follow, and each one is a trap if it is missed:
 //
-//   1. THE REVENUE IS THE MARKETPLACE'S FIGURE, not ours. `marketplace_total` is what the buyer
-//      actually paid the platform after its vouchers and subsidies; our `subtotal` is what we quoted.
-//      Dividing by ours would flatter every discounted order.
+//   1. THE REVENUE IS THE MARKETPLACE'S FIGURE, not ours. `platform_total` is what the buyer
+//      actually paid the platform after its vouchers and subsidies. Dividing by any figure of ours would
+//      flatter every discounted order.
 //   2. THE FEE IS INSIDE THE COST. The warehouse's per-order fee is part of what the order cost us,
 //      so it sits at the BOTTOM of the subtraction. An earlier version left it out and called the
 //      result "margin kotor" — that overstated every order by the fee.
 //   3. THE PERCENTAGE IS OF THE REVENUE, not of the cost. `margin ÷ harga MP` is the share of the
 //      sale we kept; `margin ÷ beli` would be a mark-up, a different number that reads the same.
 //
-// ⚠ IT SUPERSEDES `subtotal − cogs`, which is what this file computed until the owner corrected it —
-// and which happens to be the proto's own `margin = total − cogs − shipping_cost`. That definition
-// measures our quote against our cost and never looks at what the platform paid. Kept nowhere: one
-// formula, or two screens disagree.
+// ⚠ IT SUPERSEDES `subtotal − cogs`, which is what this file computed until the owner corrected it — the proto's
+// old `margin = total − cogs − shipping_cost`, which measured our quote against our cost and never looked at what the
+// platform paid. Selling 00027 dropped those columns. Kept nowhere: one formula, or two screens disagree.
+//
+// ⚠ THE GOODS ARE COSTED AS THE SELLER PAYS FOR THEM: `goods_cost` is Σ the lines' frozen `total`, a borrowed line WITH
+// its owner's markup (the-cross-charge-lives-on-the-line). A line's harga beli is therefore `unit_cost_with_markup` —
+// `lineUnitBeli` below — so the lines of an order add up to its goods_cost.
 //
 // ⚠ IT IS NOT PROFIT. Everything the marketplace deducts beyond the price is still outside it.
 // Label it as margin wherever it is shown.
@@ -44,29 +48,62 @@ export function orderFee(order: { warehouseFee?: number }): bigint | null {
   return order.warehouseFee === undefined ? null : BigInt(Math.round(order.warehouseFee));
 }
 
+/** An order line as the money below reads it — `OrderItem`'s frozen figures. */
+export interface LineMoney {
+  quantity: number;
+  /** The drawn cost of one unit, whole rupiah. 0 = UNKNOWN, not free. */
+  unitCost: bigint;
+  /** One unit at the owner's markup — absent on a line frozen before selling 00025. */
+  unitCostWithMarkup?: number;
+  /** The line's frozen total, the markup in — absent on a line frozen before selling 00023. */
+  total?: number;
+}
+
+/**
+ * ONE LINE'S HARGA BELI — what one unit cost the SELLER: the owner's cost plus the owner's markup on a borrowed line,
+ * the drawn cost on an own line (where the two are equal). `unit_cost_with_markup`, rounded for the bigint arithmetic;
+ * a line frozen before it existed falls back to `unit_cost`.
+ */
+export function lineUnitBeli(line: LineMoney): bigint {
+  return line.unitCostWithMarkup === undefined ? line.unitCost : BigInt(Math.round(line.unitCostWithMarkup));
+}
+
+/** One line's total at harga beli — its frozen `total`, unrounded; `unit_cost × qty` on a line frozen before it. */
+export function lineTotalBeli(line: LineMoney): number {
+  return line.total ?? Number(line.unitCost) * line.quantity;
+}
+
+/**
+ * THE GOODS' COST, summed off the lines — the order's `goods_cost` as its lines spell it: Σ the frozen line totals,
+ * rounded ONCE, as the server rounds the header (so the lines and the header agree to the rupiah).
+ */
+export function linesGoodsCost(lines: LineMoney[]): bigint {
+  return BigInt(Math.round(lines.reduce((sum, line) => sum + lineTotalBeli(line), 0)));
+}
+
 /**
  * `cost of goods + fees`, or `null` when the cost is not a measurement.
  *
  * `costKnown` is the CALLER's answer to "is this cost real?", because the two callers answer it
  * differently and neither can answer for the other:
  *
- *   one order → `cogs > 0n`; a 0 means the goods were never restocked through this system, which is
+ *   one order → `goodsCost > 0n`; a 0 means the goods were never restocked through this system, which is
  *               UNKNOWN and not free (`order.proto`).
  *   a pile    → whether ANY order in it can be measured at all (`summaryHasMeasured`, a cost AND a
- *               marketplace figure); a pile may hold a positive sum and still be missing members.
+ *               platform figure); a pile may hold a positive sum and still be missing members.
  *
  * ⚠ A `null` HERE POISONS EVERYTHING DOWNSTREAM, deliberately. Without the cost there is no total
  * beli, so there is no margin and no percentage either — and an order whose cost nobody recorded must
  * read as unmeasured rather than as unusually profitable.
  */
-export function orderSpend(cogs: bigint, fees: bigint, costKnown: boolean): bigint | null {
-  return costKnown ? cogs + fees : null;
+export function orderSpend(goodsCost: bigint, fees: bigint, costKnown: boolean): bigint | null {
+  return costKnown ? goodsCost + fees : null;
 }
 
 /**
  * `harga MP − total beli`, or `null` when either side is missing.
  *
- * ⚠ A `revenue` OF 0 IS NOT A SALE OF NOTHING — `marketplace_total` is 0 when nobody wrote down what
+ * ⚠ A `revenue` OF 0 IS NOT A SALE OF NOTHING — `platform_total` is 0 when nobody wrote down what
  * the storefront took (`order.proto`), so the margin is unknown rather than a loss of the whole cost.
  * That is the one case where a plausible-looking number would be most wrong: a full-price order would
  * read as −100%.

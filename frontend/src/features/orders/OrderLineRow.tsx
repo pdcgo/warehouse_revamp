@@ -5,7 +5,7 @@ import { Package, Trash2 } from "lucide-react";
 import { QuantityInput } from "../../components/inputs/QuantityInput";
 import { formatRupiah } from "../../lib/money";
 import type { Costs, LineDraft, LineStock } from "./lines";
-import { costKnown, lineTotal, unitCost } from "./lines";
+import { costKnown, costSplit, formatCostSplit, lineTotal, unitCost } from "./lines";
 
 export interface OrderLineRowProps {
   index: number;
@@ -13,7 +13,7 @@ export interface OrderLineRowProps {
   idPrefix?: string;
   line: LineDraft;
   stock: LineStock;
-  /** productId -> HPP at the chosen warehouse. Undefined until the read lands. */
+  /** productId -> what the chosen warehouse's take would draw. Undefined until the read lands. */
   costs?: Costs;
 
   /** Rendered ABOVE the product, inside the first cell. The draft's scraped evidence goes here; the
@@ -67,6 +67,7 @@ export function OrderLineRow(props: OrderLineRowProps) {
 
   const cost = unitCost(line, costs);
   const known = costKnown(line, costs);
+  const split = costSplit(line, costs);
   const short = stock.kind === "known" && stock.short;
 
   return (
@@ -135,11 +136,28 @@ export function OrderLineRow(props: OrderLineRowProps) {
 
       {/* The HPP, READ not typed (owner). What the goods cost is a fact the warehouse recorded, not a
           number the person placing the order chooses — the same reasoning that already made
-          `unit_cost` server-set and ignored on input (#74). A draft overrides this cell entirely. */}
+          `unit_cost` server-set and ignored on input (#74). A draft overrides this cell entirely.
+
+          It is what THESE units cost as the take would draw them (an-order-is-costed-at-what-leaves-the-shelf) —
+          and when they come from two batches, the second line says which: "2 × Rp 10.000 + 1 × Rp 14.000". One fact
+          read twice, so it shares the cell (one-context-per-column-and-never-three-lines). */}
       <Table.Cell textAlign="end" data-testid={price ? undefined : `${idPrefix}-hpp-${index}`}>
         {price ??
           (known ? (
-            <Text fontSize="sm">{formatRupiah(cost)}</Text>
+            <Stack gap="0" align="end">
+              <Text fontSize="sm">{formatRupiah(cost)}</Text>
+              {split.length > 0 && (
+                <Text
+                  fontSize="xs"
+                  color="fg.muted"
+                  whiteSpace="nowrap"
+                  title={t("orders.hppSplitHint", { count: split.length })}
+                  data-testid={`${idPrefix}-hpp-split-${index}`}
+                >
+                  {formatCostSplit(split)}
+                </Text>
+              )}
+            </Stack>
           ) : (
             // 0 is UNKNOWN, never free: a product received without a restock has no recorded cost, and
             // printing "Rp 0" would book it as costing nothing.

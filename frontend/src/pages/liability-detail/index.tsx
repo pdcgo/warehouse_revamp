@@ -30,6 +30,7 @@ import { ArrowLeft, Paperclip, Plus, X } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
 import { TermsPanel } from "./components/TermsPanel";
+import { LimitSetOnYou } from "./components/LimitSetOnYou";
 import { LiabilityLedgerTable } from "./components/LiabilityLedgerTable";
 import { fmtDate } from "./format";
 import { PaymentProof } from "./components/PaymentProof";
@@ -345,6 +346,9 @@ export function LiabilityDetailPage() {
           <Stat.ValueText color="warning.fg">{formatRupiah(payable)}</Stat.ValueText>
           <Stat.HelpText>{t("liabilityDetail.payableHint")}</Stat.HelpText>
         </Stat.Root>
+        {/* THE LIMIT THEY SET ON YOU — only when this team is the debtor on the pair, so the creditor's
+            view is untouched (the-debtor-sees-the-limits-set-on-it). */}
+        <LimitSetOnYou teamId={current.teamId} creditorId={counterpartyId} creditorName={name} />
       </SimpleGrid>
       {/* The position row carries no oldest-unsettled timestamp — LiabilityLogList returns only the
           balance, so "oldest unsettled N days" is omitted here (it lives on the list's position row). */}

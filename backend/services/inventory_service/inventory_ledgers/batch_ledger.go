@@ -128,9 +128,14 @@ type ProductOwner struct {
 
 // LockedBatches is the owners' batches with units left of some products in one warehouse, LOCKED, each product's
 // oldest (lowest id) first. A take reads and changes them in memory; BatchWrites stores the result.
+//
+// ReadBatches returns the same rows UNLOCKED, for a read that answers what a take WOULD draw (StockTakeQuote) — marked
+// read-only, so nothing can be taken from them.
 type LockedBatches struct {
 	locked  map[ProductOwner]bool
 	byOwner map[ProductOwner][]*inventory_service_models.Batch
+	// Read for a quote, not locked for a take (ReadBatches). TakeOldestFirst refuses them.
+	readOnly bool
 }
 
 // LockBatches locks every batch with units left of the given owners' products in the warehouse, in ONE statement in id
@@ -138,9 +143,22 @@ type LockedBatches struct {
 // whatever their lines. A take that must name EVERY short line before it writes anything
 // (a-refusal-names-its-reason-and-every-line) counts each line from it with Available.
 func LockBatches(tx *gorm.DB, warehouseID uint64, owners []ProductOwner) (*LockedBatches, error) {
+	return loadBatches(tx, warehouseID, owners, true)
+}
+
+// ReadBatches is LockBatches WITHOUT the lock — the same statement, the same rows, the same order — for a read that
+// answers what a take would draw before it draws it (an-order-is-costed-at-what-leaves-the-shelf). It holds nothing, so
+// a take in the next second may draw the same units first: the preview is never what is charged, the take's own answer
+// is.
+func ReadBatches(db *gorm.DB, warehouseID uint64, owners []ProductOwner) (*LockedBatches, error) {
+	return loadBatches(db, warehouseID, owners, false)
+}
+
+func loadBatches(db *gorm.DB, warehouseID uint64, owners []ProductOwner, lock bool) (*LockedBatches, error) {
 	out := &LockedBatches{
-		locked:  map[ProductOwner]bool{},
-		byOwner: map[ProductOwner][]*inventory_service_models.Batch{},
+		locked:   map[ProductOwner]bool{},
+		byOwner:  map[ProductOwner][]*inventory_service_models.Batch{},
+		readOnly: !lock,
 	}
 
 	pairs := make([][]any, 0, len(owners))
@@ -160,13 +178,22 @@ func LockBatches(tx *gorm.DB, warehouseID uint64, owners []ProductOwner) (*Locke
 
 	var rows []inventory_service_models.Batch
 
-	err := tx.
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+	query := db
+	if lock {
+		query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+
+	err := query.
 		Where("warehouse_id = ? AND (team_id, product_id) IN ? AND stock_count > 0", warehouseID, pairs).
 		Order("id").
 		Find(&rows).Error
 	if err != nil {
-		return nil, fmt.Errorf("lock batches of %d product(s): %w", len(pairs), err)
+		verb := "read"
+		if lock {
+			verb = "lock"
+		}
+
+		return nil, fmt.Errorf("%s batches of %d product(s): %w", verb, len(pairs), err)
 	}
 
 	for i := range rows {
@@ -208,30 +235,51 @@ type BatchTaken struct {
 	Valuation float64
 }
 
-// TakeOldestFirst takes units from the owner's LOCKED batches oldest (lowest id) first
-// (an-order-takes-from-the-lowest-shelf-first), recording each change in w. A take of n with units left removes value × n
-// ÷ units; the take that empties a batch removes all its value, so an emptied batch is worth exactly 0
-// (an-emptying-take-takes-all-the-value). Too few units is refused before anything is recorded.
-func TakeOldestFirst(locked *LockedBatches, w *BatchWrites, t Take) ([]BatchTaken, error) {
-	if t.Count <= 0 {
-		return nil, fmt.Errorf("take of product %d: count %d is not positive", t.ProductID, t.Count)
+// DrawOldestFirst is the take's SELECTION, and nothing else: which of the owner's batches give how many units, and what
+// value, oldest (lowest id) first (an-order-takes-from-the-lowest-shelf-first). It changes nothing. TakeOldestFirst
+// applies it; StockTakeQuote answers it — so the order form's preview and the cost an order freezes are one rule
+// (an-order-is-costed-at-what-leaves-the-shelf), never two copies of it. Too few units is refused, exactly as the take
+// refuses it.
+func DrawOldestFirst(batches *LockedBatches, teamID, productID uint64, count int64) ([]BatchTaken, error) {
+	drawn, err := draw(batches, teamID, productID, count)
+	if err != nil {
+		return nil, err
 	}
 
-	key := ProductOwner{TeamID: t.TeamID, ProductID: t.ProductID}
-	if !locked.locked[key] {
-		return nil, fmt.Errorf("take of product %d: its batches of team %d were not locked", t.ProductID, t.TeamID)
+	out := make([]BatchTaken, 0, len(drawn))
+	for _, d := range drawn {
+		out = append(out, d.taken)
 	}
 
-	available := locked.Available(t.TeamID, t.ProductID)
-	if available < t.Count {
-		return nil, &NotEnoughStockError{ProductID: t.ProductID, Wanted: t.Count, Available: available, Ledger: "batches"}
+	return out, nil
+}
+
+// drawnBatch is one batch the selection picked, with the row a take changes.
+type drawnBatch struct {
+	batch *inventory_service_models.Batch
+	taken BatchTaken
+}
+
+func draw(batches *LockedBatches, teamID, productID uint64, count int64) ([]drawnBatch, error) {
+	if count <= 0 {
+		return nil, fmt.Errorf("take of product %d: count %d is not positive", productID, count)
 	}
 
-	left := t.Count
-	batches := locked.byOwner[key]
-	taken := make([]BatchTaken, 0, len(batches))
+	key := ProductOwner{TeamID: teamID, ProductID: productID}
+	if !batches.locked[key] {
+		return nil, fmt.Errorf("take of product %d: its batches of team %d were not locked", productID, teamID)
+	}
 
-	for _, b := range batches {
+	available := batches.Available(teamID, productID)
+	if available < count {
+		return nil, &NotEnoughStockError{ProductID: productID, Wanted: count, Available: available, Ledger: "batches"}
+	}
+
+	left := count
+	held := batches.byOwner[key]
+	drawn := make([]drawnBatch, 0, len(held))
+
+	for _, b := range held {
 		if left == 0 {
 			break
 		}
@@ -241,7 +289,34 @@ func TakeOldestFirst(locked *LockedBatches, w *BatchWrites, t Take) ([]BatchTake
 		}
 
 		n := min(left, b.StockCount)
-		value := takenValue(b, n)
+
+		drawn = append(drawn, drawnBatch{batch: b, taken: BatchTaken{BatchID: b.ID, Count: n, Valuation: takenValue(b, n)}})
+		left -= n
+	}
+
+	return drawn, nil
+}
+
+// TakeOldestFirst takes units from the owner's LOCKED batches oldest (lowest id) first
+// (an-order-takes-from-the-lowest-shelf-first), recording each change in w. A take of n with units left removes value × n
+// ÷ units; the take that empties a batch removes all its value, so an emptied batch is worth exactly 0
+// (an-emptying-take-takes-all-the-value). Too few units is refused before anything is recorded.
+//
+// The selection is DrawOldestFirst's; this only applies it.
+func TakeOldestFirst(locked *LockedBatches, w *BatchWrites, t Take) ([]BatchTaken, error) {
+	if locked.readOnly {
+		return nil, fmt.Errorf("take of product %d: its batches were read for a quote, not locked for a take", t.ProductID)
+	}
+
+	drawn, err := draw(locked, t.TeamID, t.ProductID, t.Count)
+	if err != nil {
+		return nil, err
+	}
+
+	taken := make([]BatchTaken, 0, len(drawn))
+
+	for _, d := range drawn {
+		b, n, value := d.batch, d.taken.Count, d.taken.Valuation
 
 		b.StockCount -= n
 		b.StockValuation -= value
@@ -252,8 +327,7 @@ func TakeOldestFirst(locked *LockedBatches, w *BatchWrites, t Take) ([]BatchTake
 
 		w.change(b, t.Transaction.ID, t.ChangeType, -n, -value, t.ActorID, t.Description)
 
-		taken = append(taken, BatchTaken{BatchID: b.ID, Count: n, Valuation: value})
-		left -= n
+		taken = append(taken, d.taken)
 	}
 
 	return taken, nil

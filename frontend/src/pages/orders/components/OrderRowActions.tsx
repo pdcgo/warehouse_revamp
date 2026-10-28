@@ -18,8 +18,8 @@ import { ORDERS_LIST_PENDING } from "../pending";
 // person and the table. The detail page is about ONE order and has the room, so it shows buttons and
 // folds only the overflow.
 //
-// ⚠ SIX OF THE EIGHT ARE REAL: cancel calls `OrderCancel`, and the moves call `OrderStatusChange`. The
-// other two — Edit Resi and Edit Withdrawal — say so twice: the ⚠ on the item, and a toast naming why.
+// ⚠ SIX OF THE SEVEN ARE REAL: cancel calls `OrderCancel`, and the moves call `OrderStatusChange`. The
+// other one — Edit Resi — says so twice: the ⚠ on the item, and a toast naming why.
 
 export function OrderRowActions({
   teamId,

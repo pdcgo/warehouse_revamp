@@ -36,14 +36,14 @@ func perfOrderRows(n int, shopIDs []uint64) []selling_service_models.Order {
 
 	for i := range n {
 		rows = append(rows, selling_service_models.Order{
-			ID:           uint64(1 + i),
-			TeamID:       uint64(2 + i%5),
-			ShopID:       shopIDs[i%len(shopIDs)],
-			WarehouseID:  uint64(900 + i%3),
-			Status:       statuses[i%len(statuses)],
-			CustomerName: "Budi",
-			Subtotal:     int64(10_000 + i),
-			Total:        int64(15_000 + i),
+			ID:            uint64(1 + i),
+			TeamID:        uint64(2 + i%5),
+			ShopID:        shopIDs[i%len(shopIDs)],
+			WarehouseID:   uint64(900 + i%3),
+			Status:        statuses[i%len(statuses)],
+			CustomerName:  "Budi",
+			GoodsCost:     int64(10_000 + i),
+			PlatformTotal: int64(15_000 + i),
 			// Half inside the 30-day window, half outside it, so the FILTER aggregates are not
 			// measured against a set that trivially matches everything.
 			CreatedAt: time.Now().Add(-time.Duration(i%60) * 24 * time.Hour),
@@ -89,20 +89,18 @@ func perfStatOrderRows(n int, teamOf func(int) uint64, shopIDs []uint64, salt in
 			CustomerName:       perfStatNames[i%len(perfStatNames)],
 			CustomerPhone:      fmt.Sprintf("08%010d", k),
 			OrderExternalRefID: fmt.Sprintf("INV-%08d", k),
-			Subtotal:           total - 5_000,
-			ShippingCost:       5_000,
-			Total:              total,
+			TotalCost:          float64(total),
 			// Half inside the 30-day window, half outside it.
 			CreatedAt: now.Add(-time.Duration(i%60) * 24 * time.Hour),
 			UpdatedAt: now,
 		}
 
 		if i%5 != 0 {
-			o.COGS = total / 2
+			o.GoodsCost = total / 2
 		}
 
 		if i%3 != 0 {
-			o.MarketplaceTotal = total - 1_000
+			o.PlatformTotal = total - 1_000
 		}
 
 		if i%4 != 0 {
@@ -134,7 +132,6 @@ func perfStatItemRows(orders []selling_service_models.Order) []selling_service_m
 				SKU:       "SKU-" + strconv.Itoa((i+j)%500),
 				Name:      "Barang " + strconv.Itoa((i+j)%500),
 				Quantity:  uint32(1 + (i+j)%4),
-				UnitPrice: 5_000,
 				UnitCost:  2_500,
 				CreatedAt: o.CreatedAt,
 			})
@@ -402,18 +399,18 @@ func perfStatPlanCache(t *testing.T, db *gorm.DB, svc *selling_v1.Service, inter
 func perfStatShapes(t *testing.T, db *gorm.DB, caseName, asBuiltSQL, scope string) {
 	t.Helper()
 
-	measurable := "o.cogs > 0 AND o.marketplace_total > 0 AND o.warehouse_fee IS NOT NULL"
+	measurable := "o.goods_cost > 0 AND o.platform_total > 0 AND o.warehouse_fee IS NOT NULL"
 
 	// The head's columns minus the units — written over alias `o`.
 	head := `o.status,
 	        COUNT(*) AS count,
-	        COALESCE(SUM(o.total), 0) AS value,
-	        COALESCE(SUM(o.marketplace_total) FILTER (WHERE ` + measurable + `), 0) AS mp_value,
-	        COALESCE(SUM(o.cogs) FILTER (WHERE ` + measurable + `), 0) AS cogs,
+	        COALESCE(SUM(o.platform_total), 0) AS value,
+	        COALESCE(SUM(o.platform_total) FILTER (WHERE ` + measurable + `), 0) AS mp_value,
+	        COALESCE(SUM(o.goods_cost) FILTER (WHERE ` + measurable + `), 0) AS goods_cost,
 	        COALESCE(SUM(o.warehouse_fee) FILTER (WHERE ` + measurable + `), 0) AS fees,
 	        COUNT(*) FILTER (WHERE NOT (` + measurable + `)) AS margin_unknown,
 	        COUNT(*) FILTER (WHERE o.created_at >= now() - interval '30 days') AS count30_d,
-	        COALESCE(SUM(o.total) FILTER (WHERE o.created_at >= now() - interval '30 days'), 0) AS value30_d`
+	        COALESCE(SUM(o.platform_total) FILTER (WHERE o.created_at >= now() - interval '30 days'), 0) AS value30_d`
 
 	shapes := []struct {
 		name  string
@@ -447,7 +444,7 @@ WHERE ` + scope + `
 GROUP BY o.status`, true, nil},
 		// A denormalised orders.item_quantity cannot be added without a migration, so a column ALREADY on the row
 		// stands in for it: SUM over one more int column of the same row is the work that design would do.
-		{"E denormalised column (proxy: SUM of a column on the row)", `SELECT ` + head + `, COALESCE(SUM(o.shipping_cost), 0) AS item_count FROM orders o WHERE ` + scope + ` GROUP BY o.status`, false, nil},
+		{"E denormalised column (proxy: SUM of a column on the row)", `SELECT ` + head + `, COALESCE(SUM(o.goods_cost), 0) AS item_count FROM orders o WHERE ` + scope + ` GROUP BY o.status`, false, nil},
 	}
 
 	quiet := db.Session(&gorm.Session{Logger: logger.Discard})

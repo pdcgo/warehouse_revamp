@@ -60,8 +60,8 @@ func TestOrderStat_CountsAndValuesEachStatus(t *testing.T) {
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	placeOrder(t, svc, 2, shop) // PLACED, 10_000
-	placeOrder(t, svc, 2, shop) // PLACED, 10_000
+	placeOrder(t, svc, 2, shop) // PENDING, the buyer paid testPlatformTotal
+	placeOrder(t, svc, 2, shop) // PENDING, the same
 	processedOrder(t, svc, shop)
 
 	got := orderStat(t, svc, 2, 0)
@@ -70,8 +70,9 @@ func TestOrderStat_CountsAndValuesEachStatus(t *testing.T) {
 	if placedCount != 2 {
 		t.Fatalf("placed count = %d, want 2", placedCount)
 	}
-	if placedValue != 20_000 {
-		t.Fatalf("placed value = %d, want 20000", placedValue)
+	// The value is what the buyers paid — Σ platform_total.
+	if placedValue != 2*testPlatformTotal {
+		t.Fatalf("placed value = %d, want %d — what the two buyers paid", placedValue, 2*testPlatformTotal)
 	}
 
 	confirmedCount, _ := statusCount(got, sellingv1.OrderStatus_ORDER_STATUS_PROCESSED)
@@ -106,16 +107,16 @@ func TestOrderStat_CancelledCountsInTheCensusButNotTheRevenue(t *testing.T) {
 	if cancelledCount != 1 {
 		t.Fatalf("cancelled count = %d, want 1", cancelledCount)
 	}
-	if cancelledValue != 10_000 {
-		t.Fatalf("cancelled value = %d, want 10000 — the census reports what is there", cancelledValue)
+	if cancelledValue != testPlatformTotal {
+		t.Fatalf("cancelled value = %d, want %d — the census reports what is there", cancelledValue, testPlatformTotal)
 	}
 
 	// The surviving order is the ONLY one in the money.
 	if got.GetPreview().GetOrders_30D() != 1 {
 		t.Fatalf("orders_30d = %d, want 1 (order %d only)", got.GetPreview().GetOrders_30D(), kept)
 	}
-	if got.GetPreview().GetRevenue_30D() != 10_000 {
-		t.Fatalf("revenue_30d = %d, want 10000", got.GetPreview().GetRevenue_30D())
+	if got.GetPreview().GetRevenue_30D() != testPlatformTotal {
+		t.Fatalf("revenue_30d = %d, want %d", got.GetPreview().GetRevenue_30D(), testPlatformTotal)
 	}
 }
 
@@ -174,12 +175,10 @@ func TestOrderStat_ProductFilterNarrowsIt(t *testing.T) {
 	}
 }
 
-// The marketplace total is a NOTE (owner): stored as typed, and no arithmetic anywhere touches it.
-//
-// Pinned as a test rather than a comment because the temptation is structural — it is a money field
-// on an order, sitting beside three others that ARE summed, and the first reader to "fix" the total
-// by folding it in would be counting the same sale twice.
-func TestOrderCreate_MarketplaceTotalIsANoteNotATerm(t *testing.T) {
+// THE PLATFORM TOTAL IS WHAT THE BUYER PAID (the-total-is-ours-the-platform-total-is-theirs): stored as typed, never a
+// term of our own figures — goods_cost and total_cost are the take's and the warehouse's — and it is what the census's
+// revenue counts, since selling 00027 dropped the order's own `total`.
+func TestOrderCreate_ThePlatformTotalIsWhatTheBuyerPaid(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
@@ -188,13 +187,10 @@ func TestOrderCreate_MarketplaceTotalIsANoteNotATerm(t *testing.T) {
 		PlatformCreatedAtUnix: testPlatformDate,
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
-		Subtotal:     10_000,
-		ShippingCost: 5_000,
-		Total:        15_000,
-		// What the storefront actually took — deliberately unrelated to the sum above.
-		MarketplaceTotal: 58_000,
+		// What the storefront actually took.
+		PlatformTotal: 58_000,
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10_000},
+			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -203,21 +199,21 @@ func TestOrderCreate_MarketplaceTotalIsANoteNotATerm(t *testing.T) {
 
 	order := res.Msg.GetOrder()
 
-	if order.GetMarketplaceTotal() != 58_000 {
-		t.Fatalf("marketplace_total = %d, want 58000 — stored exactly as typed",
-			order.GetMarketplaceTotal())
+	if order.GetPlatformTotal() != 58_000 {
+		t.Fatalf("platform_total = %d, want 58000 — stored exactly as typed",
+			order.GetPlatformTotal())
 	}
 
-	// The sum is untouched by it.
-	if order.GetTotal() != 15_000 {
-		t.Fatalf("total = %d, want 15000 (subtotal + shipping) — the marketplace note must not enter it",
-			order.GetTotal())
+	// Our own figures are untouched by it: the picker knew no cost, so the goods cost is unknown, not 58.000.
+	if order.GetGoodsCost() != 0 || order.GetTotalCost() != 0 {
+		t.Fatalf("goods_cost %d, total_cost %v — want 0 and 0: what the buyer paid is not our cost",
+			order.GetGoodsCost(), order.GetTotalCost())
 	}
 
 	// And it survives a re-read, rather than living only in the create response.
 	got := orderStat(t, svc, 2, 0)
-	if got.GetPreview().GetRevenue_30D() != 15_000 {
-		t.Fatalf("revenue_30d = %d, want 15000 — revenue counts `total`, never the marketplace note",
+	if got.GetPreview().GetRevenue_30D() != 58_000 {
+		t.Fatalf("revenue_30d = %d, want 58000 — revenue counts what the buyer paid",
 			got.GetPreview().GetRevenue_30D())
 	}
 }
@@ -238,7 +234,7 @@ func pendingRow(t *testing.T, res *sellingv1.OrderStatResponse) *sellingv1.Order
 }
 
 // THE SUMMARY'S UNITS AND THE MARGIN'S INPUTS (the-summary-follows-the-tab, the-margin-is-mp-minus-total-beli): the units
-// are every order's, while the marketplace value, the cost and the fees cover only the orders the margin can be taken
+// are every order's, while the platform value, the cost and the fees cover only the orders the margin can be taken
 // over — and the census says how many it left out, one per missing fact.
 func TestOrderStat_SumsTheUnitsAndTheMeasurableOrdersMoney(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -255,23 +251,32 @@ func TestOrderStat_SumsTheUnitsAndTheMeasurableOrdersMoney(t *testing.T) {
 		}
 	}
 
-	// Measurable: cost 14.000, the marketplace's 25.000, a frozen fee of 350. 3 units.
+	// Measurable: cost 14.000, the platform's 25.000, a frozen fee of 350. 3 units.
 	measured := feeOrderReq(shop)
-	measured.MarketplaceTotal = 25000
+	measured.PlatformTotal = 25000
 	place(priced, measured)
 
-	// No marketplace figure. 3 units.
-	place(priced, feeOrderReq(shop))
+	// No platform figure. 3 units. Placement refuses that now (platform-total-is-required-at-finalize), so this is an
+	// order placed BEFORE the rule — written with a figure and then taken back to the 0 such an order carries.
+	legacy, err := priced.OrderCreate(context.Background(), connect.NewRequest(feeOrderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
 
-	// No known cost — product 3 is unknown to the picker, so cogs is 0. 1 unit.
+	err = db.Exec("UPDATE orders SET platform_total = 0 WHERE id = ?", legacy.Msg.GetOrder().GetId()).Error
+	if err != nil {
+		t.Fatalf("take the figure back: %v", err)
+	}
+
+	// No known cost — product 3 is unknown to the picker, so goods_cost is 0. 1 unit.
 	unknownCost := feeOrderReq(shop)
-	unknownCost.MarketplaceTotal = 20000
-	unknownCost.Items = []*sellingv1.OrderItem{{ProductId: 3, Sku: "SKU3", Name: "Mystery", Quantity: 1, UnitPrice: 20000}}
+	unknownCost.PlatformTotal = 20000
+	unknownCost.Items = []*sellingv1.OrderItem{{ProductId: 3, Sku: "SKU3", Name: "Mystery", Quantity: 1}}
 	place(priced, unknownCost)
 
-	// Never priced: cost and marketplace figure both known, but no fee was frozen. 3 units.
+	// Never priced: cost and platform figure both known, but no fee was frozen. 3 units.
 	neverPriced := feeOrderReq(shop)
-	neverPriced.MarketplaceTotal = 30000
+	neverPriced.PlatformTotal = 30000
 	place(unpriced, neverPriced)
 
 	row := pendingRow(t, orderStat(t, priced, 2, 0))
@@ -280,12 +285,12 @@ func TestOrderStat_SumsTheUnitsAndTheMeasurableOrdersMoney(t *testing.T) {
 		t.Fatalf("count %d, units %d — want 4 orders and 10 units, every order's", row.GetCount(), row.GetItemCount())
 	}
 
-	if row.GetMpValue() != 25000 || row.GetCogs() != 14000 || row.GetFees() != 350 {
-		t.Fatalf("mp %d, cogs %d, fees %v — want only the measurable order's 25000, 14000 and 350",
-			row.GetMpValue(), row.GetCogs(), row.GetFees())
+	if row.GetMpValue() != 25000 || row.GetGoodsCost() != 14000 || row.GetFees() != 350 {
+		t.Fatalf("mp %d, goods_cost %d, fees %v — want only the measurable order's 25000, 14000 and 350",
+			row.GetMpValue(), row.GetGoodsCost(), row.GetFees())
 	}
 
 	if row.GetMarginUnknown() != 3 {
-		t.Fatalf("margin_unknown = %d, want 3 — no marketplace figure, no cost, never priced", row.GetMarginUnknown())
+		t.Fatalf("margin_unknown = %d, want 3 — no platform figure, no cost, never priced", row.GetMarginUnknown())
 	}
 }

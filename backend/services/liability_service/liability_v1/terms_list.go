@@ -79,10 +79,9 @@ func (s *Service) LiabilityTermsList(
 // starts granting infinite credit to every frozen team.
 func termsToProto(t *liability_service_models.LiabilityTerms) *liabilityv1.LiabilityTerms {
 	return &liabilityv1.LiabilityTerms{
-		TeamId:          t.TeamID,
-		CounterpartyId:  t.CounterpartyID,
-		HandlingFee:     t.HandlingFee,
-		ProductMarkupBp: t.ProductMarkupBP,
-		CreditLimit:     t.CreditLimit,
+		TeamId:         t.TeamID,
+		CounterpartyId: t.CounterpartyID,
+		HandlingFee:    t.HandlingFee,
+		CreditLimit:    t.CreditLimit,
 	}
 }

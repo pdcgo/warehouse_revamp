@@ -47,7 +47,6 @@ func scrape() *sellingv1.OrderDraftPushRequest {
 		ExternalId:   "SHP-100",
 		CustomerName: "Budi",
 		Address:      &sellingv1.OrderAddress{ProvinsiName: "Jawa Barat", AddressLine: "Jl. Merdeka 1"},
-		ShippingCost: 15000,
 		Items: []*sellingv1.OrderDraftItem{
 			{ExternalSku: "MP-1", ExternalName: "Kaos Polos Hitam L", Quantity: 2, UnitPrice: 50000},
 			{ExternalSku: "MP-2", ExternalName: "Topi Baseball", Quantity: 1, UnitPrice: 35000},
@@ -174,7 +173,7 @@ func TestOrderDraftPush_LeavesTouchedFieldsAlone(t *testing.T) {
 	// The app re-scrapes, and disagrees about everything.
 	repush := scrape()
 	repush.CustomerName = "budi"
-	repush.ShippingCost = 21000
+	repush.PlatformTotal = 21000
 	repush.Items = []*sellingv1.OrderDraftItem{
 		{ExternalSku: "MP-9", ExternalName: "Something Else", Quantity: 5, UnitPrice: 1000},
 	}
@@ -204,9 +203,9 @@ func TestOrderDraftPush_LeavesTouchedFieldsAlone(t *testing.T) {
 
 	// …and the untouched field DID move. "Blanks only" is a rule about touched fields, not about
 	// empty ones: the app is still the authority on everything nobody here has claimed.
-	if draft.GetShippingCost() != 21000 {
-		t.Fatalf("shipping_cost = %d, want 21000 — an untouched field must still follow the app",
-			draft.GetShippingCost())
+	if draft.GetPlatformTotal() != 21000 {
+		t.Fatalf("platform_total = %d, want 21000 — an untouched field must still follow the app",
+			draft.GetPlatformTotal())
 	}
 }
 

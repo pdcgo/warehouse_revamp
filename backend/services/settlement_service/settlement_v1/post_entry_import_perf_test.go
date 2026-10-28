@@ -332,7 +332,7 @@ func impExplainSelects(t *testing.T, db *gorm.DB, probes ...*san_perf.Probe) {
 func impAskServer(t *testing.T, sellingDB *gorm.DB) sellingv1connect.ShopServiceClient {
 	t.Helper()
 
-	selling := selling_v1.NewService(sellingDB, nil, nil, nil, nil, nil, nil)
+	selling := selling_v1.NewService(sellingDB, nil, nil, nil, nil, nil, nil, nil)
 
 	mux := http.NewServeMux()
 	path, handler := sellingv1connect.NewShopServiceHandler(selling)

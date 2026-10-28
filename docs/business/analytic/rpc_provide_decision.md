@@ -1014,3 +1014,382 @@ flowchart LR
 | b | changing the group removes the columns that cannot follow, with a toast | Group by Shop with Inventory greyed · switch to Product |
 | d | a chart with one line per shop is capped at 5 lines | the top shops' daily chart at 3, 5 and 10 lines |
 | the contract | unchanged either way — nothing here touches the proto | |
+
+---
+
+## the-analytic-screen-is-accepted
+
+> Owner, in chat (2026-10-27): *"Accept all as recommended"* — to *"accept (with a, b, d as recommended), or tell me
+> what's wrong with the screen?"*. It is the lifecycle's design_accept
+> ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)).
+
+**The verdict.** The Storybook prototype is the design: `Pages/Analytic/Composer` as it stands on branch
+`backup/inventory` on 2026-10-27, on the contract decided above. The three deferred screen details
+([screen-details-wait-for-the-screen](#screen-details-wait-for-the-screen)) close with it, each as recommended:
+[the-rows-line-says-what-the-rows-are](#the-rows-line-says-what-the-rows-are),
+[a-group-change-drops-the-columns-that-cannot-follow](#a-group-change-drops-the-columns-that-cannot-follow),
+[the-chart-waits-for-a-chart-component](#the-chart-waits-for-a-chart-component).
+
+```mermaid
+flowchart LR
+  P["prototype - Pages/Analytic/Composer"] -->|"design_accept, 2026-10-27"| B["backend analysis"]
+  B --> O["proto analytic_base/v1 and the startup checks"]
+  O --> S["supplier first - then settlement, then financial account"]
+  S --> R["route and menu entry - with the first real metric"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| accepted | `frontend/src/pages/analytic/`, `frontend/src/features/analytic/`, and the contract in this file |
+| not accepted, still open | the category order in Add Metric — see [rpc_provide_clarify.md](./rpc_provide_clarify.md#question) |
+| the pending marks | `figures`, `catalogue`, `pickers` — each is removed by the backend step that serves it for real |
+| a contract change after this | a new pass through the screen, not a quiet edit |
+| next | backend analysis, in the order of [the-pattern-replaces-the-shipped-analytics](#the-pattern-replaces-the-shipped-analytics) |
+
+---
+
+## the-rows-line-says-what-the-rows-are
+
+> Owner, in chat (2026-10-27): *"Accept all as recommended"* — to deferred detail **a**. As recommended.
+
+**The verdict.** Whenever a figure ranks the rows, a muted line above the table says what the rows are —
+*"Rows: shops with orders in this period"*. Sorting by Profit hands the ranking to settlement, so a shop with orders and
+no settlement leaves the table; without the line that reads as a shop lost.
+
+```mermaid
+flowchart LR
+  s1["sort by Order Count"] --> l1["Rows: shops with orders in this period"]
+  s2["sort by Profit"] --> l2["Rows: shops with settlement in this period"]
+  s3["a time group sorted by period"] --> l3["no line - the rows are the days"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| shown | whenever the rows are ranked by a metric's field — the metric named is the one whose service ranks |
+| not shown | the rows sorted by their key — a time group by its period, where the provider lists the days itself and no service ranks |
+| built | `AnalyticPage` — the `rowsLine` prop is gone; story `SortedByProfit` pins both texts |
+
+---
+
+## a-group-change-drops-the-columns-that-cannot-follow
+
+> Owner, in chat (2026-10-27): *"Accept all as recommended"* — to deferred detail **b**. As recommended.
+
+**The verdict.** Changing the table's group removes every metric that cannot be grouped by the new one, and an info
+toast names what went and why. The rows ARE the group, so the metrics give way, never the group — the same rule as a
+filter an added metric cannot use ([a-new-metric-removes-the-filters-it-cannot-use](#a-new-metric-removes-the-filters-it-cannot-use),
+[a-removed-filter-is-announced](#a-removed-filter-is-announced)).
+
+```mermaid
+flowchart LR
+  g["group Product - Orders, Stock lost"] -->|"switch to Shop"| c{"each metric lists SHOP"}
+  c -->|"Orders - yes"| k["kept"]
+  c -->|"Stock lost - no"| d["removed"]
+  d --> t["toast - Stock lost removed, cannot be grouped by shops"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| removed | every chosen metric whose `supported_group_by` lacks the new group |
+| the sort | kept if its metric survives; otherwise it falls back to the group's default |
+| the toast | `info`, the removed metrics named, the reason the new group |
+| built | `AnalyticPage.setGroup`; stories `InventoryGreyedByShop`, `SwitchGroupToProduct` |
+
+---
+
+## the-chart-waits-for-a-chart-component
+
+> Owner, in chat (2026-10-27): *"Accept all as recommended"* — to deferred detail **d**. As recommended.
+
+**The verdict.** The screen is accepted **without** a chart. A chart is its own pass, and it starts with a chart
+component in the design system (`components/`), which the app does not have. The 5-line cap is decided there, with the
+chart on screen. Nothing in the contract changes either way.
+
+```mermaid
+flowchart LR
+  a["screen accepted - no chart"] --> c["chart pass - a chart component in components/"]
+  c --> st["stories at 3, 5 and 10 lines"]
+  st --> cap["the owner decides the cap"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| now | no chart on `Pages/Analytic/Composer`; the table and the headline carry the report |
+| the chart pass | a chart component with its story first, then the per-shop daily chart, then the cap |
+| the contract | unchanged — a chart reads the same `MetricData` the table does |
+
+---
+
+## order-opens-the-metric-picker-for-now
+
+> Owner, in chat (2026-10-27): *"for q 11 for now yes"* — to [Q11](./rpc_provide_clarify.md#question), *"keep Order
+> first, or your doc's order?"*. As recommended, and marked *for now* by the owner.
+
+**The verdict.** For now, Add Metric lists its categories *Order, Settlement, Inventory, Ads, Expense*, and opens on
+**Order** — the figure every team reads daily. Your §How Metric Selected lists them *Expense* first; that list names
+the categories, and the picker's order is this entry. *For now*: revisit when real metrics arrive and it is clear which
+category people open most.
+
+```mermaid
+flowchart LR
+  a["Add Metric"] --> o["opens on Order"]
+  o --> l["Order · Settlement · Inventory · Ads · Expense"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the order | `METRIC_CATEGORIES` in `frontend/src/features/analytic/catalogue.ts` — unchanged |
+| opens on | the first category, Order |
+| revisit | when real metrics are wired, by which category is opened most |
+
+---
+
+## a-filter-names-one-id-and-shares-its-types-number
+
+> Owner, in chat (2026-10-27): *"Continue"* — to *"are you OK with the two filter details, and shall I go on to
+> supplier?"*, after backend step 1 filled in what the doc left open. As recommended.
+
+**The verdict.** Each filter carries **one** id, because the accepted screen narrows by one shop, one product, one
+supplier. Each `FilterItem` case is numbered as its `FilterType`, so a filter maps to its type with no table.
+
+```mermaid
+flowchart LR
+  t["FILTER_TYPE_SHOP = 5"] --- c["FilterItem.shop_filter = 5"]
+  c --> s["ShopFilter - shop_id, one id"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the filters | `DateRangeFilter{date_min, date_max}`, `KeywordFilter{keyword}`, `ProductFilter{product_id}`, `TeamFilter{team_id}`, `ShopFilter{shop_id}`, `SupplierFilter{supplier_id}` |
+| the numbering | `FilterItem` case N is `FilterType` N — date range 1 … supplier 6; a new type takes the next number in both |
+| limits | a page 1–200, a key list at most 200, a keyword 1–100 characters |
+| multi-select later | a new `repeated` field beside the single id — the single id is never reused |
+| where | [proto/warehouse/analytic_base/v1/analytic.proto](../../../proto/warehouse/analytic_base/v1/analytic.proto) |
+
+---
+
+## the-generic-keyword-is-removed
+
+> Owner (2026-10-27), in [rpc_provide.md](./rpc_provide.md) — `FILTER_TYPE_KEYWORD` removed from `FilterType` — and in
+> chat: *"i remove FILTER_TYPE_KEYWORD"*. To [what-a-keyword-matches](./rpc_provide_clarify.md#question), *"a keyword
+> names its dimension (A), matches the rows (B), or no keyword (C)?"* — C, against my A.
+
+**The verdict.** No filter type is a bare keyword. A filter means one thing in every column; a keyword meant whatever
+each metric chose, so two columns of one row could be narrowed by different things behind one box.
+
+```mermaid
+flowchart LR
+  k["FILTER_TYPE_KEYWORD"] -->|"removed"| f["FilterType - date range, product, team, shop, supplier"]
+  f --> one["one filter, one meaning in every column"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `FilterType` | `UNSPECIFIED` · `DATE_RANGE` · `PRODUCT` · `TEAM` · `SHOP` · `SUPPLIER` |
+| the number 2 | reserved in `FilterType` and in `FilterItem`, so case N stays `FilterType` N ([a-filter-names-one-id-and-shares-its-types-number](#a-filter-names-one-id-and-shares-its-types-number)) |
+| the code it removes | `KeywordFilter` in `analytic_base`; `FILTER_TYPE_KEYWORD` on `metrics/suppliers`, its keyword join and their tests |
+| ⚠ still open | the Supplier Report's search is sent as that keyword — [the-supplier-search-loses-its-filter](./rpc_provide_clarify.md#the-supplier-search-loses-its-filter). The code waits for it |
+
+---
+
+## the-supplier-report-drops-its-search
+
+> Owner, in chat (2026-10-28): *"b"* — to [the-supplier-search-loses-its-filter](./rpc_provide_clarify.md#question),
+> *"keep the Supplier Report's search as `FILTER_TYPE_SUPPLIER_KEYWORD` (A), or let the search go (B)?"* — B, against
+> my A.
+
+**The verdict.** The Supplier Report has no search. It ranks every supplier in the window, narrowed only by whose
+restocks; one supplier's figures are its Statistics tab, a click from its row. Supersedes
+[the-supplier-report-searches-like-discover](../supplier/context_decision.md#superseded-the-supplier-report-searches-like-discover).
+
+```mermaid
+flowchart LR
+  r["Supplier Report"] --> f["the window, whose restocks"]
+  f --> k["the ranking and the headline - every supplier"]
+  k -->|"a row"| s["that supplier's Statistics tab"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `metrics/suppliers` filters | `DATE_RANGE` (required) · `TEAM` · `SUPPLIER` |
+| the headline | every supplier in the window, or one team's restocks — no longer *"what the search found"* |
+| a one-supplier picker | not added — a ranking narrowed to one supplier is one row, which the Statistics tab already shows. ⚠ My reading of B, not asked |
+| removed | the search box and its two texts, the story `TheSearchNarrowsTheRankingAndTheHeadline`, the keyword join in `metric_shared.go` and its tests |
+| kept | `SupplierList`'s `q` — Discover's search is its own request field, not this filter |
+
+---
+
+## the-filters-gain-warehouse-and-user
+
+> Owner, in chat (2026-10-28): *"continue"* — to [the-tree-names-filters-the-enum-lacks](./rpc_provide_clarify.md#question), *"add
+> `FILTER_TYPE_WAREHOUSE` (its own type, not `TEAM`) and `FILTER_TYPE_USER` — should I go with that?"*. Read as yes;
+> as recommended.
+
+**The verdict.** `FilterType` gains `WAREHOUSE` and `USER`, each one id. A warehouse is a team in this system, but a
+warehouse fee has **both** a selling team and a warehouse, so `TEAM` cannot carry both.
+
+```mermaid
+flowchart LR
+  fee["a warehouse fee"] --> t["TEAM - whose figures"]
+  fee --> w["WAREHOUSE - the warehouse team it happened in"]
+  fee --> u["USER - who it is booked to"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `FilterType` | + `FILTER_TYPE_WAREHOUSE = 7` · `FILTER_TYPE_USER = 8` |
+| `FilterItem` | `WarehouseFilter{warehouse_id}` = 7 · `UserFilter{user_id}` = 8 — one id each, the case number its type's ([a-filter-names-one-id-and-shares-its-types-number](#a-filter-names-one-id-and-shares-its-types-number)) |
+| `TEAM` and `WAREHOUSE` | both team ids, two roles: `TEAM` stays whose figures they are, `WAREHOUSE` is the warehouse team the fact happened in. A metric with both roles lists both |
+| `USER` | the user the fact is booked to — each metric's doc says which, as for `GROUP_TYPE_USER` ([the-group-enum-grows-with-the-reports](#the-group-enum-grows-with-the-reports)) |
+| when | added to `analytic_base` with the first metric that lists one (Warehouse Fee or Order Created), not before, the same as a group |
+| your doc | `FilterType` gains the two lines — yours to write |
+
+---
+
+## a-field-declares-its-stat-type
+
+> Owner (2026-10-28), in [rpc_provide.md](./rpc_provide.md) — `enum FieldStatType` and a `field_stat_type` field option
+> beside `metric_sort`.
+
+**The verdict.** A metric's number field says what kind of number it is (a quantity, a currency amount or a ratio), on
+the field itself, read by reflection like `metric_sort`.
+
+```mermaid
+flowchart LR
+  f["a metric's number field"] --> q["QTY - order_count, transaction_count"]
+  f --> c["CURRENCY - order_total, amount"]
+  f --> r["RATIO - broken_rate"]
+```
+
+**The spec.**
+
+```proto
+enum FieldStatType {
+  FIELD_STAT_TYPE_UNSPECIFIED = 0;
+  FIELD_STAT_TYPE_RATIO = 1;
+  FIELD_STAT_TYPE_QTY = 2;
+  FIELD_STAT_TYPE_CURRENCY = 3;
+}
+
+extend google.protobuf.FieldOptions {
+  SortOption    metric_sort     = 50003;
+  FieldStatType field_stat_type = 50004;   // 50002 is role_base's use_scope
+}
+```
+
+| | |
+| --- | --- |
+| replaces | the screen's own `kind: "count" \| "money"` in `features/analytic/catalogue.ts` — that copy goes when the provider reads the descriptor |
+| open | whether every field must carry it, and what checks it — [a-stat-type-is-checked-at-startup](./rpc_provide_clarify.md#a-stat-type-is-checked-at-startup) |
+
+---
+
+## the-graph-draws-the-table
+
+> Owner (2026-10-28), in [rpc_provide.md](./rpc_provide.md) §Analytic UI — *"graph is separate by `FieldStatType`"* — and
+> in chat: *"for graph is line chart. x is the value metric, and y is grouped things. and same field type is one graph
+> with column is the legend"*. To [what-the-graph-draws](./rpc_provide_clarify.md#question), *"does the graph draw the
+> table (A), or is it composed on its own (B)?"*, that is A, as recommended. On which way it is drawn, *"A"*: the group
+> along the bottom, against the literal reading of *"x is the value"*.
+
+**The verdict.** The graph is the table drawn as **line charts**: the table's group along the bottom, the value up the
+side, **one graph per `FieldStatType`** among the chosen fields, and each of the table's columns a line, named in the
+legend. Two metrics' money fields share one graph, and that shared graph is where they get compared.
+
+```mermaid
+flowchart LR
+  t["the table - group Daily - Orders and Settlement chosen"] --> f["its columns"]
+  f -->|"CURRENCY"| c["graph - Order Total, Settlement Amount"]
+  f -->|"QTY"| q["graph - Order Count"]
+  f -->|"RATIO - none chosen"| n["no graph"]
+  c --> l["a line per column - the days along the bottom, Rp up the side"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the kind | a line chart, for every group. ⚠ Against my bars for a shop or product group (a line there joins shops with nothing between them, so its slope only shows the sort order). Raised twice, answered with *"line chart"* |
+| along the bottom | the table's keys, in the table's order: the days of a time group, or the current page's rows for an id group |
+| up the side | the value, formatted by the graph's `FieldStatType` (*Rp*, a count, a %) |
+| a graph | one per `FieldStatType` among the chosen fields, so at most three, in column order |
+| a line | one per column, named in the legend as the column is |
+| the calls, the state | none of its own: it draws the `MetricData` the table already holds, from the same URL ([the-report-lives-in-the-url](#the-report-lives-in-the-url)). ⚠ My reading of A, not asked |
+| `SUMMARY` | no graph, because the headline already shows it. ⚠ My reading of A, not asked |
+| not this graph | one line per shop over the days ([a-metric-has-one-key](#a-metric-has-one-key)), a line per key rather than per column. It is a different chart |
+| when | the chart pass ([the-chart-waits-for-a-chart-component](#the-chart-waits-for-a-chart-component)), which still starts with a chart component. The cap on lines per graph is decided there |
+| depends on | every number field carrying its stat type, since a field without one has no graph to go into ([a-stat-type-is-checked-at-startup](./rpc_provide_clarify.md#a-stat-type-is-checked-at-startup)) |
+
+---
+
+## the-table-and-the-graph-are-tabs
+
+> Owner, in chat (2026-10-28): *"make tab table and graph. so its not one view"*, on seeing the graph built above the
+> table.
+
+**The verdict.** The report shows **one view at a time**: a **Table** tab and a **Graph** tab under the headline. The
+graph is still the table drawn ([the-graph-draws-the-table](#the-graph-draws-the-table)). It just has its own tab now
+instead of sitting above the table.
+
+```mermaid
+flowchart LR
+  h["the headline - every figure, group SUMMARY"] --> t{"the tab"}
+  t -->|"Table - the default"| tb["the rows line, the table, the pager"]
+  t -->|"Graph"| gr["the rows line, a graph per stat type, the pager"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the tabs | **Table** · **Graph**, each with its icon, the chosen one in rose ([a-selected-tab-is-in-the-main-tone](../../technical/frontend/context_decision.md#a-selected-tab-is-in-the-main-tone)) |
+| the default | Table. ⚠ My reading, not asked |
+| in the URL | `v=graph`, so a link or a refresh opens the same view ([the-report-lives-in-the-url](#the-report-lives-in-the-url)); Table is the default and is left out. ⚠ My reading, not asked |
+| above both | the group, the metrics, the filters and the headline: they define the report, whichever way it is drawn |
+| on both | the rows line and the pager, because the graph draws the table's current page. ⚠ My reading, not asked |
+| switching | keeps the page, the sort and the filters, and only changes how the rows are drawn |
+| no rows | the same *nothing in this period* line on both tabs |
+
+---
+
+## the-team-group-covers-warehouses
+
+> Owner, in chat (2026-10-28): *"no group team is enough"*, to
+> [a-report-can-group-by-warehouse](./rpc_provide_clarify.md#question), *"should `GroupType` gain
+> `GROUP_TYPE_WAREHOUSE = 11`?"*. Against my yes.
+
+**The verdict.** `GroupType` gets no warehouse group. A warehouse is a team in this system, so a report that puts
+warehouses side by side groups by `GROUP_TYPE_TEAM`.
+
+```mermaid
+flowchart LR
+  q["a row per warehouse"] --> t["GROUP_TYPE_TEAM - a warehouse is a team"]
+  t -.->|"not added"| w["GROUP_TYPE_WAREHOUSE"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `GroupType` | unchanged: `TEAM` = 9 and `USER` = 10 are the last |
+| comparing warehouses | group by `TEAM` |
+| a fact with two teams | ⚠ My reading, not asked: a warehouse fee has a selling team and a warehouse team. The caller's scope already says whose figures they are, so `TEAM` groups by the other team, which for a seller is the warehouse. Each metric's doc says which team, as it already does for `USER` |
+| the filter | unchanged: `FILTER_TYPE_WAREHOUSE` stays its own type ([the-filters-gain-warehouse-and-user](#the-filters-gain-warehouse-and-user)). The tension between the two is in the clarify's Contradiction section |

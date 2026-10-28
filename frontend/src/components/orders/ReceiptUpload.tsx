@@ -25,10 +25,13 @@ export function hasReceipt(r: ReceiptValue): boolean {
 // photograph a PDF they already have.
 const ACCEPT = "image/*,application/pdf";
 
-// The server's own ceiling (docstore.Config.MaxSizeBytes). Checked here too so an oversized file is
+// The server's own ceiling (docstore.DefaultMaxSizeBytes) — 15 MB
+// (an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once). Checked here too so an oversized file is
 // refused before it is uploaded rather than after — the same file, the same answer, one round-trip
 // earlier.
-const MAX_BYTES = 10 * 1024 * 1024;
+//
+// ⚠ NOT the label check's cap. A PDF over LABEL_MAX_BYTES (2 MB) still uploads; it is only never read.
+const MAX_BYTES = 15 * 1024 * 1024;
 
 function isPdf(mimeType: string): boolean {
   return mimeType === "application/pdf";

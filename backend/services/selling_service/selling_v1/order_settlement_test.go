@@ -36,10 +36,10 @@ func createMarketplaceOrder(
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
-		MarketplaceTotal: marketplaceTotal,
+		CustomerName:  "Budi",
+		PlatformTotal: marketplaceTotal,
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -61,7 +61,7 @@ func TestOrderCreate_ThePlacedEventCarriesTheSale(t *testing.T) {
 
 	got := rec.placed(t)
 	if got.GetOrderId() != placed.GetId() || got.GetShopId() != shopID || got.GetTeamId() != 2 ||
-		got.GetMarketplaceTotal() != 9500 || got.GetActorId() != 42 {
+		got.GetPlatformTotal() != 9500 || got.GetActorId() != 42 {
 		t.Fatalf("the placed event does not carry the sale: %+v", got)
 	}
 

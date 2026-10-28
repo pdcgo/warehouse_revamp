@@ -1,8 +1,11 @@
+import { create } from "@bufbuild/protobuf";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { orderDetailFor, orders, teams, users } from "../../../.storybook/fixtures";
+import { orderDetailFor, orders, products, teams, users } from "../../../.storybook/fixtures";
+import { OrderTimelineLogSchema } from "../../gen/warehouse/selling/v1/order_pb";
+import { NotesSection, noteWriter } from "./components/NotesSection";
 import { OrderDetailPage } from "./index";
 import { ORDER_DETAIL_PENDING } from "./pending";
 
@@ -23,12 +26,24 @@ import { ORDER_DETAIL_PENDING } from "./pending";
 //   | story                             | the rule it pins                                        |
 //   | --------------------------------- | ------------------------------------------------------- |
 //   | Default                           | header, tabs, lines, money — the whole Info tab          |
-//   | MarketplaceTotalDiffersFromOurs   | two totals, two facts — settlement's whole premise       |
+//   | PlatformTotalDiffersFromOurs      | two totals, two facts — settlement's whole premise       |
 //   | Timeline                          | the history tab, with the people resolved                |
 //   | UnrecordedActor                   | actor 0 shows the STEP and stays silent about who        |
 //   | CancelledOrderHasNoCancelButton   | a terminal order cannot be cancelled again               |
 //   | WarehouseReadsAnotherTeamsOrder   | the two-sided scope                                      |
+//   | TheBuyersUsernameShowsUnder…      | the username under the customer, and nothing without one |
+//   | ABorrowedLineIsPricedWithItsMarkup | harga beli is the price with the owner's markup         |
+//   | ALineShowsItsProductPicture       | picture, name, SKU — the picture from ONE ProductByIds    |
+//   | ALineWithNoPictureKeepsThe…       | no picture to find: the line in full, with the placeholder |
 //   | NotFound                          | an id this team may not read                             |
+//   | NotesAreListedNewestFirst         | Catatan: the note rows, newest first, side and writer     |
+//   | AddNoteWritesANote                | a note is written, and the re-read shows it on top       |
+//   | AddNoteIsDisabledWhileEmpty       | nothing — or only spaces — is not a note                 |
+//   | ANoteIsNeverEditedOrDeleted       | Add Note is Catatan's only control                       |
+//   | NoNotesSaysSo                     | an order with no notes says so, never a blank card       |
+//   | TheTimelineKeepsStatusRowsOnly    | a note is not a step; a hand-back's reason stays on it    |
+//   | WarehouseDetailShowsTheNotes…     | the warehouse reads the notes and writes as the warehouse |
+//   | WarehouseTimelineKeepsStatus…     | the warehouse's Timeline tab drops the notes too          |
 
 const SELLER = teams[1]!; // Toko Melati (12)
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
@@ -40,6 +55,17 @@ const FULL = orderDetailFor(101n)!;
 const CANCELLED = orders.find((o) => o.id === 107n)!;
 // 110 belongs to Toko Kenanga but ships from Gudang Pusat — the other half of the two-sided read.
 const OTHER_TEAMS = orders.find((o) => o.id === 110n)!;
+
+// 101's two NOTE rows (a-note-is-a-timeline-row) — status 0, one per side. The warehouse's is the later one.
+const FULL_NOTES = FULL.timelineLogs.filter((log) => log.status === 0);
+const SELLER_NOTE = FULL_NOTES.find((log) => log.from === 2)!;
+const WAREHOUSE_NOTE = FULL_NOTES.find((log) => log.from === 1)!;
+// 102 went back to pending WITH A REASON — a status row's `note` — beside a warehouse note row.
+const HANDED_BACK = orderDetailFor(102n)!;
+const HANDBACK_REASON = HANDED_BACK.timelineLogs.find((log) => log.status !== 0 && log.note)!.note!;
+const HANDED_BACK_NOTE = HANDED_BACK.timelineLogs.find((log) => log.status === 0)!.note!;
+const ANI = users.find((u) => u.id === 61n)!;
+const BUDI = users.find((u) => u.id === 62n)!;
 
 const Routed = (path: string) =>
   routedPage(
@@ -108,15 +134,15 @@ export const Mobile: Story = {
 /**
  * TWO TOTALS, TWO FACTS — and they disagree on purpose.
  *
- * `total` is what WE quoted; `marketplace_total` is what the BUYER PAID THE PLATFORM. Settlement
- * opens every order's account from the marketplace figure and never from ours, so a fixture where
+ * `total_cost` is what the order cost US (goods + the warehouse's fee); `platform_total` is what the BUYER PAID THE
+ * PLATFORM. Settlement opens every order's account from the platform figure and never from ours, so a fixture where
  * the two matched would make every downstream screen look correct by accident.
  *
  * ⚠ This is the number the settlement design is built on — see
  * `pages/order-settlement/components/OrderDetailPreview.tsx`, which asserts the same figure reaches
  * the settlement tab unchanged.
  */
-export const MarketplaceTotalDiffersFromOurs: Story = {
+export const PlatformTotalDiffersFromOurs: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -124,7 +150,7 @@ export const MarketplaceTotalDiffersFromOurs: Story = {
 
     // Two facts on two tiles: what the platform paid, and what the order cost us (goods + fee). The
     // list shows the same pair (`the-row-shows-total-beli-and-total-mp`).
-    await expect(FULL.marketplaceTotal).not.toBe(FULL.total);
+    await expect(Number(FULL.platformTotal)).not.toBe(FULL.totalCost);
     await expect(canvas.getByTestId("tile-mp")).toHaveTextContent("Rp 245.000");
     await expect(canvas.getByTestId("tile-system")).toHaveTextContent("Rp 150.500");
   },
@@ -184,6 +210,70 @@ export const UnrecordedActor: Story = {
 };
 
 /**
+ * A BORROWED LINE IS PRICED WITH ITS OWNER'S MARKUP (the-cross-charge-lives-on-the-line).
+ *
+ * Harga beli is what one unit cost the SELLER — `unit_cost_with_markup` — never the bare drawn cost, so the line adds
+ * up to the order's `goods_cost` and total sistem is that plus the fee, as on the list's Beli cell.
+ */
+const AtBorrowed = Routed("/orders/105");
+
+export const ABorrowedLineIsPricedWithItsMarkup: Story = {
+  render: () => <AtBorrowed />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-item-1")).toBeInTheDocument());
+
+    // 157.867 drawn + 31.573 markup = 189.440 a unit, one unit.
+    const line = canvas.getByTestId("order-item-1");
+    await expect(line).toHaveTextContent("Rp 189.440");
+    await expect(line).not.toHaveTextContent("Rp 157.867");
+
+    // goods_cost 189.440 + the frozen fee 2.000.
+    await expect(canvas.getByTestId("tile-system")).toHaveTextContent("Rp 191.440");
+  },
+};
+
+/**
+ * A LINE SHOWS ITS PRODUCT — "gambar nama sku": the picture, the name, the SKU.
+ *
+ * `OrderItem` carries no picture; the page reads it off `Product` with one batched `ProductByIds` for every line. 106's
+ * line is on Beras (74), the fixture product drawn with a picture. 101's lines name products the catalogue does not
+ * answer for, and they keep the placeholder — the line is still there in full, never blanked.
+ */
+const AtPictured = Routed("/orders/106");
+const BERAS = products.find((p) => p.id === 74n)!;
+
+export const ALineShowsItsProductPicture: Story = {
+  render: () => <AtPictured />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-item-1")).toBeInTheDocument());
+    const line = canvas.getByTestId("order-item-1");
+
+    await waitFor(() => expect(within(line).getByRole("img")).toHaveAttribute("src", BERAS.defaultImageThumbnailUrl));
+    await expect(line).toHaveTextContent(BERAS.name);
+    await expect(line).toHaveTextContent(BERAS.sku);
+  },
+};
+
+export const ALineWithNoPictureKeepsThePlaceholder: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-item-1")).toBeInTheDocument());
+
+    for (const item of FULL.items) {
+      const line = canvas.getByTestId(`order-item-${item.id}`);
+      await expect(line).toHaveTextContent(item.name);
+      await expect(line).toHaveTextContent(item.sku);
+      await expect(within(line).queryByRole("img")).toBeNull();
+    }
+  },
+};
+
+/**
  * A CANCELLED ORDER CANNOT BE CANCELLED AGAIN.
  *
  * Cancel is offered only while the goods are still in the building (PLACED or CONFIRMED). On a
@@ -229,6 +319,31 @@ export const WarehouseReadsAnotherTeamsOrder: Story = {
       OTHER_TEAMS.id.toString(),
     );
     await expect(canvas.getByText(OTHER_TEAMS.customerName)).toBeInTheDocument();
+    // The warehouse's Info tab names the buyer's marketplace username beside the customer, too.
+    await expect(canvas.getByTestId("order-detail-buyer-username")).toHaveTextContent(OTHER_TEAMS.buyerUsername!);
+  },
+};
+
+/**
+ * THE BUYER'S USERNAME IS SHOWN UNDER THE CUSTOMER — and NOTHING when there is none
+ * (the-buyers-username-is-optional). 101 carries one; 107 does not, and its recipient section draws no `—` row for it.
+ */
+export const TheBuyersUsernameShowsUnderTheCustomer: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-detail-title")).toBeInTheDocument());
+    await expect(canvas.getByTestId("order-detail-buyer-username")).toHaveTextContent(FULL.buyerUsername!);
+  },
+};
+
+export const NoBuyersUsernameShowsNothing: Story = {
+  render: () => <AtCancelled />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("section-recipient")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("order-detail-buyer-username")).not.toBeInTheDocument();
   },
 };
 
@@ -317,6 +432,202 @@ export const SettlementNotRecordedYet: Story = {
   },
 };
 
+// ── Catatan — a note is a timeline row with no status (a-note-is-a-timeline-row) ─────────────────────
+
+/**
+ * THE NOTE ROWS, NEWEST FIRST, EACH WITH ITS SIDE AND ITS WRITER. 101 has one per side: the seller's, typed on the
+ * create form, and the warehouse's, written later — so the warehouse's leads. The writers come from the page's one
+ * actor lookup, the same one the timeline reads.
+ */
+export const NotesAreListedNewestFirst: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const section = await canvas.findByTestId("section-notes");
+    const notes = await within(section).findAllByTestId("order-note");
+
+    await expect(notes).toHaveLength(2);
+
+    await expect(notes[0]).toHaveAttribute("data-from", "warehouse");
+    await expect(within(notes[0]!).getByTestId("order-note-text")).toHaveTextContent(WAREHOUSE_NOTE.note!);
+    await expect(within(notes[0]!).getByTestId("order-note-meta")).toHaveTextContent("Warehouse");
+
+    await expect(notes[1]).toHaveAttribute("data-from", "selling");
+    await expect(within(notes[1]!).getByTestId("order-note-text")).toHaveTextContent(SELLER_NOTE.note!);
+    await expect(within(notes[1]!).getByTestId("order-note-meta")).toHaveTextContent("Seller");
+
+    await waitFor(() => expect(within(notes[0]!).getByTestId("order-note-by")).toHaveTextContent(BUDI.name));
+    await expect(within(notes[1]!).getByTestId("order-note-by")).toHaveTextContent(ANI.name);
+  },
+};
+
+/**
+ * ADD NOTE WRITES ONE, and the re-read shows it on top. The page invalidates rather than splicing the row in, so the
+ * note appearing is the server's answer coming back — from `selling`, because the seller writes with its own team.
+ */
+export const AddNoteWritesANote: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const section = await canvas.findByTestId("section-notes");
+    await within(section).findAllByTestId("order-note");
+
+    const input = within(section).getByRole("textbox", { name: "New note" });
+    await userEvent.type(input, "Kirim sebelum jam 3 sore.", { delay: 40 });
+    // The limit is counted as it is typed.
+    await expect(within(section).getByTestId("notes-count")).toHaveTextContent("25 / 500");
+
+    await userEvent.click(within(section).getByRole("button", { name: "Add Note" }));
+
+    await waitFor(async () => {
+      const notes = within(section).getAllByTestId("order-note");
+      await expect(notes).toHaveLength(3);
+      await expect(notes[0]).toHaveTextContent("Kirim sebelum jam 3 sore.");
+    });
+
+    const written = within(section).getAllByTestId("order-note")[0]!;
+    await expect(written).toHaveAttribute("data-from", "selling");
+    await waitFor(() => expect(within(written).getByTestId("order-note-by")).toHaveTextContent(ANI.name));
+    await waitFor(() => expect(input).toHaveValue(""));
+  },
+};
+
+/** NOTHING IS NOT A NOTE — and neither is a line of spaces: the server trims, and so does the button. */
+export const AddNoteIsDisabledWhileEmpty: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const section = await canvas.findByTestId("section-notes");
+    const add = within(section).getByRole("button", { name: "Add Note" });
+
+    await expect(add).toBeDisabled();
+
+    const input = within(section).getByRole("textbox", { name: "New note" });
+    await userEvent.type(input, "   ", { delay: 40 });
+    await expect(add).toBeDisabled();
+
+    await userEvent.type(input, "ok", { delay: 40 });
+    await expect(add).toBeEnabled();
+  },
+};
+
+/**
+ * A VIEWER WHO IS NEITHER END WRITES NO NOTE — Root and Administrator read every team's orders, but a note always comes
+ * from the order's selling team or its warehouse, and the server refuses anybody else. So the box is not drawn at all,
+ * rather than offered and refused; the notes themselves are still read.
+ */
+export const ANeitherEndViewerGetsNoAddNote: Story = {
+  render: () => (
+    <NotesSection
+      teamId={noteWriter(1n, FULL)}
+      orderId={FULL.id}
+      logs={FULL.timelineLogs.map((log) => create(OrderTimelineLogSchema, log))}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(noteWriter(SELLER.id, FULL)).toBe(SELLER.id);
+    await expect(noteWriter(WAREHOUSE.id, FULL)).toBe(WAREHOUSE.id);
+    await expect(canvas.queryByTestId("notes-composer")).not.toBeInTheDocument();
+    await expect(canvas.getAllByTestId("order-note")).toHaveLength(2);
+  },
+};
+
+/**
+ * A NOTE IS NEVER EDITED AND NEVER DELETED — a correction is a new note. The only control in Catatan is Add Note: no
+ * pencil and no bin on any row, absent rather than greyed.
+ */
+export const ANoteIsNeverEditedOrDeleted: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const section = await canvas.findByTestId("section-notes");
+    await within(section).findAllByTestId("order-note");
+
+    const buttons = within(section).getAllByRole("button");
+    await expect(buttons).toHaveLength(1);
+    await expect(buttons[0]).toHaveAccessibleName("Add Note");
+    await expect(within(section).queryByRole("button", { name: /edit|delete|remove/i })).toBeNull();
+  },
+};
+
+/** AN ORDER WITH NO NOTES SAYS SO — a sentence, never a blank card. 107 has none. */
+export const NoNotesSaysSo: Story = {
+  render: () => <AtCancelled />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const section = await canvas.findByTestId("section-notes");
+
+    await expect(within(section).getByTestId("notes-empty")).toHaveTextContent("No notes on this order yet.");
+    await expect(within(section).queryByTestId("notes-list")).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * THE TIMELINE IS THE STATUS ROWS. A note row is not a step — it is in Catatan, and only there — while a STATUS row's
+ * own reason (102 went back to pending because Rak A was empty) stays under the step it explains.
+ */
+const AtHandedBack = Routed(`/orders/${HANDED_BACK.id}`);
+
+export const TheTimelineKeepsStatusRowsOnly: Story = {
+  render: () => <AtHandedBack />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rail = await canvas.findByTestId("timeline-rail");
+
+    await expect(rail).toHaveTextContent("Handed back to pending");
+    await expect(rail).toHaveTextContent(HANDBACK_REASON);
+    await expect(rail).not.toHaveTextContent(HANDED_BACK_NOTE);
+    await expect(canvas.queryByTestId("order-timeline-note")).not.toBeInTheDocument();
+
+    const notes = await within(canvas.getByTestId("section-notes")).findByTestId("notes-list");
+    await expect(notes).toHaveTextContent(HANDED_BACK_NOTE);
+    await expect(notes).not.toHaveTextContent(HANDBACK_REASON);
+  },
+};
+
+/**
+ * THE WAREHOUSE READS THE NOTES AND WRITES ONE — on its Info tab, where the order's one note card used to be. It
+ * writes with ITS team id, so the server records the note as the warehouse's.
+ */
+export const WarehouseDetailShowsTheNotesAndAddsOne: Story = {
+  beforeEach: asTeam(WAREHOUSE.id),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await canvas.findByTestId("order-detail-notes");
+    const notes = await within(card).findAllByTestId("order-note");
+
+    await expect(notes).toHaveLength(2);
+    await expect(notes[0]).toHaveTextContent(WAREHOUSE_NOTE.note!);
+    await expect(notes[1]).toHaveTextContent(SELLER_NOTE.note!);
+    // The single `order.note` card is gone.
+    await expect(canvas.queryByTestId("order-detail-note")).not.toBeInTheDocument();
+
+    const input = within(card).getByRole("textbox", { name: "New note" });
+    await userEvent.type(input, "Paket siap jam 2 siang.", { delay: 40 });
+    await userEvent.click(within(card).getByRole("button", { name: "Add Note" }));
+
+    await waitFor(async () => {
+      const after = within(card).getAllByTestId("order-note");
+      await expect(after).toHaveLength(3);
+      await expect(after[0]).toHaveTextContent("Paket siap jam 2 siang.");
+      await expect(after[0]).toHaveAttribute("data-from", "warehouse");
+    });
+  },
+};
+
+/** THE WAREHOUSE'S TIMELINE TAB DROPS THE NOTES TOO, and keeps the hand-back's reason on its step. */
+export const WarehouseTimelineKeepsStatusRowsOnly: Story = {
+  beforeEach: asTeam(WAREHOUSE.id),
+  render: () => <AtHandedBack />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("order-detail-tab-timeline"));
+    const timeline = await canvas.findByTestId("order-detail-timeline");
+
+    await waitFor(() => expect(timeline).toHaveTextContent(HANDBACK_REASON));
+    await expect(timeline).not.toHaveTextContent(HANDED_BACK_NOTE);
+  },
+};
+
 // ── From the approved preview ───────────────────────────────────────────────────────────────────────
 
 /** The layout without the ⚠ scaffolding — the version to judge the design on. */
@@ -325,13 +636,23 @@ export const WithoutTheMarks: Story = {
 };
 
 /**
- * BOTH LEGS OF THE PARCEL, populated — out and back, each with its own courier, number and trail.
- * 108 is the only fixture given a return, and it is invented: there is no return record yet.
+ * THE ORDER'S OWN LEG ONLY (the-return-leg-waits-for-tracking). There is no return shipment record, so
+ * Pengiriman draws no return leg and Info no return resi. 108 is the fixture that once carried an
+ * invented return, so it is the one that would show it if it came back.
  */
-const AtReturned = Routed("/orders/108");
+const AtOnceReturned = Routed("/orders/108");
 
-export const WithAReturn: Story = {
-  render: () => <AtReturned />,
+export const OnlyTheOrderLegIsShown: Story = {
+  render: () => <AtOnceReturned />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("shipment-outbound")).toBeInTheDocument());
+
+    await expect(canvas.queryByTestId("shipment-return")).not.toBeInTheDocument();
+    await expect(canvas.queryByTestId("shipment-return-none")).not.toBeInTheDocument();
+    await expect(canvas.queryByTestId("order-reference-return")).not.toBeInTheDocument();
+  },
 };
 
 /**

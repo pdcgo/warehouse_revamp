@@ -83,7 +83,7 @@ export function entryFromWire(wire: WireSettlementEntry): SettlementEntry {
 }
 
 /**
- * ⚠ `orderRef`, `shopName`, `teamName` and `cogs` are NOT on the wire and cannot be — settlement
+ * ⚠ `orderRef`, `shopName`, `teamName` and `goods_cost` are NOT on the wire and cannot be — settlement
  * never learns the marketplace's reference, and the names and cost live in selling_service.
  *
  * So they are filled from what the CALLER already has. The panel is mounted on the order detail page,
@@ -91,7 +91,7 @@ export function entryFromWire(wire: WireSettlementEntry): SettlementEntry {
  */
 export function settlementFromWire(
   wire: WireOrderSettlement,
-  known: Partial<Pick<OrderSettlement, "orderRef" | "shopName" | "teamName" | "cogs">> = {},
+  known: Partial<Pick<OrderSettlement, "orderRef" | "shopName" | "teamName" | "goodsCost">> = {},
   entries: SettlementEntry[] = [],
 ): OrderSettlement {
   return {
@@ -102,7 +102,7 @@ export function settlementFromWire(
     teamName: known.teamName ?? "",
     initialTotal: wire.initialTotal,
     lastBalance: wire.lastBalance,
-    cogs: known.cogs ?? 0n,
+    goodsCost: known.goodsCost ?? 0n,
     entries,
   };
 }

@@ -7,9 +7,11 @@ import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 // promote and reading an error — a list of forty drafts is useless if the only way to tell which are
 // finished is to try each one.
 //
-// It is kept in its own file, listed in one order, for the same reason: two screens ask this question
-// (the list summary and the detail's promote button), and answering it twice is how they start
-// disagreeing about what "ready" means.
+// It is kept in its own file, listed in one order, for the same reason: the list's badge and its "ready"
+// count ask this question, and answering it twice is how they start disagreeing about what "ready" means.
+// The detail page's Promote reasons are the fuller list — it holds the lines and the warehouse's fee — and
+// every rule here is one of them, in the same order. ⚠ A rule Promote gains that a summary row can read
+// belongs here too, or the list calls a draft ready that Promote refuses.
 export interface DraftGap {
   // An i18n key naming what is missing.
   key: string;
@@ -41,9 +43,21 @@ export function draftGaps(draft: OrderDraft, opts: DraftGapOptions = {}): DraftG
 
   if (draft.itemCount === 0) {
     gaps.push({ key: "orderDrafts.missingLines" });
-  } else if (draft.unmappedItemCount > 0) {
-    // The one gap specific to drafts: an unmapped line is precisely what makes this a draft rather
-    // than an order somebody has not got round to submitting.
+  }
+
+  // platform-created-at-is-required-at-finalize — a draft may hold it empty while it is worked on; Promote refuses it.
+  if (draft.platformCreatedAtUnix <= 0n) {
+    gaps.push({ key: "orderDrafts.gapOrderDate" });
+  }
+
+  // platform-total-is-required-at-finalize — the STORED figure, because that is what Promote copies onto the order.
+  if (draft.platformTotal <= 0n) {
+    gaps.push({ key: "orderDrafts.gapSellPrice" });
+  }
+
+  // The one gap specific to drafts: an unmapped line is precisely what makes this a draft rather than an order
+  // somebody has not got round to submitting. Only asked of a draft that has lines — "no lines" already says it.
+  if (draft.itemCount > 0 && draft.unmappedItemCount > 0) {
     gaps.push({ key: "orderDrafts.unmappedLines" });
   }
 

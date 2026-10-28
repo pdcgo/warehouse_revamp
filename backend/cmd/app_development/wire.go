@@ -70,6 +70,9 @@ func InitializeApp() (*App, error) {
 		// financial_account_service under the caller's token. See liability_deps.go.
 		NewFinancialAccountClient,
 		NewLiabilityAccountChecker,
+		// The creditor names of LiabilityCreditByIds' GENERAL slice — asked of team_service under the caller's
+		// token. See liability_deps.go.
+		NewLiabilityTeamNamer,
 		settlement_v1.NewService,
 		// Who an imported shop row counts for — the shop's primary CS, asked over Connect under the
 		// caller's token. See shop_primary.go.

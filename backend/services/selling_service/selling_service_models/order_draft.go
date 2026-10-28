@@ -34,6 +34,9 @@ type OrderDraft struct {
 
 	CustomerName  string
 	CustomerPhone string
+	// The buyer's marketplace username (00021, the-buyers-username-is-optional), trimmed as the app pushed it or a
+	// person corrected it. '' = none — never a reason Promote refuses. Promote copies it onto the order.
+	BuyerUsername string
 
 	// The same frozen-address shape an order carries (#118), so promote copies rather than translates.
 	ProvinsiCode  string
@@ -48,9 +51,11 @@ type OrderDraft struct {
 	AddressLine   string
 	ShippingCode  string
 
-	// As scraped, whole rupiah. Nothing here is authoritative — promote recomputes the order's money
-	// from the mapped lines, and COGS has no meaning until the lines name real products.
-	ShippingCost int64
+	// WHAT THE BUYER PAID on the platform — the owner's `order_drafts.platform_total` (00022, renamed by 00026;
+	// platform-total-is-required-at-finalize), whole rupiah, as the app pushed it or a person typed it. 0 = not known
+	// yet, which a draft may be; Promote copies it onto the order, where placeOrder refuses a 0. Nothing here can derive
+	// what the buyer paid. A draft carries no shipping money (00027, an-order-records-no-shipping-cost).
+	PlatformTotal int64
 
 	// THE PLATFORM'S TWO DATES (00020), as the app pushed them or a person corrected them. Either may be nil on a draft:
 	// Promote refuses a missing order date (platform-created-at-is-required-at-finalize), never a missing deadline.

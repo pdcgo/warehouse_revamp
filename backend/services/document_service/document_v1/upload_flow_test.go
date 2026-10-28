@@ -230,15 +230,27 @@ func TestGetDownloadUrl_CrossTeamIsolation(t *testing.T) {
 	}
 }
 
-// An over-limit upload is refused up front.
+// An over-limit upload is refused up front — on the size the browser DECLARES, before a byte is sent. The ceiling is
+// 15 MiB (an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once): exactly that is asked for, one byte more is not.
 func TestRequestUpload_TooLarge(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc, _ := newService(t, db)
 
-	_, err := svc.RequestUpload(context.Background(), connect.NewRequest(&documentv1.RequestUploadRequest{
-		TeamId: 2, ResourceType: documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_GENERAL,
-		ContentType: "application/pdf", SizeBytes: 11 << 20, Filename: "huge.pdf",
-	}))
+	ask := func(size int64) error {
+		_, err := svc.RequestUpload(context.Background(), connect.NewRequest(&documentv1.RequestUploadRequest{
+			TeamId: 2, ResourceType: documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT,
+			ContentType: "application/pdf", SizeBytes: size, Filename: "huge.pdf",
+		}))
+
+		return err
+	}
+
+	err := ask(15 << 20)
+	if err != nil {
+		t.Fatalf("a 15 MiB file was refused: %v", err)
+	}
+
+	err = ask(15<<20 + 1)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
 	}

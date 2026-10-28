@@ -697,7 +697,7 @@ The generic primitives (JWT, reading the proto options, descriptor validation) a
 - The role lookup uses **`.Find()`, never `.First()`** — `First` returns `ErrRecordNotFound` for
   a non-member, and every request resolves the root team, where almost nobody is a member.
 
-## Proto options carry policy — two of them so far
+## Proto options carry policy — four of them so far
 
 A recurring pattern in this system: **behaviour is declared on the proto message and read by
 reflection at runtime**, so the contract is readable from the `.proto` alone.
@@ -706,6 +706,8 @@ reflection at runtime**, so the contract is readable from the `.proto` alone.
 | --- | --- | --- | --- |
 | `warehouse.events.v1.event_config` | `MessageOptions` | 50001 | which Pub/Sub topic an event VARIANT belongs to |
 | `warehouse.role_base.v1.request_policy` *(planned)* | `MessageOptions` | 50002 | who may call an RPC (see the roling section above) |
+| `warehouse.analytic_base.v1.metric` | `MessageOptions` | 50003 | that a message is an analytic METRIC — its id, filters and groups (`docs/business/analytic/rpc_provide.md`); checked at startup by `san_metric.ValidateDescriptors` |
+| `warehouse.analytic_base.v1.metric_sort` | `FieldOptions` | 50003 | that a metric's number field can sort a report, and a rate's minimum sample |
 
 **The generated option package must be linked into the binary**, or `proto.HasExtension`
 silently returns false and the option appears absent. It reads as a logic bug; it is a linking
@@ -851,6 +853,7 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
 | `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
 | `inputs/` | 3 | a typed value, formatted or masked — money, a password, a quantity |
+| `charts/` | 1 | a graph — `LineGraph`, on Chakra's `@chakra-ui/charts` ([a-chart-is-chakras-chart](docs/technical/frontend/context_decision.md#a-chart-is-chakras-chart)); a screen never draws Recharts itself |
 
 The **Storybook sidebar mirrors these folders one-for-one**, so "where does this live?" and "where do
 I find it?" have the same answer. A new component goes in the group it belongs to and its story's

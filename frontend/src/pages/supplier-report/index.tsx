@@ -4,16 +4,18 @@ import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Flex, Group, HStack, Heading, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
-import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
-import { Pagination } from "../../components/chrome/Pagination";
+import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { DateRangePicker } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { windowOf } from "../../features/settlement/window";
 import {
+  RATE_MIN_UNITS,
   type SupplierRankBy,
   type SupplierRankRow,
+  useSupplierHeadline,
   useSupplierRanking,
 } from "../../features/suppliers/analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "../../features/suppliers/FigureParts";
@@ -21,7 +23,6 @@ import { unitsReceived } from "../../features/suppliers/figures";
 import { useTeam } from "../../features/team/TeamContext";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useIsMobile } from "../../layouts/shell";
-import { useDebounced } from "../../lib/useDebounced";
 
 const PAGE_SIZE = 20;
 
@@ -31,21 +32,22 @@ const PAGE_SIZE = 20;
 //
 // Two questions, top to bottom:
 //
-//   the headline   how much was restocked in the window, from every supplier the search finds, and how much of it
-//                  arrived broken or short
+//   the headline   how much was restocked in the window, from every supplier, and how much of it arrived broken or
+//                  short
 //   the ranking    which supplier it came from — by restocked value, or by broken rate
 //
 // One supplier's figures over time, and by product, are its Statistics tab; a ranked row opens it.
 //
-// The search finds suppliers as Discover does — name, address, contact, store names (the-supplier-report-searches-like-discover).
+// No search (the-supplier-report-drops-its-search) — it went with the analytic keyword filter.
 //
 // ⚠ EVERY TEAM'S RESTOCKS by default (every-selling-team-sees-every-teams-figures), narrowed to one selling team by a
 // picker (the-team-filter-picks-any-selling-team) — your own for "what did WE buy where".
 // So a supplier another team keeps — and that we have never bought from — can top the ranking, which is the point:
 // it is how a team finds a better source than its own.
 //
-// Ranked by broken rate, a supplier needs the server's `rate_min_units` in the window to be rated against the others
-// (rate-ranking-needs-50-units); the rest follow, their rate muted. A DELETED supplier is ranked with its figures kept
+// Ranked by broken rate, a supplier needs the `rank_min_sample` on `broken_rate` — read off the proto — in the window to
+// be rated against the others (rate-ranking-needs-50-units); the rest follow, in key order, their rate muted
+// (a-rate-ranks-only-above-its-minimum-sample). A DELETED supplier is ranked with its figures kept
 // (a-deleted-supplier-is-kept-for-its-figures), marked, and opens nothing — neither detail page shows a deleted one.
 //
 // ⚠ FOLDED, NOT LIVE: a figure can lag an accept by the broker's delivery (the-report-is-processed-like-settlement).
@@ -56,7 +58,6 @@ export function SupplierReportPage() {
   const isMobile = useIsMobile();
 
   const [range, setRange] = useState<DateRange>({ kind: "relative", days: 30 });
-  const [q, setQ] = useState("");
   // Whose restocks — 0n is every team's.
   const [restockTeamId, setRestockTeamId] = useState(0n);
   const [rankBy, setRankBy] = useState<SupplierRankBy>("value");
@@ -73,14 +74,7 @@ export function SupplierReportPage() {
     setPage(1);
   };
 
-  const search = (next: string) => {
-    setQ(next);
-    setPage(1);
-  };
-
-  // Typed, then settled — a word is one request, not one per key.
-  const term = useDebounced(q.trim());
-  const filtering = q.trim() !== "" || restockTeamId !== 0n;
+  const filtering = restockTeamId !== 0n;
 
   const pickRankBy = (next: SupplierRankBy) => {
     setRankBy(next);
@@ -97,10 +91,11 @@ export function SupplierReportPage() {
     valid,
     restockTeamId,
     rankBy,
-    q: term,
     page,
     pageSize: PAGE_SIZE,
   });
+  // Every supplier together — keyed without the page or the order, neither of which changes it.
+  const headline = useSupplierHeadline({ teamId: current?.teamId, from, to, valid, restockTeamId });
 
   if (!current) {
     return (
@@ -126,7 +121,7 @@ export function SupplierReportPage() {
   };
 
   const rows = ranking.data?.rows ?? [];
-  const minUnits = ranking.data?.rateMinUnits ?? 0;
+  const minUnits = RATE_MIN_UNITS;
   // Too few units to be rated against the others — the rate stays on screen, muted, with the reason on hover.
   const tooFew = (row: SupplierRankRow) => unitsReceived(row.figures) < minUnits;
   const nameOf = (row: SupplierRankRow) =>
@@ -142,11 +137,7 @@ export function SupplierReportPage() {
     if (rows.length === 0) {
       return (
         <Text fontSize="sm" color="fg.muted" data-testid="supplier-report-empty">
-          {term !== ""
-            ? t("supplierReport.none")
-            : restockTeamId !== 0n
-              ? t("supplierReport.emptyTeam")
-              : t("supplierReport.empty")}
+          {restockTeamId !== 0n ? t("supplierReport.emptyTeam") : t("supplierReport.empty")}
         </Text>
       );
     }
@@ -241,18 +232,9 @@ export function SupplierReportPage() {
       <FilterBar
         testId="supplier-report-filter"
         active={filtering}
-        count={(q.trim() !== "" ? 1 : 0) + (restockTeamId !== 0n ? 1 : 0)}
-        onClear={() => {
-          search("");
-          pickTeam(0n);
-        }}
+        count={restockTeamId !== 0n ? 1 : 0}
+        onClear={() => pickTeam(0n)}
       >
-        <FilterSearch
-          value={q}
-          onChange={search}
-          placeholder={t("supplierReport.search")}
-          testId="supplier-report-search"
-        />
         <FilterField w="15rem" testId="supplier-report-team">
           <RestockTeamFilter value={restockTeamId} onChange={pickTeam} />
         </FilterField>
@@ -267,14 +249,14 @@ export function SupplierReportPage() {
         </Text>
       )}
 
-      {ranking.isError && (
+      {(ranking.isError || headline.isError) && (
         <Text fontSize="sm" color="error.fg" data-testid="supplier-report-error">
-          {rpcError(ranking.error)}
+          {rpcError(ranking.error ?? headline.error)}
         </Text>
       )}
 
-      <RefreshOverlay busy={busy}>
-        <FiguresSummary figures={ranking.data?.total} testId="supplier-report-summary" />
+      <RefreshOverlay busy={headline.isFetching && !headline.isPending}>
+        <FiguresSummary figures={headline.data} testId="supplier-report-summary" />
       </RefreshOverlay>
 
       <Stack gap="field">
@@ -310,9 +292,16 @@ export function SupplierReportPage() {
           </Text>
         )}
 
-        <Box>
-          <Pagination page={page} pageSize={PAGE_SIZE} count={ranking.data?.totalItems ?? 0} onPageChange={setPage} />
-        </Box>
+        {/* No total: a metric page says only whether another follows (a-metric-page-has-no-total) — the growing pager
+            (every-list-pages-with-the-growing-pager). */}
+        <GrowingPager
+          page={page}
+          onPageChange={setPage}
+          hasNext={ranking.isPlaceholderData ? undefined : ranking.data?.hasNext}
+          resetKey={[from, to, restockTeamId, rankBy].join("|")}
+          pageSize={PAGE_SIZE}
+          testId="supplier-report-pager"
+        />
       </Stack>
     </Stack>
   );

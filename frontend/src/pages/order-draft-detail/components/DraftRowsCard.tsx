@@ -20,7 +20,7 @@ import { ProductSelect } from "../../../components/products/ProductSelect";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { newBundleLink } from "../../../features/bundles/prefill";
 import type { Availability, Costs, LineDraft } from "../../../features/orders/lines";
-import { lineStock, unitCost } from "../../../features/orders/lines";
+import { costSplit, formatCostSplit, lineStock, unitCost } from "../../../features/orders/lines";
 import { BundleSearch, SlotBox } from "../../../features/orders/form/BundleCard";
 import { fillFor } from "../../../features/orders/form/bundles";
 import { ImagePreview } from "../../../features/orders/form/ImagePreview";
@@ -374,12 +374,16 @@ function StockLine({ line, stock, costs, testId }: { line: LineDraft; stock?: Av
 
   const s = lineStock(line, stock);
   const cost = unitCost(line, costs);
+  // The batches behind the cost when there are two or more — what Promote's take would draw, oldest first
+  // (an-order-is-costed-at-what-leaves-the-shelf).
+  const split = costSplit(line, costs);
 
   return (
     <Text fontSize="xs" color={s.kind === "known" && s.short ? "error.fg" : "fg.muted"} data-testid={testId}>
-      {t("orderDraftForm.items.stockLine", {
+      {t(split.length > 0 ? "orderDraftForm.items.stockLineSplit" : "orderDraftForm.items.stockLine", {
         stock: s.kind === "known" ? s.ready.toString() : "—",
         hpp: cost > 0n ? formatRupiah(cost) : "—",
+        split: formatCostSplit(split),
       })}
     </Text>
   );

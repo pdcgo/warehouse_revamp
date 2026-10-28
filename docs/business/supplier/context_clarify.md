@@ -12,7 +12,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 > ([past-accepts-are-backfilled-once](./context_decision.md#past-accepts-are-backfilled-once)). **Nothing is open.**
 >
 > **In chat (2026-10-07): a search and a team picker on the Supplier Report, the picker on the Statistics tab, and a Team
-> filter on Discover** — [the-team-filter-picks-any-selling-team](./context_decision.md#the-team-filter-picks-any-selling-team) (against my two buttons), [the-supplier-report-searches-like-discover](./context_decision.md#the-supplier-report-searches-like-discover),
+> filter on Discover** — [the-team-filter-picks-any-selling-team](./context_decision.md#the-team-filter-picks-any-selling-team) (against my two buttons), [superseded-the-supplier-report-searches-like-discover](./context_decision.md#superseded-the-supplier-report-searches-like-discover) (the search later dropped, [the-supplier-report-drops-its-search](../analytic/rpc_provide_decision.md#the-supplier-report-drops-its-search)),
 > [discover-filters-by-the-team-that-keeps-it](./context_decision.md#discover-filters-by-the-team-that-keeps-it) (**Q16 answered**, as recommended). Built. Q17 keeps its other four readings.
 >
 > **Prototyped (2026-10-07): the Statistics tab and the Supplier Report page**, on sample figures — [The screens](#the-screens).
@@ -342,23 +342,27 @@ Kept as lines so the numbers hold.
     in the window — its rate still shows, after the others.
 
 19. 🆕 **How far back may the Supplier Report rank?** — found by the
-    [performance audit](../../../audits/services/supplier_service/performances/AnalyticGroupSearch.md#3-the-cost-is-every-row-in-the-window-and-no-limit-is-placed-on-the-window-).
+    [performance audit](../../../audits/services/supplier_service/performances/AnalyticGroupSearch.md#3-the-cost-is-every-row-in-the-window-and-no-limit-is-placed-on-the-window-),
+    and still true of `metrics/suppliers`, which replaced those reads on 2026-10-27
+    ([MetricSearch.md](../../../audits/services/supplier_service/performances/MetricSearch.md#1-a-year-long-ranking-reads-every-row-of-the-year-)).
     A ranking reads every daily row in its window, and the report's date range has no limit. One year now takes
-    **90 ms**; three years of history ~600 ms — and a window "since the start" grows with every day of business. The
-    Statistics tab is not affected: its series is already capped (366 days daily, 60 months, 20 years) and its
-    per-supplier reads stay fast.
+    **63 ms** for the ranking and **61 ms** for its headline, which is its own read; three years of history ~600 ms —
+    and a window "since the start" grows with every day of business. The Statistics tab's per-supplier reads stay fast
+    at any window — 7 ms for a year — and its series lists its own periods, ten to a page. ⚠ The old series' caps (366
+    days daily, 60 months, 20 years) went with `AnalyticTimeSearch`: a cap taken here would be the metric's, for both
+    screens.
 
     ```mermaid
     flowchart LR
       W["the report's window"] --> C{"366 days or less?"}
-      C -->|"yes"| R["ranked — about 90 ms for a year"]
+      C -->|"yes"| R["ranked — about 63 ms for a year"]
       C -->|"no"| X["refused, the range named — pick a year at most"]
       M["later, on request — a monthly rollup written by the fold"] -.-> L["multi-year rankings, 6x fewer rows"]
     ```
 
     | option | | |
     | --- | --- | --- |
-    | **cap the report's window at 366 days** — the daily series' cap | a year at most; a longer range is refused with a message saying so | ✅ |
+    | **cap the metric's window at 366 days** — the old daily series' cap | a year at most, on both screens; a longer range is refused with a message saying so | ✅ |
     | a monthly rollup table, written by the same fold | multi-year rankings stay fast; a second table to keep in step, and the replay rebuilds both | later, on request |
     | no limit | a ranking over the whole history gets slower every day | ❌ |
 

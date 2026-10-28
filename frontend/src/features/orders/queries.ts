@@ -1,10 +1,13 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { orderClient, teamReturnConfigurationClient } from "../../api/clients";
+import { orderClient, productClient, teamReturnConfigurationClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderDateField } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useInvalidateStock } from "../inventory/queries";
+import { productByIdsRowData, productsFromByIds } from "../products/adapt";
+import { useProductsByIds } from "../products/queries";
 import { peopleFor, WHO_FILTER_SIZE } from "../users/queries";
 import { orderListRowData, ordersFromList } from "./adapt";
 
@@ -249,6 +252,23 @@ export function useOrderStatusChange() {
   });
 }
 
+// ADD A NOTE TO AN ORDER (a-note-is-a-timeline-row) — a timeline row with no status, written by either end: the
+// selling team's `team_id` writes `from = selling`, its warehouse's writes `from = warehouse`. There is no edit and
+// no delete, so this is the only note write there is: a correction is a new note.
+//
+// It resolves to the written row. It INVALIDATES the order domain rather than splicing the row into the cached
+// detail: the note list is a read of `OrderDetail`'s `timeline_logs`, and the pick screen reads the same rows under
+// its own key — re-reading both is what keeps them showing the same notes.
+export function useCreateOrderNote() {
+  const invalidate = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: async (vars: Parameters<typeof orderClient.orderNoteCreate>[0]) =>
+      (await orderClient.orderNoteCreate(vars)).log,
+    onSuccess: () => invalidate(),
+  });
+}
+
 // ── The return warehouse (the-return-warehouse-lives-in-team-return-configurations) ─────────────────
 //
 // Where a selling team's returned parcels are received — one row per team, in the order context, because
@@ -296,5 +316,113 @@ export function useTeamsWithReturnWarehouse(args: { teamIds: bigint[]; enabled: 
 
       return new Set(Object.keys(res.items).map((id) => BigInt(id)));
     },
+  });
+}
+
+// ── The return map (the-return-map-is-selling-services-and-read-by-ids) ─────────────────────────────────────────
+//
+// Which of the team's OWN products a borrowed product comes back as. Written once, at the confirmed pick on the order
+// form (the-map-is-written-when-it-is-picked); read by the borrowed products' ids so a row already mapped arrives locked.
+
+/** A standing pair: our product, NAMED from the product read — `name` is undefined while that read is in flight. */
+export interface StandingReturnMap {
+  productId: bigint;
+  name?: string;
+}
+
+/**
+ * The team's standing maps for these BORROWED products, keyed by the borrowed id as a string. A product the team has
+ * not mapped is absent — the row the form asks about. `data` is undefined until the pairs are read. A pair's `name`
+ * comes from `ProductByIds`, the read that names a product everywhere else — the map stores no name.
+ */
+export function useProductReturnMaps(args: { teamId: bigint | undefined; sharedProductIds: bigint[] }) {
+  const { teamId } = args;
+  const ids = [...new Set(args.sharedProductIds.filter((id) => id > 0n))].sort();
+  const enabled = teamId !== undefined && teamId > 0n && ids.length > 0;
+
+  const pairs = useQuery({
+    queryKey: key.returnMaps(teamId, { ids: ids.map(String).join(",") }),
+    enabled,
+    queryFn: async () => {
+      const res = await teamReturnConfigurationClient.productReturnMapByIds({ teamId: teamId!, filter: { ids } });
+      const out = new Map<string, bigint>();
+
+      for (const [id, list] of Object.entries(res.items)) {
+        for (const item of list.items) {
+          if (item.d.case !== "pair") continue;
+          const pair = item.d.value.mapData[id];
+          if (pair) out.set(id, pair.ownProductId);
+        }
+      }
+
+      return out;
+    },
+  });
+
+  const ownIds = useMemo(() => [...(pairs.data?.values() ?? [])], [pairs.data]);
+  const names = useProductsByIds({ teamId, productIds: ownIds });
+
+  const data = useMemo(() => {
+    if (!pairs.data) return undefined;
+
+    const out = new Map<string, StandingReturnMap>();
+    for (const [shared, own] of pairs.data) {
+      out.set(shared, { productId: own, name: names.data?.get(own.toString())?.name });
+    }
+
+    return out;
+  }, [pairs.data, names.data]);
+
+  // A disabled query stays "pending" in TanStack v5 — only a read actually asked for is still being answered.
+  return { data, isPending: enabled && pairs.isPending, isError: pairs.isError };
+}
+
+/** What the write left standing: our product, its name, and whether THIS call wrote it. */
+export interface WrittenReturnMap {
+  productId: bigint;
+  name: string;
+  created: boolean;
+}
+
+/**
+ * Map a borrowed product to one of ours — its own call, never part of OrderCreate. A pair that already stands is not
+ * overwritten: it comes back with `created = false`, and when it names a different product from the one picked, that
+ * product is named here from `ProductByIds`, so the card shows what stands rather than what was asked for.
+ */
+export function useCreateProductReturnMap() {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (vars: {
+      teamId: bigint;
+      sharedProductId: bigint;
+      ownProductId: bigint;
+      /** The picked product's name — the answer's name too, unless a different pair already stands. */
+      ownName: string;
+    }): Promise<WrittenReturnMap> => {
+      const res = await teamReturnConfigurationClient.productReturnMapCreate({
+        teamId: vars.teamId,
+        sharedProductId: vars.sharedProductId,
+        ownProductId: vars.ownProductId,
+      });
+      const standing = res.map?.ownProductId ?? vars.ownProductId;
+
+      if (standing === vars.ownProductId) {
+        return { productId: standing, name: vars.ownName, created: res.created };
+      }
+
+      const named = await productClient.productByIds({
+        teamId: vars.teamId,
+        filter: { ids: [standing] },
+        dataRequest: productByIdsRowData(),
+      });
+
+      return {
+        productId: standing,
+        name: productsFromByIds(named)[0]?.name ?? `#${standing.toString()}`,
+        created: res.created,
+      };
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ["returnMaps"] }),
   });
 }

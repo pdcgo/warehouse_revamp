@@ -14,23 +14,19 @@ import { CopyText } from "../../../components/chrome/CopyText";
 // ⚠ NOT IN THE STICKY HEADER. The header stays short and holds only what the order IS and what can be
 // done to it; the references are read once on arrival and are allowed to scroll away.
 //
-// ⚠ THE RETURN RESI ONLY WHEN A RETURN EXISTS. Most orders never return, and an empty "Resi retur —" on
-// every one of them would be a field people learn to skip. The outbound resi always shows, `—` if empty:
-// *"resi pasti ada"*, so its absence is worth seeing.
+// The resi always shows, `—` if empty: *"resi pasti ada"*, so its absence is worth seeing.
+//
+// ⚠ NO RETURN RESI (the-return-leg-waits-for-tracking): there is no return shipment record, and the
+// return resi is asked again when tracking is designed.
 export function OrderReferences({
   courier,
   receiptCode,
   orderRefId,
-  returnLeg,
-  returnMark,
 }: {
   courier?: string;
   receiptCode?: string;
   /** `order_external_ref_id`. "" on a phone order. */
   orderRefId: string;
-  returnLeg?: { courier: string; receiptCode: string };
-  /** ⚠ for the return resi — the return leg is invented whole. */
-  returnMark?: ReactNode;
 }) {
   const { t } = useTranslation();
 
@@ -54,19 +50,6 @@ export function OrderReferences({
           {orderRefId.trim() ? <CopyText value={orderRefId.trim()} fontSize="md" /> : undefined}
         </Reference>
       </SimpleGrid>
-
-      {returnLeg && (
-        <Flex gap="2" align="center" wrap="wrap" data-testid="order-reference-return">
-          <Text fontSize="xs" fontWeight="bold" color="fg.label">
-            {t("orderDetail.info.returnReceipt")}
-          </Text>
-          {returnMark}
-          <Text color="fg.muted" fontSize="sm">
-            {returnLeg.courier.toUpperCase()}
-          </Text>
-          <CopyText value={returnLeg.receiptCode} mono />
-        </Flex>
-      )}
     </Stack>
   );
 }

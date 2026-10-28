@@ -1,4 +1,7 @@
 import {
+  type LiabilityCredit,
+  LiabilityCreditByIdsDataType,
+  type LiabilityCreditByIdsResponseList,
   type LiabilityLog,
   LiabilityLogListDataType,
   type LiabilityLogListResponseItem,
@@ -92,4 +95,29 @@ export function termsChangesFromList(
     if (it.d.case === "change") m = it.d.value.mapData;
   }
   return ids.map((id) => m[id.toString()]).filter((c): c is LiabilityTermsChange => !!c);
+}
+
+// ─── the debtor's side of a limit (the-debtor-sees-the-limits-set-on-it) ─────────────────────────
+//
+// A ByIds answer, keyed by CREDITOR id. Every creditor asked about is present — an absent one could not be told from
+// an unlimited one — except the asking team itself, which the server drops as the credit check does.
+
+export const creditRowData = (): LiabilityCreditByIdsDataType[] => [LiabilityCreditByIdsDataType.CREDIT];
+
+/** The CREDIT slice, keyed by creditor id. `creditLimit` stays `undefined` for unlimited — never 0. */
+export function creditsFromByIds(items: {
+  [key: string]: LiabilityCreditByIdsResponseList;
+}): Map<string, LiabilityCredit> {
+  const out = new Map<string, LiabilityCredit>();
+
+  for (const [id, list] of Object.entries(items)) {
+    for (const it of list.items) {
+      if (it.d.case !== "credit") continue;
+
+      const credit = it.d.value.mapData[id];
+      if (credit) out.set(id, credit);
+    }
+  }
+
+  return out;
 }

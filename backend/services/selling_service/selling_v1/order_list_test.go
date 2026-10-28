@@ -252,11 +252,12 @@ func TestOrderList_FiltersByProduct(t *testing.T) {
 	// An order for the product we are asking about, listing it TWICE.
 	twice, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
-		CustomerName: "Budi", Subtotal: 20000, Total: 20000,
+		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
-			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -266,10 +267,11 @@ func TestOrderList_FiltersByProduct(t *testing.T) {
 	// And one for a different product entirely.
 	_, err = svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
-		CustomerName: "Siti", Subtotal: 5000, Total: 5000,
+		CustomerName: "Siti",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: other, Sku: "SKU2", Name: "Gadget", Quantity: 1, UnitPrice: 5000},
+			{ProductId: other, Sku: "SKU2", Name: "Gadget", Quantity: 1},
 		},
 	}))
 	if err != nil {

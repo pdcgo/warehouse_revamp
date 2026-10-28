@@ -125,6 +125,9 @@ export const key = {
   shops: (teamId: bigint | undefined, params?: Params) => scope("shops", teamId, params),
   // The team's return warehouse. Its own prefix: a save changes no order, so it must not refetch them.
   returnConfiguration: (teamId: bigint | undefined, params?: Params) => scope("returnConfiguration", teamId, params),
+  // The team's return maps (the-return-map-is-selling-services-and-read-by-ids). Its own prefix: a map written at the
+  // pick changes no order and no return warehouse.
+  returnMaps: (teamId: bigint | undefined, params?: Params) => scope("returnMaps", teamId, params),
   // A warehouse's fee. Its own prefix: saving a rate changes no order and no list.
   warehouseFee: (teamId: bigint | undefined, params?: Params) => scope("warehouseFee", teamId, params),
   inventory: (teamId: bigint | undefined, params?: Params) => scope("inventory", teamId, params),

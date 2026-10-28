@@ -147,14 +147,14 @@ export function OrderDetailPreview({
 
 // ── The order behind the settlement ─────────────────────────────────────────────────────────────
 //
-// ⚠ `marketplaceTotal` IS `initialTotal`, and the preview exists partly to make that visible.
+// ⚠ `platformTotal` IS `initialTotal`, and the preview exists partly to make that visible.
 // `the-sale-is-recorded-once-and-copied-verbatim` says settlement opens its account from a frozen
-// copy of `order.marketplace_total` — so the figure the Info tab prints as "Marketplace total" and
+// copy of `order.platform_total` — so the figure the Info tab prints as "Marketplace total" and
 // the figure the Settlement tab measures every loss against are the SAME NUMBER seen twice. On one
 // screen, a disagreement between them is a bug anybody can spot.
 //
-// `total` is ours and `marketplaceTotal` is the platform's, and they differ on purpose: the buyer
-// pays the platform's figure, we quoted our own. Neither is wrong.
+// `totalCost` is ours (goods + the warehouse's fee) and `platformTotal` is the platform's, and they differ on purpose:
+// the buyer pays the platform's figure, the goods cost us our own. Neither is wrong.
 function orderFor(settlement: OrderSettlement): Order {
   return create(OrderSchema, {
     id: settlement.orderId,
@@ -166,12 +166,11 @@ function orderFor(settlement: OrderSettlement): Order {
     customerPhone: "0812-3456-0001",
     shippingCode: "jne",
     orderExternalRefId: settlement.orderRef,
-    subtotal: settlement.initialTotal > 0n ? settlement.initialTotal - 15_000n : 0n,
-    shippingCost: 15_000n,
-    total: settlement.initialTotal,
-    marketplaceTotal: settlement.initialTotal,
-    cogs: settlement.cogs,
-    note: "",
+    platformTotal: settlement.initialTotal,
+    goodsCost: settlement.goodsCost,
+    // The fee is a sample — a flat 2.500 — and total_cost is the two, as the server freezes it.
+    warehouseFee: 2_500,
+    totalCost: Number(settlement.goodsCost) + 2_500,
     items: [
       {
         id: 1n,
@@ -179,8 +178,7 @@ function orderFor(settlement: OrderSettlement): Order {
         sku: "SKU-301",
         name: "Kaos Polos Hitam",
         quantity: 2,
-        unitPrice: settlement.initialTotal > 0n ? (settlement.initialTotal - 15_000n) / 2n : 0n,
-        unitCost: settlement.cogs / 2n,
+        unitCost: settlement.goodsCost / 2n,
       },
     ],
     timelineLogs: [

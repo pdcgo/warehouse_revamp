@@ -248,6 +248,37 @@ export const StatesWhatItAccepts: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByTestId("order-receipt-upload")).toHaveTextContent("10 MB");
+    await expect(canvas.getByTestId("order-receipt-upload")).toHaveTextContent("15 MB");
+  },
+};
+
+// THE CEILING IS 15 MB (an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once) — the document service's own, and
+// checked here too, so a file over it is refused BEFORE a byte is uploaded: one byte over says so and attaches nothing,
+// and exactly 15 MB goes through.
+export const RefusesAFileOver15MB: Story = {
+  play: async ({ args, canvasElement }) => {
+    const limit = 15 * 1024 * 1024;
+
+    // The picker REMOUNTS after every pick (its pickerKey), so the input is found afresh each time.
+    const pick = async (file: File) => {
+      const input = canvasElement.querySelector<HTMLInputElement>(
+        '[data-testid="order-receipt-upload"] input[type="file"]',
+      );
+      await expect(input).not.toBeNull();
+      await userEvent.upload(input as HTMLInputElement, file, { applyAccept: false });
+    };
+
+    await pick(new File([new Uint8Array(limit + 1)], "too-big.pdf", { type: "application/pdf" }));
+
+    // Portalled, and it slides in — present before it is visible.
+    const toast = await screen.findByText("That file is larger than 15 MB");
+    await waitFor(() => expect(toast).toBeVisible());
+    await expect(args.onChange).not.toHaveBeenCalled();
+
+    await pick(new File([new Uint8Array(limit)], "label.pdf", { type: "application/pdf" }));
+
+    await waitFor(() =>
+      expect(args.onChange).toHaveBeenCalledWith(expect.objectContaining({ filename: "label.pdf" })),
+    );
   },
 };

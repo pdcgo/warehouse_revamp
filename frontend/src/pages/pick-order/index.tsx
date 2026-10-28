@@ -27,6 +27,8 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { usePickOrder } from "../../features/picking/queries";
 import { useOrderStatusChange } from "../../features/orders/queries";
+import { orderNotes, timelineFromKey } from "../../features/orders/timelineLogs";
+import { formatUnixDateTime } from "../../lib/datetime";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -172,6 +174,8 @@ export function PickOrderPage() {
   }
 
   const step = NEXT_STEP[order.status];
+  // The order's notes, newest first — timeline rows with no status (a-note-is-a-timeline-row).
+  const notes = orderNotes(order.timelineLogs);
 
   return (
     <Stack gap="section">
@@ -220,26 +224,42 @@ export function PickOrderPage() {
         </Card.Body>
       </Card.Root>
 
-      {/* THE NOTE, and only when there is one. Its whole purpose is an instruction to the person who
+      {/* THE NOTES, and only when there are any. Their whole purpose is an instruction to the person who
           handles the order — "wrap the glass one", "second attempt, first parcel came back" — and that
           person is standing on THIS screen. It was readable only from the seller's detail page, which is
           the one seat that never packs anything.
 
+          Every note row, newest first (a-note-is-a-timeline-row), each with its side and time: the latest
+          one governs. READ-ONLY here — a note is added from the order's detail, and never edited anywhere.
+
           Above the pick list on purpose: an instruction about how to pack has to be read before the
           walking starts, not found underneath it. `pre-wrap` because it was typed as lines. */}
-      {order.note !== "" && (
+      {notes.length > 0 && (
         <Card.Root borderColor="warning.emphasized" borderWidth="1px">
           <Card.Body>
             <Stack gap="card">
               <Flex align="center" gap="2">
                 <Icon as={StickyNote} boxSize="4" color="warning.fg" />
                 <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-                  {t("orders.note")}
+                  {t("orderDetail.notes.title")}
                 </Text>
               </Flex>
-              <Text fontSize="sm" whiteSpace="pre-wrap" data-testid="pick-order-note">
-                {order.note}
-              </Text>
+              <Stack gap="3" data-testid="pick-order-notes">
+                {notes.map((log, i) => {
+                  const fromKey = timelineFromKey(log.from);
+
+                  return (
+                    <Stack key={log.id > 0n ? log.id.toString() : `i${i}`} gap="0.5" data-testid="pick-order-note">
+                      <Text fontSize="sm" whiteSpace="pre-wrap" data-testid="pick-order-note-text">
+                        {log.note}
+                      </Text>
+                      <Text fontSize="xs" color="fg.muted">
+                        {[fromKey ? t(fromKey) : "", formatUnixDateTime(log.createdAtUnix)].filter(Boolean).join(" · ")}
+                      </Text>
+                    </Stack>
+                  );
+                })}
+              </Stack>
             </Stack>
           </Card.Body>
         </Card.Root>

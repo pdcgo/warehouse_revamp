@@ -588,7 +588,7 @@ export function SellerOrdersPage() {
                           </Table.ColumnHeader>
                         )}
 
-                        {/* total beli = subtotal produk + biaya — the order's cogs and its frozen warehouse fee. */}
+                        {/* total beli = subtotal produk + biaya — the order's goodsCost and its frozen warehouse fee. */}
                         <Table.ColumnHeader textAlign="end">{t("orders.cost")}</Table.ColumnHeader>
 
                         {/* ⚠ THE MARGIN IS THE SECOND LINE HERE (owner: *"margin ikut total mp saja"*),
@@ -664,17 +664,17 @@ export function SellerOrdersPage() {
                               </Table.Cell>
                             )}
 
-                            {/* total beli = cogs + the frozen fee. */}
+                            {/* total beli = goodsCost + the frozen fee. */}
                             <Table.Cell textAlign="end">
-                              <SpendCell cogs={o.cogs} fees={orderFee(o)} />
+                              <SpendCell goodsCost={o.goodsCost} fees={orderFee(o)} />
                             </Table.Cell>
 
                             {/* ⚠ THE MARGIN RIDES WITH THIS FIGURE (owner), because it is measured
                               against it — `harga MP − total beli`, as a share of the MP price. */}
                             <Table.Cell textAlign="end">
                               <MpTotalCell
-                                marketplaceTotal={o.marketplaceTotal}
-                                cogs={o.cogs}
+                                platformTotal={o.platformTotal}
+                                goodsCost={o.goodsCost}
                                 fees={orderFee(o)}
                               />
                             </Table.Cell>

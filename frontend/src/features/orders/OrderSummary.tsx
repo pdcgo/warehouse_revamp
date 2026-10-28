@@ -98,7 +98,7 @@ function pctText(pct: number | null): string | null {
 const MEASURES: Measure[] = [
   // ⚠ `onTheWire` GATES THE COUNT AND THE VALUE TOO. A pile the contract has no status for sums to
   // zero, and printing that zero claims "no orders are completed" — which is not something a
-  // contract with no `completed` in it can say. Same rule as a cogs of 0, one level up.
+  // contract with no `completed` in it can say. Same rule as a goods_cost of 0, one level up.
   { key: "value", render: (row) => rupiah(row.onTheWire ? row.value : null) },
   { key: "tx", render: (row) => (row.onTheWire ? row.count.toLocaleString("id-ID") : unknown()) },
   { key: "items", render: (row) => decimal(row.onTheWire ? row.itemCount : null) },
@@ -106,7 +106,7 @@ const MEASURES: Measure[] = [
   { key: "upt", render: (row) => decimal(summaryUpt(row)) },
   { key: "atv", render: (row) => rupiah(summaryAtv(row)) },
   // ⚠ Same refusal as the margin: with nothing priced, the 0 is an absence, not an amount.
-  // ⚠ `summarySpend`, NOT `row.cogs` — nilai belanja is total beli: the goods' cost PLUS the
+  // ⚠ `summarySpend`, NOT `row.goodsCost` — nilai belanja is total beli: the goods' cost PLUS the
   // fulfilment fees. It is the same figure the table's `Beli` cell shows per order, so the strip and
   // the rows mean the same thing by the same word. Same refusal as the margin: with nothing priced,
   // the 0 is an absence and not an amount.

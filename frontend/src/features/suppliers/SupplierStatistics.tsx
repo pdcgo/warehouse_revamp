@@ -17,6 +17,7 @@ import {
   type SupplierProductRow,
   useSupplierFigureSeries,
   useSupplierFiguresByProduct,
+  useSupplierHeadline,
 } from "./analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "./FigureParts";
 import { ProductListItem } from "../../components/products/ProductListItem";
@@ -92,19 +93,20 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
 
   const teamId = current?.teamId;
 
-  // The series is read on BOTH views — its `total` is the headline.
+  // The headline is read on BOTH views — the whole window, whichever way it is cut — and keyed without either page.
+  const headline = useSupplierHeadline({ teamId, supplierId, from, to, valid, restockTeamId });
+  // Each view's table only once that view is open — nobody waits on a table they are not looking at.
   const series = useSupplierFigureSeries({
     teamId,
     supplierId,
     from,
     to,
-    valid,
+    valid: valid && view === "time",
     restockTeamId,
     grain,
     page: seriesPage,
     pageSize: PAGE_SIZE,
   });
-  // By product only once that view is open — nobody waits on a table they are not looking at.
   const products = useSupplierFiguresByProduct({
     teamId,
     supplierId,
@@ -117,7 +119,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
   });
 
   // Nothing at all in the window — said once, instead of a headline of zeroes over a table of zeroes.
-  const quiet = series.data !== undefined && unitsReceived(series.data.total) === 0;
+  const quiet = headline.data !== undefined && unitsReceived(headline.data) === 0;
 
   const empty = (
     <Text color="fg.muted" data-testid="statistics-empty">
@@ -174,8 +176,8 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
           </Text>
         )}
 
-        <RefreshOverlay busy={series.isFetching && !series.isPending}>
-          <FiguresSummary figures={series.data?.total} testId="statistics-summary" />
+        <RefreshOverlay busy={headline.isFetching && !headline.isPending}>
+          <FiguresSummary figures={headline.data} testId="statistics-summary" />
         </RefreshOverlay>
 
         <Stack gap="field">
@@ -192,7 +194,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
                 <GrowingPager
                   page={seriesPage}
                   onPageChange={setSeriesPage}
-                  hasNext={series.isPlaceholderData ? undefined : seriesPage * PAGE_SIZE < (series.data?.totalItems ?? 0)}
+                  hasNext={series.isPlaceholderData ? undefined : series.data?.hasNext}
                   resetKey={[grain, from, to, restockTeamId].join("|")}
                   pageSize={PAGE_SIZE}
                   testId="statistics-series-pager"
@@ -213,7 +215,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
                 <GrowingPager
                   page={productPage}
                   onPageChange={setProductPage}
-                  hasNext={products.isPlaceholderData ? undefined : productPage * PAGE_SIZE < (products.data?.totalItems ?? 0)}
+                  hasNext={products.isPlaceholderData ? undefined : products.data?.hasNext}
                   resetKey={[from, to, restockTeamId].join("|")}
                   pageSize={PAGE_SIZE}
                   testId="statistics-products-pager"

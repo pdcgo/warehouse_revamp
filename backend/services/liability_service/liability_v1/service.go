@@ -43,10 +43,29 @@ func (noAccounts) PaymentAccount(context.Context, uint64, uint64) (bool, error) 
 	return false, nil
 }
 
+// TeamNamer names teams for a GENERAL slice that promises a name — LiabilityCreditByIds' creditors. A team is
+// team_service's, so the name is asked of it, under the caller's token, and only when the slice is requested.
+//
+// ⚠ The other reads' GENERAL slices carry the id alone and leave the name to the screen. That predates this one and
+// is not changed by it.
+type TeamNamer interface {
+	// TeamNames answers the ids it knows; an unknown or deleted team is ABSENT, never an error.
+	TeamNames(ctx context.Context, ids []uint64) (map[uint64]string, error)
+}
+
+// noNames knows no team — a GENERAL slice then carries the ids alone. The default for tests and any caller that
+// never asks for names.
+type noNames struct{}
+
+func (noNames) TeamNames(context.Context, []uint64) (map[uint64]string, error) {
+	return map[uint64]string{}, nil
+}
+
 type Service struct {
 	db       *gorm.DB
 	events   event_source.EventSender
 	accounts AccountChecker
+	names    TeamNamer
 }
 
 // compile-time proof Service serves the READ surface and the TERMS surface (#189).
@@ -61,7 +80,12 @@ var (
 	_ liabilityv1connect.LiabilityPaymentServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, events event_source.EventSender, accounts AccountChecker) *Service {
+func NewService(
+	db *gorm.DB,
+	events event_source.EventSender,
+	accounts AccountChecker,
+	names TeamNamer,
+) *Service {
 	// A nil sender would panic on the first accept. EmptySender still VALIDATES the event, so a malformed
 	// one is caught with no broker in sight — the right default for tests and a local run.
 	if events == nil {
@@ -74,7 +98,11 @@ func NewService(db *gorm.DB, events event_source.EventSender, accounts AccountCh
 		accounts = noAccounts{}
 	}
 
-	return &Service{db: db, events: events, accounts: accounts}
+	if names == nil {
+		names = noNames{}
+	}
+
+	return &Service{db: db, events: events, accounts: accounts, names: names}
 }
 
 var errAccountNotUsable = errors.New("pick one of your team's active accounts — an archived account, " +

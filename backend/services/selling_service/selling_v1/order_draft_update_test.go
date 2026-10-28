@@ -58,7 +58,7 @@ func TestOrderDraftUpdate_MarksOnlyWhatItWrote(t *testing.T) {
 	// And now the app cannot take it back — which is the entire point of the mark.
 	repush := scrape()
 	repush.CustomerName = "budi"
-	repush.ShippingCost = 21000
+	repush.PlatformTotal = 21000
 
 	after := push(t, svc, 7, repush).GetDraft()
 
@@ -66,8 +66,8 @@ func TestOrderDraftUpdate_MarksOnlyWhatItWrote(t *testing.T) {
 		t.Fatalf("customer_name = %q after a re-push — the mark did not hold", after.GetCustomerName())
 	}
 
-	if after.GetShippingCost() != 21000 {
-		t.Fatalf("shipping_cost = %d — an unmarked field was frozen too", after.GetShippingCost())
+	if after.GetPlatformTotal() != 21000 {
+		t.Fatalf("platform_total = %d — an unmarked field was frozen too", after.GetPlatformTotal())
 	}
 }
 

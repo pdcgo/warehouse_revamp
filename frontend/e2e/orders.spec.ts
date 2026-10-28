@@ -21,8 +21,8 @@ const CUSTOMER = `E2E Customer ${SUFFIX}`;
 // The marketplace's own id for the order — shaped like one a storefront actually issues, and made
 // unique per run so the search that finds it cannot match a leftover from an earlier one.
 const MARKETPLACE_REF = `250815MP${SUFFIX}`;
-// The number printed on the slip — invented in a courier's shape, and unlike the ref in every way the form's
-// refs-distinct check reads, so the two cannot be mistaken for each other.
+// The number printed on the slip — invented in a courier's shape, and unlike the ref, so a search or an assertion
+// for one can never match the other.
 const TRACKING_NUMBER = `JX9${SUFFIX}Q4`;
 // An order names the warehouse that ships it (#72), so this spec creates its own rather than
 // depending on warehouses.spec.ts having run first.
@@ -136,6 +136,8 @@ async function placeOrderViaForm(page: Page, customer: string) {
   await addProducts(page, [SKU]);
   await page.getByTestId("order-line-qty-0").fill("1");
   await pickOrderDate(page);
+  // What the buyer paid on the storefront — required to place (platform-total-is-required-at-finalize).
+  await page.getByTestId("order-marketplace-total").fill("25000");
   // No price: a line is valued at the warehouse HPP, which this fixture's product has none of.
   await page.getByTestId("order-create-save").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
@@ -478,12 +480,22 @@ test("Create: place an order through the form; money computes; the detail opens"
   // Attached, and named — the upload has finished by the time the row appears.
   await expect(page.getByTestId("order-receipt-attached")).toContainText("resi-jne.pdf");
 
+  // …and shipment's REAL ReceiptCheck read it, beside the upload (the-receipt-check-prototype-is-accepted). This file
+  // is a PDF header and nothing else, so the answer is UNREADABLE — a notice, never a refusal — and the numbers typed
+  // above are left exactly as they were.
+  await expect(page.getByTestId("order-create-scan-notice")).toHaveAttribute("data-result", "unreadable");
+  await expect(page.getByTestId("order-receipt-code")).toHaveValue(TRACKING_NUMBER);
+
   // The total is the goods PLUS the warehouse's fee — no shipping (owner), and the marketplace figure was never in
   // the sum. The warehouse PRICES the fee (WarehouseFeeCalculate): 2.5% of Rp 0 is below the floor, so it is the
   // floor set in setup. The server prices it again at create and freezes that — the detail below reads it back.
   await expect(page.getByTestId("order-create-products-total")).toHaveText("Rp 0");
   await expect(page.getByTestId("order-create-warehouse-fee")).toHaveText("Rp 1.500");
   await expect(page.getByTestId("order-create-total")).toHaveText("Rp 1.500");
+
+  // The buyer's marketplace username — optional (the-buyers-username-is-optional), typed with stray spaces that the
+  // order must not keep.
+  await page.getByTestId("order-create-buyer-username").fill("  budi.e2e  ");
 
   // THE MARKETPLACE'S ORDER DATE is required (platform-created-at-is-required-at-finalize): everything else is
   // filled, and Create still waits for it.
@@ -498,6 +510,8 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
   await expect(page).toHaveURL(/\/orders\/\d+$/);
   await expect(page.getByTestId("order-detail-page")).toContainText(CUSTOMER);
+  // …with the buyer's username under the customer, trimmed.
+  await expect(page.getByTestId("order-detail-buyer-username")).toHaveText("budi.e2e");
   await expect(page.getByTestId("section-items")).toContainText(SKU);
   // The marketplace figure survived onto the order, as its own tile beside ours and not inside it.
   await expect(page.getByTestId("tile-mp")).toContainText("Rp 58.000");

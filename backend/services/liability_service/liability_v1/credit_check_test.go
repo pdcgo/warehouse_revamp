@@ -41,7 +41,7 @@ func oweThem(t *testing.T, svc *liability_v1.Service, db *gorm.DB, amount int64,
 // this is the day-one state of every pair in the system, so it must not block anything.
 func TestCheckCredit_UnconfiguredCreditorAllows(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 99_000_000, 1)
 
@@ -56,9 +56,9 @@ func TestCheckCredit_UnconfiguredCreditorAllows(t *testing.T) {
 // has ever configured a rate for.
 func TestCheckCredit_TermsWithoutALimitAllow(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
+	putTerms(t, svc, warehouse, selling, 12000, nil)
 	oweThem(t, svc, db, 99_000_000, 1)
 
 	if block := checkCredit(t, svc, selling, warehouse); block != nil {
@@ -70,9 +70,9 @@ func TestCheckCredit_TermsWithoutALimitAllow(t *testing.T) {
 // it, allowed. Exposure reaching limit-plus-one-order is what the rule permits, not a bug.
 func TestCheckCredit_BlocksAtTheLimitNotBeforeIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 0, 0, rupiah(50_000_000))
+	putTerms(t, svc, warehouse, selling, 0, rupiah(50_000_000))
 
 	oweThem(t, svc, db, 49_999_999, 1)
 
@@ -97,9 +97,9 @@ func TestCheckCredit_BlocksAtTheLimitNotBeforeIt(t *testing.T) {
 // This is the case the whole absent-vs-zero distinction was built for: somebody freezing a team.
 func TestCheckCredit_ZeroLimitBlocksImmediately(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 0, 0, rupiah(0))
+	putTerms(t, svc, warehouse, selling, 0, rupiah(0))
 
 	block := checkCredit(t, svc, selling, warehouse)
 	if block == nil {
@@ -115,9 +115,9 @@ func TestCheckCredit_ZeroLimitBlocksImmediately(t *testing.T) {
 // receivable must not be treated as having borrowed it.
 func TestCheckCredit_BeingOwedIsNotDebt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, selling, warehouse, 0, 0, rupiah(1))
+	putTerms(t, svc, selling, warehouse, 0, rupiah(1))
 
 	// The warehouse is owed 15.000 by the selling team, so from the WAREHOUSE's side this is a
 	// receivable — it has borrowed nothing from the selling team.
@@ -131,9 +131,9 @@ func TestCheckCredit_BeingOwedIsNotDebt(t *testing.T) {
 // THE DEFAULT ROW APPLIES TO A TEAM WITH NO OVERRIDE — that is the whole point of having one.
 func TestCheckCredit_FallsBackToTheDefaultRow(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, 0, 0, 0, rupiah(10_000))
+	putTerms(t, svc, warehouse, 0, 0, rupiah(10_000))
 	oweThem(t, svc, db, 10_000, 1)
 
 	if checkCredit(t, svc, selling, warehouse) == nil {
@@ -145,10 +145,10 @@ func TestCheckCredit_FallsBackToTheDefaultRow(t *testing.T) {
 // cap for that one debtor — "override" means override, not "override only if stricter".
 func TestCheckCredit_OverrideWithoutALimitLiftsTheDefault(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, 0, 0, 0, rupiah(10_000))
-	putTerms(t, svc, warehouse, selling, 0, 0, nil)
+	putTerms(t, svc, warehouse, 0, 0, rupiah(10_000))
+	putTerms(t, svc, warehouse, selling, 0, nil)
 
 	oweThem(t, svc, db, 99_000_000, 1)
 
@@ -162,11 +162,11 @@ func TestCheckCredit_OverrideWithoutALimitLiftsTheDefault(t *testing.T) {
 // and a block nobody can attribute is a block nobody can clear.
 func TestCheckCredit_NamesWhichCreditorBlocked(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	// The warehouse is generous; the product's owner has frozen this team.
-	putTerms(t, svc, warehouse, selling, 0, 0, rupiah(99_000_000))
-	putTerms(t, svc, productOwner, selling, 0, 0, rupiah(0))
+	putTerms(t, svc, warehouse, selling, 0, rupiah(99_000_000))
+	putTerms(t, svc, productOwner, selling, 0, rupiah(0))
 
 	block := checkCredit(t, svc, selling, warehouse, productOwner)
 	if block == nil {
@@ -182,7 +182,7 @@ func TestCheckCredit_NamesWhichCreditorBlocked(t *testing.T) {
 // owes nobody — and a self-referential terms row cannot exist anyway (the DB refuses it).
 func TestCheckCredit_IgnoresYourselfAndUnresolvedOwners(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	// 0 is "the owner could not be resolved" on an order line — nobody to owe, so nobody to check.
 	if block := checkCredit(t, svc, selling, selling, 0); block != nil {

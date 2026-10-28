@@ -25,7 +25,7 @@ func placedEvent(total int64) *eventsv1.Event {
 		EventId:    "order-placed:5001",
 		OccurredAt: timestamppb.New(placedAt),
 		Message: &eventsv1.Event_OrderPlaced{OrderPlaced: &eventsv1.OrderPlaced{
-			TeamId: team, ShopId: shop, OrderId: order, MarketplaceTotal: total, ActorId: 42,
+			TeamId: team, ShopId: shop, OrderId: order, PlatformTotal: total, ActorId: 42,
 		}},
 	}
 }

@@ -1,5 +1,10 @@
 # AnalyticGroupSearch — performance audit
 
+> ⛔ **The RPC is gone (2026-10-27)** — replaced by `MetricSearch` + `MetricData`
+> ([the-pattern-replaces-the-shipped-analytics](../../../../docs/business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)).
+> Kept as the record: finding 2 (dates as literals) lives on in `window()`, and finding 3 is carried by
+> [MetricSearch.md](./MetricSearch.md). Read those for the current numbers.
+
 **Verdict:** ✅ **fixed the same day** (2026-10-07) for findings 1 and 2 — one grouped statement for the page and the
 totals, and the window's dates as literals. A one-year ranking is now **90 ms** (by broken rate 105 ms, searched 58–79 ms),
 30 days 15–18 ms, one statement. Finding 3 — the window has no limit — is the owner's

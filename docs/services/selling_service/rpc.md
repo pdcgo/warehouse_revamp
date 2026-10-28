@@ -96,7 +96,7 @@ say **when** an order was confirmed, **how long** it then sat before the crew pi
 either — the row carries `status`, `created_at` and `updated_at`, and no actor at all. So each
 transition appends a row to `order_timeline_logs`, saying which side made it
 ([order-timeline-logs-replaces-order-events](../../business/order/context_decision.md#order-timeline-logs-replaces-order-events)),
-and the detail page's **Timeline** tab reads those.
+and the detail page reads those — the status rows in its **Timeline**, the note rows in *Catatan*.
 
 **The append happens at the single choke point**, not in the handlers:
 
@@ -120,6 +120,13 @@ sequenceDiagram
   transition on different days depending on who looked.
 - **`placeOrder` appends its own `pending` row, from `selling`**, so an order typed into the form and one
   promoted from a draft start the same timeline — the two doors cannot differ.
+- **A note is a row with no status** ([a-note-is-a-timeline-row](../../technical/frontend/order_detail_decision.md#a-note-is-a-timeline-row)),
+  never edited and never deleted. Two writers, neither through `setOrdersStatus` — a note moves nothing:
+  - `placeOrder` writes the form's trimmed note, when there is one, in the SAME INSERT as the `pending` row: from
+    `selling`, by the person placing the order, at the order's own `created_at` — so it reads straight after `pending`.
+  - `OrderNoteCreate(team_id, order_id, note)` appends one from either end, `from` following the scope (the order's
+    team `selling`, a team that is both ends included, its warehouse `warehouse`, any other team NotFound). A
+    single-table insert after a scoped read — no lock, no transaction.
 - **The actor is `eventActor(ctx)` — 0 when unidentifiable, and that never fails the call.** This is a
   deliberate contrast with `draftAuthor`, which refuses the request outright: a draft is personal, so an
   unidentifiable caller has no correct answer to receive, whereas an event is a byproduct and the
@@ -154,14 +161,20 @@ would hide that rather than record it.
 
 ---
 
-## The create form asks before it takes — `StockAvailability` (#90)
+## The create form asks before it takes — `StockTakeQuote` (#90, an-order-is-costed-at-what-leaves-the-shelf)
 
 `OrderCreate` draws the goods in the same transaction that writes the order, so **not enough stock is
 not a warning — it is a failed order**. Before this, the person typing found that out from a red error
 after filling in the customer, the address and every line.
 
-The form now reads `inventory.v1.InventoryService/StockAvailability` for the products on it, whenever a
-warehouse is chosen, and marks any line the warehouse cannot fill.
+The order form and the draft page read `inventory.v1.InventoryService/StockTakeQuote` for the lines on them — each
+product once, its quantities summed — whenever a warehouse is chosen and once a quantity settles. One answer carries
+both halves: what the warehouse holds against each line (the stock column, the short-line alert) and **what those units
+cost as the take would draw them**, the owner's batches oldest first
+([an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)).
+Each line's HPP, its split over two batches, the invoice, the margin and the warehouse fee's preview all follow from it.
+*(It replaced `StockAvailability` + `StockCost` on these two pages, 2026-10-23; `StockCost`'s average values the stock
+that stays, and no order reads it.)*
 
 ```mermaid
 sequenceDiagram
@@ -171,70 +184,142 @@ sequenceDiagram
     participant INV as inventory_service
     participant SELL as selling_service
 
-    CS->>UI: pick a warehouse, pick products
-    UI->>INV: StockAvailability(team, warehouse, product_ids)
-    INV-->>UI: available per product — one row per id, zeros included
-    Note over UI: wanted is summed PER PRODUCT across lines,<br/>because the warehouse is drawn down once per order
+    CS->>UI: pick a warehouse, pick products, type quantities
+    UI->>INV: StockTakeQuote(team, warehouse, lines) — once the quantity settles
+    INV-->>UI: per product - available, enough, cost of the draw, its batches oldest first
+    Note over UI: a product on two lines is asked for as their sum,<br/>because the take draws it once per order
     alt a line asks for more than is there
-        UI-->>CS: line goes red, Create is disabled
+        UI-->>CS: line goes red, its HPP unknown, Create is disabled
     else it fits
+        UI-->>CS: HPP per line, e.g. 1 x Rp 8.000 + 1 x Rp 9.500, invoice, margin, fee
         CS->>UI: Create
         UI->>SELL: OrderCreate
         SELL->>INV: OrderTransactionCreate - key order:id, before the order commits
-        INV-->>SELL: taken, or insufficient
-        SELL-->>UI: the order, or the refusal
+        INV-->>SELL: the draw it really made, or insufficient
+        SELL-->>UI: the order, frozen at that draw, or the refusal
     end
 ```
 
-**The check is ADVISORY. The take remains the authority** — two people can place orders against one
-shelf in the same second, so anything read beforehand is already historical. The pre-check exists to
-stop somebody wasting five minutes of typing, not to guarantee the pick.
+**The quote is ADVISORY. The take remains the authority** — two people can place orders against one
+shelf in the same second, so anything read beforehand is already historical. If another order takes the same units
+first, the order freezes the draw its own take made; the preview is never charged.
 
 ### What it reads
 
-The product's batches in the warehouse, summed — the rows the order's take counts (`inventory_ledgers.LockBatches`). A product has
-one owner, so they are its owner's batches whoever asks; the take's other refusals (a locked product, the reserve) are
-its own and are not repeated here.
+The take's own selection, read-only — see
+[inventory_service: StockTakeQuote](../inventory_service/rpc.md#stocktakequote--what-the-take-would-draw). The
+product's owner's batches in the warehouse, the rows the order's take counts and draws (`inventory_ledgers.ReadBatches`
+is `LockBatches` without the lock), and the take's refusals of a borrowed line (private, below its reserve) read as
+nothing available.
 
 ## The warehouse prices the order, and the order keeps the price — `WarehouseFeeCalculate` (step 3)
 
 Step 3 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last):
 `placeOrder` — both doors, `OrderCreate` and `OrderDraftPromote` — asks warehouse_service what the fulfilling
 warehouse charges for the order's goods, and freezes the answer as `orders.warehouse_fee`. The order form asks the same
-RPC while the order is typed, so the figure on screen is the figure kept.
+RPC while the order is typed, on the quote's goods cost, so the figure on screen is the figure kept.
+
+✅ *(2026-10-23)* **Every money figure is frozen from ONE draw — the take's**
+([an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)).
+Each line's `unit_cost` and `total`, the header's `goods_cost`, the fee's basis and `total_cost` all come from what the
+take answers, inside the order's transaction. Nothing reads the shelf's average before the take any more.
+
+🔄 *(2026-10-23, the alignment pass)* **The basis is `goods_cost` = Σ the lines' frozen `total`** — a borrowed line WITH
+its owner's markup ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost),
+[the-cross-charge-lives-on-the-line](../../business/order/context_decision.md#the-cross-charge-lives-on-the-line)). The
+first build priced it on the drawn cost without the markup (the build's `cogs`); selling `00027` renamed the column and
+`placeOrder` now sums the totals. The form's preview (`goodsCostOf`) adds each borrowed line's own markup the same way.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant UI as order form
     participant SELL as selling_service
-    participant WH as warehouse_service
     participant INV as inventory_service
+    participant WH as warehouse_service
 
-    UI->>WH: WarehouseFeeCalculate(team, warehouse, goods cost) — the preview
+    UI->>INV: StockTakeQuote — each line's draw, the preview
+    UI->>WH: WarehouseFeeCalculate(team, warehouse, the quote's goods cost) — the preview
     WH-->>UI: the fee, or FailedPrecondition — Save stays off
     UI->>SELL: OrderCreate
-    SELL->>INV: UnitCosts — what each line cost, so cogs
-    SELL->>SELL: credit check
-    SELL->>WH: WarehouseFeeCalculate(team, warehouse, cogs) — in-process
-    alt the warehouse never set its fee
-        WH-->>SELL: FailedPrecondition, naming it
-        SELL-->>UI: the same refusal — nothing taken, nothing written
+    SELL->>SELL: each line's owner, then every borrowed line's return map — see the return map
+    SELL->>SELL: credit check — before the transaction
+    SELL->>SELL: open tx, insert the order header - no goods_cost, no fee yet - and its first timeline row, plus the typed note as its first note row
+    SELL->>INV: take the stock — key order:id
+    INV-->>SELL: per product - the draw's cost, unit cost, and total with the product's markup
+    SELL->>SELL: the four money figures per line, goods_cost = the lines' totals rounded once
+    SELL->>WH: WarehouseFeeCalculate(team, warehouse, goods_cost) — in-process, inside the tx
+    alt the warehouse never set its fee, or cannot be reached
+        WH-->>SELL: FailedPrecondition naming it, or an error
+        SELL->>SELL: roll the tx back
+        SELL->>INV: release the take — key order:id
+        SELL-->>UI: the same refusal — no order, the stock back on the shelf
     else priced
         WH-->>SELL: the fee
-        SELL->>SELL: open tx, insert the order with warehouse_fee frozen
-        SELL->>INV: take the stock — key order:id
-        SELL-->>UI: the order, its fee on it
+        SELL->>SELL: UPDATE the header's goods_cost, warehouse_fee and total_cost, insert the lines, commit
+        SELL-->>UI: the order, its cost and fee frozen from the one draw
     end
 ```
 
 | | |
 | --- | --- |
-| the basis | `cogs` — Σ quantity × the line's frozen unit cost ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost)). A cost nobody recorded is 0, so a percent warehouse charges its floor on it |
-| when | before the transaction, beside the cost read and the credit check — another service's read, never under the order's row lock. The refusal therefore lands before any stock moves; the owner's flow rolls a taken stock back on a failed step, and refusing first reaches the same end with nothing to roll back |
+| the basis | `goods_cost` — Σ the lines' frozen `total` (the draw's cost plus, on a borrowed product, its owner's markup), rounded once to whole rupiah ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost), [an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)). A line the take named no draw for adds 0, so a percent warehouse charges its floor on it |
+| when | AFTER the take, inside the order's transaction — its basis is the draw, which exists only once the take answers. The fee is warehouse_service's to compute, never selling's ([warehouse-prices-balance-records](../../business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)), so it is asked rather than worked out from a rate read earlier. A refusal fails the transaction and the compensation releases the take — the owner's own flow ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders) *"the take is rolled back like any failed step"*). The form refuses such a warehouse before Create, so it is the rare path |
+| the header | inserted first, for the id the take's key is made of; its `goods_cost`, `warehouse_fee` and `total_cost` (= the two added) are written by one UPDATE of that row after the take, in the same transaction — no reader sees the order without them |
+| concurrency | the fee read takes no lock; the order's KEY SHARE on its shop is held across it as it is across the take — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
 | the refusal | `FailedPrecondition`, the warehouse's own sentence passed through unchanged ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)). An unreachable warehouse_service is `Unavailable` — no order at a fee nobody computed |
 | the wiring | `selling_v1.WarehouseFeePricer`, adapted in the composition root (`warehouse_fee_pricer.go`) to the handler itself |
 | not yet | the event. `OrderPlaced` does not carry the fee until step 4 ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)), so liability still posts its flat `handling_fee` |
+
+## One line per product, and the take's refusal as it came — `placeOrder` (both doors)
+
+**A product named on two lines is merged into ONE order line** before anything else reads the lines. The order form
+adds a bundle's products as ordinary lines, so the same product can arrive once by hand and once from a bundle; a
+draft's two rows can map to one product. The order keeps only product lines
+([the-order-keeps-only-product-lines](../../business/product/product_bundle_decision.md#the-order-keeps-only-product-lines)),
+the take refuses a product listed twice, and every money figure of a line is the take's one draw
+([an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)) —
+so `placeOrder` folds them, quantities summed, and stores the one line. In the server, so every door and every client is
+covered.
+
+**A refused take reaches the caller as the take answered it** — its Connect code and its `OrderTransactionRefusal`
+detail (the reason and every line it names). It used to be wrapped as a database error and reach the form as
+`Internal`. The order form and the draft page decode the detail and name the reason and the products.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form or draft page
+    participant SELL as selling_service placeOrder
+    participant INV as inventory_service take
+
+    UI->>SELL: lines - Kopi x 2 by hand, Kopi x 1 from a bundle
+    SELL->>SELL: validate each line, then merge by product - Kopi x 3, the price never compared
+    alt two lines of one product disagree on sku or name
+        SELL-->>UI: InvalidArgument naming the product - nothing checked, nothing taken
+    else merged
+        SELL->>SELL: owners, return maps, credit - on the merged lines
+        SELL->>INV: take - Kopi x 3, one line
+        alt refused - short stock, a borrowed product private or below its reserve
+            INV-->>SELL: FailedPrecondition with an OrderTransactionRefusal detail
+            SELL->>INV: release by the key
+            SELL-->>UI: the same error - code and detail unchanged
+            UI-->>UI: the reason, and each named line - Kopi wants 3, the warehouse holds 1
+        else drawn
+            INV-->>SELL: one draw for Kopi
+            SELL->>SELL: store ONE line - Kopi x 3, its cost, cost with markup, markup and total from that draw
+        end
+    end
+```
+
+| | |
+| --- | --- |
+| merged on | the product id. The merged line keeps the first line's sku and name, and the request is not modified |
+| the price | **not compared, and not read** ([an-order-line-carries-no-marketplace-price](../../business/order/context_decision.md#an-order-line-carries-no-marketplace-price)). Every money field of a line is stamped from the take after the merge, and a line has no price of its own (`unit_price` was dropped by `00028`). So two draft rows of one product at two marketplace prices promote as ONE line and lose nothing: the prices stay on the draft's rows |
+| refused instead | two lines of one product under a different `sku` or `name` — merging would keep one label and drop the other. The form never sends that (the catalogue's label, per product) and Promote reads one catalogue snapshot per product, so only a client sending one product under two labels to `OrderCreate` meets it |
+| the form's totals | the order form and the draft page sum their money **per product** (`byProduct`), so a product on two lines is costed as one draw — the figures on screen are the ones the order stores. The rows themselves still show where each came from |
+| passed through | any Connect error the take answers with — its code, message and details. A take that never answered in its own terms (not a Connect error) is still `Internal` |
+| the release | unchanged: a refused take is still released by its key, as every failed placement is |
 
 ## The pick screen's reads (#151)
 
@@ -310,7 +395,16 @@ that are back on the rack. The walk is ordered by rack label.
 ## Placing an order announces it (#153)
 
 After `OrderCreate` commits, selling_service publishes an **`Event` carrying the `OrderPlaced` variant**
-with the frozen money. `liability_service` consumes it and charges the order's fees.
+with the frozen money — `goods_cost` (`cogs` until 2026-10-23, same field number) and `platform_total`
+(`marketplace_total`, same number); `revenue` (the dropped `total`) and `shipping_cost` are reserved, neither had a
+consumer. `liability_service` consumes it and charges the order's fees; settlement opens the sale from `platform_total`.
+
+**Each line carries its frozen `total`** (`00023`) — what inventory's take priced it at, the goods plus the product's own
+markup ([inventory-computes-the-markup](../../business/order/context_decision.md#inventory-computes-the-markup)). The
+take answers it (`StockPicker.Pick` returns it per product), `placeOrder` writes the lines only after it, with it, and
+the event copies it as stored. Liability's product fee is Σ an owner's line totals and reads no markup
+([the-ledger-charges-the-frozen-line-total](../../technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)).
+A line the take named no total for stores NULL and rides as 0 — not known, charged nothing.
 
 Published **after** the commit and **never inside** it, and a publish failure does **not** fail the
 order — revenue is downstream, and a shop must keep selling while it is down.
@@ -352,6 +446,22 @@ sequenceDiagram
         D-->>App: same draft id, created = false
     end
 ```
+
+**The push's money, by JSON name.** A client posting Connect JSON names each field in lowerCamelCase. Money is whole
+rupiah, sent as a string or a number (protobuf `int64` in JSON).
+
+| JSON field | proto | what it is |
+| --- | --- | --- |
+| `platformTotal` | `platform_total = 15` | what the buyer paid the platform, as the app read it. Optional on a push (0 = could not see one); Promote refuses a draft still at 0 ([platform-total-is-required-at-finalize](../../business/order/context_decision.md#platform-total-is-required-at-finalize)). A person's typed figure is touched and wins |
+| `items[].unitPrice` | `OrderDraftItem.unit_price = 6` | what the platform charged per unit for that row — the owner's `platform_price`. Information beside the mapping; deleted with the draft, never copied onto the order |
+
+> ⚠ **Changed 2026-10-23** (selling `00026`/`00027`). `marketplaceTotal` was renamed **`platformTotal`** (same field
+> number 15, so a binary-protobuf client is unaffected) and `shippingCost` (10) was **dropped** — a draft carries no
+> shipping money ([an-order-records-no-shipping-cost](../../business/order/context_decision.md#an-order-records-no-shipping-cost)).
+> A JSON client must send `platformTotal` and stop sending `shippingCost`. Connect DISCARDS unknown JSON fields
+> rather than refusing them, so a client still sending `marketplaceTotal` gets a 200 and a draft at 0 — which then
+> fails Promote with *"an order must say what the buyer paid on the marketplace"*. The same rename applies to
+> `OrderDraft.platformTotal` on every read and to `OrderDraftUpdate`.
 
 **Why the RPC name carries the rule.** The app and the person authenticate as the **same user** — the
 app logs in as one, because there is no machine identity in this system — so *identity cannot tell
@@ -451,15 +561,17 @@ sequenceDiagram
     participant R as revenue_service
 
     CS->>D: OrderDraftPromote — team_id, draft_id
-    D->>D: every line mapped? shop, warehouse, customer, the marketplace order date?
+    D->>D: every line mapped? shop, warehouse, customer, the marketplace order date and what the buyer paid?
     D->>P: ProductByIds — the mapped ids
     P-->>D: sku + name for each that still exists
     Note over D: an id that resolves to nothing is a<br/>DEAD REFERENCE — the answer names it
     rect rgb(240, 240, 240)
         Note over D,I: one transaction
-        D->>D: INSERT the order and its lines
+        D->>D: INSERT the order header — platform_total copied from the draft
         D->>D: DELETE the draft
         D->>I: OrderTransactionCreate — the order's lines leave the warehouse
+        I-->>D: each line's cost, cost with markup, markup and total
+        D->>D: INSERT the lines with that money only — no marketplace price
     end
     D->>R: Event with OrderPlaced, after the commit
     D-->>CS: the order
@@ -479,13 +591,30 @@ draft page, which marks it touched so the next push leaves it alone; Promote cop
 with the same sentence. The deadline is never required
 ([the-shipment-deadline-is-the-platforms-and-optional](../../business/order/context_decision.md#the-shipment-deadline-is-the-platforms-and-optional)).
 
+**What the buyer paid travels with the draft too** (`00022`, `order_drafts.platform_total` since `00026`). The app pushes it; a
+person types it on the draft page, which marks it touched; Promote COPIES it — it is the one figure of the money that
+is not recomputed from the lines below, because no line can say what the buyer paid. `placeOrder`'s shared rule refuses
+0 ([platform-total-is-required-at-finalize](../../business/order/context_decision.md#platform-total-is-required-at-finalize)),
+so a draft may sit at 0 and is refused at Promote, and an `OrderCreate` at 0 is refused the same way with the same
+sentence.
+
 **One transaction, not two.** `orders` and `order_drafts` are the same service in the same database,
 so the order is written and the draft deleted together. A refused promote leaves the draft intact to
 be fixed — which is the behaviour that makes retrying safe.
 
-**The money is recomputed from the mapped lines**, not carried over. A draft's totals are whatever the
-marketplace page said, and the lines somebody actually mapped may not add up to that — a line removed,
-a quantity corrected. An order's totals must agree with its own lines, because margin comes from them.
+**The line carries no marketplace price**
+([an-order-line-carries-no-marketplace-price](../../business/order/context_decision.md#an-order-line-carries-no-marketplace-price)).
+A draft row's `unit_price` is what the marketplace charged; it stays on the row and is deleted with the draft. The
+order line's money is the take's, stamped by `placeOrder` exactly as on `OrderCreate` — `unit_cost`,
+`unit_cost_with_markup`, `markup_total` and `total`, and nothing else (`order_items.unit_price` was dropped by `00028`). Rows of one product at two marketplace
+prices therefore merge into one line with nothing to drop.
+
+**The header's money is the take's, on both doors** — `goods_cost` (Σ the lines' frozen totals), the frozen
+`warehouse_fee` and `total_cost` (the two added); no subtotal and no shipping, selling `00027`
+([an-order-records-no-shipping-cost](../../business/order/context_decision.md#an-order-records-no-shipping-cost)).
+Nothing of the draft's rows is summed onto the order: before 2026-10-23 Promote stored their marketplace prices as a
+`subtotal` while `OrderCreate` stored the form's cost, the same column meaning two things. The one figure Promote copies
+is `platform_total`.
 
 **The line freezes the CATALOGUE's label, not the scrape.** `external_name` is what the buyer clicked
 on; `sku`/`name` on the order line say what we shipped. They come from `ProductByIds` because
@@ -506,6 +635,59 @@ check falls out of `placeOrder`'s existing shop lookup.
 **This is where the `OrderPlaced` event fires, and the only place a draft ever reaches a consumer.** Pushing
 and editing publish nothing at all — there is a test asserting exactly that, because "a draft must
 never publish" is the kind of rule that is only ever violated by accident.
+
+**A borrowed line needs its return map here too** — the check is `placeOrder`'s, so Promote refuses an unmapped one
+with the same sentence `OrderCreate` does. See [the return map](#a-borrowed-products-return-map--productreturnmapcreate-and-productreturnmapbyids).
+
+## A borrowed product's return map — `ProductReturnMapCreate` and `ProductReturnMapByIds`
+
+[the-return-map-is-selling-services-and-read-by-ids](../../technical/frontend/order_create_decision.md#the-return-map-is-selling-services-and-read-by-ids):
+`product_return_maps` (`00024`) records which of a selling team's **own** products a **borrowed** product — another
+team's, sold by this one — comes back as when its order is returned. Both RPCs are on `TeamReturnConfigurationService`,
+beside the return warehouse: the owner's [order_return.md](../../business/order/order_return.md) §Table Must Have lists
+the two tables together, and order create reads both without calling another service.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Return Mapping card
+    participant SELL as selling_service
+    participant P as product_service
+
+    UI->>SELL: ProductReturnMapByIds(team, the borrowed products on the order)
+    SELL-->>UI: the pairs already standing — shown locked, named from ProductByIds
+    UI->>SELL: ProductReturnMapCreate(team, borrowed, ours) — at the confirmed pick
+    SELL->>P: ProductByIds — who owns each of the two
+    alt borrowed is ours, or ours is another team's, or borrowed does not exist
+        SELL-->>UI: FailedPrecondition or NotFound — nothing written
+    else owners as expected
+        SELL->>SELL: INSERT … ON CONFLICT (team_id, shared_product_id) DO NOTHING
+        opt a pair already stands
+            SELL->>SELL: read the standing row
+        end
+        SELL-->>UI: the pair that stands, created true or false
+    end
+    UI->>SELL: OrderCreate or OrderDraftPromote
+    SELL->>P: ProductByIds — each line's owner, looked up once
+    alt the lookup failed
+        SELL-->>UI: Unavailable — not placed, try again
+    else a borrowed line has no pair
+        SELL-->>UI: FailedPrecondition, naming every unmapped product by SKU
+    else every borrowed line is mapped
+        SELL->>SELL: the cost read, the credit check, the fee, then the transaction
+    end
+```
+
+| | |
+| --- | --- |
+| the write | `ProductReturnMapCreate(team_id, shared_product_id, own_product_id)` — its own call, never part of `OrderCreate` ([the-map-is-written-when-it-is-picked](../../technical/frontend/order_create_decision.md#the-map-is-written-when-it-is-picked)). One `INSERT … ON CONFLICT DO NOTHING` on the unique source; a pair already standing is **never overwritten** ([a-return-map-is-written-once](../../business/order/context_decision.md#a-return-map-is-written-once)) — it is read back and returned with `created = false`, and may name a different own product from the one asked for. Two queries at most. Nothing ever `UPDATE`s a row |
+| its refusals | `FailedPrecondition` when the "borrowed" product is the team's own ([an-own-line-never-touches-the-map](../../business/order/context_decision.md#an-own-line-never-touches-the-map)) or "our" product is not the team's ([a-return-never-clones-a-product](../../business/order/context_decision.md#a-return-never-clones-a-product)); `NotFound` when the borrowed product does not exist; `Unavailable` when the owners cannot be looked up — a pair written unchecked could not be taken back |
+| the read | `ProductReturnMapByIds(team_id, filter.ids)` — the `ByIds` shape, 1–100 borrowed ids, keyed by borrowed id, the `PAIR` slice (`own_product_id`, `created_at_unix`). An unmapped product is absent. The team is the filter as well as the scope: another team's map of the same product is never seen. One query, not paged |
+| order create | `placeOrder` — both doors — looks up each line's owner **once** (`lineOwners`, the same `ProductCatalog` port), then refuses a line whose owner is known and is not the ordering team when the team holds no pair for it, naming every such product at once ([a-borrowed-line-needs-its-map-at-create](../../business/order/context_decision.md#a-borrowed-line-needs-its-map-at-create)). One query on the unique index, before the cost read, the credit check and the transaction. An own-only order reads nothing. The credit check reads the same owners |
+| ⚠ a failed owners lookup | **refuses the create** (`Unavailable`), as [a-failed-owner-lookup-refuses-the-create](../../business/order/context_decision.md#a-failed-owner-lookup-refuses-the-create) decided. Until this pass the credit check failed open on it; the map check cannot — without owners a borrowed line cannot be told from an own one |
+| policy | all three requests: Root, Administrator, Selling Owner, Selling Admin, Selling CS — the roles that create orders |
+| names | not stored — the form names our product from `ProductByIds`, the read it already makes |
+| concurrency | ✅ safe — the phantom insert is closed by the unique index: N concurrent maps of one product leave one row and every caller is handed it; the interleave shows the second insert waiting on the first and reading its pair (`product_return_map_create_race_test.go`) |
 
 ## The shop, asked by other services — `ShopAccessCheck`
 

@@ -5,7 +5,7 @@
 // ledgers with a state projection. The difference is who the counterparty is — a marketplace here, a
 // team there — and only this one is allowed to never balance.
 //
-// THE ONE IDEA. `initial_total` is a frozen copy of `order.marketplace_total`: what the buyer actually
+// THE ONE IDEA. `initial_total` is a frozen copy of `order.platform_total`: what the buyer actually
 // paid, a FACT. The running balance is therefore not drift from a guess, it is exactly how much of
 // what the buyer paid never reached us — the platform's take, which the platform never itemises.
 //

@@ -20,7 +20,7 @@ func validEvent() *eventsv1.Event {
 		OccurredAt:  timestamppb.New(time.Unix(occurredAt, 0).UTC()),
 		AggregateId: "order:8241",
 		Message: &eventsv1.Event_OrderPlaced{
-			OrderPlaced: &eventsv1.OrderPlaced{TeamId: 3, OrderId: 8241, Revenue: 250000},
+			OrderPlaced: &eventsv1.OrderPlaced{TeamId: 3, OrderId: 8241, PlatformTotal: 250000},
 		},
 	}
 }

@@ -28,6 +28,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-label-outcome-is-a-result-not-an-error](#a-label-outcome-is-a-result-not-an-error) | unknown, several labels, not a label, unreadable: a `result` in a successful response |
 | [receipt-check-caps-the-body-before-reading](#receipt-check-caps-the-body-before-reading) | the handler refuses a request over 3 MB before reading it; the file stays `max_len` 2 MB |
 | [receipt-check-logs-only-the-result](#receipt-check-logs-only-the-result) | a log line carries the `result`, never the buyer's fields or the bytes |
+| [the-receipt-check-prototype-is-accepted](#the-receipt-check-prototype-is-accepted) | the owner previewed the receipt file stories and accepted screen and contract — the backend may be built |
+| [an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once](#an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once) | no page limit; attachments up to 15 MB; two label checks at once, the next one is "no check" |
+| [the-label-check-stays-at-2-mb](#the-label-check-stays-at-2-mb) | the label check keeps reading files up to 2 MB; a 2–15 MB label still attaches, is not read, and the numbers are typed |
 
 ---
 
@@ -576,3 +579,94 @@ number, the buyer's name, address or phone, and never the bytes.
 **Why.** The caller sent the file, so the response leaks nothing to them, but a log line would copy a buyer's address
 into our logs. That's the same reason the receipt samples stay out of git
 ([receipt_readers Q5](../../technical/packages/receipt_readers/context_clarify.md#question)).
+
+## the-receipt-check-prototype-is-accepted
+
+> Owner, in chat (2026-10-23): **"for 5, i accept"** — after previewing the six `Pages/Order/OrderCreate` stories of the
+> receipt file. `design_accept` for `ReceiptCheck`: the screen and the contract
+> ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)). The
+> backend pass may start.
+
+**The verdict.** The prototype stands as built: the label PDF is read when it is attached, its two numbers fill only empty
+boxes, a mismatch warns at Create, and several labels, a file that is not a label, and an unreadable file each say so —
+while a label the reader does not know says nothing.
+
+```mermaid
+flowchart LR
+  F["the label PDF, attached on the order form"] --> R["ReceiptCheck - shipment_service, 3 MB cap, login"]
+  R -->|"known label"| N["both numbers - fill the empty boxes"]
+  R -->|"multipleLabels, notShippingLabel, unreadable"| S["the card says so"]
+  R -->|"unknownLabel"| Q["nothing shown"]
+```
+
+**What it accepts — every rule already decided:** [receipt-check-is-shipments](#receipt-check-is-shipments),
+[receipt-check-takes-the-file-bytes](#receipt-check-takes-the-file-bytes),
+[receipt-check-returns-what-the-library-reads](#receipt-check-returns-what-the-library-reads),
+[receipt-check-needs-a-login](#receipt-check-needs-a-login),
+[a-label-outcome-is-a-result-not-an-error](#a-label-outcome-is-a-result-not-an-error),
+[receipt-check-caps-the-body-before-reading](#receipt-check-caps-the-body-before-reading),
+[receipt-check-logs-only-the-result](#receipt-check-logs-only-the-result).
+
+| | |
+| --- | --- |
+| not part of it | the label's recipient (name, phone, address) — read, not used; whether it fills the customer card is not asked yet |
+| ✅ built *(2026-10-23)* | `shipment_v1/receipt_check.go` runs `san_receipt_readers.Extract` on the bytes and maps its answer to the `result`: `ErrUnreadable` → `UNREADABLE`, `ErrNotShippingLabel` → `NOT_SHIPPING_LABEL`, any other error → `UNKNOWN_LABEL`, the fields filled only on `READ`; it logs the result, the size and the time. `ReceiptService` is mounted in `register.go` with `connect.WithReadMaxBytes(3 << 20)`. Pinned by `receipt_check_test.go` on every real sample, through the mounted handler for the login and both caps. The order form's `receiptScan` mark is gone. ⚠ `MULTIPLE_LABELS` stays unreachable until the reader exports its error, and a 2 MB file of many pages costs seconds to over a minute of CPU: [ReceiptCheck.md](../../../audits/services/shipment_service/performances/ReceiptCheck.md). Flow: [rpc.md](../../services/shipment_service/rpc.md#receiptcheck--read-an-uploaded-shipping-label) |
+
+## an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once
+
+> Owner, in chat (2026-10-23): *"we dont care about page count, just add size limit filter its max 15 mb"*, then
+> **"yes"** to *"15 MB on both, plus a limit of 2 checks at once, all inside this repo"*. Against the audit's page cap
+> ([ReceiptCheck audit](../../../audits/services/shipment_service/performances/ReceiptCheck.md)).
+
+**The verdict.** No page limit anywhere. A file attached to an order may be up to **15 MB**. At most **two** label checks
+run at the same moment; a third is answered at once with "no check", and the person types the numbers as they do for any
+label the check cannot read. A huge file can slow the label check, never the rest of the system.
+
+```mermaid
+flowchart LR
+  A["a file attached to the order - up to 15 MB"] --> U["the document upload"]
+  A -->|"a PDF"| C{"two checks already running?"}
+  C -->|"yes"| N["no check - the person types the numbers"]
+  C -->|"no"| R["ReceiptCheck reads it"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the attachment | up to 15 MB — the upload's ceiling, on the form and in the document service (was 10 MB) |
+| pages | never counted, never refused for their number |
+| checks at once | two; the next is refused immediately (`ResourceExhausted`), and the form treats it as "no check" |
+| ⚠ the label check's own size | still **2 MB** — the reader package caps it in its own code, in its own repository. Raising it is asked separately |
+| supersedes | the audit's page cap, not taken |
+| ✅ built *(2026-10-23)* | **15 MB:** `docstore.DefaultMaxSizeBytes = 15 << 20`, held by `RequestUpload` (declared size) and `ConfirmUpload` (the bytes that landed) — ⚠ ONE ceiling for every upload kind, so payment proofs, product images, profile pictures and order exports got 15 MB too ([rpc.md](../../services/document_service/rpc.md#two-phase-presigned-put-upload)); the order form's `MAX_BYTES` and its help text say 15 MB. Pinned by `confirm_upload_test.go` and `TestRequestUpload_TooLarge` (15 MB accepted, one byte more refused) and the `RefusesAFileOver15MB` story. **Two at once:** a buffered channel of 2 on shipment's `Service`, taken without waiting — a third `ReceiptCheck` is `ResourceExhausted` before the reader sees a byte, the slot is given back when `Extract` returns (a cancelled request keeps it until then), per API process. Pinned by `TestReceiptCheck_TwoChecksRunAtOnceAndTheThirdIsRefused` and the `ABusyCheckIsNoCheck` story (no notice, no toast). The 2 MB / 3 MB label caps are unchanged. Flow: [rpc.md](../../services/shipment_service/rpc.md#receiptcheck--read-an-uploaded-shipping-label) |
+| 🔄 settled *(2026-10-26)* | the label check's own size stays 2 MB — [the-label-check-stays-at-2-mb](#the-label-check-stays-at-2-mb) |
+
+## the-label-check-stays-at-2-mb
+
+> Owner, in chat (2026-10-26): **"A"** — to *"the label check's size: A keeps it at 2 MB, or B raises it to 15 MB, which
+> needs a push to `san_receipt_readers`?"* As recommended. Closes the ⚠ row *"the label check's own size"* left open by
+> [an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once](#an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once).
+
+**The verdict.** The two limits answer different questions and stay different. **15 MB** is what a person may attach to
+an order. **2 MB** is what the label check will read. A label is about 60 KB, so only a file that is not an ordinary
+label falls between them — and for that file the check has nothing useful to say, while the PDF library's page lookup
+would let a large crafted file cost up to an hour of CPU
+([ReceiptCheck audit](../../../audits/services/shipment_service/performances/ReceiptCheck.md)).
+
+```mermaid
+flowchart LR
+  F["a PDF attached to the order"] --> S{"its size"}
+  S -->|"up to 2 MB"| C["the label check reads it - the numbers are filled in"]
+  S -->|"2 to 15 MB"| U["attached, not read - answered unreadable, the person types the numbers"]
+  S -->|"over 15 MB"| R["refused by the upload"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the check reads | up to 2 MB — the reader's `maxSize`, the proto's `max_len`, the form's `LABEL_MAX_BYTES`; the request body cap stays 3 MB (2 MB as base64 in JSON) |
+| a 2–15 MB PDF | uploads and attaches as any file; the form answers it `unreadable` without sending it, and the person types the tracking number and the order id |
+| `san_receipt_readers` | unchanged — nothing is pushed to it |
+| ✅ built | nothing to build — this is what runs today ([receipt-check-caps-the-body-before-reading](#receipt-check-caps-the-body-before-reading)) |

@@ -28,12 +28,12 @@ import { CopyText } from "../../../components/chrome/CopyText";
 // order is the one somebody must not read past; the other three are facts, and painting them would make
 // the one that matters just another coloured box.
 export function SummaryTiles({
-  marketplaceTotal,
+  platformTotal,
   productCost,
   fees,
   itemCount,
 }: {
-  marketplaceTotal: bigint;
+  platformTotal: bigint;
   /** Σ line cost; 0 when any line's cost is unknown — the tiles then refuse, like the panel. */
   productCost: bigint;
   /** The frozen warehouse fee, or `null` when never priced — the totals then refuse. */
@@ -43,14 +43,14 @@ export function SummaryTiles({
   const { t } = useTranslation();
 
   const spend = orderSpend(productCost, fees ?? 0n, productCost > 0n && fees !== null);
-  const margin = orderMargin(marketplaceTotal, spend);
-  const pct = formatMarginPct(orderMarginPct(marketplaceTotal, spend));
+  const margin = orderMargin(platformTotal, spend);
+  const pct = formatMarginPct(orderMarginPct(platformTotal, spend));
   const tone = margin === null ? undefined : margin < 0n ? "error" : "success";
 
   return (
     <SimpleGrid minChildWidth="10rem" gap="card" data-testid="summary-tiles">
-      <Tile label={t("orderDetail.money.marketplaceTotal")} testId="tile-mp">
-        {marketplaceTotal > 0n ? <Amount value={marketplaceTotal} /> : "—"}
+      <Tile label={t("orderDetail.money.platformTotal")} testId="tile-mp">
+        {platformTotal > 0n ? <Amount value={platformTotal} /> : "—"}
       </Tile>
 
       {/* Built on the order's own frozen fee — and refusing when there is none, rather than printing the goods

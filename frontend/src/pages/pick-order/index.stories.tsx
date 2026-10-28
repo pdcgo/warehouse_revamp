@@ -18,7 +18,7 @@ import { PickOrderPage } from "./index";
 //   | EveryShelfIsListed              | two shelves = two walks — never one chosen for the picker    |
 //   | UnplacedIsAPlace                | rack 0 is said in words, not left blank                     |
 //   | NoRecordedDrawSaysSo            | an order from before #149 has no shelf — and says so         |
-//   | TheNoteIsReadBeforeTheWalk      | the packing instruction sits on the crew's screen            |
+//   | TheNoteIsReadBeforeTheWalk      | every note row, newest first, on the crew's screen           |
 //   | ThereIsOneNextStep              | PENDING → "Confirm Order", and it is recorded                |
 //   | AShippedOrderHasNoStepLeft      | a handed-over order leaves nothing to press                  |
 //   | AnOrderShippingElsewhereIsNot…  | the scope is this building                                   |
@@ -27,7 +27,7 @@ import { PickOrderPage } from "./index";
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const SELLER = teams[1]!; // Toko Melati (12)
 
-const FULL = orderDetailFor(101n)!; // PENDING, three lines, a note, an address
+const FULL = orderDetailFor(101n)!; // PENDING, three lines, a note from each side, an address
 // Handed over — the warehouse's last step, so nothing is left to press.
 const SHIPPED = orders.find((o) => o.warehouseId === WAREHOUSE.id && o.status === OrderStatus.SHIPPING)!;
 const ELSEWHERE = orders.find((o) => o.warehouseId !== WAREHOUSE.id)!; // 107, Gudang Cabang's
@@ -114,12 +114,27 @@ export const NoRecordedDrawSaysSo: Story = {
   },
 };
 
-/** THE NOTE IS ON THE CREW'S SCREEN — the one person it is written for is standing here. */
+/**
+ * THE NOTES ARE ON THE CREW'S SCREEN — the one person they are written for is standing here. Every note row
+ * (a-note-is-a-timeline-row), newest first, and read-only: a note is added from the order's detail.
+ */
 export const TheNoteIsReadBeforeTheWalk: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // 101's two notes, newest first: the warehouse's, then the one typed on the create form.
+    const notes = FULL.timelineLogs
+      .filter((log) => log.status === 0)
+      .sort((a, b) => Number(b.createdAtUnix - a.createdAtUnix));
 
-    await waitFor(() => expect(canvas.getByTestId("pick-order-note")).toHaveTextContent(FULL.note));
+    await waitFor(() => expect(canvas.getAllByTestId("pick-order-note")).toHaveLength(notes.length));
+
+    const shown = canvas.getAllByTestId("pick-order-note-text");
+    for (const [i, note] of notes.entries()) {
+      await expect(shown[i]).toHaveTextContent(note.note!);
+    }
+
+    // No way to write or change one here.
+    await expect(canvas.queryByTestId("notes-input")).not.toBeInTheDocument();
   },
 };
 

@@ -102,10 +102,11 @@ func phoneOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64, ph
 
 	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Budi", CustomerPhone: phone, ShippingCode: "jne",
-		OrderExternalRefId: "5780000000000000001", ReceiptCode: "JP0012345678", Subtotal: 10000, Total: 10000,
-		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 3, UnitPrice: 10000}},
+		CustomerName: "Budi", CustomerPhone: phone, ShippingCode: "jne", BuyerUsername: " budi.melati ",
+		OrderExternalRefId: "5780000000000000001", ReceiptCode: "JP0012345678",
+		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 3}},
 	}))
 	if err != nil {
 		t.Fatalf("place order: %v", err)
@@ -136,16 +137,21 @@ func TestOrderExport_TheSellersFile(t *testing.T) {
 		t.Fatalf("%d rows (header included), want 3 — the header and Melati's two orders: %v", len(run.rows), run.rows)
 	}
 
-	if run.rows[0][0] != "Order ID" || run.rows[0][8] != "Phone" {
+	if run.rows[0][0] != "Order ID" || run.rows[0][8] != "Buyer username" || run.rows[0][9] != "Phone" {
 		t.Fatalf("header = %v", run.rows[0])
 	}
 
 	// The phone keeps its 0, and the long marketplace id is not turned into 5.78E+17: both are TEXT cells.
-	if run.rows[1][8] != "0812000222" {
-		t.Fatalf("phone = %q, want 0812000222 (newest first)", run.rows[1][8])
+	if run.rows[1][9] != "0812000222" {
+		t.Fatalf("phone = %q, want 0812000222 (newest first)", run.rows[1][9])
 	}
 
-	for _, cell := range []string{"I2", "B2"} {
+	// Beside the customer, trimmed as it was stored (the-buyers-username-is-optional).
+	if run.rows[1][8] != "budi.melati" {
+		t.Fatalf("buyer username = %q, want budi.melati", run.rows[1][8])
+	}
+
+	for _, cell := range []string{"J2", "B2"} {
 		kind, err := run.file.GetCellType("Sheet1", cell)
 		if err != nil {
 			t.Fatalf("cell type of %s: %v", cell, err)
@@ -160,18 +166,18 @@ func TestOrderExport_TheSellersFile(t *testing.T) {
 		t.Fatalf("marketplace ref = %q", run.rows[1][1])
 	}
 
-	if run.rows[1][10] != "JP0012345678" {
-		t.Fatalf("tracking number = %q, want the one typed at create", run.rows[1][10])
+	if run.rows[1][11] != "JP0012345678" {
+		t.Fatalf("tracking number = %q, want the one typed at create", run.rows[1][11])
 	}
 
-	if run.rows[1][11] != "3" {
-		t.Fatalf("qty = %q, want 3", run.rows[1][11])
+	if run.rows[1][12] != "3" {
+		t.Fatalf("qty = %q, want 3", run.rows[1][12])
 	}
 
 	// Never priced (this service has no pricer), so the fee cell is EMPTY — not a 0, which would read as a warehouse
 	// that charged nothing.
-	if len(run.rows[1]) > 13 && run.rows[1][13] != "" {
-		t.Fatalf("warehouse fee = %q, want empty for an order never priced", run.rows[1][13])
+	if len(run.rows[1]) > 14 && run.rows[1][14] != "" {
+		t.Fatalf("warehouse fee = %q, want empty for an order never priced", run.rows[1][14])
 	}
 
 	last := run.messages[len(run.messages)-1]

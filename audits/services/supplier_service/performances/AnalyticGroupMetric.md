@@ -1,5 +1,9 @@
 # AnalyticGroupMetric — performance audit
 
+> ⛔ **The RPC is gone (2026-10-27)** — replaced by `MetricData`
+> ([the-pattern-replaces-the-shipped-analytics](../../../../docs/business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)).
+> Kept as the record; the current numbers are [MetricData.md](./MetricData.md).
+
 **Verdict:** ✅ **fixed the same day** (2026-10-07) by the date literals in `window()`
 ([AnalyticGroupSearch.md, finding 2](./AnalyticGroupSearch.md#2-after-five-calls-a-pooled-connection-plans-every-window-as-if-it-were-tiny-)):
 a year's page of 20 is now **20 ms**, of 200 is 71 ms; 30 days 2–7 ms. *Was:* 🔴 heavy. Its one statement took **102 ms** for a year's page of 20.

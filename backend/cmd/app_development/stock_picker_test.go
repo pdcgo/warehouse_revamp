@@ -30,9 +30,21 @@ func TestStockPicker_TakesAndReleasesByTheOrdersRef(t *testing.T) {
 
 	stockForPicker(t, inventory, team, warehouse, product, 5)
 
-	err := picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 3}}, "order:42")
+	draw, err := picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 3}}, "order:42")
 	if err != nil {
 		t.Fatalf("Pick: %v", err)
+	}
+
+	// WHAT THE LINE DREW, as the take priced it and carried across untouched — the cost the line divides its unit_cost from
+	// (an-order-is-costed-at-what-leaves-the-shelf) and the total the product fee is posted from and the order's goods_cost sums
+	// (the-ledger-charges-the-frozen-line-total). The team's own product: 3 × 10.000, no markup, so cost = total.
+	if got := draw[product]; got.Cost != 30_000 || got.UnitCost != 10_000 || got.Total != 30_000 {
+		t.Fatalf("the pick drew %+v, want cost 30000 at 10000 a unit, total 30000 (own goods)", got)
+	}
+
+	// …and the owner's other two figures of the line, carried across too: on own goods, no markup at all.
+	if got := draw[product]; got.UnitCostWithMarkup != 10_000 || got.MarkupTotal != 0 {
+		t.Fatalf("the pick drew %+v, want 10000 a unit with markup and a markup of exactly 0 (own goods)", got)
 	}
 
 	if left := ledgerUnits(t, db, warehouse, product); left != 2 {
@@ -40,7 +52,7 @@ func TestStockPicker_TakesAndReleasesByTheOrdersRef(t *testing.T) {
 	}
 
 	// The same order cannot take twice — its key is spent.
-	err = picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 1}}, "order:42")
+	_, err = picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 1}}, "order:42")
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("a second pick of order 42: err = %v, want AlreadyExists", err)
 	}
@@ -61,7 +73,7 @@ func TestStockPicker_TakesAndReleasesByTheOrdersRef(t *testing.T) {
 	}
 
 	// Too few is refused as it always was, so selling still refuses the order.
-	err = picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 9}}, "order:44")
+	_, err = picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 9}}, "order:44")
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("a pick of 9 from 5: err = %v, want FailedPrecondition", err)
 	}

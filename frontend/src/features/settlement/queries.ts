@@ -93,13 +93,13 @@ export function useOrderSettlements(args: {
 /**
  * One order's account and its whole log.
  *
- * `known` carries what settlement cannot know — the marketplace reference, the names, the cogs. The
+ * `known` carries what settlement cannot know — the marketplace reference, the names, the goods_cost. The
  * caller is the order detail page, which already holds them.
  */
 export function useOrderSettlement(args: {
   teamId: bigint | undefined;
   orderId: bigint | undefined;
-  known?: Partial<Pick<OrderSettlement, "orderRef" | "shopName" | "teamName" | "cogs">>;
+  known?: Partial<Pick<OrderSettlement, "orderRef" | "shopName" | "teamName" | "goodsCost">>;
 }) {
   const { teamId, orderId, known } = args;
 

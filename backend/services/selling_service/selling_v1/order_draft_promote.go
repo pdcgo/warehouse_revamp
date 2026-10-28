@@ -86,6 +86,8 @@ func (s *Service) OrderDraftPromote(
 		warehouseID:   draft.WarehouseID,
 		customerName:  draft.CustomerName,
 		customerPhone: draft.CustomerPhone,
+		// COPIED as it is — empty included, which is a valid order (the-buyers-username-is-optional).
+		buyerUsername: draft.BuyerUsername,
 		address: &sellingv1.OrderAddress{
 			ProvinsiCode:  draft.ProvinsiCode,
 			ProvinsiName:  draft.ProvinsiName,
@@ -99,18 +101,17 @@ func (s *Service) OrderDraftPromote(
 			AddressLine:   draft.AddressLine,
 		},
 		shippingCode: draft.ShippingCode,
-		shippingCost: draft.ShippingCost,
 		// COPIED, as pushed or corrected (platform-created-at-is-required-at-finalize). A draft still missing its order
 		// date is refused by placeOrder's own rule — the one the typed form meets.
 		platformCreatedAt:        unixOrZero(draft.PlatformCreatedAt),
 		platformShipmentDeadline: unixOrZero(draft.PlatformShipmentDeadline),
-		// The money is RECOMPUTED from the mapped lines rather than carried over. A draft's totals are
-		// whatever the marketplace page said, and the lines a person actually mapped may not add up to
-		// it — one line removed, a quantity corrected. An order's `subtotal` and `total` must agree
-		// with its own lines, because everything downstream computes margin from them.
-		subtotal: orderSubtotal(items),
-		total:    orderSubtotal(items) + draft.ShippingCost,
-		items:    items,
+		// The order's own money — goods_cost, warehouse_fee, total_cost — is the take's, frozen by placeOrder exactly as
+		// on OrderCreate; nothing of the draft's rows is money on the order (an-order-line-carries-no-marketplace-price).
+		// What the buyer PAID is the one figure no line can say: COPIED as pushed or typed
+		// (platform-total-is-required-at-finalize). A draft still at 0 is refused by placeOrder's own rule — the one the
+		// typed form meets.
+		platformTotal: draft.PlatformTotal,
+		items:         items,
 		// The draft's deletion, inside the order's transaction. If the order rolls back — no stock,
 		// a bad shop — the draft is still there, and the person can fix what was wrong and try again.
 		inTx: func(tx *gorm.DB, _ *selling_service_models.Order) error {
@@ -139,16 +140,6 @@ func unmappedLines(items []selling_service_models.OrderDraftItem) int {
 	}
 
 	return count
-}
-
-func orderSubtotal(items []*sellingv1.OrderItem) int64 {
-	var subtotal int64
-
-	for _, item := range items {
-		subtotal += int64(item.GetQuantity()) * item.GetUnitPrice()
-	}
-
-	return subtotal
 }
 
 // draftOrderItems turns mapped draft lines into order lines, resolving each product's sku and name
@@ -208,10 +199,12 @@ func (s *Service) draftOrderItems(
 			// The catalogue's label, frozen onto the order exactly as OrderCreate freezes the one the
 			// person had on screen. NOT the scraped external text: that is the marketplace's name for
 			// the thing, and an order's line must say what WE shipped.
-			Sku:       snapshot.SKU,
-			Name:      snapshot.Name,
-			Quantity:  lines[i].Quantity,
-			UnitPrice: lines[i].UnitPrice,
+			Sku:      snapshot.SKU,
+			Name:     snapshot.Name,
+			Quantity: lines[i].Quantity,
+			// NO PRICE (an-order-line-carries-no-marketplace-price). The draft row's `unit_price` is what the
+			// marketplace charged, and it stays on the draft's platform row; the line's money is the
+			// take's, stamped by placeOrder exactly as on OrderCreate.
 		})
 	}
 

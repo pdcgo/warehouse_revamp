@@ -40,7 +40,7 @@ var wib = time.FixedZone("WIB", 7*60*60)
 //
 // ONLY REAL DATA. A column the screen fills with an invented figure behind a ⚠ is left out: a spreadsheet cannot carry
 // the mark, so an invented value would read as a fact. Each joins the file the day its field exists — as the tracking
-// number, the frozen warehouse fee and the platform's two dates have.
+// number, the frozen warehouse fee, the platform's two dates and the buyer's username have.
 func (s *Service) OrderExport(
 	ctx context.Context,
 	req *connect.Request[sellingv1.OrderExportRequest],
@@ -215,8 +215,8 @@ type exportSheet struct {
 var (
 	sellerColumns = []string{
 		"Order ID", "Marketplace ref", "Shop", "Marketplace", "Status", "Created", "Created by",
-		"Customer", "Phone", "Courier", "Tracking number", "Qty", "Goods cost", "Warehouse fee", "Marketplace total",
-		"Marketplace date", "Ship-by",
+		"Customer", "Buyer username", "Phone", "Courier", "Tracking number", "Qty", "Goods cost", "Warehouse fee",
+		"Platform total", "Marketplace date", "Ship-by",
 	}
 	warehouseColumns = []string{
 		"Order ID", "Created", "Created by", "Seller", "Shop", "Marketplace", "Marketplace ref", "Courier",
@@ -291,13 +291,15 @@ func (s *exportSheet) write(order *selling_service_models.Order, names exportRow
 		created,
 		creator,
 		order.CustomerName,
+		// Beside the customer, as the detail shows it — blank when there is none (the-buyers-username-is-optional).
+		order.BuyerUsername,
 		order.CustomerPhone,
 		order.ShippingCode,
 		order.Receipt,
 		order.ItemQuantity,
-		moneyOrEmpty(order.COGS),
+		moneyOrEmpty(order.GoodsCost),
 		feeOrEmpty(order.WarehouseFee),
-		moneyOrEmpty(order.MarketplaceTotal),
+		moneyOrEmpty(order.PlatformTotal),
 		momentOrEmpty(order.PlatformCreatedAt),
 		momentOrEmpty(order.PlatformShipmentDeadline),
 	})

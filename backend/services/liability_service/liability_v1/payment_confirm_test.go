@@ -66,7 +66,7 @@ func owed(t *testing.T, db *gorm.DB, team, counterparty uint64) int64 {
 // that moved on a claim would let any team write off its own debt by typing a number.
 func TestPaymentRecord_MovesNoMoney(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	recordPayment(t, svc, selling, warehouse, 15000)
@@ -81,7 +81,7 @@ func TestPaymentRecord_MovesNoMoney(t *testing.T) {
 // would be arithmetically consistent and completely wrong: paying would double the debt.
 func TestPaymentConfirm_SettlesTheDebt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -109,7 +109,7 @@ func TestPaymentConfirm_SettlesTheDebt(t *testing.T) {
 // break if the posting used the payment's amount for one leg and the balance for the other.
 func TestPaymentConfirm_PartialPaymentLeavesTheRemainder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 5000)
@@ -128,7 +128,7 @@ func TestPaymentConfirm_PartialPaymentLeavesTheRemainder(t *testing.T) {
 // their own payment could write off any debt they liked by agreeing with themselves.
 func TestPaymentConfirm_ThePayerCannotConfirmTheirOwnPayment(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -154,7 +154,7 @@ func TestPaymentConfirm_ThePayerCannotConfirmTheirOwnPayment(t *testing.T) {
 // ordinary event here, not a hypothetical.
 func TestPaymentConfirm_CannotBeConfirmedTwice(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -182,7 +182,7 @@ func TestPaymentConfirm_CannotBeConfirmedTwice(t *testing.T) {
 // settled it, the same way a fee traces back to its order.
 func TestPaymentConfirm_TheEntryNamesThePayment(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -231,7 +231,7 @@ func confirmInto(svc *liability_v1.Service, creditor, paymentID, toAccount uint6
 func TestPaymentConfirm_PublishesWhereTheMoneyLeftAndLanded(t *testing.T) {
 	db := san_testdb.DB(t)
 	sent := &recordingSender{}
-	svc := liability_v1.NewService(db, sent.send, bothBanks)
+	svc := liability_v1.NewService(db, sent.send, bothBanks, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 
@@ -287,7 +287,7 @@ func TestPaymentConfirm_PublishesWhereTheMoneyLeftAndLanded(t *testing.T) {
 func TestPaymentConfirm_RefusesAnAccountThatIsNotTheCreditors(t *testing.T) {
 	db := san_testdb.DB(t)
 	sent := &recordingSender{}
-	svc := liability_v1.NewService(db, sent.send, bothBanks)
+	svc := liability_v1.NewService(db, sent.send, bothBanks, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 
@@ -319,7 +319,7 @@ func TestPaymentConfirm_RefusesAnAccountThatIsNotTheCreditors(t *testing.T) {
 func TestPaymentConfirm_ARejectPublishesNothing(t *testing.T) {
 	db := san_testdb.DB(t)
 	sent := &recordingSender{}
-	svc := liability_v1.NewService(db, sent.send, bothBanks)
+	svc := liability_v1.NewService(db, sent.send, bothBanks, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 

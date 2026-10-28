@@ -229,11 +229,11 @@ export function DateCell({ unix, testId }: { unix?: bigint; testId?: string }) {
  *
  * The fee is the order's own, frozen when it was placed (`orderFee`).
  *
- * ⚠ TWO WAYS TO BE UNKNOWN, AND EITHER REFUSES. A `cogs` of 0 is unknown, not free (`order.proto`), and a `null` fee is
+ * ⚠ TWO WAYS TO BE UNKNOWN, AND EITHER REFUSES. A `goods_cost` of 0 is unknown, not free (`order.proto`), and a `null` fee is
  * an order placed before fees were frozen — printing the half that IS known would read as a suspiciously cheap order.
  */
-export function SpendCell({ cogs, fees }: { cogs: bigint; fees: bigint | null }) {
-  const spend = orderSpend(cogs, fees ?? 0n, cogs > 0n && fees !== null);
+export function SpendCell({ goodsCost, fees }: { goodsCost: bigint; fees: bigint | null }) {
+  const spend = orderSpend(goodsCost, fees ?? 0n, goodsCost > 0n && fees !== null);
 
   return (
     <Text whiteSpace="nowrap" data-testid="order-spend">
@@ -254,30 +254,30 @@ export function SpendCell({ cogs, fees }: { cogs: bigint; fees: bigint | null })
  * Under Beli the percentage read as a share of the cost — a mark-up, which is a different number that
  * looks the same.
  *
- * ⚠ IT NEEDS THREE FACTS, SO IT HAS THREE WAYS TO BE UNKNOWN. A `marketplace_total` of 0 is NOT RECORDED,
- * not a sale of nothing; a `cogs` of 0 is unknown rather than free; a `null` fee was never priced — any one
+ * ⚠ IT NEEDS THREE FACTS, SO IT HAS THREE WAYS TO BE UNKNOWN. A `platform_total` of 0 is NOT RECORDED,
+ * not a sale of nothing; a `goods_cost` of 0 is unknown rather than free; a `null` fee was never priced — any one
  * missing and the margin refuses. A full-price order with no recorded platform payment would otherwise read
  * as −100%. The strip's census leaves out exactly the same orders (`OrderStatusCount.margin_unknown`).
  */
 export function MpTotalCell({
-  marketplaceTotal,
-  cogs,
+  platformTotal,
+  goodsCost,
   fees,
 }: {
-  marketplaceTotal: bigint;
-  cogs: bigint;
+  platformTotal: bigint;
+  goodsCost: bigint;
   /** The order's frozen fee, or `null` when it was never priced — then there is no total beli to take a margin from. */
   fees: bigint | null;
 }) {
-  const spend = orderSpend(cogs, fees ?? 0n, cogs > 0n && fees !== null);
-  const margin = orderMargin(marketplaceTotal, spend);
-  const pct = formatMarginPct(orderMarginPct(marketplaceTotal, spend));
+  const spend = orderSpend(goodsCost, fees ?? 0n, goodsCost > 0n && fees !== null);
+  const margin = orderMargin(platformTotal, spend);
+  const pct = formatMarginPct(orderMarginPct(platformTotal, spend));
 
   return (
     <Stack gap="0.5" minW="0" align="end">
-      {marketplaceTotal > 0n ? (
+      {platformTotal > 0n ? (
         <Text whiteSpace="nowrap" data-testid="order-total-mp">
-          {formatRupiah(marketplaceTotal)}
+          {formatRupiah(platformTotal)}
         </Text>
       ) : (
         <Nothing testId="order-total-mp-none" />

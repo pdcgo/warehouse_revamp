@@ -698,11 +698,10 @@ type OrderPlaced struct {
 	// The SELLING team that placed it, and the order.
 	TeamId  uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	OrderId uint64 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	// The frozen money, whole rupiah. revenue is the order's total — what the buyer paid.
-	Revenue      int64 `protobuf:"varint,3,opt,name=revenue,proto3" json:"revenue,omitempty"`
-	Cogs         int64 `protobuf:"varint,4,opt,name=cogs,proto3" json:"cogs,omitempty"`
-	ShippingCost int64 `protobuf:"varint,5,opt,name=shipping_cost,json=shippingCost,proto3" json:"shipping_cost,omitempty"`
-	// Whether the goods' cost was actually KNOWN (#74). 0 cogs is ambiguous on its own — it means
+	// The order's frozen `goods_cost`, whole rupiah — Σ its lines' `total`, borrowed lines with their markup
+	// (the-cross-charge-lives-on-the-line). Renamed from `cogs`, same number.
+	GoodsCost int64 `protobuf:"varint,4,opt,name=goods_cost,json=goodsCost,proto3" json:"goods_cost,omitempty"`
+	// Whether the goods' cost was actually KNOWN (#74). A goods_cost of 0 is ambiguous on its own — it means
 	// "free" and "never recorded" equally — so the distinction travels as its own field rather than
 	// being guessed at by the consumer. A margin computed over an unknown cost reads as pure profit,
 	// and the consumer has to be able to say so.
@@ -728,10 +727,12 @@ type OrderPlaced struct {
 	// settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
 	// its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
 	// calls settlement, so the event has to carry everything the account needs.
-	ShopId           uint64 `protobuf:"varint,10,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	MarketplaceTotal int64  `protobuf:"varint,11,opt,name=marketplace_total,json=marketplaceTotal,proto3" json:"marketplace_total,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	ShopId uint64 `protobuf:"varint,10,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// The order's `platform_total` (the-total-is-ours-the-platform-total-is-theirs) — renamed from
+	// `marketplace_total`, same number.
+	PlatformTotal int64 `protobuf:"varint,11,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OrderPlaced) Reset() {
@@ -778,23 +779,9 @@ func (x *OrderPlaced) GetOrderId() uint64 {
 	return 0
 }
 
-func (x *OrderPlaced) GetRevenue() int64 {
+func (x *OrderPlaced) GetGoodsCost() int64 {
 	if x != nil {
-		return x.Revenue
-	}
-	return 0
-}
-
-func (x *OrderPlaced) GetCogs() int64 {
-	if x != nil {
-		return x.Cogs
-	}
-	return 0
-}
-
-func (x *OrderPlaced) GetShippingCost() int64 {
-	if x != nil {
-		return x.ShippingCost
+		return x.GoodsCost
 	}
 	return 0
 }
@@ -834,9 +821,9 @@ func (x *OrderPlaced) GetShopId() uint64 {
 	return 0
 }
 
-func (x *OrderPlaced) GetMarketplaceTotal() int64 {
+func (x *OrderPlaced) GetPlatformTotal() int64 {
 	if x != nil {
-		return x.MarketplaceTotal
+		return x.PlatformTotal
 	}
 	return 0
 }
@@ -845,7 +832,7 @@ func (x *OrderPlaced) GetMarketplaceTotal() int64 {
 //
 // Deliberately not the whole OrderItem: an event carries what its consumers need, and sku, name and
 // the buyer-paid price are none of liability_service's business. What it needs is who owns the goods
-// and what they cost.
+// and what the line came to.
 type OrderPlacedLine struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	ProductId uint64                 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
@@ -854,15 +841,22 @@ type OrderPlacedLine struct {
 	// liability_service treats as "nobody to pay" rather than guessing.
 	OwningTeamId uint64 `protobuf:"varint,2,opt,name=owning_team_id,json=owningTeamId,proto3" json:"owning_team_id,omitempty"`
 	Quantity     uint32 `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	// What the goods COST, per unit, frozen at order time (#74) — and the anchor the product fee is a
-	// markup OVER. Server-set and ignored on input, which means that anti-tampering protection guards
-	// the product fee for free.
+	// What the goods COST, per unit, frozen at order time (#74) — the units the take drew ÷ the quantity
+	// (an-order-is-costed-at-what-leaves-the-shelf), before any markup. 0 means UNKNOWN, not free.
 	//
-	// 0 means UNKNOWN, not free. Under cost+markup that computes a fee of zero, so the owning team is
-	// silently owed nothing for goods that really left its stock. The decision is to let that stand and
-	// have the reconciliation report name it (#187), rather than refuse a real sale over a bookkeeping
-	// gap.
-	UnitCost      int64 `protobuf:"varint,4,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	// ⚠ NOT WHAT THE PRODUCT FEE IS COMPUTED FROM any more — that is `total` below
+	// (the-ledger-charges-the-frozen-line-total).
+	UnitCost int64 `protobuf:"varint,4,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	// THE LINE'S FROZEN TOTAL, rupiah (rupiah-is-floating-point) — what inventory's take priced it at: the goods it drew
+	// plus, on another team's product, that product's own cross markup (inventory-computes-the-markup). Frozen on
+	// `order_items.total` in the order's transaction and copied here as stored, never recomputed.
+	//
+	// liability_service posts it AS IT IS: the product fee owed to each owning team is Σ that team's line totals
+	// (the-product-fee-is-the-line-total) — it reads no markup of its own.
+	//
+	// 0 means NOT KNOWN — a line whose take valued nothing, or an order placed before lines froze a total — and is
+	// charged nothing rather than guessed at, which the reconciliation report (#187) is built to find.
+	Total         float64 `protobuf:"fixed64,5,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -921,6 +915,13 @@ func (x *OrderPlacedLine) GetQuantity() uint32 {
 func (x *OrderPlacedLine) GetUnitCost() int64 {
 	if x != nil {
 		return x.UnitCost
+	}
+	return 0
+}
+
+func (x *OrderPlacedLine) GetTotal() float64 {
+	if x != nil {
+		return x.Total
 	}
 	return 0
 }
@@ -2171,28 +2172,28 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"reversesId\x12\x12\n" +
 	"\x04note\x18\x0f \x01(\tR\x04note\x12\x17\n" +
 	"\auser_id\x18\x10 \x01(\x04R\x06userId:\x1b\x8a\xb5\x18\x17\n" +
-	"\x15settlement-log-posted\"\x87\x03\n" +
+	"\x15settlement-log-posted\"\xf1\x02\n" +
 	"\vOrderPlaced\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
-	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x18\n" +
-	"\arevenue\x18\x03 \x01(\x03R\arevenue\x12\x12\n" +
-	"\x04cogs\x18\x04 \x01(\x03R\x04cogs\x12#\n" +
-	"\rshipping_cost\x18\x05 \x01(\x03R\fshippingCost\x12\x1d\n" +
+	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x1d\n" +
+	"\n" +
+	"goods_cost\x18\x04 \x01(\x03R\tgoodsCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown\x12!\n" +
 	"\fwarehouse_id\x18\a \x01(\x04R\vwarehouseId\x12:\n" +
 	"\x05lines\x18\b \x03(\v2$.warehouse.events.v1.OrderPlacedLineR\x05lines\x12\x19\n" +
 	"\bactor_id\x18\t \x01(\x04R\aactorId\x12\x17\n" +
 	"\ashop_id\x18\n" +
-	" \x01(\x04R\x06shopId\x12+\n" +
-	"\x11marketplace_total\x18\v \x01(\x03R\x10marketplaceTotal:\x12\x8a\xb5\x18\x0e\n" +
-	"\forder-placed\"\x8f\x01\n" +
+	" \x01(\x04R\x06shopId\x12%\n" +
+	"\x0eplatform_total\x18\v \x01(\x03R\rplatformTotal:\x12\x8a\xb5\x18\x0e\n" +
+	"\forder-placedJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06R\arevenueR\rshipping_cost\"\xa5\x01\n" +
 	"\x0fOrderPlacedLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12$\n" +
 	"\x0eowning_team_id\x18\x02 \x01(\x04R\fowningTeamId\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\rR\bquantity\x12\x1b\n" +
-	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\"\x8f\x01\n" +
+	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\x12\x14\n" +
+	"\x05total\x18\x05 \x01(\x01R\x05total\"\x8f\x01\n" +
 	"\x0eOrderCancelled\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x19\n" +

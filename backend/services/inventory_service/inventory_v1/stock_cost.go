@@ -9,12 +9,12 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 )
 
-// StockCost reports what products cost this warehouse, so an order can freeze its COGS (#74).
+// StockCost reports what products are WORTH on this warehouse's shelf — the average value of the units held, read from
+// the batch ledger (see unitCosts).
 //
-// THE COST IS THE AVERAGE VALUE OF THE UNITS HELD, read from the batch ledger (see unitCosts).
-//
-// It is safe to change later precisely because the caller FREEZES the answer onto the order line: a
-// different rule changes what future orders record, and never rewrites what past ones already froze.
+// ⚠ IT IS NOT AN ORDER'S COST ANY MORE (an-order-is-costed-at-what-leaves-the-shelf). An order is costed at the units
+// that leave the shelf — the owner's batches oldest first — which the form previews with StockTakeQuote and the order
+// freezes from the take's own answer. The average is for the stock that REMAINS: the rack valuation reads it.
 //
 // Only stock that arrived counts: a pending restock is a price somebody hoped for, not one that was paid, and it has
 // no batch yet.
@@ -45,14 +45,15 @@ func (s *Service) StockCost(
 }
 
 // unitCosts is the unit value of each product's stock in this warehouse, read from the batch ledger — shared by
-// StockCost and by the rack's valuation (#197), so a shelf's value and an order's COGS are never two formulas.
+// StockCost and by the rack's valuation (#197), so the two reads of a shelf's value are never two formulas.
 //
 // It is the WEIGHTED AVERAGE of the units held: Σ stock_valuation ÷ Σ stock_count over the product's batches here. The
 // batches already carry the decided landed price (unit-price-is-line-price-plus-costs-per-unit), freight included. A
 // product with no units left reads its NEWEST batch's price — the last thing it cost here.
 //
-// ⚠ The order's take charges oldest batch first, so its real cost can differ from this average; the take answers its
-// own costs, and this is the preview a form freezes before it.
+// ⚠ An order never reads this. Its take charges the oldest batches first, so what an order costs is the draw itself —
+// StockTakeQuote previews it and the take answers it (an-order-is-costed-at-what-leaves-the-shelf). This average is the
+// value of what stays on the shelf.
 //
 // A product with NO batch here is ABSENT from the map, never present as 0 — "we do not know what this cost" and "this
 // cost nothing" are different facts. Whole rupiah until these reads turn `double` (money-is-double-in-the-api-too).

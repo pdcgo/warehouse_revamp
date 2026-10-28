@@ -279,7 +279,10 @@ export function WarehouseOrdersPage() {
                           order is this" were a split the table did not need. */}
                       <Table.ColumnHeader>{t("orders.orderColumn")}</Table.ColumnHeader>
                       <Table.ColumnHeader>{t("orders.customer")}</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="end">{t("orders.total")}</Table.ColumnHeader>
+                      {/* What the buyer paid the platform (`platform_total`). The order's old `total` (our quote plus
+                          postage) was dropped by selling 00027, and the seller's own cost is not this building's to read
+                          (the-two-ends-are-two-screens). */}
+                      <Table.ColumnHeader textAlign="end">{t("orderDetail.money.marketplaceTotal")}</Table.ColumnHeader>
                     </Table.Row>
                   </Table.Header>
 
@@ -326,7 +329,7 @@ export function WarehouseOrdersPage() {
                             testId={o.id}
                           />
                         </Table.Cell>
-                        <Table.Cell textAlign="end">{formatRupiah(o.total)}</Table.Cell>
+                        <Table.Cell textAlign="end">{o.platformTotal > 0n ? formatRupiah(o.platformTotal) : "—"}</Table.Cell>
                       </Table.Row>
                     ))}
                   </Table.Body>

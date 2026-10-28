@@ -37,7 +37,7 @@ func paymentList(
 // visit two screens to answer "are we square" is how the question stops getting asked.
 func TestPaymentList_ShowsPaymentsMadeAndReceived(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	recordPayment(t, svc, selling, warehouse, 5000)
 	recordPayment(t, svc, warehouse, selling, 3000)
@@ -50,7 +50,7 @@ func TestPaymentList_ShowsPaymentsMadeAndReceived(t *testing.T) {
 // ANOTHER PAIR'S PAYMENTS ARE INVISIBLE. The scope is "payments I am a party to", not "all payments".
 func TestPaymentList_HidesOtherPairs(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	recordPayment(t, svc, selling, warehouse, 5000)
 
@@ -64,7 +64,7 @@ func TestPaymentList_HidesOtherPairs(t *testing.T) {
 // never appear in its own inbox or the badge stops meaning anything.
 func TestPaymentList_AwaitingMyConfirmationIsOnlyWhatIOwe(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	// One the warehouse must act on, one it recorded itself.
 	incoming := recordPayment(t, svc, selling, warehouse, 5000)
@@ -86,7 +86,7 @@ func TestPaymentList_AwaitingMyConfirmationIsOnlyWhatIOwe(t *testing.T) {
 // A CONFIRMED PAYMENT LEAVES THE INBOX. It is done — leaving it there is how a badge becomes noise.
 func TestPaymentList_ConfirmedLeavesTheInbox(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 5000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 5000)
@@ -108,7 +108,7 @@ func TestPaymentList_ConfirmedLeavesTheInbox(t *testing.T) {
 // ungrouped counterparty clause would leak another pair's payments into this list.
 func TestPaymentList_CounterpartyFilterNarrows(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	recordPayment(t, svc, selling, warehouse, 5000)
 	recordPayment(t, svc, selling, productOwner, 7000)
@@ -126,7 +126,7 @@ func TestPaymentList_CounterpartyFilterNarrows(t *testing.T) {
 // screen already makes, so the badge and the rows cannot disagree.
 func TestPositionList_BadgeCountsWaitingPayments(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	recordPayment(t, svc, selling, warehouse, 5000)

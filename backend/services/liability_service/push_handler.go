@@ -55,7 +55,9 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				lines = append(lines, liability_v1.OrderLine{
 					OwningTeamID: line.GetOwningTeamId(),
 					Quantity:     line.GetQuantity(),
-					UnitCost:     line.GetUnitCost(),
+					// The line's FROZEN total, as the order stored it — the fee is posted from it and no markup is
+					// read here (the-ledger-charges-the-frozen-line-total).
+					Total: line.GetTotal(),
 				})
 			}
 

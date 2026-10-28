@@ -36,7 +36,7 @@ type SettlementType int32
 
 const (
 	SettlementType_SETTLEMENT_TYPE_UNSPECIFIED SettlementType = 0
-	// The sale, frozen from `order.marketplace_total` when the order is created. `change` is NEGATIVE.
+	// The sale, frozen from `order.platform_total` when the order is created. `change` is NEGATIVE.
 	// Written only by `order_service` (source `order`) or by hand
 	// (#initial-total-is-postable-by-cs-and-owners).
 	SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL SettlementType = 1
@@ -817,7 +817,7 @@ type SettlementPostRequest struct {
 	// ⚠ THE CALLER SUPPLIES IT, because settlement cannot look it up: the shop lives in
 	// selling_service's tables and a service does not read another's (HARD RULE 3). It is frozen onto
 	// both rows so every list filters by shop without a cross-service call — the same denormalisation
-	// `order.cogs` already is, and safe for the same reason: an order does not move between shops.
+	// `order.goods_cost` already is, and safe for the same reason: an order does not move between shops.
 	//
 	// On the FIRST post it establishes the account's shop. Later posts must agree — see the handler.
 	ShopId         uint64         `protobuf:"varint,10,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`

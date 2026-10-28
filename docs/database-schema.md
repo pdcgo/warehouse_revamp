@@ -299,6 +299,7 @@ erDiagram
     orders ||--o{ order_timeline_logs : "order_id"
     order_drafts ||--o{ order_draft_items : "draft_id"
     team_return_configurations
+    product_return_maps
 
     shops {
         bigserial   id          PK
@@ -327,6 +328,7 @@ erDiagram
         text        status           "OrderStatus as text, the eleven (00015) — default pending; no CHECK"
         text        customer_name    "required"
         text        customer_phone
+        text        buyer_username   "the buyer's marketplace username (00021), trimmed. Optional — '' = none, NOT NULL"
         text        provinsi_code    "frozen address snapshot: opaque region_service code, no FK"
         text        provinsi_name    "frozen name — survives a rename upstream"
         text        kabupaten_code
@@ -338,19 +340,16 @@ erDiagram
         text        kode_pos         "as chosen (editable in the picker)"
         text        address_line     "jalan, no. rumah, RT/RW — free text"
         text        shipping_code    "opaque courier code — matched against shipment_service.shipment_channels.code"
-        bigint      subtotal         "whole rupiah"
-        bigint      shipping_cost
-        bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
-        bigint      total              "subtotal + shipping_cost"
-        bigint      marketplace_total  "what the storefront took — a NOTE, never summed into total; 0 = not recorded"
+        bigint      goods_cost         "the owner's goods_cost - sum of the lines' frozen total, a borrowed line WITH its markup; the warehouse fee's basis. Whole rupiah, rounded once; 0 = unknown, not free (cogs until 00027)"
+        double      total_cost         "the owner's total_cost - goods_cost + warehouse_fee, frozen at create (00027). Unrounded, CHECK >= 0; back-filled with a NULL fee as 0"
+        bigint      platform_total     "the owner's platform_total - what the buyer paid on the platform (marketplace_total until 00026). Required at placement since 00022, checked in code; 0 only before that"
         text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — its rule is checked in code, not built yet"
-        text        note                "free text for the people handling the order; nothing reads it, '' = none"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
         text        receipt_filename    "snapshot of what the receipt was called when attached"
         text        receipt_mime_type   "image/* or application/pdf — how to render it without fetching it"
         text        receipt             "the TRACKING NUMBER printed on that slip (00018), verbatim — the owner's orders.receipt, Order.receipt_code on the wire. '' = not recorded. Searched with ILIKE, not indexed"
-        double      warehouse_fee       "the warehouse's fee, FROZEN at create from WarehouseFeeCalculate on cogs (00019, step 3 of the-flat-rate-is-dropped-last). Unrounded. NULL = never priced, placed before 00019. 0 = a warehouse charging nothing. CHECK >= 0"
+        double      warehouse_fee       "the warehouse's fee, FROZEN at create from WarehouseFeeCalculate on goods_cost (00019, step 3 of the-flat-rate-is-dropped-last). Unrounded. NULL = never priced, placed before 00019. 0 = a warehouse charging nothing. CHECK >= 0"
         timestamptz platform_created_at        "when the BUYER ordered on the storefront (00020) — required at placement, checked in code. NULL only before 00020"
         timestamptz platform_shipment_deadline "the marketplace's own ship-by time, its kirim sebelum (00020). Optional, NULL = none"
         timestamptz created_at
@@ -364,16 +363,18 @@ erDiagram
         text        sku        "snapshot at order time"
         text        name       "snapshot"
         int         quantity   ">= 1"
-        bigint      unit_price "whole rupiah snapshot"
-        bigint      unit_cost     "per-unit cost frozen at order time (#74); server-set, 0 = unknown"
+        bigint      unit_cost     "the owner's unit_cost - the take's drawn cost per unit, whole rupiah (#74); server-set, 0 = unknown"
+        double      total         "the owner's total - the line's FROZEN total as the take priced it, goods plus the product's own markup (00023). Unrounded, CHECK >= 0. NULL = never frozen, placed before 00023"
+        double      unit_cost_with_markup "the owner's unit_cost_with_markup - one unit after the owner's markup, as the take returned it; the unit cost on an own line (00025). Unrounded, CHECK >= 0. NULL = never frozen"
+        double      markup_total  "the owner's markup_total - what the markup added, total minus the drawn cost; 0 on an own line (00025). Unrounded, CHECK >= 0. NULL = never frozen"
         timestamptz created_at
     }
 
     order_timeline_logs {
         bigserial   id         PK
         bigint      order_id   FK "-> orders(id), ON DELETE CASCADE"
-        text        status     "OrderStatus as text, the status moved into; '' = a note only (00017)"
-        text        note       "why a move needed a reason, or the note itself"
+        text        status     "OrderStatus as text, the status moved into; '' = a NOTE row, no move (00017, a-note-is-a-timeline-row)"
+        text        note       "why a move needed a reason, or the note itself - the order's only notes since 00029 dropped orders.note"
         text        from       "warehouse or selling — the side that wrote it; quoted, an SQL keyword"
         bigint      actor_id   "who wrote it — opaque user_service id, no FK; 0 = not recorded"
         timestamptz created_at "when it happened — the row is written at that moment"
@@ -390,6 +391,7 @@ erDiagram
         bigint      warehouse_id   "0 until known — no FK, can go stale"
         text        customer_name  "optional, like everything below"
         text        customer_phone
+        text        buyer_username "the buyer's marketplace username (00021), trimmed — '' = none. Promote copies it"
         text        provinsi_code  "same frozen-address shape as orders (#118)"
         text        provinsi_name
         text        kabupaten_code
@@ -401,7 +403,7 @@ erDiagram
         text        kode_pos
         text        address_line
         text        shipping_code
-        bigint      shipping_cost  "as scraped, whole rupiah — promote recomputes the money"
+        bigint      platform_total "what the buyer paid on the platform, as pushed or typed (00022; marketplace_total until 00026). 0 allowed on a draft — Promote copies it, and refuses a 0"
         timestamptz platform_created_at        "when the buyer ordered on the storefront, as pushed or corrected (00020). NULL allowed on a draft — Promote refuses it"
         timestamptz platform_shipment_deadline "the marketplace's ship-by time (00020). Optional everywhere"
         timestamptz created_at
@@ -415,7 +417,7 @@ erDiagram
         text        external_name "what the app scraped, never overwritten"
         bigint      product_id    "0 until a person maps it — the unmapped line IS the incompleteness"
         int         quantity      "no CHECK, unlike order_items — a scrape may not have read it"
-        bigint      unit_price
+        bigint      unit_price    "what the marketplace charged per unit, as scraped — the owner's platform_price; deleted with the draft"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -426,6 +428,15 @@ erDiagram
         bigint      warehouse_id "where its returns are received — any warehouse, CHECK > 0, opaque, no FK"
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    product_return_maps {
+        bigserial   id                PK
+        bigint      team_id           "the SELLING team that maps it — opaque, no FK (00024)"
+        bigint      shared_product_id "the BORROWED product, another team's — UNIQUE with team_id, CHECK > 0, opaque"
+        bigint      own_product_id    "the team's own product a return comes back as — CHECK > 0, never equal to shared"
+        timestamptz created_at
+        timestamptz updated_at        "mirrors created_at — the row is written once"
     }
 ```
 
@@ -457,7 +468,7 @@ erDiagram
 - **`order_timeline_logs`** (00017) — the order's timeline, the owner's own table
   ([order-timeline-logs-replaces-order-events](business/order/context_decision.md#order-timeline-logs-replaces-order-events)):
   one **append-only** row per status change, or per **note** written while working the order (*no goods on Rak A*),
-  with who wrote it and **from which side**. Read by the Timeline tab of the order detail.
+  with who wrote it and **from which side**. Read by the order detail — its status rows by the Timeline, its note rows by *Catatan*.
   - **It replaced `order_events`, which 00017 DROPPED, not migrated** — the owner's decision carries nothing over,
     so an order placed before 00017 starts its timeline empty.
   - **The timeline and `orders.status` are BOTH kept, and neither derives the other.** The column says where the
@@ -474,14 +485,29 @@ erDiagram
   - **`actor_id = 0` means "not recorded"**, never "nobody".
   - **Statuses repeat**: a warehouse hands an order back to `pending` and confirms it again, so `pending` and
     `processed` can each appear twice. No unique key on `(order_id, status)`.
-  - ⚠ **Nothing writes a note-only row yet** — the table and the screen take one; no RPC adds one.
-- **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.cogs`
-  as their total. `unit_price` is what the buyer pays; `unit_cost` is what we paid, so
-  **`margin = total − cogs − shipping_cost`** is computable from the order alone.
-  - **Server-set, ignored on input.** The cost is looked up from the warehouse's restock history at
-    order time (`StockCost`), because a client supplying it would be writing its own margin — the one
-    number nobody placing an order should get to choose. `orderItemModels` deliberately does not read
-    it, the same way it ignores `id`.
+  - **A NOTE IS A ROW WITH NO STATUS** ([a-note-is-a-timeline-row](technical/frontend/order_detail_decision.md#a-note-is-a-timeline-row)):
+    `status = ''`, the trimmed `note`, `from`, `actor_id`, `created_at`. Either end writes one with `OrderNoteCreate`
+    (`from` follows the scope: the order's team `selling` — a team that is both ends included — its warehouse
+    `warehouse`). **Never edited, never deleted** — a correction is a new note.
+    - **The create form's note is the order's FIRST NOTE ROW**, written by `placeOrder` in the same INSERT as the
+      placement row: from `selling`, by the person placing it, at the order's `created_at` — so it reads straight after
+      `pending` in `(created_at, id)` order.
+    - **`orders.note` is GONE** (`00029`): each non-blank note moved into its order's first note row the same way — from
+      `selling`, `actor_id = created_by_user_id`, `created_at = orders.created_at`, trimmed — and the column was dropped.
+      The Down puts each order's earliest note row back into a re-added column and deletes no row.
+    - **A note row moves nothing**: the list's `status_at` subquery matches `status = orders.status`, which a note row
+      never does.
+- **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.goods_cost` (`cogs`
+  until `00027`) as what the goods cost the SELLER: Σ the lines' frozen `total`, so a borrowed line counts WITH its
+  owner's markup ([the-cross-charge-lives-on-the-line](business/order/context_decision.md#the-cross-charge-lives-on-the-line)).
+  A line carries no price of its own: `order_items.unit_price` was dropped by `00028`
+  ([an-order-line-carries-no-marketplace-price](business/order/context_decision.md#an-order-line-carries-no-marketplace-price),
+  corrected 2026-10-23); what the marketplace charged lives on `order_draft_items.unit_price` only, and lines Promote
+  placed before 2026-10-23 lost the marketplace price they held (dev data only — accepted).
+  - **Server-set, ignored on input.** The cost is what the take draws (since the tenth order pass, not `StockCost`'s
+    read), because a client supplying it would be writing its own margin — the one number nobody placing an order
+    should get to choose. `orderItemModels` deliberately reads no money from the request, the same way it ignores
+    `id`.
   - **The cost is the batches' — what the goods cost TO GET HERE** (#155, ledgers stage 3). `StockCost` answers the
     WEIGHTED AVERAGE of the units the warehouse holds, Σ `stock_valuation` ÷ Σ `stock_count` over the product's
     `batches` there, and a product with none left reads its newest batch's price. Each batch was minted at the
@@ -496,19 +522,61 @@ erDiagram
     predating this column is in that position. A margin computed over an unknown cost reads as pure
     profit, so treat 0 as a flag rather than a figure. `StockCost` omits unknown products entirely
     rather than returning zero for them, precisely to keep the two apart.
-  - `cogs` is denormalised onto the header because `OrderList` returns a summary **without** lines; it
-    cannot drift, because the lines it was computed from are frozen too — exactly like `subtotal`.
+  - `goods_cost` is denormalised onto the header because `OrderList` returns a summary **without** lines; it
+    cannot drift, because the lines it was computed from are frozen too. It is rounded ONCE from the unrounded line
+    totals, so Σ line totals and the header agree to the rupiah. ⚠ An order placed before `00027` keeps the drawn cost
+    it was frozen with (no markup) — the same figure on any order with no borrowed line; not recomputed
+    ([a-lines-money-is-frozen-at-finalize](business/order/context_decision.md#a-lines-money-is-frozen-at-finalize)).
+- **What the order cost the seller** — `orders.total_cost` (`00027`), the owner's "goods + warehouse fee": `goods_cost`
+  + `warehouse_fee`, frozen beside them in the order's transaction. `DOUBLE PRECISION`, unrounded like the fee, `CHECK >= 0`.
+  Back-filled for existing rows as `goods_cost + COALESCE(warehouse_fee, 0)` — a NULL fee still says "never priced", and
+  every reader that needs that (the margin) reads the fee, not this. `margin = platform_total − total_cost`
+  ([an-order-records-no-shipping-cost](business/order/context_decision.md#an-order-records-no-shipping-cost)).
+- **Dropped by `00027`**: `orders.subtotal`, `orders.total` (our quote, which was not the same figure on the two doors)
+  and `orders.shipping_cost` / `order_drafts.shipping_cost` — an order records no shipping
+  ([an-order-records-no-shipping-cost](business/order/context_decision.md#an-order-records-no-shipping-cost),
+  [cod-and-shipping-are-the-platforms](business/order/context_decision.md#cod-and-shipping-are-the-platforms)). A
+  draft's `shipping_cost` touched mark was dropped with it. The Downs re-add the columns at 0: the values are gone.
 - **An order freezes what the WAREHOUSE charges for it** (`00019`, step 3 of the-flat-rate-is-dropped-last) —
-  `orders.warehouse_fee`, priced once at create by warehouse_service's `WarehouseFeeCalculate` on `cogs`
-  (the-fee-is-priced-on-goods-cost) and never recomputed, so a rate changed later cannot rewrite what an order cost.
-  - **Priced before the transaction**, beside the cost read and the credit check: a warehouse that never set its fee
-    refuses the order (a-warehouse-with-no-rate-takes-no-orders) before any stock moves.
+  `orders.warehouse_fee`, priced once at create by warehouse_service's `WarehouseFeeCalculate` on `goods_cost`
+  (the-fee-is-priced-on-goods-cost — a borrowed line's markup is in the basis) and never recomputed, so a rate changed
+  later cannot rewrite what an order cost.
+  - **Priced after the take, inside the order's transaction**, because its basis is the draw
+    (an-order-is-costed-at-what-leaves-the-shelf): a warehouse that never set its fee fails the transaction
+    (a-warehouse-with-no-rate-takes-no-orders) and the take is given back. The form refuses such a warehouse first.
   - **`DOUBLE PRECISION`, unrounded** (rupiah-is-floating-point) — when a frozen fee is rounded is not decided.
   - **NULL is NEVER PRICED, 0 is a price.** Every order before `00019` is NULL and is not back-filled: the flat fee
     those orders paid is a liability row the order cannot read. The list's money and the census treat NULL as an
-    unknown total beli, exactly as a `cogs` of 0.
+    unknown total beli, exactly as a `goods_cost` of 0.
   - ⚠ **Not yet what the ledger posts.** Liability still charges its flat `handling_fee` from `OrderPlaced` until step 4
     switches it to this column — for a warehouse carried over from its flat fee the two are the same amount.
+- **Each line freezes its TOTAL** (`00023`) — `order_items.total`, what inventory's take priced the line at: the goods
+  it drew plus, on another team's product, that product's own `cross_markup_bps`
+  ([inventory-computes-the-markup](business/order/context_decision.md#inventory-computes-the-markup)). The order
+  applies nothing; it freezes what the take returned.
+  - **It is the product fee.** `OrderPlaced` carries each line's total, and liability posts Σ the owning team's totals
+    with no markup of its own
+    ([the-ledger-charges-the-frozen-line-total](technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)).
+  - **Written once, complete.** `placeOrder` inserts the header, picks, then inserts the lines with the take's answer —
+    in the order's one transaction, so a line is never stored short and patched
+    ([a-lines-money-is-frozen-at-finalize](business/order/context_decision.md#a-lines-money-is-frozen-at-finalize)).
+  - **`DOUBLE PRECISION`, unrounded** (rupiah-is-floating-point), like `warehouse_fee`. Liability rounds the SUM, once,
+    at its own edge.
+  - **NULL is NEVER FROZEN**: every line before `00023`, and a product the take named no total for. Not back-filled —
+    the take's figures for those orders were never kept.
+  - **The same draw as `unit_cost`** — both come from the take's oldest-first answer
+    ([an-order-is-costed-at-what-leaves-the-shelf](business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf));
+    the weighted average is no line's figure any more.
+- **The rest of the line's money** (`00025`) — `order_items.unit_cost_with_markup` and `markup_total`, the owner's last
+  two money columns of a line (§Table That Must Have). Frozen beside `unit_cost` and `total` from the same take answer,
+  in the same INSERT; the order applies nothing ([inventory-computes-the-markup](business/order/context_decision.md#inventory-computes-the-markup)).
+  - **An own line has no markup**: `unit_cost_with_markup` is the drawn unit cost and `markup_total` is exactly 0. The
+    take prices the markup ON the draw's value (value × rate), so float noise never lands it under the `CHECK >= 0`.
+  - **`markup_total` = `total` − `unit_cost` × `quantity` only within rounding** — `unit_cost` is whole rupiah, the
+    other three are unrounded `DOUBLE PRECISION` (rupiah-is-floating-point).
+  - **NULL is NEVER FROZEN** — every line before `00025`, and a product the take named no draw for. Not back-filled.
+  - Exposed read-only on `OrderItem` (`total`, `unit_cost_with_markup`, `markup_total`, absent when NULL). No screen
+    shows the two new ones yet.
 - **The platform's two dates** (`00020`), on `orders` and `order_drafts` — the owner's `platform_created_at` and
   `platform_shipment_deadline`. Both NULL on every row before the column; not back-filled.
   - **`platform_created_at` is required to PLACE** (platform-created-at-is-required-at-finalize), by `placeOrder`'s
@@ -519,6 +587,23 @@ erDiagram
     (the-date-filter-switches-created-or-platform). Neither is indexed — the window is read over rows the team scope
     has already narrowed.
   - On a draft each date is its own `touched_fields` name, so a person's correction survives the app's next push.
+- **The buyer's username** (`00021`), on `orders` and `order_drafts` — the name the buyer goes by on the marketplace,
+  which is not `customer_name` (who the parcel is addressed to). `TEXT NOT NULL DEFAULT ''`: `''` is the one way to say
+  none, and every row before the column reads as it; not back-filled.
+  - **Optional everywhere** (the-buyers-username-is-optional) — no rule on either door refuses an empty one.
+  - **Trimmed by the handlers** (create, push, update), so spaces alone are stored as `''`. Promote copies the draft's.
+  - On a draft it is its own `touched_fields` name (`buyer_username`). No index: nothing searches or joins on it.
+- **What the buyer paid** — `orders.platform_total` (`00008`, as `marketplace_total`), and since `00022`
+  `order_drafts.platform_total` (`BIGINT NOT NULL DEFAULT 0`, whole rupiah). The owner's `platform_total`: `00026`
+  renamed both columns at once, values kept
+  ([the-total-is-ours-the-platform-total-is-theirs](business/order/context_decision.md#the-total-is-ours-the-platform-total-is-theirs)).
+  - **Required to PLACE** (platform-total-is-required-at-finalize), by `placeOrder`'s shared rule, so both doors meet
+    it: an order refused at 0 names what is missing. Settlement opens the order's account on it, and still skips a 0 —
+    the guard for orders placed before the rule, which carry none.
+  - **A draft may hold 0** while it is worked on. The app pushes it; a person types it on the draft page; Promote
+    COPIES it rather than recomputing it from the lines, because no line can say what the buyer paid.
+  - On a draft it is its own `touched_fields` name (`platform_total` — `00026` renamed the mark in every stored array,
+    so a person's typed figure stays protected). Not back-filled; no index.
 - **`orders.receipt`** (`00018`) — the TRACKING NUMBER printed on the slip, beside the `receipt_*` columns that name
   the FILE it is printed on. The owner's `orders.receipt`; on the wire `Order.receipt_code`, because the proto's
   `receipt` is the file. Written at create; the seller's *Edit Resi* (pending, processed, picked —
@@ -530,8 +615,8 @@ erDiagram
   (`pending`, `processed`, `picked`, `shipping`, `shipped`, `completed`, `problem`, `lost`, `return`,
   `return_completed`, `cancel`), default `pending` since 00015, which moved every old row:
   `placed → pending`, `confirmed`/`picking → processed`, `packed → picked`, `shipped → shipping` (the old
-  `shipped` was the handover), `cancelled → cancel`. No `CHECK` (mapper + proto guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name`/`unit_price` frozen
-  at order time), `ON DELETE CASCADE`. `OrderCreate` does **not** touch inventory (that is #69), and
+  `shipped` was the handover), `cancelled → cancel`. No `CHECK` (mapper + proto guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name` frozen
+  at order time, and the take's money — no marketplace price), `ON DELETE CASCADE`. `OrderCreate` does **not** touch inventory (that is #69), and
   COGS/margin are the revenue side (#74). The UI is #68.
 - **The order's delivery address is a SNAPSHOT** (#118) — the ten `provinsi_*` … `address_line`
   columns, which replaced the old free-text `customer_address` (the migration carries that text into
@@ -586,6 +671,25 @@ erDiagram
     nothing checks the pair. `CHECK (warehouse_id > 0)` because there is no clear — a team without one
     has no row.
   - Starts **empty**: the rollout is the table and its screen, a row for every team, then the check.
+- **`product_return_maps`** (00024) — which of a selling team's **own** products a **borrowed** product (another
+  team's, sold by this one) comes back as when its order is returned
+  ([the-return-map-is-selling-services-and-read-by-ids](technical/frontend/order_create_decision.md#the-return-map-is-selling-services-and-read-by-ids),
+  the owner's [order_return.md](business/order/order_return.md) §Table Must Have item 2).
+  - **`UNIQUE (team_id, shared_product_id)` — on the source, not the pair**
+    ([the-map-is-unique-on-its-source](business/order/context_decision.md#the-map-is-unique-on-its-source)): one own
+    product per borrowed product per team. It is the write's `ON CONFLICT … DO NOTHING` arbiter, so two people mapping the
+    same product at once leave one row and both are handed it; and it is the index both reads use (`ProductReturnMapByIds`,
+    and order create's check).
+  - **Written once** ([a-return-map-is-written-once](business/order/context_decision.md#a-return-map-is-written-once)):
+    nothing updates a row, so `updated_at` mirrors `created_at`. Moving a team off a pair is a stock transfer, not an
+    `UPDATE`.
+  - **Order create refuses a borrowed line with no row**
+    ([a-borrowed-line-needs-its-map-at-create](business/order/context_decision.md#a-borrowed-line-needs-its-map-at-create)),
+    on both doors; an own line never reads the table
+    ([an-own-line-never-touches-the-map](business/order/context_decision.md#an-own-line-never-touches-the-map)).
+  - Both product ids are opaque product_service ids with no FK. Ownership — the borrowed one is another team's, the own
+    one is this team's — is checked by the write against product_service; the table only refuses a product mapped to
+    itself (`CHECK (shared_product_id <> own_product_id)`). No `warehouse_id`: a map is a catalogue fact.
 
 `backend/services/category_service/db_migrations/`
 
@@ -1008,6 +1112,10 @@ erDiagram
   `product_placement_logs_transaction_idx (transaction_id)`, which replaced `(warehouse_id, transaction_id)`: every
   reader asks by transaction and none names the warehouse
   ([placement-logs-are-indexed-by-transaction](technical/stock/design_decision.md#placement-logs-are-indexed-by-transaction)).
+- **The reserve read has its own index** — `00032` `batches_owner_product_idx ON batches (team_id, product_id) WHERE
+  stock_count > 0`: the take and `StockTakeQuote` sum an owner's stock of a product across EVERY warehouse in one grouped
+  read, and every other batches index leads with `warehouse_id`
+  ([the-reserve-is-read-once-for-every-line](business/inventory/order_decision.md#the-reserve-is-read-once-for-every-line)).
 - **Written set-based** — a write locks each ledger's rows in one statement, works the rows out in memory, and stores
   each table with one `UPDATE … FROM unnest(…)` or one multi-row `INSERT`, however many lines
   ([ledger-writes-are-set-based](technical/stock/design_decision.md#ledger-writes-are-set-based)).
@@ -1148,8 +1256,9 @@ erDiagram
     suppliers ||--o{ restock_items : "supplier_id, opaque via RPC"
 ```
 
-`user_team_roles.team_id`, `products.team_id`, `documents.team_id`, and
-`team_return_configurations.team_id` / `.warehouse_id` point at rows owned by other services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
+`user_team_roles.team_id`, `products.team_id`, `documents.team_id`,
+`team_return_configurations.team_id` / `.warehouse_id`, and `product_return_maps.team_id` / `.shared_product_id` /
+`.own_product_id` point at rows owned by other services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
 the owning service resolves them over Connect RPC.
 
 ---
@@ -1241,7 +1350,6 @@ erDiagram
         bigint      team_id           "the CREDITOR who set these terms"
         bigint      counterparty_id   "the debtor — 0 IS THE DEFAULT ROW for every other team"
         bigint      handling_fee      "flat per order, whole rupiah; 0 = charge nothing"
-        bigint      product_markup_bp "basis points over cost, 2000 = 20 percent"
         bigint      credit_limit      "NULL = UNLIMITED, 0 = no credit at all"
         timestamptz created_at
         timestamptz updated_at
@@ -1297,8 +1405,6 @@ erDiagram
         bigint      new_credit_limit      "NULLABLE, for the same three-way reason"
         bigint      old_handling_fee
         bigint      new_handling_fee
-        bigint      old_product_markup_bp
-        bigint      new_product_markup_bp
         text        reason                "required by the app when override is true"
         boolean     override              "the actor held no role in the creditor team"
         timestamptz changed_at
@@ -1353,12 +1459,15 @@ erDiagram
   - ⚠ **`credit_limit` NULL is UNLIMITED; `0` is NO CREDIT AT ALL.** They are opposites, and encoding
     unlimited as 0 is the trap — the day somebody wants to freeze a team they will type 0 and grant
     infinite credit instead. Removing a limit **deletes the row**, which is why the API has a delete.
-  - **`product_markup_bp` is basis points**, not a float (2000 = 20%). Same reason money is `BIGINT`:
-    a percentage that cannot be represented exactly is a fee that drifts.
+  - ⛔ **No markup** (`00010` dropped `product_markup_bp`, and the logs' `old_/new_product_markup_bp` with it —
+    [the-ledger-charges-the-frozen-line-total](technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)).
+    The markup is the product's, applied by inventory's take and frozen on `order_items.total`; the product fee
+    posts those totals and reads nothing here. `liability_terms_non_negative` was rebuilt over the fee and the limit,
+    since dropping the column would have dropped the whole CHECK.
   - **The two fees default differently, deliberately.** No `handling_fee` means charge nothing — it is
-    a *price*, and a warehouse that configured nothing must not be silently billing anybody. No
-    markup still charges **cost**, because the product fee is a *cost transfer*: the goods left the
-    owner's stock and do not come back. See `docs/services/liability_service/rpc.md`.
+    a *price*, and a warehouse that configured nothing must not be silently billing anybody. The product fee
+    needs no row at all: it is a *cost transfer* — the goods left the owner's stock and do not come back — and
+    it is the lines' frozen totals. See `docs/services/liability_service/rpc.md`.
   - Created with #186 rather than #189, because the order fees have to READ it before anything writes
     it. #189 added the RPCs that write it — until then every row was absent, so every fee was 0 and
     every credit limit unlimited.
@@ -1434,7 +1543,7 @@ The ledger of **what the marketplace pays us** for an order.
 > The two are easy to confuse: both are order-aware ledgers with a state projection. Only this one is
 > **allowed to never balance**.
 
-**The one idea.** `initial_total` is a frozen copy of `order.marketplace_total` — what the buyer
+**The one idea.** `initial_total` is a frozen copy of `order.platform_total` — what the buyer
 actually paid, a fact rather than a prediction. The running balance is therefore not drift from a
 guess, it is exactly *how much of what the buyer paid never reached us*: the platform's take, which the
 platform never itemises. So the balance **never reaches zero, and that is correct** — there is no
@@ -1632,7 +1741,7 @@ erDiagram
   (`ShopAccessCheck`) before the write and kept on the row — settlement stores the answer, never the shop.
   The `00006` migration also rewrote any `source_type` `exporter` to `importer`
   ([the-source-is-named-importer](business/settlement/settlement_importer_decision.md#the-source-is-named-importer)).
-- **No `order_ref`, names or `cogs`.** Settlement keys on our internal order id and never sees the
+- **No `order_ref`, names or `goods_cost`.** Settlement keys on our internal order id and never sees the
   marketplace's reference; the names and the cost live in `selling_service`, and a service does not
   read another's tables. The screens supply all four from where they already are.
 

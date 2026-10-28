@@ -11,6 +11,7 @@ import (
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_grpc"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_metric"
 	category_service "github.com/pdcgo/warehouse_revamp/backend/services/category_service"
 	category_v1 "github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
 	document_service "github.com/pdcgo/warehouse_revamp/backend/services/document_service"
@@ -77,6 +78,13 @@ func NewServeMux(
 	// FAIL FAST on a malformed policy. A use_scope tag that is non-uint, nested, or duplicated
 	// is silent at runtime — it must stop the process, not serve traffic.
 	err := san_auth.ValidateDescriptors()
+	if err != nil {
+		return nil, err
+	}
+
+	// The same for every analytic metric: a metric_id two services claim, or a metric with no headline, is silent
+	// until a report quietly disagrees with itself.
+	err = san_metric.ValidateDescriptors()
 	if err != nil {
 		return nil, err
 	}

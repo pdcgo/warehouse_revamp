@@ -84,8 +84,8 @@ func perfRefOrders(shopIDs [][]uint64) []selling_service_models.Order {
 			CustomerName:       "Budi",
 			OrderExternalRefID: ref,
 			CreatedByUserID:    uint64(700 + i%40),
-			Subtotal:           int64(10_000 + i),
-			Total:              int64(15_000 + i),
+			GoodsCost:          int64(10_000 + i),
+			PlatformTotal:      int64(15_000 + i),
 			CreatedAt:          time.Now().Add(-time.Duration(i%90) * 24 * time.Hour),
 			UpdatedAt:          time.Now(),
 		})

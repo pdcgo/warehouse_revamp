@@ -8,7 +8,7 @@ package supplierv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -24,118 +24,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// The grain a series is read at.
-type AnalyticTimeframe int32
-
-const (
-	AnalyticTimeframe_ANALYTIC_TIMEFRAME_UNSPECIFIED AnalyticTimeframe = 0
-	// One point per day. SPAN capped at 366 days.
-	AnalyticTimeframe_ANALYTIC_TIMEFRAME_DAILY AnalyticTimeframe = 1
-	// One point per calendar month. SPAN capped at 60 months.
-	AnalyticTimeframe_ANALYTIC_TIMEFRAME_MONTHLY AnalyticTimeframe = 2
-	// One point per calendar year. SPAN capped at 20 years.
-	AnalyticTimeframe_ANALYTIC_TIMEFRAME_YEARLY AnalyticTimeframe = 3
-)
-
-// Enum value maps for AnalyticTimeframe.
-var (
-	AnalyticTimeframe_name = map[int32]string{
-		0: "ANALYTIC_TIMEFRAME_UNSPECIFIED",
-		1: "ANALYTIC_TIMEFRAME_DAILY",
-		2: "ANALYTIC_TIMEFRAME_MONTHLY",
-		3: "ANALYTIC_TIMEFRAME_YEARLY",
-	}
-	AnalyticTimeframe_value = map[string]int32{
-		"ANALYTIC_TIMEFRAME_UNSPECIFIED": 0,
-		"ANALYTIC_TIMEFRAME_DAILY":       1,
-		"ANALYTIC_TIMEFRAME_MONTHLY":     2,
-		"ANALYTIC_TIMEFRAME_YEARLY":      3,
-	}
-)
-
-func (x AnalyticTimeframe) Enum() *AnalyticTimeframe {
-	p := new(AnalyticTimeframe)
-	*p = x
-	return p
-}
-
-func (x AnalyticTimeframe) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AnalyticTimeframe) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_enumTypes[0].Descriptor()
-}
-
-func (AnalyticTimeframe) Type() protoreflect.EnumType {
-	return &file_warehouse_supplier_v1_supplier_analytic_proto_enumTypes[0]
-}
-
-func (x AnalyticTimeframe) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AnalyticTimeframe.Descriptor instead.
-func (AnalyticTimeframe) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{0}
-}
-
-// How the ranking orders its suppliers.
-type AnalyticGroupSort int32
-
-const (
-	AnalyticGroupSort_ANALYTIC_GROUP_SORT_UNSPECIFIED AnalyticGroupSort = 0
-	// The default: the largest restocked value first.
-	AnalyticGroupSort_ANALYTIC_GROUP_SORT_RESTOCK_VALUATION AnalyticGroupSort = 1
-	// The highest broken rate first — among the suppliers with at least `rate_min_units` units in the window; the rest
-	// follow (rate-ranking-needs-50-units).
-	AnalyticGroupSort_ANALYTIC_GROUP_SORT_BROKEN_RATE AnalyticGroupSort = 2
-)
-
-// Enum value maps for AnalyticGroupSort.
-var (
-	AnalyticGroupSort_name = map[int32]string{
-		0: "ANALYTIC_GROUP_SORT_UNSPECIFIED",
-		1: "ANALYTIC_GROUP_SORT_RESTOCK_VALUATION",
-		2: "ANALYTIC_GROUP_SORT_BROKEN_RATE",
-	}
-	AnalyticGroupSort_value = map[string]int32{
-		"ANALYTIC_GROUP_SORT_UNSPECIFIED":       0,
-		"ANALYTIC_GROUP_SORT_RESTOCK_VALUATION": 1,
-		"ANALYTIC_GROUP_SORT_BROKEN_RATE":       2,
-	}
-)
-
-func (x AnalyticGroupSort) Enum() *AnalyticGroupSort {
-	p := new(AnalyticGroupSort)
-	*p = x
-	return p
-}
-
-func (x AnalyticGroupSort) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AnalyticGroupSort) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_enumTypes[1].Descriptor()
-}
-
-func (AnalyticGroupSort) Type() protoreflect.EnumType {
-	return &file_warehouse_supplier_v1_supplier_analytic_proto_enumTypes[1]
-}
-
-func (x AnalyticGroupSort) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AnalyticGroupSort.Descriptor instead.
-func (AnalyticGroupSort) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{1}
-}
-
-// THE SIX FIGURES (each-figure-is-read-at-the-accept). All are movements, so a month, a product or a supplier is a
-// plain SUM. Lost and broken sit BESIDE restocked, never inside it — a broken rate is
-// broken ÷ (restocked + lost + broken). Values are whole rupiah, at the line's price.
+// THE SIX FIGURES (each-figure-is-read-at-the-accept) and the broken rate. All six are movements, so a period, a
+// product or a supplier is a plain SUM. Lost and broken sit BESIDE restocked, never inside it. Values are whole
+// rupiah, at the line's price.
+//
+// Groups: SUPPLIER and PRODUCT — the RESTOCKING team's product, so two teams buying one item are two keys
+// (every-accepted-line-links-its-own-product) — and every period. Filters: the window (required); TEAM, whose
+// restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier. No keyword — the Supplier
+// Report's search went with it (the-supplier-report-drops-its-search).
 type SupplierMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Units accepted as good stock.
@@ -147,8 +43,12 @@ type SupplierMetric struct {
 	// Units that arrived broken.
 	ShippingBrokenCount     int64 `protobuf:"varint,5,opt,name=shipping_broken_count,json=shippingBrokenCount,proto3" json:"shipping_broken_count,omitempty"`
 	ShippingBrokenValuation int64 `protobuf:"varint,6,opt,name=shipping_broken_valuation,json=shippingBrokenValuation,proto3" json:"shipping_broken_valuation,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// broken ÷ (restocked + lost + broken), 0 to 1 — 0 when nothing arrived, so read the counts to tell no rate from a
+	// rate of 0. Ranked only among keys with at least 50 units; the rest follow, in key order
+	// (rate-ranking-needs-50-units, a-rate-ranks-only-above-its-minimum-sample).
+	BrokenRate    float64 `protobuf:"fixed64,7,opt,name=broken_rate,json=brokenRate,proto3" json:"broken_rate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SupplierMetric) Reset() {
@@ -223,29 +123,35 @@ func (x *SupplierMetric) GetShippingBrokenValuation() int64 {
 	return 0
 }
 
-// A window over the ACCEPT's Jakarta day, inclusive at both ends, as YYYY-MM-DD.
-type AnalyticDateRange struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StartDate     string                 `protobuf:"bytes,1,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
-	EndDate       string                 `protobuf:"bytes,2,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+func (x *SupplierMetric) GetBrokenRate() float64 {
+	if x != nil {
+		return x.BrokenRate
+	}
+	return 0
+}
+
+// A page of keys' figures — keyed by supplier or product id. An asked id with nothing in the window is all zero.
+type SupplierMetricByID struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Items         map[uint64]*SupplierMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AnalyticDateRange) Reset() {
-	*x = AnalyticDateRange{}
+func (x *SupplierMetricByID) Reset() {
+	*x = SupplierMetricByID{}
 	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AnalyticDateRange) String() string {
+func (x *SupplierMetricByID) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyticDateRange) ProtoMessage() {}
+func (*SupplierMetricByID) ProtoMessage() {}
 
-func (x *AnalyticDateRange) ProtoReflect() protoreflect.Message {
+func (x *SupplierMetricByID) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -257,48 +163,40 @@ func (x *AnalyticDateRange) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AnalyticDateRange.ProtoReflect.Descriptor instead.
-func (*AnalyticDateRange) Descriptor() ([]byte, []int) {
+// Deprecated: Use SupplierMetricByID.ProtoReflect.Descriptor instead.
+func (*SupplierMetricByID) Descriptor() ([]byte, []int) {
 	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AnalyticDateRange) GetStartDate() string {
+func (x *SupplierMetricByID) GetItems() map[uint64]*SupplierMetric {
 	if x != nil {
-		return x.StartDate
+		return x.Items
 	}
-	return ""
+	return nil
 }
 
-func (x *AnalyticDateRange) GetEndDate() string {
-	if x != nil {
-		return x.EndDate
-	}
-	return ""
-}
-
-type AnalyticTimeSearchFilter struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	DateRange *AnalyticDateRange     `protobuf:"bytes,1,opt,name=date_range,json=dateRange,proto3" json:"date_range,omitempty"`
-	// Whose restocks are counted — one selling team, or 0 for every team's (the-team-filter-picks-any-selling-team).
-	RestockTeamId uint64 `protobuf:"varint,2,opt,name=restock_team_id,json=restockTeamId,proto3" json:"restock_team_id,omitempty"`
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. An asked period that was quiet is all zero.
+type SupplierMetricByDay struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Items         map[string]*SupplierMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AnalyticTimeSearchFilter) Reset() {
-	*x = AnalyticTimeSearchFilter{}
+func (x *SupplierMetricByDay) Reset() {
+	*x = SupplierMetricByDay{}
 	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AnalyticTimeSearchFilter) String() string {
+func (x *SupplierMetricByDay) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyticTimeSearchFilter) ProtoMessage() {}
+func (*SupplierMetricByDay) ProtoMessage() {}
 
-func (x *AnalyticTimeSearchFilter) ProtoReflect() protoreflect.Message {
+func (x *SupplierMetricByDay) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -310,55 +208,45 @@ func (x *AnalyticTimeSearchFilter) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AnalyticTimeSearchFilter.ProtoReflect.Descriptor instead.
-func (*AnalyticTimeSearchFilter) Descriptor() ([]byte, []int) {
+// Deprecated: Use SupplierMetricByDay.ProtoReflect.Descriptor instead.
+func (*SupplierMetricByDay) Descriptor() ([]byte, []int) {
 	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AnalyticTimeSearchFilter) GetDateRange() *AnalyticDateRange {
+func (x *SupplierMetricByDay) GetItems() map[string]*SupplierMetric {
 	if x != nil {
-		return x.DateRange
+		return x.Items
 	}
 	return nil
 }
 
-func (x *AnalyticTimeSearchFilter) GetRestockTeamId() uint64 {
-	if x != nil {
-		return x.RestockTeamId
-	}
-	return 0
-}
-
-type AnalyticTimeSearchRequest struct {
+type MetricSearchRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	// Any team's supplier, a deleted one included — its figures are kept (a-deleted-supplier-is-kept-for-its-figures).
-	SupplierId uint64                    `protobuf:"varint,2,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
-	Timeframe  AnalyticTimeframe         `protobuf:"varint,3,opt,name=timeframe,proto3,enum=warehouse.supplier.v1.AnalyticTimeframe" json:"timeframe,omitempty"`
-	Filter     *AnalyticTimeSearchFilter `protobuf:"bytes,4,opt,name=filter,proto3" json:"filter,omitempty"`
-	// Over the bucket's date. Unspecified reads ASCENDING, oldest first.
-	SortType v1.CommonSortType `protobuf:"varint,5,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
-	// Pages over BUCKETS — every bucket in the window is a point, a quiet one included, so a missing row never reads
-	// as a period that did not load.
-	Page          *v1.CommonPagination `protobuf:"bytes,6,opt,name=page,proto3" json:"page,omitempty"`
+	// Never SUMMARY — a headline is not searched.
+	GroupBy v1.GroupType `protobuf:"varint,2,opt,name=group_by,json=groupBy,proto3,enum=warehouse.analytic_base.v1.GroupType" json:"group_by,omitempty"`
+	// At most one of each FilterType.
+	Filters       []*v1.FilterItem     `protobuf:"bytes,3,rep,name=filters,proto3" json:"filters,omitempty"`
+	Sort          *v1.MetricSort       `protobuf:"bytes,4,opt,name=sort,proto3" json:"sort,omitempty"`
+	Page          *v1.PaginationFilter `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AnalyticTimeSearchRequest) Reset() {
-	*x = AnalyticTimeSearchRequest{}
+func (x *MetricSearchRequest) Reset() {
+	*x = MetricSearchRequest{}
 	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AnalyticTimeSearchRequest) String() string {
+func (x *MetricSearchRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyticTimeSearchRequest) ProtoMessage() {}
+func (*MetricSearchRequest) ProtoMessage() {}
 
-func (x *AnalyticTimeSearchRequest) ProtoReflect() protoreflect.Message {
+func (x *MetricSearchRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -370,512 +258,71 @@ func (x *AnalyticTimeSearchRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AnalyticTimeSearchRequest.ProtoReflect.Descriptor instead.
-func (*AnalyticTimeSearchRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use MetricSearchRequest.ProtoReflect.Descriptor instead.
+func (*MetricSearchRequest) Descriptor() ([]byte, []int) {
 	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *AnalyticTimeSearchRequest) GetTeamId() uint64 {
+func (x *MetricSearchRequest) GetTeamId() uint64 {
 	if x != nil {
 		return x.TeamId
 	}
 	return 0
 }
 
-func (x *AnalyticTimeSearchRequest) GetSupplierId() uint64 {
+func (x *MetricSearchRequest) GetGroupBy() v1.GroupType {
 	if x != nil {
-		return x.SupplierId
+		return x.GroupBy
 	}
-	return 0
+	return v1.GroupType(0)
 }
 
-func (x *AnalyticTimeSearchRequest) GetTimeframe() AnalyticTimeframe {
+func (x *MetricSearchRequest) GetFilters() []*v1.FilterItem {
 	if x != nil {
-		return x.Timeframe
-	}
-	return AnalyticTimeframe_ANALYTIC_TIMEFRAME_UNSPECIFIED
-}
-
-func (x *AnalyticTimeSearchRequest) GetFilter() *AnalyticTimeSearchFilter {
-	if x != nil {
-		return x.Filter
+		return x.Filters
 	}
 	return nil
 }
 
-func (x *AnalyticTimeSearchRequest) GetSortType() v1.CommonSortType {
-	if x != nil {
-		return x.SortType
-	}
-	return v1.CommonSortType(0)
-}
-
-func (x *AnalyticTimeSearchRequest) GetPage() *v1.CommonPagination {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-type SupplierTimeframeMetric struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The bucket's first day, YYYY-MM-DD — the 1st of a month, 1 January of a year.
-	At            string          `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"`
-	Metric        *SupplierMetric `protobuf:"bytes,2,opt,name=metric,proto3" json:"metric,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SupplierTimeframeMetric) Reset() {
-	*x = SupplierTimeframeMetric{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SupplierTimeframeMetric) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SupplierTimeframeMetric) ProtoMessage() {}
-
-func (x *SupplierTimeframeMetric) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SupplierTimeframeMetric.ProtoReflect.Descriptor instead.
-func (*SupplierTimeframeMetric) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *SupplierTimeframeMetric) GetAt() string {
-	if x != nil {
-		return x.At
-	}
-	return ""
-}
-
-func (x *SupplierTimeframeMetric) GetMetric() *SupplierMetric {
-	if x != nil {
-		return x.Metric
-	}
-	return nil
-}
-
-type AnalyticTimeSearchResponse struct {
-	state    protoimpl.MessageState     `protogen:"open.v1"`
-	Datas    []*SupplierTimeframeMetric `protobuf:"bytes,1,rep,name=datas,proto3" json:"datas,omitempty"`
-	PageInfo *v1.PageInfo               `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	// The WHOLE window as one metric — the Statistics tab's headline, never a sum of the page on screen.
-	Total         *SupplierMetric `protobuf:"bytes,3,opt,name=total,proto3" json:"total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticTimeSearchResponse) Reset() {
-	*x = AnalyticTimeSearchResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticTimeSearchResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticTimeSearchResponse) ProtoMessage() {}
-
-func (x *AnalyticTimeSearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticTimeSearchResponse.ProtoReflect.Descriptor instead.
-func (*AnalyticTimeSearchResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *AnalyticTimeSearchResponse) GetDatas() []*SupplierTimeframeMetric {
-	if x != nil {
-		return x.Datas
-	}
-	return nil
-}
-
-func (x *AnalyticTimeSearchResponse) GetPageInfo() *v1.PageInfo {
-	if x != nil {
-		return x.PageInfo
-	}
-	return nil
-}
-
-func (x *AnalyticTimeSearchResponse) GetTotal() *SupplierMetric {
-	if x != nil {
-		return x.Total
-	}
-	return nil
-}
-
-type AnalyticProductSearchRequest struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	TeamId        uint64                    `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	SupplierId    uint64                    `protobuf:"varint,2,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
-	Filter        *AnalyticTimeSearchFilter `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
-	Page          *v1.CommonPagination      `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticProductSearchRequest) Reset() {
-	*x = AnalyticProductSearchRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticProductSearchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticProductSearchRequest) ProtoMessage() {}
-
-func (x *AnalyticProductSearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticProductSearchRequest.ProtoReflect.Descriptor instead.
-func (*AnalyticProductSearchRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *AnalyticProductSearchRequest) GetTeamId() uint64 {
-	if x != nil {
-		return x.TeamId
-	}
-	return 0
-}
-
-func (x *AnalyticProductSearchRequest) GetSupplierId() uint64 {
-	if x != nil {
-		return x.SupplierId
-	}
-	return 0
-}
-
-func (x *AnalyticProductSearchRequest) GetFilter() *AnalyticTimeSearchFilter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *AnalyticProductSearchRequest) GetPage() *v1.CommonPagination {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-// One product's figures — the RESTOCKING team's product, so two teams buying one item are two rows
-// (every-accepted-line-links-its-own-product).
-type SupplierProductMetric struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	ProductId uint64                 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// The team the product belongs to — the team that restocked it.
-	TeamId        uint64          `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Metric        *SupplierMetric `protobuf:"bytes,3,opt,name=metric,proto3" json:"metric,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SupplierProductMetric) Reset() {
-	*x = SupplierProductMetric{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SupplierProductMetric) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SupplierProductMetric) ProtoMessage() {}
-
-func (x *SupplierProductMetric) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SupplierProductMetric.ProtoReflect.Descriptor instead.
-func (*SupplierProductMetric) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *SupplierProductMetric) GetProductId() uint64 {
-	if x != nil {
-		return x.ProductId
-	}
-	return 0
-}
-
-func (x *SupplierProductMetric) GetTeamId() uint64 {
-	if x != nil {
-		return x.TeamId
-	}
-	return 0
-}
-
-func (x *SupplierProductMetric) GetMetric() *SupplierMetric {
-	if x != nil {
-		return x.Metric
-	}
-	return nil
-}
-
-type AnalyticProductSearchResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The largest restocked value first.
-	Datas         []*SupplierProductMetric `protobuf:"bytes,1,rep,name=datas,proto3" json:"datas,omitempty"`
-	PageInfo      *v1.PageInfo             `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticProductSearchResponse) Reset() {
-	*x = AnalyticProductSearchResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticProductSearchResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticProductSearchResponse) ProtoMessage() {}
-
-func (x *AnalyticProductSearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticProductSearchResponse.ProtoReflect.Descriptor instead.
-func (*AnalyticProductSearchResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *AnalyticProductSearchResponse) GetDatas() []*SupplierProductMetric {
-	if x != nil {
-		return x.Datas
-	}
-	return nil
-}
-
-func (x *AnalyticProductSearchResponse) GetPageInfo() *v1.PageInfo {
-	if x != nil {
-		return x.PageInfo
-	}
-	return nil
-}
-
-type AnalyticGroupFilter struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	DateRange *AnalyticDateRange     `protobuf:"bytes,1,opt,name=date_range,json=dateRange,proto3" json:"date_range,omitempty"`
-	// Whose restocks are counted — one selling team, or 0 for every team's.
-	RestockTeamId uint64 `protobuf:"varint,2,opt,name=restock_team_id,json=restockTeamId,proto3" json:"restock_team_id,omitempty"`
-	// Matched as SupplierList's `q` is — the supplier's name, address and contact, and its live stores' names
-	// (the-supplier-report-searches-like-discover). Empty ranks every supplier with figures in the window.
-	Q             string `protobuf:"bytes,3,opt,name=q,proto3" json:"q,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupFilter) Reset() {
-	*x = AnalyticGroupFilter{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupFilter) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupFilter) ProtoMessage() {}
-
-func (x *AnalyticGroupFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupFilter.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *AnalyticGroupFilter) GetDateRange() *AnalyticDateRange {
-	if x != nil {
-		return x.DateRange
-	}
-	return nil
-}
-
-func (x *AnalyticGroupFilter) GetRestockTeamId() uint64 {
-	if x != nil {
-		return x.RestockTeamId
-	}
-	return 0
-}
-
-func (x *AnalyticGroupFilter) GetQ() string {
-	if x != nil {
-		return x.Q
-	}
-	return ""
-}
-
-type AnalyticGroupSearchRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Filter        *AnalyticGroupFilter   `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
-	Sort          AnalyticGroupSort      `protobuf:"varint,3,opt,name=sort,proto3,enum=warehouse.supplier.v1.AnalyticGroupSort" json:"sort,omitempty"`
-	Page          *v1.CommonPagination   `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupSearchRequest) Reset() {
-	*x = AnalyticGroupSearchRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupSearchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupSearchRequest) ProtoMessage() {}
-
-func (x *AnalyticGroupSearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupSearchRequest.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupSearchRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *AnalyticGroupSearchRequest) GetTeamId() uint64 {
-	if x != nil {
-		return x.TeamId
-	}
-	return 0
-}
-
-func (x *AnalyticGroupSearchRequest) GetFilter() *AnalyticGroupFilter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *AnalyticGroupSearchRequest) GetSort() AnalyticGroupSort {
+func (x *MetricSearchRequest) GetSort() *v1.MetricSort {
 	if x != nil {
 		return x.Sort
 	}
-	return AnalyticGroupSort_ANALYTIC_GROUP_SORT_UNSPECIFIED
+	return nil
 }
 
-func (x *AnalyticGroupSearchRequest) GetPage() *v1.CommonPagination {
+func (x *MetricSearchRequest) GetPage() *v1.PaginationFilter {
 	if x != nil {
 		return x.Page
 	}
 	return nil
 }
 
-type AnalyticGroupSearchResponse struct {
+type MetricSearchResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The suppliers, RANKED — a deleted one included when it has figures in the window. Resolve the names with
-	// SupplierByIds, which returns a deleted supplier marked.
-	Ids      []uint64     `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
-	PageInfo *v1.PageInfo `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	// Every ranked supplier together — the report's headline, never a sum of the page on screen.
-	Total *SupplierMetric `protobuf:"bytes,3,opt,name=total,proto3" json:"total,omitempty"`
-	// The units a supplier needs in the window to be ranked by its rate (rate-ranking-needs-50-units). The screen reads
-	// it, never a copy of its own.
-	RateMinUnits  int64 `protobuf:"varint,4,opt,name=rate_min_units,json=rateMinUnits,proto3" json:"rate_min_units,omitempty"`
+	// Ranked; the key DESC breaks a tie (the-key-breaks-every-tie). Only keys with figures in the window.
+	Keys *v1.MetricKeys `protobuf:"bytes,1,opt,name=keys,proto3" json:"keys,omitempty"`
+	// Read as limit + 1 — no total (a-page-says-whether-another-follows).
+	HasNext       bool `protobuf:"varint,2,opt,name=has_next,json=hasNext,proto3" json:"has_next,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AnalyticGroupSearchResponse) Reset() {
-	*x = AnalyticGroupSearchResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[11]
+func (x *MetricSearchResponse) Reset() {
+	*x = MetricSearchResponse{}
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AnalyticGroupSearchResponse) String() string {
+func (x *MetricSearchResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyticGroupSearchResponse) ProtoMessage() {}
+func (*MetricSearchResponse) ProtoMessage() {}
 
-func (x *AnalyticGroupSearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[11]
+func (x *MetricSearchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -886,64 +333,53 @@ func (x *AnalyticGroupSearchResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AnalyticGroupSearchResponse.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupSearchResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{11}
+// Deprecated: Use MetricSearchResponse.ProtoReflect.Descriptor instead.
+func (*MetricSearchResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *AnalyticGroupSearchResponse) GetIds() []uint64 {
+func (x *MetricSearchResponse) GetKeys() *v1.MetricKeys {
 	if x != nil {
-		return x.Ids
+		return x.Keys
 	}
 	return nil
 }
 
-func (x *AnalyticGroupSearchResponse) GetPageInfo() *v1.PageInfo {
+func (x *MetricSearchResponse) GetHasNext() bool {
 	if x != nil {
-		return x.PageInfo
+		return x.HasNext
 	}
-	return nil
+	return false
 }
 
-func (x *AnalyticGroupSearchResponse) GetTotal() *SupplierMetric {
-	if x != nil {
-		return x.Total
-	}
-	return nil
-}
-
-func (x *AnalyticGroupSearchResponse) GetRateMinUnits() int64 {
-	if x != nil {
-		return x.RateMinUnits
-	}
-	return 0
-}
-
-type AnalyticGroupMetricRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Filter *AnalyticGroupFilter   `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
-	// The page AnalyticGroupSearch returned. Capped like a page, because it is one.
-	Ids           []uint64 `protobuf:"varint,3,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+type MetricDataRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	TeamId  uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	GroupBy v1.GroupType           `protobuf:"varint,2,opt,name=group_by,json=groupBy,proto3,enum=warehouse.analytic_base.v1.GroupType" json:"group_by,omitempty"`
+	// The same as the search's — they scope the numbers, never the keys (the-fill-step-scopes-its-numbers-by-the-filters).
+	Filters []*v1.FilterItem `protobuf:"bytes,3,rep,name=filters,proto3" json:"filters,omitempty"`
+	// IDs for SUPPLIER and PRODUCT, days for a period; none for SUMMARY. At most a page.
+	Keys          *v1.MetricKeys `protobuf:"bytes,4,opt,name=keys,proto3" json:"keys,omitempty"`
+	MetricIds     []string       `protobuf:"bytes,5,rep,name=metric_ids,json=metricIds,proto3" json:"metric_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AnalyticGroupMetricRequest) Reset() {
-	*x = AnalyticGroupMetricRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[12]
+func (x *MetricDataRequest) Reset() {
+	*x = MetricDataRequest{}
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AnalyticGroupMetricRequest) String() string {
+func (x *MetricDataRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyticGroupMetricRequest) ProtoMessage() {}
+func (*MetricDataRequest) ProtoMessage() {}
 
-func (x *AnalyticGroupMetricRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[12]
+func (x *MetricDataRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -954,55 +390,74 @@ func (x *AnalyticGroupMetricRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AnalyticGroupMetricRequest.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupMetricRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{12}
+// Deprecated: Use MetricDataRequest.ProtoReflect.Descriptor instead.
+func (*MetricDataRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *AnalyticGroupMetricRequest) GetTeamId() uint64 {
+func (x *MetricDataRequest) GetTeamId() uint64 {
 	if x != nil {
 		return x.TeamId
 	}
 	return 0
 }
 
-func (x *AnalyticGroupMetricRequest) GetFilter() *AnalyticGroupFilter {
+func (x *MetricDataRequest) GetGroupBy() v1.GroupType {
 	if x != nil {
-		return x.Filter
+		return x.GroupBy
+	}
+	return v1.GroupType(0)
+}
+
+func (x *MetricDataRequest) GetFilters() []*v1.FilterItem {
+	if x != nil {
+		return x.Filters
 	}
 	return nil
 }
 
-func (x *AnalyticGroupMetricRequest) GetIds() []uint64 {
+func (x *MetricDataRequest) GetKeys() *v1.MetricKeys {
 	if x != nil {
-		return x.Ids
+		return x.Keys
 	}
 	return nil
 }
 
-type AnalyticGroupMetricResponse struct {
+func (x *MetricDataRequest) GetMetricIds() []string {
+	if x != nil {
+		return x.MetricIds
+	}
+	return nil
+}
+
+// One per asked metric (one-call-answers-every-asked-metric).
+type MetricData struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Keyed by supplier id. An id with nothing in the window gets an all-zero metric, never a missing key.
-	Metrics       map[uint64]*SupplierMetric `protobuf:"bytes,1,rep,name=metrics,proto3" json:"metrics,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Types that are valid to be assigned to M:
+	//
+	//	*MetricData_SupplierById
+	//	*MetricData_SupplierByDay
+	//	*MetricData_SupplierSummary
+	M             isMetricData_M `protobuf_oneof:"m"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AnalyticGroupMetricResponse) Reset() {
-	*x = AnalyticGroupMetricResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[13]
+func (x *MetricData) Reset() {
+	*x = MetricData{}
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AnalyticGroupMetricResponse) String() string {
+func (x *MetricData) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyticGroupMetricResponse) ProtoMessage() {}
+func (*MetricData) ProtoMessage() {}
 
-func (x *AnalyticGroupMetricResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[13]
+func (x *MetricData) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1013,14 +468,107 @@ func (x *AnalyticGroupMetricResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AnalyticGroupMetricResponse.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupMetricResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{13}
+// Deprecated: Use MetricData.ProtoReflect.Descriptor instead.
+func (*MetricData) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *AnalyticGroupMetricResponse) GetMetrics() map[uint64]*SupplierMetric {
+func (x *MetricData) GetM() isMetricData_M {
 	if x != nil {
-		return x.Metrics
+		return x.M
+	}
+	return nil
+}
+
+func (x *MetricData) GetSupplierById() *SupplierMetricByID {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_SupplierById); ok {
+			return x.SupplierById
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetSupplierByDay() *SupplierMetricByDay {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_SupplierByDay); ok {
+			return x.SupplierByDay
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetSupplierSummary() *SupplierMetric {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_SupplierSummary); ok {
+			return x.SupplierSummary
+		}
+	}
+	return nil
+}
+
+type isMetricData_M interface {
+	isMetricData_M()
+}
+
+type MetricData_SupplierById struct {
+	SupplierById *SupplierMetricByID `protobuf:"bytes,1,opt,name=supplier_by_id,json=supplierById,proto3,oneof"`
+}
+
+type MetricData_SupplierByDay struct {
+	SupplierByDay *SupplierMetricByDay `protobuf:"bytes,2,opt,name=supplier_by_day,json=supplierByDay,proto3,oneof"`
+}
+
+type MetricData_SupplierSummary struct {
+	SupplierSummary *SupplierMetric `protobuf:"bytes,3,opt,name=supplier_summary,json=supplierSummary,proto3,oneof"`
+}
+
+func (*MetricData_SupplierById) isMetricData_M() {}
+
+func (*MetricData_SupplierByDay) isMetricData_M() {}
+
+func (*MetricData_SupplierSummary) isMetricData_M() {}
+
+type MetricDataResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MetricDatas   []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MetricDataResponse) Reset() {
+	*x = MetricDataResponse{}
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MetricDataResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MetricDataResponse) ProtoMessage() {}
+
+func (x *MetricDataResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MetricDataResponse.ProtoReflect.Descriptor instead.
+func (*MetricDataResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *MetricDataResponse) GetMetricDatas() []*MetricData {
+	if x != nil {
+		return x.MetricDatas
 	}
 	return nil
 }
@@ -1036,7 +584,7 @@ type AnalyticReplayComputeRequest struct {
 
 func (x *AnalyticReplayComputeRequest) Reset() {
 	*x = AnalyticReplayComputeRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[14]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1048,7 +596,7 @@ func (x *AnalyticReplayComputeRequest) String() string {
 func (*AnalyticReplayComputeRequest) ProtoMessage() {}
 
 func (x *AnalyticReplayComputeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[14]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1061,7 +609,7 @@ func (x *AnalyticReplayComputeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyticReplayComputeRequest.ProtoReflect.Descriptor instead.
 func (*AnalyticReplayComputeRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AnalyticReplayComputeRequest) GetStartDate() string {
@@ -1085,7 +633,7 @@ type AnalyticReplayComputeResponse struct {
 
 func (x *AnalyticReplayComputeResponse) Reset() {
 	*x = AnalyticReplayComputeResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[15]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1097,7 +645,7 @@ func (x *AnalyticReplayComputeResponse) String() string {
 func (*AnalyticReplayComputeResponse) ProtoMessage() {}
 
 func (x *AnalyticReplayComputeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[15]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +658,7 @@ func (x *AnalyticReplayComputeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyticReplayComputeResponse.ProtoReflect.Descriptor instead.
 func (*AnalyticReplayComputeResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AnalyticReplayComputeResponse) GetStatus() string {
@@ -1149,7 +697,7 @@ type AnalyticMaintenanceRunRequest struct {
 
 func (x *AnalyticMaintenanceRunRequest) Reset() {
 	*x = AnalyticMaintenanceRunRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[16]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1161,7 +709,7 @@ func (x *AnalyticMaintenanceRunRequest) String() string {
 func (*AnalyticMaintenanceRunRequest) ProtoMessage() {}
 
 func (x *AnalyticMaintenanceRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[16]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1174,7 +722,7 @@ func (x *AnalyticMaintenanceRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyticMaintenanceRunRequest.ProtoReflect.Descriptor instead.
 func (*AnalyticMaintenanceRunRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{10}
 }
 
 type AnalyticMaintenanceRunResponse struct {
@@ -1189,7 +737,7 @@ type AnalyticMaintenanceRunResponse struct {
 
 func (x *AnalyticMaintenanceRunResponse) Reset() {
 	*x = AnalyticMaintenanceRunResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[17]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1201,7 +749,7 @@ func (x *AnalyticMaintenanceRunResponse) String() string {
 func (*AnalyticMaintenanceRunResponse) ProtoMessage() {}
 
 func (x *AnalyticMaintenanceRunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[17]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1214,7 +762,7 @@ func (x *AnalyticMaintenanceRunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyticMaintenanceRunResponse.ProtoReflect.Descriptor instead.
 func (*AnalyticMaintenanceRunResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AnalyticMaintenanceRunResponse) GetDeletedEventLogs() int64 {
@@ -1235,80 +783,57 @@ var File_warehouse_supplier_v1_supplier_analytic_proto protoreflect.FileDescript
 
 const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\n" +
-	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xba\x02\n" +
-	"\x0eSupplierMetric\x12#\n" +
-	"\rrestock_count\x18\x01 \x01(\x03R\frestockCount\x12+\n" +
-	"\x11restock_valuation\x18\x02 \x01(\x03R\x10restockValuation\x12.\n" +
-	"\x13shipping_lost_count\x18\x03 \x01(\x03R\x11shippingLostCount\x126\n" +
-	"\x17shipping_lost_valuation\x18\x04 \x01(\x03R\x15shippingLostValuation\x122\n" +
-	"\x15shipping_broken_count\x18\x05 \x01(\x03R\x13shippingBrokenCount\x12:\n" +
-	"\x19shipping_broken_valuation\x18\x06 \x01(\x03R\x17shippingBrokenValuation\"\x97\x01\n" +
-	"\x11AnalyticDateRange\x12B\n" +
+	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xbf\x03\n" +
+	"\x0eSupplierMetric\x12+\n" +
+	"\rrestock_count\x18\x01 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\frestockCount\x123\n" +
+	"\x11restock_valuation\x18\x02 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x10restockValuation\x126\n" +
+	"\x13shipping_lost_count\x18\x03 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x11shippingLostCount\x12>\n" +
+	"\x17shipping_lost_valuation\x18\x04 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x15shippingLostValuation\x12:\n" +
+	"\x15shipping_broken_count\x18\x05 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x13shippingBrokenCount\x12B\n" +
+	"\x19shipping_broken_valuation\x18\x06 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x17shippingBrokenValuation\x12)\n" +
+	"\vbroken_rate\x18\a \x01(\x01B\b\x9a\xb5\x18\x04\b\x01\x102R\n" +
+	"brokenRate:(\x9a\xb5\x18$\n" +
+	"\x03\x01\x04\x06\x12\x01\x01\x1a\a\x01\x02\x03\x04\x05\b\x06\"\x11metrics/suppliers\"\xc1\x01\n" +
+	"\x12SupplierMetricByID\x12J\n" +
+	"\x05items\x18\x01 \x03(\v24.warehouse.supplier.v1.SupplierMetricByID.ItemsEntryR\x05items\x1a_\n" +
 	"\n" +
-	"start_date\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\tstartDate\x12>\n" +
-	"\bend_date\x18\x02 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\aendDate\"\x93\x01\n" +
-	"\x18AnalyticTimeSearchFilter\x12O\n" +
-	"\n" +
-	"date_range\x18\x01 \x01(\v2(.warehouse.supplier.v1.AnalyticDateRangeB\x06\xbaH\x03\xc8\x01\x01R\tdateRange\x12&\n" +
-	"\x0frestock_team_id\x18\x02 \x01(\x04R\rrestockTeamId\"\xa2\x03\n" +
-	"\x19AnalyticTimeSearchRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
-	"\vsupplier_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
-	"supplierId\x12R\n" +
-	"\ttimeframe\x18\x03 \x01(\x0e2(.warehouse.supplier.v1.AnalyticTimeframeB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\ttimeframe\x12O\n" +
-	"\x06filter\x18\x04 \x01(\v2/.warehouse.supplier.v1.AnalyticTimeSearchFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12@\n" +
-	"\tsort_type\x18\x05 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12A\n" +
-	"\x04page\x18\x06 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"h\n" +
-	"\x17SupplierTimeframeMetric\x12\x0e\n" +
-	"\x02at\x18\x01 \x01(\tR\x02at\x12=\n" +
-	"\x06metric\x18\x02 \x01(\v2%.warehouse.supplier.v1.SupplierMetricR\x06metric\"\xdb\x01\n" +
-	"\x1aAnalyticTimeSearchResponse\x12D\n" +
-	"\x05datas\x18\x01 \x03(\v2..warehouse.supplier.v1.SupplierTimeframeMetricR\x05datas\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12;\n" +
-	"\x05total\x18\x03 \x01(\v2%.warehouse.supplier.v1.SupplierMetricR\x05total\"\x8f\x02\n" +
-	"\x1cAnalyticProductSearchRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
-	"\vsupplier_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
-	"supplierId\x12O\n" +
-	"\x06filter\x18\x03 \x01(\v2/.warehouse.supplier.v1.AnalyticTimeSearchFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12A\n" +
-	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"\x8e\x01\n" +
-	"\x15SupplierProductMetric\x12\x1d\n" +
-	"\n" +
-	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x17\n" +
-	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12=\n" +
-	"\x06metric\x18\x03 \x01(\v2%.warehouse.supplier.v1.SupplierMetricR\x06metric\"\x9f\x01\n" +
-	"\x1dAnalyticProductSearchResponse\x12B\n" +
-	"\x05datas\x18\x01 \x03(\v2,.warehouse.supplier.v1.SupplierProductMetricR\x05datas\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xa5\x01\n" +
-	"\x13AnalyticGroupFilter\x12O\n" +
-	"\n" +
-	"date_range\x18\x01 \x01(\v2(.warehouse.supplier.v1.AnalyticDateRangeB\x06\xbaH\x03\xc8\x01\x01R\tdateRange\x12&\n" +
-	"\x0frestock_team_id\x18\x02 \x01(\x04R\rrestockTeamId\x12\x15\n" +
-	"\x01q\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\"\xa6\x02\n" +
-	"\x1aAnalyticGroupSearchRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12J\n" +
-	"\x06filter\x18\x02 \x01(\v2*.warehouse.supplier.v1.AnalyticGroupFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12F\n" +
-	"\x04sort\x18\x03 \x01(\x0e2(.warehouse.supplier.v1.AnalyticGroupSortB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04sort\x12A\n" +
-	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"\xce\x01\n" +
-	"\x1bAnalyticGroupSearchResponse\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12;\n" +
-	"\x05total\x18\x03 \x01(\v2%.warehouse.supplier.v1.SupplierMetricR\x05total\x12$\n" +
-	"\x0erate_min_units\x18\x04 \x01(\x03R\frateMinUnits\"\xba\x01\n" +
-	"\x1aAnalyticGroupMetricRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12J\n" +
-	"\x06filter\x18\x02 \x01(\v2*.warehouse.supplier.v1.AnalyticGroupFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12\x1d\n" +
-	"\x03ids\x18\x03 \x03(\x04B\v\xbaH\b\x92\x01\x05\b\x01\x10\xc8\x01R\x03ids:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"\xdb\x01\n" +
-	"\x1bAnalyticGroupMetricResponse\x12Y\n" +
-	"\ametrics\x18\x01 \x03(\v2?.warehouse.supplier.v1.AnalyticGroupMetricResponse.MetricsEntryR\ametrics\x1aa\n" +
-	"\fMetricsEntry\x12\x10\n" +
+	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12;\n" +
-	"\x05value\x18\x02 \x01(\v2%.warehouse.supplier.v1.SupplierMetricR\x05value:\x028\x01\"l\n" +
+	"\x05value\x18\x02 \x01(\v2%.warehouse.supplier.v1.SupplierMetricR\x05value:\x028\x01\"\xc3\x01\n" +
+	"\x13SupplierMetricByDay\x12K\n" +
+	"\x05items\x18\x01 \x03(\v25.warehouse.supplier.v1.SupplierMetricByDay.ItemsEntryR\x05items\x1a_\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
+	"\x05value\x18\x02 \x01(\v2%.warehouse.supplier.v1.SupplierMetricR\x05value:\x028\x01\"\xf2\x02\n" +
+	"\x13MetricSearchRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12N\n" +
+	"\bgroup_by\x18\x02 \x01(\x0e2%.warehouse.analytic_base.v1.GroupTypeB\f\xbaH\t\x82\x01\x06\x10\x01 \x00 \x01R\agroupBy\x12J\n" +
+	"\afilters\x18\x03 \x03(\v2&.warehouse.analytic_base.v1.FilterItemB\b\xbaH\x05\x92\x01\x02\x10\x06R\afilters\x12B\n" +
+	"\x04sort\x18\x04 \x01(\v2&.warehouse.analytic_base.v1.MetricSortB\x06\xbaH\x03\xc8\x01\x01R\x04sort\x12H\n" +
+	"\x04page\x18\x05 \x01(\v2,.warehouse.analytic_base.v1.PaginationFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"m\n" +
+	"\x14MetricSearchResponse\x12:\n" +
+	"\x04keys\x18\x01 \x01(\v2&.warehouse.analytic_base.v1.MetricKeysR\x04keys\x12\x19\n" +
+	"\bhas_next\x18\x02 \x01(\bR\ahasNext\"\xc9\x02\n" +
+	"\x11MetricDataRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12L\n" +
+	"\bgroup_by\x18\x02 \x01(\x0e2%.warehouse.analytic_base.v1.GroupTypeB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\agroupBy\x12J\n" +
+	"\afilters\x18\x03 \x03(\v2&.warehouse.analytic_base.v1.FilterItemB\b\xbaH\x05\x92\x01\x02\x10\x06R\afilters\x12:\n" +
+	"\x04keys\x18\x04 \x01(\v2&.warehouse.analytic_base.v1.MetricKeysR\x04keys\x12+\n" +
+	"\n" +
+	"metric_ids\x18\x05 \x03(\tB\f\xbaH\t\x92\x01\x06\b\x01\x10\n" +
+	"\x18\x01R\tmetricIds:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"\x8e\x02\n" +
+	"\n" +
+	"MetricData\x12Q\n" +
+	"\x0esupplier_by_id\x18\x01 \x01(\v2).warehouse.supplier.v1.SupplierMetricByIDH\x00R\fsupplierById\x12T\n" +
+	"\x0fsupplier_by_day\x18\x02 \x01(\v2*.warehouse.supplier.v1.SupplierMetricByDayH\x00R\rsupplierByDay\x12R\n" +
+	"\x10supplier_summary\x18\x03 \x01(\v2%.warehouse.supplier.v1.SupplierMetricH\x00R\x0fsupplierSummaryB\x03\n" +
+	"\x01m\"Z\n" +
+	"\x12MetricDataResponse\x12D\n" +
+	"\fmetric_datas\x18\x01 \x03(\v2!.warehouse.supplier.v1.MetricDataR\vmetricDatas\"l\n" +
 	"\x1cAnalyticReplayComputeRequest\x12B\n" +
 	"\n" +
 	"start_date\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\tstartDate:\b\x92\xb5\x18\x04\n" +
@@ -1322,21 +847,11 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\x02\x01\x02\"f\n" +
 	"\x1eAnalyticMaintenanceRunResponse\x12,\n" +
 	"\x12deleted_event_logs\x18\x01 \x01(\x03R\x10deletedEventLogs\x12\x16\n" +
-	"\x06cutoff\x18\x02 \x01(\tR\x06cutoff*\x94\x01\n" +
-	"\x11AnalyticTimeframe\x12\"\n" +
-	"\x1eANALYTIC_TIMEFRAME_UNSPECIFIED\x10\x00\x12\x1c\n" +
-	"\x18ANALYTIC_TIMEFRAME_DAILY\x10\x01\x12\x1e\n" +
-	"\x1aANALYTIC_TIMEFRAME_MONTHLY\x10\x02\x12\x1d\n" +
-	"\x19ANALYTIC_TIMEFRAME_YEARLY\x10\x03*\x88\x01\n" +
-	"\x11AnalyticGroupSort\x12#\n" +
-	"\x1fANALYTIC_GROUP_SORT_UNSPECIFIED\x10\x00\x12)\n" +
-	"%ANALYTIC_GROUP_SORT_RESTOCK_VALUATION\x10\x01\x12#\n" +
-	"\x1fANALYTIC_GROUP_SORT_BROKEN_RATE\x10\x022\x95\x04\n" +
-	"\x17SupplierAnalyticService\x12y\n" +
-	"\x12AnalyticTimeSearch\x120.warehouse.supplier.v1.AnalyticTimeSearchRequest\x1a1.warehouse.supplier.v1.AnalyticTimeSearchResponse\x12\x82\x01\n" +
-	"\x15AnalyticProductSearch\x123.warehouse.supplier.v1.AnalyticProductSearchRequest\x1a4.warehouse.supplier.v1.AnalyticProductSearchResponse\x12|\n" +
-	"\x13AnalyticGroupSearch\x121.warehouse.supplier.v1.AnalyticGroupSearchRequest\x1a2.warehouse.supplier.v1.AnalyticGroupSearchResponse\x12|\n" +
-	"\x13AnalyticGroupMetric\x121.warehouse.supplier.v1.AnalyticGroupMetricRequest\x1a2.warehouse.supplier.v1.AnalyticGroupMetricResponse2\xb1\x02\n" +
+	"\x06cutoff\x18\x02 \x01(\tR\x06cutoff2\xe5\x01\n" +
+	"\x17SupplierAnalyticService\x12g\n" +
+	"\fMetricSearch\x12*.warehouse.supplier.v1.MetricSearchRequest\x1a+.warehouse.supplier.v1.MetricSearchResponse\x12a\n" +
+	"\n" +
+	"MetricData\x12(.warehouse.supplier.v1.MetricDataRequest\x1a).warehouse.supplier.v1.MetricDataResponse2\xb1\x02\n" +
 	"\"SupplierAnalyticMaintenanceService\x12\x82\x01\n" +
 	"\x15AnalyticReplayCompute\x123.warehouse.supplier.v1.AnalyticReplayComputeRequest\x1a4.warehouse.supplier.v1.AnalyticReplayComputeResponse\x12\x85\x01\n" +
 	"\x16AnalyticMaintenanceRun\x124.warehouse.supplier.v1.AnalyticMaintenanceRunRequest\x1a5.warehouse.supplier.v1.AnalyticMaintenanceRunResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1b\x06proto3"
@@ -1353,75 +868,58 @@ func file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP() []byte {
 	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescData
 }
 
-var file_warehouse_supplier_v1_supplier_analytic_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_warehouse_supplier_v1_supplier_analytic_proto_goTypes = []any{
-	(AnalyticTimeframe)(0),                 // 0: warehouse.supplier.v1.AnalyticTimeframe
-	(AnalyticGroupSort)(0),                 // 1: warehouse.supplier.v1.AnalyticGroupSort
-	(*SupplierMetric)(nil),                 // 2: warehouse.supplier.v1.SupplierMetric
-	(*AnalyticDateRange)(nil),              // 3: warehouse.supplier.v1.AnalyticDateRange
-	(*AnalyticTimeSearchFilter)(nil),       // 4: warehouse.supplier.v1.AnalyticTimeSearchFilter
-	(*AnalyticTimeSearchRequest)(nil),      // 5: warehouse.supplier.v1.AnalyticTimeSearchRequest
-	(*SupplierTimeframeMetric)(nil),        // 6: warehouse.supplier.v1.SupplierTimeframeMetric
-	(*AnalyticTimeSearchResponse)(nil),     // 7: warehouse.supplier.v1.AnalyticTimeSearchResponse
-	(*AnalyticProductSearchRequest)(nil),   // 8: warehouse.supplier.v1.AnalyticProductSearchRequest
-	(*SupplierProductMetric)(nil),          // 9: warehouse.supplier.v1.SupplierProductMetric
-	(*AnalyticProductSearchResponse)(nil),  // 10: warehouse.supplier.v1.AnalyticProductSearchResponse
-	(*AnalyticGroupFilter)(nil),            // 11: warehouse.supplier.v1.AnalyticGroupFilter
-	(*AnalyticGroupSearchRequest)(nil),     // 12: warehouse.supplier.v1.AnalyticGroupSearchRequest
-	(*AnalyticGroupSearchResponse)(nil),    // 13: warehouse.supplier.v1.AnalyticGroupSearchResponse
-	(*AnalyticGroupMetricRequest)(nil),     // 14: warehouse.supplier.v1.AnalyticGroupMetricRequest
-	(*AnalyticGroupMetricResponse)(nil),    // 15: warehouse.supplier.v1.AnalyticGroupMetricResponse
-	(*AnalyticReplayComputeRequest)(nil),   // 16: warehouse.supplier.v1.AnalyticReplayComputeRequest
-	(*AnalyticReplayComputeResponse)(nil),  // 17: warehouse.supplier.v1.AnalyticReplayComputeResponse
-	(*AnalyticMaintenanceRunRequest)(nil),  // 18: warehouse.supplier.v1.AnalyticMaintenanceRunRequest
-	(*AnalyticMaintenanceRunResponse)(nil), // 19: warehouse.supplier.v1.AnalyticMaintenanceRunResponse
-	nil,                                    // 20: warehouse.supplier.v1.AnalyticGroupMetricResponse.MetricsEntry
-	(v1.CommonSortType)(0),                 // 21: warehouse.common.v1.CommonSortType
-	(*v1.CommonPagination)(nil),            // 22: warehouse.common.v1.CommonPagination
-	(*v1.PageInfo)(nil),                    // 23: warehouse.common.v1.PageInfo
+	(*SupplierMetric)(nil),                 // 0: warehouse.supplier.v1.SupplierMetric
+	(*SupplierMetricByID)(nil),             // 1: warehouse.supplier.v1.SupplierMetricByID
+	(*SupplierMetricByDay)(nil),            // 2: warehouse.supplier.v1.SupplierMetricByDay
+	(*MetricSearchRequest)(nil),            // 3: warehouse.supplier.v1.MetricSearchRequest
+	(*MetricSearchResponse)(nil),           // 4: warehouse.supplier.v1.MetricSearchResponse
+	(*MetricDataRequest)(nil),              // 5: warehouse.supplier.v1.MetricDataRequest
+	(*MetricData)(nil),                     // 6: warehouse.supplier.v1.MetricData
+	(*MetricDataResponse)(nil),             // 7: warehouse.supplier.v1.MetricDataResponse
+	(*AnalyticReplayComputeRequest)(nil),   // 8: warehouse.supplier.v1.AnalyticReplayComputeRequest
+	(*AnalyticReplayComputeResponse)(nil),  // 9: warehouse.supplier.v1.AnalyticReplayComputeResponse
+	(*AnalyticMaintenanceRunRequest)(nil),  // 10: warehouse.supplier.v1.AnalyticMaintenanceRunRequest
+	(*AnalyticMaintenanceRunResponse)(nil), // 11: warehouse.supplier.v1.AnalyticMaintenanceRunResponse
+	nil,                                    // 12: warehouse.supplier.v1.SupplierMetricByID.ItemsEntry
+	nil,                                    // 13: warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry
+	(v1.GroupType)(0),                      // 14: warehouse.analytic_base.v1.GroupType
+	(*v1.FilterItem)(nil),                  // 15: warehouse.analytic_base.v1.FilterItem
+	(*v1.MetricSort)(nil),                  // 16: warehouse.analytic_base.v1.MetricSort
+	(*v1.PaginationFilter)(nil),            // 17: warehouse.analytic_base.v1.PaginationFilter
+	(*v1.MetricKeys)(nil),                  // 18: warehouse.analytic_base.v1.MetricKeys
 }
 var file_warehouse_supplier_v1_supplier_analytic_proto_depIdxs = []int32{
-	3,  // 0: warehouse.supplier.v1.AnalyticTimeSearchFilter.date_range:type_name -> warehouse.supplier.v1.AnalyticDateRange
-	0,  // 1: warehouse.supplier.v1.AnalyticTimeSearchRequest.timeframe:type_name -> warehouse.supplier.v1.AnalyticTimeframe
-	4,  // 2: warehouse.supplier.v1.AnalyticTimeSearchRequest.filter:type_name -> warehouse.supplier.v1.AnalyticTimeSearchFilter
-	21, // 3: warehouse.supplier.v1.AnalyticTimeSearchRequest.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	22, // 4: warehouse.supplier.v1.AnalyticTimeSearchRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	2,  // 5: warehouse.supplier.v1.SupplierTimeframeMetric.metric:type_name -> warehouse.supplier.v1.SupplierMetric
-	6,  // 6: warehouse.supplier.v1.AnalyticTimeSearchResponse.datas:type_name -> warehouse.supplier.v1.SupplierTimeframeMetric
-	23, // 7: warehouse.supplier.v1.AnalyticTimeSearchResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	2,  // 8: warehouse.supplier.v1.AnalyticTimeSearchResponse.total:type_name -> warehouse.supplier.v1.SupplierMetric
-	4,  // 9: warehouse.supplier.v1.AnalyticProductSearchRequest.filter:type_name -> warehouse.supplier.v1.AnalyticTimeSearchFilter
-	22, // 10: warehouse.supplier.v1.AnalyticProductSearchRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	2,  // 11: warehouse.supplier.v1.SupplierProductMetric.metric:type_name -> warehouse.supplier.v1.SupplierMetric
-	9,  // 12: warehouse.supplier.v1.AnalyticProductSearchResponse.datas:type_name -> warehouse.supplier.v1.SupplierProductMetric
-	23, // 13: warehouse.supplier.v1.AnalyticProductSearchResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	3,  // 14: warehouse.supplier.v1.AnalyticGroupFilter.date_range:type_name -> warehouse.supplier.v1.AnalyticDateRange
-	11, // 15: warehouse.supplier.v1.AnalyticGroupSearchRequest.filter:type_name -> warehouse.supplier.v1.AnalyticGroupFilter
-	1,  // 16: warehouse.supplier.v1.AnalyticGroupSearchRequest.sort:type_name -> warehouse.supplier.v1.AnalyticGroupSort
-	22, // 17: warehouse.supplier.v1.AnalyticGroupSearchRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	23, // 18: warehouse.supplier.v1.AnalyticGroupSearchResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	2,  // 19: warehouse.supplier.v1.AnalyticGroupSearchResponse.total:type_name -> warehouse.supplier.v1.SupplierMetric
-	11, // 20: warehouse.supplier.v1.AnalyticGroupMetricRequest.filter:type_name -> warehouse.supplier.v1.AnalyticGroupFilter
-	20, // 21: warehouse.supplier.v1.AnalyticGroupMetricResponse.metrics:type_name -> warehouse.supplier.v1.AnalyticGroupMetricResponse.MetricsEntry
-	2,  // 22: warehouse.supplier.v1.AnalyticGroupMetricResponse.MetricsEntry.value:type_name -> warehouse.supplier.v1.SupplierMetric
-	5,  // 23: warehouse.supplier.v1.SupplierAnalyticService.AnalyticTimeSearch:input_type -> warehouse.supplier.v1.AnalyticTimeSearchRequest
-	8,  // 24: warehouse.supplier.v1.SupplierAnalyticService.AnalyticProductSearch:input_type -> warehouse.supplier.v1.AnalyticProductSearchRequest
-	12, // 25: warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupSearch:input_type -> warehouse.supplier.v1.AnalyticGroupSearchRequest
-	14, // 26: warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupMetric:input_type -> warehouse.supplier.v1.AnalyticGroupMetricRequest
-	16, // 27: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticReplayCompute:input_type -> warehouse.supplier.v1.AnalyticReplayComputeRequest
-	18, // 28: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticMaintenanceRun:input_type -> warehouse.supplier.v1.AnalyticMaintenanceRunRequest
-	7,  // 29: warehouse.supplier.v1.SupplierAnalyticService.AnalyticTimeSearch:output_type -> warehouse.supplier.v1.AnalyticTimeSearchResponse
-	10, // 30: warehouse.supplier.v1.SupplierAnalyticService.AnalyticProductSearch:output_type -> warehouse.supplier.v1.AnalyticProductSearchResponse
-	13, // 31: warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupSearch:output_type -> warehouse.supplier.v1.AnalyticGroupSearchResponse
-	15, // 32: warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupMetric:output_type -> warehouse.supplier.v1.AnalyticGroupMetricResponse
-	17, // 33: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticReplayCompute:output_type -> warehouse.supplier.v1.AnalyticReplayComputeResponse
-	19, // 34: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticMaintenanceRun:output_type -> warehouse.supplier.v1.AnalyticMaintenanceRunResponse
-	29, // [29:35] is the sub-list for method output_type
-	23, // [23:29] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	12, // 0: warehouse.supplier.v1.SupplierMetricByID.items:type_name -> warehouse.supplier.v1.SupplierMetricByID.ItemsEntry
+	13, // 1: warehouse.supplier.v1.SupplierMetricByDay.items:type_name -> warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry
+	14, // 2: warehouse.supplier.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	15, // 3: warehouse.supplier.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	16, // 4: warehouse.supplier.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
+	17, // 5: warehouse.supplier.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
+	18, // 6: warehouse.supplier.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	14, // 7: warehouse.supplier.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	15, // 8: warehouse.supplier.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	18, // 9: warehouse.supplier.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	1,  // 10: warehouse.supplier.v1.MetricData.supplier_by_id:type_name -> warehouse.supplier.v1.SupplierMetricByID
+	2,  // 11: warehouse.supplier.v1.MetricData.supplier_by_day:type_name -> warehouse.supplier.v1.SupplierMetricByDay
+	0,  // 12: warehouse.supplier.v1.MetricData.supplier_summary:type_name -> warehouse.supplier.v1.SupplierMetric
+	6,  // 13: warehouse.supplier.v1.MetricDataResponse.metric_datas:type_name -> warehouse.supplier.v1.MetricData
+	0,  // 14: warehouse.supplier.v1.SupplierMetricByID.ItemsEntry.value:type_name -> warehouse.supplier.v1.SupplierMetric
+	0,  // 15: warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry.value:type_name -> warehouse.supplier.v1.SupplierMetric
+	3,  // 16: warehouse.supplier.v1.SupplierAnalyticService.MetricSearch:input_type -> warehouse.supplier.v1.MetricSearchRequest
+	5,  // 17: warehouse.supplier.v1.SupplierAnalyticService.MetricData:input_type -> warehouse.supplier.v1.MetricDataRequest
+	8,  // 18: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticReplayCompute:input_type -> warehouse.supplier.v1.AnalyticReplayComputeRequest
+	10, // 19: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticMaintenanceRun:input_type -> warehouse.supplier.v1.AnalyticMaintenanceRunRequest
+	4,  // 20: warehouse.supplier.v1.SupplierAnalyticService.MetricSearch:output_type -> warehouse.supplier.v1.MetricSearchResponse
+	7,  // 21: warehouse.supplier.v1.SupplierAnalyticService.MetricData:output_type -> warehouse.supplier.v1.MetricDataResponse
+	9,  // 22: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticReplayCompute:output_type -> warehouse.supplier.v1.AnalyticReplayComputeResponse
+	11, // 23: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticMaintenanceRun:output_type -> warehouse.supplier.v1.AnalyticMaintenanceRunResponse
+	20, // [20:24] is the sub-list for method output_type
+	16, // [16:20] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_supplier_v1_supplier_analytic_proto_init() }
@@ -1429,19 +927,23 @@ func file_warehouse_supplier_v1_supplier_analytic_proto_init() {
 	if File_warehouse_supplier_v1_supplier_analytic_proto != nil {
 		return
 	}
+	file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[6].OneofWrappers = []any{
+		(*MetricData_SupplierById)(nil),
+		(*MetricData_SupplierByDay)(nil),
+		(*MetricData_SupplierSummary)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc), len(file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   19,
+			NumEnums:      0,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
 		GoTypes:           file_warehouse_supplier_v1_supplier_analytic_proto_goTypes,
 		DependencyIndexes: file_warehouse_supplier_v1_supplier_analytic_proto_depIdxs,
-		EnumInfos:         file_warehouse_supplier_v1_supplier_analytic_proto_enumTypes,
 		MessageInfos:      file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes,
 	}.Build()
 	File_warehouse_supplier_v1_supplier_analytic_proto = out.File

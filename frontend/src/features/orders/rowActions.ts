@@ -13,14 +13,16 @@ import type { OrderStageId } from "./stages";
 //   shipped           → shipping           Jadikan Dikirim, Retur Barang — handed over, not yet moving
 //   courrier_shipped  → shipped            Retur Barang, Selesaikan Order — moving
 //   return            → return             Jadikan Lost
-//   completed         → completed          Edit Withdrawal
+//   completed         → completed          (nothing)
 //   problem           → problem            Selesaikan Sengketa
 //
-// ⚠ TWO ROWS ARE NOT THE OWNER'S WORDS VERBATIM, and each is a decision:
+// ⚠ THREE ROWS ARE NOT THE OWNER'S WORDS VERBATIM, and each is a decision:
 //   - `shipping` has no Selesaikan Order: the status diagram has no `shipping → completed`, so it waits
 //     for `shipped` (the-order-menu-and-the-status-move-disagree-after-the-handover, third row).
 //   - `return` has no Selesaikan Order: it needed the withdrawal figure settlement does not have
 //     (finish-order-on-a-return-waits-for-the-withdrawal).
+//   - `completed` has no Edit Withdrawal: nobody types a withdrawal figure onto an order — settlement's
+//     payout row is the record (no-withdrawal-is-typed-on-an-order).
 //
 // Every move goes through OrderStatusChange (one-status-change-for-every-plain-move), whose table says
 // which END may make it — and the server refuses the other. So an action here carries its END too, and
@@ -33,11 +35,10 @@ import type { OrderStageId } from "./stages";
 /**
  * The pending entries the unbuilt actions point at.
  *
- * ⚠ A SCREEN USING THIS TABLE MUST CARRY BOTH in its own `pending.ts`, and TypeScript enforces it:
- * `<NotImplemented list id={action.pending}>` will not compile unless the screen's `PendingId` union
- * covers them.
+ * ⚠ A SCREEN USING THIS TABLE MUST CARRY IT in its own `pending.ts`, or the action's mark numbers into
+ * nothing and its toast reads a missing key.
  */
-export type ActionPendingId = "receiptCode" | "withdrawal";
+export type ActionPendingId = "receiptCode";
 
 export type RowActionId =
   | "cancel"
@@ -46,7 +47,6 @@ export type RowActionId =
   | "returnGoods"
   | "complete"
   | "markLost"
-  | "editWithdrawal"
   | "resolveDispute";
 
 /** Which end of an order may press an action: its selling team, its warehouse, or either. */
@@ -64,8 +64,7 @@ export interface RowAction {
   /**
    * The pending entry that explains why it does nothing yet. Absent = the action is REAL.
    *
-   *   editReceipt     → `receiptCode`   there is no tracking-number FIELD to edit
-   *   editWithdrawal  → `withdrawal`    a wallet→bank withdrawal has nowhere to be recorded
+   *   editReceipt     → `receiptCode`   decided, but there is no edit RPC yet
    */
   pending?: ActionPendingId;
 }
@@ -89,7 +88,6 @@ const MARK_LOST: RowAction = {
   to: OrderStatus.LOST,
   side: "selling",
 };
-const EDIT_WITHDRAWAL: RowAction = { id: "editWithdrawal", icon: Pencil, side: "selling", pending: "withdrawal" };
 // "Selesaikan Sengketa" — the dispute closed, so the order completes.
 const RESOLVE_DISPUTE: RowAction = {
   id: "resolveDispute",
@@ -101,7 +99,8 @@ const RESOLVE_DISPUTE: RowAction = {
 /**
  * The owner's table, keyed by status.
  *
- * `lost`, `return_completed` and `cancel` are deliberately empty — all three are ends. An empty list still
+ * `lost`, `return_completed` and `cancel` are deliberately empty — all three are ends. `completed` is empty
+ * too: its one action, Edit Withdrawal, went (no-withdrawal-is-typed-on-an-order). An empty list still
  * renders the kebab, because "open the order" is always offered.
  */
 const BY_STAGE: Record<OrderStageId, RowAction[]> = {
@@ -110,7 +109,7 @@ const BY_STAGE: Record<OrderStageId, RowAction[]> = {
   picked: [EDIT_RECEIPT],
   shipping: [SHIP, RETURN_GOODS],
   shipped: [RETURN_GOODS, COMPLETE],
-  completed: [EDIT_WITHDRAWAL],
+  completed: [],
   problem: [RESOLVE_DISPUTE],
   lost: [],
   return: [MARK_LOST],

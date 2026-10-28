@@ -77,7 +77,7 @@ func recordFrom(svc *liability_v1.Service, payer, creditor, fromAccount uint64, 
 // the creditor accepts and both legs post.
 func TestPaymentRecord_KeepsTheAccountItWasPaidFrom(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, bothBanks)
+	svc := liability_v1.NewService(db, nil, bothBanks, nil)
 
 	payment, err := recordFrom(svc, selling, warehouse, sellingBCA, 15000)
 	if err != nil {
@@ -103,7 +103,7 @@ func TestPaymentRecord_KeepsTheAccountItWasPaidFrom(t *testing.T) {
 // transfer out of the creditor's own books — the payer moving somebody else's money by typing an id.
 func TestPaymentRecord_RefusesAnAccountThatIsNotThePayers(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, bothBanks)
+	svc := liability_v1.NewService(db, nil, bothBanks, nil)
 
 	_, err := recordFrom(svc, selling, warehouse, warehouseBCA, 15000)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -121,7 +121,7 @@ func TestPaymentRecord_RefusesAnAccountThatIsNotThePayers(t *testing.T) {
 // With no account service to ask, a named account is REFUSED rather than trusted.
 func TestPaymentRecord_WithNothingToAskAnAccountIsRefused(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	_, err := recordFrom(svc, selling, warehouse, sellingBCA, 15000)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -143,7 +143,7 @@ func TestPaymentRecord_AFailedQuestionIsNotARefusal(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		svc := liability_v1.NewService(db, nil, failingAccounts{err: c.err})
+		svc := liability_v1.NewService(db, nil, failingAccounts{err: c.err}, nil)
 
 		_, err := recordFrom(svc, selling, warehouse, sellingBCA, 15000)
 		if connect.CodeOf(err) != c.want {
@@ -155,7 +155,7 @@ func TestPaymentRecord_AFailedQuestionIsNotARefusal(t *testing.T) {
 // A team cannot owe itself, so it cannot pay itself either — named, not left to the database's CHECK.
 func TestPaymentRecord_ATeamCannotPayItself(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, bothBanks)
+	svc := liability_v1.NewService(db, nil, bothBanks, nil)
 
 	_, err := recordFrom(svc, selling, selling, sellingBCA, 15000)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {

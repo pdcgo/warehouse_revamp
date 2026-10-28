@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { orders, shops, teams, users } from "../../../.storybook/fixtures";
+import { orderDrafts, orders, shops, teams, users } from "../../../.storybook/fixtures";
 import { orderExportScenario } from "../../../.storybook/sessionScenario";
 import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
@@ -377,7 +377,9 @@ export const TheDraftsTabCountsAndLeaves: Story = {
     const canvas = within(canvasElement);
 
     await waitFor(() =>
-      expect(canvas.getByTestId("orders-tab-count-drafts")).toHaveTextContent("2"),
+      expect(canvas.getByTestId("orders-tab-count-drafts")).toHaveTextContent(
+        String(orderDrafts.filter((d) => d.teamId === TEAM.id).length),
+      ),
     );
 
     await userEvent.click(canvas.getByTestId("orders-tab-drafts"));

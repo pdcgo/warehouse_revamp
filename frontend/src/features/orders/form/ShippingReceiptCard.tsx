@@ -20,13 +20,9 @@ import { documentClient, rpcError } from "../../../api/clients";
 import { ReceiptUpload, hasReceipt, useReceiptUpload } from "../../../components/orders/ReceiptUpload";
 import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
 import { ShippingSelect } from "../../../components/pickers/ShippingSelect";
-import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { LabelResult } from "../../shipment/receiptCheck";
-import { checkRefAgainstMarketplace, checkTrackingAgainstCourier } from "./checks";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "./pending";
 
 // THE RECEIPT FILE COMES FIRST, AND THE TWO NUMBERS IT CARRIES SIT BESIDE IT (owner).
 //
@@ -60,8 +56,6 @@ interface ShippingReceiptCardProps {
   /** A `Shipping.code` from the shared courier catalogue (`jne`, `sicepat`), never a typed name. */
   shippingCode: string;
   onShippingCodeChange: (value: string) => void;
-  /** Which storefront the order came from — the reference's format is checked against it. */
-  marketplace: Marketplace;
   /** True once the file has been read and something was filled in from it. */
   filledFromFile?: boolean;
   /** What the label check made of the file — `undefined` while unread, or when it was not checked. */
@@ -87,7 +81,6 @@ export function ShippingReceiptCard({
   onTrackingCodeChange,
   shippingCode,
   onShippingCodeChange,
-  marketplace,
   filledFromFile,
   scanResult,
   onReceiptFile,
@@ -110,11 +103,8 @@ export function ShippingReceiptCard({
   // file often arrives before anybody has typed anything.
   const missingHalf = attached && (orderRefId.trim() === "" || trackingCode.trim() === "");
 
-  // ⚠ CHECKED WHILE IT IS TYPED, not only at the end. A format that does not belong to the courier
-  // or the storefront is worth saying HERE, beside the box, while the paper is still in the person's
-  // hand — the gate at Create is the backstop, not the first mention.
-  const courierFinding = checkTrackingAgainstCourier(trackingCode, shippingCode);
-  const marketplaceFinding = checkRefAgainstMarketplace(orderRefId, marketplace);
+  // ⚠ NO FORMAT CHECK on either number (the-form-does-not-check-number-formats): a table written from what we had
+  // seen warned on real J&T numbers. When the label is attached, the receipt file check reads both numbers off it.
 
   return (
     // `data-scan-result` says the check has ANSWERED, even when its answer shows nothing — what a
@@ -246,11 +236,6 @@ export function ShippingReceiptCard({
                 data-testid="order-external-ref-id"
                 onChange={(e) => onOrderRefIdChange(e.target.value)}
               />
-              {marketplaceFinding && (
-                <Text fontSize="xs" color="warning.fg" data-testid="order-check-inline-refMarketplace">
-                  {t(`orderForm.checks.${marketplaceFinding.id}`, marketplaceFinding.values ?? {})}
-                </Text>
-              )}
             </Field.Root>
 
             <Field.Root>
@@ -263,11 +248,6 @@ export function ShippingReceiptCard({
                 data-testid="order-receipt-code"
                 onChange={(e) => onTrackingCodeChange(e.target.value)}
               />
-              {courierFinding && (
-                <Text fontSize="xs" color="warning.fg" data-testid="order-check-inline-trackingCourier">
-                  {t(`orderForm.checks.${courierFinding.id}`, courierFinding.values ?? {})}
-                </Text>
-              )}
             </Field.Root>
 
             <Field.Root>
@@ -283,12 +263,9 @@ export function ShippingReceiptCard({
                 exactly like a box somebody typed, and only one of the two should be trusted without
                 a second look. */}
             {filledFromFile && (
-              <Flex align="center" gap="2">
-                <NotImplemented list={ORDER_FORM_PENDING} id="receiptScan" />
-                <Text fontSize="xs" color="fg.muted" data-testid="order-create-scan-filled">
-                  {t("orderForm.resi.filledFromFile")}
-                </Text>
-              </Flex>
+              <Text fontSize="xs" color="fg.muted" data-testid="order-create-scan-filled">
+                {t("orderForm.resi.filledFromFile")}
+              </Text>
             )}
 
             {/* WHAT THE FILE IS NOT — a warning, never a refusal: the file stays attached, and the

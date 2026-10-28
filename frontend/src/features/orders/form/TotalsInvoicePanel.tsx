@@ -2,23 +2,24 @@ import { Card, Flex, Separator, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { formatRupiah } from "../../../lib/money";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "./pending";
 
 // WHAT THE ORDER COMES TO, AND WHAT WE OWE FOR IT — two totals, one card, and they are not the same
 // number.
 //
-//   ORDER TOTAL  every product on the order + shipping + the warehouse's fee. What the order is worth.
-//   INVOICE      only what belongs to SOMEBODY ELSE: each owning team's goods at HPP + their markup,
+//   ORDER TOTAL  every product on the order + the warehouse's fee. What the order costs us. No shipping term, by
+//                design: the buyer pays the platform for the courier and none of it passes through us
+//                (an-order-records-no-shipping-cost).
+//   INVOICE      only what belongs to SOMEBODY ELSE: each owning team's goods at HPP + each product's markup,
 //                plus the warehouse's fee. What this team will be in debt for.
 //
 // The gap between them is our own goods, which we do not bill ourselves for. Keeping the two in one
 // card is deliberate: they are read together ("the order is worth 420k, of which 180k is owed") and
 // splitting them across two cards is how a screen ends up showing one and hiding the other.
 //
-// ⚠ THE MARKUP IS IN THE INVOICE, not just the cost. liability posts
-// `Σ(unit_cost × qty) × (1 + markup)` per owning team — a preview that showed the bare cost would
-// disagree with the debt actually recorded, which is the one thing a preview may not do.
+// ⚠ THE MARKUP IS IN THE INVOICE, not just the cost — and it is the PRODUCT's (the-cross-markup-belongs-to-the-product):
+// each line is `unit_cost × qty × (1 + that product's markup)`, and an owner's row is the sum of its lines, the shape
+// the ledger is to post (the-ledger-charges-the-frozen-line-total). A preview that showed the bare cost would
+// disagree with the debt recorded, which is the one thing a preview may not do.
 //
 // The BUTTONS are not here (owner): Create sits with the note, at the foot of the rail — see
 // NoteAndSubmitCard. This card's job ends at the figures.
@@ -28,9 +29,13 @@ export interface InvoiceRow {
   name: string;
   /** The goods at HPP, before the owner's markup. Zero on a fee row. */
   base: bigint;
-  /** The owner's markup in basis points. Zero on a fee row. */
-  markupBp: bigint;
-  /** What this creditor is owed: base × (1 + markup), or the flat fee. */
+  /**
+   * The markup in basis points, when every line of this owner carries the SAME one — each product has its own
+   * (the-cross-markup-belongs-to-the-product). `undefined` = the lines carry different rates, so no one figure is
+   * true of the row. Zero on a fee row.
+   */
+  markupBp: bigint | undefined;
+  /** What this creditor is owed: Σ each line × (1 + its product's markup), or the warehouse's fee. */
   owed: bigint;
   kind: "product" | "fee";
 }
@@ -60,11 +65,8 @@ export function TotalsInvoicePanel({
       <Card.Header pb={compact ? "0" : undefined}>
         <Flex align="center" gap="2" wrap="wrap">
           <Card.Title>{t("orderForm.totals.title")}</Card.Title>
-          {/* TWO MARKS, TWO NUMBERS — the missing shipping term, and the invoice that needs liability's markup.
-              They sit on the title because neither has a row of its own to sit on. The warehouse fee is real:
-              the warehouse prices it, and order create freezes the same figure. */}
-          <NotImplemented list={ORDER_FORM_PENDING} id="shippingCost" />
-          <NotImplemented list={ORDER_FORM_PENDING} id="invoice" />
+          {/* NO MARK. Every figure on this card is real: the goods at the warehouse's HPP, each product's own
+              markup, and the fee the warehouse prices — the same one order create freezes. */}
         </Flex>
         {!compact && <Card.Description>{t("orderForm.totals.help")}</Card.Description>}
       </Card.Header>
@@ -79,13 +81,9 @@ export function TotalsInvoicePanel({
               testId="order-create-products-total"
             />
 
-            {/* ⚠ NO SHIPPING ROW (owner) — nothing prices a shipment, so the field is off the screen
-                rather than sitting there as a box to guess into. Its mark rides on the card's title
-                instead: the TOTAL is short a term, and an absent term is invisible in a number that
-                otherwise looks complete. */}
+            {/* ⚠ NO SHIPPING ROW, by design (an-order-records-no-shipping-cost): the buyer pays the platform
+                for the courier, so there is no shipping money on our order to show. */}
 
-            {/* No mark on this row: number 6 is already on the card's title, and the same number
-                twice on one card reads as two different problems. */}
             <Line
               label={t("orderForm.totals.warehouseFee")}
               value={formatRupiah(warehouseFee)}
@@ -145,10 +143,17 @@ export function TotalsInvoicePanel({
                     ? t("orderForm.totals.feeNote")
                     : row.base === 0n
                       ? t("orderForm.totals.costUnknown")
-                      : t("orderForm.totals.markupNote", {
-                          base: formatRupiah(row.base),
-                          markup: (Number(row.markupBp) / 100).toFixed(2),
-                        })}
+                      : row.markupBp !== undefined
+                        ? t("orderForm.totals.markupNote", {
+                            base: formatRupiah(row.base),
+                            markup: (Number(row.markupBp) / 100).toFixed(2),
+                          })
+                        : // MIXED RATES — no single percentage is true of the row, so the markup is said in
+                          // rupiah, which is.
+                          t("orderForm.totals.markupMixedNote", {
+                            base: formatRupiah(row.base),
+                            markup: formatRupiah(row.owed - row.base),
+                          })}
                 </Text>
                 )}
               </Stack>

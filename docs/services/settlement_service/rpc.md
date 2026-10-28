@@ -162,11 +162,11 @@ sequenceDiagram
 
   CS->>+O: OrderCreate
   O->>O: write the order — created_by_user_id from the TOKEN, COMMIT
-  O->>B: OrderPlaced — shop_id, marketplace_total, actor_id, occurred_at = created_at
+  O->>B: OrderPlaced — shop_id, platform_total, actor_id, occurred_at = created_at
   O-->>-CS: order created, whatever settlement does
   B->>+S: push /event/settlement-order-placed/push
-  alt marketplace_total above 0
-    S->>S: PostEntry — initial_total, change = minus marketplace_total, key order-placed:ID
+  alt platform_total above 0
+    S->>S: PostEntry — initial_total, change = minus platform_total, key order-placed:ID
   end
   S-->>-B: 200 — a redelivery finds its own row and returns it
 
@@ -184,7 +184,7 @@ sequenceDiagram
 | **the order never waits on settlement** | [the-order-commits-without-settlement](../../business/settlement/context_decision.md#the-order-commits-without-settlement) — by construction now: it only publishes |
 | **a settlement failure** | NACKs, so Pub/Sub redelivers, then the dead-letter topic. A lost publish is the accepted cost, repaired by hand ([a-missing-account-is-fixed-by-hand](../../business/settlement/context_decision.md#a-missing-account-is-fixed-by-hand)) |
 | **twice** | the keys are derived from the order, so a redelivery collides with its own row (`Created: false`) and is ACKed |
-| **`marketplace_total = 0` opens nothing** | 0 means NOT RECORDED. The order context requires the total at create, which is not built; until it is, this skip keeps such an order out |
+| **`platform_total = 0` opens nothing** | 0 means NOT RECORDED. Placement refuses a 0 on both doors since selling `00022` ([platform-total-is-required-at-finalize](../../business/order/context_decision.md#platform-total-is-required-at-finalize)), so a new order never arrives with one — the skip stays as the guard for orders placed before that |
 | **the cancel's key is the ACT's date** | [the-cancel-key-is-order-plus-act-date](../../business/settlement/context_decision.md#the-cancel-key-is-order-plus-act-date) — the event's `occurred_at`, the instant the cancel was written, so a redelivery after midnight produces the same key |
 | **the creator** | the event's `actor_id` — `orders.created_by_user_id`, from `san_auth.GetIdentity` at placement — copied onto the account by the opening post and never again |
 | **the handler** | `OrderSaleHandler` in [order_sale.go](../../../backend/services/settlement_service/settlement_v1/order_sale.go), one handler behind both routes, switching on the variant |

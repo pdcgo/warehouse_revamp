@@ -102,6 +102,9 @@
     "receivableHint": "They owe you",
     "payableLabel": "Payable",
     "payableHint": "You owe them",
+    "limitOnYouLabel": "Limit set on you",
+    "limitOnYouHint": "Set by {{name}} — only they can change it",
+    "limitOnYouError": "Could not read the limit {{name}} set on you.",
     "history": "History",
     "dateFrom": "From date",
     "dateTo": "To date",
@@ -708,20 +711,20 @@
         "label": "Import",
         "reason": "The file is named on screen and goes no further: no upload, no parser, and each marketplace needs its own."
       },
-      "withdrawal": {
-        "label": "Withdrawal value",
-        "reason": "Settlement Imports records withdrawals now, but per shop: a wallet-to-bank withdrawal names no order, so an order still has no withdrawal figure for Edit Withdrawal to change."
+      "receiptCode": {
+        "label": "Edit Resi",
+        "reason": "Decided — the selling team changes the tracking number, the label file or both until the courier takes the parcel — but there is no RPC for it yet, so this action does nothing."
       }
     },
     "title": "Orders",
     "selectTeamView": "Select a team to view its orders.",
     "customer": "Customer",
+    "buyerUsername": "Buyer username",
     "total": "Total",
     "cost": "Cost",
     "margin": "Margin",
     "totalMp": "MP {{amount}}",
     "shipping": "Shipping",
-    "subtotal": "Subtotal",
     "phone": "Phone",
     "address": "Address",
     "qty": "Qty",
@@ -777,7 +780,7 @@
     "receiptReplace": "Replace Receipt",
     "receiptRemove": "Remove receipt",
     "receiptOpen": "Open",
-    "receiptHelp": "A photo of the courier's slip, or the PDF the marketplace prints. One file, up to 10 MB.",
+    "receiptHelp": "A photo of the courier's slip, or the PDF the marketplace prints. One file, up to 15 MB.",
     "receiptFailed": "The receipt could not be uploaded",
     "receiptTooLarge": "That file is larger than {{max}} MB",
     "note": "Note",
@@ -820,9 +823,10 @@
     "removeLine": "Remove product",
     "hpp": "HPP",
     "hppUnknown": "not recorded",
+    "hppSplitHint_one": "Drawn from {{count}} batch, oldest first",
+    "hppSplitHint_other": "Drawn from {{count}} batches, oldest first",
     "marketplaceTotal": "Marketplace order total",
     "marketplaceTotalHelp": "What the storefront took. A note — it is not added to the total below.",
-    "unitPrice": "Unit price",
     "pickWarehouseFirst": "Choose a warehouse first — the products you can sell are the ones it has in stock.",
     "product": "Product",
     "inStock": "In stock",
@@ -847,7 +851,6 @@
       "returnCompleted": "Return received by the warehouse",
       "cancelled": "Order cancelled",
       "handedBack": "Handed back to pending",
-      "note": "Note",
       "from": {
         "warehouse": "Warehouse",
         "selling": "Seller"
@@ -868,7 +871,6 @@
       "returnGoods": "Return Goods",
       "complete": "Complete Order",
       "markLost": "Mark as Lost",
-      "editWithdrawal": "Edit Withdrawal",
       "resolveDispute": "Resolve Dispute"
     },
     "rowActionConfirm": {
@@ -917,20 +919,17 @@
     "info": {
       "title": "Order info",
       "createdAt": "Written down",
-      "returnReceipt": "Return receipt no.",
       "warehouseRef": "Warehouse #{{id}}",
       "platformCreatedAt": "Ordered on the marketplace"
     },
     "notes": {
       "title": "Notes",
-      "placeholder": "Write a note…",
+      "label": "New note",
+      "placeholder": "e.g. Extra bubble wrap please, the items are fragile",
+      "count": "{{used}} / {{max}}",
       "add": "Add Note",
-      "save": "Save",
-      "cancel": "Cancel",
-      "edit": "Edit note",
-      "system": "System",
-      "you": "You",
-      "empty": "No notes on this order."
+      "failed": "Could not add the note",
+      "empty": "No notes on this order yet."
     },
     "items": {
       "title": "Items",
@@ -955,37 +954,19 @@
       "deadline": "Ship by",
       "noTracking": "No tracking trail recorded. Most orders have none — nothing reads the courier back yet.",
       "outbound": "Order shipment",
-      "return": "Return shipment",
-      "noReturn": "No return on this order.",
       "trail": "Tracking trail"
     },
     "recipient": {
       "title": "Recipient"
     },
     "pending": {
-      "notes": {
-        "label": "Notes",
-        "reason": "An order stores ONE note, written when it is created — no list, no author, no system or user type, and no way to edit it. Notes added or edited here disappear on reload."
-      },
-      "productImage": {
-        "label": "Product picture",
-        "reason": "An order line carries sku and name but no cover. The picture is not missing from the system, only from this message — the fix is a batched product lookup, not a new field."
-      },
-      "externalName": {
-        "label": "Marketplace product title",
-        "reason": "The order draft keeps the title the marketplace gave each product — the evidence a mapping is checked against — but an order line has no field for it, so promoting a draft throws it away. The titles shown are invented."
-      },
       "shippingTracking": {
         "label": "Tracking trail",
         "reason": "Where the parcel is, when it was scanned, what it weighed and what the postage cost are not modelled at all. The owner expects this section to be empty most of the time."
       },
-      "returnShipment": {
-        "label": "Return shipment",
-        "reason": "A returned parcel travels under its own courier, tracking number and trail, and none of that exists: there is no return record at all yet. Shown for one order only, invented."
-      },
-      "withdrawal": {
-        "label": "Withdrawals into the settlement ledger",
-        "reason": "Settlement Imports brings the marketplace's payouts into this ledger and its withdrawals onto the shop — but a withdrawal names no order, so this section has no per-order figure to show, and Edit Withdrawal has no RPC."
+      "receiptCode": {
+        "label": "Edit Resi",
+        "reason": "Decided — the selling team changes the tracking number, the label file or both until the courier takes the parcel — but there is no RPC for it yet, so this action does nothing."
       }
     },
     "stepper": {
@@ -1018,6 +999,8 @@
     "missingCustomer": "Customer",
     "missingLines": "No lines",
     "missingStock": "Stock",
+    "gapOrderDate": "Order date",
+    "gapSellPrice": "Sell price",
     "shortHelp": "Promoting a draft places the order, which takes its goods off the shelf — so it cannot be promoted short. Lower the quantity, ship it from a warehouse that has the stock, or leave the draft until a restock arrives.",
     "noDrafts": "No order drafts.",
     "selectAll": "Select every draft on this page",
@@ -1065,7 +1048,8 @@
       "ready": "Ready",
       "onThisPage": "on this page"
     },
-    "missingOrderDate": "The marketplace order date is missing."
+    "missingOrderDate": "The marketplace order date is missing.",
+    "missingSellPrice": "The sell price is missing."
   },
   "restock": {
     "title": "Restock Requests",
@@ -1910,8 +1894,6 @@
       "keptBy": "Kept by"
     },
     "emptyTeam": "That team restocked nothing in this period.",
-    "search": "Search supplier, address or store",
-    "none": "No supplier matches.",
     "supplierNumber": "Supplier #{{id}}",
     "deleted": "Deleted",
     "rateTooFew": "Fewer than {{n}} units in this period — not rated against the others",
@@ -2948,6 +2930,9 @@
     "usedOf": "{{used}} of {{limit}}",
     "warnNear": "Near limit",
     "warnOver": "Over limit",
+    "debtorNear": "{{pct}}% of the limit {{name}} set",
+    "debtorOver": "{{pct}}% of the limit {{name}} set — the next order is refused",
+    "debtorFrozen": "{{name}} allows you no credit",
     "tileNear": "Near limit",
     "tileNearHelp": "At 80% or more of what you allowed",
     "tileFrozen": "Frozen",
@@ -3512,45 +3497,9 @@
   },
   "orderForm": {
     "pending": {
-      "returnMap": {
-        "label": "Return mapping",
-        "reason": "The product link map is not built."
-      },
-      "creditLimit": {
-        "label": "Debt limits",
-        "reason": "A team cannot read the limit another team set for it yet."
-      },
-      "profit": {
-        "label": "Estimated profit",
-        "reason": "The formula is not settled, and the sell price is stored as a note."
-      },
-      "shippingCost": {
-        "label": "Shipping cost",
-        "reason": "Nothing prices a shipment, so the field is off the screen and the total is short a term."
-      },
-      "invoice": {
-        "label": "Invoice",
-        "reason": "It needs each team’s markup."
-      },
-      "buyerUsername": {
-        "label": "Buyer username",
-        "reason": "The order has no field for it."
-      },
-      "receiptScan": {
-        "label": "Receipt file check",
-        "reason": "The file goes to shipment's ReceiptCheck, which isn't built yet — outside Storybook nothing is read from it."
-      },
-      "refsDistinct": {
-        "label": "Order ID vs tracking number",
-        "reason": "The comparison runs here; the authoritative checker is not built."
-      },
-      "formatRules": {
-        "label": "Courier & marketplace formats",
-        "reason": "The patterns are provisional — they warn, they never refuse."
-      },
       "draftKeeps": {
         "label": "What a draft keeps",
-        "reason": "A draft stores the shop, the warehouse, the customer, the courier, the rows and the marketplace’s two dates. The receipt, the references, the tracking number, the note and the buyer’s username are not kept."
+        "reason": "A draft stores the shop, the warehouse, the customer, the buyer’s username, the courier, the rows, the marketplace’s two dates and the sell price. The receipt, the references, the tracking number and the note are not kept."
       },
       "rowBundle": {
         "label": "A row mapped to a bundle",
@@ -3559,10 +3508,6 @@
       "rowSplit": {
         "label": "A row split into several products",
         "reason": "A draft line holds one product, so a split is shown and counted but saved unmapped, and it blocks Promote."
-      },
-      "sellPrice": {
-        "label": "The sell price",
-        "reason": "A draft has no sell price. It starts as the sum of the rows' marketplace prices and can be typed over, but a typed one is not kept."
       },
       "listingQty": {
         "label": "The listing's quantity",
@@ -3595,19 +3540,21 @@
     },
     "returnMap": {
       "title": "Return Mapping",
-      "help": "A product ordered from another team is mapped to one of ours, so a return has somewhere to land. Answer it once and it comes back filled in next time.",
+      "help": "A product ordered from another team is mapped to one of yours, so a return has somewhere to land. It is mapped once, for good, and comes back filled in next time.",
       "empty": "Nothing on this order belongs to another team.",
       "unmapped": "{{count}} not mapped",
       "pick": "Search your products",
-      "undo": "Change",
       "needs": "Needs mapping",
       "remembered": "From last time",
-      "duplicate": "Duplicate Product",
-      "wouldDuplicate": "Would be duplicated"
+      "confirmTitle": "Map for Returns",
+      "confirmMessage": "Returns of {{theirs}} will come back as {{ours}}. This can't be changed later.",
+      "confirmLabel": "Map Product",
+      "failed": "The map was not saved",
+      "notSaved": "Someone mapped it first — {{picked}} was not saved."
     },
     "extra": {
       "title": "Extra Details",
-      "help": "Optional, and neither is part of an order yet.",
+      "help": "Both are optional.",
       "deadline": "Ship-by deadline",
       "deadlineHelp": "The marketplace’s own “ship before” time, as the storefront shows it.",
       "buyerUsername": "Buyer username",
@@ -3619,6 +3566,9 @@
       "help": "One row per team this order would owe — the warehouse that ships it, and each team whose products are on it. An order is refused when the debt already stands at the limit.",
       "empty": "Choose a warehouse to see what this order would owe.",
       "after": "This order adds {{adds}} · {{after}} after it",
+      "adds": "This order adds {{adds}}",
+      "loading": "Reading the limit…",
+      "failed": "Could not read this limit. The order is still checked against it when it is created.",
       "wouldPass": "over the limit after this order",
       "role": {
         "warehouse": "Warehouse",
@@ -3644,10 +3594,11 @@
       "invoiceTitle": "Invoice",
       "invoiceEmpty": "Nothing owed — every product is this team's own.",
       "invoiceTotal": "Invoice total",
-      "feeNote": "Flat fee for fulfilling this order.",
+      "feeNote": "Priced by the warehouse for fulfilling this order.",
       "markupNote": "{{base}} at cost · {{markup}}% markup",
+      "markupMixedNote": "{{base}} at cost · {{markup}} markup, at each product's own rate",
       "costUnknown": "This warehouse has no cost recorded for these goods, so nothing is billed yet.",
-      "blockedByMapping": "{{count}} of these products still have no return mapping — it is not saved with the order yet."
+      "blockedByMapping": "{{count}} of these products still need a return mapping before the order can be created."
     },
     "rail": {
       "collapse": "Compact",
@@ -3677,19 +3628,35 @@
       "warnLead": "Nothing here stops the order — read them, then decide.",
       "back": "Back to the Form",
       "placeAnyway": "Place Anyway",
-      "refsIdentical": "The order ID and the tracking number are the same. They are two different references — an order carrying one of them twice cannot be found again from either side.",
-      "refsNearlyIdentical": "The order ID and the tracking number are nearly the same. One of them was probably pasted into both boxes.",
       "scanBothOff": "Neither number matches the receipt file, which reads {{ref}} and {{code}}.",
       "scanRefOff": "The order ID does not match the receipt file, which reads {{ref}}.",
       "scanCodeOff": "The tracking number does not match the receipt file, which reads {{code}}.",
-      "trackingCourier": "The tracking number does not look like this courier's — it normally reads {{shape}}.",
-      "refMarketplace": "The order ID does not look like this marketplace's — it normally reads {{shape}}.",
       "profitBelowFloor": "The estimated margin is {{pct}}%, under the {{floor}}% floor."
     },
     "warehouse": {
       "title": "Shipping from",
       "governs": "Every stock figure and HPP below is this building's.",
       "chooseFirst": "Choose the warehouse first — nothing below can be measured without it."
+    },
+    "refusal": {
+      "notEnoughStock": {
+        "title": "The warehouse does not hold enough for this order",
+        "help": "Nothing was taken and no order was made. Lower the quantity of the products below, or ship from a warehouse that has the stock."
+      },
+      "notAllowed": {
+        "title": "Another team’s product cannot be ordered right now",
+        "help": "Its owner has made it private, or holds less of it than they keep in reserve. Nothing was taken and no order was made — remove it or pick another product."
+      },
+      "keyUsed": {
+        "title": "This order was already placed",
+        "help": "The warehouse has already taken stock for it. Look for it in the orders list before placing it again."
+      },
+      "other": {
+        "title": "The warehouse refused this order",
+        "help": "Nothing was taken and no order was made."
+      },
+      "lineShort": "{{name}}: wants {{wanted}}, the warehouse holds {{available}}",
+      "lineWanted": "{{name}}: wants {{wanted}}"
     }
   },
   "quantityInput": {
@@ -3713,6 +3680,7 @@
       "addPart": "Add Product",
       "makeBundle": "Make It a Bundle",
       "stockLine": "In stock {{stock}} · HPP {{hpp}}",
+      "stockLineSplit": "In stock {{stock}} · HPP {{hpp}}, from {{split}}",
       "listing": "Listing: {{qty}} × {{price}}",
       "rowHpp": "HPP {{hpp}}",
       "bundleCount": "Bundles",
@@ -4237,6 +4205,118 @@
       "confirmTitle": "Finalize Count #{{id}}?",
       "confirmMessage": "This posts every line above and releases the racks. The warehouse owes {{owed}}. It cannot be undone.",
       "done": "Count #{{id}} finalized"
+    }
+  },
+  "analytic": {
+    "title": "Analytic",
+    "subtitle": "Build one table from any metrics — grouped one way, every metric its own columns — and compare them side by side.",
+    "groupBy": "Group by",
+    "group": {
+      "shop": "Shop",
+      "product": "Product",
+      "supplier": "Supplier",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "groupPlural": {
+      "shop": "shops",
+      "product": "products",
+      "supplier": "suppliers",
+      "daily": "days",
+      "weekly": "weeks",
+      "monthly": "months",
+      "yearly": "years"
+    },
+    "addMetric": "Add Metric",
+    "removeMetric": "Remove {{metric}}",
+    "searchMetric": "Search metrics",
+    "noMetricMatches": "No metric matches.",
+    "openCategory": "Open {{category}}",
+    "category": {
+      "order": "Order",
+      "settlement": "Settlement",
+      "inventory": "Inventory",
+      "ads": "Ads",
+      "expense": "Expense"
+    },
+    "metric": {
+      "orders": "Orders",
+      "settlement": "Settlement",
+      "stockLost": "Stock lost",
+      "ads": "Ads",
+      "expenses": "Expenses"
+    },
+    "field": {
+      "order_count": "Order count",
+      "order_total": "Order total",
+      "settlement_amount": "Settlement amount",
+      "profit": "Profit",
+      "lost_count": "Units lost",
+      "lost_amount": "Lost value",
+      "ads_spend": "Ads spend",
+      "expense_total": "Expenses"
+    },
+    "cannotGroup": "Cannot be grouped by {{group}}",
+    "filter": {
+      "dateRange": "Date",
+      "shop": "Shop",
+      "product": "Product",
+      "supplier": "Supplier"
+    },
+    "all": {
+      "shop": "All shops",
+      "product": "All products",
+      "supplier": "All suppliers"
+    },
+    "sortBy": "Sort by",
+    "sortOption": "{{field}}, {{dir}}",
+    "dir": {
+      "desc": "largest first",
+      "asc": "smallest first"
+    },
+    "dateDir": {
+      "desc": "newest first",
+      "asc": "oldest first"
+    },
+    "period": "Period",
+    "weekOf": "Week of {{date}}",
+    "rowsLine": "Rows: {{group}} with {{metric}} in this period",
+    "graph": {
+      "count": "Counts",
+      "money": "Amounts (Rp)"
+    },
+    "view": {
+      "table": "Table",
+      "graph": "Graph"
+    },
+    "rangeInvalid": "The start date is after the end date.",
+    "empty": {
+      "noMetric": "Add a metric to start — each metric becomes columns, and each of the {{group}} a row.",
+      "noRows": "Nothing happened in this period."
+    },
+    "toast": {
+      "filterRemoved_one": "{{filters}} filter removed",
+      "filterRemoved_other": "{{filters}} filters removed",
+      "filterRemovedReason": "{{metric}} cannot be filtered by {{filters}}.",
+      "metricRemoved_one": "{{metrics}} removed",
+      "metricRemoved_other": "{{metrics}} removed",
+      "metricRemovedReason": "Cannot be grouped by {{group}}."
+    },
+    "pending": {
+      "figures": {
+        "label": "Sample figures",
+        "reason": "Every number is invented — no service answers MetricSearch or MetricData yet."
+      },
+      "catalogue": {
+        "label": "Metric list",
+        "reason": "The metrics are a fixed list in the screen; they will be read from each service's contract once it exists."
+      },
+      "pickers": {
+        "label": "Shop, product and supplier filters",
+        "reason": "They list sample entries; the real filters search the team's own."
+      }
     }
   }
 }

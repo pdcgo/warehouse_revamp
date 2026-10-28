@@ -438,25 +438,13 @@ flowchart LR
     [an-order-line-keeps-no-platform-title](../frontend/order_detail_decision.md#an-order-line-keeps-no-platform-title).
     Kept as a line so the numbers hold.
 
-11. **What is a return shipment?** A parcel can travel twice (owner: *"resi bisa 2 dan jejak pengiriman
-    juga bisa 2, dari order dan return"*), each leg with its own courier, number and trail. Today there is
-    no return record at all — no status, no number, no trail. The preview shows two legs, the return one
-    invented for order 108.
-    **→ Recommend** one shipment-leg shape used twice (`direction: outbound | return`), rather than a
-    second set of `return_*` columns on the order — a third leg (a re-send after a lost parcel) then costs
-    nothing.
+11. ✅ *(2026-10-26)* **Answered: no return record now — it waits for tracking** —
+    [the-return-leg-waits-for-tracking](../frontend/order_detail_decision.md#the-return-leg-waits-for-tracking).
+    Kept as a line so the numbers hold.
 
-12. **Who may edit a user note, and can one be deleted?** Notes are now a list with two kinds (owner:
-    *"catatan … bisa lebih dari 1 dan … ada tipenya, dari sistem dan dari user"*), and user notes are
-    editable. The preview lets anyone edit any user note and offers no delete.
-    **→ Recommend** only the note's AUTHOR may edit it, every edit keeps the earlier text (an "edited"
-    marker with the original one click away), and **no delete** — a note is an instruction somebody may
-    already have acted on, so removing it removes the reason for what they did.
-    ⚠ And are system notes the same stream as the status timeline? **→ Recommend no**: the timeline is
-    status changes only; a system note is anything else the app wants a person to know (a remap, a label
-    printed, a return received). Merging them buries the status history in chatter.
-    ⚠ Contract: `Order.note` is one string; this needs an `order_notes` table (`kind`, `author_user_id`,
-    `text`, `created_at`, `edited_at`) and create/update RPCs.
+12. ✅ *(2026-10-26)* **Answered: a note is a timeline row, never edited** —
+    [a-note-is-a-timeline-row](../frontend/order_detail_decision.md#a-note-is-a-timeline-row). Its contract was accepted the same day.
+    Kept as a line so the numbers hold.
 
 14. ✅ *(2026-10-22)* **Answered: nothing — the form maps, the draft stores no mapping** —
     [a-draft-stores-no-mapping](../frontend/order_draft_decision.md#a-draft-stores-no-mapping).
@@ -520,14 +508,7 @@ flowchart LR
     The alternatives: **B** also cancels a `pending` order the platform cancelled; **C** applies whatever the file says.
     Each marketplace's own words become a per-marketplace parser table, drafted for review rather than asked word by word.
 
-20. **What happens to the order list's withdrawal leftovers?** Both meanings of "withdrawal" have left the order: the
-    per-order figure is settlement's payout row
-    ([settlement-replaces-withdrawal-on-the-order](../frontend/order_detail_decision.md#settlement-replaces-withdrawal-on-the-order)),
-    and wallet → bank is a shop-level settlement row
-    ([withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type)), its
-    cash side deferred (order context §Whats Not). Two menu items still assume the old per-order `wd_total`.
-    **→ Recommend:** remove *Edit Withdrawal* from a completed order, and the `withdrawal` mark with it — Settlement Imports
-    posts the payout, and a typed figure would be a second record of the same money. And bring *Selesaikan Order* back on a
-    `return` when settlement shows a payout above zero for that order
-    ([finish-order-on-a-return-waits-for-the-withdrawal](../frontend/order_list_decision.md#finish-order-on-a-return-waits-for-the-withdrawal)
-    was waiting on exactly that figure) — which needs `return → completed` in the owner's status diagram.
+20. ✅ *(2026-10-26)* **Answered: Edit Withdrawal and the mark go** —
+    [no-withdrawal-is-typed-on-an-order](../frontend/order_detail_decision.md#no-withdrawal-is-typed-on-an-order).
+    *Selesaikan Order* on a return still waits on `return → completed` in the status diagram.
+    Kept as a line so the numbers hold.

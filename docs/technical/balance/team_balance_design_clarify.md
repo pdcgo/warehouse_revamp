@@ -778,17 +778,11 @@ renumber would repoint them.
 > **change log** whose logged limit is **nullable** — `NULL`, `0` and a number being three different
 > acts. Nothing about it is still open. ⚠ **It is BUILD work now**, and none of it exists: a migration
 > on `liability_terms`, and a screen — `liabilityTermsClient` still has **zero callers**.
-9. **🔍 The 80% warning on the BALANCE SCREEN — is it the creditor's view only?**
-   ([Critique 24](#critique)) §About Thresholds 1 named two homes; the daily report one is parked with
-   [the-daily-report-is-deferred](../../business/balance/context_decision.md#the-daily-report-is-deferred),
-   so what is left is the pair list — where a creditor watches debtors approach limits **they** set.
-   **→ I recommend a per-row badge on `/liability`**, worded from the creditor's side: *"87% of the
-   limit you set"*.
-   ⚠ **What deferring the daily report loses is the DEBTOR's half**, and it was the more useful one. A
-   team that is about to be blocked finds out on the creditor's screen, which they cannot see — so
-   until the daily report returns, the warning tells the person who is *fine* and not the person who
-   is about to stop trading. **→ Recommend a second home on the pair DETAIL**, which a debtor can
-   open: same badge, worded from their side.
+9. ✅ *(2026-10-23)* **Answered: not the creditor's view only** — the debtor sees each limit set on it, its debt and
+   the same 80% badge on the pair detail, worded from its side, and on the order form
+   ([the-debtor-sees-the-limits-set-on-it](./team_balance_design_decision.md#the-debtor-sees-the-limits-set-on-it)).
+   As recommended. The creditor's own per-row badge on `/liability` is unchanged by it — still the recommendation in
+   [Critique 24](#critique), and build work once the read exists. Kept as a line so the numbers hold.
 10. ✅ *(2026-10-19)* **Answered: per product, and the ledger posts the frozen line totals** —
     [the-ledger-charges-the-frozen-line-total](./team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total).
     `liability_terms.product_markup_bp` is dropped. Simpler than my *read the product's rate at the fee*.

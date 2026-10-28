@@ -77,21 +77,18 @@ func TestOrderCreate_PublishesTheFrozenMoney(t *testing.T) {
 		t.Fatalf("event names team %d, want the SELLING team 2", got.GetTeamId())
 	}
 
-	// Revenue is the order's TOTAL — what the buyer paid — not its subtotal.
-	if got.GetRevenue() != order.GetTotal() {
-		t.Fatalf("event revenue = %d, want the order total %d", got.GetRevenue(), order.GetTotal())
+	// What the buyer paid — the order's platform_total — and the order's frozen goods_cost.
+	if got.GetPlatformTotal() != order.GetPlatformTotal() {
+		t.Fatalf("event platform total = %d, want the order's %d", got.GetPlatformTotal(), order.GetPlatformTotal())
 	}
-	if got.GetCogs() != order.GetCogs() {
-		t.Fatalf("event cogs = %d, want the order's frozen %d", got.GetCogs(), order.GetCogs())
-	}
-	if got.GetShippingCost() != order.GetShippingCost() {
-		t.Fatalf("event shipping = %d, want %d", got.GetShippingCost(), order.GetShippingCost())
+	if got.GetGoodsCost() != order.GetGoodsCost() {
+		t.Fatalf("event goods_cost = %d, want the order's frozen %d", got.GetGoodsCost(), order.GetGoodsCost())
 	}
 }
 
 // #153/#74 — the fakePicker reports NO cost for the ordered product, so cost_known must be false.
 //
-// This is the field a report leans on. 0 cogs is ambiguous once written down — "free" and "never
+// This is the field a report leans on. A goods_cost of 0 is ambiguous once written down — "free" and "never
 // recorded" look identical — so if the publisher guessed it from the number rather than from whether
 // the cost was actually found, every uncosted order would read as pure profit and nothing would say so.
 func TestOrderCreate_MarksAnUnknownCostInTheEvent(t *testing.T) {
@@ -111,8 +108,8 @@ func TestOrderCreate_MarksAnUnknownCostInTheEvent(t *testing.T) {
 		t.Fatal("cost_known is true, but the picker reported no cost for the product — " +
 			"this order's margin would read as pure profit with nothing flagging it")
 	}
-	if got.GetCogs() != 0 {
-		t.Fatalf("cogs = %d, want 0 for an uncosted order", got.GetCogs())
+	if got.GetGoodsCost() != 0 {
+		t.Fatalf("goods_cost = %d, want 0 for an uncosted order", got.GetGoodsCost())
 	}
 }
 

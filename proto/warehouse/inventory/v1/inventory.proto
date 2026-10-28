@@ -34,8 +34,13 @@ service InventoryService {
   // paging happens. Filtering a catalogue page after it loads would show two rows out of ten while
   // the pager went on counting all ten.
   rpc StockedProductList(StockedProductListRequest) returns (StockedProductListResponse);
-  // What products COST this warehouse, for an order to freeze as its COGS (#74).
+  // What products are WORTH on this warehouse's shelf — the average value of the units held. The rack valuation reads
+  // it; no order does any more (an-order-is-costed-at-what-leaves-the-shelf — an order's cost is StockTakeQuote's).
   rpc StockCost(StockCostRequest) returns (StockCostResponse);
+  // What an order's take WOULD DRAW, before it draws it (an-order-is-costed-at-what-leaves-the-shelf): per line the
+  // owner's batches oldest first, their cost, and whether there are enough — the take's own selection, read-only, so
+  // the order form's preview and the cost the order freezes cannot be two rules.
+  rpc StockTakeQuote(StockTakeQuoteRequest) returns (StockTakeQuoteResponse);
 
   // The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
   rpc WarehouseProductList(WarehouseProductListRequest) returns (WarehouseProductListResponse);
@@ -629,6 +634,81 @@ message StockCostResponseList {
 
 message StockCostResponse {
   map<uint64, StockCostResponseList> items = 1;
+}
+
+// ── What a take WOULD draw ───────────────────────────────────────────────────────────────────────
+
+message StockTakeQuoteRequest {
+  // Read: StockCost's policy exactly — whoever may place an order may ask what its lines would cost.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The ORDERING team — the take's own scope (the-take-names-the-orderer-and-each-owner). Which batches a line draws
+  // is decided by the product's OWNER, not by this team.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The warehouse the order would ship from. An ordinary parameter, as on the take.
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Each product once, as the take wants them — a product listed twice is refused (InvalidArgument), as the take
+  // refuses it. A form holding one product on two lines asks for their sum.
+  repeated StockTakeQuoteLine lines = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+  }];
+}
+
+// StockTakeQuoteLine is one product the order would take, and how many.
+message StockTakeQuoteLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
+}
+
+// StockTakeQuoteBatch is one batch the take would draw from: `quantity × unit_cost`.
+message StockTakeQuoteBatch {
+  int64 quantity = 1;
+  // The value per unit this batch would give up — its own, never the shelf's average. Rupiah (rupiah-is-floating-point).
+  double unit_cost = 2;
+  // quantity × unit_cost, as the take would remove it (the emptying take removes the batch's whole value).
+  double total = 3;
+}
+
+// StockTakeQuoteItem is one line's answer.
+message StockTakeQuoteItem {
+  uint64 product_id = 1;
+  // Whose batches the take draws — the product's owner. 0 = a product that exists nowhere.
+  uint64 owner_team_id = 2;
+  // As asked.
+  int64 quantity = 3;
+  // The units the take could draw for this order: the owner's units in the warehouse. 0 for a line the take would
+  // refuse whatever the stock — a product that exists nowhere, another team's private product, or one whose owner is
+  // below its reserve.
+  int64 available = 4;
+  // available >= quantity. When false the take would refuse the line, and draws NOTHING for it.
+  bool enough = 5;
+  // The value of the units the take would draw, rupiah. ABSENT when `enough` is false — the take draws nothing, so the
+  // cost is unknown, never 0.
+  optional double total_cost = 6;
+  // total_cost ÷ quantity. Absent with it.
+  optional double unit_cost = 7;
+  // The batches behind total_cost, oldest first. Empty when `enough` is false.
+  repeated StockTakeQuoteBatch batches = 8;
+}
+
+message StockTakeQuoteResponse {
+  // One per line asked, in product id order. The COST, never the markup: the form applies a borrowed product's own
+  // cross markup for the invoice, as the take does.
+  repeated StockTakeQuoteItem items = 1;
 }
 
 // StockPickLocations answers the pick screen's only hard question (#151): WHICH SHELF does the picker

@@ -23,6 +23,8 @@ func (s *Service) OrderCreate(
 		warehouseID:   req.Msg.GetWarehouseId(),
 		customerName:  req.Msg.GetCustomerName(),
 		customerPhone: req.Msg.GetCustomerPhone(),
+		// Optional — placeOrder trims it and never refuses an empty one (the-buyers-username-is-optional).
+		buyerUsername: req.Msg.GetBuyerUsername(),
 		address:       req.Msg.GetAddress(),
 		shippingCode:  req.Msg.GetShippingCode(),
 		note:          req.Msg.GetNote(),
@@ -31,10 +33,9 @@ func (s *Service) OrderCreate(
 		// The platform's two dates (platform-created-at-is-required-at-finalize — placeOrder refuses a missing one).
 		platformCreatedAt:        req.Msg.GetPlatformCreatedAtUnix(),
 		platformShipmentDeadline: req.Msg.GetPlatformShipmentDeadlineUnix(),
-		subtotal:                 req.Msg.GetSubtotal(),
-		shippingCost:             req.Msg.GetShippingCost(),
-		total:                    req.Msg.GetTotal(),
-		marketplaceTotal:         req.Msg.GetMarketplaceTotal(),
+		// What the buyer paid (platform-total-is-required-at-finalize — placeOrder refuses a 0). The order's own money
+		// is not in the request: placeOrder freezes it from the take.
+		platformTotal: req.Msg.GetPlatformTotal(),
 		// The storefront's own id for this order, as typed. OrderDraftPromote leaves this empty for
 		// now — a draft's `external_id` is its idempotency key (and is a minted `form-…` id for a
 		// draft this form made), so carrying it across would fill the field with something that is

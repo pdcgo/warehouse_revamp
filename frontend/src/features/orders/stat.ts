@@ -66,7 +66,7 @@ export function summariseOrderStat(res: OrderStatResponse | undefined): OrderSta
 // windows on one screen get read as one.
 //
 // ⚠ A NULL IS "THE CONTRACT CANNOT ANSWER THIS", NOT ZERO. `OrderStatusCount` carries the units and the
-// margin's inputs now — Σ marketplace_total, Σ cogs and Σ fees over the measurable orders, and how many it
+// margin's inputs now — Σ platform_total, Σ goods_cost and Σ fees over the measurable orders, and how many it
 // left out — so a pile the contract holds reads real figures, zeroes included. Only a pile with no proto
 // status (`onTheWire` false) stays null and renders as an em-dash.
 export interface OrderSummaryRow {
@@ -83,29 +83,28 @@ export interface OrderSummaryRow {
    *
    * ⚠ FALSE MAKES EVERY FIGURE UNKNOWN, INCLUDING THE COUNT. A group naming no proto status sums to
    * zero, and that zero is not a measurement — "no orders are completed" is a claim the contract
-   * cannot make when it has no `completed` to count. Same rule as a cogs of 0, one level up.
+   * cannot make when it has no `completed` to count. Same rule as a goods_cost of 0, one level up.
    */
   onTheWire: boolean;
   /** How many orders are in this pile right now. */
   count: number;
-  /** Σ `total` — what the buyers are paying, shipping included. */
+  /** Σ `platform_total` over EVERY order in the pile — what the buyers paid (`OrderStatusCount.value`). */
   value: bigint;
   /**
-   * Σ `marketplace_total` — WHAT THE BUYERS ACTUALLY PAID THE PLATFORM, and the top of the margin.
+   * Σ `platform_total` — WHAT THE BUYERS ACTUALLY PAID THE PLATFORM, and the top of the margin.
    *
-   * ⚠ NOT Σ `total`. `value` above is our own quote; this is the figure after the marketplace's
-   * vouchers and subsidies, and the owner's margin is measured against it
-   * (`the-margin-is-mp-minus-total-beli`). It replaced Σ `subtotal`, which measured our quote against
-   * our cost and never looked at what the platform paid.
+   * ⚠ NOT `value`. `value` above sums EVERY order; this sums only the measurable ones, the same population as
+   * the cost and the fees, and the owner's margin is measured against it (`the-margin-is-mp-minus-total-beli`). It
+   * replaced Σ `subtotal`, which measured our quote against our cost and never looked at what the platform paid.
    *
-   * ⚠ OVER THE ORDERS THAT CARRY A COST, not over all of them, and `cogs` and `fees` cover the SAME
+   * ⚠ OVER THE ORDERS THAT CARRY A COST, not over all of them, and `goods_cost` and `fees` cover the SAME
    * population. Summing every order's revenue against only the priced orders' cost inflates the
    * margin by the unpriced orders' whole sale — not a rounding error: one unpriced order among nine
    * moved a 36% margin to 48% the first time this was rendered.
    */
   mpValue: bigint | null;
-  /** Σ `cogs`, over the same orders as `mpValue`. */
-  cogs: bigint | null;
+  /** Σ `goods_cost`, over the same orders as `mpValue`. */
+  goodsCost: bigint | null;
   /**
    * Σ of the per-order FULFILMENT FEES, over the same orders again — the `biaya` half of total beli.
    *
@@ -152,7 +151,7 @@ function emptyRow(key: string, onTheWire: boolean): OrderSummaryRow {
     count: 0,
     value: 0n,
     mpValue: onTheWire ? 0n : null,
-    cogs: onTheWire ? 0n : null,
+    goodsCost: onTheWire ? 0n : null,
     fees: onTheWire ? 0n : null,
     marginUnknown: onTheWire ? 0 : null,
     itemCount: onTheWire ? 0 : null,
@@ -189,7 +188,7 @@ export function orderSummaryRows(
         row.value += entry.value;
         row.itemCount = (row.itemCount ?? 0) + Number(entry.itemCount);
         row.mpValue = (row.mpValue ?? 0n) + entry.mpValue;
-        row.cogs = (row.cogs ?? 0n) + entry.cogs;
+        row.goodsCost = (row.goodsCost ?? 0n) + entry.goodsCost;
         // The fees arrive unrounded (rupiah-is-floating-point); whole rupiah here, for the bigint arithmetic only.
         row.fees = (row.fees ?? 0n) + BigInt(Math.round(entry.fees));
         row.marginUnknown = (row.marginUnknown ?? 0) + Number(entry.marginUnknown);
@@ -228,7 +227,7 @@ export function orderSummaryTotal(rows: OrderSummaryRow[]): OrderSummaryRow {
     count: counted.reduce((sum, r) => sum + r.count, 0),
     value: counted.reduce((sum, r) => sum + r.value, 0n),
     mpValue: sumOrNull((r) => r.mpValue),
-    cogs: sumOrNull((r) => r.cogs),
+    goodsCost: sumOrNull((r) => r.goodsCost),
     fees: sumOrNull((r) => r.fees),
     marginUnknown: countOrNull((r) => r.marginUnknown),
     itemCount: countOrNull((r) => r.itemCount),
@@ -260,18 +259,18 @@ export function summaryUpt(row: OrderSummaryRow): number | null {
  * card and the table's `Beli` cell mean the same thing by the same word.
  */
 export function summarySpend(row: OrderSummaryRow): bigint | null {
-  if (row.cogs === null || row.fees === null) {
+  if (row.goodsCost === null || row.fees === null) {
     return null;
   }
 
-  return orderSpend(row.cogs, row.fees, summaryHasMeasured(row));
+  return orderSpend(row.goodsCost, row.fees, summaryHasMeasured(row));
 }
 
 /**
  * GROSS MARGIN — what the platform paid, minus what the order cost us (owner, 2026-09-28).
  *
- * ⚠ `mpValue`, NEVER `value` and no longer Σ `subtotal`. `value` is our own quote; the margin is
- * measured against what the buyers actually paid the platform.
+ * ⚠ `mpValue`, NEVER `value` and no longer Σ `subtotal`. `value` covers every order, measurable or not; the margin
+ * is measured against what the buyers paid the platform on the orders it can be taken over.
  *
  * ⚠ It is NOT profit, and must not be labelled as one. What the marketplace deducts beyond the price
  * only lands weeks later, on the settlement ledger.

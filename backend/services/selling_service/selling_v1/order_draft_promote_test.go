@@ -46,6 +46,8 @@ func readyDraft(t *testing.T, svc *selling_v1.Service, db *gorm.DB, shopID uint6
 		// The storefront's order date, read off the page by the person finishing it — required to promote
 		// (platform-created-at-is-required-at-finalize).
 		PlatformCreatedAtUnix: i64(testPlatformDate),
+		// …and what the buyer paid there, required on the same footing (platform-total-is-required-at-finalize).
+		PlatformTotal: i64(testPlatformTotal),
 	})
 
 	return draftID
@@ -134,12 +136,15 @@ func TestOrderDraftPromote_TheLinesCarryTheCatalogueLabel(t *testing.T) {
 	}
 }
 
-// The money is RECOMPUTED from the mapped lines. A draft's totals are whatever the marketplace page
-// said, and the lines somebody actually mapped may not add up to that — one line removed, a quantity
-// corrected. An order's totals must agree with its own lines, because margin is computed from them.
-func TestOrderDraftPromote_RecomputesTheMoneyFromTheMappedLines(t *testing.T) {
+// A PROMOTED ORDER'S MONEY IS THE TAKE'S, as on OrderCreate — never the draft rows' marketplace prices
+// (an-order-line-carries-no-marketplace-price). The rows say 2 × 50.000 + 1 × 35.000; the take draws 2 × 10.000 and
+// 1 × 5.000, so goods_cost is 25.000, the fee is priced on it, and total_cost adds the two. What the buyer paid is the
+// draft's own figure, copied.
+func TestOrderDraftPromote_TakesItsMoneyFromTheTakeNotTheRows(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newService(t, db)
+	picker := &fakePicker{costs: map[uint64]int64{41: 10_000, 42: 5_000}}
+	fees := &fakeFees{percent: 10}
+	svc := newServiceWithFees(t, db, picker, fees)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	draftID := readyDraft(t, svc, db, shop)
@@ -149,13 +154,17 @@ func TestOrderDraftPromote_RecomputesTheMoneyFromTheMappedLines(t *testing.T) {
 		t.Fatalf("promote: %v", err)
 	}
 
-	// 2 x 50.000 + 1 x 35.000 = 135.000, plus the scraped 15.000 shipping.
-	if order.GetSubtotal() != 135000 {
-		t.Fatalf("subtotal = %d, want 135000 — it was not computed from the lines", order.GetSubtotal())
+	if order.GetGoodsCost() != 25_000 {
+		t.Fatalf("goods_cost = %d, want 25000 — the take's draw, not the rows' 135000", order.GetGoodsCost())
 	}
 
-	if order.GetTotal() != 150000 {
-		t.Fatalf("total = %d, want 150000 (subtotal + shipping)", order.GetTotal())
+	if order.GetWarehouseFee() != 2_500 || order.GetTotalCost() != 27_500 {
+		t.Fatalf("fee %v, total_cost %v — want 2500 on the goods_cost and 27500 for the two together",
+			order.GetWarehouseFee(), order.GetTotalCost())
+	}
+
+	if order.GetPlatformTotal() != testPlatformTotal {
+		t.Fatalf("platform_total = %d, want the draft's %d", order.GetPlatformTotal(), testPlatformTotal)
 	}
 }
 
@@ -197,6 +206,8 @@ func TestOrderDraftPromote_RunsTheSameValidationOrderCreateDoes(t *testing.T) {
 		}},
 		// platform-created-at-is-required-at-finalize — a draft may hold it empty, an order may not.
 		{"no platform order date", func(r *sellingv1.OrderDraftUpdateRequest) { r.PlatformCreatedAtUnix = i64(0) }},
+		// platform-total-is-required-at-finalize — the same footing.
+		{"no marketplace total", func(r *sellingv1.OrderDraftUpdateRequest) { r.PlatformTotal = i64(0) }},
 	}
 
 	for _, tc := range cases {
@@ -275,9 +286,9 @@ func TestOrderDraftPromote_IsWhereTheOrderPlacedEventFires(t *testing.T) {
 	}
 
 	placed := events.placed(t)
-	if placed.GetOrderId() != order.GetId() || placed.GetRevenue() != order.GetTotal() {
-		t.Fatalf("event names order %d / revenue %d, want %d / %d",
-			placed.GetOrderId(), placed.GetRevenue(), order.GetId(), order.GetTotal())
+	if placed.GetOrderId() != order.GetId() || placed.GetPlatformTotal() != order.GetPlatformTotal() {
+		t.Fatalf("event names order %d / platform total %d, want %d / %d",
+			placed.GetOrderId(), placed.GetPlatformTotal(), order.GetId(), order.GetPlatformTotal())
 	}
 }
 

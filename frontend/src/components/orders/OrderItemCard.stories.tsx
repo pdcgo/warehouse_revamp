@@ -3,11 +3,12 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { productCosts, products, warehouseStock } from "../../../.storybook/fixtures";
+import { drawFrom, products, warehouseStock } from "../../../.storybook/fixtures";
 import { OrderItemCard, description } from "./OrderItemCard";
 import type { Availability, Costs, LineDraft } from "../../features/orders/lines";
 import { lineFor } from "../../features/orders/lines";
 import type { PickedProduct } from "../products/ProductSelect";
+import { formatRupiah } from "../../lib/money";
 
 // The fixture warehouse, and the team the order is placed by — the same one, because team 11 is what
 // the stubbed memberships make `useTeam().current` and it owns the products the fixtures stock. Its
@@ -15,15 +16,23 @@ import type { PickedProduct } from "../products/ProductSelect";
 const WAREHOUSE = 11n;
 const TEAM = 11n;
 
-// Both maps are keyed by product id as a string — exactly the shape the two batched reads produce.
+// Keyed by product id as a string — exactly the shape the page's one batched read produces.
 const stock: Availability = new Map(Object.entries(warehouseStock));
-const costs: Costs = new Map(Object.entries(productCosts));
 
 function lineOf(index: number, quantity = "1"): LineDraft {
   const p = products[index]!;
 
   return { ...lineFor(p as PickedProduct), quantity };
 }
+
+// WHAT THE TAKE WOULD DRAW for exactly these lines (an-order-is-costed-at-what-leaves-the-shelf) — the fixture
+// warehouse's batches oldest first, through the stub's own `drawFrom`. A card is handed the answer for the lines it
+// shows, as the page hands it the answer for its own.
+function costsFor(lines: LineDraft[]): Costs {
+  return new Map(lines.map((l) => [l.productId.toString(), drawFrom(l.productId.toString(), BigInt(l.quantity))]));
+}
+
+const costs = costsFor([lineOf(0), lineOf(1), lineOf(2)]);
 
 const meta = {
   title: "Components/Orders/OrderItemCard",
@@ -53,7 +62,7 @@ type Story = StoryObj<typeof meta>;
 export const Empty: Story = {};
 
 export const WithLines: Story = {
-  args: { lines: [lineOf(0), lineOf(1, "2")] },
+  args: { lines: [lineOf(0), lineOf(1, "2")], costs: costsFor([lineOf(0), lineOf(1, "2")]) },
 };
 
 // Product 73's HPP is 0 in the fixtures, which is UNKNOWN and not free — the row says so rather than
@@ -128,16 +137,56 @@ export const EachLineShowsWhatTheWarehouseHolds: Story = {
   },
 };
 
+// A LINE IS COSTED AT WHAT LEAVES THE SHELF (an-order-is-costed-at-what-leaves-the-shelf). Two Teh draw the one unit
+// left of the 8.000 batch and one of the 9.500 batch: the HPP is 8.750, the line 17.500 — never the shelf's 9.000
+// average × 2 — and the second line under the HPP says which batches, oldest first.
+export const ALineSpanningTwoBatchesShowsTheSplit: Story = {
+  args: { lines: [lineOf(1, "2")], costs: costsFor([lineOf(1, "2")]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("order-line-hpp-0")).toHaveTextContent(formatRupiah(8_750n));
+    await expect(canvas.getByTestId("order-line-hpp-split-0")).toHaveTextContent(
+      `1 × ${formatRupiah(8_000n)} + 1 × ${formatRupiah(9_500n)}`,
+    );
+    await expect(canvas.getByTestId("order-line-total-0")).toHaveTextContent(formatRupiah(17_500n));
+  },
+};
+
+// While a changed quantity is priced again the KEPT figures dim and say so (CLAUDE.md rule 10) — the HPP of 3 is not
+// the HPP of 2 once a unit spills into a newer batch, so a kept answer must not read as the current one.
+export const KeptFiguresDimWhileRepriced: Story = {
+  args: { lines: [lineOf(1, "2")], costs: costsFor([lineOf(1, "2")]), busy: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("refresh-overlay")).toHaveAttribute("data-busy", "true"));
+  },
+};
+
+// …and ONE batch needs no second line: a single Teh is the 8.000 unit, which its HPP already says.
+export const ALineFromOneBatchShowsNoSplit: Story = {
+  args: { lines: [lineOf(1)], costs: costsFor([lineOf(1)]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("order-line-hpp-0")).toHaveTextContent(formatRupiah(8_000n));
+    await expect(canvas.queryByTestId("order-line-hpp-split-0")).toBeNull();
+  },
+};
+
 // A quantity the building cannot fill is marked ON THE ROW. The page also summarises it at the top —
-// that half belongs to the page, because a short line is a fact about the whole order.
+// that half belongs to the page, because a short line is a fact about the whole order. The take would draw
+// nothing for it, so its HPP is unknown rather than a price for units that are not there.
 export const AQuantityAboveTheShelfIsMarked: Story = {
   // Fixture product 72 has THREE on the shelf.
-  args: { lines: [lineOf(1, "5")] },
+  args: { lines: [lineOf(1, "5")], costs: costsFor([lineOf(1, "5")]) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByTestId("order-line-stock-0")).toHaveTextContent("3");
     await expect(canvas.getByTestId("order-line-0")).toHaveTextContent("5");
+    await expect(canvas.getByTestId("order-line-hpp-0")).toHaveTextContent("not recorded");
   },
 };
 

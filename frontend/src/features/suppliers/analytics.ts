@@ -1,32 +1,61 @@
+import { type MessageInitShape, getOption } from "@bufbuild/protobuf";
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { productClient, supplierAnalyticClient, supplierClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
-import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
-import { AnalyticGroupSort, AnalyticTimeframe } from "../../gen/warehouse/supplier/v1/supplier_analytic_pb";
-import type { PeriodGrain } from "../../lib/period";
+import {
+  type FilterItemSchema,
+  GroupType,
+  type MetricKeys,
+  SortType,
+  metric,
+  metric_sort,
+} from "../../gen/warehouse/analytic_base/v1/analytic_pb";
+import { type MetricData, SupplierMetricSchema } from "../../gen/warehouse/supplier/v1/supplier_analytic_pb";
+import { type PeriodGrain, bucketSpine } from "../../lib/period";
 import { productByIdsRowData, productsFromByIds } from "../products/adapt";
 import { teamsByIdsQuery } from "../teams/queries";
 import { supplierByIdsRowData, suppliersFromByIds } from "./adapt";
 import { type SupplierFigures, figuresOf } from "./figures";
 
 // A SUPPLIER'S FIGURES — the reads behind the Statistics tab and the Supplier Report
-// (the-figures-are-a-statistics-tab-and-a-supplier-report, accepted with the-figures-screens-are-accepted). Each is one
-// read of supplier_service's SupplierAnalyticService, which folds the restock's *Restock Accepted* event
-// (the-report-is-processed-like-settlement):
+// (the-figures-are-a-statistics-tab-and-a-supplier-report). supplier_service serves them as ONE metric,
+// `metrics/suppliers`, through the analytic pattern every service's figures share (docs/business/analytic/rpc_provide.md,
+// the-pattern-replaces-the-shipped-analytics):
 //
-//   useSupplierFigureSeries     AnalyticTimeSearch      the six figures by day, month or year, and the window's total
-//   useSupplierFiguresByProduct AnalyticProductSearch   the six figures per product, over the window
-//   useSupplierRanking          AnalyticGroupSearch     suppliers ranked over the window, and their headline
-//                               + AnalyticGroupMetric
+//   MetricSearch   ranks the keys of a page — suppliers, or one supplier's products
+//   MetricData     fills those keys — or, grouped by SUMMARY, reads the headline over the whole window
+//
+//   useSupplierHeadline         MetricData SUMMARY — the window's total, keyed without the page
+//   useSupplierFigureSeries     the periods are listed HERE (a time group needs no search), then MetricData fills
+//                               the page's periods
+//   useSupplierFiguresByProduct MetricSearch by product, then MetricData for that page
+//   useSupplierRanking          MetricSearch by supplier, then MetricData for that page
+//
+// No read returns a total: a page says only whether another follows (a-metric-page-has-no-total), which is what the
+// growing pager reads.
 //
 // ⚠ A FIGURE LAGS THE ACCEPT by the broker's delivery — the figures are folded, never summed from the restocks live.
 //
 // All three are `listQuery`: a window, a grain, a team, a search or a page REFINES the same question, so the previous
 // figures stay on screen while the next ones load (HARD RULE 10). Pair with RefreshOverlay.
 
-/** How the Supplier Report orders its suppliers. */
+/** The metric's id, read off the proto — never typed by hand (the-pattern-replaces-the-shipped-analytics). */
+const SUPPLIERS = getOption(SupplierMetricSchema, metric).metricId;
+
+/**
+ * The units a supplier needs in the window to be RANKED by its broken rate (rate-ranking-needs-50-units) — the
+ * `rank_min_sample` on `broken_rate`, read off the proto so the screen never keeps a copy of its own.
+ */
+export const RATE_MIN_UNITS = Number(getOption(SupplierMetricSchema.field.brokenRate, metric_sort).rankMinSample);
+
+/** How the Supplier Report orders its suppliers — each a sortable field of `metrics/suppliers`, by its proto name. */
 export type SupplierRankBy = "value" | "brokenRate";
+
+const rankField: Record<SupplierRankBy, string> = {
+  value: "restock_valuation",
+  brokenRate: "broken_rate",
+};
 
 /** A team named on a row — "" when its name could not be resolved, and the screen reads "Team #<id>". */
 export interface FigureTeam {
@@ -41,7 +70,7 @@ export interface SupplierFigurePoint {
 }
 
 export interface SupplierProductRow {
-  /** `<team>|<product>` — two teams buying one item are two rows. */
+  /** `<team>|<product>` — two teams buying one item are two rows. The team is 0 when the product is unknown. */
   key: string;
   productId: bigint;
   /** "" when product_service could not name it — the screen reads "Product #<id>". */
@@ -88,16 +117,58 @@ interface Paged {
   pageSize: number;
 }
 
-const timeframeOf: Record<PeriodGrain, AnalyticTimeframe> = {
-  day: AnalyticTimeframe.DAILY,
-  month: AnalyticTimeframe.MONTHLY,
-  year: AnalyticTimeframe.YEARLY,
+type Filter = MessageInitShape<typeof FilterItemSchema>;
+
+/** The window and, when one is picked, the restocking team — the filters every supplier read carries. */
+function windowFilters({ from, to, restockTeamId }: Window): Filter[] {
+  const out: Filter[] = [{ f: { case: "dateRangeFilter", value: { dateMin: from, dateMax: to } } }];
+  if (restockTeamId !== 0n) out.push({ f: { case: "teamFilter", value: { teamId: restockTeamId } } });
+
+  return out;
+}
+
+const supplierFilter = (supplierId: bigint): Filter => ({ f: { case: "supplierFilter", value: { supplierId } } });
+
+const idKeys = (ids: bigint[]) => ({ k: { case: "ids" as const, value: { ids } } });
+
+const idsOf = (keys: MetricKeys | undefined): bigint[] => (keys?.k.case === "ids" ? keys.k.value.ids : []);
+
+/** The one answer for `metrics/suppliers` — the call asks for nothing else. */
+function supplierData(datas: MetricData[]) {
+  const m = datas[0]?.m;
+
+  return {
+    byId: m?.case === "supplierById" ? m.value.items : {},
+    byDay: m?.case === "supplierByDay" ? m.value.items : {},
+    summary: m?.case === "supplierSummary" ? m.value : undefined,
+  };
+}
+
+/** The headline — the same metric grouped by SUMMARY, over the same filters (the-headline-is-the-metric-grouped-by-summary). */
+async function headline(teamId: bigint, filters: Filter[]): Promise<SupplierFigures> {
+  const res = await supplierAnalyticClient.metricData({
+    teamId,
+    groupBy: GroupType.SUMMARY,
+    filters,
+    metricIds: [SUPPLIERS],
+  });
+
+  return figuresOf(supplierData(res.metricDatas).summary);
+}
+
+const groupOf: Record<PeriodGrain, GroupType> = {
+  day: GroupType.DAILY,
+  month: GroupType.MONTHLY,
+  year: GroupType.YEARLY,
 };
 
-const sortOf: Record<SupplierRankBy, AnalyticGroupSort> = {
-  value: AnalyticGroupSort.RESTOCK_VALUATION,
-  brokenRate: AnalyticGroupSort.BROKEN_RATE,
-};
+/** A bucket label — `2026-10-07`, `2026-10`, `2026` — as its first day, the key a period is filled by. */
+function firstDay(label: string, grain: PeriodGrain): string {
+  if (grain === "year") return `${label}-01-01`;
+  if (grain === "month") return `${label}-01`;
+
+  return label;
+}
 
 /**
  * Team id → name, best-effort: a name is a label, so a failed lookup leaves the rows standing with "Team #<id>" rather
@@ -118,8 +189,40 @@ async function teamNames(client: QueryClient, ids: bigint[]): Promise<Map<string
 }
 
 /**
- * One supplier's six figures over time — every period of the window, NEWEST first, the quiet ones included — and the
- * WHOLE window as one total, asked of the server rather than summed from the page on screen.
+ * The HEADLINE — the window's six figures as one total, asked of the server rather than summed from the page on screen:
+ * one supplier's (the Statistics tab) or every supplier's (the Supplier Report).
+ *
+ * Its own query, keyed WITHOUT the page: a page turn does not change it, and over a year it is a scan of the whole
+ * window (audits/services/supplier_service/performances/MetricData.md, finding 1).
+ */
+export function useSupplierHeadline(args: Window & { supplierId?: bigint }) {
+  const { teamId, from, to, valid, restockTeamId, supplierId = 0n } = args;
+
+  return useQuery({
+    ...listQuery,
+    queryKey: key.suppliers(teamId, {
+      figures: "headline",
+      supplierId: supplierId.toString(),
+      from,
+      to,
+      restockTeamId: restockTeamId.toString(),
+    }),
+    enabled: teamId !== undefined && valid,
+    queryFn: () => {
+      const filters = windowFilters(args);
+      if (supplierId !== 0n) filters.push(supplierFilter(supplierId));
+
+      return headline(teamId!, filters);
+    },
+  });
+}
+
+/**
+ * One supplier's six figures over time — every period of the window, NEWEST first, the quiet ones included. Its total
+ * is `useSupplierHeadline`.
+ *
+ * A time group needs no search: the periods are listed here, so a quiet one is a row too, and the page is a slice of
+ * that list (the-two-steps).
  */
 export function useSupplierFigureSeries(args: Window & Paged & { supplierId: bigint; grain: PeriodGrain }) {
   const { teamId, supplierId, from, to, valid, restockTeamId, grain, page, pageSize } = args;
@@ -138,22 +241,27 @@ export function useSupplierFigureSeries(args: Window & Paged & { supplierId: big
     }),
     enabled: teamId !== undefined && supplierId > 0n && valid,
     queryFn: async () => {
-      const res = await supplierAnalyticClient.analyticTimeSearch({
-        teamId: teamId!,
-        supplierId,
-        timeframe: timeframeOf[grain],
-        filter: { dateRange: { startDate: from, endDate: to }, restockTeamId },
-        sortType: CommonSortType.DESC,
-        page: { page, limit: pageSize },
-      });
+      const filters = [...windowFilters(args), supplierFilter(supplierId)];
+      const periods = bucketSpine(from, to, grain)
+        .map((label) => firstDay(label, grain))
+        .reverse();
+      const keys = periods.slice((page - 1) * pageSize, page * pageSize);
 
-      const points: SupplierFigurePoint[] = res.datas.map((d) => ({ at: d.at, figures: figuresOf(d.metric) }));
+      const filled =
+        keys.length === 0
+          ? undefined
+          : await supplierAnalyticClient.metricData({
+              teamId: teamId!,
+              groupBy: groupOf[grain],
+              filters,
+              keys: { k: { case: "days", value: { days: keys } } },
+              metricIds: [SUPPLIERS],
+            });
 
-      return {
-        points,
-        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
-        total: figuresOf(res.total),
-      };
+      const byDay = supplierData(filled?.metricDatas ?? []).byDay;
+      const points: SupplierFigurePoint[] = keys.map((at) => ({ at, figures: figuresOf(byDay[at]) }));
+
+      return { points, hasNext: page * pageSize < periods.length };
     },
   });
 }
@@ -176,63 +284,77 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
     }),
     enabled: teamId !== undefined && supplierId > 0n && valid,
     queryFn: async () => {
-      const res = await supplierAnalyticClient.analyticProductSearch({
+      const filters = [...windowFilters(args), supplierFilter(supplierId)];
+
+      const ranked = await supplierAnalyticClient.metricSearch({
         teamId: teamId!,
-        supplierId,
-        filter: { dateRange: { startDate: from, endDate: to }, restockTeamId },
-        page: { page, limit: pageSize },
+        groupBy: GroupType.PRODUCT,
+        filters,
+        sort: { metricId: SUPPLIERS, field: "restock_valuation", sortType: SortType.DESC },
+        page: { offset: (page - 1) * pageSize, limit: pageSize },
       });
 
-      const productIds = res.datas.map((d) => d.productId);
+      const productIds = idsOf(ranked.keys);
+      if (productIds.length === 0) return { rows: [] as SupplierProductRow[], hasNext: ranked.hasNext };
 
-      // The names are product_service's — any team's product, by id. A label, so a failure leaves the ids standing.
-      const products = new Map<string, { name: string; sku: string; thumbnailUrl: string }>();
-      if (productIds.length > 0) {
-        try {
-          const resolved = await productClient.productByIds({
-            teamId: teamId!,
-            filter: { ids: productIds },
-            dataRequest: productByIdsRowData(),
-          });
-          for (const p of productsFromByIds(resolved)) {
-            // The picture rides the same read — the thumbnail, or the full image when there is no thumbnail.
-            const thumbnailUrl = p.defaultImageThumbnailUrl || p.defaultImageUrl;
-            products.set(p.id.toString(), { name: p.name, sku: p.sku, thumbnailUrl });
-          }
-        } catch {
-          // Labels only.
+      const filled = await supplierAnalyticClient.metricData({
+        teamId: teamId!,
+        groupBy: GroupType.PRODUCT,
+        filters,
+        keys: idKeys(productIds),
+        metricIds: [SUPPLIERS],
+      });
+      const byId = supplierData(filled.metricDatas).byId;
+
+      // The names are product_service's — any team's product, by id — and so is the team: a product is ITS team's, the
+      // team that restocked it. A label, so a failure leaves the ids standing.
+      const products = new Map<string, { name: string; sku: string; thumbnailUrl: string; teamId: bigint }>();
+      try {
+        const resolved = await productClient.productByIds({
+          teamId: teamId!,
+          filter: { ids: productIds },
+          dataRequest: productByIdsRowData(),
+        });
+        for (const p of productsFromByIds(resolved)) {
+          // The picture rides the same read — the thumbnail, or the full image when there is no thumbnail.
+          const thumbnailUrl = p.defaultImageThumbnailUrl || p.defaultImageUrl;
+          products.set(p.id.toString(), { name: p.name, sku: p.sku, thumbnailUrl, teamId: p.teamId });
         }
+      } catch {
+        // Labels only.
       }
 
-      const teams = await teamNames(client, res.datas.map((d) => d.teamId));
+      const teams = await teamNames(client, [...products.values()].map((p) => p.teamId));
 
-      const rows: SupplierProductRow[] = res.datas.map((d) => {
-        const product = products.get(d.productId.toString());
+      const rows: SupplierProductRow[] = productIds.map((productId) => {
+        const product = products.get(productId.toString());
+        const owner = product?.teamId ?? 0n;
 
         return {
-          key: `${d.teamId}|${d.productId}`,
-          productId: d.productId,
+          key: `${owner}|${productId}`,
+          productId,
           name: product?.name ?? "",
           sku: product?.sku ?? "",
           thumbnailUrl: product?.thumbnailUrl ?? "",
-          team: { teamId: d.teamId, name: teams.get(d.teamId.toString()) ?? "" },
-          figures: figuresOf(d.metric),
+          team: { teamId: owner, name: teams.get(owner.toString()) ?? "" },
+          figures: figuresOf(byId[productId.toString()]),
         };
       });
 
-      return { rows, totalItems: Number(res.pageInfo?.totalItems ?? 0n) };
+      return { rows, hasNext: ranked.hasNext };
     },
   });
 }
 
 /**
- * Suppliers RANKED over the window — by restocked value, or by broken rate — and every ranked supplier together, the
- * report's headline. `q` finds suppliers as Discover does (the-supplier-report-searches-like-discover).
+ * Suppliers RANKED over the window — by restocked value, or by broken rate. No search
+ * (the-supplier-report-drops-its-search). The headline, every ranked supplier together, is `useSupplierHeadline`.
  *
- * Three reads: the ranking (ids), their figures, and their names — SupplierByIds, which names a DELETED supplier too.
+ * Three reads: the ranking (ids), then their figures and their names together — SupplierByIds, which names a DELETED
+ * supplier too.
  */
-export function useSupplierRanking(args: Window & Paged & { rankBy: SupplierRankBy; q: string }) {
-  const { teamId, from, to, valid, restockTeamId, rankBy, q, page, pageSize } = args;
+export function useSupplierRanking(args: Window & Paged & { rankBy: SupplierRankBy }) {
+  const { teamId, from, to, valid, restockTeamId, rankBy, page, pageSize } = args;
   const client = useQueryClient();
 
   return useQuery({
@@ -243,41 +365,43 @@ export function useSupplierRanking(args: Window & Paged & { rankBy: SupplierRank
       to,
       restockTeamId: restockTeamId.toString(),
       rankBy,
-      q,
       page,
       pageSize,
     }),
     enabled: teamId !== undefined && valid,
     queryFn: async () => {
-      const filter = { dateRange: { startDate: from, endDate: to }, restockTeamId, q };
+      const filters = windowFilters(args);
 
-      const ranked = await supplierAnalyticClient.analyticGroupSearch({
+      const ranked = await supplierAnalyticClient.metricSearch({
         teamId: teamId!,
-        filter,
-        sort: sortOf[rankBy],
-        page: { page, limit: pageSize },
+        groupBy: GroupType.SUPPLIER,
+        filters,
+        sort: { metricId: SUPPLIERS, field: rankField[rankBy], sortType: SortType.DESC },
+        page: { offset: (page - 1) * pageSize, limit: pageSize },
       });
 
-      const base = {
-        totalItems: Number(ranked.pageInfo?.totalItems ?? 0n),
-        total: figuresOf(ranked.total),
-        rateMinUnits: Number(ranked.rateMinUnits),
-      };
-
-      if (ranked.ids.length === 0) {
-        return { ...base, rows: [] as SupplierRankRow[] };
+      const ids = idsOf(ranked.keys);
+      if (ids.length === 0) {
+        return { rows: [] as SupplierRankRow[], hasNext: ranked.hasNext };
       }
 
-      const [metrics, suppliers] = await Promise.all([
-        supplierAnalyticClient.analyticGroupMetric({ teamId: teamId!, filter, ids: ranked.ids }),
+      const [filled, suppliers] = await Promise.all([
+        supplierAnalyticClient.metricData({
+          teamId: teamId!,
+          groupBy: GroupType.SUPPLIER,
+          filters,
+          keys: idKeys(ids),
+          metricIds: [SUPPLIERS],
+        }),
         supplierClient
-          .supplierByIds({ teamId: teamId!, filter: { ids: ranked.ids }, dataRequest: supplierByIdsRowData() })
+          .supplierByIds({ teamId: teamId!, filter: { ids }, dataRequest: supplierByIdsRowData() })
           .then(suppliersFromByIds),
       ]);
+      const byId = supplierData(filled.metricDatas).byId;
 
       const teams = await teamNames(client, [...suppliers.values()].map((s) => s.teamId));
 
-      const rows: SupplierRankRow[] = ranked.ids.map((id, i) => {
+      const rows: SupplierRankRow[] = ids.map((id, i) => {
         const supplier = suppliers.get(id.toString());
         const owner = supplier?.teamId ?? 0n;
 
@@ -290,11 +414,11 @@ export function useSupplierRanking(args: Window & Paged & { rankBy: SupplierRank
             teamName: teams.get(owner.toString()) ?? "",
             deleted: supplier?.deleted ?? false,
           },
-          figures: figuresOf(metrics.metrics[id.toString()]),
+          figures: figuresOf(byId[id.toString()]),
         };
       });
 
-      return { ...base, rows };
+      return { rows, hasNext: ranked.hasNext };
     },
   });
 }

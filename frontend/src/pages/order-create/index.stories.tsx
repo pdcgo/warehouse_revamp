@@ -9,7 +9,8 @@ import { bundleFixture } from "../../../.storybook/bundleFixtures";
 import { products, receiptLabel, receiptLabelFile, shops, users } from "../../../.storybook/fixtures";
 import { asTeam } from "../../../.storybook/pageStory";
 import { withProductState } from "../../../.storybook/productScenario";
-import { asRole } from "../../../.storybook/sessionScenario";
+import { asRole, receiptCheckScenario, withTakeRefusal } from "../../../.storybook/sessionScenario";
+import { OrderTransactionRefusalReason } from "../../gen/warehouse/inventory/v1/order_transaction_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { formatRupiah } from "../../lib/money";
 import { todayDateInput } from "../../lib/datetime";
@@ -115,6 +116,15 @@ async function pickOrderDate(canvasElement: HTMLElement) {
   const today = content.querySelector<HTMLElement>(`[data-part="table-cell-trigger"][data-value="${todayDateInput()}"]`);
   await userEvent.click(today!);
   await userEvent.keyboard("{Escape}");
+}
+
+// THE SELL PRICE — what the buyer paid on the storefront, required to place (platform-total-is-required-at-finalize).
+// Comfortably over what one Kopi costs us (18.500 + the 2.000 fee), so no margin warning stands between Create and
+// the order.
+async function fillSellPrice(canvasElement: HTMLElement, amount = "50000") {
+  const canvas = within(canvasElement);
+
+  await userEvent.type(canvas.getByTestId("order-marketplace-total"), amount, { delay: 10 });
 }
 
 // THE WAREHOUSE ARRIVES PRE-FILLED, from the team's configured default (#145) — and the picker is
@@ -245,6 +255,7 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
     // Product 71: 40 on the shelf against a quantity of 1, so nothing is short.
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
+    await fillSellPrice(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled());
@@ -253,6 +264,47 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
     await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
     // No discard dialog on the way out.
     await expect(screen.queryByTestId("confirm-action")).toBeNull();
+  },
+};
+
+// A TAKE THE WAREHOUSE REFUSES SAYS WHY (a-refusal-names-its-reason-and-every-line). The quote said the shelf had it;
+// by the time Create ran, another order had taken it — the quote is advisory and the take is the authority. The
+// server passes the take's refusal through (its code and its OrderTransactionRefusal detail), so the form names the
+// reason and the product by the name it was picked by — never "internal", and never a bare status code. Nothing
+// navigates: there is no order to go to.
+export const ARefusedTakeNamesItsReasonAndTheLine: Story = {
+  beforeEach: withTakeRefusal(OrderTransactionRefusalReason.NOT_ENOUGH_STOCK, [
+    { productId: products[0]!.id, wanted: 1n, available: 0n },
+  ]),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
+    await waitFor(() => expect(shop).toBeVisible());
+    await userEvent.click(shop);
+
+    await pickProduct(canvasElement, products[0]!.id);
+    await pickOrderDate(canvasElement);
+    await fillSellPrice(canvasElement);
+
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled());
+    await userEvent.click(create);
+
+    const refusal = await canvas.findByTestId("order-create-refusal");
+    await expect(refusal).toHaveAttribute("data-reason", "notEnoughStock");
+    await expect(refusal).toHaveTextContent("The warehouse does not hold enough for this order");
+    await expect(canvas.getByTestId(`order-create-refusal-line-${products[0]!.id}`)).toHaveTextContent(
+      `${products[0]!.name}: wants 1, the warehouse holds 0`,
+    );
+
+    // Not the generic line, and not a status code.
+    await expect(canvas.queryByTestId("order-create-error")).toBeNull();
+    await expect(refusal).not.toHaveTextContent(/internal|failed_precondition/i);
+    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
   },
 };
 
@@ -312,6 +364,31 @@ export const ALockedProductLeavesItsSlotEmpty: Story = {
     await expect(canvas.queryByTestId("slot-qty-73")).toBeNull();
     // The usable product still went in.
     await expect(canvas.getByTestId("slot-qty-74")).toBeInTheDocument();
+  },
+};
+
+// A BORROWED PRODUCT MAPPED BEFORE ARRIVES LOCKED (the-return-map-is-selling-services-and-read-by-ids). Toko Melati
+// mapped Toko Kenanga's Gula Pasir (73) to its own Beras (74) on an earlier order; Paket Hemat puts Gula on this one, and
+// ProductReturnMapByIds hands the pair back — named from the product read, locked, and saying where it came from.
+export const ABorrowedProductMappedBeforeArrivesLocked: Story = {
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_CS)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(within(await canvas.findByTestId("bundle-search")).getByRole("combobox"));
+    const hemat = await screen.findByTestId(`bundle-option-${HEMAT.id}`, {}, { timeout: 4000 });
+    await waitFor(() => expect(hemat).toBeVisible());
+    await userEvent.click(hemat);
+
+    const locked = await canvas.findByTestId("return-map-locked-73", {}, { timeout: 4000 });
+    await waitFor(() => expect(locked).toHaveTextContent("Beras Pandan Wangi 5kg"));
+    await expect(canvas.getByTestId("return-map-remembered-73")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("return-map-needs-73")).toBeNull();
+    // Its own Beras is not borrowed, so it has no row at all.
+    await expect(canvas.queryByTestId("return-map-74")).toBeNull();
   },
 };
 
@@ -399,6 +476,10 @@ export const AFileThatIsNotALabelSaysSo: Story = {
 };
 
 // A bulk print is read as NOTHING — never page 1, which would fill in another order's numbers.
+//
+// ⚠ The real ReceiptCheck does not answer `multipleLabels` yet: the reader's error for it is unexported, so a bulk print
+// comes back `unknownLabel` and says nothing (docs/services/shipment_service/rpc.md). This pins what the form does the
+// day it does.
 export const ABulkPrintFillsNothingAndSaysWhy: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -424,12 +505,39 @@ export const ALabelTheReaderDoesNotKnowSaysNothing: Story = {
   },
 };
 
+// TWO CHECKS ALREADY RUNNING IS "NO CHECK" (an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once). The server
+// refuses a third at once (ResourceExhausted), and the form treats the failed call exactly as no check at all: the
+// file stays attached, nothing fills, nothing is said — no notice and no error. The person types the numbers.
+export const ABusyCheckIsNoCheck: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const input = canvasElement.querySelector<HTMLInputElement>(
+      '[data-testid="order-receipt-upload"] input[type="file"]',
+    );
+    await expect(input).not.toBeNull();
+    await userEvent.upload(input as HTMLInputElement, receiptLabelFile("busy"), { applyAccept: false });
+
+    await canvas.findByTestId("order-receipt-attached");
+    // The check WAS asked, and refused — what makes "nothing appeared" an assertion rather than a race. A refusal
+    // leaves no mark on the card to wait for, so the page is given a moment to show anything it was going to.
+    await waitFor(() => expect(receiptCheckScenario.refused).toBe(1));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    await expect(canvas.getByTestId("order-create-receipt-card")).toHaveAttribute("data-scan-result", "none");
+    await expect(canvas.queryByTestId("order-create-scan-notice")).toBeNull();
+    await expect(canvas.queryByTestId("order-create-scan-filled")).toBeNull();
+    await expect(canvas.getByTestId("order-receipt-code")).toHaveValue("");
+    await expect(screen.queryByText("The receipt could not be uploaded")).toBeNull();
+    await expect(screen.queryByText(/label checks/i)).toBeNull();
+  },
+};
+
 // ── THE CHECKS AT CREATE (owner) ────────────────────────────────────────────────────────────────
 
-// ⚠ AN ERROR IS NOT AN "ARE YOU SURE". One number in both boxes is a transcription mistake every
-// time — the order it would place cannot be found again from either side — so the dialog offers a
-// way BACK and nothing else, and the RPC is never reached.
-export const TheSameNumberInBothBoxesRefusesToPlace: Story = {
+// THE SAME NUMBER IN BOTH BOXES IS ALLOWED (the-order-id-may-be-the-tracking-number): some marketplaces use the order
+// id AS the tracking number, so nothing compares the two, and the order is placed.
+export const TheSameNumberInBothBoxesPlaces: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -442,24 +550,30 @@ export const TheSameNumberInBothBoxesRefusesToPlace: Story = {
 
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
+    await fillSellPrice(canvasElement);
 
-    // The same reference typed into both — the case the rule exists for.
-    await userEvent.type(canvas.getByTestId("order-external-ref-id"), "JP2026081500471183", {
-      delay: 10,
-    });
-    await userEvent.type(canvas.getByTestId("order-receipt-code"), "JP2026081500471183", {
-      delay: 10,
-    });
+    // The same reference in both. PASTED, as a reference usually arrives: it is one change per box rather than
+    // eighteen re-renders of this whole form, which kept the story inside its timeout once the sell price joined the
+    // fields it fills.
+    await userEvent.click(canvas.getByTestId("order-external-ref-id"));
+    await userEvent.paste("JP2026081500471183");
+    await userEvent.click(canvas.getByTestId("order-receipt-code"));
+    await userEvent.paste("JP2026081500471183");
+    await waitFor(() => expect(canvas.getByTestId("order-receipt-code")).toHaveValue("JP2026081500471183"));
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled());
     await userEvent.click(create);
 
-    const dialog = await screen.findByTestId("order-checks-dialog");
-    await expect(within(dialog).getByTestId("order-check-refsIdentical")).toBeInTheDocument();
-    // No way through: the order was NOT placed and the form is still here.
-    await expect(within(dialog).queryByTestId("order-checks-place")).toBeNull();
-    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
+    // If anything else asks first (a thin margin), it is a WARNING with a way through. Nothing here is an error.
+    const dialog = await screen.findByTestId("order-checks-dialog").catch(() => null);
+    if (dialog) {
+      const place = within(dialog).getByTestId("order-checks-place");
+      await waitFor(() => expect(place).toBeVisible());
+      await userEvent.click(place);
+    }
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
   },
 };
 
@@ -497,25 +611,40 @@ export const AThinMarginAsksFirstAndThenPlaces: Story = {
 };
 
 // ⚠ THE WAREHOUSE LEADS THE FORM (owner). It is not a field of the order — it is what every figure
-// on the screen is measured against — so it sits in its own band above the cards, under the strip
-// that says what the screen cannot do yet. This pins the ORDER of those three, because the whole
-// point of the change is the reading order: what is unfinished → which building → the order itself.
-export const TheWarehouseLeadsTheFormUnderTheWarning: Story = {
+// on the screen is measured against — so it sits in its own band above the cards. This pins the ORDER,
+// because the whole point of the change is the reading order: which building → the order itself. (The strip
+// saying what the screen cannot do yet sat above the band — it is gone with the last entry it listed, and
+// `NothingOnTheFormIsMarkedNotImplemented` pins that.)
+export const TheWarehouseLeadsTheForm: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     const top = (el: HTMLElement) => el.getBoundingClientRect().top;
 
-    const warning = canvas.getByTestId("not-implemented-summary");
     const band = canvas.getByTestId("order-warehouse-band");
     const firstCard = canvas.getByTestId("order-create-receipt-preview");
 
-    await expect(top(warning)).toBeLessThan(top(band));
     await expect(top(band)).toBeLessThan(top(firstCard));
 
     // …and it left the Order Information card behind: the picker is in the band, nowhere else.
     await expect(canvas.getAllByTestId("order-warehouse")).toHaveLength(1);
     await expect(band).toContainElement(canvas.getByTestId("order-warehouse"));
+  },
+};
+
+// EVERY PART OF THE FORM IS WIRED (2026-10-23): the receipt file was the last, and ReceiptCheck is built
+// (the-receipt-check-prototype-is-accepted). So a new order carries no strip and no mark — a mark that comes back
+// is a part that stopped being real, and this fails the day it does. Even with a label read, the line that says the
+// boxes filled themselves carries no ⚠.
+export const NothingOnTheFormIsMarkedNotImplemented: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await attachReceipt(canvasElement, receiptLabelFile(), "read");
+    await expect(canvas.getByTestId("order-create-scan-filled")).toBeVisible();
+
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(canvas.queryAllByTestId(/^not-implemented-/)).toHaveLength(0);
   },
 };
 
@@ -549,6 +678,7 @@ export const AWarehouseWithNoRateRefusesTheOrder: Story = {
     await userEvent.click(shop);
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
+    await fillSellPrice(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled());
@@ -570,7 +700,8 @@ export const AWarehouseWithNoRateRefusesTheOrder: Story = {
 };
 
 // THE MARKETPLACE'S ORDER DATE IS REQUIRED TO PLACE (platform-created-at-is-required-at-finalize): an order complete in
-// every other way keeps Create off until it is set, and the field carries the red asterisk that says why.
+// every other way keeps Create off until it is set, and the field carries the red asterisk that says why. The buyer's
+// username, left empty, holds nothing (the-buyers-username-is-optional).
 export const TheMarketplaceOrderDateIsRequiredToPlace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -581,6 +712,7 @@ export const TheMarketplaceOrderDateIsRequiredToPlace: Story = {
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
     await pickProduct(canvasElement, products[0]!.id);
+    await fillSellPrice(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
@@ -588,5 +720,145 @@ export const TheMarketplaceOrderDateIsRequiredToPlace: Story = {
 
     await pickOrderDate(canvasElement);
     await waitFor(() => expect(create).toBeEnabled());
+    await expect(canvas.getByTestId("order-create-buyer-username")).toHaveValue("");
+  },
+};
+
+// THE SELL PRICE IS REQUIRED TO PLACE (platform-total-is-required-at-finalize) — settlement opens the order's account
+// on what the buyer paid, so an order complete in every other way keeps Create off until it is filled, and the field
+// carries the red asterisk that says why.
+export const CreateStaysOffUntilTheSellPriceIsFilled: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
+    await waitFor(() => expect(shop).toBeVisible());
+    await userEvent.click(shop);
+    await pickProduct(canvasElement, products[0]!.id);
+    await pickOrderDate(canvasElement);
+
+    const create = canvas.getByTestId("order-create-save");
+    const sell = canvas.getByTestId("order-marketplace-total");
+    await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
+    await expect(create).toBeDisabled();
+    // A required field, as the order date is — the label carries the red asterisk.
+    await expect(sell).toBeRequired();
+
+    await fillSellPrice(canvasElement);
+    await waitFor(() => expect(create).toBeEnabled());
+
+    // Emptied again, it holds Create again.
+    await userEvent.clear(sell);
+    await waitFor(() => expect(create).toBeDisabled());
+  },
+};
+
+// ── THE DEBT LIMITS (the-debtor-sees-the-limits-set-on-it) ──────────────────────────────────────────────────────────
+
+// EACH CREDITOR'S OWN LIMIT ON THIS TEAM, and the debt already carried — read by LiabilityCreditByIds, the same
+// reading the create's check makes. Toko Melati ships from Gudang Pusat, which set it a 10.000.000 limit and is owed
+// 8.700.000: 87%, so the row is marked NEAR beside the name. The panel's ⚠ mark is gone with the samples it flagged.
+export const TheDebtLimitsAreEachCreditorsOwn: Story = {
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const meter = await canvas.findByTestId("credit-meter-11", {}, { timeout: 4000 });
+    await expect(meter).toHaveTextContent(`${formatRupiah(8_700_000n)} of ${formatRupiah(10_000_000n)}`);
+    await expect(canvas.getByTestId("credit-meter-11-pct")).toHaveTextContent("87%");
+    await expect(canvas.getByTestId("credit-warn-11")).toBeInTheDocument();
+
+    await expect(canvas.queryByTestId("not-implemented-creditLimit")).toBeNull();
+    await expect(canvas.queryByTestId("pending-row-creditLimit")).toBeNull();
+  },
+};
+
+// ── THE INVOICE (the-cross-markup-belongs-to-the-product) ───────────────────────────────────────────────────────────
+
+// EACH LINE IS CHARGED AT ITS PRODUCT'S OWN MARKUP. Toko Melati selling Gudang Pusat's Kopi: an HPP of 18.500 at the
+// Kopi's own 10% is 20.350 owed to Gudang Pusat — read off the product, never a figure per team.
+export const TheInvoiceChargesTheProductsOwnMarkup: Story = {
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Gudang Pusat's Kopi is on Melati's OTHER tab — it is not Melati's own catalogue.
+    await waitFor(() => expect(canvas.getByTestId("order-create-add-line")).toBeEnabled());
+    await userEvent.click(canvas.getByTestId("order-create-add-line"));
+    await userEvent.click(await screen.findByTestId("product-picker-tab-other"));
+
+    const option = await screen.findByTestId(`product-picker-option-${products[0]!.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await userEvent.click(await screen.findByTestId("product-picker-confirm"));
+
+    const row = await canvas.findByTestId("invoice-row-product-11");
+    await waitFor(() => expect(row).toHaveTextContent(formatRupiah(20_350n)));
+    await expect(row).toHaveTextContent(`${formatRupiah(18_500n)} at cost · 10.00% markup`);
+  },
+};
+
+// ── WHAT LEAVES THE SHELF (an-order-is-costed-at-what-leaves-the-shelf) ─────────────────────────────────────────────
+
+// Sets the quantity of the line at `index`, the way a person types it.
+async function typeQuantity(canvasElement: HTMLElement, index: number, quantity: string) {
+  const canvas = within(canvasElement);
+
+  await waitFor(() => expect(canvas.getByTestId(`order-line-qty-${index}`)).toBeInTheDocument());
+
+  const qty = canvas.getByTestId(`order-line-qty-${index}`);
+  await userEvent.clear(qty);
+  await userEvent.type(qty, quantity, { delay: 40 });
+}
+
+// A LINE IS COSTED AT THE BATCHES THE TAKE WOULD DRAW. Teh arrived twice — 1 at 8.000, then 2 at 9.500 — so one Teh
+// costs 8.000, and two cost 1 × 8.000 + 1 × 9.500 = 17.500: the HPP reads 8.750 with the split under it, never the
+// shelf's 9.000 average. Asked again of the warehouse as the quantity settles (StockTakeQuote).
+export const ALineSpanningTwoBatchesShowsTheSplit: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await pickProduct(canvasElement, products[1]!.id);
+    await waitFor(() => expect(canvas.getByTestId("order-line-hpp-0")).toHaveTextContent(formatRupiah(8_000n)));
+    await expect(canvas.queryByTestId("order-line-hpp-split-0")).toBeNull();
+
+    await typeQuantity(canvasElement, 0, "2");
+
+    await waitFor(() =>
+      expect(canvas.getByTestId("order-line-hpp-split-0")).toHaveTextContent(
+        `1 × ${formatRupiah(8_000n)} + 1 × ${formatRupiah(9_500n)}`,
+      ),
+    );
+    await expect(canvas.getByTestId("order-line-hpp-0")).toHaveTextContent(formatRupiah(8_750n));
+    await expect(canvas.getByTestId("order-line-total-0")).toHaveTextContent(formatRupiah(17_500n));
+    await expect(canvas.getByTestId("order-create-products-total")).toHaveTextContent(formatRupiah(17_500n));
+  },
+};
+
+// THE INVOICE CHARGES THE DRAW. Toko Melati selling two of Gudang Pusat's Teh owes Gudang Pusat what those two units
+// cost when they leave the shelf — 17.500, the January unit and a March one — and nothing the average would make
+// of them (18.000). Teh carries no markup, so the row is the goods alone.
+export const TheInvoiceChargesWhatTheTakeWouldDraw: Story = {
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Gudang Pusat's Teh is on Melati's OTHER tab.
+    await waitFor(() => expect(canvas.getByTestId("order-create-add-line")).toBeEnabled());
+    await userEvent.click(canvas.getByTestId("order-create-add-line"));
+    await userEvent.click(await screen.findByTestId("product-picker-tab-other"));
+
+    const option = await screen.findByTestId(`product-picker-option-${products[1]!.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await userEvent.click(await screen.findByTestId("product-picker-confirm"));
+
+    await typeQuantity(canvasElement, 0, "2");
+
+    const row = await canvas.findByTestId("invoice-row-product-11");
+    await waitFor(() => expect(row).toHaveTextContent(formatRupiah(17_500n)));
+    await expect(row).not.toHaveTextContent(formatRupiah(18_000n));
   },
 };

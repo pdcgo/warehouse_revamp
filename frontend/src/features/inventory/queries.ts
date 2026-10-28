@@ -45,6 +45,8 @@ import type {
   StockBatch,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import type { Costs } from "../orders/lines";
+import { useDebounced } from "../../lib/useDebounced";
 
 // The inventory screens' reads (#176).
 
@@ -309,8 +311,9 @@ export function useProductPlaces(args: { warehouseId: bigint | undefined; produc
   });
 }
 
-// How many of each product a pick from THIS warehouse would find right now — what the order form
-// shows beside each line before it promises goods to a buyer.
+// How many of each product a pick from THIS warehouse would find right now — what the transfer form
+// shows beside each line. (The order form and the draft page read `useStockTakeQuote` below instead: one
+// answer for the stock AND the cost of what the take would draw, an-order-is-costed-at-what-leaves-the-shelf.)
 //
 // ⚠ `StockAvailability`, deliberately NOT `OwnerStockByIds`. The owner figure derives ownership from
 // the restock a unit arrived on, so stock that reached a shelf any other way (a direct receive, an
@@ -388,36 +391,90 @@ export function useAvailabilityByWarehouse(args: {
   });
 }
 
-// The HPP — what each product COST at a warehouse — for a whole set of products at once.
+/** The order form's draw, and the warehouse it was asked of — a previous answer is never another building's. */
+export interface TakeQuote {
+  warehouseId: bigint;
+  costs: Costs;
+}
+
+// StockTakeQuote takes at most this many lines; a longer form is asked in pieces, each product in exactly one.
+const QUOTE_LINES_MAX = 100;
+
+// How long a quantity must sit still before it is priced. A person typing "12" passes through "1" — one ask, not two.
+const QUOTE_SETTLE_MS = 300;
+
+// WHAT THE ORDER ON SCREEN WOULD DRAW, line by line (an-order-is-costed-at-what-leaves-the-shelf): each product's
+// cost as the take would draw it — the owner's batches oldest first — the batches behind it, and what the warehouse
+// holds for it. The take's own selection, read-only, so the form's line costs, invoice, margin and warehouse fee are
+// the figures the order will freeze, unless another order takes the same units first. The shelf's AVERAGE
+// (`StockCost`) is never an order's cost any more; it values the stock that stays.
 //
-// The same read `OrderCreate` uses to freeze `unit_cost` on every line (#74), so what the order form
-// shows before placing is what the order records after. A separate hook from `useStockAvailability`
-// rather than one call returning both: they answer different questions and fail independently, and a
-// cost read failing must not blank the stock figures beside it.
+// ONE PRODUCT, ONE ASK: the take wants each product once, so lines of the same product (by hand and inside a bundle,
+// or two draft rows mapped to it) are asked for as their sum — `lineTotal` then gives each line its share.
 //
-// ⚠ A cost of 0 means UNKNOWN — the warehouse has no restock history for that product — never "free".
-// Callers must show it as unknown rather than as a price, or an order books goods as if they cost
-// nothing.
-export function useStockCosts(args: {
+// KEYED ON THE QUANTITIES, SETTLED FIRST. A changed quantity is a different draw, so it is a different question; it is
+// asked once the typing pauses (`useDebounced`, the app's one delay), not per keystroke.
+//
+// ⚠ NOT `listQuery`, NOT PLAIN: the fee quote's own rule. While a new quantity is being priced the PREVIOUS draw stays
+// on screen — the same question asked of a new basis, so the lines do not blank under the person typing — but never
+// across warehouses, where the previous figures would be another building's. The caller marks the kept answer busy.
+//
+// UNKNOWN is not zero: no warehouse, still loading or failed leaves `data` undefined, and a product the answer does
+// not name was not asked about yet. Neither is ever drawn as a confident Rp 0.
+export function useStockTakeQuote(args: {
   teamId: bigint | undefined;
   warehouseId: bigint;
-  productIds: bigint[];
+  lines: { productId: bigint; quantity: string }[];
 }) {
-  const { teamId, warehouseId, productIds } = args;
+  const { teamId, warehouseId } = args;
 
-  const ids = Array.from(new Set(productIds.filter((id) => id > 0n).map((id) => id.toString()))).sort();
+  const merged = new Map<string, number>();
+  for (const line of args.lines) {
+    const qty = Number(line.quantity);
+    if (line.productId <= 0n || !Number.isInteger(qty) || qty < 1) continue;
+
+    const id = line.productId.toString();
+    merged.set(id, (merged.get(id) ?? 0) + qty);
+  }
+
+  // The question as a string, sorted: the same lines in another order are the same draw.
+  const asked = [...merged.entries()]
+    .sort(([a], [b]) => (BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0))
+    .map(([id, qty]) => `${id}x${qty}`)
+    .join(",");
+  const settled = useDebounced(asked, QUOTE_SETTLE_MS);
 
   return useQuery({
-    queryKey: key.inventory(teamId, { costs: warehouseId.toString(), ids }),
-    enabled: teamId !== undefined && warehouseId > 0n && ids.length > 0,
-    queryFn: async () => {
-      const res = await inventoryClient.stockCost({
-        teamId: teamId!,
-        filter: { warehouseId, ids: ids.map((id) => BigInt(id)) },
-        dataRequest: stockCostRowData(),
+    queryKey: key.inventory(teamId, { takeQuote: warehouseId.toString(), lines: settled }),
+    enabled: teamId !== undefined && warehouseId > 0n && settled !== "",
+    placeholderData: (previous: TakeQuote | undefined) =>
+      previous?.warehouseId === warehouseId ? previous : undefined,
+    queryFn: async (): Promise<TakeQuote> => {
+      const lines = settled.split(",").map((part) => {
+        const [id, qty] = part.split("x");
+        return { productId: BigInt(id!), quantity: BigInt(qty!) };
       });
 
-      return new Map(stockCostLines(res).map((line) => [line.productId.toString(), line.unitCost]));
+      const pieces: (typeof lines)[] = [];
+      for (let i = 0; i < lines.length; i += QUOTE_LINES_MAX) pieces.push(lines.slice(i, i + QUOTE_LINES_MAX));
+
+      const answers = await Promise.all(
+        pieces.map((piece) => inventoryClient.stockTakeQuote({ teamId: teamId!, warehouseId, lines: piece })),
+      );
+
+      const costs: Costs = new Map();
+
+      for (const item of answers.flatMap((answer) => answer.items)) {
+        costs.set(item.productId.toString(), {
+          quantity: item.quantity,
+          available: item.available,
+          total: item.totalCost,
+          unitCost: item.unitCost,
+          batches: item.batches.map((b) => ({ quantity: b.quantity, unitCost: b.unitCost })),
+        });
+      }
+
+      return { warehouseId, costs };
     },
   });
 }

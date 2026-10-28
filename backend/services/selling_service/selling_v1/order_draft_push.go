@@ -3,6 +3,7 @@ package selling_v1
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -124,6 +125,8 @@ func createDraft(
 		WarehouseID:   msg.GetWarehouseId(),
 		CustomerName:  msg.GetCustomerName(),
 		CustomerPhone: msg.GetCustomerPhone(),
+		// Trimmed: spaces alone are no username (the-buyers-username-is-optional).
+		BuyerUsername: strings.TrimSpace(msg.GetBuyerUsername()),
 		ProvinsiCode:  address.GetProvinsiCode(),
 		ProvinsiName:  address.GetProvinsiName(),
 		KabupatenCode: address.GetKabupatenCode(),
@@ -135,7 +138,9 @@ func createDraft(
 		KodePos:       address.GetKodePos(),
 		AddressLine:   address.GetAddressLine(),
 		ShippingCode:  msg.GetShippingCode(),
-		ShippingCost:  msg.GetShippingCost(),
+		// What the buyer paid, as the app read it; 0 = it could not see one (platform-total-is-required-at-finalize
+		// checks it at Promote, never here).
+		PlatformTotal: msg.GetPlatformTotal(),
 		// As the app read them off the storefront; 0 = it could not see one.
 		PlatformCreatedAt:        timeOrNil(msg.GetPlatformCreatedAtUnix()),
 		PlatformShipmentDeadline: timeOrNil(msg.GetPlatformShipmentDeadlineUnix()),
@@ -184,6 +189,11 @@ func mergeDraft(
 		draft.CustomerPhone = msg.GetCustomerPhone()
 	}
 
+	if !touched[draftFieldBuyerUsername] {
+		draft.BuyerUsername = strings.TrimSpace(msg.GetBuyerUsername())
+		updates["buyer_username"] = draft.BuyerUsername
+	}
+
 	// The address is ONE field for this purpose, not ten. Somebody who corrects a kecamatan has
 	// corrected the address — letting a re-scrape rewrite the other nine columns around their fix
 	// would leave a hybrid address that was never true anywhere.
@@ -218,9 +228,10 @@ func mergeDraft(
 		draft.ShippingCode = msg.GetShippingCode()
 	}
 
-	if !touched[draftFieldShippingCost] {
-		updates["shipping_cost"] = msg.GetShippingCost()
-		draft.ShippingCost = msg.GetShippingCost()
+	// What the buyer paid — the app's latest reading, unless a person has typed one.
+	if !touched[draftFieldPlatformTotal] {
+		updates["platform_total"] = msg.GetPlatformTotal()
+		draft.PlatformTotal = msg.GetPlatformTotal()
 	}
 
 	// The platform's dates follow the same rule: the app's latest reading, unless a person has corrected one.

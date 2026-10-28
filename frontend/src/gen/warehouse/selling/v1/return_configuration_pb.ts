@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/return_configuration.proto.
  */
 export const file_warehouse_selling_v1_return_configuration: GenFile = /*@__PURE__*/
-  fileDesc("Ci93YXJlaG91c2Uvc2VsbGluZy92MS9yZXR1cm5fY29uZmlndXJhdGlvbi5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEiWQoXVGVhbVJldHVybkNvbmZpZ3VyYXRpb24SDwoHdGVhbV9pZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSFwoPdXBkYXRlZF9hdF91bml4GAMgASgDIlEKJFRlYW1SZXR1cm5Db25maWd1cmF0aW9uRGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYAToLkrUYBwoFAQIDBAUibQolVGVhbVJldHVybkNvbmZpZ3VyYXRpb25EZXRhaWxSZXNwb25zZRJECg1jb25maWd1cmF0aW9uGAEgASgLMi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb24ibAohVGVhbVJldHVybkNvbmZpZ3VyYXRpb25TZXRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJqCiJUZWFtUmV0dXJuQ29uZmlndXJhdGlvblNldFJlc3BvbnNlEkQKDWNvbmZpZ3VyYXRpb24YASABKAsyLS53YXJlaG91c2Uuc2VsbGluZy52MS5UZWFtUmV0dXJuQ29uZmlndXJhdGlvbiLTAQojVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkc1JlcXVlc3QSUAoGZmlsdGVyGAEgASgLMjgud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkc0ZpbHRlckIGukgDyAEBElAKDGRhdGFfcmVxdWVzdBgCIAMoDjI6LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNEYXRhVHlwZToIkrUYBAoCAQIiRgoiVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkc0ZpbHRlchIgCgNpZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAi1AEKHlRlYW1SZXR1cm5Db25maWd1cmF0aW9uTWFwSXRlbRJTCghtYXBfZGF0YRgBIAMoCzJBLndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uTWFwSXRlbS5NYXBEYXRhRW50cnkaXQoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI8CgV2YWx1ZRgCIAEoCzItLndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uOgI4ASJ+CihUZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzUmVzcG9uc2VJdGVtEk0KDWNvbmZpZ3VyYXRpb24YASABKAsyNC53YXJlaG91c2Uuc2VsbGluZy52MS5UZWFtUmV0dXJuQ29uZmlndXJhdGlvbk1hcEl0ZW1IAEIDCgFkInkKKFRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNSZXNwb25zZUxpc3QSTQoFaXRlbXMYASADKAsyPi53YXJlaG91c2Uuc2VsbGluZy52MS5UZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzUmVzcG9uc2VJdGVtIuoBCiRUZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzUmVzcG9uc2USVAoFaXRlbXMYASADKAsyRS53YXJlaG91c2Uuc2VsbGluZy52MS5UZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzUmVzcG9uc2UuSXRlbXNFbnRyeRpsCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBJNCgV2YWx1ZRgCIAEoCzI+LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNSZXNwb25zZUxpc3Q6AjgBKqABCiRUZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzRGF0YVR5cGUSOgo2VEVBTV9SRVRVUk5fQ09ORklHVVJBVElPTl9CWV9JRFNfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASPAo4VEVBTV9SRVRVUk5fQ09ORklHVVJBVElPTl9CWV9JRFNfREFUQV9UWVBFX0NPTkZJR1VSQVRJT04QATLlAwoeVGVhbVJldHVybkNvbmZpZ3VyYXRpb25TZXJ2aWNlEpgBCh1UZWFtUmV0dXJuQ29uZmlndXJhdGlvbkRldGFpbBI6LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uRGV0YWlsUmVxdWVzdBo7LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uRGV0YWlsUmVzcG9uc2USjwEKGlRlYW1SZXR1cm5Db25maWd1cmF0aW9uU2V0Ejcud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb25TZXRSZXF1ZXN0Gjgud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb25TZXRSZXNwb25zZRKVAQocVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkcxI5LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNSZXF1ZXN0Gjoud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkc1Jlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_role_base_v1_role]);
+  fileDesc("Ci93YXJlaG91c2Uvc2VsbGluZy92MS9yZXR1cm5fY29uZmlndXJhdGlvbi5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEiWQoXVGVhbVJldHVybkNvbmZpZ3VyYXRpb24SDwoHdGVhbV9pZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSFwoPdXBkYXRlZF9hdF91bml4GAMgASgDIlEKJFRlYW1SZXR1cm5Db25maWd1cmF0aW9uRGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYAToLkrUYBwoFAQIDBAUibQolVGVhbVJldHVybkNvbmZpZ3VyYXRpb25EZXRhaWxSZXNwb25zZRJECg1jb25maWd1cmF0aW9uGAEgASgLMi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb24ibAohVGVhbVJldHVybkNvbmZpZ3VyYXRpb25TZXRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJqCiJUZWFtUmV0dXJuQ29uZmlndXJhdGlvblNldFJlc3BvbnNlEkQKDWNvbmZpZ3VyYXRpb24YASABKAsyLS53YXJlaG91c2Uuc2VsbGluZy52MS5UZWFtUmV0dXJuQ29uZmlndXJhdGlvbiLTAQojVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkc1JlcXVlc3QSUAoGZmlsdGVyGAEgASgLMjgud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkc0ZpbHRlckIGukgDyAEBElAKDGRhdGFfcmVxdWVzdBgCIAMoDjI6LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNEYXRhVHlwZToIkrUYBAoCAQIiRgoiVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkc0ZpbHRlchIgCgNpZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAi1AEKHlRlYW1SZXR1cm5Db25maWd1cmF0aW9uTWFwSXRlbRJTCghtYXBfZGF0YRgBIAMoCzJBLndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uTWFwSXRlbS5NYXBEYXRhRW50cnkaXQoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI8CgV2YWx1ZRgCIAEoCzItLndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uOgI4ASJ+CihUZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzUmVzcG9uc2VJdGVtEk0KDWNvbmZpZ3VyYXRpb24YASABKAsyNC53YXJlaG91c2Uuc2VsbGluZy52MS5UZWFtUmV0dXJuQ29uZmlndXJhdGlvbk1hcEl0ZW1IAEIDCgFkInkKKFRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNSZXNwb25zZUxpc3QSTQoFaXRlbXMYASADKAsyPi53YXJlaG91c2Uuc2VsbGluZy52MS5UZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzUmVzcG9uc2VJdGVtIuoBCiRUZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzUmVzcG9uc2USVAoFaXRlbXMYASADKAsyRS53YXJlaG91c2Uuc2VsbGluZy52MS5UZWFtUmV0dXJuQ29uZmlndXJhdGlvbkJ5SWRzUmVzcG9uc2UuSXRlbXNFbnRyeRpsCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBJNCgV2YWx1ZRgCIAEoCzI+LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNSZXNwb25zZUxpc3Q6AjgBIm8KEFByb2R1Y3RSZXR1cm5NYXASDwoHdGVhbV9pZBgBIAEoBBIZChFzaGFyZWRfcHJvZHVjdF9pZBgCIAEoBBIWCg5vd25fcHJvZHVjdF9pZBgDIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYBCABKAMijwEKHVByb2R1Y3RSZXR1cm5NYXBDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEiIKEXNoYXJlZF9wcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEh8KDm93bl9wcm9kdWN0X2lkGAMgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJmCh5Qcm9kdWN0UmV0dXJuTWFwQ3JlYXRlUmVzcG9uc2USMwoDbWFwGAEgASgLMiYud2FyZWhvdXNlLnNlbGxpbmcudjEuUHJvZHVjdFJldHVybk1hcBIPCgdjcmVhdGVkGAIgASgIIt8BChxQcm9kdWN0UmV0dXJuTWFwQnlJZHNSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkkKBmZpbHRlchgCIAEoCzIxLndhcmVob3VzZS5zZWxsaW5nLnYxLlByb2R1Y3RSZXR1cm5NYXBCeUlkc0ZpbHRlckIGukgDyAEBEkkKDGRhdGFfcmVxdWVzdBgDIAMoDjIzLndhcmVob3VzZS5zZWxsaW5nLnYxLlByb2R1Y3RSZXR1cm5NYXBCeUlkc0RhdGFUeXBlOguStRgHCgUBAgMEBSI+ChtQcm9kdWN0UmV0dXJuTWFwQnlJZHNGaWx0ZXISHwoDaWRzGAEgAygEQhK6SA+SAQwIARBkGAEiBDICIAAiwQEKGFByb2R1Y3RSZXR1cm5NYXBQYWlySXRlbRJNCghtYXBfZGF0YRgBIAMoCzI7LndhcmVob3VzZS5zZWxsaW5nLnYxLlByb2R1Y3RSZXR1cm5NYXBQYWlySXRlbS5NYXBEYXRhRW50cnkaVgoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI1CgV2YWx1ZRgCIAEoCzImLndhcmVob3VzZS5zZWxsaW5nLnYxLlByb2R1Y3RSZXR1cm5NYXA6AjgBImgKIVByb2R1Y3RSZXR1cm5NYXBCeUlkc1Jlc3BvbnNlSXRlbRI+CgRwYWlyGAEgASgLMi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuUHJvZHVjdFJldHVybk1hcFBhaXJJdGVtSABCAwoBZCJrCiFQcm9kdWN0UmV0dXJuTWFwQnlJZHNSZXNwb25zZUxpc3QSRgoFaXRlbXMYASADKAsyNy53YXJlaG91c2Uuc2VsbGluZy52MS5Qcm9kdWN0UmV0dXJuTWFwQnlJZHNSZXNwb25zZUl0ZW0i1QEKHVByb2R1Y3RSZXR1cm5NYXBCeUlkc1Jlc3BvbnNlEk0KBWl0ZW1zGAEgAygLMj4ud2FyZWhvdXNlLnNlbGxpbmcudjEuUHJvZHVjdFJldHVybk1hcEJ5SWRzUmVzcG9uc2UuSXRlbXNFbnRyeRplCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBJGCgV2YWx1ZRgCIAEoCzI3LndhcmVob3VzZS5zZWxsaW5nLnYxLlByb2R1Y3RSZXR1cm5NYXBCeUlkc1Jlc3BvbnNlTGlzdDoCOAEqoAEKJFRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNEYXRhVHlwZRI6CjZURUFNX1JFVFVSTl9DT05GSUdVUkFUSU9OX0JZX0lEU19EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABI8CjhURUFNX1JFVFVSTl9DT05GSUdVUkFUSU9OX0JZX0lEU19EQVRBX1RZUEVfQ09ORklHVVJBVElPThABKoIBCh1Qcm9kdWN0UmV0dXJuTWFwQnlJZHNEYXRhVHlwZRIzCi9QUk9EVUNUX1JFVFVSTl9NQVBfQllfSURTX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiwKKFBST0RVQ1RfUkVUVVJOX01BUF9CWV9JRFNfREFUQV9UWVBFX1BBSVIQATLuBQoeVGVhbVJldHVybkNvbmZpZ3VyYXRpb25TZXJ2aWNlEpgBCh1UZWFtUmV0dXJuQ29uZmlndXJhdGlvbkRldGFpbBI6LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uRGV0YWlsUmVxdWVzdBo7LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uRGV0YWlsUmVzcG9uc2USjwEKGlRlYW1SZXR1cm5Db25maWd1cmF0aW9uU2V0Ejcud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb25TZXRSZXF1ZXN0Gjgud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb25TZXRSZXNwb25zZRKVAQocVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkcxI5LndhcmVob3VzZS5zZWxsaW5nLnYxLlRlYW1SZXR1cm5Db25maWd1cmF0aW9uQnlJZHNSZXF1ZXN0Gjoud2FyZWhvdXNlLnNlbGxpbmcudjEuVGVhbVJldHVybkNvbmZpZ3VyYXRpb25CeUlkc1Jlc3BvbnNlEoMBChZQcm9kdWN0UmV0dXJuTWFwQ3JlYXRlEjMud2FyZWhvdXNlLnNlbGxpbmcudjEuUHJvZHVjdFJldHVybk1hcENyZWF0ZVJlcXVlc3QaNC53YXJlaG91c2Uuc2VsbGluZy52MS5Qcm9kdWN0UmV0dXJuTWFwQ3JlYXRlUmVzcG9uc2USgAEKFVByb2R1Y3RSZXR1cm5NYXBCeUlkcxIyLndhcmVob3VzZS5zZWxsaW5nLnYxLlByb2R1Y3RSZXR1cm5NYXBCeUlkc1JlcXVlc3QaMy53YXJlaG91c2Uuc2VsbGluZy52MS5Qcm9kdWN0UmV0dXJuTWFwQnlJZHNSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_role_base_v1_role]);
 
 /**
  * One team's return warehouse.
@@ -256,6 +256,245 @@ export const TeamReturnConfigurationByIdsResponseSchema: GenMessage<TeamReturnCo
   messageDesc(file_warehouse_selling_v1_return_configuration, 10);
 
 /**
+ * One of the team's return maps: a BORROWED product — another team's, sold by this one — and the team's OWN product a
+ * return of it comes back as (a-return-never-clones-a-product). Written once and never re-pointed
+ * (a-return-map-is-written-once): units already on a shelf went there under it.
+ *
+ * @generated from message warehouse.selling.v1.ProductReturnMap
+ */
+export type ProductReturnMap = Message<"warehouse.selling.v1.ProductReturnMap"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The borrowed product — owned by another team.
+   *
+   * @generated from field: uint64 shared_product_id = 2;
+   */
+  sharedProductId: bigint;
+
+  /**
+   * The team's own product a return of it becomes.
+   *
+   * @generated from field: uint64 own_product_id = 3;
+   */
+  ownProductId: bigint;
+
+  /**
+   * When the pair was written. Nothing updates a row, so it is also when it last changed.
+   *
+   * @generated from field: int64 created_at_unix = 4;
+   */
+  createdAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMap.
+ * Use `create(ProductReturnMapSchema)` to create a new message.
+ */
+export const ProductReturnMapSchema: GenMessage<ProductReturnMap> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 11);
+
+/**
+ * Map a borrowed product for returns — at the confirmed pick on the order form, its own call and never part of
+ * OrderCreate (the-map-is-written-when-it-is-picked).
+ *
+ * WRITTEN ONCE. When the team already maps this borrowed product, nothing is overwritten: the pair that stands comes
+ * back with `created = false`, and it may name a different own product from the one asked for — two people mapping
+ * the same product at the same second leave the first one's pair (the-map-is-unique-on-its-source).
+ *
+ * @generated from message warehouse.selling.v1.ProductReturnMapCreateRequest
+ */
+export type ProductReturnMapCreateRequest = Message<"warehouse.selling.v1.ProductReturnMapCreateRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * Another team's product. Refused when it is this team's own — an own line never touches the map
+   * (an-own-line-never-touches-the-map) — or when no such product exists.
+   *
+   * @generated from field: uint64 shared_product_id = 2;
+   */
+  sharedProductId: bigint;
+
+  /**
+   * This team's product. Refused when it is not — a return never lands on somebody else's product.
+   *
+   * @generated from field: uint64 own_product_id = 3;
+   */
+  ownProductId: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMapCreateRequest.
+ * Use `create(ProductReturnMapCreateRequestSchema)` to create a new message.
+ */
+export const ProductReturnMapCreateRequestSchema: GenMessage<ProductReturnMapCreateRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 12);
+
+/**
+ * @generated from message warehouse.selling.v1.ProductReturnMapCreateResponse
+ */
+export type ProductReturnMapCreateResponse = Message<"warehouse.selling.v1.ProductReturnMapCreateResponse"> & {
+  /**
+   * The pair that STANDS — this call's, or the one already written.
+   *
+   * @generated from field: warehouse.selling.v1.ProductReturnMap map = 1;
+   */
+  map?: ProductReturnMap | undefined;
+
+  /**
+   * False when the pair already existed and was left as it was.
+   *
+   * @generated from field: bool created = 2;
+   */
+  created: boolean;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMapCreateResponse.
+ * Use `create(ProductReturnMapCreateResponseSchema)` to create a new message.
+ */
+export const ProductReturnMapCreateResponseSchema: GenMessage<ProductReturnMapCreateResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 13);
+
+/**
+ * The team's maps for these borrowed products — the order form pre-fills and locks a row already mapped. The ids are
+ * BORROWED (shared) product ids. A product the team has not mapped is ABSENT from the answer, and that absence is the
+ * row the form asks about. Not paged: bounded by the ids.
+ *
+ * @generated from message warehouse.selling.v1.ProductReturnMapByIdsRequest
+ */
+export type ProductReturnMapByIdsRequest = Message<"warehouse.selling.v1.ProductReturnMapByIdsRequest"> & {
+  /**
+   * The team whose maps are read — the scope AND the filter: another team's map of the same product is never seen.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.selling.v1.ProductReturnMapByIdsFilter filter = 2;
+   */
+  filter?: ProductReturnMapByIdsFilter | undefined;
+
+  /**
+   * Empty defaults to the PAIR slice.
+   *
+   * @generated from field: repeated warehouse.selling.v1.ProductReturnMapByIdsDataType data_request = 3;
+   */
+  dataRequest: ProductReturnMapByIdsDataType[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMapByIdsRequest.
+ * Use `create(ProductReturnMapByIdsRequestSchema)` to create a new message.
+ */
+export const ProductReturnMapByIdsRequestSchema: GenMessage<ProductReturnMapByIdsRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 14);
+
+/**
+ * @generated from message warehouse.selling.v1.ProductReturnMapByIdsFilter
+ */
+export type ProductReturnMapByIdsFilter = Message<"warehouse.selling.v1.ProductReturnMapByIdsFilter"> & {
+  /**
+   * Borrowed product ids — the products on the order that another team owns.
+   *
+   * @generated from field: repeated uint64 ids = 1;
+   */
+  ids: bigint[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMapByIdsFilter.
+ * Use `create(ProductReturnMapByIdsFilterSchema)` to create a new message.
+ */
+export const ProductReturnMapByIdsFilterSchema: GenMessage<ProductReturnMapByIdsFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 15);
+
+/**
+ * A borrowed product's map, keyed by the borrowed product's id.
+ *
+ * @generated from message warehouse.selling.v1.ProductReturnMapPairItem
+ */
+export type ProductReturnMapPairItem = Message<"warehouse.selling.v1.ProductReturnMapPairItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.selling.v1.ProductReturnMap> map_data = 1;
+   */
+  mapData: { [key: string]: ProductReturnMap };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMapPairItem.
+ * Use `create(ProductReturnMapPairItemSchema)` to create a new message.
+ */
+export const ProductReturnMapPairItemSchema: GenMessage<ProductReturnMapPairItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 16);
+
+/**
+ * @generated from message warehouse.selling.v1.ProductReturnMapByIdsResponseItem
+ */
+export type ProductReturnMapByIdsResponseItem = Message<"warehouse.selling.v1.ProductReturnMapByIdsResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.selling.v1.ProductReturnMapByIdsResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.selling.v1.ProductReturnMapPairItem pair = 1;
+     */
+    value: ProductReturnMapPairItem;
+    case: "pair";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMapByIdsResponseItem.
+ * Use `create(ProductReturnMapByIdsResponseItemSchema)` to create a new message.
+ */
+export const ProductReturnMapByIdsResponseItemSchema: GenMessage<ProductReturnMapByIdsResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 17);
+
+/**
+ * @generated from message warehouse.selling.v1.ProductReturnMapByIdsResponseList
+ */
+export type ProductReturnMapByIdsResponseList = Message<"warehouse.selling.v1.ProductReturnMapByIdsResponseList"> & {
+  /**
+   * @generated from field: repeated warehouse.selling.v1.ProductReturnMapByIdsResponseItem items = 1;
+   */
+  items: ProductReturnMapByIdsResponseItem[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMapByIdsResponseList.
+ * Use `create(ProductReturnMapByIdsResponseListSchema)` to create a new message.
+ */
+export const ProductReturnMapByIdsResponseListSchema: GenMessage<ProductReturnMapByIdsResponseList> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 18);
+
+/**
+ * Keyed by borrowed product id. A product the team has not mapped is absent.
+ *
+ * @generated from message warehouse.selling.v1.ProductReturnMapByIdsResponse
+ */
+export type ProductReturnMapByIdsResponse = Message<"warehouse.selling.v1.ProductReturnMapByIdsResponse"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.selling.v1.ProductReturnMapByIdsResponseList> items = 1;
+   */
+  items: { [key: string]: ProductReturnMapByIdsResponseList };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ProductReturnMapByIdsResponse.
+ * Use `create(ProductReturnMapByIdsResponseSchema)` to create a new message.
+ */
+export const ProductReturnMapByIdsResponseSchema: GenMessage<ProductReturnMapByIdsResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_return_configuration, 19);
+
+/**
  * @generated from enum warehouse.selling.v1.TeamReturnConfigurationByIdsDataType
  */
 export enum TeamReturnConfigurationByIdsDataType {
@@ -277,6 +516,27 @@ export const TeamReturnConfigurationByIdsDataTypeSchema: GenEnum<TeamReturnConfi
   enumDesc(file_warehouse_selling_v1_return_configuration, 0);
 
 /**
+ * @generated from enum warehouse.selling.v1.ProductReturnMapByIdsDataType
+ */
+export enum ProductReturnMapByIdsDataType {
+  /**
+   * @generated from enum value: PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_PAIR = 1;
+   */
+  PAIR = 1,
+}
+
+/**
+ * Describes the enum warehouse.selling.v1.ProductReturnMapByIdsDataType.
+ */
+export const ProductReturnMapByIdsDataTypeSchema: GenEnum<ProductReturnMapByIdsDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_selling_v1_return_configuration, 1);
+
+/**
  * TeamReturnConfigurationService — WHERE A SELLING TEAM'S RETURNS ARE RECEIVED
  * (the-return-warehouse-lives-in-team-return-configurations). One row per team, owned by the order context,
  * because the order context is what reads it: order create refuses a team with none
@@ -284,6 +544,10 @@ export const TeamReturnConfigurationByIdsDataTypeSchema: GenEnum<TeamReturnConfi
  *
  * Any warehouse may be named (a-team-may-pick-any-return-warehouse). It replaced team_infos.return_warehouse_id,
  * which nothing read and is dropped.
+ *
+ * It also serves the team's RETURN MAPS (the-return-map-is-selling-services-and-read-by-ids) — which of its own
+ * products a borrowed product comes back as. Both are the owner's order_return.md §Table Must Have, both are a selling
+ * team's return facts, and order create reads both without calling another service.
  *
  * @generated from service warehouse.selling.v1.TeamReturnConfigurationService
  */
@@ -311,6 +575,22 @@ export const TeamReturnConfigurationService: GenService<{
     methodKind: "unary";
     input: typeof TeamReturnConfigurationByIdsRequestSchema;
     output: typeof TeamReturnConfigurationByIdsResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapCreate
+   */
+  productReturnMapCreate: {
+    methodKind: "unary";
+    input: typeof ProductReturnMapCreateRequestSchema;
+    output: typeof ProductReturnMapCreateResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapByIds
+   */
+  productReturnMapByIds: {
+    methodKind: "unary";
+    input: typeof ProductReturnMapByIdsRequestSchema;
+    output: typeof ProductReturnMapByIdsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_selling_v1_return_configuration, 0);

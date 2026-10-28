@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { liabilityClient, liabilityPaymentClient, liabilityTermsClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
 import {
+  creditRowData,
+  creditsFromByIds,
   logsFromList,
   logRowData,
   paymentsFromList,
@@ -230,6 +232,47 @@ export function useRejectPayment() {
   });
 }
 
+// ─── the debtor's side of a limit ───────────────────────────────────────────────────────────────
+
+// The contract's bound on one ask (LiabilityCreditByIdsFilter.ids).
+const CREDIT_IDS_MAX = 50;
+
+// THE LIMITS OTHER TEAMS SET ON THIS ONE (the-debtor-sees-the-limits-set-on-it) — for each creditor, the limit it
+// set on `teamId`, the debt `teamId` already carries toward it, and the state. ONE call for every creditor, keyed by
+// creditor id; it is the same reading the order create's credit check makes, so the form and the create agree.
+//
+// The ids are made distinct and sorted, so the same creditors in another order are one cache entry; 0 and the team
+// itself are dropped, as the server drops them — a team owes nobody by trading with itself. Past the contract's 50 the
+// rest are not asked, and their rows read as "could not read" rather than as unlimited.
+//
+// ⚠ THE PLAIN DEFAULT — neither `listQuery` nor `referenceQuery`, deliberately (HARD RULE 10).
+//   - Not `referenceQuery`: these figures do not LABEL anything, they DECIDE — the next order is refused at the
+//     limit. A five-minute-old debt is exactly the stale stock count the always-fresh rule exists to stop.
+//   - Not `listQuery`: its kept rows would be the previous KEY's, and the key carries the team. Switching team would
+//     put one team's debt to Gudang Pusat on another team's form, under the same creditor row — a different subject
+//     rendered as this one. A creditor joining the order shows its row reading for a beat instead.
+export function useLiabilityCredit(teamId: bigint | undefined, creditorIds: bigint[]) {
+  const ids = [
+    ...new Set(creditorIds.filter((id) => id > 0n && id !== teamId).map((id) => id.toString())),
+  ]
+    .sort()
+    .slice(0, CREDIT_IDS_MAX);
+
+  return useQuery({
+    queryKey: key.liability(teamId, { credit: ids }),
+    enabled: teamId !== undefined && ids.length > 0,
+    queryFn: async () => {
+      const res = await liabilityClient.liabilityCreditByIds({
+        teamId: teamId!,
+        filter: { ids: ids.map((id) => BigInt(id)) },
+        dataRequest: creditRowData(),
+      });
+
+      return creditsFromByIds(res.items);
+    },
+  });
+}
+
 // ─── terms (#189) ───────────────────────────────────────────────────────────────────────────────
 
 // Every row of terms this team has SET — one per debtor, plus the DEFAULT row at counterparty 0.
@@ -313,7 +356,6 @@ export function useSetTerms() {
       teamId: bigint;
       counterpartyId: bigint;
       handlingFee: bigint;
-      productMarkupBp: bigint;
       creditLimit: bigint | undefined;
       reason: string;
     }) =>
@@ -321,7 +363,6 @@ export function useSetTerms() {
         teamId: args.teamId,
         counterpartyId: args.counterpartyId,
         handlingFee: args.handlingFee,
-        productMarkupBp: args.productMarkupBp,
         creditLimit: args.creditLimit,
         reason: args.reason,
       }),

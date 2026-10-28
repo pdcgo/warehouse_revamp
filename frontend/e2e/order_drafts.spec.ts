@@ -50,7 +50,8 @@ async function pushDraft(page: Page, externalId: string) {
           source: "e2e-scraper",
           externalId: id,
           customerName: "Budi",
-          shippingCost: "15000",
+          // No `platformTotal` on purpose — the list below names the missing sell price. (A draft carries no
+          // shipping money since selling 00027; the app's old `shippingCost` is gone from the payload.)
           items: [
             { externalSku: "MP-1", externalName: "Kaos Polos Hitam L", quantity: 2, unitPrice: "50000" },
           ],
@@ -83,11 +84,12 @@ test("Order drafts: a pushed draft appears, saying exactly what it still needs (
   // The scrape could not know our shop, our warehouse, or which product the title refers to — so the
   // row names what is left rather than a bare "not ready". Under the reference, where the order list
   // puts the stage: the first gap by name and the rest counted, every one of them on the badge's title
-  // (`the-draft-list-is-the-drafts-tab`).
+  // (`the-draft-list-is-the-drafts-tab`). This push also read no order date and no sell price, which
+  // Promote refuses too (platform-created-at-is-required-at-finalize, platform-total-is-required-at-finalize).
   const draftRow = page.getByTestId(/^draft-row-/).filter({ hasText: EXTERNAL_ID });
   const gaps = draftRow.getByTestId(/^draft-gaps-/);
-  await expect(gaps).toHaveText("Shop +2");
-  await expect(gaps).toHaveAttribute("title", /Warehouse/);
+  await expect(gaps).toHaveText("Shop +4");
+  await expect(gaps).toHaveAttribute("title", "Shop · Warehouse · Order date · Sell price · Unmapped lines");
   await expect(draftRow.getByText("1 of 1 unmapped")).toBeVisible();
 });
 

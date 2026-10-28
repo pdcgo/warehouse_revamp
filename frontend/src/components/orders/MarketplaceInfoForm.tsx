@@ -27,16 +27,16 @@ export interface MarketplaceInfoValue {
   orderExternalRefId: string;
   /**
    * What the storefront actually took, in RAW DIGITS (CurrencyInput's contract — no separators).
-   * "" or "0" means nobody wrote it down.
+   * "" or "0" means nobody wrote it down. The order's `platform_total` (the-total-is-ours-the-platform-total-is-theirs).
    */
-  marketplaceTotal: string;
+  platformTotal: string;
 }
 
 export const emptyMarketplaceInfo: MarketplaceInfoValue = {
   marketplace: Marketplace.UNSPECIFIED,
   shopId: 0n,
   orderExternalRefId: "",
-  marketplaceTotal: "0",
+  platformTotal: "0",
 };
 
 // The server's ceiling for a draft's `external_id` (selling/v1 order_draft.proto). Enforced here too
@@ -50,10 +50,11 @@ const MAX_REF_LEN = 128;
 // the screen using it owns its chrome, so the same block reads identically on the create form, on a
 // draft, and in an edit dialog.
 //
-// ⚠ The total here is a NOTE, never an input to arithmetic. The order's own `total` stays
-// subtotal + shipping; folding this in would count the same sale twice.
+// ⚠ The total here is the PLATFORM'S figure, never one of ours: the order's own money is `goods_cost` + the warehouse
+// fee = `total_cost`, frozen by the server from the take. This is what the buyer paid, and the margin is measured
+// against it — it is never added to our side.
 export const description =
-  "The marketplace side of an order — the storefront (which scopes the shop list), its shop, the storefront's own order reference, and what it took. Controlled, unchromed: emits { marketplace, shopId, orderExternalRefId, marketplaceTotal }.";
+  "The marketplace side of an order — the storefront (which scopes the shop list), its shop, the storefront's own order reference, and what it took. Controlled, unchromed: emits { marketplace, shopId, orderExternalRefId, platformTotal }.";
 
 export function MarketplaceInfoForm({
   teamId,
@@ -74,7 +75,7 @@ export function MarketplaceInfoForm({
   /**
    * Leave the money field out — for a screen that collects the same number under its own name.
    *
-   * ⚠ IT DOES NOT STOP CARRYING THE VALUE. `value.marketplaceTotal` is still part of what this
+   * ⚠ IT DOES NOT STOP CARRYING THE VALUE. `value.platformTotal` is still part of what this
    * component emits; the caller is taking over the FIELD, not the fact, and a screen that hides it
    * and never renders one of its own would silently drop what the storefront took.
    */
@@ -151,9 +152,9 @@ export function MarketplaceInfoForm({
       <Field.Root disabled={disabled}>
         <Field.Label>{t("orders.marketplaceTotal")}</Field.Label>
         <CurrencyInput
-          value={value.marketplaceTotal}
+          value={value.platformTotal}
           data-testid="order-marketplace-total"
-          onChange={(marketplaceTotal) => onChange({ ...value, marketplaceTotal })}
+          onChange={(platformTotal) => onChange({ ...value, platformTotal })}
         />
         <Field.HelperText>{t("orders.marketplaceTotalHelp")}</Field.HelperText>
       </Field.Root>

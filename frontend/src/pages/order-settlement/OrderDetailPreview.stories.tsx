@@ -68,7 +68,7 @@ export const MarketplaceTotalMatches: Story = {
       await expect(canvas.getByText(/Marketplace order total/i)).toBeVisible();
     });
 
-    // Order side: the same number, printed by the shipped InfoPanel from `order.marketplaceTotal`.
+    // Order side: the same number, printed by the shipped InfoPanel from `order.platformTotal`.
     await expect(canvasElement).toHaveTextContent(/Marketplace order total: Rp 120\.000/i);
   },
 };

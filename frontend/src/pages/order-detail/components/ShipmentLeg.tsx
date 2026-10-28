@@ -9,11 +9,11 @@ import type { TrailEvent } from "../shipmentMock";
 import { Fact, SectionEmpty } from "./Section";
 import { Rail } from "./Rail";
 
-// ONE LEG OF THE PARCEL'S JOURNEY — out to the buyer, or back from them.
+// THE ORDER'S LEG OF THE PARCEL'S JOURNEY — out to the buyer: a courier, a tracking number, the ship-by
+// deadline, and the trail the courier reported.
 //
-// ⚠ BOTH LEGS HAVE THE SAME SHAPE, and that is why they share a component (owner: *"resi bisa 2 dan
-// jejak pengiriman juga bisa 2, dari order dan return"*). A courier, a tracking number, and the trail
-// the courier reported. The order leg adds a ship-by deadline; a return has no deadline of ours.
+// ⚠ THERE IS NO RETURN LEG (the-return-leg-waits-for-tracking): no return shipment record exists, and the
+// return resi is asked again when tracking is designed.
 //
 // ⚠ A LEG WITH NO TRAIL SAYS SO. Most parcels carry no trail here — nothing reads the courier back yet
 // — and a missing trail must read as "not recorded", not as "this screen does not show trails".
@@ -23,16 +23,10 @@ export function ShipmentLeg({
   receiptCode,
   extra,
   trail,
-  titleMark,
-  receiptMark,
   trailMark,
   testId,
 }: {
   title: string;
-  /** ⚠ beside the leg's title — for a leg that is invented whole (the return). */
-  titleMark?: ReactNode;
-  /** ⚠ beside the resi — the printed number has no field. */
-  receiptMark?: ReactNode;
   /** ⚠ beside the trail's label — nothing reads the courier back. */
   trailMark?: ReactNode;
   courier?: string;
@@ -46,12 +40,9 @@ export function ShipmentLeg({
 
   return (
     <Stack gap="3" data-testid={testId}>
-      <Flex gap="1" align="center">
-        <Text fontWeight="bold" fontSize="sm">
-          {title}
-        </Text>
-        {titleMark}
-      </Flex>
+      <Text fontWeight="bold" fontSize="sm">
+        {title}
+      </Text>
 
       <SimpleGrid minChildWidth="9rem" gap="card">
         <Fact label={t("orders.shipping")}>
@@ -62,7 +53,7 @@ export function ShipmentLeg({
             </Flex>
           ) : undefined}
         </Fact>
-        <Fact label={t("orders.receiptColumn")} mark={receiptMark}>
+        <Fact label={t("orders.receiptColumn")}>
           {receiptCode ? <CopyText value={receiptCode} mono /> : undefined}
         </Fact>
         {extra && (

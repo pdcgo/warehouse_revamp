@@ -73,6 +73,14 @@ interface CreditMeterProps {
    * that shows a meter on its own keeps the badge, which is the only signal it has.
    */
   hideWarningBadge?: boolean;
+  /**
+   * The CREDITOR's name, when the reader is the DEBTOR (the-debtor-sees-the-limits-set-on-it). The same badge at the
+   * same thresholds, worded from the side it is set ON — *"87% of the limit Toko Anggrek set"* — and a frozen limit
+   * names who froze it.
+   *
+   * Omitted, the meter reads as the creditor's own, exactly as before: the creditor's view does not change.
+   */
+  setBy?: string;
 }
 
 // CreditMeter shows how much of a debtor's credit is used, and warns at 80%.
@@ -81,7 +89,7 @@ interface CreditMeterProps {
 // percentage of zero is a division by zero — so those two states are words, not a meter. A bar that
 // renders "100%" for a frozen team and "0%" for an unlimited one would invert the meaning of the
 // screen at a glance.
-export function CreditMeter({ limit, debt, testId, hideWarningBadge }: CreditMeterProps) {
+export function CreditMeter({ limit, debt, testId, hideWarningBadge, setBy }: CreditMeterProps) {
   const { t } = useTranslation();
   const state = limitStateOf(limit);
 
@@ -96,7 +104,7 @@ export function CreditMeter({ limit, debt, testId, hideWarningBadge }: CreditMet
   if (state === "frozen") {
     return (
       <Badge colorPalette="error" data-testid={testId}>
-        {t("terms.limitFrozen")}
+        {setBy === undefined ? t("terms.limitFrozen") : t("terms.debtorFrozen", { name: setBy })}
       </Badge>
     );
   }
@@ -111,6 +119,15 @@ export function CreditMeter({ limit, debt, testId, hideWarningBadge }: CreditMet
   // The two thresholds come from the exported helper, so the meter and any row marking itself beside
   // it can never disagree about what "near" means.
   const { near: warning, over } = creditWarning(limit, owed);
+  // The badge's words: the creditor's own ("Near limit"), or the debtor's, naming who set it. One percentage for both
+  // the line above and the badge, so they cannot round apart.
+  const shown = pct.toFixed(0);
+  const badge =
+    setBy === undefined
+      ? over
+        ? t("terms.warnOver")
+        : t("terms.warnNear")
+      : t(over ? "terms.debtorOver" : "terms.debtorNear", { pct: shown, name: setBy });
 
   return (
     <Stack gap="1" minW="36" data-testid={testId}>
@@ -128,7 +145,7 @@ export function CreditMeter({ limit, debt, testId, hideWarningBadge }: CreditMet
         {t("terms.usedOf", { used: formatRupiah(owed), limit: formatRupiah(cap) })}
         {" · "}
         <Text as="span" fontWeight={warning ? "medium" : undefined} data-testid={testId ? `${testId}-pct` : undefined}>
-          {pct.toFixed(0)}%
+          {shown}%
         </Text>
       </Text>
 
@@ -140,7 +157,7 @@ export function CreditMeter({ limit, debt, testId, hideWarningBadge }: CreditMet
           size="sm"
           data-testid={testId ? `${testId}-warn` : undefined}
         >
-          {over ? t("terms.warnOver") : t("terms.warnNear")}
+          {badge}
         </Badge>
       )}
     </Stack>

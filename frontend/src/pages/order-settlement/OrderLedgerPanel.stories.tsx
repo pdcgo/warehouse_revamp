@@ -191,7 +191,7 @@ export const CameOutAhead: Story = {
 };
 
 /**
- * `marketplace_total` was 0 — **not recorded**, not "sold for nothing" (`order.proto:224`).
+ * `platform_total` was 0 — **not recorded**, not "sold for nothing" (`order.proto:224`).
  *
  * ⚠ THIS STORY IS AN OPEN QUESTION, ON SCREEN. Computed naively the order reads as pure profit,
  * because everything that arrives is a gain against a sale of zero. The panel refuses to show

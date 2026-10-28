@@ -54,6 +54,7 @@ when it applies one of these.
 | [a-page-story-has-its-shells-gutter](#a-page-story-has-its-shells-gutter) | a page story is framed by its shell's gutter — 12px on a phone, 20px from `md` — never Storybook's padding on top | every page story |
 | [a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size) | on a phone the pager's buttons are centred and it draws no per-page selector | `GrowingPager`, every list |
 | [a-counted-line-is-three-columns](#a-counted-line-is-three-columns) | a screen that counts line by line gives each line Accept Delivery's frame — what it is · what you type · what it means — in a fixed shape, under a sticky header | Accept Delivery, then the stock count's Count page |
+| [a-chart-is-chakras-chart](#a-chart-is-chakras-chart) | every chart is Chakra's `@chakra-ui/charts` (Recharts underneath), through a shared component in `components/charts/` — never a hand-drawn SVG | [the Analytic graph](../../business/analytic/rpc_provide_decision.md#the-graph-draws-the-table) |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1153,6 +1154,28 @@ sticky:  ←  Count #15 · A-01-1  [All racks]            1 of 3 counted  [Chang
 | stacks | below `lg` on the Count page (its columns are light); Accept Delivery keeps `xl` — a placement picker needs the room |
 | not a card in a card | the two typed columns are bordered boxes inside the line's card, as Accept Delivery's are — the one pattern the owner pointed at |
 | was | the Count page stacked every field on the left, each card a different shape by state — *"so weird"* |
+
+## a-chart-is-chakras-chart
+
+> Owner, in chat (2026-10-28): *"yes chart using chakra"* — to *"the chart component needs a chart library first. I'd
+> use Chakra's own `@chakra-ui/charts`, which is built on Recharts"*. As recommended. It is
+> [chakra-first-whenever-it-has-the-component](#chakra-first-whenever-it-has-the-component) applied to charts.
+
+```mermaid
+flowchart LR
+  s["a screen with a graph"] --> c["components/charts/ - the shared chart, with its story"]
+  c --> k["@chakra-ui/charts - Chart.Root, useChart, Chart.Legend, Chart.Tooltip"]
+  k --> r["Recharts - LineChart, Line, XAxis, YAxis"]
+```
+
+| | |
+| --- | --- |
+| the library | `@chakra-ui/charts`, the same version as `@chakra-ui/react`, with `recharts` (its peer). Its tokens give the chart the app's colours and colour modes |
+| where | a shared component in `components/charts/`, with a story and a `description`. A screen never draws Recharts directly |
+| a line's colour | **categorical**: a hue token (`teal.solid`, `purple.solid` …), because the colour tells the lines apart. Never a status role |
+| a value's format | the screen's own (`formatRupiahNumber`, a count in id-ID), passed in, so the axis and the tooltip read like the table |
+| not reused | `legacy/components/charts/` (inline SVG), still used by two legacy warehouse pages. ⚠ My reading, not asked: they move when those pages are next touched |
+| first applied | the Analytic graph ([the-graph-draws-the-table](../../business/analytic/rpc_provide_decision.md#the-graph-draws-the-table)) |
 
 ## Recorded elsewhere
 

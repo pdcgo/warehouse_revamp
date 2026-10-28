@@ -181,10 +181,13 @@ const RICE_PICTURE = `data:image/svg+xml;utf8,${encodeURIComponent(
 )}`;
 
 export const products = [
+  // A 10% CROSS MARKUP (the-cross-markup-belongs-to-the-product) — so a team selling Gudang Pusat's Kopi is invoiced
+  // over its HPP, and the order form's invoice can be pinned to the PRODUCT's rate. Teh beside it carries none, which
+  // makes a draft holding both (202) one owner at two rates.
   {
     id: 71n, teamId: 11n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g",
     description: "", categoryId: 51n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
-    deleted: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 2,
+    deleted: false, crossMarkupBps: 1000, crossLocked: false, reservedStock: 2,
   },
   {
     id: 72n, teamId: 11n, sku: "SKU-TEH-100", name: "Teh Melati 100g",
@@ -244,7 +247,8 @@ export const receiptLabel = {
 
 /**
  * A fake label PDF for a story. `result` names the answer the stub gives (`not_shipping_label`,
- * `multiple_labels`, `unknown_label`, `unreadable`); without it, the file reads as `receiptLabel`.
+ * `multiple_labels`, `unknown_label`, `unreadable`, or `busy` — refused, two checks already running); without it,
+ * the file reads as `receiptLabel`.
  */
 export function receiptLabelFile(result?: string): File {
   const body = `%PDF-1.4\n${result ? `stub-result:${result}\n` : ""}%%EOF\n`;
@@ -311,7 +315,9 @@ export const warehouseStock: Record<string, bigint> = {
   "74": 25n,
 };
 
-// HPP, in whole rupiah.
+// HPP — the AVERAGE value of what the shelf holds, in whole rupiah: what StockCost and the owner's stock
+// value read. No order reads it (an-order-is-costed-at-what-leaves-the-shelf) — an order line is costed
+// from `productBatches` below, as the take would draw them.
 //
 // ⚠ 0 means UNKNOWN — the warehouse has no restock history for that product — never "free". Product
 // 73 carries a 0 deliberately, so a story can pin that the form renders it as unknown rather than
@@ -321,6 +327,52 @@ export const productCosts: Record<string, bigint> = {
   "72": 9000n,
   "73": 0n,
 };
+
+// THE BATCHES ON THE SHELF, oldest first — what a take draws, and therefore what an order line costs
+// (an-order-is-costed-at-what-leaves-the-shelf). Each product's agree with the two maps above: the units sum to
+// `warehouseStock`, and their value over the units is `productCosts`.
+//
+// ⚠ TEH (72) ARRIVED TWICE, at two prices — 1 at 8.000, then 2 at 9.500 (an average of 9.000) — so one line can
+// span two batches: 1 Teh costs 8.000, 2 cost 1 × 8.000 + 1 × 9.500 = 17.500 (never the average's 18.000), and all 3
+// cost the 27.000 the shelf is worth.
+export const productBatches: Record<string, { quantity: bigint; unitCost: number }[]> = {
+  "71": [{ quantity: 40n, unitCost: 18_500 }],
+  "72": [
+    { quantity: 1n, unitCost: 8_000 },
+    { quantity: 2n, unitCost: 9_500 },
+  ],
+  "73": [{ quantity: 12n, unitCost: 0 }],
+  "74": [{ quantity: 25n, unitCost: 0 }],
+};
+
+/**
+ * What a take of `quantity` would draw of one product from the fixture warehouse — StockTakeQuote's answer, shared by
+ * the stub and the stories that hand a component its costs directly, so the two cannot disagree. Not enough on the
+ * shelf draws NOTHING: no cost, no batches.
+ */
+export function drawFrom(productId: string, quantity: bigint) {
+  const batches = productBatches[productId] ?? [];
+  const available = batches.reduce((sum, b) => sum + b.quantity, 0n);
+
+  if (quantity < 1n || available < quantity) {
+    return { quantity, available, total: undefined, unitCost: undefined, batches: [] };
+  }
+
+  let left = quantity;
+  const drawn: { quantity: bigint; unitCost: number }[] = [];
+
+  for (const b of batches) {
+    if (left === 0n) break;
+
+    const n = b.quantity < left ? b.quantity : left;
+    drawn.push({ quantity: n, unitCost: b.unitCost });
+    left -= n;
+  }
+
+  const total = drawn.reduce((sum, b) => sum + Number(b.quantity) * b.unitCost, 0);
+
+  return { quantity, available, total, unitCost: total / Number(quantity), batches: drawn };
+}
 
 // ── Time ────────────────────────────────────────────────────────────────────────────────────────
 //
@@ -363,22 +415,25 @@ export const daysAgo = (days: number): bigint => BigInt(Math.floor(Date.now() / 
 //       this is the row that proves it: the order plainly came from a storefront, and nobody wrote
 //       down what the storefront took. 0 is "not recorded", never "sold for nothing" (order.proto).
 //
-// ⚠ `marketplaceTotal` DISAGREES WITH `total` on every row that has one, on purpose: `total` is what
-// WE quoted and the marketplace figure is what the buyer paid the platform after its own vouchers and
-// subsidies. A fixture where they matched would make every settlement screen look right by accident.
+// ⚠ `platformTotal` DISAGREES WITH `totalCost` on every row that has both, on purpose: `totalCost` is what the order
+// cost US (goods + the warehouse's fee) and the platform figure is what the buyer paid the platform after its own
+// vouchers and subsidies. A fixture where they matched would make every settlement screen look right by accident.
+//
+// Only 101 and 110 carry a BUYER USERNAME — one on each detail page (the seller's and the warehouse's). Every other
+// row has none, which is the ordinary case (the-buyers-username-is-optional) and must show nothing at all.
 const orderRows = [
-  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PENDING, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, marketplaceTotal: 245_000n, cogs: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
-  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PENDING, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, marketplaceTotal: 176_500n, cogs: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(2) },
-  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PROCESSED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, marketplaceTotal: 92_000n, cogs: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(3) },
-  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, marketplaceTotal: 413_000n, cogs: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdByUserId: 63n, createdAtUnix: daysAgo(4) },
-  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PICKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", subtotal: 296_000n, shippingCost: 14_000n, total: 310_000n, marketplaceTotal: 303_500n, cogs: 189_440n, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(5) },
-  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPING, customerName: "Pak Firman", customerPhone: "0812-3456-0006", subtotal: 129_000n, shippingCost: 11_000n, total: 140_000n, marketplaceTotal: 137_000n, cogs: 82_560n, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(6) },
-  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCEL, customerName: "Bu Gita", customerPhone: "0812-3456-0007", subtotal: 66_000n, shippingCost: 9_000n, total: 75_000n, shippingCode: "jne", createdByUserId: 0n, createdAtUnix: daysAgo(8) },
-  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPING, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", subtotal: 480_000n, shippingCost: 20_000n, total: 500_000n, cogs: 307_200n, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdByUserId: 62n, createdAtUnix: daysAgo(120) },
-  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", subtotal: 252_000n, shippingCost: 13_000n, total: 265_000n, marketplaceTotal: 258_000n, cogs: 161_280n, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PENDING, customerName: "Bu Ani", customerPhone: "0812-3456-0001", buyerUsername: "ani.melati88", platformTotal: 245_000n, goodsCost: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PENDING, customerName: "Pak Budi", customerPhone: "0812-3456-0002", platformTotal: 176_500n, goodsCost: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(2) },
+  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PROCESSED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", platformTotal: 92_000n, goodsCost: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(3) },
+  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", platformTotal: 413_000n, goodsCost: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdByUserId: 63n, createdAtUnix: daysAgo(4) },
+  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PICKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", platformTotal: 303_500n, goodsCost: 189_440n, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(5) },
+  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPING, customerName: "Pak Firman", customerPhone: "0812-3456-0006", platformTotal: 137_000n, goodsCost: 82_560n, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(6) },
+  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCEL, customerName: "Bu Gita", customerPhone: "0812-3456-0007", shippingCode: "jne", createdByUserId: 0n, createdAtUnix: daysAgo(8) },
+  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPING, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", goodsCost: 307_200n, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdByUserId: 62n, createdAtUnix: daysAgo(120) },
+  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", platformTotal: 258_000n, goodsCost: 161_280n, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
 
-  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PENDING, customerName: "Pak Joko", customerPhone: "0813-9999-0001", subtotal: 618_000n, shippingCost: 22_000n, total: 640_000n, marketplaceTotal: 628_000n, cogs: 395_520n, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdByUserId: 61n, createdAtUnix: daysAgo(2) },
-  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PICKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", subtotal: 198_000n, shippingCost: 12_000n, total: 210_000n, shippingCode: "jne", createdByUserId: 61n, createdAtUnix: daysAgo(3) },
+  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PENDING, customerName: "Pak Joko", customerPhone: "0813-9999-0001", buyerUsername: "joko_kenanga", platformTotal: 628_000n, goodsCost: 395_520n, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdByUserId: 61n, createdAtUnix: daysAgo(2) },
+  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PICKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", shippingCode: "jne", createdByUserId: 61n, createdAtUnix: daysAgo(3) },
 ];
 
 // ── The three facts a row has carried since 00018/00019 ─────────────────────────────────────────
@@ -428,7 +483,13 @@ function rowFacts(row: { id: bigint; status: OrderStatus; createdAtUnix: bigint;
   };
 }
 
-export const orders = orderRows.map((row) => ({ ...row, ...rowFacts(row) }));
+// `totalCost` is frozen on the server as goods_cost + warehouse_fee (selling 00027) — derived here the same way, so a
+// story reading it reads the sum the list and the detail compute.
+export const orders = orderRows.map((row) => {
+  const facts = rowFacts(row);
+
+  return { ...row, ...facts, totalCost: Number(row.goodsCost ?? 0n) + facts.warehouseFee };
+});
 
 // ── What a DETAIL read adds, and a list row never carries ───────────────────────────────────────
 //
@@ -443,43 +504,60 @@ export const orders = orderRows.map((row) => ({ ...row, ...rowFacts(row) }));
 //   - only a handful of orders are ever OPENED, so writing lines for all eleven is work that buys
 //     nothing. `orderDetailFor` fills the rest from the row itself.
 //
-// 101 is the one written out in full — three lines, a real address, a note, an attached receipt and
-// a marketplace total that DIFFERS from ours. Every one of those is a branch on the Info tab that a
-// bare order would leave untested.
+// 101 is the one written out in full — three lines, a real address, notes from BOTH sides, an attached
+// receipt and a marketplace total that DIFFERS from ours. Every one of those is a branch on the Info tab
+// that a bare order would leave untested. 102 carries a hand-back to pending WITH ITS REASON, beside a note:
+// the one status row whose `note` stays on the Timeline while a note row goes to Catatan.
 export const orderDetailExtras: Record<
   string,
   {
-    marketplaceTotal?: bigint;
-    cogs?: bigint;
-    note?: string;
+    platformTotal?: bigint;
+    goodsCost?: bigint;
     orderExternalRefId?: string;
-    items?: { id: bigint; productId: bigint; sku: string; name: string; quantity: number; unitPrice: bigint; unitCost: bigint }[];
-    /** The timeline (order-timeline-logs-replaces-order-events): status 0 = a note; from 1 = warehouse, 2 = selling. */
+    items?: {
+      id: bigint;
+      productId: bigint;
+      sku: string;
+      name: string;
+      quantity: number;
+      unitCost: bigint;
+      /** A borrowed line's frozen figures — absent on an own line here, as on a line frozen before 00023/00025. */
+      unitCostWithMarkup?: number;
+      markupTotal?: number;
+      total?: number;
+    }[];
+    /**
+     * The timeline (order-timeline-logs-replaces-order-events): status 0 = a NOTE row (a-note-is-a-timeline-row), any
+     * other = a status row whose `note` is its reason; from 1 = warehouse, 2 = selling. There is no `Order.note`.
+     */
     timelineLogs?: { id: bigint; status: number; note?: string; from: number; actorId: bigint; createdAtUnix: bigint }[];
     address?: Record<string, string>;
     receipt?: { documentId: string; filename: string; mimeType: string };
   }
 > = {
-  // ⚠ 245.000 ON A 250.000 ORDER. `marketplace_total` is what the BUYER PAID THE PLATFORM and
-  // `total` is what WE quoted — they are two different facts and they routinely disagree. Liability
+  // ⚠ 245.000 ON AN ORDER THAT COST US 150.500. `platform_total` is what the BUYER PAID THE PLATFORM and
+  // `total_cost` is what the order cost US — they are two different facts and they routinely disagree. Liability
   // opens its account from the marketplace figure, never from ours, so a fixture where the two were
   // equal would hide the one number that matters and make every liability screen look right by
   // accident.
-  // ⚠ IT NO LONGER RESTATES THE MONEY. `marketplace_total` and `cogs` are on the ROW, and repeating
+  // ⚠ IT NO LONGER RESTATES THE MONEY. `platform_total` and `goods_cost` are on the ROW, and repeating
   // them here — nor the marketplace reference — is how the same order came to read 150.400 on the
   // list and 148.000 on its own detail, under two different marketplace ids.
-  // The list reads `order.cogs` while the detail SUMS THE LINES, and `order.proto` says those are the
+  // The list reads `order.goodsCost` while the detail SUMS THE LINES, and `order.proto` says those are the
   // same number ("the lines it was computed from are frozen too").
   "101": {
-    note: "Titip bubble wrap tambahan, barang pecah belah.",
     items: [
-      { id: 1n, productId: 301n, sku: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitPrice: 75_000n, unitCost: 48_000n },
-      { id: 2n, productId: 302n, sku: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitPrice: 75_000n, unitCost: 46_000n },
-      { id: 3n, productId: 303n, sku: "TOP-01", name: "Topi Rajut", quantity: 1, unitPrice: 10_000n, unitCost: 6_000n },
+      { id: 1n, productId: 301n, sku: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitCost: 48_000n },
+      { id: 2n, productId: 302n, sku: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitCost: 46_000n },
+      { id: 3n, productId: 303n, sku: "TOP-01", name: "Topi Rajut", quantity: 1, unitCost: 6_000n },
     ],
+    // TWO NOTES, ONE PER SIDE (a-note-is-a-timeline-row). The seller's is the one typed on the create form — the
+    // order's first note row, written with the order — and the warehouse's came later, so it is listed FIRST.
     timelineLogs: [
       { id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: daysAgo(1) },
-      { id: 2n, status: 2, from: 1, actorId: 62n, createdAtUnix: daysAgo(1) + 3_600n },
+      { id: 2n, status: 0, note: "Titip bubble wrap tambahan, barang pecah belah.", from: 2, actorId: 61n, createdAtUnix: daysAgo(1) },
+      { id: 3n, status: 2, from: 1, actorId: 62n, createdAtUnix: daysAgo(1) + 3_600n },
+      { id: 4n, status: 0, note: "Topi Rajut tinggal 1 di Rak A, sudah kami sisihkan untuk pesanan ini.", from: 1, actorId: 62n, createdAtUnix: daysAgo(1) + 5_400n },
     ],
     address: {
       provinsiCode: "32", provinsiName: "Jawa Barat",
@@ -490,6 +568,48 @@ export const orderDetailExtras: Record<
       addressLine: "Jl. Ir. H. Juanda No. 12, RT 03 / RW 05",
     },
     receipt: { documentId: "doc-101", filename: "resi-101.pdf", mimeType: "application/pdf" },
+  },
+
+  // HANDED BACK TO PENDING, WITH THE REASON — a STATUS row carrying a `note`, which is not a note row: it explains its
+  // step and stays on the Timeline. The warehouse's note before it (status 0) is a note row, and goes to Catatan. Eko
+  // (65) works the building; the order ends PENDING, as its row says.
+  "102": {
+    timelineLogs: [
+      { id: 1n, status: 1, from: 2, actorId: 62n, createdAtUnix: daysAgo(2) },
+      { id: 2n, status: 2, from: 1, actorId: 65n, createdAtUnix: daysAgo(2) + 3_600n },
+      { id: 3n, status: 0, note: "Rak A kosong, kami cek gudang belakang dulu.", from: 1, actorId: 65n, createdAtUnix: daysAgo(2) + 7_200n },
+      { id: 4n, status: 1, note: "Stok Topi Rajut habis di Rak A — menunggu restock.", from: 1, actorId: 65n, createdAtUnix: daysAgo(2) + 10_800n },
+    ],
+  },
+
+  // A BORROWED LINE — another team's product, frozen WITH its owner's markup (the-cross-charge-lives-on-the-line). The
+  // goods cost the seller 189.440 (the row's `goodsCost`, Σ the line totals), of which 31.573 is the owner's markup on
+  // a drawn cost of 157.867. One unit, as the row's units say, so the census is unchanged. The detail's harga beli is
+  // the price WITH the markup, so the line adds up to the goods_cost and total sistem is it plus the fee.
+  "105": {
+    items: [
+      {
+        id: 1n,
+        productId: 401n,
+        sku: "SEP-KNS-42",
+        name: "Sepatu Kanvas — 42",
+        quantity: 1,
+        unitCost: 157_867n,
+        unitCostWithMarkup: 189_440,
+        markupTotal: 31_573,
+        total: 189_440,
+      },
+    ],
+  },
+
+  // A LINE ON A CATALOGUE PRODUCT THAT HAS A PICTURE — Melati's own Beras (74), the one fixture product drawn with
+  // one. Every other order's lines name products the catalogue fixtures do not hold, so ProductByIds answers nothing
+  // for them and they keep the placeholder; this is the order whose line shows its product's picture. One unit at the
+  // row's own `goodsCost`, exactly as the default line would be, so the list and the detail still agree about it.
+  "106": {
+    items: [
+      { id: 1n, productId: 74n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg", quantity: 1, unitCost: 82_560n },
+    ],
   },
 
   // A CANCELLED order, and the only fixture whose timeline ENDS badly. The Timeline tab colours the
@@ -507,8 +627,8 @@ export const orderDetailExtras: Record<
   // NO ACTOR AT ALL — 0 is "not recorded", not "user zero". The page must show the step and stay silent
   // about who took it, rather than inventing a name or hiding the step.
   "108": {
-    marketplaceTotal: 0n,
-    cogs: 310_000n,
+    platformTotal: 0n,
+    goodsCost: 310_000n,
     timelineLogs: [
       { id: 1n, status: 1, from: 2, actorId: 0n, createdAtUnix: daysAgo(120) },
       { id: 2n, status: 6, from: 1, actorId: 0n, createdAtUnix: daysAgo(119) },
@@ -531,14 +651,13 @@ export function orderDetailFor(id: bigint) {
 
   return {
     ...row,
-    // ⚠ THE ROW WINS OVER A DERIVED GUESS. These three used to fall back to `row.total`, to 60% of
-    // the subtotal and to `""` — so the detail page contradicted the list about the same order:
+    // ⚠ THE ROW WINS OVER A DERIVED GUESS. These three used to fall back to the order's old `total`, to 60% of
+    // its old subtotal and to `""` — so the detail page contradicted the list about the same order:
     // a different marketplace figure, a different cost, and a reference that vanished on opening it.
-    // The extras add what a list row cannot carry (lines, events, address, receipt, note); the money
+    // The extras add what a list row cannot carry (lines, the timeline and its notes, address, receipt); the money
     // and the reference belong to the row.
-    marketplaceTotal: extra.marketplaceTotal ?? row.marketplaceTotal ?? 0n,
-    cogs: extra.cogs ?? row.cogs ?? 0n,
-    note: extra.note ?? "",
+    platformTotal: extra.platformTotal ?? row.platformTotal ?? 0n,
+    goodsCost: extra.goodsCost ?? row.goodsCost ?? 0n,
     orderExternalRefId: extra.orderExternalRefId ?? row.orderExternalRefId ?? "",
     address: extra.address,
     receipt: extra.receipt,
@@ -549,12 +668,11 @@ export function orderDetailFor(id: bigint) {
         sku: "KPH-M",
         name: "Kaos Polos Hitam — M",
         quantity: 1,
-        unitPrice: row.subtotal,
-        // ⚠ THE ROW'S OWN `cogs`, not an invented 60%. The detail page SUMS its lines while the list
-        // reads `order.cogs`, and `order.proto` says those are one number — so a made-up line cost made
+        // ⚠ THE ROW'S OWN `goods_cost`, not an invented 60%. The detail page SUMS its lines while the list
+        // reads `order.goodsCost`, and `order.proto` says those are one number — so a made-up line cost made
         // the same order read Rp 310.700 on the list and Rp 291.500 on its detail, and gave a cancelled
         // order the list calls unpriced a cost on its detail. `0` stays unknown, as on the row.
-        unitCost: row.cogs ?? 0n,
+        unitCost: row.goodsCost ?? 0n,
       },
     ],
     timelineLogs: extra.timelineLogs ?? [{ id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: row.createdAtUnix }],
@@ -567,8 +685,13 @@ export function orderDetailFor(id: bigint) {
 // warehouse never types one. It is what the Drafts tab's badge counts, so the two versions of the
 // list differ there too — a number for Melati, a zero for Gudang Pusat.
 export const orderDrafts = [
-  { id: 201n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", shippingCode: "jne", shippingCost: 15_000n, itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n },
-  { id: 202n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", shippingCode: "sicepat", shippingCost: 12_000n, itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 3_600n, platformShipmentDeadlineUnix: 0n },
+  { id: 201n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", buyerUsername: "lestari.shop", shippingCode: "jne", itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 0n },
+  { id: 202n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", buyerUsername: "", shippingCode: "sicepat", itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 3_600n, platformShipmentDeadlineUnix: 0n, platformTotal: 130_000n },
+  // TWO DRAFTS ONE FIELD SHORT OF READY — every line mapped, and each missing exactly one of the two things Promote
+  // refuses that the list can read: 203 the marketplace order date, 204 the stored sell price. Without them the list
+  // could call a draft ready that Promote turns away, and no story would notice.
+  { id: 203n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9003", shopId: 21n, warehouseId: 11n, customerName: "Bu Rina", customerPhone: "0812-3456-0103", buyerUsername: "", shippingCode: "jne", itemCount: 1, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 55_000n },
+  { id: 204n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9004", shopId: 22n, warehouseId: 11n, customerName: "Pak Yusuf", customerPhone: "0812-3456-0104", buyerUsername: "", shippingCode: "sicepat", itemCount: 1, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 7_200n, platformShipmentDeadlineUnix: 0n, platformTotal: 0n },
 ];
 
 // ── What a draft DETAIL read adds — its lines ───────────────────────────────────────────────────
@@ -578,8 +701,12 @@ export const orderDrafts = [
 // `itemCount` / `unmappedItemCount` above, or the list and the detail disagree about the same draft.
 //
 //   201  three lines, ONE UNMAPPED (productId 0) — Promote is disabled and says why.
-//   202  two lines, all mapped, all within the warehouse's stock, its marketplace order date set — the draft that is READY.
-//        201 has no order date, the other thing Promote names (platform-created-at-is-required-at-finalize).
+//   202  two lines, all mapped, all within the warehouse's stock, its marketplace order date set and its sell price
+//        STORED (130.000, the rows' own sum) — the draft that is READY.
+//        201 has no order date and no stored sell price, the other things Promote names
+//        (platform-created-at-is-required-at-finalize, platform-total-is-required-at-finalize) — its field follows the
+//        rows' 155.000, which is not stored until it is saved.
+//   203  204  list rows only — no lines here, so their detail opens empty. The list reads only their counts.
 //
 // Mapped lines point at products 71 and 72, which Gudang Pusat holds (`warehouseStock`), so the
 // availability column has a real figure to show rather than a dash.
@@ -732,10 +859,10 @@ export const expenseDays: { teamId: bigint; ago: number; byKind: Record<number, 
 //   team 14         → capped, and 124% used  → OVER
 //   team 15         → no row at all          → it appears in the "set terms" options, not the table
 export const liabilityTerms = [
-  { teamId: 11n, counterpartyId: 0n, handlingFee: 25_000n, productMarkupBp: 500n, creditLimit: undefined, reason: "" },
-  { teamId: 11n, counterpartyId: 12n, handlingFee: 30_000n, productMarkupBp: 750n, creditLimit: 10_000_000n, reason: "" },
-  { teamId: 11n, counterpartyId: 13n, handlingFee: 25_000n, productMarkupBp: 500n, creditLimit: 0n, reason: "" },
-  { teamId: 11n, counterpartyId: 14n, handlingFee: 0n, productMarkupBp: 0n, creditLimit: 5_000_000n, reason: "" },
+  { teamId: 11n, counterpartyId: 0n, handlingFee: 25_000n, creditLimit: undefined, reason: "" },
+  { teamId: 11n, counterpartyId: 12n, handlingFee: 30_000n, creditLimit: 10_000_000n, reason: "" },
+  { teamId: 11n, counterpartyId: 13n, handlingFee: 25_000n, creditLimit: 0n, reason: "" },
+  { teamId: 11n, counterpartyId: 14n, handlingFee: 0n, creditLimit: 5_000_000n, reason: "" },
 ];
 
 // What each debtor owes team 11 right now. Positive = they owe us, so these are what the limits cap.
@@ -745,6 +872,22 @@ export const liabilityPositions = [
   { counterpartyId: 13n, balance: 1_000_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
   { counterpartyId: 14n, balance: 6_200_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
   { counterpartyId: 15n, balance: 250_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+];
+
+// THE LIMITS SET ON A TEAM, from the DEBTOR's side — what LiabilityCreditByIds answers
+// (the-debtor-sees-the-limits-set-on-it). Toko Melati (12) is the team ordering in the order-form stories.
+//
+// ⚠ GUDANG PUSAT (11) IS NOT HERE. Its limit on a team and that team's debt are read off `liabilityTerms` and
+// `liabilityPositions` above — the very rows the creditor's own screens show — so the two sides of one pair cannot
+// disagree in a story: Melati owes Gudang Pusat 8.700.000 of its 10.000.000, the 87% the creditor sees too.
+//
+//   13 Toko Kenanga  → capped, 20% used     → OK
+//   14 Gudang Cabang → no limit, owed 860k  → UNLIMITED, which must read as words, not as a full bar
+//   15 Toko Anggrek  → capped, 87% used     → NEAR — the spec's own example
+export const liabilityCredits = [
+  { debtorTeamId: 12n, creditorTeamId: 13n, creditLimit: 2_000_000n as bigint | undefined, debt: 400_000n },
+  { debtorTeamId: 12n, creditorTeamId: 14n, creditLimit: undefined as bigint | undefined, debt: 860_000n },
+  { debtorTeamId: 12n, creditorTeamId: 15n, creditLimit: 1_000_000n as bigint | undefined, debt: 870_000n },
 ];
 
 // The change log. ⚠ Read the LIMIT columns of change 3 and 4 together — they are the two acts a
@@ -761,7 +904,6 @@ export const liabilityTermsChanges = [
     id: 4n, counterpartyId: 13n, actorId: 1n,
     oldCreditLimit: undefined, newCreditLimit: 0n,
     oldHandlingFee: 25_000n, newHandlingFee: 25_000n,
-    oldProductMarkupBp: 500n, newProductMarkupBp: 500n,
     reason: "Repeated unpaid restock outlays — frozen pending payment.",
     override: false, changedAtUnix: 1_756_000_000n,
   },
@@ -769,7 +911,6 @@ export const liabilityTermsChanges = [
     id: 3n, counterpartyId: 12n, actorId: 2n,
     oldCreditLimit: 5_000_000n, newCreditLimit: undefined,
     oldHandlingFee: 30_000n, newHandlingFee: 30_000n,
-    oldProductMarkupBp: 750n, newProductMarkupBp: 750n,
     reason: "Cap lifted for the ramadan push — agreed with the owner.",
     override: true, changedAtUnix: 1_755_600_000n,
   },
@@ -777,7 +918,6 @@ export const liabilityTermsChanges = [
     id: 2n, counterpartyId: 12n, actorId: 1n,
     oldCreditLimit: undefined, newCreditLimit: 10_000_000n,
     oldHandlingFee: 25_000n, newHandlingFee: 30_000n,
-    oldProductMarkupBp: 500n, newProductMarkupBp: 750n,
     reason: "",
     override: false, changedAtUnix: 1_755_200_000n,
   },
@@ -785,7 +925,6 @@ export const liabilityTermsChanges = [
     id: 1n, counterpartyId: 14n, actorId: 1n,
     oldCreditLimit: 20_000_000n, newCreditLimit: 5_000_000n,
     oldHandlingFee: 0n, newHandlingFee: 0n,
-    oldProductMarkupBp: 0n, newProductMarkupBp: 0n,
     reason: "",
     override: false, changedAtUnix: 1_754_800_000n,
   },

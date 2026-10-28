@@ -66,23 +66,19 @@ func (s *Service) LiabilityTermsSet(
 		upsertErr := tx.
 			Raw(`
 				INSERT INTO liability_terms
-			    (team_id, counterparty_id, handling_fee, product_markup_bp, credit_limit,
-			     created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+			    (team_id, counterparty_id, handling_fee, credit_limit, created_at, updated_at)
+			VALUES (?, ?, ?, ?, NOW(), NOW())
 			ON CONFLICT (team_id, counterparty_id) DO UPDATE SET
-			    handling_fee      = EXCLUDED.handling_fee,
-			    product_markup_bp = EXCLUDED.product_markup_bp,
+			    handling_fee = EXCLUDED.handling_fee,
 			    -- Written unconditionally, NULL included: omitting the field is how a caller says
 			    -- "unlimited", so COALESCE-ing to the stored value would make a limit impossible to
-			    -- lift without deleting the fees too.
-			    credit_limit      = EXCLUDED.credit_limit,
-			    updated_at        = NOW()
-			RETURNING id, team_id, counterparty_id, handling_fee, product_markup_bp, credit_limit,
-			          created_at, updated_at`,
+			    -- lift without deleting the fee too.
+			    credit_limit = EXCLUDED.credit_limit,
+			    updated_at   = NOW()
+			RETURNING id, team_id, counterparty_id, handling_fee, credit_limit, created_at, updated_at`,
 				teamID,
 				counterpartyID,
 				req.Msg.GetHandlingFee(),
-				req.Msg.GetProductMarkupBp(),
 				// NOT GetCreditLimit() — see the note above. nil must reach SQL as NULL.
 				req.Msg.CreditLimit,
 			).

@@ -46,9 +46,9 @@ func termsRows(msg *liabilityv1.LiabilityTermsListResponse) map[uint64]*liabilit
 // I charge THIS team", so the caller must be able to look the answer up by the only id it has.
 func TestTermsList_IsKeyedByCounterparty(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, 2000, rupiah(50_000_000))
+	putTerms(t, svc, warehouse, selling, 12000, rupiah(50_000_000))
 
 	rows := termsRows(termsList(t, svc, warehouse))
 
@@ -67,10 +67,10 @@ func TestTermsList_IsKeyedByCounterparty(t *testing.T) {
 // missing value or sorted into the middle of the overrides.
 func TestTermsList_DefaultRowComesFirst(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
-	putTerms(t, svc, warehouse, 0, 9000, 1000, nil)
+	putTerms(t, svc, warehouse, selling, 12000, nil)
+	putTerms(t, svc, warehouse, 0, 9000, nil)
 
 	ids := termsList(t, svc, warehouse).GetIds()
 
@@ -88,10 +88,10 @@ func TestTermsList_DefaultRowComesFirst(t *testing.T) {
 // would freeze nobody while believing everybody was frozen.
 func TestTermsList_UnlimitedStaysAbsent(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
-	putTerms(t, svc, warehouse, productOwner, 0, 0, rupiah(0))
+	putTerms(t, svc, warehouse, selling, 12000, nil)
+	putTerms(t, svc, warehouse, productOwner, 0, rupiah(0))
 
 	rows := termsRows(termsList(t, svc, warehouse))
 
@@ -108,9 +108,9 @@ func TestTermsList_UnlimitedStaysAbsent(t *testing.T) {
 // what it is charged is asking about somebody else's configuration and gets its own empty list.
 func TestTermsList_ReadsOnlyYourOwnTerms(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
+	putTerms(t, svc, warehouse, selling, 12000, nil)
 
 	msg := termsList(t, svc, selling)
 

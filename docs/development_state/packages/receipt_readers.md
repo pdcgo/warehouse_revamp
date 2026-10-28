@@ -36,13 +36,17 @@ its [clarify](../../technical/packages/receipt_readers/context_clarify.md) and
 | home | ⚠ **a git submodule**: the public repo `github.com/pdcgo/san_receipt_readers`, checked out at `backend/packages/san_receipt_readers`, its **own Go module** (`go.mod`, `go.sum`, a `*.pdf` `.gitignore`). The root `go.mod` requires it and `replace`s it with that folder. Root `go test ./...` never enters it: run `go test ./...` **inside** it (CI does, in its own step). A change is a commit there, pushed, then a commit here moving the pointer ([the-reader-is-a-submodule-with-its-own-module](../../technical/packages/receipt_readers/context_decision.md#the-reader-is-a-submodule-with-its-own-module)) |
 | dependency | `github.com/ledongthuc/pdf v0.0.0-20260907135840-6c8c28e0e8a0`, pure Go, BSD; `github.com/makiuchi-d/gozxing v0.1.1`, pure Go, MIT, for the barcodes (adds `golang.org/x/xerrors`). Direct in the submodule's `go.mod`, indirect in the root's |
 
-**Not built:** any caller. No RPC, no frontend wiring. The order form still runs its stand-in
-`scanReceipt` ([checks.ts:182](../../../frontend/src/features/orders/form/checks.ts#L182)). The caller is
-`ReceiptCheck` in `shipment_service` ([receipt-check-is-shipments](../../business/shipment/context_decision.md#receipt-check-is-shipments),
-which answered Q3). Its shape is decided too (2026-10-05): the file's bytes in, `Extract`'s `ReceiptData` out, signed-in
-callers only ([receipt-check-takes-the-file-bytes](../../business/shipment/context_decision.md#receipt-check-takes-the-file-bytes) ·
-[receipt-check-returns-what-the-library-reads](../../business/shipment/context_decision.md#receipt-check-returns-what-the-library-reads) ·
-[receipt-check-needs-a-login](../../business/shipment/context_decision.md#receipt-check-needs-a-login)). Q2 moved there and is answered.
+**Its caller is built (2026-10-23):** `ReceiptCheck` in `shipment_service` ([receipt-check-is-shipments](../../business/shipment/context_decision.md#receipt-check-is-shipments),
+[the-receipt-check-prototype-is-accepted](../../business/shipment/context_decision.md#the-receipt-check-prototype-is-accepted)) imports
+`github.com/pdcgo/san_receipt_readers` and runs `Extract` on the bytes the order form sends beside its upload. The
+flow is [docs/services/shipment_service/rpc.md](../../services/shipment_service/rpc.md#receiptcheck--read-an-uploaded-shipping-label).
+
+Two things the caller now waits on, both in this package and both the owner's call (nothing was changed here):
+
+| | |
+| --- | --- |
+| `ErrMultipleReceipts` unexported | the RPC cannot answer `MULTIPLE_LABELS`: a bulk print is `UNKNOWN_LABEL` ([critique 4](../../technical/packages/receipt_readers/context_clarify.md#critique)) |
+| no page cap | `Extract` reads `Page(i)` for every page, and the PDF library walks and re-parses the page tree each time — a 2 MB file of many pages costs 9.6 s to 74 s of CPU ([ReceiptCheck.md](../../../audits/services/shipment_service/performances/ReceiptCheck.md)) |
 
 ## What was decided
 

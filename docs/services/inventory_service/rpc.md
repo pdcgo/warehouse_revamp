@@ -230,6 +230,44 @@ rollback reverses the log rows, not the items
 ([a-rollback-reverses-its-log-rows](../../business/inventory/transaction_decision.md#a-rollback-reverses-its-log-rows)).
 ⚠ Still to wire: *Order Cancel* and the create's *InventoryTxCancel* compensation reach this by K at the cutover.
 
+### StockTakeQuote — what the take WOULD draw
+
+✅ *(2026-10-23)* [an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf):
+every money figure of an order is the cost of the units that leave the shelf, so the order form previews the very
+draw the take will make. `InventoryService.StockTakeQuote` (`inventory.proto`) is the take's own path with the lock
+and the writes taken out — `inventory_mutations.QuoteOrder` beside `PostOrder`, both drawing through
+`inventory_ledgers.DrawOldestFirst`, so the two cannot disagree about which units leave.
+
+```mermaid
+sequenceDiagram
+    participant F as order form
+    participant H as StockTakeQuote
+    participant P as product_service
+    participant DB as Postgres
+
+    F->>H: team_id (the ORDERING team), warehouse, lines - product and quantity, each product once
+    H->>P: ProductByIds - owner, private, reserve
+    Note over H: notAllowedLines - the take's own rule. A line it would refuse answers nothing available
+    H->>DB: ReadBatches - the owners' batches with units left, by id, NO lock
+    Note over H: per line, product order - available = the owner's units, the same count the take refuses on
+    Note over H: enough - DrawOldestFirst, the take's selection, changes nothing
+    H-->>F: per line - owner, available, enough, total cost, unit cost, batches oldest first
+```
+
+| | |
+| --- | --- |
+| policy | `StockCost`'s: Root, Administrator, Selling Owner, Selling Admin, Selling CS — scoped to the ordering team |
+| a short line | reported, not refused: `enough` false, `available` the owner's units, and NO cost — the take would draw nothing |
+| a line the take would refuse | a product that exists nowhere, another team's private one, or one below its reserve: `available` 0, no cost |
+| cost, not markup | the form applies a borrowed product's own `cross_markup_bps` for its invoice, as the take does |
+| the racks | not read — where a unit sits never changes what it cost |
+| a preview that moved | another order may take the same units first; the order freezes the draw its take really made |
+| `StockCost` | unchanged — the shelf's AVERAGE, read by the rack valuation; no order reads it |
+
+Tests: `stock_take_quote_test.go` — a two-batch product quoted for 1, 2 and 3 units matches the batches and cost a
+real take then draws. Performance: [StockTakeQuote.md](../../../audits/services/inventory_service/performances/StockTakeQuote.md)
+— one query for own lines at any count, but the reserve rule it shares with the take reads once per borrowed line.
+
 ---
 
 ## Warehouse transfers

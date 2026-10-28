@@ -25,6 +25,11 @@ type Order struct {
 	CustomerName  string
 	CustomerPhone string
 
+	// THE BUYER'S USERNAME on the marketplace (00021, the-buyers-username-is-optional) — the name the buyer goes by in
+	// the marketplace chat. Not CustomerName, which is who the parcel is addressed to. Trimmed at placement; '' = none,
+	// which is a valid order on both doors.
+	BuyerUsername string
+
 	// The delivery address, FROZEN at order time (#118) — codes AND names, so a past order renders
 	// without region_service and survives a desa being renamed or merged. The codes are opaque
 	// region_service ids; no FK (HARD RULE 3). AddressLine is the free text (jalan, no. rumah, RT/RW)
@@ -54,22 +59,23 @@ type Order struct {
 	// evidence of where an order came from, not a key.
 	OrderExternalRefID string
 
-	// Frozen money, whole rupiah.
-	Subtotal int64
-	// The goods' cost for the whole order, frozen at order time (#74) — the sum of every line's
-	// quantity x UnitCost. Denormalised onto the header because OrderList returns a summary without
-	// lines. margin = Total - COGS - ShippingCost. 0 means unknown, not free.
-	COGS         int64 `gorm:"column:cogs"`
-	ShippingCost int64
-	Total        int64
-
-	// What the order SOLD FOR on the marketplace — a NOTE, not a term of the sum (owner). `Total`
-	// stays Subtotal + ShippingCost; this records what the storefront actually took once its vouchers
-	// and subsidies had been applied, which is genuinely a different figure and not a correction of
-	// one. 0 = not recorded (an order taken over the phone has no marketplace figure at all).
+	// THE ORDER'S MONEY — the owner's three header figures (00027), and nothing else: no subtotal, no shipping
+	// (an-order-records-no-shipping-cost).
 	//
-	// ⚠ Never fold this into margin or revenue — `margin = Total - COGS - ShippingCost` still holds.
-	MarketplaceTotal int64
+	// GoodsCost is the owner's `goods_cost`: Σ the lines' frozen Total — a borrowed line WITH its owner's markup, what
+	// the goods cost the seller (the-cross-charge-lives-on-the-line) — rounded once to whole rupiah. The warehouse fee
+	// is priced on it (the-fee-is-priced-on-goods-cost). Denormalised onto the header because OrderList returns a
+	// summary without lines. 0 means unknown, not free.
+	GoodsCost int64
+	// The owner's `total_cost`: GoodsCost + WarehouseFee, frozen beside them — what the order cost the seller ("total
+	// beli"). Unrounded rupiah, like the fee. A never-priced fee counts as nothing here.
+	TotalCost float64
+
+	// WHAT THE BUYER PAID on the platform — the owner's `platform_total` (00026,
+	// the-total-is-ours-the-platform-total-is-theirs): what the storefront actually took once its vouchers and
+	// subsidies had been applied. A fact read off the storefront, required at placement since 00022; 0 = not recorded,
+	// on an order placed before that. margin = PlatformTotal − TotalCost.
+	PlatformTotal int64
 
 	// The SHIPPING RECEIPT attached to this order (owner) — the courier's slip or the marketplace's
 	// PDF. A REFERENCE to a document_service document: the id is opaque (no FK across services), and
@@ -98,13 +104,8 @@ type Order struct {
 	PlatformCreatedAt        *time.Time
 	PlatformShipmentDeadline *time.Time
 
-	// A free-text note about this order, written by whoever took it (owner). The one column here that
-	// nothing in the system reads: it carries the instructions to a PERSON that no structured field
-	// holds ("deliver after 5pm", "wrap the glass one"). "" = nothing was written down.
-	//
-	// ⚠ Never branch on it. It is not a status and not a tag — anything that needs to be queried needs
-	// a column of its own.
-	Note string
+	// ⚠ NO NOTE COLUMN. An order's notes are rows of its timeline with no status (a-note-is-a-timeline-row) — the note
+	// typed at placement is the first of them. Selling 00029 moved the old `note` column into those rows and dropped it.
 
 	// WHO CREATED THE ORDER (00013) — read from the authenticated caller at placement, never from the
 	// request, and never updated. settlement_service stamps it onto the order's account. 0 = not

@@ -24,7 +24,11 @@ export function NotImplementedSummary<Id extends string>({ list }: { list: Pendi
 
   // Turned off, the strip is gone rather than collapsed — see `PendingMarks`. It is the whole top of
   // the screen, so leaving an empty band would answer the question it was turned off to ask.
-  if (!show) {
+  //
+  // ⚠ AN EMPTY LIST IS NO STRIP AT ALL, not one saying "0 parts". A screen whose last unwired part has landed
+  // keeps its list and its mount (the order form: the draft page extends that list), and the strip comes back
+  // by itself the day an entry does.
+  if (!show || list.parts.length === 0) {
     return null;
   }
 

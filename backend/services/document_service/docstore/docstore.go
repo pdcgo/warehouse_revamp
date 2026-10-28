@@ -27,6 +27,14 @@ type Config struct {
 	URLTTL       time.Duration
 }
 
+// DefaultMaxSizeBytes is the ceiling on ONE uploaded file: 15 MiB
+// (an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once, docs/business/shipment/context_decision.md).
+//
+// ⚠ ONE CEILING FOR EVERY RESOURCE TYPE. The owner raised it from 10 MiB for the file attached to an order, and there
+// is no per-type cap to raise instead — so a payment proof, a product image, a profile picture and an order export may
+// be 15 MiB too. The order form states the same number (frontend ReceiptUpload's MAX_BYTES).
+const DefaultMaxSizeBytes = 15 << 20
+
 // The two prefixes an object moves between: incoming (unconfirmed) → assets (permanent).
 const (
 	IncomingPrefix = "incoming"
@@ -40,7 +48,7 @@ func DefaultConfig(cfg Config) Config {
 	}
 
 	if cfg.MaxSizeBytes == 0 {
-		cfg.MaxSizeBytes = 10 << 20 // 10 MiB
+		cfg.MaxSizeBytes = DefaultMaxSizeBytes
 	}
 
 	if cfg.URLTTL == 0 {

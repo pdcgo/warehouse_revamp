@@ -3,32 +3,30 @@ syntax = "proto3";
 package warehouse.supplier.v1;
 
 import "buf/validate/validate.proto";
-import "warehouse/common/v1/list.proto";
-import "warehouse/common/v1/page.proto";
+import "warehouse/analytic_base/v1/analytic.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1";
 
 // A SUPPLIER'S FIGURES — what was restocked from it, and how much of that was lost or broken on the way
 // (docs/business/supplier/context.md §How We provide Analitical Data of Suppliers). Read on the supplier details'
-// Statistics tab and the Supplier Report page (the-figures-are-a-statistics-tab-and-a-supplier-report), derived from
-// those screens and accepted with them (the-figures-screens-are-accepted).
+// Statistics tab and the Supplier Report page (the-figures-are-a-statistics-tab-and-a-supplier-report).
+//
+// Served through the analytic pattern (docs/business/analytic/rpc_provide.md): ONE metric, `metrics/suppliers`, read by
+// `MetricSearch` (rank the keys) and `MetricData` (fill them) — the shape every service's figures share
+// (the-pattern-replaces-the-shipped-analytics). It replaced four bespoke reads.
 //
 // ⚠ EVERY NUMBER HERE IS READ FROM A FOLDED TABLE — `supplier_product_daily_reports`, built by supplier_service's own
 // webhook consuming `RestockAccepted` (the-report-is-processed-like-settlement). A figure can lag the accept by the
 // broker's delivery time, and never by more than that.
 //
 // ⚠ EVERY SELLING TEAM READS EVERY TEAM'S FIGURES (every-selling-team-sees-every-teams-figures). `team_id` is the
-// CALLER's scope, as on every read; `restock_team_id` is the filter on whose restocks are counted, 0 = every team's.
+// CALLER's scope, as on every read; a TeamFilter narrows to whose restocks are counted.
 service SupplierAnalyticService {
-  // One supplier's six figures over time — daily, monthly or yearly — and the window's total.
-  rpc AnalyticTimeSearch(AnalyticTimeSearchRequest) returns (AnalyticTimeSearchResponse);
-  // One supplier's six figures per product over the window — Product Grouped.
-  rpc AnalyticProductSearch(AnalyticProductSearchRequest) returns (AnalyticProductSearchResponse);
-  // Suppliers RANKED over a window — ids only, sorted — and every ranked supplier's total, the report's headline.
-  rpc AnalyticGroupSearch(AnalyticGroupSearchRequest) returns (AnalyticGroupSearchResponse);
-  // The figures of a set of suppliers the caller already ranked.
-  rpc AnalyticGroupMetric(AnalyticGroupMetricRequest) returns (AnalyticGroupMetricResponse);
+  // The keys of a page of the table, ranked by one field of `metrics/suppliers` — suppliers, products or periods.
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse);
+  // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse);
 }
 
 // The two operations a DEVELOPER runs on the fold — settlement's, read for the supplier
@@ -40,47 +38,64 @@ service SupplierAnalyticMaintenanceService {
   rpc AnalyticMaintenanceRun(AnalyticMaintenanceRunRequest) returns (AnalyticMaintenanceRunResponse);
 }
 
-// THE SIX FIGURES (each-figure-is-read-at-the-accept). All are movements, so a month, a product or a supplier is a
-// plain SUM. Lost and broken sit BESIDE restocked, never inside it — a broken rate is
-// broken ÷ (restocked + lost + broken). Values are whole rupiah, at the line's price.
+// THE SIX FIGURES (each-figure-is-read-at-the-accept) and the broken rate. All six are movements, so a period, a
+// product or a supplier is a plain SUM. Lost and broken sit BESIDE restocked, never inside it. Values are whole
+// rupiah, at the line's price.
+//
+// Groups: SUPPLIER and PRODUCT — the RESTOCKING team's product, so two teams buying one item are two keys
+// (every-accepted-line-links-its-own-product) — and every period. Filters: the window (required); TEAM, whose
+// restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier. No keyword — the Supplier
+// Report's search went with it (the-supplier-report-drops-its-search).
 message SupplierMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/suppliers"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_SUPPLIER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_SUPPLIER,
+      GROUP_TYPE_PRODUCT
+    ]
+  };
+
   // Units accepted as good stock.
-  int64 restock_count = 1;
-  int64 restock_valuation = 2;
+  int64 restock_count = 1 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
+  int64 restock_valuation = 2 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
   // Units short in an accepted parcel.
-  int64 shipping_lost_count = 3;
-  int64 shipping_lost_valuation = 4;
+  int64 shipping_lost_count = 3 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
+  int64 shipping_lost_valuation = 4 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
   // Units that arrived broken.
-  int64 shipping_broken_count = 5;
-  int64 shipping_broken_valuation = 6;
+  int64 shipping_broken_count = 5 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
+  int64 shipping_broken_valuation = 6 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
+
+  // broken ÷ (restocked + lost + broken), 0 to 1 — 0 when nothing arrived, so read the counts to tell no rate from a
+  // rate of 0. Ranked only among keys with at least 50 units; the rest follow, in key order
+  // (rate-ranking-needs-50-units, a-rate-ranks-only-above-its-minimum-sample).
+  double broken_rate = 7 [(warehouse.analytic_base.v1.metric_sort) = {
+    can_sort: true
+    rank_min_sample: 50
+  }];
 }
 
-// The grain a series is read at.
-enum AnalyticTimeframe {
-  ANALYTIC_TIMEFRAME_UNSPECIFIED = 0;
-  // One point per day. SPAN capped at 366 days.
-  ANALYTIC_TIMEFRAME_DAILY = 1;
-  // One point per calendar month. SPAN capped at 60 months.
-  ANALYTIC_TIMEFRAME_MONTHLY = 2;
-  // One point per calendar year. SPAN capped at 20 years.
-  ANALYTIC_TIMEFRAME_YEARLY = 3;
+// A page of keys' figures — keyed by supplier or product id. An asked id with nothing in the window is all zero.
+message SupplierMetricByID {
+  map<uint64, SupplierMetric> items = 1;
 }
 
-// A window over the ACCEPT's Jakarta day, inclusive at both ends, as YYYY-MM-DD.
-message AnalyticDateRange {
-  string start_date = 1 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
-  string end_date = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. An asked period that was quiet is all zero.
+message SupplierMetricByDay {
+  map<string, SupplierMetric> items = 1;
 }
 
-// ── AnalyticTimeSearch ──────────────────────────────────────────────────────────────────────────
-
-message AnalyticTimeSearchFilter {
-  AnalyticDateRange date_range = 1 [(buf.validate.field).required = true];
-  // Whose restocks are counted — one selling team, or 0 for every team's (the-team-filter-picks-any-selling-team).
-  uint64 restock_team_id = 2;
-}
-
-message AnalyticTimeSearchRequest {
+message MetricSearchRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -96,163 +111,72 @@ message AnalyticTimeSearchRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  // Any team's supplier, a deleted one included — its figures are kept (a-deleted-supplier-is-kept-for-its-figures).
-  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Never SUMMARY — a headline is not searched.
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0, 1]
+  }];
 
-  AnalyticTimeframe timeframe = 3 [(buf.validate.field).enum = {
+  // At most one of each FilterType.
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 6];
+
+  warehouse.analytic_base.v1.MetricSort sort = 4 [(buf.validate.field).required = true];
+
+  warehouse.analytic_base.v1.PaginationFilter page = 5 [(buf.validate.field).required = true];
+}
+
+message MetricSearchResponse {
+  // Ranked; the key DESC breaks a tie (the-key-breaks-every-tie). Only keys with figures in the window.
+  warehouse.analytic_base.v1.MetricKeys keys = 1;
+  // Read as limit + 1 — no total (a-page-says-whether-another-follows).
+  bool has_next = 2;
+}
+
+message MetricDataRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
     defined_only: true
     not_in: [0]
   }];
 
-  AnalyticTimeSearchFilter filter = 4 [(buf.validate.field).required = true];
+  // The same as the search's — they scope the numbers, never the keys (the-fill-step-scopes-its-numbers-by-the-filters).
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 6];
 
-  // Over the bucket's date. Unspecified reads ASCENDING, oldest first.
-  warehouse.common.v1.CommonSortType sort_type = 5;
+  // IDs for SUPPLIER and PRODUCT, days for a period; none for SUMMARY. At most a page.
+  warehouse.analytic_base.v1.MetricKeys keys = 4;
 
-  // Pages over BUCKETS — every bucket in the window is a point, a quiet one included, so a missing row never reads
-  // as a period that did not load.
-  warehouse.common.v1.CommonPagination page = 6 [(buf.validate.field).required = true];
-}
-
-message SupplierTimeframeMetric {
-  // The bucket's first day, YYYY-MM-DD — the 1st of a month, 1 January of a year.
-  string at = 1;
-  SupplierMetric metric = 2;
-}
-
-message AnalyticTimeSearchResponse {
-  repeated SupplierTimeframeMetric datas = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
-  // The WHOLE window as one metric — the Statistics tab's headline, never a sum of the page on screen.
-  SupplierMetric total = 3;
-}
-
-// ── AnalyticProductSearch ───────────────────────────────────────────────────────────────────────
-
-message AnalyticProductSearchRequest {
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_SELLING_CS
-    ]
-  };
-
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-
-  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
-
-  AnalyticTimeSearchFilter filter = 3 [(buf.validate.field).required = true];
-
-  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
-}
-
-// One product's figures — the RESTOCKING team's product, so two teams buying one item are two rows
-// (every-accepted-line-links-its-own-product).
-message SupplierProductMetric {
-  uint64 product_id = 1;
-  // The team the product belongs to — the team that restocked it.
-  uint64 team_id = 2;
-  SupplierMetric metric = 3;
-}
-
-message AnalyticProductSearchResponse {
-  // The largest restocked value first.
-  repeated SupplierProductMetric datas = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
-}
-
-// ── AnalyticGroupSearch ─────────────────────────────────────────────────────────────────────────
-
-// How the ranking orders its suppliers.
-enum AnalyticGroupSort {
-  ANALYTIC_GROUP_SORT_UNSPECIFIED = 0;
-  // The default: the largest restocked value first.
-  ANALYTIC_GROUP_SORT_RESTOCK_VALUATION = 1;
-  // The highest broken rate first — among the suppliers with at least `rate_min_units` units in the window; the rest
-  // follow (rate-ranking-needs-50-units).
-  ANALYTIC_GROUP_SORT_BROKEN_RATE = 2;
-}
-
-message AnalyticGroupFilter {
-  AnalyticDateRange date_range = 1 [(buf.validate.field).required = true];
-  // Whose restocks are counted — one selling team, or 0 for every team's.
-  uint64 restock_team_id = 2;
-  // Matched as SupplierList's `q` is — the supplier's name, address and contact, and its live stores' names
-  // (the-supplier-report-searches-like-discover). Empty ranks every supplier with figures in the window.
-  string q = 3 [(buf.validate.field).string.max_len = 100];
-}
-
-message AnalyticGroupSearchRequest {
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_SELLING_CS
-    ]
-  };
-
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-
-  AnalyticGroupFilter filter = 2 [(buf.validate.field).required = true];
-
-  AnalyticGroupSort sort = 3 [(buf.validate.field).enum.defined_only = true];
-
-  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
-}
-
-message AnalyticGroupSearchResponse {
-  // The suppliers, RANKED — a deleted one included when it has figures in the window. Resolve the names with
-  // SupplierByIds, which returns a deleted supplier marked.
-  repeated uint64 ids = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
-  // Every ranked supplier together — the report's headline, never a sum of the page on screen.
-  SupplierMetric total = 3;
-  // The units a supplier needs in the window to be ranked by its rate (rate-ranking-needs-50-units). The screen reads
-  // it, never a copy of its own.
-  int64 rate_min_units = 4;
-}
-
-// ── AnalyticGroupMetric ─────────────────────────────────────────────────────────────────────────
-
-message AnalyticGroupMetricRequest {
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_SELLING_CS
-    ]
-  };
-
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-
-  AnalyticGroupFilter filter = 2 [(buf.validate.field).required = true];
-
-  // The page AnalyticGroupSearch returned. Capped like a page, because it is one.
-  repeated uint64 ids = 3 [(buf.validate.field).repeated = {
+  repeated string metric_ids = 5 [(buf.validate.field).repeated = {
     min_items: 1
-    max_items: 200
+    max_items: 10
+    unique: true
   }];
 }
 
-message AnalyticGroupMetricResponse {
-  // Keyed by supplier id. An id with nothing in the window gets an all-zero metric, never a missing key.
-  map<uint64, SupplierMetric> metrics = 1;
+// One per asked metric (one-call-answers-every-asked-metric).
+message MetricData {
+  oneof m {
+    SupplierMetricByID supplier_by_id = 1;
+    SupplierMetricByDay supplier_by_day = 2;
+    SupplierMetric supplier_summary = 3;
+  }
+}
+
+message MetricDataResponse {
+  repeated MetricData metric_datas = 1;
 }
 
 // ── maintenance ─────────────────────────────────────────────────────────────────────────────────

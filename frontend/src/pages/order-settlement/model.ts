@@ -12,7 +12,7 @@
 //
 // ── The one idea the whole screen is built on ───────────────────────────────────────────────────
 //
-// `initial_total` is a frozen copy of `order.marketplace_total` — **what the buyer actually paid**.
+// `initial_total` is a frozen copy of `order.platform_total` — **what the buyer actually paid**.
 // ⚠ It is a FACT, not a prediction (`marketplace-total-is-a-fact-not-an-estimate`). What is estimated
 // is only the EXPECTATION that all of it will reach us; the estimate lives in the comparison, never
 // in the column.
@@ -168,7 +168,7 @@ export interface OrderSettlement {
   shopName: string;
   teamName: string;
   /**
-   * What the buyer paid — a frozen copy of `order.marketplace_total`. Stored POSITIVE.
+   * What the buyer paid — a frozen copy of `order.platform_total`. Stored POSITIVE.
    *
    * ⚠ 0 means NOT RECORDED, not "sold for nothing" (`order.proto:224`). A missing fact, not a zero
    * one — so nothing can be measured against it and the screens refuse rather than compute.
@@ -181,7 +181,7 @@ export interface OrderSettlement {
   /** The current position. Negative means part of what the buyer paid never reached us. */
   lastBalance: bigint;
   /** What the goods cost us, frozen on the order. Needed for true margin; settlement never stores it. */
-  cogs: bigint;
+  goodsCost: bigint;
   entries: SettlementEntry[];
 }
 

@@ -81,9 +81,8 @@ export interface CustomerInfoFormProps {
 // number and the slip because those are the same moment — somebody hands the box over and comes back
 // with all three.
 //
-// The shipping COST is not here either, and is not coming back (owner). It is not gone from an order
-// — the contract and the column still carry it, historical orders still read theirs, the detail page
-// still shows it — it is simply no longer typed in, so a new order places at `total = subtotal`.
+// The shipping COST is not here either, and is not coming back (owner): an order records no shipping
+// (an-order-records-no-shipping-cost), and selling 00027 dropped the column and the contract field with it.
 //
 // The labels are the `orders.*` strings deliberately: these are an ORDER's fields rendered by a
 // customer-shaped card, and a second copy of "Customer name" under a `customers.*` key is how two

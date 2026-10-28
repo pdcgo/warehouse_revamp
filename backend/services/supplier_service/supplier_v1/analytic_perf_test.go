@@ -1,10 +1,10 @@
 //go:build perfaudit
 
-// The supplier's FIGURES — AnalyticTimeSearch, AnalyticProductSearch, AnalyticGroupSearch, AnalyticGroupMetric, and
-// the fold that writes them (FoldHandler). One test per RPC; run them ONE AT A TIME (a rolled-back 500k-row seed
-// leaves dead rows that bloat the next test's indexes):
+// The supplier's FIGURES — MetricSearch and MetricData, the two reads of `metrics/suppliers`, and the fold that writes
+// them (FoldHandler). One test per RPC; run them ONE AT A TIME (a rolled-back 500k-row seed leaves dead rows that bloat
+// the next test's indexes):
 //
-//	go test -tags perfaudit -run TestPerf_AnalyticGroupSearch$ -v ./backend/services/supplier_service/supplier_v1/
+//	go test -tags perfaudit -run TestPerf_MetricSearch$ -v ./backend/services/supplier_service/supplier_v1/
 //
 // Volumes: `suppliers` 2 000 (8 selling teams, every 20th soft-deleted), `supplier_channels` 3 a supplier (6 000,
 // every 20th soft-deleted), 10 000 products over the same 8 teams. Each product is bought from ONE supplier, drawn
@@ -13,9 +13,9 @@
 //
 // Knobs: PERF_FIG_YEARS=n seeds n years at the same density (the growth check). PERF_PLAN_CACHE=custom|generic pins
 // the server's plan cache. PERF_CASE=<substring> runs one case alone. PERF_REPORT=1 prints the per-statement table.
-// TestPerf_AnalyticGroupSearch_Probe EXPLAINs the generic plans and the proposed rewrites — nothing is applied.
 //
-// Findings: audits/services/supplier_service/performances/{AnalyticGroupSearch,AnalyticGroupMetric,FoldHandler}.md.
+// Findings: audits/services/supplier_service/performances/ — the AnalyticGroupSearch / AnalyticGroupMetric reports
+// audited the reads these two replaced; their plan-cache finding (dates as literals) is carried in `window`.
 package supplier_v1_test
 
 import (
@@ -31,7 +31,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_perf"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -265,34 +265,52 @@ func figWant(name string) bool {
 	return want == "" || strings.Contains(name, want)
 }
 
-func figRange(days int) *supplierv1.AnalyticDateRange {
-	return &supplierv1.AnalyticDateRange{StartDate: figDay(days - 1), EndDate: figLastDay}
+// figWindow is the last `days` seeded days, ending on figLastDay — plus any other filters.
+func figWindow(days int, more ...*analytic_basev1.FilterItem) []*analytic_basev1.FilterItem {
+	return append(filters(dateRange(figDay(days-1), figLastDay)), more...)
 }
 
-// Daily over 366 days (the daily cap) and 30 days (the screen's default), monthly over 60 months (the monthly cap),
-// the top supplier and the median one, at two page sizes — the query count must not move with the page.
-func TestPerf_AnalyticTimeSearch(t *testing.T) {
+// figTeam narrows to the first seeded team's restocks, or nothing when 0.
+func figTeam(team uint64) []*analytic_basev1.FilterItem {
+	if team == 0 {
+		return nil
+	}
+
+	return filters(restockTeam(team))
+}
+
+// What the two screens ask MetricSearch: the Supplier Report ranks suppliers by value or broken rate, over the default
+// 30 days and a year, with and without a team, at two page sizes and deep into the pages; the Statistics
+// tab's By Product ranks one supplier's products — the top supplier and the median one.
+func TestPerf_MetricSearch(t *testing.T) {
 	b := figSetup(t)
 
-	daily := supplierv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_DAILY
-	monthly := supplierv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_MONTHLY
-	sixtyMonths := &supplierv1.AnalyticDateRange{StartDate: "2021-11-01", EndDate: "2026-10-31"}
+	type c struct {
+		name    string
+		group   analytic_basev1.GroupType
+		field   string
+		filters []*analytic_basev1.FilterItem
+		offset  int32
+		limit   int32
+	}
 
-	cases := []struct {
-		name     string
-		supplier uint64
-		tf       supplierv1.AnalyticTimeframe
-		rng      *supplierv1.AnalyticDateRange
-		team     uint64
-		limit    uint32
-	}{
-		{"top/daily/366d/limit=20", b.top, daily, figRange(366), 0, 20},
-		{"top/daily/366d/limit=200", b.top, daily, figRange(366), 0, 200},
-		{"top/daily/30d/limit=20", b.top, daily, figRange(30), 0, 20},
-		{"top/daily/366d/team/limit=20", b.top, daily, figRange(366), figTeamBase, 20},
-		{"top/monthly/60mo/limit=60", b.top, monthly, sixtyMonths, 0, 60},
-		{"median/daily/366d/limit=20", b.median, daily, figRange(366), 0, 20},
-		{"median/monthly/60mo/limit=60", b.median, monthly, sixtyMonths, 0, 60},
+	supplier, product := analytic_basev1.GroupType_GROUP_TYPE_SUPPLIER, analytic_basev1.GroupType_GROUP_TYPE_PRODUCT
+
+	cases := []c{
+		{"suppliers/value/30d/limit=20", supplier, "restock_valuation", figWindow(30), 0, 20},
+		{"suppliers/value/30d/limit=200", supplier, "restock_valuation", figWindow(30), 0, 200},
+		{"suppliers/value/366d/limit=20", supplier, "restock_valuation", figWindow(366), 0, 20},
+		{"suppliers/value/366d/limit=200", supplier, "restock_valuation", figWindow(366), 0, 200},
+		{"suppliers/value/366d/offset=180/limit=20", supplier, "restock_valuation", figWindow(366), 180, 20},
+		{"suppliers/value/366d/team/limit=20", supplier, "restock_valuation", figWindow(366, figTeam(figTeamBase)...), 0, 20},
+		{"suppliers/broken/30d/limit=20", supplier, "broken_rate", figWindow(30), 0, 20},
+		{"suppliers/broken/366d/limit=20", supplier, "broken_rate", figWindow(366), 0, 20},
+		{fmt.Sprintf("suppliers/value/all-%dd/limit=20", 365*b.years), supplier, "restock_valuation", figWindow(365 * b.years), 0, 20},
+		{"products/top/366d/limit=20", product, "restock_valuation", figWindow(366, oneSupplier(b.top)), 0, 20},
+		{"products/top/366d/limit=200", product, "restock_valuation", figWindow(366, oneSupplier(b.top)), 0, 200},
+		{"products/top/30d/limit=20", product, "restock_valuation", figWindow(30, oneSupplier(b.top)), 0, 20},
+		{"products/top/366d/team/limit=20", product, "restock_valuation", figWindow(366, oneSupplier(b.top), restockTeam(figTeamBase)), 0, 20},
+		{"products/median/366d/limit=20", product, "restock_valuation", figWindow(366, oneSupplier(b.median)), 0, 20},
 	}
 
 	for _, c := range cases {
@@ -300,14 +318,13 @@ func TestPerf_AnalyticTimeSearch(t *testing.T) {
 			continue
 		}
 
-		perfRun(t, b.perfBook, "AnalyticTimeSearch/"+c.name, func(int) error {
-			_, err := b.svc.AnalyticTimeSearch(context.Background(), connect.NewRequest(&supplierv1.AnalyticTimeSearchRequest{
-				TeamId:     b.team,
-				SupplierId: c.supplier,
-				Timeframe:  c.tf,
-				Filter:     &supplierv1.AnalyticTimeSearchFilter{DateRange: c.rng, RestockTeamId: c.team},
-				SortType:   commonv1.CommonSortType_COMMON_SORT_TYPE_DESC,
-				Page:       perfPage(1, c.limit),
+		perfRun(t, b.perfBook, "MetricSearch/"+c.name, func(int) error {
+			_, err := b.svc.MetricSearch(context.Background(), connect.NewRequest(&supplierv1.MetricSearchRequest{
+				TeamId:  b.team,
+				GroupBy: c.group,
+				Filters: c.filters,
+				Sort:    sortBy(c.field, analytic_basev1.SortType_SORT_TYPE_DESC),
+				Page:    window(c.offset, c.limit),
 			}))
 
 			return err
@@ -315,134 +332,93 @@ func TestPerf_AnalyticTimeSearch(t *testing.T) {
 	}
 }
 
-func TestPerf_AnalyticProductSearch(t *testing.T) {
+// What the two screens ask MetricData: a ranked page's suppliers (the BIGGEST, so the most rows to sum) and products,
+// the Statistics tab's periods — its 10 newest days, and the widest pages a request may carry — and every headline,
+// grouped by SUMMARY.
+func TestPerf_MetricData(t *testing.T) {
 	b := figSetup(t)
 
-	cases := []struct {
-		name     string
-		supplier uint64
-		days     int
-		team     uint64
-		page     uint32
-		limit    uint32
-	}{
-		{"top/366d/limit=20", b.top, 366, 0, 1, 20},
-		{"top/366d/limit=200", b.top, 366, 0, 1, 200},
-		{"top/30d/limit=20", b.top, 30, 0, 1, 20},
-		{"top/366d/team/limit=20", b.top, 366, figTeamBase, 1, 20},
-		{"top/366d/page=10/limit=20", b.top, 366, 0, 10, 20},
-		{"median/366d/limit=20", b.median, 366, 0, 1, 20},
-	}
+	supplier, product := analytic_basev1.GroupType_GROUP_TYPE_SUPPLIER, analytic_basev1.GroupType_GROUP_TYPE_PRODUCT
+	daily, monthly := analytic_basev1.GroupType_GROUP_TYPE_DAILY, analytic_basev1.GroupType_GROUP_TYPE_MONTHLY
+	summary := analytic_basev1.GroupType_GROUP_TYPE_SUMMARY
 
-	for _, c := range cases {
-		if !figWant(c.name) {
-			continue
-		}
-
-		perfRun(t, b.perfBook, "AnalyticProductSearch/"+c.name, func(int) error {
-			_, err := b.svc.AnalyticProductSearch(context.Background(), connect.NewRequest(&supplierv1.AnalyticProductSearchRequest{
-				TeamId:     b.team,
-				SupplierId: c.supplier,
-				Filter:     &supplierv1.AnalyticTimeSearchFilter{DateRange: figRange(c.days), RestockTeamId: c.team},
-				Page:       perfPage(c.page, c.limit),
-			}))
-
-			return err
-		})
-	}
-}
-
-// The Supplier Report's ranking: by value and by broken rate, with and without q, over the screen's default 30 days
-// and a full year, at two page sizes.
-func TestPerf_AnalyticGroupSearch(t *testing.T) {
-	b := figSetup(t)
-
-	value := supplierv1.AnalyticGroupSort_ANALYTIC_GROUP_SORT_RESTOCK_VALUATION
-	broken := supplierv1.AnalyticGroupSort_ANALYTIC_GROUP_SORT_BROKEN_RATE
-
-	cases := []struct {
-		name  string
-		sort  supplierv1.AnalyticGroupSort
-		q     string
-		days  int
-		team  uint64
-		page  uint32
-		limit uint32
-	}{
-		{"value/30d/limit=20", value, "", 30, 0, 1, 20},
-		{"value/30d/limit=200", value, "", 30, 0, 1, 200},
-		{"value/366d/limit=20", value, "", 366, 0, 1, 20},
-		{"value/366d/limit=200", value, "", 366, 0, 1, 200},
-		{"value/366d/page=10/limit=20", value, "", 366, 0, 10, 20},
-		{"value/366d/team/limit=20", value, "", 366, figTeamBase, 1, 20},
-		{"broken/30d/limit=20", broken, "", 30, 0, 1, 20},
-		{"broken/366d/limit=20", broken, "", 366, 0, 1, 20},
-		{fmt.Sprintf("value/all-%dd/limit=20", 365*b.years), value, "", 365 * b.years, 0, 1, 20},
-		{"value/30d/q=" + perfQ + "/limit=20", value, perfQ, 30, 0, 1, 20},
-		{"value/366d/q=" + perfQ + "/limit=20", value, perfQ, 366, 0, 1, 20},
-		{"broken/366d/q=" + perfQ + "/limit=20", broken, perfQ, 366, 0, 1, 20},
-		{"value/366d/q=" + perfRareQ + "/limit=20", value, perfRareQ, 366, 0, 1, 20},
-	}
-
-	for _, c := range cases {
-		if !figWant(c.name) {
-			continue
-		}
-
-		perfRun(t, b.perfBook, "AnalyticGroupSearch/"+c.name, func(int) error {
-			_, err := b.svc.AnalyticGroupSearch(context.Background(), connect.NewRequest(&supplierv1.AnalyticGroupSearchRequest{
-				TeamId: b.team,
-				Filter: &supplierv1.AnalyticGroupFilter{DateRange: figRange(c.days), RestockTeamId: c.team, Q: c.q},
-				Sort:   c.sort,
-				Page:   perfPage(c.page, c.limit),
-			}))
-
-			return err
-		})
-	}
-}
-
-// The ids are what the screen sends: the ranking's own page — the BIGGEST suppliers, so the most rows to sum.
-func TestPerf_AnalyticGroupMetric(t *testing.T) {
-	b := figSetup(t)
-
-	cases := []struct {
-		name  string
-		days  int
-		team  uint64
-		limit uint32
-	}{
-		{"30d/ids=20", 30, 0, 20},
-		{"30d/ids=200", 30, 0, 200},
-		{"366d/ids=20", 366, 0, 20},
-		{"366d/ids=200", 366, 0, 200},
-		{"366d/team/ids=200", 366, figTeamBase, 200},
-	}
-
-	for _, c := range cases {
-		if !figWant(c.name) {
-			continue
-		}
-
-		filter := &supplierv1.AnalyticGroupFilter{DateRange: figRange(c.days), RestockTeamId: c.team}
-
-		ranked, err := b.svc.AnalyticGroupSearch(context.Background(), connect.NewRequest(&supplierv1.AnalyticGroupSearchRequest{
-			TeamId: b.team,
-			Filter: filter,
-			Sort:   supplierv1.AnalyticGroupSort_ANALYTIC_GROUP_SORT_RESTOCK_VALUATION,
-			Page:   perfPage(1, c.limit),
+	// The keys a search hands over — the screen's own first page.
+	ranked := func(group analytic_basev1.GroupType, items []*analytic_basev1.FilterItem, limit int32) *analytic_basev1.MetricKeys {
+		resp, err := b.svc.MetricSearch(context.Background(), connect.NewRequest(&supplierv1.MetricSearchRequest{
+			TeamId: b.team, GroupBy: group, Filters: items,
+			Sort: sortBy("restock_valuation", analytic_basev1.SortType_SORT_TYPE_DESC), Page: window(0, limit),
 		}))
 		if err != nil {
-			t.Fatalf("ranking for %s: %v", c.name, err)
+			t.Fatalf("ranking: %v", err)
 		}
 
-		ids := ranked.Msg.GetIds()
+		return resp.Msg.GetKeys()
+	}
 
-		perfRun(t, b.perfBook, fmt.Sprintf("AnalyticGroupMetric/%s(%d)", c.name, len(ids)), func(int) error {
-			_, err := b.svc.AnalyticGroupMetric(context.Background(), connect.NewRequest(&supplierv1.AnalyticGroupMetricRequest{
-				TeamId: b.team,
-				Filter: filter,
-				Ids:    ids,
+	// The newest n days, or months, of the window — what the Statistics tab lists for itself.
+	days := func(n int) *analytic_basev1.MetricKeys {
+		out := make([]string, 0, n)
+		for back := range n {
+			out = append(out, figDay(back))
+		}
+
+		return dayKeys(out...)
+	}
+
+	months := func(n int) *analytic_basev1.MetricKeys {
+		last, err := time.Parse(dateLayoutTest, figLastDay)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		first := time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, time.UTC)
+		out := make([]string, 0, n)
+
+		for back := range n {
+			out = append(out, first.AddDate(0, -back, 0).Format(dateLayoutTest))
+		}
+
+		return dayKeys(out...)
+	}
+
+	type c struct {
+		name    string
+		group   analytic_basev1.GroupType
+		filters []*analytic_basev1.FilterItem
+		keys    *analytic_basev1.MetricKeys
+	}
+
+	cases := []c{
+		{"suppliers/30d/ids=20", supplier, figWindow(30), ranked(supplier, figWindow(30), 20)},
+		{"suppliers/30d/ids=200", supplier, figWindow(30), ranked(supplier, figWindow(30), 200)},
+		{"suppliers/366d/ids=20", supplier, figWindow(366), ranked(supplier, figWindow(366), 20)},
+		{"suppliers/366d/ids=200", supplier, figWindow(366), ranked(supplier, figWindow(366), 200)},
+		{"suppliers/366d/team/ids=200", supplier, figWindow(366, figTeam(figTeamBase)...),
+			ranked(supplier, figWindow(366, figTeam(figTeamBase)...), 200)},
+		{"products/top/366d/ids=20", product, figWindow(366, oneSupplier(b.top)), ranked(product, figWindow(366, oneSupplier(b.top)), 20)},
+		{"products/top/366d/ids=200", product, figWindow(366, oneSupplier(b.top)), ranked(product, figWindow(366, oneSupplier(b.top)), 200)},
+		{"days/top/30d/keys=10", daily, figWindow(30, oneSupplier(b.top)), days(10)},
+		{"days/top/366d/keys=200", daily, figWindow(366, oneSupplier(b.top)), days(200)},
+		{"days/median/366d/keys=10", daily, figWindow(366, oneSupplier(b.median)), days(10)},
+		{"months/top/366d/keys=12", monthly, figWindow(366, oneSupplier(b.top)), months(12)},
+		{"summary/30d", summary, figWindow(30), nil},
+		{"summary/366d", summary, figWindow(366), nil},
+		{fmt.Sprintf("summary/all-%dd", 365*b.years), summary, figWindow(365 * b.years), nil},
+		{"summary/top/366d", summary, figWindow(366, oneSupplier(b.top)), nil},
+	}
+
+	for _, c := range cases {
+		if !figWant(c.name) {
+			continue
+		}
+
+		perfRun(t, b.perfBook, "MetricData/"+c.name, func(int) error {
+			_, err := b.svc.MetricData(context.Background(), connect.NewRequest(&supplierv1.MetricDataRequest{
+				TeamId:    b.team,
+				GroupBy:   c.group,
+				Filters:   c.filters,
+				Keys:      c.keys,
+				MetricIds: []string{suppliersMetric},
 			}))
 
 			return err
@@ -513,108 +489,4 @@ SET restock_count             = d.restock_count + EXCLUDED.restock_count,
     shipping_broken_count     = d.shipping_broken_count + EXCLUDED.shipping_broken_count,
     shipping_broken_valuation = d.shipping_broken_valuation + EXCLUDED.shipping_broken_valuation,
     last_updated              = NOW()`, figLastDay, b.top, figTeamBase, values))
-}
-
-// The ranking's two statements, PROBED outside the handler — nothing here is applied:
-//
-//   - the plan cache: each statement PREPARED with the window as $1/$2, as pgx sends it, then executed five times over
-//     the screen's default 30 days and EXPLAINed over a year — what a pooled connection does after a day of use;
-//   - the summary rewritten without COUNT(DISTINCT) (a grouped subquery, which can run in parallel);
-//   - how many rows a (day, supplier, team) or (month, supplier, team) rollup would hold.
-//
-// go test -tags perfaudit -run TestPerf_AnalyticGroupSearch_Probe -v ./backend/services/supplier_service/supplier_v1/
-func TestPerf_AnalyticGroupSearch_Probe(t *testing.T) {
-	b := figSetup(t)
-	db := b.db.Session(&gorm.Session{Logger: logger.Discard})
-
-	year, month := figRange(366), figRange(30)
-	sums := "COALESCE(SUM(r.restock_count), 0) AS restock_count, COALESCE(SUM(r.restock_valuation), 0) AS restock_valuation, " +
-		"COALESCE(SUM(r.shipping_lost_count), 0) AS shipping_lost_count, COALESCE(SUM(r.shipping_lost_valuation), 0) AS shipping_lost_valuation, " +
-		"COALESCE(SUM(r.shipping_broken_count), 0) AS shipping_broken_count, COALESCE(SUM(r.shipping_broken_valuation), 0) AS shipping_broken_valuation"
-	where := "FROM supplier_product_daily_reports AS r WHERE r.day BETWEEN CAST($1 AS date) AND CAST($2 AS date)"
-
-	statements := map[string]string{
-		"fig_sum":  "SELECT COUNT(DISTINCT r.supplier_id) AS suppliers, " + sums + " " + where,
-		"fig_page": "SELECT r.supplier_id " + where + " GROUP BY r.supplier_id ORDER BY SUM(r.restock_valuation) DESC, r.supplier_id LIMIT 20",
-	}
-
-	for name, sql := range statements {
-		err := db.Exec("PREPARE " + name + "(date, date) AS " + sql).Error
-		if err != nil {
-			t.Fatalf("prepare %s: %v", name, err)
-		}
-
-		for range 5 {
-			err = db.Exec(fmt.Sprintf("EXECUTE %s('%s', '%s')", name, month.StartDate, month.EndDate)).Error
-			if err != nil {
-				t.Fatalf("execute %s: %v", name, err)
-			}
-		}
-
-		t.Logf("PROBE %s — auto mode, after five 30-day executions, now over a year:", name)
-		san_perf.Explain(t, b.db, fmt.Sprintf("EXECUTE %s('%s', '%s')", name, year.StartDate, year.EndDate))
-	}
-
-	for _, w := range []*supplierv1.AnalyticDateRange{year, figRange(365 * b.years)} {
-		t.Logf("PROBE the summary without COUNT(DISTINCT), %s..%s:", w.StartDate, w.EndDate)
-		san_perf.Explain(t, b.db, fmt.Sprintf(`SELECT COUNT(*) AS suppliers, COALESCE(SUM(g.restock_count), 0), COALESCE(SUM(g.restock_valuation), 0),
-       COALESCE(SUM(g.shipping_lost_count), 0), COALESCE(SUM(g.shipping_lost_valuation), 0),
-       COALESCE(SUM(g.shipping_broken_count), 0), COALESCE(SUM(g.shipping_broken_valuation), 0)
-FROM (SELECT r.supplier_id, %s FROM supplier_product_daily_reports AS r
-      WHERE r.day BETWEEN DATE '%s' AND DATE '%s' GROUP BY r.supplier_id) g`, sums, w.StartDate, w.EndDate))
-	}
-
-	// AnalyticGroupMetric's statement, as GORM expands `IN ?` for the ranking's first 20 ids: $1/$2 the window, $3..$22
-	// the ids. Five executions over 30 days, then a year — auto mode, as above.
-	var top20 []uint64
-
-	err := db.Raw(`SELECT supplier_id FROM supplier_product_daily_reports GROUP BY supplier_id ORDER BY SUM(restock_valuation) DESC LIMIT 20`).
-		Scan(&top20).
-		Error
-	if err != nil {
-		t.Fatalf("top 20: %v", err)
-	}
-
-	placeholders, types, values := make([]string, 0, 20), []string{"date", "date"}, make([]string, 0, 20)
-	for i, id := range top20 {
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i+3))
-		types = append(types, "bigint")
-		values = append(values, strconv.FormatUint(id, 10))
-	}
-
-	err = db.Exec("PREPARE fig_metric(" + strings.Join(types, ", ") + ") AS SELECT r.supplier_id, " + sums + " " + where +
-		" AND r.supplier_id IN (" + strings.Join(placeholders, ",") + ") GROUP BY r.supplier_id").Error
-	if err != nil {
-		t.Fatalf("prepare fig_metric: %v", err)
-	}
-
-	for range 5 {
-		err = db.Exec(fmt.Sprintf("EXECUTE fig_metric('%s', '%s', %s)", month.StartDate, month.EndDate, strings.Join(values, ", "))).Error
-		if err != nil {
-			t.Fatalf("execute fig_metric: %v", err)
-		}
-	}
-
-	t.Logf("PROBE fig_metric — auto mode, after five 30-day executions, now over a year:")
-	san_perf.Explain(t, b.db, fmt.Sprintf("EXECUTE fig_metric('%s', '%s', %s)", year.StartDate, year.EndDate, strings.Join(values, ", ")))
-
-	t.Logf("PROBE the page and its totals in ONE statement, over a year:")
-	san_perf.Explain(t, b.db, fmt.Sprintf(`WITH g AS (
-    SELECT r.supplier_id, %s FROM supplier_product_daily_reports AS r
-    WHERE r.day BETWEEN DATE '%s' AND DATE '%s' GROUP BY r.supplier_id)
-SELECT g.supplier_id, COUNT(*) OVER () AS suppliers, SUM(g.restock_valuation) OVER () AS total_restock_valuation
-FROM g ORDER BY g.restock_valuation DESC, g.supplier_id LIMIT 20`, sums, year.StartDate, year.EndDate))
-
-	for _, grain := range []string{"day", "month"} {
-		var n int64
-
-		err := db.Raw(`SELECT count(*) FROM (SELECT DISTINCT date_trunc('` + grain + `', day), supplier_id, team_id FROM supplier_product_daily_reports) x`).
-			Scan(&n).
-			Error
-		if err != nil {
-			t.Fatalf("rollup size: %v", err)
-		}
-
-		t.Logf("PROBE a (%s, supplier, team) rollup holds %d rows, against %d daily product rows (%.1f×)", grain, n, b.rows, float64(b.rows)/float64(n))
-	}
 }

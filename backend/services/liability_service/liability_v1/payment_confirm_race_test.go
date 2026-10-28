@@ -38,7 +38,7 @@ var paymentTables = []string{
 func TestRace_LiabilityPaymentConfirm(t *testing.T) {
 	h := san_race.New(t, paymentTables...)
 	db := h.DB()
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 	ctx := context.Background()
 
 	// The debt, committed, so every racing caller sees the same starting position.
@@ -124,7 +124,7 @@ func TestRace_LiabilityPaymentConfirm(t *testing.T) {
 func TestRace_LiabilityPaymentConfirmAgainstReject(t *testing.T) {
 	h := san_race.New(t, paymentTables...)
 	db := h.DB()
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 	ctx := context.Background()
 
 	_, err := svc.PostEntry(ctx, nil, liability_v1.Posting{
@@ -231,7 +231,7 @@ func TestRace_LiabilityPaymentConfirmAgainstReject(t *testing.T) {
 func TestInterleave_RejectBlocksBehindConfirm(t *testing.T) {
 	h := san_race.New(t, paymentTables...)
 	db := h.DB()
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 	ctx := context.Background()
 
 	_, err := svc.PostEntry(ctx, nil, liability_v1.Posting{

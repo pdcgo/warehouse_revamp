@@ -1,16 +1,15 @@
-import { Card, Field, Flex, Input, SimpleGrid } from "@chakra-ui/react";
+import { Card, Field, Input, SimpleGrid } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { DatePicker } from "../../../components/datetime/DatePicker";
 import { todayDateInput } from "../../../lib/datetime";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "./pending";
 
-// TWO OPTIONAL FACTS ABOUT THE ORDER.
+// TWO OPTIONAL FACTS THE MARKETPLACE SHOWS ABOUT THE ORDER.
 //
 // The marketplace's ship-by deadline — its "kirim sebelum", stored as `platform_shipment_deadline`
-// (the-shipment-deadline-is-the-platforms-and-optional) — and the buyer's username on the marketplace, which the
-// contract still has no field for, so it is typed here and dropped behind its mark.
+// (the-shipment-deadline-is-the-platforms-and-optional) — and the buyer's username on the marketplace, stored as
+// `buyer_username` (the-buyers-username-is-optional). Neither is ever required. The username is sent trimmed, and the
+// server trims it again, so spaces alone are kept as none.
 
 interface ExtraInfoCardProps {
   deadline: string;
@@ -35,8 +34,6 @@ export function ExtraInfoCard({
       </Card.Header>
 
       <Card.Body>
-        {/* ⚠ THE BADGE IS ON THE FIELD, NOT ON THE CARD. These are two unrelated facts that happen to share a
-            box, so only the one that is still dropped carries a mark. */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
           <Field.Root>
             <Field.Label>{t("orderForm.extra.deadline")}</Field.Label>
@@ -58,12 +55,7 @@ export function ExtraInfoCard({
           </Field.Root>
 
           <Field.Root>
-            <Field.Label>
-              <Flex align="center" gap="2" wrap="wrap">
-                {t("orderForm.extra.buyerUsername")}
-                <NotImplemented list={ORDER_FORM_PENDING} id="buyerUsername" />
-              </Flex>
-            </Field.Label>
+            <Field.Label>{t("orderForm.extra.buyerUsername")}</Field.Label>
             <Input
               value={buyerUsername}
               maxLength={100}

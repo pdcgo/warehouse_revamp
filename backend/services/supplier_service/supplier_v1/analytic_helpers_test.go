@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 
+	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_service_models"
@@ -80,12 +81,19 @@ func figureRow(t *testing.T, db *gorm.DB, day string, supplier, product, team ui
 	return rows[0].SupplierMetricColumns
 }
 
-// metric is a SupplierMetric written as six numbers, for comparing.
+// metric is a SupplierMetric written as six numbers, for comparing — its broken rate computed as the server does,
+// broken ÷ every unit, 0 when none arrived.
 func metric(rc, rv, lc, lv, bc, bv int64) *supplierv1.SupplierMetric {
+	var rate float64
+	if units := rc + lc + bc; units > 0 {
+		rate = float64(bc) / float64(units)
+	}
+
 	return &supplierv1.SupplierMetric{
 		RestockCount: rc, RestockValuation: rv,
 		ShippingLostCount: lc, ShippingLostValuation: lv,
 		ShippingBrokenCount: bc, ShippingBrokenValuation: bv,
+		BrokenRate: rate,
 	}
 }
 
@@ -97,8 +105,47 @@ func columns(rc, rv, lc, lv, bc, bv int64) supplier_service_models.SupplierMetri
 	}
 }
 
-func dateRange(start, end string) *supplierv1.AnalyticDateRange {
-	return &supplierv1.AnalyticDateRange{StartDate: start, EndDate: end}
+// The filters a metric request carries, one builder per FilterType.
+
+func dateRange(start, end string) *analytic_basev1.FilterItem {
+	return &analytic_basev1.FilterItem{F: &analytic_basev1.FilterItem_DateRangeFilter{
+		DateRangeFilter: &analytic_basev1.DateRangeFilter{DateMin: start, DateMax: end},
+	}}
+}
+
+func restockTeam(id uint64) *analytic_basev1.FilterItem {
+	return &analytic_basev1.FilterItem{F: &analytic_basev1.FilterItem_TeamFilter{
+		TeamFilter: &analytic_basev1.TeamFilter{TeamId: id},
+	}}
+}
+
+func oneSupplier(id uint64) *analytic_basev1.FilterItem {
+	return &analytic_basev1.FilterItem{F: &analytic_basev1.FilterItem_SupplierFilter{
+		SupplierFilter: &analytic_basev1.SupplierFilter{SupplierId: id},
+	}}
+}
+
+func filters(items ...*analytic_basev1.FilterItem) []*analytic_basev1.FilterItem {
+	return items
+}
+
+const suppliersMetric = "metrics/suppliers"
+
+// sortBy is a sort on one field of metrics/suppliers.
+func sortBy(field string, direction analytic_basev1.SortType) *analytic_basev1.MetricSort {
+	return &analytic_basev1.MetricSort{MetricId: suppliersMetric, Field: field, SortType: direction}
+}
+
+func window(offset, limit int32) *analytic_basev1.PaginationFilter {
+	return &analytic_basev1.PaginationFilter{Offset: offset, Limit: limit}
+}
+
+func idKeys(ids ...uint64) *analytic_basev1.MetricKeys {
+	return &analytic_basev1.MetricKeys{K: &analytic_basev1.MetricKeys_Ids{Ids: &analytic_basev1.IDList{Ids: ids}}}
+}
+
+func dayKeys(days ...string) *analytic_basev1.MetricKeys {
+	return &analytic_basev1.MetricKeys{K: &analytic_basev1.MetricKeys_Days{Days: &analytic_basev1.DayList{Days: days}}}
 }
 
 // eventsOf is a backfill source over a slice.

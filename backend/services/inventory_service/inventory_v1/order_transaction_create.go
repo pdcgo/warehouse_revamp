@@ -136,6 +136,23 @@ func (s *Service) notAllowedLines(
 	lines []*inventoryv1.OrderTransactionLine,
 	facts map[uint64]ProductFact,
 ) ([]*inventoryv1.OrderTransactionRefusedLine, error) {
+	var reserved [][]any
+
+	seen := make(map[uint64]bool)
+
+	for _, line := range lines {
+		fact, ok := facts[line.GetProductId()]
+		if ok && fact.TeamID != teamID && !fact.Private && fact.ReservedStock > 0 && !seen[line.GetProductId()] {
+			seen[line.GetProductId()] = true
+			reserved = append(reserved, []any{fact.TeamID, line.GetProductId()})
+		}
+	}
+
+	totals, err := ownerTotalStocks(s.db.WithContext(ctx), reserved)
+	if err != nil {
+		return nil, err
+	}
+
 	var refused []*inventoryv1.OrderTransactionRefusedLine
 
 	for _, line := range lines {
@@ -148,12 +165,7 @@ func (s *Service) notAllowedLines(
 			}
 
 			if allowed && fact.ReservedStock > 0 {
-				total, err := ownerTotalStock(s.db.WithContext(ctx), fact.TeamID, line.GetProductId())
-				if err != nil {
-					return nil, err
-				}
-
-				allowed = total >= fact.ReservedStock
+				allowed = totals[line.GetProductId()] >= fact.ReservedStock
 			}
 		}
 
@@ -167,18 +179,37 @@ func (s *Service) notAllowedLines(
 	return refused, nil
 }
 
-// ownerTotalStock is the owner's units of a product across every warehouse — a plain read, outside any lock
-// (the-reserve-is-read-before-the-take): two borrowers in the same second may both pass, an accepted cost.
-func ownerTotalStock(db *gorm.DB, teamID, productID uint64) (int64, error) {
-	var total int64
-
-	err := db.Raw(`SELECT COALESCE(SUM(stock_count), 0) FROM batches WHERE team_id = ? AND product_id = ?`,
-		teamID, productID).Scan(&total).Error
-	if err != nil {
-		return 0, fmt.Errorf("owner's total stock of product %d: %w", productID, err)
+// ownerTotalStocks is each owner's units of a product across every warehouse, by product id, for every (owner, product)
+// pair — ONE grouped read however many lines (the-reserve-is-read-once-for-every-line). A plain read, outside any lock
+// (the-reserve-is-read-before-the-take): two borrowers in the same second may both pass, an accepted cost. A product with
+// no stock anywhere has no row, and reads as 0.
+func ownerTotalStocks(db *gorm.DB, pairs [][]any) (map[uint64]int64, error) {
+	totals := make(map[uint64]int64, len(pairs))
+	if len(pairs) == 0 {
+		return totals, nil
 	}
 
-	return total, nil
+	var rows []struct {
+		ProductID uint64
+		Total     int64
+	}
+
+	// stock_count > 0 changes no sum — an empty batch adds 0 — and is what lets the planner use the partial
+	// batches_owner_product_idx.
+	err := db.Raw(`
+		SELECT product_id, SUM(stock_count) AS total
+		FROM batches
+		WHERE (team_id, product_id) IN ? AND stock_count > 0
+		GROUP BY product_id`, pairs).Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("owners' total stock of %d product(s): %w", len(pairs), err)
+	}
+
+	for _, r := range rows {
+		totals[r.ProductID] = r.Total
+	}
+
+	return totals, nil
 }
 
 // keyClaimed reports whether K is already in idempotency_order_check — by a take, or by a release that came first.
@@ -208,20 +239,25 @@ func pricedTake(
 	for _, line := range taken {
 		unitCost := line.Value / float64(line.Quantity)
 
-		withMarkup := unitCost
+		// THE MARKUP IS PRICED ON THE DRAW'S VALUE, and the total is the value plus it. On paper that is the same as
+		// (unit cost × (1 + rate)) × quantity − value; in floating point the round trip can land a hair under zero on a
+		// line with no markup (1 ÷ 49 × 49 is 0.999…), and the order freezes `markup_total` behind a CHECK >= 0. Priced
+		// this way an own line's markup is exactly 0 and its total exactly the draw, and a borrowed line's is never
+		// negative — the rate is 0 to 100000 bps.
+		markup := 0.0
 		if line.OwnerTeamID != teamID {
-			withMarkup = unitCost * (1 + float64(facts[line.ProductID].CrossMarkupBps)/10000)
+			markup = line.Value * float64(facts[line.ProductID].CrossMarkupBps) / 10000
 		}
 
-		total := withMarkup * float64(line.Quantity)
+		total := line.Value + markup
 
 		res.Items = append(res.Items, &inventoryv1.OrderTransactionItem{
 			ProductId:          line.ProductID,
 			OwnerTeamId:        line.OwnerTeamID,
 			Quantity:           line.Quantity,
 			UnitCost:           unitCost,
-			UnitCostWithMarkup: withMarkup,
-			MarkupTotal:        total - line.Value,
+			UnitCostWithMarkup: total / float64(line.Quantity),
+			MarkupTotal:        markup,
 			Total:              total,
 		})
 

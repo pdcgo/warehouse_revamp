@@ -40,6 +40,35 @@ path was proven instead by a one-off spec against the real server (both refusals
 posting both legs once), then deleted. The dev database is migrated (liability_service `00009`, 2026-10-14); a
 running `san dev run` needs a restart to serve the new code and to `pubsub ensure` the new subscription.
 
+**2026-10-23:** ✅ **the ledger charges the frozen line totals**
+([the-ledger-charges-the-frozen-line-total](../../technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)).
+The product fee is Σ the owning team's `OrderPlacedLine.total`, rounded once on the sum (`order_fees.go`); liability
+reads no markup and no terms for it. Migration `00010` drops `liability_terms.product_markup_bp` and the terms log's
+`old_/new_product_markup_bp`, rebuilding the `liability_terms_non_negative` CHECK (the drop would have taken the whole
+CHECK with it); the three proto fields are `reserved`. The terms dialog's markup pass-through, the stub's, the
+fixtures' and the bridge e2e (*"editing terms does not wipe the cross-product markup"*) are gone. ⚠ The line total had
+to be MADE first: the take returned it and `stockPicker` threw it away, so `StockPicker.Pick` now returns it and
+selling `00023` freezes it on `order_items.total`. Tests: the fee per owner at two products' rates, an own line, a
+fraction rounded once on the sum, and a catalog check that no markup column is left. The dev DB is migrated (liability
+`00010`, selling `00023`), both Downs round-trip.
+
+**2026-10-23:** ✅ **the debtor sees the limits set on it**
+([the-debtor-sees-the-limits-set-on-it](../../technical/balance/team_balance_design_decision.md#the-debtor-sees-the-limits-set-on-it)).
+`LiabilityCreditByIds` on `LiabilityService` (handler `liability_credit_by_ids.go`): `team_id` = the debtor (scope,
+top-level), `filter.ids` = its creditors (1–50). One CREDIT item per creditor — `credit_limit` (optional), `debt`,
+`state` — read through `CheckCredit`'s own `creditLimits` / `debtsToward`, with AT_LIMIT on `refusesCredit` (now the
+one `debt >= limit` both use). Two queries for any number of creditors; 1,3 ms median at 10 000 terms rows — not heavy,
+no audit file (`liability_credit_by_ids_perf_test.go`, `-tags perfaudit`). `GENERAL` names the creditors through a new
+`TeamNamer` (`NewLiabilityTeamNamer` → `TeamByIds`, caller's token) — so it is now
+`NewService(db, events, accounts, names)`, nil names = ids only. No schema change. Frontend: `useLiabilityCredit`
+(plain default, reason in the hook) feeds the order form's Debt limits and the pair detail's `LimitSetOnYou` — shown
+only when this team owes the counterparty or the counterparty set a limit on it, so the creditor's view is unchanged;
+`CreditMeter` gained `setBy` for the debtor's wording. Flow:
+[rpc.md](../../services/liability_service/rpc.md#the-debtors-side-of-a-limit--liabilitycreditbyids). Tests: 11 unit
+(pair row over default, default, none = unlimited, the three states at their edges agreeing with `CheckCredit`, no debt
+yet and frozen, a third team's limit never returned, self dropped, names, two queries for 50, validation); stories
+`Features/Liability/CreditMeter`, `Features/Orders/CreditLimitPanel`, and one each on the create page and the pair detail.
+
 **Lifecycle position:** `Run Testing` complete — unit, integration and e2e all green for the first
 time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at the running screens.
 
@@ -62,9 +91,9 @@ time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at th
 | §What Warehouse Can Receivable — `order_fee` · `cod_fee` · `found` | ✅ `cod_fee` is `incidental_fee` in the ledger |
 | §What Warehouse Can Payable — `broken_good` · `lost_good` | ✅ |
 | §Balance Policy 1 — threshold set by team owner, overridable by admin/root | ✅ and every change is **recorded** with actor, reason and override flag |
-| §What Things Affect The Balance 3 — Cross/Shared Product | ⚠ the CHARGE is balance's, but the **rate is `product_service`'s** ([the-cross-markup-belongs-to-the-product](../../business/balance/context_decision.md#the-cross-markup-belongs-to-the-product)). Removed from the balance screens; the ledger still reads balance's column — [technical Q10](../../technical/balance/team_balance_design_clarify.md#question) |
+| §What Things Affect The Balance 3 — Cross/Shared Product | ✅ the CHARGE is balance's, the **rate is `product_service`'s** ([the-cross-markup-belongs-to-the-product](../../business/balance/context_decision.md#the-cross-markup-belongs-to-the-product)): the ledger posts the order lines' frozen totals and has no markup column of its own (2026-10-23, [the-ledger-charges-the-frozen-line-total](../../technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)) |
 | §Balance Policy 2 — cross products compared to the committed pair row only | ✅ `CheckCredit` checks each creditor against **its own** pair row |
-| §About Thresholds 1 — 80% warning on the balance screen | ✅ per-row badge on `/liability`. ⚠ the daily-report home is deferred with the report |
+| §About Thresholds 1 — 80% warning on the balance screen | ✅ per-row badge on `/liability`, and — since 2026-10-23 — the DEBTOR's side on the pair detail and the order form ([the-debtor-sees-the-limits-set-on-it](../../technical/balance/team_balance_design_decision.md#the-debtor-sees-the-limits-set-on-it)). ⚠ the daily-report home is deferred with the report |
 | §About Thresholds 2 — default unlimited, edited by owner/admin/root | ✅ including the **default row**, which had no home at all until this pass |
 
 ## What this pass built
@@ -123,8 +152,8 @@ there. They were found by calling the RPC against the dev server, in the space o
 thought to assert. Both of these are in the gap between *what the handler was tested for* and *what a
 caller actually sends*. Each now has a regression test.
 
-⚠ **The dev database has a default-terms row for team 13** (`counterparty_id = 0`, fee 15.000, markup
-20%, no limit) and one log entry, left deliberately so the preview has something to look at. The one
+⚠ **The dev database has a default-terms row for team 13** (`counterparty_id = 0`, fee 15.000, no limit — its
+20% markup went with the column in `00010`) and one log entry, left deliberately so the preview has something to look at. The one
 row written before the timestamp fix was deleted.
 
 ## ✅ The e2e suite is GREEN — 100 pass, 2 skipped, 0 fail

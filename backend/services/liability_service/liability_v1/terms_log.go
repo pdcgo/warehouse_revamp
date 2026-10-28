@@ -56,7 +56,6 @@ func recordTermsChange(
 	if before != nil {
 		entry.OldCreditLimit = before.CreditLimit
 		entry.OldHandlingFee = before.HandlingFee
-		entry.OldProductMarkupBp = before.ProductMarkupBP
 	}
 
 	// `after` is nil for a DELETE, and every "new" value then stays at its zero — except the limit,
@@ -66,7 +65,6 @@ func recordTermsChange(
 	if after != nil {
 		entry.NewCreditLimit = after.CreditLimit
 		entry.NewHandlingFee = after.HandlingFee
-		entry.NewProductMarkupBp = after.ProductMarkupBP
 	}
 
 	return tx.Create(&entry).Error

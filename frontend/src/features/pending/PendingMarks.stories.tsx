@@ -17,13 +17,13 @@ import type { PendingList } from "./registry";
 // vanish everywhere and nobody would notice, because a missing warning looks exactly like nothing
 // being wrong. `TheMarksAreShownByDefault` is what fails if somebody flips it.
 
-const LIST: PendingList<"withdrawal" | "export"> = {
+const LIST: PendingList<"import" | "export"> = {
   // Borrowing the orders list's copy rather than inventing a namespace: the components read
   // `<ns>.pending.<id>.label|reason`, so a made-up ns would render raw keys and prove nothing about
   // how this looks in place.
   ns: "orders",
   parts: [
-    { id: "withdrawal", kind: "missing" },
+    { id: "import", kind: "missing" },
     { id: "export", kind: "dropped" },
   ],
 };
@@ -34,8 +34,8 @@ function MiniScreen() {
       <NotImplementedSummary list={LIST} />
 
       <Flex gap="1" align="center">
-        <Text fontWeight="bold">Withdrawal</Text>
-        <NotImplemented list={LIST} id="withdrawal" />
+        <Text fontWeight="bold">Import</Text>
+        <NotImplemented list={LIST} id="import" />
       </Flex>
     </Stack>
   );
@@ -58,7 +58,7 @@ export const TheMarksAreShownByDefault: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByTestId("not-implemented-summary")).toBeInTheDocument();
-    await expect(canvas.getByTestId("not-implemented-withdrawal")).toBeInTheDocument();
+    await expect(canvas.getByTestId("not-implemented-import")).toBeInTheDocument();
   },
 };
 
@@ -76,10 +76,25 @@ export const HiddenLeavesNothingBehind: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
-    await expect(canvas.queryByTestId("not-implemented-withdrawal")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-import")).toBeNull();
 
     // …and the control it was marking is still there. The switch hides the scaffolding, never the
     // screen under it.
-    await expect(canvas.getByText("Withdrawal")).toBeInTheDocument();
+    await expect(canvas.getByText("Import")).toBeInTheDocument();
+  },
+};
+
+/**
+ * ⚠ AN EMPTY LIST RENDERS NOTHING — not a strip counting "0 parts". A screen whose last unwired part has
+ * landed keeps its list and its mount (the order form's, which the draft page extends), so the strip must
+ * disappear on its own, with the marks still switched on.
+ */
+export const AnEmptyListLeavesNoStrip: Story = {
+  render: () => <NotImplementedSummary list={{ ns: "orderForm", parts: [] }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-toggle")).toBeNull();
   },
 };

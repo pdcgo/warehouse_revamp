@@ -7,14 +7,19 @@ import (
 
 	financial_accountv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1/financial_accountv1connect"
+	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
 
-// liability's one outside question (a-team-payment-posts-on-accept, docs/services/liability_service/rpc.md):
-// is the account a payment names — *Paid from* on record, *Received into* on accept — one of the team's own
-// live accounts? Asked of financial_account_service over Connect under the CALLER's token — a client, not the
-// handler in-process, so the services stay independent and the Wire graph has no cycle.
+// liability's two outside questions (docs/services/liability_service/rpc.md), both asked over Connect under the
+// CALLER's token — a client, not the handler in-process, so the services stay independent and the Wire graph has
+// no cycle:
+//
+//   - is the account a payment names — *Paid from* on record, *Received into* on accept — one of the team's own
+//     live accounts? (a-team-payment-posts-on-accept) — financial_account_service;
+//   - what are these creditors called? (the-debtor-sees-the-limits-set-on-it) — team_service.
 
 // NewFinancialAccountClient is how other services ask the financial accounts — under the caller's own token.
 func NewFinancialAccountClient(cfg *Config, client *internalHTTPClient) financial_accountv1connect.FinancialAccountServiceClient {
@@ -62,4 +67,44 @@ func (c *liabilityAccounts) PaymentAccount(ctx context.Context, teamID, accountI
 
 	// Not answered: another team's account, or none at all.
 	return false, nil
+}
+
+// liabilityTeamNames answers liability's TeamNamer with TeamByIds — the creditor names of LiabilityCreditByIds'
+// GENERAL slice (the-debtor-sees-the-limits-set-on-it). Asked AS THE CALLER (san_auth.ForwardBearer): TeamByIds is
+// allow_only_authenticated, and the names are what that person may read anyway.
+type liabilityTeamNames struct {
+	teams teamv1connect.TeamServiceClient
+}
+
+func NewLiabilityTeamNamer(cfg *Config, client *internalHTTPClient) liability_v1.TeamNamer {
+	return &liabilityTeamNames{
+		teams: teamv1connect.NewTeamServiceClient(client, cfg.InternalBaseURL,
+			connect.WithInterceptors(san_auth.ForwardBearer())),
+	}
+}
+
+func (a *liabilityTeamNames) TeamNames(ctx context.Context, ids []uint64) (map[uint64]string, error) {
+	out := map[uint64]string{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+
+	resp, err := a.teams.TeamByIds(ctx, connect.NewRequest(&teamv1.TeamByIdsRequest{
+		Filter:      &teamv1.TeamByIdsFilter{Ids: ids},
+		DataRequest: []teamv1.TeamByIdsDataType{teamv1.TeamByIdsDataType_TEAM_BY_IDS_DATA_TYPE_GENERAL},
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	// An unknown or deleted team is absent from TeamByIds, and so from this — its GENERAL item carries the id alone.
+	for _, list := range resp.Msg.GetItems() {
+		for _, item := range list.GetItems() {
+			for id, general := range item.GetGeneral().GetMapData() {
+				out[id] = general.GetName()
+			}
+		}
+	}
+
+	return out, nil
 }

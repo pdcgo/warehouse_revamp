@@ -130,7 +130,7 @@ second time will be slightly different. That drift is the actual cost.
 - [What bites when writing a story?](frontend.md#what-bites-when-writing-a-story)
 - [How do I run the e2e?](frontend.md#how-do-i-run-the-e2e)
 - [How do I see a screen without the ⚠ "not implemented yet" marks?](frontend.md#how-do-i-see-a-screen-without-the--not-implemented-yet-marks)
-- [Why doesn't the total on an order row equal `Order.total`?](frontend.md#why-doesnt-the-total-on-an-order-row-equal-ordertotal)
+- [Why does an order row show two totals?](frontend.md#why-does-an-order-row-show-two-totals)
 - [How is the margin on an order computed?](frontend.md#how-is-the-margin-on-an-order-computed)
 - [Why does one order show a marketplace date but no marketplace total?](frontend.md#why-does-one-order-show-a-marketplace-date-but-no-marketplace-total)
 

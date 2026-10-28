@@ -151,8 +151,11 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 			Sku:       o.Items[i].SKU,
 			Name:      o.Items[i].Name,
 			Quantity:  o.Items[i].Quantity,
-			UnitPrice: o.Items[i].UnitPrice,
 			UnitCost:  o.Items[i].UnitCost,
+			// The rest of the line's frozen money, as the take priced it; absent = never frozen, never a 0.
+			Total:              o.Items[i].Total,
+			UnitCostWithMarkup: o.Items[i].UnitCostWithMarkup,
+			MarkupTotal:        o.Items[i].MarkupTotal,
 		})
 	}
 
@@ -172,15 +175,13 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		CustomerPhone: o.CustomerPhone,
 		Address:       orderAddressToProto(o),
 		ShippingCode:  o.ShippingCode,
-		// Out as it came in. Nothing here reads it, and nothing may.
-		Note:         o.Note,
-		Receipt:      orderReceiptToProto(o),
-		Subtotal:     o.Subtotal,
-		Cogs:         o.COGS,
-		ShippingCost: o.ShippingCost,
-		Total:        o.Total,
-		// A note, carried out as it was carried in — nothing here derives it and nothing may.
-		MarketplaceTotal: o.MarketplaceTotal,
+		// No note: an order's notes are its timeline rows with no status (a-note-is-a-timeline-row).
+		Receipt: orderReceiptToProto(o),
+		// The order's frozen money, as placeOrder wrote it — the owner's three header figures.
+		GoodsCost: o.GoodsCost,
+		TotalCost: o.TotalCost,
+		// What the buyer paid, carried out as it was carried in — nothing here derives it and nothing may.
+		PlatformTotal: o.PlatformTotal,
 		// The storefront's own id for this order, verbatim in both directions.
 		OrderExternalRefId: o.OrderExternalRefID,
 		Items:              items,
@@ -196,6 +197,8 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		// The platform's two dates; 0 = not recorded.
 		PlatformCreatedAtUnix:        unixOrZero(o.PlatformCreatedAt),
 		PlatformShipmentDeadlineUnix: unixOrZero(o.PlatformShipmentDeadline),
+		// The buyer's marketplace username; "" = none.
+		BuyerUsername: o.BuyerUsername,
 	}
 }
 
@@ -272,9 +275,11 @@ func orderReceiptToProto(o *selling_service_models.Order) *sellingv1.OrderReceip
 }
 
 // orderItemModels turns request lines into rows; `id` on the input is ignored.
-// It deliberately does NOT read unit_cost from the request (#74): what the goods cost comes from the
+// It deliberately reads NO MONEY from the request. Not unit_cost (#74): what the goods cost comes from the
 // WAREHOUSE at order time, and a client supplying it would be writing its own margin — the one number
-// nobody placing an order should get to choose. OrderCreate stamps it after building these.
+// nobody placing an order should get to choose. A line carries no price of its own
+// (an-order-line-carries-no-marketplace-price), so there is nothing else in the request to read.
+// placeOrder stamps every money column from the take after building these.
 func orderItemModels(in []*sellingv1.OrderItem) []selling_service_models.OrderItem {
 	out := make([]selling_service_models.OrderItem, 0, len(in))
 	for _, it := range in {
@@ -283,7 +288,6 @@ func orderItemModels(in []*sellingv1.OrderItem) []selling_service_models.OrderIt
 			SKU:       it.GetSku(),
 			Name:      it.GetName(),
 			Quantity:  it.GetQuantity(),
-			UnitPrice: it.GetUnitPrice(),
 		})
 	}
 

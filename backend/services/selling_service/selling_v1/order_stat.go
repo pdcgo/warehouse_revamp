@@ -11,9 +11,9 @@ import (
 )
 
 // orderMeasurable is an order the margin can be taken over (the-margin-is-mp-minus-total-beli): its goods' cost is known
-// (a cogs of 0 is UNKNOWN, not free), the marketplace's figure is recorded (0 = nobody wrote it down) and its warehouse
+// (a goods_cost of 0 is UNKNOWN, not free), the platform's figure is recorded (0 = nobody wrote it down) and its warehouse
 // fee was frozen (NULL = never priced). Missing any one, there is no total beli or no revenue to take it from.
-const orderMeasurable = "cogs > 0 AND marketplace_total > 0 AND warehouse_fee IS NOT NULL"
+const orderMeasurable = "goods_cost > 0 AND platform_total > 0 AND warehouse_fee IS NOT NULL"
 
 // The rolling window the preview's money figures use. Thirty days, the same span
 // OrderProductActivityByIds calls "lately" — two windows on one screen would be read as one.
@@ -35,7 +35,7 @@ func (s *Service) OrderStat(
 		Value         int64
 		ItemCount     int64
 		MpValue       int64
-		Cogs          int64
+		GoodsCost     int64
 		Fees          float64
 		MarginUnknown int64
 		Count30D      int64
@@ -60,14 +60,14 @@ func (s *Service) OrderStat(
 	err := query.
 		Select(`status,
 		        COUNT(*) AS count,
-		        COALESCE(SUM(total), 0) AS value,
+		        COALESCE(SUM(platform_total), 0) AS value,
 		        COALESCE(SUM((SELECT SUM(oi.quantity) FROM order_items oi WHERE oi.order_id = orders.id)), 0) AS item_count,
-		        COALESCE(SUM(marketplace_total) FILTER (WHERE `+orderMeasurable+`), 0) AS mp_value,
-		        COALESCE(SUM(cogs) FILTER (WHERE `+orderMeasurable+`), 0) AS cogs,
+		        COALESCE(SUM(platform_total) FILTER (WHERE `+orderMeasurable+`), 0) AS mp_value,
+		        COALESCE(SUM(goods_cost) FILTER (WHERE `+orderMeasurable+`), 0) AS goods_cost,
 		        COALESCE(SUM(warehouse_fee) FILTER (WHERE `+orderMeasurable+`), 0) AS fees,
 		        COUNT(*) FILTER (WHERE NOT (`+orderMeasurable+`)) AS margin_unknown,
 		        COUNT(*) FILTER (WHERE created_at >= ?) AS count30_d,
-		        COALESCE(SUM(total) FILTER (WHERE created_at >= ?), 0) AS value30_d`,
+		        COALESCE(SUM(platform_total) FILTER (WHERE created_at >= ?), 0) AS value30_d`,
 			since, since).
 		Group("status").
 		Scan(&rows).
@@ -96,7 +96,7 @@ func (s *Service) OrderStat(
 			Value:         row.Value,
 			ItemCount:     row.ItemCount,
 			MpValue:       row.MpValue,
-			Cogs:          row.Cogs,
+			GoodsCost:     row.GoodsCost,
 			Fees:          row.Fees,
 			MarginUnknown: row.MarginUnknown,
 		})

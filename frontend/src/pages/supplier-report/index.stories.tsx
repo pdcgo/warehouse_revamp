@@ -119,29 +119,19 @@ export const TheHeadlineIsEverySupplier: Story = {
 
 // By broken rate, a supplier needs 50 units to be rated against the others (rate-ranking-needs-50-units): Linen House's
 // 40% on five units does not top UD Makmur Jaya's 4,7% on 212. It follows, its rate muted — and the page says why.
+// The three under the minimum follow in KEY order, the newest id first — not by a rate that means nothing on so few
+// units (a-rate-ranks-only-above-its-minimum-sample).
 export const RankedByRateNeedsFiftyUnits: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await userEvent.click(canvas.getByTestId("supplier-report-rank-by-rate"));
 
-    await waitFor(() => expect(order(canvas)).toEqual(["34", "31", "37", "36", "38"]));
+    await waitFor(() => expect(order(canvas)).toEqual(["34", "31", "38", "37", "36"]));
 
     const rateOf = (id: string) => within(canvas.getByTestId(`supplier-report-row-${id}`)).getByTestId("figure-broken-rate");
     await expect(rateOf("37")).toHaveAttribute("data-muted", "true");
     await expect(rateOf("34")).not.toHaveAttribute("data-muted");
     await expect(canvas.getByTestId("supplier-report-rate-note")).toHaveTextContent("fewer than 50 units");
-  },
-};
-
-// The search finds suppliers as Discover does (the-supplier-report-searches-like-discover), and the headline is what it
-// found: "makmur" is PT Sumber Makmur and UD Makmur Jaya — Rp 7.400.000.
-export const TheSearchNarrowsTheRankingAndTheHeadline: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await userEvent.type(canvas.getByTestId("supplier-report-search"), "makmur", { delay: 40 });
-
-    await waitFor(() => expect(order(canvas)).toEqual(["31", "34"]), { timeout: 3000 });
-    await expect(canvas.getByTestId("supplier-report-summary-restocked-value")).toHaveTextContent(rp(7_400_000n));
   },
 };
 

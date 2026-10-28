@@ -15,7 +15,7 @@ import type { PostingRole, SettlementEntry } from "../../order-settlement/model"
 // answers a different question — *which orders lost the most* — and links back here.
 //
 // ⚠ This is where the fields settlement cannot know are filled in. The service never learns the
-// marketplace reference or the order's cogs (HARD RULE 3), so both are handed down from the order
+// marketplace reference or the order's goods_cost (HARD RULE 3), so both are handed down from the order
 // this tab is mounted on — which already holds them.
 
 /** The write set, mapped to the prototype's role union. */

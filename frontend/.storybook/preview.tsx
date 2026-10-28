@@ -14,6 +14,7 @@ import { invalidateShippingCatalogue } from "../src/features/shipping/catalogue"
 import {
   resetLiabilityPayments,
   resetLiabilityTerms,
+  resetOrderNotes,
   resetSettlementImports,
   resetShipmentChannels,
   stubUploads,
@@ -29,7 +30,7 @@ import { resetOpnameStub } from "./opnameStub";
 import { resetBundleStub } from "./bundleStub";
 import { resetProductScenario } from "./productScenario";
 import { resetRackStub } from "./rackStub";
-import { resetReturnConfigurationStub } from "./returnConfigurationStub";
+import { resetReturnConfigurationStub, resetReturnMapStub } from "./returnConfigurationStub";
 import { resetWarehouseFeeStub } from "./warehouseFeeStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
@@ -380,6 +381,8 @@ const preview: Preview = {
     resetLiabilityTerms();
     // The shipment channel table is writeable too — a story that deletes jne must not delete it for the next.
     resetShipmentChannels();
+    // …and the order notes, which Add Note writes — a note added in one story must not be on the next one's order.
+    resetOrderNotes();
     // …and the payments table, which a story that REJECTS a claim writes to. Without this, whether a
     // pending payment still offers Confirm/Reject would depend on story order.
     resetLiabilityPayments();
@@ -405,6 +408,8 @@ const preview: Preview = {
     resetRackStub();
     // …and the return warehouses, which the settings card saves.
     resetReturnConfigurationStub();
+    // …and the return maps, which every confirmed pick on the order form writes (the-map-is-written-when-it-is-picked).
+    resetReturnMapStub();
     // …and the warehouses' fees, which the settings card saves.
     resetWarehouseFeeStub();
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It

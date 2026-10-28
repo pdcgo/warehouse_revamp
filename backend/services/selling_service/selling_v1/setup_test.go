@@ -20,35 +20,68 @@ import (
 // stock means no order" and "a failed order write puts the stock back" both need the picker to refuse
 // on demand, which a real warehouse would only do after elaborate seeding — and it records what it was
 // asked to do, so a test can assert that a compensation actually happened rather than inferring it.
+//
+// What the take DREW is told three ways, from the simplest: `costs` is a product's unit cost, drawn as quantity × it
+// with the total equal to the cost (an own product); `totals` overrides a line's total (a borrowed product's markup);
+// `draw` is the answer verbatim, for a draw no single unit price describes — two batches at two costs. A product absent
+// from all three is one the take named no draw for (an-order-is-costed-at-what-leaves-the-shelf).
 type fakePicker struct {
-	picked    []string         // refs picked, in order
-	returned  []string         // refs returned, in order
-	pickErr   error            // if set, Pick refuses
-	costs     map[uint64]int64 // what UnitCosts reports; a product ABSENT here has no known cost
-	returnErr error            // if set, Return refuses
+	picked    []string                // refs picked, in order
+	asked     [][]selling_v1.PickLine // the lines each pick was asked for, in order
+	returned  []string                // refs returned, in order
+	pickErr   error                   // if set, Pick refuses
+	costs     map[uint64]int64        // each product's unit cost as the take draws it
+	totals    map[uint64]float64      // a line's total, when it is not its cost
+	draw      selling_v1.PickDraw     // a product's draw, verbatim
+	returnErr error                   // if set, Return refuses
 }
 
 func (f *fakePicker) Pick(
 	_ context.Context,
 	_, _ uint64,
-	_ []selling_v1.PickLine,
+	lines []selling_v1.PickLine,
 	ref string,
-) error {
+) (selling_v1.PickDraw, error) {
 	if f.pickErr != nil {
-		return f.pickErr
+		return nil, f.pickErr
 	}
 
 	f.picked = append(f.picked, ref)
+	f.asked = append(f.asked, lines)
 
-	return nil
-}
+	draw := selling_v1.PickDraw{}
 
-func (f *fakePicker) UnitCosts(
-	_ context.Context,
-	_, _ uint64,
-	_ []uint64,
-) (map[uint64]int64, error) {
-	return f.costs, nil
+	for _, line := range lines {
+		if verbatim, ok := f.draw[line.ProductID]; ok {
+			draw[line.ProductID] = verbatim
+
+			continue
+		}
+
+		unit, costed := f.costs[line.ProductID]
+		total, priced := f.totals[line.ProductID]
+
+		if !costed && !priced {
+			continue
+		}
+
+		cost := float64(unit) * float64(line.Quantity)
+		if !priced {
+			total = cost
+		}
+
+		// As the take answers it: the markup is what the total adds to the cost, and one unit at the markup is the
+		// total over the quantity — on an own product, 0 and the unit cost.
+		draw[line.ProductID] = selling_v1.PickedLine{
+			Cost:               cost,
+			UnitCost:           float64(unit),
+			Total:              total,
+			UnitCostWithMarkup: total / float64(line.Quantity),
+			MarkupTotal:        total - cost,
+		}
+	}
+
+	return draw, nil
 }
 
 func (f *fakePicker) Return(_ context.Context, _, _ uint64, ref string) error {
@@ -67,8 +100,14 @@ func (f *fakePicker) Return(_ context.Context, _, _ uint64, ref string) error {
 // the real thing has, where an id that resolves to nothing means the product was deleted underneath
 // the draft. Making absence the explicit opt-in keeps the stale-reference test honest: it has to say
 // which product died, rather than passing because the fake happened to know nothing.
+//
+// A product's OWNER is 0 — "resolved to nobody" — unless `owners` names one, so every test that does not care whose
+// goods it sells places an order no rule treats as borrowed. A test about another team's product says which team owns
+// it, and `err` makes the lookup fail (a-failed-owner-lookup-refuses-the-create).
 type fakeCatalog struct {
 	missing map[uint64]bool
+	owners  map[uint64]uint64
+	err     error
 }
 
 func (c *fakeCatalog) Snapshots(
@@ -76,6 +115,10 @@ func (c *fakeCatalog) Snapshots(
 	_ uint64,
 	productIDs []uint64,
 ) (map[uint64]selling_v1.ProductSnapshot, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+
 	out := map[uint64]selling_v1.ProductSnapshot{}
 
 	for _, id := range productIDs {
@@ -84,7 +127,7 @@ func (c *fakeCatalog) Snapshots(
 		}
 
 		sku := "SKU" + strconv.FormatUint(id, 10)
-		out[id] = selling_v1.ProductSnapshot{SKU: sku, Name: "Catalogue " + sku}
+		out[id] = selling_v1.ProductSnapshot{SKU: sku, Name: "Catalogue " + sku, TeamID: c.owners[id]}
 	}
 
 	return out, nil
@@ -161,10 +204,11 @@ func placeOrderAs(
 
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
+		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -198,7 +242,7 @@ func (f *fakeCredit) Check(
 
 // fakeFees stands in for warehouse_service's WarehouseFeeCalculate (the-flat-rate-is-dropped-last step 3).
 //
-// It prices a flat percent of the goods cost, so a test can assert the fee was computed FROM the order's cogs rather
+// It prices a flat percent of the goods cost, so a test can assert the fee was computed FROM the order's goods_cost rather
 // than invented; `err` makes the refusal of a warehouse with no rate reachable; `asked` records the basis it was given.
 type fakeFees struct {
 	percent float64
@@ -233,3 +277,7 @@ func newServiceWithCredit(t *testing.T, db *gorm.DB, credit selling_v1.CreditChe
 // testPlatformDate is when the buyer of every test order ordered on the storefront — REQUIRED at placement
 // (platform-created-at-is-required-at-finalize). A fixed moment, so a test asserting on it asserts on one value.
 const testPlatformDate int64 = 1_790_000_000
+
+// testPlatformTotal is what the buyer of every test order paid on the storefront — REQUIRED at placement too
+// (platform-total-is-required-at-finalize). A test that asserts on the figure sets its own.
+const testPlatformTotal int64 = 12_000

@@ -2,13 +2,11 @@
 // @generated from file warehouse/supplier/v1/supplier_analytic.proto (package warehouse.supplier.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { CommonPagination, CommonSortType } from "../../common/v1/list_pb";
-import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
-import type { PageInfo } from "../../common/v1/page_pb";
-import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
+import type { FilterItem, GroupType, MetricKeys, MetricSort, PaginationFilter } from "../../analytic_base/v1/analytic_pb";
+import { file_warehouse_analytic_base_v1_analytic } from "../../analytic_base/v1/analytic_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -16,12 +14,17 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/supplier/v1/supplier_analytic.proto.
  */
 export const file_warehouse_supplier_v1_supplier_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Ci13YXJlaG91c2Uvc3VwcGxpZXIvdjEvc3VwcGxpZXJfYW5hbHl0aWMucHJvdG8SFXdhcmVob3VzZS5zdXBwbGllci52MSLCAQoOU3VwcGxpZXJNZXRyaWMSFQoNcmVzdG9ja19jb3VudBgBIAEoAxIZChFyZXN0b2NrX3ZhbHVhdGlvbhgCIAEoAxIbChNzaGlwcGluZ19sb3N0X2NvdW50GAMgASgDEh8KF3NoaXBwaW5nX2xvc3RfdmFsdWF0aW9uGAQgASgDEh0KFXNoaXBwaW5nX2Jyb2tlbl9jb3VudBgFIAEoAxIhChlzaGlwcGluZ19icm9rZW5fdmFsdWF0aW9uGAYgASgDIoMBChFBbmFseXRpY0RhdGVSYW5nZRI3CgpzdGFydF9kYXRlGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBI1CghlbmRfZGF0ZRgCIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQieQoYQW5hbHl0aWNUaW1lU2VhcmNoRmlsdGVyEkQKCmRhdGVfcmFuZ2UYASABKAsyKC53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNEYXRlUmFuZ2VCBrpIA8gBARIXCg9yZXN0b2NrX3RlYW1faWQYAiABKAQi6wIKGUFuYWx5dGljVGltZVNlYXJjaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHAoLc3VwcGxpZXJfaWQYAiABKARCB7pIBDICIAASRwoJdGltZWZyYW1lGAMgASgOMigud2FyZWhvdXNlLnN1cHBsaWVyLnYxLkFuYWx5dGljVGltZWZyYW1lQgq6SAeCAQQQASAAEkcKBmZpbHRlchgEIAEoCzIvLndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY1RpbWVTZWFyY2hGaWx0ZXJCBrpIA8gBARI2Cglzb3J0X3R5cGUYBSABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjsKBHBhZ2UYBiABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToLkrUYBwoFAQIDBAUiXAoXU3VwcGxpZXJUaW1lZnJhbWVNZXRyaWMSCgoCYXQYASABKAkSNQoGbWV0cmljGAIgASgLMiUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljIsMBChpBbmFseXRpY1RpbWVTZWFyY2hSZXNwb25zZRI9CgVkYXRhcxgBIAMoCzIuLndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllclRpbWVmcmFtZU1ldHJpYxIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjQKBXRvdGFsGAMgASgLMiUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljIu0BChxBbmFseXRpY1Byb2R1Y3RTZWFyY2hSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhwKC3N1cHBsaWVyX2lkGAIgASgEQge6SAQyAiAAEkcKBmZpbHRlchgDIAEoCzIvLndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY1RpbWVTZWFyY2hGaWx0ZXJCBrpIA8gBARI7CgRwYWdlGAQgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6C5K1GAcKBQECAwQFInMKFVN1cHBsaWVyUHJvZHVjdE1ldHJpYxISCgpwcm9kdWN0X2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSNQoGbWV0cmljGAMgASgLMiUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljIo4BCh1BbmFseXRpY1Byb2R1Y3RTZWFyY2hSZXNwb25zZRI7CgVkYXRhcxgBIAMoCzIsLndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllclByb2R1Y3RNZXRyaWMSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyKIAQoTQW5hbHl0aWNHcm91cEZpbHRlchJECgpkYXRlX3JhbmdlGAEgASgLMigud2FyZWhvdXNlLnN1cHBsaWVyLnYxLkFuYWx5dGljRGF0ZVJhbmdlQga6SAPIAQESFwoPcmVzdG9ja190ZWFtX2lkGAIgASgEEhIKAXEYAyABKAlCB7pIBHICGGQiigIKGkFuYWx5dGljR3JvdXBTZWFyY2hSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkIKBmZpbHRlchgCIAEoCzIqLndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY0dyb3VwRmlsdGVyQga6SAPIAQESQAoEc29ydBgDIAEoDjIoLndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY0dyb3VwU29ydEIIukgFggECEAESOwoEcGFnZRgEIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgMEBSKqAQobQW5hbHl0aWNHcm91cFNlYXJjaFJlc3BvbnNlEgsKA2lkcxgBIAMoBBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjQKBXRvdGFsGAMgASgLMiUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljEhYKDnJhdGVfbWluX3VuaXRzGAQgASgDIqUBChpBbmFseXRpY0dyb3VwTWV0cmljUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJCCgZmaWx0ZXIYAiABKAsyKi53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNHcm91cEZpbHRlckIGukgDyAEBEhgKA2lkcxgDIAMoBEILukgIkgEFCAEQyAE6C5K1GAcKBQECAwQFIsYBChtBbmFseXRpY0dyb3VwTWV0cmljUmVzcG9uc2USUAoHbWV0cmljcxgBIAMoCzI/LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY0dyb3VwTWV0cmljUmVzcG9uc2UuTWV0cmljc0VudHJ5GlUKDE1ldHJpY3NFbnRyeRILCgNrZXkYASABKAQSNAoFdmFsdWUYAiABKAsyJS53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJNZXRyaWM6AjgBImEKHEFuYWx5dGljUmVwbGF5Q29tcHV0ZVJlcXVlc3QSNwoKc3RhcnRfZGF0ZRgBIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQ6CJK1GAQKAgECIoUBCh1BbmFseXRpY1JlcGxheUNvbXB1dGVSZXNwb25zZRIOCgZzdGF0dXMYASABKAkSGwoTZGVsZXRlZF9yZXBvcnRfcm93cxgCIAEoAxIaChJkZWxldGVkX2V2ZW50X2xvZ3MYAyABKAMSGwoTZWFybGllc3Rfc3RhcnRfZGF0ZRgEIAEoCSIpCh1BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdDoIkrUYBAoCAQIiTAoeQW5hbHl0aWNNYWludGVuYW5jZVJ1blJlc3BvbnNlEhoKEmRlbGV0ZWRfZXZlbnRfbG9ncxgBIAEoAxIOCgZjdXRvZmYYAiABKAkqlAEKEUFuYWx5dGljVGltZWZyYW1lEiIKHkFOQUxZVElDX1RJTUVGUkFNRV9VTlNQRUNJRklFRBAAEhwKGEFOQUxZVElDX1RJTUVGUkFNRV9EQUlMWRABEh4KGkFOQUxZVElDX1RJTUVGUkFNRV9NT05USExZEAISHQoZQU5BTFlUSUNfVElNRUZSQU1FX1lFQVJMWRADKogBChFBbmFseXRpY0dyb3VwU29ydBIjCh9BTkFMWVRJQ19HUk9VUF9TT1JUX1VOU1BFQ0lGSUVEEAASKQolQU5BTFlUSUNfR1JPVVBfU09SVF9SRVNUT0NLX1ZBTFVBVElPThABEiMKH0FOQUxZVElDX0dST1VQX1NPUlRfQlJPS0VOX1JBVEUQAjKVBAoXU3VwcGxpZXJBbmFseXRpY1NlcnZpY2USeQoSQW5hbHl0aWNUaW1lU2VhcmNoEjAud2FyZWhvdXNlLnN1cHBsaWVyLnYxLkFuYWx5dGljVGltZVNlYXJjaFJlcXVlc3QaMS53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNUaW1lU2VhcmNoUmVzcG9uc2USggEKFUFuYWx5dGljUHJvZHVjdFNlYXJjaBIzLndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY1Byb2R1Y3RTZWFyY2hSZXF1ZXN0GjQud2FyZWhvdXNlLnN1cHBsaWVyLnYxLkFuYWx5dGljUHJvZHVjdFNlYXJjaFJlc3BvbnNlEnwKE0FuYWx5dGljR3JvdXBTZWFyY2gSMS53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNHcm91cFNlYXJjaFJlcXVlc3QaMi53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNHcm91cFNlYXJjaFJlc3BvbnNlEnwKE0FuYWx5dGljR3JvdXBNZXRyaWMSMS53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNHcm91cE1ldHJpY1JlcXVlc3QaMi53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNHcm91cE1ldHJpY1Jlc3BvbnNlMrECCiJTdXBwbGllckFuYWx5dGljTWFpbnRlbmFuY2VTZXJ2aWNlEoIBChVBbmFseXRpY1JlcGxheUNvbXB1dGUSMy53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVxdWVzdBo0LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY1JlcGxheUNvbXB1dGVSZXNwb25zZRKFAQoWQW5hbHl0aWNNYWludGVuYW5jZVJ1bhI0LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdBo1LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVzcG9uc2VCUFpOZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zdXBwbGllci92MTtzdXBwbGllcnYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Ci13YXJlaG91c2Uvc3VwcGxpZXIvdjEvc3VwcGxpZXJfYW5hbHl0aWMucHJvdG8SFXdhcmVob3VzZS5zdXBwbGllci52MSK7AgoOU3VwcGxpZXJNZXRyaWMSHQoNcmVzdG9ja19jb3VudBgBIAEoA0IGmrUYAggBEiEKEXJlc3RvY2tfdmFsdWF0aW9uGAIgASgDQgaatRgCCAESIwoTc2hpcHBpbmdfbG9zdF9jb3VudBgDIAEoA0IGmrUYAggBEicKF3NoaXBwaW5nX2xvc3RfdmFsdWF0aW9uGAQgASgDQgaatRgCCAESJQoVc2hpcHBpbmdfYnJva2VuX2NvdW50GAUgASgDQgaatRgCCAESKQoZc2hpcHBpbmdfYnJva2VuX3ZhbHVhdGlvbhgGIAEoA0IGmrUYAggBEh0KC2Jyb2tlbl9yYXRlGAcgASgBQgiatRgECAEQMjoomrUYJAoDAQQGEgEBGgcBAgMEBQgGIhFtZXRyaWNzL3N1cHBsaWVycyKuAQoSU3VwcGxpZXJNZXRyaWNCeUlEEkMKBWl0ZW1zGAEgAygLMjQud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljQnlJRC5JdGVtc0VudHJ5GlMKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjQKBXZhbHVlGAIgASgLMiUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljOgI4ASKwAQoTU3VwcGxpZXJNZXRyaWNCeURheRJECgVpdGVtcxgBIAMoCzI1LndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllck1ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaUwoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSNAoFdmFsdWUYAiABKAsyJS53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJNZXRyaWM6AjgBIswCChNNZXRyaWNTZWFyY2hSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkUKCGdyb3VwX2J5GAIgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQgy6SAmCAQYQASAAIAESQQoHZmlsdGVycxgDIAMoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlckl0ZW1CCLpIBZIBAhAGEjwKBHNvcnQYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNTb3J0Qga6SAPIAQESQgoEcGFnZRgFIAEoCzIsLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlBhZ2luYXRpb25GaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIDBAUiXgoUTWV0cmljU2VhcmNoUmVzcG9uc2USNAoEa2V5cxgBIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY0tleXMSEAoIaGFzX25leHQYAiABKAgingIKEU1ldHJpY0RhdGFSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkMKCGdyb3VwX2J5GAIgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQgq6SAeCAQQQASAAEkEKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgi6SAWSAQIQBhI0CgRrZXlzGAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljS2V5cxIgCgptZXRyaWNfaWRzGAUgAygJQgy6SAmSAQYIARAKGAE6C5K1GAcKBQECAwQFIuABCgpNZXRyaWNEYXRhEkMKDnN1cHBsaWVyX2J5X2lkGAEgASgLMikud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljQnlJREgAEkUKD3N1cHBsaWVyX2J5X2RheRgCIAEoCzIqLndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllck1ldHJpY0J5RGF5SAASQQoQc3VwcGxpZXJfc3VtbWFyeRgDIAEoCzIlLndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllck1ldHJpY0gAQgMKAW0iTQoSTWV0cmljRGF0YVJlc3BvbnNlEjcKDG1ldHJpY19kYXRhcxgBIAMoCzIhLndhcmVob3VzZS5zdXBwbGllci52MS5NZXRyaWNEYXRhImEKHEFuYWx5dGljUmVwbGF5Q29tcHV0ZVJlcXVlc3QSNwoKc3RhcnRfZGF0ZRgBIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQ6CJK1GAQKAgECIoUBCh1BbmFseXRpY1JlcGxheUNvbXB1dGVSZXNwb25zZRIOCgZzdGF0dXMYASABKAkSGwoTZGVsZXRlZF9yZXBvcnRfcm93cxgCIAEoAxIaChJkZWxldGVkX2V2ZW50X2xvZ3MYAyABKAMSGwoTZWFybGllc3Rfc3RhcnRfZGF0ZRgEIAEoCSIpCh1BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdDoIkrUYBAoCAQIiTAoeQW5hbHl0aWNNYWludGVuYW5jZVJ1blJlc3BvbnNlEhoKEmRlbGV0ZWRfZXZlbnRfbG9ncxgBIAEoAxIOCgZjdXRvZmYYAiABKAky5QEKF1N1cHBsaWVyQW5hbHl0aWNTZXJ2aWNlEmcKDE1ldHJpY1NlYXJjaBIqLndhcmVob3VzZS5zdXBwbGllci52MS5NZXRyaWNTZWFyY2hSZXF1ZXN0Gisud2FyZWhvdXNlLnN1cHBsaWVyLnYxLk1ldHJpY1NlYXJjaFJlc3BvbnNlEmEKCk1ldHJpY0RhdGESKC53YXJlaG91c2Uuc3VwcGxpZXIudjEuTWV0cmljRGF0YVJlcXVlc3QaKS53YXJlaG91c2Uuc3VwcGxpZXIudjEuTWV0cmljRGF0YVJlc3BvbnNlMrECCiJTdXBwbGllckFuYWx5dGljTWFpbnRlbmFuY2VTZXJ2aWNlEoIBChVBbmFseXRpY1JlcGxheUNvbXB1dGUSMy53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVxdWVzdBo0LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY1JlcGxheUNvbXB1dGVSZXNwb25zZRKFAQoWQW5hbHl0aWNNYWludGVuYW5jZVJ1bhI0LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdBo1LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVzcG9uc2VCUFpOZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zdXBwbGllci92MTtzdXBwbGllcnYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
 
 /**
- * THE SIX FIGURES (each-figure-is-read-at-the-accept). All are movements, so a month, a product or a supplier is a
- * plain SUM. Lost and broken sit BESIDE restocked, never inside it — a broken rate is
- * broken ÷ (restocked + lost + broken). Values are whole rupiah, at the line's price.
+ * THE SIX FIGURES (each-figure-is-read-at-the-accept) and the broken rate. All six are movements, so a period, a
+ * product or a supplier is a plain SUM. Lost and broken sit BESIDE restocked, never inside it. Values are whole
+ * rupiah, at the line's price.
+ *
+ * Groups: SUPPLIER and PRODUCT — the RESTOCKING team's product, so two teams buying one item are two keys
+ * (every-accepted-line-links-its-own-product) — and every period. Filters: the window (required); TEAM, whose
+ * restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier. No keyword — the Supplier
+ * Report's search went with it (the-supplier-report-drops-its-search).
  *
  * @generated from message warehouse.supplier.v1.SupplierMetric
  */
@@ -61,6 +64,15 @@ export type SupplierMetric = Message<"warehouse.supplier.v1.SupplierMetric"> & {
    * @generated from field: int64 shipping_broken_valuation = 6;
    */
   shippingBrokenValuation: bigint;
+
+  /**
+   * broken ÷ (restocked + lost + broken), 0 to 1 — 0 when nothing arrived, so read the counts to tell no rate from a
+   * rate of 0. Ranked only among keys with at least 50 units; the rest follow, in key order
+   * (rate-ranking-needs-50-units, a-rate-ranks-only-above-its-minimum-sample).
+   *
+   * @generated from field: double broken_rate = 7;
+   */
+  brokenRate: number;
 };
 
 /**
@@ -71,394 +83,204 @@ export const SupplierMetricSchema: GenMessage<SupplierMetric> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 0);
 
 /**
- * A window over the ACCEPT's Jakarta day, inclusive at both ends, as YYYY-MM-DD.
+ * A page of keys' figures — keyed by supplier or product id. An asked id with nothing in the window is all zero.
  *
- * @generated from message warehouse.supplier.v1.AnalyticDateRange
+ * @generated from message warehouse.supplier.v1.SupplierMetricByID
  */
-export type AnalyticDateRange = Message<"warehouse.supplier.v1.AnalyticDateRange"> & {
+export type SupplierMetricByID = Message<"warehouse.supplier.v1.SupplierMetricByID"> & {
   /**
-   * @generated from field: string start_date = 1;
+   * @generated from field: map<uint64, warehouse.supplier.v1.SupplierMetric> items = 1;
    */
-  startDate: string;
-
-  /**
-   * @generated from field: string end_date = 2;
-   */
-  endDate: string;
+  items: { [key: string]: SupplierMetric };
 };
 
 /**
- * Describes the message warehouse.supplier.v1.AnalyticDateRange.
- * Use `create(AnalyticDateRangeSchema)` to create a new message.
+ * Describes the message warehouse.supplier.v1.SupplierMetricByID.
+ * Use `create(SupplierMetricByIDSchema)` to create a new message.
  */
-export const AnalyticDateRangeSchema: GenMessage<AnalyticDateRange> = /*@__PURE__*/
+export const SupplierMetricByIDSchema: GenMessage<SupplierMetricByID> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 1);
 
 /**
- * @generated from message warehouse.supplier.v1.AnalyticTimeSearchFilter
+ * A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. An asked period that was quiet is all zero.
+ *
+ * @generated from message warehouse.supplier.v1.SupplierMetricByDay
  */
-export type AnalyticTimeSearchFilter = Message<"warehouse.supplier.v1.AnalyticTimeSearchFilter"> & {
+export type SupplierMetricByDay = Message<"warehouse.supplier.v1.SupplierMetricByDay"> & {
   /**
-   * @generated from field: warehouse.supplier.v1.AnalyticDateRange date_range = 1;
+   * @generated from field: map<string, warehouse.supplier.v1.SupplierMetric> items = 1;
    */
-  dateRange?: AnalyticDateRange | undefined;
-
-  /**
-   * Whose restocks are counted — one selling team, or 0 for every team's (the-team-filter-picks-any-selling-team).
-   *
-   * @generated from field: uint64 restock_team_id = 2;
-   */
-  restockTeamId: bigint;
+  items: { [key: string]: SupplierMetric };
 };
 
 /**
- * Describes the message warehouse.supplier.v1.AnalyticTimeSearchFilter.
- * Use `create(AnalyticTimeSearchFilterSchema)` to create a new message.
+ * Describes the message warehouse.supplier.v1.SupplierMetricByDay.
+ * Use `create(SupplierMetricByDaySchema)` to create a new message.
  */
-export const AnalyticTimeSearchFilterSchema: GenMessage<AnalyticTimeSearchFilter> = /*@__PURE__*/
+export const SupplierMetricByDaySchema: GenMessage<SupplierMetricByDay> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 2);
 
 /**
- * @generated from message warehouse.supplier.v1.AnalyticTimeSearchRequest
+ * @generated from message warehouse.supplier.v1.MetricSearchRequest
  */
-export type AnalyticTimeSearchRequest = Message<"warehouse.supplier.v1.AnalyticTimeSearchRequest"> & {
+export type MetricSearchRequest = Message<"warehouse.supplier.v1.MetricSearchRequest"> & {
   /**
    * @generated from field: uint64 team_id = 1;
    */
   teamId: bigint;
 
   /**
-   * Any team's supplier, a deleted one included — its figures are kept (a-deleted-supplier-is-kept-for-its-figures).
+   * Never SUMMARY — a headline is not searched.
    *
-   * @generated from field: uint64 supplier_id = 2;
+   * @generated from field: warehouse.analytic_base.v1.GroupType group_by = 2;
    */
-  supplierId: bigint;
+  groupBy: GroupType;
 
   /**
-   * @generated from field: warehouse.supplier.v1.AnalyticTimeframe timeframe = 3;
-   */
-  timeframe: AnalyticTimeframe;
-
-  /**
-   * @generated from field: warehouse.supplier.v1.AnalyticTimeSearchFilter filter = 4;
-   */
-  filter?: AnalyticTimeSearchFilter | undefined;
-
-  /**
-   * Over the bucket's date. Unspecified reads ASCENDING, oldest first.
+   * At most one of each FilterType.
    *
-   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 5;
+   * @generated from field: repeated warehouse.analytic_base.v1.FilterItem filters = 3;
    */
-  sortType: CommonSortType;
+  filters: FilterItem[];
 
   /**
-   * Pages over BUCKETS — every bucket in the window is a point, a quiet one included, so a missing row never reads
-   * as a period that did not load.
-   *
-   * @generated from field: warehouse.common.v1.CommonPagination page = 6;
+   * @generated from field: warehouse.analytic_base.v1.MetricSort sort = 4;
    */
-  page?: CommonPagination | undefined;
+  sort?: MetricSort | undefined;
+
+  /**
+   * @generated from field: warehouse.analytic_base.v1.PaginationFilter page = 5;
+   */
+  page?: PaginationFilter | undefined;
 };
 
 /**
- * Describes the message warehouse.supplier.v1.AnalyticTimeSearchRequest.
- * Use `create(AnalyticTimeSearchRequestSchema)` to create a new message.
+ * Describes the message warehouse.supplier.v1.MetricSearchRequest.
+ * Use `create(MetricSearchRequestSchema)` to create a new message.
  */
-export const AnalyticTimeSearchRequestSchema: GenMessage<AnalyticTimeSearchRequest> = /*@__PURE__*/
+export const MetricSearchRequestSchema: GenMessage<MetricSearchRequest> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 3);
 
 /**
- * @generated from message warehouse.supplier.v1.SupplierTimeframeMetric
+ * @generated from message warehouse.supplier.v1.MetricSearchResponse
  */
-export type SupplierTimeframeMetric = Message<"warehouse.supplier.v1.SupplierTimeframeMetric"> & {
+export type MetricSearchResponse = Message<"warehouse.supplier.v1.MetricSearchResponse"> & {
   /**
-   * The bucket's first day, YYYY-MM-DD — the 1st of a month, 1 January of a year.
+   * Ranked; the key DESC breaks a tie (the-key-breaks-every-tie). Only keys with figures in the window.
    *
-   * @generated from field: string at = 1;
+   * @generated from field: warehouse.analytic_base.v1.MetricKeys keys = 1;
    */
-  at: string;
+  keys?: MetricKeys | undefined;
 
   /**
-   * @generated from field: warehouse.supplier.v1.SupplierMetric metric = 2;
+   * Read as limit + 1 — no total (a-page-says-whether-another-follows).
+   *
+   * @generated from field: bool has_next = 2;
    */
-  metric?: SupplierMetric | undefined;
+  hasNext: boolean;
 };
 
 /**
- * Describes the message warehouse.supplier.v1.SupplierTimeframeMetric.
- * Use `create(SupplierTimeframeMetricSchema)` to create a new message.
+ * Describes the message warehouse.supplier.v1.MetricSearchResponse.
+ * Use `create(MetricSearchResponseSchema)` to create a new message.
  */
-export const SupplierTimeframeMetricSchema: GenMessage<SupplierTimeframeMetric> = /*@__PURE__*/
+export const MetricSearchResponseSchema: GenMessage<MetricSearchResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 4);
 
 /**
- * @generated from message warehouse.supplier.v1.AnalyticTimeSearchResponse
+ * @generated from message warehouse.supplier.v1.MetricDataRequest
  */
-export type AnalyticTimeSearchResponse = Message<"warehouse.supplier.v1.AnalyticTimeSearchResponse"> & {
+export type MetricDataRequest = Message<"warehouse.supplier.v1.MetricDataRequest"> & {
   /**
-   * @generated from field: repeated warehouse.supplier.v1.SupplierTimeframeMetric datas = 1;
+   * @generated from field: uint64 team_id = 1;
    */
-  datas: SupplierTimeframeMetric[];
+  teamId: bigint;
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: warehouse.analytic_base.v1.GroupType group_by = 2;
    */
-  pageInfo?: PageInfo | undefined;
+  groupBy: GroupType;
 
   /**
-   * The WHOLE window as one metric — the Statistics tab's headline, never a sum of the page on screen.
+   * The same as the search's — they scope the numbers, never the keys (the-fill-step-scopes-its-numbers-by-the-filters).
    *
-   * @generated from field: warehouse.supplier.v1.SupplierMetric total = 3;
+   * @generated from field: repeated warehouse.analytic_base.v1.FilterItem filters = 3;
    */
-  total?: SupplierMetric | undefined;
+  filters: FilterItem[];
+
+  /**
+   * IDs for SUPPLIER and PRODUCT, days for a period; none for SUMMARY. At most a page.
+   *
+   * @generated from field: warehouse.analytic_base.v1.MetricKeys keys = 4;
+   */
+  keys?: MetricKeys | undefined;
+
+  /**
+   * @generated from field: repeated string metric_ids = 5;
+   */
+  metricIds: string[];
 };
 
 /**
- * Describes the message warehouse.supplier.v1.AnalyticTimeSearchResponse.
- * Use `create(AnalyticTimeSearchResponseSchema)` to create a new message.
+ * Describes the message warehouse.supplier.v1.MetricDataRequest.
+ * Use `create(MetricDataRequestSchema)` to create a new message.
  */
-export const AnalyticTimeSearchResponseSchema: GenMessage<AnalyticTimeSearchResponse> = /*@__PURE__*/
+export const MetricDataRequestSchema: GenMessage<MetricDataRequest> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 5);
 
 /**
- * @generated from message warehouse.supplier.v1.AnalyticProductSearchRequest
+ * One per asked metric (one-call-answers-every-asked-metric).
+ *
+ * @generated from message warehouse.supplier.v1.MetricData
  */
-export type AnalyticProductSearchRequest = Message<"warehouse.supplier.v1.AnalyticProductSearchRequest"> & {
+export type MetricData = Message<"warehouse.supplier.v1.MetricData"> & {
   /**
-   * @generated from field: uint64 team_id = 1;
+   * @generated from oneof warehouse.supplier.v1.MetricData.m
    */
-  teamId: bigint;
-
-  /**
-   * @generated from field: uint64 supplier_id = 2;
-   */
-  supplierId: bigint;
-
-  /**
-   * @generated from field: warehouse.supplier.v1.AnalyticTimeSearchFilter filter = 3;
-   */
-  filter?: AnalyticTimeSearchFilter | undefined;
-
-  /**
-   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
-   */
-  page?: CommonPagination | undefined;
+  m: {
+    /**
+     * @generated from field: warehouse.supplier.v1.SupplierMetricByID supplier_by_id = 1;
+     */
+    value: SupplierMetricByID;
+    case: "supplierById";
+  } | {
+    /**
+     * @generated from field: warehouse.supplier.v1.SupplierMetricByDay supplier_by_day = 2;
+     */
+    value: SupplierMetricByDay;
+    case: "supplierByDay";
+  } | {
+    /**
+     * @generated from field: warehouse.supplier.v1.SupplierMetric supplier_summary = 3;
+     */
+    value: SupplierMetric;
+    case: "supplierSummary";
+  } | { case: undefined; value?: undefined };
 };
 
 /**
- * Describes the message warehouse.supplier.v1.AnalyticProductSearchRequest.
- * Use `create(AnalyticProductSearchRequestSchema)` to create a new message.
+ * Describes the message warehouse.supplier.v1.MetricData.
+ * Use `create(MetricDataSchema)` to create a new message.
  */
-export const AnalyticProductSearchRequestSchema: GenMessage<AnalyticProductSearchRequest> = /*@__PURE__*/
+export const MetricDataSchema: GenMessage<MetricData> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 6);
 
 /**
- * One product's figures — the RESTOCKING team's product, so two teams buying one item are two rows
- * (every-accepted-line-links-its-own-product).
- *
- * @generated from message warehouse.supplier.v1.SupplierProductMetric
+ * @generated from message warehouse.supplier.v1.MetricDataResponse
  */
-export type SupplierProductMetric = Message<"warehouse.supplier.v1.SupplierProductMetric"> & {
+export type MetricDataResponse = Message<"warehouse.supplier.v1.MetricDataResponse"> & {
   /**
-   * @generated from field: uint64 product_id = 1;
+   * @generated from field: repeated warehouse.supplier.v1.MetricData metric_datas = 1;
    */
-  productId: bigint;
-
-  /**
-   * The team the product belongs to — the team that restocked it.
-   *
-   * @generated from field: uint64 team_id = 2;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: warehouse.supplier.v1.SupplierMetric metric = 3;
-   */
-  metric?: SupplierMetric | undefined;
+  metricDatas: MetricData[];
 };
 
 /**
- * Describes the message warehouse.supplier.v1.SupplierProductMetric.
- * Use `create(SupplierProductMetricSchema)` to create a new message.
+ * Describes the message warehouse.supplier.v1.MetricDataResponse.
+ * Use `create(MetricDataResponseSchema)` to create a new message.
  */
-export const SupplierProductMetricSchema: GenMessage<SupplierProductMetric> = /*@__PURE__*/
+export const MetricDataResponseSchema: GenMessage<MetricDataResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 7);
-
-/**
- * @generated from message warehouse.supplier.v1.AnalyticProductSearchResponse
- */
-export type AnalyticProductSearchResponse = Message<"warehouse.supplier.v1.AnalyticProductSearchResponse"> & {
-  /**
-   * The largest restocked value first.
-   *
-   * @generated from field: repeated warehouse.supplier.v1.SupplierProductMetric datas = 1;
-   */
-  datas: SupplierProductMetric[];
-
-  /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
-   */
-  pageInfo?: PageInfo | undefined;
-};
-
-/**
- * Describes the message warehouse.supplier.v1.AnalyticProductSearchResponse.
- * Use `create(AnalyticProductSearchResponseSchema)` to create a new message.
- */
-export const AnalyticProductSearchResponseSchema: GenMessage<AnalyticProductSearchResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 8);
-
-/**
- * @generated from message warehouse.supplier.v1.AnalyticGroupFilter
- */
-export type AnalyticGroupFilter = Message<"warehouse.supplier.v1.AnalyticGroupFilter"> & {
-  /**
-   * @generated from field: warehouse.supplier.v1.AnalyticDateRange date_range = 1;
-   */
-  dateRange?: AnalyticDateRange | undefined;
-
-  /**
-   * Whose restocks are counted — one selling team, or 0 for every team's.
-   *
-   * @generated from field: uint64 restock_team_id = 2;
-   */
-  restockTeamId: bigint;
-
-  /**
-   * Matched as SupplierList's `q` is — the supplier's name, address and contact, and its live stores' names
-   * (the-supplier-report-searches-like-discover). Empty ranks every supplier with figures in the window.
-   *
-   * @generated from field: string q = 3;
-   */
-  q: string;
-};
-
-/**
- * Describes the message warehouse.supplier.v1.AnalyticGroupFilter.
- * Use `create(AnalyticGroupFilterSchema)` to create a new message.
- */
-export const AnalyticGroupFilterSchema: GenMessage<AnalyticGroupFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 9);
-
-/**
- * @generated from message warehouse.supplier.v1.AnalyticGroupSearchRequest
- */
-export type AnalyticGroupSearchRequest = Message<"warehouse.supplier.v1.AnalyticGroupSearchRequest"> & {
-  /**
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: warehouse.supplier.v1.AnalyticGroupFilter filter = 2;
-   */
-  filter?: AnalyticGroupFilter | undefined;
-
-  /**
-   * @generated from field: warehouse.supplier.v1.AnalyticGroupSort sort = 3;
-   */
-  sort: AnalyticGroupSort;
-
-  /**
-   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
-   */
-  page?: CommonPagination | undefined;
-};
-
-/**
- * Describes the message warehouse.supplier.v1.AnalyticGroupSearchRequest.
- * Use `create(AnalyticGroupSearchRequestSchema)` to create a new message.
- */
-export const AnalyticGroupSearchRequestSchema: GenMessage<AnalyticGroupSearchRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 10);
-
-/**
- * @generated from message warehouse.supplier.v1.AnalyticGroupSearchResponse
- */
-export type AnalyticGroupSearchResponse = Message<"warehouse.supplier.v1.AnalyticGroupSearchResponse"> & {
-  /**
-   * The suppliers, RANKED — a deleted one included when it has figures in the window. Resolve the names with
-   * SupplierByIds, which returns a deleted supplier marked.
-   *
-   * @generated from field: repeated uint64 ids = 1;
-   */
-  ids: bigint[];
-
-  /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
-   */
-  pageInfo?: PageInfo | undefined;
-
-  /**
-   * Every ranked supplier together — the report's headline, never a sum of the page on screen.
-   *
-   * @generated from field: warehouse.supplier.v1.SupplierMetric total = 3;
-   */
-  total?: SupplierMetric | undefined;
-
-  /**
-   * The units a supplier needs in the window to be ranked by its rate (rate-ranking-needs-50-units). The screen reads
-   * it, never a copy of its own.
-   *
-   * @generated from field: int64 rate_min_units = 4;
-   */
-  rateMinUnits: bigint;
-};
-
-/**
- * Describes the message warehouse.supplier.v1.AnalyticGroupSearchResponse.
- * Use `create(AnalyticGroupSearchResponseSchema)` to create a new message.
- */
-export const AnalyticGroupSearchResponseSchema: GenMessage<AnalyticGroupSearchResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 11);
-
-/**
- * @generated from message warehouse.supplier.v1.AnalyticGroupMetricRequest
- */
-export type AnalyticGroupMetricRequest = Message<"warehouse.supplier.v1.AnalyticGroupMetricRequest"> & {
-  /**
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: warehouse.supplier.v1.AnalyticGroupFilter filter = 2;
-   */
-  filter?: AnalyticGroupFilter | undefined;
-
-  /**
-   * The page AnalyticGroupSearch returned. Capped like a page, because it is one.
-   *
-   * @generated from field: repeated uint64 ids = 3;
-   */
-  ids: bigint[];
-};
-
-/**
- * Describes the message warehouse.supplier.v1.AnalyticGroupMetricRequest.
- * Use `create(AnalyticGroupMetricRequestSchema)` to create a new message.
- */
-export const AnalyticGroupMetricRequestSchema: GenMessage<AnalyticGroupMetricRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 12);
-
-/**
- * @generated from message warehouse.supplier.v1.AnalyticGroupMetricResponse
- */
-export type AnalyticGroupMetricResponse = Message<"warehouse.supplier.v1.AnalyticGroupMetricResponse"> & {
-  /**
-   * Keyed by supplier id. An id with nothing in the window gets an all-zero metric, never a missing key.
-   *
-   * @generated from field: map<uint64, warehouse.supplier.v1.SupplierMetric> metrics = 1;
-   */
-  metrics: { [key: string]: SupplierMetric };
-};
-
-/**
- * Describes the message warehouse.supplier.v1.AnalyticGroupMetricResponse.
- * Use `create(AnalyticGroupMetricResponseSchema)` to create a new message.
- */
-export const AnalyticGroupMetricResponseSchema: GenMessage<AnalyticGroupMetricResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 13);
 
 /**
  * @generated from message warehouse.supplier.v1.AnalyticReplayComputeRequest
@@ -478,7 +300,7 @@ export type AnalyticReplayComputeRequest = Message<"warehouse.supplier.v1.Analyt
  * Use `create(AnalyticReplayComputeRequestSchema)` to create a new message.
  */
 export const AnalyticReplayComputeRequestSchema: GenMessage<AnalyticReplayComputeRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 14);
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 8);
 
 /**
  * @generated from message warehouse.supplier.v1.AnalyticReplayComputeResponse
@@ -514,7 +336,7 @@ export type AnalyticReplayComputeResponse = Message<"warehouse.supplier.v1.Analy
  * Use `create(AnalyticReplayComputeResponseSchema)` to create a new message.
  */
 export const AnalyticReplayComputeResponseSchema: GenMessage<AnalyticReplayComputeResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 15);
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 9);
 
 /**
  * @generated from message warehouse.supplier.v1.AnalyticMaintenanceRunRequest
@@ -527,7 +349,7 @@ export type AnalyticMaintenanceRunRequest = Message<"warehouse.supplier.v1.Analy
  * Use `create(AnalyticMaintenanceRunRequestSchema)` to create a new message.
  */
 export const AnalyticMaintenanceRunRequestSchema: GenMessage<AnalyticMaintenanceRunRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 16);
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 10);
 
 /**
  * @generated from message warehouse.supplier.v1.AnalyticMaintenanceRunResponse
@@ -553,135 +375,46 @@ export type AnalyticMaintenanceRunResponse = Message<"warehouse.supplier.v1.Anal
  * Use `create(AnalyticMaintenanceRunResponseSchema)` to create a new message.
  */
 export const AnalyticMaintenanceRunResponseSchema: GenMessage<AnalyticMaintenanceRunResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 17);
-
-/**
- * The grain a series is read at.
- *
- * @generated from enum warehouse.supplier.v1.AnalyticTimeframe
- */
-export enum AnalyticTimeframe {
-  /**
-   * @generated from enum value: ANALYTIC_TIMEFRAME_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * One point per day. SPAN capped at 366 days.
-   *
-   * @generated from enum value: ANALYTIC_TIMEFRAME_DAILY = 1;
-   */
-  DAILY = 1,
-
-  /**
-   * One point per calendar month. SPAN capped at 60 months.
-   *
-   * @generated from enum value: ANALYTIC_TIMEFRAME_MONTHLY = 2;
-   */
-  MONTHLY = 2,
-
-  /**
-   * One point per calendar year. SPAN capped at 20 years.
-   *
-   * @generated from enum value: ANALYTIC_TIMEFRAME_YEARLY = 3;
-   */
-  YEARLY = 3,
-}
-
-/**
- * Describes the enum warehouse.supplier.v1.AnalyticTimeframe.
- */
-export const AnalyticTimeframeSchema: GenEnum<AnalyticTimeframe> = /*@__PURE__*/
-  enumDesc(file_warehouse_supplier_v1_supplier_analytic, 0);
-
-/**
- * How the ranking orders its suppliers.
- *
- * @generated from enum warehouse.supplier.v1.AnalyticGroupSort
- */
-export enum AnalyticGroupSort {
-  /**
-   * @generated from enum value: ANALYTIC_GROUP_SORT_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * The default: the largest restocked value first.
-   *
-   * @generated from enum value: ANALYTIC_GROUP_SORT_RESTOCK_VALUATION = 1;
-   */
-  RESTOCK_VALUATION = 1,
-
-  /**
-   * The highest broken rate first — among the suppliers with at least `rate_min_units` units in the window; the rest
-   * follow (rate-ranking-needs-50-units).
-   *
-   * @generated from enum value: ANALYTIC_GROUP_SORT_BROKEN_RATE = 2;
-   */
-  BROKEN_RATE = 2,
-}
-
-/**
- * Describes the enum warehouse.supplier.v1.AnalyticGroupSort.
- */
-export const AnalyticGroupSortSchema: GenEnum<AnalyticGroupSort> = /*@__PURE__*/
-  enumDesc(file_warehouse_supplier_v1_supplier_analytic, 1);
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 11);
 
 /**
  * A SUPPLIER'S FIGURES — what was restocked from it, and how much of that was lost or broken on the way
  * (docs/business/supplier/context.md §How We provide Analitical Data of Suppliers). Read on the supplier details'
- * Statistics tab and the Supplier Report page (the-figures-are-a-statistics-tab-and-a-supplier-report), derived from
- * those screens and accepted with them (the-figures-screens-are-accepted).
+ * Statistics tab and the Supplier Report page (the-figures-are-a-statistics-tab-and-a-supplier-report).
+ *
+ * Served through the analytic pattern (docs/business/analytic/rpc_provide.md): ONE metric, `metrics/suppliers`, read by
+ * `MetricSearch` (rank the keys) and `MetricData` (fill them) — the shape every service's figures share
+ * (the-pattern-replaces-the-shipped-analytics). It replaced four bespoke reads.
  *
  * ⚠ EVERY NUMBER HERE IS READ FROM A FOLDED TABLE — `supplier_product_daily_reports`, built by supplier_service's own
  * webhook consuming `RestockAccepted` (the-report-is-processed-like-settlement). A figure can lag the accept by the
  * broker's delivery time, and never by more than that.
  *
  * ⚠ EVERY SELLING TEAM READS EVERY TEAM'S FIGURES (every-selling-team-sees-every-teams-figures). `team_id` is the
- * CALLER's scope, as on every read; `restock_team_id` is the filter on whose restocks are counted, 0 = every team's.
+ * CALLER's scope, as on every read; a TeamFilter narrows to whose restocks are counted.
  *
  * @generated from service warehouse.supplier.v1.SupplierAnalyticService
  */
 export const SupplierAnalyticService: GenService<{
   /**
-   * One supplier's six figures over time — daily, monthly or yearly — and the window's total.
+   * The keys of a page of the table, ranked by one field of `metrics/suppliers` — suppliers, products or periods.
    *
-   * @generated from rpc warehouse.supplier.v1.SupplierAnalyticService.AnalyticTimeSearch
+   * @generated from rpc warehouse.supplier.v1.SupplierAnalyticService.MetricSearch
    */
-  analyticTimeSearch: {
+  metricSearch: {
     methodKind: "unary";
-    input: typeof AnalyticTimeSearchRequestSchema;
-    output: typeof AnalyticTimeSearchResponseSchema;
+    input: typeof MetricSearchRequestSchema;
+    output: typeof MetricSearchResponseSchema;
   },
   /**
-   * One supplier's six figures per product over the window — Product Grouped.
+   * The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
    *
-   * @generated from rpc warehouse.supplier.v1.SupplierAnalyticService.AnalyticProductSearch
+   * @generated from rpc warehouse.supplier.v1.SupplierAnalyticService.MetricData
    */
-  analyticProductSearch: {
+  metricData: {
     methodKind: "unary";
-    input: typeof AnalyticProductSearchRequestSchema;
-    output: typeof AnalyticProductSearchResponseSchema;
-  },
-  /**
-   * Suppliers RANKED over a window — ids only, sorted — and every ranked supplier's total, the report's headline.
-   *
-   * @generated from rpc warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupSearch
-   */
-  analyticGroupSearch: {
-    methodKind: "unary";
-    input: typeof AnalyticGroupSearchRequestSchema;
-    output: typeof AnalyticGroupSearchResponseSchema;
-  },
-  /**
-   * The figures of a set of suppliers the caller already ranked.
-   *
-   * @generated from rpc warehouse.supplier.v1.SupplierAnalyticService.AnalyticGroupMetric
-   */
-  analyticGroupMetric: {
-    methodKind: "unary";
-    input: typeof AnalyticGroupMetricRequestSchema;
-    output: typeof AnalyticGroupMetricResponseSchema;
+    input: typeof MetricDataRequestSchema;
+    output: typeof MetricDataResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_supplier_v1_supplier_analytic, 0);

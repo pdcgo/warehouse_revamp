@@ -3,6 +3,7 @@
 ## Who Proposed This Design
 1. This is Proposed by `Heri`
 2. Maybe `Toni` have another design to compare.
+3. For How We Serve Analytic in frontend, see [this](./rpc_provide.md).
 
 ## Responsbility
 1. Provide Analytical Design Pattern

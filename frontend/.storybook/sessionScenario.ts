@@ -1,3 +1,4 @@
+import type { OrderTransactionRefusalReason } from "../src/gen/warehouse/inventory/v1/order_transaction_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 
 // WHO is standing in front of the screen — set in a story's `beforeEach`, reset in preview.tsx.
@@ -29,10 +30,45 @@ export const teamCreateScenario = {
   last: undefined as undefined | { name: string; ownerUserId: bigint },
 };
 
+/**
+ * How many label checks the stub REFUSED as busy (a fake PDF marked `stub-result:busy`) — the only sign a story has
+ * that a check answered, when its answer is that nothing appears (an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once).
+ */
+export const receiptCheckScenario = {
+  refused: 0,
+};
+
 /** What the last OrderExport was asked — the view, the status tab and the ticked ids (one-export-is-the-list-as-a-file). */
 export const orderExportScenario = {
   last: undefined as undefined | { view: number; status: number; orderIds: bigint[]; rows: number },
 };
+
+/**
+ * THE WAREHOUSE REFUSING THE TAKE (a-refusal-names-its-reason-and-every-line). When set, OrderCreate and OrderDraftPromote
+ * answer as the server does once selling passes the take's refusal through: FailedPrecondition, carrying an
+ * OrderTransactionRefusal detail with the reason and the lines. `undefined` (the default) places the order.
+ */
+export const takeRefusalScenario = {
+  refusal: undefined as
+    | undefined
+    | {
+        reason: OrderTransactionRefusalReason;
+        lines: { productId: bigint; wanted: bigint; available: bigint }[];
+      },
+};
+
+/** A `beforeEach`: the next order this story places is refused at the take, for `reason`, naming `lines`. */
+export function withTakeRefusal(
+  reason: OrderTransactionRefusalReason,
+  lines: { productId: bigint; wanted: bigint; available?: bigint }[],
+) {
+  return () => {
+    takeRefusalScenario.refusal = {
+      reason,
+      lines: lines.map((line) => ({ ...line, available: line.available ?? 0n })),
+    };
+  };
+}
 
 export function resetSessionScenario() {
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
@@ -40,6 +76,8 @@ export function resetSessionScenario() {
   sessionScenario.teamNames = {};
   teamCreateScenario.last = undefined;
   orderExportScenario.last = undefined;
+  receiptCheckScenario.refused = 0;
+  takeRefusalScenario.refusal = undefined;
 }
 
 /** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */

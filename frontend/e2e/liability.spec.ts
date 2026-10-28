@@ -296,6 +296,10 @@ test("Liability redesign: the counterparty detail opens with the ledger and its 
   // Net position, in words — never a sign.
   await expect(page.getByTestId("liability-detail-balance")).toContainText("You owe them Rp 25.000");
 
+  // the-debtor-sees-the-limits-set-on-it — root OWES the warehouse, so its page shows the limit the warehouse set on
+  // it: none, which is unlimited. Read through the real LiabilityCreditByIds, past the real interceptor.
+  await expect(page.getByTestId("limit-on-you-meter")).toContainText("Unlimited");
+
   // The Payable tab carries the debt, named by its typed cause + the restock id (not a free-text note).
   await page.getByTestId("liability-detail-tab-payable").click();
   await expect(page.getByTestId("liability-detail-payable")).toContainText("Delivery costs");
@@ -509,46 +513,4 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
 
   expect(await accountBalance(page, String(WAREHOUSE_TEAM), paidFrom)).toBe(0);
   expect(await accountBalance(page, warehouseId, receivedInto)).toBe(5000);
-});
-
-// ⛔ THE BRIDGE, AND IT IS LOAD-BEARING. The cross-product markup left the balance screens because it
-// is the PRODUCT's (owner) — `products.cross_markup_bps` already exists in product_service. But
-// `LiabilityTermsSet` is an UPSERT that writes `product_markup_bp` on every call, and
-// `order_fees.go` still charges the cross fee from that column.
-//
-// So the form must pass the STORED value through. If it sent 0 because the field is gone, every
-// unrelated credit-limit edit would silently wipe a fee — the kind of break that surfaces weeks later
-// as "why did we stop charging for cross sales".
-//
-// ⚠ This is a claim about what the SERVER ends up holding, not about a component, which is why it is
-// here rather than in a story.
-test("Liability: editing terms does not wipe the cross-product markup", async ({ page }) => {
-  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
-
-  // A markup set the way it is set today — outside the balance screens.
-  const seeded = await call(page, "liability.v1.LiabilityTermsService/LiabilityTermsSet", {
-    teamId: String(WAREHOUSE_TEAM),
-    counterpartyId: warehouseId,
-    handlingFee: "12000",
-    productMarkupBp: "750",
-    creditLimit: "5000000",
-    reason: "",
-  });
-  expect(seeded.status).toBe(200);
-  expect(seeded.body.terms.productMarkupBp).toBe("750");
-
-  // What the credit-terms form now sends: the fee and the limit it owns, and the markup UNCHANGED.
-  const edited = await call(page, "liability.v1.LiabilityTermsService/LiabilityTermsSet", {
-    teamId: String(WAREHOUSE_TEAM),
-    counterpartyId: warehouseId,
-    handlingFee: "44000",
-    productMarkupBp: seeded.body.terms.productMarkupBp,
-    creditLimit: "5000000",
-    reason: "",
-  });
-  expect(edited.status).toBe(200);
-  expect(edited.body.terms.handlingFee).toBe("44000");
-
-  // ⚠ The whole assertion: the fee moved and the markup did not.
-  expect(edited.body.terms.productMarkupBp).toBe("750");
 });

@@ -28,7 +28,7 @@ function priced(key: string, count: number, value: bigint): OrderSummaryRow {
     count,
     value,
     mpValue,
-    cogs: (mpValue * 62n) / 100n,
+    goodsCost: (mpValue * 62n) / 100n,
     fees: 3_000n * BigInt(count),
     marginUnknown: 0,
     itemCount: count * 3,
@@ -45,7 +45,7 @@ const ROWS: OrderSummaryRow[] = [
     count: 1,
     value: 420_000n,
     mpValue: 0n,
-    cogs: 0n,
+    goodsCost: 0n,
     fees: 0n,
     marginUnknown: 1,
     itemCount: 3,
@@ -60,7 +60,7 @@ const ROWS: OrderSummaryRow[] = [
     count: 0,
     value: 0n,
     mpValue: null,
-    cogs: null,
+    goodsCost: null,
     fees: null,
     marginUnknown: null,
     itemCount: null,
@@ -72,7 +72,7 @@ const TOTAL = orderSummaryTotal(ROWS);
 const BLANK = ROWS.map((row) => ({
   ...row,
   mpValue: null,
-  cogs: null,
+  goodsCost: null,
   fees: null,
   marginUnknown: null,
   itemCount: null,
@@ -147,7 +147,7 @@ export const AStatusShowsItsOwnFiguresAsCards: Story = {
   },
 };
 
-// ⚠ A COST THAT WAS NEVER RECORDED IS NOT ZERO. `order.proto` says a cogs of 0 means the goods were
+// ⚠ A COST THAT WAS NEVER RECORDED IS NOT ZERO. `order.proto` says a goods_cost of 0 means the goods were
 // never restocked through this system — unknown, not free. Rendered as a number it produced a pile
 // reading "Rp 0 · margin 100%", which is the most confident wrong figure this screen could print.
 export const APileWithNoRecordedCostShowsNoMargin: Story = {
@@ -193,7 +193,7 @@ export const APartlyPricedTotalSaysHowManyItLeftOut: Story = {
 //   38%    → the fees were left out of total beli
 //   36,3%  → it divided by OUR total instead of the marketplace's
 //
-// This replaced an assertion of 36% for `subtotal − cogs` over `subtotal` — a formula that also
+// This replaced an assertion of 36% for `subtotal − cogs` over `subtotal` (the old columns) — a formula that also
 // happens to be `order.proto`'s own, and answered a question the owner had not asked.
 export const TheMarginIsMeasuredAgainstTheMarketplacePrice: Story = {
   args: { selectedKey: "shipped" },
@@ -260,7 +260,7 @@ export const NoCardIsHighlighted: Story = {
 
 // ⚠ A PILE THE CONTRACT CANNOT HOLD IS UNKNOWN, NOT ZERO. `completed` is one of the owner's eight
 // statuses and the enum has no value for it — so "0 orders are completed" is a claim the contract
-// cannot make, and printing it would be the confident-zero mistake one level up from a cogs of 0.
+// cannot make, and printing it would be the confident-zero mistake one level up from a goods_cost of 0.
 export const APileTheContractCannotHoldIsUnknown: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

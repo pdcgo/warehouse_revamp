@@ -40,7 +40,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-late-correction-lands-in-the-six-columns](#a-late-correction-lands-in-the-six-columns) | a figure wrong past the 30-day replay is corrected by an adjustment event whose six deltas land in the six columns — no `system_adjustment` | in chat, 2026-10-07 — answers Q15d as recommended |
 | [a-deleted-supplier-is-kept-for-its-figures](#a-deleted-supplier-is-kept-for-its-figures) | delete is SOFT: a deleted supplier leaves every list and picker, and every past restock and figure still reads its name | in chat, 2026-10-07 — reverses the hard-delete half of [no-province-or-city](#no-province-or-city), answers Q15c |
 | [the-team-filter-picks-any-selling-team](#the-team-filter-picks-any-selling-team) | the figures' team filter is a selling-team picker, empty = every team — on the Supplier Report and the Statistics tab alike | in chat, 2026-10-07 — answers the first reading of Q17, against my *two buttons* |
-| [the-supplier-report-searches-like-discover](#the-supplier-report-searches-like-discover) | the Supplier Report has a search — supplier name, address, contact, store names — and its headline totals what it finds | in chat, 2026-10-07 |
+| ⛔ [superseded-the-supplier-report-searches-like-discover](#superseded-the-supplier-report-searches-like-discover) | ~~the Supplier Report has a search~~ — superseded by [the-supplier-report-drops-its-search](../analytic/rpc_provide_decision.md#the-supplier-report-drops-its-search) | in chat, 2026-10-07 |
 | [discover-filters-by-the-team-that-keeps-it](#discover-filters-by-the-team-that-keeps-it) | Discover Supplier has a Team filter — the team that keeps the supplier, sent as `owner_team_id`; the search does not read team names | in chat, 2026-10-07 — answers Q16 as recommended |
 | [the-figures-screens-are-accepted](#the-figures-screens-are-accepted) | the Statistics tab and the Supplier Report are accepted, and the reads derived from them; the figures are built for real | in chat, 2026-10-07 — answers Q17 as recommended |
 | [the-supplier-comes-from-the-restock-until-lines-name-a-store](#the-supplier-comes-from-the-restock-until-lines-name-a-store) | a line's figures go to the RESTOCK's supplier while restock lines name no store; the fold switches to the line's store when they do | in chat, 2026-10-07 — as recommended |
@@ -1003,7 +1003,11 @@ flowchart LR
 | the read | `team_id` on the daily rows, `0` = every team — [every-selling-team-sees-every-teams-figures](#every-selling-team-sees-every-teams-figures)'s filter, unchanged |
 | a team picked | the Statistics tab's by-product table drops its Team column — it would name that team on every row |
 
-## the-supplier-report-searches-like-discover
+## superseded-the-supplier-report-searches-like-discover
+
+⛔ **Superseded 2026-10-28** by [the-supplier-report-drops-its-search](../analytic/rpc_provide_decision.md#the-supplier-report-drops-its-search):
+the keyword filter left the analytic contract ([the-generic-keyword-is-removed](../analytic/rpc_provide_decision.md#the-generic-keyword-is-removed)),
+and the search went with it. Renamed per RULE 12; kept below as it was recorded.
 
 > Owner, in chat *(2026-10-07)*: *"in supplier report, add search, team filter"*.
 

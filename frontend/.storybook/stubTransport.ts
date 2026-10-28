@@ -30,13 +30,14 @@ import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplie
 import { SupplierAnalyticService } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
 import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
+  LiabilityCreditState,
   LiabilityPaymentService,
   LiabilityService,
   LiabilitySourceType,
   LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
-import { OrderDateField, OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
+import { OrderDateField, OrderService, OrderStatus, OrderTimelineFrom } from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptCheckResult, ReceiptService } from "../src/gen/warehouse/shipment/v1/receipt_pb";
@@ -55,7 +56,17 @@ import {
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
-import { orderExportScenario, sessionScenario, teamCreateScenario } from "./sessionScenario";
+import {
+  orderExportScenario,
+  receiptCheckScenario,
+  sessionScenario,
+  takeRefusalScenario,
+  teamCreateScenario,
+} from "./sessionScenario";
+import {
+  OrderTransactionRefusalReason,
+  OrderTransactionRefusalSchema,
+} from "../src/gen/warehouse/inventory/v1/order_transaction_pb";
 import { userStub } from "./userStub";
 import {
   FinancialAccountAnalyticService,
@@ -108,6 +119,7 @@ import {
   settlementImports,
   shipmentChannels,
   dayKey,
+  drawFrom,
   settlementReportDays,
   settlementReportGroups,
   expenseDays,
@@ -122,6 +134,7 @@ import {
   regions,
   liabilityDays,
   shops,
+  liabilityCredits,
   liabilityEntries,
   liabilityPayments,
   liabilityPositions,
@@ -242,14 +255,70 @@ export function resetShipmentChannels() {
   channelTable = seedChannels();
 }
 
+// THE NOTES WRITTEN IN A STORY (a-note-is-a-timeline-row) — WRITEABLE, because Add Note is the screen. Kept beside
+// the fixtures rather than in them: `orderDetailFor` rebuilds an order on every read, and `orderDetail` appends the
+// rows written here to its timeline, so the refetch after a write shows the new note. Reset per story, or a note
+// added in one story would be in every later one.
+type StubNoteLog = { id: bigint; status: OrderStatus; note: string; from: OrderTimelineFrom; actorId: bigint; createdAtUnix: bigint };
+let writtenNotes = new Map<string, StubNoteLog[]>();
+let nextNoteLogId = 9_000n;
+
+export function resetOrderNotes() {
+  writtenNotes = new Map();
+  nextNoteLogId = 9_000n;
+}
+
 function channelById(id: bigint): StubChannel {
   const row = channelTable.find((c) => c.id === id);
   if (!row) throw new ConnectError(`shipment channel ${id} not found`, Code.NotFound);
   return row;
 }
 
+// THE TAKE'S REFUSAL, as selling passes it through (takeRefusalScenario): FailedPrecondition with the take's own message
+// and its OrderTransactionRefusal detail — the shape the order form decodes to name the reason and the lines.
+function refuseTakeIfScripted() {
+  const refusal = takeRefusalScenario.refusal;
+  if (!refusal) return;
+
+  const reason = `ORDER_TRANSACTION_REFUSAL_REASON_${OrderTransactionRefusalReason[refusal.reason]}`;
+
+  throw new ConnectError(`order transaction refused: ${reason}`, Code.FailedPrecondition, undefined, [
+    { desc: OrderTransactionRefusalSchema, value: { reason: refusal.reason, lines: refusal.lines } },
+  ]);
+}
+
 export function resetLiabilityTerms() {
   termsTable = [...liabilityTerms];
+}
+
+// ONE CREDITOR'S STANDING TOWARD ONE DEBTOR, as LiabilityCreditByIds reads it (the-debtor-sees-the-limits-set-on-it).
+//
+// Gudang Pusat (11) is read off the WRITEABLE terms and positions — the pair row, else its default row, else unlimited,
+// as the server's precedence goes — so a story that changes 11's terms sees the debtor's side change with it. Every
+// other creditor is `liabilityCredits`. Nothing found is unlimited and owed nothing, as the server answers a pair that
+// never traded.
+function creditStanding(debtor: bigint, creditor: bigint): { creditLimit?: bigint; debt: bigint } {
+  if (creditor === 11n) {
+    const terms =
+      termsTable.find((x) => x.teamId === creditor && x.counterpartyId === debtor) ??
+      termsTable.find((x) => x.teamId === creditor && x.counterpartyId === 0n);
+    // Signed from 11's side: positive = the debtor owes 11. Being owed is not debt.
+    const balance = positionsTable.find((p) => p.counterpartyId === debtor)?.balance ?? 0n;
+
+    return { creditLimit: terms?.creditLimit, debt: balance > 0n ? balance : 0n };
+  }
+
+  const row = liabilityCredits.find((c) => c.debtorTeamId === debtor && c.creditorTeamId === creditor);
+
+  return { creditLimit: row?.creditLimit, debt: row?.debt ?? 0n };
+}
+
+// The server's state, at its thresholds: AT_LIMIT on `debt >= limit` (the create's refusal), NEAR from 80%.
+function creditStateOf(limit: bigint | undefined, debt: bigint): LiabilityCreditState {
+  if (limit === undefined) return LiabilityCreditState.OK;
+  if (debt >= limit) return LiabilityCreditState.AT_LIMIT;
+  if (debt * 5n >= limit * 4n) return LiabilityCreditState.NEAR;
+  return LiabilityCreditState.OK;
 }
 
 
@@ -633,7 +702,7 @@ function matchOrder(q: string | undefined, o: (typeof orders)[number]): boolean 
 // Whether the margin can be taken over this order — the server's `orderMeasurable`: a known cost, a recorded
 // marketplace figure and a frozen fee, all three.
 function measurable(o: (typeof orders)[number]): boolean {
-  return (o.cogs ?? 0n) > 0n && (o.marketplaceTotal ?? 0n) > 0n && o.warehouseFee !== undefined;
+  return (o.goodsCost ?? 0n) > 0n && (o.platformTotal ?? 0n) > 0n && o.warehouseFee !== undefined;
 }
 
 // The order's units, summed from its lines — what the server's correlated sum reads.
@@ -921,6 +990,14 @@ export const transport = createRouterTransport(({ service }) => {
       }
 
       const named = /stub-result:([a-z_]+)/.exec(head)?.[1] ?? "";
+
+      // …except the ONE error the handler has of its own: two checks already running, the next refused at once
+      // (an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once). It is about the server, never the file.
+      if (named === "busy") {
+        receiptCheckScenario.refused += 1;
+        throw new ConnectError("two label checks are already running", Code.ResourceExhausted);
+      }
+
       const result = RECEIPT_STUB_RESULTS[named] ?? ReceiptCheckResult.READ;
 
       return result === ReceiptCheckResult.READ ? { result, ...receiptLabel } : { result };
@@ -1153,6 +1230,40 @@ export const transport = createRouterTransport(({ service }) => {
       ),
     }),
 
+    // WHAT A TAKE WOULD DRAW (an-order-is-costed-at-what-leaves-the-shelf) — the order form's per-line cost: the
+    // fixture warehouse's batches oldest first (`productBatches`), through the same `drawFrom` the stories use. One item
+    // per line asked, in product id order, as the server answers.
+    //
+    // ⚠ PER WAREHOUSE, like stockAvailability: any other warehouse holds nothing, so it draws nothing. And the take's
+    // own refusal of another team's LOCKED product reads as nothing available to the caller.
+    stockTakeQuote: (req) => ({
+      items: [...req.lines]
+        .sort((a, b) => (a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0))
+        .map((line) => {
+          const product = products.find((p) => p.id === line.productId);
+          const refused = !product || (product.crossLocked && product.teamId !== req.teamId);
+          const draw =
+            req.warehouseId === WAREHOUSE_ID && !refused
+              ? drawFrom(line.productId.toString(), line.quantity)
+              : drawFrom("none", line.quantity);
+
+          return {
+            productId: line.productId,
+            ownerTeamId: product?.teamId ?? 0n,
+            quantity: line.quantity,
+            available: draw.available,
+            enough: draw.total !== undefined,
+            totalCost: draw.total,
+            unitCost: draw.unitCost,
+            batches: draw.batches.map((b) => ({
+              quantity: b.quantity,
+              unitCost: b.unitCost,
+              total: Number(b.quantity) * b.unitCost,
+            })),
+          };
+        }),
+    }),
+
     // The shelves an order's goods were drawn from, keyed by the ref selling_service recorded the draw
     // under (`order:<id>`). A ref this stub does not recognise answers EMPTY, as the server would —
     // "nothing was drawn" is a real answer, not an error.
@@ -1165,7 +1276,10 @@ export const transport = createRouterTransport(({ service }) => {
   service(OrderService, {
     // The write the order form exists to make. It answers with an id so the page can navigate to the
     // order it just placed — which is also what tells the unsaved-work blocker to stand down.
-    orderCreate: () => ({ order: { id: 900n } }),
+    orderCreate: () => {
+      refuseTakeIfScripted();
+      return { order: { id: 900n } };
+    },
 
     // ⚠ THE TWO-SIDED READ (#151), and it is the reason the order list has two versions at all.
     // `team_id` means "the team you hold a role in", NOT "the team whose orders you get": the handler
@@ -1203,7 +1317,41 @@ export const transport = createRouterTransport(({ service }) => {
         throw new ConnectError("order not found", Code.NotFound);
       }
 
-      return { order };
+      // Every row, the notes a story wrote included — the server returns them in one `timeline_logs`.
+      return { order: { ...order, timelineLogs: [...order.timelineLogs, ...(writtenNotes.get(order.id.toString()) ?? [])] } };
+    },
+
+    // ADD A NOTE (a-note-is-a-timeline-row): a row with NO status, from the side `team_id` is on — the order's team
+    // writes `selling`, its warehouse `warehouse`, anybody else reads NotFound, as the server answers. 1 to 500
+    // characters after trimming. The writer is the signed-in user (`users[0]`, as AuthService's identity says).
+    orderNoteCreate: (req) => {
+      const order = orderDetailFor(req.orderId);
+      const from =
+        order?.teamId === req.teamId
+          ? OrderTimelineFrom.SELLING
+          : order?.warehouseId === req.teamId
+            ? OrderTimelineFrom.WAREHOUSE
+            : undefined;
+
+      if (!order || from === undefined) throw new ConnectError("order not found", Code.NotFound);
+
+      const note = req.note.trim();
+      if (note.length < 1 || note.length > 500) {
+        throw new ConnectError("note must be 1 to 500 characters", Code.InvalidArgument);
+      }
+
+      const log: StubNoteLog = {
+        id: nextNoteLogId++,
+        status: OrderStatus.UNSPECIFIED,
+        note,
+        from,
+        actorId: users[0]!.id,
+        createdAtUnix: BigInt(Math.floor(Date.now() / 1000)),
+      };
+      const key = order.id.toString();
+      writtenNotes.set(key, [...(writtenNotes.get(key) ?? []), log]);
+
+      return { log };
     },
 
     // Every plain move (one-status-change-for-every-plain-move). STATELESS on purpose: the page reads the
@@ -1287,7 +1435,7 @@ export const transport = createRouterTransport(({ service }) => {
           value: bigint;
           itemCount: bigint;
           mpValue: bigint;
-          cogs: bigint;
+          goodsCost: bigint;
           fees: number;
           marginUnknown: bigint;
         }
@@ -1299,7 +1447,7 @@ export const transport = createRouterTransport(({ service }) => {
           value: 0n,
           itemCount: 0n,
           mpValue: 0n,
-          cogs: 0n,
+          goodsCost: 0n,
           fees: 0,
           marginUnknown: 0n,
         };
@@ -1308,10 +1456,10 @@ export const transport = createRouterTransport(({ service }) => {
         counts.set(o.status, {
           status: o.status,
           count: row.count + 1n,
-          value: row.value + o.total,
+          value: row.value + (o.platformTotal ?? 0n),
           itemCount: row.itemCount + unitsOf(o.id),
-          mpValue: row.mpValue + (measured ? (o.marketplaceTotal ?? 0n) : 0n),
-          cogs: row.cogs + (measured ? (o.cogs ?? 0n) : 0n),
+          mpValue: row.mpValue + (measured ? (o.platformTotal ?? 0n) : 0n),
+          goodsCost: row.goodsCost + (measured ? (o.goodsCost ?? 0n) : 0n),
           fees: row.fees + (measured ? (o.warehouseFee ?? 0) : 0),
           marginUnknown: row.marginUnknown + (measured ? 0n : 1n),
         });
@@ -1325,7 +1473,7 @@ export const transport = createRouterTransport(({ service }) => {
       return {
         preview: {
           orders30d: BigInt(recent.length),
-          revenue30d: recent.reduce((sum, o) => sum + o.total, 0n),
+          revenue30d: recent.reduce((sum, o) => sum + (o.platformTotal ?? 0n), 0n),
         },
         // One entry per status that HAS orders; a status with none is ABSENT rather than a zero row,
         // exactly as the proto says. The page renders the gaps itself.
@@ -1394,7 +1542,10 @@ export const transport = createRouterTransport(({ service }) => {
 
     // The draft becomes an order with a new id — the page navigates there, which is what a story
     // asserts on.
-    orderDraftPromote: () => ({ order: { id: 902n } }),
+    orderDraftPromote: () => {
+      refuseTakeIfScripted();
+      return { order: { id: 902n } };
+    },
   });
 
   service(LiabilityService, {
@@ -1464,6 +1615,28 @@ export const transport = createRouterTransport(({ service }) => {
 
       return { days: perDay, totals: { net: sumMap(bySource), bySource } };
     },
+
+    // The DEBTOR's side of a limit — one CREDIT item per creditor asked about, keyed by creditor id. Every creditor is
+    // present, unlimited ones included; the asking team itself is dropped, as the server drops it.
+    liabilityCreditByIds: (req) => ({
+      items: Object.fromEntries(
+        (req.filter?.ids ?? [])
+          .filter((creditor) => creditor !== 0n && creditor !== req.teamId)
+          .map((creditor) => {
+            const { creditLimit, debt } = creditStanding(req.teamId, creditor);
+            const key = creditor.toString();
+            const credit = {
+              creditorTeamId: creditor,
+              // ⚠ Carried as undefined when absent — unlimited, never 0.
+              creditLimit,
+              debt,
+              state: creditStateOf(creditLimit, debt),
+            };
+
+            return [key, { items: [{ d: { case: "credit" as const, value: { mapData: { [key]: credit } } } }] }];
+          }),
+      ),
+    }),
   });
 
   service(LiabilityPaymentService, {
@@ -1646,7 +1819,6 @@ export const transport = createRouterTransport(({ service }) => {
         teamId: req.teamId,
         counterpartyId: req.counterpartyId,
         handlingFee: req.handlingFee,
-        productMarkupBp: req.productMarkupBp,
         creditLimit: req.creditLimit,
         reason: req.reason,
       };

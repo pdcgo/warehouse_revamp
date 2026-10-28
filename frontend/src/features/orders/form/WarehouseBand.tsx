@@ -11,8 +11,8 @@ import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 // record — which shop, which customer, what was printed on the slip. The warehouse is the thing all
 // of those facts are measured against:
 //
-//   • every stock figure and every HPP on the screen is this building's (`useStockAvailability`,
-//     `useStockCosts`), so changing it re-reads the whole form;
+//   • every stock figure and every HPP on the screen is this building's (`useStockTakeQuote` — what
+//     its take would draw), so changing it re-reads the whole form;
 //   • picking a product is refused until it is answered (OrderItemCard);
 //   • it is a creditor of the order — its fee, and its row in Debt Limits.
 //

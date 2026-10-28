@@ -14,6 +14,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-summary-is-tiles-on-the-list](../frontend/liability_list_decision.md#the-summary-is-tiles-on-the-list) | *Summarize All Balance* is the **tiles on `/liability`** — and the totals must come from the SERVER, not the loaded page |
 | [the-default-terms-row-is-a-dialog-on-the-list](../frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) | `counterparty_id = 0` is edited in a **dialog opened from the list**. ⚠ against recommendation. Fixes a live regression |
 | [the-ledger-charges-the-frozen-line-total](#the-ledger-charges-the-frozen-line-total) | the markup is the product's, applied once at the take — the ledger posts the frozen line totals and reads no markup; `liability_terms.product_markup_bp` is dropped |
+| [the-debtor-sees-the-limits-set-on-it](#the-debtor-sees-the-limits-set-on-it) | a team sees each limit set ON it, its debt and its 80% warning — on the order form and the pair detail; never anybody else's |
 
 ---
 
@@ -382,3 +383,51 @@ flowchart LR
 | `order_fees.go` | stops reading `terms.ProductMarkupBP`; sums the event's line totals |
 | dropped together | `liability_terms.product_markup_bp`, its proto field and the frontend's pass-through — in one change, or the fee breaks |
 | old fees | none in production to reinterpret ([no-switch-over-the-ledgers-replace-todays-tables](../stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)) |
+| ✅ built *(2026-10-23)* | the take's line `total` was returned and discarded, so it is now kept: `StockPicker.Pick` returns it per product and `placeOrder` freezes it on `order_items.total` (selling `00023`, `DOUBLE PRECISION`, NULL before it) · `OrderPlacedLine.total = 5` (`double`) · `order_fees.go` sums the owner's totals and rounds the sum once to whole rupiah · liability `00010` drops `product_markup_bp` and the terms log's `old_/new_product_markup_bp`, rebuilding `liability_terms_non_negative`; proto fields reserved · the terms dialog's pass-through and the bridge e2e removed |
+
+## the-debtor-sees-the-limits-set-on-it
+
+> Owner, in chat (2026-10-23): **"yes, choose a"** — to *"can the ordering team see the limits other teams set for it?
+> A, the limit itself; B, nothing; C, only the state"*. As recommended. Answers [Q9](./team_balance_design_clarify.md#question),
+> *"is the 80% warning the creditor's view only?"* — no: the debtor sees it too.
+
+**The verdict.** A team sees, for each team it owes, **the limit that team set on it**, the debt it already carries, and
+how close it stands. A limit that can stop your orders is not kept from you. A team still never sees a limit set on
+anybody else.
+
+```mermaid
+flowchart LR
+  C["Toko Anggrek sets its limit on Toko Melati - Rp 1.000.000"] --> L["liability_terms - the creditor's row"]
+  L --> R["the new read - asked by Toko Melati, the debtor"]
+  D["the committed debt - Rp 980.000"] --> R
+  R --> F["the order form's Debt limits - real figures, close at 80%"]
+  R --> P["the pair detail - the same badge, worded from the debtor's side"]
+  X["a limit Toko Anggrek set on a third team"] -.->|"never"| R
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who sees it | the debtor team — the one the limit is set ON |
+| the limit read | the creditor's row for this debtor, else the creditor's default row (`counterparty_id = 0`), else none — unlimited ([the-threshold-defaults-to-unlimited](../../business/balance/context_decision.md#the-threshold-defaults-to-unlimited)) |
+| the debt read | the committed balance on the pair — the same figure the create check compares ([the-debt-check-runs-before-the-take](../../business/order/context_decision.md#the-debt-check-runs-before-the-take)) |
+| the state | `ok`, `near` at 80% and above ([the-threshold-warns-at-eighty-percent](../../business/balance/context_decision.md#the-threshold-warns-at-eighty-percent)), `at_limit` when the debt has reached it |
+| on the order form | the Debt limits panel shows the real figures; its `creditLimit` mark goes |
+| on the pair detail | the debtor's view carries the same badge, worded from its side — *"87% of the limit Toko Anggrek set"* |
+| still the creditor's | setting and changing the limit ([terms-are-team-scoped-root-is-global](../../business/balance/context_decision.md#terms-are-team-scoped-root-is-global)) |
+| ✅ built *(2026-10-23)* | `LiabilityCreditByIds` on `LiabilityService` — `team_id` (the debtor, `use_scope`) stays TOP-LEVEL beside `filter.ids` (1–50, distinct, `> 0`), because the interceptor refuses a nested scope field · it reads through `CheckCredit`'s own `creditLimits` and `debtsToward`, and AT_LIMIT is `refusesCredit`, the comparison the create blocks on — two queries for any number of creditors (1,3 ms at 10 000 terms rows, not heavy) · every creditor asked about is present, unlimited included; the asking team is dropped · NEAR is `debt × 5 ≥ limit × 4`, a limit of 0 is always AT_LIMIT · `GENERAL` asks team_service for the names, under the caller's token, only when requested · the order form's Debt limits read it (one call, every creditor), its `creditLimit` mark and `mockTerms` gone, a row still reading or failed never shown as unlimited · the pair detail's debtor view: `LimitSetOnYou`, `CreditMeter` with `setBy` |
+
+**The contract — ✅ accepted** ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)).
+A `ByIds` read, per the service guideline.
+
+> Owner, in chat (2026-10-23): **"yes"** — `design_accept` for this read; the backend pass may start.
+
+| | |
+| --- | --- |
+| the RPC | `LiabilityCreditByIds` on liability_service |
+| the filter | `team_id` — the DEBTOR, and the scope (`use_scope`); `ids` — the creditor teams asked about, 1 to 50 |
+| policy | the roles that place an order or read a balance: ROOT, ADMINISTRATOR, SELLING_OWNER, SELLING_ADMIN, SELLING_CS, WAREHOUSE_OWNER, WAREHOUSE_ADMIN |
+| data types | `GENERAL` (the creditor's name) and `CREDIT` |
+| a `CREDIT` item, per creditor | `credit_limit` — optional, unset is unlimited; `debt`; `state` — `OK`, `NEAR`, `AT_LIMIT` |
+| not paged | bounded by the ids asked for, like every `ByIds` |

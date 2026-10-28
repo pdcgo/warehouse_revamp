@@ -4,7 +4,7 @@ import "context"
 
 // ProductSnapshot is what an order line freezes about a product: its catalogue label at the moment
 // the order was placed. Money is not here — what the buyer pays comes from the order, and what we
-// paid comes from the warehouse (`StockPicker.UnitCosts`).
+// paid comes from the warehouse's take (`StockPicker.Pick`).
 type ProductSnapshot struct {
 	SKU  string
 	Name string

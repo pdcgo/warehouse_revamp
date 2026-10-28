@@ -15,9 +15,7 @@ The suppliers a selling team buys stock from, and the online stores each one sel
 | `SupplierChannelService` | `SupplierChannelList` | any team's live supplier's live stores, searched, filtered by type, paged |
 | | `SupplierChannelCreate` · `Update` · `Delete` | the owning team's own; delete is **soft** |
 | | `SupplierChannelByIds` | stores by id — any team's, **deleted ones included, marked**; what a restock line shows beside its supplier |
-| `SupplierAnalyticService` | `AnalyticTimeSearch` | one supplier's six figures by day, month or year — every bucket of the window — and the window's total |
-| | `AnalyticProductSearch` | one supplier's figures per restocking team's product — Product Grouped |
-| | `AnalyticGroupSearch` · `AnalyticGroupMetric` | suppliers ranked by restocked value or broken rate, searched, one restocking team or all — then a page's figures |
+| `SupplierAnalyticService` | `MetricSearch` · `MetricData` | `metrics/suppliers`, the analytic pattern ([rpc_provide.md](../../business/analytic/rpc_provide.md)) — rank a page of suppliers, products or periods by one field, then fill those keys; grouped by SUMMARY, the headline |
 | `SupplierAnalyticMaintenanceService` | `AnalyticReplayCompute` · `AnalyticMaintenanceRun` | Root and the Administrator — rebuild the figures from a day; prune the dedup table |
 | *(webhook)* | `/event/supplier-fold/push` | the fold — *Restock Accepted* into `supplier_product_daily_reports` |
 
@@ -134,29 +132,47 @@ sequenceDiagram
 
 ## The reads
 
-Every read is `listQuery` on the screen and reads the folded table only. **Every selling team reads every team's
-figures** ([every-selling-team-sees-every-teams-figures](../../business/supplier/context_decision.md#every-selling-team-sees-every-teams-figures)) —
-`restock_team_id` narrows to one restocking team, 0 is all
+ONE metric, `metrics/suppliers` — `SupplierMetric`, the six figures and the broken rate — read through the analytic
+pattern every service's figures share ([rpc_provide.md](../../business/analytic/rpc_provide.md),
+[the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics));
+it replaced `AnalyticTimeSearch`, `AnalyticProductSearch`, `AnalyticGroupSearch` and `AnalyticGroupMetric` on
+2026-10-27. Every read is `listQuery` on the screen and reads the folded table only. **Every selling team reads every
+team's figures** ([every-selling-team-sees-every-teams-figures](../../business/supplier/context_decision.md#every-selling-team-sees-every-teams-figures)) —
+a `TeamFilter` narrows to one restocking team
 ([the-team-filter-picks-any-selling-team](../../business/supplier/context_decision.md#the-team-filter-picks-any-selling-team)).
 
 ```mermaid
 sequenceDiagram
   participant UI as Supplier Report
   participant S as supplier_service
-  participant N as product, supplier and team names
-  UI->>S: AnalyticGroupSearch — window, restock team, q, sort, page
-  S-->>UI: the ranked ids, the total, rate_min_units 50
-  UI->>S: AnalyticGroupMetric — those ids
+  participant N as supplier and team names
+  par the page and the headline
+    UI->>S: MetricSearch — SUPPLIER, window, team, sort restock_valuation or broken_rate, offset and limit
+    S-->>UI: the ranked supplier ids, has_next
+  and
+    UI->>S: MetricData — SUMMARY, the same filters, no keys
+    S-->>UI: the headline, every supplier together
+  end
+  UI->>S: MetricData — SUPPLIER, the same filters, those ids
   UI->>N: SupplierByIds — names, a deleted supplier marked — and TeamByIds
-  Note over UI: by broken rate, a supplier under 50 units follows the rated ones, its rate muted
+  Note over UI: by broken rate, a supplier under the proto's rank_min_sample of 50 units follows, in key order, its rate muted
 ```
 
-| read | queries | note |
+| read | groups | queries | note |
+| --- | --- | --- | --- |
+| `MetricSearch` | SUPPLIER, PRODUCT, DAILY … YEARLY — never SUMMARY | 1 — the scope grouped by the key, ordered, `limit + 1` | the sort is one `can_sort` field by its proto name; the key DESC breaks a tie; by `broken_rate`, units ≥ 50 ranked first ([rate-ranking-needs-50-units](../../business/supplier/context_decision.md#rate-ranking-needs-50-units)); no total, only `has_next` |
+| `MetricData` | the same, and SUMMARY | 1 | every asked key comes back, zero when quiet; a period keyed by its first day — a Monday, the 1st, 1 January; SUMMARY takes no keys |
+
+| filter | narrows | screen |
 | --- | --- | --- |
-| `AnalyticTimeSearch` | 2 — the buckets with figures, grouped by `date_trunc`; the window's total | every bucket is a point; spans capped 366 days, 60 months, 20 years |
-| `AnalyticProductSearch` | 2 — the count, the page | grouped by (product, team), the largest value first |
-| `AnalyticGroupSearch` | 2 — the count and total, the ranked page | `q` joins `suppliers` and its live stores — a deleted supplier with figures is ranked; by rate, units ≥ 50 first ([rate-ranking-needs-50-units](../../business/supplier/context_decision.md#rate-ranking-needs-50-units)) |
-| `AnalyticGroupMetric` | 1 | an id with nothing in the window gets an all-zero metric |
+| `DateRangeFilter` — required | the accept's Jakarta day, both ends inclusive, as literals in SQL (`window()`) | both |
+| `TeamFilter` | whose restocks are counted | both |
+| `SupplierFilter` | one supplier | the Statistics tab |
+
+The Statistics tab lists its periods itself — a time group needs no search — so a quiet period is a row too, and
+reads `MetricData` by DAILY / MONTHLY / YEARLY for the page's periods. Performance:
+[MetricSearch.md](../../../audits/services/supplier_service/performances/MetricSearch.md),
+[MetricData.md](../../../audits/services/supplier_service/performances/MetricData.md).
 
 ## AnalyticReplayCompute — never into the backfilled past
 

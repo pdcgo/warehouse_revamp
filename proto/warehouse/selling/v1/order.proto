@@ -37,6 +37,9 @@ service OrderService {
   // .xlsx. A server stream — progress, then an expiring link.
   rpc OrderExport(OrderExportRequest) returns (stream OrderExportResponse);
   rpc OrderStatusChange(OrderStatusChangeRequest) returns (OrderStatusChangeResponse);
+  // A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
+  // Never edited and never deleted — a correction is a new note.
+  rpc OrderNoteCreate(OrderNoteCreateRequest) returns (OrderNoteCreateResponse);
 
   // ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
   //
@@ -132,9 +135,13 @@ message OrderTimelineLog {
   int64 created_at_unix = 6;
 }
 
-// OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
-// SNAPSHOT taken at order time, so later catalogue edits never rewrite an order's history. Money is
-// whole rupiah (int64). Used for both input (create; `id` ignored) and output.
+// OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name are a SNAPSHOT
+// taken at order time, so later catalogue edits never rewrite an order's history. Used for both input
+// (create; `id` and every money field ignored) and output.
+//
+// ⚠ A LINE CARRIES NO MARKETPLACE PRICE (an-order-line-carries-no-marketplace-price). Every money field
+// is what inventory's take drew and priced the line at, frozen when the order was placed; what the
+// marketplace charged lives on the draft's platform rows only.
 message OrderItem {
   uint64 id = 1;
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
@@ -147,19 +154,39 @@ message OrderItem {
     max_len: 200
   }];
   uint32 quantity = 5 [(buf.validate.field).uint32.gte = 1];
-  int64 unit_price = 6 [(buf.validate.field).int64.gte = 0];
+  // 6 was `unit_price` — a line carries no price of its own (an-order-line-carries-no-marketplace-price, corrected
+  // 2026-10-23); its readers moved to `unit_cost` and `unit_cost_with_markup`. Selling 00028 dropped the column.
+  reserved 6;
+  reserved "unit_price";
 
-  // What this product COST us, per unit, frozen when the order was placed (#74). `unit_price` is what
-  // the buyer pays; this is what we paid, and the gap between them is the margin.
+  // What this product COST us, per unit, frozen when the order was placed (#74) — the owner's
+  // `unit_cost`: the units the take drew ÷ the quantity (an-order-is-costed-at-what-leaves-the-shelf),
+  // whole rupiah.
   //
-  // SERVER-SET AND IGNORED ON INPUT. The cost is looked up from the warehouse's restock history at
-  // order time — a client supplying it would be writing its own margin, which is the one number
-  // nobody placing an order should get to choose.
+  // SERVER-SET AND IGNORED ON INPUT. A client supplying it would be writing its own margin, which is
+  // the one number nobody placing an order should get to choose.
   //
   // 0 means "unknown", not "free": a product that was never restocked (received straight into stock,
   // say) has no recorded cost. Margin on such a line reads as if the goods were free, so 0 here is a
   // flag that the number is not to be trusted rather than a value to compute with.
   int64 unit_cost = 7;
+
+  // The line's frozen TOTAL — the owner's `total`, `unit_cost_with_markup × quantity`: the goods the take
+  // drew plus, on another team's product, that product's own cross markup (inventory-computes-the-markup).
+  // What the product fee is posted from (the-ledger-charges-the-frozen-line-total). Unrounded rupiah
+  // (rupiah-is-floating-point). SERVER-SET AND IGNORED ON INPUT. Absent = never frozen (a line placed
+  // before selling 00023, or a product the take named no draw for) — never a 0.
+  optional double total = 8;
+
+  // One unit at the owner's markup — the owner's `unit_cost_with_markup`: on a borrowed product the
+  // price after its cross markup, on an own product the unit cost. Unrounded rupiah, as the take
+  // returned it. SERVER-SET AND IGNORED ON INPUT. Absent = never frozen (before selling 00025).
+  optional double unit_cost_with_markup = 9;
+
+  // What the markup added — the owner's `markup_total`, `total − unit_cost × quantity` (within the
+  // rounding of the whole-rupiah `unit_cost`). 0 on an own product. Unrounded rupiah. SERVER-SET AND
+  // IGNORED ON INPUT. Absent = never frozen (before selling 00025).
+  optional double markup_total = 10;
 }
 
 // A customer's delivery address, FROZEN onto the order (#118).
@@ -224,25 +251,22 @@ message Order {
   // shipment_channel_id with the order redesign (the-old-catalogue-bridges-by-code).
   string shipping_code = 8;
 
-  // The frozen money (whole rupiah). subtotal = sum(line quantity*unit_price); total includes
-  // shipping_cost. COGS/margin/fees are the revenue side (#74), not here.
-  int64 subtotal = 9;
-  int64 shipping_cost = 10;
-  int64 total = 11;
+  // 9, 10, 11 were `subtotal`, `shipping_cost` and `total`. The owner's `orders` has none of them: our side of the
+  // trade is `goods_cost` and `total_cost` below, and an order records no shipping (an-order-records-no-shipping-cost).
+  // Selling 00027 dropped the columns.
+  reserved 9, 10, 11;
+  reserved "subtotal", "shipping_cost", "total";
 
-  // What this order SOLD FOR on the marketplace — a NOTE, and nothing computes from it (owner).
+  // WHAT THE BUYER PAID on the platform — the owner's `platform_total` (the-total-is-ours-the-platform-total-is-theirs),
+  // after the marketplace's vouchers, coin subsidies and promotions. A FACT read off the storefront, not an estimate
+  // (marketplace-total-is-a-fact-not-an-estimate); stored because nothing here CAN derive it. Settlement opens the
+  // order's account on it (`initial_total`).
   //
-  // `total` remains `subtotal + shipping_cost`. This sits beside it recording what the storefront
-  // actually took: after the marketplace's vouchers, coin subsidies and promotions, what the buyer
-  // paid there is a different figure from what these lines add up to, and neither is a correction of
-  // the other. Stored rather than derived because nothing here CAN derive it — a person reads it off
-  // the storefront and types it in.
+  // REQUIRED at placement since selling 00022 (platform-total-is-required-at-finalize), on both doors — so 0 only
+  // survives on an order placed before that, and means "not recorded", never "sold for nothing".
   //
-  // 0 = not recorded, not "sold for nothing": an order taken over the phone has no marketplace figure.
-  //
-  // ⚠ Never add it to margin or revenue. `margin = total - cogs - shipping_cost` still holds, and
-  // folding this in would count the same sale twice.
-  int64 marketplace_total = 17;
+  //   margin = platform_total − total_cost        (an-order-records-no-shipping-cost)
+  int64 platform_total = 17;
 
   // The lines — populated by OrderDetail (OrderList returns a summary without them).
   repeated OrderItem items = 12;
@@ -259,36 +283,34 @@ message Order {
   // The frozen delivery address (#118).
   OrderAddress address = 14;
 
-  // What the whole order's goods COST us, frozen at order time (#74) — the sum of every line's
-  // quantity × unit_cost.
+  // WHAT THE GOODS COST THE SELLER — the owner's `goods_cost`, "goods only, used for warehouse fee charge
+  // calculation": Σ the lines' frozen `total`, so a borrowed line counts WITH its owner's markup
+  // (the-cross-charge-lives-on-the-line). The warehouse fee is priced on it (the-fee-is-priced-on-goods-cost). Whole
+  // rupiah, rounded once. Frozen at create (a-lines-money-is-frozen-at-finalize); an order placed before selling 00027
+  // keeps the drawn cost it was frozen with, the same figure on any order with no borrowed line.
   //
-  // Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that
-  // wants to show margin would otherwise have to load every order's items. It is frozen exactly like
-  // `subtotal` and `total` beside it, so it cannot drift — the lines it was computed from are frozen too.
+  // Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that wants to show
+  // margin would otherwise have to load every order's items.
   //
-  //   margin = total − cogs − shipping_cost
+  // 0 means the goods' cost is unknown (the take valued nothing), not that they were free.
+  int64 goods_cost = 16;
+
+  // GOODS + THE WAREHOUSE'S FEE — the owner's `total_cost`, what the order cost the seller ("total beli"). Frozen at
+  // create beside the two it adds; unrounded rupiah, like the fee (rupiah-is-floating-point). An order whose fee was
+  // never priced counts it as nothing here, so a reader that needs to know reads `warehouse_fee`'s absence.
   //
-  // 0 means the goods' cost is unknown (nothing was ever restocked), not that they were free.
-  int64 cogs = 16;
+  //   total_cost = goods_cost + warehouse_fee        margin = platform_total − total_cost
+  double total_cost = 31;
 
   // The shipping receipt attached to this order, if one was. Always present as a message; an order
   // with no receipt carries an empty `document_id` rather than a nil field, so a client renders it
   // without null-checking — the same convention `address` already follows.
   OrderReceipt receipt = 19;
 
-  // A free-text NOTE about this order, written by whoever took it (owner).
-  //
-  // The one field on an order that the system never reads. It carries what the structured fields
-  // cannot: "buyer asks for it after 5pm", "wrap the glass one", "second attempt, first parcel came
-  // back". Those are instructions to a PERSON — the CS who rings back, the crew who packs it — and
-  // every attempt to turn that class of remark into an enum ends with a list nobody's actual case
-  // fits.
-  //
-  // ⚠ Nothing branches on it. It is not a status, not a tag, and not a place to encode a rule the
-  // system should be holding — the moment something reads it, that something needs a real field.
-  //
-  // "" = nothing was written down, which is the ordinary case.
-  string note = 18;
+  // The order's NOTES are timeline rows with no status (a-note-is-a-timeline-row) — OrderDetailResponse.timeline_logs.
+  // The one free-text note this field held moved there as the order's first note row.
+  reserved 18;
+  reserved "note";
 
   // WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
   // here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.
@@ -370,6 +392,12 @@ message Order {
   //
   // 0 = none, which is allowed: an order with no deadline shows no urgency.
   int64 platform_shipment_deadline_unix = 29;
+
+  // THE BUYER'S USERNAME on the marketplace — the name the buyer goes by in the marketplace chat
+  // (the-buyers-username-is-optional). Not `customer_name`, which is who the parcel is addressed to: the two can differ.
+  //
+  // "" = none, which is a valid order on both doors. Stored as typed, trimmed.
+  string buyer_username = 30;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -417,13 +445,15 @@ message OrderCreateRequest {
   reserved "customer_address";
   string shipping_code = 6 [(buf.validate.field).string.max_len = 40];
 
-  int64 subtotal = 7 [(buf.validate.field).int64.gte = 0];
-  int64 shipping_cost = 8 [(buf.validate.field).int64.gte = 0];
-  int64 total = 9 [(buf.validate.field).int64.gte = 0];
+  // 7, 8, 9 were `subtotal`, `shipping_cost` and `total` — the order's money is the take's, frozen by the server
+  // (goods_cost, warehouse_fee, total_cost), and it records no shipping (an-order-records-no-shipping-cost).
+  reserved 7, 8, 9;
+  reserved "subtotal", "shipping_cost", "total";
 
-  // What it SOLD FOR on the marketplace — a note, stored and never computed from. Optional: 0 means
-  // nobody wrote it down. See Order.marketplace_total.
-  int64 marketplace_total = 13 [(buf.validate.field).int64.gte = 0];
+  // What the buyer PAID on the platform. REQUIRED at finalize (platform-total-is-required-at-finalize) — refused
+  // when 0 by the placement rule both doors share, so the message names what is missing rather than a field number.
+  // See Order.platform_total.
+  int64 platform_total = 13 [(buf.validate.field).int64.gte = 0];
 
   // The shipping receipt, already uploaded to document_service by the client. Optional.
   //
@@ -434,7 +464,8 @@ message OrderCreateRequest {
   OrderReceipt receipt = 15;
 
   // A free-text note about the order, for the people who handle it. Optional; "" is the ordinary
-  // case. See Order.note — nothing in the system reads it.
+  // case. Written as the order's FIRST NOTE ROW (a-note-is-a-timeline-row): from selling, by the caller, in the
+  // order's own transaction. Nothing in the system branches on it.
   //
   // Capped at 2000 characters: long enough for the several sentences a difficult order really does
   // need, short enough that the field cannot become a document store.
@@ -457,6 +488,11 @@ message OrderCreateRequest {
   int64 platform_created_at_unix = 18 [(buf.validate.field).int64.gte = 0];
   // The marketplace's ship-by time. Optional; 0 = none. See Order.platform_shipment_deadline_unix.
   int64 platform_shipment_deadline_unix = 19 [(buf.validate.field).int64.gte = 0];
+
+  // The buyer's username on the marketplace. Optional; "" = none, and nothing refuses it
+  // (the-buyers-username-is-optional). Trimmed by the handler, so spaces alone are stored as none. See
+  // Order.buyer_username.
+  string buyer_username = 20 [(buf.validate.field).string.max_len = 100];
 
   // At least one line; `id` on each is ignored.
   repeated OrderItem items = 10 [(buf.validate.field).repeated.min_items = 1];
@@ -779,6 +815,40 @@ message OrderStatusChangeResult {
   string refused_reason = 4;
 }
 
+// Write: both ends of an order, as a status move (OrderStatusChangeRequest). The side the note is from follows from
+// the scope: the order's selling team writes from selling, its warehouse from warehouse.
+message OrderNoteCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The team writing: the order's selling team, or its warehouse. Any other team reads NotFound.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The note itself, 1 to 500 characters. Trimmed; a note of only spaces is refused.
+  string note = 3 [(buf.validate.field).string = {
+    min_len: 1,
+    max_len: 500
+  }];
+}
+
+message OrderNoteCreateResponse {
+  // The row written: no status, the note, its side, the caller as its actor.
+  OrderTimelineLog log = 1;
+}
+
 // ── Order activity, per product ──────────────────────────────────────────────────────────────────
 
 // OrderProductActivityItem is what one product has been doing on this team's orders.
@@ -951,7 +1021,9 @@ message OrderStatRequest {
 message OrderStatusCount {
   OrderStatus status = 1;
   int64 count = 2;
-  // The sum of those orders' `total`, whole rupiah — what the buyers are paying for them.
+  // The sum of those orders' `platform_total`, whole rupiah — what the buyers paid the platform for them. Every order in
+  // the pile, measurable or not (an order placed before platform-total-is-required-at-finalize adds its 0). It summed
+  // `total` until selling 00027 dropped that column.
   int64 value = 3;
 
   // Σ line quantity over EVERY order in the pile — units, not lines, because units are what UPT counts
@@ -960,17 +1032,17 @@ message OrderStatusCount {
 
   // ── The margin's inputs (the-margin-is-mp-minus-total-beli) ───────────────────────────────────────────────────
   //
-  // ⚠ SUMMED OVER THE MEASURABLE ORDERS ONLY — an order with a cost (`cogs` > 0), a marketplace figure
-  // (`marketplace_total` > 0) and a frozen `warehouse_fee`. The margin needs all three, and summing every order's
+  // ⚠ SUMMED OVER THE MEASURABLE ORDERS ONLY — an order with a cost (`goods_cost` > 0), a platform figure
+  // (`platform_total` > 0) and a frozen `warehouse_fee`. The margin needs all three, and summing every order's
   // revenue against only the costed orders' cost is what once put a 36% margin at 48%. Only the server knows the size
   // of what it leaves out, so it does the leaving out.
   //
-  //   total beli = cogs + fees        margin = mp_value − total beli        % = margin ÷ mp_value
+  //   total beli = goods_cost + fees        margin = mp_value − total beli        % = margin ÷ mp_value
 
-  // Σ marketplace_total — what the buyers paid the platform.
+  // Σ platform_total — what the buyers paid the platform.
   int64 mp_value = 5;
-  // Σ cogs — what the goods cost.
-  int64 cogs = 6;
+  // Σ goods_cost — what the goods cost the seller, borrowed lines with their markup.
+  int64 goods_cost = 6;
   // Σ warehouse_fee — what fulfilling them cost. Unrounded rupiah, like the frozen fees it adds.
   double fees = 7;
   // How many of `count` are NOT measurable, so the reader is told what the three sums above left out.
@@ -988,6 +1060,7 @@ message OrderStatusCount {
 // whereas a third number computed here could, the moment either definition moved.
 message OrderStatPreview {
   int64 orders_30d = 1;
+  // Σ `platform_total` over the window — what the buyers paid. It summed `total` until selling 00027 dropped it.
   int64 revenue_30d = 2;
 }
 

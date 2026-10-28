@@ -80,7 +80,7 @@ export const worked: OrderSettlement = {
   teamName: "Selling A",
   initialTotal: 120_000n,
   lastBalance: -10_000n,
-  cogs: 70_000n,
+  goodsCost: 70_000n,
   entries: workedEntries,
 };
 
@@ -101,7 +101,7 @@ export const awaiting: OrderSettlement = {
   teamName: "Selling A",
   initialTotal: 85_000n,
   lastBalance: -85_000n,
-  cogs: 52_000n,
+  goodsCost: 52_000n,
   entries: chain([
     {
       uniqueId: "sys:order:2",
@@ -130,7 +130,7 @@ export const lateFee: OrderSettlement = {
   teamName: "Selling A",
   initialTotal: 240_000n,
   lastBalance: -31_000n,
-  cogs: 150_000n,
+  goodsCost: 150_000n,
   entries: chain([
     {
       uniqueId: "sys:order:3",
@@ -179,7 +179,7 @@ export const correctedByHand: OrderSettlement = {
   teamName: "Selling A",
   initialTotal: 310_000n,
   lastBalance: -21_500n,
-  cogs: 195_000n,
+  goodsCost: 195_000n,
   entries: chain([
     {
       uniqueId: "sys:order:4",
@@ -249,7 +249,7 @@ export const ahead: OrderSettlement = {
   teamName: "Selling A",
   initialTotal: 96_000n,
   lastBalance: 4_000n,
-  cogs: 61_000n,
+  goodsCost: 61_000n,
   entries: chain([
     {
       uniqueId: "sys:order:5",
@@ -283,14 +283,14 @@ export const ahead: OrderSettlement = {
 };
 
 /**
- * NO ESTIMATE AT ALL — `marketplace_total` was 0 because nobody recorded one.
+ * NO ESTIMATE AT ALL — `platform_total` was 0 because nobody recorded one.
  *
  * ⚠ THE OPEN QUESTION, ON SCREEN. `order.proto:224` says 0 means *not recorded*, not "worth
  * nothing" — an order taken over the phone has no marketplace figure. Rendered naively this order
  * reads as **pure profit**, because every rupiah that arrives is a gain against an estimate of zero.
  *
  * The screen refuses to compute rather than printing a number it cannot stand behind. It is the
- * cheapest possible argument for giving `marketplace_total = 0` a rule.
+ * cheapest possible argument for giving `platform_total = 0` a rule.
  */
 export const noEstimate: OrderSettlement = {
   orderId: 6n,
@@ -300,7 +300,7 @@ export const noEstimate: OrderSettlement = {
   teamName: "Selling A",
   initialTotal: 0n,
   lastBalance: 62_000n,
-  cogs: 40_000n,
+  goodsCost: 40_000n,
   entries: chain([
     {
       uniqueId: "shopee:2026-01-08:payout:6",

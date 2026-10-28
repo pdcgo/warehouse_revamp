@@ -8,17 +8,17 @@ import (
 )
 
 // EVERY CREDITOR'S DEFAULT ROW, AND ONLY THOSE (the-flat-rate-is-dropped-last, step 2): the warehouse's 12.000, a
-// warehouse charging nothing, and a selling team's markup row — the caller filters by team type. A per-seller row is not
+// warehouse charging nothing, and a selling team's default row with no fee — the caller filters by team type. A per-seller row is not
 // read: one-rate-per-warehouse leaves it no equivalent.
 func TestDefaultHandlingFees_ReadsTheDefaultRowsOnly(t *testing.T) {
 	db := san_testdb.DB(t)
 
 	const freeWarehouse uint64 = 901
 
-	setTerms(t, db, warehouse, 0, 12000, 0)
-	setTerms(t, db, warehouse, selling, 9000, 0) // the seller's own flat row
-	setTerms(t, db, freeWarehouse, 0, 0, 0)
-	setTerms(t, db, productOwner, 0, 0, 2000) // a markup, no handling fee
+	setTerms(t, db, warehouse, 0, 12000)
+	setTerms(t, db, warehouse, selling, 9000) // the seller's own flat row
+	setTerms(t, db, freeWarehouse, 0, 0)
+	setTerms(t, db, productOwner, 0, 0) // a selling team's default row, no handling fee
 
 	fees, err := liability_v1.DefaultHandlingFees(db)
 	if err != nil {

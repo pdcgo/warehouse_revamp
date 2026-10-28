@@ -12,6 +12,7 @@ import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { InfoPanel } from "./components/InfoPanel";
+import { NotesSection, noteWriter } from "./components/NotesSection";
 import { TimelinePanel } from "./components/TimelinePanel";
 
 function parseOrderId(raw: string | undefined): bigint {
@@ -41,9 +42,9 @@ export function WarehouseOrderDetailPage() {
   const order = query.data ?? null;
   const loading = query.isPending && id !== 0n;
 
-  // THE PEOPLE ON THE TIMELINE. The ids come from the EVENTS (00011) — the order row itself records no
-  // actor at all, which is precisely why the history had to become a table before this tab could exist.
-  // Deduplicated into one lookup: the same person often takes several steps.
+  // THE PEOPLE ON THE TIMELINE AND IN THE NOTES. The ids come from the timeline rows — a note is one too
+  // (a-note-is-a-timeline-row) — and the order row itself records no actor at all. Deduplicated into one
+  // lookup: the same person often takes several steps and writes several notes.
   const actors = useActors(order?.timelineLogs.map((log) => log.actorId) ?? []);
 
   // Names an actor the lookup could not resolve. 0 is "not recorded" — every event backfilled by
@@ -191,7 +192,21 @@ export function WarehouseOrderDetailPage() {
             table's own scroll area can only work once the panel is allowed to be narrower than what it
             holds. */}
         <Tabs.Content value="info" flex="1" minW="0">
-          <InfoPanel order={order} teamId={teamId} />
+          {/* The warehouse writes notes too — with ITS team id, which the server records as `from = warehouse`:
+              "stok kosong di Rak A" is the building telling the seller something. */}
+          <InfoPanel
+            order={order}
+            teamId={teamId}
+            notes={
+              <NotesSection
+                key={order.id.toString()}
+                teamId={noteWriter(teamId, order)}
+                orderId={order.id}
+                logs={order.timelineLogs}
+                actors={actors.data}
+              />
+            }
+          />
         </Tabs.Content>
 
         <Tabs.Content value="timeline" flex="1" minW="0">
@@ -199,7 +214,7 @@ export function WarehouseOrderDetailPage() {
         </Tabs.Content>
 
         {/* The four values passed down are the ones settlement is forbidden to know — it never sees
-            the marketplace reference, and the names and cogs belong to selling_service. This page
+            the marketplace reference, and the names and goodsCost belong to selling_service. This page
             already holds all of them. */}
         <Tabs.Content value="settlement" flex="1" minW="0">
           <SettlementTab

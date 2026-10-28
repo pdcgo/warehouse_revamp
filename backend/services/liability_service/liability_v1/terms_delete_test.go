@@ -28,10 +28,10 @@ func deleteTerms(t *testing.T, svc *liability_v1.Service, teamID, counterpartyID
 // default at all — removing a team's special rate must not leave it uncharged.
 func TestTermsDelete_FallsBackToTheDefaultRow(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, 0, 9000, 1000, nil)
-	putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
+	putTerms(t, svc, warehouse, 0, 9000, nil)
+	putTerms(t, svc, warehouse, selling, 12000, nil)
 
 	deleteTerms(t, svc, warehouse, selling)
 
@@ -50,9 +50,9 @@ func TestTermsDelete_FallsBackToTheDefaultRow(t *testing.T) {
 // opposite (no credit whatsoever). Deleting restores the ABSENCE that means unlimited.
 func TestTermsDelete_RestoresUnlimitedCredit(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 0, 0, rupiah(0))
+	putTerms(t, svc, warehouse, selling, 0, rupiah(0))
 
 	deleteTerms(t, svc, warehouse, selling)
 
@@ -66,9 +66,9 @@ func TestTermsDelete_RestoresUnlimitedCredit(t *testing.T) {
 // worked.
 func TestTermsDelete_IsIdempotent(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
+	putTerms(t, svc, warehouse, selling, 12000, nil)
 
 	deleteTerms(t, svc, warehouse, selling)
 	deleteTerms(t, svc, warehouse, selling)
@@ -79,9 +79,9 @@ func TestTermsDelete_IsIdempotent(t *testing.T) {
 // editing the books to match a configuration change.
 func TestTermsDelete_LeavesPostedEntriesAlone(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
+	putTerms(t, svc, warehouse, selling, 12000, nil)
 
 	_, err := svc.PostEntry(context.Background(), db, codFee(15000, 77))
 	if err != nil {

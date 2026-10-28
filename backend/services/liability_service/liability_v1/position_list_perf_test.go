@@ -26,7 +26,7 @@ import (
 func TestPerf_LiabilityPositionList(t *testing.T) {
 	base := san_testdb.DB(t)
 	db, probe := san_perf.Wrap(base)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 	ctx := context.Background()
 
 	// 500 counterparties — well past the 20 that fit on a page, which is the whole point: the tiles

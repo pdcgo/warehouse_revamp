@@ -45,11 +45,12 @@ func (s *Service) OrderSaleHandler() event_source.PushHandler {
 // POSITIVE IS MONEY TOWARD US and at this moment the platform owes us the sale.
 //
 // ⚠ A PLATFORM TOTAL OF 0 OPENS NOTHING, as the order's own call used to skip it: 0 means "not
-// recorded", and an account opened at 0 is one nothing can compute against. The order context requires
-// the total at create (platform-total-is-required-at-finalize); until the create checks it, this skip is
-// what keeps such an order out of settlement.
+// recorded", and an account opened at 0 is one nothing can compute against. Placement now refuses an
+// order without the total, on both doors (platform-total-is-required-at-finalize, selling 00022), so a new
+// order cannot reach here with 0 — the skip stays as the guard for orders placed before that, which carry
+// none and must not open an account at 0.
 func (s *Service) openSale(ctx context.Context, placed *eventsv1.OrderPlaced, placedAt time.Time) error {
-	if placed.GetMarketplaceTotal() <= 0 {
+	if placed.GetPlatformTotal() <= 0 {
 		return nil
 	}
 
@@ -61,7 +62,7 @@ func (s *Service) openSale(ctx context.Context, placed *eventsv1.OrderPlaced, pl
 		UniqueID:       "order-placed:" + strconv.FormatUint(placed.GetOrderId(), 10),
 		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL,
 		SourceType:     settlementv1.SourceType_SOURCE_TYPE_ORDER,
-		Change:         -placed.GetMarketplaceTotal(),
+		Change:         -placed.GetPlatformTotal(),
 		OccurredOn:     placedAt.In(jakarta).Format(time.DateOnly),
 		// The person who placed the order is answerable for its opening row (#actor-id-is-the-pic) — the
 		// VARIANT's actor, read from the stored order, never the envelope's identity.

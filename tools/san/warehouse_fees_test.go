@@ -30,14 +30,13 @@ func seedTeam(t *testing.T, db *gorm.DB, teamType, code string) uint64 {
 }
 
 // seedTerms writes a creditor's terms toward one debtor as liability_service stores them. `debtor = 0` is the DEFAULT row.
-func seedTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handlingFee, markupBP int64) {
+func seedTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handlingFee int64) {
 	t.Helper()
 
 	row := liability_service_models.LiabilityTerms{
-		TeamID:          creditor,
-		CounterpartyID:  debtor,
-		HandlingFee:     handlingFee,
-		ProductMarkupBP: markupBP,
+		TeamID:         creditor,
+		CounterpartyID: debtor,
+		HandlingFee:    handlingFee,
 	}
 
 	err := db.Create(&row).Error
@@ -61,7 +60,7 @@ func rateOf(t *testing.T, san *San, warehouseID uint64) *warehousev1.WarehouseFe
 
 // EACH WAREHOUSE'S DEFAULT FLAT FEE BECOMES ITS RATE, ONCE (the-flat-rate-is-dropped-last, step 2): Gudang's 12.000 as
 // 0% with floor = cap, Gratis's 0 as 0% with no cap. A warehouse that set its own rate keeps it. A selling team's
-// default row (its markup) is no warehouse fee, a seller's own flat row has no equivalent, and a warehouse with no
+// default row (its credit limit) is no warehouse fee, a seller's own flat row has no equivalent, and a warehouse with no
 // default row gets nothing — the rest set theirs. Run again, nothing is carried.
 func TestCarryOverWarehouseFees_CarriesTheWarehousesDefaultsOnce(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -74,11 +73,11 @@ func TestCarryOverWarehouseFees_CarriesTheWarehousesDefaultsOnce(t *testing.T) {
 	lonely := seedTeam(t, db, "warehouse", "CO-LONELY")
 	toko := seedTeam(t, db, "selling", "CO-TOKO")
 
-	seedTerms(t, db, gudang, 0, 12_000, 0)
-	seedTerms(t, db, gudang, toko, 9_000, 0) // the seller's own flat row
-	seedTerms(t, db, gratis, 0, 0, 0)
-	seedTerms(t, db, preset, 0, 7_000, 0)
-	seedTerms(t, db, toko, 0, 0, 2_000) // a markup, no handling fee
+	seedTerms(t, db, gudang, 0, 12_000)
+	seedTerms(t, db, gudang, toko, 9_000) // the seller's own flat row
+	seedTerms(t, db, gratis, 0, 0)
+	seedTerms(t, db, preset, 0, 7_000)
+	seedTerms(t, db, toko, 0, 0) // a selling team's default row, no handling fee
 
 	_, err := san.warehouses.WarehouseFeeSet(ctx, connect.NewRequest(&warehousev1.WarehouseFeeSetRequest{
 		TeamId: preset, FeePercent: 2.5, MinFee: 2_000, MaxFee: proto.Float64(20_000),
@@ -138,7 +137,7 @@ func TestSeedDevWarehouseFee_ARealFlatFeeWins(t *testing.T) {
 	withFlat := seedTeam(t, db, "warehouse", "DF-FLAT")
 	bare := seedTeam(t, db, "warehouse", "DF-BARE")
 
-	seedTerms(t, db, withFlat, 0, 12_000, 0)
+	seedTerms(t, db, withFlat, 0, 12_000)
 
 	line, err := seedDevWarehouseFee(ctx, db, withFlat)
 	if err != nil {

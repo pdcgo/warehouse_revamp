@@ -3,6 +3,7 @@ package selling_v1
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -111,6 +112,14 @@ func applyDraftEdit(
 		touched[draftFieldCustomerPhone] = true
 	}
 
+	// Trimmed (the-buyers-username-is-optional). "" — or spaces alone — clears it, and still marks it touched: a
+	// person who emptied a wrong username has claimed the field as surely as one who corrected it.
+	if msg.BuyerUsername != nil {
+		draft.BuyerUsername = strings.TrimSpace(msg.GetBuyerUsername())
+		updates["buyer_username"] = draft.BuyerUsername
+		touched[draftFieldBuyerUsername] = true
+	}
+
 	// The address is one field, ten columns. Correcting a kecamatan claims the whole address, so the
 	// app cannot later rewrite the other nine around somebody's fix.
 	if address := msg.GetAddress(); address != nil {
@@ -145,10 +154,12 @@ func applyDraftEdit(
 		touched[draftFieldShippingCode] = true
 	}
 
-	if msg.ShippingCost != nil {
-		updates["shipping_cost"] = msg.GetShippingCost()
-		draft.ShippingCost = msg.GetShippingCost()
-		touched[draftFieldShippingCost] = true
+	// What the buyer paid (platform-total-is-required-at-finalize). 0 clears it — and still marks it touched, as a
+	// cleared date does.
+	if msg.PlatformTotal != nil {
+		updates["platform_total"] = msg.GetPlatformTotal()
+		draft.PlatformTotal = msg.GetPlatformTotal()
+		touched[draftFieldPlatformTotal] = true
 	}
 
 	// The platform's dates, as a person read them off the storefront. 0 clears one — and still marks it touched: a

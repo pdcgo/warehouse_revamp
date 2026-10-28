@@ -1,5 +1,25 @@
 # Development state — supplier
 
+> 🔄 **2026-10-28 — the Supplier Report has no search.** The analytic keyword filter was removed
+> ([the-generic-keyword-is-removed](../../business/analytic/rpc_provide_decision.md#the-generic-keyword-is-removed)), and the
+> search with it ([the-supplier-report-drops-its-search](../../business/analytic/rpc_provide_decision.md#the-supplier-report-drops-its-search)).
+> `metrics/suppliers` filters by the window, the restocking team and one supplier; the report offers the first two.
+
+> 🔄 **2026-10-27 — the figures moved onto the analytic pattern.** The four reads (`AnalyticTimeSearch`,
+> `AnalyticProductSearch`, `AnalyticGroupSearch`, `AnalyticGroupMetric`) are GONE, replaced by one metric,
+> `metrics/suppliers`, read by `MetricSearch` / `MetricData` ([the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)).
+> Where this report still names them, read the rows below as of 2026-10-07; the current shape is in
+> [rpc.md §The reads](../../services/supplier_service/rpc.md#the-reads) and [analytic/rpc_provide.md](../analytic/rpc_provide.md).
+>
+> | | now |
+> | --- | --- |
+> | contract | `SupplierMetric` carries the `metric` option and a sortable `broken_rate` (`rank_min_sample: 50` — `rate_min_units` is gone from the wire, the screen reads the option) · `SupplierMetricByID` / `SupplierMetricByDay` · `MetricSearchRequest/Response`, `MetricDataRequest/Response`, `MetricData` |
+> | handlers | `metric_search.go`, `metric_data.go`, `metric_shared.go` (filters, groups, the sort); `analytic_shared.go` keeps `window()`, `figureSums()`, `metricToProto()` (now with the rate) |
+> | tests | `metric_search_test.go` (9 + the startup check), `metric_data_test.go` (4) — green on Postgres · perf `-tags perfaudit` rewritten to the two RPCs: [MetricSearch.md](../../../audits/services/supplier_service/performances/MetricSearch.md), [MetricData.md](../../../audits/services/supplier_service/performances/MetricData.md) — 🟡 a year-long window only (Q19) |
+> | frontend | `analytics.ts`: `useSupplierHeadline` (SUMMARY, keyed without the page), the series (periods listed in the browser, filled by MetricData), by product and the ranking (MetricSearch → MetricData). The Supplier Report pages with `GrowingPager` (no total); the Statistics tab reads the series only on its own view |
+> | changed for a person | the report's pager is the growing pager · by broken rate, suppliers under 50 units follow in KEY order, newest first, no longer by their rate ([a-rate-ranks-only-above-its-minimum-sample](../../business/analytic/rpc_provide_decision.md#a-rate-ranks-only-above-its-minimum-sample)) · the series has no span cap any more (see Q19) |
+> | Storybook | `supplierStub.ts` serves `metricSearch` / `metricData` over the same fixtures — all 110 supplier stories green |
+
 **As of 2026-10-07: the supplier context is BUILT, figures included.** The CRUD service, Discover, the move, and — this
 pass — a supplier's figures end to end: inventory's accept publishes *Restock Accepted*, `supplier_service` folds it, the
 Statistics tab and the Supplier Report read it, and `san supplier backfill-figures` folds the accepts from before the
@@ -40,7 +60,7 @@ for real (Q17, Q18 answered) · the menu's **Suppliers** group.
 
 ## Next
 
-1. **Q19** — if the cap is taken: a 366-day check in `AnalyticGroupSearch` and `AnalyticGroupMetric` (beside `parseRange`), and the report's date picker says why.
+1. **Q19** — if the cap is taken: a 366-day check in `parseFilters` (`metric_shared.go`), so it holds for both reads and both screens, and the date pickers say why.
 2. **SupplierList's search** — the owner's answers to its perf report's three questions, then a trigram migration
    **`00003`** in supplier_service (the owner's call, HARD RULE 3/8).
 3. **The adjustment** ([a-late-correction-lands-in-the-six-columns](../../business/supplier/context_decision.md#a-late-correction-lands-in-the-six-columns)) — decided, unbuilt.

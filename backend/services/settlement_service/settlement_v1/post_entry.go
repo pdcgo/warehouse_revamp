@@ -103,7 +103,7 @@ type CancelInput struct {
 }
 
 // ErrNothingToCancel is a cancel against an account with no live sale — one that never opened (an
-// order with no marketplace total, a failed opening post) or was already zeroed by hand.
+// order with no platform total, a failed opening post) or was already zeroed by hand.
 //
 // Exported because it is a NORMAL answer for the one caller that posts cancels: there is nothing to
 // undo, and the order's own cancel has already committed.

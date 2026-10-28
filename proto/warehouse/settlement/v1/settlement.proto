@@ -16,7 +16,7 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/set
 // (docs/business/settlement/context_decision.md#the-name-settlement-moves-to-the-payout).
 //
 // THE ONE IDEA THE WHOLE DESIGN RESTS ON. `initial_total` is a frozen copy of
-// `order.marketplace_total` — what the buyer ACTUALLY PAID, a fact and not a prediction
+// `order.platform_total` — what the buyer ACTUALLY PAID, a fact and not a prediction
 // (#marketplace-total-is-a-fact-not-an-estimate). What is estimated is only the EXPECTATION that all
 // of it reaches us. So the running balance is not "drift from a guess", it is exactly:
 //
@@ -92,7 +92,7 @@ service SettlementAnalyticMaintenanceService {
 enum SettlementType {
   SETTLEMENT_TYPE_UNSPECIFIED = 0;
 
-  // The sale, frozen from `order.marketplace_total` when the order is created. `change` is NEGATIVE.
+  // The sale, frozen from `order.platform_total` when the order is created. `change` is NEGATIVE.
   // Written only by `order_service` (source `order`) or by hand
   // (#initial-total-is-postable-by-cs-and-owners).
   SETTLEMENT_TYPE_INITIAL_TOTAL = 1;
@@ -236,19 +236,19 @@ message OrderSettlement {
   // 0 = not recorded — an account opened by anything other than the order's own opening post.
   uint64 created_by_user_id = 6;
 
-  // ⚠ NO order_ref, shop_name, team_name OR cogs, and their absence is a DECISION rather than an
+  // ⚠ NO order_ref, shop_name, team_name OR goods_cost, and their absence is a DECISION rather than an
   // omission to fill in later.
   //
   //   - `order_ref` — settlement keys on OUR order id and never sees the platform's reference
   //     (#settlement-keys-on-our-order-id). It could not return one without learning something it was
   //     deliberately kept from.
-  //   - names and `cogs` — they live in selling_service's tables, and a service does not read another
+  //   - names and `goods_cost` — they live in selling_service's tables, and a service does not read another
   //     service's tables (HARD RULE 3). A join here would be the exact coupling the per-service
   //     schema exists to prevent.
   //
   // The panel is mounted ON the order detail page, which already holds all four. The list screen
   // shows the order id, which is what this ledger is keyed by anyway. `true margin` is therefore
-  // computed on the client, where the cogs is.
+  // computed on the client, where the goods_cost is.
 }
 
 // ── the write ───────────────────────────────────────────────────────────────────────────────────
@@ -288,7 +288,7 @@ message SettlementPostRequest {
   // ⚠ THE CALLER SUPPLIES IT, because settlement cannot look it up: the shop lives in
   // selling_service's tables and a service does not read another's (HARD RULE 3). It is frozen onto
   // both rows so every list filters by shop without a cross-service call — the same denormalisation
-  // `order.cogs` already is, and safe for the same reason: an order does not move between shops.
+  // `order.goods_cost` already is, and safe for the same reason: an order does not move between shops.
   //
   // On the FIRST post it establishes the account's shop. Later posts must agree — see the handler.
   uint64 shop_id = 10 [(buf.validate.field).uint64.gt = 0];

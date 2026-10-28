@@ -37,7 +37,7 @@ func history(
 // anything with.
 func TestEntryList_EachLineSaysWhatCausedIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	_, err := svc.PostEntry(context.Background(), db, codFee(15000, 77))
 	if err != nil {
@@ -69,7 +69,7 @@ func TestEntryList_EachLineSaysWhatCausedIt(t *testing.T) {
 // compensating entry buys over a delete — "the fee briefly existed" is what an audit needs to see.
 func TestEntryList_AFeeAndItsReversalBothStay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	_, err := svc.PostEntry(context.Background(), db, codFee(15000, 77))
 	if err != nil {
@@ -104,7 +104,7 @@ func TestEntryList_AFeeAndItsReversalBothStay(t *testing.T) {
 // square" are the same answer to the question this screen asks.
 func TestEntryList_AnUntradedPairIsSquareRatherThanMissing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	msg := history(t, svc, selling, 12345)
 
@@ -118,7 +118,7 @@ func TestEntryList_AnUntradedPairIsSquareRatherThanMissing(t *testing.T) {
 // it can never reach two other teams' books.
 func TestEntryList_CannotReadTwoOtherTeamsPair(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	const outsider uint64 = 7
 

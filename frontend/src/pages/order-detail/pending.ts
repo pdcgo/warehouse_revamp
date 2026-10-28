@@ -4,44 +4,17 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // form carry.
 //
 // This is a PREVIEW of the screen the owner specified: seven sections down one page, rather than the
-// three tabs the built detail page has. Most of what the sections need is real — the order, its lines,
-// its events, its address, its tracking number and its frozen warehouse fee. What is missing clusters in
-// three places: the lines' picture and marketplace title, the parcel's trail, and the withdrawal figure the
-// settlement ledger still has no per-order source for.
+// three tabs the built detail page has. Most of what the sections need is real — the order, its lines
+// and their products' pictures, its timeline, its notes, its address, its tracking number and its frozen warehouse
+// fee. What is missing clusters in two places: the parcel's trail, and Edit Resi.
 //
 // The list shrinks by one entry each time something behind it lands. See `features/pending` for the
 // four kinds and for why the badge's number is the position in this array.
 
 /** One unwired part of the screen. The id is also its i18n key (`orderDetail.pending.<id>`). */
-export type PendingId =
-  | "notes"
-  | "productImage"
-  | "externalName"
-  | "shippingTracking"
-  | "returnShipment"
-  | "withdrawal";
+export type PendingId = "shippingTracking" | "receiptCode";
 
 const PARTS: PendingPart<PendingId>[] = [
-  // ⚠ AN ORDER HAS ONE NOTE AND NOBODY CAN CHANGE IT. The owner: *"catatan harusnya bisa diedit,
-  // catatan bisa lebih dari 1 dan catatan itu ada tipenya, dari sistem dan dari user"*. `Order.note` is
-  // one string written at creation — no list, no author, no type, no edit RPC. Adding and editing work
-  // on this screen and vanish on reload: typed and thrown away, which is exactly `dropped`.
-  { id: "notes", kind: "dropped" },
-  // ⚠ AN ORDER LINE CARRIES NO PICTURE. `OrderItem` is id, product_id, sku, name, quantity,
-  // unit_price, unit_cost — and the owner wants the product shown "gambar nama sku".
-  //
-  // The picture is not missing from the system, only from this message: `Product` has
-  // `default_image_url`. So the fix is a per-order-lines lookup (`ProductByIds`) rather than a new
-  // field — one batched read for the page, which is why this is `sample` and not `dropped`.
-  { id: "productImage", kind: "sample" },
-  // ⚠ THE DRAFT KEEPS THE MARKETPLACE'S TITLE AND THE ORDER THROWS IT AWAY. `OrderDraftItem` carries
-  // `external_name` + `external_sku` — "never overwritten … the evidence of what the buyer actually
-  // ordered" — and `OrderItem` has neither, so promoting a draft discards the one thing anybody can
-  // check a mapping against, at the moment the goods start being picked against that mapping.
-  //
-  // The fix is the two fields on `OrderItem`, copied verbatim at promote. The titles on screen are
-  // invented, and only on orders that came from a storefront.
-  { id: "externalName", kind: "sample" },
   // ⚠ THE TRACKING NUMBER IS STORED NOW (`receipt_code`), BUT THE REST OF THE SHIPMENT IS NOT MODELLED AT ALL — where the parcel is, when the courier
   // scanned it, what it weighed, what the postage cost. The owner expects this section to be EMPTY
   // most of the time ("kebanyakan tidak ada"), which is a design fact worth keeping: the section says
@@ -49,21 +22,11 @@ const PARTS: PendingPart<PendingId>[] = [
   //
   // The number was one missing FIELD and has landed; this is a missing INTEGRATION.
   { id: "shippingTracking", kind: "missing" },
-  // ⚠ A PARCEL CAN TRAVEL TWICE, AND THE CONTRACT KNOWS ABOUT NEITHER TRIP (owner: *"resi bisa 2 dan
-  // jejak pengiriman juga bisa 2, dari order dan return"*). The return leg has its own courier, its own
-  // number and its own trail — and there is no return record yet: no number, no trail. A separate entry from `shippingTracking`, which is about the leg
-  // that does half-exist; this one is a whole missing record.
-  //
-  // Invented for order 108 only, so the two-leg shape can be seen populated once.
-  { id: "returnShipment", kind: "sample" },
-  // ⚠ THE WHOLE SECTION IS UNBACKED, and the owner is undecided about it: *"mungkin sekarang jadi
-  // settlement itu, jadi aku masih bingung di sini"*.
-  //
-  // Withdrawal in the owner's sense is a WALLET → BANK movement: a shop-level cash event that names no
-  // order. Settlement Imports now records it — on the SHOP (withdrawal-is-a-settlement-type) — and brings the
-  // order's payouts into its ledger, but nothing gives one order a withdrawal figure, so the columns asked
-  // for here (tgl import, tgl wd, sumber, nilai, negara lain, deskripsi) still have no per-order source.
-  { id: "withdrawal", kind: "missing" },
+  // ⚠ EDIT RESI IS ON SCREEN AND DOES NOTHING. Decided (the-seller-edits-the-resi-until-handover): the selling team
+  // changes the tracking number, the label file or both, while the parcel is still in the building. There is no edit
+  // RPC yet, so the action only says so. `rowActions.ts` points EDIT_RECEIPT here — the id must be in this list, or the
+  // badge reads a position that does not exist.
+  { id: "receiptCode", kind: "missing" },
 ];
 
 /** What the badges and the summary on this screen read. `ns` is where its copy lives. */

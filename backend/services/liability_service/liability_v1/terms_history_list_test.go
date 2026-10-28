@@ -55,12 +55,11 @@ func writeTerms(
 
 	_, err := svc.LiabilityTermsSet(context.Background(),
 		connect.NewRequest(&liabilityv1.LiabilityTermsSetRequest{
-			TeamId:          teamID,
-			CounterpartyId:  counterparty,
-			HandlingFee:     25_000,
-			ProductMarkupBp: 500,
-			CreditLimit:     limit,
-			Reason:          reason,
+			TeamId:         teamID,
+			CounterpartyId: counterparty,
+			HandlingFee:    25_000,
+			CreditLimit:    limit,
+			Reason:         reason,
 		}))
 	if err != nil {
 		t.Fatalf("LiabilityTermsSet: %v", err)
@@ -75,7 +74,7 @@ func i64(v int64) *int64 { return &v }
 // of the two is the one that stops a team trading.
 func TestTermsHistory_TellsRemovedApartFromFrozen(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	const creditor, debtor uint64 = 11, 12
 
@@ -114,7 +113,7 @@ func TestTermsHistory_TellsRemovedApartFromFrozen(t *testing.T) {
 // It must not be the one act that leaves no trace.
 func TestTermsHistory_ADeleteIsRecordedAsARemoval(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	const creditor, debtor uint64 = 11, 12
 
@@ -151,7 +150,7 @@ func TestTermsHistory_ADeleteIsRecordedAsARemoval(t *testing.T) {
 // that state holds — but nothing CHANGED, and a history full of no-ops is one nobody reads.
 func TestTermsHistory_ANoOpDeleteRecordsNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	const creditor, debtor uint64 = 11, 12
 
@@ -172,7 +171,7 @@ func TestTermsHistory_ANoOpDeleteRecordsNothing(t *testing.T) {
 // a real counterparty id here. A plain uint64 could not, which is why the proto field is `optional`.
 func TestTermsHistory_ZeroIsTheDefaultRowNotEveryone(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	const creditor uint64 = 11
 
@@ -204,7 +203,7 @@ func TestTermsHistory_ZeroIsTheDefaultRowNotEveryone(t *testing.T) {
 // ⚠ Five tests passed over it because none of them looked at the timestamp.
 func TestTermsHistory_StampsWhenTheChangeHappened(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	const creditor uint64 = 11
 
@@ -226,7 +225,7 @@ func TestTermsHistory_StampsWhenTheChangeHappened(t *testing.T) {
 // A HISTORY IS SCOPED TO THE CREDITOR. Another team's limit decisions are not readable by naming them.
 func TestTermsHistory_IsScopedToTheCreditor(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	writeTerms(t, svc, 11, 12, i64(5_000_000), "")
 
@@ -243,7 +242,7 @@ func TestTermsHistory_IsScopedToTheCreditor(t *testing.T) {
 // ⚠ It survived five tests, `go vet` and the whole e2e suite. It took calling the RPC for real.
 func TestTermsHistory_AnOmittedFilterDoesNotPanic(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	const creditor uint64 = 11
 

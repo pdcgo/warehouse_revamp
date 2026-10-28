@@ -18,14 +18,15 @@ const productOwner uint64 = 3
 const canceller uint64 = 77
 
 // setTerms writes a creditor's terms toward one debtor. `counterparty = 0` is the DEFAULT row.
-func setTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handling, markupBP int64) {
+//
+// A handling fee and nothing else: the terms carry no markup (the-ledger-charges-the-frozen-line-total).
+func setTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handling int64) {
 	t.Helper()
 
 	row := liability_service_models.LiabilityTerms{
-		TeamID:          creditor,
-		CounterpartyID:  debtor,
-		HandlingFee:     handling,
-		ProductMarkupBP: markupBP,
+		TeamID:         creditor,
+		CounterpartyID: debtor,
+		HandlingFee:    handling,
 	}
 
 	err := db.Create(&row).Error
@@ -34,26 +35,26 @@ func setTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handling, mark
 	}
 }
 
-// anOrder is one order of team `selling`, fulfilled by `warehouse`, selling `productOwner`'s goods.
+// anOrder is one order of team `selling`, fulfilled by `warehouse`, selling `productOwner`'s goods: two units that
+// cost 30.000, frozen by the take at the product's 20% markup — a line total of 72.000.
 func anOrder(orderID uint64) liability_v1.PlacedOrder {
 	return liability_v1.PlacedOrder{
 		TeamID:      selling,
 		WarehouseID: warehouse,
 		OrderID:     orderID,
 		Lines: []liability_v1.OrderLine{
-			{OwningTeamID: productOwner, Quantity: 2, UnitCost: 30000},
+			{OwningTeamID: productOwner, Quantity: 2, Total: 72000},
 		},
 	}
 }
 
 // THE TWO ORDER-DRIVEN FEES. The warehouse fulfilled it, so it is owed a flat fee; the order sold
-// somebody else's goods, so that team is owed cost + markup.
+// somebody else's goods, so that team is owed the line's frozen total.
 func TestChargeOrder_PostsTheHandlingFeeAndTheProductFee(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, warehouse, 0, 12000, 0)
-	setTerms(t, db, productOwner, 0, 0, 2000) // 20% markup
+	setTerms(t, db, warehouse, 0, 12000)
 
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
@@ -64,11 +65,109 @@ func TestChargeOrder_PostsTheHandlingFeeAndTheProductFee(t *testing.T) {
 		t.Fatalf("the warehouse is owed %d, want the flat 12000", got)
 	}
 
-	// 2 × 30.000 = 60.000 of cost, plus 20% = 72.000. THE ANCHOR IS COST, not the buyer-paid price:
-	// a markup on what the buyer paid is a commission model wearing a sale's clothes, and it would
-	// leave the owner out of pocket on their own goods.
+	// The line's frozen 72.000 — 60.000 of goods at the product's 20%, priced by the take — posted as it came.
 	if got := balanceOf(t, db, productOwner, selling); got != 72000 {
-		t.Fatalf("the product owner is owed %d, want 72000 (cost 60000 + 20%%)", got)
+		t.Fatalf("the product owner is owed %d, want the line's frozen 72000", got)
+	}
+}
+
+// THE LEDGER CHARGES THE FROZEN LINE TOTALS AND READS NO MARKUP (the-ledger-charges-the-frozen-line-total).
+//
+// Two owning teams, their products at DIFFERENT markups — and the markups appear nowhere here, because the take already
+// applied each product's own rate and froze the line. One fee per owning team, each the sum of its lines' totals, and
+// the selling team's own line posts nothing.
+//
+//	productOwner   2 × 30.000 at 20%                                        = 72.000
+//	secondOwner    1 × 10.000 at 10% = 11.000  +  3 × 5.000 at 0% = 15.000  = 26.000
+//	selling        its own goods, 50.000                                    — owes nobody
+func TestChargeOrder_TheProductFeeIsEachOwnersFrozenLineTotals(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	const secondOwner uint64 = 4
+
+	order := anOrder(412)
+	order.Lines = []liability_v1.OrderLine{
+		{OwningTeamID: productOwner, Quantity: 2, Total: 72000},
+		{OwningTeamID: secondOwner, Quantity: 1, Total: 11000},
+		{OwningTeamID: selling, Quantity: 1, Total: 50000},
+		{OwningTeamID: secondOwner, Quantity: 3, Total: 15000},
+	}
+
+	err := svc.ChargeOrder(context.Background(), order)
+	if err != nil {
+		t.Fatalf("ChargeOrder: %v", err)
+	}
+
+	if got := balanceOf(t, db, productOwner, selling); got != 72000 {
+		t.Fatalf("productOwner is owed %d, want its line's 72000", got)
+	}
+
+	if got := balanceOf(t, db, secondOwner, selling); got != 26000 {
+		t.Fatalf("secondOwner is owed %d, want 26000 — its two lines at two rates, as frozen", got)
+	}
+
+	var fees []liability_service_models.LiabilityLog
+
+	err = db.
+		Where("team_id = ? AND source_type = ?", selling, "product_fee").
+		Order("counterparty_id").
+		Find(&fees).
+		Error
+	if err != nil {
+		t.Fatalf("read the fees: %v", err)
+	}
+
+	// ONE fee per owning team, and none toward the selling team itself for its own goods.
+	if len(fees) != 2 || fees[0].CounterpartyID != productOwner || fees[1].CounterpartyID != secondOwner {
+		t.Fatalf("product fees %+v, want exactly one to %d and one to %d", fees, productOwner, secondOwner)
+	}
+}
+
+// ROUNDED ONCE, ON THE SUM. The totals arrive as doubles (rupiah-is-floating-point) and an entry is whole rupiah:
+// 33.000,4 + 11.000,4 is 44.000,8, posted as 44.001. Rounding each line first would post 44.000 — a rupiah lost per
+// line, which is how a ledger and an invoice drift apart.
+func TestChargeOrder_AFractionalTotalIsRoundedOnceOnTheSum(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	order := anOrder(412)
+	order.Lines = []liability_v1.OrderLine{
+		{OwningTeamID: productOwner, Quantity: 1, Total: 33000.4},
+		{OwningTeamID: productOwner, Quantity: 1, Total: 11000.4},
+	}
+
+	err := svc.ChargeOrder(context.Background(), order)
+	if err != nil {
+		t.Fatalf("ChargeOrder: %v", err)
+	}
+
+	if got := balanceOf(t, db, productOwner, selling); got != 44001 {
+		t.Fatalf("the owner is owed %d, want 44001 — the sum 44000.8, rounded once", got)
+	}
+}
+
+// ⛔ THE TERMS HAVE NO MARKUP TO READ (the-ledger-charges-the-frozen-line-total). Dropped from the table and from its
+// change log, so no rate here can ever disagree with the one the take froze. Read from the catalog rather than the
+// model, because the model losing its field proves only that this package stopped naming it.
+func TestLiabilityTerms_CarryNoMarkup(t *testing.T) {
+	db := san_testdb.DB(t)
+
+	var columns []string
+
+	err := db.
+		Raw(`SELECT table_name || '.' || column_name FROM information_schema.columns
+			WHERE table_schema = current_schema()
+			  AND table_name IN ('liability_terms', 'liability_terms_logs')
+			  AND column_name LIKE '%markup%'`).
+		Scan(&columns).
+		Error
+	if err != nil {
+		t.Fatalf("read the columns: %v", err)
+	}
+
+	if len(columns) != 0 {
+		t.Fatalf("the terms still carry %v — the ledger must read no markup of its own", columns)
 	}
 }
 
@@ -77,9 +176,9 @@ func TestChargeOrder_PostsTheHandlingFeeAndTheProductFee(t *testing.T) {
 // can never succeed is a poison loop.
 func TestChargeOrder_ARedeliveryChargesNothingExtra(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, warehouse, 0, 12000, 0)
+	setTerms(t, db, warehouse, 0, 12000)
 
 	for i := 0; i < 3; i++ {
 		err := svc.ChargeOrder(context.Background(), anOrder(412))
@@ -91,6 +190,10 @@ func TestChargeOrder_ARedeliveryChargesNothingExtra(t *testing.T) {
 	if got := balanceOf(t, db, warehouse, selling); got != 12000 {
 		t.Fatalf("the warehouse is owed %d after three deliveries, want 12000", got)
 	}
+
+	if got := balanceOf(t, db, productOwner, selling); got != 72000 {
+		t.Fatalf("the product owner is owed %d after three deliveries, want 72000", got)
+	}
 }
 
 // ⚠ THE TWO FEES DEFAULT DIFFERENTLY WITH NO CONFIGURATION, and the asymmetry is deliberate.
@@ -98,14 +201,14 @@ func TestChargeOrder_ARedeliveryChargesNothingExtra(t *testing.T) {
 //   - The HANDLING FEE is a PRICE the warehouse sets. No price set means the service is free, and a
 //     warehouse that has configured nothing must not be silently billing anybody.
 //   - The PRODUCT FEE is a COST TRANSFER. The goods left the owner's stock and do not come back
-//     (§2.2: "money from the first moment"), so the owner is owed what they cost whether or not
-//     anybody configured anything. The MARKUP is the optional part, and it defaults to zero.
+//     (§2.2: "money from the first moment"), so the owner is owed the line's frozen total whether or
+//     not anybody configured anything — there is no term for it to read.
 //
 // Defaulting the product fee to zero as well would mean one team's goods walk out of another team's
 // warehouse free, which is the one outcome §2.2 explicitly rejects.
 func TestChargeOrder_TheTwoFeesDefaultDifferently(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
@@ -128,19 +231,19 @@ func TestChargeOrder_TheTwoFeesDefaultDifferently(t *testing.T) {
 		t.Fatalf("%d handling-fee entries with no rate configured, want 0", handling)
 	}
 
-	// The goods still left their owner's stock: cost, and a markup of zero.
-	if got := balanceOf(t, db, productOwner, selling); got != 60000 {
-		t.Fatalf("the product owner is owed %d, want the goods' cost of 60000", got)
+	// The goods still left their owner's stock: the line's frozen total, with no terms anywhere.
+	if got := balanceOf(t, db, productOwner, selling); got != 72000 {
+		t.Fatalf("the product owner is owed %d, want the line's frozen 72000", got)
 	}
 }
 
 // A per-debtor row OVERRIDES the creditor's default — that is the whole point of having both.
 func TestChargeOrder_APerTeamRateOverridesTheDefault(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, warehouse, 0, 12000, 0)
-	setTerms(t, db, warehouse, selling, 5000, 0)
+	setTerms(t, db, warehouse, 0, 12000)
+	setTerms(t, db, warehouse, selling, 5000)
 
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
@@ -157,21 +260,19 @@ func TestChargeOrder_APerTeamRateOverridesTheDefault(t *testing.T) {
 // the second line would silently vanish.
 func TestChargeOrder_TwoLinesOfOneOwnerAreOneFee(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
-
-	setTerms(t, db, productOwner, 0, 0, 0)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	order := anOrder(412)
 	order.Lines = append(order.Lines,
-		liability_v1.OrderLine{OwningTeamID: productOwner, Quantity: 1, UnitCost: 10000})
+		liability_v1.OrderLine{OwningTeamID: productOwner, Quantity: 1, Total: 10000})
 
 	err := svc.ChargeOrder(context.Background(), order)
 	if err != nil {
 		t.Fatalf("ChargeOrder: %v", err)
 	}
 
-	if got := balanceOf(t, db, productOwner, selling); got != 70000 {
-		t.Fatalf("the owner is owed %d, want 70000 — both lines in one fee", got)
+	if got := balanceOf(t, db, productOwner, selling); got != 82000 {
+		t.Fatalf("the owner is owed %d, want 82000 — both lines in one fee", got)
 	}
 
 	var entries int64
@@ -193,13 +294,13 @@ func TestChargeOrder_TwoLinesOfOneOwnerAreOneFee(t *testing.T) {
 // SELLING YOUR OWN GOODS OWES NOBODY, and neither does fulfilling your own order.
 func TestChargeOrder_SellingYourOwnProductOwesNobody(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, selling, 0, 12000, 5000)
+	setTerms(t, db, selling, 0, 12000)
 
 	order := anOrder(412)
 	order.WarehouseID = selling
-	order.Lines = []liability_v1.OrderLine{{OwningTeamID: selling, Quantity: 2, UnitCost: 30000}}
+	order.Lines = []liability_v1.OrderLine{{OwningTeamID: selling, Quantity: 2, Total: 60000}}
 
 	err := svc.ChargeOrder(context.Background(), order)
 	if err != nil {
@@ -218,22 +319,21 @@ func TestChargeOrder_SellingYourOwnProductOwesNobody(t *testing.T) {
 	}
 }
 
-// ⚠ Q10 — AN UNKNOWN COST POSTS NOTHING AND IS NOT REFUSED. A product received straight into stock
-// has no recorded cost, so cost+markup computes zero. The sale is not blocked over a bookkeeping gap;
-// the reconciliation report (#187) is what names it. Nothing is written, because a zero-amount entry
-// would consume this pair's idempotency key for this order and block the real fee forever.
-func TestChargeOrder_AnUnknownCostChargesNothingRatherThanFailing(t *testing.T) {
+// ⚠ Q10 — AN UNKNOWN TOTAL POSTS NOTHING AND IS NOT REFUSED. Goods received straight into stock have no
+// recorded cost, so the take prices their line at zero — and an order placed before lines froze a total
+// carries none at all. The sale is not blocked over a bookkeeping gap; the reconciliation report (#187)
+// is what names it. Nothing is written, because a zero-amount entry would consume this pair's
+// idempotency key for this order and block the real fee forever.
+func TestChargeOrder_AnUnknownTotalChargesNothingRatherThanFailing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
-
-	setTerms(t, db, productOwner, 0, 0, 2000)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	order := anOrder(412)
-	order.Lines = []liability_v1.OrderLine{{OwningTeamID: productOwner, Quantity: 2, UnitCost: 0}}
+	order.Lines = []liability_v1.OrderLine{{OwningTeamID: productOwner, Quantity: 2, Total: 0}}
 
 	err := svc.ChargeOrder(context.Background(), order)
 	if err != nil {
-		t.Fatalf("an unknown cost failed the delivery: %v", err)
+		t.Fatalf("an unknown total failed the delivery: %v", err)
 	}
 
 	var entries int64
@@ -248,7 +348,7 @@ func TestChargeOrder_AnUnknownCostChargesNothingRatherThanFailing(t *testing.T) 
 	}
 
 	if entries != 0 {
-		t.Fatalf("%d entries for an unknown cost, want 0", entries)
+		t.Fatalf("%d entries for an unknown total, want 0", entries)
 	}
 }
 
@@ -256,10 +356,10 @@ func TestChargeOrder_AnUnknownCostChargesNothingRatherThanFailing(t *testing.T) 
 // team picked by accident.
 func TestChargeOrder_AnUnresolvedOwnerIsSkipped(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	order := anOrder(412)
-	order.Lines = []liability_v1.OrderLine{{OwningTeamID: 0, Quantity: 2, UnitCost: 30000}}
+	order.Lines = []liability_v1.OrderLine{{OwningTeamID: 0, Quantity: 2, Total: 72000}}
 
 	err := svc.ChargeOrder(context.Background(), order)
 	if err != nil {
@@ -281,10 +381,9 @@ func TestChargeOrder_AnUnresolvedOwnerIsSkipped(t *testing.T) {
 // A CANCEL REVERSES BOTH FEES, and the balance nets to zero while both stories stay visible.
 func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, warehouse, 0, 12000, 0)
-	setTerms(t, db, productOwner, 0, 0, 2000)
+	setTerms(t, db, warehouse, 0, 12000)
 
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
@@ -325,9 +424,9 @@ func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 // A DOUBLE CANCEL MUST NOT REVERSE TWICE — the same at-least-once problem, one step further on.
 func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, warehouse, 0, 12000, 0)
+	setTerms(t, db, warehouse, 0, 12000)
 
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
@@ -350,9 +449,9 @@ func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 // an order falling through does not give the warehouse its money back.
 func TestReverseOrder_LeavesTheCODObligationAlone(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db, nil, nil)
+	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, warehouse, 0, 12000, 0)
+	setTerms(t, db, warehouse, 0, 12000)
 
 	_, err := svc.PostEntry(context.Background(), db, codFee(25000, 77))
 	if err != nil {

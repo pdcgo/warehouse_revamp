@@ -85,17 +85,17 @@ sequenceDiagram
     participant R as revenue_service
     participant T as liability_service
 
-    Note over S: the order has COMMITTED
+    Note over S: the order has COMMITTED, each line frozen at the take's total
     S->>P: ProductByIds — who owns these products?
     P-->>S: the owning team per product
-    S->>S: publish OrderPlacedEvent, carrying the lines
+    S->>S: publish OrderPlacedEvent, carrying the lines and their totals
     par one topic, two subscriptions
         S-->>R: revenue-order-placed
     and
         S-->>T: liability-order-placed
     end
     T->>T: handling fee to the warehouse
-    T->>T: product fee to each owning team
+    T->>T: product fee to each owning team, the sum of its line totals
 ```
 
 **The owner is resolved AT PLACEMENT and rides on the event.** Same choice the money already makes,
@@ -114,23 +114,44 @@ topic until liability became a second consumer.
 | | Default with no configuration | Because |
 | --- | --- | --- |
 | **Handling fee** | **charge nothing** | It is a **price** the warehouse sets. A warehouse that has configured nothing must not be silently billing anybody. |
-| **Product fee** | **charge cost, markup 0** | It is a **cost transfer**. The goods left the owner's stock and do not come back (§2.2 — "money from the first moment"), so the owner is owed what they cost whether or not anybody configured anything. The **markup** is the optional part. |
+| **Product fee** | **charge the lines' frozen totals** | It is a **cost transfer**. The goods left the owner's stock and do not come back (§2.2 — "money from the first moment"), so the owner is owed whether or not anybody configured anything — and there is nothing here to configure. |
 
 Defaulting the product fee to zero as well would mean one team's goods walk out of another team's
 warehouse free, which is the one outcome §2.2 explicitly rejects.
 
-**The anchor is the frozen `unit_cost`, never the buyer-paid price.** A markup on what the buyer paid
-is a commission model wearing a sale's clothes: on goods that cost 60.000 and sold for 100.000 at
-20%, cost+markup owes the owner 72.000 while buyer-paid+markup owes 20.000 — the owner loses 40.000
-on their own stock.
+### The product fee is the frozen line totals — liability reads no markup
+
+[the-ledger-charges-the-frozen-line-total](../../technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total).
+The markup is the **product's** (`products.cross_markup_bps`). Inventory's take applies it once and returns each
+line's total; the order freezes it on `order_items.total` and carries it on `OrderPlacedLine.total`. Liability sums.
+
+```mermaid
+flowchart LR
+  P["products.cross_markup_bps"] --> T["inventory take — each line's total"]
+  T --> O["order_items.total — frozen"]
+  O --> E["OrderPlacedLine.total"]
+  E --> F["product fee per owning team = sum of its line totals"]
+  F --> R["rounded once, on the sum"]
+```
+
+| | |
+| --- | --- |
+| the fee | Σ `total` of the owning team's lines, one fee per owning team per order, never recomputed |
+| own lines | never charged — the owner is the selling team |
+| rounding | the sum, once, to whole rupiah (`math.Round`) — the same edge the restock courier charge is rounded at |
+| the terms | not read for this fee at all — `liability_terms.product_markup_bp` was dropped (`00010`) |
+
+**Still cost-anchored, never the buyer-paid price** ([the-product-fee-is-the-line-total](../../business/order/context_decision.md#the-product-fee-is-the-line-total)).
+On goods that cost 60.000 and sold for 100.000 at 20%, the line total owes the owner 72.000; a markup on what
+the buyer paid would owe 20.000, and the owner would lose 40.000 on their own stock.
 
 **One fee per owning team, not per line.** Two lines of the same team's goods are one debt, and the
 idempotency key is `(source_type, source_id, counterparty)` — per-line postings would collide and the
 second line would silently vanish.
 
-⚠ **An unknown cost charges nothing and is not refused** (Q10). A product received straight into
-stock has no recorded cost, so cost+markup computes zero. The sale is not blocked over a bookkeeping
-gap. Nothing is written, because a zero-amount entry would consume that pair's idempotency key for
+⚠ **An unknown total charges nothing and is not refused** (Q10). Goods received straight into stock
+have no recorded cost, so the take prices their line at zero — and an order placed before `00023` froze
+no total at all. The sale is not blocked over a bookkeeping gap. Nothing is written, because a zero-amount entry would consume that pair's idempotency key for
 that order and block the real fee forever — so the gap is visible as a **missing** entry, which is
 exactly what the reconciliation report (#187) looks for.
 
@@ -251,8 +272,8 @@ which is exactly the failure the other two reuse their query to avoid.
 ## The rates and limits themselves — `LiabilityTermsService` (#189)
 
 Until this landed, `liability_terms` was a table only the fee code READ. Nothing could write it, so
-every handling fee was 0, every product markup was 0, and every credit limit was unlimited —
-permanently. Three RPCs close that.
+every handling fee was 0 and every credit limit was unlimited — permanently. Three RPCs close that.
+(The terms carried a product markup too until `00010`; the markup is the product's now — see above.)
 
 | RPC | |
 | --- | --- |
@@ -412,6 +433,36 @@ state of the world is what refuses.
 | the catalogue cannot resolve product owners | **fails OPEN** — logged, and only the warehouse's limit is applied. An outage there must not stop every order in the system; the uncharged product fee is what the reconciliation report is built to find |
 | the **check itself** errors | **fails CLOSED** — the order is refused. We cannot say whether the team is over its limit, and allowing it would make an outage the way past every credit limit at once |
 | no checker wired at all | permissive (`noCredit`), and deliberately not the production default — the composition root wires the real one |
+
+## The debtor's side of a limit — `LiabilityCreditByIds`
+
+[the-debtor-sees-the-limits-set-on-it](../../technical/balance/team_balance_design_decision.md#the-debtor-sees-the-limits-set-on-it):
+a limit that can stop your orders is not kept from you. Every other terms read is the **creditor's**; this one is
+asked by the team the limit is set **on** — the order form's Debt limits panel and the pair detail's debtor view.
+
+```mermaid
+flowchart LR
+  Q["LiabilityCreditByIds - team_id = the debtor, ids = its creditors"] --> D["distinctCreditors - drop 0, duplicates, the debtor itself"]
+  D --> T["liability_terms - team_id IN creditors AND counterparty_id IN debtor, 0"]
+  D --> B["liability_balances - team_id = debtor AND counterparty_id IN creditors"]
+  T --> L["creditLimits - the pair row, else the default row, else unlimited"]
+  B --> E["debtsToward - a payable flipped positive, a receivable is 0"]
+  L --> S["state - AT_LIMIT on refusesCredit, NEAR from 80 percent, else OK"]
+  E --> S
+  S --> R["one CREDIT item per creditor, unlimited included"]
+  X["the creditor's row for a THIRD team"] -.->|"never read - counterparty_id is the debtor or 0"| T
+```
+
+| | |
+| --- | --- |
+| scope | `team_id` — the DEBTOR, `use_scope`, top-level beside `filter.ids` (the interceptor refuses a nested scope) |
+| the same reading as the check | `creditLimits` and `debtsToward` are `CheckCredit`'s own helpers, and `refusesCredit` is the one comparison both use — so the form's AT_LIMIT and the create's refusal are the same `debt >= limit` |
+| the states | `OK` · `NEAR` at `debt × 5 ≥ limit × 4` (exactly 80%) · `AT_LIMIT` at `debt ≥ limit`. Unlimited is `OK`; a limit of `0` is always `AT_LIMIT` — the check refuses its first order |
+| what comes back | every creditor asked about, keyed by its id — an absent one could not be told from unlimited. The asking team is dropped, as the check drops it |
+| `credit_limit` | optional, exactly as on `LiabilityTerms`: absent is unlimited, `0` is no credit. A pair row with no limit lifts the default |
+| `GENERAL` | the creditor's name, asked of team_service (`TeamByIds`, under the caller's token) — only when requested. The order form and the pair detail already hold the names and ask for `CREDIT` alone |
+| cost | **two queries, whatever the number of creditors** — one per table, both on their pair index. 1,3 ms median for 50 creditors at 10 000 terms rows and 20 000 balance rows (`liability_credit_by_ids_perf_test.go`, `-tags perfaudit`); not heavy |
+| not paged | bounded by the ids asked for: 1 to 50, distinct, `> 0` |
 
 ## Settling a debt — `LiabilityPaymentService` (#188)
 

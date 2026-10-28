@@ -20,6 +20,7 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", CustomerPhone: "0812-000",
 		Address: &sellingv1.OrderAddress{
@@ -29,9 +30,9 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 			DesaCode: "11.01.01.2001", DesaName: "Keude Bakongan",
 			KodePos: "23773", AddressLine: "Jl. Test 1",
 		},
-		ShippingCode: "jne", Subtotal: 20000, ShippingCost: 5000, Total: 25000,
+		ShippingCode: "jne",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2, UnitPrice: 10000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
 		},
 	}))
 	if err != nil {
@@ -61,7 +62,7 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 	}
 
 	got := resp.Msg.GetOrder()
-	if got.GetCustomerName() != "Budi" || got.GetTotal() != 25000 || got.GetShopId() != shopID {
+	if got.GetCustomerName() != "Budi" || got.GetPlatformTotal() != testPlatformTotal || got.GetShopId() != shopID {
 		t.Fatalf("unexpected order: %+v", got)
 	}
 	if len(got.GetItems()) != 1 || got.GetItems()[0].GetSku() != "SKU1" || got.GetItems()[0].GetQuantity() != 2 {
@@ -81,11 +82,12 @@ func TestOrder_CreateWithoutAddress(t *testing.T) {
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Tanpa Alamat", ShippingCode: "jne",
-		Subtotal: 10000, ShippingCost: 0, Total: 10000,
+
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -102,61 +104,71 @@ func TestOrder_CreateWithoutAddress(t *testing.T) {
 	}
 }
 
-// The note is carried through VERBATIM and read back by OrderDetail — it is the one field on an
-// order that nothing in the system interprets, so the whole contract is "what was typed is what
-// comes back", newlines included. An order without one reads as "", never nil.
+// THE FORM'S NOTE IS THE ORDER'S FIRST NOTE ROW (a-note-is-a-timeline-row): a timeline row with no status, from
+// selling, by the person placing the order, at the order's own moment — written in the order's transaction, after its
+// placement row. Trimmed, newlines inside kept. An order placed with no note — or spaces alone — has no note row at all.
 func TestOrder_CreateWithNote(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
-	ctx := context.Background()
+	ctx := asUser(41)
 
 	shopID := insertShop(t, db, 2, "Shop", "S-NOTE", "shopee")
 
 	const note = "Kirim setelah jam 5 sore.\nBungkus yang kaca."
 
-	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		PlatformCreatedAtUnix: testPlatformDate,
-		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Budi", Note: note,
-		Subtotal: 10000, Total: 10000,
-		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
-		},
-	}))
-	if err != nil {
-		t.Fatalf("OrderCreate with a note: %v", err)
+	create := func(customer, note string) uint64 {
+		t.Helper()
+
+		created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+			PlatformCreatedAtUnix: testPlatformDate,
+			PlatformTotal:         testPlatformTotal,
+			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
+			CustomerName: customer, Note: note,
+			Items: []*sellingv1.OrderItem{
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			},
+		}))
+		if err != nil {
+			t.Fatalf("OrderCreate (note %q): %v", note, err)
+		}
+
+		return created.Msg.GetOrder().GetId()
 	}
 
-	if created.Msg.GetOrder().GetNote() != note {
-		t.Fatalf("note on create = %q, want %q", created.Msg.GetOrder().GetNote(), note)
+	orderID := create("Budi", "  "+note+"\n ")
+
+	logs := timeline(t, svc, ctx, 2, orderID)
+	if len(logs) != 2 {
+		t.Fatalf("an order placed with a note has %d timeline rows, want 2 (placed, the note): %+v", len(logs), logs)
 	}
 
-	resp, err := svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
-		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
-	}))
-	if err != nil {
-		t.Fatalf("OrderDetail: %v", err)
+	placed, first := logs[0], logs[1]
+	if placed.GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
+		t.Fatalf("row 0 = %v, want the placement (PENDING) before the note", placed.GetStatus())
 	}
 
-	if resp.Msg.GetOrder().GetNote() != note {
-		t.Fatalf("note on detail = %q, want %q", resp.Msg.GetOrder().GetNote(), note)
+	if first.GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED || first.GetNote() != note {
+		t.Fatalf("the note row = %v %q, want no status and %q (trimmed)", first.GetStatus(), first.GetNote(), note)
 	}
 
-	// No note is "" rather than anything else — every order predating the column is in that state.
-	plain, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		PlatformCreatedAtUnix: testPlatformDate,
-		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Tanpa Catatan", Subtotal: 10000, Total: 10000,
-		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
-		},
-	}))
-	if err != nil {
-		t.Fatalf("OrderCreate without a note: %v", err)
+	if first.GetFrom() != sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_SELLING || first.GetActorId() != 41 {
+		t.Fatalf("the note row from %v by %d, want SELLING by 41", first.GetFrom(), first.GetActorId())
 	}
 
-	if plain.Msg.GetOrder().GetNote() != "" {
-		t.Fatalf("note with none given = %q, want empty", plain.Msg.GetOrder().GetNote())
+	// The order's own moment, as its placement row — not a second clock.
+	if first.GetCreatedAtUnix() != placed.GetCreatedAtUnix() {
+		t.Fatalf("the note row at %d, the placement at %d — want the same instant",
+			first.GetCreatedAtUnix(), placed.GetCreatedAtUnix())
+	}
+
+	// No note, and a note of spaces alone, both write no note row: only the placement.
+	for _, none := range []string{"", " \n\t "} {
+		plain := create("Tanpa Catatan", none)
+
+		rows := timeline(t, svc, ctx, 2, plain)
+		if len(rows) != 1 || rows[0].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
+			t.Fatalf("an order placed with note %q has timeline %+v, want only the placement", none, rows)
+		}
 	}
 }
 
@@ -177,11 +189,12 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", OrderExternalRefId: ref,
-		Subtotal: 10000, Total: 10000,
+
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -207,10 +220,11 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 	// placeholder, and nothing to back-fill.
 	phone, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Lewat Telepon", Subtotal: 10000, Total: 10000,
+		CustomerName: "Lewat Telepon",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -262,11 +276,12 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Receipt: receipt,
-		Subtotal: 10000, Total: 10000,
+
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -290,10 +305,11 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 	// No receipt is an EMPTY message, never nil — the same convention the address follows.
 	plain, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Tanpa Resi", Subtotal: 10000, Total: 10000,
+		CustomerName: "Tanpa Resi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -318,8 +334,9 @@ func TestOrder_CreateShopNotInTeam(t *testing.T) {
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
-		TeamId:                3, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: "X", Subtotal: 1, Total: 1,
-		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1, UnitPrice: 1}},
+		PlatformTotal:         testPlatformTotal,
+		TeamId:                3, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: "X",
+		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1}},
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-team create code = %v, want NotFound", connect.CodeOf(err))
@@ -336,8 +353,9 @@ func TestOrder_ListScopedAndCrossTeamDetail(t *testing.T) {
 	create := func(name string) uint64 {
 		r, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 			PlatformCreatedAtUnix: testPlatformDate,
-			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: name, Subtotal: 100, Total: 100,
-			Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1, UnitPrice: 100}},
+			PlatformTotal:         testPlatformTotal,
+			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: name,
+			Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1}},
 		}))
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
@@ -379,10 +397,11 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
-		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
+		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -409,10 +428,11 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 	// unit tests bypass the interceptor — which is exactly why the handler re-checks.
 	_, err = svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
 		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop,
-		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
+		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {

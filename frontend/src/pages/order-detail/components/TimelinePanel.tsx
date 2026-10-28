@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   CircleCheck,
   Clock,
-  MessageSquareText,
   PackageCheck,
   PackageOpen,
   PackageX,
@@ -19,9 +18,10 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import type { Order, OrderTimelineLog } from "../../../gen/warehouse/selling/v1/order_pb";
-import { OrderStatus, OrderTimelineFrom } from "../../../gen/warehouse/selling/v1/order_pb";
+import { OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
 import { UserItem } from "../../../components/entity/UserItem";
+import { statusLogs, timelineFromKey } from "../../../features/orders/timelineLogs";
 import { formatUnixDateTime } from "../../../lib/datetime";
 
 export interface TimelinePanelProps {
@@ -55,25 +55,14 @@ const LOOK: Partial<Record<OrderStatus, { icon: LucideIcon; palette?: string }>>
   [OrderStatus.CANCEL]: { icon: Ban, palette: "rose" },
 };
 
-/** A row that is a NOTE only, no move (order-timeline-logs-replaces-order-events): no goods on Rak A. */
-function isNote(log: OrderTimelineLog): boolean {
-  return log.status === OrderStatus.UNSPECIFIED && log.note !== "";
-}
-
-/** The icon for one row — a hand-back reads as a turn back, a note as a note. */
+/**
+ * The icon for one STATUS row — a hand-back reads as a turn back. `index` is the row's place among the status rows
+ * (`statusLogs`): a note is not a step, and never shifts one (a-note-is-a-timeline-row).
+ */
 export function timelineIcon(log: OrderTimelineLog, index: number): LucideIcon {
-  if (isNote(log)) return MessageSquareText;
   if (log.status === OrderStatus.PENDING && index > 0) return RotateCcw;
 
   return LOOK[log.status]?.icon ?? Clock;
-}
-
-/** The i18n key of the side that wrote a row, or "" when it is not recorded. */
-export function timelineFromKey(from: OrderTimelineFrom): string {
-  if (from === OrderTimelineFrom.WAREHOUSE) return "orders.timeline.from.warehouse";
-  if (from === OrderTimelineFrom.SELLING) return "orders.timeline.from.selling";
-
-  return "";
 }
 
 /**
@@ -98,17 +87,13 @@ export const TIMELINE_TITLE: Partial<Record<OrderStatus, string>> = {
 };
 
 /**
- * The i18n key for one row, given its place in the timeline.
+ * The i18n key for one STATUS row, given its place among the status rows (`statusLogs`).
  *
- * ⚠ A `pending` IS TWO DIFFERENT ROWS: the order being placed — always the first row — or the warehouse
- * handing it back (goods on no rack, the platform cancelled), which carries a note saying why. And a row with
- * no status at all is a note written while working the order.
+ * ⚠ A `pending` IS TWO DIFFERENT ROWS: the order being placed — always the first status row — or the warehouse
+ * handing it back (goods on no rack, the platform cancelled), which carries a note saying why. A row with no status
+ * at all is a NOTE, and is not on the timeline: it is in Catatan (a-note-is-a-timeline-row).
  */
 export function timelineTitleKey(log: OrderTimelineLog, index: number): string {
-  if (isNote(log)) {
-    return "orders.timeline.note";
-  }
-
   if (log.status === OrderStatus.PENDING && index > 0) {
     return "orders.timeline.handedBack";
   }
@@ -144,10 +129,14 @@ const AWAITING_KEY: Partial<Record<OrderStatus, string>> = {
 //
 // ⚠ IT READS `order.timelineLogs`, NOT the status (order-timeline-logs-replaces-order-events). The status is one
 // word about now; the timeline is the history, and only it can say a person's name and which side acted.
+//
+// ⚠ STATUS ROWS ONLY (a-note-is-a-timeline-row). A row with no status is a note, and the notes are their own
+// card; a status row's REASON (why it went back to pending) stays here, under the step it explains.
 export function TimelinePanel({ order, actors, actorFallback }: TimelinePanelProps) {
   const { t } = useTranslation();
 
   const awaitingKey = AWAITING_KEY[order.status];
+  const steps = statusLogs(order.timelineLogs);
 
   return (
     <Card.Root data-testid="order-detail-timeline">
@@ -158,7 +147,7 @@ export function TimelinePanel({ order, actors, actorFallback }: TimelinePanelPro
             beside it stays the content. Same settings as the restock timeline, for the same reasons —
             the two screens are the same object and must not look like different products. */}
         <Timeline.Root size="lg" variant="subtle">
-          {order.timelineLogs.map((log, i) => (
+          {steps.map((log, i) => (
             <LogStep
               key={log.id > 0n ? log.id.toString() : `i${i}`}
               log={log}
@@ -268,7 +257,7 @@ function LogStep({
             <Timeline.Description data-testid={`${testId}-when`}>
               {[fromKey ? t(fromKey) : "", formatUnixDateTime(log.createdAtUnix)].filter(Boolean).join(" · ")}
             </Timeline.Description>
-            {/* WHY, when the move needed a reason — a hand-back to pending always says one — or the note itself. */}
+            {/* WHY, when the move needed a reason — a hand-back to pending always says one. */}
             {log.note && (
               <Text fontSize="sm" color="fg.muted" data-testid={`${testId}-note`}>
                 {log.note}
@@ -281,12 +270,10 @@ function LogStep({
   );
 }
 
-// The testid segment per row. Stable strings rather than the enum's number, so a selector reads
-// `order-timeline-shipped` and survives the enum gaining a value. A note-only row is `note`.
+// The testid segment per status row. Stable strings rather than the enum's number, so a selector reads
+// `order-timeline-shipped` and survives the enum gaining a value.
 /** Exported so the seller's timeline RAIL carries the same testids this tab's steps do. */
 export function timelineSlug(log: OrderTimelineLog): string {
-  if (isNote(log)) return "note";
-
   return SLUG[log.status] ?? "unknown";
 }
 

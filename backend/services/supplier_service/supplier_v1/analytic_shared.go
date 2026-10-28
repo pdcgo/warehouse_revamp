@@ -20,10 +20,6 @@ var jakarta = time.FixedZone("WIB", 7*60*60)
 
 const dateLayout = "2006-01-02"
 
-// rateMinUnits is how many units a supplier needs in a window to be ranked by its broken rate
-// (rate-ranking-needs-50-units). Sent to the screen on every ranking, so it is stated here once.
-const rateMinUnits = 50
-
 // figureColumns are the six figures (each-figure-is-read-at-the-accept), in SupplierMetric order. Every summed read
 // renders its SELECT list from this, so a column cannot be summed in one read and forgotten in the next.
 var figureColumns = []string{
@@ -62,7 +58,16 @@ func unitsSum(alias string) string {
 	return fmt.Sprintf("COALESCE(SUM(%[1]s.restock_count + %[1]s.shipping_lost_count + %[1]s.shipping_broken_count), 0)", alias)
 }
 
+// metricToProto is a summed row as the wire carries it, its broken rate computed from the same sums — never averaged
+// from smaller rows' rates (every-metric-has-a-summary).
 func metricToProto(m supplier_service_models.SupplierMetricColumns) *supplierv1.SupplierMetric {
+	var rate float64
+
+	units := m.RestockCount + m.ShippingLostCount + m.ShippingBrokenCount
+	if units > 0 {
+		rate = float64(m.ShippingBrokenCount) / float64(units)
+	}
+
 	return &supplierv1.SupplierMetric{
 		RestockCount:            m.RestockCount,
 		RestockValuation:        m.RestockValuation,
@@ -70,19 +75,11 @@ func metricToProto(m supplier_service_models.SupplierMetricColumns) *supplierv1.
 		ShippingLostValuation:   m.ShippingLostValuation,
 		ShippingBrokenCount:     m.ShippingBrokenCount,
 		ShippingBrokenValuation: m.ShippingBrokenValuation,
+		BrokenRate:              rate,
 	}
 }
 
-var (
-	errBadDate = connect.NewError(connect.CodeInvalidArgument, errors.New("a date must be YYYY-MM-DD"))
-
-	errRangeBackwards = connect.NewError(
-		connect.CodeInvalidArgument,
-		errors.New("start_date must not be after end_date"),
-	)
-
-	errBadTimeframe = connect.NewError(connect.CodeInvalidArgument, errors.New("unknown timeframe"))
-)
+var errBadDate = connect.NewError(connect.CodeInvalidArgument, errors.New("a date must be YYYY-MM-DD"))
 
 func parseDate(raw string) (time.Time, error) {
 	t, err := time.Parse(dateLayout, raw)
@@ -91,25 +88,6 @@ func parseDate(raw string) (time.Time, error) {
 	}
 
 	return t, nil
-}
-
-// parseRange reads a figures window. Both ends are required and inclusive.
-func parseRange(r *supplierv1.AnalyticDateRange) (time.Time, time.Time, error) {
-	start, err := parseDate(r.GetStartDate())
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-
-	end, err := parseDate(r.GetEndDate())
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-
-	if start.After(end) {
-		return time.Time{}, time.Time{}, errRangeBackwards
-	}
-
-	return start, end, nil
 }
 
 // window narrows the report table to a window, and to one restocking team when one is picked
@@ -132,62 +110,4 @@ func window(tx *gorm.DB, start, end time.Time, restockTeamID uint64) *gorm.DB {
 	}
 
 	return query
-}
-
-// bucket is one point of a series: `at` is the bucket's own first day.
-type bucket struct {
-	at time.Time
-}
-
-// timeBuckets lays out EVERY bucket of the window, the quiet ones included. The span is capped per grain, so a
-// coarser grain reaches further back: 366 days, 60 months, 20 years — settlement's caps, one rule for every report.
-func timeBuckets(timeframe supplierv1.AnalyticTimeframe, start, end time.Time) ([]bucket, error) {
-	var (
-		first time.Time
-		step  func(time.Time) time.Time
-		limit int
-	)
-
-	switch timeframe {
-	case supplierv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_DAILY:
-		first = start
-		step = func(t time.Time) time.Time { return t.AddDate(0, 0, 1) }
-		limit = 366
-	case supplierv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_MONTHLY:
-		first = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
-		step = func(t time.Time) time.Time { return t.AddDate(0, 1, 0) }
-		limit = 60
-	case supplierv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_YEARLY:
-		first = time.Date(start.Year(), time.January, 1, 0, 0, 0, 0, time.UTC)
-		step = func(t time.Time) time.Time { return t.AddDate(1, 0, 0) }
-		limit = 20
-	default:
-		return nil, errBadTimeframe
-	}
-
-	out := []bucket{}
-
-	for at := first; !at.After(end); at = step(at) {
-		if len(out) == limit {
-			return nil, connect.NewError(connect.CodeInvalidArgument,
-				fmt.Errorf("the window holds more than %d %s points — narrow it or read a coarser timeframe",
-					limit, strings.ToLower(strings.TrimPrefix(timeframe.String(), "ANALYTIC_TIMEFRAME_"))))
-		}
-
-		out = append(out, bucket{at: at})
-	}
-
-	return out, nil
-}
-
-// truncUnit is the Postgres date_trunc unit of a timeframe — the bucket a day rolls up into.
-func truncUnit(timeframe supplierv1.AnalyticTimeframe) string {
-	switch timeframe {
-	case supplierv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_MONTHLY:
-		return "month"
-	case supplierv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_YEARLY:
-		return "year"
-	default:
-		return "day"
-	}
 }

@@ -30,6 +30,8 @@ const (
 	otKaosMerah  uint64 = 703 // Sinar's, private
 	otKaosBiru   uint64 = 704 // Sinar's, reserve 10
 	otKaosKuning uint64 = 705 // nobody's
+	otKaosHijau  uint64 = 706 // Sinar's, reserve 3
+	otKaosUngu   uint64 = 707 // Sinar's, reserve 1, never stocked
 )
 
 type fakeFacts map[uint64]inventory_v1.ProductFact
@@ -52,6 +54,8 @@ func otFacts() fakeFacts {
 		otKaosPolos: {TeamID: otSinar, CrossMarkupBps: 1000},
 		otKaosMerah: {TeamID: otSinar, Private: true},
 		otKaosBiru:  {TeamID: otSinar, ReservedStock: 10},
+		otKaosHijau: {TeamID: otSinar, ReservedStock: 3},
+		otKaosUngu:  {TeamID: otSinar, ReservedStock: 1},
 	}
 }
 
@@ -281,6 +285,51 @@ func TestOrderTransactionCreate_NotAllowedNamesEveryRefusedLine(t *testing.T) {
 
 	if n := countTransactions(db, models.TxOrder); n != 0 {
 		t.Fatalf("a refused take wrote %d order transactions", n)
+	}
+}
+
+// Every reserved borrowed line is checked from ONE read of the owners' stock (the-reserve-is-read-once-for-every-line):
+// Kaos Hijau (5 ≥ 3) passes, Kaos Biru (8 < 10) and Kaos Ungu (stocked nowhere, so 0 < 1) are refused, and three
+// reserved lines cost the statements one does.
+func TestOrderTransactionCreate_TheReserveIsReadOnceForEveryLine(t *testing.T) {
+	db, probe := san_perf.Wrap(san_testdb.DB(t))
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts())
+
+	rakA := newRack(t, svc, otWarehouse, "rak-a")
+
+	otRestock(t, svc, otSinar, otKaosBiru, 8, 80000, []*inventoryv1.RestockPlacement{{PlacementId: rakA, Quantity: 8}})
+	otRestock(t, svc, otSinar, otKaosHijau, 5, 50000, []*inventoryv1.RestockPlacement{{PlacementId: rakA, Quantity: 5}})
+
+	probe.Reset()
+
+	_, err := take(svc, "K-1", line(otKaosBiru, 1))
+	if refusalOf(t, err).GetReason() != inventoryv1.OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED {
+		t.Fatalf("one reserved line: err = %v, want NOT_ALLOWED", err)
+	}
+
+	one := probe.Count()
+	probe.Reset()
+
+	_, err = take(svc, "K-2", line(otKaosHijau, 1), line(otKaosBiru, 1), line(otKaosUngu, 1))
+
+	r := refusalOf(t, err)
+	if r.GetReason() != inventoryv1.OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED {
+		t.Fatalf("three reserved lines: err = %v, want NOT_ALLOWED", err)
+	}
+
+	three := probe.Count()
+
+	named := map[uint64]bool{}
+	for _, l := range r.GetLines() {
+		named[l.GetProductId()] = true
+	}
+
+	if len(named) != 2 || !named[otKaosBiru] || !named[otKaosUngu] {
+		t.Fatalf("refused lines = %+v, want Kaos Biru and Kaos Ungu", r.GetLines())
+	}
+
+	if one != three {
+		t.Fatalf("one reserved line cost %d statements and three cost %d, want the same", one, three)
 	}
 }
 

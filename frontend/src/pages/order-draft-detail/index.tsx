@@ -30,7 +30,7 @@ import {
   usePromoteOrderDraft,
   useUpdateOrderDraft,
 } from "../../features/orderDrafts/queries";
-import { useStockAvailability, useStockCosts } from "../../features/inventory/queries";
+import { useStockTakeQuote } from "../../features/inventory/queries";
 import { useProductsByIds } from "../../features/products/queries";
 import { useTeams } from "../../features/teams/queries";
 import { MarketplaceInfoForm, emptyMarketplaceInfo } from "../../components/orders/MarketplaceInfoForm";
@@ -47,13 +47,17 @@ import { DatePicker } from "../../components/datetime/DatePicker";
 import { dateTimeInputToUnix, todayDateInput, unixToDateTimeInput } from "../../lib/datetime";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { lineTotal, toRupiah } from "../../features/orders/lines";
+import { availabilityOf, byProduct, toRupiah } from "../../features/orders/lines";
+import { TakeRefusalAlert } from "../../features/orders/TakeRefusalAlert";
+import { type TakeRefusal, takeRefusalOf } from "../../features/orders/takeRefusal";
 import { useWarehouseFeeQuote } from "../../features/warehouse/queries";
-import { creditRows, invoiceRows } from "../../features/orders/form/money";
+import { creditReadOf, creditRows, creditorIds, goodsCostOf, invoiceRows } from "../../features/orders/form/money";
+import { useLiabilityCredit } from "../../features/liability/queries";
 import { WarehouseBand } from "../../features/orders/form/WarehouseBand";
 import { ShippingReceiptCard } from "../../features/orders/form/ShippingReceiptCard";
 import { ReturnMappingCard } from "../../features/orders/form/ReturnMappingCard";
-import type { CrossLine, MappedProduct } from "../../features/orders/form/ReturnMappingCard";
+import type { CrossLine } from "../../features/orders/form/ReturnMappingCard";
+import { useReturnMapping } from "../../features/orders/form/returnMapping";
 import { ExtraInfoCard } from "../../features/orders/form/ExtraInfoCard";
 import { CreditLimitPanel } from "../../features/orders/form/CreditLimitPanel";
 import { ProfitEstimatePanel } from "../../features/orders/form/ProfitEstimatePanel";
@@ -88,8 +92,9 @@ import { DraftRowsCard } from "./components/DraftRowsCard";
 //
 //   • each item is a scraped ROW, mapped to a product, a bundle or a split
 //     (`a-draft-row-maps-to-a-product-a-bundle-or-a-split`);
-//   • the price per row is what the platform charged (the draft's own), so the sell price is their
-//     sum and the profit estimate is REAL rather than typed;
+//   • the price per row is what the platform charged (the draft's own), so the sell price STARTS as their
+//     sum (`the-draft-sell-price-starts-from-the-rows`) — and once saved it is the draft's own figure, which
+//     Promote copies onto the order (`platform-total-is-required-at-finalize`);
 //   • Save keeps anything, in any state; Promote is refused until the order could be placed, and runs
 //     the form's own checks first;
 //   • what a draft cannot store is on screen with a ⚠, as everywhere else (`draftKeeps`).
@@ -107,6 +112,11 @@ interface Baseline {
   // The platform's two dates, as the DatePicker holds them (`yyyy-mm-ddThh:mm`, "" = none).
   orderDate: string;
   deadline: string;
+  // The buyer's marketplace username (00021), as the server holds it — trimmed, "" = none.
+  buyerUsername: string;
+  // What the buyer paid (00022, `platform_total` since 00026), as the server holds it — 0 = not stored yet, which
+  // Promote refuses.
+  platformTotal: bigint;
 }
 
 function addressOf(draft: OrderDraft): AddressValue {
@@ -158,24 +168,31 @@ export function OrderDraftDetailPage() {
   // The platform's two dates (00020): the order date Promote requires, and the ship-by deadline it does not.
   const [orderDate, setOrderDate] = useState("");
   const [deadline, setDeadline] = useState("");
+  // Optional, never one of Promote's reasons (the-buyers-username-is-optional).
+  const [buyerUsername, setBuyerUsername] = useState("");
   const [baseline, setBaseline] = useState<Baseline | null>(null);
 
   // ── What it does not (on screen, ⚠ draftKeeps) ──
   const [receipt, setReceipt] = useState<ReceiptValue>(emptyReceipt);
   const [receiptCode, setReceiptCode] = useState("");
-  const [buyerUsername, setBuyerUsername] = useState("");
   const [note, setNote] = useState("");
   // THE SELL PRICE, AS TYPED — `null` while nobody has typed one, and then it FOLLOWS the rows' platform
   // prices. Typing takes it over (owner: *"sell price masih mungkin untuk diganti"*), and an EMPTY box
   // is 0, not "follow the rows again" — otherwise backspacing a figure away would snap it back mid-edit.
-  // Following the rows again is its own button. ⚠ Not stored: a draft has no sell price (`sellPrice`).
+  // Following the rows again is its own button.
+  //
+  // STORED NOW (00022, platform-total-is-required-at-finalize): a draft that holds a figure opens with it, as a
+  // typed value; one that holds 0 follows the rows as before — and then the figure on screen is not the stored
+  // one, so it is a change, and Save is what keeps it.
   const [sellPriceTyped, setSellPriceTyped] = useState<string | null>(null);
-  const [mapping, setMapping] = useState<Map<string, MappedProduct>>(new Map());
 
   const [compact, setCompact] = useState(false);
   const [saving, setSaving] = useState(false);
   const [promoting, setPromoting] = useState(false);
   const [error, setError] = useState("");
+  // Why the warehouse refused the last Promote at its take, when it did — the reason and the lines it names
+  // (a-refusal-names-its-reason-and-every-line). The same alert the order form shows.
+  const [refusal, setRefusal] = useState<TakeRefusal | null>(null);
   const [gate, setGate] = useState<CheckFinding[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [added, setAdded] = useState(0);
@@ -194,6 +211,8 @@ export function OrderDraftDetailPage() {
       rows: rowsFromDraft(from),
       orderDate: unixToDateTimeInput(from.platformCreatedAtUnix),
       deadline: unixToDateTimeInput(from.platformShipmentDeadlineUnix),
+      buyerUsername: from.buyerUsername,
+      platformTotal: from.platformTotal,
     };
 
     setMarketplace((prev) => ({ ...prev, shopId: next.shopId }));
@@ -205,6 +224,9 @@ export function OrderDraftDetailPage() {
     setRows(next.rows);
     setOrderDate(next.orderDate);
     setDeadline(next.deadline);
+    setBuyerUsername(next.buyerUsername);
+    // A stored figure is the draft's own, so it opens as typed; 0 follows the rows.
+    setSellPriceTyped(next.platformTotal > 0n ? next.platformTotal.toString() : null);
     setBaseline(next);
   }
 
@@ -221,9 +243,15 @@ export function OrderDraftDetailPage() {
 
   // ── Every product the rows put on the order ──
   const allLines = useMemo(() => rows.flatMap(rowLines), [rows]);
+  // ONE LINE PER PRODUCT — what Promote stores: two rows mapped to one product become one order line, drawn and costed
+  // once. The money below is summed over this, so the figures on screen are the order's.
+  const productLines = useMemo(() => byProduct(allLines), [allLines]);
   const productIds = useMemo(() => allLines.map((l) => l.productId), [allLines]);
-  const stock = useStockAvailability({ teamId, warehouseId, productIds }).data;
-  const costs = useStockCosts({ teamId, warehouseId, productIds }).data;
+  // What Promote's take would draw (an-order-is-costed-at-what-leaves-the-shelf): each row's cost as the owner's
+  // batches oldest first, and what the warehouse holds against it — one answer for both, re-asked as a count settles.
+  const quote = useStockTakeQuote({ teamId, warehouseId, lines: allLines });
+  const costs = quote.data?.costs;
+  const stock = useMemo(() => availabilityOf(costs), [costs]);
 
   // Names for mapped rows (a draft names a product by id only), and owners for the invoice.
   const mappedIds = useMemo(
@@ -251,16 +279,28 @@ export function OrderDraftDetailPage() {
   const sellPriceInput = sellPriceTyped ?? (rowsSellPrice > 0n ? rowsSellPrice.toString() : "");
   // 0 when the app read no prices and nobody typed one — the profit then reads no sell price at all.
   const sellPrice = toRupiah(sellPriceInput);
-  const productsTotal = allLines.reduce((sum, l) => sum + lineTotal(l, costs), 0n);
-  // Priced by the warehouse on the goods' cost — what Promote will freeze on the order (the-flat-rate-is-dropped-last
-  // step 3). A warehouse with no rate refuses, and Promote stays off with its sentence as the reason.
+  // THE GOODS' COST as Promote will freeze it — each line at what it costs the seller, a borrowed product WITH its own
+  // markup (the-cross-charge-lives-on-the-line) — the same figure the order form shows (`goodsCostOf`).
+  const productsTotal = goodsCostOf({ lines: productLines, owners, costs, teamId });
+  // Priced by the warehouse on that goods' cost — what Promote will freeze on the order (the-fee-is-priced-on-goods-cost,
+  // the-flat-rate-is-dropped-last step 3). A warehouse with no rate refuses, and Promote stays off with its sentence as the reason.
   const feeQuote = useWarehouseFeeQuote({ teamId, warehouseId, goodsCost: productsTotal });
   const warehouseFee = feeQuote.data?.fee ?? 0n;
   const feeRefusal = warehouseId > 0n ? (feeQuote.data?.refusal ?? null) : null;
   const orderTotal = productsTotal + warehouseFee;
-  const invoice = invoiceRows({ lines: allLines, owners, costs, teamId, warehouseId, warehouseFee, teamName });
+  const invoice = invoiceRows({ lines: productLines, owners, costs, teamId, warehouseId, warehouseFee, teamName });
   const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0n);
-  const credit = creditRows({ invoice, warehouseId, warehouseFee, teamName });
+  // Each creditor's limit on this team and the debt already carried — the same read the order form makes
+  // (the-debtor-sees-the-limits-set-on-it), so a draft being finished shows the figures Promote's check will use.
+  const creditQuery = useLiabilityCredit(teamId, creditorIds(invoice, warehouseId));
+  const credit = creditRows({
+    invoice,
+    teamId,
+    warehouseId,
+    warehouseFee,
+    teamName,
+    credit: creditReadOf(creditQuery),
+  });
 
   // ── Return mapping: goods belonging to another team ──
   const crossLines: CrossLine[] = useMemo(() => {
@@ -279,7 +319,11 @@ export function OrderDraftDetailPage() {
     return [...seen.values()];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allLines, owners, teamId, teamsQuery.data]);
-  const unmappedReturns = crossLines.filter((l) => !mapping.has(l.productId.toString())).length;
+  // A borrowed product mapped before — on any order or draft — arrives mapped and locked, as on the order
+  // form: the map is written once, at the pick (the-map-is-written-when-it-is-picked), so asking again
+  // would offer a choice that can no longer be made. The same hook as the order form, read by ProductReturnMapByIds.
+  const returnMapping = useReturnMapping(teamId, crossLines);
+  const unmappedReturns = returnMapping.unmapped;
 
   // ── Save: anything, in any state — only what changed ──
   const changed =
@@ -292,6 +336,10 @@ export function OrderDraftDetailPage() {
       shippingCode !== baseline.shippingCode ||
       orderDate !== baseline.orderDate ||
       deadline !== baseline.deadline ||
+      // Trimmed, as the server stores it: a trailing space is not an edit worth claiming the field for.
+      buyerUsername.trim() !== baseline.buyerUsername ||
+      // WHAT THE FIELD SHOWS against what is stored — a figure that only follows the rows is not stored yet.
+      sellPrice !== baseline.platformTotal ||
       !sameStoredRows(rows, baseline.rows));
 
   // ── Promote: refused until the order could be placed ──
@@ -305,17 +353,23 @@ export function OrderDraftDetailPage() {
   if (rows.length === 0) reasons.push(t("orderDrafts.missingLines"));
   // platform-created-at-is-required-at-finalize — a draft may hold it empty, an order may not.
   if (orderDate === "") reasons.push(t("orderDrafts.missingOrderDate"));
+  // platform-total-is-required-at-finalize — read off what is STORED, because Promote copies the stored figure: one
+  // the field merely follows from the rows needs a Save first, which "Save the changes first" says beside it.
+  if ((baseline?.platformTotal ?? 0n) <= 0n) reasons.push(t("orderDrafts.missingSellPrice"));
   if (rows.some((row) => !rowMapped(row))) reasons.push(t("orderDraftForm.gaps.unmapped"));
   if (rows.some((row) => row.mode !== "product")) reasons.push(t("orderDraftForm.gaps.notStorable"));
   if (shortRows > 0) reasons.push(t("orderDrafts.missingStock"));
   if (changed) reasons.push(t("orderDraftForm.gaps.saveFirst"));
-  const canPromote = reasons.length === 0;
+  // An unmapped borrowed product holds Promote too (a-borrowed-line-needs-its-map-at-create). Not a reason in the
+  // list: the line under the button already names it, and two sentences for one gap read as two gaps.
+  const canPromote = reasons.length === 0 && unmappedReturns === 0;
 
   async function save() {
     if (!teamId || !draft || !baseline) return;
 
     setSaving(true);
     setError("");
+    setRefusal(null);
 
     try {
       // ONLY THE CHANGED FIELDS — each one sent becomes a field the app may never write again.
@@ -331,6 +385,11 @@ export function OrderDraftDetailPage() {
         // A date cleared is sent as 0 — the person has claimed the field as surely as by correcting it.
         platformCreatedAtUnix: orderDate !== baseline.orderDate ? dateTimeInputToUnix(orderDate) : undefined,
         platformShipmentDeadlineUnix: deadline !== baseline.deadline ? dateTimeInputToUnix(deadline) : undefined,
+        // Cleared is sent as "" for the same reason.
+        buyerUsername: buyerUsername.trim() !== baseline.buyerUsername ? buyerUsername.trim() : undefined,
+        // What the field shows — typed, or followed from the rows — whenever it is not what is stored. An emptied
+        // box is sent as 0, which clears it.
+        platformTotal: sellPrice !== baseline.platformTotal ? sellPrice : undefined,
         items: sameStoredRows(rows, baseline.rows)
           ? undefined
           : {
@@ -368,8 +427,6 @@ export function OrderDraftDetailPage() {
     const findings = runOrderChecks({
       orderRefId: marketplace.orderExternalRefId,
       trackingCode: receiptCode,
-      shippingCode,
-      marketplace: marketplace.marketplace,
       scan: null,
       sellPrice,
       orderTotal,
@@ -389,6 +446,7 @@ export function OrderDraftDetailPage() {
     setGate([]);
     setPromoting(true);
     setError("");
+    setRefusal(null);
 
     try {
       const res = await promote.mutateAsync({ teamId, draftId: draft.id });
@@ -396,10 +454,22 @@ export function OrderDraftDetailPage() {
       const id = res.order?.id;
       void navigate(id ? `/orders/${id}` : "/orders");
     } catch (err) {
-      setError(rpcError(err));
+      // The take refusing (short stock, a borrowed product below its reserve) names its reason and lines.
+      const refused = takeRefusalOf(err);
+      if (refused) {
+        setRefusal(refused);
+      } else {
+        setError(rpcError(err));
+      }
     } finally {
       setPromoting(false);
     }
+  }
+
+  // What a refused line is called here — the catalogue name its row was mapped to, else its id.
+  function productLabel(productId: bigint): string {
+    const product = owners?.get(productId.toString());
+    return product?.name || product?.sku || `#${productId.toString()}`;
   }
 
   async function doDelete() {
@@ -468,6 +538,8 @@ export function OrderDraftDetailPage() {
         </Text>
       )}
 
+      {refusal && <TakeRefusalAlert refusal={refusal} labelOf={productLabel} testId="draft-refusal" />}
+
       {shortRows > 0 && (
         <Alert.Root status="error" data-testid="draft-short">
           <Alert.Indicator />
@@ -495,12 +567,11 @@ export function OrderDraftDetailPage() {
               onTrackingCodeChange={setReceiptCode}
               shippingCode={shippingCode}
               onShippingCodeChange={setShippingCode}
-              marketplace={marketplace.marketplace}
               filledFromFile={false}
             />
 
-            {/* ORDER INFORMATION — as on the create form, with the sell price DERIVED: it is the sum of
-                what the platform charged per row, so it is read here rather than typed twice. */}
+            {/* ORDER INFORMATION — as on the create form, with the sell price STARTING from the rows: it is the
+                sum of what the platform charged per row until a figure is typed or stored. */}
             <Card.Root>
               <Card.Header>
                 <Card.Title>{t("orderForm.source.title")}</Card.Title>
@@ -517,20 +588,22 @@ export function OrderDraftDetailPage() {
                       hideTotal
                       hideOrderRef
                     />
-                    <Field.Root>
+                    {/* REQUIRED TO PROMOTE, not to save (platform-total-is-required-at-finalize) — as the order date
+                        beside it. */}
+                    <Field.Root required>
                       <Field.Label>
-                        <Flex align="center" gap="2" wrap="wrap">
-                          {t("orderForm.source.sellPrice")}
-                          <NotImplemented list={ORDER_DRAFT_PENDING} id="sellPrice" />
-                        </Flex>
+                        {t("orderForm.source.sellPrice")}
+                        <Field.RequiredIndicator />
                       </Field.Label>
                       <CurrencyInput
                         value={sellPriceInput}
                         data-testid="draft-sell-price"
                         onChange={(value) => setSellPriceTyped(value)}
                       />
+                      {/* The rows' sentence whenever the figure IS the rows' sum — typed or stored, a reset to the
+                          same number would change nothing, so it is not offered. */}
                       <Field.HelperText>
-                        {sellPriceTyped === null ? (
+                        {sellPriceTyped === null || sellPrice === rowsSellPrice ? (
                           t("orderDraftForm.sellPriceHelp")
                         ) : (
                           <Flex align="center" gap="2" wrap="wrap">
@@ -588,15 +661,9 @@ export function OrderDraftDetailPage() {
             <ReturnMappingCard
               teamId={cardTeamId}
               lines={crossLines}
-              mapping={mapping}
-              onMap={(productId, mapped) =>
-                setMapping((prev) => {
-                  const next = new Map(prev);
-                  if (mapped) next.set(productId.toString(), mapped);
-                  else next.delete(productId.toString());
-                  return next;
-                })
-              }
+              mapping={returnMapping.mapping}
+              onMap={returnMapping.onMap}
+              checking={returnMapping.checking}
             />
 
             <CustomerInfoForm

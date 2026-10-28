@@ -2,30 +2,26 @@ import { Badge, Card, Flex, Separator, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { formatRupiah } from "../../../lib/money";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "./pending";
-
-/** The floor the owner set: an order under this much margin gets a red warning on the form. */
-export const MINIMUM_MARGIN_PCT = 35;
+import { MINIMUM_MARGIN_PCT } from "./checks";
 
 // IS THIS ORDER WORTH TAKING — the margin between what the customer paid and what the order costs us.
 //
 // The three rows ARE the arithmetic — sell price, order total, what is left — so the percentage
 // under them is reproducible without the sum being spelled out a second time (owner: the formula
-// line is gone). The rule it applies is still open, which is what mark 4 at the top says.
+// line is gone). The formula is the-margin-is-mp-minus-total-beli.
 //
 // The base here is the SELL PRICE — margin, not markup. Against the cost base the same 35% is a much
 // weaker test (35% margin ≈ 54% markup), so the two are not interchangeable and the panel names which
 // one it used.
 //
-// ⚠ IT WARNS, IT DOES NOT BLOCK. Shipping is missing from the cost (nothing prices a shipment yet),
-// so every estimate on this screen reads HIGH — a hard gate on a number we know is optimistic would
-// refuse good orders and pass bad ones.
+// ⚠ IT WARNS, IT DOES NOT BLOCK, and the floor is ONE number for every team
+// (the-margin-floor-is-35-percent-for-every-team). A thin order can be deliberate — a clearance, a promo — so the
+// form asks before placing it (`checkProfitFloor` in checks.ts, which owns the number) rather than refusing it.
 
 interface ProfitEstimatePanelProps {
   /** What the customer paid on the marketplace. `0n` = nobody wrote it down. */
   sellPrice: bigint;
-  /** The products plus the warehouse fee — shipping is not in it yet (mark 5). */
+  /** The products plus the warehouse fee — no shipping term, by design (an-order-records-no-shipping-cost). */
   orderTotal: bigint;
   /** Collapse the explanation, leaving the figures. */
   compact?: boolean;
@@ -45,7 +41,6 @@ export function ProfitEstimatePanel({ sellPrice, orderTotal, compact }: ProfitEs
       <Card.Header pb={compact ? "0" : undefined}>
         <Flex align="center" gap="2" wrap="wrap">
           <Card.Title>{t("orderForm.profit.title")}</Card.Title>
-          <NotImplemented list={ORDER_FORM_PENDING} id="profit" />
         </Flex>
         {!compact && (
           <Card.Description>{t("orderForm.profit.help", { pct: MINIMUM_MARGIN_PCT })}</Card.Description>

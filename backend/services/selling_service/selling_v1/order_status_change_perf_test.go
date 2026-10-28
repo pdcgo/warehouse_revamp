@@ -215,7 +215,7 @@ func TestPerf_OrderList_Root(t *testing.T) {
 		for j := range 2 + i%2 {
 			lines = append(lines, selling_service_models.OrderItem{
 				OrderID: o.ID, ProductID: uint64(1 + j), SKU: "SKU", Name: "Widget", Quantity: uint32(1 + j),
-				UnitPrice: 5_000, CreatedAt: time.Now(),
+				CreatedAt: time.Now(),
 			})
 		}
 	}
@@ -542,7 +542,7 @@ func TestPerf_OrderExport(t *testing.T) {
 		for j := range 2 {
 			lines = append(lines, selling_service_models.OrderItem{
 				OrderID: o.ID, ProductID: uint64(1 + j), SKU: "SKU", Name: "Widget", Quantity: uint32(1 + j),
-				UnitPrice: 5_000, CreatedAt: time.Now(),
+				CreatedAt: time.Now(),
 			})
 		}
 	}

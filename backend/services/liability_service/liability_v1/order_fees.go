@@ -3,6 +3,7 @@ package liability_v1
 import (
 	"context"
 	"errors"
+	"math"
 
 	"gorm.io/gorm"
 
@@ -10,12 +11,14 @@ import (
 )
 
 // OrderLine is one line of a placed order, in this service's own terms: who owns the goods and what
-// they cost. Not the wire type — the push handler translates, so the ledger's domain does not depend
-// on another service's contract.
+// the line came to. Not the wire type — the push handler translates, so the ledger's domain does not
+// depend on another service's contract.
 type OrderLine struct {
 	OwningTeamID uint64
 	Quantity     uint32
-	UnitCost     int64
+	// The line's FROZEN TOTAL, rupiah — what inventory's take priced it at, the goods plus the product's own markup
+	// on another team's product (inventory-computes-the-markup). Posted as it came; 0 = not known.
+	Total float64
 }
 
 // PlacedOrder is what liability needs to charge an order (#186).
@@ -33,9 +36,6 @@ type PlacedOrder struct {
 	// be around when it is retried.
 	ActorID uint64
 }
-
-// basisPoints is the denominator of a markup: 10.000 bp = 100%.
-const basisPoints = 10_000
 
 // ChargeOrder posts an order's fees (#186): a HANDLING FEE to the fulfilling warehouse, and a PRODUCT
 // FEE to each team whose goods the order sold.
@@ -86,18 +86,26 @@ func (s *Service) chargeHandlingFee(ctx context.Context, order PlacedOrder) erro
 
 // chargeProductFees bills each OWNING TEAM for its goods that this order sold.
 //
-// The anchor is the line's frozen `unit_cost` (HPP), never the buyer-paid price:
+// THE FEE IS THE FROZEN LINE TOTALS, POSTED AS THEY CAME (the-ledger-charges-the-frozen-line-total):
 //
-//	fee = Σ over that team's lines (unit_cost × quantity) × (1 + markup)
+//	fee = Σ over that team's lines of the line's total
 //
-// A markup on what the buyer paid is a commission model wearing a sale's clothes. On goods that cost
-// 60.000 and sold for 100.000 at 20%, cost+markup owes the owner 72.000 while buyer-paid+markup owes
-// 20.000 — the owner loses 40.000 on their own stock.
+// and this service READS NO MARKUP. The markup is the product's own (`products.cross_markup_bps`), applied once by
+// inventory's take and frozen on the order line — so the figure the order form previewed, the figure the order froze
+// and the figure posted here are one number. A rate of this service's own would be a second answer that could
+// disagree, and a rate read at posting time would let a markup changed after the sale rewrite what the sale owed.
+//
+// The total is still COST-anchored, never the buyer-paid price (the-product-fee-is-the-line-total): goods that cost
+// 60.000 at a 20% markup owe the owner 72.000 whatever the buyer paid for them.
 //
 // ONE FEE PER OWNING TEAM, not per line: two lines of the same team's goods are one debt, and the
 // idempotency key is (source_type, source_id, counterparty), so per-line postings would collide.
+//
+// ⚠ ROUNDED HERE, ONCE, on the SUM. The totals arrive as doubles (rupiah-is-floating-point) and a ledger entry is
+// whole rupiah — the same edge the restock courier charge is rounded at. Summing first and rounding once means a
+// team's fee is never a pile of per-line roundings.
 func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) error {
-	costByOwner := map[uint64]int64{}
+	totalByOwner := map[uint64]float64{}
 
 	for _, line := range order.Lines {
 		owner := line.OwningTeamID
@@ -108,45 +116,35 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 			continue
 		}
 
-		costByOwner[owner] += int64(line.Quantity) * line.UnitCost
+		totalByOwner[owner] += line.Total
 	}
 
 	// Sorted so a redelivery posts in the same order as the first attempt. It changes no outcome —
 	// each fee is its own transaction and its own idempotency key — but it makes the ledger's ids
 	// read in a stable order, which matters when somebody is comparing two runs by eye.
-	owners := make([]uint64, 0, len(costByOwner))
-	for owner := range costByOwner {
+	owners := make([]uint64, 0, len(totalByOwner))
+	for owner := range totalByOwner {
 		owners = append(owners, owner)
 	}
 
 	sortUint64s(owners)
 
 	for _, owner := range owners {
-		cost := costByOwner[owner]
+		fee := int64(math.Round(totalByOwner[owner]))
 
-		// ⚠ A COST OF ZERO MEANS UNKNOWN, NOT FREE — a product received straight into stock has no
-		// recorded cost. Under cost+markup that computes a fee of zero, so the owning team is silently
-		// owed nothing for goods that really left its stock.
+		// ⚠ A TOTAL OF ZERO MEANS UNKNOWN, NOT FREE — goods whose take valued nothing (received with no
+		// recorded cost), or an order placed before its lines froze a total. Either way the owning team is
+		// silently owed nothing for goods that really left its stock.
 		//
 		// The decision (Q10) is to LET THAT STAND and have the reconciliation report name it, rather
 		// than refuse a real sale over a bookkeeping gap. Nothing is posted, because a zero-amount
 		// entry would consume this pair's idempotency key for this order — so the real fee, if the
-		// cost were ever backfilled, could never be posted afterwards.
-		if cost <= 0 {
-			continue
-		}
-
-		terms, err := s.termsFor(ctx, owner, order.TeamID)
-		if err != nil {
-			return err
-		}
-
-		fee := cost + cost*terms.ProductMarkupBP/basisPoints
+		// total were ever backfilled, could never be posted afterwards.
 		if fee <= 0 {
 			continue
 		}
 
-		err = s.postOrderFee(ctx, order.TeamID, owner, fee, SourceTypeProductFee, order.ActorID,
+		err := s.postOrderFee(ctx, order.TeamID, owner, fee, SourceTypeProductFee, order.ActorID,
 			order.OrderID)
 		if err != nil {
 			return err

@@ -54,6 +54,9 @@ const (
 	// InventoryServiceStockCostProcedure is the fully-qualified name of the InventoryService's
 	// StockCost RPC.
 	InventoryServiceStockCostProcedure = "/warehouse.inventory.v1.InventoryService/StockCost"
+	// InventoryServiceStockTakeQuoteProcedure is the fully-qualified name of the InventoryService's
+	// StockTakeQuote RPC.
+	InventoryServiceStockTakeQuoteProcedure = "/warehouse.inventory.v1.InventoryService/StockTakeQuote"
 	// InventoryServiceWarehouseProductListProcedure is the fully-qualified name of the
 	// InventoryService's WarehouseProductList RPC.
 	InventoryServiceWarehouseProductListProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseProductList"
@@ -118,8 +121,13 @@ type InventoryServiceClient interface {
 	// paging happens. Filtering a catalogue page after it loads would show two rows out of ten while
 	// the pager went on counting all ten.
 	StockedProductList(context.Context, *connect.Request[v1.StockedProductListRequest]) (*connect.Response[v1.StockedProductListResponse], error)
-	// What products COST this warehouse, for an order to freeze as its COGS (#74).
+	// What products are WORTH on this warehouse's shelf — the average value of the units held. The rack valuation reads
+	// it; no order does any more (an-order-is-costed-at-what-leaves-the-shelf — an order's cost is StockTakeQuote's).
 	StockCost(context.Context, *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error)
+	// What an order's take WOULD DRAW, before it draws it (an-order-is-costed-at-what-leaves-the-shelf): per line the
+	// owner's batches oldest first, their cost, and whether there are enough — the take's own selection, read-only, so
+	// the order form's preview and the cost the order freezes cannot be two rules.
+	StockTakeQuote(context.Context, *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error)
 	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
 	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
@@ -214,6 +222,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+InventoryServiceStockCostProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockCost")),
+			connect.WithClientOptions(opts...),
+		),
+		stockTakeQuote: connect.NewClient[v1.StockTakeQuoteRequest, v1.StockTakeQuoteResponse](
+			httpClient,
+			baseURL+InventoryServiceStockTakeQuoteProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("StockTakeQuote")),
 			connect.WithClientOptions(opts...),
 		),
 		warehouseProductList: connect.NewClient[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse](
@@ -318,6 +332,7 @@ type inventoryServiceClient struct {
 	stockAvailability    *connect.Client[v1.StockAvailabilityRequest, v1.StockAvailabilityResponse]
 	stockedProductList   *connect.Client[v1.StockedProductListRequest, v1.StockedProductListResponse]
 	stockCost            *connect.Client[v1.StockCostRequest, v1.StockCostResponse]
+	stockTakeQuote       *connect.Client[v1.StockTakeQuoteRequest, v1.StockTakeQuoteResponse]
 	warehouseProductList *connect.Client[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse]
 	productPlaces        *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
 	stockPickLocations   *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
@@ -368,6 +383,11 @@ func (c *inventoryServiceClient) StockedProductList(ctx context.Context, req *co
 // StockCost calls warehouse.inventory.v1.InventoryService.StockCost.
 func (c *inventoryServiceClient) StockCost(ctx context.Context, req *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error) {
 	return c.stockCost.CallUnary(ctx, req)
+}
+
+// StockTakeQuote calls warehouse.inventory.v1.InventoryService.StockTakeQuote.
+func (c *inventoryServiceClient) StockTakeQuote(ctx context.Context, req *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error) {
+	return c.stockTakeQuote.CallUnary(ctx, req)
 }
 
 // WarehouseProductList calls warehouse.inventory.v1.InventoryService.WarehouseProductList.
@@ -463,8 +483,13 @@ type InventoryServiceHandler interface {
 	// paging happens. Filtering a catalogue page after it loads would show two rows out of ten while
 	// the pager went on counting all ten.
 	StockedProductList(context.Context, *connect.Request[v1.StockedProductListRequest]) (*connect.Response[v1.StockedProductListResponse], error)
-	// What products COST this warehouse, for an order to freeze as its COGS (#74).
+	// What products are WORTH on this warehouse's shelf — the average value of the units held. The rack valuation reads
+	// it; no order does any more (an-order-is-costed-at-what-leaves-the-shelf — an order's cost is StockTakeQuote's).
 	StockCost(context.Context, *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error)
+	// What an order's take WOULD DRAW, before it draws it (an-order-is-costed-at-what-leaves-the-shelf): per line the
+	// owner's batches oldest first, their cost, and whether there are enough — the take's own selection, read-only, so
+	// the order form's preview and the cost the order freezes cannot be two rules.
+	StockTakeQuote(context.Context, *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error)
 	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
 	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
@@ -555,6 +580,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		InventoryServiceStockCostProcedure,
 		svc.StockCost,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockCost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceStockTakeQuoteHandler := connect.NewUnaryHandler(
+		InventoryServiceStockTakeQuoteProcedure,
+		svc.StockTakeQuote,
+		connect.WithSchema(inventoryServiceMethods.ByName("StockTakeQuote")),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceWarehouseProductListHandler := connect.NewUnaryHandler(
@@ -663,6 +694,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceStockedProductListHandler.ServeHTTP(w, r)
 		case InventoryServiceStockCostProcedure:
 			inventoryServiceStockCostHandler.ServeHTTP(w, r)
+		case InventoryServiceStockTakeQuoteProcedure:
+			inventoryServiceStockTakeQuoteHandler.ServeHTTP(w, r)
 		case InventoryServiceWarehouseProductListProcedure:
 			inventoryServiceWarehouseProductListHandler.ServeHTTP(w, r)
 		case InventoryServiceProductPlacesProcedure:
@@ -728,6 +761,10 @@ func (UnimplementedInventoryServiceHandler) StockedProductList(context.Context, 
 
 func (UnimplementedInventoryServiceHandler) StockCost(context.Context, *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockCost is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) StockTakeQuote(context.Context, *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockTakeQuote is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error) {

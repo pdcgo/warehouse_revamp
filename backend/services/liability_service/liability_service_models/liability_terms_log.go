@@ -28,11 +28,9 @@ type LiabilityTermsLog struct {
 	OldCreditLimit *int64
 	NewCreditLimit *int64
 
-	// No third state for these two: 0 means "charge nothing" for both.
-	OldHandlingFee     int64
-	NewHandlingFee     int64
-	OldProductMarkupBp int64
-	NewProductMarkupBp int64
+	// No third state here: 0 means "charge nothing".
+	OldHandlingFee int64
+	NewHandlingFee int64
 
 	// Required when Override is true, optional otherwise.
 	Reason string

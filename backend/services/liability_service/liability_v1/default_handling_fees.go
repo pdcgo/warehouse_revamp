@@ -21,8 +21,8 @@ type DefaultHandlingFee struct {
 //
 // A per-seller row (counterparty ≠ 0) is NOT read: one-rate-per-warehouse leaves it no equivalent.
 //
-// ⚠ It does not know which creditor is a warehouse. A selling team's default row exists for its product markup and is
-// read too, with whatever handling_fee it holds — team ids are opaque here, so the caller filters by team type.
+// ⚠ It does not know which creditor is a warehouse. A selling team's default row (its credit limit) is read too, with
+// whatever handling_fee it holds — team ids are opaque here, so the caller filters by team type.
 //
 // Unpaged, and bounded: the unique (team_id, counterparty_id) index allows one default row per team.
 func DefaultHandlingFees(db *gorm.DB) ([]DefaultHandlingFee, error) {

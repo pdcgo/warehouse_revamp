@@ -17,7 +17,7 @@ maintenance RPCs, the report screen.
 | proto | `settlement.proto` — **4 services, 8 RPCs** · `event.proto` — `SettlementLogPosted` (variant 300, topic `settlement-log-posted`) |
 | schema | settlement `00001–00006` (00006: the five report columns, `settlement_logs.user_id`, `exporter` → `importer`): `settlement_logs`, `order_settlements` (+`created_by_user_id`), `shop_settlements`, `settlement_event_logs`, `shop_/user_settlement_daily_reports`, `shop_/user_settlement_reports`, `settlement_service_metadata` · selling `00013`: `orders.created_by_user_id` |
 | service | `backend/services/settlement_service/` — mounted, plus the push routes `/event/settlement-fold/push`, `/event/settlement-order-placed/push` and `/event/settlement-order-cancelled/push` (`order_sale.go`, 2026-10-21) |
-| wiring | ~~`settlement_poster.go` (selling → settlement)~~ deleted 2026-10-21: the order events carry `shop_id` and `marketplace_total` instead · `replay_broker.go` (the replay's subscription) · `shop_primary.go` (settlement → the shop's `ShopAccessCheck`, a Connect client forwarding the caller's token) |
+| wiring | ~~`settlement_poster.go` (selling → settlement)~~ deleted 2026-10-21: the order events carry `shop_id` and `platform_total` (`marketplace_total` until 2026-10-23) instead · `replay_broker.go` (the replay's subscription) · `shop_primary.go` (settlement → the shop's `ShopAccessCheck`, a Connect client forwarding the caller's token) |
 | provisioning | `san pubsub ensure` declares `settlement-fold` on `settlement-log-posted`, and `settlement-order-placed` / `settlement-order-cancelled` on the order topics. The local emulator PUSHES to them, dev and e2e on separate projects ([the-emulator-pushes-locally](../../technical/event_architecture/context_decision.md#the-emulator-pushes-locally)) |
 | frontend | `/settlement` (list — **reworked 2026-10-02**, [below](#the-list-reworked-2026-10-02)), the order page's Settlement tab, **`/settlement/report`** (`pages/settlement-report/`), nav entry, `features/settlement/{analytics,measure,window}.ts` |
 | docs | [rpc.md](../../services/settlement_service/rpc.md) · [database-schema.md](../../database-schema.md#settlement_service) · [san.md](../../tools/san.md#pubsub-ensure) |
@@ -73,7 +73,7 @@ flowchart LR
 | | |
 | --- | --- |
 | [context Q3](../../business/settlement/context_clarify.md#question) | `SettlementPost` publishes, whole row, after commit |
-| [context Q4](../../business/settlement/context_clarify.md#question) | `marketplace_total = 0` opens no account |
+| [context Q4](../../business/settlement/context_clarify.md#question) | `platform_total = 0` opens no account |
 | [context Q5](../../business/settlement/context_clarify.md#question) | a cancel undoes the LIVE sale; above it is refused; nothing live is a no-op |
 | analytic built-notes | maintenance takes no lock · TEAM grouping crosses teams only from the root team · dedup keyed on the EVENT id |
 

@@ -302,15 +302,15 @@ run rather than ignored — if results look impossible, check nothing old is sti
 
 ---
 
-## Why doesn't the total on an order row equal `Order.total`?
+## Why does an order row show two totals?
 
-**Because the row shows TWO totals and `Order.total` is neither of them.**
+**Because there are two, on opposite sides of the trade** — and since selling `00027` the order has no third one
+(`Order.total`, our quote plus postage, was dropped with `subtotal` and `shipping_cost`).
 
 | | |
 | --- | --- |
-| `Order.total` (the contract) | `subtotal + shipping_cost` — our quote plus postage, frozen at creation |
-| **total beli** (the Beli column) | `cogs` + the warehouse's fee — what the order COST us |
-| **total MP** (its own column) | `marketplace_total` — what the buyer paid the platform |
+| **total beli** (the Beli column) | `goods_cost` + the warehouse's fee = `Order.total_cost` — what the order COST the seller; a borrowed product counts with its owner's markup |
+| **total MP** (its own column) | `platform_total` — what the buyer paid the platform |
 
 The owner's definition is *"total dari beli … subtotal produk + biaya, dan total dari mp"*, and the
 ongkir is **the warehouse's to set, not the seller's** — which is also why the create screen has no
@@ -331,10 +331,11 @@ persentase = margin ÷ harga MP
 
 - **One implementation** — `features/orders/margin.ts`, read by both the summary strip and the table
   row, so the card and the rows beneath it cannot disagree.
-- ⚠ **It is NOT the proto's margin.** `order.proto` says `margin = total − cogs − shipping_cost`,
-  which measures our quote against our cost and never looks at what the platform paid.
-- ⚠ **It needs TWO facts, so it has two ways to be unknown**: a `cogs` of 0 is unknown (not free) and
-  a `marketplace_total` of 0 is not recorded (not a sale of nothing). Either one missing and the whole
+- It is `platform_total − total_cost` ([an-order-records-no-shipping-cost](../business/order/context_decision.md#an-order-records-no-shipping-cost)).
+  The old proto margin, `total − cogs − shipping_cost`, measured our quote against our cost and is gone with those
+  columns.
+- ⚠ **It needs TWO facts, so it has two ways to be unknown**: a `goods_cost` of 0 is unknown (not free) and
+  a `platform_total` of 0 is not recorded (not a sale of nothing). Either one missing and the whole
   cell shows an em-dash. The strip counts those orders in its `margin_unknown` note — counting only
   the missing COST once left it claiming 30% more margin than the rows summed to.
 
@@ -345,7 +346,7 @@ persentase = margin ÷ harga MP
 | field | empty means |
 | --- | --- |
 | `order_external_ref_id` | the order **never came from a storefront** — somebody took it over the phone |
-| `marketplace_total` = 0 | it did come from a storefront and **nobody wrote down what the storefront took** (`order.proto`: *0 = not recorded, not "sold for nothing"*) |
+| `platform_total` = 0 | it did come from a storefront and **nobody wrote down what the storefront took** — *not recorded, not "sold for nothing"*. ⚠ Only an order placed before selling `00022` can be in this state: placement refuses a 0 on both doors since then ([platform-total-is-required-at-finalize](../business/order/context_decision.md#platform-total-is-required-at-finalize)) |
 
 So the MP date is shown whenever there is a reference, and the MP amount only when there is an
 amount. Fixture 108 is deliberately the second case, so the distinction is exercised. See
