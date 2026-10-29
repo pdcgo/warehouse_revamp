@@ -42,7 +42,8 @@ func seedRanking(t *testing.T, db *gorm.DB, svc *supplier_v1.Service) (melati, s
 }
 
 // `metrics/suppliers` as declared passes the check the server makes at startup — an id, a summary, its required
-// filter supported, every sortable field a single number (san_metric.ValidateDescriptors).
+// filter supported, every sortable field a single number, every number field its stat type
+// (san_metric.ValidateDescriptors).
 func TestSupplierMetricPassesTheStartupCheck(t *testing.T) {
 	err := san_metric.ValidateDescriptors()
 	if err != nil {

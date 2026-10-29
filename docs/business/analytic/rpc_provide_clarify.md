@@ -3,18 +3,20 @@
 Critique, questions and a proposed design for [rpc_provide.md](./rpc_provide.md). That doc is yours — this one is
 mine. Answered points are **deleted**, so this file is always the current open set.
 
-> **State (2026-10-28).** 45 decisions in [rpc_provide_decision.md](./rpc_provide_decision.md), two of them superseded.
-> The latest: no warehouse group, because a warehouse is a team ([the-team-group-covers-warehouses](./rpc_provide_decision.md#the-team-group-covers-warehouses)),
-> which leaves a tension with the warehouse filter ([Contradiction](#the-team-group-and-the-warehouse-filter-name-one-thing-twice)).
-> Before it: the table and the graph are tabs ([the-table-and-the-graph-are-tabs](./rpc_provide_decision.md#the-table-and-the-graph-are-tabs)).
+> **State (2026-10-29).** 50 decisions in [rpc_provide_decision.md](./rpc_provide_decision.md), four of them superseded.
+> The latest: `GroupType` gains `WAREHOUSE`, so `TEAM` and `WAREHOUSE` each mean one team for every reader
+> ([the-warehouse-is-its-own-group](./rpc_provide_decision.md#the-warehouse-is-its-own-group)). It reverses the
+> decision from the day before, and the one built on it; see
+> [the-team-group-reversed-in-a-day](#the-team-group-reversed-in-a-day). Before it: the table and the graph are tabs ([the-table-and-the-graph-are-tabs](./rpc_provide_decision.md#the-table-and-the-graph-are-tabs)).
 > The screen is accepted ([the-analytic-screen-is-accepted](./rpc_provide_decision.md#the-analytic-screen-is-accepted))
 > and `metrics/suppliers` is built on the contract. Your §Analytic UI is decided as
 > [the-graph-draws-the-table](./rpc_provide_decision.md#the-graph-draws-the-table): line charts, one per stat type, the
-> columns as the legend. It gives the startup check a second reason ([a-stat-type-is-checked-at-startup](#a-stat-type-is-checked-at-startup)).
-> **The graph is built** in Storybook on Chakra's charts, on sample figures. One detail of it is a proposal, built so
-> you can see it: [a-time-graph-runs-oldest-first](#a-time-graph-runs-oldest-first).
-> **No question is open.** Still waiting on you: [ads-moved-under-expense](#ads-moved-under-expense), the guideline's
-> pointer, and the slips under [Contradiction](#contradiction). §Composite Metric ? is empty, so it isn't designed yet.
+> columns as the legend. Every number field carries its stat type, checked at startup
+> ([every-number-field-carries-a-stat-type](./rpc_provide_decision.md#every-number-field-carries-a-stat-type)).
+> **The graph is built** in Storybook on Chakra's charts, on sample figures, and a time graph runs oldest first
+> ([a-time-graph-runs-oldest-first](./rpc_provide_decision.md#a-time-graph-runs-oldest-first)).
+> **No question is open.** The picker follows your tree ([the-picker-follows-the-metric-tree](./rpc_provide_decision.md#the-picker-follows-the-metric-tree)). Still waiting on you:
+> the guideline's pointer, and the slips under [Contradiction](#contradiction). §Composite Metric ? is empty, so it isn't designed yet.
 >
 > ✅ The diagrams parse (`npm run lint:mermaid`).
 
@@ -34,38 +36,46 @@ Siblings: [context_clarify.md](./context_clarify.md) — the fold that fills the
 | 126 | *"// ... other **metric** that listed in `FilterType`"* | *"other **filter**"* — it introduces the filter messages |
 | 135–142 | `FilterType` has no `WAREHOUSE` or `USER` | add both ([the-filters-gain-warehouse-and-user](./rpc_provide_decision.md#the-filters-gain-warehouse-and-user)) |
 | 242 | `OrderMetricByID` *"SHOP, PRODUCT, SUPPLIER"* | only the id groups its `supported_group_by` lists — in the example, `SHOP` alone |
-| 308 | *"we have table that can compose **any** metric"* | *"any metric that can be grouped by the table's group"*: a metric that can't is greyed ([a-metric-that-cannot-group-is-greyed](./rpc_provide_decision.md#a-metric-that-cannot-group-is-greyed)) |
-| 359, 369, 379 | `fiter :` | `filter :` |
-| 389, 394 | `mp_total` in Order Created and Order Cancel | `created_mp_total`, `cancel_mp_total` — the returns already prefix theirs (`return_created_mp_total`) |
+| 309 | *"we have table that can compose **any** metric"* | *"any metric that can be grouped by the table's group"*: a metric that can't is greyed ([a-metric-that-cannot-group-is-greyed](./rpc_provide_decision.md#a-metric-that-cannot-group-is-greyed)) |
+| 361, 371 | `fiter :` under Warehouse Fee and Ads Expense | `filter :` |
 
-## the-team-group-and-the-warehouse-filter-name-one-thing-twice
+➡ *(2026-10-29)* The order metrics moved to [order_statistic_metric.md](../order/order_statistic_metric.md), so their
+slips moved with them, to [order_statistic_metric_clarify.md](../order/order_statistic_metric_clarify.md#contradiction).
 
-| decision | says |
+## the-team-group-reversed-in-a-day
+
+**The example.** On 2026-10-28, *"no group team is enough"* closed the warehouse group
+([superseded-the-team-group-covers-warehouses](./rpc_provide_decision.md#superseded-the-team-group-covers-warehouses)).
+On 2026-10-29 a second decision was built on it, naming the team group by the reader
+([superseded-a-team-group-is-named-by-the-team-it-means](./rpc_provide_decision.md#superseded-a-team-group-is-named-by-the-team-it-means)).
+The same day, the order metrics needed *orders per seller* and *orders per warehouse* for root, which one group cannot
+give, and `GROUP_TYPE_WAREHOUSE` was added
+([the-warehouse-is-its-own-group](./rpc_provide_decision.md#the-warehouse-is-its-own-group)). Neither earlier decision
+was wrong about the metrics it had in front of it. There were none: the only two-team metric then was Warehouse Fee, and
+it was listed but not designed.
+
+| site | fixed |
 | --- | --- |
-| [the-filters-gain-warehouse-and-user](./rpc_provide_decision.md#the-filters-gain-warehouse-and-user) | *"a warehouse fee has **both** a selling team and a warehouse, so `TEAM` cannot carry both"*, so the filter has its own `WAREHOUSE` |
-| [the-team-group-covers-warehouses](./rpc_provide_decision.md#the-team-group-covers-warehouses) | the group has no `WAREHOUSE`, and `TEAM` carries the warehouse |
+| the two decisions | renamed `superseded-…`, each pointing to the new one |
+| this file's state line and §Question | point to the new decision |
+| [order_statistic_metric_clarify.md](../order/order_statistic_metric_clarify.md) | the team question answered as [the-team-group-is-the-seller](../order/order_statistic_metric_decision.md#the-team-group-is-the-seller) |
+| [development_state/analytic/rpc_provide.md](../../development_state/analytic/rpc_provide.md) | its *"no warehouse group"* line |
+| the rollup's history lines | links moved to the renamed anchors, the text left as it was |
+| code | nothing to undo: no group was named by reader yet, and `WAREHOUSE` joins the proto with its first metric |
 
-The example: a root caller groups warehouse fees by `TEAM`. Is a row a seller or a warehouse? And a seller narrows by
-*Warehouse* but splits by *Team*, two names for the same thing on one screen.
+**→ Recommend:** decide an enum value with the **first real metric that needs it**, as
+[the-filters-gain-warehouse-and-user](./rpc_provide_decision.md#the-filters-gain-warehouse-and-user) already says for
+adding one. Removing or refusing one deserves the same: ask it again when the metric is designed, not before.
 
 ```mermaid
 flowchart LR
-  fee["a warehouse fee"] --> s["the selling team"]
-  fee --> w["the warehouse team"]
-  w -->|"narrow"| fw["FILTER_TYPE_WAREHOUSE"]
-  w -->|"split"| gt["GROUP_TYPE_TEAM"]
+  a["10-28 - no warehouse group"] --> b["10-29 - the team group named by its reader"]
+  a --> c["10-29 - the order metrics need sellers AND warehouses"]
+  c --> d["the-warehouse-is-its-own-group"]
+  d -->|"supersedes"| a
+  d -->|"supersedes"| b
+  d --> e["order - the-team-group-is-the-seller"]
 ```
-
-**→ Recommend:** no contract change. Every metric that books two teams says in its doc which one its `TEAM` group
-means (Warehouse Fee: the warehouse), and the screen labels that group by what it means (*Warehouse*), not *Team*.
-
-## ads-moved-under-expense
-
-The tree puts **Ads Expense inside Expense** and has no Ads category. The picker opens five: Order, Settlement,
-Inventory, Ads, Expense ([order-opens-the-metric-picker-for-now](./rpc_provide_decision.md#order-opens-the-metric-picker-for-now)).
-
-**→ Recommend:** the picker follows the tree, with four categories and Ads Expense inside Expense. It changes only the
-sample catalogue (`features/analytic/catalogue.ts`) and one story. The contract is untouched.
 
 ## the-guideline-still-sorts-by-enum
 
@@ -88,50 +98,18 @@ flowchart LR
 
 # Critique
 
-## a-time-graph-runs-oldest-first
-
-[the-graph-draws-the-table](./rpc_provide_decision.md#the-graph-draws-the-table) puts the points *"in the table's
-order"*. That was my spec, and it is wrong for time. A time table lists **newest first** by default (or ranked by a
-figure), so a graph in that order draws the week right to left, and a rising week reads as a falling one.
-
-```mermaid
-flowchart LR
-  t["table - Daily, newest first - 7 Oct down to 1 Oct"] -->|"the table's order"| bad["the line runs 7 Oct to 1 Oct - the trend mirrored"]
-  t -->|"proposed"| good["the line runs 1 Oct to 7 Oct - whatever the table's sort"]
-```
-
-**→ Recommend:** a time group is always drawn oldest first, and an id group keeps the table's order (its ranking). It's
-built that way so you can look at it (story `ByDayGraphRunsOldestFirst`). If you say no, it's one line to change back.
-
-## the-tree-is-the-catalogue-and-misses-three-things
+## the-tree-is-the-catalogue-and-misses-two-things
 
 Your §Metric That Exist in Analytic is the first real list of metrics, so the screen will be built from it.
 
 | missing | why it matters | → Recommend |
 | --- | --- | --- |
-| the groups each metric reads by | the picker greys a metric by its groups ([a-metric-that-cannot-group-is-greyed](./rpc_provide_decision.md#a-metric-that-cannot-group-is-greyed)) | a `group :` list per entry, beside `filter :` |
-| filters for Order Cancel, Order Return Created, Order Return Arrived | the screen shows the filters every chosen metric shares | list them, or write *"as Order Created"* |
+| the groups each Expense metric reads by | the picker greys a metric by its groups ([a-metric-that-cannot-group-is-greyed](./rpc_provide_decision.md#a-metric-that-cannot-group-is-greyed)) | a `group by :` list per entry, beside `filter :`, the shape your order doc now uses |
 | `metrics/suppliers`, already built | a metric missing from the tree is missing from the picker | under **Inventory › Restock** — restock value and broken rate, by supplier and by product |
 
-## a-stat-type-is-checked-at-startup
-
-Your `field_stat_type` ([a-field-declares-its-stat-type](./rpc_provide_decision.md#a-field-declares-its-stat-type)) is what
-the screen needs to show a number — *Rp 1.200.000*, *1.200*, *4,8 %* — instead of guessing from its own copy. Since
-§Analytic UI, it also decides **which graph panel** a field goes into. It is only dependable if nothing can leave it out.
-
-```mermaid
-flowchart LR
-  d["field_stat_type on the descriptor"] --> b["startup - every number field has one"]
-  b --> r["rank_min_sample only on a RATIO"]
-  d --> s["the screen formats the cell by it"]
-```
-
-| | → Recommend |
-| --- | --- |
-| a field without it | refused at startup by `san_metric.ValidateDescriptors`: `UNSPECIFIED` on a metric's number field fails the boot, so the screen never guesses |
-| the graph | needs it too: an `UNSPECIFIED` field has no graph to go into ([the-graph-draws-the-table](./rpc_provide_decision.md#the-graph-draws-the-table)), so it's a second reader that must not guess |
-| `rank_min_sample` | allowed only on a `RATIO` field — a minimum sample means nothing on a count or an amount ([a-rate-ranks-only-above-its-minimum-sample](./rpc_provide_decision.md#a-rate-ranks-only-above-its-minimum-sample)) |
-| what it is NOT | a rule for summing. The screen formats by it and never adds up a column: the headline is the service's `SUMMARY`, so a ratio is worked out there from summed units ([the-headline-is-the-metric-grouped-by-summary](./rpc_provide_decision.md#the-headline-is-the-metric-grouped-by-summary)) |
+➡ *(2026-10-29)* The order rows moved: the four order metrics now list their filters and their groups in
+[order_statistic_metric.md](../order/order_statistic_metric.md), decided as
+[the-four-group-by-team-shop-warehouse-user-and-time](../order/order_statistic_metric_decision.md#the-four-group-by-team-shop-warehouse-user-and-time).
 
 ---
 
@@ -268,7 +246,7 @@ message SortOption {
 }
 
 enum FieldStatType {                     // what kind of number (a-field-declares-its-stat-type)
-  FIELD_STAT_TYPE_UNSPECIFIED = 0;       // refused at startup — proposed (a-stat-type-is-checked-at-startup)
+  FIELD_STAT_TYPE_UNSPECIFIED = 0;       // refused at startup (every-number-field-carries-a-stat-type)
   FIELD_STAT_TYPE_RATIO = 1;
   FIELD_STAT_TYPE_QTY = 2;
   FIELD_STAT_TYPE_CURRENCY = 3;
@@ -365,7 +343,7 @@ message MetricDataResponse {
 
 # Question
 
-Every question is closed, each one in [rpc_provide_decision.md](./rpc_provide_decision.md). The last was
-a-report-can-group-by-warehouse, now [the-team-group-covers-warehouses](./rpc_provide_decision.md#the-team-group-covers-warehouses).
+Every question is closed, each one in [rpc_provide_decision.md](./rpc_provide_decision.md). The last was the warehouse
+group, asked again from the order metrics and now [the-warehouse-is-its-own-group](./rpc_provide_decision.md#the-warehouse-is-its-own-group).
 
 ✅ **No question is open.**

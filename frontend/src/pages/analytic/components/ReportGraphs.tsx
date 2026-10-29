@@ -20,7 +20,7 @@ function formatTick(kind: FieldKind, value: number): string {
 // `kind` is this screen's mirror of the proto's FieldStatType (a-field-declares-its-stat-type): count is QTY, money is
 // CURRENCY. When the provider reads the descriptor, a RATIO graph comes with it.
 //
-// ⚠ PROPOSED, NOT DECIDED (rpc_provide_clarify.md#a-time-graph-runs-oldest-first): a time group is drawn oldest first,
+// A TIME GROUP IS DRAWN OLDEST FIRST (a-time-graph-runs-oldest-first),
 // even when the table lists newest first or by a figure, because a line over days that runs right to left reads as the
 // opposite trend. An id group keeps the table's order, its ranking.
 export function ReportGraphs({

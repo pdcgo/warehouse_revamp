@@ -697,7 +697,7 @@ The generic primitives (JWT, reading the proto options, descriptor validation) a
 - The role lookup uses **`.Find()`, never `.First()`** — `First` returns `ErrRecordNotFound` for
   a non-member, and every request resolves the root team, where almost nobody is a member.
 
-## Proto options carry policy — four of them so far
+## Proto options carry policy — five of them so far
 
 A recurring pattern in this system: **behaviour is declared on the proto message and read by
 reflection at runtime**, so the contract is readable from the `.proto` alone.
@@ -708,6 +708,7 @@ reflection at runtime**, so the contract is readable from the `.proto` alone.
 | `warehouse.role_base.v1.request_policy` *(planned)* | `MessageOptions` | 50002 | who may call an RPC (see the roling section above) |
 | `warehouse.analytic_base.v1.metric` | `MessageOptions` | 50003 | that a message is an analytic METRIC — its id, filters and groups (`docs/business/analytic/rpc_provide.md`); checked at startup by `san_metric.ValidateDescriptors` |
 | `warehouse.analytic_base.v1.metric_sort` | `FieldOptions` | 50003 | that a metric's number field can sort a report, and a rate's minimum sample |
+| `warehouse.analytic_base.v1.field_stat_type` | `FieldOptions` | 50004 | what kind of number a metric's field is — `QTY`, `CURRENCY` or `RATIO`. Required on every number field, checked at startup; the screen formats by it and draws one graph per type |
 
 **The generated option package must be linked into the binary**, or `proto.HasExtension`
 silently returns false and the option appears absent. It reads as a logic bug; it is a linking

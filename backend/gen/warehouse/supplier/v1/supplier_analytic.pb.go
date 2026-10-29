@@ -783,15 +783,21 @@ var File_warehouse_supplier_v1_supplier_analytic_proto protoreflect.FileDescript
 
 const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\n" +
-	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xbf\x03\n" +
-	"\x0eSupplierMetric\x12+\n" +
-	"\rrestock_count\x18\x01 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\frestockCount\x123\n" +
-	"\x11restock_valuation\x18\x02 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x10restockValuation\x126\n" +
-	"\x13shipping_lost_count\x18\x03 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x11shippingLostCount\x12>\n" +
-	"\x17shipping_lost_valuation\x18\x04 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x15shippingLostValuation\x12:\n" +
-	"\x15shipping_broken_count\x18\x05 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x13shippingBrokenCount\x12B\n" +
-	"\x19shipping_broken_valuation\x18\x06 \x01(\x03B\x06\x9a\xb5\x18\x02\b\x01R\x17shippingBrokenValuation\x12)\n" +
-	"\vbroken_rate\x18\a \x01(\x01B\b\x9a\xb5\x18\x04\b\x01\x102R\n" +
+	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xdb\x03\n" +
+	"\x0eSupplierMetric\x12/\n" +
+	"\rrestock_count\x18\x01 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\frestockCount\x127\n" +
+	"\x11restock_valuation\x18\x02 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x10restockValuation\x12:\n" +
+	"\x13shipping_lost_count\x18\x03 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x11shippingLostCount\x12B\n" +
+	"\x17shipping_lost_valuation\x18\x04 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15shippingLostValuation\x12>\n" +
+	"\x15shipping_broken_count\x18\x05 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x13shippingBrokenCount\x12F\n" +
+	"\x19shipping_broken_valuation\x18\x06 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x17shippingBrokenValuation\x12-\n" +
+	"\vbroken_rate\x18\a \x01(\x01B\f\x9a\xb5\x18\x04\b\x01\x102\xa0\xb5\x18\x01R\n" +
 	"brokenRate:(\x9a\xb5\x18$\n" +
 	"\x03\x01\x04\x06\x12\x01\x01\x1a\a\x01\x02\x03\x04\x05\b\x06\"\x11metrics/suppliers\"\xc1\x01\n" +
 	"\x12SupplierMetricByID\x12J\n" +

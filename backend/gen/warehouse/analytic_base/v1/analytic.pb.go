@@ -213,6 +213,65 @@ func (GroupType) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{2}
 }
 
+// FieldStatType — what kind of number a metric's field is (a-field-declares-its-stat-type). Every number field of a
+// metric carries one, checked at startup (every-number-field-carries-a-stat-type). The screen formats a cell by it and
+// draws one graph per type, so a count never shares an axis with an amount (the-graph-draws-the-table). It is never a
+// rule for summing: a total is the service's SUMMARY.
+type FieldStatType int32
+
+const (
+	FieldStatType_FIELD_STAT_TYPE_UNSPECIFIED FieldStatType = 0
+	// 0 to 1, shown as a percentage. The only type that may carry rank_min_sample.
+	FieldStatType_FIELD_STAT_TYPE_RATIO FieldStatType = 1
+	// A count of things — units, orders.
+	FieldStatType_FIELD_STAT_TYPE_QTY FieldStatType = 2
+	// An amount of money.
+	FieldStatType_FIELD_STAT_TYPE_CURRENCY FieldStatType = 3
+)
+
+// Enum value maps for FieldStatType.
+var (
+	FieldStatType_name = map[int32]string{
+		0: "FIELD_STAT_TYPE_UNSPECIFIED",
+		1: "FIELD_STAT_TYPE_RATIO",
+		2: "FIELD_STAT_TYPE_QTY",
+		3: "FIELD_STAT_TYPE_CURRENCY",
+	}
+	FieldStatType_value = map[string]int32{
+		"FIELD_STAT_TYPE_UNSPECIFIED": 0,
+		"FIELD_STAT_TYPE_RATIO":       1,
+		"FIELD_STAT_TYPE_QTY":         2,
+		"FIELD_STAT_TYPE_CURRENCY":    3,
+	}
+)
+
+func (x FieldStatType) Enum() *FieldStatType {
+	p := new(FieldStatType)
+	*p = x
+	return p
+}
+
+func (x FieldStatType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FieldStatType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_analytic_base_v1_analytic_proto_enumTypes[3].Descriptor()
+}
+
+func (FieldStatType) Type() protoreflect.EnumType {
+	return &file_warehouse_analytic_base_v1_analytic_proto_enumTypes[3]
+}
+
+func (x FieldStatType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FieldStatType.Descriptor instead.
+func (FieldStatType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{3}
+}
+
 // MetricSort — the table's ONE sort (one-sort-field-per-table): a field of a metric, named by its proto name
 // (a-sort-field-is-its-proto-name). The field must carry `metric_sort` with `can_sort`.
 type MetricSort struct {
@@ -768,7 +827,7 @@ type SortOption struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	CanSort bool                   `protobuf:"varint,1,opt,name=can_sort,json=canSort,proto3" json:"can_sort,omitempty"`
 	// A rate ranks only rows with at least this sample; the rest follow, unranked
-	// (a-rate-ranks-only-above-its-minimum-sample). 0 = no minimum.
+	// (a-rate-ranks-only-above-its-minimum-sample). 0 = no minimum. Only on a FIELD_STAT_TYPE_RATIO field.
 	RankMinSample int64 `protobuf:"varint,2,opt,name=rank_min_sample,json=rankMinSample,proto3" json:"rank_min_sample,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1008,6 +1067,14 @@ var file_warehouse_analytic_base_v1_analytic_proto_extTypes = []protoimpl.Extens
 		Tag:           "bytes,50003,opt,name=metric_sort",
 		Filename:      "warehouse/analytic_base/v1/analytic.proto",
 	},
+	{
+		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
+		ExtensionType: (*FieldStatType)(nil),
+		Field:         50004,
+		Name:          "warehouse.analytic_base.v1.field_stat_type",
+		Tag:           "varint,50004,opt,name=field_stat_type,enum=warehouse.analytic_base.v1.FieldStatType",
+		Filename:      "warehouse/analytic_base/v1/analytic.proto",
+	},
 }
 
 // Extension fields to descriptorpb.MessageOptions.
@@ -1020,6 +1087,10 @@ var (
 var (
 	// optional warehouse.analytic_base.v1.SortOption metric_sort = 50003;
 	E_MetricSort = &file_warehouse_analytic_base_v1_analytic_proto_extTypes[1]
+	// 50002 is role_base's use_scope.
+	//
+	// optional warehouse.analytic_base.v1.FieldStatType field_stat_type = 50004;
+	E_FieldStatType = &file_warehouse_analytic_base_v1_analytic_proto_extTypes[2]
 )
 
 var File_warehouse_analytic_base_v1_analytic_proto protoreflect.FileDescriptor
@@ -1104,10 +1175,16 @@ const file_warehouse_analytic_base_v1_analytic_proto_rawDesc = "" +
 	"\x13GROUP_TYPE_SUPPLIER\x10\b\x12\x13\n" +
 	"\x0fGROUP_TYPE_TEAM\x10\t\x12\x13\n" +
 	"\x0fGROUP_TYPE_USER\x10\n" +
-	":c\n" +
+	"*\x82\x01\n" +
+	"\rFieldStatType\x12\x1f\n" +
+	"\x1bFIELD_STAT_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15FIELD_STAT_TYPE_RATIO\x10\x01\x12\x17\n" +
+	"\x13FIELD_STAT_TYPE_QTY\x10\x02\x12\x1c\n" +
+	"\x18FIELD_STAT_TYPE_CURRENCY\x10\x03:c\n" +
 	"\x06metric\x12\x1f.google.protobuf.MessageOptions\x18ӆ\x03 \x01(\v2(.warehouse.analytic_base.v1.MetricOptionR\x06metric:h\n" +
 	"\vmetric_sort\x12\x1d.google.protobuf.FieldOptions\x18ӆ\x03 \x01(\v2&.warehouse.analytic_base.v1.SortOptionR\n" +
-	"metricSortBZZXgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1;analytic_basev1b\x06proto3"
+	"metricSort:r\n" +
+	"\x0ffield_stat_type\x12\x1d.google.protobuf.FieldOptions\x18Ԇ\x03 \x01(\x0e2).warehouse.analytic_base.v1.FieldStatTypeR\rfieldStatTypeBZZXgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1;analytic_basev1b\x06proto3"
 
 var (
 	file_warehouse_analytic_base_v1_analytic_proto_rawDescOnce sync.Once
@@ -1121,48 +1198,51 @@ func file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP() []byte {
 	return file_warehouse_analytic_base_v1_analytic_proto_rawDescData
 }
 
-var file_warehouse_analytic_base_v1_analytic_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_warehouse_analytic_base_v1_analytic_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_warehouse_analytic_base_v1_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_warehouse_analytic_base_v1_analytic_proto_goTypes = []any{
 	(SortType)(0),                       // 0: warehouse.analytic_base.v1.SortType
 	(FilterType)(0),                     // 1: warehouse.analytic_base.v1.FilterType
 	(GroupType)(0),                      // 2: warehouse.analytic_base.v1.GroupType
-	(*MetricSort)(nil),                  // 3: warehouse.analytic_base.v1.MetricSort
-	(*DateRangeFilter)(nil),             // 4: warehouse.analytic_base.v1.DateRangeFilter
-	(*ProductFilter)(nil),               // 5: warehouse.analytic_base.v1.ProductFilter
-	(*TeamFilter)(nil),                  // 6: warehouse.analytic_base.v1.TeamFilter
-	(*ShopFilter)(nil),                  // 7: warehouse.analytic_base.v1.ShopFilter
-	(*SupplierFilter)(nil),              // 8: warehouse.analytic_base.v1.SupplierFilter
-	(*FilterItem)(nil),                  // 9: warehouse.analytic_base.v1.FilterItem
-	(*PaginationFilter)(nil),            // 10: warehouse.analytic_base.v1.PaginationFilter
-	(*MetricOption)(nil),                // 11: warehouse.analytic_base.v1.MetricOption
-	(*SortOption)(nil),                  // 12: warehouse.analytic_base.v1.SortOption
-	(*IDList)(nil),                      // 13: warehouse.analytic_base.v1.IDList
-	(*DayList)(nil),                     // 14: warehouse.analytic_base.v1.DayList
-	(*MetricKeys)(nil),                  // 15: warehouse.analytic_base.v1.MetricKeys
-	(*descriptorpb.MessageOptions)(nil), // 16: google.protobuf.MessageOptions
-	(*descriptorpb.FieldOptions)(nil),   // 17: google.protobuf.FieldOptions
+	(FieldStatType)(0),                  // 3: warehouse.analytic_base.v1.FieldStatType
+	(*MetricSort)(nil),                  // 4: warehouse.analytic_base.v1.MetricSort
+	(*DateRangeFilter)(nil),             // 5: warehouse.analytic_base.v1.DateRangeFilter
+	(*ProductFilter)(nil),               // 6: warehouse.analytic_base.v1.ProductFilter
+	(*TeamFilter)(nil),                  // 7: warehouse.analytic_base.v1.TeamFilter
+	(*ShopFilter)(nil),                  // 8: warehouse.analytic_base.v1.ShopFilter
+	(*SupplierFilter)(nil),              // 9: warehouse.analytic_base.v1.SupplierFilter
+	(*FilterItem)(nil),                  // 10: warehouse.analytic_base.v1.FilterItem
+	(*PaginationFilter)(nil),            // 11: warehouse.analytic_base.v1.PaginationFilter
+	(*MetricOption)(nil),                // 12: warehouse.analytic_base.v1.MetricOption
+	(*SortOption)(nil),                  // 13: warehouse.analytic_base.v1.SortOption
+	(*IDList)(nil),                      // 14: warehouse.analytic_base.v1.IDList
+	(*DayList)(nil),                     // 15: warehouse.analytic_base.v1.DayList
+	(*MetricKeys)(nil),                  // 16: warehouse.analytic_base.v1.MetricKeys
+	(*descriptorpb.MessageOptions)(nil), // 17: google.protobuf.MessageOptions
+	(*descriptorpb.FieldOptions)(nil),   // 18: google.protobuf.FieldOptions
 }
 var file_warehouse_analytic_base_v1_analytic_proto_depIdxs = []int32{
 	0,  // 0: warehouse.analytic_base.v1.MetricSort.sort_type:type_name -> warehouse.analytic_base.v1.SortType
-	4,  // 1: warehouse.analytic_base.v1.FilterItem.date_range_filter:type_name -> warehouse.analytic_base.v1.DateRangeFilter
-	5,  // 2: warehouse.analytic_base.v1.FilterItem.product_filter:type_name -> warehouse.analytic_base.v1.ProductFilter
-	6,  // 3: warehouse.analytic_base.v1.FilterItem.team_filter:type_name -> warehouse.analytic_base.v1.TeamFilter
-	7,  // 4: warehouse.analytic_base.v1.FilterItem.shop_filter:type_name -> warehouse.analytic_base.v1.ShopFilter
-	8,  // 5: warehouse.analytic_base.v1.FilterItem.supplier_filter:type_name -> warehouse.analytic_base.v1.SupplierFilter
+	5,  // 1: warehouse.analytic_base.v1.FilterItem.date_range_filter:type_name -> warehouse.analytic_base.v1.DateRangeFilter
+	6,  // 2: warehouse.analytic_base.v1.FilterItem.product_filter:type_name -> warehouse.analytic_base.v1.ProductFilter
+	7,  // 3: warehouse.analytic_base.v1.FilterItem.team_filter:type_name -> warehouse.analytic_base.v1.TeamFilter
+	8,  // 4: warehouse.analytic_base.v1.FilterItem.shop_filter:type_name -> warehouse.analytic_base.v1.ShopFilter
+	9,  // 5: warehouse.analytic_base.v1.FilterItem.supplier_filter:type_name -> warehouse.analytic_base.v1.SupplierFilter
 	1,  // 6: warehouse.analytic_base.v1.MetricOption.supported_filters:type_name -> warehouse.analytic_base.v1.FilterType
 	1,  // 7: warehouse.analytic_base.v1.MetricOption.required_filters:type_name -> warehouse.analytic_base.v1.FilterType
 	2,  // 8: warehouse.analytic_base.v1.MetricOption.supported_group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	13, // 9: warehouse.analytic_base.v1.MetricKeys.ids:type_name -> warehouse.analytic_base.v1.IDList
-	14, // 10: warehouse.analytic_base.v1.MetricKeys.days:type_name -> warehouse.analytic_base.v1.DayList
-	16, // 11: warehouse.analytic_base.v1.metric:extendee -> google.protobuf.MessageOptions
-	17, // 12: warehouse.analytic_base.v1.metric_sort:extendee -> google.protobuf.FieldOptions
-	11, // 13: warehouse.analytic_base.v1.metric:type_name -> warehouse.analytic_base.v1.MetricOption
-	12, // 14: warehouse.analytic_base.v1.metric_sort:type_name -> warehouse.analytic_base.v1.SortOption
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	13, // [13:15] is the sub-list for extension type_name
-	11, // [11:13] is the sub-list for extension extendee
+	14, // 9: warehouse.analytic_base.v1.MetricKeys.ids:type_name -> warehouse.analytic_base.v1.IDList
+	15, // 10: warehouse.analytic_base.v1.MetricKeys.days:type_name -> warehouse.analytic_base.v1.DayList
+	17, // 11: warehouse.analytic_base.v1.metric:extendee -> google.protobuf.MessageOptions
+	18, // 12: warehouse.analytic_base.v1.metric_sort:extendee -> google.protobuf.FieldOptions
+	18, // 13: warehouse.analytic_base.v1.field_stat_type:extendee -> google.protobuf.FieldOptions
+	12, // 14: warehouse.analytic_base.v1.metric:type_name -> warehouse.analytic_base.v1.MetricOption
+	13, // 15: warehouse.analytic_base.v1.metric_sort:type_name -> warehouse.analytic_base.v1.SortOption
+	3,  // 16: warehouse.analytic_base.v1.field_stat_type:type_name -> warehouse.analytic_base.v1.FieldStatType
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	14, // [14:17] is the sub-list for extension type_name
+	11, // [11:14] is the sub-list for extension extendee
 	0,  // [0:11] is the sub-list for field type_name
 }
 
@@ -1187,9 +1267,9 @@ func file_warehouse_analytic_base_v1_analytic_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_analytic_base_v1_analytic_proto_rawDesc), len(file_warehouse_analytic_base_v1_analytic_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   13,
-			NumExtensions: 2,
+			NumExtensions: 3,
 			NumServices:   0,
 		},
 		GoTypes:           file_warehouse_analytic_base_v1_analytic_proto_goTypes,

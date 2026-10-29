@@ -17,7 +17,7 @@ import { AnalyticPage } from "./index";
 //   a group change            SwitchGroupToProduct         (a-group-change-drops-the-columns-that-cannot-follow)
 //   the graph                 GraphsSplitByKindOfNumber    (the-graph-draws-the-table)
 //   one view at a time        GraphsSplitByKindOfNumber, TheViewIsInTheLink   (the-table-and-the-graph-are-tabs)
-//   a time graph's order      ByDayGraphRunsOldestFirst    ⚠ proposed (rpc_provide_clarify.md#a-time-graph-runs-oldest-first)
+//   a time graph's order      ByDayGraphRunsOldestFirst    (a-time-graph-runs-oldest-first)
 //   the cap on lines          — still open, decided with the chart on screen (the-chart-waits-for-a-chart-component)
 
 const at = (search: string) => routedPage([{ path: "/analytic", element: <AnalyticPage /> }], `/analytic${search}`);
@@ -120,7 +120,8 @@ export const SortedByProfit: Story = {
 };
 
 // ADD METRIC IS PICKED LIKE A CATEGORY (owner: *"add metric is popup like selecting category"*) — the categories on the
-// left, the chosen one's metrics beside it, ticked when on the table. It opens on Order.
+// left, the chosen one's metrics beside it, ticked when on the table. It opens on Order, and the categories are the
+// owner's tree: Ads Expense is inside Expense, with no Ads of its own (the-picker-follows-the-metric-tree).
 export const AddMetricDrillsIntoACategory: Story = {
   render: () => <ByShop />,
   play: async ({ canvasElement }) => {
@@ -130,7 +131,8 @@ export const AddMetricDrillsIntoACategory: Story = {
     await expect(menu.getByTestId("analytic-category-order")).toHaveAttribute("aria-pressed", "true");
     await expect(menu.getByTestId("analytic-metric-metrics-orders")).toHaveAttribute("data-state", "checked");
 
-    await userEvent.click(menu.getByTestId("analytic-category-ads"));
+    await expect(menu.queryByTestId("analytic-category-ads")).toBeNull();
+    await userEvent.click(menu.getByTestId("analytic-category-expense"));
     await userEvent.click(menu.getByTestId("analytic-metric-metrics-ads"));
 
     await waitFor(() => expect(canvas.getByTestId("analytic-chip-metrics-ads")).toBeVisible());
@@ -167,7 +169,7 @@ export const InventoryGreyedByShop: Story = {
     await expect(stockLost).toHaveAttribute("data-disabled");
     await expect(menu.getByTestId("analytic-metric-metrics-inventory-lost-reason")).toHaveTextContent("Cannot be grouped by shops");
     // One that can be read by shop is tickable.
-    await userEvent.click(menu.getByTestId("analytic-category-ads"));
+    await userEvent.click(menu.getByTestId("analytic-category-expense"));
     await expect(menu.getByTestId("analytic-metric-metrics-ads")).not.toHaveAttribute("data-disabled");
   },
 };
@@ -310,11 +312,12 @@ export const TheViewIsInTheLink: Story = {
 
     await userEvent.click(canvas.getByTestId("analytic-view-table"));
     await waitFor(() => expect(canvas.getByTestId("analytic-table")).toBeVisible());
-    await expect(canvas.queryByTestId("analytic-graphs")).toBeNull();
+    // The graph tab unmounts as its exit animation ends, not on the click.
+    await waitFor(() => expect(canvas.queryByTestId("analytic-graphs")).toBeNull());
   },
 };
 
-// A TIME GRAPH RUNS OLDEST FIRST — ⚠ proposed, not decided (rpc_provide_clarify.md#a-time-graph-runs-oldest-first). The
+// A TIME GRAPH RUNS OLDEST FIRST (a-time-graph-runs-oldest-first). The
 // table lists the week newest first; the graph still reads left to right, 1 October to 7 October, so the line's slope
 // is the trend and not its mirror.
 export const ByDayGraphRunsOldestFirst: Story = {

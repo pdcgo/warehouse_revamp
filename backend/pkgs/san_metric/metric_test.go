@@ -60,10 +60,23 @@ func message(
 	return &descriptorpb.DescriptorProto{Name: proto.String(name), Field: fields, Options: opts}
 }
 
+// withStat sets a field's (field_stat_type).
+func withStat(f *descriptorpb.FieldDescriptorProto, statType analytic_basev1.FieldStatType) *descriptorpb.FieldDescriptorProto {
+	proto.SetExtension(f.GetOptions(), analytic_basev1.E_FieldStatType, statType)
+
+	return f
+}
+
 var sortable = &analytic_basev1.SortOption{CanSort: true}
 
+const (
+	qty      = analytic_basev1.FieldStatType_FIELD_STAT_TYPE_QTY
+	currency = analytic_basev1.FieldStatType_FIELD_STAT_TYPE_CURRENCY
+	ratio    = analytic_basev1.FieldStatType_FIELD_STAT_TYPE_RATIO
+)
+
 func orderCount() *descriptorpb.FieldDescriptorProto {
-	return field("order_count", 1, descriptorpb.FieldDescriptorProto_TYPE_INT64, sortable)
+	return withStat(field("order_count", 1, descriptorpb.FieldDescriptorProto_TYPE_INT64, sortable), qty)
 }
 
 // registry builds one file per package, each holding the given messages — the shape of several services' protos.
@@ -119,7 +132,12 @@ func TestValidateDescriptors(t *testing.T) {
 		{
 			name: "a well-formed metric, and a plain message beside it",
 			packages: map[string][]*descriptorpb.DescriptorProto{
-				"selling.v1": {message("OrderMetric", orderOption(), orderCount()), message("Order", nil)},
+				"selling.v1": {message("OrderMetric", orderOption(),
+					orderCount(),
+					withStat(field("order_total", 2, descriptorpb.FieldDescriptorProto_TYPE_INT64, nil), currency),
+					withStat(field("cancel_rate", 3, descriptorpb.FieldDescriptorProto_TYPE_DOUBLE,
+						&analytic_basev1.SortOption{CanSort: true, RankMinSample: 50}), ratio),
+				), message("Order", nil)},
 			},
 		},
 		{
@@ -183,10 +201,43 @@ func TestValidateDescriptors(t *testing.T) {
 			name: "a negative minimum sample",
 			packages: map[string][]*descriptorpb.DescriptorProto{
 				"supplier.v1": {message("SupplierMetric", orderOption(),
-					field("broken_rate", 1, descriptorpb.FieldDescriptorProto_TYPE_DOUBLE,
-						&analytic_basev1.SortOption{CanSort: true, RankMinSample: -1}))},
+					withStat(field("broken_rate", 1, descriptorpb.FieldDescriptorProto_TYPE_DOUBLE,
+						&analytic_basev1.SortOption{CanSort: true, RankMinSample: -1}), ratio))},
 			},
 			wantErr: "negative rank_min_sample",
+		},
+		{
+			name: "a number field with no stat type",
+			packages: map[string][]*descriptorpb.DescriptorProto{
+				"selling.v1": {message("OrderMetric", orderOption(),
+					field("order_total", 1, descriptorpb.FieldDescriptorProto_TYPE_INT64, nil))},
+			},
+			wantErr: "carries no field_stat_type",
+		},
+		{
+			name: "a minimum sample on a field that is not a ratio",
+			packages: map[string][]*descriptorpb.DescriptorProto{
+				"supplier.v1": {message("SupplierMetric", orderOption(),
+					withStat(field("lost_count", 1, descriptorpb.FieldDescriptorProto_TYPE_INT64,
+						&analytic_basev1.SortOption{CanSort: true, RankMinSample: 50}), qty))},
+			},
+			wantErr: "is FIELD_STAT_TYPE_QTY, not a RATIO",
+		},
+		{
+			name: "a stat type on a field that is not a number",
+			packages: map[string][]*descriptorpb.DescriptorProto{
+				"selling.v1": {message("OrderMetric", orderOption(),
+					withStat(field("shop_name", 1, descriptorpb.FieldDescriptorProto_TYPE_STRING, nil), qty))},
+			},
+			wantErr: "is not a single number",
+		},
+		{
+			name: "a stat type on a message that is not a metric",
+			packages: map[string][]*descriptorpb.DescriptorProto{
+				"selling.v1": {message("Order", nil,
+					withStat(field("total", 1, descriptorpb.FieldDescriptorProto_TYPE_INT64, nil), currency))},
+			},
+			wantErr: "is not a metric",
 		},
 	}
 

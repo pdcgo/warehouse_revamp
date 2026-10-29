@@ -67,22 +67,43 @@ message SupplierMetric {
   };
 
   // Units accepted as good stock.
-  int64 restock_count = 1 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
-  int64 restock_valuation = 2 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
+  int64 restock_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  int64 restock_valuation = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
   // Units short in an accepted parcel.
-  int64 shipping_lost_count = 3 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
-  int64 shipping_lost_valuation = 4 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
+  int64 shipping_lost_count = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  int64 shipping_lost_valuation = 4 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
   // Units that arrived broken.
-  int64 shipping_broken_count = 5 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
-  int64 shipping_broken_valuation = 6 [(warehouse.analytic_base.v1.metric_sort) = {can_sort: true}];
+  int64 shipping_broken_count = 5 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  int64 shipping_broken_valuation = 6 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
 
   // broken ÷ (restocked + lost + broken), 0 to 1 — 0 when nothing arrived, so read the counts to tell no rate from a
   // rate of 0. Ranked only among keys with at least 50 units; the rest follow, in key order
   // (rate-ranking-needs-50-units, a-rate-ranks-only-above-its-minimum-sample).
-  double broken_rate = 7 [(warehouse.analytic_base.v1.metric_sort) = {
-    can_sort: true
-    rank_min_sample: 50
-  }];
+  double broken_rate = 7 [
+    (warehouse.analytic_base.v1.metric_sort) = {
+      can_sort: true
+      rank_min_sample: 50
+    },
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_RATIO
+  ];
 }
 
 // A page of keys' figures — keyed by supplier or product id. An asked id with nothing in the window is all zero.

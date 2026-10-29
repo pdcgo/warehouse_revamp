@@ -1370,7 +1370,10 @@ flowchart LR
 
 ---
 
-## the-team-group-covers-warehouses
+## superseded-the-team-group-covers-warehouses
+
+> ⛔ **Superseded 2026-10-29** by [the-warehouse-is-its-own-group](#the-warehouse-is-its-own-group): the order metrics
+> showed that one team group cannot serve a reader who needs both sides. Kept as the record of what was decided before.
 
 > Owner, in chat (2026-10-28): *"no group team is enough"*, to
 > [a-report-can-group-by-warehouse](./rpc_provide_clarify.md#question), *"should `GroupType` gain
@@ -1393,3 +1396,169 @@ flowchart LR
 | comparing warehouses | group by `TEAM` |
 | a fact with two teams | ⚠ My reading, not asked: a warehouse fee has a selling team and a warehouse team. The caller's scope already says whose figures they are, so `TEAM` groups by the other team, which for a seller is the warehouse. Each metric's doc says which team, as it already does for `USER` |
 | the filter | unchanged: `FILTER_TYPE_WAREHOUSE` stays its own type ([the-filters-gain-warehouse-and-user](#the-filters-gain-warehouse-and-user)). The tension between the two is in the clarify's Contradiction section |
+
+---
+
+## every-number-field-carries-a-stat-type
+
+> Owner, in chat (2026-10-29): *"yes"* — to [a-stat-type-is-checked-at-startup](./rpc_provide_clarify.md#critique),
+> *"every metric number field must carry `field_stat_type`: required at startup, `rank_min_sample` only on a `RATIO`,
+> display only. If you agree, I'll add the option and the check."*. As recommended.
+
+**The verdict.** Every number field of a metric carries a `field_stat_type` that is not `UNSPECIFIED`, and the server
+refuses to start without it. Two readers depend on it, the cell's format and the graph a column is drawn in
+([the-graph-draws-the-table](#the-graph-draws-the-table)), and neither may guess. A minimum sample belongs to a ratio
+only.
+
+```mermaid
+flowchart LR
+  f["a metric's number field"] --> c{"field_stat_type"}
+  c -->|"missing or UNSPECIFIED"| x["the server refuses to start"]
+  c -->|"QTY, CURRENCY or RATIO"| ok["the cell's format and its graph"]
+  ok --> r["rank_min_sample - only on a RATIO"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the option | `FieldStatType field_stat_type = 50004` on `FieldOptions`, in `analytic_base` ([a-field-declares-its-stat-type](#a-field-declares-its-stat-type)) |
+| refused at startup | by `san_metric.ValidateDescriptors`: a metric's single-number field without one · `rank_min_sample` above 0 on a field that is not `RATIO` · a stat type on a field that is not a single number · either option on a message that is not a metric |
+| read by | the screen: the cell's format, and which graph the column goes in. Until the provider reads the descriptor, the sample catalogue's `kind` stands in for it |
+| never | a rule for summing — a total is the service's `SUMMARY` ([the-headline-is-the-metric-grouped-by-summary](#the-headline-is-the-metric-grouped-by-summary)) |
+| `metrics/suppliers` | the three counts `QTY`, the three valuations `CURRENCY`, `broken_rate` `RATIO` |
+
+---
+
+## a-time-graph-runs-oldest-first
+
+> Owner, in chat (2026-10-29): *"yes"* — to [a-time-graph-runs-oldest-first](./rpc_provide_clarify.md#critique), *"draw a
+> time graph oldest first, whatever the table's sort, and keep the table's ranking for a shop or product graph?"*. As
+> recommended.
+
+**The verdict.** A graph over a time group always runs **oldest first**, left to right, whatever the table's sort. A
+graph over an id group keeps the table's order, which is its ranking. This amends *"in the table's order"* in
+[the-graph-draws-the-table](#the-graph-draws-the-table) for time: a week the table lists newest first would otherwise
+be drawn right to left, and a rising week would read as a falling one.
+
+```mermaid
+flowchart LR
+  t["table - Daily, newest first - 7 Oct down to 1 Oct"] --> g["the graph - 1 Oct to 7 Oct"]
+  s["table - Shop, ranked by Order Count"] --> h["the graph - the same ranking"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a time group | the page's periods drawn oldest first, whether the table sorts by period or ranks by a figure |
+| an id group | the page's rows in the table's order |
+| the page | unchanged: the graph draws the table's current page ([the-table-and-the-graph-are-tabs](#the-table-and-the-graph-are-tabs)) |
+| built | `ReportGraphs` in `pages/analytic/components/`; story `ByDayGraphRunsOldestFirst` |
+
+---
+
+## superseded-a-team-group-is-named-by-the-team-it-means
+
+> ⛔ **Superseded 2026-10-29** by [the-warehouse-is-its-own-group](#the-warehouse-is-its-own-group): with a warehouse
+> group, `TEAM` means one team on every metric, so no group is named by its reader. Kept as the record of what was decided
+> before.
+
+> Owner, in chat (2026-10-29): *"yes"* — to [the-team-group-and-the-warehouse-filter-name-one-thing-twice](./rpc_provide_clarify.md#contradiction),
+> *"no contract change: each metric that involves two teams says in its doc which one its `TEAM` group means, and the
+> screen labels the group by that meaning — *Warehouse*, not *Team*?"*. As recommended.
+
+**The verdict.** `GROUP_TYPE_TEAM` stays the one team group ([superseded-the-team-group-covers-warehouses](#superseded-the-team-group-covers-warehouses)),
+and `FILTER_TYPE_WAREHOUSE` stays its own filter ([the-filters-gain-warehouse-and-user](#the-filters-gain-warehouse-and-user)).
+A metric whose fact involves two teams says in its doc which team its `TEAM` group splits by, and the screen names
+the group by that team's role, so a seller reading warehouse fees picks *Warehouse*, never a *Team* that means the same
+thing as the filter beside it.
+
+```mermaid
+flowchart LR
+  fee["a warehouse fee - a selling team and a warehouse"] --> doc["its doc - TEAM is the warehouse"]
+  doc --> g["the group select - Warehouse"]
+  fee --> f["the filter - Warehouse, FILTER_TYPE_WAREHOUSE"]
+  g -.->|"one name for one thing"| f
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the contract | unchanged |
+| a metric with two teams | its doc says which team `TEAM` groups by: Warehouse Fee, the warehouse |
+| a metric with one team | `TEAM` is that team, and the group is called *Team* |
+| the screen | names the group by the role. ⚠ Where the screen reads that role from (the doc alone, or an option on the metric) is decided with the first two-team metric, Warehouse Fee. Nothing is built before it |
+| ⚠ a table of two metrics whose `TEAM` means different teams | the rows would be different teams under one heading. My reading, not asked: the picker greys the second, as it greys a metric that cannot follow the group ([a-metric-that-cannot-group-is-greyed](#a-metric-that-cannot-group-is-greyed)). Decided with that first metric too |
+
+---
+
+## the-picker-follows-the-metric-tree
+
+> Owner, in chat (2026-10-29): *"yes"* — to [ads-moved-under-expense](./rpc_provide_clarify.md#contradiction), *"the picker
+> follows your tree, with four categories and Ads Expense inside Expense?"*. As recommended.
+
+**The verdict.** Add Metric's categories are your §Metric That Exist in Analytic: **Order, Settlement, Inventory,
+Expense**, with **Ads Expense** inside Expense. There is no Ads category. It still opens on Order, the order this file
+set for now ([order-opens-the-metric-picker-for-now](#order-opens-the-metric-picker-for-now)), with Ads gone from it.
+
+```mermaid
+flowchart LR
+  p["Add Metric"] --> o["Order"]
+  p --> s["Settlement"]
+  p --> i["Inventory"]
+  p --> e["Expense"]
+  e --> w["Warehouse Fee"]
+  e --> a["Ads Expense"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the categories | `METRIC_CATEGORIES` in `frontend/src/features/analytic/catalogue.ts`: order, settlement, inventory, expense |
+| Ads Expense | the sample `metrics/ads`, now in Expense and named as the tree names it |
+| a new category | added when your tree gains one, never by the screen alone |
+| pinned | story `AddMetricDrillsIntoACategory`: there is no Ads category, and Ads Expense is ticked from Expense |
+
+---
+
+## the-warehouse-is-its-own-group
+
+> Owner (2026-10-29), in [rpc_provide.md](./rpc_provide.md) `enum GroupType` — gained `GROUP_TYPE_WAREHOUSE`, between
+> `TEAM` and `USER` — and in chat: *"I ADD GROUP_TYPE_WAREHOUSE in group type"*. That answered *"add the warehouse
+> group, or keep `TEAM` only and accept that root can't put warehouses side by side?"*, asked while settling the order
+> metrics ([order_statistic_metric_clarify.md](../order/order_statistic_metric_clarify.md)). As recommended, which
+> reverses [superseded-the-team-group-covers-warehouses](#superseded-the-team-group-covers-warehouses).
+
+**The verdict.** `GroupType` gains `WAREHOUSE`. Each group now means **one** thing on every metric and for every reader:
+`TEAM` is the team whose fact it is (for an order, the seller), and `WAREHOUSE` is the warehouse team it happened in. The
+two groups match the two filters, `FILTER_TYPE_TEAM` and `FILTER_TYPE_WAREHOUSE`
+([the-filters-gain-warehouse-and-user](#the-filters-gain-warehouse-and-user)). A group is never named by who is reading,
+so [superseded-a-team-group-is-named-by-the-team-it-means](#superseded-a-team-group-is-named-by-the-team-it-means) goes
+with it.
+
+**Why it reversed.** With one team group, a two-team fact had to choose a side. Root reads every team and asks for both
+*orders per seller* and *orders per warehouse*. Whichever side `TEAM` meant, the other report could not be built.
+
+```mermaid
+flowchart LR
+  o["an order - seller A, warehouse W"] --> t["GROUP_TYPE_TEAM - seller A"]
+  o --> w["GROUP_TYPE_WAREHOUSE - warehouse W"]
+  t --- ft["FILTER_TYPE_TEAM"]
+  w --- fw["FILTER_TYPE_WAREHOUSE"]
+  r["root"] --> t
+  r --> w
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `GroupType` | + `GROUP_TYPE_WAREHOUSE = 11`. Your doc lists it between `TEAM` and `USER`; proto numbers never move, so `USER` keeps 10 |
+| `TEAM` | the team whose fact it is, the same for every reader |
+| `WAREHOUSE` | the warehouse team the fact happened in. Only a metric with a warehouse side lists it: the order metrics, Warehouse Fee |
+| a one-row group | a seller grouping by its own team, or a warehouse by itself, gives one row. ⚠ My reading, not asked: the metric still lists the group, and the screen offers it, because root and a warehouse need it. Hiding it per reader is a screen detail, decided when the screen meets it |
+| when | added to `analytic_base` and to the screen's `GroupType` with the first metric that lists it, the same as the filters |
+| the screen | the group is called *Warehouse*, always |

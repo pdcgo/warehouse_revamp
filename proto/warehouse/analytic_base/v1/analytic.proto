@@ -149,12 +149,28 @@ extend google.protobuf.MessageOptions {
 message SortOption {
   bool can_sort = 1;
   // A rate ranks only rows with at least this sample; the rest follow, unranked
-  // (a-rate-ranks-only-above-its-minimum-sample). 0 = no minimum.
+  // (a-rate-ranks-only-above-its-minimum-sample). 0 = no minimum. Only on a FIELD_STAT_TYPE_RATIO field.
   int64 rank_min_sample = 2;
+}
+
+// FieldStatType — what kind of number a metric's field is (a-field-declares-its-stat-type). Every number field of a
+// metric carries one, checked at startup (every-number-field-carries-a-stat-type). The screen formats a cell by it and
+// draws one graph per type, so a count never shares an axis with an amount (the-graph-draws-the-table). It is never a
+// rule for summing: a total is the service's SUMMARY.
+enum FieldStatType {
+  FIELD_STAT_TYPE_UNSPECIFIED = 0;
+  // 0 to 1, shown as a percentage. The only type that may carry rank_min_sample.
+  FIELD_STAT_TYPE_RATIO = 1;
+  // A count of things — units, orders.
+  FIELD_STAT_TYPE_QTY = 2;
+  // An amount of money.
+  FIELD_STAT_TYPE_CURRENCY = 3;
 }
 
 extend google.protobuf.FieldOptions {
   SortOption metric_sort = 50003;
+  // 50002 is role_base's use_scope.
+  FieldStatType field_stat_type = 50004;
 }
 
 // IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER. At most a page.

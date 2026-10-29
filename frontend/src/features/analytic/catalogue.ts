@@ -36,10 +36,10 @@ export interface MetricField {
   canSort: boolean;
 }
 
-/** The menu's categories — the owner's tree in rpc_provide.md §How Metric Selected. */
-export type MetricCategory = "order" | "settlement" | "inventory" | "ads" | "expense";
+/** The menu's categories — the owner's tree in rpc_provide.md §Metric That Exist in Analytic (the-picker-follows-the-metric-tree). */
+export type MetricCategory = "order" | "settlement" | "inventory" | "expense";
 
-export const METRIC_CATEGORIES: MetricCategory[] = ["order", "settlement", "inventory", "ads", "expense"];
+export const METRIC_CATEGORIES: MetricCategory[] = ["order", "settlement", "inventory", "expense"];
 
 export interface MetricDef {
   metricId: string;
@@ -101,7 +101,7 @@ export const METRICS: MetricDef[] = [
     metricId: "metrics/ads",
     labelKey: "ads",
     service: "ads",
-    category: "ads",
+    category: "expense",
     supportedFilters: ["dateRange", "shop"],
     requiredFilters: ["dateRange"],
     supportedGroupBy: ["summary", ...TIME, "shop"],

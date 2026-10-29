@@ -4223,14 +4223,13 @@
       "order": "Pesanan",
       "settlement": "Penyelesaian",
       "inventory": "Inventaris",
-      "ads": "Iklan",
       "expense": "Biaya"
     },
     "metric": {
       "orders": "Pesanan",
       "settlement": "Penyelesaian",
       "stockLost": "Stok hilang",
-      "ads": "Iklan",
+      "ads": "Biaya iklan",
       "expenses": "Biaya"
     },
     "field": {

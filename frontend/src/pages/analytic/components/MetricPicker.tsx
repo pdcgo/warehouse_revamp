@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Button, Checkbox, Flex, HStack, Icon, Input, Popover, Stack, Text } from "@chakra-ui/react";
-import { ChevronRight, type LucideIcon, Megaphone, Package, Plus, Receipt, ShoppingCart, Wallet } from "lucide-react";
+import { ChevronRight, type LucideIcon, Package, Plus, Receipt, ShoppingCart, Wallet } from "lucide-react";
 
 import {
   METRICS,
@@ -18,13 +18,12 @@ export const CATEGORY_ICON: Record<MetricCategory, LucideIcon> = {
   order: ShoppingCart,
   settlement: Wallet,
   inventory: Package,
-  ads: Megaphone,
   expense: Receipt,
 };
 
 // ADD METRIC — picked the way a category is (owner: *"add metric is popup like selecting category"*): a popup with a
 // search box over drill-down columns, CategorySelect's shape. The left column is the owner's categories
-// (rpc_provide.md §How Metric Selected); the chosen one, in rose, opens its metrics in the next column. Typing searches
+// (rpc_provide.md §Metric That Exist in Analytic); the chosen one, in rose, opens its metrics in the next column. Typing searches
 // every category at once, each match named by its path.
 //
 // A metric is TICKED, not chosen-and-closed: the popup stays open, so several go on the table in one visit.

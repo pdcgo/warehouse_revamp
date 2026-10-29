@@ -4238,14 +4238,13 @@
       "order": "Order",
       "settlement": "Settlement",
       "inventory": "Inventory",
-      "ads": "Ads",
       "expense": "Expense"
     },
     "metric": {
       "orders": "Orders",
       "settlement": "Settlement",
       "stockLost": "Stock lost",
-      "ads": "Ads",
+      "ads": "Ads expense",
       "expenses": "Expenses"
     },
     "field": {

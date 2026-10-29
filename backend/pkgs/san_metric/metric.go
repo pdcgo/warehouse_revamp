@@ -54,6 +54,18 @@ func sortOptionOf(field protoreflect.FieldDescriptor) *analytic_basev1.SortOptio
 	return option
 }
 
+// statTypeOf reads the (field_stat_type) option off a field. A field that carries none reads as UNSPECIFIED.
+func statTypeOf(field protoreflect.FieldDescriptor) analytic_basev1.FieldStatType {
+	opts, ok := field.Options().(*descriptorpb.FieldOptions)
+	if !ok || opts == nil {
+		return analytic_basev1.FieldStatType_FIELD_STAT_TYPE_UNSPECIFIED
+	}
+
+	statType, _ := proto.GetExtension(opts, analytic_basev1.E_FieldStatType).(analytic_basev1.FieldStatType)
+
+	return statType
+}
+
 // SortField finds the field a MetricSort names — by its PROTO name (a-sort-field-is-its-proto-name) — and returns it
 // with its SortOption, so the handler reads `rank_min_sample` off the same lookup. A field that is missing, or does not
 // carry `can_sort`, is ErrNotSortable.
@@ -82,6 +94,9 @@ func SortField(
 //   - no GROUP_TYPE_SUMMARY => the table has no headline for that metric (every-metric-has-a-summary).
 //   - a required filter that is not supported => the filter strip never offers it, so no request can ever succeed.
 //   - metric_sort on a field that is not a single number => the ranking query cannot order by it.
+//   - a number field with no field_stat_type => the screen cannot tell an amount from a count, so it can neither format
+//     the cell nor pick the graph the column goes in (every-number-field-carries-a-stat-type).
+//   - rank_min_sample on a field that is not a RATIO => a minimum sample means nothing on a count or an amount.
 //
 // Call this from main, beside san_auth.ValidateDescriptors. A malformed metric should stop the process, not serve a
 // report that quietly disagrees with itself.
@@ -124,7 +139,7 @@ func validateMessages(messages protoreflect.MessageDescriptors, owners map[strin
 func validateMetric(message protoreflect.MessageDescriptor, owners map[string]protoreflect.FullName) error {
 	option := OptionOf(message)
 	if option == nil {
-		return validateSortFields(message, false)
+		return validateFields(message, false)
 	}
 
 	id := option.GetMetricId()
@@ -168,38 +183,59 @@ func validateMetric(message protoreflect.MessageDescriptor, owners map[string]pr
 		}
 	}
 
-	return validateSortFields(message, true)
+	return validateFields(message, true)
 }
 
-// validateSortFields checks every (metric_sort) on a message. Outside a metric the option is refused outright: nothing
-// would ever read it.
-func validateSortFields(message protoreflect.MessageDescriptor, isMetric bool) error {
+// validateFields checks the (metric_sort) and (field_stat_type) of every field on a message. Outside a metric both
+// are refused outright: nothing would ever read them. Inside one, every single number must say what kind it is.
+func validateFields(message protoreflect.MessageDescriptor, isMetric bool) error {
 	fields := message.Fields()
 
 	for i := range fields.Len() {
 		field := fields.Get(i)
 
 		option := sortOptionOf(field)
-		if option == nil {
+		statType := statTypeOf(field)
+		singleNumber := field.Cardinality() != protoreflect.Repeated && isNumber(field.Kind())
+
+		if !isMetric {
+			if option != nil || statType != analytic_basev1.FieldStatType_FIELD_STAT_TYPE_UNSPECIFIED {
+				return fmt.Errorf(
+					"san_metric: %s.%s carries metric_sort or field_stat_type but %s is not a metric — nothing reads it",
+					message.FullName(), field.Name(), message.FullName(),
+				)
+			}
+
 			continue
 		}
 
-		if !isMetric {
-			return fmt.Errorf(
-				"san_metric: %s.%s carries metric_sort but %s is not a metric — nothing reads it",
-				message.FullName(), field.Name(), message.FullName(),
-			)
+		if !singleNumber {
+			if option != nil || statType != analytic_basev1.FieldStatType_FIELD_STAT_TYPE_UNSPECIFIED {
+				return fmt.Errorf(
+					"san_metric: %s.%s carries metric_sort or field_stat_type but is not a single number — a table cannot show or order it",
+					message.FullName(), field.Name(),
+				)
+			}
+
+			continue
 		}
 
-		if field.Cardinality() == protoreflect.Repeated || !isNumber(field.Kind()) {
+		if statType == analytic_basev1.FieldStatType_FIELD_STAT_TYPE_UNSPECIFIED {
 			return fmt.Errorf(
-				"san_metric: %s.%s carries metric_sort but is not a single number — a table cannot be ordered by it",
+				"san_metric: %s.%s carries no field_stat_type — the screen cannot tell a count from an amount",
 				message.FullName(), field.Name(),
 			)
 		}
 
 		if option.GetRankMinSample() < 0 {
 			return fmt.Errorf("san_metric: %s.%s has a negative rank_min_sample", message.FullName(), field.Name())
+		}
+
+		if option.GetRankMinSample() > 0 && statType != analytic_basev1.FieldStatType_FIELD_STAT_TYPE_RATIO {
+			return fmt.Errorf(
+				"san_metric: %s.%s carries rank_min_sample but is %s, not a RATIO — a minimum sample means nothing there",
+				message.FullName(), field.Name(), statType,
+			)
 		}
 	}
 
