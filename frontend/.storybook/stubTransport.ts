@@ -59,6 +59,7 @@ import { resetSettlementImportScenario, settlementImportScenario } from "./settl
 import {
   orderExportScenario,
   receiptCheckScenario,
+  receiptUpdateScenario,
   sessionScenario,
   takeRefusalScenario,
   teamCreateScenario,
@@ -1355,6 +1356,18 @@ export const transport = createRouterTransport(({ service }) => {
       writtenNotes.set(key, [...(writtenNotes.get(key) ?? []), log]);
 
       return { log };
+    },
+
+    // EDIT RESI (the-seller-edits-the-resi-until-handover): the order's selling team only, everybody else NotFound, as
+    // the server answers. STATELESS like the moves — what was asked is kept for the story to read, and the order
+    // comes back as it was.
+    orderReceiptUpdate: (req) => {
+      const order = orderDetailFor(req.orderId);
+      if (!order || order.teamId !== req.teamId) throw new ConnectError("order not found", Code.NotFound);
+
+      receiptUpdateScenario.last = { orderId: req.orderId, receiptCode: req.receiptCode, documentId: req.receipt?.documentId };
+
+      return { order };
     },
 
     // Every plain move (one-status-change-for-every-plain-move). STATELESS on purpose: the page reads the

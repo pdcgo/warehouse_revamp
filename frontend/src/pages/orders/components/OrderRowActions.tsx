@@ -3,10 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Eye, MoreHorizontal } from "lucide-react";
 
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { useOrderActions } from "../../../features/orders/useOrderActions";
 import type { OrderStageId } from "../../../features/orders/stages";
-import { ORDERS_LIST_PENDING } from "../pending";
 
 // THE ROW'S ACTIONS — the house kebab, rendering the owner's per-status table (`rowActions.ts`).
 //
@@ -18,8 +16,8 @@ import { ORDERS_LIST_PENDING } from "../pending";
 // person and the table. The detail page is about ONE order and has the room, so it shows buttons and
 // folds only the overflow.
 //
-// ⚠ SIX OF THE SEVEN ARE REAL: cancel calls `OrderCancel`, and the moves call `OrderStatusChange`. The
-// other one — Edit Resi — says so twice: the ⚠ on the item, and a toast naming why.
+// ⚠ ALL SEVEN ARE REAL: cancel calls `OrderCancel`, the moves call `OrderStatusChange`, and Edit Resi opens its
+// dialog (`OrderReceiptUpdate`).
 
 export function OrderRowActions({
   teamId,
@@ -43,7 +41,6 @@ export function OrderRowActions({
     orderId,
     stage,
     warehouseId,
-    pendingNs: ORDERS_LIST_PENDING.ns,
   });
 
   return (
@@ -83,9 +80,6 @@ export function OrderRowActions({
                 >
                   <Icon as={action.icon} boxSize="4" />
                   {t(`orders.rowAction.${action.id}`)}
-                  {action.pending && (
-                    <NotImplemented list={ORDERS_LIST_PENDING} id={action.pending} />
-                  )}
                 </Menu.Item>
               ))}
             </Menu.Content>

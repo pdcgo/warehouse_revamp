@@ -32,14 +32,6 @@ import type { OrderStageId } from "./stages";
 // ⚠ NOTHING IS GREYED OUT. An action an order cannot take is ABSENT — a disabled item is a question a
 // reader has to answer ("why not?"), an absent one is not asked.
 
-/**
- * The pending entries the unbuilt actions point at.
- *
- * ⚠ A SCREEN USING THIS TABLE MUST CARRY IT in its own `pending.ts`, or the action's mark numbers into
- * nothing and its toast reads a missing key.
- */
-export type ActionPendingId = "receiptCode";
-
 export type RowActionId =
   | "cancel"
   | "editReceipt"
@@ -61,16 +53,12 @@ export interface RowAction {
   to?: OrderStatus;
   /** Which end may press it. */
   side: ActionSide;
-  /**
-   * The pending entry that explains why it does nothing yet. Absent = the action is REAL.
-   *
-   *   editReceipt     → `receiptCode`   decided, but there is no edit RPC yet
-   */
-  pending?: ActionPendingId;
 }
 
 const CANCEL: RowAction = { id: "cancel", icon: Ban, destructive: true, side: "selling" };
-const EDIT_RECEIPT: RowAction = { id: "editReceipt", icon: Pencil, side: "either", pending: "receiptCode" };
+// "Edit Resi" — not a move, so it opens its own dialog (`EditReceiptDialog`). The selling team's only: the
+// marketplace issues the number on the seller's label (the-seller-edits-the-resi-until-handover).
+const EDIT_RECEIPT: RowAction = { id: "editReceipt", icon: Pencil, side: "selling" };
 // "Jadikan Dikirim" — customer service sees the parcel moving on the platform.
 const SHIP: RowAction = { id: "ship", icon: Truck, to: OrderStatus.SHIPPED, side: "selling" };
 const RETURN_GOODS: RowAction = {

@@ -230,6 +230,17 @@ export function useCancelOrder() {
   });
 }
 
+// EDIT RESI (the-seller-edits-the-resi-until-handover) — the tracking number, the label file, or both, while the parcel
+// is still in the building. It moves no status and no stock, so only the order domain goes stale.
+export function useUpdateOrderReceipt() {
+  const invalidate = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof orderClient.orderReceiptUpdate>[0]) => orderClient.orderReceiptUpdate(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
 // ONE MOVE FOR MANY ORDERS (one-status-change-for-every-plain-move) — the warehouse's confirm, pick, hand
 // back and handover, and customer service's shipped, completed, problem, lost and forced return. Cancel
 // keeps `useCancelOrder`: it does more than move a status.

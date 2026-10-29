@@ -712,10 +712,6 @@
       "import": {
         "label": "Import",
         "reason": "The file is named on screen and goes no further: no upload, no parser, and each marketplace needs its own."
-      },
-      "receiptCode": {
-        "label": "Edit Resi",
-        "reason": "Decided — the selling team changes the tracking number, the label file or both until the courier takes the parcel — but there is no RPC for it yet, so this action does nothing."
       }
     },
     "title": "Orders",
@@ -881,6 +877,12 @@
       "returnGoods": "Return the goods on order #{{id}}? The stock comes back to the shelf.",
       "markLost": "Mark order #{{id}} as lost? It is written off and the goods do not come back."
     },
+    "editReceipt": {
+      "intro": "Only while the parcel is still in the warehouse. Change the number, the label file, or both — each change is written to the order’s notes.",
+      "file": "Label file",
+      "save": "Save",
+      "saved": "Tracking number updated"
+    },
     "receiptColumn": "Tracking no.",
     "placedMpColumn": "MP date",
     "stageDateColumn": "{{status}} on",
@@ -965,10 +967,6 @@
       "shippingTracking": {
         "label": "Tracking trail",
         "reason": "Where the parcel is, when it was scanned, what it weighed and what the postage cost are not modelled at all. The owner expects this section to be empty most of the time."
-      },
-      "receiptCode": {
-        "label": "Edit Resi",
-        "reason": "Decided — the selling team changes the tracking number, the label file or both until the courier takes the parcel — but there is no RPC for it yet, so this action does nothing."
       }
     },
     "stepper": {

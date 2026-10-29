@@ -758,6 +758,34 @@ test("Orders: clicking a row opens that order's detail", async ({ page }) => {
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
 });
 
+// EDIT RESI (the-seller-edits-the-resi-until-handover) on the order the Create test placed — still pending, so the
+// counts the tests above read are untouched. The number changes, the file stays, and the order's notes say both values.
+test("Edit Resi: the seller replaces the tracking number while the parcel is in the building", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  const replaced = `${TRACKING_NUMBER}B`;
+
+  await page.goto("/orders");
+  await page.getByTestId("orders-search").fill(TRACKING_NUMBER);
+  const row = page.getByTestId(/^order-row-/).first();
+  await expect(row).toContainText(TRACKING_NUMBER);
+  const orderId = (await row.getAttribute("data-testid"))!.replace("order-row-", "");
+
+  await page.getByTestId(`order-actions-${orderId}`).click();
+  await page.getByTestId(`order-editReceipt-${orderId}`).click();
+
+  const dialog = page.getByTestId("edit-receipt-dialog");
+  await expect(dialog.getByTestId("edit-receipt-code")).toHaveValue(TRACKING_NUMBER);
+  await expect(dialog.getByTestId("order-receipt-attached")).toContainText("resi-jne.pdf");
+  await dialog.getByTestId("edit-receipt-code").fill(replaced);
+  await dialog.getByTestId("edit-receipt-save").click();
+  await expect(dialog).toBeHidden();
+
+  await page.goto(`/orders/${orderId}`);
+  await expect(page.getByTestId("order-reference-receipt")).toContainText(replaced);
+  await expect(page.getByTestId("order-detail-receipt")).toContainText("resi-jne.pdf");
+  await expect(page.getByTestId("section-notes")).toContainText(`Resi: ${TRACKING_NUMBER} → ${replaced}`);
+});
+
 // Switches the app to the WAREHOUSE team — the crew's seat (#151).
 //
 // The pick screens are scoped to the warehouse, not to the selling team, so nothing about them can be

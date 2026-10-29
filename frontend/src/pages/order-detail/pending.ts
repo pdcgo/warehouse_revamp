@@ -6,13 +6,13 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // This is a PREVIEW of the screen the owner specified: seven sections down one page, rather than the
 // three tabs the built detail page has. Most of what the sections need is real — the order, its lines
 // and their products' pictures, its timeline, its notes, its address, its tracking number and its frozen warehouse
-// fee. What is missing clusters in two places: the parcel's trail, and Edit Resi.
+// fee. What is missing is the parcel's trail.
 //
 // The list shrinks by one entry each time something behind it lands. See `features/pending` for the
 // four kinds and for why the badge's number is the position in this array.
 
 /** One unwired part of the screen. The id is also its i18n key (`orderDetail.pending.<id>`). */
-export type PendingId = "shippingTracking" | "receiptCode";
+export type PendingId = "shippingTracking";
 
 const PARTS: PendingPart<PendingId>[] = [
   // ⚠ THE TRACKING NUMBER IS STORED NOW (`receipt_code`), BUT THE REST OF THE SHIPMENT IS NOT MODELLED AT ALL — where the parcel is, when the courier
@@ -22,11 +22,6 @@ const PARTS: PendingPart<PendingId>[] = [
   //
   // The number was one missing FIELD and has landed; this is a missing INTEGRATION.
   { id: "shippingTracking", kind: "missing" },
-  // ⚠ EDIT RESI IS ON SCREEN AND DOES NOTHING. Decided (the-seller-edits-the-resi-until-handover): the selling team
-  // changes the tracking number, the label file or both, while the parcel is still in the building. There is no edit
-  // RPC yet, so the action only says so. `rowActions.ts` points EDIT_RECEIPT here — the id must be in this list, or the
-  // badge reads a position that does not exist.
-  { id: "receiptCode", kind: "missing" },
 ];
 
 /** What the badges and the summary on this screen read. `ns` is where its copy lives. */

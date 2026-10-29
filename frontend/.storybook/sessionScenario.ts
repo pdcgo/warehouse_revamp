@@ -44,6 +44,14 @@ export const orderExportScenario = {
 };
 
 /**
+ * What the last OrderReceiptUpdate (Edit Resi) was asked — each field `undefined` when it was not sent, which is the
+ * half a story pins: only what changed goes over the wire (the-seller-edits-the-resi-until-handover).
+ */
+export const receiptUpdateScenario = {
+  last: undefined as undefined | { orderId: bigint; receiptCode?: string; documentId?: string },
+};
+
+/**
  * THE WAREHOUSE REFUSING THE TAKE (a-refusal-names-its-reason-and-every-line). When set, OrderCreate (the create form's,
  * and the draft page's Promote)
  * answer as the server does once selling passes the take's refusal through: FailedPrecondition, carrying an
@@ -77,6 +85,7 @@ export function resetSessionScenario() {
   sessionScenario.teamNames = {};
   teamCreateScenario.last = undefined;
   orderExportScenario.last = undefined;
+  receiptUpdateScenario.last = undefined;
   receiptCheckScenario.refused = 0;
   takeRefusalScenario.refusal = undefined;
 }

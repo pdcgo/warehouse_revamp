@@ -198,6 +198,17 @@ decisions in [order_detail_decision.md](../../technical/frontend/order_detail_de
 | note limits | `OrderCreateRequest.note` 2000, `OrderNoteCreate` 500 — kept different by the owner ([the-two-note-limits-stay-different](../../technical/frontend/order_detail_decision.md#the-two-note-limits-stay-different)) |
 | dev DB | selling migrated to 29 |
 
+**Edit Resi pass (2026-10-29):** at the owner's *"yes"* to *"commit first, then Edit Resi"* — decision
+[the-seller-edits-the-resi-until-handover](../../technical/frontend/order_list_decision.md#the-seller-edits-the-resi-until-handover).
+
+| | built 2026-10-29 |
+| --- | --- |
+| RPC | `OrderReceiptUpdate(team_id, order_id, optional receipt_code, receipt)` — the selling team only, `pending`/`processed`/`picked` only (`FailedPrecondition` after), each of the two on its own, at least one. One transaction: the order `FOR UPDATE`, one UPDATE, one note row naming the old and the new. No migration |
+| screen | `features/orders/EditReceiptDialog.tsx`, opened by `useOrderActions` from the list's kebab and the detail's buttons; sends only what changed. `rowActions.ts` lost its pending machinery (Edit Resi was its last user) and Edit Resi is `selling`-side now — it was offered to the warehouse too |
+| marks left | seller list **1** (import) · order detail **1** (shippingTracking — deferred) |
+| tests | 6 unit (`order_receipt_update_test.go`), 3 race (`-tags raceaudit`), 1 perf; stories `Features/Orders/EditReceiptDialog` (3) and the detail's `EditResiSendsOnlyTheNumber`, `TheWarehouseHasNoEditResi`; e2e *Edit Resi: the seller replaces the tracking number…* |
+| ⚠ my reading | the record is a note row (no status), not a row into the current status, which would reset the status date |
+
 ## What exists
 
 | | |
@@ -236,6 +247,7 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | `TeamReturnConfigurationDetail` · `Set` · performance | 1 query each, under 1 ms over 10 000 rows — not heavy |
 | the buyer's username · concurrency + performance | ✅ one more column on writes and reads that already exist (create, push, update, promote, detail, list, export) — no new query, no new lock, no index needed |
 | the required total · concurrency + performance | ✅ one column on the draft's existing writes and one comparison in `placeOrder`'s validation, before any read — no new query, no new lock, no index |
+| `OrderReceiptUpdate` · concurrency + performance | ✅ safe — 60/60 at `-count=20`: eight edits at once form one chain of notes (each old is the previous new), and an edit waiting on the handover's row lock is refused once it gets it. 4 statements, ~2 ms over 50 000 orders, every plan an index read — not heavy, no file |
 | the line's frozen total · concurrency + performance | ✅ the lines' one INSERT moves after the pick, inside the same transaction, carrying one more column — same statement count, no new shared row, no new lock. Liability's product fee drops its terms read (one fewer query per owner) and only its amount changes |
 
 ## Decided, not built
@@ -244,7 +256,6 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | --- | --- |
 | the create check for a return warehouse | rollout steps **2** (each team sets its own — [each-team-sets-its-own-return-warehouse](../../business/order/context_decision.md#each-team-sets-its-own-return-warehouse)) and **3** (create refuses a team without one) — [create-refuses-a-team-with-no-return-warehouse](../../business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse). Step 1 is this pass |
 | the return accept | `return → return_completed`, its own RPC — refused by `OrderStatusChange` today. Its inventory half is [return.md](../../business/inventory/return.md)'s brief |
-| *Edit Resi* | [the-seller-edits-the-resi-until-handover](../../technical/frontend/order_list_decision.md#the-seller-edits-the-resi-until-handover) — `receipt_code` and the file exist; the edit RPC and the menu wiring do not |
 | the event's fee | `OrderPlaced.warehouse_fee` and liability posting it — step 4 of the fee rollout |
 | the return's use of the map | the return accept reading `product_return_maps` to bring a borrowed line back as the team's own product ([a-returned-borrowed-unit-is-relabelled-at-the-accept](../../business/order/context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept)) — waits on the return accept itself. The map is built (eighth pass) |
 

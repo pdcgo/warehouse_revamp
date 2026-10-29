@@ -2,11 +2,9 @@ import { Button, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { MoreHorizontal } from "lucide-react";
 
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { useOrderActions } from "../../../features/orders/useOrderActions";
 import type { RowAction } from "../../../features/orders/rowActions";
 import type { OrderStageId } from "../../../features/orders/stages";
-import { ORDER_DETAIL_PENDING } from "../pending";
 
 // THE ORDER'S ACTIONS AS BUTTONS — and `⋯` only when there are too many (owner: *"action lebih baik
 // langsung muncul, tapi baru kasih opsi ... kalau kebanyakan"*).
@@ -88,7 +86,6 @@ export function OrderActionBar({
     orderId,
     stage,
     warehouseId,
-    pendingNs: ORDER_DETAIL_PENDING.ns,
   });
 
   // An end state offers nothing, and nothing is drawn — not an empty bar, not a disabled button.
@@ -112,7 +109,6 @@ export function OrderActionBar({
           >
             <Icon as={action.icon} boxSize="4" />
             {t(`orders.rowAction.${action.id}`)}
-            {action.pending && <NotImplemented list={ORDER_DETAIL_PENDING} id={action.pending} />}
           </Button>
         ))}
 
@@ -141,9 +137,6 @@ export function OrderActionBar({
                     >
                       <Icon as={action.icon} boxSize="4" />
                       {t(`orders.rowAction.${action.id}`)}
-                      {action.pending && (
-                        <NotImplemented list={ORDER_DETAIL_PENDING} id={action.pending} />
-                      )}
                     </Menu.Item>
                   ))}
                 </Menu.Content>

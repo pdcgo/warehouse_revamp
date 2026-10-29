@@ -705,10 +705,6 @@
       "import": {
         "label": "Impor",
         "reason": "File hanya ditampilkan namanya: belum diunggah, belum diurai, dan tiap marketplace butuh pengurai sendiri."
-      },
-      "receiptCode": {
-        "label": "Edit Resi",
-        "reason": "Sudah diputuskan — tim penjual mengubah nomor resi, file label, atau keduanya sampai paket diserahkan ke kurir — tapi RPC-nya belum ada, jadi aksi ini belum melakukan apa-apa."
       }
     },
     "title": "Pesanan",
@@ -874,6 +870,12 @@
       "returnGoods": "Retur barang pesanan #{{id}}? Stoknya kembali ke rak.",
       "markLost": "Jadikan pesanan #{{id}} lost? Pesanan dihapusbukukan dan barangnya tidak kembali."
     },
+    "editReceipt": {
+      "intro": "Hanya selama paket masih di gudang. Ubah nomor resi, file label, atau keduanya — setiap perubahan dicatat di catatan pesanan.",
+      "file": "File label",
+      "save": "Simpan",
+      "saved": "Nomor resi diperbarui"
+    },
     "receiptColumn": "Resi",
     "placedMpColumn": "Tgl MP",
     "stageDateColumn": "Tgl {{status}}",
@@ -958,10 +960,6 @@
       "shippingTracking": {
         "label": "Jejak pengiriman",
         "reason": "Posisi paket, kapan dipindai, beratnya dan ongkirnya sama sekali belum dimodelkan. Pemilik memang memperkirakan bagian ini kosong di kebanyakan pesanan."
-      },
-      "receiptCode": {
-        "label": "Edit Resi",
-        "reason": "Sudah diputuskan — tim penjual mengubah nomor resi, file label, atau keduanya sampai paket diserahkan ke kurir — tapi RPC-nya belum ada, jadi aksi ini belum melakukan apa-apa."
       }
     },
     "stepper": {

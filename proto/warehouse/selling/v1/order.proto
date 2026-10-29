@@ -40,6 +40,10 @@ service OrderService {
   // A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
   // Never edited and never deleted — a correction is a new note.
   rpc OrderNoteCreate(OrderNoteCreateRequest) returns (OrderNoteCreateResponse);
+  // EDIT RESI (the-seller-edits-the-resi-until-handover): the selling team replaces the tracking number, the label
+  // file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
+  // courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
+  rpc OrderReceiptUpdate(OrderReceiptUpdateRequest) returns (OrderReceiptUpdateResponse);
 
   // ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
   //
@@ -858,6 +862,38 @@ message OrderNoteCreateRequest {
 message OrderNoteCreateResponse {
   // The row written: no status, the note, its side, the caller as its actor.
   OrderTimelineLog log = 1;
+}
+
+message OrderReceiptUpdateRequest {
+  // The selling team's action only: the marketplace issues the number on the seller's label, so the warehouse does
+  // not edit it (the-seller-edits-the-resi-until-handover).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The order's selling team. Any other team, its warehouse included, reads NotFound.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Each of the two is changed ON ITS OWN: unset leaves it as it is. At least one must be set.
+  //
+  // The new tracking number, verbatim; "" removes it.
+  optional string receipt_code = 3 [(buf.validate.field).string.max_len = 64];
+  // The new label file, already uploaded to document_service by the client; an empty `document_id` removes it.
+  OrderReceipt receipt = 4;
+}
+
+message OrderReceiptUpdateResponse {
+  // The order as it now is. Unchanged, with no note written, when the request named what was already there.
+  Order order = 1;
 }
 
 // ── Order activity, per product ──────────────────────────────────────────────────────────────────

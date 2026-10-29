@@ -53,6 +53,9 @@ const (
 	// OrderServiceOrderNoteCreateProcedure is the fully-qualified name of the OrderService's
 	// OrderNoteCreate RPC.
 	OrderServiceOrderNoteCreateProcedure = "/warehouse.selling.v1.OrderService/OrderNoteCreate"
+	// OrderServiceOrderReceiptUpdateProcedure is the fully-qualified name of the OrderService's
+	// OrderReceiptUpdate RPC.
+	OrderServiceOrderReceiptUpdateProcedure = "/warehouse.selling.v1.OrderService/OrderReceiptUpdate"
 	// OrderServiceOrderProductActivityByIdsProcedure is the fully-qualified name of the OrderService's
 	// OrderProductActivityByIds RPC.
 	OrderServiceOrderProductActivityByIdsProcedure = "/warehouse.selling.v1.OrderService/OrderProductActivityByIds"
@@ -94,6 +97,10 @@ type OrderServiceClient interface {
 	// A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
 	// Never edited and never deleted — a correction is a new note.
 	OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error)
+	// EDIT RESI (the-seller-edits-the-resi-until-handover): the selling team replaces the tracking number, the label
+	// file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
+	// courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
+	OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error)
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
 	// The selling team's product list asks one question of this service: when did each of these
@@ -180,6 +187,12 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderNoteCreate")),
 			connect.WithClientOptions(opts...),
 		),
+		orderReceiptUpdate: connect.NewClient[v1.OrderReceiptUpdateRequest, v1.OrderReceiptUpdateResponse](
+			httpClient,
+			baseURL+OrderServiceOrderReceiptUpdateProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderReceiptUpdate")),
+			connect.WithClientOptions(opts...),
+		),
 		orderProductActivityByIds: connect.NewClient[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse](
 			httpClient,
 			baseURL+OrderServiceOrderProductActivityByIdsProcedure,
@@ -222,6 +235,7 @@ type orderServiceClient struct {
 	orderExport               *connect.Client[v1.OrderExportRequest, v1.OrderExportResponse]
 	orderStatusChange         *connect.Client[v1.OrderStatusChangeRequest, v1.OrderStatusChangeResponse]
 	orderNoteCreate           *connect.Client[v1.OrderNoteCreateRequest, v1.OrderNoteCreateResponse]
+	orderReceiptUpdate        *connect.Client[v1.OrderReceiptUpdateRequest, v1.OrderReceiptUpdateResponse]
 	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
 	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
 	orderStat                 *connect.Client[v1.OrderStatRequest, v1.OrderStatResponse]
@@ -262,6 +276,11 @@ func (c *orderServiceClient) OrderStatusChange(ctx context.Context, req *connect
 // OrderNoteCreate calls warehouse.selling.v1.OrderService.OrderNoteCreate.
 func (c *orderServiceClient) OrderNoteCreate(ctx context.Context, req *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error) {
 	return c.orderNoteCreate.CallUnary(ctx, req)
+}
+
+// OrderReceiptUpdate calls warehouse.selling.v1.OrderService.OrderReceiptUpdate.
+func (c *orderServiceClient) OrderReceiptUpdate(ctx context.Context, req *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error) {
+	return c.orderReceiptUpdate.CallUnary(ctx, req)
 }
 
 // OrderProductActivityByIds calls warehouse.selling.v1.OrderService.OrderProductActivityByIds.
@@ -314,6 +333,10 @@ type OrderServiceHandler interface {
 	// A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
 	// Never edited and never deleted — a correction is a new note.
 	OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error)
+	// EDIT RESI (the-seller-edits-the-resi-until-handover): the selling team replaces the tracking number, the label
+	// file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
+	// courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
+	OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error)
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
 	// The selling team's product list asks one question of this service: when did each of these
@@ -396,6 +419,12 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderNoteCreate")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderReceiptUpdateHandler := connect.NewUnaryHandler(
+		OrderServiceOrderReceiptUpdateProcedure,
+		svc.OrderReceiptUpdate,
+		connect.WithSchema(orderServiceMethods.ByName("OrderReceiptUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	orderServiceOrderProductActivityByIdsHandler := connect.NewUnaryHandler(
 		OrderServiceOrderProductActivityByIdsProcedure,
 		svc.OrderProductActivityByIds,
@@ -442,6 +471,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderStatusChangeHandler.ServeHTTP(w, r)
 		case OrderServiceOrderNoteCreateProcedure:
 			orderServiceOrderNoteCreateHandler.ServeHTTP(w, r)
+		case OrderServiceOrderReceiptUpdateProcedure:
+			orderServiceOrderReceiptUpdateHandler.ServeHTTP(w, r)
 		case OrderServiceOrderProductActivityByIdsProcedure:
 			orderServiceOrderProductActivityByIdsHandler.ServeHTTP(w, r)
 		case OrderServiceOrderActivityStatProcedure:
@@ -487,6 +518,10 @@ func (UnimplementedOrderServiceHandler) OrderStatusChange(context.Context, *conn
 
 func (UnimplementedOrderServiceHandler) OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderNoteCreate is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderReceiptUpdate is not implemented"))
 }
 
 func (UnimplementedOrderServiceHandler) OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error) {
