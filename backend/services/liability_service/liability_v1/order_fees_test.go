@@ -19,7 +19,8 @@ const canceller uint64 = 77
 
 // setTerms writes a creditor's terms toward one debtor. `counterparty = 0` is the DEFAULT row.
 //
-// A handling fee and nothing else: the terms carry no markup (the-ledger-charges-the-frozen-line-total).
+// A handling fee and nothing else: the terms carry no markup (the-ledger-charges-the-frozen-line-total), and since step
+// 4 of the-flat-rate-is-dropped-last nothing charges from the handling fee either — it is written here only to prove so.
 func setTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handling int64) {
 	t.Helper()
 
@@ -35,26 +36,28 @@ func setTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handling int64
 	}
 }
 
+func fee(v float64) *float64 { return &v }
+
 // anOrder is one order of team `selling`, fulfilled by `warehouse`, selling `productOwner`'s goods: two units that
-// cost 30.000, frozen by the take at the product's 20% markup — a line total of 72.000.
+// cost 30.000, frozen by the take at the product's 20% markup — a line total of 72.000. The warehouse priced it at
+// 12.000, frozen on the order (the-event-carries-the-warehouse-fee).
 func anOrder(orderID uint64) liability_v1.PlacedOrder {
 	return liability_v1.PlacedOrder{
-		TeamID:      selling,
-		WarehouseID: warehouse,
-		OrderID:     orderID,
+		TeamID:       selling,
+		WarehouseID:  warehouse,
+		OrderID:      orderID,
+		WarehouseFee: fee(12000),
 		Lines: []liability_v1.OrderLine{
 			{OwningTeamID: productOwner, Quantity: 2, Total: 72000},
 		},
 	}
 }
 
-// THE TWO ORDER-DRIVEN FEES. The warehouse fulfilled it, so it is owed a flat fee; the order sold
+// THE TWO ORDER-DRIVEN FEES. The warehouse fulfilled it, so it is owed the fee the order froze; the order sold
 // somebody else's goods, so that team is owed the line's frozen total.
-func TestChargeOrder_PostsTheHandlingFeeAndTheProductFee(t *testing.T) {
+func TestChargeOrder_PostsTheWarehouseFeeAndTheProductFee(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
-
-	setTerms(t, db, warehouse, 0, 12000)
 
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
@@ -62,7 +65,7 @@ func TestChargeOrder_PostsTheHandlingFeeAndTheProductFee(t *testing.T) {
 	}
 
 	if got := balanceOf(t, db, warehouse, selling); got != 12000 {
-		t.Fatalf("the warehouse is owed %d, want the flat 12000", got)
+		t.Fatalf("the warehouse is owed %d, want the order's frozen 12000", got)
 	}
 
 	// The line's frozen 72.000 — 60.000 of goods at the product's 20%, priced by the take — posted as it came.
@@ -178,8 +181,6 @@ func TestChargeOrder_ARedeliveryChargesNothingExtra(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, warehouse, 0, 12000)
-
 	for i := 0; i < 3; i++ {
 		err := svc.ChargeOrder(context.Background(), anOrder(412))
 		if err != nil {
@@ -196,39 +197,30 @@ func TestChargeOrder_ARedeliveryChargesNothingExtra(t *testing.T) {
 	}
 }
 
-// ⚠ THE TWO FEES DEFAULT DIFFERENTLY WITH NO CONFIGURATION, and the asymmetry is deliberate.
+// ⚠ AN ORDER WITH NO FROZEN FEE CHARGES THE WAREHOUSE NOTHING, and the product fee is owed anyway.
 //
-//   - The HANDLING FEE is a PRICE the warehouse sets. No price set means the service is free, and a
-//     warehouse that has configured nothing must not be silently billing anybody.
+//   - The WAREHOUSE FEE is a PRICE the order froze when it was placed. An order placed before fees were frozen carries
+//     none, and liability does not guess one — it computes no fee of its own (the-event-carries-the-warehouse-fee).
 //   - The PRODUCT FEE is a COST TRANSFER. The goods left the owner's stock and do not come back
 //     (§2.2: "money from the first moment"), so the owner is owed the line's frozen total whether or
 //     not anybody configured anything — there is no term for it to read.
 //
 // Defaulting the product fee to zero as well would mean one team's goods walk out of another team's
 // warehouse free, which is the one outcome §2.2 explicitly rejects.
-func TestChargeOrder_TheTwoFeesDefaultDifferently(t *testing.T) {
+func TestChargeOrder_NoFrozenFeeChargesTheWarehouseNothing(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	err := svc.ChargeOrder(context.Background(), anOrder(412))
+	order := anOrder(412)
+	order.WarehouseFee = nil
+
+	err := svc.ChargeOrder(context.Background(), order)
 	if err != nil {
 		t.Fatalf("ChargeOrder: %v", err)
 	}
 
-	// No handling rate configured: the warehouse charges nothing.
-	var handling int64
-
-	err = db.
-		Model(&liability_service_models.LiabilityLog{}).
-		Where("team_id = ? AND counterparty_id = ?", warehouse, selling).
-		Count(&handling).
-		Error
-	if err != nil {
-		t.Fatalf("count: %v", err)
-	}
-
-	if handling != 0 {
-		t.Fatalf("%d handling-fee entries with no rate configured, want 0", handling)
+	if got := entriesBetween(t, db, warehouse, selling); got != 0 {
+		t.Fatalf("%d warehouse-fee entries for an order with no frozen fee, want 0", got)
 	}
 
 	// The goods still left their owner's stock: the line's frozen total, with no terms anywhere.
@@ -237,22 +229,74 @@ func TestChargeOrder_TheTwoFeesDefaultDifferently(t *testing.T) {
 	}
 }
 
-// A per-debtor row OVERRIDES the creditor's default — that is the whole point of having both.
-func TestChargeOrder_APerTeamRateOverridesTheDefault(t *testing.T) {
+// A fee of 0 is a warehouse that charges nothing: no entry, so the pair's idempotency key for the order stays free.
+func TestChargeOrder_AZeroFeePostsNothing(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	order := anOrder(412)
+	order.WarehouseFee = fee(0)
+
+	err := svc.ChargeOrder(context.Background(), order)
+	if err != nil {
+		t.Fatalf("ChargeOrder: %v", err)
+	}
+
+	if got := entriesBetween(t, db, warehouse, selling); got != 0 {
+		t.Fatalf("%d warehouse-fee entries for a fee of 0, want 0", got)
+	}
+}
+
+// THE SWITCH-OVER DAY (the-flat-rate-is-dropped-last, step 4): the flat handling fee on Credit Terms — a default AND a
+// per-team row — is not read any more. The warehouse is owed what the order froze, rounded once to whole rupiah.
+func TestChargeOrder_TheFlatRateIsNoLongerRead(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	setTerms(t, db, warehouse, 0, 12000)
 	setTerms(t, db, warehouse, selling, 5000)
 
-	err := svc.ChargeOrder(context.Background(), anOrder(412))
+	order := anOrder(412)
+	order.WarehouseFee = fee(4300.4)
+
+	err := svc.ChargeOrder(context.Background(), order)
 	if err != nil {
 		t.Fatalf("ChargeOrder: %v", err)
 	}
 
-	if got := balanceOf(t, db, warehouse, selling); got != 5000 {
-		t.Fatalf("the warehouse is owed %d, want the 5000 override rather than the 12000 default", got)
+	if got := balanceOf(t, db, warehouse, selling); got != 4300 {
+		t.Fatalf("the warehouse is owed %d, want the order's 4300.4 rounded — not the 5000 or 12000 flat rate", got)
 	}
+
+	half := anOrder(413)
+	half.WarehouseFee = fee(1500.5)
+
+	err = svc.ChargeOrder(context.Background(), half)
+	if err != nil {
+		t.Fatalf("ChargeOrder: %v", err)
+	}
+
+	if got := balanceOf(t, db, warehouse, selling); got != 4300+1501 {
+		t.Fatalf("the warehouse is owed %d, want 4300 + 1500.5 rounded up", got)
+	}
+}
+
+// entriesBetween counts the ledger rows on the creditor's side toward one debtor.
+func entriesBetween(t *testing.T, db *gorm.DB, creditor, debtor uint64) int64 {
+	t.Helper()
+
+	var n int64
+
+	err := db.
+		Model(&liability_service_models.LiabilityLog{}).
+		Where("team_id = ? AND counterparty_id = ?", creditor, debtor).
+		Count(&n).
+		Error
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+
+	return n
 }
 
 // ONE FEE PER OWNING TEAM, not per line: two lines of the same team's goods are ONE debt, and the
@@ -295,8 +339,6 @@ func TestChargeOrder_TwoLinesOfOneOwnerAreOneFee(t *testing.T) {
 func TestChargeOrder_SellingYourOwnProductOwesNobody(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
-
-	setTerms(t, db, selling, 0, 12000)
 
 	order := anOrder(412)
 	order.WarehouseID = selling
@@ -360,6 +402,8 @@ func TestChargeOrder_AnUnresolvedOwnerIsSkipped(t *testing.T) {
 
 	order := anOrder(412)
 	order.Lines = []liability_v1.OrderLine{{OwningTeamID: 0, Quantity: 2, Total: 72000}}
+	// The product fee alone: the warehouse's fee is another test's.
+	order.WarehouseFee = nil
 
 	err := svc.ChargeOrder(context.Background(), order)
 	if err != nil {
@@ -382,8 +426,6 @@ func TestChargeOrder_AnUnresolvedOwnerIsSkipped(t *testing.T) {
 func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
-
-	setTerms(t, db, warehouse, 0, 12000)
 
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
@@ -426,8 +468,6 @@ func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	setTerms(t, db, warehouse, 0, 12000)
-
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
 		t.Fatalf("charge: %v", err)
@@ -450,8 +490,6 @@ func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 func TestReverseOrder_LeavesTheCODObligationAlone(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
-
-	setTerms(t, db, warehouse, 0, 12000)
 
 	_, err := svc.PostEntry(context.Background(), db, codFee(25000, 77))
 	if err != nil {

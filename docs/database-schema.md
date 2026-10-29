@@ -548,8 +548,9 @@ erDiagram
   - **NULL is NEVER PRICED, 0 is a price.** Every order before `00019` is NULL and is not back-filled: the flat fee
     those orders paid is a liability row the order cannot read. The list's money and the census treat NULL as an
     unknown total beli, exactly as a `goods_cost` of 0.
-  - ⚠ **Not yet what the ledger posts.** Liability still charges its flat `handling_fee` from `OrderPlaced` until step 4
-    switches it to this column — for a warehouse carried over from its flat fee the two are the same amount.
+  - **What the ledger posts** (step 4, the-event-carries-the-warehouse-fee): `OrderPlaced.warehouse_fee` carries this
+    column as stored, and liability posts it — rounded once to whole rupiah at its own edge, since its entries are
+    `BIGINT` — and reads no rate. NULL posts nothing.
 - **Each line freezes its TOTAL** (`00023`) — `order_items.total`, what inventory's take priced the line at: the goods
   it drew plus, on another team's product, that product's own `cross_markup_bps`
   ([inventory-computes-the-markup](business/order/context_decision.md#inventory-computes-the-markup)). The order
@@ -1349,7 +1350,7 @@ erDiagram
         bigserial   id                PK
         bigint      team_id           "the CREDITOR who set these terms"
         bigint      counterparty_id   "the debtor — 0 IS THE DEFAULT ROW for every other team"
-        bigint      handling_fee      "flat per order, whole rupiah; 0 = charge nothing"
+        bigint      handling_fee      "NOT READ since step 4 of the-flat-rate-is-dropped-last, dropped at step 5"
         bigint      credit_limit      "NULL = UNLIMITED, 0 = no credit at all"
         timestamptz created_at
         timestamptz updated_at
@@ -1464,8 +1465,8 @@ erDiagram
     The markup is the product's, applied by inventory's take and frozen on `order_items.total`; the product fee
     posts those totals and reads nothing here. `liability_terms_non_negative` was rebuilt over the fee and the limit,
     since dropping the column would have dropped the whole CHECK.
-  - **The two fees default differently, deliberately.** No `handling_fee` means charge nothing — it is
-    a *price*, and a warehouse that configured nothing must not be silently billing anybody. The product fee
+  - **The two fees default differently, deliberately.** An order with no frozen `warehouse_fee` charges the warehouse
+    nothing — it is a *price*, frozen on the order, and liability guesses none. `handling_fee` is not read since step 4. The product fee
     needs no row at all: it is a *cost transfer* — the goods left the owner's stock and do not come back — and
     it is the lines' frozen totals. See `docs/services/liability_service/rpc.md`.
   - Created with #186 rather than #189, because the order fees have to READ it before anything writes
@@ -2071,5 +2072,5 @@ erDiagram
   - **`UNIQUE (warehouse_id)`** makes `WarehouseFeeSet` one `INSERT … ON CONFLICT DO UPDATE`, so two managers saving at once
     leave one row.
   - **Money is `DOUBLE PRECISION`** ([rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point)).
-  - ⚠ **Step 1 of five** ([the-flat-rate-is-dropped-last](business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)):
-    nothing charges from this table yet. Liability still charges `liability_terms.handling_fee` until step 4.
+  - **Steps 1–4 of five are built** ([the-flat-rate-is-dropped-last](business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)):
+    an order freezes this table's fee and the ledger posts what the order froze. Step 5 drops `liability_terms.handling_fee`.

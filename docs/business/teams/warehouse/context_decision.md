@@ -225,6 +225,7 @@ flowchart LR
 | ✅ the refusal in the calculation, built *(2026-10-21)* | `WarehouseFeeCalculate` answers `FailedPrecondition` naming the warehouse. The settings card warns a warehouse with no fee. Order create does not call it yet — step 3 |
 | ✅ the refusal in order create, built *(2026-10-22)* | the refusal reaches the form unchanged, before any stock moves — so nothing is rolled back because nothing was taken. The form shows it under the warehouse picker and keeps Save off; the draft page lists it among Promote's reasons. The proposed *"shown disabled"* in the picker was not built — it is a proposal |
 | 🔄 changed *(2026-10-23)* | the fee is now priced AFTER the take, on the cost of the units it drew ([an-order-is-costed-at-what-leaves-the-shelf](../../order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)) — so a warehouse with no rate refuses once the take has happened, and the take is released under the same key, as this decision's own spec allows. The form still refuses such a warehouse before Create, so in practice nothing is taken |
+| ✅ step 4 built *(2026-10-29)* | **the switch-over.** `OrderPlaced.warehouse_fee` carries the order's frozen fee ([the-event-carries-the-warehouse-fee](#the-event-carries-the-warehouse-fee)); liability's `chargeWarehouseFee` posts it and `chargeHandlingFee` is gone, with the terms lookup it used. `liability_terms.handling_fee` is read by nothing but step 2's carry-over; the Credit Terms field says it is no longer charged, and the Warehouse Fee card says an order keeps the fee it was placed at. Step 5 is not built |
 
 ---
 
@@ -325,6 +326,8 @@ flowchart LR
 | a fee of 0 | posts no row, as today |
 | the cancel | reverses what was posted. `ReverseOrder` already reads back the charge, so no amount rides on the cancel |
 | the same event change | each line gains its `total` ([the-ledger-charges-the-frozen-line-total](../../../technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)) |
+| ✅ built *(2026-10-29)* | `optional double warehouse_fee = 12` on `OrderPlaced`, set from `orders.warehouse_fee` by `placeOrder`'s publish. Liability posts it as the `ORDER_FEE` to the fulfilling warehouse; the cancel reverses it through `ReverseOrder`, unchanged. Pinned by `TestOrderCreate_TheEventCarriesTheFrozenWarehouseFee` and `TestChargeOrder_TheFlatRateIsNoLongerRead` |
+| ⚠ my reading, not asked | **unset is not 0.** An order placed before fees were frozen (NULL) carries no field, and liability posts nothing for it rather than falling back to the flat rate. **Rounding:** liability's entries are still `BIGINT`, so the fee is rounded half-up once at its edge, as the product fee and the restock courier charge already are. The frozen fee itself stays unrounded, and when a frozen figure is rounded is still open ([rupiah-is-floating-point](../../order/context_decision.md#rupiah-is-floating-point)) |
 
 ---
 

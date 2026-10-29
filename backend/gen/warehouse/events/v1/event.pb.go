@@ -731,6 +731,13 @@ type OrderPlaced struct {
 	// The order's `platform_total` (the-total-is-ours-the-platform-total-is-theirs) — renamed from
 	// `marketplace_total`, same number.
 	PlatformTotal int64 `protobuf:"varint,11,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
+	// THE WAREHOUSE'S FEE, as the order froze it at create (the-event-carries-the-warehouse-fee): `orders.warehouse_fee`,
+	// rupiah (rupiah-is-floating-point), copied as stored and never recomputed. liability_service posts it to the
+	// fulfilling warehouse and reads no rate of its own (the-flat-rate-is-dropped-last, step 4).
+	//
+	// Unset = an order placed before fees were frozen, charged nothing rather than guessed at. 0 = a warehouse that
+	// charges nothing.
+	WarehouseFee  *float64 `protobuf:"fixed64,12,opt,name=warehouse_fee,json=warehouseFee,proto3,oneof" json:"warehouse_fee,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -824,6 +831,13 @@ func (x *OrderPlaced) GetShopId() uint64 {
 func (x *OrderPlaced) GetPlatformTotal() int64 {
 	if x != nil {
 		return x.PlatformTotal
+	}
+	return 0
+}
+
+func (x *OrderPlaced) GetWarehouseFee() float64 {
+	if x != nil && x.WarehouseFee != nil {
+		return *x.WarehouseFee
 	}
 	return 0
 }
@@ -2172,7 +2186,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"reversesId\x12\x12\n" +
 	"\x04note\x18\x0f \x01(\tR\x04note\x12\x17\n" +
 	"\auser_id\x18\x10 \x01(\x04R\x06userId:\x1b\x8a\xb5\x18\x17\n" +
-	"\x15settlement-log-posted\"\xf1\x02\n" +
+	"\x15settlement-log-posted\"\xad\x03\n" +
 	"\vOrderPlaced\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x1d\n" +
@@ -2185,8 +2199,10 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\bactor_id\x18\t \x01(\x04R\aactorId\x12\x17\n" +
 	"\ashop_id\x18\n" +
 	" \x01(\x04R\x06shopId\x12%\n" +
-	"\x0eplatform_total\x18\v \x01(\x03R\rplatformTotal:\x12\x8a\xb5\x18\x0e\n" +
-	"\forder-placedJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06R\arevenueR\rshipping_cost\"\xa5\x01\n" +
+	"\x0eplatform_total\x18\v \x01(\x03R\rplatformTotal\x12(\n" +
+	"\rwarehouse_fee\x18\f \x01(\x01H\x00R\fwarehouseFee\x88\x01\x01:\x12\x8a\xb5\x18\x0e\n" +
+	"\forder-placedB\x10\n" +
+	"\x0e_warehouse_feeJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06R\arevenueR\rshipping_cost\"\xa5\x01\n" +
 	"\x0fOrderPlacedLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12$\n" +
@@ -2406,6 +2422,7 @@ func file_warehouse_events_v1_event_proto_init() {
 		(*Event_WarehouseTransferAccepted)(nil),
 		(*Event_LiabilityPaymentAccepted)(nil),
 	}
+	file_warehouse_events_v1_event_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

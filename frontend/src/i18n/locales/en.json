@@ -2346,7 +2346,7 @@
       "noCap": "No cap",
       "capHint": "Leave empty for no cap.",
       "capZero": "A cap of 0 would charge nothing — leave it empty for no cap.",
-      "notLive": "Every new order is priced at this fee and keeps it. The ledger still charges the flat fee from Credit Terms until it switches over to the order’s own fee.",
+      "frozen": "Each order keeps the fee it was placed at, and that is what the ledger charges. A change here prices the next order, never one already placed.",
       "saved": "Warehouse fee saved"
     }
   },
@@ -2913,7 +2913,7 @@
     "limitCapped": "Limit of",
     "limitHelp": "Unlimited and Frozen are opposites, not degrees. Frozen refuses the next order whatever the balance.",
     "handlingFee": "Handling fee",
-    "handlingFeeHelp": "Flat, per order. Nothing set means you charge nothing.",
+    "handlingFeeHelp": "No longer charged — each order now carries its warehouse’s own fee (Settings → Warehouse Fee). This field is removed next.",
     "reason": "Reason",
     "reasonRequired": "Required — you are changing another team's terms.",
     "reasonOptional": "Optional. Recorded in the change log either way.",

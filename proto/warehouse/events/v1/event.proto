@@ -252,6 +252,14 @@ message OrderPlaced {
   // The order's `platform_total` (the-total-is-ours-the-platform-total-is-theirs) — renamed from
   // `marketplace_total`, same number.
   int64 platform_total = 11;
+
+  // THE WAREHOUSE'S FEE, as the order froze it at create (the-event-carries-the-warehouse-fee): `orders.warehouse_fee`,
+  // rupiah (rupiah-is-floating-point), copied as stored and never recomputed. liability_service posts it to the
+  // fulfilling warehouse and reads no rate of its own (the-flat-rate-is-dropped-last, step 4).
+  //
+  // Unset = an order placed before fees were frozen, charged nothing rather than guessed at. 0 = a warehouse that
+  // charges nothing.
+  optional double warehouse_fee = 12;
 }
 
 // One line of a placed order, as liability_service needs it (#186).

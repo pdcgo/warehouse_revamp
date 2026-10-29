@@ -269,7 +269,7 @@ sequenceDiagram
 | concurrency | the fee read takes no lock; the order's KEY SHARE on its shop is held across it as it is across the take — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
 | the refusal | `FailedPrecondition`, the warehouse's own sentence passed through unchanged ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)). An unreachable warehouse_service is `Unavailable` — no order at a fee nobody computed |
 | the wiring | `selling_v1.WarehouseFeePricer`, adapted in the composition root (`warehouse_fee_pricer.go`) to the handler itself |
-| not yet | the event. `OrderPlaced` does not carry the fee until step 4 ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)), so liability still posts its flat `handling_fee` |
+| the event | `OrderPlaced.warehouse_fee` carries the frozen fee as stored (step 4, [the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)); liability posts it and reads no rate. Unset only for an order placed before fees were frozen |
 
 ## One line per product, and the take's refusal as it came — `placeOrder` (both doors)
 

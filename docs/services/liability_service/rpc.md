@@ -88,13 +88,13 @@ sequenceDiagram
     Note over S: the order has COMMITTED, each line frozen at the take's total
     S->>P: ProductByIds — who owns these products?
     P-->>S: the owning team per product
-    S->>S: publish OrderPlacedEvent, carrying the lines and their totals
+    S->>S: publish OrderPlacedEvent, carrying the lines and their totals, and the frozen warehouse_fee
     par one topic, two subscriptions
         S-->>R: revenue-order-placed
     and
         S-->>T: liability-order-placed
     end
-    T->>T: handling fee to the warehouse
+    T->>T: the order's frozen warehouse_fee to the warehouse, rounded once
     T->>T: product fee to each owning team, the sum of its line totals
 ```
 
@@ -113,7 +113,7 @@ topic until liability became a second consumer.
 
 | | Default with no configuration | Because |
 | --- | --- | --- |
-| **Handling fee** | **charge nothing** | It is a **price** the warehouse sets. A warehouse that has configured nothing must not be silently billing anybody. |
+| **Warehouse fee** | **charge nothing** when the order carries none | It is a **price**, and the order froze it at create (warehouse_service priced it). Liability posts that number, rounded once to whole rupiah, and reads no rate of its own — since step 4 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last), `liability_terms.handling_fee` is not read ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)). An order placed before fees were frozen carries none and is charged nothing; a fee of 0 posts no entry. |
 | **Product fee** | **charge the lines' frozen totals** | It is a **cost transfer**. The goods left the owner's stock and do not come back (§2.2 — "money from the first moment"), so the owner is owed whether or not anybody configured anything — and there is nothing here to configure. |
 
 Defaulting the product fee to zero as well would mean one team's goods walk out of another team's

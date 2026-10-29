@@ -479,6 +479,9 @@ func (s *Service) placeOrder(
 				// (settlement-opens-the-sale-from-the-order-event).
 				ShopId:        order.ShopID,
 				PlatformTotal: order.PlatformTotal,
+				// The fee as frozen above — liability posts this number and reads no rate of its own
+				// (the-event-carries-the-warehouse-fee).
+				WarehouseFee: order.WarehouseFee,
 			},
 		},
 	})

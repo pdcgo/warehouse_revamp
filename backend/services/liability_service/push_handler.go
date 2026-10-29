@@ -73,6 +73,8 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				OrderID:     placed.GetOrderId(),
 				Lines:       lines,
 				ActorID:     placed.GetActorId(),
+				// The order's frozen fee, nil when the order predates it (the-event-carries-the-warehouse-fee).
+				WarehouseFee: placed.WarehouseFee,
 			})
 
 		case *eventsv1.Event_OrderCancelled:

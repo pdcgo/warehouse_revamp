@@ -2338,7 +2338,7 @@
       "noCap": "Tanpa batas",
       "capHint": "Kosongkan untuk tanpa batas atas.",
       "capZero": "Batas atas 0 berarti tidak ada biaya — kosongkan untuk tanpa batas.",
-      "notLive": "Setiap pesanan baru dihitung dengan biaya ini dan menyimpannya. Pembukuan masih menagih biaya tetap dari Ketentuan Kredit sampai beralih ke biaya milik pesanan.",
+      "frozen": "Setiap pesanan menyimpan biaya saat pesanan dibuat, dan itulah yang ditagihkan ledger. Perubahan di sini berlaku untuk pesanan berikutnya, tidak untuk pesanan yang sudah dibuat.",
       "saved": "Biaya gudang disimpan"
     }
   },
@@ -2899,7 +2899,7 @@
     "limitCapped": "Batas sebesar",
     "limitHelp": "Tanpa batas dan Dibekukan itu berlawanan, bukan bertingkat. Dibekukan menolak order berikutnya berapa pun saldonya.",
     "handlingFee": "Biaya penanganan",
-    "handlingFeeHelp": "Tetap, per order. Tidak diisi berarti Anda tidak menagih apa pun.",
+    "handlingFeeHelp": "Tidak ditagihkan lagi — setiap pesanan kini membawa biaya gudangnya sendiri (Pengaturan → Biaya Gudang). Kolom ini akan dihapus.",
     "reason": "Alasan",
     "reasonRequired": "Wajib — Anda mengubah ketentuan tim lain.",
     "reasonOptional": "Opsional. Tetap dicatat di log perubahan.",

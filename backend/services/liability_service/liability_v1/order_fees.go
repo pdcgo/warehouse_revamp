@@ -5,8 +5,6 @@ import (
 	"errors"
 	"math"
 
-	"gorm.io/gorm"
-
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
@@ -25,10 +23,14 @@ type OrderLine struct {
 type PlacedOrder struct {
 	// The SELLING team — the one that owes, on every fee an order produces.
 	TeamID uint64
-	// The warehouse that fulfils it: the creditor of the handling fee.
+	// The warehouse that fulfils it: the creditor of the order fee.
 	WarehouseID uint64
 	OrderID     uint64
 	Lines       []OrderLine
+
+	// THE WAREHOUSE'S FEE, as the order froze it (the-event-carries-the-warehouse-fee), rupiah. nil = an order placed
+	// before fees were frozen, charged nothing rather than guessed at.
+	WarehouseFee *float64
 
 	// WHO PLACED THE ORDER (every-entry-names-who-posted-it). It arrives on `OrderPlacedEvent`
 	// because this runs from a Pub/Sub push and there is no request context to read it from — and a
@@ -37,7 +39,7 @@ type PlacedOrder struct {
 	ActorID uint64
 }
 
-// ChargeOrder posts an order's fees (#186): a HANDLING FEE to the fulfilling warehouse, and a PRODUCT
+// ChargeOrder posts an order's fees (#186): the WAREHOUSE FEE to the fulfilling warehouse, and a PRODUCT
 // FEE to each team whose goods the order sold.
 //
 // ⚠ EVERY POSTING IS IDEMPOTENT, and it has to be: this runs from a Pub/Sub push, which delivers at
@@ -51,7 +53,7 @@ type PlacedOrder struct {
 // the idempotency this design already has. Per-fee, a partial success stays done and the redelivery
 // finishes the rest.
 func (s *Service) ChargeOrder(ctx context.Context, order PlacedOrder) error {
-	err := s.chargeHandlingFee(ctx, order)
+	err := s.chargeWarehouseFee(ctx, order)
 	if err != nil {
 		return err
 	}
@@ -59,28 +61,35 @@ func (s *Service) ChargeOrder(ctx context.Context, order PlacedOrder) error {
 	return s.chargeProductFees(ctx, order)
 }
 
-// chargeHandlingFee bills the warehouse's flat per-order rate.
+// chargeWarehouseFee bills the fulfilling warehouse the fee the ORDER froze (the-event-carries-the-warehouse-fee).
 //
-// NO RATE CONFIGURED MEANS NOTHING IS CHARGED. A warehouse that has set nothing is not silently
-// billing anybody, and that is the deliberate default rather than an oversight — the alternative
-// would have every warehouse in the system quietly accruing receivables it never asked for.
-func (s *Service) chargeHandlingFee(ctx context.Context, order PlacedOrder) error {
+// IT READS NO RATE. The fee was priced once, by warehouse_service, when the order was placed, and the order kept it;
+// this posts that number. The flat `handling_fee` of liability_terms is not read any more — step 4 of
+// the-flat-rate-is-dropped-last, the switch-over day — so a rate edited between the sale and this delivery cannot
+// charge a number the order never saw.
+//
+// ⚠ ROUNDED HERE, ONCE. The fee arrives as a double (rupiah-is-floating-point) and a ledger entry is whole rupiah —
+// the same edge the product fee and the restock courier charge are rounded at.
+//
+// No fee (an order placed before fees were frozen) and a fee of 0 both post nothing: a zero entry would consume this
+// pair's idempotency key for the order.
+func (s *Service) chargeWarehouseFee(ctx context.Context, order PlacedOrder) error {
 	if order.WarehouseID == 0 || order.WarehouseID == order.TeamID {
 		// An order with no warehouse cannot say who fulfilled it, and a team fulfilling its own order
 		// owes nobody. Neither is an error worth failing a delivery over.
 		return nil
 	}
 
-	terms, err := s.termsFor(ctx, order.WarehouseID, order.TeamID)
-	if err != nil {
-		return err
-	}
-
-	if terms.HandlingFee <= 0 {
+	if order.WarehouseFee == nil {
 		return nil
 	}
 
-	return s.postOrderFee(ctx, order.TeamID, order.WarehouseID, terms.HandlingFee,
+	fee := int64(math.Round(*order.WarehouseFee))
+	if fee <= 0 {
+		return nil
+	}
+
+	return s.postOrderFee(ctx, order.TeamID, order.WarehouseID, fee,
 		SourceTypeOrderFee, order.ActorID, order.OrderID)
 }
 
@@ -232,32 +241,6 @@ func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID, actorID uin
 	}
 
 	return nil
-}
-
-// termsFor resolves a creditor's terms toward one debtor: their own row, else the creditor's DEFAULT
-// row (counterparty 0), else nothing.
-//
-// "Nothing" is a zero-valued row rather than an error, and that is the whole default story: no
-// configuration means charge nothing and limit nothing. A creditor that has set up nothing is neither
-// billing nor blocking anybody, which is the only safe way for this to arrive in a running system.
-func (s *Service) termsFor(
-	ctx context.Context,
-	creditorID, debtorID uint64,
-) (liability_service_models.LiabilityTerms, error) {
-	var terms liability_service_models.LiabilityTerms
-
-	// Ordered so the specific row wins over the default; one query rather than two round trips.
-	err := s.db.
-		WithContext(ctx).
-		Where("team_id = ? AND counterparty_id IN ?", creditorID, []uint64{debtorID, 0}).
-		Order("counterparty_id DESC").
-		Take(&terms).
-		Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return liability_service_models.LiabilityTerms{}, nil
-	}
-
-	return terms, err
 }
 
 // sortUint64s is an insertion sort over a handful of team ids — small enough that pulling in `sort`

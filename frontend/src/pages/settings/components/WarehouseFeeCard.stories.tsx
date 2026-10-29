@@ -30,9 +30,9 @@ export const Set: Story = {
     await waitFor(() => expect(card.getByTestId("warehouse-fee-percent")).toHaveValue("2.5"));
     await expect(card.getByTestId("warehouse-fee-floor")).toHaveValue("2.000");
     await expect(card.getByTestId("warehouse-fee-cap")).toHaveValue("20.000");
-    // Nothing changed, nothing to save — and the card says the rate is not charged yet (step 1 of five).
+    // Nothing changed, nothing to save — and the card says an order keeps the fee it was placed at.
     await expect(card.getByTestId("save-warehouse-fee")).toBeDisabled();
-    await expect(card.getByTestId("warehouse-fee-not-live")).toBeVisible();
+    await expect(card.getByTestId("warehouse-fee-frozen")).toBeVisible();
   },
 };
 

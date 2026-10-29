@@ -141,8 +141,10 @@ export function WarehouseFeeCard({ teamId, canEdit }: WarehouseFeeCardProps) {
               </Field.Root>
             </SimpleGrid>
 
-            <Text color="fg.muted" fontSize="xs" data-testid="warehouse-fee-not-live">
-              {t("account.warehouseFee.notLive")}
+            {/* The fee is FROZEN on each order (the-event-carries-the-warehouse-fee): the ledger posts what the order
+                kept, so an edit here prices the next order and never re-prices one already placed. */}
+            <Text color="fg.muted" fontSize="xs" data-testid="warehouse-fee-frozen">
+              {t("account.warehouseFee.frozen")}
             </Text>
 
             <Button

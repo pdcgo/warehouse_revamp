@@ -29,9 +29,17 @@ cd frontend && npm run test:stories -- src/pages/settings
 | 2 | `san warehouse carry-over-fees` (and a `dev setup` step): each WAREHOUSE team's default `liability_terms` row → `0%`, floor = cap = its `handling_fee` (a 0 → `0%`, no floor, no cap); an existing rate is never replaced; idempotent. `liability_v1.DefaultHandlingFees` + `team_v1.WarehouseTeamIDs` read, `warehouse_v1.CarryOverFlatFees` writes. `seed dev` gives Dev Warehouse its own flat fee, or 2.5% / 2.000 / 20.000 without one ([docs/tools/san.md](../../../tools/san.md)) |
 | 3 | `placeOrder` (OrderCreate, which a draft's Promote now is) calls `WarehouseFeeCalculate` in-process on `cogs`, before its transaction, and freezes `orders.warehouse_fee` (selling `00019`); a warehouse with no rate is refused before any stock moves. The order form and the draft page price it live (`useWarehouseFeeQuote`) and keep Save / Promote off on a refusal. The Settings card's copy says new orders are priced at the fee while the ledger still posts the flat one |
 
-⚠ **The window between 3 and 4 is real.** The order keeps the warehouse's fee; liability still posts the flat
-`handling_fee` from `OrderPlaced`. For a carried-over warehouse the two are the same amount; for one that set its own
-percent they differ until step 4.
+~~⚠ **The window between 3 and 4 is real.**~~ Closed by step 4 below.
+
+## Step 4 — built 2026-10-29, the switch-over
+
+| | |
+| --- | --- |
+| the event | `OrderPlaced.warehouse_fee` (`optional double`, 12) = `orders.warehouse_fee` as stored, set by `placeOrder`'s publish |
+| liability | `chargeWarehouseFee` posts it as the `ORDER_FEE`, rounded half-up once (its entries are `BIGINT`, as the product fee and courier charge already round). Unset (an order before `00019`) and 0 post nothing. `chargeHandlingFee` and `termsFor` are gone — **`liability_terms.handling_fee` is read only by step 2's carry-over now** |
+| screens | Credit Terms: the handling fee's help says it is no longer charged. Warehouse Fee card: *not charged yet* → an order keeps the fee it was placed at (`warehouse-fee-frozen`) |
+| tests | `TestOrderCreate_TheEventCarriesTheFrozenWarehouseFee`; liability's order-fee tests now read the fee from the order, `TestChargeOrder_TheFlatRateIsNoLongerRead` pins the switch-over, plus `NoFrozenFeeChargesTheWarehouseNothing` and `AZeroFeePostsNothing` |
+| audits | no new lock, no new statement — one FEWER (the terms read is gone); the posting path and its idempotency key are unchanged |
 
 ⚠ **Dev DB:** only Dev Warehouse (13) had a default flat fee, so it is the only warehouse with a rate. Every other
 warehouse there refuses orders until it sets one on Settings.
@@ -40,7 +48,6 @@ warehouse there refuses orders until it sets one on Settings.
 
 | step | what |
 | --- | --- |
-| 4 | `OrderPlaced` carries the frozen `warehouse_fee` ([the-event-carries-the-warehouse-fee](../../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)); liability posts it and stops reading `handling_fee` — the switch-over day |
 | 5 | `liability_terms.handling_fee` dropped, with its Credit Terms field |
 
 ## Open
@@ -50,5 +57,7 @@ warehouse there refuses orders until it sets one on Settings.
 | the warehouse profile | does `warehouse_infos` move from team_service into this service — [does-the-warehouse-profile-move-out-of-team-service](../../../business/teams/warehouse/context_clarify.md#does-the-warehouse-profile-move-out-of-team-service) |
 | rounding | when a frozen fee is rounded to whole rupiah — [rupiah-is-floating-point](../../../business/order/context_decision.md#rupiah-is-floating-point)'s mitigations are not decided |
 
-**Next agent:** step 4 — the event field and liability's switch to it. Each step ships on its own commit; steps 1–3 are
-in the working tree, uncommitted, waiting on the owner's yes.
+**Next agent:** step 5 — drop `liability_terms.handling_fee` (a liability migration, the proto fields reserved, the Credit
+Terms field). ⚠ Step 2's carry-over (`san warehouse carry-over-fees`, a `dev setup` step, `liability_v1.DefaultHandlingFees`)
+reads that column, so it goes with it, and [docs/tools/san.md](../../../tools/san.md) with it. The terms log keeps
+`old_/new_handling_fee` as history. Each step ships on its own commit.

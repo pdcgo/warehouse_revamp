@@ -256,7 +256,6 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | --- | --- |
 | the create check for a return warehouse | rollout steps **2** (each team sets its own — [each-team-sets-its-own-return-warehouse](../../business/order/context_decision.md#each-team-sets-its-own-return-warehouse)) and **3** (create refuses a team without one) — [create-refuses-a-team-with-no-return-warehouse](../../business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse). Step 1 is this pass |
 | the return accept | `return → return_completed`, its own RPC — refused by `OrderStatusChange` today. Its inventory half is [return.md](../../business/inventory/return.md)'s brief |
-| the event's fee | `OrderPlaced.warehouse_fee` and liability posting it — step 4 of the fee rollout |
 | the return's use of the map | the return accept reading `product_return_maps` to bring a borrowed line back as the team's own product ([a-returned-borrowed-unit-is-relabelled-at-the-accept](../../business/order/context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept)) — waits on the return accept itself. The map is built (eighth pass) |
 
 ## Asks for a yes

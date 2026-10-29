@@ -13,6 +13,7 @@ import (
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
 // recorder captures what was published, so a test can assert on the event rather than on a mock's
@@ -83,6 +84,26 @@ func TestOrderCreate_PublishesTheFrozenMoney(t *testing.T) {
 	}
 	if got.GetGoodsCost() != order.GetGoodsCost() {
 		t.Fatalf("event goods_cost = %d, want the order's frozen %d", got.GetGoodsCost(), order.GetGoodsCost())
+	}
+}
+
+// THE EVENT CARRIES THE FROZEN FEE (the-event-carries-the-warehouse-fee) — the number the order keeps, not a rate, so
+// liability posts what the order froze and computes nothing.
+func TestOrderCreate_TheEventCarriesTheFrozenWarehouseFee(t *testing.T) {
+	db := san_testdb.DB(t)
+	rec := &recorder{}
+	svc := selling_v1.NewService(db, knownCosts(), rec.send, &fakeCatalog{}, &fakeCredit{}, nil, nil, &fakeFees{percent: 2.5})
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(feeOrderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	got := rec.placed(t)
+
+	if got.WarehouseFee == nil || got.GetWarehouseFee() != 350 || got.GetWarehouseFee() != created.Msg.GetOrder().GetWarehouseFee() {
+		t.Fatalf("event warehouse_fee = %v (set %v), want the order's frozen 350", got.GetWarehouseFee(), got.WarehouseFee != nil)
 	}
 }
 
