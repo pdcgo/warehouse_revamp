@@ -438,6 +438,27 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at        "mirrors created_at — the row is written once"
     }
+
+    order_event_logs {
+        text        id         PK "the EVENT id - order-placed:N, order-status-changed:LOG (00030)"
+        bytea       raw        "the event as received, protojson"
+        date        day        "the Jakarta day its figures went to"
+        timestamptz created_at "when it was received"
+    }
+
+    order_daily_reports {
+        bigserial        id           PK
+        date             day          "the move s Jakarta day (00030)"
+        text             metric       "created, cancelled, return_created, return_arrived, lost_created"
+        bigint           team_id      "the seller - UNIQUE with day, metric, shop, warehouse, user"
+        bigint           shop_id
+        bigint           warehouse_id
+        bigint           user_id      "the order s creator, 0 = none recorded"
+        bigint           order_count
+        double_precision total        "sum of total_cost"
+        bigint           mp_total     "sum of platform_total"
+        timestamptz      last_updated
+    }
 ```
 
 - **`shops`** — a selling team's marketplace storefronts (#66). Team-scoped (`team_id` carries
@@ -691,6 +712,22 @@ erDiagram
   - Both product ids are opaque product_service ids with no FK. Ownership — the borrowed one is another team's, the own
     one is this team's — is checked by the write against product_service; the table only refuses a product mapped to
     itself (`CHECK (shared_product_id <> own_product_id)`). No `warehouse_id`: a map is a catalogue fact.
+- **`order_daily_reports`** / **`order_event_logs`** (00030) — the ORDER METRICS' report and its fold's dedup
+  ([order_statistic_metric.md](business/order/order_statistic_metric.md)). ⚠ **Both are derived**: built by
+  selling_service's own webhook from `OrderPlaced`, `OrderCancelled` and `OrderStatusChanged`
+  ([a-report-is-fed-by-events-only-for-now](business/analytic/context_decision.md#a-report-is-fed-by-events-only-for-now));
+  nothing on a write path reads them.
+  - **One row per (day, metric, seller, shop, warehouse, creator)** — the upsert target, so two moves on one day ADD.
+    The day is the move's own instant as a Jakarta date
+    ([a-fact-counts-on-the-day-it-happened](business/order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened));
+    everything else is read off the order, which does not change after it is placed.
+  - **The claim is the dedup**: `order_event_logs`' `INSERT … ON CONFLICT (id) DO NOTHING` in the fold's own transaction,
+    on the EVENT id, so a redelivery counts nothing. Raced: 40/40, no increment lost, no event counted twice.
+  - **Two scope indexes**, `(team_id, metric, day)` and `(warehouse_id, metric, day)` — a seller's and a warehouse's reads
+    ([a-warehouse-reads-the-orders-it-ships](business/order/order_statistic_metric_decision.md#a-warehouse-reads-the-orders-it-ships)).
+    Root reads every row; over 100 000 rows a year of it is a 13–30 ms scan.
+  - **Not backfilled.** Orders placed before the fold ran have no row
+    ([are-past-orders-folded](business/order/order_statistic_metric_clarify.md#are-past-orders-folded)).
 
 `backend/services/category_service/db_migrations/`
 

@@ -14,7 +14,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**91 open questions across 41 files.** The three below are shown; **88 are not** — they are not
+**93 open questions across 41 files.** The three below are shown; **90 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 🔄 **Re-ranked fresh** (2026-10-19), after all seven rows closed. Every live claim in the new seven was checked against the code the same day. ⚠ **Two counted questions are re-routes already decided elsewhere** (ledger Q1 → [a-limit-change-is-recorded](business/balance/context_decision.md#a-limit-change-is-recorded), [the-block-stops-orders-only](business/balance/context_decision.md#the-block-stops-orders-only); excel_readers Q6 → [only-a-successful-withdrawal-is-recorded](business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)), and **about 13 more look overtaken** by today's decisions — they stay counted until each is closed at source.
@@ -23,6 +23,7 @@ closed, only smaller. The per-file counts are at the bottom.
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- ▲ *(2026-10-29)* **93**: order_statistic_metric — the five metrics are built, with the Order Status Change event and the fold ([the-status-changes-publish-nothing](business/order/order_statistic_metric_clarify.md#the-status-changes-publish-nothing) ✅). Building them opened two: [which-metric-ids](business/order/order_statistic_metric_clarify.md#which-metric-ids) (keep `metrics/orders/<what moved>`) and [are-past-orders-folded](business/order/order_statistic_metric_clarify.md#are-past-orders-folded) (fold the past once). One contradiction: [a-no-user-row-cannot-be-a-key](business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key). Neither blocks anything shipped, so neither ranks. Net +2.
 - 🔄 *(2026-10-29)* **91**: order context — the contradiction the-build-lets-a-person-draft-and-promotes-on-the-server resolved as [a-draft-becomes-an-order-through-order-create](business/order/context_decision.md#a-draft-becomes-an-order-through-order-create): the draft page's Promote sends `OrderCreate` with `order_draft_id`, `OrderDraftPromote` and Save as Draft removed, one draft makes one order. Built. **The order context has no open question and no open contradiction**; only the parked barcode is left. A contradiction, not a counted question. Net zero.
 - 🔄 *(2026-10-29)* **91**: order context — the contradiction the-build-still-treats-an-empty-ref-as-a-phone-order resolved as [an-order-ref-is-required-by-the-rpc](business/order/context_decision.md#an-order-ref-is-required-by-the-rpc): the create request's validation refuses an empty ref, no database rule, and Promote now copies the draft's ref (it never had). Built. A contradiction, not a counted question. Net zero.
 - ▼ *(2026-10-29)* **91**: technical order design — question 7, the date on a row, closed for every screen as [a-table-date-is-short-and-every-time-is-wib](technical/frontend/context_decision.md#a-table-date-is-short-and-every-time-is-wib): `29 Okt 13:05` in a table cell, the year only when it is not this year, Jakarta time everywhere. As recommended. **technical order design has 1 open question left: the product barcode, parked.** Net −1.
@@ -280,7 +281,7 @@ the column sums to **91**, the whole set, not to 88. *Feeds* names the row of th
 | --- | ---: | --- |
 | [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 1 |  |
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 5 |  |
-| [business/order/order_statistic_metric_clarify.md](business/order/order_statistic_metric_clarify.md#question) | 0 |  |
+| [business/order/order_statistic_metric_clarify.md](business/order/order_statistic_metric_clarify.md#question) | 2 |  |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 9 |  |
 | [business/product/product_bundle_clarify.md](business/product/product_bundle_clarify.md#question) | 0 |  |
 | [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 9 |  |

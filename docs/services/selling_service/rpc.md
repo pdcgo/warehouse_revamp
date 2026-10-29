@@ -62,6 +62,7 @@ sequenceDiagram
     end
     S->>DB: setOrdersStatus - one UPDATE of the movable orders, one INSERT of their history rows
     S-->>C: one result per order, in the order sent
+    Note over S: after the commit - one OrderStatusChanged per moved order, 16 at a time, a failure only logged
 ```
 
 | | |
@@ -73,6 +74,7 @@ sequenceDiagram
 | `to: cancel`, `to: return_completed` | refused here: each has its own action |
 | a note | required for a move back to `pending`; written to the history row with the move |
 | two crew, one parcel, one second | the row lock serialises them: the second reads the status the first wrote and is refused as *"already shipping"* |
+| the event | after the commit, one `OrderStatusChanged` per moved order (from, to, actor, the timeline row) — the order metrics' feed ([the-status-changes-publish-nothing](../../business/order/order_statistic_metric_clarify.md#the-status-changes-publish-nothing)). Its `event_id` is `order-status-changed:<timeline row id>`, so a redelivery collides. Up to 16 publishes wait on the broker at once, so a 200-parcel handover is not 200 round trips in a row. A failed publish is logged and the move stands |
 | the save | one transaction of four statements for any batch ([a-batch-move-saves-in-one-transaction](../../technical/frontend/warehouse_order_list_decision.md#a-batch-move-saves-in-one-transaction)). Locked in **id order**, so two batches over the same orders queue rather than deadlock. A database failure rolls the batch back and every order answers *"could not be saved — try again"* |
 
 ### Who may move it, and why the scope differs
@@ -419,6 +421,42 @@ which is a record of who published, never something a consumer authorises from.
 
 > The full flow, the delivery trade-off, and why the event carries the money rather than just an order
 > id are in [revenue_service/rpc.md](../revenue_service/rpc.md).
+
+## The order metrics — the fold and `OrderAnalyticService`
+
+The five order metrics of [order_statistic_metric.md](../../business/order/order_statistic_metric.md) — Created, Cancel,
+Return Created, Return Arrived, Lost Created — through the analytic pattern
+([rpc_provide.md](../../business/analytic/rpc_provide.md)): a folded report, ranked by `MetricSearch` and filled by
+`MetricData`. Served by `selling_v1.Analytic`, its own struct: its one outside question, whether the reader is a
+warehouse, is asked of team_service through `TeamTypeReader` (`selling_team_types.go` in the composition root).
+
+```mermaid
+sequenceDiagram
+    participant S as selling_service - an order write
+    participant B as Pub/Sub
+    participant F as the fold - FoldHandler
+    participant R as order_daily_reports
+    participant A as MetricSearch and MetricData
+    participant T as team_service
+
+    S->>B: OrderPlaced, OrderCancelled, OrderStatusChanged - after each commit
+    B->>F: three push subscriptions, one per topic, one handler
+    Note over F: created, cancelled, or a move to return, return_completed or lost - anything else is ACKED
+    F->>R: one transaction - claim the event id in order_event_logs, read the order, upsert its day row
+    A->>T: is the reader a warehouse - TeamByIds
+    A->>R: the reader rows - root all, a warehouse by warehouse_id, a seller by team_id
+    Note over A: a warehouse gets counts only - money unset, a sort on money refused
+```
+
+| | |
+| --- | --- |
+| the subscriptions | `selling-order-fold-placed` (order-placed), `selling-order-fold-cancelled` (order-cancelled), `selling-order-fold-moved` (order-status-changed) — each its OWN subscription on a topic liability and settlement also read |
+| the day | the event's `occurred_at` as a Jakarta date — the placement, the cancel, the move's timeline row ([a-fact-counts-on-the-day-it-happened](../../business/order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened)) |
+| the row | (day, metric, seller, shop, warehouse, creator) += 1 order, its `total_cost`, its `platform_total`, read off the order |
+| a redelivery | the claim is the write: a second claim finds the row and folds nothing. Raced 40/40 |
+| the reads | one statement each, after the team-type lookup. A seller's or a warehouse's read uses its scope index (1–8 ms over 100 000 rows); root's scans (13–30 ms) |
+| an id of 0 | left out of an id group: `IDList` takes ids above 0 ([a-no-user-row-cannot-be-a-key](../../business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key)) |
+| ⚠ not built | a backfill of the orders before the fold ([are-past-orders-folded](../../business/order/order_statistic_metric_clarify.md#are-past-orders-folded)), a replay and a dedup prune — supplier's fold has all three |
 
 ## Draft orders — `OrderDraftPush` and the blanks-only merge (#190, #191)
 

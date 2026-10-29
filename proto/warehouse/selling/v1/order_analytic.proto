@@ -1,0 +1,406 @@
+syntax = "proto3";
+
+package warehouse.selling.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/analytic_base/v1/analytic.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
+
+// THE ORDER METRICS (docs/business/order/order_statistic_metric.md) — five, each counting WHOLE ORDERS on the day of its
+// own move (a-fact-counts-on-the-day-it-happened), served through the analytic pattern
+// (docs/business/analytic/rpc_provide.md): `MetricSearch` ranks the keys, `MetricData` fills them.
+//
+// ⚠ EVERY NUMBER IS READ FROM A FOLDED TABLE — `order_daily_reports`, built by selling_service's own webhook from
+// `OrderPlaced`, `OrderCancelled` and `OrderStatusChanged` (a-report-is-fed-by-events-only-for-now). A figure lags its
+// move by the broker's delivery time.
+//
+// WHO READS WHAT (a-warehouse-reads-the-orders-it-ships): `team_id` is the caller's scope. A selling team reads its own
+// orders, a warehouse the orders it ships, the root team every order. ⚠ A WAREHOUSE GETS COUNTS ONLY
+// (a-warehouse-sees-no-seller-money): every money field is `optional` and left UNSET for it — never 0 — and a sort on
+// one is refused. The service decides from the scope's team type; the screen only drops a column that came back unset.
+service OrderAnalyticService {
+  // The keys of a page of the table, ranked by one field of one order metric.
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse);
+  // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse);
+}
+
+// Every metric here has the same shape (the-four-group-by-team-shop-warehouse-user-and-time):
+//
+//   one row per     a whole order — no product filter or group (product-is-its-own-line-metric)
+//   the total       the order's frozen `total_cost` (a-total-is-the-total-cost)
+//   the mp total    the order's `platform_total`, what the buyer paid on the storefront
+//   TEAM            the seller, `orders.team_id` · WAREHOUSE the warehouse, `orders.warehouse_id`
+//                   (the-team-group-is-the-seller)
+//   USER            the order's creator, `created_by_user_id` (a-metrics-user-is-the-orders-creator)
+//
+// The field names are the owner's, from the doc's §Metric That Must Exists.
+
+// ORDER CREATED — each order counted on its `created_at`.
+message OrderCreatedMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/orders/created"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_SHOP,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_USER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_SHOP,
+      GROUP_TYPE_WAREHOUSE,
+      GROUP_TYPE_USER
+    ]
+  };
+
+  // Orders.
+  int64 created_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Σ their `total_cost`. Unset for a warehouse.
+  optional double created_total = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Σ their `platform_total`. Unset for a warehouse.
+  optional int64 mp_total = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+}
+
+// A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+message OrderCreatedMetricByID {
+  map<uint64, OrderCreatedMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+message OrderCreatedMetricByDay {
+  map<string, OrderCreatedMetric> items = 1;
+}
+
+// ORDER CANCEL — each order counted on its move to `cancel`.
+message OrderCancelMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/orders/cancelled"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_SHOP,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_USER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_SHOP,
+      GROUP_TYPE_WAREHOUSE,
+      GROUP_TYPE_USER
+    ]
+  };
+
+  // Orders.
+  int64 cancel_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Σ their `total_cost`. Unset for a warehouse.
+  optional double cancel_total = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Σ their `platform_total`. Unset for a warehouse.
+  optional int64 mp_total = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+}
+
+// A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+message OrderCancelMetricByID {
+  map<uint64, OrderCancelMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+message OrderCancelMetricByDay {
+  map<string, OrderCancelMetric> items = 1;
+}
+
+// ORDER RETURN CREATED — each order counted on its move to `return`.
+message OrderReturnCreatedMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/orders/return_created"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_SHOP,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_USER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_SHOP,
+      GROUP_TYPE_WAREHOUSE,
+      GROUP_TYPE_USER
+    ]
+  };
+
+  // Orders.
+  int64 return_created_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Σ their `total_cost`. Unset for a warehouse.
+  optional double return_created_total = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Σ their `platform_total`. Unset for a warehouse.
+  optional int64 return_created_mp_total = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+}
+
+// A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+message OrderReturnCreatedMetricByID {
+  map<uint64, OrderReturnCreatedMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+message OrderReturnCreatedMetricByDay {
+  map<string, OrderReturnCreatedMetric> items = 1;
+}
+
+// ORDER RETURN ARRIVED — each order counted on its move to `return_completed`.
+message OrderReturnArrivedMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/orders/return_arrived"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_SHOP,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_USER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_SHOP,
+      GROUP_TYPE_WAREHOUSE,
+      GROUP_TYPE_USER
+    ]
+  };
+
+  // Orders.
+  int64 return_arrived_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Σ their `total_cost`. Unset for a warehouse.
+  optional double return_arrived_total = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Σ their `platform_total`. Unset for a warehouse.
+  optional int64 return_arrived_mp_total = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+}
+
+// A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+message OrderReturnArrivedMetricByID {
+  map<uint64, OrderReturnArrivedMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+message OrderReturnArrivedMetricByDay {
+  map<string, OrderReturnArrivedMetric> items = 1;
+}
+
+// ORDER LOST CREATED — each order counted on its move to `lost`.
+message OrderLostCreatedMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/orders/lost_created"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_SHOP,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_USER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_SHOP,
+      GROUP_TYPE_WAREHOUSE,
+      GROUP_TYPE_USER
+    ]
+  };
+
+  // Orders.
+  int64 lost_created_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Σ their `total_cost`. Unset for a warehouse.
+  optional double lost_created_total = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Σ their `platform_total`. Unset for a warehouse.
+  optional int64 lost_created_mp_total = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+}
+
+// A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+message OrderLostCreatedMetricByID {
+  map<uint64, OrderLostCreatedMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+message OrderLostCreatedMetricByDay {
+  map<string, OrderLostCreatedMetric> items = 1;
+}
+
+message MetricSearchRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // Every member of the scoped team reads every metric of it (every-member-reads-every-metric-of-their-team).
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // Never SUMMARY — a headline is not searched.
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0, 1]
+  }];
+
+  // At most one of each FilterType.
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 5];
+
+  // Names ONE of this service's metrics and one of its fields. A money field is refused for a warehouse.
+  warehouse.analytic_base.v1.MetricSort sort = 4 [(buf.validate.field).required = true];
+
+  warehouse.analytic_base.v1.PaginationFilter page = 5 [(buf.validate.field).required = true];
+}
+
+message MetricSearchResponse {
+  // Ranked; the key DESC breaks a tie (the-key-breaks-every-tie). Only keys with figures in the window.
+  warehouse.analytic_base.v1.MetricKeys keys = 1;
+  // Read as limit + 1 — no total (a-page-says-whether-another-follows).
+  bool has_next = 2;
+}
+
+message MetricDataRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // Every member of the scoped team reads every metric of it (every-member-reads-every-metric-of-their-team).
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The same as the search's — they scope the numbers, never the keys (the-fill-step-scopes-its-numbers-by-the-filters).
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 5];
+
+  // IDs for TEAM, SHOP, WAREHOUSE and USER, days for a period; none for SUMMARY. At most a page.
+  warehouse.analytic_base.v1.MetricKeys keys = 4;
+
+  // Any of the five, in any order; the answer keeps it.
+  repeated string metric_ids = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 5
+    unique: true
+  }];
+}
+
+// One per asked metric, in the asked order (one-call-answers-every-asked-metric): the case says which metric and how
+// it is keyed.
+message MetricData {
+  oneof m {
+    OrderCreatedMetricByID created_by_id = 1;
+    OrderCreatedMetricByDay created_by_day = 2;
+    OrderCreatedMetric created_summary = 3;
+    OrderCancelMetricByID cancel_by_id = 4;
+    OrderCancelMetricByDay cancel_by_day = 5;
+    OrderCancelMetric cancel_summary = 6;
+    OrderReturnCreatedMetricByID return_created_by_id = 7;
+    OrderReturnCreatedMetricByDay return_created_by_day = 8;
+    OrderReturnCreatedMetric return_created_summary = 9;
+    OrderReturnArrivedMetricByID return_arrived_by_id = 10;
+    OrderReturnArrivedMetricByDay return_arrived_by_day = 11;
+    OrderReturnArrivedMetric return_arrived_summary = 12;
+    OrderLostCreatedMetricByID lost_created_by_id = 13;
+    OrderLostCreatedMetricByDay lost_created_by_day = 14;
+    OrderLostCreatedMetric lost_created_summary = 15;
+  }
+}
+
+message MetricDataResponse {
+  repeated MetricData metric_datas = 1;
+}

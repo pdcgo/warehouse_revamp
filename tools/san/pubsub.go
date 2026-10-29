@@ -260,6 +260,24 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "member-removed",
 			Filter: `attributes.event_type = "warehouse.events.v1.MemberRemoved"`,
 		},
+		// selling_service's order metrics fold — mirrors selling_service.OrderFold*Subscription. One per topic, all to
+		// the one fold (a-report-is-fed-by-events-only-for-now); the order-placed and order-cancelled topics are the SAME
+		// as liability's and settlement's, each its OWN subscription.
+		{
+			ID:     "selling-order-fold-placed",
+			Topic:  "order-placed",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderPlaced"`,
+		},
+		{
+			ID:     "selling-order-fold-cancelled",
+			Topic:  "order-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
+		},
+		{
+			ID:     "selling-order-fold-moved",
+			Topic:  "order-status-changed",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderStatusChanged"`,
+		},
 		// financial_account_service's withdrawal listener — mirrors financial_account_service.WithdrawalSubscription.
 		// The SAME topic as settlement's fold, its OWN subscription: each consumer keeps its own delivery state.
 		{

@@ -65,6 +65,17 @@ message SupplierFilter {
   uint64 supplier_id = 1 [(buf.validate.field).uint64.gt = 0];
 }
 
+// WarehouseFilter — the warehouse that fulfils (the-team-group-is-the-seller): a DIMENSION, like TeamFilter, never the
+// caller's scope.
+message WarehouseFilter {
+  uint64 warehouse_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+// UserFilter — the user a fact is booked to; each metric's doc says which user that is.
+message UserFilter {
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
 // FilterItem — one case per FilterType, and each case's NUMBER IS ITS FilterType's, so a set case maps to its type
 // without a table. 2 was the keyword (the-generic-keyword-is-removed) — reserved, so the numbers still match.
 message FilterItem {
@@ -79,6 +90,8 @@ message FilterItem {
     TeamFilter team_filter = 4;
     ShopFilter shop_filter = 5;
     SupplierFilter supplier_filter = 6;
+    WarehouseFilter warehouse_filter = 7;
+    UserFilter user_filter = 8;
   }
 }
 
@@ -94,6 +107,9 @@ enum FilterType {
   FILTER_TYPE_TEAM = 4;
   FILTER_TYPE_SHOP = 5;
   FILTER_TYPE_SUPPLIER = 6;
+  // Landed with the first metric to list them, the order metrics (docs/business/order/order_statistic_metric.md).
+  FILTER_TYPE_WAREHOUSE = 7;
+  FILTER_TYPE_USER = 8;
 }
 
 // PaginationFilter — on the search request only. The response says whether another page follows and never how many
@@ -128,6 +144,8 @@ enum GroupType {
   GROUP_TYPE_TEAM = 9;
   // The user a fact is booked to — each metric's doc says which user that is.
   GROUP_TYPE_USER = 10;
+  // The warehouse that fulfils, beside TEAM, which is the seller (the-warehouse-is-its-own-group).
+  GROUP_TYPE_WAREHOUSE = 11;
 }
 
 // MetricOption — what a metric declares about itself. Checked at startup by san_metric.ValidateDescriptors.
@@ -173,7 +191,7 @@ extend google.protobuf.FieldOptions {
   FieldStatType field_stat_type = 50004;
 }
 
-// IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER. At most a page.
+// IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER, WAREHOUSE. At most a page.
 message IDList {
   repeated uint64 ids = 1 [(buf.validate.field).repeated = {
     max_items: 200

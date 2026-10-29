@@ -106,7 +106,9 @@ func setOrderStatus(
 	actor uint64,
 	note string,
 ) error {
-	return setOrdersStatus(tx, []timelineMove{{order: order, from: from}}, status, actor, note)
+	_, err := setOrdersStatus(tx, []timelineMove{{order: order, from: from}}, status, actor, note)
+
+	return err
 }
 
 // timelineMove is one order of a batch move, and the side its timeline row is written from — per order, because
@@ -119,15 +121,18 @@ type timelineMove struct {
 // setOrdersStatus is setOrderStatus for a batch that all moves INTO the same status: one UPDATE and one
 // multi-row timeline INSERT, whatever the size of the batch (a-batch-move-saves-in-one-transaction). The
 // orders must be distinct and already locked by the caller. An empty batch writes nothing.
+//
+// It returns the timeline rows it wrote, in the batch's order and with their ids — what each move's
+// OrderStatusChanged is derived from.
 func setOrdersStatus(
 	tx *gorm.DB,
 	moves []timelineMove,
 	status string,
 	actor uint64,
 	note string,
-) error {
+) ([]selling_service_models.OrderTimelineLog, error) {
 	if len(moves) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// The moment is taken ONCE and written to the rows, the in-memory models AND the events, so a caller
@@ -157,13 +162,13 @@ func setOrdersStatus(
 		Updates(map[string]any{"status": status, "updated_at": now}).
 		Error
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// The timeline row names the status moved INTO (order-timeline-logs-replaces-order-events).
 	err = recordTimelineLogs(tx, logs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, move := range moves {
@@ -171,7 +176,7 @@ func setOrdersStatus(
 		move.order.UpdatedAt = now
 	}
 
-	return nil
+	return logs, nil
 }
 
 // mapOrderErr turns the internal transition errors into the right Connect codes.

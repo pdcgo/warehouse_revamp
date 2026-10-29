@@ -34,7 +34,7 @@ func (s *Service) OrderStatusChange(
 	to := orderStatusToText(req.Msg.GetTo())
 	note := strings.TrimSpace(req.Msg.GetNote())
 
-	results, err := s.moveOrders(ctx, teamID, orderIDs, to, note)
+	results, moved, err := s.moveOrders(ctx, teamID, orderIDs, to, note)
 	if err != nil {
 		// The DATABASE failed, not a rule: the whole batch rolled back, so nothing moved, and every order says
 		// so. The crew scans again — a whole-batch retry is the natural one for a scan.
@@ -54,6 +54,10 @@ func (s *Service) OrderStatusChange(
 		}
 	}
 
+	// THE BATCH IS COMMITTED. Each move is announced (the-status-changes-publish-nothing) — after the commit and
+	// non-fatal, as OrderCancelled is: a report must never fail a move.
+	s.publishMoves(ctx, moved)
+
 	return connect.NewResponse(&sellingv1.OrderStatusChangeResponse{Results: results}), nil
 }
 
@@ -68,13 +72,19 @@ func (s *Service) OrderStatusChange(
 //
 // A refusal is decided in Go, from the locked row, before anything is written, so it still touches only its
 // own order. Only an error from the database fails the batch.
+//
+// It returns, beside the results, each move it wrote — the order, the status it left and its timeline row — for the
+// events published once the batch commits.
 func (s *Service) moveOrders(
 	ctx context.Context,
 	teamID uint64,
 	orderIDs []uint64,
 	to, note string,
-) ([]*sellingv1.OrderStatusChangeResult, error) {
-	var results []*sellingv1.OrderStatusChangeResult
+) ([]*sellingv1.OrderStatusChangeResult, []statusMove, error) {
+	var (
+		results []*sellingv1.OrderStatusChangeResult
+		moved   []statusMove
+	)
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var orders []selling_service_models.Order
@@ -96,6 +106,7 @@ func (s *Service) moveOrders(
 
 		results = make([]*sellingv1.OrderStatusChangeResult, 0, len(orderIDs))
 		moving := make([]timelineMove, 0, len(orders))
+		left := make([]string, 0, len(orders))
 
 		for _, orderID := range orderIDs {
 			result := &sellingv1.OrderStatusChangeResult{OrderId: orderID}
@@ -119,6 +130,7 @@ func (s *Service) moveOrders(
 
 			// The side is read before the status changes in memory: it depends on the move, from → to.
 			from := moveFrom(order, teamID, to)
+			left = append(left, order.Status)
 
 			// Moved in memory now, so an id sent twice reads "already <to>" the second time rather than being
 			// written twice. The proto refuses duplicates; a direct caller gets the same answer.
@@ -128,10 +140,23 @@ func (s *Service) moveOrders(
 			moving = append(moving, timelineMove{order: order, from: from})
 		}
 
-		return setOrdersStatus(tx, moving, to, eventActor(ctx), note)
-	})
+		logs, err := setOrdersStatus(tx, moving, to, eventActor(ctx), note)
+		if err != nil {
+			return err
+		}
 
-	return results, err
+		moved = make([]statusMove, 0, len(logs))
+		for i := range logs {
+			moved = append(moved, statusMove{order: *moving[i].order, from: left[i], log: logs[i]})
+		}
+
+		return nil
+	})
+	if err != nil {
+		return results, nil, err
+	}
+
+	return results, moved, nil
 }
 
 // refuseMove is why this caller may not move this order to `to`, or "" when it may.

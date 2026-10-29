@@ -77,6 +77,8 @@ func InitializeApp() (*App, error) {
 	warehouse_v1Service := warehouse_v1.NewService(db, warehouseNamer)
 	selling_v1WarehouseFeePricer := NewWarehouseFeePricer(warehouse_v1Service)
 	selling_v1Service := selling_v1.NewService(db, selling_v1StockPicker, eventSender, selling_v1ProductCatalog, selling_v1CreditChecker, selling_v1RoleReader, orderExportStore, selling_v1WarehouseFeePricer)
+	teamTypeReader := NewSellingTeamTypes(teamServiceClient)
+	analytic := selling_v1.NewAnalytic(db, teamTypeReader)
 	category_v1Service := category_v1.NewService(db)
 	docstoreConfig := NewDocumentConfig(config)
 	document_v1Service := document_v1.NewService(db, docstoreConfig)
@@ -97,7 +99,7 @@ func InitializeApp() (*App, error) {
 	sellingTeams := NewSupplierSellingTeams(teamServiceClient)
 	supplier_v1ReplayBroker := NewSupplierReplayBroker(client)
 	supplier_v1Service := supplier_v1.NewService(db, sellingTeams, supplier_v1ReplayBroker)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, supplier_v1Service, warehouse_v1Service, docstoreConfig, roleResolver, signer)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, analytic, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, supplier_v1Service, warehouse_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

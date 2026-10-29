@@ -97,6 +97,7 @@ message Event {
 
     OrderPlaced order_placed = 200;
     OrderCancelled order_cancelled = 201;
+    OrderStatusChanged order_status_changed = 202;
 
     SettlementLogPosted settlement_log_posted = 300;
 
@@ -318,6 +319,35 @@ message OrderCancelled {
   // The shop it was sold on — settlement cancels the sale on that shop's account
   // (settlement-opens-the-sale-from-the-order-event).
   uint64 shop_id = 4;
+}
+
+// OrderStatusChanged announces one order's PLAIN status move — every move but the placement and the cancel, which have
+// their own events because they do more than move a status (docs/business/order/event_context.md §Order Status Change).
+//
+// Published by selling_service after OrderStatusChange commits, ONE PER ORDER moved: a handover scan of 30 parcels is
+// 30 events. selling_service's own fold reads it for the order metrics — Return Created, Return Arrived and Lost
+// Created count the moves into `return`, `return_completed` and `lost` (the-status-changes-publish-nothing).
+//
+// It carries the move, not the order: the fold runs in the service that owns the orders and reads the rest off the row.
+// The envelope's event_id is derived from the move's timeline row, so a redelivery and a replay collide, and its
+// occurred_at is that row's time — the day the move is counted on (a-fact-counts-on-the-day-it-happened).
+message OrderStatusChanged {
+  option (event_config).topic = "order-status-changed";
+
+  // The SELLING team that owns the order, and the order.
+  uint64 team_id = 1;
+  uint64 order_id = 2;
+
+  // The statuses as the order stores them — `processed`, `return`, `return_completed`, `lost` …
+  // (warehouse.selling.v1.OrderStatus, by its stored name).
+  string from_status = 3;
+  string to_status = 4;
+
+  // WHO MOVED IT (every-entry-names-who-posted-it) — 0 when unattended.
+  uint64 actor_id = 5;
+
+  // The order_timeline_logs row the move wrote — what the event id is derived from.
+  uint64 timeline_log_id = 6;
 }
 
 // RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.

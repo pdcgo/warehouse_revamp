@@ -114,6 +114,10 @@ func InitializeApp() (*App, error) {
 		// Joins selling to warehouse: order create prices and freezes the warehouse fee (the-flat-rate-is-dropped-last
 		// step 3) — see warehouse_fee_pricer.go.
 		NewWarehouseFeePricer,
+		// The order metrics (order_statistic_metric.md): their reads and their fold. Their one outside question, whether
+		// the reading team is a warehouse, is asked of team_service — see selling_team_types.go.
+		selling_v1.NewAnalytic,
+		NewSellingTeamTypes,
 		// Its figures' replay seeks the fold's own subscription — see replay_broker.go.
 		NewSupplierReplayBroker,
 
