@@ -390,13 +390,9 @@ flowchart LR
 
 ## Question
 
-1. **Does the per-period report extend `/settlement/report`, or become a second screen?** That page
-   ships today with the period grains, the shop/team/user groupings and four of the moved measures
-   already on it.
-   **→ Recommend extending it.** Two screens would compute "sales" from different sources — orders
-   versus the settlement ledger — and both answers would be correct and different, which is a
-   sentence somebody has to write on the screen forever.
-   ⚠ Its three Analytic RPCs are already audited 🔴 HEAVY and the fix is not applied.
+1. ✅ *(2026-10-29)* **Overtaken: neither — the order figures are metrics on the one analytic screen** —
+   [the-period-report-is-the-analytic-screen](./design_decision.md#the-period-report-is-the-analytic-screen).
+   Kept as a line so the numbers hold.
 
 2. ✅ *(2026-10-22)* **Overtaken: a shop-level settlement row, its cash side deferred** —
    [withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type); the order list's leftovers are Q20.
@@ -418,13 +414,10 @@ flowchart LR
    [root-reads-every-teams-orders](../frontend/order_list_decision.md#root-reads-every-teams-orders). As recommended.
    Kept as a line so the numbers hold.
 
-7. **Does a date on a row show the year, and whose clock formats it?** A filtered row now carries
-   three timestamps in one cell, each rendered `formatUnixDateTime` — *"Sep 27, 2026, 03:18 PM"* on
-   this machine. The format follows the VIEWER's operating system, so the same screen reads
-   `27 Sep 2026, 15.18` for one person and `Sep 27, 2026, 03:18 PM` for another.
-   **→ Recommend a fixed locale and a compact table form:** `27 Sep 15:18`, with the year only when
-   it is not the current one. Three of those fit where three of the current form do not.
-   ⚠ This is app-wide — `formatUnixDateTime` is shared — so it is asked rather than changed here.
+7. ✅ *(2026-10-29)* **Answered: a table cell's date is short, and every time is WIB** —
+   [a-table-date-is-short-and-every-time-is-wib](../frontend/context_decision.md#a-table-date-is-short-and-every-time-is-wib),
+   for every screen. The locale half had already been settled: dates follow the app's language. As recommended.
+   Kept as a line so the numbers hold.
 
 8. ✅ *(2026-10-22)* **Overtaken: no such order — every order needs a platform ref and `platform_total`** —
    [platform-total-is-required-at-finalize](../../business/order/context_decision.md#platform-total-is-required-at-finalize).
@@ -479,34 +472,13 @@ flowchart LR
     | ✅ labels printed together | `OrderLabels(team_id, order_ids)`, one merged PDF; a warehouse reads the labels of the orders it ships ([a-warehouse-prints-the-labels-of-orders-it-ships](../frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)) |
     | ✅ export | one `OrderExport(team_id, filter)` for both lists, .xlsx, streamed ([one-export-is-the-list-as-a-file](../frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)) |
 
-13. **Where does a draft's pushing app go on the row?** The draft list used to show `source` under the reference;
-    [the-draft-list-is-the-drafts-tab](../frontend/order_draft_decision.md#the-draft-list-is-the-drafts-tab) gave that line to
-    *what is left*, so the app's name is now on the detail only. Two apps can scrape the same marketplace, and
-    the reference alone does not say whose it is.
-    **→ Recommend** it takes the author's line in the *Dibuat* cell — `via <app>` instead of `oleh <name>`. Per
-    [drafts-exist-only-for-the-third-party-app](../../business/order/context_decision.md#drafts-exist-only-for-the-third-party-app)
-    the app IS the author, and the user id on the draft is only whoever owns the token it pushed with.
+13. ✅ *(2026-10-29)* **Answered: both, on one line — `oleh <name> via <app>`** —
+    [the-draft-row-names-the-person-and-the-app](../frontend/order_draft_decision.md#the-draft-row-names-the-person-and-the-app).
+    Your counter to my `via` alone. Built the same day. Kept as a line so the numbers hold.
 
-19. **What may the order Import move?** [the-order-import-moves-statuses-only](../frontend/order_list_decision.md#the-order-import-moves-statuses-only)
-    left one thing open: which marketplace status maps to which of ours. The Import is §Order Shipments' manual CS check done
-    in bulk, so the risk is in three places — a **cancel** (releases stock, reverses the fee, cancels the settlement), any
-    move **before handover** (the file cannot see the building), and a **ref matching two orders**
-    ([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)).
-    **→ Recommend A — only the CS moves after handover**, along the status diagram's edges; everything else is listed in
-    the import's result with its reason, never applied:
-
-    | platform says | → ours | when ours is |
-    | --- | --- | --- |
-    | awaiting / ready to ship | no move | — that state is the warehouse's |
-    | in transit | `shipped` | `shipping` |
-    | delivered / completed | `completed` | `shipped`, `problem` |
-    | failed delivery / dispute | `problem` | `shipped` |
-    | return | `return` | `shipping`, `shipped`, `problem`, `completed` |
-    | cancelled | listed | the CS cancels a `pending` one; a later one goes back through the warehouse |
-    | — | `lost` | never from a file |
-
-    The alternatives: **B** also cancels a `pending` order the platform cancelled; **C** applies whatever the file says.
-    Each marketplace's own words become a per-marketplace parser table, drafted for review rather than asked word by word.
+19. ✅ *(2026-10-29)* **Answered: A — only customer service's moves after handover; the rest is listed, never applied** —
+    [the-import-moves-only-after-handover](./design_decision.md#the-import-moves-only-after-handover). As recommended.
+    Kept as a line so the numbers hold.
 
 20. ✅ *(2026-10-26)* **Answered: Edit Withdrawal and the mark go** —
     [no-withdrawal-is-typed-on-an-order](../frontend/order_detail_decision.md#no-withdrawal-is-typed-on-an-order).

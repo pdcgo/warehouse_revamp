@@ -288,48 +288,18 @@ flowchart LR
 
 ## the-build-still-treats-an-empty-ref-as-a-phone-order
 
-*"its cannot empty"* (§Table That Must Have) — while
-[00012_order_external_ref.sql](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)
-says *"'' = there is NO marketplace reference. That is the ordinary state of an order taken over the phone"*, the
-reversed [every-marketplace-order-carries-a-unique-platform-ref](../settlement/context_decision.md#every-marketplace-order-carries-a-unique-platform-ref)
-allowed `""` for a phone order, and `openSettlement` skips a platform total of 0 for the same reason. ⚠ The column itself is renamed to `platform_total` ([the-total-is-ours-the-platform-total-is-theirs](./context_decision.md#the-total-is-ours-the-platform-total-is-theirs)).
-**Which is wrong:** the build — the doc is the owner's current statement. **→ Recommend** a `CHECK` + handler
-check when this context is built, and deciding
-[a-lost-publish-is-not-tracked-on-the-order](./context_decision.md#a-lost-publish-is-not-tracked-on-the-order) item 3 in the same
-pass, since it is the same assumption.
+✅ *(2026-10-29)* **Resolved** — the create request's validation refuses an empty ref, with no database rule, and
+old orders keep their `''` ([an-order-ref-is-required-by-the-rpc](./context_decision.md#an-order-ref-is-required-by-the-rpc)).
+Building it found a second door: Promote never copied the draft's ref, so every promoted order had `''`. Fixed the
+same day. Kept as a heading so the links into it hold.
 
 ## the-build-lets-a-person-draft-and-promotes-on-the-server
 
-[drafts-exist-only-for-the-third-party-app](./context_decision.md#drafts-exist-only-for-the-third-party-app) — *a person
-never drafts* — and [the-frontend-finalizes-a-draft-not-the-backend](./context_decision.md#the-frontend-finalizes-a-draft-not-the-backend)
-— *the draft seeds the create form, there is no promote RPC* — while the build has **Save as Draft** on the order
-form (source `manual`) and an `OrderDraftPromote` RPC that the draft detail's Promote button calls. Found while
-aligning the draft list to the order list (2026-09-30); the list is unaffected, since every column on it holds
-either way.
-
-| | decided | built |
-| --- | --- | --- |
-| who creates a draft | the third-party app only | the app, **and** a person from the order form |
-| how a draft becomes an order | the create form, seeded from the draft, sends `order_draft_id` | `OrderDraftPromote` on the server |
-
-**Which is wrong:** the build — the decisions are the owner's current statement.
-**→ Recommend** removing Save as Draft and replacing Promote with *Open in the order form* (the form seeded from
-the draft, `OrderCreate` deleting it), in one pass with a migration of any `manual` drafts. ⚠ Until then the
-draft screens carry the build's behaviour, and the list's intro text still says drafts are *"saved from the
-order form"*.
-
-⚠ **Tried and reverted (2026-09-30):** the draft was opened IN the order create form for one round; the owner
-asked for the separate draft page back at `/order-drafts/:id`. The contradiction therefore stands as written.
-
-```mermaid
-flowchart LR
-  subgraph "decided"
-    A1["third-party app"] --> D1["draft"] --> F1["create form, seeded"] --> O1["OrderCreate + order_draft_id"]
-  end
-  subgraph "built"
-    A2["app, or Save as Draft"] --> D2["draft"] --> P2["OrderDraftPromote"]
-  end
-```
+✅ *(2026-10-29)* **Resolved** — the draft page keeps its Promote button, and it sends `OrderCreate` with
+`order_draft_id`; `OrderDraftPromote` and the create form's Save as Draft are removed
+([a-draft-becomes-an-order-through-order-create](./context_decision.md#a-draft-becomes-an-order-through-order-create)).
+The drafts list's intro no longer says drafts are saved from the order form. `manual` drafts already stored stay
+listed and promotable. Kept as a heading so the links into it hold.
 
 ## the-warehouse-steps-rule-met-the-return-status
 

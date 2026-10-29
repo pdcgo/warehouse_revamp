@@ -107,6 +107,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-buyers-username-is-optional](#the-buyers-username-is-optional) | the order and the draft carry the buyer's marketplace username when there is one; empty never refuses |
 | [an-order-is-costed-at-what-leaves-the-shelf](#an-order-is-costed-at-what-leaves-the-shelf) | every money figure of an order is the cost of the units that leave the shelf, oldest first — previewed and frozen; the average only values the stock |
 | [an-order-line-carries-no-marketplace-price](#an-order-line-carries-no-marketplace-price) | an order line holds only the take's money — `unit_cost`, `unit_cost_with_markup`, `markup_total`, `total`; the marketplace price stays on the draft's platform row |
+| [an-order-ref-is-required-by-the-rpc](#an-order-ref-is-required-by-the-rpc) | `order_external_ref_id` cannot be empty, refused by the create request's validation; no database rule, and old orders keep their `''` |
+| [a-draft-becomes-an-order-through-order-create](#a-draft-becomes-an-order-through-order-create) | the draft page's Promote sends `OrderCreate` with `order_draft_id`; `OrderDraftPromote` and Save as Draft are removed |
 
 ---
 
@@ -3773,3 +3775,76 @@ flowchart LR
 | not decided here | the order's header: Promote's `subtotal` still sums the rows' marketplace prices, `OrderCreate`'s is what the form sends. The owner's `orders` has `goods_cost` and `total_cost`, and no subtotal |
 | ✅ built *(2026-10-23)* | selling `00025` adds `order_items.unit_cost_with_markup` and `markup_total` (`DOUBLE PRECISION`, CHECK >= 0, NULL = never frozen, not back-filled). `PickDraw` carries both from the take; `placeOrder` freezes them beside `unit_cost` and `total` and stamps `unit_price` = `unit_cost`. Promote sends no price; `mergeOrderLines` drops its price refusal. The take now prices the markup on the draw's value, so an own line's is exactly 0. `OrderItem` gains `total`, `unit_cost_with_markup`, `markup_total`, read-only and absent when never frozen — no screen shows the new two |
 | 🔄 corrected *(2026-10-23)* | `unit_price` is DROPPED, column and proto field — the owner's `order_items` has no such field. The *kept* row above was a build-pass choice, not the owner's; old promoted lines lose the marketplace price they held (dev data only) |
+
+---
+
+## an-order-ref-is-required-by-the-rpc
+
+> Owner, in chat (2026-10-29): *"order external ref cannot empty and it check rpc validation"* — to
+> [the-build-still-treats-an-empty-ref-as-a-phone-order](./context_clarify.md#the-build-still-treats-an-empty-ref-as-a-phone-order),
+> asked as *"A: a database check that skips old rows plus the handler, B: fill old rows with a placeholder, C: the
+> handler only?"*. The owner's own answer: the **request's validation**, not a handler `if` and not a database rule.
+
+**The verdict.** `order_external_ref_id` can never be empty on a new order. The rule is on the proto,
+`OrderCreateRequest.order_external_ref_id` `min_len: 1`, so the validation interceptor refuses the request before any
+handler runs. There is no database rule. Orders placed before the rule keep their `''`, unchanged. The old reading,
+*"`''` is an order taken over the phone"*, is gone.
+
+```mermaid
+flowchart LR
+  f["the create form - Create held, the field marked required"] --> r["OrderCreateRequest"]
+  r --> v{"protovalidate - ref at least 1 character"}
+  v -->|"empty"| x["refused, InvalidArgument - no handler runs"]
+  v -->|"set"| h["OrderCreate - the order is placed"]
+  d["a draft"] -->|"Promote - the draft's external_id, required at push"| h
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the rule | `[(buf.validate.field).string = {min_len: 1, max_len: 128}]` on `OrderCreateRequest.order_external_ref_id` |
+| the promoted draft | a draft cannot be pushed without `external_id` (`min_len: 1`), and that IS the marketplace ref. ⚠ Found while building this: Promote never copied it, so every promoted order landed with `''`. Fixed the same day: Promote now copies it, pinned in `TestOrderDraftPromote_TheDraftBecomesAnOrderAndDisappears` |
+| spaces only | the form trims before sending and holds Create, so a blank ref never reaches the RPC from the screen |
+| old orders | keep `''`. The duplicate warning's index already skips `''`, and the order Import never matches an empty ref ([the-import-moves-only-after-handover](../../technical/order/design_decision.md#the-import-moves-only-after-handover)) |
+| a database rule | none, by this answer |
+| ✅ built *(2026-10-29)* | the proto rule, regenerated Go and TS. Test `TestOrderCreateRequest_RefIsRequired` (selling_v1). The create form marks the field required and holds Create, pinned by story `TheMarketplaceRefIsRequiredToPlace`. The e2e order helper now types a ref |
+
+---
+
+## a-draft-becomes-an-order-through-order-create
+
+> Owner, in chat (2026-10-29): *"yes"* — to
+> [the-build-lets-a-person-draft-and-promotes-on-the-server](./context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server),
+> asked as *"keep the Promote button but route it through `OrderCreate`, and remove `OrderDraftPromote` and Save as
+> Draft?"*. As recommended.
+
+**The verdict.** There is one door into `orders`: `OrderCreate`. The draft page keeps its own page and its **Promote**
+button ([the-draft-keeps-its-own-page](../../technical/frontend/order_draft_decision.md#the-draft-keeps-its-own-page)),
+and the button sends `OrderCreate` with everything on screen plus `order_draft_id`. The order is written and the draft
+deleted in one transaction. `OrderDraftPromote` is removed, and so is the create form's **Save as Draft**, because a
+person never drafts ([drafts-exist-only-for-the-third-party-app](#drafts-exist-only-for-the-third-party-app)).
+
+```mermaid
+flowchart LR
+  app["third-party app"] -->|"OrderDraftPush"| d["order_drafts"]
+  d --> p["/order-drafts/:id - the draft page"]
+  p -->|"Promote = OrderCreate + order_draft_id"| c["OrderCreate - the one door"]
+  f["/orders/new - the create form"] -->|"Create"| c
+  c --> o["orders - and the draft deleted, one transaction"]
+  x["OrderDraftPromote"] -.->|"removed"| o
+  s["Save as Draft"] -.->|"removed"| d
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `OrderCreateRequest.order_draft_id` | optional, `0` = none. When set, the draft must be the scoped team's and the caller's, or `NotFound`, the same lookup Promote made |
+| the deletion | inside the order's transaction. If the order is refused (no stock, no fee rate), the draft stays. If the draft is already gone, because two people pressed Promote at once, the second order rolls back |
+| what the page sends | what is on screen, not what is saved: unsaved edits, bundles and splits (as their product lines), and the fields a draft cannot store (receipt, tracking number, note), which now reach the order instead of being dropped |
+| the ref on the page | seeded from the draft's `external_id`, the marketplace's id. A `manual` draft's `external_id` is a minted `form-…` id, so it is not seeded and the person types the ref |
+| Save on the draft page | unchanged: it saves what a draft stores, in any state |
+| `manual` drafts already stored | still listed and still promotable. Nothing makes new ones |
+| validation | `OrderCreate`'s own, request and placement, for both buttons. The draft page's reasons match the create form's |
+| ✅ built *(2026-10-29)* | `OrderCreateRequest.order_draft_id` (field 21) and `OrderCreate`'s draft lookup and in-transaction delete, which checks `RowsAffected` so one draft becomes one order. `OrderDraftPromote` removed from the proto and the service. The draft page's Promote builds the request from its screen; the create form's Save as Draft is gone, and Create finishes a `?draft=` it was opened beside. Tests: `TestOrderCreateFromDraft_*` (the draft disappears, one draft one order, a refused order leaves it, a colleague's is NotFound, the event fires), stories `AnUnsavedEditIsPromotedAsIs`, `AManualDraftAsksForItsRef`, `TheFormHasNoSaveAsDraft`. ⚠ The concurrent half of one-draft-one-order is not proved with `san_race` |

@@ -94,7 +94,7 @@ func TestOrderCreate_AShortTakeReachesTheCallerWithItsCodeAndDetail(t *testing.T
 
 // THE SECOND DOOR says it the same way: a promote whose take refuses a borrowed product (below its owner's reserve)
 // answers with the take's code and detail, and the draft survives to be fixed.
-func TestOrderDraftPromote_ARefusedTakeReachesTheCallerWithItsCodeAndDetail(t *testing.T) {
+func TestOrderCreateFromDraft_ARefusedTakeReachesTheCallerWithItsCodeAndDetail(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{pickErr: takeRefused(t,
 		inventoryv1.OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED,

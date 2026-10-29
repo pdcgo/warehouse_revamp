@@ -25,13 +25,16 @@ interface NoteAndSubmitCardProps {
   /** Create is a SUBMIT — the form around it owns the handler (see the page). */
   canSave: boolean;
   saving: boolean;
-  /** A draft asks for far less than an order: anything typed at all. */
-  canDraft: boolean;
-  savingDraft: boolean;
-  onSaveDraft: () => void;
+  /**
+   * THE SECOND BUTTON, the draft page's Save. Omitted, the card has Create alone: the new order's form has no Save as
+   * Draft, because a person never drafts (a-draft-becomes-an-order-through-order-create).
+   */
+  canDraft?: boolean;
+  savingDraft?: boolean;
+  onSaveDraft?: () => void;
   /**
    * THE DRAFT PAGE'S VARIANT (`the-draft-page-wears-the-order-form`) — the same card with Save and
-   * Promote instead of Save as Draft and Create. Omitted, it is the new order's card.
+   * Promote instead of Create alone. Omitted, it is the new order's card.
    */
   variant?: {
     saveLabel: string;
@@ -54,8 +57,8 @@ export function NoteAndSubmitCard({
   compact,
   canSave,
   saving,
-  canDraft,
-  savingDraft,
+  canDraft = false,
+  savingDraft = false,
   onSaveDraft,
   variant,
   noteMark,
@@ -88,22 +91,23 @@ export function NoteAndSubmitCard({
           </Field.Root>
 
           <Stack gap="2">
-            <SimpleGrid columns={2} gap="2">
-              {/* SAVE AS DRAFT asks for far less — a draft needs nothing but something typed — so it
-                  is enabled while Create is still refusing, which is the whole point: the work has
-                  somewhere to go before the order is placeable, and NO STOCK MOVES. */}
-              <Button
-                type="button"
-                w="full"
-                variant="outline"
-                loading={savingDraft}
-                disabled={!canDraft || saving}
-                data-testid={variant?.saveTestId ?? "order-create-save-draft"}
-                onClick={onSaveDraft}
-              >
-                <Icon as={FileClock} boxSize="4" />
-                {variant?.saveLabel ?? t("orders.saveAsDraft")}
-              </Button>
+            <SimpleGrid columns={onSaveDraft ? 2 : 1} gap="2">
+              {/* THE DRAFT PAGE'S SAVE asks for far less than Promote — a draft keeps anything, in any state — so it
+                  is enabled while Promote is still refusing, and NO STOCK MOVES. */}
+              {onSaveDraft && (
+                <Button
+                  type="button"
+                  w="full"
+                  variant="outline"
+                  loading={savingDraft}
+                  disabled={!canDraft || saving}
+                  data-testid={variant?.saveTestId ?? "order-create-save-draft"}
+                  onClick={onSaveDraft}
+                >
+                  <Icon as={FileClock} boxSize="4" />
+                  {variant?.saveLabel}
+                </Button>
+              )}
 
               {/* ⚠ A SUBMIT, not a click handler: the page wraps this card in its <form>, so Enter in
                   any field places the order the same way this button does. */}

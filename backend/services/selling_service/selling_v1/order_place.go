@@ -18,12 +18,10 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
-// orderPlacement is everything it takes to place an order, whichever door it came through — typed in
-// on the #90 form (OrderCreate) or promoted from a draft (#194).
-//
-// It exists so the RULE FOR WHAT AN ORDER MUST HAVE lives in exactly one place. That is the payoff
-// the separate drafts table was chosen for: two doors, one definition of a valid order, no chance of
-// the draft path quietly accepting something the form would refuse.
+// orderPlacement is everything it takes to place an order — typed in on the #90 form, or a draft promoted from its
+// page. Both are OrderCreate now (a-draft-becomes-an-order-through-order-create): ONE door, so the rule for what an order
+// must have lives in exactly one place. OrderDraftPromote was a second door that rebuilt the order by hand, and it had
+// already drifted — it never set the marketplace ref.
 type orderPlacement struct {
 	teamID      uint64
 	shopID      uint64
@@ -43,8 +41,8 @@ type orderPlacement struct {
 	// The shipping receipt already uploaded to document_service, if any. Recorded as given — the id
 	// is not verified, see OrderCreateRequest.receipt for why.
 	receipt *sellingv1.OrderReceipt
-	// The tracking number printed on that receipt, verbatim. "" = not known yet. A promoted draft carries
-	// none: a draft does not keep one (the-draft-page-wears-the-order-form).
+	// The tracking number printed on that receipt, verbatim. "" = not known yet. From a draft it is what was typed on
+	// the draft page — a draft does not keep one (the-draft-page-wears-the-order-form), but its Promote sends it.
 	receiptCode string
 	// The platform's two dates, unix seconds, 0 = none. The order date is REQUIRED (validate); the deadline is not.
 	platformCreatedAt        int64
@@ -54,14 +52,14 @@ type orderPlacement struct {
 	// settlement opens the account on. The order's own money (goods_cost, warehouse_fee, total_cost) is not here: it is
 	// the take's and the warehouse's, frozen by placeOrder — no door supplies it.
 	platformTotal int64
-	// The marketplace's own id for this order, verbatim. "" = there is none, which is the ordinary
-	// state of an order taken over the phone.
+	// The marketplace's own id for this order, verbatim. Required by the request's validation
+	// (an-order-ref-is-required-by-the-rpc); "" only on an order placed before that rule.
 	orderExternalRefID string
 
 	items []*sellingv1.OrderItem
 
-	// Extra work to run INSIDE the order's transaction, once the order row exists. Promote deletes the
-	// draft here, which is what makes "the order is written and the draft is gone" one atomic fact
+	// Extra work to run INSIDE the order's transaction, once the order row exists. OrderCreate deletes the
+	// draft it finishes here (order_draft_id), which is what makes "the order is written and the draft is gone" one atomic fact
 	// rather than two writes with a gap between them.
 	inTx func(tx *gorm.DB, order *selling_service_models.Order) error
 }
@@ -84,10 +82,9 @@ var (
 
 // validate is the one definition of a placeable order.
 //
-// It re-checks what proto validation already covers for OrderCreate rather than trusting it: the
-// draft path reaches here through a request that carries only a draft id, so none of those field
-// rules ran at all. A shared core that trusted its caller's validation would be a rule written once
-// and enforced on one path.
+// It re-checks what proto validation already covers for OrderCreate rather than trusting it: a handler called
+// directly — a unit test, a CLI command — gets no validation interceptor. (It was load-bearing while OrderDraftPromote
+// existed: that request carried only a draft id, so none of the field rules ran.)
 func (p *orderPlacement) validate() error {
 	if p.shopID == 0 {
 		return errOrderNoShop
@@ -103,14 +100,14 @@ func (p *orderPlacement) validate() error {
 		return errOrderNoCustomer
 	}
 
-	// Checked HERE, the one definition both doors share, so a promoted draft cannot slip through without the date the
+	// Checked HERE, the one definition every order meets, so a promoted draft cannot slip through without the date the
 	// typed form is refused for (platform-created-at-is-required-at-finalize). A draft may hold it empty; an order may not.
 	if p.platformCreatedAt <= 0 {
 		return errOrderNoPlatformDate
 	}
 
-	// The same footing (platform-total-is-required-at-finalize): Promote copies the draft's figure into this field, so
-	// a draft still at 0 meets this rule exactly as a typed order does.
+	// The same footing (platform-total-is-required-at-finalize): a draft's Promote sends the figure on its page, so a
+	// draft still at 0 meets this rule exactly as a typed order does.
 	if p.platformTotal <= 0 {
 		return errOrderNoPlatformTotal
 	}
@@ -130,7 +127,7 @@ func (p *orderPlacement) validate() error {
 
 // placeOrder writes an order, takes its stock, and announces it — the whole of what "placing" means.
 //
-// Extracted from OrderCreate for #194 so promote runs the same path rather than a copy of it. The
+// Extracted from OrderCreate for #194 so promote ran the same path; promote IS OrderCreate now. The
 // behaviour is unchanged, including the parts that look odd and are not: the stock draw happens
 // inside the still-uncommitted transaction, and the compensation tracks whether the pick was
 // ATTEMPTED rather than whether it succeeded.
@@ -310,7 +307,7 @@ func (s *Service) placeOrder(
 			return logErr
 		}
 
-		// Whatever the caller needs done atomically with the order. For promote (#194) this is the
+		// Whatever the caller needs done atomically with the order. For a draft's Promote this is the
 		// draft's deletion: same service, same database, so it is one transaction and the "gap between
 		// two writes" a cross-service split would have created never exists.
 		if p.inTx != nil {

@@ -22,7 +22,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseTransferStatusBadge";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { formatUnixDateTime } from "../../lib/datetime";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { TRANSFER_SELLING_PENDING } from "./pending";
 
@@ -193,7 +193,7 @@ export function WarehouseTransferSellingPage() {
                               <Stack gap="0">
                                 <Span fontWeight="medium">#{transfer.id.toString()}</Span>
                                 <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap">
-                                  {formatUnixDateTime(transfer.createdAtUnix)}
+                                  {formatUnixDateTimeShort(transfer.createdAtUnix)}
                                 </Span>
                                 {createdBy && (
                                   <Span fontSize="xs" color="fg.muted">

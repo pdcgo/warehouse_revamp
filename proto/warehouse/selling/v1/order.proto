@@ -331,12 +331,11 @@ message Order {
   // never parsed — every marketplace formats its reference differently, and any structure we imposed
   // would be a rule that the next storefront breaks.
   //
-  // "" = there is no marketplace reference, which is the ordinary state of an order taken over the
-  // phone. Not "unknown": an order that never had one never will.
+  // REQUIRED on every new order (an-order-ref-is-required-by-the-rpc). "" only on an order placed
+  // before that rule — not a phone order, and not "unknown": it was simply never asked for.
   //
-  // ⚠ NOT unique, and nothing joins on it. It is evidence of where an order came from, not a key —
-  // whether two orders may share one is an open question (see the migration), and enforcing it before
-  // that is decided would refuse legitimate re-entry.
+  // ⚠ NOT unique, and nothing joins on it. Two orders may share one — a duplicate is warned about,
+  // never refused (a-duplicate-ref-is-warned-not-refused), because cancel-and-re-enter is legitimate.
   string order_external_ref_id = 21;
 
   // WHO TYPED IT IN — read from the authenticated caller at placement, never from the request, and never
@@ -471,12 +470,17 @@ message OrderCreateRequest {
   // need, short enough that the field cannot become a document store.
   string note = 14 [(buf.validate.field).string.max_len = 2000];
 
-  // The marketplace's own id for this order, as the person read it off the storefront. Optional; ""
-  // is the ordinary case for an order taken over the phone. See Order.order_external_ref_id.
+  // The marketplace's own id for this order, as the person read it off the storefront. REQUIRED
+  // (an-order-ref-is-required-by-the-rpc): every order comes from a marketplace, and the ref is what the
+  // duplicate warning and the order Import match on. Refused here, by the request's validation, before
+  // any handler runs. Orders placed before the rule keep their "". See Order.order_external_ref_id.
   //
   // Capped at 128 to match OrderDraft.external_id — the two hold the same kind of thing, and a
   // reference that fits in a draft must fit in the order that draft becomes.
-  string order_external_ref_id = 16 [(buf.validate.field).string.max_len = 128];
+  string order_external_ref_id = 16 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
 
   // The tracking number printed on the slip, as the person read it — off the storefront or off the label. Optional;
   // "" = not known yet. See Order.receipt_code.
@@ -501,6 +505,13 @@ message OrderCreateRequest {
   // replaces was: an order can be taken before the address is known, and forcing four region levels
   // to place one would be a new rule, not a port of the old one.
   OrderAddress address = 11;
+
+  // THE DRAFT THIS ORDER FINISHES — what the draft page's Promote sends
+  // (a-draft-becomes-an-order-through-order-create). Optional; 0 = an order typed from scratch. When set, the draft
+  // must be the scoped team's and the caller's, and it is DELETED in the order's own transaction: a refused order
+  // leaves it, and a draft already turned into an order refuses the second one. Everything the order says comes from
+  // the fields above, never from the draft — the page sends what is on its screen.
+  uint64 order_draft_id = 21;
 }
 
 message OrderCreateResponse {

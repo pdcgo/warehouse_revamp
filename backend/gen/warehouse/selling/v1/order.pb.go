@@ -1058,12 +1058,11 @@ type Order struct {
 	// never parsed — every marketplace formats its reference differently, and any structure we imposed
 	// would be a rule that the next storefront breaks.
 	//
-	// "" = there is no marketplace reference, which is the ordinary state of an order taken over the
-	// phone. Not "unknown": an order that never had one never will.
+	// REQUIRED on every new order (an-order-ref-is-required-by-the-rpc). "" only on an order placed
+	// before that rule — not a phone order, and not "unknown": it was simply never asked for.
 	//
-	// ⚠ NOT unique, and nothing joins on it. It is evidence of where an order came from, not a key —
-	// whether two orders may share one is an open question (see the migration), and enforcing it before
-	// that is decided would refuse legitimate re-entry.
+	// ⚠ NOT unique, and nothing joins on it. Two orders may share one — a duplicate is warned about,
+	// never refused (a-duplicate-ref-is-warned-not-refused), because cancel-and-re-enter is legitimate.
 	OrderExternalRefId string `protobuf:"bytes,21,opt,name=order_external_ref_id,json=orderExternalRefId,proto3" json:"order_external_ref_id,omitempty"`
 	// WHO TYPED IT IN — read from the authenticated caller at placement, never from the request, and never
 	// updated. An opaque user_service id; the screen resolves the name with UserByIDs. 0 = not recorded
@@ -1356,8 +1355,10 @@ type OrderCreateRequest struct {
 	// Capped at 2000 characters: long enough for the several sentences a difficult order really does
 	// need, short enough that the field cannot become a document store.
 	Note string `protobuf:"bytes,14,opt,name=note,proto3" json:"note,omitempty"`
-	// The marketplace's own id for this order, as the person read it off the storefront. Optional; ""
-	// is the ordinary case for an order taken over the phone. See Order.order_external_ref_id.
+	// The marketplace's own id for this order, as the person read it off the storefront. REQUIRED
+	// (an-order-ref-is-required-by-the-rpc): every order comes from a marketplace, and the ref is what the
+	// duplicate warning and the order Import match on. Refused here, by the request's validation, before
+	// any handler runs. Orders placed before the rule keep their "". See Order.order_external_ref_id.
 	//
 	// Capped at 128 to match OrderDraft.external_id — the two hold the same kind of thing, and a
 	// reference that fits in a draft must fit in the order that draft becomes.
@@ -1380,7 +1381,13 @@ type OrderCreateRequest struct {
 	// The delivery address, snapshotted onto the order. Optional — exactly as the free text it
 	// replaces was: an order can be taken before the address is known, and forcing four region levels
 	// to place one would be a new rule, not a port of the old one.
-	Address       *OrderAddress `protobuf:"bytes,11,opt,name=address,proto3" json:"address,omitempty"`
+	Address *OrderAddress `protobuf:"bytes,11,opt,name=address,proto3" json:"address,omitempty"`
+	// THE DRAFT THIS ORDER FINISHES — what the draft page's Promote sends
+	// (a-draft-becomes-an-order-through-order-create). Optional; 0 = an order typed from scratch. When set, the draft
+	// must be the scoped team's and the caller's, and it is DELETED in the order's own transaction: a refused order
+	// leaves it, and a draft already turned into an order refuses the second one. Everything the order says comes from
+	// the fields above, never from the draft — the page sends what is on its screen.
+	OrderDraftId  uint64 `protobuf:"varint,21,opt,name=order_draft_id,json=orderDraftId,proto3" json:"order_draft_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1525,6 +1532,13 @@ func (x *OrderCreateRequest) GetAddress() *OrderAddress {
 		return x.Address
 	}
 	return nil
+}
+
+func (x *OrderCreateRequest) GetOrderDraftId() uint64 {
+	if x != nil {
+		return x.OrderDraftId
+	}
+	return 0
 }
 
 type OrderCreateResponse struct {
@@ -4545,7 +4559,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x0ebuyer_username\x18\x1e \x01(\tR\rbuyerUsernameB\x10\n" +
 	"\x0e_warehouse_feeJ\x04\b\a\x10\bJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
-	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\xa4\a\n" +
+	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\xcc\a\n" +
 	"\x12OrderCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12*\n" +
@@ -4556,15 +4570,17 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\rshipping_code\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18(R\fshippingCode\x12.\n" +
 	"\x0eplatform_total\x18\r \x01(\x03B\a\xbaH\x04\"\x02(\x00R\rplatformTotal\x12<\n" +
 	"\areceipt\x18\x0f \x01(\v2\".warehouse.selling.v1.OrderReceiptR\areceipt\x12\x1c\n" +
-	"\x04note\x18\x0e \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x04note\x12;\n" +
-	"\x15order_external_ref_id\x18\x10 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x12orderExternalRefId\x12*\n" +
+	"\x04note\x18\x0e \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x04note\x12=\n" +
+	"\x15order_external_ref_id\x18\x10 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x12orderExternalRefId\x12*\n" +
 	"\freceipt_code\x18\x11 \x01(\tB\a\xbaH\x04r\x02\x18@R\vreceiptCode\x12@\n" +
 	"\x18platform_created_at_unix\x18\x12 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x15platformCreatedAtUnix\x12N\n" +
 	"\x1fplatform_shipment_deadline_unix\x18\x13 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x1cplatformShipmentDeadlineUnix\x12.\n" +
 	"\x0ebuyer_username\x18\x14 \x01(\tB\a\xbaH\x04r\x02\x18dR\rbuyerUsername\x12?\n" +
 	"\x05items\x18\n" +
 	" \x03(\v2\x1f.warehouse.selling.v1.OrderItemB\b\xbaH\x05\x92\x01\x02\b\x01R\x05items\x12<\n" +
-	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress:\v\x92\xb5\x18\a\n" +
+	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12$\n" +
+	"\x0eorder_draft_id\x18\x15 \x01(\x04R\forderDraftId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05J\x04\b\x05\x10\x06J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"R\x10customer_addressR\bsubtotalR\rshipping_costR\x05total\"H\n" +
 	"\x13OrderCreateResponse\x121\n" +

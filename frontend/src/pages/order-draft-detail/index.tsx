@@ -36,7 +36,7 @@ import { useTeams } from "../../features/teams/queries";
 import { MarketplaceInfoForm, emptyMarketplaceInfo } from "../../components/orders/MarketplaceInfoForm";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import type { MarketplaceInfoValue } from "../../components/orders/MarketplaceInfoForm";
-import { emptyReceipt } from "../../components/orders/ReceiptUpload";
+import { emptyReceipt, hasReceipt } from "../../components/orders/ReceiptUpload";
 import type { ReceiptValue } from "../../components/orders/ReceiptUpload";
 import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
 import { emptyAddress } from "../../components/customers/AddressPicker";
@@ -47,7 +47,7 @@ import { DatePicker } from "../../components/datetime/DatePicker";
 import { dateTimeInputToUnix, todayDateInput, unixToDateTimeInput } from "../../lib/datetime";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { availabilityOf, byProduct, toRupiah } from "../../features/orders/lines";
+import { availabilityOf, byProduct, toQty, toRupiah } from "../../features/orders/lines";
 import { TakeRefusalAlert } from "../../features/orders/TakeRefusalAlert";
 import { type TakeRefusal, takeRefusalOf } from "../../features/orders/takeRefusal";
 import { useWarehouseFeeQuote } from "../../features/warehouse/queries";
@@ -215,7 +215,14 @@ export function OrderDraftDetailPage() {
       platformTotal: from.platformTotal,
     };
 
-    setMarketplace((prev) => ({ ...prev, shopId: next.shopId }));
+    // THE MARKETPLACE REF — the draft's external id IS it, the id the app read off the storefront. Seeded once, never over
+    // what was typed. A `manual` draft's external id is a minted `form-…` id, not a ref, so it is not seeded
+    // (a-draft-becomes-an-order-through-order-create).
+    setMarketplace((prev) => ({
+      ...prev,
+      shopId: next.shopId,
+      orderExternalRefId: prev.orderExternalRefId || (from.source === "manual" ? "" : from.externalId),
+    }));
     setWarehouseId(next.warehouseId);
     setCustomerName(next.customerName);
     setCustomerPhone(next.customerPhone);
@@ -343,6 +350,15 @@ export function OrderDraftDetailPage() {
       !sameStoredRows(rows, baseline.rows));
 
   // ── Promote: refused until the order could be placed ──
+  //
+  // PROMOTE SENDS WHAT IS ON SCREEN (a-draft-becomes-an-order-through-order-create): it is OrderCreate with the draft's
+  // id, so an unsaved edit, a bundle or a split row, and the fields a draft cannot store all reach the order. Nothing has
+  // to be saved first, and every reason below is one the create form holds Create for.
+  //
+  // The lines carry the catalogue's sku and name, which a row mapped by id only learns from the products lookup — so
+  // Promote waits for it rather than send a line without its label.
+  const orderLines = useMemo(() => namedRows.flatMap(rowLines), [namedRows]);
+  const linesNamed = orderLines.every((l) => l.sku !== "" && l.name !== "");
   const shortRows = rows.filter((row) => rowShort(row, stock)).length;
   const reasons: string[] = [];
   if (shopId <= 0n) reasons.push(t("orderDrafts.missingShop"));
@@ -351,18 +367,18 @@ export function OrderDraftDetailPage() {
   if (feeRefusal) reasons.push(feeRefusal);
   if (customerName.trim() === "") reasons.push(t("orderDrafts.missingCustomer"));
   if (rows.length === 0) reasons.push(t("orderDrafts.missingLines"));
+  // an-order-ref-is-required-by-the-rpc — seeded from the draft, and typed on a `manual` one.
+  if (marketplace.orderExternalRefId.trim() === "") reasons.push(t("orderDrafts.missingRef"));
   // platform-created-at-is-required-at-finalize — a draft may hold it empty, an order may not.
   if (orderDate === "") reasons.push(t("orderDrafts.missingOrderDate"));
-  // platform-total-is-required-at-finalize — read off what is STORED, because Promote copies the stored figure: one
-  // the field merely follows from the rows needs a Save first, which "Save the changes first" says beside it.
-  if ((baseline?.platformTotal ?? 0n) <= 0n) reasons.push(t("orderDrafts.missingSellPrice"));
+  // platform-total-is-required-at-finalize — the figure ON SCREEN, typed or followed from the rows, because that is
+  // what Promote sends.
+  if (sellPrice <= 0n) reasons.push(t("orderDrafts.missingSellPrice"));
   if (rows.some((row) => !rowMapped(row))) reasons.push(t("orderDraftForm.gaps.unmapped"));
-  if (rows.some((row) => row.mode !== "product")) reasons.push(t("orderDraftForm.gaps.notStorable"));
   if (shortRows > 0) reasons.push(t("orderDrafts.missingStock"));
-  if (changed) reasons.push(t("orderDraftForm.gaps.saveFirst"));
   // An unmapped borrowed product holds Promote too (a-borrowed-line-needs-its-map-at-create). Not a reason in the
   // list: the line under the button already names it, and two sentences for one gap read as two gaps.
-  const canPromote = reasons.length === 0 && unmappedReturns === 0;
+  const canPromote = reasons.length === 0 && unmappedReturns === 0 && linesNamed;
 
   async function save() {
     if (!teamId || !draft || !baseline) return;
@@ -449,7 +465,37 @@ export function OrderDraftDetailPage() {
     setRefusal(null);
 
     try {
-      const res = await promote.mutateAsync({ teamId, draftId: draft.id });
+      // OrderCreate, with what is on screen and the draft's id (a-draft-becomes-an-order-through-order-create) — the same
+      // request the create form sends, so a promoted order meets every rule a typed one does.
+      const res = await promote.mutateAsync({
+        teamId,
+        shopId,
+        warehouseId,
+        customerName,
+        customerPhone,
+        // Sent only when something was filled in, as the create form does — an untouched picker is no address.
+        address: JSON.stringify(address) !== JSON.stringify(emptyAddress) ? address : undefined,
+        shippingCode,
+        // The fields a draft cannot store reach the order now, instead of being dropped at Promote.
+        note: note.trim(),
+        receipt: hasReceipt(receipt) ? receipt : undefined,
+        receiptCode: receiptCode.trim(),
+        platformTotal: sellPrice,
+        orderExternalRefId: marketplace.orderExternalRefId.trim(),
+        buyerUsername: buyerUsername.trim(),
+        platformCreatedAtUnix: dateTimeInputToUnix(orderDate),
+        platformShipmentDeadlineUnix: dateTimeInputToUnix(deadline),
+        // Every product the rows put on the order — a bundle's and a split's too. A product on two rows is sent twice
+        // and merged by the server into one line, as on the create form. NO PRICE: the line's money is the take's.
+        items: orderLines.map((l) => ({
+          id: 0n,
+          productId: l.productId,
+          sku: l.sku,
+          name: l.name,
+          quantity: toQty(l.quantity),
+        })),
+        orderDraftId: draft.id,
+      });
       toaster.create({ type: "success", title: t("orderDrafts.promoted") });
       const id = res.order?.id;
       void navigate(id ? `/orders/${id}` : "/orders");

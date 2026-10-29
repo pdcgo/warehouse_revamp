@@ -85,7 +85,7 @@ func TestOrderCreate_KeepsThePlatformsTwoDates(t *testing.T) {
 }
 
 // PROMOTE COPIES THEM — the order date the person set on the draft and the deadline the app pushed.
-func TestOrderDraftPromote_CopiesThePlatformsTwoDates(t *testing.T) {
+func TestOrderCreateFromDraft_CopiesThePlatformsTwoDates(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")

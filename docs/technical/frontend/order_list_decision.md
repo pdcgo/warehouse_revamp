@@ -593,6 +593,7 @@ flowchart LR
 | the `withdrawal` pending entry | **stays** — it no longer explains the dialog, but it still explains a completed order's **Edit Withdrawal**: settlement records withdrawals per shop, so an order still has no withdrawal figure ([finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) waits on the same figure). The strip stays at 12 |
 | 🔄 *(2026-10-26)* | the `withdrawal` entry and *Edit Withdrawal* go — [no-withdrawal-is-typed-on-an-order](order_detail_decision.md#no-withdrawal-is-typed-on-an-order) |
 | the status half | still not built, and which marketplace status maps to which of ours is not decided |
+| 🔄 *(2026-10-29)* | the mapping is decided: only customer service's moves after handover, the rest listed with its reason — [the-import-moves-only-after-handover](../order/design_decision.md#the-import-moves-only-after-handover). Still not built |
 | ✅ built *(2026-10-21)* | the dialog line in [ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx). The stale reasons found with it — the list's Export and Withdrawal, the order detail's Withdrawal — now say what is true |
 
 ---

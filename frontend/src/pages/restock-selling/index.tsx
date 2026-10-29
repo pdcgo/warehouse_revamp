@@ -46,7 +46,7 @@ import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBad
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
-import { formatUnixDateTime } from "../../lib/datetime";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiah, formatRupiahNumber } from "../../lib/money";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
 
@@ -375,7 +375,7 @@ export function RestockSellingPage() {
                                 and the day alone cannot put them in order for the person who raised
                                 them. Same on Accepted, where the clock is what someone remembers. */}
                             <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap">
-                              {formatUnixDateTime(request.createdAtUnix)}
+                              {formatUnixDateTimeShort(request.createdAtUnix)}
                             </Span>
                             {createdBy && (
                               <Span
@@ -427,7 +427,7 @@ export function RestockSellingPage() {
                           {request.acceptedAtUnix > 0n ? (
                             <Stack gap="0">
                               <Span fontSize="xs">
-                                {formatUnixDateTime(request.acceptedAtUnix)}
+                                {formatUnixDateTimeShort(request.acceptedAtUnix)}
                               </Span>
                               {acceptedBy && (
                                 <Span

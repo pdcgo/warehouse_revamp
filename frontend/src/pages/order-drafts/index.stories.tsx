@@ -19,6 +19,7 @@ import { OrderDraftsPage } from "./index";
 //   | TheSummaryCountsWhatItCan       | total and oldest are real; ready is this page, and marked    |
 //   | WhatIsLeftSitsUnderTheReference | first gap named, the rest counted, all on the title          |
 //   | TheRowIsRealFieldsOnly          | shop and author are the draft's own — no invented cell       |
+//   |                                 | "oleh <name> via <app>" on one line; a `manual` draft no app |
 //   | AWarehouseHasNoDrafts           | a draft has ONE side — the team that typed it                |
 //   | TheRowOpensTheDraft             | the whole row is the way in                                  |
 //   | CopyingTheReferenceStaysHere    | the reference copies, and does not open the draft            |
@@ -102,7 +103,9 @@ export const EachRowSaysWhatIsLeft: Story = {
 /**
  * NOT READY WITHOUT THE ORDER DATE OR THE SELL PRICE — Promote refuses both
  * (platform-created-at-is-required-at-finalize, platform-total-is-required-at-finalize), so a list that called either
- * draft Ready would send somebody to a button that turns them away. Each is one field short, every line mapped.
+ * draft Ready would send somebody to a button that turns them away. Every line mapped. 204 is an app's draft, one field
+ * short. 203 is a `manual` one, so its ref is still to be typed too — its second gap
+ * (an-order-ref-is-required-by-the-rpc).
  */
 export const NoDateOrNoPriceIsNotReady: Story = {
   play: async ({ canvasElement }) => {
@@ -110,7 +113,7 @@ export const NoDateOrNoPriceIsNotReady: Story = {
 
     const noDate = await canvas.findByTestId(`draft-gaps-${NO_DATE.id}`);
     await expect(noDate).toHaveTextContent("Order date");
-    await expect(noDate).not.toHaveTextContent("+");
+    await expect(noDate).toHaveAttribute("title", "Order date · Marketplace order number");
     await expect(canvas.queryByTestId(`draft-ready-${NO_DATE.id}`)).toBeNull();
 
     const noPrice = canvas.getByTestId(`draft-gaps-${NO_PRICE.id}`);
@@ -193,6 +196,20 @@ export const TheRowIsRealFieldsOnly: Story = {
       expect(within(row).getByTestId("order-placed-by")).toHaveTextContent(author.name),
     );
     await expect(within(row).queryAllByTestId(/^not-implemented-/)).toHaveLength(0);
+
+    // the-draft-row-names-the-person-and-the-app: the person and the app share ONE line, whole on hover.
+    const by = within(row).getByTestId("order-placed-by");
+    await expect(by).toHaveTextContent(`${author.name} via ${UNMAPPED.source}`);
+    await expect(by).toHaveAttribute("title", by.textContent ?? "");
+
+    // a-table-date-is-short-and-every-time-is-wib: a cell's date is "29 Okt 13:05" — the year only when it is not this
+    // year, and a colon clock — never the full "29 Okt 2026, 13.05".
+    await expect(within(row).getByTestId("order-placed-at").textContent).toMatch(/^\d{1,2} \S+( \d{4})? \d{2}:\d{2}$/);
+
+    // A `manual` draft was typed in the form, not pushed by an app — so it names no app.
+    const manual = await canvas.findByTestId(`draft-row-${NO_DATE.id}`);
+    await expect(NO_DATE.source).toBe("manual");
+    await expect(within(manual).getByTestId("order-placed-by")).not.toHaveTextContent("via");
   },
 };
 

@@ -638,6 +638,8 @@
     "recipient": "Penerima",
     "placed": "Dipesan",
     "placedBy": "oleh {{name}}",
+    "placedByVia": "oleh {{name}} via {{via}}",
+    "placedVia": "via {{via}}",
     "placedMp": "MP {{at}}",
     "team": "Tim",
     "actions": "Aksi",
@@ -979,7 +981,7 @@
   },
   "orderDrafts": {
     "title": "Draf Pesanan",
-    "intro": "Pesanan yang belum selesai — disimpan dari form pesanan, atau dikirim aplikasi lain. Lengkapi lalu promosikan, atau hapus yang tidak dipakai; tidak ada yang hilang sendiri di sini, dan stok belum dipotong.",
+    "intro": "Pesanan yang belum selesai, dikirim aplikasi lain. Lengkapi lalu promosikan, atau hapus yang tidak dipakai; tidak ada yang hilang sendiri di sini, dan stok belum dipotong.",
     "selectTeamView": "Pilih tim untuk melihat draf pesanannya.",
     "reference": "Referensi",
     "lines": "Baris",
@@ -994,6 +996,7 @@
     "missingStock": "Stok",
     "gapOrderDate": "Tanggal pesanan",
     "gapSellPrice": "Harga jual",
+    "gapRef": "Nomor pesanan marketplace",
     "shortHelp": "Mempromosikan draft berarti membuat pesanan, dan pesanan langsung mengambil barangnya dari rak — jadi draft tidak bisa dipromosikan jika stok kurang. Kurangi jumlahnya, kirim dari gudang yang stoknya cukup, atau biarkan draft ini sampai restock datang.",
     "noDrafts": "Belum ada draf pesanan.",
     "selectAll": "Pilih semua draf di halaman ini",
@@ -1042,6 +1045,7 @@
       "onThisPage": "di halaman ini"
     },
     "missingOrderDate": "Tanggal pesanan marketplace belum diisi.",
+    "missingRef": "Nomor pesanan marketplace belum diisi.",
     "missingSellPrice": "Harga jual belum diisi."
   },
   "restock": {
@@ -3484,15 +3488,15 @@
     "pending": {
       "draftKeeps": {
         "label": "Yang disimpan draft",
-        "reason": "Draft menyimpan toko, gudang, customer, username pembeli, kurir, baris, dua tanggal dari marketplace dan harga jual. Resi, referensi, nomor resi dan catatan tidak disimpan."
+        "reason": "Draft menyimpan toko, gudang, customer, username pembeli, kurir, baris, dua tanggal dari marketplace dan harga jual. Resi, referensi, nomor resi dan catatan tidak disimpan oleh Simpan — Promote memasukkannya ke pesanan."
       },
       "rowBundle": {
         "label": "Baris dipetakan ke bundle",
-        "reason": "Baris draft hanya menyimpan satu produk, jadi pemetaan bundle tampil dan dihitung tapi disimpan sebagai belum dipetakan, dan memblokir Promote."
+        "reason": "Baris draft hanya menyimpan satu produk, jadi pemetaan bundle tampil dan dihitung tapi disimpan sebagai belum dipetakan. Promote mengirimnya sebagai produk-produknya."
       },
       "rowSplit": {
         "label": "Baris dipecah ke beberapa produk",
-        "reason": "Baris draft hanya menyimpan satu produk, jadi pecahan tampil dan dihitung tapi disimpan sebagai belum dipetakan, dan memblokir Promote."
+        "reason": "Baris draft hanya menyimpan satu produk, jadi pecahan tampil dan dihitung tapi disimpan sebagai belum dipetakan. Promote mengirimnya sebagai produk-produknya."
       },
       "listingQty": {
         "label": "Qty listing",

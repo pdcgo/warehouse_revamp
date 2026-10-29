@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { orderDraftClient } from "../../api/clients";
+import { orderClient, orderDraftClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
 import { draftsFromList, orderDraftListRowData } from "./adapt";
 import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
@@ -97,23 +97,8 @@ export function useUpdateOrderDraft() {
   });
 }
 
-// Saving the order form's half-finished work as a draft (owner).
-//
-// PUSH, not a new "create draft" RPC. Push is create-or-update on (team_id, source, external_id), so
-// a second save from the same form updates the draft it already made rather than leaving a trail of
-// near-identical ones — which is exactly the property a Save button needs, and it already exists.
-//
-// The source is what says where a draft came from; a form-made one is "manual", and the drafts list
-// can already filter on it.
-export function usePushOrderDraft() {
-  const invalidate = useInvalidateOrderDrafts();
-
-  return useMutation({
-    mutationFn: (vars: Parameters<typeof orderDraftClient.orderDraftPush>[0]) =>
-      orderDraftClient.orderDraftPush(vars),
-    onSuccess: () => invalidate(),
-  });
-}
+// ⚠ NO PUSH FROM THE APP. Only the third-party app drafts (drafts-exist-only-for-the-third-party-app); the order form's
+// Save as Draft is gone with OrderDraftPromote (a-draft-becomes-an-order-through-order-create).
 
 // Bulk by design (#195): pruning is entirely manual — nothing expires — so the screen must be able
 // to clear a selection in one action rather than one row at a time.
@@ -127,15 +112,16 @@ export function useDeleteOrderDrafts() {
   });
 }
 
-// Promoting a draft creates an ORDER and destroys the draft, so it stales BOTH domains. Invalidating
-// only drafts would leave the orders list without the order that was just created — the screen would
-// not be wrong about anything it fetched, it simply fetched before the promotion.
+// PROMOTE IS OrderCreate WITH THE DRAFT'S ID (a-draft-becomes-an-order-through-order-create) — the one door into
+// `orders`, sent with what the draft page has on screen. It creates an ORDER and destroys the draft, so it stales BOTH
+// domains. Invalidating only drafts would leave the orders list without the order that was just created — the screen
+// would not be wrong about anything it fetched, it simply fetched before the promotion.
 export function usePromoteOrderDraft() {
   const client = useQueryClient();
 
   return useMutation({
-    mutationFn: (vars: Parameters<typeof orderDraftClient.orderDraftPromote>[0]) =>
-      orderDraftClient.orderDraftPromote(vars),
+    mutationFn: (vars: Parameters<typeof orderClient.orderCreate>[0] & { orderDraftId: bigint }) =>
+      orderClient.orderCreate(vars),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["orderDrafts"] });
       await client.invalidateQueries({ queryKey: ["orders"] });

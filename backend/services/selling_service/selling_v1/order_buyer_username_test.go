@@ -103,7 +103,7 @@ func TestOrderDraft_TheBuyersUsernameIsPushedEditedAndYields(t *testing.T) {
 }
 
 // PROMOTE COPIES IT, and a draft without one promotes all the same — empty never refuses, on either door.
-func TestOrderDraftPromote_CopiesTheBuyersUsernameAndNeverRequiresIt(t *testing.T) {
+func TestOrderCreateFromDraft_CopiesTheBuyersUsernameAndNeverRequiresIt(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")

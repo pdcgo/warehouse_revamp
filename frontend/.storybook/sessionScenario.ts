@@ -44,7 +44,8 @@ export const orderExportScenario = {
 };
 
 /**
- * THE WAREHOUSE REFUSING THE TAKE (a-refusal-names-its-reason-and-every-line). When set, OrderCreate and OrderDraftPromote
+ * THE WAREHOUSE REFUSING THE TAKE (a-refusal-names-its-reason-and-every-line). When set, OrderCreate (the create form's,
+ * and the draft page's Promote)
  * answer as the server does once selling passes the take's refusal through: FailedPrecondition, carrying an
  * OrderTransactionRefusal detail with the reason and the lines. `undefined` (the default) places the order.
  */

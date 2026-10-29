@@ -2,10 +2,10 @@ import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 
 // What a draft is still missing before it can be promoted (#195/#196).
 //
-// ⚠ THE SERVER IS AUTHORITATIVE. `OrderDraftPromote` runs the same validation `OrderCreate` runs, and
-// that is the one that decides. This mirrors it so a person can see what is left WITHOUT pressing
-// promote and reading an error — a list of forty drafts is useless if the only way to tell which are
-// finished is to try each one.
+// ⚠ THE SERVER IS AUTHORITATIVE. Promote is `OrderCreate` with the draft's id
+// (a-draft-becomes-an-order-through-order-create), and its validation is the one that decides. This mirrors it so a
+// person can see what is left WITHOUT pressing promote and reading an error — a list of forty drafts is useless if the
+// only way to tell which are finished is to try each one.
 //
 // It is kept in its own file, listed in one order, for the same reason: the list's badge and its "ready"
 // count ask this question, and answering it twice is how they start disagreeing about what "ready" means.
@@ -50,9 +50,17 @@ export function draftGaps(draft: OrderDraft, opts: DraftGapOptions = {}): DraftG
     gaps.push({ key: "orderDrafts.gapOrderDate" });
   }
 
-  // platform-total-is-required-at-finalize — the STORED figure, because that is what Promote copies onto the order.
+  // platform-total-is-required-at-finalize — the STORED figure, because the list reads only what a draft keeps. The page
+  // may still follow the rows' prices and send that, so this can call a draft unfinished that the page could promote —
+  // the safe side to be wrong on.
   if (draft.platformTotal <= 0n) {
     gaps.push({ key: "orderDrafts.gapSellPrice" });
+  }
+
+  // an-order-ref-is-required-by-the-rpc — an app's draft carries the marketplace ref as its external id, and the page
+  // seeds it. A `manual` draft's external id is a minted `form-…` id, so its ref is still to be typed.
+  if (draft.source === "manual") {
+    gaps.push({ key: "orderDrafts.gapRef" });
   }
 
   // The one gap specific to drafts: an unmapped line is precisely what makes this a draft rather than an order
@@ -61,7 +69,7 @@ export function draftGaps(draft: OrderDraft, opts: DraftGapOptions = {}): DraftG
     gaps.push({ key: "orderDrafts.unmappedLines" });
   }
 
-  // STOCK. Promote runs `placeOrder` — the same code path OrderCreate runs — so it DRAWS the goods
+  // STOCK. Promote IS OrderCreate, so it DRAWS the goods
   // out of the warehouse and refuses the draft when a line is short. Without this gap the shortfall
   // is invisible until somebody presses Promote and reads a rejection, which is the state the order
   // form already refuses to be in (`order-create-short`).

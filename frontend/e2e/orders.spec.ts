@@ -138,6 +138,9 @@ async function placeOrderViaForm(page: Page, customer: string) {
   await pickOrderDate(page);
   // What the buyer paid on the storefront — required to place (platform-total-is-required-at-finalize).
   await page.getByTestId("order-marketplace-total").fill("25000");
+  // The marketplace ref — required to place (an-order-ref-is-required-by-the-rpc). One per order, so the duplicate
+  // warning never stands between two orders this spec places.
+  await page.getByTestId("order-external-ref-id").fill(`E2E-${Date.now()}`);
   // No price: a line is valued at the warehouse HPP, which this fixture's product has none of.
   await page.getByTestId("order-create-save").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
@@ -580,38 +583,6 @@ test("Settlement report: the report screen answers from the analytics RPCs", asy
   await expect(page.getByTestId("report-summary")).toBeVisible();
   await expect(page.getByTestId("report-series-table")).toBeVisible();
   await expect(page.getByTestId("report-series-table").locator('[data-testid^="report-series-row-"]')).toHaveCount(20);
-});
-
-// SAVE AS DRAFT, the button above Create (owner): work that is not ready to be an order goes to the
-// drafts screen instead — and NO STOCK MOVES, which is the whole reason it is not just a half-filled
-// order.
-//
-// It runs BEFORE the address test so it can prove the other half: a draft is savable while Create is
-// still refusing (no warehouse, no lines), because a draft's only requirement is that something was
-// typed at all.
-test("Draft: an unfinished order is saved as a draft instead of placed", async ({ page }) => {
-  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
-
-  await page.goto("/orders/new");
-  await expect(page.getByTestId("order-create-page")).toBeVisible();
-
-  // Nothing typed: neither button will do anything yet.
-  await expect(page.getByTestId("order-create-save")).toBeDisabled();
-  await expect(page.getByTestId("order-create-save-draft")).toBeDisabled();
-
-  // A customer and a product, but NO warehouse — an order the form refuses to place.
-  await page.getByTestId("order-create-customer-name").fill("Draft Buyer");
-  await page.getByTestId("shop-select").click();
-  await page.getByRole("option").filter({ hasText: SHOP_NAME }).click();
-
-  await expect(page.getByTestId("order-create-save")).toBeDisabled();
-  await expect(page.getByTestId("order-create-save-draft")).toBeEnabled();
-
-  await page.getByTestId("order-create-save-draft").click();
-
-  // It lands on the draft it just made — no discard prompt on the way, because saving IS the exit.
-  await expect(page).toHaveURL(/\/order-drafts\/\d+$/);
-  await expect(page.getByTestId("draft-customer-name")).toHaveValue("Draft Buyer");
 });
 
 // The picker's FAST PATH, and it is the postcode (owner): five digits off the buyer's message, pick

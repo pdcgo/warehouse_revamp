@@ -14,6 +14,12 @@ import i18next from "i18next";
 // render — every caller re-renders on a switch anyway, through its own `t`.
 const appLocale = (): string | undefined => i18next.language || undefined;
 
+// JAKARTA TIME, NOT THE VIEWER'S, for every date and time this file FORMATS (a-table-date-is-short-and-every-time-is-wib).
+// Indonesia has three zones: on the viewer's own clock a customer service agent in Makassar read a deadline as 16:00 while
+// the warehouse in Jakarta read 15:00. The analytic reports already count days in Jakarta time, so a row's "29 Okt" is the
+// report's. ⚠ Only the FORMATTERS — the picker math above still cuts days at the viewer's midnight, until a filter moves.
+const APP_TIME_ZONE = "Asia/Jakarta";
+
 export function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
@@ -157,6 +163,7 @@ export function formatUnixDate(unix: bigint): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: APP_TIME_ZONE,
   });
 }
 
@@ -167,6 +174,8 @@ export function formatUnixDate(unix: bigint): string {
  * Use it where the CLOCK matters and not only the day: two restocks raised the same morning, or a
  * delivery accepted at 17:55 that somebody remembers arriving "at the end of the day". Where only
  * the day is meaningful, prefer formatUnixDate — a time nobody needs is noise in a table cell.
+ *
+ * ⚠ IN A TABLE CELL use {@link formatUnixDateTimeShort} — this full form is for detail pages, timelines and hover titles.
  */
 export function formatUnixDateTime(unix: bigint): string {
   if (unix <= 0n) return "—";
@@ -177,7 +186,52 @@ export function formatUnixDateTime(unix: bigint): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: APP_TIME_ZONE,
   });
+}
+
+/**
+ * The TABLE CELL's date and time — "29 Okt 13:05", with the year only when it is not this year ("3 Des 2025 09:10")
+ * (a-table-date-is-short-and-every-time-is-wib). A filtered order row carries three dates in one cell, and three full
+ * ones wrap. The clock is `HH:mm` with a colon in both languages — Indonesian's own "13.05" reads as a decimal in a
+ * column of numbers. Same "never" contract: `0n` and below render as an em dash.
+ */
+export function formatUnixDateTimeShort(unix: bigint): string {
+  if (unix <= 0n) return "—";
+
+  return shortDateTime(new Date(Number(unix) * 1000));
+}
+
+/** {@link formatUnixDateTimeShort} for an RFC3339 string, with {@link formatRfc3339DateTime}'s fallbacks. */
+export function formatRfc3339DateTimeShort(rfc3339: string): string {
+  if (!rfc3339) return "—";
+
+  const d = new Date(rfc3339);
+  if (Number.isNaN(d.getTime())) return rfc3339;
+
+  return shortDateTime(d);
+}
+
+function shortDateTime(d: Date): string {
+  const parts = (at: Date) =>
+    Object.fromEntries(
+      new Intl.DateTimeFormat(appLocale(), {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+        timeZone: APP_TIME_ZONE,
+      })
+        .formatToParts(at)
+        .map((p) => [p.type, p.value]),
+    );
+
+  const p = parts(d);
+  const year = p.year !== parts(new Date()).year ? ` ${p.year}` : "";
+
+  return `${p.day} ${p.month}${year} ${p.hour}:${p.minute}`;
 }
 
 /**
@@ -202,6 +256,7 @@ export function formatRfc3339DateTime(rfc3339: string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: APP_TIME_ZONE,
   });
 }
 
@@ -254,8 +309,9 @@ export function formatUnixRelative(unix: bigint, now: Date = new Date()): string
 export function formatUnixTime(unix: bigint): string {
   if (unix <= 0n) return "—";
 
-  return new Date(Number(unix) * 1000).toLocaleTimeString(undefined, {
+  return new Date(Number(unix) * 1000).toLocaleTimeString(appLocale(), {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: APP_TIME_ZONE,
   });
 }

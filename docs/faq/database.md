@@ -178,6 +178,11 @@ UTC.
 ⚠ WIB has **no daylight saving**, so a Jakarta day is always exactly 24 hours and `day + 1` is never
 ambiguous. Most single-timezone standards carry a DST caveat; this one does not.
 
+**The screen shows WIB too**, whatever the viewer's machine is set to — every formatter in
+`frontend/src/lib/datetime.ts` passes `Asia/Jakarta`
+([a-table-date-is-short-and-every-time-is-wib](../technical/frontend/context_decision.md#a-table-date-is-short-and-every-time-is-wib)).
+The date pickers and range filters still cut days at the viewer's own midnight.
+
 ⚠ **Not applied yet — deferred by the owner.** The DSN sets no timezone today, so a fresh checkout is on
 **UTC**. The ordered change list is
 [development_state/architecture](../development_state/architecture/context.md), including the one thing

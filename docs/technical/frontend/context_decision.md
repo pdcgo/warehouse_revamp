@@ -55,6 +55,7 @@ when it applies one of these.
 | [a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size) | on a phone the pager's buttons are centred and it draws no per-page selector | `GrowingPager`, every list |
 | [a-counted-line-is-three-columns](#a-counted-line-is-three-columns) | a screen that counts line by line gives each line Accept Delivery's frame — what it is · what you type · what it means — in a fixed shape, under a sticky header | Accept Delivery, then the stock count's Count page |
 | [a-chart-is-chakras-chart](#a-chart-is-chakras-chart) | every chart is Chakra's `@chakra-ui/charts` (Recharts underneath), through a shared component in `components/charts/` — never a hand-drawn SVG | [the Analytic graph](../../business/analytic/rpc_provide_decision.md#the-graph-draws-the-table) |
+| [a-table-date-is-short-and-every-time-is-wib](#a-table-date-is-short-and-every-time-is-wib) | a table cell's date is `29 Okt 13:05`, the year only when it is not this year; every date and time on every screen is Jakarta time | the order screens |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1176,6 +1177,47 @@ flowchart LR
 | a value's format | the screen's own (`formatRupiahNumber`, a count in id-ID), passed in, so the axis and the tooltip read like the table |
 | not reused | `legacy/components/charts/` (inline SVG), still used by two legacy warehouse pages. ⚠ My reading, not asked: they move when those pages are next touched |
 | first applied | the Analytic graph ([the-graph-draws-the-table](../../business/analytic/rpc_provide_decision.md#the-graph-draws-the-table)) |
+
+## a-table-date-is-short-and-every-time-is-wib
+
+> Owner, in chat (2026-10-29): *"yes, i follow your recomendation"* — to
+> [order design_clarify.md](../order/design_clarify.md#question) question 7, *"does a date on a row show the year, and
+> whose clock formats it?"*, re-asked as *"the compact form in tables, and WIB everywhere?"*. As recommended. Asked on the
+> order list, decided for every screen.
+
+**The verdict.** Two rules, both app-wide.
+
+1. **A date in a table cell is short**: `29 Okt 13:05`, and the year only when it is not the current one
+   (`3 Des 2025 09:10`). A filtered order row carries up to three dates in one cell, and three full ones wrap. A detail
+   page, a timeline and a dialog keep the full form, `29 Okt 2026, 13.05`.
+2. **Every date and time is Jakarta time (WIB)**, whatever the viewer's machine says. Indonesia has three time zones: in
+   the viewer's own zone a customer service agent in Makassar reads a deadline as 16:00 while the warehouse in Jakarta reads 15:00.
+   The analytic reports already count days in Jakarta time
+   ([a-day-is-a-jakarta-date-string](../../business/analytic/rpc_provide_decision.md#a-day-is-a-jakarta-date-string)), so
+   a row's *29 Okt* is the report's *29 Okt*.
+
+The language was already settled before this: dates follow the app's language (`i18next.language`), not the operating
+system.
+
+```mermaid
+flowchart LR
+  u["unix seconds from the API"] --> z["Asia/Jakarta - every formatter"]
+  z --> t["a table cell - 29 Okt 13:05"]
+  z --> d["a detail page - 29 Okt 2026, 13.05"]
+  t -.->|"not this year"| y["3 Des 2025 09:10"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a table cell | `formatUnixDateTimeShort` in `lib/datetime.ts`: day, short month, `HH:mm` with a colon in both languages, the year only when it differs from the current year in WIB. `29 Okt 13:05` · `29 Oct 13:05` |
+| everywhere else | the full form, unchanged in shape, now in WIB |
+| the time zone | `Asia/Jakarta` on every formatter in `lib/datetime.ts`. A screen never formats a date itself. The screen's half of [the-system-runs-on-jakarta-time](../architecture/context_decision.md#the-system-runs-on-jakarta-time) |
+| a zone label | ⚠ My reading, not asked: `WIB` is not printed. Every time is WIB, so a label on each one is noise. Revisit if someone outside WIB misreads one |
+| a date filter's day | ⚠ My reading, not asked: the pickers and range filters still cut days at the viewer's own midnight. Until they move to WIB midnights, a row near midnight can fall on the other side of a filter for a viewer outside WIB. Moved when a filter is next touched |
+| first applied | the order screens' row cells ([OrderRowCells.tsx](../../../frontend/src/features/orders/OrderRowCells.tsx)) |
+| ✅ built *(2026-10-29)* | `APP_TIME_ZONE` on every formatter and `formatUnixDateTimeShort` / `formatRfc3339DateTimeShort` in [lib/datetime.ts](../../../frontend/src/lib/datetime.ts). Short in the table cells of the order rows, the draft list, stock counts, restocks, both transfer lists, the stock movement ledger and the pick queue. Detail pages, timelines and hover titles keep the full form. Pinned by story `TheRowIsRealFieldsOnly` (order drafts). Legacy pages untouched |
 
 ## Recorded elsewhere
 

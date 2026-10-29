@@ -1,7 +1,7 @@
 package selling_v1_test
 
 import (
-	"strings"
+	"fmt"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -13,15 +13,19 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
+// The user every test draft is pushed as (pushRef pushes as 7). A draft is its author's inbox, so this is also who may
+// finish it.
+const draftPusher = 7
+
 // readyDraft is a draft that has been finished: a shop, a warehouse, a customer, and every line
 // mapped. Promoting one is supposed to work — the tests below take things away from it one at a
 // time, so what each requirement is actually protecting stays visible.
-func readyDraft(t *testing.T, svc *selling_v1.Service, db *gorm.DB, shopID uint64) uint64 {
+func readyDraft(t *testing.T, svc *selling_v1.Service, _ *gorm.DB, shopID uint64) uint64 {
 	t.Helper()
 
-	draftID := pushRef(t, svc, 7, "SHP-100")
+	draftID := pushRef(t, svc, draftPusher, "SHP-100")
 
-	detail, err := draftDetail(t, svc, 7, 2, draftID)
+	detail, err := draftDetail(t, svc, draftPusher, 2, draftID)
 	if err != nil {
 		t.Fatalf("detail: %v", err)
 	}
@@ -36,7 +40,7 @@ func readyDraft(t *testing.T, svc *selling_v1.Service, db *gorm.DB, shopID uint6
 		})
 	}
 
-	updateDraft(t, svc, 7, &sellingv1.OrderDraftUpdateRequest{
+	updateDraft(t, svc, draftPusher, &sellingv1.OrderDraftUpdateRequest{
 		TeamId:       2,
 		DraftId:      draftID,
 		ShopId:       u64(shopID),
@@ -53,6 +57,9 @@ func readyDraft(t *testing.T, svc *selling_v1.Service, db *gorm.DB, shopID uint6
 	return draftID
 }
 
+// promote is what the draft page's Promote does (a-draft-becomes-an-order-through-order-create): OrderCreate with what
+// the draft holds — the page sends what is on its screen, seeded from the draft — and the draft's id. The catalogue
+// label is the page's to send; here it is a stand-in, `SKU41` / `Catalogue SKU41`.
 func promote(
 	t *testing.T,
 	svc *selling_v1.Service,
@@ -60,8 +67,37 @@ func promote(
 ) (*sellingv1.Order, error) {
 	t.Helper()
 
-	res, err := svc.OrderDraftPromote(asUser(userID),
-		connect.NewRequest(&sellingv1.OrderDraftPromoteRequest{TeamId: teamID, DraftId: draftID}))
+	draft, err := draftDetail(t, svc, draftPusher, teamID, draftID)
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	items := make([]*sellingv1.OrderItem, 0, len(draft.GetItems()))
+	for _, line := range draft.GetItems() {
+		items = append(items, &sellingv1.OrderItem{
+			ProductId: line.GetProductId(),
+			Sku:       fmt.Sprintf("SKU%d", line.GetProductId()),
+			Name:      fmt.Sprintf("Catalogue SKU%d", line.GetProductId()),
+			Quantity:  line.GetQuantity(),
+		})
+	}
+
+	res, err := svc.OrderCreate(asUser(userID), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId:                       teamID,
+		ShopId:                       draft.GetShopId(),
+		WarehouseId:                  draft.GetWarehouseId(),
+		CustomerName:                 draft.GetCustomerName(),
+		CustomerPhone:                draft.GetCustomerPhone(),
+		BuyerUsername:                draft.GetBuyerUsername(),
+		Address:                      draft.GetAddress(),
+		ShippingCode:                 draft.GetShippingCode(),
+		PlatformCreatedAtUnix:        draft.GetPlatformCreatedAtUnix(),
+		PlatformShipmentDeadlineUnix: draft.GetPlatformShipmentDeadlineUnix(),
+		PlatformTotal:                draft.GetPlatformTotal(),
+		OrderExternalRefId:           draft.GetExternalId(),
+		Items:                        items,
+		OrderDraftId:                 draftID,
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -69,22 +105,35 @@ func promote(
 	return res.Msg.GetOrder(), nil
 }
 
+func draftsWithID(t *testing.T, db *gorm.DB, draftID uint64) int64 {
+	t.Helper()
+
+	var n int64
+
+	err := db.Model(&selling_service_models.OrderDraft{}).Where("id = ?", draftID).Count(&n).Error
+	if err != nil {
+		t.Fatalf("count drafts: %v", err)
+	}
+
+	return n
+}
+
 // The happy path, and the two facts that make it worth having: a real order exists, and the draft is
 // GONE. A promoted draft is not a draft in some final state — it stopped existing.
-func TestOrderDraftPromote_TheDraftBecomesAnOrderAndDisappears(t *testing.T) {
+func TestOrderCreateFromDraft_TheDraftBecomesAnOrderAndDisappears(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	draftID := readyDraft(t, svc, db, shop)
 
-	order, err := promote(t, svc, 7, 2, draftID)
+	order, err := promote(t, svc, draftPusher, 2, draftID)
 	if err != nil {
-		t.Fatalf("OrderDraftPromote: %v", err)
+		t.Fatalf("OrderCreate: %v", err)
 	}
 
 	if order.GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
-		t.Fatalf("status = %v, want PLACED", order.GetStatus())
+		t.Fatalf("status = %v, want PENDING", order.GetStatus())
 	}
 
 	if order.GetWarehouseId() != testWarehouse || order.GetShopId() != shop {
@@ -92,55 +141,64 @@ func TestOrderDraftPromote_TheDraftBecomesAnOrderAndDisappears(t *testing.T) {
 			order.GetShopId(), order.GetWarehouseId(), shop, testWarehouse)
 	}
 
-	var drafts int64
-
-	err = db.Model(&selling_service_models.OrderDraft{}).Where("id = ?", draftID).Count(&drafts).Error
-	if err != nil {
-		t.Fatalf("count: %v", err)
+	// The draft's external id IS the marketplace ref, and an order never lands without one
+	// (an-order-ref-is-required-by-the-rpc).
+	if order.GetOrderExternalRefId() != "SHP-100" {
+		t.Fatalf("order ref = %q, want the draft's external id %q", order.GetOrderExternalRefId(), "SHP-100")
 	}
 
-	if drafts != 0 {
+	if draftsWithID(t, db, draftID) != 0 {
 		t.Fatal("the draft survived its own promotion")
 	}
 }
 
-// An order line freezes the CATALOGUE's label, not the marketplace's. The scraped text says what the
-// buyer clicked on; the order must say what we actually shipped.
-func TestOrderDraftPromote_TheLinesCarryTheCatalogueLabel(t *testing.T) {
+// ONE DRAFT, ONE ORDER. The second Promote finds the draft gone and places nothing — sequentially it is NotFound at the
+// lookup; two at the same instant meet the same answer inside the transaction (Aborted), where the second order rolls
+// back.
+func TestOrderCreateFromDraft_TheSameDraftCannotBecomeTwoOrders(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	draftID := readyDraft(t, svc, db, shop)
 
-	order, err := promote(t, svc, 7, 2, draftID)
+	draft, err := draftDetail(t, svc, draftPusher, 2, draftID)
 	if err != nil {
-		t.Fatalf("promote: %v", err)
+		t.Fatalf("detail: %v", err)
 	}
 
-	detail, err := svc.OrderDetail(asUser(7), connect.NewRequest(&sellingv1.OrderDetailRequest{
-		TeamId: 2, OrderId: order.GetId(),
+	_, err = promote(t, svc, draftPusher, 2, draftID)
+	if err != nil {
+		t.Fatalf("first OrderCreate: %v", err)
+	}
+
+	// The page still holds the draft it loaded, and sends it again.
+	items := make([]*sellingv1.OrderItem, 0, len(draft.GetItems()))
+	for _, line := range draft.GetItems() {
+		items = append(items, &sellingv1.OrderItem{
+			ProductId: line.GetProductId(), Sku: "SKU", Name: "Name", Quantity: line.GetQuantity(),
+		})
+	}
+
+	_, err = svc.OrderCreate(asUser(draftPusher), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shop, WarehouseId: testWarehouse, CustomerName: "Budi",
+		PlatformCreatedAtUnix: testPlatformDate, PlatformTotal: testPlatformTotal,
+		OrderExternalRefId: "SHP-100", Items: items, OrderDraftId: draftID,
 	}))
-	if err != nil {
-		t.Fatalf("OrderDetail: %v", err)
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("second OrderCreate code = %v, want NotFound", connect.CodeOf(err))
 	}
 
-	items := detail.Msg.GetOrder().GetItems()
-	if len(items) != 2 {
-		t.Fatalf("items = %d, want 2", len(items))
-	}
-
-	if items[0].GetSku() != "SKU41" || items[0].GetName() != "Catalogue SKU41" {
-		t.Fatalf("line 1 = %q / %q, want the catalogue's label — not the scraped title",
-			items[0].GetSku(), items[0].GetName())
+	if n := countOrders(t, db); n != 1 {
+		t.Fatalf("%d orders written from one draft, want 1", n)
 	}
 }
 
-// A PROMOTED ORDER'S MONEY IS THE TAKE'S, as on OrderCreate — never the draft rows' marketplace prices
+// A PROMOTED ORDER'S MONEY IS THE TAKE'S, as on any order — never the draft rows' marketplace prices
 // (an-order-line-carries-no-marketplace-price). The rows say 2 × 50.000 + 1 × 35.000; the take draws 2 × 10.000 and
 // 1 × 5.000, so goods_cost is 25.000, the fee is priced on it, and total_cost adds the two. What the buyer paid is the
-// draft's own figure, copied.
-func TestOrderDraftPromote_TakesItsMoneyFromTheTakeNotTheRows(t *testing.T) {
+// draft's own figure, sent from the page.
+func TestOrderCreateFromDraft_TakesItsMoneyFromTheTakeNotTheRows(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{costs: map[uint64]int64{41: 10_000, 42: 5_000}}
 	fees := &fakeFees{percent: 10}
@@ -149,7 +207,7 @@ func TestOrderDraftPromote_TakesItsMoneyFromTheTakeNotTheRows(t *testing.T) {
 
 	draftID := readyDraft(t, svc, db, shop)
 
-	order, err := promote(t, svc, 7, 2, draftID)
+	order, err := promote(t, svc, draftPusher, 2, draftID)
 	if err != nil {
 		t.Fatalf("promote: %v", err)
 	}
@@ -168,29 +226,9 @@ func TestOrderDraftPromote_TakesItsMoneyFromTheTakeNotTheRows(t *testing.T) {
 	}
 }
 
-// THE ONE REQUIREMENT SPECIFIC TO DRAFTS. An unmapped line is precisely what makes this a draft, so
-// promoting one must fail — and say so in the screen's own terms.
-func TestOrderDraftPromote_RefusesAnUnmappedLine(t *testing.T) {
-	db := san_testdb.DB(t)
-	svc := newService(t, db)
-	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
-
-	draftID := pushRef(t, svc, 7, "SHP-100")
-
-	updateDraft(t, svc, 7, &sellingv1.OrderDraftUpdateRequest{
-		TeamId: 2, DraftId: draftID,
-		ShopId: u64(shop), WarehouseId: u64(testWarehouse), CustomerName: str("Budi"),
-	})
-
-	_, err := promote(t, svc, 7, 2, draftID)
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("code = %v, want FailedPrecondition", connect.CodeOf(err))
-	}
-}
-
-// Everything an ORDER has always required is required here too, through the same code path — this is
-// the payoff of the separate table, and the table below is what would drift if the rule were copied.
-func TestOrderDraftPromote_RunsTheSameValidationOrderCreateDoes(t *testing.T) {
+// A REFUSED ORDER LEAVES THE DRAFT. The deletion runs inside the order's transaction, so whatever refuses the order
+// rolls it back too, and the draft is still there to be fixed.
+func TestOrderCreateFromDraft_ARefusedOrderLeavesTheDraft(t *testing.T) {
 	db := san_testdb.DB(t)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -217,55 +255,23 @@ func TestOrderDraftPromote_RunsTheSameValidationOrderCreateDoes(t *testing.T) {
 
 			strip := &sellingv1.OrderDraftUpdateRequest{TeamId: 2, DraftId: draftID}
 			tc.strip(strip)
-			updateDraft(t, svc, 7, strip)
+			updateDraft(t, svc, draftPusher, strip)
 
-			_, err := promote(t, svc, 7, 2, draftID)
+			_, err := promote(t, svc, draftPusher, 2, draftID)
 			if err == nil {
-				t.Fatalf("promoted a draft with %s", tc.name)
+				t.Fatalf("placed an order from a draft with %s", tc.name)
 			}
 
-			// And the draft is still there to be fixed — a refused promote must not consume it.
-			var drafts int64
-
-			countErr := db.
-				Model(&selling_service_models.OrderDraft{}).
-				Where("id = ?", draftID).
-				Count(&drafts).
-				Error
-			if countErr != nil {
-				t.Fatalf("count: %v", countErr)
-			}
-
-			if drafts != 1 {
-				t.Fatal("a refused promote destroyed the draft")
+			if draftsWithID(t, db, draftID) != 1 {
+				t.Fatal("a refused order destroyed the draft")
 			}
 		})
 	}
 }
 
-// STALE REFERENCES (§6.10.7). A product can be deleted between the mapping and the promote, and the
-// answer must name WHICH one — the person has to go back to that line and pick something else, and a
-// bare validation error would leave them hunting through lines that all look fine.
-func TestOrderDraftPromote_NamesTheProductThatDied(t *testing.T) {
-	db := san_testdb.DB(t)
-	svc := newServiceWithCatalog(t, db, &fakeCatalog{missing: map[uint64]bool{42: true}})
-	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
-
-	draftID := readyDraft(t, svc, db, shop)
-
-	_, err := promote(t, svc, 7, 2, draftID)
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("code = %v, want FailedPrecondition", connect.CodeOf(err))
-	}
-
-	if !strings.Contains(err.Error(), "42") {
-		t.Fatalf("error %q does not name the dead product", err.Error())
-	}
-}
-
-// PROMOTE IS THE ONLY DOOR INTO REVENUE. Nothing a draft does upstream of this publishes anything, so
+// PROMOTE IS THE ONLY DOOR INTO REVENUE FOR A DRAFT. Nothing a draft does upstream of the order publishes anything, so
 // this event firing exactly once, here, is what keeps unfinished scrapes out of the month's margin.
-func TestOrderDraftPromote_IsWhereTheOrderPlacedEventFires(t *testing.T) {
+func TestOrderCreateFromDraft_IsWhereTheOrderPlacedEventFires(t *testing.T) {
 	db := san_testdb.DB(t)
 
 	events := &recorder{}
@@ -279,8 +285,8 @@ func TestOrderDraftPromote_IsWhereTheOrderPlacedEventFires(t *testing.T) {
 		t.Fatalf("%d events published before promote — a draft reached revenue", len(events.events))
 	}
 
-	// …and promoting publishes exactly one OrderPlacedEvent, carrying this order's money.
-	order, err := promote(t, svc, 7, 2, draftID)
+	// …and placing the order publishes exactly one OrderPlacedEvent, carrying this order's money.
+	order, err := promote(t, svc, draftPusher, 2, draftID)
 	if err != nil {
 		t.Fatalf("promote: %v", err)
 	}
@@ -292,7 +298,8 @@ func TestOrderDraftPromote_IsWhereTheOrderPlacedEventFires(t *testing.T) {
 	}
 }
 
-func TestOrderDraftPromote_CannotPromoteAColleaguesDraft(t *testing.T) {
+// A draft is its author's inbox: a colleague finishing it is NotFound, never Forbidden, and places nothing.
+func TestOrderCreateFromDraft_CannotFinishAColleaguesDraft(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
@@ -302,5 +309,9 @@ func TestOrderDraftPromote_CannotPromoteAColleaguesDraft(t *testing.T) {
 	_, err := promote(t, svc, 9, 2, draftID)
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("code = %v, want NotFound", connect.CodeOf(err))
+	}
+
+	if n := countOrders(t, db); n != 0 {
+		t.Fatalf("%d orders written for a colleague's draft, want none", n)
 	}
 }

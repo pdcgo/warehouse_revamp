@@ -127,6 +127,15 @@ async function fillSellPrice(canvasElement: HTMLElement, amount = "50000") {
   await userEvent.type(canvas.getByTestId("order-marketplace-total"), amount, { delay: 10 });
 }
 
+// THE MARKETPLACE REF — required to place (an-order-ref-is-required-by-the-rpc). PASTED, as a ref usually arrives: one
+// change to the box rather than a re-render of the whole form per keystroke.
+async function fillOrderRef(canvasElement: HTMLElement, ref = "260101AAAA0001") {
+  const canvas = within(canvasElement);
+
+  await userEvent.click(canvas.getByTestId("order-external-ref-id"));
+  await userEvent.paste(ref);
+}
+
 // THE WAREHOUSE ARRIVES PRE-FILLED, from the team's configured default (#145) — and the picker is
 // therefore usable on first paint. A default the SYSTEM invents would move real goods out of the
 // wrong building; a default the TEAM configured is the team stating where it ships from.
@@ -188,16 +197,15 @@ export const AShortLineIsAnnouncedAtTheTopAndBlocksCreate: Story = {
   },
 };
 
-// SAVE AS DRAFT asks for far less than Create, and that gap is the whole point of the button: a
-// half-finished order — no shop chosen, waiting on the buyer — needs somewhere to live that does NOT
-// touch the shelves. Anything typed at all is enough.
-export const SaveAsDraftIsEnabledWhileCreateStillRefuses: Story = {
+// THERE IS NO SAVE AS DRAFT (a-draft-becomes-an-order-through-order-create): a person never drafts — only the
+// third-party app does — so the form has Create alone.
+export const TheFormHasNoSaveAsDraft: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
 
-    await waitFor(() => expect(canvas.getByTestId("order-create-save-draft")).toBeEnabled());
+    await expect(canvas.queryByTestId("order-create-save-draft")).toBeNull();
     // No shop, no lines — Create is still right to refuse.
     await expect(canvas.getByTestId("order-create-save")).toBeDisabled();
   },
@@ -256,6 +264,7 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillSellPrice(canvasElement);
+    await fillOrderRef(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled());
@@ -289,6 +298,7 @@ export const ARefusedTakeNamesItsReasonAndTheLine: Story = {
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillSellPrice(canvasElement);
+    await fillOrderRef(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled());
@@ -596,6 +606,7 @@ export const AThinMarginAsksFirstAndThenPlaces: Story = {
 
     // Sold for less than it cost — comfortably under the 35% floor.
     await userEvent.type(canvas.getByTestId("order-marketplace-total"), "1000", { delay: 10 });
+    await fillOrderRef(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled());
@@ -679,6 +690,7 @@ export const AWarehouseWithNoRateRefusesTheOrder: Story = {
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillSellPrice(canvasElement);
+    await fillOrderRef(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled());
@@ -713,6 +725,7 @@ export const TheMarketplaceOrderDateIsRequiredToPlace: Story = {
     await userEvent.click(shop);
     await pickProduct(canvasElement, products[0]!.id);
     await fillSellPrice(canvasElement);
+    await fillOrderRef(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
@@ -738,6 +751,7 @@ export const CreateStaysOffUntilTheSellPriceIsFilled: Story = {
     await userEvent.click(shop);
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
+    await fillOrderRef(canvasElement);
 
     const create = canvas.getByTestId("order-create-save");
     const sell = canvas.getByTestId("order-marketplace-total");
@@ -752,6 +766,37 @@ export const CreateStaysOffUntilTheSellPriceIsFilled: Story = {
     // Emptied again, it holds Create again.
     await userEvent.clear(sell);
     await waitFor(() => expect(create).toBeDisabled());
+  },
+};
+
+// THE MARKETPLACE REF IS REQUIRED TO PLACE (an-order-ref-is-required-by-the-rpc) — the request's validation refuses an
+// empty one, so an order complete in every other way keeps Create off until it is typed, and the field carries the red
+// asterisk that says why. Spaces alone are still empty.
+export const TheMarketplaceRefIsRequiredToPlace: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
+    await waitFor(() => expect(shop).toBeVisible());
+    await userEvent.click(shop);
+    await pickProduct(canvasElement, products[0]!.id);
+    await pickOrderDate(canvasElement);
+    await fillSellPrice(canvasElement);
+
+    const create = canvas.getByTestId("order-create-save");
+    const ref = canvas.getByTestId("order-external-ref-id");
+    await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
+    await expect(create).toBeDisabled();
+    await expect(ref).toBeRequired();
+
+    await fillOrderRef(canvasElement, "   ");
+    await expect(create).toBeDisabled();
+
+    await userEvent.clear(ref);
+    await fillOrderRef(canvasElement);
+    await waitFor(() => expect(create).toBeEnabled());
   },
 };
 

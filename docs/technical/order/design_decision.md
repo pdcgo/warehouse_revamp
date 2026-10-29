@@ -49,6 +49,8 @@
 | [a-warehouse-step-moves-by-the-old-systems-table](../frontend/warehouse_order_list_decision.md#a-warehouse-step-moves-by-the-old-systems-table) | the old system's transition table: skips forward allowed, back only to Dikonfirmasi and with a reason |
 | [scanning-is-the-crews-hands](../frontend/warehouse_order_list_decision.md#scanning-is-the-crews-hands) | three scans — handover, find a parcel, validate the items — plus selection, bulk actions, labels and export |
 | [the-bulk-actions-are-always-on-screen](../frontend/warehouse_order_list_decision.md#the-bulk-actions-are-always-on-screen) | the action bar shows from the start; tick-only actions are off until a tick, and Export takes the filtered list when nothing is ticked |
+| [the-period-report-is-the-analytic-screen](#the-period-report-is-the-analytic-screen) | no order report screen and no extension of `/settlement/report`: the order figures are metrics on the one analytic screen |
+| [the-import-moves-only-after-handover](#the-import-moves-only-after-handover) | the order Import makes only customer service's moves after handover; everything else is listed with its reason, never applied |
 
 ---
 
@@ -204,3 +206,86 @@
 
 ➡ **Moved** to [frontend/warehouse_order_list_decision.md](../frontend/warehouse_order_list_decision.md#the-bulk-actions-are-always-on-screen) — a screen decision (owner, 2026-10-02: screen decisions live in `docs/technical/frontend/`).
 
+
+## the-period-report-is-the-analytic-screen
+
+> Owner, in chat (2026-10-29): *"yes"* — to [design_clarify.md](./design_clarify.md#question) question 1, *"does the
+> per-period report extend `/settlement/report`, or become a second screen?"*, asked again as *"close it as overtaken by
+> the analytic screen?"*. As recommended.
+
+**The verdict.** Overtaken. There is no order report screen, and `/settlement/report` is not extended. The per-period
+order figures are the order metrics
+([order_statistic_metric_decision.md](../../business/order/order_statistic_metric_decision.md)), shown on the one
+analytic screen beside settlement's. `/settlement/report` itself becomes that screen when settlement moves to the pattern
+([the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)).
+
+**Why the original worry is gone.** The question feared two screens computing *"sales"* from two sources. On the analytic
+screen both sources sit in one table, one row per shop, each in its own named column, so the difference is visible
+rather than explained in a footnote.
+
+```mermaid
+flowchart LR
+  o["order metrics - Created, Cancel, Returns, Lost"] --> a["the analytic screen - one table"]
+  s["settlement metrics"] --> a
+  r["/settlement/report today"] -.->|"replaced when settlement moves"| a
+  x["a second order report screen"] -.->|"not built"| a
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| an order report screen | none |
+| `/settlement/report` | stays until settlement's reads move to `MetricSearch` / `MetricData`, then becomes the analytic screen |
+| its 🔴 HEAVY audit | not fixed separately: the audited RPCs are the ones the pattern replaces |
+| the order figures | the five order metrics, under *Order* in the metric picker |
+
+## the-import-moves-only-after-handover
+
+> Owner, in chat (2026-10-29): *"yes A"* — to [design_clarify.md](./design_clarify.md#question) question 19, *"what may
+> the order Import move? A: only customer service's moves after handover, B: A plus cancelling a `pending` order, C:
+> whatever the file says"*, after *"tell more"*. As recommended.
+
+**The verdict.** The order Import may make only the moves customer service already makes by hand from the platform,
+after handover, along §Status Move. Every other row is listed in the import's result with its reason and never applied.
+The Import replaces customer service's clicking, not the warehouse's work and not the selling team's cancel.
+
+**Why.** The file is a snapshot of the platform: it cannot see the warehouse, and it may be days old. Moves before
+handover are the warehouse's. A cancel is the selling team's, and it is the one move that releases stock, reverses fees
+and cancels a settlement at once ([only-the-selling-team-cancels](../../business/order/context_decision.md#only-the-selling-team-cancels)).
+What is not applied becomes customer service's to-do list, and a parcel delivered before our handover scan shows up there
+instead of being overwritten.
+
+```mermaid
+flowchart LR
+  f["a row - shop + ref + the platform's status"] --> m{"live orders with that ref"}
+  m -->|"none"| n["listed - no such order"]
+  m -->|"two or more"| d["listed - matches two orders"]
+  m -->|"one"| e{"an allowed move from ours?"}
+  e -->|"already there"| a["counted - already there"]
+  e -->|"yes"| y["moved - OrderStatusChange"]
+  e -->|"no"| l["listed - with the reason"]
+```
+
+**The spec.**
+
+| platform says | → ours | only when ours is |
+| --- | --- | --- |
+| awaiting, ready to ship | no move | (the warehouse's state) |
+| in transit | `shipped` | `shipping` |
+| delivered, completed | `completed` | `shipped`, `problem` |
+| failed delivery, dispute | `problem` | `shipped` |
+| return | `return` | `shipping`, `shipped`, `problem`, `completed` |
+| cancelled | listed: *"cancelled on the platform"*. Customer service cancels a `pending` order by hand; a later one goes back through the warehouse first | |
+| (anything) | never `cancel`, `return_completed`, `lost`, or a move before `shipping` | |
+
+| | |
+| --- | --- |
+| matching | the file's shop + `order_external_ref_id`, among that shop's orders that are not `cancel`. One match is moved, two or more are listed, none is listed |
+| already there | counted, nothing written, so importing the same file twice changes nothing |
+| a file behind ours | listed (*"the file is behind ours"*), never moved backwards |
+| how a move is made | ⚠ my reading, not asked: through the same `OrderStatusChange` a hand move uses ([one-status-change-for-every-plain-move](../frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)), so each move is a timeline row naming the person who imported, and feeds the order metrics like any status change |
+| the result | three groups: moved, already there, not applied, each not-applied row with its reason |
+| each marketplace's words | one table per marketplace, from its own export file, drafted for your review, not asked word by word |
+| B later | allowing *cancelled → cancel* for a `pending` order with one live match is a small step, taken only if the not-applied list shows it is needed |
+| built | not yet. The dialog's line *"each order it names is moved to the status the marketplace reports"* ([ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx)) changes when the status half is built |

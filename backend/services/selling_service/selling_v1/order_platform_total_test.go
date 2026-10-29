@@ -124,7 +124,7 @@ func TestOrderDraft_ThePlatformTotalIsPushedEditedAndYields(t *testing.T) {
 
 // PROMOTE COPIES IT onto the order — never recomputed from the lines, because no line can say what the
 // buyer paid.
-func TestOrderDraftPromote_CopiesThePlatformTotal(t *testing.T) {
+func TestOrderCreateFromDraft_CopiesThePlatformTotal(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
@@ -146,7 +146,7 @@ func TestOrderDraftPromote_CopiesThePlatformTotal(t *testing.T) {
 
 // …AND A DRAFT STILL AT 0 IS REFUSED by the same rule the typed order meets, naming it — and the draft survives, with
 // no order written and no stock taken, so the person can fill it in and try again.
-func TestOrderDraftPromote_RefusesADraftWithNoPlatformTotal(t *testing.T) {
+func TestOrderCreateFromDraft_RefusesADraftWithNoPlatformTotal(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := knownCosts()
 	svc := newServiceWithFees(t, db, picker, &fakeFees{percent: 2.5})

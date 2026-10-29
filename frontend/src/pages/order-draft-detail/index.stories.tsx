@@ -19,9 +19,10 @@ import { OrderDraftDetailPage } from "./index";
 //   | TheSellPriceIsStoredOnTheDraft          | 202 opens with its stored figure; typing over is a change |
 //   | TheInvoiceChargesEachProductsOwnRate    | one owner, two products, two rates — said in rupiah      |
 //   | ACountThatDiffersFromTheListingIsFlagged | listing qty/price are info; a different count is flagged  |
-//   | ARowMapsToABundle                       | Bundle → the bundle's slots, and Promote refuses it      |
+//   | ARowMapsToABundle                       | Bundle → the bundle's slots, and it goes on the order     |
 //   | ARowSplitsAndSuggestsABundle            | Pecah → parts, and "Make It a Bundle" is offered         |
-//   | AnEditMustBeSavedBeforePromote          | Save any state; Promote refuses unsaved work             |
+//   | AnUnsavedEditIsPromotedAsIs             | Save any state; Promote sends what is on screen           |
+//   | AManualDraftAsksForItsRef               | a `manual` draft's id is no ref — typed, Promote waits    |
 //   | AShortLineIsCalledOutOnTop              | one over the shelf → the alert above both columns        |
 //   | AReadyDraftPromotesToAnOrder            | 202 — the form's checks, then the order                  |
 //   | DeleteConfirmsThenGoesBack              | destructive → ConfirmDialog → back to the list           |
@@ -95,9 +96,10 @@ async function mapEveryBorrowedProduct(canvas: ReturnType<typeof within>) {
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
 /**
- * 201: three rows, the third unmapped. Promote is refused and the reasons sit under it — among them the SELL PRICE
- * (platform-total-is-required-at-finalize): 201 stores none, so its field follows the rows' 155.000, which is not
- * stored until it is saved. That makes Save the one thing already on.
+ * 201: three rows, the third unmapped. Promote is refused and the reasons sit under it. 201 stores no SELL PRICE, so
+ * its field follows the rows' 155.000 — and Promote sends what is on screen
+ * (a-draft-becomes-an-order-through-order-create), so that is no missing sell price. Not stored yet, it is a change:
+ * Save is already on.
  */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
@@ -106,8 +108,10 @@ export const Default: Story = {
     await expect(canvas.getByTestId("draft-line-unmapped-2")).toBeInTheDocument();
     await expect(canvas.getByTestId("draft-gaps")).toBeInTheDocument();
     await expect(canvas.getByTestId("draft-promote")).toBeDisabled();
-    await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("The sell price is missing.");
-    await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("Save the changes first");
+    await expect(canvas.getByTestId("draft-gaps")).not.toHaveTextContent("The sell price is missing.");
+    await expect(canvas.getByTestId("draft-gaps")).not.toHaveTextContent("Save the changes first");
+    // The app's draft carries the marketplace ref, seeded into the receipt card.
+    await expect(canvas.getByTestId("order-external-ref-id")).toHaveValue("MEL-9001");
     await waitFor(() => expect(canvas.getByTestId("draft-save")).toBeEnabled());
   },
 };
@@ -187,7 +191,9 @@ export const ARowMapsToABundle: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("draft-row-bundle-2")).toHaveTextContent(HEMAT.name));
     await expect(canvas.getByTestId("draft-row-2")).toHaveAttribute("data-mode", "bundle");
-    await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("cannot be promoted yet");
+    // A bundle row is no longer a reason Promote refuses: Promote sends what is on screen, so the bundle's products
+    // go on the order (a-draft-becomes-an-order-through-order-create). Only saving it on the draft still cannot keep it.
+    await expect(canvas.queryByTestId("draft-gaps")?.textContent ?? "").not.toContain("cannot be promoted yet");
   },
 };
 
@@ -231,7 +237,7 @@ export const ACountThatDiffersFromTheListingIsFlagged: Story = {
 /**
  * THE SELL PRICE IS THE DRAFT'S OWN ONCE STORED (platform-total-is-required-at-finalize): 202 holds 130.000, so it
  * opens with it, Save has nothing to keep and Promote names no missing sell price. Typing over it is a change like any
- * other — Save turns on, and Promote waits for it.
+ * other — Save turns on. Promote does not wait for it: it sends the typed figure.
  */
 export const TheSellPriceIsStoredOnTheDraft: Story = {
   render: () => <AtReady />,
@@ -247,7 +253,8 @@ export const TheSellPriceIsStoredOnTheDraft: Story = {
     await userEvent.clear(sell);
     await userEvent.type(sell, "128000", { delay: 20 });
     await waitFor(() => expect(canvas.getByTestId("draft-save")).toBeEnabled());
-    await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("Save the changes first");
+    await expect(canvas.queryByText("Save the changes first")).toBeNull();
+    await expect(canvas.queryByText("The sell price is missing.")).toBeNull();
   },
 };
 
@@ -267,8 +274,11 @@ export const TheInvoiceChargesEachProductsOwnRate: Story = {
   },
 };
 
-/** SAVE TAKES ANY STATE; PROMOTE REFUSES UNSAVED WORK. */
-export const AnEditMustBeSavedBeforePromote: Story = {
+/**
+ * SAVE TAKES ANY STATE; PROMOTE SENDS WHAT IS ON SCREEN (a-draft-becomes-an-order-through-order-create). Promote is
+ * OrderCreate with the draft's id, so an unsaved edit is promoted as it stands — nothing has to be saved first.
+ */
+export const AnUnsavedEditIsPromotedAsIs: Story = {
   render: () => <AtReady />,
   play: async ({ canvasElement }) => {
     const canvas = await ready(canvasElement);
@@ -278,8 +288,34 @@ export const AnEditMustBeSavedBeforePromote: Story = {
     await userEvent.click(canvas.getByTestId("draft-row-count-0-plus"));
 
     await waitFor(() => expect(canvas.getByTestId("draft-save")).toBeEnabled());
-    await expect(canvas.getByTestId("draft-promote")).toBeDisabled();
-    await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("Save the changes first");
+    await expect(canvas.getByTestId("draft-promote")).toBeEnabled();
+    await expect(canvas.queryByText("Save the changes first")).toBeNull();
+  },
+};
+
+/**
+ * A `manual` DRAFT'S EXTERNAL ID IS NO REF — the old create form minted it (`form-…`), so the receipt card opens empty,
+ * and Promote names the missing ref until it is typed (an-order-ref-is-required-by-the-rpc).
+ */
+export const AManualDraftAsksForItsRef: Story = {
+  render: () => {
+    const AtManual = Routed("/order-drafts/203");
+    return <AtManual />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await ready(canvasElement);
+    const ref = canvas.getByTestId("order-external-ref-id");
+
+    await expect(ref).toHaveValue("");
+    await waitFor(() =>
+      expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("The marketplace order number is missing."),
+    );
+
+    await userEvent.click(ref);
+    await userEvent.paste("260101CCCC0003");
+    await waitFor(() =>
+      expect(canvas.getByTestId("draft-gaps")).not.toHaveTextContent("The marketplace order number is missing."),
+    );
   },
 };
 

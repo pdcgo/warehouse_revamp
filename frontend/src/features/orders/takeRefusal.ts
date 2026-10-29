@@ -5,7 +5,7 @@ import {
   OrderTransactionRefusalSchema,
 } from "../../gen/warehouse/inventory/v1/order_transaction_pb";
 
-// WHY THE WAREHOUSE REFUSED AN ORDER'S TAKE — read off the error OrderCreate or OrderDraftPromote answered with.
+// WHY THE WAREHOUSE REFUSED AN ORDER'S TAKE — read off the error OrderCreate answered with, from the form or a draft's Promote.
 //
 // Placing an order draws its goods in the same transaction (#149), so a refusal of the take IS a refused order. The
 // take answers with ONE reason and every line it names (a-refusal-names-its-reason-and-every-line), as an

@@ -24,7 +24,7 @@ import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseT
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { formatUnixDateTime } from "../../lib/datetime";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { TRANSFER_WAREHOUSE_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -220,7 +220,7 @@ export function WarehouseTransferWarehousePage() {
                               <Stack gap="0">
                                 <Span fontWeight="medium">#{transfer.id.toString()}</Span>
                                 <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap">
-                                  {formatUnixDateTime(transfer.createdAtUnix)}
+                                  {formatUnixDateTimeShort(transfer.createdAtUnix)}
                                 </Span>
                               </Stack>
                             </Table.Cell>

@@ -9,7 +9,7 @@ import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { formatUnixDateTime, formatUnixRelative } from "../../lib/datetime";
+import { formatUnixDateTime, formatUnixDateTimeShort, formatUnixRelative } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
 import {
   formatMarginPct,
@@ -45,10 +45,10 @@ import { CopyText } from "../../components/chrome/CopyText";
 // whole empty cell needs a mark or the column reads as broken; a missing half-cell is silence. A
 // column of dashes down twenty rows is what trains people to stop reading a field.
 
-/** A quiet second line under a cell's headline. */
-function Under({ children, testId }: { children: ReactNode; testId?: string }) {
+/** A quiet second line under a cell's headline. `title` is the whole line, for when the clamp cuts it. */
+function Under({ children, testId, title }: { children: ReactNode; testId?: string; title?: string }) {
   return (
-    <Text fontSize="xs" color="fg.muted" lineClamp={1} data-testid={testId}>
+    <Text fontSize="xs" color="fg.muted" lineClamp={1} data-testid={testId} title={title}>
       {children}
     </Text>
   );
@@ -74,8 +74,8 @@ function Nothing({ testId }: { testId?: string }) {
  * ⚠ THE REFERENCE IS COPYABLE (owner). It is pasted into the platform's own dashboard, so it is carried
  * rather than read — see `CopyText`.
  *
- * "" renders an em-dash, not an empty `()`: an order taken over the phone has no marketplace reference
- * and never will (`order.proto`).
+ * "" renders an em-dash, not an empty `()`: only an order placed before the ref was required has none
+ * (an-order-ref-is-required-by-the-rpc, `order.proto`).
  */
 export function OrderRefCell({
   orderRefId,
@@ -152,19 +152,31 @@ export function OwnerCell({
  *
  * THE SYSTEM'S DATE LEADS (owner); the second line is who typed it in — `created_by_user_id`, named by the
  * page (`useTypists`). No line at all when that was never recorded.
+ *
+ * `via` is the app that pushed a DRAFT (the-draft-row-names-the-person-and-the-app): the person and the app
+ * answer the same question, so they share the second line — `oleh Ani via ScraperX` — and the cell stays two
+ * lines. An order has no app, so the order list never passes it.
  */
-export function CreatedCell({ unix, by }: { unix: bigint; by?: string }) {
+export function CreatedCell({ unix, by, via }: { unix: bigint; by?: string; via?: string }) {
   const { t } = useTranslation();
   const author = (by ?? "").trim();
+  const app = (via ?? "").trim();
+
+  let line = "";
+  if (author !== "" && app !== "") line = t("orders.placedByVia", { name: author, via: app });
+  else if (author !== "") line = t("orders.placedBy", { name: author });
+  else if (app !== "") line = t("orders.placedVia", { via: app });
 
   return (
     <Stack gap="0.5" minW="0">
       <Text whiteSpace="nowrap" data-testid="order-placed-at">
-        {formatUnixDateTime(unix)}
+        {formatUnixDateTimeShort(unix)}
       </Text>
 
-      {author !== "" && (
-        <Under testId="order-placed-by">{t("orders.placedBy", { name: author })}</Under>
+      {line !== "" && (
+        <Under testId="order-placed-by" title={line}>
+          {line}
+        </Under>
       )}
     </Stack>
   );
@@ -191,7 +203,7 @@ export function MpDateCell({ unix, deadline }: { unix?: bigint; deadline?: bigin
     <Stack gap="0.5" minW="0" align="start">
       {has ? (
         <Text whiteSpace="nowrap" data-testid="order-placed-mp">
-          {formatUnixDateTime(unix)}
+          {formatUnixDateTimeShort(unix)}
         </Text>
       ) : (
         <Nothing testId="order-placed-mp-none" />
@@ -215,7 +227,7 @@ export function DateCell({ unix, testId }: { unix?: bigint; testId?: string }) {
 
   return (
     <Text whiteSpace="nowrap" data-testid={testId}>
-      {formatUnixDateTime(unix)}
+      {formatUnixDateTimeShort(unix)}
     </Text>
   );
 }
@@ -464,7 +476,7 @@ export function DateAgoCell({
     <Stack gap="0.5" minW="0" align="start">
       <Flex align="center" gap="1">
         <Text whiteSpace="nowrap" data-testid={testId}>
-          {formatUnixDateTime(unix)}
+          {formatUnixDateTimeShort(unix)}
         </Text>
         {mark}
       </Flex>

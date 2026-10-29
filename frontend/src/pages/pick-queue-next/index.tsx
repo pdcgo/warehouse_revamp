@@ -58,7 +58,7 @@ import { NO_SHOPS, useShopsByIds, type ShopNames } from "../../features/shops/qu
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useIsMobile } from "../../layouts/shell";
-import { formatUnixDateTime, formatUnixRelative } from "../../lib/datetime";
+import { formatUnixDateTimeShort, formatUnixRelative } from "../../lib/datetime";
 import { useDebounced } from "../../lib/useDebounced";
 import { WAREHOUSE_ORDERS_PENDING } from "./pending";
 import type { WarehouseStep } from "./steps";
@@ -699,13 +699,13 @@ function OrderBlock({
         </Flex>
         <Flex align="center" gap="1" wrap="wrap">
           <Text fontSize="xs" color="fg.muted">
-            {typist || "—"} · {team} · {formatUnixDateTime(order.createdAtUnix)} (
+            {typist || "—"} · {team} · {formatUnixDateTimeShort(order.createdAtUnix)} (
             {formatUnixRelative(order.createdAtUnix)})
           </Text>
         </Flex>
         {facts.mpCreated !== undefined && (
           <Text fontSize="xs" color="fg.muted">
-            {t("warehouseOrders.col.mpDate")} {formatUnixDateTime(facts.mpCreated)} ({formatUnixRelative(facts.mpCreated)})
+            {t("warehouseOrders.col.mpDate")} {formatUnixDateTimeShort(facts.mpCreated)} ({formatUnixRelative(facts.mpCreated)})
           </Text>
         )}
       </Stack>

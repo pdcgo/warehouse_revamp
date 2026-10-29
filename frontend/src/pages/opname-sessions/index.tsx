@@ -13,7 +13,7 @@ import { OpnamePlanBadge, OpnameSessionStatusBadge } from "../../features/opname
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
-import { formatUnixDateTime } from "../../lib/datetime";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { canManageOpname } from "../../lib/roles";
 import { NewSessionDialog } from "./components/NewSessionDialog";
 
@@ -195,7 +195,7 @@ export function OpnameSessionsPage() {
                           </Span>
                         </HStack>
                         <Span fontSize="xs" color="fg.muted">
-                          {formatUnixDateTime(s.createdAtUnix)} · {nameOf(s.createdById)}
+                          {formatUnixDateTimeShort(s.createdAtUnix)} · {nameOf(s.createdById)}
                         </Span>
                       </Card.Body>
                     </Card.Root>
@@ -227,7 +227,7 @@ export function OpnameSessionsPage() {
                             <Stack gap="0">
                               <Span fontWeight="medium">#{s.id.toString()}</Span>
                               <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap">
-                                {formatUnixDateTime(s.createdAtUnix)}
+                                {formatUnixDateTimeShort(s.createdAtUnix)}
                               </Span>
                             </Stack>
                           </Table.Cell>
@@ -259,7 +259,7 @@ export function OpnameSessionsPage() {
                               <Stack gap="0">
                                 <Span>{nameOf(s.finalizedById)}</Span>
                                 <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap">
-                                  {formatUnixDateTime(s.finalizedAtUnix)}
+                                  {formatUnixDateTimeShort(s.finalizedAtUnix)}
                                 </Span>
                               </Stack>
                             ) : (

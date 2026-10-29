@@ -21,11 +21,7 @@ import { ArrowLeft, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useCreateOrder } from "../../features/orders/queries";
-import {
-  useOrderDraft,
-  usePushOrderDraft,
-  useUpdateOrderDraft,
-} from "../../features/orderDrafts/queries";
+import { useOrderDraft } from "../../features/orderDrafts/queries";
 import { useStockTakeQuote } from "../../features/inventory/queries";
 import {
   MarketplaceInfoForm,
@@ -83,7 +79,6 @@ import {
   lineStock,
   toQty,
   toRupiah,
-  unitCost,
 } from "../../features/orders/lines";
 
 // The address is OPTIONAL (#118) — exactly as the free text it replaces was: an order can be taken
@@ -92,11 +87,6 @@ import {
 function addressTouched(a: AddressValue): boolean {
   return Object.values(a).some((v) => v.trim() !== "");
 }
-
-// Where a draft saved from THIS FORM says it came from. Every other draft in the system was pushed
-// by a scraper naming itself, and the drafts list already filters on this — so a hand-written one
-// must be as identifiable as the rest rather than borrowing an app's name or leaving it blank.
-const DRAFT_SOURCE = "manual";
 
 // `?draft=` comes from a URL, so it is whatever somebody typed. Anything that is not a positive whole
 // number means NO DRAFT — the query is disabled at 0n and the card renders nothing, which is the right
@@ -122,8 +112,6 @@ export function OrderCreatePage() {
   const { current } = useTeam();
   const navigate = useNavigate();
   const createOrder = useCreateOrder();
-  const pushDraft = usePushOrderDraft();
-  const updateDraft = useUpdateOrderDraft();
 
   const teamId = current?.teamId;
 
@@ -223,23 +211,11 @@ export function OrderCreatePage() {
 
 
   const [saving, setSaving] = useState(false);
-  const [savingDraft, setSavingDraft] = useState(false);
   const [error, setError] = useState("");
   // WHY THE WAREHOUSE REFUSED THE LAST CREATE, when it did (a-refusal-names-its-reason-and-every-line) — kept apart
   // from `error` because it is not a sentence to print but a reason and the lines it names, each one a line on this
   // form the person has to change.
   const [refusal, setRefusal] = useState<TakeRefusal | null>(null);
-
-  // The external reference this form's draft is filed under, minted ONCE per visit.
-  //
-  // OrderDraftPush is create-or-update on (team_id, source, external_id), so a stable id is what
-  // makes a second Save update the draft this page already made instead of leaving a trail of
-  // near-identical ones. A fresh id per visit is the other half: opening the form again is a
-  // different order, not an edit of the last one.
-  const draftRefRef = useRef(`form-${crypto.randomUUID()}`);
-  // The draft this page has already created, if Save has been pressed. Kept so the line MAPPING can
-  // be written to it — see saveDraft.
-  const draftIdRef = useRef(0n);
 
   // A REF, not state, and this is load-bearing rather than a style choice. The save navigates in the
   // same tick it records success, and a `setState` has not landed by then — so a state flag would still
@@ -557,7 +533,8 @@ export function OrderCreatePage() {
 
   // The marketplace's order date is required to place (platform-created-at-is-required-at-finalize) — marked on its
   // field like the customer's name, so a disabled Create always has a red asterisk to point at. So is the SELL PRICE,
-  // what the buyer paid there (platform-total-is-required-at-finalize): settlement opens the order's account on it.
+  // what the buyer paid there (platform-total-is-required-at-finalize): settlement opens the order's account on it. So
+  // is the MARKETPLACE REF (an-order-ref-is-required-by-the-rpc): the request's validation refuses an empty one.
   // ⚠ AND EVERY BORROWED PRODUCT NEEDS ITS RETURN MAP (a-borrowed-line-needs-its-map-at-create): the server refuses
   // the order without one, so Create is held here too, and the line under the button says why.
   const canSave =
@@ -565,6 +542,7 @@ export function OrderCreatePage() {
     feeRefusal === null &&
     orderDate !== "" &&
     sellPrice > 0n &&
+    marketplace.orderExternalRefId.trim() !== "" &&
     unmappedReturns === 0;
 
   // How many lines the chosen warehouse cannot fill. Summarised at the top as well as marked on each
@@ -691,6 +669,10 @@ export function OrderCreatePage() {
           // figure of the line from the take's REAL draw (#74, an-order-is-costed-at-what-leaves-the-shelf) — the same
           // selection the form's quote ran, so the two agree unless another order took the same units first.
         })),
+        // THE DRAFT THIS FORM WAS OPENED BESIDE (`?draft=`), finished by this order and deleted with it
+        // (a-draft-becomes-an-order-through-order-create). Only when it loaded — which already proves it is the
+        // caller's — so a mistyped or foreign `?draft=` never refuses an order typed in full.
+        orderDraftId: externalDraft.data ? externalDraftId : 0n,
       });
 
       // The invalidation rode with the write (#177) — this page navigates away, so the list it
@@ -721,98 +703,6 @@ export function OrderCreatePage() {
   function productLabel(productId: bigint): string {
     const line = allLines.find((l) => l.productId === productId);
     return line?.name || line?.sku || `#${productId.toString()}`;
-  }
-
-  // SAVE IT AS A DRAFT instead of placing it (owner) — the half-finished order goes to the drafts
-  // screen, nothing is validated beyond what a draft requires, and NO STOCK MOVES.
-  //
-  // That last part is the whole reason this button exists beside Create: placing an order draws its
-  // goods out of the warehouse in the same transaction (#69/#149). An order that is not ready — no
-  // warehouse chosen yet, waiting on the buyer to confirm an address — must have somewhere to live
-  // that does not touch the shelves.
-  //
-  // TWO CALLS, and the second is not an implementation detail:
-  //
-  //   1. PUSH writes the draft, but IGNORES `product_id` on every line. That rule protects the
-  //      scraper path — an app may not guess our catalogue ids — and it applies to us as well.
-  //   2. UPDATE carries the mapping, which is what OrderDraftUpdate is FOR: a person saying "this
-  //      line is that product". Picking from the catalogue on this form is exactly that act.
-  //
-  // If the mapping call fails, the draft still exists with its lines unmapped — half-saved is the
-  // normal state of a draft, so it is reported rather than rolled back.
-  async function saveDraft() {
-    if (teamId === undefined || !dirty) {
-      return;
-    }
-
-    setSavingDraft(true);
-    setError("");
-    setRefusal(null);
-
-    try {
-      const pushed = await pushDraft.mutateAsync({
-        teamId,
-        source: DRAFT_SOURCE,
-        externalId: draftRefRef.current,
-        shopId,
-        warehouseId,
-        customerName,
-        customerPhone,
-        address: addressTouched(address) ? address : undefined,
-        shippingCode,
-        // The platform's two dates travel with the draft now (00020); 0 where nothing was typed.
-        platformCreatedAtUnix: dateTimeInputToUnix(orderDate),
-        platformShipmentDeadlineUnix: dateTimeInputToUnix(deadline),
-        // And the buyer's username (00021), "" where none was typed.
-        buyerUsername: buyerUsername.trim(),
-        items: lines.map((l) => ({
-          id: 0n,
-          // The catalogue's own SKU and name stand in for what a scrape would have read off the
-          // marketplace. They are the evidence of what was ordered, and on a form-made draft the
-          // evidence is what the person picked.
-          externalSku: l.sku,
-          externalName: l.name,
-          productId: 0n,
-          quantity: toQty(l.quantity),
-          unitPrice: unitCost(l, costs),
-        })),
-      });
-
-      const draft = pushed.draft;
-
-      if (!draft) {
-        throw new Error("The draft was saved but not returned");
-      }
-
-      draftIdRef.current = draft.id;
-
-      // The mapping, line by line, matched back by POSITION — push returns the lines in the order
-      // they were sent, and neither side has anything better to key on: a form line has no draft id
-      // until this moment, and two lines of the same product would be indistinguishable by SKU.
-      if (draft.items.length > 0) {
-        await updateDraft.mutateAsync({
-          teamId,
-          draftId: draft.id,
-          items: {
-            lines: draft.items.map((item, i) => ({
-              id: item.id,
-              productId: lines[i]?.productId ?? 0n,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-            })),
-          },
-        });
-      }
-
-      toaster.create({ type: "success", title: t("orders.draftSaved") });
-
-      savedRef.current = true;
-      void navigate(`/order-drafts/${draft.id}`);
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setSavingDraft(false);
-    }
   }
 
   if (!current) {
@@ -1167,10 +1057,7 @@ export function OrderCreatePage() {
               unmappedReturns={unmappedReturns}
               compact={compact}
               saving={saving}
-              savingDraft={savingDraft}
               canSave={canSave}
-              canDraft={dirty}
-              onSaveDraft={() => void saveDraft()}
             />
           </Stack>
         </GridItem>

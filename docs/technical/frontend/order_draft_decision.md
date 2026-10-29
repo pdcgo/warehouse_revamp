@@ -19,6 +19,7 @@ each old heading there now points here.
 | [the-draft-preview-became-the-draft-page](#the-draft-preview-became-the-draft-page) | `/order-drafts/:id` IS the draft page in the order form's clothes now — the built page is gone |
 | [the-draft-price-is-platform-total](#the-draft-price-is-platform-total) | the draft's price is the pushed `platform_total`; a typed-over price goes onto the order at create, never back to the draft |
 | [a-draft-stores-no-mapping](#a-draft-stores-no-mapping) | a draft's rows are a reference; the create form maps each to a product, a bundle or a split, in one sitting, straight into `order_items` |
+| [the-draft-row-names-the-person-and-the-app](#the-draft-row-names-the-person-and-the-app) | the *Dibuat* cell's second line is `oleh <name> via <app>`, one line, truncated with the whole on hover |
 
 ## the-draft-list-is-the-drafts-tab
 
@@ -157,6 +158,7 @@ flowchart TB
 | what a draft does not store | on screen with a ⚠ as usual — receipt, references, tracking number, note, dates, username (`draftKeeps`); the owner accepted they are not kept |
 | Save | any state; only the changed fields are sent (each one becomes touched) |
 | Promote | refused until the order could be placed — shop, warehouse, customer, every row mapped, stock, saved — then the create form's own checks: an error stops it, a warning can be overruled |
+| 🔄 *(2026-10-29)* | Promote is `OrderCreate` with the draft's id and sends what is on screen ([a-draft-becomes-an-order-through-order-create](../../business/order/context_decision.md#a-draft-becomes-an-order-through-order-create)): *saved* is no longer required, a bundle or split row no longer refuses it, the sell price is the one on screen, and the marketplace ref is required. Receipt, tracking number and note reach the order |
 | prices | per row: HPP (from the warehouse, as on create) **and** the marketplace price (the draft's own, editable); the sell price is their sum and the profit estimate reads it — real, not typed |
 
 - The create form's cards moved to `features/orders/form/` (with its `pending`, `checks`, `bundles` and samples), so both
@@ -306,3 +308,45 @@ flowchart LR
 | ⚠ supersedes | the *storing* row of [a-draft-row-maps-to-a-product-a-bundle-or-a-split](#a-draft-row-maps-to-a-product-a-bundle-or-a-split) — the three ways to map stand, storing them does not |
 | a bundle on the order | how a bundle lands on `order_items` is the bundle design's ([product_bundle.md](../../business/product/product_bundle.md)), not this |
 | the build | still saves and promotes on the server — [the-build-lets-a-person-draft-and-promotes-on-the-server](../../business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server) |
+| 🔄 *(2026-10-29)* | the promote half is done: Promote is `OrderCreate` with the draft's id, built from the page, so the mapping on screen goes straight into `order_items` ([a-draft-becomes-an-order-through-order-create](../../business/order/context_decision.md#a-draft-becomes-an-order-through-order-create)). The draft page's Save still stores a row's product mapping |
+
+---
+
+## the-draft-row-names-the-person-and-the-app
+
+> Owner, in chat (2026-10-29): *"or oleh and via ?"*, then *"yes, follow your recomendation"* — to
+> [design_clarify.md](../order/design_clarify.md#question) question 13, *"where does a draft's pushing app go on the
+> row?"*. My first answer was `via <app>` replacing `oleh <name>`. The owner's counter was to show both, and the
+> recommendation became both on **one** line.
+
+**The verdict.** The draft list's *Dibuat* cell keeps two lines: the date, then **`oleh <name> via <app>`**. `<name>` is
+the draft's `author_user_id`, the login the app pushed with, and `<app>` is the draft's `source`. Both answer one question,
+who made this draft, so they share a line, and the cell stays within
+[one-context-per-column-and-never-three-lines](context_decision.md#one-context-per-column-and-never-three-lines).
+
+```
+Dibuat
+29 Okt 13:05
+oleh Ani via ScraperX
+```
+
+```mermaid
+flowchart LR
+  d["a draft"] --> a["author_user_id - Ani"]
+  d --> s["source - ScraperX"]
+  a --> l["line 2 - oleh Ani via ScraperX"]
+  s --> l
+  l -.->|"too long"| h["truncated, the whole line on hover"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| both known | `oleh Ani via ScraperX` (en: `by Ani via ScraperX`) |
+| no author name | `via ScraperX` |
+| `source` = `manual` | `oleh Ani` only. A form-made draft is the build's, not an app's ([the-build-lets-a-person-draft-and-promotes-on-the-server](../../business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server)), so it names no app |
+| too long | one line, clamped, the whole line in its hover title |
+| how the app logs in | not answered: per person, `oleh` says who ran the scrape; one token per team, it repeats on every row. The line holds either way |
+| the order list | unchanged: an order has no `source`, so its *Dibuat* cell stays `oleh <name>` |
+| ✅ built *(2026-10-29)* | `CreatedCell`'s `via` in [OrderRowCells.tsx](../../../frontend/src/features/orders/OrderRowCells.tsx), passed by [pages/order-drafts](../../../frontend/src/pages/order-drafts/index.tsx). Pinned by story `TheRowIsRealFieldsOnly`; draft 201's fixture source is now `ScraperX` |

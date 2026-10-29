@@ -367,7 +367,13 @@ export function OrderDraftsPage() {
                       </Table.Cell>
 
                       <Table.Cell>
-                        <CreatedCell unix={d.createdAtUnix} by={author} />
+                        {/* `manual` is the build's form-made draft, not an app, so it names none
+                            (the-draft-row-names-the-person-and-the-app). */}
+                        <CreatedCell
+                          unix={d.createdAtUnix}
+                          by={author}
+                          via={d.source === "manual" ? "" : d.source}
+                        />
                       </Table.Cell>
 
                       <Table.Cell>

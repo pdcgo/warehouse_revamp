@@ -175,7 +175,7 @@ func TestOrderCreate_ALineTheTakeDidNotPriceFreezesNoMarkup(t *testing.T) {
 // AN ORDER LINE CARRIES NO MARKETPLACE PRICE (an-order-line-carries-no-marketplace-price). A draft's rows carry what
 // the marketplace charged — 50.000 and 35.000 — and the promoted order's lines hold none of it: every money figure of
 // a line is the take's, exactly what OrderCreate stores for the same draw, and so is the header's goods_cost.
-func TestOrderDraftPromote_TheLineCarriesNoMarketplacePrice(t *testing.T) {
+func TestOrderCreateFromDraft_TheLineCarriesNoMarketplacePrice(t *testing.T) {
 	db := san_testdb.DB(t)
 	costs := map[uint64]int64{41: 20_000, 42: 12_500}
 

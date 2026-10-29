@@ -1276,9 +1276,12 @@ export const transport = createRouterTransport(({ service }) => {
   service(OrderService, {
     // The write the order form exists to make. It answers with an id so the page can navigate to the
     // order it just placed — which is also what tells the unsaved-work blocker to stand down.
-    orderCreate: () => {
+    //
+    // The draft page's Promote is this same call with `orderDraftId` (a-draft-becomes-an-order-through-order-create),
+    // and answers with the promoted order's id, 902 — what a draft story asserts the page navigates to.
+    orderCreate: (req) => {
       refuseTakeIfScripted();
-      return { order: { id: 900n } };
+      return { order: { id: req.orderDraftId > 0n ? 902n : 900n } };
     },
 
     // ⚠ THE TWO-SIDED READ (#151), and it is the reason the order list has two versions at all.
@@ -1539,13 +1542,6 @@ export const transport = createRouterTransport(({ service }) => {
       deleted: req.draftIds.filter((id) => orderDrafts.some((d) => d.id === id && d.teamId === req.teamId))
         .length,
     }),
-
-    // The draft becomes an order with a new id — the page navigates there, which is what a story
-    // asserts on.
-    orderDraftPromote: () => {
-      refuseTakeIfScripted();
-      return { order: { id: 902n } };
-    },
   });
 
   service(LiabilityService, {

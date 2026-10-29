@@ -2,7 +2,7 @@ import { Stack, Table, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import type { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
-import { formatRfc3339DateTime } from "../../lib/datetime";
+import { formatRfc3339DateTimeShort } from "../../lib/datetime";
 import { kindLabel } from "./movementKind";
 
 // THE stock ledger. One movement reads identically wherever it is shown — a warehouse product's
@@ -150,7 +150,7 @@ export function MovementTable({
         <Table.Body>
           {movements.map((m) => (
             <Table.Row key={m.id.toString()} data-testid={`${testId}-row-${m.id}`}>
-              <Table.Cell>{formatRfc3339DateTime(m.createdAt)}</Table.Cell>
+              <Table.Cell>{formatRfc3339DateTimeShort(m.createdAt)}</Table.Cell>
               <Table.Cell>{kindLabel(t, m.kind)}</Table.Cell>
               {columns.map((c) => (
                 <Table.Cell key={c}>{cell(c, m)}</Table.Cell>

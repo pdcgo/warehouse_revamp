@@ -167,7 +167,7 @@ func TestOrderCreate_OneProductUnderTwoNamesIsRefused(t *testing.T) {
 
 // THE SECOND DOOR (#194). A draft's two scraped rows can map to one product, and Promote runs the same placeOrder —
 // so it is placed as one line of the summed quantity, at the take's cost.
-func TestOrderDraftPromote_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T) {
+func TestOrderCreateFromDraft_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{costs: map[uint64]int64{41: 20_000}}
 	svc := newServiceWithPicker(t, db, picker)
@@ -207,7 +207,7 @@ func TestOrderDraftPromote_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T) {
 // …and two rows of one product at TWO marketplace prices are one line too (an-order-line-carries-no-marketplace-price):
 // the line carries no price to disagree about, so nothing is dropped by the merge. The prices stay on the draft's rows
 // until the draft goes, and nothing on the order sums them.
-func TestOrderDraftPromote_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(t *testing.T) {
+func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{costs: map[uint64]int64{41: 20_000}}
 	svc := newServiceWithPicker(t, db, picker)

@@ -215,7 +215,7 @@ nothing available.
 ## The warehouse prices the order, and the order keeps the price — `WarehouseFeeCalculate` (step 3)
 
 Step 3 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last):
-`placeOrder` — both doors, `OrderCreate` and `OrderDraftPromote` — asks warehouse_service what the fulfilling
+`placeOrder` — behind `OrderCreate`, the one door for a typed order and a promoted draft alike — asks warehouse_service what the fulfilling
 warehouse charges for the order's goods, and freezes the answer as `orders.warehouse_fee`. The order form asks the same
 RPC while the order is typed, on the quote's goods cost, so the figure on screen is the figure kept.
 
@@ -550,94 +550,70 @@ id would make a bulk prune unusable exactly when the list is long enough to need
 the author are in the `WHERE` rather than checked beforehand, so there is no window in which the ids
 stop being the caller's.
 
-### A draft becomes an order — `OrderDraftPromote` (#194)
+### A draft becomes an order — `OrderCreate` with `order_draft_id`
+
+There is no promote RPC ([a-draft-becomes-an-order-through-order-create](../../business/order/context_decision.md#a-draft-becomes-an-order-through-order-create)).
+The draft page's **Promote** sends the same `OrderCreate` the create form sends, built from what is on its screen,
+plus `order_draft_id`. `OrderDraftPromote` was removed: it rebuilt the order from the stored draft by hand, and that
+copy had already drifted (it never set the marketplace ref).
 
 ```mermaid
 sequenceDiagram
     participant CS as CS person
-    participant D as OrderDraftService
-    participant P as product_service
+    participant UI as the draft page
+    participant S as OrderService
     participant I as inventory_service
-    participant R as revenue_service
+    participant R as consumers
 
-    CS->>D: OrderDraftPromote — team_id, draft_id
-    D->>D: every line mapped? shop, warehouse, customer, the marketplace order date and what the buyer paid?
-    D->>P: ProductByIds — the mapped ids
-    P-->>D: sku + name for each that still exists
-    Note over D: an id that resolves to nothing is a<br/>DEAD REFERENCE — the answer names it
+    CS->>UI: Promote
+    UI->>S: OrderCreate — what is on screen + order_draft_id
+    S->>S: the draft is this team's and this caller's? else NotFound
     rect rgb(240, 240, 240)
-        Note over D,I: one transaction
-        D->>D: INSERT the order header — platform_total copied from the draft
-        D->>D: DELETE the draft
-        D->>I: OrderTransactionCreate — the order's lines leave the warehouse
-        I-->>D: each line's cost, cost with markup, markup and total
-        D->>D: INSERT the lines with that money only — no marketplace price
+        Note over S,I: one transaction
+        S->>S: INSERT the order header
+        S->>S: DELETE the draft — nothing deleted means another Promote won, so roll back
+        S->>I: OrderTransactionCreate — the order's lines leave the warehouse
+        I-->>S: each line's cost, cost with markup, markup and total
+        S->>S: INSERT the lines with that money only
     end
-    D->>R: Event with OrderPlaced, after the commit
-    D-->>CS: the order
+    S->>R: Event with OrderPlaced, after the commit
+    S-->>UI: the order
 ```
 
-**It runs the same code path `OrderCreate` runs**, not a copy of it — `placeOrder` in
-[order_place.go](../../../backend/services/selling_service/selling_v1/order_place.go). That is the
-payoff the separate drafts table was chosen for: what counts as a placeable order is defined once, so
-the draft door cannot quietly accept an order the form would refuse. `placeOrder` re-checks the field
-rules that proto validation covers for `OrderCreate`, because promote's request carries only a draft
-id and none of those rules ran.
+**One door.** Everything the order says comes from the request — the request's validation and `placeOrder` in
+[order_place.go](../../../backend/services/selling_service/selling_v1/order_place.go) — so a promoted order meets every
+rule a typed one does, by construction. The page sends what is on screen, not what is saved: unsaved edits, bundle and
+split rows as their products, and what a draft cannot store (receipt, tracking number, note), which now reach the order.
 
-**The platform's two dates travel with the draft** (`00020`). The app pushes them; a person may correct either on the
-draft page, which marks it touched so the next push leaves it alone; Promote copies both. The ORDER DATE is required by
-`placeOrder`'s shared rule ([platform-created-at-is-required-at-finalize](../../business/order/context_decision.md#platform-created-at-is-required-at-finalize))
-— so a draft may sit without one, and is refused at Promote, and an `OrderCreate` without one is refused the same way
-with the same sentence. The deadline is never required
-([the-shipment-deadline-is-the-platforms-and-optional](../../business/order/context_decision.md#the-shipment-deadline-is-the-platforms-and-optional)).
+**The draft's facts reach the order through the page.** The app's pushed values — the platform's two dates (`00020`),
+what the buyer paid (`00022`, `platform_total`), the buyer's username — seed the page, a person may correct them, and
+Promote sends them. The marketplace REF is the draft's `external_id`, seeded the same way; a `manual` draft's
+`external_id` is a minted `form-…` id, so its ref is typed
+([an-order-ref-is-required-by-the-rpc](../../business/order/context_decision.md#an-order-ref-is-required-by-the-rpc)).
+The catalogue label (`sku`, `name`) is the page's, from the products it mapped.
 
-**What the buyer paid travels with the draft too** (`00022`, `order_drafts.platform_total` since `00026`). The app pushes it; a
-person types it on the draft page, which marks it touched; Promote COPIES it — it is the one figure of the money that
-is not recomputed from the lines below, because no line can say what the buyer paid. `placeOrder`'s shared rule refuses
-0 ([platform-total-is-required-at-finalize](../../business/order/context_decision.md#platform-total-is-required-at-finalize)),
-so a draft may sit at 0 and is refused at Promote, and an `OrderCreate` at 0 is refused the same way with the same
-sentence.
-
-**One transaction, not two.** `orders` and `order_drafts` are the same service in the same database,
-so the order is written and the draft deleted together. A refused promote leaves the draft intact to
-be fixed — which is the behaviour that makes retrying safe.
+**One transaction, and one order per draft.** `orders` and `order_drafts` are the same service in the same database,
+so the order is written and the draft deleted together (`placeOrder`'s `inTx`). A refused order — no stock, no fee
+rate, a missing field — rolls the deletion back and leaves the draft to fix. Two Promotes of one draft: the second's
+DELETE waits on the first's row lock, then finds nothing, answers `Aborted` and rolls its order back; done one after
+the other, the second is `NotFound` at the lookup.
 
 **The line carries no marketplace price**
 ([an-order-line-carries-no-marketplace-price](../../business/order/context_decision.md#an-order-line-carries-no-marketplace-price)).
-A draft row's `unit_price` is what the marketplace charged; it stays on the row and is deleted with the draft. The
-order line's money is the take's, stamped by `placeOrder` exactly as on `OrderCreate` — `unit_cost`,
-`unit_cost_with_markup`, `markup_total` and `total`, and nothing else (`order_items.unit_price` was dropped by `00028`). Rows of one product at two marketplace
-prices therefore merge into one line with nothing to drop.
-
-**The header's money is the take's, on both doors** — `goods_cost` (Σ the lines' frozen totals), the frozen
-`warehouse_fee` and `total_cost` (the two added); no subtotal and no shipping, selling `00027`
-([an-order-records-no-shipping-cost](../../business/order/context_decision.md#an-order-records-no-shipping-cost)).
-Nothing of the draft's rows is summed onto the order: before 2026-10-23 Promote stored their marketplace prices as a
-`subtotal` while `OrderCreate` stored the form's cost, the same column meaning two things. The one figure Promote copies
-is `platform_total`.
-
-**The line freezes the CATALOGUE's label, not the scrape.** `external_name` is what the buyer clicked
-on; `sku`/`name` on the order line say what we shipped. They come from `ProductByIds` because
-promote's request names a draft, not a basket — there is nowhere honest for them to come from except
-the catalogue. (`OrderCreate` takes them from the request because the person typing has the catalogue
-open in front of them.)
-
-**Stale references are named, not lumped together.** A draft names products by id with no FK, so one
-can be deleted between the mapping and the promote. Every dead id is reported at once — somebody who
-must re-map three lines should learn that in one attempt, not by promoting three times. The `shop_id`
-check falls out of `placeOrder`'s existing shop lookup.
+A draft row's `unit_price` stays on the row and is deleted with the draft; the order's money is the take's, as on any
+order.
 
 > ⚠ **The warehouse id is NOT re-checked.** `team_service` has no by-id existence RPC selling_service
 > could call, and inventing one for this was out of scope. A warehouse deleted underneath a draft
 > surfaces as the stock pick failing, which is late and reads as a stock problem. Worth fixing when
 > something else needs that lookup.
 
-**This is where the `OrderPlaced` event fires, and the only place a draft ever reaches a consumer.** Pushing
-and editing publish nothing at all — there is a test asserting exactly that, because "a draft must
-never publish" is the kind of rule that is only ever violated by accident.
+**This is where the `OrderPlaced` event fires for a draft, and the only place a draft ever reaches a consumer.**
+Pushing and editing publish nothing at all — there is a test asserting exactly that, because "a draft must never
+publish" is the kind of rule that is only ever violated by accident.
 
-**A borrowed line needs its return map here too** — the check is `placeOrder`'s, so Promote refuses an unmapped one
-with the same sentence `OrderCreate` does. See [the return map](#a-borrowed-products-return-map--productreturnmapcreate-and-productreturnmapbyids).
+**A borrowed line needs its return map** — the check is `placeOrder`'s, the same for both buttons. See
+[the return map](#a-borrowed-products-return-map--productreturnmapcreate-and-productreturnmapbyids).
 
 ## A borrowed product's return map — `ProductReturnMapCreate` and `ProductReturnMapByIds`
 
@@ -667,7 +643,7 @@ sequenceDiagram
         end
         SELL-->>UI: the pair that stands, created true or false
     end
-    UI->>SELL: OrderCreate or OrderDraftPromote
+    UI->>SELL: OrderCreate — from the form or a draft's Promote
     SELL->>P: ProductByIds — each line's owner, looked up once
     alt the lookup failed
         SELL-->>UI: Unavailable — not placed, try again

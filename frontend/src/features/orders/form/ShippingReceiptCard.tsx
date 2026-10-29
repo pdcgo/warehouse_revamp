@@ -227,8 +227,12 @@ export function ShippingReceiptCard({
 
           {/* ── WHAT IS PRINTED ON IT ──────────────────────────────────────────────────────────── */}
           <Stack gap="card">
-            <Field.Root>
-              <Field.Label>{t("orders.orderExternalRefId")}</Field.Label>
+            {/* REQUIRED (an-order-ref-is-required-by-the-rpc): the request is refused without it. */}
+            <Field.Root required>
+              <Field.Label>
+                {t("orders.orderExternalRefId")}
+                <Field.RequiredIndicator />
+              </Field.Label>
               <Input
                 value={orderRefId}
                 maxLength={128}

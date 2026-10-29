@@ -645,6 +645,8 @@
     "recipient": "Recipient",
     "placed": "Placed",
     "placedBy": "by {{name}}",
+    "placedByVia": "by {{name}} via {{via}}",
+    "placedVia": "via {{via}}",
     "placedMp": "MP {{at}}",
     "team": "Team",
     "actions": "Actions",
@@ -986,7 +988,7 @@
   },
   "orderDrafts": {
     "title": "Drafts",
-    "intro": "Orders that are not finished yet — saved from the order form, or pushed in by another app. Finish one and promote it, or delete what you will not use; nothing here expires on its own, and no stock is held.",
+    "intro": "Orders that are not finished yet, pushed in by another app. Finish one and promote it, or delete what you will not use; nothing here expires on its own, and no stock is held.",
     "selectTeamView": "Select a team to view its order drafts.",
     "reference": "Reference",
     "lines": "Lines",
@@ -1001,6 +1003,7 @@
     "missingStock": "Stock",
     "gapOrderDate": "Order date",
     "gapSellPrice": "Sell price",
+    "gapRef": "Marketplace order number",
     "shortHelp": "Promoting a draft places the order, which takes its goods off the shelf — so it cannot be promoted short. Lower the quantity, ship it from a warehouse that has the stock, or leave the draft until a restock arrives.",
     "noDrafts": "No order drafts.",
     "selectAll": "Select every draft on this page",
@@ -1049,6 +1052,7 @@
       "onThisPage": "on this page"
     },
     "missingOrderDate": "The marketplace order date is missing.",
+    "missingRef": "The marketplace order number is missing.",
     "missingSellPrice": "The sell price is missing."
   },
   "restock": {
@@ -3499,15 +3503,15 @@
     "pending": {
       "draftKeeps": {
         "label": "What a draft keeps",
-        "reason": "A draft stores the shop, the warehouse, the customer, the buyer’s username, the courier, the rows, the marketplace’s two dates and the sell price. The receipt, the references, the tracking number and the note are not kept."
+        "reason": "A draft stores the shop, the warehouse, the customer, the buyer’s username, the courier, the rows, the marketplace’s two dates and the sell price. The receipt, the references, the tracking number and the note are not kept by Save — Promote puts them on the order."
       },
       "rowBundle": {
         "label": "A row mapped to a bundle",
-        "reason": "A draft line holds one product, so a bundle mapping is shown and counted but saved unmapped, and it blocks Promote."
+        "reason": "A draft line holds one product, so a bundle mapping is shown and counted but saved unmapped. Promote sends it as its products."
       },
       "rowSplit": {
         "label": "A row split into several products",
-        "reason": "A draft line holds one product, so a split is shown and counted but saved unmapped, and it blocks Promote."
+        "reason": "A draft line holds one product, so a split is shown and counted but saved unmapped. Promote sends it as its products."
       },
       "listingQty": {
         "label": "The listing's quantity",

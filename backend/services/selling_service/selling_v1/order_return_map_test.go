@@ -156,7 +156,7 @@ func TestOrderCreate_AFailedOwnersLookupRefuses(t *testing.T) {
 
 // THE OTHER DOOR. Promote runs the same rule (placeOrder), so a draft holding a borrowed line with no map is refused
 // naming it — and the draft survives to be finished once the product is mapped.
-func TestOrderDraftPromote_RefusesABorrowedLineWithNoReturnMap(t *testing.T) {
+func TestOrderCreateFromDraft_RefusesABorrowedLineWithNoReturnMap(t *testing.T) {
 	db := san_testdb.DB(t)
 	// readyDraft maps its lines to 41 and 42; 41 is team 9's.
 	catalog := &fakeCatalog{owners: map[uint64]uint64{41: 9, 42: mapTeam, ourProduct: mapTeam}}

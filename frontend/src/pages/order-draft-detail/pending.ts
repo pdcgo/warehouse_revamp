@@ -22,8 +22,8 @@ const DRAFT_PARTS: PendingPart<PendingId>[] = [
   { id: "draftKeeps", kind: "dropped" },
   // (The sell price's mark is gone: it is `platform_total` on the draft now, and Promote copies it —
   // platform-total-is-required-at-finalize.)
-  // A draft line has one `product_id`. A row mapped to a bundle is shown and counted, saved UNMAPPED,
-  // and blocks Promote.
+  // A draft line has one `product_id`. A row mapped to a bundle is shown and counted, saved UNMAPPED — and Promote,
+  // which sends what is on screen, sends it as its products (a-draft-becomes-an-order-through-order-create).
   { id: "rowBundle", kind: "dropped" },
   // …and so is a row split into several products.
   { id: "rowSplit", kind: "dropped" },
