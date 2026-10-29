@@ -57,7 +57,6 @@ func writeTerms(
 		connect.NewRequest(&liabilityv1.LiabilityTermsSetRequest{
 			TeamId:         teamID,
 			CounterpartyId: counterparty,
-			HandlingFee:    25_000,
 			CreditLimit:    limit,
 			Reason:         reason,
 		}))

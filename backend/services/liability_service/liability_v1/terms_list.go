@@ -81,7 +81,6 @@ func termsToProto(t *liability_service_models.LiabilityTerms) *liabilityv1.Liabi
 	return &liabilityv1.LiabilityTerms{
 		TeamId:         t.TeamID,
 		CounterpartyId: t.CounterpartyID,
-		HandlingFee:    t.HandlingFee,
 		CreditLimit:    t.CreditLimit,
 	}
 }

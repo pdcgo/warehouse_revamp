@@ -9,7 +9,6 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbtarget"
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
-	warehouse_v1 "github.com/pdcgo/warehouse_revamp/backend/services/warehouse_service/warehouse_v1"
 )
 
 // San is what every command is handed: the wired dependencies, already pointed at the database
@@ -24,9 +23,6 @@ type San struct {
 	// supplier_service's fold, for `supplier backfill-figures` (past-accepts-are-backfilled-once).
 	suppliers *supplier_v1.Service
 
-	// warehouse_service's fee writes, for `warehouse carry-over-fees` (the-flat-rate-is-dropped-last, step 2).
-	warehouses *warehouse_v1.Service
-
 	// target is the human label of the chosen database ("Database Local", …). Every command
 	// prints it, so the record of what happened always says WHERE it happened.
 	target string
@@ -36,9 +32,8 @@ func NewSan(
 	db *gorm.DB,
 	users *user_v1.Service,
 	suppliers *supplier_v1.Service,
-	warehouses *warehouse_v1.Service,
 ) *San {
-	return &San{db: db, users: users, suppliers: suppliers, warehouses: warehouses}
+	return &San{db: db, users: users, suppliers: suppliers}
 }
 
 // Close releases the pool. A CLI exits soon anyway, but a command that has finished should not be

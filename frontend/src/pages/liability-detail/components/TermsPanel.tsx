@@ -19,7 +19,6 @@ import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { canSetLiabilityTerms } from "../../../lib/roles";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
-import { formatRupiah } from "../../../lib/money";
 // ⚠ BOTH ARE DOMAIN COMPONENTS NOW (features/liability), not this page's. The default-terms dialog
 // on `/liability` is their second importer — the-default-terms-row-is-a-dialog-on-the-list — and
 // CLAUDE.md's placement rule is HOW MANY PAGES USE IT, so they moved the moment that landed.
@@ -157,19 +156,6 @@ export function TermsPanel({
               debt={debt}
               testId="terms-panel-meter"
             />
-          </Stat.Root>
-
-          <Stat.Root>
-            <Stat.Label>{t("terms.handlingFee")}</Stat.Label>
-            <Stat.ValueText data-testid="terms-panel-fee">
-              {effective && effective.handlingFee > 0n ? (
-                formatRupiah(effective.handlingFee)
-              ) : (
-                <Text as="span" color="fg.subtle">
-                  {t("terms.chargesNothing")}
-                </Text>
-              )}
-            </Stat.ValueText>
           </Stat.Root>
 
           {/* ⛔ THE CROSS-PRODUCT MARKUP IS NOT SHOWN HERE ANY MORE (owner). It belongs to the

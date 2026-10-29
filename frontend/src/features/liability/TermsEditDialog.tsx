@@ -83,7 +83,6 @@ export function TermsEditDialog({
   const [counterpartyId, setCounterpartyId] = useState<string>("0");
   const [limitMode, setLimitMode] = useState<LimitState>("unlimited");
   const [limit, setLimit] = useState("");
-  const [handlingFee, setHandlingFee] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -99,14 +98,12 @@ export function TermsEditDialog({
       setCounterpartyId(editing.counterpartyId.toString());
       setLimitMode(limitStateOf(editing.creditLimit));
       setLimit(editing.creditLimit && editing.creditLimit > 0n ? editing.creditLimit.toString() : "");
-      setHandlingFee(editing.handlingFee > 0n ? editing.handlingFee.toString() : "");
       return;
     }
 
     setCounterpartyId(fixedCounterpartyId?.toString() ?? options[0]?.id.toString() ?? "0");
     setLimitMode("unlimited");
     setLimit("");
-    setHandlingFee("");
   }, [open, editing, options, fixedCounterpartyId]);
 
   const busy = setTerms.isPending;
@@ -127,7 +124,8 @@ export function TermsEditDialog({
       await setTerms.mutateAsync({
         teamId,
         counterpartyId: BigInt(counterpartyId),
-        handlingFee: BigInt(handlingFee || "0"),
+        // No fee rides along any more: the warehouse's fee is warehouse_service's, frozen on each order
+        // (the-flat-rate-is-dropped-last, step 5).
         // No markup rides along any more: the column is gone, and the product fee is the order lines' frozen totals,
         // priced at each product's own `cross_markup_bps` (the-ledger-charges-the-frozen-line-total).
         creditLimit,
@@ -217,19 +215,6 @@ export function TermsEditDialog({
                     )}
 
                     <Field.HelperText>{t("terms.limitHelp")}</Field.HelperText>
-                  </Field.Root>
-
-                  <Field.Root>
-                    <Field.Label>{t("terms.handlingFee")}</Field.Label>
-                    <CurrencyInput
-                      value={handlingFee}
-                      onChange={setHandlingFee}
-                      disabled={busy}
-                      data-testid="terms-handling-fee"
-                    />
-                    {/* Nothing configured means CHARGE NOTHING — a warehouse that has set no rate is
-                        not silently billing anybody. */}
-                    <Field.HelperText>{t("terms.handlingFeeHelp")}</Field.HelperText>
                   </Field.Root>
 
                   {/* ⛔ THE CROSS-PRODUCT MARKUP IS NOT A TERM (owner): it is a property of the

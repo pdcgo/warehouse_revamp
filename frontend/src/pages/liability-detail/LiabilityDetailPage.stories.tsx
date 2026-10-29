@@ -49,7 +49,7 @@ export const TheWarehouseAdminSetsNoTerms: Story = {
     await waitFor(() => expect(canvas.getByTestId("liability-detail-page")).toBeInTheDocument(), { timeout: 3000 });
     await userEvent.click(canvas.getByTestId("liability-detail-tab-terms"));
 
-    await waitFor(() => expect(canvas.getByTestId("terms-panel-fee")).toHaveTextContent("30.000"), { timeout: 3000 });
+    await waitFor(() => expect(canvas.getByTestId("terms-panel-meter")).toBeInTheDocument(), { timeout: 3000 });
     await expect(canvas.queryByTestId("terms-edit")).toBeNull();
     await expect(canvas.queryByTestId("terms-delete")).toBeNull();
   },
@@ -136,8 +136,9 @@ export const TheTermsTabSetsThisPairsLimit: Story = {
       timeout: 3000,
     });
 
-    // Toko Melati has its OWN row: a 30.000 fee, not the default's 25.000.
-    await expect(canvas.getByTestId("terms-panel-fee")).toHaveTextContent("30.000");
+    // ⛔ AND NO FLAT FEE. The warehouse's fee is warehouse_service's, frozen on each order — Credit Terms is the
+    // limit alone since step 5 of the-flat-rate-is-dropped-last.
+    await expect(canvas.queryByTestId("terms-panel-fee")).not.toBeInTheDocument();
 
     // ⛔ AND NO MARKUP. The cross-product markup is the PRODUCT's (owner) — `cross_markup_bps` in
     // product_service — so a credit-terms panel must not present it as a property of this pair.

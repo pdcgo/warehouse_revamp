@@ -18,7 +18,6 @@ func putTerms(
 	t *testing.T,
 	svc *liability_v1.Service,
 	teamID, counterpartyID uint64,
-	handlingFee int64,
 	limit *int64,
 ) *liabilityv1.LiabilityTerms {
 	t.Helper()
@@ -27,7 +26,6 @@ func putTerms(
 		connect.NewRequest(&liabilityv1.LiabilityTermsSetRequest{
 			TeamId:         teamID,
 			CounterpartyId: counterpartyID,
-			HandlingFee:    handlingFee,
 			CreditLimit:    limit,
 		}))
 	if err != nil {
@@ -39,18 +37,12 @@ func putTerms(
 
 func rupiah(v int64) *int64 { return &v }
 
-// THE RATE EXISTS ONLY IF SOMEBODY CAN WRITE IT. `termsFor` has read this table since #186, but
-// until this RPC there was no way to put a row in it — so every handling fee in the system was
-// silently 0. This is the test that the write path is real.
-func TestTermsSet_WritesARateTheFeesCanRead(t *testing.T) {
+// THE LIMIT EXISTS ONLY IF SOMEBODY CAN WRITE IT — the test that the write path is real.
+func TestTermsSet_WritesTheLimit(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	got := putTerms(t, svc, warehouse, selling, 12000, rupiah(50_000_000))
-
-	if got.GetHandlingFee() != 12000 {
-		t.Fatalf("handling_fee = %d, want 12000", got.GetHandlingFee())
-	}
+	got := putTerms(t, svc, warehouse, selling, rupiah(50_000_000))
 
 	if got.GetCreditLimit() != 50_000_000 {
 		t.Fatalf("credit_limit = %d, want 50000000", got.GetCreditLimit())
@@ -65,12 +57,12 @@ func TestTermsSet_AbsentLimitIsUnlimitedAndZeroIsNoCredit(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	unlimited := putTerms(t, svc, warehouse, selling, 0, nil)
+	unlimited := putTerms(t, svc, warehouse, selling, nil)
 	if unlimited.CreditLimit != nil {
 		t.Fatalf("an omitted limit stored %d, want ABSENT (unlimited)", unlimited.GetCreditLimit())
 	}
 
-	frozen := putTerms(t, svc, warehouse, selling, 0, rupiah(0))
+	frozen := putTerms(t, svc, warehouse, selling, rupiah(0))
 	if frozen.CreditLimit == nil {
 		t.Fatal("a limit of 0 stored as ABSENT — that grants unlimited credit to a frozen team")
 	}
@@ -86,12 +78,11 @@ func TestTermsSet_IsAnUpsert(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, rupiah(50_000_000))
-	got := putTerms(t, svc, warehouse, selling, 15000, rupiah(80_000_000))
+	putTerms(t, svc, warehouse, selling, rupiah(50_000_000))
+	got := putTerms(t, svc, warehouse, selling, rupiah(80_000_000))
 
-	if got.GetHandlingFee() != 15000 || got.GetCreditLimit() != 80_000_000 {
-		t.Fatalf("after re-set: fee = %d, limit = %d — want 15000 / 80000000",
-			got.GetHandlingFee(), got.GetCreditLimit())
+	if got.GetCreditLimit() != 80_000_000 {
+		t.Fatalf("after re-set: limit = %d — want 80000000", got.GetCreditLimit())
 	}
 
 	var rows int64
@@ -108,23 +99,18 @@ func TestTermsSet_IsAnUpsert(t *testing.T) {
 	}
 }
 
-// LIFTING A LIMIT MUST BE POSSIBLE WITHOUT DELETING THE FEES. Re-setting with the limit omitted
+// LIFTING A LIMIT MUST BE POSSIBLE WITHOUT DELETING THE ROW. Re-setting with the limit omitted
 // clears it back to unlimited; COALESCE-ing to the stored value would make a limit permanent once set.
 func TestTermsSet_OmittingTheLimitClearsIt(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, rupiah(50_000_000))
-	got := putTerms(t, svc, warehouse, selling, 12000, nil)
+	putTerms(t, svc, warehouse, selling, rupiah(50_000_000))
+	got := putTerms(t, svc, warehouse, selling, nil)
 
 	if got.CreditLimit != nil {
 		t.Fatalf("limit = %d after omitting it, want ABSENT — a limit cannot be lifted",
 			got.GetCreditLimit())
-	}
-
-	if got.GetHandlingFee() != 12000 {
-		t.Fatalf("handling_fee = %d, want 12000 — clearing the limit must not clear the fees",
-			got.GetHandlingFee())
 	}
 }
 
@@ -134,14 +120,14 @@ func TestTermsSet_CounterpartyZeroWritesTheDefaultRow(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	got := putTerms(t, svc, warehouse, 0, 9000, nil)
+	got := putTerms(t, svc, warehouse, 0, rupiah(10_000_000))
 
 	if got.GetCounterpartyId() != 0 {
 		t.Fatalf("counterparty_id = %d, want 0 (the default row)", got.GetCounterpartyId())
 	}
 
-	if got.GetHandlingFee() != 9000 {
-		t.Fatalf("default handling_fee = %d, want 9000", got.GetHandlingFee())
+	if got.GetCreditLimit() != 10_000_000 {
+		t.Fatalf("default credit_limit = %d, want 10000000", got.GetCreditLimit())
 	}
 }
 
@@ -172,7 +158,7 @@ func TestTermsSet_IsDirectional(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, nil)
+	putTerms(t, svc, warehouse, selling, nil)
 
 	var reverse int64
 

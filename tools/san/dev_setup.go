@@ -164,7 +164,7 @@ func readDevSeeds() (devSeeds, error) {
 // setupDatabase is every data step of `dev setup`: the schema first, then the rows that need it.
 //
 // Each step is the SAME function its own command runs — `migrate up-all`, `supplier move`, `supplier backfill-figures`, `seed dev`,
-// `warehouse carry-over-fees`, `seed categories`, `region load-seed` — so setup cannot drift from doing them one at a time.
+// `seed categories`, `region load-seed` — so setup cannot drift from doing them one at a time.
 func setupDatabase(ctx context.Context, db *sql.DB, target, password string, seeds devSeeds) error {
 	fmt.Println("→ migrate up-all")
 
@@ -194,16 +194,6 @@ func setupDatabase(ctx context.Context, db *sql.DB, target, password string, see
 	fmt.Println("→ seed dev")
 
 	err = seedDev(ctx, db, target, password)
-	if err != nil {
-		return err
-	}
-
-	// Every warehouse's default flat fee as its rate (the-flat-rate-is-dropped-last, step 2). After seed dev, so a fresh
-	// database's Dev Warehouse exists — and seed dev cannot pre-empt it: Dev Warehouse's fixture rate is only written
-	// when it has no flat fee to carry. Never replaces a rate, so a second setup says "0 carried over".
-	fmt.Println("→ warehouse carry-over-fees")
-
-	err = carryOverFeesOn(ctx, db, target)
 	if err != nil {
 		return err
 	}

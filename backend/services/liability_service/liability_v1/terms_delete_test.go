@@ -25,13 +25,13 @@ func deleteTerms(t *testing.T, svc *liability_v1.Service, teamID, counterpartyID
 }
 
 // DELETING AN OVERRIDE DROPS THE DEBTOR BACK TO THE DEFAULT ROW. That is the point of having a
-// default at all — removing a team's special rate must not leave it uncharged.
+// default at all — removing a team's own limit must leave the default's, not none.
 func TestTermsDelete_FallsBackToTheDefaultRow(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, 0, 9000, nil)
-	putTerms(t, svc, warehouse, selling, 12000, nil)
+	putTerms(t, svc, warehouse, 0, rupiah(10_000_000))
+	putTerms(t, svc, warehouse, selling, nil)
 
 	deleteTerms(t, svc, warehouse, selling)
 
@@ -41,8 +41,8 @@ func TestTermsDelete_FallsBackToTheDefaultRow(t *testing.T) {
 		t.Fatal("the override survived the delete")
 	}
 
-	if rows[0].GetHandlingFee() != 9000 {
-		t.Fatalf("default handling_fee = %d, want 9000 — the default must survive", rows[0].GetHandlingFee())
+	if rows[0].GetCreditLimit() != 10_000_000 {
+		t.Fatalf("default credit_limit = %d, want 10000000 — the default must survive", rows[0].GetCreditLimit())
 	}
 }
 
@@ -52,7 +52,7 @@ func TestTermsDelete_RestoresUnlimitedCredit(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 0, rupiah(0))
+	putTerms(t, svc, warehouse, selling, rupiah(0))
 
 	deleteTerms(t, svc, warehouse, selling)
 
@@ -68,7 +68,7 @@ func TestTermsDelete_IsIdempotent(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, nil)
+	putTerms(t, svc, warehouse, selling, nil)
 
 	deleteTerms(t, svc, warehouse, selling)
 	deleteTerms(t, svc, warehouse, selling)
@@ -81,7 +81,7 @@ func TestTermsDelete_LeavesPostedEntriesAlone(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, nil)
+	putTerms(t, svc, warehouse, selling, nil)
 
 	_, err := svc.PostEntry(context.Background(), db, codFee(15000, 77))
 	if err != nil {

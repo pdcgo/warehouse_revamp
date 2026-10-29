@@ -1350,7 +1350,6 @@ erDiagram
         bigserial   id                PK
         bigint      team_id           "the CREDITOR who set these terms"
         bigint      counterparty_id   "the debtor — 0 IS THE DEFAULT ROW for every other team"
-        bigint      handling_fee      "NOT READ since step 4 of the-flat-rate-is-dropped-last, dropped at step 5"
         bigint      credit_limit      "NULL = UNLIMITED, 0 = no credit at all"
         timestamptz created_at
         timestamptz updated_at
@@ -1404,8 +1403,8 @@ erDiagram
         bigint      actor_id              "WHO changed it — opaque user id, 0 when unattended"
         bigint      old_credit_limit      "NULLABLE — NULL unlimited, 0 frozen, n a ceiling"
         bigint      new_credit_limit      "NULLABLE, for the same three-way reason"
-        bigint      old_handling_fee
-        bigint      new_handling_fee
+        bigint      old_handling_fee      "HISTORY - the flat fee until 00011 dropped it, never written since"
+        bigint      new_handling_fee      "HISTORY, as old_handling_fee"
         text        reason                "required by the app when override is true"
         boolean     override              "the actor held no role in the creditor team"
         timestamptz changed_at
@@ -1451,9 +1450,7 @@ erDiagram
     days" is actionable in a way a balance alone is not). A per-entry FIFO age would be truer under
     partial payments and needs an allocation model — which payment settled which entry — that nothing
     here has; see §5.3 of the brainstorming doc.
-- **`liability_terms`** — a **creditor's terms toward one debtor** (#186/#189): what it charges them
-  and how far it will let them run. One row rather than three tables because these are one
-  relationship — the warehouse that charges you 12k an order is the warehouse that caps you at 50m.
+- **`liability_terms`** — a **creditor's terms toward one debtor** (#186/#189): how far it will let them run.
   - **`counterparty_id = 0` IS the default row**, applying to every team without one of their own.
     That is the whole override mechanism, and it is why 0 is not a valid team id anywhere else. The
     lookup is "this debtor's row, else the default, else nothing".
@@ -1465,8 +1462,13 @@ erDiagram
     The markup is the product's, applied by inventory's take and frozen on `order_items.total`; the product fee
     posts those totals and reads nothing here. `liability_terms_non_negative` was rebuilt over the fee and the limit,
     since dropping the column would have dropped the whole CHECK.
+  - ⛔ **No fee** (`00011` dropped `handling_fee` — step 5 of
+    [the-flat-rate-is-dropped-last](business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)). The
+    warehouse's fee is warehouse_service's rate, frozen on `orders.warehouse_fee` and posted from `OrderPlaced`.
+    `liability_terms_non_negative` is rebuilt again, over the limit alone. The log keeps `old_/new_handling_fee` as
+    history: unlike the markup's, they recorded real money.
   - **The two fees default differently, deliberately.** An order with no frozen `warehouse_fee` charges the warehouse
-    nothing — it is a *price*, frozen on the order, and liability guesses none. `handling_fee` is not read since step 4. The product fee
+    nothing — it is a *price*, frozen on the order, and liability guesses none. The product fee
     needs no row at all: it is a *cost transfer* — the goods left the owner's stock and do not come back — and
     it is the lines' frozen totals. See `docs/services/liability_service/rpc.md`.
   - Created with #186 rather than #189, because the order fees have to READ it before anything writes
@@ -2072,5 +2074,6 @@ erDiagram
   - **`UNIQUE (warehouse_id)`** makes `WarehouseFeeSet` one `INSERT … ON CONFLICT DO UPDATE`, so two managers saving at once
     leave one row.
   - **Money is `DOUBLE PRECISION`** ([rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point)).
-  - **Steps 1–4 of five are built** ([the-flat-rate-is-dropped-last](business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)):
-    an order freezes this table's fee and the ledger posts what the order froze. Step 5 drops `liability_terms.handling_fee`.
+  - **All five steps are built** ([the-flat-rate-is-dropped-last](business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)):
+    an order freezes this table's fee and the ledger posts what the order froze; step 5 dropped
+    `liability_terms.handling_fee` (liability `00011`). This table is the only fee rate there is.

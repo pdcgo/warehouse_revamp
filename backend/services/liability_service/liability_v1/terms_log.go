@@ -55,7 +55,6 @@ func recordTermsChange(
 
 	if before != nil {
 		entry.OldCreditLimit = before.CreditLimit
-		entry.OldHandlingFee = before.HandlingFee
 	}
 
 	// `after` is nil for a DELETE, and every "new" value then stays at its zero — except the limit,
@@ -64,7 +63,6 @@ func recordTermsChange(
 	// Recording 0 there would say the team was frozen by the act that un-restricted them.
 	if after != nil {
 		entry.NewCreditLimit = after.CreditLimit
-		entry.NewHandlingFee = after.HandlingFee
 	}
 
 	return tx.Create(&entry).Error

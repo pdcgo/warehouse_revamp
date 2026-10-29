@@ -48,7 +48,7 @@ func TestTermsList_IsKeyedByCounterparty(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, rupiah(50_000_000))
+	putTerms(t, svc, warehouse, selling, rupiah(50_000_000))
 
 	rows := termsRows(termsList(t, svc, warehouse))
 
@@ -57,8 +57,8 @@ func TestTermsList_IsKeyedByCounterparty(t *testing.T) {
 		t.Fatalf("no row keyed by counterparty %d, got keys %v", selling, rows)
 	}
 
-	if row.GetHandlingFee() != 12000 {
-		t.Fatalf("handling_fee = %d, want 12000", row.GetHandlingFee())
+	if row.GetCreditLimit() != 50_000_000 {
+		t.Fatalf("credit_limit = %d, want 50000000", row.GetCreditLimit())
 	}
 }
 
@@ -69,8 +69,8 @@ func TestTermsList_DefaultRowComesFirst(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, nil)
-	putTerms(t, svc, warehouse, 0, 9000, nil)
+	putTerms(t, svc, warehouse, selling, nil)
+	putTerms(t, svc, warehouse, 0, nil)
 
 	ids := termsList(t, svc, warehouse).GetIds()
 
@@ -90,8 +90,8 @@ func TestTermsList_UnlimitedStaysAbsent(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, nil)
-	putTerms(t, svc, warehouse, productOwner, 0, rupiah(0))
+	putTerms(t, svc, warehouse, selling, nil)
+	putTerms(t, svc, warehouse, productOwner, rupiah(0))
 
 	rows := termsRows(termsList(t, svc, warehouse))
 
@@ -110,7 +110,7 @@ func TestTermsList_ReadsOnlyYourOwnTerms(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 12000, nil)
+	putTerms(t, svc, warehouse, selling, nil)
 
 	msg := termsList(t, svc, selling)
 

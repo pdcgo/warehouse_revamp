@@ -2898,8 +2898,6 @@
     "limitFrozen": "Dibekukan — tanpa kredit",
     "limitCapped": "Batas sebesar",
     "limitHelp": "Tanpa batas dan Dibekukan itu berlawanan, bukan bertingkat. Dibekukan menolak order berikutnya berapa pun saldonya.",
-    "handlingFee": "Biaya penanganan",
-    "handlingFeeHelp": "Tidak ditagihkan lagi — setiap pesanan kini membawa biaya gudangnya sendiri (Pengaturan → Biaya Gudang). Kolom ini akan dihapus.",
     "reason": "Alasan",
     "reasonRequired": "Wajib — Anda mengubah ketentuan tim lain.",
     "reasonOptional": "Opsional. Tetap dicatat di log perubahan.",
@@ -2914,7 +2912,6 @@
       "confirm": "Hapus"
     },
     "empty": "Belum ada ketentuan. Semua tim yang Anda layani tanpa batas dan tidak ditagih.",
-    "chargesNothing": "—",
     "usedOf": "{{used}} dari {{limit}}",
     "warnNear": "Mendekati batas",
     "warnOver": "Melewati batas",

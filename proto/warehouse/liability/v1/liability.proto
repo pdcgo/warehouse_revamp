@@ -71,8 +71,9 @@ service LiabilityPaymentService {
   rpc LiabilityPaymentList(LiabilityPaymentListRequest) returns (LiabilityPaymentListResponse);
 }
 
-// A creditor's own terms toward its debtors (#189): the handling fee it charges, and how much it will let a team
-// owe it. The markup on its products is not a term — it is the product's (the-ledger-charges-the-frozen-line-total).
+// A creditor's own terms toward its debtors (#189): how much it will let a team owe it. The fee a warehouse charges per
+// order is not a term — it is warehouse_service's, frozen on each order (the-flat-rate-is-dropped-last) — and neither is
+// the markup on its products, which is the product's (the-ledger-charges-the-frozen-line-total).
 service LiabilityTermsService {
   rpc LiabilityTermsList(LiabilityTermsListRequest) returns (LiabilityTermsListResponse);
   rpc LiabilityTermsSet(LiabilityTermsSetRequest) returns (LiabilityTermsSetResponse);
@@ -870,11 +871,7 @@ message LiabilityPaymentListResponse {
   warehouse.common.v1.PageInfo page_info = 3;
 }
 
-// A CREDITOR'S TERMS toward one debtor — what it charges and how far it will let them run (#189).
-//
-// One row covers the fee and the limit because they are one relationship: the warehouse that
-// charges you 12k an order is the warehouse that caps you at 50m. Splitting them would mean two
-// screens and two chances to configure half of it.
+// A CREDITOR'S TERMS toward one debtor — how far it will let them run (#189).
 message LiabilityTerms {
   // The creditor — the team that SETS these terms.
   uint64 team_id = 1;
@@ -883,9 +880,11 @@ message LiabilityTerms {
   // own. That is the whole override mechanism, and it is why 0 is not a valid team id anywhere else.
   uint64 counterparty_id = 2;
 
-  // FLAT PER ORDER, whole rupiah, charged by a warehouse for fulfilling it. NO RATE CONFIGURED MEANS
-  // CHARGE NOTHING — a warehouse that has set nothing is not silently billing anybody.
-  int64 handling_fee = 3 [(buf.validate.field).int64.gte = 0];
+  // ⛔ `handling_fee` WAS HERE — the flat per-order fee a warehouse charged. Dropped at step 5 of
+  // the-flat-rate-is-dropped-last: the fee is warehouse_service's rate, frozen on each order and posted from
+  // `OrderPlaced` (the-event-carries-the-warehouse-fee). Reserved so the number never comes back meaning something else.
+  reserved 3;
+  reserved "handling_fee";
 
   // ⛔ `product_markup_bp` WAS HERE — the markup a team took when another team sold its product. Dropped
   // (the-ledger-charges-the-frozen-line-total): the markup is the PRODUCT's, `products.cross_markup_bps`, applied once
@@ -974,7 +973,9 @@ message LiabilityTermsSetRequest {
   // 0 sets the DEFAULT row — see LiabilityTerms.counterparty_id.
   uint64 counterparty_id = 2;
 
-  int64 handling_fee = 3 [(buf.validate.field).int64.gte = 0];
+  // ⛔ handling_fee — dropped with LiabilityTerms.handling_fee (the-flat-rate-is-dropped-last, step 5).
+  reserved 3;
+  reserved "handling_fee";
   // ⛔ product_markup_bp — dropped with LiabilityTerms.product_markup_bp (the-ledger-charges-the-frozen-line-total).
   reserved 4;
   reserved "product_markup_bp";
@@ -1046,8 +1047,8 @@ message LiabilityTermsChange {
   optional int64 old_credit_limit = 4;
   optional int64 new_credit_limit = 5;
 
-  // The handling fee, before and after. No optional here: 0 means "charge nothing", and there is no third state
-  // to lose.
+  // The handling fee, before and after — HISTORY ONLY. The term charged until step 5 of the-flat-rate-is-dropped-last
+  // dropped it, and a change made since reads 0 → 0. No optional here: 0 meant "charge nothing".
   int64 old_handling_fee = 6;
   int64 new_handling_fee = 7;
 

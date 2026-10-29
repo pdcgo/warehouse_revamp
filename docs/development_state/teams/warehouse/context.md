@@ -26,7 +26,7 @@ cd frontend && npm run test:stories -- src/pages/settings
 
 | step | what exists |
 | --- | --- |
-| 2 | `san warehouse carry-over-fees` (and a `dev setup` step): each WAREHOUSE team's default `liability_terms` row → `0%`, floor = cap = its `handling_fee` (a 0 → `0%`, no floor, no cap); an existing rate is never replaced; idempotent. `liability_v1.DefaultHandlingFees` + `team_v1.WarehouseTeamIDs` read, `warehouse_v1.CarryOverFlatFees` writes. `seed dev` gives Dev Warehouse its own flat fee, or 2.5% / 2.000 / 20.000 without one ([docs/tools/san.md](../../../tools/san.md)) |
+| 2 | ⛔ *removed at step 5* — `san warehouse carry-over-fees` (and a `dev setup` step): each WAREHOUSE team's default `liability_terms` row → `0%`, floor = cap = its `handling_fee` (a 0 → `0%`, no floor, no cap); an existing rate is never replaced; idempotent. `liability_v1.DefaultHandlingFees` + `team_v1.WarehouseTeamIDs` read, `warehouse_v1.CarryOverFlatFees` writes. `seed dev` gives Dev Warehouse its own flat fee, or 2.5% / 2.000 / 20.000 without one ([docs/tools/san.md](../../../tools/san.md)) |
 | 3 | `placeOrder` (OrderCreate, which a draft's Promote now is) calls `WarehouseFeeCalculate` in-process on `cogs`, before its transaction, and freezes `orders.warehouse_fee` (selling `00019`); a warehouse with no rate is refused before any stock moves. The order form and the draft page price it live (`useWarehouseFeeQuote`) and keep Save / Promote off on a refusal. The Settings card's copy says new orders are priced at the fee while the ledger still posts the flat one |
 
 ~~⚠ **The window between 3 and 4 is real.**~~ Closed by step 4 below.
@@ -57,7 +57,16 @@ warehouse there refuses orders until it sets one on Settings.
 | the warehouse profile | does `warehouse_infos` move from team_service into this service — [does-the-warehouse-profile-move-out-of-team-service](../../../business/teams/warehouse/context_clarify.md#does-the-warehouse-profile-move-out-of-team-service) |
 | rounding | when a frozen fee is rounded to whole rupiah — [rupiah-is-floating-point](../../../business/order/context_decision.md#rupiah-is-floating-point)'s mitigations are not decided |
 
-**Next agent:** step 5 — drop `liability_terms.handling_fee` (a liability migration, the proto fields reserved, the Credit
-Terms field). ⚠ Step 2's carry-over (`san warehouse carry-over-fees`, a `dev setup` step, `liability_v1.DefaultHandlingFees`)
-reads that column, so it goes with it, and [docs/tools/san.md](../../../tools/san.md) with it. The terms log keeps
-`old_/new_handling_fee` as history. Each step ships on its own commit.
+## Step 5 — built 2026-10-29, the rollout is complete
+
+| | |
+| --- | --- |
+| liability | `00011` drops `liability_terms.handling_fee` and rebuilds the non-negative CHECK over `credit_limit` alone (Down brings the column back at 0). Proto field 3 reserved on `LiabilityTerms` and `LiabilityTermsSetRequest`; `LiabilityTermsChange.old_/new_handling_fee` kept as history |
+| removed with it | `san warehouse carry-over-fees` and its `dev setup` step (the `san warehouse` group is gone), `liability_v1.DefaultHandlingFees`, `team_v1.WarehouseTeamIDs`, `warehouse_v1.CarryOverFlatFees` (its `insertUnlessSet` moved to `warehouse_fee_set_if_absent.go`). `San` lost its `warehouses` dependency — Wire regenerated |
+| seed | `seed dev` writes Dev Warehouse's worked example (2.5% / 2.000 / 20.000) only while it has no rate |
+| screens | Credit Terms: the limit only. The pair detail's terms panel: the meter only |
+| ⚠ | a database that never ran the carry-over loses its flat fees at `00011`; its warehouses take no orders until each sets a rate on Settings |
+| dev DB | ⚠ **not migrated by this pass** — the owner's review database. `go run ./tools/san migrate up --service liability_service` applies `00011`; the code runs against it either way, since nothing writes the column |
+
+**Next agent:** the fee rollout is done. Open in this context: the warehouse profile's home and when a frozen fee is
+rounded (above).

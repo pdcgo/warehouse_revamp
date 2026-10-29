@@ -28,7 +28,8 @@ type LiabilityTermsLog struct {
 	OldCreditLimit *int64
 	NewCreditLimit *int64
 
-	// No third state here: 0 means "charge nothing".
+	// HISTORY ONLY: the flat fee a term charged until step 5 of the-flat-rate-is-dropped-last dropped it (00011). Never
+	// written since, so a change after that reads 0 → 0. No third state: 0 meant "charge nothing".
 	OldHandlingFee int64
 	NewHandlingFee int64
 

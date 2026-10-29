@@ -2912,8 +2912,6 @@
     "limitFrozen": "Frozen — no credit",
     "limitCapped": "Limit of",
     "limitHelp": "Unlimited and Frozen are opposites, not degrees. Frozen refuses the next order whatever the balance.",
-    "handlingFee": "Handling fee",
-    "handlingFeeHelp": "No longer charged — each order now carries its warehouse’s own fee (Settings → Warehouse Fee). This field is removed next.",
     "reason": "Reason",
     "reasonRequired": "Required — you are changing another team's terms.",
     "reasonOptional": "Optional. Recorded in the change log either way.",
@@ -2928,7 +2926,6 @@
       "confirm": "Remove"
     },
     "empty": "No terms set. Every team you trade with is unlimited and charged nothing.",
-    "chargesNothing": "—",
     "usedOf": "{{used}} of {{limit}}",
     "warnNear": "Near limit",
     "warnOver": "Over limit",

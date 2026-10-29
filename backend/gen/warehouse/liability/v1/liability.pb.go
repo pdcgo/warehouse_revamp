@@ -3205,11 +3205,7 @@ func (x *LiabilityPaymentListResponse) GetPageInfo() *v1.PageInfo {
 	return nil
 }
 
-// A CREDITOR'S TERMS toward one debtor — what it charges and how far it will let them run (#189).
-//
-// One row covers the fee and the limit because they are one relationship: the warehouse that
-// charges you 12k an order is the warehouse that caps you at 50m. Splitting them would mean two
-// screens and two chances to configure half of it.
+// A CREDITOR'S TERMS toward one debtor — how far it will let them run (#189).
 type LiabilityTerms struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The creditor — the team that SETS these terms.
@@ -3217,9 +3213,6 @@ type LiabilityTerms struct {
 	// The debtor they apply to. ⚠ 0 IS THE DEFAULT ROW, applying to every team without one of their
 	// own. That is the whole override mechanism, and it is why 0 is not a valid team id anywhere else.
 	CounterpartyId uint64 `protobuf:"varint,2,opt,name=counterparty_id,json=counterpartyId,proto3" json:"counterparty_id,omitempty"`
-	// FLAT PER ORDER, whole rupiah, charged by a warehouse for fulfilling it. NO RATE CONFIGURED MEANS
-	// CHARGE NOTHING — a warehouse that has set nothing is not silently billing anybody.
-	HandlingFee int64 `protobuf:"varint,3,opt,name=handling_fee,json=handlingFee,proto3" json:"handling_fee,omitempty"`
 	// How much this debtor may owe before their next order is refused.
 	//
 	// ⚠ ABSENT MEANS UNLIMITED. `0` MEANS NO CREDIT AT ALL. They are opposites, and encoding unlimited
@@ -3275,13 +3268,6 @@ func (x *LiabilityTerms) GetTeamId() uint64 {
 func (x *LiabilityTerms) GetCounterpartyId() uint64 {
 	if x != nil {
 		return x.CounterpartyId
-	}
-	return 0
-}
-
-func (x *LiabilityTerms) GetHandlingFee() int64 {
-	if x != nil {
-		return x.HandlingFee
 	}
 	return 0
 }
@@ -3546,7 +3532,6 @@ type LiabilityTermsSetRequest struct {
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// 0 sets the DEFAULT row — see LiabilityTerms.counterparty_id.
 	CounterpartyId uint64 `protobuf:"varint,2,opt,name=counterparty_id,json=counterpartyId,proto3" json:"counterparty_id,omitempty"`
-	HandlingFee    int64  `protobuf:"varint,3,opt,name=handling_fee,json=handlingFee,proto3" json:"handling_fee,omitempty"`
 	// Omit for unlimited; send 0 to freeze this team's credit entirely.
 	CreditLimit *int64 `protobuf:"varint,5,opt,name=credit_limit,json=creditLimit,proto3,oneof" json:"credit_limit,omitempty"`
 	// WHY the change — required when the actor is not one of the creditor team's own people, optional
@@ -3600,13 +3585,6 @@ func (x *LiabilityTermsSetRequest) GetTeamId() uint64 {
 func (x *LiabilityTermsSetRequest) GetCounterpartyId() uint64 {
 	if x != nil {
 		return x.CounterpartyId
-	}
-	return 0
-}
-
-func (x *LiabilityTermsSetRequest) GetHandlingFee() int64 {
-	if x != nil {
-		return x.HandlingFee
 	}
 	return 0
 }
@@ -3788,8 +3766,8 @@ type LiabilityTermsChange struct {
 	// froze the team". The log has to be able to say which one happened.
 	OldCreditLimit *int64 `protobuf:"varint,4,opt,name=old_credit_limit,json=oldCreditLimit,proto3,oneof" json:"old_credit_limit,omitempty"`
 	NewCreditLimit *int64 `protobuf:"varint,5,opt,name=new_credit_limit,json=newCreditLimit,proto3,oneof" json:"new_credit_limit,omitempty"`
-	// The handling fee, before and after. No optional here: 0 means "charge nothing", and there is no third state
-	// to lose.
+	// The handling fee, before and after — HISTORY ONLY. The term charged until step 5 of the-flat-rate-is-dropped-last
+	// dropped it, and a change made since reads 0 → 0. No optional here: 0 meant "charge nothing".
 	OldHandlingFee int64  `protobuf:"varint,6,opt,name=old_handling_fee,json=oldHandlingFee,proto3" json:"old_handling_fee,omitempty"`
 	NewHandlingFee int64  `protobuf:"varint,7,opt,name=new_handling_fee,json=newHandlingFee,proto3" json:"new_handling_fee,omitempty"`
 	Reason         string `protobuf:"bytes,10,opt,name=reason,proto3" json:"reason,omitempty"`
@@ -4403,13 +4381,12 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x1cLiabilityPaymentListResponse\x12N\n" +
 	"\x05items\x18\x01 \x03(\v28.warehouse.liability.v1.LiabilityPaymentListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xd9\x01\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xc1\x01\n" +
 	"\x0eLiabilityTerms\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12'\n" +
-	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x12*\n" +
-	"\fhandling_fee\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\vhandlingFee\x12/\n" +
+	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x12/\n" +
 	"\fcredit_limit\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x00R\vcreditLimit\x88\x01\x01B\x0f\n" +
-	"\r_credit_limitJ\x04\b\x04\x10\x05R\x11product_markup_bp\"\xe9\x01\n" +
+	"\r_credit_limitJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\fhandling_feeR\x11product_markup_bp\"\xe9\x01\n" +
 	"\x19LiabilityTermsListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12U\n" +
 	"\fdata_request\x18\x02 \x03(\x0e22.warehouse.liability.v1.LiabilityTermsListDataTypeR\vdataRequest\x12A\n" +
@@ -4427,15 +4404,14 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x1aLiabilityTermsListResponse\x12L\n" +
 	"\x05items\x18\x01 \x03(\v26.warehouse.liability.v1.LiabilityTermsListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\x9f\x02\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\x87\x02\n" +
 	"\x18LiabilityTermsSetRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12'\n" +
-	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x12*\n" +
-	"\fhandling_fee\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\vhandlingFee\x12/\n" +
+	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x12/\n" +
 	"\fcredit_limit\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x00R\vcreditLimit\x88\x01\x01\x12 \n" +
 	"\x06reason\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x06reason:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x06B\x0f\n" +
-	"\r_credit_limitJ\x04\b\x04\x10\x05R\x11product_markup_bp\"Y\n" +
+	"\r_credit_limitJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\fhandling_feeR\x11product_markup_bp\"Y\n" +
 	"\x19LiabilityTermsSetResponse\x12<\n" +
 	"\x05terms\x18\x01 \x01(\v2&.warehouse.liability.v1.LiabilityTermsR\x05terms\"\x9b\x01\n" +
 	"\x1bLiabilityTermsDeleteRequest\x12$\n" +

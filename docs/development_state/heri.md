@@ -17,12 +17,13 @@ Users & Role System, Documents, region, shipping, expense.
 | **The marketplace order number is required** | on the form, on the draft page and on the server. The form no longer has Save as Draft; drafts arrive from the marketplace app |
 | **Every time is Jakarta time** | dates show in WIB wherever they are read, and table cells use the short form (`29 Okt 13:05`) |
 | **Edit Resi works** | the selling team changes the tracking number, the label file or both until the parcel is handed to the courier. Each change is a note on the order naming the old and the new |
-| **The warehouse fee is what gets charged** | the balance now charges each order the fee the warehouse priced it at, not the old flat fee from Credit Terms. The Credit Terms field says so; it is removed next |
+| **The warehouse fee is what gets charged** | the balance now charges each order the fee the warehouse priced it at, not the old flat fee from Credit Terms |
+| **Credit Terms is the limit only** | the old flat fee field is gone from Credit Terms and from the pair's terms tab — the warehouse fee rollout is finished. Past changes to the flat fee stay in the change log |
 
 **Checked:** unit tests, two people editing at once and an edit racing the handover (one result each time), 1 545 of
 1 546 component stories (the one is a known slow-machine flake), and the orders e2e.
 
-**Next:** the old flat-fee field is dropped (the fee rollout's last step), then the order figures on the analytic screen.
+**Next:** the order figures on the analytic screen.
 The order import waits on one export file from each marketplace you use.
 <sub>agent detail: [order/context.md](order/context.md) · [teams/warehouse/context.md](teams/warehouse/context.md)</sub>
 

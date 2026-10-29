@@ -1827,7 +1827,6 @@ export const transport = createRouterTransport(({ service }) => {
       const row = {
         teamId: req.teamId,
         counterpartyId: req.counterpartyId,
-        handlingFee: req.handlingFee,
         creditLimit: req.creditLimit,
         reason: req.reason,
       };

@@ -357,8 +357,7 @@ func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 		}
 	}
 
-	// Dev Warehouse's rate, through warehouse_service's own write — never replacing one, and never ahead of its real
-	// flat fee (see seedDevWarehouseFee).
+	// Dev Warehouse's rate, through warehouse_service's own write — never replacing one (see seedDevWarehouseFee).
 	gdb, err := gormOn(db)
 	if err != nil {
 		return err

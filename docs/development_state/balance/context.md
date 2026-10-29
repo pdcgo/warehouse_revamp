@@ -187,7 +187,7 @@ parked by the owner or waiting on an answer only they can give (HARD RULE 8):
 | a dispute mechanism | ⛔ **[balance Q5](../../business/balance/context_clarify.md#question)**, and it is now **#3 in [biggest_question.md](../../biggest_question.md)** — refusing `found` a handshake made dispute a team's only recourse against a charge asserted in the asserter's favour |
 | a chase instrument | [balance Q6](../../business/balance/context_clarify.md#question) — lowering the limit is still the only lever |
 | an `order_id` filter on the log | [balance Q9](../../business/balance/context_clarify.md#question) — recommended, not decided |
-| `handling_fee` → `order_fee` | [technical Q8](../../technical/balance/team_balance_design_clarify.md#question) — the terms screen says *Handling fee* for money the pair detail calls an *Order fee* |
+| ~~`handling_fee` → `order_fee`~~ | ✅ moot *(2026-10-29)*: liability `00011` dropped the column (step 5 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)), and Credit Terms no longer shows a fee |
 | `offset` as a payment method · goods repayment | [technical Q2](../../technical/balance/team_balance_design_clarify.md#question) · [balance Q3](../../business/balance/context_clarify.md#question) — one question wearing two hats: is a payment ever non-cash? |
 
 ## The next agent's first move

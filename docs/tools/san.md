@@ -84,7 +84,6 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
 | [`supplier move`](#supplier-move) | Copy inventory_service's suppliers and stores into supplier_service, ids kept. One-shot, safe to re-run |
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
-| [`warehouse carry-over-fees`](#warehouse-carry-over-fees) | Give each warehouse its default flat fee as its rate: 0%, floor = cap = the fee. Never replaces a rate — a second run carries nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
@@ -216,7 +215,7 @@ go run ./tools/san seed categories -f other.json
 | Sub-command | | |
 | --- | --- | --- |
 | `root` | Sets the root account's password | A migration (`00010`) gives root the **development** password `root1234` while it has none ([the-migration-writes-the-dev-root-password](../business/user/context_decision.md#the-migration-writes-the-dev-root-password)). It is public in this repository, so **a production database runs this right after its first migration** |
-| `dev` | Teams, several logins, and Dev Warehouse's fee | Development only. The fee is written only while Dev Warehouse has none: its default flat fee [carried over](#warehouse-carry-over-fees) when it has one, else the decisions' worked example — 2.5%, floor 2.000, cap 20.000 ([the-fee-has-a-floor-and-a-cap](../business/teams/warehouse/context_decision.md#the-fee-has-a-floor-and-a-cap)). Without a rate, a warehouse takes no orders ([a-warehouse-with-no-rate-takes-no-orders](../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)) |
+| `dev` | Teams, several logins, and Dev Warehouse's fee | Development only. The fee is written only while Dev Warehouse has none: the decisions' worked example — 2.5%, floor 2.000, cap 20.000 ([the-fee-has-a-floor-and-a-cap](../business/teams/warehouse/context_decision.md#the-fee-has-a-floor-and-a-cap)). Without a rate, a warehouse takes no orders ([a-warehouse-with-no-rate-takes-no-orders](../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)) |
 | `categories` | The product taxonomy from JSON | `-f` to point at another file |
 
 ---
@@ -300,16 +299,11 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | 5 | the suppliers inventory_service set aside, into supplier_service | [`supplier move`](#supplier-move) |
 | 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
 | 7 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller`, and Dev Warehouse's fee while it has none | [`seed dev`](#seed) |
-| 8 | each warehouse's default flat fee as its rate, never replacing one | [`warehouse carry-over-fees`](#warehouse-carry-over-fees) |
-| 9 | the product-category tree | [`seed categories`](#seed) |
-| 10 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
-| 11 | `npm install` in `frontend/` | |
+| 8 | the product-category tree | [`seed categories`](#seed) |
+| 9 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
+| 10 | `npm install` in `frontend/` | |
 
-⚠ **Step 7 never pre-empts step 8.** The carry-over never replaces a rate, so a fixture rate written first would beat
-Dev Warehouse's real flat fee for good. Seed dev therefore carries that flat fee itself when there is one, and writes
-the worked example only when there is none. Either order gives the same rates.
-
-Steps 3–10 call **the same function** as their own command, so setup cannot drift from running them
+Steps 3–9 call **the same function** as their own command, so setup cannot drift from running them
 one at a time. Steps 2 and 3 are the same ones [`dev run`](#dev-run) starts with — see
 [the emulator and its topics](#the-emulator-and-its-topics).
 
@@ -329,8 +323,7 @@ flowchart TD
     M --> SM["supplier move"]
     SM --> SB["supplier backfill-figures"]
     SB --> SD["seed dev"]
-    SD --> WC["warehouse carry-over-fees"]
-    WC --> SC["seed categories"]
+    SD --> SC["seed categories"]
     SC --> RG["region load-seed"]
     RG --> N["npm install"]
     N --> OK["✓ next: dev run, log in as dev"]
@@ -614,64 +607,11 @@ therefore refuses any start on or before the live fold's first day.
 
 ## `warehouse carry-over-fees`
 
-Gives each warehouse its **default flat fee** as its rate in warehouse_service — step 2 of
-[the-flat-rate-is-dropped-last](../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last). The
-flat fee carries over exactly ("today's flat fee" in
-[the-fee-has-a-floor-and-a-cap](../business/teams/warehouse/context_decision.md#the-fee-has-a-floor-and-a-cap)), so a
-seller on the default pays the same on the switch-over day. **Never replaces a rate**, so it is safe to run again: a
-second run carries nothing and says so. [`dev setup`](#dev-setup) runs it after `seed dev`.
-
-```sh
-go run ./tools/san warehouse carry-over-fees                     # prompts: Local or Production
-go run ./tools/san warehouse carry-over-fees --dsn "$DATABASE_URL"
-```
-
-| Flag | |
-| --- | --- |
-| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
-
-| `liability_terms` today | becomes, in `warehouse_fees` |
-| --- | --- |
-| a warehouse's default row (`counterparty_id = 0`), `handling_fee` 12.000 | `fee_percent` 0, `min_fee` 12.000, `max_fee` 12.000 — floor = cap is a flat fee |
-| a warehouse's default row, `handling_fee` 0 | `fee_percent` 0, `min_fee` 0, `max_fee` empty — charges nothing, and still takes orders. A cap of 0 is refused ([an-empty-cap-means-no-cap](../business/teams/warehouse/context_decision.md#an-empty-cap-means-no-cap)) |
-| any of those, where the warehouse **already has a rate** | nothing — the rate it set itself wins |
-| a seller's own row (`counterparty_id` ≠ 0) | nothing — no equivalent ([one-rate-per-warehouse](../business/teams/warehouse/context_decision.md#one-rate-per-warehouse)). That seller pays the warehouse's rate from the switch-over day |
-| a **selling** team's default row (its product markup) | nothing — not a warehouse fee |
-| a warehouse with no default row | nothing — it sets its own on its Settings screen |
-
-Each table is read and written through the service that owns it ([HARD RULE 3b](../../CLAUDE.md)):
-`liability_v1.DefaultHandlingFees`, `team_v1.WarehouseTeamIDs`, then `warehouse_v1.CarryOverFlatFees`. A soft-deleted
-warehouse is still a warehouse here, so its rate carries too. It takes no orders either way.
-
-### What it does
-
-```mermaid
-sequenceDiagram
-  participant SAN as san warehouse carry-over-fees
-  participant LIA as liability_terms
-  participant TEAM as teams
-  participant WH as warehouse_service
-  SAN->>LIA: every DEFAULT row, counterparty_id 0 — team and handling_fee
-  SAN->>TEAM: which of those teams are warehouses
-  Note over SAN: a warehouse's fee F becomes 0 percent, floor F, cap F — a fee of 0 becomes 0 percent, no floor, no cap
-  SAN->>WH: one INSERT … ON CONFLICT (warehouse_id) DO NOTHING
-  WH-->>SAN: the rows it wrote — a warehouse with a rate already is skipped
-```
-
-### Output
-
-```
-[Database Local] warehouse fees: 4 carried over, 1 skipped (already set), 2 default terms not a warehouse's
-[Database Local] warehouse fees: 0 carried over, 5 skipped (already set), 2 default terms not a warehouse's
-```
-
-### Errors you should expect
-
-| Error | Cause |
-| --- | --- |
-| `relation "warehouse_fees" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first |
-| `relation "liability_terms" does not exist` | The same — liability_service is not migrated |
-| `carry-over: warehouse 7's flat fee -1 is not a fee` | A negative handling fee. liability's CHECK keeps it at 0 or above, so this means the table was changed by hand. Nothing was written |
+⛔ **Removed** *(2026-10-29)*, with the column it read. It was step 2 of
+[the-flat-rate-is-dropped-last](../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last): each
+warehouse's default flat `handling_fee` became its rate in warehouse_service (0%, floor = cap = the fee). Step 5 dropped
+`liability_terms.handling_fee`, so there is nothing left to carry. A database must have run it **before** liability
+`00011` — after that the flat fees are gone, and a warehouse without a rate takes no orders until it sets one.
 
 ---
 

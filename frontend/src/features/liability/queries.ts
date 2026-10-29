@@ -355,14 +355,12 @@ export function useSetTerms() {
     mutationFn: (args: {
       teamId: bigint;
       counterpartyId: bigint;
-      handlingFee: bigint;
       creditLimit: bigint | undefined;
       reason: string;
     }) =>
       liabilityTermsClient.liabilityTermsSet({
         teamId: args.teamId,
         counterpartyId: args.counterpartyId,
-        handlingFee: args.handlingFee,
         creditLimit: args.creditLimit,
         reason: args.reason,
       }),

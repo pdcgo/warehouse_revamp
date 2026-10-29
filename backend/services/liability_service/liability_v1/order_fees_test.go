@@ -17,25 +17,6 @@ const productOwner uint64 = 3
 // reversal entries name them rather than reusing the placer (every-entry-names-who-posted-it).
 const canceller uint64 = 77
 
-// setTerms writes a creditor's terms toward one debtor. `counterparty = 0` is the DEFAULT row.
-//
-// A handling fee and nothing else: the terms carry no markup (the-ledger-charges-the-frozen-line-total), and since step
-// 4 of the-flat-rate-is-dropped-last nothing charges from the handling fee either — it is written here only to prove so.
-func setTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handling int64) {
-	t.Helper()
-
-	row := liability_service_models.LiabilityTerms{
-		TeamID:         creditor,
-		CounterpartyID: debtor,
-		HandlingFee:    handling,
-	}
-
-	err := db.Create(&row).Error
-	if err != nil {
-		t.Fatalf("set terms: %v", err)
-	}
-}
-
 func fee(v float64) *float64 { return &v }
 
 // anOrder is one order of team `selling`, fulfilled by `warehouse`, selling `productOwner`'s goods: two units that
@@ -247,14 +228,11 @@ func TestChargeOrder_AZeroFeePostsNothing(t *testing.T) {
 	}
 }
 
-// THE SWITCH-OVER DAY (the-flat-rate-is-dropped-last, step 4): the flat handling fee on Credit Terms — a default AND a
-// per-team row — is not read any more. The warehouse is owed what the order froze, rounded once to whole rupiah.
-func TestChargeOrder_TheFlatRateIsNoLongerRead(t *testing.T) {
+// THE WAREHOUSE IS OWED WHAT THE ORDER FROZE (the-event-carries-the-warehouse-fee), rounded once to whole rupiah — there
+// is no rate here to read since the flat handling fee was dropped (the-flat-rate-is-dropped-last, step 5).
+func TestChargeOrder_TheFrozenFeeIsRoundedOnce(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
-
-	setTerms(t, db, warehouse, 0, 12000)
-	setTerms(t, db, warehouse, selling, 5000)
 
 	order := anOrder(412)
 	order.WarehouseFee = fee(4300.4)
@@ -265,7 +243,7 @@ func TestChargeOrder_TheFlatRateIsNoLongerRead(t *testing.T) {
 	}
 
 	if got := balanceOf(t, db, warehouse, selling); got != 4300 {
-		t.Fatalf("the warehouse is owed %d, want the order's 4300.4 rounded — not the 5000 or 12000 flat rate", got)
+		t.Fatalf("the warehouse is owed %d, want the order's 4300.4 rounded", got)
 	}
 
 	half := anOrder(413)

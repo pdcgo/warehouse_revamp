@@ -80,8 +80,8 @@ func TestCreditByIds_ThePairRowWinsOverTheDefault(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, 0, 0, rupiah(10_000_000))
-	putTerms(t, svc, warehouse, selling, 0, rupiah(2_000_000))
+	putTerms(t, svc, warehouse, 0, rupiah(10_000_000))
+	putTerms(t, svc, warehouse, selling, rupiah(2_000_000))
 
 	got := creditOf(t, svc, selling, warehouse)[warehouse]
 	if limit := limitOf(t, got); limit != 2_000_000 {
@@ -89,7 +89,7 @@ func TestCreditByIds_ThePairRowWinsOverTheDefault(t *testing.T) {
 	}
 
 	// A pair row with NO limit lifts the default for this debtor, exactly as the check reads it.
-	putTerms(t, svc, warehouse, selling, 0, nil)
+	putTerms(t, svc, warehouse, selling, nil)
 
 	if got := creditOf(t, svc, selling, warehouse)[warehouse]; got.CreditLimit != nil {
 		t.Fatalf("limit = %d, want unlimited — an unlimited pair row overrides the default", got.GetCreditLimit())
@@ -101,7 +101,7 @@ func TestCreditByIds_TheDefaultRowAppliesWithoutAPairRow(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, 0, 0, rupiah(5_000_000))
+	putTerms(t, svc, warehouse, 0, rupiah(5_000_000))
 
 	got := creditOf(t, svc, selling, warehouse)[warehouse]
 	if limit := limitOf(t, got); limit != 5_000_000 {
@@ -155,7 +155,7 @@ func TestCreditByIds_TheStateAtEachEdge(t *testing.T) {
 			db := san_testdb.DB(t)
 			svc := liability_v1.NewService(db, nil, nil, nil)
 
-			putTerms(t, svc, warehouse, selling, 0, rupiah(1_000_000))
+			putTerms(t, svc, warehouse, selling, rupiah(1_000_000))
 			debtTo(t, svc, db, selling, warehouse, c.debt, 1)
 
 			got := creditOf(t, svc, selling, warehouse)[warehouse]
@@ -184,8 +184,8 @@ func TestCreditByIds_ACreditorWithNoDebtYet(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, selling, 0, rupiah(3_000_000))
-	putTerms(t, svc, productOwner, selling, 0, rupiah(0))
+	putTerms(t, svc, warehouse, selling, rupiah(3_000_000))
+	putTerms(t, svc, productOwner, selling, rupiah(0))
 
 	got := creditOf(t, svc, selling, warehouse, productOwner)
 
@@ -209,7 +209,7 @@ func TestCreditByIds_BeingOwedIsNotDebt(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, selling, warehouse, 0, rupiah(1))
+	putTerms(t, svc, selling, warehouse, rupiah(1))
 	// The warehouse is OWED by the selling team, so toward the selling team it has borrowed nothing.
 	debtTo(t, svc, db, selling, warehouse, 15_000, 1)
 
@@ -225,7 +225,7 @@ func TestCreditByIds_NeverReturnsALimitSetOnAThirdTeam(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	putTerms(t, svc, warehouse, thirdTeam, 0, rupiah(1_234_567))
+	putTerms(t, svc, warehouse, thirdTeam, rupiah(1_234_567))
 	debtTo(t, svc, db, thirdTeam, warehouse, 1_000_000, 1)
 
 	got := creditOf(t, svc, selling, warehouse)[warehouse]
@@ -238,7 +238,7 @@ func TestCreditByIds_NeverReturnsALimitSetOnAThirdTeam(t *testing.T) {
 	}
 
 	// And with a default row, the asking team reads the DEFAULT — still never the third team's own row.
-	putTerms(t, svc, warehouse, 0, 0, rupiah(9_000_000))
+	putTerms(t, svc, warehouse, 0, rupiah(9_000_000))
 
 	if limit := limitOf(t, creditOf(t, svc, selling, warehouse)[warehouse]); limit != 9_000_000 {
 		t.Fatalf("limit = %d, want the default's 9000000", limit)
@@ -323,7 +323,7 @@ func TestCreditByIds_TwoQueriesWhateverTheCreditors(t *testing.T) {
 	for i := uint64(0); i < 50; i++ {
 		creditor := 1000 + i
 		ids = append(ids, creditor)
-		putTerms(t, svc, creditor, selling, 0, rupiah(1_000_000))
+		putTerms(t, svc, creditor, selling, rupiah(1_000_000))
 		debtTo(t, svc, db, selling, creditor, int64(10_000*(i+1)), 100+i)
 	}
 

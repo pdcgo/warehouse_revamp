@@ -859,10 +859,10 @@ export const expenseDays: { teamId: bigint; ago: number; byKind: Record<number, 
 //   team 14         → capped, and 124% used  → OVER
 //   team 15         → no row at all          → it appears in the "set terms" options, not the table
 export const liabilityTerms = [
-  { teamId: 11n, counterpartyId: 0n, handlingFee: 25_000n, creditLimit: undefined, reason: "" },
-  { teamId: 11n, counterpartyId: 12n, handlingFee: 30_000n, creditLimit: 10_000_000n, reason: "" },
-  { teamId: 11n, counterpartyId: 13n, handlingFee: 25_000n, creditLimit: 0n, reason: "" },
-  { teamId: 11n, counterpartyId: 14n, handlingFee: 0n, creditLimit: 5_000_000n, reason: "" },
+  { teamId: 11n, counterpartyId: 0n, creditLimit: undefined, reason: "" },
+  { teamId: 11n, counterpartyId: 12n, creditLimit: 10_000_000n, reason: "" },
+  { teamId: 11n, counterpartyId: 13n, creditLimit: 0n, reason: "" },
+  { teamId: 11n, counterpartyId: 14n, creditLimit: 5_000_000n, reason: "" },
 ];
 
 // What each debtor owes team 11 right now. Positive = they owe us, so these are what the limits cap.
