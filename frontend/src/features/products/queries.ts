@@ -208,29 +208,75 @@ export function useProductStats(args: { teamId: bigint | undefined; warehouseId?
 //
 // Its own key rather than a flag on useProducts: it answers a different question against a different
 // RPC, and sharing an entry would let one team's catalogue render under the cross-team heading.
+//
+// THE CALLER'S OWN PRODUCTS CARRY THEIR COST (owner: *"khusus untuk team yang login … boleh menampilkan harga asli dan
+// harga cross"*, `discover-shows-the-cross-price`): OwnerStockByIds for the ids on this page that the caller owns — one
+// batch per page, as the product list's, and only those ids, because the read is owner-scoped and another team's
+// product would answer "none of yours" rather than its cost. Inside this entry, so a card never shows its price a beat
+// after its name.
+export type DiscoverSort = "newest" | "name" | "sku";
+
+const DISCOVER_SORT: Record<Exclude<DiscoverSort, "newest">, ProductRowSort> = {
+  name: ProductRowSort.NAME,
+  sku: ProductRowSort.SKU,
+};
+
 export function useDiscoverProducts(args: {
   teamId: bigint | undefined;
   q: string;
   page: number;
   pageSize: number;
+  /** Only this team's products — 0n is every team. */
+  ownerTeamId?: bigint;
+  /** Leave the caller's own products out — only what other teams hold. */
+  excludeOwnTeam?: boolean;
+  /** "newest" is the server's own order, newest first; name and SKU read A to Z. */
+  sort?: DiscoverSort;
 }) {
-  const { teamId, q, page, pageSize } = args;
+  const { teamId, q, page, pageSize, ownerTeamId = 0n, excludeOwnTeam = false, sort = "newest" } = args;
 
   return useQuery({
-    queryKey: key.products(teamId, { discover: true, q, page, pageSize }),
+    queryKey: key.products(teamId, {
+      discover: true,
+      q,
+      page,
+      pageSize,
+      ownerTeamId: ownerTeamId.toString(),
+      excludeOwnTeam,
+      sort,
+    }),
+    // A new team, page or sort refines the same browse — the cards stay up behind the overlay (HARD RULE 10).
+    ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await productClient.productDiscover({
         teamId: teamId!,
         filter: { q },
+        sort:
+          sort === "newest"
+            ? undefined
+            : { sortType: CommonSortType.ASC, s: { case: "product", value: DISCOVER_SORT[sort] } },
+        ownerTeamId,
+        excludeOwnTeam,
         dataRequest: productListRowData(),
         page: { page, limit: pageSize },
       });
 
-      return {
-        products: productsFromList(res.items, res.ids),
-        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
-      };
+      const products = productsFromList(res.items, res.ids);
+      const totalItems = Number(res.pageInfo?.totalItems ?? 0n);
+      const own = products.filter((p) => p.teamId === teamId).map((p) => p.id);
+
+      if (own.length === 0) {
+        return { products, totalItems, ownStock: emptyStock };
+      }
+
+      const stock = await inventoryClient.ownerStockByIds({
+        teamId: teamId!,
+        // 0n = every warehouse holding the caller's goods — the cost across all of them.
+        filter: { productIds: own, warehouseId: 0n },
+      });
+
+      return { products, totalItems, ownStock: ownerStockFromByIds(stock) };
     },
   });
 }

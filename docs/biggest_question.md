@@ -14,7 +14,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**112 open questions across 38 files.** The three below are shown; **109 are not** — they are not
+**113 open questions across 38 files.** The three below are shown; **110 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 🔄 **Re-ranked fresh** (2026-10-19), after all seven rows closed. Every live claim in the new seven was checked against the code the same day. ⚠ **Two counted questions are re-routes already decided elsewhere** (ledger Q1 → [a-limit-change-is-recorded](business/balance/context_decision.md#a-limit-change-is-recorded), [the-block-stops-orders-only](business/balance/context_decision.md#the-block-stops-orders-only); excel_readers Q6 → [only-a-successful-withdrawal-is-recorded](business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)), and **about 13 more look overtaken** by today's decisions — they stay counted until each is closed at source.
@@ -23,6 +23,7 @@ closed, only smaller. The per-file counts are at the bottom.
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- ▲ *(2026-10-30)* **113**: product context [Q13](business/product/context_clarify.md#question) — at EXACTLY the minimum, may another team still order? The screens' owner decided ≤ on 2026-10-30 (closed at the minimum, [the-minimum-closes-at-the-minimum](technical/frontend/products_decision.md#the-minimum-closes-at-the-minimum)); context.md line 86 and [the-reserve-stops-other-teams-at-low-stock](business/product/context_decision.md#the-reserve-stops-other-teams-at-low-stock) open it there. One contradiction, recorded there. Not ranked into the three: it blocks no pass — the screens already follow ≤.
 - ✅ *(2026-10-21)* **112**: **built** — the eleven statuses with one `OrderStatusChange` for every plain move ([one-status-change-for-every-plain-move](technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)); settlement opens and cancels the sale from the order events ([settlement-opens-the-sale-from-the-order-event](business/settlement/context_decision.md#settlement-opens-the-sale-from-the-order-event)), the emulator now pushing locally ([the-emulator-pushes-locally](technical/event_architecture/context_decision.md#the-emulator-pushes-locally)); root reads every team's orders; the return warehouse table and its Settings card, `team_infos`' two return columns dropped — order_return's Contradiction resolved. The two ⛔/⚠ notes below on the old statuses and `OpenSale` are done. Net zero.
 - 🔄 *(2026-10-21)* **112**: order context's Awaiting emptied — buyer shipping and COD need nothing on the order, COD being only ever the marketplace's ([cod-and-shipping-are-the-platforms](business/order/context_decision.md#cod-and-shipping-are-the-platforms)). **Order context has nothing open, critiqued, contradicted or awaiting.** Net zero.
 - 🔄 *(2026-10-21)* **112**: order context's Awaiting — a parcel back after `lost` is a `found` stock-in naming the order ([a-found-lost-parcel-is-a-found-stock-in](business/order/context_decision.md#a-found-lost-parcel-is-a-found-stock-in)), as recommended. Not a counted question. Net zero.
@@ -197,16 +198,16 @@ flowchart LR
 [member Q1, Q2, Q4](business/project/member_clarify.md#question) — who owns ledger · [shipment Q1](business/shipment/context_clarify.md#question)
 — eight couriers live orders use have no channel, and an order now needs one.
 
-## Where the other 109 are
+## Where the other 110 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **112**, the whole set, not to 109. *Feeds* names the row of the seven a file's questions are part of.
+the column sums to **113**, the whole set, not to 110. *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Feeds |
 | --- | ---: | --- |
 | [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 15 |  |
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 5 |  |
-| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 9 |  |
+| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 10 |  |
 | [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 9 |  |
 | [business/inventory/adjustment_clarify.md](business/inventory/adjustment_clarify.md#question) | 4 |  |
 | [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 0 |  |
@@ -246,5 +247,5 @@ the column sums to **112**, the whole set, not to 109. *Feeds* names the row of 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **112** across **38** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **113** across **38** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.

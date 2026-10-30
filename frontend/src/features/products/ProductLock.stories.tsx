@@ -65,6 +65,22 @@ export const ReadOnly: Story = {
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
+/** AT THE MINIMUM IS LOCKED (owner: *"stoknya <= min"*, `the-minimum-closes-at-the-minimum`) — 20 ready against a minimum
+ * of 20 is closed to other teams; 21 is open. */
+export const AtTheMinimumIsLocked: Story = {
+  args: { product: { crossLocked: false, reservedStock: 20 }, totalReady: 20n },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId("lock-now")).toHaveTextContent("Locked");
+  },
+};
+
+export const OneAboveTheMinimumIsOpen: Story = {
+  args: { product: { crossLocked: false, reservedStock: 20 }, totalReady: 21n },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).queryByTestId("lock-now")).toBeNull();
+  },
+};
+
 /** Without a known total — a warehouse lens holds one building's stock — a minimum draws no badge either way. */
 export const NoTotalNoBadge: Story = {
   args: { product: { crossLocked: false, reservedStock: 20 }, totalReady: undefined },

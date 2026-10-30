@@ -1,8 +1,9 @@
 import type { ElementType, ReactNode } from "react";
-import { Stack, Table, Text } from "@chakra-ui/react";
+import { HStack, Stack, Table, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { useIsMobile } from "../../layouts/shell";
 import type { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRfc3339DateTime } from "../../lib/datetime";
 import { kindLabel } from "./movementKind";
@@ -79,8 +80,10 @@ export interface MovementTableProps {
   emptyText: string;
   /**
    * OPT-IN, per screen: with an icon the empty ledger is an `EmptyHint` — the icon, `emptyText` as its title and this
-   * line under it (an-empty-list-shows-a-hint) — and its rows light up under the pointer (a-table-row-lights-up). A
-   * screen takes both the day it is reworked; without the icon it keeps the plain grey line and resting rows.
+   * line under it (an-empty-list-shows-a-hint) — its rows light up under the pointer (a-table-row-lights-up), and on a
+   * phone each movement is two lines instead of a table wider than the screen (a-phone-reads-each-line-as-a-block). A
+   * screen takes all three the day it is reworked; without the icon it keeps the plain grey line, resting rows and the
+   * table.
    */
   emptyIcon?: ElementType;
   emptyDescription?: ReactNode;
@@ -110,7 +113,8 @@ export function MovementTable({
   striped,
 }: MovementTableProps) {
   const { t } = useTranslation();
-  // A reworked screen's ledger — the hint and the lit rows come together (see `emptyIcon`).
+  const isMobile = useIsMobile();
+  // A reworked screen's ledger — the hint, the lit rows and the phone's lines come together (see `emptyIcon`).
   const reworked = emptyIcon !== undefined;
 
   const header: Record<MovementContextColumn, string> = {
@@ -149,6 +153,58 @@ export function MovementTable({
     );
   }
 
+  // Signed AND coloured: +9 and -9 are different events, so the sign carries the fact and the colour makes a page of
+  // them scannable. Zero gets neither — a movement that moved nothing is not an increase.
+  const deltaColor = (m: MovementRow) => (m.delta > 0n ? "success.fg" : m.delta < 0n ? "error.fg" : undefined);
+  const deltaText = (m: MovementRow) => (m.delta > 0n ? `+${m.delta}` : m.delta.toString());
+
+  if (reworked && isMobile) {
+    // A PHONE READS EACH MOVEMENT AS TWO LINES (a-phone-reads-each-line-as-a-block) — seven columns do not fit 400px,
+    // and a table that scrolls sideways cuts off the two numbers the ledger is read for:
+    //
+    //   Diterima · Gudang Pusat · #7003                     +24
+    //   7 Okt 2026, 07.00                 Sisa di gudang itu 76
+    return (
+      <Stack gap="0" data-testid={`${testId}-table`}>
+        {movements.map((m) => (
+          <Stack
+            key={m.id.toString()}
+            gap="0.5"
+            py="2"
+            borderBottomWidth="1px"
+            borderColor="border.muted"
+            data-testid={`${testId}-row-${m.id}`}
+          >
+            <HStack justify="space-between" gap="2" fontSize="sm">
+              <Text truncate minW="0">
+                <Text as="span" fontWeight="bold">
+                  {kindLabel(t, m.kind)}
+                </Text>
+                {columns.map((c) => (
+                  <Text as="span" key={c} color="fg.muted">
+                    {" · "}
+                    {cell(c, m)}
+                  </Text>
+                ))}
+              </Text>
+              <Text fontWeight="bold" color={deltaColor(m)} flexShrink={0}>
+                {deltaText(m)}
+              </Text>
+            </HStack>
+            <HStack justify="space-between" gap="2" fontSize="xs" color="fg.muted">
+              <Text truncate minW="0">
+                {formatRfc3339DateTime(m.createdAt)}
+              </Text>
+              <Text flexShrink={0}>
+                {afterLabel} {m.balance.toString()}
+              </Text>
+            </HStack>
+          </Stack>
+        ))}
+      </Stack>
+    );
+  }
+
   return (
     <Stack gap="card">
       <Table.Root size="sm" striped={striped} data-testid={`${testId}-table`}>
@@ -178,14 +234,8 @@ export function MovementTable({
               {columns.map((c) => (
                 <Table.Cell key={c}>{cell(c, m)}</Table.Cell>
               ))}
-              {/* Signed AND coloured: +9 and -9 are different events, so the sign carries the fact and
-                  the colour makes a page of them scannable. Zero gets neither — a movement that moved
-                  nothing is not an increase. */}
-              <Table.Cell
-                textAlign="end"
-                color={m.delta > 0n ? "success.fg" : m.delta < 0n ? "error.fg" : undefined}
-              >
-                {m.delta > 0n ? `+${m.delta}` : m.delta.toString()}
+              <Table.Cell textAlign="end" color={deltaColor(m)}>
+                {deltaText(m)}
               </Table.Cell>
               <Table.Cell textAlign="end">{m.balance.toString()}</Table.Cell>
             </Table.Row>

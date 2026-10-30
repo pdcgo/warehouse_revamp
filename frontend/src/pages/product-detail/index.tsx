@@ -48,8 +48,8 @@ import { STALE_STOCK_DAYS, daysAgo } from "../../features/products/stockAge";
 import type { OwnerStockRow } from "../../features/products/adapt";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { formatUnixDate } from "../../lib/datetime";
-import { formatMarkup } from "../../lib/markup";
-import { formatRupiah } from "../../lib/money";
+import { formatMarkup, withMarkup } from "../../lib/markup";
+import { formatRupiah, formatRupiahRange } from "../../lib/money";
 import { scrollerOf, useScrollSpy } from "../../lib/useScrollSpy";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
@@ -74,9 +74,6 @@ import {
 import type { ProductSectionKey, WarehouseTab } from "./sections";
 
 /** A cost range, said once — one price when every unit cost the same. */
-function costRange(min: bigint, max: bigint): string {
-  return min === max ? formatRupiah(min) : `${formatRupiah(min)} – ${formatRupiah(max)}`;
-}
 
 // THE FOUR STOCK FIGURES — the same ones the product's row on the list shows: what is ready, what is on its way, what it
 // cost (the cross price under it), and how old the oldest units are. Said TWICE on the page, from the same read
@@ -92,7 +89,6 @@ interface StockFigure {
 function useStockFigures(stock: OwnerStockRow | undefined, markupBps: number): StockFigure[] {
   const { t } = useTranslation();
   const pending = t("products.stat.pending");
-  const withMarkup = (cost: bigint) => cost + (cost * BigInt(markupBps)) / 10_000n;
   const days = stock && stock.oldestBatchUnix > 0n ? daysAgo(stock.oldestBatchUnix) : undefined;
   const stale = days !== undefined && days >= STALE_STOCK_DAYS;
 
@@ -112,9 +108,9 @@ function useStockFigures(stock: OwnerStockRow | undefined, markupBps: number): S
     {
       key: "cost",
       label: t("products.table.priceRange"),
-      value: stock?.costKnown ? costRange(stock.costMin, stock.costMax) : "—",
+      value: stock?.costKnown ? formatRupiahRange(stock.costMin, stock.costMax) : "—",
       line: stock?.costKnown
-        ? `${t("products.table.cross")} ${costRange(withMarkup(stock.costMin), withMarkup(stock.costMax))}`
+        ? `${t("products.table.cross")} ${formatRupiahRange(withMarkup(stock.costMin, markupBps), withMarkup(stock.costMax, markupBps))}`
         : pending,
     },
     {

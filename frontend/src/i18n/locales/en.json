@@ -373,7 +373,108 @@
     "subtitle": "Browse products from every team.",
     "selectTeam": "Select a team to discover products.",
     "searchPlaceholder": "Search SKU or name",
-    "empty": "No products found."
+    "empty": "No products to discover yet",
+    "count_one": "{{count}} product",
+    "count_other": "{{count}} products",
+    "noneMatch": "No products match",
+    "emptyHint": "Other teams' products appear here once they build their catalogues.",
+    "price": {
+      "cost": "Cost",
+      "cross": "Cross",
+      "crossHint": "Cross price — what another team pays for this product",
+      "costHint": "Cost — what your team paid"
+    },
+    "filter": {
+      "warehouse": "Warehouse",
+      "warehouseAll": "All warehouses",
+      "team": "Owner team",
+      "teamAll": "All teams",
+      "hideMine": "Hide my products",
+      "category": "Category",
+      "categoryAll": "All categories",
+      "stock": "Ready stock",
+      "crossRange": "Cross price",
+      "lock": "Lock"
+    },
+    "sort": {
+      "label": "Sort",
+      "newest": "Newest",
+      "name": "Name A–Z",
+      "sku": "SKU A–Z"
+    },
+    "division": {
+      "label": "Product division",
+      "priority": "Priority",
+      "research": "Research",
+      "general": "General"
+    },
+    "pending": {
+      "warehouse": {
+        "label": "Warehouse filter",
+        "reason": "Stock is recorded by the inventory service, while this list comes from the product catalogue. Narrowing a paged list by warehouse needs one read that joins the two. The pick is kept, but narrows nothing yet."
+      },
+      "division": {
+        "label": "Product division",
+        "reason": "Priority, Research and General are set per product, but the rule is not in the business context yet and nothing stores it. The pick is kept, but narrows nothing yet."
+      },
+      "category": {
+        "label": "Category filter",
+        "reason": "The cross-team product search takes no category filter yet. The pick is kept, but narrows nothing yet."
+      },
+      "stock": {
+        "label": "Stock filter",
+        "reason": "As with the warehouse: ready stock lives in the inventory service, and this list cannot be narrowed by it yet. The pick is kept, but narrows nothing yet."
+      },
+      "crossRange": {
+        "label": "Cross price filter",
+        "reason": "Another team's unit cost cannot be read across teams yet, so its cross price cannot be filtered. What is typed is kept, but narrows nothing yet."
+      },
+      "crossPrice": {
+        "label": "Other teams' cross price",
+        "reason": "Another team's unit cost cannot be read across teams yet. The cross price shown is a sample, worked out with the product's real markup. Your own team's products use real figures."
+      },
+      "cardStock": {
+        "label": "Other teams' stock",
+        "reason": "Ready and ongoing stock can only be read for your own team's products. The figures on another team's card are a sample."
+      },
+      "divisionBadge": {
+        "label": "Product division badge",
+        "reason": "The Priority, Research and General division is stored nowhere yet. The badge on a card is a sample."
+      },
+      "locked": {
+        "label": "Locked product badge",
+        "reason": "A product that is always locked is not sent to Discover — the server leaves it out — so the Always locked badge has never shown. The Min N pcs badge is real."
+      },
+      "lockFilter": {
+        "label": "Lock filter",
+        "reason": "A locked product is not sent to Discover by the server, and whether a minimum has closed a product depends on its ready stock, which lives in the inventory service. The pick is kept, but narrows nothing yet."
+      }
+    },
+    "stock": {
+      "ready": "Ready",
+      "ongoing": "Ongoing",
+      "readyHint": "Ready stock — can be sold now",
+      "ongoingHint": "Ongoing — on its way to the warehouse"
+    },
+    "lock": {
+      "always": "Locked"
+    },
+    "range": {
+      "all": "All",
+      "custom": "Custom",
+      "min": "Min",
+      "max": "Max",
+      "minOf": "Lowest {{what}}",
+      "maxOf": "Highest {{what}}",
+      "ceiling": "Up to {{max}}",
+      "empty": "Empty"
+    },
+    "lockFilter": {
+      "open": "Open",
+      "locked": "Locked",
+      "openHint": "Another team may take it now",
+      "lockedHint": "Locked by its owner, or its ready stock is at its minimum or under it"
+    }
   },
   "discoverDetail": {
     "back": "Discover Products",

@@ -2,7 +2,12 @@ import { useTranslation } from "react-i18next";
 import { Badge, Box, HStack, Stack, Text } from "@chakra-ui/react";
 
 import type { OwnerStockRow } from "../../../features/products/adapt";
-import { LOW_STOCK_PCS } from "../../../features/products/stockAge";
+import {
+  LOW_STOCK_PCS,
+  STOCK_STATUS_TONE as TONE,
+  type StockStatus,
+  readyStatus,
+} from "../../../features/products/stockAge";
 import { formatRupiah } from "../../../lib/money";
 
 // THE ONE THING THAT STANDS OUT (owner: *"karena tidak ada yang menonjol selain gambar, aku ingin sesuatu yang
@@ -11,23 +16,14 @@ import { formatRupiah } from "../../../lib/money";
 // chip that is read from across the shelf, and what is on its way and what the ready units cost under it. Across every
 // warehouse, as the rest of Info.
 
-export type StockStatus = "out" | "low" | "ok";
-
 /**
- * HOW MUCH IS LEFT, and nothing else (owner: *"stok bisa aman, habis dan hampir habis"*, then *"oke di bawah 5"*,
- * `the-stock-chip-says-how-much-is-left`): nothing ready → Habis; under LOW_STOCK_PCS → Hampir habis; otherwise Aman.
- * The stock's AGE stays on the Umur stok row's warning tone, and a minimum lock in force on the lock's own badge — the
- * chip answers one question. Undefined while the stock read is in flight — no chip rather than a guess.
+ * HOW MUCH IS LEFT, and nothing else — the shared rule (`readyStatus`, features/products/stockAge.ts). The stock's AGE
+ * stays on the Umur stok row's warning tone, and a minimum lock in force on the lock's own badge — the chip answers one
+ * question. Undefined while the stock read is in flight — no chip rather than a guess.
  */
 export function stockStatus(stock: OwnerStockRow | undefined): StockStatus | undefined {
-  if (!stock) return undefined;
-  if (stock.readyQty <= 0n) return "out";
-  if (stock.readyQty < BigInt(LOW_STOCK_PCS)) return "low";
-  return "ok";
+  return readyStatus(stock?.readyQty);
 }
-
-// Each status in its ROLE's tone — a status is never a hue (theme.ts).
-const TONE: Record<StockStatus, string> = { out: "error", low: "warning", ok: "success" };
 
 export function StockHighlight({ stock, testId = "pd-highlight" }: { stock?: OwnerStockRow; testId?: string }) {
   const { t } = useTranslation();

@@ -26,8 +26,8 @@ import {
 } from "../../../features/products/queries";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatUnixDate } from "../../../lib/datetime";
-import { formatMarkup } from "../../../lib/markup";
-import { formatRupiah } from "../../../lib/money";
+import { formatMarkup, withMarkup } from "../../../lib/markup";
+import { formatRupiah, formatRupiahRange } from "../../../lib/money";
 import { PRESSABLE } from "../../../lib/motion";
 import { RestoreProductDialog } from "../../../features/products/RestoreProductDialog";
 import { ProductLockControl } from "../../../features/products/ProductLock";
@@ -158,12 +158,9 @@ function SecondLine({
   );
 }
 
-// A cost range as one line — "Rp 45.700 – Rp 47.200", or one price when every layer agrees ("Rp 5.000 – Rp 5.000" would
-// be noise). BOTH ENDS ON ONE LINE (owner: *"di story kasih contoh range price, semuanya cuma 1 price?"*,
-// `a-cost-range-reads-as-a-range`): stacked, the dearest under the cheapest, the second line read as another figure.
-function rangeText(min: bigint, max: bigint): string {
-  return min === max ? formatRupiah(min) : `${formatRupiah(min)} – ${formatRupiah(max)}`;
-}
+// A cost range is written on one line by `formatRupiahRange` — BOTH ENDS ON ONE LINE (owner: *"di story kasih contoh range
+// price, semuanya cuma 1 price?"*, `a-cost-range-reads-as-a-range`): stacked, the dearest under the cheapest, the second
+// line read as another figure.
 
 // THE HPP (cost) RANGE — the cheapest and dearest units currently held, across every warehouse; a range rather than one
 // number because it genuinely is one, and an average would hide exactly the spread somebody opens this screen to see —
@@ -191,16 +188,14 @@ function CostCell({
     return <Unknown />;
   }
 
-  const withMarkup = (cost: bigint) => cost + (cost * BigInt(markupBps)) / 10_000n;
-
   return (
     <Stack gap="0" align={phone ? "start" : "end"}>
       <Text whiteSpace="nowrap" data-range={stock.costMin !== stock.costMax || undefined}>
-        {rangeText(stock.costMin, stock.costMax)}
+        {formatRupiahRange(stock.costMin, stock.costMax)}
       </Text>
       <SecondLine
         hint={t("products.table.crossPriceHint")}
-        value={rangeText(withMarkup(stock.costMin), withMarkup(stock.costMax))}
+        value={formatRupiahRange(withMarkup(stock.costMin, markupBps), withMarkup(stock.costMax, markupBps))}
         testId={`cross-price-${sku}`}
       />
     </Stack>

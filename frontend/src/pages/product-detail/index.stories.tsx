@@ -355,6 +355,33 @@ export const PriceListsTheLayers: Story = {
   },
 };
 
+/** ON A PHONE, HARGA MODAL AND RIWAYAT STOK ARE LINES, not tables (a-phone-reads-each-line-as-a-block; owner: *"harga
+ * modal di mobile masih berantakan, riwayat stok kepotong"*): a layer is its arithmetic — *Rp 45.700 × 30 pcs … Rp
+ * 1.371.000*, the cross price under it — and a movement is two lines with the change and what was left on the right.
+ * Neither pushes the page wider than the screen. */
+export const APhoneReadsTheTabsAsLines: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const fitsTheScreen = () =>
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
+
+    const price = await openTab(canvas, "price");
+    await waitFor(() => expect(price.getByTestId("pd-price-row-0")).toBeInTheDocument());
+    await expect(price.queryByRole("table")).toBeNull();
+    await expect(price.getByTestId("pd-price-row-0")).toHaveTextContent(/Rp\s?45\.700\s?× 30 pcs.*Rp\s?1\.371\.000/);
+    await expect(price.getByTestId("pd-price-row-0")).toHaveTextContent(/Cross Rp\s?51\.412/);
+    fitsTheScreen();
+
+    const history = await openTab(canvas, "history");
+    await waitFor(() => expect(history.getByTestId("pd-history-row-70005")).toBeInTheDocument());
+    await expect(history.queryByRole("table")).toBeNull();
+    await expect(history.getByTestId("pd-history-row-70005")).toHaveTextContent(/\+24/);
+    await expect(history.getByTestId("pd-history-row-70005")).toHaveTextContent(/After, in that warehouse 79/);
+    fitsTheScreen();
+  },
+};
+
 /** THE PICKER SPLITS THE PAGE (the-warehouse-picker-splits-the-page): choosing Gudang Cabang restates the overview
  * under it — 25 ready — while Info's total stays 79 and Batch, which is every warehouse, keeps all three deliveries.
  * One picker on the page, the note saying the figures below are one warehouse's. */

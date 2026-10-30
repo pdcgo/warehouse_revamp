@@ -11,6 +11,24 @@ export const QUIET_SALE_DAYS = 30;
  */
 export const LOW_STOCK_PCS = 5;
 
+export type StockStatus = "out" | "low" | "ok";
+
+/**
+ * HOW MUCH IS LEFT, from the ready units (owner: *"stok bisa aman, habis dan hampir habis"*, then *"oke di bawah 5"*,
+ * `the-stock-chip-says-how-much-is-left`): none → out (Habis); under LOW_STOCK_PCS → low (Hampir habis); otherwise ok.
+ * One rule for the product page's chip and Discover's card (`a-discover-card-highlights-low-stock`). Undefined when the
+ * figure is not known — no status rather than a guess.
+ */
+export function readyStatus(readyQty: bigint | undefined): StockStatus | undefined {
+  if (readyQty === undefined) return undefined;
+  if (readyQty <= 0n) return "out";
+  if (readyQty < BigInt(LOW_STOCK_PCS)) return "low";
+  return "ok";
+}
+
+/** Each status in its ROLE's tone — a status is never a hue (theme.ts). */
+export const STOCK_STATUS_TONE: Record<StockStatus, string> = { out: "error", low: "warning", ok: "success" };
+
 const DAY_SECONDS = 86_400;
 
 /** Whole days from `unix` to now — never negative, so a clock a minute ahead does not read "-0 days". */

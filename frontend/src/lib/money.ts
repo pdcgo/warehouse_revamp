@@ -10,6 +10,13 @@ export function formatRupiah(amount: bigint): string {
   return `Rp ${amount.toLocaleString("id-ID")}`;
 }
 
+// formatRupiahRange writes a price range on ONE line — "Rp 45.700 – Rp 47.200" — or one price when both ends agree, since
+// "Rp 5.000 – Rp 5.000" is noise (`a-cost-range-reads-as-a-range`). The product list, the product's page and Discover
+// write a cost range, and its cross price, with this one function.
+export function formatRupiahRange(min: bigint, max: bigint): string {
+  return min === max ? formatRupiah(min) : `${formatRupiah(min)} – ${formatRupiah(max)}`;
+}
+
 // formatSignedRupiah writes BOTH signs — "+Rp 4.000", "−Rp 10.000", "Rp 0" — for an amount whose
 // direction is the point (a change, a running balance, a settlement adjustment). formatRupiah writes the
 // minus the same way and leaves a positive amount bare.

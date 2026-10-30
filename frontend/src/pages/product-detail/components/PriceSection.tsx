@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Flex, Stack, Table, Text } from "@chakra-ui/react";
+import { Flex, HStack, Stack, Table, Text } from "@chakra-ui/react";
 import { Layers } from "lucide-react";
 
 import { GrowingPager } from "../../../components/chrome/GrowingPager";
@@ -8,6 +8,8 @@ import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { useOwnerCostLayers } from "../../../features/products/queries";
 import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
+import { useIsMobile } from "../../../layouts/shell";
+import { withMarkup } from "../../../lib/markup";
 import { formatRupiah } from "../../../lib/money";
 import { LIGHTS_UP } from "./parts";
 
@@ -50,6 +52,7 @@ export function PriceSection({
   warehouseId: bigint;
 }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   const [page, setPage] = useState(1);
 
@@ -76,6 +79,9 @@ export function PriceSection({
   // two dead arrows under three rows are furniture. From page 2 on it always shows, so the way back is never lost.
   const fits = page === 1 && (layers.data?.totalItems ?? 0) <= PAGE_SIZE;
 
+  // What another team pays for a layer — its cost with this product's cross markup on top.
+  const crossOf = (unitCost: bigint) => withMarkup(unitCost, product.crossMarkupBps);
+
   return (
           <Stack gap="card">
             {/* NO FIGURES ABOVE THE TABLE (owner: *"harga modal pun yang di atas kayak kurang, atau gausah dikasih aja"*) —
@@ -96,6 +102,41 @@ export function PriceSection({
                   }
                   testId="pd-price-empty"
                 />
+              ) : isMobile ? (
+                // A PHONE READS EACH LAYER AS ITS ARITHMETIC (a-phone-reads-each-line-as-a-block) — four columns at 400px
+                // wrapped "30 pcs" and every rupiah onto two lines:
+                //
+                //   Rp 45.700 × 30 pcs                       Rp 1.371.000
+                //   Cross Rp 51.412
+                <Stack gap="0" data-testid="pd-price-table">
+                  {rows.map((layer, i) => (
+                    <Stack
+                      key={i}
+                      gap="0.5"
+                      py="2"
+                      borderBottomWidth="1px"
+                      borderColor="border.muted"
+                      data-testid={`pd-price-row-${i}`}
+                    >
+                      <HStack justify="space-between" gap="2" fontSize="sm">
+                        <HStack gap="1" minW="0">
+                          <LayerCost unitCost={layer.unitCost} costKnown={layer.costKnown} />
+                          <Text color="fg.muted" flexShrink={0}>
+                            × {t("products.stat.pcs", { n: layer.onHand.toString() })}
+                          </Text>
+                        </HStack>
+                        <Text fontWeight="bold" flexShrink={0}>
+                          {layer.costKnown ? formatRupiah(layer.amount) : "—"}
+                        </Text>
+                      </HStack>
+                      {layer.costKnown && (
+                        <Text fontSize="xs" color="fg.muted">
+                          {t("products.table.cross")} {formatRupiah(crossOf(layer.unitCost))}
+                        </Text>
+                      )}
+                    </Stack>
+                  ))}
+                </Stack>
               ) : (
               <Table.Root size="sm" data-testid="pd-price-table">
                 <Table.Header>
@@ -127,12 +168,7 @@ export function PriceSection({
                         {layer.costKnown ? formatRupiah(layer.amount) : "—"}
                       </Table.Cell>
                       <Table.Cell textAlign="end">
-                        {layer.costKnown
-                          ? formatRupiah(
-                              layer.unitCost +
-                                (layer.unitCost * BigInt(product.crossMarkupBps)) / 10_000n,
-                            )
-                          : "—"}
+                        {layer.costKnown ? formatRupiah(crossOf(layer.unitCost)) : "—"}
                       </Table.Cell>
                     </Table.Row>
                   ))}

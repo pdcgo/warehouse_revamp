@@ -33,6 +33,10 @@ export interface FilterBarProps {
   // How many filters are narrowing the list — the number on the phone's Filter button. Omitted, the
   // button shows a dot while `active` instead of a count.
   count?: number;
+  // Below which breakpoint the controls move into the sheet — `md`, a phone, by default. A page whose desktop keeps its
+  // filters in a FilterPanel beside the list passes `lg`: between the two there is no room for the panel, and a strip of
+  // its many groups would be the ragged rows the sheet exists to avoid.
+  sheetBelow?: "md" | "lg";
   testId?: string;
 }
 
@@ -70,10 +74,11 @@ export function FilterBar({
   onClear,
   actions,
   count,
+  sheetBelow = "md",
   testId = "filter-bar",
 }: FilterBarProps) {
   const { t } = useTranslation();
-  const phone = useBreakpointValue({ base: true, md: false }) ?? false;
+  const phone = useBreakpointValue(sheetBelow === "lg" ? { base: true, lg: false } : { base: true, md: false }) ?? false;
   const [open, setOpen] = useState(false);
 
   if (phone) {

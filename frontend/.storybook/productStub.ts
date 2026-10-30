@@ -168,6 +168,7 @@ export const productService = {
 
   // Discovery looks ACROSS teams — `team_id` is an authorization scope here and must NOT narrow the rows. Its two
   // real narrowings apply (the in-dialog team filter, "other teams only"), and an EMPTY id list is no narrowing.
+  // A sort by name or SKU is honoured, as productList's is; without one, the fixtures' own order.
   productDiscover: (req: {
     teamId: bigint;
     ownerTeamId: bigint;
@@ -175,21 +176,34 @@ export const productService = {
     ownerTeamIds: bigint[];
     excludeOwnerTeamIds: bigint[];
     filter?: { q?: string };
+    sort?: { sortType?: CommonSortType; s?: { case?: string; value?: unknown } };
     page?: PageReq;
-  }) =>
-    paged(
+  }) => {
+    const by = req.sort?.s?.case === "product" ? (req.sort.s.value as ProductRowSort) : ProductRowSort.UNSPECIFIED;
+    const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
+
+    return paged(
       "product",
-      liveProducts().filter(
-        (p) =>
-          (req.ownerTeamId === 0n || p.teamId === req.ownerTeamId) &&
-          (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
-          (req.ownerTeamIds.length === 0 || req.ownerTeamIds.includes(p.teamId)) &&
-          (req.excludeOwnerTeamIds.length === 0 || !req.excludeOwnerTeamIds.includes(p.teamId)) &&
-          matches(req.filter?.q, p.name, p.sku),
-      ),
+      liveProducts()
+        .filter(
+          (p) =>
+            (req.ownerTeamId === 0n || p.teamId === req.ownerTeamId) &&
+            (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
+            (req.ownerTeamIds.length === 0 || req.ownerTeamIds.includes(p.teamId)) &&
+            (req.excludeOwnerTeamIds.length === 0 || !req.excludeOwnerTeamIds.includes(p.teamId)) &&
+            matches(req.filter?.q, p.name, p.sku),
+        )
+        .sort((a, b) =>
+          by === ProductRowSort.NAME
+            ? a.name.localeCompare(b.name) * dir
+            : by === ProductRowSort.SKU
+              ? a.sku.localeCompare(b.sku) * dir
+              : 0,
+        ),
       (p) => p.id,
       req.page,
-    ),
+    );
+  },
 
   // Any team's, archived or not — an unknown id is simply ABSENT.
   productByIds: (req: { filter?: { ids?: bigint[] } }) => {

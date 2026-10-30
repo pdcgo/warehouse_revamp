@@ -300,10 +300,43 @@ flowchart LR
     may since have been deleted.
     **→ I recommend `ProductByIds` keeps resolving deleted products.** A lookup by an id the caller already holds is
     not a search, and a report that renders a blank where a product name was is worse than one that says *(archived)*.
+13. **🆕 At EXACTLY the minimum — may another team still order?** The frontend now closes a product whose ready stock
+    is **at or under** its minimum (≤) — the screens' owner decided it on 2026-10-30
+    ([the-minimum-closes-at-the-minimum](../../technical/frontend/products_decision.md#the-minimum-closes-at-the-minimum)) —
+    while this context opens it there.
+    ([Contradiction](#the-screens-close-a-product-at-its-minimum-the-business-rule-opens-it-there))
+    **→ I recommend ≤, closed at the minimum:** the minimum is what the owner keeps for itself, so a product holding
+    exactly that much has nothing left for another team. Then line 86 of context.md and
+    [the-reserve-stops-other-teams-at-low-stock](./context_decision.md#the-reserve-stops-other-teams-at-low-stock) read
+    *"total stock > reserve"* — and the order path's check follows.
 
 ---
 
 # Contradiction
+
+## the screens close a product at its minimum, the business rule opens it there
+
+> [`context.md`](./context.md) line 86: *"reserved stock, So when stock < several, its cannot be shared."*
+>
+> [the-reserve-stops-other-teams-at-low-stock](./context_decision.md#the-reserve-stops-other-teams-at-low-stock):
+> *"total stock ≥ reserve"* lets another team order.
+>
+> The screens' owner, 2026-10-26: *"terkunci itu yang kena dikunci dan stoknya <= min"*, then on 2026-10-30 *"iya"* to ≤ for both the
+> Terkunci badge and Discover's filter ([the-minimum-closes-at-the-minimum](../../technical/frontend/products_decision.md#the-minimum-closes-at-the-minimum)).
+
+They disagree at ONE stock level — exactly the minimum. With a minimum of 20 and 20 ready, this context lets another team
+order and the screens say the product is locked. The screens already follow ≤ (`lockedByMinimumNow`); whatever enforces the
+reserve on an order follows this context. Left so, a seller sees *Terkunci* on a product the server would still sell them.
+**→ Recommend:** settle it in Q13, and name the comparison once in this context so the badge, the filter and the order
+check all read the same line.
+
+```mermaid
+flowchart LR
+  S["ready stock = minimum, 20 of 20"] --> F["screens — locked, at or under the minimum"]
+  S --> B["this context — open, total stock is not under the reserve"]
+  F -.->|"a seller sees Terkunci"| X["on a product an order would still take"]
+  B -.-> X
+```
 
 ## the return path prices the unit as the borrower's while the order path leaves it the owner's
 

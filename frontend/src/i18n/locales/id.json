@@ -368,7 +368,107 @@
     "subtitle": "Jelajahi produk dari semua tim.",
     "selectTeam": "Pilih tim untuk menemukan produk.",
     "searchPlaceholder": "Cari SKU atau nama",
-    "empty": "Produk tidak ditemukan."
+    "empty": "Belum ada produk untuk ditemukan",
+    "count_other": "{{count}} produk",
+    "noneMatch": "Tidak ada produk yang cocok",
+    "emptyHint": "Produk tim lain muncul di sini begitu mereka membuat katalognya.",
+    "price": {
+      "cost": "Harga modal",
+      "cross": "Cross",
+      "crossHint": "Harga cross — yang dibayar tim lain untuk produk ini",
+      "costHint": "Harga modal — yang dibayar tim Anda"
+    },
+    "filter": {
+      "warehouse": "Gudang",
+      "warehouseAll": "Semua gudang",
+      "team": "Tim pemilik",
+      "teamAll": "Semua tim",
+      "hideMine": "Sembunyikan produk saya",
+      "category": "Kategori",
+      "categoryAll": "Semua kategori",
+      "stock": "Stok siap",
+      "crossRange": "Harga cross",
+      "lock": "Kunci"
+    },
+    "sort": {
+      "label": "Urutkan",
+      "newest": "Terbaru",
+      "name": "Nama A–Z",
+      "sku": "SKU A–Z"
+    },
+    "division": {
+      "label": "Pembagian produk",
+      "priority": "Prioritas",
+      "research": "Riset",
+      "general": "Umum"
+    },
+    "pending": {
+      "warehouse": {
+        "label": "Filter gudang",
+        "reason": "Stok dicatat di layanan inventaris, sedangkan daftar ini datang dari katalog produk. Menyaring daftar berhalaman menurut gudang butuh satu bacaan yang menggabungkan keduanya. Pilihannya disimpan, tapi belum menyaring."
+      },
+      "division": {
+        "label": "Pembagian produk",
+        "reason": "Prioritas, Riset dan Umum ditetapkan per produk, tapi aturannya belum ada di context bisnis dan belum disimpan di mana pun. Pilihannya disimpan, tapi belum menyaring."
+      },
+      "category": {
+        "label": "Filter kategori",
+        "reason": "Pencarian produk lintas tim belum menerima filter kategori. Pilihannya disimpan, tapi belum menyaring."
+      },
+      "stock": {
+        "label": "Filter stok",
+        "reason": "Sama seperti gudang: stok siap ada di layanan inventaris, dan daftar ini belum bisa disaring dengannya. Pilihannya disimpan, tapi belum menyaring."
+      },
+      "crossRange": {
+        "label": "Filter harga cross",
+        "reason": "Harga modal produk tim lain belum bisa dibaca lintas tim, jadi harga cross-nya belum bisa disaring. Isiannya disimpan, tapi belum menyaring."
+      },
+      "crossPrice": {
+        "label": "Harga cross produk tim lain",
+        "reason": "Harga modal produk tim lain belum bisa dibaca lintas tim. Harga cross yang tampil adalah contoh, dihitung dengan markup asli produknya. Produk tim Anda sendiri memakai angka asli."
+      },
+      "cardStock": {
+        "label": "Stok produk tim lain",
+        "reason": "Stok siap dan stok yang dikirim hanya bisa dibaca untuk produk tim Anda sendiri. Angka di kartu produk tim lain adalah contoh."
+      },
+      "divisionBadge": {
+        "label": "Badge pembagian produk",
+        "reason": "Pembagian Prioritas, Riset dan Umum belum disimpan di mana pun. Badge di kartu adalah contoh."
+      },
+      "locked": {
+        "label": "Tanda produk dikunci",
+        "reason": "Produk yang selalu dikunci tidak dikirim ke Discover — server menyaringnya — jadi tanda Selalu dikunci belum pernah tampil. Tanda Min N pcs sudah asli."
+      },
+      "lockFilter": {
+        "label": "Filter kunci",
+        "reason": "Produk yang dikunci tidak dikirim server ke Discover, dan apakah minimum sudah mengunci sebuah produk bergantung pada stok siapnya, yang ada di layanan inventaris. Pilihannya disimpan, tapi belum menyaring."
+      }
+    },
+    "stock": {
+      "ready": "Siap",
+      "ongoing": "Dikirim",
+      "readyHint": "Stok siap — bisa dijual sekarang",
+      "ongoingHint": "Dikirim — dalam perjalanan ke gudang"
+    },
+    "lock": {
+      "always": "Dikunci"
+    },
+    "range": {
+      "all": "Semua",
+      "custom": "Atur sendiri",
+      "min": "Min",
+      "max": "Maks",
+      "minOf": "{{what}} terendah",
+      "maxOf": "{{what}} tertinggi",
+      "ceiling": "Maksimal {{max}}",
+      "empty": "Kosong"
+    },
+    "lockFilter": {
+      "open": "Terbuka",
+      "locked": "Terkunci",
+      "openHint": "Tim lain bisa mengambilnya sekarang",
+      "lockedHint": "Dikunci pemiliknya, atau stok siapnya sudah di batas minimum atau di bawahnya"
+    }
   },
   "discoverDetail": {
     "back": "Temukan Produk",

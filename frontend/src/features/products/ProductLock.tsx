@@ -34,6 +34,11 @@ export interface LockFields {
   reservedStock: number;
 }
 
+/** The icon each way is drawn with — the row's reading, the editor's pills and Discover's card badge alike. */
+export function lockIconOf(mode: LockMode): typeof Lock {
+  return MODES.find((m) => m.mode === mode)!.icon;
+}
+
 /** Which of the three ways a product's two fields say. Always wins: a locked product with a minimum is locked. */
 export function lockModeOf(p: LockFields): LockMode {
   if (p.crossLocked) return "always";
@@ -56,13 +61,15 @@ export function lockFieldsOf(mode: LockMode, minimum: number): { crossLocked: bo
 }
 
 /**
- * Whether the minimum is closing the product NOW — the total stock is under it. `undefined` when that cannot be said:
- * the setting is not a minimum, or the total is not known (a warehouse lens shows one building's stock, and the rule
- * reads every warehouse's).
+ * Whether the minimum is closing the product NOW — the total stock is AT or under it (owner: *"terkunci itu yang kena
+ * dikunci dan stoknya <= min"*, then *"iya"* to ≤ for both the badge and Discover's filter, `the-minimum-closes-at-the-minimum`).
+ * A product holding exactly its minimum is closed: the minimum is what the owner keeps, so none of it is another team's.
+ * `undefined` when that cannot be said: the setting is not a minimum, or the total is not known (a warehouse lens shows
+ * one building's stock, and the rule reads every warehouse's).
  */
 export function lockedByMinimumNow(p: LockFields, totalReady: bigint | undefined): boolean | undefined {
   if (lockModeOf(p) !== "min" || totalReady === undefined) return undefined;
-  return totalReady < BigInt(p.reservedStock);
+  return totalReady <= BigInt(p.reservedStock);
 }
 
 /** The setting in a few words — "Terbuka", "Min 20 pcs", "Selalu dikunci". */

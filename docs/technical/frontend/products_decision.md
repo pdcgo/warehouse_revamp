@@ -40,6 +40,24 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [the-form-fills-the-canvas-in-three-cards](#the-form-fills-the-canvas-in-three-cards) | the form fills the canvas in three cards — **Gambar** in a fixed 22rem column, **Info Produk** (SKU, name, description, category), **Penjualan Tim Lain** (markup, lock) — all one height; the minimum's stepper turns red as one control |
 | [no-list-on-the-product-page-pages-when-it-fits](#no-list-on-the-product-page-pages-when-it-fits) | every paged list on the product's page — Riwayat Stok now too — shows no pager on page 1 when everything fits; it WIDENS a-short-section-hides-its-pager |
 | [the-suppliers-are-a-tab-of-their-own](#the-suppliers-are-a-tab-of-their-own) | Pemasok leaves the Overview for a warehouse tab of its own, after Harga Modal — Overview, Harga Modal, Pemasok ⚠, Keluar Masuk Harian ⚠, Riwayat Stok |
+| [the-warehouse-tabs-are-lines-on-a-phone](#the-warehouse-tabs-are-lines-on-a-phone) | on a phone, Harga Modal reads each layer as its arithmetic and Riwayat Stok each movement as two lines — no table, nothing wider than the screen |
+| [discover-filters-in-a-side-panel](#discover-filters-in-a-side-panel) | Discover's many filters are a panel beside the grid — Gudang ⚠, Tim pemilik (+ Sembunyikan produk saya), Kategori ⚠, Stok ⚠, Harga cross ⚠; the search, the count and the sort over the grid; below `lg` the same groups in the Filter sheet |
+| [discover-opens-on-priority](#discover-opens-on-priority) | Prioritas · Riset · Umum is a division set PER PRODUCT, chips over the grid, Prioritas chosen when Discover opens — ⚠ not in the business context, so marked and narrowing nothing |
+| [discover-shows-the-cross-price](#discover-shows-the-cross-price) | a Discover card says the cross price; the team's own products add their cost (Harga modal), real figures — another team's cross price is a marked sample — ⚠ how it reads REPLACED by [a-discover-price-is-red-and-unlabelled](#a-discover-price-is-red-and-unlabelled) |
+| [a-discover-price-is-red-and-unlabelled](#a-discover-price-is-red-and-unlabelled) | a Discover card's cross price is RED and bold with no label — a tooltip says what it is; the team's own cost sits UNDER it, smaller, in the body ink |
+| [a-discover-card-shows-its-stock](#a-discover-card-shows-its-stock) | a Discover card shows ready and on-its-way stock as an icon and a count each, what they are in a tooltip; the Stok filter narrows by READY stock |
+| [a-discover-card-highlights-low-stock](#a-discover-card-highlights-low-stock) | the ready figure is a pill when running low — under 5 in the warning tone, none in the error tone — the product page's rule, shared |
+| [a-discover-card-shows-its-division-and-lock](#a-discover-card-shows-its-division-and-lock) | on the cover's top-left: the division badge (Prioritas orange, Riset purple, Umum teal) and the lock — Min N pcs or Selalu dikunci, both RED, told apart by icon — ⚠ colours, icons and the lock's word REPLACED by [prioritas-is-primary-riset-is-warning](#prioritas-is-primary-riset-is-warning) |
+| [prioritas-is-primary-riset-is-warning](#prioritas-is-primary-riset-is-warning) | ★ Prioritas in primary, ⚗ Riset in warning, 🏷 Umum teal — white text on all; a locked card says just **Dikunci**; the division chips have no Semua; the Default story shows a locked product |
+| [discover-ranges-are-picked](#discover-ranges-are-picked) | Stok siap and Harga cross are PICKED from bands — narrow where the numbers are small, wide where large; up to 100.000 pcs and Rp 1.000.000; a range of one's own only after **Atur sendiri** |
+| [discover-filters-by-lock](#discover-filters-by-lock) | a **Kunci** filter — Semua · Terbuka · Terkunci; Terkunci is locked by its owner OR ready stock at or under its minimum (⚠ `≤` here, `<` in the business context) |
+| [the-filter-panel-ends-above-the-windows-foot](#the-filter-panel-ends-above-the-windows-foot) | the filter panel never runs past the window's bottom, wherever it stands; its groups scroll inside it, its title stays |
+| [a-filter-chip-wears-its-badges-icon](#a-filter-chip-wears-its-badges-icon) | the division and lock chips carry the icon their card badge carries — ★ Prioritas, ⚗ Riset, 🏷 Umum, 🔓 Terbuka, 🔒 Terkunci |
+| [umum-carries-no-badge-and-stock-can-be-empty](#umum-carries-no-badge-and-stock-can-be-empty) | a card carries no badge for Umum; Stok siap starts with a **Kosong** band; a price band writes its unit once — **100–250rb**, no Rp |
+| [the-filter-panel-sits-above-the-grid](#the-filter-panel-sits-above-the-grid) | the filter panel is layered above the list beside it, so a picker opening from it (the category columns) paints over the cards |
+| [a-range-bound-is-a-plain-number-box](#a-range-bound-is-a-plain-number-box) | a stock range's own min and max are plain boxes — digits only, grouped, no − and + — an exception to "a quantity is QuantityInput" |
+| [the-minimum-closes-at-the-minimum](#the-minimum-closes-at-the-minimum) | a minimum closes a product when its ready stock is AT or under it (≤) — the Terkunci badge and Discover's filter alike; the business context still says `<`, reported there |
+| [the-card-states-are-pinned-on-the-page](#the-card-states-are-pinned-on-the-page) | Discover's card has no story of its own — its states are pinned by the page's stories, which carry a locked product |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -881,3 +899,389 @@ flowchart LR
 **What it replaces** (HARD RULE 11): [the-warehouse-zone-is-tabs](#the-warehouse-zone-is-tabs)'s *"Overview … then
 Pemasok"* and [the-overview-reads-like-info](#the-overview-reads-like-info)'s *"then Pemasok"*. The card, the picker and
 the other tabs stand.
+
+## the-warehouse-tabs-are-lines-on-a-phone
+
+> Owner, in chat (2026-10-26): *"harga modal di mobile masih berantakan, riwayat stok kepotong"*.
+
+```
+Harga Modal                                     Riwayat Stok
+Rp 45.700 × 30 pcs          Rp 1.371.000        Diterima · Gudang Pusat · #7003              +24
+Cross Rp 51.412                                 7 Okt 2026, 07.00        Sisa di gudang itu 79
+```
+
+| | |
+| --- | --- |
+| why | four columns at 400px wrapped *30 pcs* and every rupiah onto two lines; the ledger's seven columns were wider than the screen and cut off the change and the balance — the two numbers it is read for |
+| Harga Modal | a layer is its arithmetic, the shape of [a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block): *cost × pcs* on the left, the value bold on the right, *Cross Rp …* under it; an unknown cost reads *Tidak diketahui × N pcs … —* with no cross line |
+| Riwayat Stok | a movement is two lines: what happened, then the warehouse and the batch muted, the signed change bold and coloured on the right; under it the time, and the balance with its own label |
+| where it lives | the ledger's phone lines are in the shared [MovementTable.tsx](../../../frontend/src/features/inventory/MovementTable.tsx), opt-in with the empty hint and the lit rows (`emptyIcon`) — the batch, shelf and warehouse-product ledgers keep their table until they are reworked |
+| ✅ built *(2026-10-26)* | [PriceSection.tsx](../../../frontend/src/pages/product-detail/components/PriceSection.tsx); the story `APhoneReadsTheTabsAsLines` — no table in either tab, the arithmetic and the balance read, the page no wider than the screen |
+
+## discover-filters-in-a-side-panel
+
+> Owner, in chat (2026-10-26): asked whether the filters go beside or above — top was recommended for the few there
+> were; then *"filternya akan banyak, kita bahas dulu"*, and on the panel proposed: *"iya, gudang di atas, lalu tim … untuk
+> filter lain kurasa sesuai dengan yang kau sebutkan"*.
+
+```
+Temukan Produk
+┌ ⚲ Filter    Hapus Filter ┐  [⌕ Cari SKU atau nama   ]            48 produk   [Terbaru ⌄]
+│ Gudang ⚠                 │  (Semua) (Prioritas) (Riset) (Umum) ⚠
+│ [Semua gudang        ⌄]  │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐
+│ Tim pemilik              │  │cover │ │cover │ │cover │ │cover │
+│ [Semua tim           ⌄]  │  │name  │ │name  │ │name  │ │name  │
+│ ☐ Sembunyikan produk saya│  │Cross │ │Cross │ │Cross │ │Cross │
+│ Kategori ⚠ · Stok ⚠      │  └──────┘ └──────┘ └──────┘ └──────┘
+│ Harga cross ⚠ [Rp]–[Rp]  │
+└──────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| why a panel | a browse with many filters: a strip would hide most of them behind a Filter button, and the people using it sell on marketplaces, where filters stand in a column on the left |
+| the order | **Gudang** ⚠, **Tim pemilik** with **Sembunyikan produk saya** under it, **Kategori** ⚠, **Stok** ⚠ (*Hanya yang ada stoknya*), **Harga cross** ⚠ (from–to) |
+| over the grid | the search, how many products, and the sort (**Terbaru**, **Nama A–Z**, **SKU A–Z**) — a grid has no headings to sort from |
+| wired | the search, Tim pemilik, Sembunyikan produk saya and the sort — real, on ProductDiscover; the rest hold their pick and throw it away, marked (`dropped`) |
+| the panel | a new shared [FilterPanel](../../../frontend/src/components/chrome/FilterPanel.tsx) with `FilterGroup`: a titled card that sticks as the window scrolls, Hapus Filter in its header only while filtering — FilterBar's rules, in a column |
+| below `lg` | no room for the column: the search stays in the row and the same groups open from a **Filter** button into the bottom sheet, the sort last — FilterBar gained `sheetBelow="lg"` for this |
+| the grid | beside the panel, as many 12.5rem cards as the row holds; below `lg` **two a row, a phone too** — one full-width square cover per screen made the browse one product at a time |
+| still open | Gudang and Stok need ONE read joining inventory_service and product_service (a paged list cannot be narrowed after it loads); Kategori needs a category filter on ProductDiscover; Harga cross needs another team's cost |
+| ✅ built *(2026-10-26)* | [pages/product-discover](../../../frontend/src/pages/product-discover/index.tsx); the stories `TheFiltersAreBesideTheGrid`, `EveryGapIsMarked`, `HideMineLeavesOtherTeams`, `SortsByName`, `FiltersLiveInTheUrl`, `APhoneFiltersFromTheSheet` |
+
+**What it replaces**: the page's single search box and the old `Pagination` — it now pages with `GrowingPager`
+([every-list-pages-with-the-growing-pager](context_decision.md#every-list-pages-with-the-growing-pager)) and an empty
+browse shows a hint ([an-empty-list-shows-a-hint](context_decision.md#an-empty-list-shows-a-hint)).
+
+## discover-opens-on-priority
+
+> Owner, in chat (2026-10-26): *"aturan di context yang belum ada adalah pembagian produk, yaitu ada produk
+> prioritas/riset/umum, secara default di tampilkan yang prioritas semua, pembagian ini tidak ada semua produk jadi
+> spesifik mau di produk yang mana, jadi di discover nanti ada semacam filter untuk ini, kan belum ada di context, tulis
+> saja di unimplemented karena context dan bisnis lain bukan kewenanganku"*.
+
+| | |
+| --- | --- |
+| the division | **Prioritas**, **Riset**, **Umum** — set **per product**, on the products it is meant for |
+| on Discover | chips over the grid — **(Semua) (Prioritas) (Riset) (Umum)** — on a desktop and a phone alike, never in the sheet: it is what the grid shows by default, so it must be in sight |
+| the default | **Prioritas**; Hapus Filter puts it back to Prioritas, not to Semua |
+| ⚠ pending | not in the business context and stored nowhere, so the pick narrows nothing (`division`, `dropped`) — the owner's instruction is to mark it, since the business context is not theirs to write |
+| ✅ built *(2026-10-26)* | the story `PriorityIsWhereItOpens` |
+
+**A contradiction to settle** (HARD RULE 11) — not with an owner doc, with the contract as it stands:
+
+```mermaid
+flowchart LR
+  O["owner — division is PER PRODUCT: Prioritas, Riset, Umum"] -.->|"does not fit"| P["proto — priority is a TEAM flag, Team.priority_product, two slices: owner_team_ids and exclude_owner_team_ids"]
+  P --> K["the product picker's Priority and Other tabs read it"]
+```
+
+ProductDiscover's priority partition is a flag on the **team** — every product of a priority team is a priority product
+— and has two values, not three. Wiring the chips to it would make Riset and Umum unanswerable and file a team's every
+product under one division. **→ Recommend:** leave the chips marked until the business context defines the division; the
+answer decides whether the team flag is replaced by a per-product field or kept beside it.
+
+## discover-shows-the-cross-price
+
+> Owner, in chat (2026-10-26): *"secara default yang muncul di sini adalah harga cross, tapi khusus untuk team yang login
+> atau contextnya dipilih, boleh menampilkan harga asli dan harga cross"*.
+
+```
+another team's product           the team standing here's own
+Cross ⚠                          Harga modal
+Rp 79.000 – Rp 81.000            Rp 45.700 – Rp 47.200
+                                 Cross
+                                 Rp 51.412 – Rp 53.100
+```
+
+| | |
+| --- | --- |
+| every card | the **cross price** — what a borrower pays: the cost with the product's markup on top, a range when the units cost differently |
+| the team's own | **Harga modal** too, above the cross price — real figures, from OwnerStockByIds batched once per page for the ids the team owns; a product never costed reads a dash on both |
+| ⚠ another team's | its cost cannot be read across teams yet, so the cost under its cross price is a SAMPLE seeded by the product id, with the product's REAL markup on top (`crossPrice`, `sample`) |
+| the label | over the amount — a card is ~12rem, half a phone, and a range beside its label would be cut |
+| shared | `withMarkup` (lib/markup.ts) and `formatRupiahRange` (lib/money.ts) now price and write a range for the product list, the product's page and Discover alike — three copies became one |
+| ✅ built *(2026-10-26)* | the stories `AnotherTeamsCardSaysTheCrossPrice`, `YourOwnProductSaysCostAndCross` |
+
+It answers, for this screen, who may see the owner's unit price — open in
+[product context_clarify](../../business/product/context_clarify.md) as *Awaiting*: on Discover, the owner alone.
+
+## a-discover-price-is-red-and-unlabelled
+
+> Owner, in chat (2026-10-26): *"kurasa keterangan harga kasih warna merah, harga apa tidak perlu diberi label tooltips
+> saja, harga modal kalau tampil di bawah harga cross dan lebih kecil warnanya hitam saja"*.
+
+```
+another team's product           the team standing here's own
+Rp 79.000 – Rp 81.000 ⚠          Rp 51.412 – Rp 53.100     ← red, bold, 14px
+                                 Rp 45.700 – Rp 47.200     ← the body ink, 12px
+```
+
+| | |
+| --- | --- |
+| the cross price | the card's figure — **red** and bold, with **no label** beside or over it |
+| the cost | the team's own products only, **under** the cross price, **smaller**, in the body ink (black) — no label either |
+| which is which | a **tooltip** on each figure — *Harga cross — yang dibayar tim lain untuk produk ini*, *Harga modal — yang dibayar tim Anda* — and the same name in its spoken label (*Cross Rp …*) |
+| the red | its own token, **`price.fg`** in theme.ts (red 600, red 400 on the dark ground) — not `error`: a price is not a fault, and a change to the error role must not repaint every price |
+| ✅ built *(2026-10-26)* | [DiscoverPrice.tsx](../../../frontend/src/pages/product-discover/components/DiscoverPrice.tsx); the stories `AnotherTeamsCardSaysTheCrossPrice` (no label, the tooltip), `YourOwnProductSaysCostAndCross` (the cost under the cross price) |
+
+**What it replaces** (HARD RULE 11): [discover-shows-the-cross-price](#discover-shows-the-cross-price)'s *"the label —
+over the amount"*, and its sketch's order, which put the cost above the cross price. Who sees which price stands.
+
+## a-discover-card-shows-its-stock
+
+> Owner, in chat (2026-10-26): *"di cardnya ada stok ready dan stok ongoing, teksnya tooltips saja, kasih icon untuk
+> stocknya"*, and *"filter stok juga ada, yg difilter adalah yang ready"*.
+
+| | |
+| --- | --- |
+| on the card | under the price: **✓▢ N pcs** (ready, `PackageCheck`) and **🚚 N pcs** (on its way, `Truck`) — no words; *Stok siap — bisa dijual sekarang* and *Dikirim — dalam perjalanan ke gudang* are the tooltips and the spoken labels |
+| the team's own | real figures, from the same OwnerStockByIds batch as the cost; a dash where the read said nothing |
+| ⚠ another team's | a sample (`cardStock`) — OwnerStockByIds answers only for the caller's own goods |
+| the Stok filter | *Hanya yang ada stok siap* — it narrows by **ready** stock; still `dropped` |
+| ✅ built *(2026-10-26)* | [DiscoverStock.tsx](../../../frontend/src/pages/product-discover/components/DiscoverStock.tsx); the story `Pages/Products/DiscoverCard` |
+
+## a-discover-card-highlights-low-stock
+
+> Owner, in chat (2026-10-26): *"stock menipis ada highlight"*.
+
+| | |
+| --- | --- |
+| the rule | the product page's ([the-stock-chip-says-how-much-is-left](#the-stock-chip-says-how-much-is-left)): none ready → out, under `LOW_STOCK_PCS` (5) → low — now ONE function, `readyStatus` in features/products/stockAge.ts, read by both pages |
+| on the card | the ready figure becomes a **pill**, bold — low in the **warning** tone, out in the **error** tone; a healthy figure stays plain |
+| its tooltip | the figure's name, and under it which and why — *Hampir habis — Stok siap kurang dari 5 pcs di semua gudang* |
+| ✅ built *(2026-10-26)* | the story `DiscoverCard/LowStockIsHighlighted` |
+
+## a-discover-card-shows-its-division-and-lock
+
+> Owner, in chat (2026-10-26): *"di card juga ada badge sesuai tipe prioritas, riset dan umum"*, *"kasih keterangan ini
+> locked atau tidak, baik yang locked dan yang min, yang min ada keterangan min berapa"*; then *"keterangannya kurang
+> terlihat, kasih di atas sendiri"*, *"warnanya kurang jelas"*, *"lock permanen belum ada contohnya, untuk lock warnanya
+> jangan hitam"*, *"kuning tidak kelihatan"*, *"merah saja"*.
+
+```
+┌─────────────────────────────────────┐
+│ [Prioritas] ⚠ [🔒 Selalu dikunci]   │   on the cover, top-left, solid
+│ [Riset] ⚠ [↘ Min 5 pcs]             │
+│               cover                 │
+└─────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| where | **on the cover**, at its top-left corner — in the foot's row beside the team they were read last or not at all; `ProductCard` gained `coverBadges` for this |
+| the division | **Prioritas** orange, **Riset** purple, **Umum** teal — solid; categorical, so hues; a product without one carries none; ⚠ a sample (`divisionBadge`) |
+| the lock | the product list's words and icons ([one-lock-three-ways](#one-lock-three-ways)): **↘ Min N pcs** for a minimum, **🔒 Selalu dikunci** for a lock — **both red**, solid; an open product carries nothing |
+| not | black (it read as Umum), a pale amber (lost over a picture) — anything pale is lost on a cover |
+| the ⚠ marks | on the page's ground, so they read over any picture |
+| ⚠ Selalu dikunci | ProductDiscover leaves out every locked product, so the grid never shows it (`locked`, `missing`) — its example is the story `Pages/Products/DiscoverCard`. Whether a locked product should appear on Discover at all is the owner's to decide; it needs a server change |
+| ✅ built *(2026-10-26)* | [DiscoverBadges.tsx](../../../frontend/src/pages/product-discover/components/DiscoverBadges.tsx), [DiscoverCard.tsx](../../../frontend/src/pages/product-discover/components/DiscoverCard.tsx); the stories `EveryLockState`, `TheBadgesAreOnTheCover` |
+
+## prioritas-is-primary-riset-is-warning
+
+> Owner, in chat (2026-10-26): *"lock bukan min di default tidak ada, prioritas warnanya primary, riset warning"*, then
+> *"riset teksnya putih juga, selalu dikunci jadi dikunci saja, prioritas riset dan umum ada iconnya"*, then *"sama
+> filter semua tidak perlu, cuma per tipe saja"*.
+
+```
+(Prioritas) (Riset) (Umum) ⚠          ← the chips — no Semua, one always chosen
+
+┌─────────────────────────────────┐
+│ [★ Prioritas] ⚠ [🔒 Dikunci]    │   primary · error
+│ [⚗ Riset] ⚠ [↘ Min 5 pcs]       │   warning · error
+│ [🏷 Umum] ⚠                      │   teal
+└─────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the division's badge | **★ Prioritas** in `primary`, **⚗ Riset** in `warning`, **🏷 Umum** teal — solid, each with its icon, **white text on all three** (warning's own contrast text is dark; the owner wants them read alike). Prioritas and Riset are ROLE names because the owner chose them by role |
+| the lock's word | a locked card says just **🔒 Dikunci** — the badge states what IS, where the list's editor names the option (*Selalu dikunci*) beside the other two; a minimum still says **↘ Min N pcs** |
+| the chips | **Prioritas · Riset · Umum** only — no *Semua*: the browse is always one division, Prioritas when it opens. `FilterChips` takes `all` and `allLabel` as optional for this |
+| the Default story | shows a locked product (Teh Melati) — a story locks it with `patchProduct`, and the stub's ProductDiscover answers locked products, since the design shows them; the server still leaves them out (`locked`) |
+| ✅ built *(2026-10-26)* | [DiscoverBadges.tsx](../../../frontend/src/pages/product-discover/components/DiscoverBadges.tsx), [FilterChips.tsx](../../../frontend/src/components/chrome/FilterChips.tsx); the stories `TheLocksAreOnTheGrid`, `FilterChips/WithoutAll` |
+
+**What it replaces** (HARD RULE 11): [a-discover-card-shows-its-division-and-lock](#a-discover-card-shows-its-division-and-lock)'s
+orange and purple, its iconless division badges and its *Selalu dikunci*; [discover-opens-on-priority](#discover-opens-on-priority)'s
+*(Semua)* chip and its Hapus Filter note — Hapus Filter still puts the division back to Prioritas. Where the badges sit and
+that a lock is red stand.
+
+## discover-ranges-are-picked
+
+> Owner, in chat (2026-10-26): *"filter stok belum ada … untuk stok dan price rangenya pilih saja, kalau mau custom kudu
+> klik tombol dulu, stok sekarang maksimal 100k, price maks 1jt, rangenya ada yang sedikit, ada yang panjang, aku
+> serahkan padamu"* — and *"sembunyikan produk saya tidak bisa diklik malah ke selectnya"*.
+
+```
+Stok siap ⚠
+(Semua) (1–10) (11–50) (51–100) (101–500)
+(501–1.000) (1.001–10.000) (10.001–100.000) (✎ Atur sendiri)
+[− Min +] – [− Maks +]        Maksimal 100.000      ← only after Atur sendiri
+
+Harga cross ⚠
+(Semua) (≤ Rp 10rb) (Rp 10rb–25rb) (Rp 25rb–50rb) (Rp 50rb–100rb)
+(Rp 100rb–250rb) (Rp 250rb–500rb) (Rp 500rb–1jt) (✎ Atur sendiri)
+```
+
+| | |
+| --- | --- |
+| picked, not typed | each range is a row of **pills**, Semua first — one click, and it says what it covers |
+| the bands | narrow where the numbers are small, wide where they are large — a seller tells 5 pcs from 40, not 40.000 from 60.000; a Rp 12.000 product from a Rp 30.000 one, hardly Rp 600.000 from Rp 800.000 ([ranges.ts](../../../frontend/src/pages/product-discover/ranges.ts)) |
+| the ceilings | **Stok siap** up to **100.000 pcs**; **Harga cross** up to **Rp 1.000.000** — the last band ends there, and a typed bound past it is held at it |
+| a range of one's own | behind **✎ Atur sendiri**, a chip at the end of the row: it opens two boxes — `QuantityInput` for stock, `CurrencyInput` for the price — with the ceiling under them; picking a band closes them, pressing it again goes back to Semua |
+| the stock filter | it filters **ready** stock (*Stok siap*) — the checkbox *Hanya yang ada stok siap* is gone into the bands |
+| in the URL | `stock` / `cross` is the band or `custom`, and `stockMin`·`stockMax` / `crossMin`·`crossMax` the typed ends, kept only while custom |
+| still | both `dropped` — nothing on the server narrows by stock or by another team's price yet |
+| the checkbox fix | *Sembunyikan produk saya* shares its group with the team picker; the group was a `Field.Root`, which gave both controls one id, so the checkbox's label opened the picker. `FilterGroup` is now a plain stack with the field label's type |
+| ✅ built *(2026-10-26)* | [DiscoverRangeFilter.tsx](../../../frontend/src/pages/product-discover/components/DiscoverRangeFilter.tsx), [FilterPanel.tsx](../../../frontend/src/components/chrome/FilterPanel.tsx); the stories `TheRangesArePicked`, `HideMineLeavesOtherTeams` (a click on the words ticks it) |
+
+**What it replaces** (HARD RULE 11): [discover-filters-in-a-side-panel](#discover-filters-in-a-side-panel)'s *Stok ⚠
+(Hanya yang ada stoknya)* and *Harga cross ⚠ (from–to)*, and [a-discover-card-shows-its-stock](#a-discover-card-shows-its-stock)'s
+checkbox — the filter still narrows by ready stock.
+
+## discover-filters-by-lock
+
+> Owner, in chat (2026-10-26): *"oke, 1 filter lagi, filter terkunci dan terbuka, terkunci itu yang kena dikunci dan
+> stoknya <= min"*.
+
+```
+Kunci ⚠
+(Semua) (Terbuka) (Terkunci)
+```
+
+| | |
+| --- | --- |
+| where | the panel's last group, after Harga cross (in the sheet, before the sort) |
+| Terkunci | a product its owner **locked**, OR one with a **minimum** whose ready stock is **at or under** it |
+| Terbuka | every other — another team may take it now |
+| ⚠ pending | `lockFilter`, `dropped` — the server leaves a locked product out of Discover, and whether a minimum has closed a product needs its ready stock, which is inventory_service's |
+| ✅ built *(2026-10-26)* | [DiscoverFilterGroups.tsx](../../../frontend/src/pages/product-discover/components/DiscoverFilterGroups.tsx); the story `TheLockFilterIsOpenOrLocked` |
+
+**A contradiction to settle** (HARD RULE 11) — at the minimum itself:
+
+```mermaid
+flowchart LR
+  O["owner, on Discover — locked when ready stock is at or under the minimum"] -.->|"disagree at stock = minimum"| B["business context — when stock is under several, it cannot be shared"]
+  B --> L["ProductLock lockedByMinimumNow — totalReady under reservedStock"]
+```
+
+[docs/business/product/context.md](../../business/product/context.md) line 86 says *"when stock < several, its cannot be
+shared"*, and the product list's Terkunci badge follows it (`lockedByMinimumNow`: ready **<** minimum). The owner's
+filter says **≤**. They disagree only for a product holding exactly its minimum — closed by the filter, open by the
+badge. Nothing is changed until it is settled: the filter is pending, and the badge keeps `<`.
+**→ Recommend:** settle one comparison in the business context and use it in both places, so a product cannot be listed
+under Terkunci while its own card says it is open.
+
+## the-filter-panel-ends-above-the-windows-foot
+
+> Owner, in chat (2026-10-26): *"filternya tenggelam di bawah, kudu scroll produk"*.
+
+| | |
+| --- | --- |
+| why | with the range pills the panel outgrew a screen; a sticky box taller than the window keeps its foot below the fold, so the last filters were reached only by scrolling the products |
+| the rule | the panel ends a gutter above the window's bottom **wherever it stands** — lower at rest under the page's title, taller once it sticks — re-measured on scroll and resize |
+| inside | the title and Hapus Filter stay put; the **groups scroll**, the bar on the card's edge (`scrollList`) |
+| ⚠ a picker in it | one that is not portalled positions itself `fixed`, or the scroller cuts it off — CategorySelect gained `positioningStrategy` |
+| why not a fixed cap | `100dvh` less the gutters fits only once the panel sticks — at rest it starts ~175px down and its last 135px were still off the screen |
+| ✅ built *(2026-10-26)* | [FilterPanel.tsx](../../../frontend/src/components/chrome/FilterPanel.tsx); the story `FilterPanel/NeverPastTheWindowsFoot` |
+
+## a-filter-chip-wears-its-badges-icon
+
+> Owner, in chat (2026-10-26): *"pill terbuka, kunci, prioritas, riset dll ada iconnya"*.
+
+| | |
+| --- | --- |
+| the chips | **★ Prioritas · ⚗ Riset · 🏷 Umum** over the grid, **🔓 Terbuka · 🔒 Terkunci** in the panel — each with the icon its card badge carries, so the chip a seller clicks and the badge it narrows to are matched at a glance; *Semua* and the number bands carry none |
+| one source | the division's colour and icon live in [division.ts](../../../frontend/src/pages/product-discover/division.ts), read by the badge and the chip; the lock's icons are ProductLock's own (`lockIconOf`) |
+| shared | `FilterChips` options take an optional `icon` — the story `FilterChips/WithIcons` |
+| ✅ built *(2026-10-26)* | [index.tsx](../../../frontend/src/pages/product-discover/index.tsx), [DiscoverFilterGroups.tsx](../../../frontend/src/pages/product-discover/components/DiscoverFilterGroups.tsx) |
+
+## umum-carries-no-badge-and-stock-can-be-empty
+
+> Owner, in chat (2026-10-26): *"di card tidak perlu badge untuk yang umum, ada juga filter stok kosong"*, then *"yang
+> price range, itu contoh 100rb-250rb jadi 100-250rb"*.
+
+```
+card cover        [★ Prioritas]   [⚗ Riset]   (Umum: no badge)
+
+Stok siap ⚠       (Semua) (Kosong) (1–10) (11–50) … (10.001–100.000) (✎ Atur sendiri)
+Harga cross ⚠     (Semua) (≤ 10rb) (10–25rb) (25–50rb) (50–100rb) (100–250rb) (250–500rb) (500rb–1jt) (✎ Atur sendiri)
+```
+
+| | |
+| --- | --- |
+| Umum on a card | **no badge** — the ordinary case; a badge on every ordinary card drowns the two that mean something. Its chip stays on the filter |
+| Kosong | the first stock band after Semua — **0 ready**, a band of its own rather than a custom 0–0 |
+| a price band | its unit **once, at the end**, when both ends share it — **10–25rb**, **100–250rb**; both units where they differ — **500rb–1jt**; **no "Rp"**, which the group's label already says |
+| ✅ built *(2026-10-26)* | [DiscoverBadges.tsx](../../../frontend/src/pages/product-discover/components/DiscoverBadges.tsx), [ranges.ts](../../../frontend/src/pages/product-discover/ranges.ts); the stories `DiscoverCard/UmumCarriesNoBadge`, `TheRangesArePicked` |
+
+**What it replaces** (HARD RULE 11): [prioritas-is-primary-riset-is-warning](#prioritas-is-primary-riset-is-warning)'s
+🏷 Umum **badge** (its colour and icon stay, on the chip), and [discover-ranges-are-picked](#discover-ranges-are-picked)'s
+price labels (*Rp 10rb–25rb*) and its stock bands, which began at 1–10.
+
+## the-filter-panel-sits-above-the-grid
+
+> Owner, in chat (2026-10-26): *"filter kategori ketutupan card produk"*.
+
+| | |
+| --- | --- |
+| why | a sticky box is a stacking context of its own, so the category picker inside it was layered WITH the panel — at `z-index: auto`, under the cards that come after it in the page; its columns grow toward the grid and went under the first card |
+| the rule | the panel stands at `zIndex="docked"` — above the list beside it, and so is everything that opens from it |
+| ✅ built *(2026-10-26)* | [FilterPanel.tsx](../../../frontend/src/components/chrome/FilterPanel.tsx); the story `TheCategoryPickerOpensOverTheGrid` — the columns reach past the panel and what is painted there is the picker |
+
+## a-range-bound-is-a-plain-number-box
+
+> Owner, in chat (2026-10-26): *"min maks stok tidak usah pakai control, karena memenuhi tempat"*.
+
+```
+Stok siap ⚠
+… (✎ Atur sendiri)
+[ Min      ] – [ Maks     ]        ← plain boxes: digits only, shown grouped (100.000)
+Maksimal 100.000
+```
+
+| | |
+| --- | --- |
+| why | two `QuantityInput`s, each with its − and +, filled the 16rem panel with buttons and left the numbers a few characters |
+| the box | a Chakra `Input` taking **digits only**, shown **grouped** (100.000), held as raw digits, `inputMode="numeric"` for a phone's number pad — **not** `type="number"`, which changes when somebody scrolls past it and accepts `1e3` |
+| where | a bound typed into a filter — typed once, never stepped. A quantity on a form (an order line, a count) stays `QuantityInput` |
+| ✅ built *(2026-10-26)* | [DiscoverRangeFilter.tsx](../../../frontend/src/pages/product-discover/components/DiscoverRangeFilter.tsx); the story `TheRangesArePicked` (a typed 250000 is held at 100.000) |
+
+**What it narrows** (HARD RULE 11): CLAUDE.md's *"A quantity is `QuantityInput` … `<input type="number">` draws the
+browser's own spinners"*. The reasons against the native number box all still hold, and this box avoids every one of them;
+what it drops is only the − and +, for a bound in a filter. CLAUDE.md is not edited here — it is the owner's to update.
+
+## the-minimum-closes-at-the-minimum
+
+> Owner, in chat (2026-10-30), to *"≤ seperti di filter, atau < seperti di context bisnis?"*: *"iya"* — ≤.
+
+```
+minimum 20      ready 19 → Terkunci      ready 20 → Terkunci      ready 21 → Terbuka
+```
+
+| | |
+| --- | --- |
+| the rule | a minimum closes a product to other teams when its ready stock, across every warehouse, is **at or under** it — **≤** |
+| why | the minimum is what the owner keeps for itself; a product holding exactly that much has nothing left for another team |
+| where | `lockedByMinimumNow` (ProductLock.tsx) — the **Terkunci** badge on the product list and the product's page — and Discover's **Kunci** filter, one comparison |
+| ⚠ the business context | still says `<` (context.md line 86, and *total stock ≥ reserve* in [the-reserve-stops-other-teams-at-low-stock](../../business/product/context_decision.md#the-reserve-stops-other-teams-at-low-stock)) — not the screens' owner's to edit, so it is reported there: [product clarify Q13](../../business/product/context_clarify.md#question) and its contradiction. Until it changes, whatever checks the reserve on an ORDER still opens a product at exactly its minimum |
+| ✅ built *(2026-10-30)* | the stories `ProductLock/AtTheMinimumIsLocked`, `ProductLock/OneAboveTheMinimumIsOpen` |
+
+**What it replaces** (HARD RULE 11): [discover-filters-by-lock](#discover-filters-by-lock)'s *"Nothing is changed until it is
+settled … the badge keeps `<`"* — settled as ≤, and the badge follows.
+
+## the-card-states-are-pinned-on-the-page
+
+> Owner, in chat (2026-10-30): *"kenapa ada product discovercard di page?"*, then *"iyaps"* to removing its story.
+
+| | |
+| --- | --- |
+| why | `Pages/Products/DiscoverCard` read as another page in Storybook's sidebar; it existed to show a locked card the grid never received, and the Default story now carries one (locked with `patchProduct`) |
+| now | `DiscoverCard` stays a component of its page; its states are pinned by `Pages/Products/DiscoverProducts` — `TheLocksAreOnTheGrid`, `TheBadgesAreOnTheCover` (the lock and the division on the cover, Umum with none), `LowStockIsHighlighted`, `YourOwnProductSaysCostAndCross` (the own product's real cost and stock) |
+| the samples | the page's stories pick a card BY WHAT IT SHOWS — the first low, out-of-stock, Umum or Prioritas card on page 1, read from the samples — never by a fixture position |
+
+**What went stale** (HARD RULE 11), one cause, four sites: the *✅ built* lines of
+[a-discover-card-shows-its-stock](#a-discover-card-shows-its-stock), [a-discover-card-highlights-low-stock](#a-discover-card-highlights-low-stock),
+[a-discover-card-shows-its-division-and-lock](#a-discover-card-shows-its-division-and-lock) and
+[umum-carries-no-badge-and-stock-can-be-empty](#umum-carries-no-badge-and-stock-can-be-empty) name the card's own stories
+(`DiscoverCard/…`); read them as the page's stories of the same name above.

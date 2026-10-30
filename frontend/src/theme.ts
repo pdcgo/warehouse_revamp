@@ -758,6 +758,13 @@ const customConfig = defineConfig({
           border: { value: { _light: "#eadfc8", _dark: "#3d3426" } },
           fg: { value: { _light: "#8a6d3b", _dark: "#e3c48c" } },
         },
+        // ── A PRICE ON A CARD, IN RED (owner, on Discover: *"keterangan harga kasih warna merah"*,
+        // `a-discover-price-is-red-and-unlabelled`) — the marketplace convention the people using this app sell under,
+        // where the price is the red figure on a product card. Its OWN token and not `error`: a price is not a fault, and
+        // a palette change to the error role must not repaint every price. Red 600 on white, red 400 on the dark ground.
+        price: {
+          fg: { value: { _light: TAILWIND.red[600], _dark: TAILWIND.red[400] } },
+        },
         // `teamType.<type>.badge` / `.avatar` / `.fg` — see TEAM TYPE COLOURS, above.
         teamType: {
           warehouse: teamTypeColour(["#fef3c7", "#fde68a", "#b45309"], ["#78350f", "#92400e", "#fcd34d"]),

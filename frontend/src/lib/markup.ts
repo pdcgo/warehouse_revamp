@@ -9,6 +9,15 @@ export function formatMarkup(bps: number): string {
   return `${formatMarkupValue(bps)}%`;
 }
 
+/**
+ * What another team pays for a unit that cost us `cost` — the cost with the markup on top, in whole rupiah (basis points
+ * over rupiah land on fractions no invoice carries, so the division floors). The product list, the product's page and
+ * Discover all price a cross unit with this one function.
+ */
+export function withMarkup(cost: bigint, bps: number): bigint {
+  return cost + (cost * BigInt(bps)) / 10_000n;
+}
+
 /** 1250 → "12.5" — the value an input holds, without the sign. */
 export function formatMarkupValue(bps: number): string {
   // toFixed then strip, rather than dividing and hoping: 1/100 of a percent is exactly two decimals,

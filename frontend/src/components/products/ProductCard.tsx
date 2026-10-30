@@ -21,6 +21,13 @@ export interface ProductCardProps {
   /** The owning team's name. Not on Product either — only `teamId` — so the caller resolves ids →
    * names in ONE batch call (e.g. TeamByIds) and passes it down. Falls back to "Team #<id>". */
   teamName?: string;
+  /** Facts under the name — a price, the caller's, since none of it is on Product. Omitted, nothing is drawn. */
+  details?: ReactNode;
+  /**
+   * Badges ON THE COVER, at its top-left corner — what must be seen before the name is read (a kind, a lock); the
+   * caller's, like `details`. Drawn solid by the caller so they hold against any picture.
+   */
+  coverBadges?: ReactNode;
   // Optional footer content: actions, a check, etc.
   action?: ReactNode;
 }
@@ -32,9 +39,9 @@ export interface ProductCardProps {
 // many products into a scannable list, this is vertical and image-forward for BROWSING a grid, where
 // the picture is what you recognise a product by. It backs Product Discover.
 export const description =
-  "The shared way to show a product as a card in a grid — a large cover image (or a placeholder), the name, its SKU, the owning team, and an optional ready-stock badge. The image-forward counterpart of ProductListItem: same props and same presentational contract, but vertical and picture-led for browsing a grid, where ProductListItem is a compact row for scanning a list.";
+  "The shared way to show a product as a card in a grid — a large cover image (or a placeholder), badges of the caller's over the cover's top-left corner, the name, its SKU, optional details under them (a price), the owning team, and an optional ready-stock badge. The image-forward counterpart of ProductListItem: same props and same presentational contract, but vertical and picture-led for browsing a grid, where ProductListItem is a compact row for scanning a list.";
 
-export function ProductCard({ product, stock, teamName, action }: ProductCardProps) {
+export function ProductCard({ product, stock, teamName, details, coverBadges, action }: ProductCardProps) {
   const { t } = useTranslation();
 
   // The FULL image first here, thumbnail as the fallback — the reverse of ProductListItem, and
@@ -72,7 +79,7 @@ export function ProductCard({ product, stock, teamName, action }: ProductCardPro
       {/* A square cover — the marketplace convention, and it keeps every card the same shape whatever
           the source image is. Avatar sizes itself from --avatar-size, so size="full" hands the sizing
           to this Box; the Box's aspect ratio is then the single thing deciding the cover's height. */}
-      <Box aspectRatio="1" w="full">
+      <Box aspectRatio="1" w="full" position="relative">
         {/* `display="flex"` overrides the recipe's inline-flex: an inline-level box sits on the text
             baseline, which would leave a sliver of gap under the cover. It keeps the recipe's
             centring, so the fallback icon stays centred. */}
@@ -82,6 +89,11 @@ export function ProductCard({ product, stock, teamName, action }: ProductCardPro
           </Avatar.Fallback>
           <Avatar.Image src={cover || undefined} alt={title} />
         </Avatar.Root>
+        {coverBadges && (
+          <HStack position="absolute" top="2" left="2" right="2" gap="1" wrap="wrap" data-testid="product-card-cover-badges">
+            {coverBadges}
+          </HStack>
+        )}
       </Box>
 
       <Card.Body p="card" gap="field">
@@ -95,6 +107,8 @@ export function ProductCard({ product, stock, teamName, action }: ProductCardPro
             </Text>
           )}
         </Stack>
+
+        {details}
 
         {(team || showStock) && (
           <HStack gap="2" wrap="wrap" mt="auto">
