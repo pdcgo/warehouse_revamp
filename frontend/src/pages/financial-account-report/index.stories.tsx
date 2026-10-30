@@ -7,7 +7,7 @@ import {
   FinancialAccountChangeType as T,
   FinancialAccountProvider as P,
 } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
-import { formatRupiahNumber } from "../../lib/money";
+import { formatRupiahBare, formatRupiahNumber } from "../../lib/money";
 import { FinancialAccountReportPage } from "./index";
 
 // The account report — five cards and one table of periods (owner, `the-report-is-five-cards-and-one-table`), the
@@ -25,6 +25,9 @@ const MELATI_TIKTOK = account("Unknown — shop #25");
 
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatRupiahNumber(Math.abs(n))}`.replace(/\s/g, " ");
 const rp = (n: number) => formatRupiahNumber(n).replace(/\s/g, " ");
+// Saldo per Penyedia dan Akun says "Rp" once, over its figures (the-rincian-says-rp-once).
+const bare = (n: number) => formatRupiahBare(n);
+const signedBare = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatRupiahBare(Math.abs(n))}`;
 
 const Routed = routedPage(
   [{ path: "/financial-accounts/report", element: <FinancialAccountReportPage /> }, marker("/financial-accounts/:accountId", "at-account-detail")],
@@ -525,18 +528,28 @@ export const WhereTheMoneyIs: Story = {
     ]);
     await expect(within(table).getAllByTestId(/^breakdown-row-accountId-/)).toHaveLength(7);
 
+    // The closing balance reads from the left — its heading and every figure (the-rincian-close-is-left-aligned).
+    await expect(getComputedStyle(within(table).getAllByRole("columnheader")[3]).textAlign).toBe("start");
+    for (const cell of within(table).getAllByTestId("breakdown-close-cell")) {
+      await expect(getComputedStyle(cell).textAlign).toBe("start");
+    }
+
+    // The currency is said once, at the card's title — no figure in the table carries "Rp" (the-rincian-says-rp-once).
+    await expect(within(breakdown).getByTestId("account-report-breakdown-where-unit")).toHaveTextContent("Amounts in rupiah (Rp)");
+    await expect(table.textContent).not.toContain("Rp");
+
     // BCA's row is its two accounts summed, and both sit under it.
     const bca = within(table).getByTestId(`breakdown-row-provider-${P.BCA}`);
-    await expect(bca).toHaveTextContent(signed(1_293_500));
-    await expect(bca).toHaveTextContent(rp(12_043_500));
+    await expect(bca).toHaveTextContent(signedBare(1_293_500));
+    await expect(bca).toHaveTextContent(bare(12_043_500));
     const ops = within(table).getByTestId(`breakdown-row-accountId-${BCA_OPS.id}`);
-    await expect(ops).toHaveTextContent(rp(11_443_500));
+    await expect(ops).toHaveTextContent(bare(11_443_500));
     await expect(ops.getBoundingClientRect().top).toBeGreaterThan(bca.getBoundingClientRect().top);
 
     await expect(within(table).getByTestId(`breakdown-row-accountId-${BNI.id}`)).toHaveTextContent("Archived");
     const total = within(table).getByTestId("breakdown-total-where");
-    await expect(total).toHaveTextContent(signed(5_143_500));
-    await expect(total).toHaveTextContent(rp(16_443_500));
+    await expect(total).toHaveTextContent(signedBare(5_143_500));
+    await expect(total).toHaveTextContent(bare(16_443_500));
 
     // An account row opens the account.
     await userEvent.click(ops);
@@ -591,7 +604,9 @@ export const MobileRincian: Story = {
 
     await expect(within(breakdown).queryByRole("table")).toBeNull();
     const bca = await within(breakdown).findByTestId(`breakdown-row-accountId-${BCA_OPS.id}`);
-    await expect(bca).toHaveTextContent(rp(11_443_500));
+    await expect(bca).toHaveTextContent(bare(11_443_500));
+    await expect(bca.textContent).not.toContain("Rp");
+    await expect(within(breakdown).getByTestId("account-report-breakdown-where-unit")).toBeVisible();
     const where = within(breakdown).getByTestId("account-report-breakdown-where").getBoundingClientRect();
     const what = within(breakdown).getByTestId("account-report-breakdown-what").getBoundingClientRect();
     await expect(what.top).toBeGreaterThanOrEqual(where.bottom);
@@ -621,8 +636,8 @@ export const MobileRincianShowsTheOpening: Story = {
     const breakdown = await openBreakdown(canvas);
 
     const open = await within(breakdown).findByTestId(`breakdown-row-accountId-${BCA_OPS.id}-open`);
-    await expect(open).toHaveTextContent(`Opening balance ${rp(10_750_000)}`);
-    await expect(within(breakdown).getByTestId(`breakdown-row-provider-${P.BCA}-open`)).toHaveTextContent(rp(10_750_000));
-    await expect(within(breakdown).getByTestId("breakdown-total-where-open")).toHaveTextContent(rp(11_300_000));
+    await expect(open).toHaveTextContent(`Opening balance ${bare(10_750_000)}`);
+    await expect(within(breakdown).getByTestId(`breakdown-row-provider-${P.BCA}-open`)).toHaveTextContent(bare(10_750_000));
+    await expect(within(breakdown).getByTestId("breakdown-total-where-open")).toHaveTextContent(bare(11_300_000));
   },
 };

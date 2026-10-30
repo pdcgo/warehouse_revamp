@@ -3684,7 +3684,8 @@
         "where": {
           "title": "Balance by Provider and Account",
           "lead": "Each account's balance, grouped by provider — at the start of the window, its change, and at the end",
-          "name": "Provider · account"
+          "name": "Provider · account",
+          "unit": "Amounts in rupiah (Rp)"
         },
         "what": {
           "title": "Movements by Type",

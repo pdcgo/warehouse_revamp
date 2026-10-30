@@ -4,7 +4,7 @@ import { Table, Text } from "@chakra-ui/react";
 import type { Metric } from "../../../features/financialAccount/analytics";
 import { CHANGE_TYPES, CHANGE_TYPE_KEY } from "../../../features/financialAccount/vocab";
 import { FinancialAccountChangeType as T } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
-import { formatRupiahNumber } from "../../../lib/money";
+import { formatRupiahBare, formatRupiahNumber } from "../../../lib/money";
 
 // The nine change-type columns of `financial_account_daily_reports`, in the vocabulary's order — shared by
 // the series and the ranking so the two tables read identically.
@@ -20,10 +20,12 @@ export const FIELD_OF: Record<number, keyof Metric> = {
   [T.OPENING_BALANCE]: "openingBalance",
 };
 
-export function signed(amount: number): string {
-  if (amount === 0) return formatRupiahNumber(0);
+// `bare` drops the "Rp" — for a table that says the currency once (`the-rincian-says-rp-once`).
+export function signed(amount: number, bare = false): string {
+  const format = bare ? formatRupiahBare : formatRupiahNumber;
+  if (amount === 0) return format(0);
 
-  return `${amount > 0 ? "+" : "−"}${formatRupiahNumber(Math.abs(amount))}`;
+  return `${amount > 0 ? "+" : "−"}${format(Math.abs(amount))}`;
 }
 
 export function TypeHeaders() {

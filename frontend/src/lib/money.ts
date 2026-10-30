@@ -32,6 +32,13 @@ export function formatRupiahNumber(amount: number): string {
   return formatRupiah(BigInt(Math.round(amount)));
 }
 
+// formatRupiahBare is formatRupiahNumber without its "Rp" — "10.750.000", "−150.000" — for a table that says the
+// currency ONCE, over its columns, instead of on every figure (owner: `the-rincian-says-rp-once`). The minus stays in
+// front, the same "−".
+export function formatRupiahBare(amount: number): string {
+  return formatRupiahNumber(amount).replace("Rp ", "");
+}
+
 // The Indonesian short-scale suffixes, largest first so the first match wins.
 const COMPACT_UNITS: Array<{ limit: number; suffix: string }> = [
   { limit: 1e12, suffix: "T" }, // triliun

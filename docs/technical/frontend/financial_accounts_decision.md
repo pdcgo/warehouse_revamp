@@ -60,6 +60,8 @@ the prototype these screens grew from was accepted
 | [a-phone-period-lists-a-type-a-line](#a-phone-period-lists-a-type-a-line) | on a phone a period's types are one per line — the badge and its amount together |
 | [a-phone-breakdown-row-shows-its-opening](#a-phone-breakdown-row-shows-its-opening) | on a phone each row of Saldo per Penyedia dan Akun shows its *Saldo awal* under the name |
 | [the-archive-and-lainnya-are-served](#the-archive-and-lainnya-are-served) | the server lists and counts the archived alone, and opens type Lainnya — both pending marks and the Lainnya warning are gone; the domain's `pending.ts` is deleted |
+| [the-rincian-close-is-left-aligned](#the-rincian-close-is-left-aligned) | in Saldo per Penyedia dan Akun the **Saldo akhir** column — heading and figures — is left-aligned; the other two stay right |
+| [the-rincian-says-rp-once](#the-rincian-says-rp-once) | Saldo per Penyedia dan Akun's figures carry no *Rp*; **Nilai dalam Rupiah (Rp)** says it once, bold, at the right of the card's title |
 
 ## the-accounts-subtitle-sits-under-the-title
 
@@ -1131,3 +1133,45 @@ flowchart LR
 [lainnya-is-offered-with-a-warning](#lainnya-is-offered-with-a-warning) (*the real server still refuses it*) and
 [the-form-asks-the-type-first](#the-form-asks-the-type-first) (*the mark*). The business side:
 [lainnya-is-opened-by-the-server](../../business/financial_account/context_decision.md#lainnya-is-opened-by-the-server).
+
+## the-rincian-close-is-left-aligned
+
+> Owner, in chat (2026-10-26): *"di financial account report saldo akhir di rincian, text align left"*.
+
+```
+Penyedia · akun        Saldo awal   Perubahan bersih   Saldo akhir
+[BCA]                  10.750.000         +1.293.500   12.043.500
+   BCA Operasional     10.750.000           +693.500   11.443.500
+[ShopeePay]               200.000           −350.000   ⚠ −150.000
+Total                  11.300.000         +5.143.500   16.443.500
+```
+
+| | |
+| --- | --- |
+| the column | *Saldo akhir* in **Saldo per Penyedia dan Akun** — its heading and every figure under it, a provider, an account, the Total — reads **from the left** of its cell |
+| unchanged | the column's fixed width and place at the right ([the-rincian-view-is-a-grid-with-tight-figures](#the-rincian-view-is-a-grid-with-tight-figures)); *Saldo awal* and *Perubahan bersih* stay right-aligned |
+| read as | the desktop table. *Mutasi per Jenis*'s *Saldo akhir* label is already on the left, and a phone's rows have no column — both unchanged |
+| pinned by | the `WhereTheMoneyIs` story |
+
+## the-rincian-says-rp-once
+
+> Owner, in chat (2026-10-26): *"rp di Saldo per Penyedia dan Akun hilang per kolom, taruh di sebelum saldo atau di
+> sebelah mana table (rp)"*.
+
+```
+┌ Saldo per Penyedia dan Akun           Nilai dalam Rupiah (Rp) ┐   ← the currency, once
+│ Saldo tiap akun, dikelompokkan per penyedia — …               │
+│ Penyedia · akun        Saldo awal   Perubahan bersih   Saldo akhir
+│ [BCA]                  10.750.000         +1.293.500   12.043.500
+```
+
+| | |
+| --- | --- |
+| the figures | every figure of **Saldo per Penyedia dan Akun** — *Saldo awal*, *Perubahan bersih*, *Saldo akhir*, a provider, an account, the Total — is **digits alone**, its sign still in front (`+1.293.500`, `−150.000`) |
+| the currency | said **once**: **Nilai dalam Rupiah (Rp)** (EN *Amounts in rupiah (Rp)*) at the **right of the card's title** — one place, nothing added to the 9.5rem headings, where *Perubahan bersih (Rp)* would wrap |
+| how it reads | a field label's size, colour and weight (13px bold, `fg.label`). It began as *Dalam Rp*, 12px muted — owner: *"dalam Rp kurang jelas sedikit"* — and was glanced past; the words now say what is in rupiah |
+| on a phone | the rows' figures and their *Saldo awal* line bare; the note wraps **under the title** when the two do not fit on one line |
+| one account picked | the card holds no figures, so no note |
+| unchanged | **Mutasi per Jenis** keeps *Rp* on its figures — it was not asked; if it should match, it is the same note and the same `bare` |
+| the code | `formatRupiahBare` (lib/money), `BalanceText bare`, `SignedAmount bare` — the shared formatters with the *Rp* left off, not a second formatting |
+| pinned by | the `WhereTheMoneyIs`, `MobileRincian` and `MobileRincianShowsTheOpening` stories |

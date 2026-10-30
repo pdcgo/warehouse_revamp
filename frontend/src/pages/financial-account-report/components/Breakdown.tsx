@@ -8,7 +8,7 @@ import type { Metric } from "../../../features/financialAccount/analytics";
 import { BalanceText, ChangeTypeBadge, ProviderBadge } from "../../../features/financialAccount/badges";
 import type { FinancialAccountProvider } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { useIsMobile } from "../../../layouts/shell";
-import { formatRupiahNumber } from "../../../lib/money";
+import { formatRupiahBare } from "../../../lib/money";
 import { typesThatMoved } from "./ChangeDetailDialog";
 import type { Mover } from "./MoversDialog";
 import { SignedAmount } from "./ReportSummary";
@@ -63,6 +63,7 @@ export function Breakdown({
       <Panel
         title={t("financialAccounts.report.breakdown.where.title")}
         lead={t("financialAccounts.report.breakdown.where.lead")}
+        unit={accountPicked ? undefined : t("financialAccounts.report.breakdown.where.unit")}
         testId="account-report-breakdown-where"
       >
         {accountPicked ? (
@@ -84,21 +85,34 @@ export function Breakdown({
   );
 }
 
+// `unit` — THE CURRENCY SAID ONCE, at the right of the title (owner: *"rp di Saldo per Penyedia dan Akun hilang per
+// kolom"*, `the-rincian-says-rp-once`), so the figures under it are digits alone.
 function Panel({
   title,
   lead,
+  unit,
   testId,
   children,
 }: {
   title: string;
   lead: string;
+  unit?: string;
   testId: string;
   children: ReactNode;
 }) {
   return (
     <Card.Root variant="outline" data-testid={testId}>
       <Card.Header gap="1">
-        <Card.Title>{title}</Card.Title>
+        {/* Read, not glanced past (owner: *"dalam Rp kurang jelas sedikit"*) — the field label's size, colour and weight,
+            in words; under the title when the two do not fit on one line. */}
+        <Flex justify="space-between" align="baseline" gap="1" columnGap="3" wrap="wrap">
+          <Card.Title>{title}</Card.Title>
+          {unit && (
+            <Text fontSize="sm" fontWeight="bold" color="fg.label" whiteSpace="nowrap" data-testid={`${testId}-unit`}>
+              {unit}
+            </Text>
+          )}
+        </Flex>
         <Card.Description>{lead}</Card.Description>
       </Card.Header>
       <Card.Body>{children}</Card.Body>
@@ -195,18 +209,18 @@ function WhereTheMoneyIs({ byAccount, byProvider }: { byAccount: Mover[]; byProv
           {name}
           {r.open !== undefined && (
             <Text fontSize="xs" color="fg.muted" data-testid={`${opts.testId}-open`}>
-              {t("financialAccounts.report.open")} {formatRupiahNumber(r.open)}
+              {t("financialAccounts.report.open")} {formatRupiahBare(r.open)}
             </Text>
           )}
         </Stack>
         <Stack gap="0.5" align="end" flexShrink="0">
-          <BalanceText balance={r.close} bold />
+          <BalanceText balance={r.close} bold bare />
           <Text
             fontSize="sm"
             fontWeight={opts.strong ? "bold" : undefined}
             color={r.change === 0 ? "fg.muted" : undefined}
           >
-            <SignedAmount amount={r.change} />
+            <SignedAmount amount={r.change} bare />
           </Text>
         </Stack>
       </Flex>
@@ -241,15 +255,17 @@ function WhereTheMoneyIs({ byAccount, byProvider }: { byAccount: Mover[]; byProv
   const figures = (r: { open?: number; change: number; close: number }, strong = false) => (
     <>
       <Table.Cell textAlign="end">
-        <BalanceText balance={r.open ?? 0} bold={strong} />
+        <BalanceText balance={r.open ?? 0} bold={strong} bare />
       </Table.Cell>
       <Table.Cell textAlign="end" whiteSpace="nowrap">
         <Text fontSize="sm" fontWeight={strong ? "bold" : undefined} color={r.change === 0 ? "fg.muted" : undefined}>
-          <SignedAmount amount={r.change} />
+          <SignedAmount amount={r.change} bare />
         </Text>
       </Table.Cell>
-      <Table.Cell textAlign="end">
-        <BalanceText balance={r.close} bold />
+      {/* THE CLOSE READS FROM THE LEFT (owner: *"saldo akhir di rincian, text align left"*,
+          `the-rincian-close-is-left-aligned`) — its heading and every figure under it; the column keeps its place. */}
+      <Table.Cell textAlign="start" data-testid="breakdown-close-cell">
+        <BalanceText balance={r.close} bold bare />
       </Table.Cell>
     </>
   );
@@ -265,7 +281,7 @@ function WhereTheMoneyIs({ byAccount, byProvider }: { byAccount: Mover[]; byProv
           <Table.ColumnHeader textAlign="end" w={FIGURE_W}>
             {t("financialAccounts.report.change")}
           </Table.ColumnHeader>
-          <Table.ColumnHeader textAlign="end" w={FIGURE_W}>
+          <Table.ColumnHeader textAlign="start" w={FIGURE_W}>
             {t("financialAccounts.report.close")}
           </Table.ColumnHeader>
         </Table.Row>

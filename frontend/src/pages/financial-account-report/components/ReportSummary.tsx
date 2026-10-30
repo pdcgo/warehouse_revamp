@@ -11,10 +11,10 @@ import { signed } from "./MetricColumns";
 import type { Mover } from "./MoversDialog";
 
 /** A movement, signed and coloured — green in, red out, as on every statement. */
-export function SignedAmount({ amount }: { amount: number }) {
+export function SignedAmount({ amount, bare = false }: { amount: number; bare?: boolean }) {
   return (
     <Span color={amount > 0 ? "fg.success" : amount < 0 ? "fg.error" : undefined} whiteSpace="nowrap">
-      {signed(amount)}
+      {signed(amount, bare)}
     </Span>
   );
 }

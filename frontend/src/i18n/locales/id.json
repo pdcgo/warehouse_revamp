@@ -3668,7 +3668,8 @@
         "where": {
           "title": "Saldo per Penyedia dan Akun",
           "lead": "Saldo tiap akun, dikelompokkan per penyedia — di awal rentang, perubahannya, dan di akhir",
-          "name": "Penyedia · akun"
+          "name": "Penyedia · akun",
+          "unit": "Nilai dalam Rupiah (Rp)"
         },
         "what": {
           "title": "Mutasi per Jenis",
