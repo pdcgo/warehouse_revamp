@@ -4,11 +4,12 @@ import { Box, Table, Text } from "@chakra-ui/react";
 import type { SettlementGroupBy, SettlementGroupRow } from "../../../features/settlement/analytics";
 import { MeasureCells, MeasureHeaders } from "./SeriesTable";
 
-// Shops or people, RANKED by the hidden cost they carry at the window's end — the largest first.
+// Shops or people, RANKED by the position they carry at the window's end — the largest first.
 //
-// ⚠ BY USER is WHO CREATED THE ORDER, and for a shop-level row WHO POSTED IT
-// (#a-shop-addressed-row-is-attributed-to-its-actor) — so it is "who is answerable", not a salesperson
-// league table. Half of a person's rows can be adjustments they posted rather than sales they made.
+// ⚠ BY USER is WHO CREATED THE ORDER, for a shop-level row WHO POSTED IT
+// (#a-shop-addressed-row-is-attributed-to-its-actor), and for an imported shop row the shop's primary CS — so it is
+// "who is answerable", not a salesperson league table. Half of a person's rows can be adjustments they posted rather
+// than sales they made. A row with no one recorded is not a person, and is not listed here.
 export function GroupTable({
   groupBy,
   rows,

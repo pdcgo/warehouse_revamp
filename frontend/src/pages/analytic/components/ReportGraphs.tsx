@@ -7,9 +7,11 @@ import type { MetricBody, ReportKey } from "../../../features/analytic/provider"
 import { formatRupiahCompact } from "../../../lib/money";
 import { fieldLabel, formatFigure } from "../format";
 
-/** A figure on the side axis: money short (Rp 1,5jt) so the magnitude reads first, a count as the table writes it. */
+/** A figure on the side axis: money short (Rp 1,5jt) so the magnitude reads first, a count or a rate as the table writes it. */
 function formatTick(kind: FieldKind, value: number): string {
-  return kind === "money" ? formatRupiahCompact(BigInt(Math.round(value))) : value.toLocaleString("id-ID");
+  if (kind === "count" || kind === "ratio") return formatFigure(kind, value);
+
+  return formatRupiahCompact(BigInt(Math.round(value)));
 }
 
 // THE GRAPH — the table drawn as line charts (the-graph-draws-the-table): its group along the bottom, the value up the
@@ -18,7 +20,8 @@ function formatTick(kind: FieldKind, value: number): string {
 // own, so it can never disagree with the table under it.
 //
 // `kind` is this screen's mirror of the proto's FieldStatType (a-field-declares-its-stat-type): count is QTY, money is
-// CURRENCY. When the provider reads the descriptor, a RATIO graph comes with it.
+// CURRENCY, position is POSITION — a balance, drawn in its own graph (a-position-is-its-own-stat-type) — and ratio is
+// RATIO, a percentage on an axis of its own. ⚠ A rate with no sample (left unset) is drawn at 0: a line cannot skip a point.
 //
 // A TIME GROUP IS DRAWN OLDEST FIRST (a-time-graph-runs-oldest-first),
 // even when the table lists newest first or by a figure, because a line over days that runs right to left reads as the

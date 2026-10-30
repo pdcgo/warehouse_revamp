@@ -11,9 +11,8 @@ The ledger of **what the marketplace pays us** for an order, and the reports fol
 | `SettlementService` | `OrderSettlementList` | the list screen — one row per order, ranked by loss |
 | `SettlementService` | `OrderSettlementDetail` | the ledger tab on the order page — one account plus its whole log |
 | `SettlementWriteService` | `SettlementPost` | append one row. **Idempotent** on `unique_id`, global |
-| `SettlementAnalyticService` | `AnalyticTimeSearch` | a metric series — daily, monthly or yearly |
-| `SettlementAnalyticService` | `AnalyticGroupSearch` | rank teams, shops or users over a window — ids only |
-| `SettlementAnalyticService` | `AnalyticGroupMetric` | fill a ranked page with its metrics |
+| `SettlementAnalyticService` | `MetricSearch` | rank a page of keys — teams, shops, people or periods — by one field of one settlement metric |
+| `SettlementAnalyticService` | `MetricData` | fill those keys with both metrics' figures — or, grouped by `SUMMARY`, the headline |
 | `SettlementAnalyticMaintenanceService` | `AnalyticReplayCompute` | rebuild the reports from a date by seeking the broker |
 | `SettlementAnalyticMaintenanceService` | `AnalyticMaintenanceRun` | prune the dedup table |
 | *(push route)* | `/event/settlement-fold/push` | the fold — `SettlementLogPosted` into the report tables |
@@ -33,7 +32,7 @@ flowchart LR
   E --> T["topic settlement-log-posted"]
   T -->|"push, settlement-fold"| F["the fold webhook"]
   F --> R[("daily reports + state reports")]
-  R --> A["AnalyticTimeSearch, GroupSearch, GroupMetric"]
+  R --> A["MetricSearch, MetricData"]
 ```
 
 ---
@@ -283,17 +282,44 @@ page.
 - `order_id` breaks ties, so equal rows keep one order across pages. `OrderSettlementDetail` returns the log **oldest first and unpaginated** — it grows with one order's
 activity — and an order with no account is **`NotFound`**, never a zeroed row.
 
-### The reports
+### The reports — `MetricSearch` / `MetricData`
 
-| | `AnalyticTimeSearch` | `AnalyticGroupSearch` / `AnalyticGroupMetric` |
-| --- | --- | --- |
-| source | the daily tables, rolled up at read | the daily tables |
-| points | EVERY bucket of the window, quiet ones included | every group holding a position at the window's end |
-| movement | Σ over the bucket | Σ over the window |
-| `close_balance` | Σ over positions of each one's latest close at or before the bucket's end | the same, at the window's end |
-| `open_balance` | `close − change`, exact | the same |
-| span cap | 366 days · 60 months · 20 years | — |
-| scope | the team, or ALL teams from the ROOT team | the same — so `TEAM` grouping crosses teams only for ROOT and ADMIN |
+Two metrics through the analytic pattern ([rpc_provide.md](../../business/analytic/rpc_provide.md)), in
+[settlement_analytic.proto](../../../proto/warehouse/settlement/v1/settlement_analytic.proto): `metrics/settlement` —
+sales, received, withdrawn, gap, take rate, position to date — and `metrics/settlement/types`, the ten types that make
+up received ([settlement-serves-its-headline-and-its-breakdown](../../business/settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown)).
 
-The ranking and the metric read **one** SQL definition, so the order on screen and the numbers beside it
-cannot disagree. A user series cannot also filter by shop — the user table has no shop dimension.
+```mermaid
+sequenceDiagram
+  participant S as screen
+  participant A as SettlementAnalyticService
+  participant D as daily report tables
+  S->>A: MetricSearch — group, filters, one sortable field, a page
+  A->>A: tableOf — the shop table, the person table, or refuse a shop with a person
+  A->>D: one statement — every key's figures, ranked, limit + 1
+  A-->>S: the keys, has_next
+  S->>A: MetricData — the same filters, those keys, the metric ids
+  A->>D: one statement — every field of both metrics
+  A-->>S: one answer per asked metric, every asked key
+```
+
+| | an id — `SHOP`, `TEAM`, `USER` | a period — `DAILY` … `YEARLY` | `SUMMARY` |
+| --- | --- | --- | --- |
+| table | the shop table; the person table for `USER` or a `USER` filter ([one-settlement-metric-reads-both-tables](../../business/settlement/context_decision.md#one-settlement-metric-reads-both-tables)) | the same | the same |
+| keys | every id with a row up to the window's end — a quiet one still ranks. Id 0 (no one recorded) left out | every period of the window, quiet ones included | none |
+| movement | Σ over the window | Σ over the period clipped to the window | Σ over the window |
+| `position_to_date` | −Σ over the key's positions of each one's latest close, at the window's end | the same, at the clipped period's end — a period outside the window is zero | at the window's end |
+| `take_rate` | gap ÷ sales of the key's own sums; unset with no sale; not sortable yet | the same | the same |
+| search span | — | 366 days · 260 weeks · 60 months · 20 years | never searched |
+| scope | the team, or every team from the ROOT team — so `TEAM` crosses teams only for ROOT and ADMIN | the same | the same |
+
+`measureSQL` (`metric_shared.go`) is THE definition of every field: the fill selects it and the search orders by it,
+so the ranking and the numbers beside it cannot disagree, and `received` is Σ the by-type fields by construction.
+
+| error | when |
+| --- | --- |
+| `InvalidArgument` | a shop and a person in one request · a metric or field this service does not serve, or a field that cannot sort · a filter or group a metric does not list · a missing date range · a period key that is not its period's first day · a time-group search over the span cap |
+
+⚠ **Heavy** — [MetricData](../../../audits/services/settlement_service/performances/MetricData.md) and
+[MetricSearch](../../../audits/services/settlement_service/performances/MetricSearch.md): a period's position is read over the
+whole history, per period. The fix is an open question.

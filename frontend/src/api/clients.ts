@@ -28,11 +28,8 @@ import {
   LiabilityService,
   LiabilityTermsService,
 } from "../gen/warehouse/liability/v1/liability_pb";
-import {
-  SettlementAnalyticService,
-  SettlementService,
-  SettlementWriteService,
-} from "../gen/warehouse/settlement/v1/settlement_pb";
+import { SettlementService, SettlementWriteService } from "../gen/warehouse/settlement/v1/settlement_pb";
+import { SettlementAnalyticService } from "../gen/warehouse/settlement/v1/settlement_analytic_pb";
 import { SettlementImporterService } from "../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 import {
   FinancialAccountAnalyticService,

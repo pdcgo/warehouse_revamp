@@ -568,12 +568,12 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("orders-table").locator('[data-testid^="order-row-"]')).toHaveCount(1);
 });
 
-// THE SETTLEMENT REPORT is wired end to end: the route, the analytics RPCs and their policy.
+// THE SETTLEMENT REPORT is wired end to end: the route, settlement's metric RPCs and their policy.
 //
-// The report lays out EVERY day of the window as a row, so the series table exists only if
-// AnalyticTimeSearch answered — a policy or mounting mistake shows as the error line instead. (The
-// emulator pushes now, so the fold runs too; the figures are not what this asserts.)
-test("Settlement report: the report screen answers from the analytics RPCs", async ({ page }) => {
+// The report lays out EVERY day of the window as a row, so the series table exists only if MetricData
+// answered — a policy or mounting mistake shows as the error line instead. (The emulator pushes now, so
+// the fold runs too; the figures are not what this asserts.)
+test("Settlement report: the report screen answers from the metric RPCs", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   await page.goto("/settlement/report");

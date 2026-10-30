@@ -1,15 +1,15 @@
 // ⚠ SAMPLE — INVENTED ROWS, for every metric no service answers yet (pages/analytic/pending.ts marks them). The five
 // ORDER metrics are served by selling_service in the app; their facts here are what the Storybook stub answers
-// OrderAnalyticService with, so a story reads stable numbers through the wire. Delete this file the day every metric
-// is served.
+// OrderAnalyticService with, so a story reads stable numbers through the wire. The two SETTLEMENT metrics have no facts
+// here: their stub folds the settlement book in .storybook/fixtures.ts, because a position is not a sum of days. Delete
+// this file the day every metric is served.
 //
 // The rows are generated, not typed: one fact per day per shop / product, from 2025-01-01 to today, drawn from a seeded
 // hash so every run — and every story — sees the same numbers for the same window.
 //
-// Two shops are shaped on purpose, from the owner's own example (rpc_provide.md §Example Use Case In UI):
-//   Toko Satria   many cheap orders, and NO settlement yet — sorted by Profit, it is not a row
-//   Toko Lama     NO orders, but settlement still arriving — sorted by Profit, it appears
-// That is the-rows-are-the-keys-step-one-sends made visible: the service that ranks decides the rows.
+// One shop is shaped on purpose, from the owner's own example (rpc_provide.md §Example Use Case In UI): Toko Satria, many
+// cheap orders and NO settlement — sorted by a settlement figure, it is not a row, and the settlement book's shops are
+// (the-rows-are-the-keys-step-one-sends made visible: the service that ranks decides the rows). Toko Lama sells nothing.
 
 import { toDateInputValue } from "../../lib/datetime";
 import { daySpine } from "../../lib/period";
@@ -49,13 +49,13 @@ export const SAMPLE_PRODUCTS: SampleProduct[] = [
 ];
 
 /** What each shop sells, and how often a day has an order for it. Toko Lama sells nothing in this window. */
-const SHOP_PROFILE: Record<string, { products: string[]; chance: number; most: number; settlement: number }> = {
-  "11": { products: ["202", "205", "206"], chance: 0.35, most: 3, settlement: 1_500_000 },
-  "12": { products: ["201", "203"], chance: 0.3, most: 3, settlement: 300_000 },
-  "13": { products: ["203", "204"], chance: 0.85, most: 4, settlement: 0 },
-  "14": { products: [], chance: 0, most: 0, settlement: 600_000 },
-  "15": { products: ["201", "202", "206"], chance: 0.35, most: 3, settlement: 800_000 },
-  "16": { products: ["204", "205"], chance: 0.3, most: 2, settlement: 400_000 },
+const SHOP_PROFILE: Record<string, { products: string[]; chance: number; most: number }> = {
+  "11": { products: ["202", "205", "206"], chance: 0.35, most: 3 },
+  "12": { products: ["201", "203"], chance: 0.3, most: 3 },
+  "13": { products: ["203", "204"], chance: 0.85, most: 4 },
+  "14": { products: [], chance: 0, most: 0 },
+  "15": { products: ["201", "202", "206"], chance: 0.35, most: 3 },
+  "16": { products: ["204", "205"], chance: 0.3, most: 2 },
 };
 
 /** The shops that buy ads. */
@@ -116,7 +116,6 @@ function build(): Record<string, Fact[]> {
   const facts: Record<string, Fact[]> = {
     "metrics/orders/created": [],
     ...Object.fromEntries(ORDER_MOVES.map((m) => [m.metricId, []])),
-    "metrics/settlement": [],
     "metrics/inventory/lost": [],
     "metrics/ads": [],
     "metrics/expenses": [],
@@ -157,14 +156,6 @@ function build(): Record<string, Fact[]> {
             },
           });
         }
-      }
-
-      if (profile.settlement > 0 && seeded(`s|${day}|${shop.id}`) < 0.5) {
-        const amount = Math.round(profile.settlement * (0.4 + seeded(`sa|${day}|${shop.id}`)));
-        // Mostly a margin; now and then a return or a fee eats more than the sale brought.
-        const loss = seeded(`sl|${day}|${shop.id}`) < 0.08 ? amount * 0.5 : 0;
-        const profit = Math.round(amount * (0.1 + 0.2 * seeded(`sp|${day}|${shop.id}`)) - loss);
-        facts["metrics/settlement"]!.push({ day, shop: shop.id, values: { settlement_amount: amount, profit } });
       }
 
       if (ADS_SHOPS.includes(shop.id) && seeded(`a|${day}|${shop.id}`) < 0.6) {

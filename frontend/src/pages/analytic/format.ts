@@ -19,9 +19,17 @@ export function fieldLabel(t: TFunction, def: MetricDef, name: string): string {
   return t(`analytic.fieldOf.${def.labelKey}.${name}`, { defaultValue: t(`analytic.field.${name}`) });
 }
 
-/** A figure as its kind reads — a count grouped id-ID, money through the app's rupiah formatter (−Rp before a loss). */
-export function formatFigure(kind: FieldKind, value: number): string {
-  return kind === "money" ? formatRupiahNumber(value) : value.toLocaleString("id-ID");
+/**
+ * A figure as its kind reads — a count grouped id-ID, money and a position through the app's rupiah formatter (−Rp before
+ * a loss), a rate as a percentage to two places. A figure the service left UNSET reads "—": a take rate with no sale to
+ * divide by is not 0%.
+ */
+export function formatFigure(kind: FieldKind, value: number | undefined): string {
+  if (value === undefined) return "—";
+  if (kind === "count") return value.toLocaleString("id-ID");
+  if (kind === "ratio") return `${(value * 100).toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
+
+  return formatRupiahNumber(value);
 }
 
 /**

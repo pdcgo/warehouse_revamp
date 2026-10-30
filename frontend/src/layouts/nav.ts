@@ -126,7 +126,8 @@ const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Bo
 // THE ANALYTIC SCREEN (docs/business/analytic/rpc_provide.md) — offered with its first served metric, the order metrics
 // (the-analytic-screen-is-accepted: "route and menu entry, with the first real metric"). Every member of a selling or a
 // warehouse team reads every metric of the team (every-member-reads-every-metric-of-their-team), so it is not
-// role-gated; what each reader sees is the service's answer (a-warehouse-reads-the-orders-it-ships).
+// role-gated; what each reader sees is the service's answer (a-warehouse-reads-the-orders-it-ships). It sits right
+// after Home, in the lead section (the-analytic-entry-follows-home).
 const ANALYTIC: MenuItem = { to: "/analytic", label: "nav.analytic", icon: ChartLine };
 const EXPENSES: MenuItem = { to: "/expenses", label: "nav.expenses", icon: Receipt };
 // The WAREHOUSE's money screen, read day by day: the handling fees it charged, less its expenses.
@@ -277,8 +278,6 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     }
     // Stock lives at warehouses; root/admin oversee every warehouse's inventory (they pick one).
     operations.push(INVENTORY);
-    // Root reads every team's orders on it (a-warehouse-reads-the-orders-it-ships).
-    operations.push(ANALYTIC);
   }
 
   // A warehouse team gets a flat Products list; a selling team gets the Products sub-menu — My
@@ -289,8 +288,6 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     // reference screen: the crew opens it first and returns to it after every order. Below Products
     // so the catalogue still reads as the subject and the orders as what is happening to it.
     operations.push(WAREHOUSE_ORDERS);
-    // What the orders it ships came to — counts only (a-warehouse-sees-no-seller-money).
-    operations.push(ANALYTIC);
     // Inventories — restock, racks, batches, opname (#95) — closes the warehouse's operations. It sat below the
     // money section while the menu was one column; in sections it is where a warehouse's work is, beside its
     // orders (`the-sidebar-is-in-sections`).
@@ -309,8 +306,6 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     // Shops and orders are SELLING-team concepts (#66/#68).
     operations.push(SHOPS);
     operations.push(ORDERS);
-    // Right under the orders it reports on.
-    operations.push(ANALYTIC);
 
     // Costs (#170) are the MANAGER's: CostList is scoped to the team's managers on the server too — a person
     // taking orders has no business seeing the payroll number.
@@ -369,8 +364,21 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     team.push(SETTINGS);
   }
 
+  // THE LEAD SECTION is Home, then Analytic (owner, the-analytic-entry-follows-home) — the figures of the whole team, read across every
+  // section below, so they sit above all of them. Every team type that has metrics gets it: root reads every team's,
+  // a warehouse the orders it ships — counts only (a-warehouse-sees-no-seller-money) — a selling team its own.
+  const lead: MenuEntry[] = [HOME];
+  if (
+    teamType === TeamType.ROOT ||
+    teamType === TeamType.ADMIN ||
+    teamType === TeamType.WAREHOUSE ||
+    teamType === TeamType.SELLING
+  ) {
+    lead.push(ANALYTIC);
+  }
+
   const sections: MenuSection[] = [
-    { entries: [HOME] },
+    { entries: lead },
     { label: "nav.sectionOperations", entries: operations },
     { label: "nav.sectionFinance", entries: finance },
     { label: "nav.sectionTeam", entries: team },

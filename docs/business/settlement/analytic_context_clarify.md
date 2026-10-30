@@ -4,6 +4,83 @@ What I read out of [analytic_context.md](./analytic_context.md). **That doc is y
 mine.** Answered points are deleted, so this file is always the current open set. Decisions go in
 [context_decision.md](./context_decision.md), one settlement decision log.
 
+## the-move-to-the-metric-pattern
+
+> **2026-10-30 — settlement is next on the analytic pattern**
+> ([the-pattern-replaces-the-shipped-analytics](../analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics): supplier ✅, then
+> settlement, then financial account). Your fold, the five tables, the replay and the maintenance run stay as they are.
+> Only the **reads** change. ✅ **Designed and BUILT (2026-10-30)**: [settlement-serves-its-headline-and-its-breakdown](./context_decision.md#settlement-serves-its-headline-and-its-breakdown) and
+> [one-settlement-metric-reads-both-tables](./context_decision.md#one-settlement-metric-reads-both-tables) — `MetricSearch` / `MetricData` in
+> [settlement_analytic.proto](../../../proto/warehouse/settlement/v1/settlement_analytic.proto), the Settlement Report and the Analytic screen on them,
+> the three old reads removed. The pattern's answer for a balance is
+> [a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type). Two questions are left, neither blocking:
+> [a-take-rate-ranks-above-what-sale](#a-take-rate-ranks-above-what-sale) here, and [the-picker-ticks-fields](../analytic/rpc_provide_clarify.md#the-picker-ticks-fields).
+
+| today | on the pattern |
+| --- | --- |
+| the headline — `AnalyticGroupMetric` of the team itself | `MetricData`, group `SUMMARY` |
+| the series — `AnalyticTimeSearch`, daily, monthly, yearly | `MetricData` by `DAILY` … `YEARLY` over the periods the screen lists. Weekly comes free |
+| the ranking — `AnalyticGroupSearch`, then `AnalyticGroupMetric` | `MetricSearch`, then `MetricData`, group `SHOP`, `TEAM` or `USER` |
+| the Settlement Report screen | reads the new pair. The three old reads go in the same change |
+| the fold, the tables, `AnalyticReplayCompute`, `AnalyticMaintenanceRun` | unchanged |
+
+```mermaid
+flowchart LR
+  e["SettlementLogPosted"] --> f["the fold - unchanged"]
+  f --> s["shop daily and state tables"]
+  f --> u["user daily and state tables"]
+  s --> h["metrics/settlement - the headline"]
+  s --> t["metrics/settlement/types - the breakdown"]
+  u --> h
+  u --> t
+  h --> r["MetricSearch and MetricData"]
+  t --> r
+  r --> sc["the Settlement Report and the Analytic screen"]
+```
+
+### decided
+
+| | |
+| --- | --- |
+| what the screen offers | **Settlement** (selling price, received, withdrawn, gap, take rate, position to date) and **Settlement by type** (the ten types that make up received): [settlement-serves-its-headline-and-its-breakdown](./context_decision.md#settlement-serves-its-headline-and-its-breakdown) |
+| which table answers | the shop table for shop and team, the person table for a person, either for time and the headline, and a shop with a person refused: [one-settlement-metric-reads-both-tables](./context_decision.md#one-settlement-metric-reads-both-tables) |
+| for the pattern | ✅ *position to date* is a `POSITION` ([a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type)) · still open: ticking fields ([the-picker-ticks-fields](../analytic/rpc_provide_clarify.md#the-picker-ticks-fields)), less pressing now the metrics have 6 and 10 fields |
+
+### your doc, after the move
+
+| | → Recommend |
+| --- | --- |
+| `### Field that tracked.` lists nine. The five types of 2026-09-24 — `withdrawal`, `shipment_adjustment`, `logistic_reimbursement`, `platform_reimbursement`, `marketplace_program` — are folded and served, and not listed | add them: it is the list the metric's fields are read from |
+| `## How Rpc Api Deliver Analytical Data.` describes the three reads the move removed (2026-10-30) | replace it with a pointer to [rpc_provide.md](../analytic/rpc_provide.md) — the move has shipped |
+
+
+## a-take-rate-ranks-above-what-sale
+
+> 🆕 **2026-10-30, from the build.** `take_rate` is served, but **not sortable**: a rate ranks only above a minimum sample
+> ([a-rate-ranks-only-above-its-minimum-sample](../analytic/rpc_provide_decision.md#a-rate-ranks-only-above-its-minimum-sample)), and settlement's has
+> not been decided. Nothing waits on it — the Settlement Report ranks by position.
+
+Ranked by `gap`, the biggest shops lead: that is size, not leakage. Ranked by `take_rate` with no minimum, a shop that
+sold Rp 20.000 and received nothing leads at 100%. A minimum sale is what makes the rate a ranking of what the platform
+takes.
+
+```mermaid
+flowchart LR
+  s["shops in the window"] --> q{"sold at least the minimum?"}
+  q -->|"yes"| r["ranked by take rate"]
+  q -->|"no"| f["follow, unranked, by key"]
+```
+
+| | |
+| --- | --- |
+| A — not sortable, as built | ✅ nothing misleading · ❌ *"which shop does the platform take the most from"* cannot be asked |
+| **B — sortable above a minimum sale**: `rank_min_sample` on `take_rate`, its sample being `sales` in rupiah | ✅ supplier's pattern, one number in the proto · ❌ one threshold reads differently over a week and over a year |
+| C — sortable, no minimum | ❌ the smallest shops lead |
+
+**→ Recommend B, at Rp 1.000.000 of sales.** What breaks: over a single day most shops fall below it and the rate
+ranks almost nobody. I think that is right, because a day's take rate is mostly timing (the fund lands days after the
+sale), not a property of the shop.
+
 ## 🔁 This round — two new sections, 2026-09-10
 
 The owner added `## How Rpc Api Deliver Analytical Data.` and
@@ -1419,6 +1496,12 @@ built**.
 [a-missing-account-is-fixed-by-hand](./context_decision.md#a-missing-account-is-fixed-by-hand)).
 What it leaves is a build task, not a question: **nothing in `selling_service` imports `settlement_v1`
 yet**, so no order opens an account today.
+
+8. ✅ **Answered 2026-10-30 — a settlement metric reads both tables**: [one-settlement-metric-reads-both-tables](./context_decision.md#one-settlement-metric-reads-both-tables),
+   and what it serves: [settlement-serves-its-headline-and-its-breakdown](./context_decision.md#settlement-serves-its-headline-and-its-breakdown). Kept as a line so the numbers hold.
+
+9. 🆕 **Should a take rate rank, and above what sale?** — [a-take-rate-ranks-above-what-sale](#a-take-rate-ranks-above-what-sale). Built unsortable until decided.
+   **→ Recommend** sortable above Rp 1.000.000 of sales in the window.
 
 
 # Contradiction

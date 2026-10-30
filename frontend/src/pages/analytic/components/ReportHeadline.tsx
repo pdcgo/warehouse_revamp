@@ -26,7 +26,7 @@ export function ReportHeadline({
           <SummaryCard
             key={`${def.metricId}|${field.name}`}
             label={fieldLabel(t, def, field.name)}
-            value={formatFigure(field.kind, summary[def.metricId]?.[field.name] ?? 0)}
+            value={formatFigure(field.kind, summary[def.metricId]?.[field.name])}
             line={t(`analytic.metric.${def.labelKey}`)}
             emphasis={sort?.by === "field" && sort.metricId === def.metricId && sort.field === field.name}
             testId={`analytic-headline-${field.name}`}

@@ -15,7 +15,8 @@ mine. Answered points are **deleted**, so this file is always the current open s
 > ([every-number-field-carries-a-stat-type](./rpc_provide_decision.md#every-number-field-carries-a-stat-type)).
 > **The graph is built** in Storybook on Chakra's charts, on sample figures, and a time graph runs oldest first
 > ([a-time-graph-runs-oldest-first](./rpc_provide_decision.md#a-time-graph-runs-oldest-first)).
-> **No question is open.** The picker follows your tree ([the-picker-follows-the-metric-tree](./rpc_provide_decision.md#the-picker-follows-the-metric-tree)). Still waiting on you:
+> **One question is open**, from settlement's move ([Question](#question)). A balance is its own stat type
+> ([a-position-is-its-own-stat-type](./rpc_provide_decision.md#a-position-is-its-own-stat-type)). The picker follows your tree ([the-picker-follows-the-metric-tree](./rpc_provide_decision.md#the-picker-follows-the-metric-tree)). Still waiting on you:
 > the guideline's pointer, and the slips under [Contradiction](#contradiction). §Composite Metric ? is empty, so it isn't designed yet.
 >
 > ✅ The diagrams parse (`npm run lint:mermaid`).
@@ -250,6 +251,7 @@ enum FieldStatType {                     // what kind of number (a-field-declare
   FIELD_STAT_TYPE_RATIO = 1;
   FIELD_STAT_TYPE_QTY = 2;
   FIELD_STAT_TYPE_CURRENCY = 3;
+  FIELD_STAT_TYPE_POSITION = 4;          // a balance, never summed over time (a-position-is-its-own-stat-type)
 }
 
 extend google.protobuf.FieldOptions {
@@ -346,4 +348,34 @@ message MetricDataResponse {
 Every question is closed, each one in [rpc_provide_decision.md](./rpc_provide_decision.md). The last was the warehouse
 group, asked again from the order metrics and now [the-warehouse-is-its-own-group](./rpc_provide_decision.md#the-warehouse-is-its-own-group).
 
-✅ **No question is open.**
+One is open, raised by settlement's move to the pattern. Closed from it: [a-position-is-its-own-stat-type](./rpc_provide_decision.md#a-position-is-its-own-stat-type)
+([the-move-to-the-metric-pattern](../settlement/analytic_context_clarify.md#the-move-to-the-metric-pattern)).
+
+| open | → Recommend |
+| --- | --- |
+| [the-picker-ticks-fields](#the-picker-ticks-fields) — a 10-field metric draws 10 columns: tick fields in the picker? | yes, as your tree's third level |
+
+## the-picker-ticks-fields
+
+Settlement by type has 10 fields ([settlement-serves-its-headline-and-its-breakdown](../settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown)), and beside Settlement a table
+holds 16. Add Metric adds a metric as **every** field, so one tick draws all ten, which no phone can read. Your tree in §Metric That Exist in Analytic
+already has a third level: category, metric, **fields**.
+
+| | |
+| --- | --- |
+| **A — the picker ticks fields** | Add Metric opens a metric one level further, as your tree draws it. Ticking the metric takes all its fields, and opening it ticks only some. The URL keeps the chosen fields |
+| B — split the wide metrics further | ❌ every new wide metric needs its own split, decided one at a time |
+| C — 16 columns | ❌ unreadable |
+
+**→ Recommend A.** It fixes every wide metric at once, it is the shape your tree already draws, and it changes the
+screen only, never the contract.
+
+```mermaid
+flowchart LR
+  c["Settlement"] --> m["Settlement by type"]
+  m --> f1["external_ads_fee - ticked"]
+  m --> f2["affiliate_fee - ticked"]
+  m --> f3["the other 8 - not ticked"]
+  f1 --> t["two columns, not ten"]
+  f2 --> t
+```

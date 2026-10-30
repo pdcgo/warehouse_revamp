@@ -14,7 +14,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**91 open questions across 41 files.** The three below are shown; **88 are not** — they are not
+**93 open questions across 41 files.** The three below are shown; **90 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 🔄 **Re-ranked fresh** (2026-10-19), after all seven rows closed. Every live claim in the new seven was checked against the code the same day. ⚠ **Two counted questions are re-routes already decided elsewhere** (ledger Q1 → [a-limit-change-is-recorded](business/balance/context_decision.md#a-limit-change-is-recorded), [the-block-stops-orders-only](business/balance/context_decision.md#the-block-stops-orders-only); excel_readers Q6 → [only-a-successful-withdrawal-is-recorded](business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)), and **about 13 more look overtaken** by today's decisions — they stay counted until each is closed at source.
@@ -23,9 +23,13 @@ closed, only smaller. The per-file counts are at the bottom.
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- 🆕 *(2026-10-30)* **93**: settlement's move to the analytic pattern BUILT — `MetricSearch` / `MetricData`, both screens on them, the three old reads gone ([the-move-to-the-metric-pattern](business/settlement/analytic_context_clarify.md#the-move-to-the-metric-pattern)). One opened from the build: whether a take rate ranks, and above what sale ([a-take-rate-ranks-above-what-sale](business/settlement/analytic_context_clarify.md#a-take-rate-ranks-above-what-sale)) — settlement Q9. Net +1.
+- ▼ *(2026-10-30)* **92**: rpc_provide — a-position-is-not-a-sum closed: `FieldStatType` gains `POSITION`, a balance never summed over time, Rp in its own graph ([a-position-is-its-own-stat-type](business/analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type)), as recommended; built in `analytic_base` and the screen. Net −1.
+- ▼ *(2026-10-30)* **93**: settlement Q8 closed — a settlement metric reads both tables, a shop with a person refused ([one-settlement-metric-reads-both-tables](business/settlement/context_decision.md#one-settlement-metric-reads-both-tables)), on your point that the group is the request's, against my first two-metric answer; and what Settlement offers: the headline and the breakdown, not the 13 raw types ([settlement-serves-its-headline-and-its-breakdown](business/settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown)), as recommended. Net −1.
+- 🆕 *(2026-10-30)* **94**: settlement's move to the analytic pattern analysed ([the-move-to-the-metric-pattern](business/settlement/analytic_context_clarify.md#the-move-to-the-metric-pattern)). Three opened, each where it can be answered: settlement Q8, how one metric serves both of its tables, since a shop and a person cannot be read together ([shop-and-person-in-one-metric](business/settlement/context_decision.md#one-settlement-metric-reads-both-tables)); and in rpc_provide, a balance is a position, never summed over time ([a-position-is-not-a-sum](business/analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type)), and a 16-field metric needs the picker to tick fields ([the-picker-ticks-fields](business/analytic/rpc_provide_clarify.md#the-picker-ticks-fields)). Net +3.
 - ▼ *(2026-10-30)* **91**: order_statistic_metric — which-metric-ids closed: the five ids are kept, `metrics/orders/` and what happened to the order ([the-order-metric-ids-name-what-moved](business/order/order_statistic_metric_decision.md#the-order-metric-ids-name-what-moved)), as recommended. **order_statistic_metric has no open question.** Net −1.
 - ▼ *(2026-10-30)* **92**: order_statistic_metric — are-past-orders-folded closed: no backfill, the metrics count from the fold onward, because this is the dev phase ([the-order-metrics-count-from-the-fold-onward](business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)), against my yes. The footer said 91 while the rows summed to 93 — all three now 92. Net −1.
-- ▲ *(2026-10-29)* **93**: order_statistic_metric — the five metrics are built, with the Order Status Change event and the fold ([the-status-changes-publish-nothing](business/order/order_statistic_metric_clarify.md#the-status-changes-publish-nothing) ✅). Building them opened two: [which-metric-ids](business/order/order_statistic_metric_clarify.md#which-metric-ids) (keep `metrics/orders/<what moved>`) and [are-past-orders-folded](business/order/order_statistic_metric_clarify.md#are-past-orders-folded) (fold the past once). One contradiction: [a-no-user-row-cannot-be-a-key](business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key). Neither blocks anything shipped, so neither ranks. Net +2.
+- ▲ *(2026-10-29)* **93**: order_statistic_metric — the five metrics are built, with the Order Status Change event and the fold ([the-status-changes-publish-nothing](business/order/order_statistic_metric_clarify.md#the-status-changes-publish-nothing) ✅). Building them opened two: [which-metric-ids](business/order/order_statistic_metric_decision.md#the-order-metric-ids-name-what-moved) (keep `metrics/orders/<what moved>`) and [are-past-orders-folded](business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward) (fold the past once). One contradiction: [a-no-user-row-cannot-be-a-key](business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key). Neither blocks anything shipped, so neither ranks. Net +2.
 - 🔄 *(2026-10-29)* **91**: order context — the contradiction the-build-lets-a-person-draft-and-promotes-on-the-server resolved as [a-draft-becomes-an-order-through-order-create](business/order/context_decision.md#a-draft-becomes-an-order-through-order-create): the draft page's Promote sends `OrderCreate` with `order_draft_id`, `OrderDraftPromote` and Save as Draft removed, one draft makes one order. Built. **The order context has no open question and no open contradiction**; only the parked barcode is left. A contradiction, not a counted question. Net zero.
 - 🔄 *(2026-10-29)* **91**: order context — the contradiction the-build-still-treats-an-empty-ref-as-a-phone-order resolved as [an-order-ref-is-required-by-the-rpc](business/order/context_decision.md#an-order-ref-is-required-by-the-rpc): the create request's validation refuses an empty ref, no database rule, and Promote now copies the draft's ref (it never had). Built. A contradiction, not a counted question. Net zero.
 - ▼ *(2026-10-29)* **91**: technical order design — question 7, the date on a row, closed for every screen as [a-table-date-is-short-and-every-time-is-wib](technical/frontend/context_decision.md#a-table-date-is-short-and-every-time-is-wib): `29 Okt 13:05` in a table cell, the year only when it is not this year, Jakarta time everywhere. As recommended. **technical order design has 1 open question left: the product barcode, parked.** Net −1.
@@ -274,10 +278,10 @@ flowchart LR
 [member Q1, Q2, Q4](business/project/member_clarify.md#question) — who owns ledger · [shipment Q1](business/shipment/context_clarify.md#question)
 — eight couriers live orders use have no channel, and an order now needs one.
 
-## Where the other 88 are
+## Where the other 90 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **91**, the whole set, not to 88. *Feeds* names the row of the seven a file's questions are part of.
+the column sums to **93**, the whole set, not to 90. *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Feeds |
 | --- | ---: | --- |
@@ -292,7 +296,7 @@ the column sums to **91**, the whole set, not to 88. *Feeds* names the row of th
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 0 |  |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 0 |  |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 1 | #1 |
-| [business/analytic/rpc_provide_clarify.md](business/analytic/rpc_provide_clarify.md#question) | 0 |  |
+| [business/analytic/rpc_provide_clarify.md](business/analytic/rpc_provide_clarify.md#question) | 1 |  |
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 0 |  |
 | [business/inventory/transaction_clarify.md](business/inventory/transaction_clarify.md#question) | 0 |  |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 8 |  |
@@ -318,7 +322,7 @@ the column sums to **91**, the whole set, not to 88. *Feeds* names the row of th
 | [business/financial_account/context_clarify.md](business/financial_account/context_clarify.md#question) | 0 |  |
 | [business/inventory/placement_clarify.md](business/inventory/placement_clarify.md#question) | 0 |  |
 | [business/inventory/restock_clarify.md](business/inventory/restock_clarify.md#question) | 0 |  |
-| [business/settlement/analytic_context_clarify.md](business/settlement/analytic_context_clarify.md#question) | 0 |  |
+| [business/settlement/analytic_context_clarify.md](business/settlement/analytic_context_clarify.md#question) | 1 |  |
 | [business/settlement/settlement_importer_clarify.md](business/settlement/settlement_importer_clarify.md#question) | 0 |  |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 0 |  |
 | [technical/event_architecture/context_clarify.md](technical/event_architecture/context_clarify.md#question) | 0 |  |
@@ -326,5 +330,5 @@ the column sums to **91**, the whole set, not to 88. *Feeds* names the row of th
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **91** across **41** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **93** across **41** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.

@@ -4,14 +4,16 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
 import { AnalyticPage } from "./index";
 
-// The Analytic composer (docs/business/analytic/rpc_provide.md). The five ORDER metrics are SERVED: the page asks
-// OrderAnalyticService over the stub transport, which answers from the analytic samples (orderAnalyticStub.ts), so the
-// real wire path runs and the numbers stay the samples'. Every other metric is a sample read in the page. Each story
+// The Analytic composer (docs/business/analytic/rpc_provide.md). The five ORDER metrics and the two SETTLEMENT metrics
+// are SERVED: the page asks OrderAnalyticService and SettlementAnalyticService over the stub transport — the orders
+// answered from the analytic samples (orderAnalyticStub.ts), settlement folded from the settlement book in fixtures.ts
+// (settlementAnalyticStub.ts) — so the real wire path runs. Every other metric is a sample read in the page. Each story
 // opens the page at a URL, because the URL is the report's whole state (the-report-lives-in-the-url). It reads as Toko
 // Melati (12), a seller; Gudang Pusat (11), a warehouse, gets counts only.
 //
-// The sample's two shaped shops, from the owner's own example:
-//   Toko Satria (13)  many orders, NO settlement     Toko Lama (14)  NO orders, settlement arriving
+// Two shaped shops, from the owner's own example:
+//   Toko Satria (13)       many orders, NO settlement          — a sample shop
+//   Melati Official (21)   NO orders, settlement arriving       — the settlement book's
 // so the service that ranks visibly decides the rows (the-rows-are-the-keys-step-one-sends).
 //
 // The screen details decided at this screen (the-analytic-screen-is-accepted), each pinned by a story here:
@@ -27,6 +29,7 @@ const at = (search: string) => routedPage([{ path: "/analytic", element: <Analyt
 const CREATED = "metrics/orders/created";
 
 const ByShop = at(`?g=shop&m=${CREATED},metrics/settlement&s=${CREATED}:created_count:desc`);
+const OrdersAndAdsByShop = at(`?g=shop&m=${CREATED},metrics/ads&s=${CREATED}:created_count:desc`);
 const OrdersByDayForSatria = at(`?g=daily&m=${CREATED}&shop=13&r=2026-10-01..2026-10-07`);
 const OrdersByShopAllRows = at(`?g=shop&m=${CREATED}&n=50`);
 const OrdersBySeller = at(`?g=team&m=${CREATED}`);
@@ -74,19 +77,23 @@ async function openMetricMenu(canvas: ReturnType<typeof within>, category?: stri
 const count = (text: string | null) => Number((text ?? "").replace(/\./g, ""));
 
 // DEFAULT — your example: Group by Shop, Orders and Settlement side by side, ranked by order count. The order service
-// picks the rows, so Toko Satria (orders, no settlement) is a row and Toko Lama (no orders) is not.
+// picks the rows, so Toko Satria (orders, no settlement) is a row and Melati Official (no orders) is not.
 export const Default: Story = {
   render: () => <ByShop />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.getByTestId("analytic-row-13")).toBeVisible();
-    await expect(canvas.queryByTestId("analytic-row-14")).toBeNull();
-    // Satria has no settlement — its row is filled with zero, never left blank (one key, every column).
-    await expect(canvas.getByTestId("analytic-cell-13-settlement_amount")).toHaveTextContent("Rp 0");
+    await expect(canvas.queryByTestId("analytic-row-21")).toBeNull();
+    // Satria has no settlement — its row is filled with zero, never left blank (one key, every column)…
+    await expect(canvas.getByTestId("analytic-cell-13-sales")).toHaveTextContent("Rp 0");
+    // …except a rate with no sale to divide by, which the service leaves unset: not 0%.
+    await expect(canvas.getByTestId("analytic-cell-13-take_rate")).toHaveTextContent("—");
     // The headline: a card per figure, the sorted one leading.
     await expect(canvas.getByTestId("analytic-headline-created_count")).toBeVisible();
-    await expect(canvas.getByTestId("analytic-headline-profit")).toBeVisible();
+    await expect(canvas.getByTestId("analytic-headline-position_to_date")).toBeVisible();
+    // The settlement book's window: 300.000 sold, 60.000 of it never received — a 20% take rate.
+    await expect(canvas.getByTestId("analytic-headline-take_rate-value")).toHaveTextContent("20%");
     // A metric chip's icon sits on its label's centre line, not ~4px under it (theme.ts, the tag recipe).
     const chip = canvas.getByTestId("analytic-chip-metrics-orders-created");
     const middle = (el: Element) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
@@ -107,21 +114,23 @@ export const Mobile: Story = {
   },
 };
 
-// SORTED BY PROFIT (the-rows-line-says-what-the-rows-are) — the sort moves to a SETTLEMENT figure, so settlement ranks
-// the shops. Toko Satria (no settlement yet) leaves; Toko Lama (settlement, no orders) arrives. Nothing is lost — the
-// rows are the keys the ranking service sends — and the line above the table says so, before and after.
-export const SortedByProfit: Story = {
+// SORTED BY A SETTLEMENT FIGURE (the-rows-line-says-what-the-rows-are) — the sort moves to Position to date, so
+// settlement ranks the shops. Toko Satria (no settlement) leaves; Melati Official (settlement, no orders) arrives,
+// first, with the larger position. Nothing is lost — the rows are the keys the ranking service sends — and the line above
+// the table says so, before and after.
+export const SortedBySettlement: Story = {
   render: () => <ByShop />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await expect(canvas.getByTestId("analytic-row-13")).toBeVisible();
     await expect(canvas.getByTestId("analytic-rows-line")).toHaveTextContent("Rows: shops with orders created in this period");
 
-    await userEvent.click(canvas.getByTestId("analytic-sort-profit"));
+    await userEvent.click(canvas.getByTestId("analytic-sort-position_to_date"));
 
     await waitFor(() => expect(canvas.queryByTestId("analytic-row-13")).toBeNull());
-    await expect(canvas.getByTestId("analytic-row-14")).toBeVisible();
-    await expect(canvas.getByTestId("analytic-cell-14-created_count")).toHaveTextContent("0");
+    await expect(canvas.getByTestId("analytic-row-21")).toBeVisible();
+    await expect(canvas.getByTestId("analytic-cell-21-created_count")).toHaveTextContent("0");
+    await waitFor(() => expect(canvas.getByTestId("analytic-row-21")).toHaveTextContent("Melati Official"));
     await expect(canvas.getByTestId("analytic-rows-line")).toHaveTextContent("Rows: shops with settlement in this period");
   },
 };
@@ -182,18 +191,18 @@ export const InventoryGreyedByShop: Story = {
 };
 
 // A GROUP CHANGE REMOVES THE COLUMNS THAT CANNOT FOLLOW (a-group-change-drops-the-columns-that-cannot-follow).
-// Settlement has no seller group, so switching to Seller takes it off the table and a toast says why; Orders created
+// Ads expense has no seller group, so switching to Seller takes it off the table and a toast says why; Orders created
 // stays, and its one row is named by TeamByIds (the-team-group-is-the-seller).
 export const SwitchGroupToSeller: Story = {
-  render: () => <ByShop />,
+  render: () => <OrdersAndAdsByShop />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await pick(canvas, "analytic-group", "team");
 
-    await waitFor(() => expect(canvas.queryByTestId("analytic-chip-metrics-settlement")).toBeNull());
+    await waitFor(() => expect(canvas.queryByTestId("analytic-chip-metrics-ads")).toBeNull());
     await expect(canvas.getByTestId("analytic-chip-metrics-orders-created")).toBeVisible();
-    const toast = await screen.findByText("Settlement removed");
+    const toast = await screen.findByText("Ads expense removed");
     await waitFor(() => expect(toast).toBeVisible());
     await waitFor(() => expect(canvas.getByTestId("analytic-row-12")).toHaveTextContent("Toko Melati"));
   },
@@ -308,7 +317,8 @@ async function openGraphTab(canvas: ReturnType<typeof within>) {
 // THE TABLE AS GRAPHS (the-graph-draws-the-table), ONE VIEW AT A TIME (the-table-and-the-graph-are-tabs) — the report
 // opens on its table; the Graph tab swaps it for one graph per kind of number among the columns. Orders created and
 // Settlement by shop: the counts get one graph (Orders created), the money another, where Created total, Created MP
-// total, Settlement amount and Profit share an axis. The shops run along the bottom in the table's ranking, and the headline stays above both.
+// total and Settlement's four amounts share an axis; the take rate and the position get a graph each. The shops run
+// along the bottom in the table's ranking, and the headline stays above them.
 export const GraphsSplitByKindOfNumber: Story = {
   render: () => <ByShop />,
   play: async ({ canvasElement }) => {
@@ -318,10 +328,10 @@ export const GraphsSplitByKindOfNumber: Story = {
 
     await openGraphTab(canvas);
     const counts = await graph(canvas, "count", 1);
-    const money = await graph(canvas, "money", 4);
+    const money = await graph(canvas, "money", 6);
 
     await expect(within(counts).getByText("Orders created")).toBeVisible();
-    for (const label of ["Created total", "Created MP total", "Settlement amount", "Profit"]) {
+    for (const label of ["Created total", "Created MP total", "Selling price", "Received", "Withdrawn", "Gap"]) {
       await expect(within(money).getByText(label)).toBeVisible();
     }
     // The money axis is short, the magnitude first.
@@ -341,7 +351,7 @@ export const TheViewIsInTheLink: Story = {
   render: () => <ByShopAsGraph />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await graph(canvas, "money", 4);
+    await graph(canvas, "money", 6);
     await expect(canvas.queryByTestId("analytic-table")).toBeNull();
     await expect(canvas.getByTestId("analytic-view-graph")).toHaveAttribute("aria-selected", "true");
 

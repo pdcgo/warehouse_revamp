@@ -3862,3 +3862,71 @@ sequenceDiagram
 | a platform total of 0 | required at create ([platform-total-is-required-at-finalize](../order/context_decision.md#platform-total-is-required-at-finalize)), so it should never arrive. 🔄 *(2026-10-21)* That create check is not built yet, so the handler still skips a 0 — it goes when the check lands |
 | still true | [the-order-commits-without-settlement](#the-order-commits-without-settlement): the order never waits on settlement |
 | ✅ built *(2026-10-21)* | `OrderSaleHandler` ([order_sale.go](../../../backend/services/settlement_service/settlement_v1/order_sale.go)) behind `settlement-order-placed` and `settlement-order-cancelled`; the events carry `shop_id` and `marketplace_total`; selling's `OpenSale` / `CancelSale` calls and their adapter are removed. Pinned by `order_sale_test.go` |
+
+---
+
+## one-settlement-metric-reads-both-tables
+
+> Owner, in chat (2026-10-30): *"why you recomended me A ?. isnt we have grouped in metric analytic ?"* — against my
+> first answer to [shop-and-person-in-one-metric](./analytic_context_clarify.md#question), two metrics, one per table —
+> then *"okey, i accept it"* to the revised one.
+
+**The verdict.** A settlement metric reads **both** of settlement's tables, because the group belongs to the request:
+the shop table when the request groups or filters by shop or team, the person table when it groups or filters by user,
+and either one for a time group or the headline. A request that names a shop and a person together is refused, with
+its reason: no table holds that combination.
+
+```mermaid
+flowchart LR
+  m["a settlement metric"] -->|"SHOP or TEAM"| s["shop table"]
+  m -->|"USER"| u["person table"]
+  m -->|"a time group or SUMMARY"| e["either - the same totals"]
+  m -.->|"a shop and a person together"| x["refused, with its reason"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the shop table | groups `SHOP` and `TEAM`, filter `SHOP` |
+| the person table | group `USER`, filter `USER` |
+| either | `SUMMARY` and `DAILY` … `YEARLY` with no shop or person named: every log row is folded into both, so their totals agree |
+| refused | a shop and a person in one request: `InvalidArgument`, *"a shop and a person cannot be read together"* |
+| `TEAM` | across teams for a root caller only, as today |
+| a row with no person | left out of the `USER` group and counted everywhere else, as for orders ([a-no-user-row-cannot-be-a-key](../order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key)) |
+| the tables, the fold | unchanged |
+
+---
+
+## settlement-serves-its-headline-and-its-breakdown
+
+> Owner, in chat (2026-10-30): *"okey, i accept it"* — to *"Settlement offers the numbers people already read on the
+> Settlement Report, not the ledger's 13 raw types: a Settlement metric, the headline, and a Settlement by type metric,
+> the explanation"*, after asking *"any recomendation what inside of settlement ?"*. As recommended.
+
+**The verdict.** The Analytic screen's Settlement category holds two metrics: **Settlement**, the headline a person
+reads first, and **Settlement by type**, the breakdown that explains its gap. It is
+[the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) as two metrics. The formulas move from
+the screen into the service, so the Settlement Report and the Analytic screen read one definition.
+
+```mermaid
+flowchart LR
+  c["Settlement"] --> h["Settlement - the headline"]
+  c --> b["Settlement by type - the explanation"]
+  h --> hf["selling price, received, withdrawn, gap, take rate, position to date"]
+  b --> bf["fund, fees, adjustments, reimbursements, programme, other, system adjustment"]
+  bf -.->|"they add up to"| r["received"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| **Settlement** | `sales` = −(`initial_total` + `initial_total_cancel`) · `received` = Σ every type but the sale and withdrawals · `withdrawn` = −`withdrawal` · `gap` = `sales` − `received`: `CURRENCY`, summed · `take_rate` = `gap` ÷ `sales`, worked out from the sums: `RATIO` · `position_to_date` = −`close_balance` at the window's end: a position ([a-position-is-not-a-sum](../analytic/rpc_provide_clarify.md#a-position-is-not-a-sum), still open) |
+| **Settlement by type** | the ten types that make up `received`: `fund`, `external_ads_fee`, `affiliate_fee`, `marketplace_adjustment`, `shipment_adjustment`, `logistic_reimbursement`, `platform_reimbursement`, `marketplace_program`, `other`, `system_adjustment`. `CURRENCY`, summed, each with the ledger's sign, so a fee is negative |
+| the identity | `received` is the sum of Settlement by type's fields, so the breakdown always explains the headline |
+| not in either | `initial_total`, `initial_total_cancel`, `change` and `open_balance`: the basis the measures are made of |
+| ids | `metrics/settlement` and `metrics/settlement/types`. ⚠ My reading, not asked |
+| the tables | both read both ([one-settlement-metric-reads-both-tables](#one-settlement-metric-reads-both-tables)) |
+| one definition | the formulas leave `frontend/src/features/settlement/measure.ts` for the service, and the Settlement Report reads the served fields |
+| the old reads | `AnalyticTimeSearch`, `AnalyticGroupSearch`, `AnalyticGroupMetric` go in the same change ([the-pattern-replaces-the-shipped-analytics](../analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)) |

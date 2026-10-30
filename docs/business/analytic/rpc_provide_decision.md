@@ -1563,3 +1563,66 @@ flowchart LR
 | a one-row group | a seller grouping by its own team, or a warehouse by itself, gives one row. ⚠ My reading, not asked: the metric still lists the group, and the screen offers it, because root and a warehouse need it. Hiding it per reader is a screen detail, decided when the screen meets it |
 | when | added to `analytic_base` and to the screen's `GroupType` with the first metric that lists it, the same as the filters |
 | the screen | the group is called *Warehouse*, always |
+
+---
+
+## a-position-is-its-own-stat-type
+
+> Owner, in chat (2026-10-30): *"yes"* — to [a-position-is-not-a-sum](./rpc_provide_clarify.md#question), *"add
+> `FIELD_STAT_TYPE_POSITION`, money at a moment: shown as Rp, its own graph, served at the window's edges, never summed
+> by anything else?"*. As recommended.
+
+**The verdict.** `FieldStatType` gains **`POSITION`**: an amount of money at a moment, a balance, not a movement. It
+adds up across keys (the shops add up to the team) but **never across time**: a period's position is its edge, and the
+service serves it. The screen shows it as Rp and draws positions in a graph of their own. This narrows
+[the-headline-is-the-sum-of-its-rows](#the-headline-is-the-sum-of-its-rows) to movements: a position's headline is the
+window's edge.
+
+```mermaid
+flowchart LR
+  a["1 Oct close -5.000.000"] --> m["October close"]
+  b["31 Oct close -7.000.000"] --> m
+  m --> v["-7.000.000 - the last day, never the sum"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the value | `FIELD_STAT_TYPE_POSITION = 4` |
+| a time group's cell | the period's edge, served by the service |
+| the headline | the window's edge: the service's `SUMMARY` |
+| an id group's cell | the key's own position, and the keys add up to the team's |
+| the screen | Rp, like `CURRENCY`, in a graph of its own, *Positions (Rp)* |
+| `rank_min_sample` | not on a position: it stays a `RATIO`'s alone ([every-number-field-carries-a-stat-type](#every-number-field-carries-a-stat-type)) |
+| the first one | settlement's *position to date* ([settlement-serves-its-headline-and-its-breakdown](../settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown)) |
+
+---
+
+## the-analytic-entry-follows-home
+
+> Owner, in chat (2026-10-30): *"place analytic menu after home"* — against my unasked placement of 2026-10-29, inside
+> Operations after the team's orders (a selling team, a warehouse) or after Inventory (root and admin).
+
+**The verdict.** The Analytic entry sits **right after Home**, in the lead section with no heading — above Operations,
+Finance and Team, for every team type that has metrics. Analytic reads across every section below it (orders,
+settlement, stock, expenses), so it is not one of Operations' screens.
+
+```
+▌Home
+ Analytic                ← the lead section: no heading
+OPERATIONS
+  Products ›  Inventories ›  Suppliers ›  Shops  Orders
+FINANCE
+  …
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | `menuSectionsFor` in `frontend/src/layouts/nav.ts` — the lead section is `[HOME, ANALYTIC]` |
+| who | a selling team, a warehouse, root and admin — every member, not role-gated, as before ([every-member-reads-every-metric-of-their-team](#every-member-reads-every-metric-of-their-team)) |
+| the phone | the More sheet draws `menuFor`, so Analytic follows Home there too. The bottom bar is unchanged — its three tabs are a decision of their own |
+| the sections | ⚠ widens [the-sidebar-is-in-sections](../../technical/frontend/context_decision.md#the-sidebar-is-in-sections), whose lead section was Home alone |
+| pinned by | `Layouts/Desktop/Sidebar` → `TheMenuIsInSections`: the lead section's links are exactly Home, Analytic |

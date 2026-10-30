@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, Flex, Group, Heading, Spacer, Stack, Text } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { Pagination } from "../../components/chrome/Pagination";
 import { DateRangePicker } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
@@ -39,8 +40,10 @@ const PAGE_SIZE = 20;
 // so it is labelled "position to date", and Withdrawn stands beside Received
 // (#the-report-headline-is-position-to-date).
 //
-// ⚠ EVERY FIGURE IS FOLDED, not live. The reports are built from the ledger through the broker, so a
-// post made a moment ago can take a moment to appear here — the order page's ledger tab is the live view.
+// ⚠ EVERY FIGURE IS FOLDED, not live, and SERVED — settlement_service's `metrics/settlement`, the same figures the
+// Analytic screen reads (settlement-serves-its-headline-and-its-breakdown). The reports are built from the ledger
+// through the broker, so a post made a moment ago can take a moment to appear here — the order page's ledger tab is
+// the live view.
 export function SettlementReportPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -98,14 +101,12 @@ export function SettlementReportPage() {
   const rankedUsers = groupBy === "user" ? (groups.data?.rows ?? []).map((row) => row.id) : [];
   const actors = useActors(rankedUsers);
 
+  // A row with no person recorded is not a row of the person ranking — the service leaves it out of that group and
+  // counts it everywhere else (one-settlement-metric-reads-both-tables), so the headline still holds it.
   const nameOf = (id: bigint): string => {
     if (groupBy === "shop") {
       return shops.data?.find((shop) => shop.id === id)?.name ?? `#${id}`;
     }
-
-    // 0 is "not recorded" — an order opened with no creator — and it is a row of its own, so user
-    // totals still add up to the team's.
-    if (id === 0n) return t("settlementReport.unattributed");
 
     return actors.data?.get(id.toString())?.name ?? `#${id}`;
   };
@@ -194,14 +195,16 @@ export function SettlementReportPage() {
           <GroupTable groupBy={groupBy} rows={groups.data?.rows ?? []} nameOf={nameOf} />
         </RefreshOverlay>
 
-        <Box>
-          <Pagination
-            page={groupPage}
-            pageSize={PAGE_SIZE}
-            count={groups.data?.totalItems ?? 0}
-            onPageChange={setGroupPage}
-          />
-        </Box>
+        {/* No total: a metric page says only whether another follows (a-metric-page-has-no-total) — the growing pager
+            (every-list-pages-with-the-growing-pager). */}
+        <GrowingPager
+          page={groupPage}
+          onPageChange={setGroupPage}
+          hasNext={groups.isPlaceholderData ? undefined : groups.data?.hasNext}
+          resetKey={[from, to, groupBy].join("|")}
+          pageSize={PAGE_SIZE}
+          testId="report-groups-pager"
+        />
       </Stack>
     </Stack>
   );

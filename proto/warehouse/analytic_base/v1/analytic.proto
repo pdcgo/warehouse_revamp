@@ -174,15 +174,18 @@ message SortOption {
 // FieldStatType — what kind of number a metric's field is (a-field-declares-its-stat-type). Every number field of a
 // metric carries one, checked at startup (every-number-field-carries-a-stat-type). The screen formats a cell by it and
 // draws one graph per type, so a count never shares an axis with an amount (the-graph-draws-the-table). It is never a
-// rule for summing: a total is the service's SUMMARY.
+// rule for summing: a total is the service's SUMMARY, and a POSITION is never summed over time at all.
 enum FieldStatType {
   FIELD_STAT_TYPE_UNSPECIFIED = 0;
   // 0 to 1, shown as a percentage. The only type that may carry rank_min_sample.
   FIELD_STAT_TYPE_RATIO = 1;
   // A count of things — units, orders.
   FIELD_STAT_TYPE_QTY = 2;
-  // An amount of money.
+  // An amount of money that MOVED in the period — summed.
   FIELD_STAT_TYPE_CURRENCY = 3;
+  // An amount of money at a MOMENT — a balance (a-position-is-its-own-stat-type). It adds up across keys, never across
+  // time: a period's position is its edge, served by the service. Shown as Rp, in a graph of its own.
+  FIELD_STAT_TYPE_POSITION = 4;
 }
 
 extend google.protobuf.FieldOptions {

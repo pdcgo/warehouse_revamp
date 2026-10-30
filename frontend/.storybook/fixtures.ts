@@ -959,45 +959,59 @@ export const liabilityPayments = [
 
 // ── The settlement reports ──────────────────────────────────────────────────────────────────────
 //
-// ONE consistent book for Toko Melati (12), so every figure on the report can be checked against
-// another: the days fold into the summary, and the shops and the people each partition it.
+// ONE consistent LEDGER BOOK for Toko Melati (12), as the fold would file it: a day, the team, the shop the row names
+// and the person it counts for, in the log's sign (positive is money toward us). The stub
+// (settlementAnalyticStub.ts) folds it the way settlement_service does, so the headline, every period, every shop and
+// every person are cut from the same rows and can be checked against each other.
 //
-//   5 days ago   a sale of 300.000                                      shortfall −300.000
-//   3 days ago   250.000 arrives, a 15.000 ads fee is charged           shortfall  −65.000
-//   2 days ago   200.000 is withdrawn to the bank                       position  −265.000
-//   1 day ago    a 120.000 sale is placed AND cancelled, +5.000 claim   position  −260.000
+//   5 days ago   sales of 300.000 — 180.000 + 20.000 in Melati Official, 100.000 in Melati Store    position 300.000
+//   3 days ago   250.000 arrives, 15.000 of ads fees charged                                       position  65.000
+//   2 days ago   Melati Official withdraws 200.000 to the bank                                     position 265.000
+//   1 day ago    a 120.000 sale is placed AND cancelled in Melati Store, and a 5.000 claim arrives position 260.000
 //
-// So over the default 30 days: sold 300.000, received 240.000, a gap of 60.000 — a 20% take rate —
-// 200.000 withdrawn, and a position to date of 260.000: the gap PLUS the withdrawal, which counts in it
-// (#withdrawal-counts-in-the-position) and is never part of what was received.
-export const settlementReportDays: {
+// So over the default 30 days: sold 300.000, received 240.000, a gap of 60.000 — a 20% take rate — 200.000 withdrawn,
+// and a position to date of 260.000: the gap PLUS the withdrawal, which counts in it (#withdrawal-counts-in-the-position)
+// and is never part of what was received.
+//
+//                      sold      received   withdrawn   gap      position
+//   Melati Official    200.000   150.000    200.000     50.000   250.000
+//   Melati Store       100.000    90.000          0     10.000    10.000
+//   Ani (61)           180.000   135.000    200.000     45.000   245.000
+//   Budi (62)          120.000   105.000          0     15.000    15.000
+export interface SettlementBookRow {
   teamId: bigint;
   ago: number;
+  shopId: bigint;
+  userId: bigint;
   initialTotal: bigint;
   initialTotalCancel: bigint;
   fund: bigint;
   externalAdsFee: bigint;
   marketplaceAdjustment: bigint;
   withdrawal: bigint;
-}[] = [
-  { teamId: 12n, ago: 5, initialTotal: -300_000n, initialTotalCancel: 0n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 0n, withdrawal: 0n },
-  { teamId: 12n, ago: 3, initialTotal: 0n, initialTotalCancel: 0n, fund: 250_000n, externalAdsFee: -15_000n, marketplaceAdjustment: 0n, withdrawal: 0n },
-  { teamId: 12n, ago: 2, initialTotal: 0n, initialTotalCancel: 0n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 0n, withdrawal: -200_000n },
-  { teamId: 12n, ago: 1, initialTotal: -120_000n, initialTotalCancel: 120_000n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 5_000n, withdrawal: 0n },
-];
+}
 
-// The same book split by SHOP and by PERSON. Each split sums to the team: 300.000 sold, 240.000
-// received, a 60.000 shortfall. Ranked by the shortfall, Melati Official and Ani come first.
-export const settlementReportGroups = {
-  shop: [
-    { id: 21n, sales: 200_000n, received: 150_000n },
-    { id: 22n, sales: 100_000n, received: 90_000n },
-  ],
-  user: [
-    { id: 61n, sales: 180_000n, received: 135_000n },
-    { id: 62n, sales: 120_000n, received: 105_000n },
-  ],
-};
+const bookRow = (row: Partial<SettlementBookRow> & Pick<SettlementBookRow, "ago" | "shopId" | "userId">): SettlementBookRow => ({
+  teamId: 12n,
+  initialTotal: 0n,
+  initialTotalCancel: 0n,
+  fund: 0n,
+  externalAdsFee: 0n,
+  marketplaceAdjustment: 0n,
+  withdrawal: 0n,
+  ...row,
+});
+
+export const settlementBook: SettlementBookRow[] = [
+  bookRow({ ago: 5, shopId: 21n, userId: 61n, initialTotal: -180_000n }),
+  bookRow({ ago: 5, shopId: 21n, userId: 62n, initialTotal: -20_000n }),
+  bookRow({ ago: 5, shopId: 22n, userId: 62n, initialTotal: -100_000n }),
+  bookRow({ ago: 3, shopId: 21n, userId: 61n, fund: 145_000n, externalAdsFee: -10_000n }),
+  bookRow({ ago: 3, shopId: 21n, userId: 62n, fund: 15_000n }),
+  bookRow({ ago: 3, shopId: 22n, userId: 62n, fund: 90_000n, externalAdsFee: -5_000n }),
+  bookRow({ ago: 2, shopId: 21n, userId: 61n, withdrawal: -200_000n }),
+  bookRow({ ago: 1, shopId: 22n, userId: 62n, initialTotal: -120_000n, initialTotalCancel: 120_000n, marketplaceAdjustment: 5_000n }),
+];
 
 // ── Settlement imports ──────────────────────────────────────────────────────────────────────────
 //

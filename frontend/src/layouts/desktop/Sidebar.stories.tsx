@@ -276,8 +276,9 @@ export const TheTeamSwitcherListsEveryTeamAndMarksTheCurrentOne: Story = {
   },
 };
 
-// THE MENU IS IN SECTIONS (owner, `the-sidebar-is-in-sections`) — Home leads with no heading, then the team's work,
-// its money and its people, each under a small heading. Profile is the person's, so it is in the user card instead.
+// THE MENU IS IN SECTIONS (owner, `the-sidebar-is-in-sections`) — Home leads with no heading, Analytic right after it
+// (`the-analytic-entry-follows-home`), then the team's work, its money and its people, each under a small heading. Profile is the
+// person's, so it is in the user card instead.
 export const TheMenuIsInSections: Story = {
   beforeEach: asTeam(SELLING.id),
   play: async ({ canvasElement }) => {
@@ -292,8 +293,12 @@ export const TheMenuIsInSections: Story = {
       "nav-section-nav.sectionTeam",
     ]);
 
+    const lead = within(canvas.getByTestId("nav-section-lead"));
+    await expect(lead.getAllByRole("link").map((link) => link.textContent)).toEqual(["Home", "Analytic"]);
+
     const operations = within(canvas.getByTestId("nav-section-nav.sectionOperations"));
     await expect(operations.getByText("Operations")).toBeVisible();
+    await expect(operations.queryByRole("link", { name: "Analytic" })).toBeNull();
     await expect(operations.getByRole("link", { name: "Shops" })).toBeInTheDocument();
     const finance = within(canvas.getByTestId("nav-section-nav.sectionFinance"));
     await expect(finance.getByRole("link", { name: "Accounts" })).toBeInTheDocument();

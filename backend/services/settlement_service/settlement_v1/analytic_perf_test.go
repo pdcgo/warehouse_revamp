@@ -1,6 +1,6 @@
 //go:build perfaudit
 
-// Performance audit for settlement's report RPCs and its write (the audit-rpc-performance skill).
+// Performance audit for settlement's metric RPCs and its write (the audit-rpc-performance skill).
 //
 //	go test -tags perfaudit -run TestPerf_Settlement -v ./backend/services/settlement_service/settlement_v1/
 package settlement_v1_test
@@ -15,7 +15,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
-	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_perf"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -128,71 +128,71 @@ func TestPerf_Settlement(t *testing.T) {
 	lastDay := perfStart.AddDate(0, 0, perfDays-1).Format(time.DateOnly)
 	monthBack := perfStart.AddDate(0, 0, perfDays-30).Format(time.DateOnly)
 
-	series := func(timeframe settlementv1.AnalyticTimeframe, start string, limit uint32, userID uint64) func() error {
+	firstDay := perfStart.Format(time.DateOnly)
+
+	filters := func(start string, extra ...*analytic_basev1.FilterItem) []*analytic_basev1.FilterItem {
+		return append([]*analytic_basev1.FilterItem{window(start, lastDay)}, extra...)
+	}
+
+	data := func(group analytic_basev1.GroupType, keys *analytic_basev1.MetricKeys, items []*analytic_basev1.FilterItem) func() error {
 		return func() error {
-			_, err := svc.AnalyticTimeSearch(ctx, connect.NewRequest(&settlementv1.AnalyticTimeSearchRequest{
+			_, err := svc.MetricData(ctx, connect.NewRequest(&settlementv1.MetricDataRequest{
 				TeamId:    team,
-				Timeframe: timeframe,
-				Filter: &settlementv1.AnalyticTimeSearchFilter{
-					DateRange: &settlementv1.AnalyticDateRange{StartDate: start, EndDate: lastDay},
-					UserId:    userID,
-				},
-				SortType: commonv1.CommonSortType_COMMON_SORT_TYPE_DESC,
-				Page:     &commonv1.CommonPagination{Page: 1, Limit: limit},
+				GroupBy:   group,
+				Filters:   items,
+				Keys:      keys,
+				MetricIds: []string{metricSettlement, metricTypes},
 			}))
 
 			return err
 		}
 	}
 
-	measureRPC(t, probe, "AnalyticTimeSearch daily 30d page20", series(settlementv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_DAILY, monthBack, 20, 0))
-	measureRPC(t, probe, "AnalyticTimeSearch daily 250d page200", series(settlementv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_DAILY, perfStart.Format(time.DateOnly), 200, 0))
-	explain(t, base, probe)
-	measureRPC(t, probe, "AnalyticTimeSearch monthly 250d", series(settlementv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_MONTHLY, perfStart.Format(time.DateOnly), 20, 0))
-	measureRPC(t, probe, "AnalyticTimeSearch user daily 30d", series(settlementv1.AnalyticTimeframe_ANALYTIC_TIMEFRAME_DAILY, monthBack, 20, 1_000))
-
-	group := func(groupType settlementv1.AnalyticGroupType, limit uint32) func() error {
-		return func() error {
-			_, err := svc.AnalyticGroupSearch(ctx, connect.NewRequest(&settlementv1.AnalyticGroupSearchRequest{
-				TeamId: team,
-				Filter: &settlementv1.AnalyticGroupFilter{
-					DateRange: &settlementv1.AnalyticDateRange{StartDate: monthBack, EndDate: lastDay},
-					GroupType: groupType,
-				},
-				Page: &commonv1.CommonPagination{Page: 1, Limit: limit},
-			}))
-
-			return err
+	// The days of a page, newest first, as the Settlement Report asks them.
+	days := func(n int) *analytic_basev1.MetricKeys {
+		out := make([]string, 0, n)
+		for i := 0; i < n; i++ {
+			out = append(out, perfStart.AddDate(0, 0, perfDays-1-i).Format(time.DateOnly))
 		}
+
+		return dayKeys(out...)
 	}
 
-	measureRPC(t, probe, "AnalyticGroupSearch shop page20", group(settlementv1.AnalyticGroupType_ANALYTIC_GROUP_TYPE_SHOP, 20))
-	measureRPC(t, probe, "AnalyticGroupSearch shop page200", group(settlementv1.AnalyticGroupType_ANALYTIC_GROUP_TYPE_SHOP, 200))
+	measureRPC(t, probe, "MetricData summary 30d", data(analytic_basev1.GroupType_GROUP_TYPE_SUMMARY, nil, filters(monthBack)))
+	measureRPC(t, probe, "MetricData summary 250d", data(analytic_basev1.GroupType_GROUP_TYPE_SUMMARY, nil, filters(firstDay)))
 	explain(t, base, probe)
-	measureRPC(t, probe, "AnalyticGroupSearch user page20", group(settlementv1.AnalyticGroupType_ANALYTIC_GROUP_TYPE_USER, 20))
+	measureRPC(t, probe, "MetricData daily 20 days", data(analytic_basev1.GroupType_GROUP_TYPE_DAILY, days(20), filters(monthBack)))
+	measureRPC(t, probe, "MetricData daily 200 days", data(analytic_basev1.GroupType_GROUP_TYPE_DAILY, days(200), filters(firstDay)))
+	explain(t, base, probe)
+	measureRPC(t, probe, "MetricData monthly 250d", data(analytic_basev1.GroupType_GROUP_TYPE_MONTHLY,
+		dayKeys("2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01",
+			"2026-08-01", "2026-09-01"), filters(firstDay)))
+	measureRPC(t, probe, "MetricData daily for a user 20 days", data(analytic_basev1.GroupType_GROUP_TYPE_DAILY, days(20),
+		filters(monthBack, userFilter(1_000))))
 
 	ids := make([]uint64, 0, 200)
 	for s := uint64(1); s <= 200; s++ {
 		ids = append(ids, s)
 	}
 
-	metric := func(n int) func() error {
+	measureRPC(t, probe, "MetricData shop 20 ids", data(analytic_basev1.GroupType_GROUP_TYPE_SHOP, idKeys(ids[:20]...), filters(monthBack)))
+	measureRPC(t, probe, "MetricData shop 200 ids", data(analytic_basev1.GroupType_GROUP_TYPE_SHOP, idKeys(ids...), filters(monthBack)))
+	explain(t, base, probe)
+
+	search := func(group analytic_basev1.GroupType, start string, limit int32) func() error {
 		return func() error {
-			_, err := svc.AnalyticGroupMetric(ctx, connect.NewRequest(&settlementv1.AnalyticGroupMetricRequest{
-				TeamId: team,
-				Filter: &settlementv1.AnalyticGroupFilter{
-					DateRange: &settlementv1.AnalyticDateRange{StartDate: monthBack, EndDate: lastDay},
-					GroupType: settlementv1.AnalyticGroupType_ANALYTIC_GROUP_TYPE_SHOP,
-				},
-				Ids: ids[:n],
-			}))
+			_, err := metricSearch(svc, group, filters(start), metricSettlement, "position_to_date",
+				analytic_basev1.SortType_SORT_TYPE_DESC, 0, limit)
 
 			return err
 		}
 	}
 
-	measureRPC(t, probe, "AnalyticGroupMetric 20 ids", metric(20))
-	measureRPC(t, probe, "AnalyticGroupMetric 200 ids", metric(200))
+	measureRPC(t, probe, "MetricSearch shop page20", search(analytic_basev1.GroupType_GROUP_TYPE_SHOP, monthBack, 20))
+	measureRPC(t, probe, "MetricSearch shop page200", search(analytic_basev1.GroupType_GROUP_TYPE_SHOP, monthBack, 200))
+	explain(t, base, probe)
+	measureRPC(t, probe, "MetricSearch user page20", search(analytic_basev1.GroupType_GROUP_TYPE_USER, monthBack, 20))
+	measureRPC(t, probe, "MetricSearch daily 250d page20", search(analytic_basev1.GroupType_GROUP_TYPE_DAILY, firstDay, 20))
 	explain(t, base, probe)
 }
 

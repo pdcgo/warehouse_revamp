@@ -180,7 +180,7 @@ message OrderStatRequest {
 | RPC | answers |
 | --- | --- |
 | `OrderStat` · `OrderActivityStat` | orders and revenue, by day and shop |
-| `AnalyticTimeSearch` · `AnalyticGroupSearch` · `AnalyticGroupMetric` | what the platforms paid, by shop, person and day |
+| settlement's `MetricSearch` · `MetricData` (2026-10-30 — they replaced its three `Analytic*` reads) | what the platforms paid, by shop, person and day |
 | `ProductStockSummary` · `OwnerStockStat` · `RestockInboundStat` | what is on hand, and what is coming in |
 | `ExpenseDaily` | costs, by day |
 | `LiabilityPositionList` · `LiabilityDaily` | what the team owes, and is owed |

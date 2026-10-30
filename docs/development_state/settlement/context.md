@@ -1,5 +1,19 @@
 # Development state — settlement
 
+> ✅ **2026-10-30 — the reads are on the analytic pattern, BUILT.** Two metrics,
+> [settlement-serves-its-headline-and-its-breakdown](../../business/settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown), each reading both tables
+> ([one-settlement-metric-reads-both-tables](../../business/settlement/context_decision.md#one-settlement-metric-reads-both-tables)):
+>
+> | | |
+> | --- | --- |
+> | the contract | [settlement_analytic.proto](../../../proto/warehouse/settlement/v1/settlement_analytic.proto) — `SettlementAnalyticService` is `MetricSearch` / `MetricData`; `metrics/settlement` (6 fields, `take_rate` a `RATIO`, `position_to_date` a `POSITION`) and `metrics/settlement/types` (the 10 types). The old `SettlementMetric` and `Analytic*Search`/`Metric` messages are gone from settlement.proto |
+> | the handlers | `settlement_v1/metric_search.go`, `metric_data.go`, `metric_shared.go` — `measureSQL` is the ONE definition of every field (`received` = Σ SettlementTypeMetric's fields, read off the descriptor; an `init` refuses a field with no definition), `tableOf` picks the table and refuses a shop with a person, `idBase` / `timeBase` are the old reads' SQL, kept |
+> | tests | `metric_data_test.go` (9) and `metric_search_test.go` (6 + the startup check), on the fold's worked example. The old read tests are gone; the fold, replay and maintenance tests stay in `analytic_test.go` |
+> | perf | 🔴 heavy, and no worse than the reads they replaced — [MetricData](../../../audits/services/settlement_service/performances/MetricData.md) 285 ms @ 20 days, [MetricSearch](../../../audits/services/settlement_service/performances/MetricSearch.md) 138 ms @ shops. The fix (the running sum) is still the open question of 2026-09-14 |
+> | the screen | the Settlement Report reads the pair (`features/settlement/analytics.ts`); `measure.ts` maps the served fields and derives nothing; the ranking pages with the growing pager; the *Not recorded* person row is gone (left out of the `USER` group, as decided). The Analytic screen serves both metrics (`catalogue.ts`), with a `ratio` kind: a percentage, its own graph, "—" when unset |
+> | Storybook | `.storybook/settlementAnalyticStub.ts` folds one ledger book (`fixtures.ts` `settlementBook`, a shop and a person on every row) with the service's rules — the report stories and the Analytic stories read it |
+> | not built | `take_rate` cannot sort yet — [a-take-rate-ranks-above-what-sale](../../business/settlement/analytic_context_clarify.md#a-take-rate-ranks-above-what-sale) |
+
 **Pass:** `implementation` + `technical_test`, **COMPLETE** (2026-09-14). Backend `dabc331`; the report
 screen and docs in the commit after it. 🔨 **Widened 2026-09-29 for the settlement importer** (9f20652): the five types,
 source `importer`, an imported shop row counted for the shop's primary CS, and the report's *Position to date* — see
@@ -41,7 +55,7 @@ flowchart LR
   W -->|"after commit"| E["SettlementLogPosted"]
   E --> F["fold webhook"]
   F --> R[("daily + state reports")]
-  R --> Q["AnalyticTimeSearch, GroupSearch, GroupMetric"]
+  R --> Q["MetricSearch, MetricData"]
   Q --> S["/settlement/report"]
   RC["AnalyticReplayCompute"] -->|"delete range, seek"| F
 ```
@@ -87,7 +101,7 @@ flowchart LR
 | a day re-fold from the log | [context clarify](../../business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) — open |
 | a screen reading a shop's OWN direct rows | shop-addressed rows fold into the report but no RPC lists them |
 | Jakarta time on the DSN | [decided, deferred](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time) — `posted_on` is the session's `CURRENT_DATE`, UTC today. Nothing in settlement converts, so the DSN fix carries it |
-| the fixes the performance audit proposes | 🔴 **three reads are HEAVY** — [AnalyticTimeSearch](../../../audits/services/settlement_service/performances/AnalyticTimeSearch.md) (261 ms @ 20 daily buckets, 1.65 s @ 200), [AnalyticGroupSearch](../../../audits/services/settlement_service/performances/AnalyticGroupSearch.md) (261 ms), [AnalyticGroupMetric](../../../audits/services/settlement_service/performances/AnalyticGroupMetric.md) (185 ms). One cause: the position is found per scope by `DISTINCT ON` over the whole history, where `Σ change` gives it in one pass. **Not applied** — handler change, awaiting the owner. `SettlementPost` is 5 statements (+ a test-only SAVEPOINT), 1.8 ms — not heavy |
+| the fixes the performance audit proposes | 🔴 **the reads are HEAVY** — today [MetricData](../../../audits/services/settlement_service/performances/MetricData.md) (285 ms @ 20 daily periods, 1.68 s @ 200; 231 ms @ 200 shops) and [MetricSearch](../../../audits/services/settlement_service/performances/MetricSearch.md) (138 ms); first found in the reads they replaced — [AnalyticTimeSearch](../../../audits/services/settlement_service/performances/AnalyticTimeSearch.md) (261 ms @ 20 daily buckets, 1.65 s @ 200), [AnalyticGroupSearch](../../../audits/services/settlement_service/performances/AnalyticGroupSearch.md) (261 ms), [AnalyticGroupMetric](../../../audits/services/settlement_service/performances/AnalyticGroupMetric.md) (185 ms). One cause: the position is found per scope by `DISTINCT ON` over the whole history, where `Σ change` gives it in one pass. **Not applied** — handler change, awaiting the owner. `SettlementPost` is 5 statements (+ a test-only SAVEPOINT), 1.8 ms — not heavy |
 | an e2e spec for `/settlement/report` | stories only |
 
 ## ⚠ Traps this pass walked into

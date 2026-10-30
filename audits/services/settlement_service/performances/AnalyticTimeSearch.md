@@ -1,5 +1,9 @@
 # AnalyticTimeSearch — performance audit
 
+> ⛔ **The RPC is gone (2026-10-30)** — replaced by `MetricData` over the periods the screen lists
+> ([the-pattern-replaces-the-shipped-analytics](../../../../docs/business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)). Kept as the record: finding 1 is carried, unchanged and still open, by
+> [MetricData finding 1](./MetricData.md#1-a-periods-position-is-recomputed-over-the-whole-history-once-per-period-).
+
 **Verdict:** 🔴 heavy — the position is re-derived from scratch for EVERY bucket, so the cost grows with the page size and with the length of history
 **Measured:** 2026-09-14 · `settlement_service/settlement_v1/analytic_time_search.go` · seed 100 000 rows in `shop_settlement_daily_reports` (2 teams × 200 shops × 250 days) + 50 000 in `user_settlement_daily_reports` · warm, median of 5 · `analytic_perf_test.go` (`-tags perfaudit`)
 

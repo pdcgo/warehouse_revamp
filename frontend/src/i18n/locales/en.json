@@ -2766,7 +2766,6 @@
     "ranking": "Who carries it",
     "byShop": "By shop",
     "byUser": "By person",
-    "unattributed": "Not recorded",
     "empty": "Nothing was settled in this window.",
     "col": {
       "period": "Period",
@@ -4253,6 +4252,7 @@
       "ordersReturnArrived": "Returns arrived",
       "ordersLostCreated": "Orders lost",
       "settlement": "Settlement",
+      "settlementTypes": "Settlement by type",
       "stockLost": "Stock lost",
       "ads": "Ads expense",
       "expenses": "Expenses"
@@ -4272,8 +4272,22 @@
       "lost_created_count": "Orders lost",
       "lost_created_total": "Lost total",
       "lost_created_mp_total": "Lost MP total",
-      "settlement_amount": "Settlement amount",
-      "profit": "Profit",
+      "sales": "Selling price",
+      "received": "Received",
+      "withdrawn": "Withdrawn",
+      "gap": "Gap",
+      "take_rate": "Take rate",
+      "position_to_date": "Position to date",
+      "fund": "Payout",
+      "external_ads_fee": "Ads fee",
+      "affiliate_fee": "Affiliate fee",
+      "marketplace_adjustment": "Marketplace adjustment",
+      "shipment_adjustment": "Shipment adjustment",
+      "logistic_reimbursement": "Shipping reimbursed",
+      "platform_reimbursement": "Platform reimbursed",
+      "marketplace_program": "Platform programme",
+      "other": "Other",
+      "system_adjustment": "System adjustment",
       "lost_count": "Units lost",
       "lost_amount": "Lost value",
       "ads_spend": "Ads spend",
@@ -4320,7 +4334,9 @@
     "rowsLine": "Rows: {{group}} with {{metric}} in this period",
     "graph": {
       "count": "Counts",
-      "money": "Amounts (Rp)"
+      "money": "Amounts (Rp)",
+      "position": "Positions (Rp)",
+      "ratio": "Rates (%)"
     },
     "view": {
       "table": "Table",
@@ -4342,11 +4358,11 @@
     "pending": {
       "figures": {
         "label": "Sample figures",
-        "reason": "The order metrics are real. Every other metric's figures are invented — its service does not answer MetricSearch or MetricData yet."
+        "reason": "The order and settlement metrics are real. Every other metric's figures are invented — its service does not answer MetricSearch or MetricData yet."
       },
       "catalogue": {
         "label": "Metric list",
-        "reason": "The order metrics are read from selling's contract; the rest are a fixed list in the screen until their services ship."
+        "reason": "The order and settlement metrics are read from their services' contracts; the rest are a fixed list in the screen until their services ship."
       },
       "pickers": {
         "label": "Product and supplier filters",

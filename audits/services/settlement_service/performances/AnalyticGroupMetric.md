@@ -1,5 +1,9 @@
 # AnalyticGroupMetric — performance audit
 
+> ⛔ **The RPC is gone (2026-10-30)** — replaced by `MetricData` ([the-pattern-replaces-the-shipped-analytics](../../../../docs/business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)). Kept as the
+> record: its recommendation — the ids pushed into the `WHERE` — is how `MetricData` reads a page, and the rest is
+> [MetricData finding 2](./MetricData.md#2-an-id-page-materialises-every-column-of-the-teams-history--at-200-ids).
+
 **Verdict:** 🔴 heavy — it aggregates the whole team's history before filtering to the ids it was asked for
 **Measured:** 2026-09-14 · `settlement_service/settlement_v1/analytic_group_metric.go` (+ `analytic_group_shared.go`) · seed 100 000 rows in `shop_settlement_daily_reports` · warm, median of 5
 

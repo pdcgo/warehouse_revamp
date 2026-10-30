@@ -46,7 +46,8 @@ export function ReportTable({
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const columns = defs.flatMap((def) => def.fields.map((field) => ({ def, field, id: `${def.metricId}|${field.name}` })));
-  const value = (key: ReportKey, metricId: string, field: string) => cells[metricId]?.[key]?.[field] ?? 0;
+  // A field the service left unset stays undefined, and reads "—" (formatFigure).
+  const value = (key: ReportKey, metricId: string, field: string) => cells[metricId]?.[key]?.[field];
 
   if (keys.length === 0) {
     return (

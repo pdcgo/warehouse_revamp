@@ -2753,7 +2753,6 @@
     "ranking": "Siapa yang menanggung",
     "byShop": "Per toko",
     "byUser": "Per orang",
-    "unattributed": "Tidak tercatat",
     "empty": "Tidak ada penyelesaian pada periode ini.",
     "col": {
       "period": "Periode",
@@ -4238,6 +4237,7 @@
       "ordersReturnArrived": "Retur diterima",
       "ordersLostCreated": "Pesanan hilang",
       "settlement": "Penyelesaian",
+      "settlementTypes": "Penyelesaian per jenis",
       "stockLost": "Stok hilang",
       "ads": "Biaya iklan",
       "expenses": "Biaya"
@@ -4257,8 +4257,22 @@
       "lost_created_count": "Pesanan hilang",
       "lost_created_total": "Total hilang",
       "lost_created_mp_total": "Total MP hilang",
-      "settlement_amount": "Jumlah dana cair",
-      "profit": "Laba",
+      "sales": "Harga jual",
+      "received": "Diterima",
+      "withdrawn": "Ditarik",
+      "gap": "Selisih",
+      "take_rate": "Potongan",
+      "position_to_date": "Posisi s.d. kini",
+      "fund": "Pembayaran",
+      "external_ads_fee": "Biaya iklan",
+      "affiliate_fee": "Biaya afiliasi",
+      "marketplace_adjustment": "Penyesuaian marketplace",
+      "shipment_adjustment": "Penyesuaian pengiriman",
+      "logistic_reimbursement": "Penggantian ongkir",
+      "platform_reimbursement": "Penggantian platform",
+      "marketplace_program": "Program platform",
+      "other": "Lainnya",
+      "system_adjustment": "Penyesuaian sistem",
       "lost_count": "Unit hilang",
       "lost_amount": "Nilai hilang",
       "ads_spend": "Biaya iklan",
@@ -4305,7 +4319,9 @@
     "rowsLine": "Baris: {{group}} yang punya {{metric}} di periode ini",
     "graph": {
       "count": "Jumlah",
-      "money": "Nilai (Rp)"
+      "money": "Nilai (Rp)",
+      "position": "Posisi (Rp)",
+      "ratio": "Rasio (%)"
     },
     "view": {
       "table": "Tabel",
@@ -4327,11 +4343,11 @@
     "pending": {
       "figures": {
         "label": "Angka contoh",
-        "reason": "Metrik pesanan sudah asli. Angka metrik lainnya masih dikarang — layanannya belum menjawab MetricSearch atau MetricData."
+        "reason": "Metrik pesanan dan penyelesaian sudah asli. Angka metrik lainnya masih dikarang — layanannya belum menjawab MetricSearch atau MetricData."
       },
       "catalogue": {
         "label": "Daftar metrik",
-        "reason": "Metrik pesanan dibaca dari kontrak selling; sisanya masih daftar tetap di layar sampai layanannya ada."
+        "reason": "Metrik pesanan dan penyelesaian dibaca dari kontrak layanannya; sisanya masih daftar tetap di layar sampai layanannya ada."
       },
       "pickers": {
         "label": "Filter produk dan supplier",

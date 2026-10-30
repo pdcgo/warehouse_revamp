@@ -9,10 +9,11 @@ import { SettlementReportPage } from "./index";
 // THE SETTLEMENT REPORT — sales against what the marketplace actually moved, over time and by who
 // carries the shortfall (docs/business/settlement/analytic_context.md).
 //
-// Every number below comes from ONE consistent book in `.storybook/fixtures.ts` (settlementReportDays):
-// a 300.000 sale, 250.000 arriving less a 15.000 ads fee, and a 120.000 sale placed and cancelled with a
-// 5.000 claim. So the window reads 300.000 sold, 240.000 received, a 60.000 gap — 20% — and 60.000 of
-// hidden cost to date. The stories check the screen against that arithmetic, not against itself.
+// Every number below comes from ONE ledger book in `.storybook/fixtures.ts` (settlementBook), folded by the stub
+// with settlement_service's own rules (settlementAnalyticStub.ts): a 300.000 sale, 250.000 arriving less 15.000 of ads
+// fees, 200.000 withdrawn, and a 120.000 sale placed and cancelled with a 5.000 claim. So the window reads 300.000 sold,
+// 240.000 received, a 60.000 gap — 20% — and a position to date of 260.000. The stories check the screen against that
+// arithmetic, not against itself.
 
 const SELLING = teams.find((t) => t.id === 12n)!; // Toko Melati
 
@@ -106,7 +107,8 @@ export const AQuietDayCarriesTheShortfall: Story = {
   },
 };
 
-// Ranked by who CARRIES the shortfall — Melati Official's 50.000 before Melati Store's 10.000.
+// Ranked by the POSITION each carries — Melati Official's 250.000 (its 50.000 gap and the 200.000 it withdrew) before
+// Melati Store's 10.000.
 export const RankedByTheShortfallTheyCarry: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);

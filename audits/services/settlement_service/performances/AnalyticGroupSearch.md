@@ -1,5 +1,9 @@
 # AnalyticGroupSearch — performance audit
 
+> ⛔ **The RPC is gone (2026-10-30)** — replaced by `MetricSearch` + `MetricData`
+> ([the-pattern-replaces-the-shipped-analytics](../../../../docs/business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)). Kept as the record: the duplicate COUNT is gone with it, and finding 1 is carried by
+> [MetricSearch finding 1](./MetricSearch.md#1-an-id-ranking-materialises-every-column-of-the-teams-history-).
+
 **Verdict:** 🔴 heavy — the whole team's history is materialised and sorted to find each group's latest row, TWICE per call
 **Measured:** 2026-09-14 · `settlement_service/settlement_v1/analytic_group_search.go` (+ `analytic_group_shared.go`) · seed 100 000 rows in `shop_settlement_daily_reports` (2 teams × 200 shops × 250 days) + 50 000 in `user_settlement_daily_reports` · warm, median of 5
 

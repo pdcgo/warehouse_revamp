@@ -73,6 +73,7 @@ const (
 	qty      = analytic_basev1.FieldStatType_FIELD_STAT_TYPE_QTY
 	currency = analytic_basev1.FieldStatType_FIELD_STAT_TYPE_CURRENCY
 	ratio    = analytic_basev1.FieldStatType_FIELD_STAT_TYPE_RATIO
+	position = analytic_basev1.FieldStatType_FIELD_STAT_TYPE_POSITION
 )
 
 func orderCount() *descriptorpb.FieldDescriptorProto {
@@ -137,6 +138,7 @@ func TestValidateDescriptors(t *testing.T) {
 					withStat(field("order_total", 2, descriptorpb.FieldDescriptorProto_TYPE_INT64, nil), currency),
 					withStat(field("cancel_rate", 3, descriptorpb.FieldDescriptorProto_TYPE_DOUBLE,
 						&analytic_basev1.SortOption{CanSort: true, RankMinSample: 50}), ratio),
+					withStat(field("position_to_date", 4, descriptorpb.FieldDescriptorProto_TYPE_INT64, sortable), position),
 				), message("Order", nil)},
 			},
 		},
@@ -222,6 +224,15 @@ func TestValidateDescriptors(t *testing.T) {
 						&analytic_basev1.SortOption{CanSort: true, RankMinSample: 50}), qty))},
 			},
 			wantErr: "is FIELD_STAT_TYPE_QTY, not a RATIO",
+		},
+		{
+			name: "a minimum sample on a position",
+			packages: map[string][]*descriptorpb.DescriptorProto{
+				"settlement.v1": {message("SettlementMetric", orderOption(),
+					withStat(field("position_to_date", 1, descriptorpb.FieldDescriptorProto_TYPE_INT64,
+						&analytic_basev1.SortOption{CanSort: true, RankMinSample: 50}), position))},
+			},
+			wantErr: "is FIELD_STAT_TYPE_POSITION, not a RATIO",
 		},
 		{
 			name: "a stat type on a field that is not a number",

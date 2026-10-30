@@ -8,19 +8,18 @@
 //   And the headline: the same metrics read with group SUMMARY and no keys (the-headline-is-the-metric-grouped-by-summary).
 //
 // A metric with a `schema` is SERVED: its service answers MetricSearch / MetricData over the wire — the five order
-// metrics, by selling_service. Every other metric is still a SAMPLE (sample.ts), answered here by the same two steps,
-// until its service ships. The steps do not change between the two.
+// metrics by selling_service, the two settlement metrics by settlement_service. Every other metric is still a SAMPLE
+// (sample.ts), answered here by the same two steps, until its service ships. The steps do not change between the two.
 
 import type { DescMessage, MessageInitShape } from "@bufbuild/protobuf";
 
-import { orderAnalyticClient } from "../../api/clients";
+import { orderAnalyticClient, settlementAnalyticClient } from "../../api/clients";
 import {
   type FilterItemSchema,
   GroupType as PbGroupType,
   type MetricKeysSchema,
   SortType,
 } from "../../gen/warehouse/analytic_base/v1/analytic_pb";
-import type { MetricData } from "../../gen/warehouse/selling/v1/order_analytic_pb";
 import { daySpine } from "../../lib/period";
 import { type FilterType, type MetricDef, type TableGroup, type TimeGroup, isTimeGroup, metricById } from "./catalogue";
 import { type Fact, sampleFacts } from "./sample";
@@ -253,8 +252,16 @@ function bodyOf(schema: DescMessage, message: unknown): MetricBody {
   return out;
 }
 
+/**
+ * One answer of any service's MetricData — every service's has the same shape: a oneof whose case ends `Summary` for the
+ * headline, or holds an `items` map per key.
+ */
+interface AnyMetricData {
+  m: { case: string | undefined; value?: unknown };
+}
+
 /** One MetricData answer: the headline body, or a body per key. */
-function answerOf(schema: DescMessage, data: MetricData): { summary?: MetricBody; items?: Record<ReportKey, MetricBody> } {
+function answerOf(schema: DescMessage, data: AnyMetricData): { summary?: MetricBody; items?: Record<ReportKey, MetricBody> } {
   const { m } = data;
   if (m.case === undefined) return {};
 
@@ -266,13 +273,35 @@ function answerOf(schema: DescMessage, data: MetricData): { summary?: MetricBody
 }
 
 /**
- * A served service's client — what the two steps call. One per service; only selling serves metrics so far.
+ * A served service's client — what the two steps call. One per service. Each client's methods are typed by its own
+ * service; the two steps only use the shape every service shares, so they are read through it.
  *
  * ⚠ Looked up at CALL time, never in a module-level table: the Storybook stub imports this module for `sampleService`,
  * and the stub is what `api/clients` is built on, so reading a client while this module loads reads it uninitialised.
  */
-function clientOf(def: MetricDef) {
+interface MetricClient {
+  metricSearch(req: {
+    teamId: bigint;
+    groupBy: PbGroupType;
+    filters: Filter[];
+    sort: { metricId: string; field: string; sortType: SortType };
+    page: { offset: number; limit: number };
+  }): Promise<{
+    keys?: { k: { case: "days"; value: { days: string[] } } | { case: "ids"; value: { ids: bigint[] } } | { case: undefined } };
+    hasNext: boolean;
+  }>;
+  metricData(req: {
+    teamId: bigint;
+    groupBy: PbGroupType;
+    filters: Filter[];
+    keys?: MessageInitShape<typeof MetricKeysSchema>;
+    metricIds: string[];
+  }): Promise<{ metricDatas: AnyMetricData[] }>;
+}
+
+function clientOf(def: MetricDef): MetricClient {
   if (def.service === "selling") return orderAnalyticClient;
+  if (def.service === "settlement") return settlementAnalyticClient;
 
   throw new Error(`no client for ${def.service}, which serves ${def.metricId}`);
 }

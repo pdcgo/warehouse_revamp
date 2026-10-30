@@ -15,11 +15,16 @@ import {
   OrderReturnArrivedMetricSchema,
   OrderReturnCreatedMetricSchema,
 } from "../../gen/warehouse/selling/v1/order_analytic_pb";
+import {
+  SettlementMetricSchema,
+  SettlementTypeMetricSchema,
+} from "../../gen/warehouse/settlement/v1/settlement_analytic_pb";
 
 // THE METRIC CATALOGUE. A metric a service SERVES is read off its generated descriptor with `getOption` — its id, its
 // filters, its groups, its fields' kinds and which can sort — so the screen states nothing the proto already does: the
-// five order metrics (order_statistic_metric.md). The rest are still a TypeScript MIRROR of the decided proto options,
-// backed by samples, until their services ship (HARD RULE 6 — the screen was built first).
+// five order metrics (order_statistic_metric.md) and the two settlement metrics (settlement-serves-its-headline-and-its-
+// breakdown). The rest are still a TypeScript MIRROR of the decided proto options, backed by samples, until their
+// services ship (HARD RULE 6 — the screen was built first).
 //
 // Every entry obeys the decisions in rpc_provide_decision.md:
 //   a metric is ONE measure and names the groups it can be read by   the-table-picks-one-group
@@ -76,7 +81,11 @@ export type FilterType = "dateRange" | "shop" | "product" | "supplier" | "team" 
 /** Every filter, in the order the bar shows them. */
 export const FILTER_TYPES: FilterType[] = ["dateRange", "shop", "team", "warehouse", "user", "product", "supplier"];
 
-export type FieldKind = "count" | "money";
+/**
+ * How a figure reads: a count, money that moved, money at a moment (a-position-is-its-own-stat-type), or a rate — 0 to 1,
+ * shown as a percentage. The proto's FieldStatType, one for one: QTY, CURRENCY, POSITION, RATIO.
+ */
+export type FieldKind = "count" | "money" | "position" | "ratio";
 
 export interface MetricField {
   /** The proto field name — also what a sort names (a-sort-field-is-its-proto-name). */
@@ -131,6 +140,15 @@ const GROUP_OF: Partial<Record<PbGroupType, GroupType>> = {
 
 const known = <T,>(values: (T | undefined)[]): T[] => values.filter((v): v is T => v !== undefined);
 
+/** A field's stat type as this screen reads it. */
+function kindOf(statType: FieldStatType): FieldKind {
+  if (statType === FieldStatType.CURRENCY) return "money";
+  if (statType === FieldStatType.POSITION) return "position";
+  if (statType === FieldStatType.RATIO) return "ratio";
+
+  return "count";
+}
+
 /**
  * A served metric, read off its message: the `metric` option names it, its filters and its groups; each number field's
  * `field_stat_type` says whether it is a count or money, and `metric_sort` whether a table may sort by it
@@ -151,7 +169,7 @@ function servedMetric(schema: DescMessage, labelKey: string, service: string, ca
       .filter((f) => getOption(f, field_stat_type) !== FieldStatType.UNSPECIFIED)
       .map((f) => ({
         name: f.name,
-        kind: getOption(f, field_stat_type) === FieldStatType.CURRENCY ? "money" : "count",
+        kind: kindOf(getOption(f, field_stat_type)),
         canSort: getOption(f, metric_sort).canSort,
       })),
     schema,
@@ -167,23 +185,20 @@ export const ORDER_METRICS: MetricDef[] = [
   servedMetric(OrderLostCreatedMetricSchema, "ordersLostCreated", "selling", "order"),
 ];
 
+/**
+ * The two settlement metrics, served by settlement_service: the headline a person reads first, and the ten types that
+ * make up its `received` (settlement-serves-its-headline-and-its-breakdown).
+ */
+export const SETTLEMENT_METRICS: MetricDef[] = [
+  servedMetric(SettlementMetricSchema, "settlement", "settlement", "settlement"),
+  servedMetric(SettlementTypeMetricSchema, "settlementTypes", "settlement", "settlement"),
+];
+
 const TIME: GroupType[] = ["daily", "weekly", "monthly", "yearly"];
 
 export const METRICS: MetricDef[] = [
   ...ORDER_METRICS,
-  {
-    metricId: "metrics/settlement",
-    labelKey: "settlement",
-    service: "settlement",
-    category: "settlement",
-    supportedFilters: ["dateRange", "shop"],
-    requiredFilters: ["dateRange"],
-    supportedGroupBy: ["summary", ...TIME, "shop"],
-    fields: [
-      { name: "settlement_amount", kind: "money", canSort: true },
-      { name: "profit", kind: "money", canSort: true },
-    ],
-  },
+  ...SETTLEMENT_METRICS,
   {
     metricId: "metrics/inventory/lost",
     labelKey: "stockLost",
