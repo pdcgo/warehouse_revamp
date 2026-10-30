@@ -155,6 +155,7 @@ Every metric has `metric_id` that use to load data in rpc that we talk further.
         GROUP_TYPE_SHOP
         GROUP_TYPE_SUPPLIER
         GROUP_TYPE_TEAM
+        GROUP_TYPE_WAREHOUSE
         GROUP_TYPE_USER
     }
 
@@ -341,6 +342,7 @@ message MetricDataResponse {
 
 ## Metric That Exist in Analytic.
 1. In Ui Metric Selected like nested category.
+2. For further explanation that order metric existed. [see this](../order/order_statistic_metric.md)
 
 ```mermaid
 ---
@@ -375,33 +377,6 @@ Expense
             - amount
 
 Order
-    Order Created
-        fiter :
-            - team
-            - shop
-            - warehouse
-            - user
-            - product
-            - date range
-        fields :
-            - created_count
-            - created_total
-            - mp_total
-    Order Cancel
-        fields :
-            - cancel_count
-            - cancel_total
-            - mp_total
-    Order Return Created
-        fields :
-            - return_created_count
-            - return_created_total
-            - return_created_mp_total
-    Order Return Arrived
-        fields :
-            - return_arrived_count
-            - return_arrived_total
-            - return_arrived_mp_total
 Inventory
     Transfer
     Ready
