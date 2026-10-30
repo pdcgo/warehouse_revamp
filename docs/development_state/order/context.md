@@ -215,6 +215,39 @@ decisions in [order_detail_decision.md](../../technical/frontend/order_detail_de
 | tests | 6 unit (`order_receipt_update_test.go`), 3 race (`-tags raceaudit`), 1 perf; stories `Features/Orders/EditReceiptDialog` (3) and the detail's `EditResiSendsOnlyTheNumber`, `TheWarehouseHasNoEditResi`; e2e *Edit Resi: the seller replaces the tracking number…* |
 | ⚠ my reading | the record is a note row (no status), not a row into the current status, which would reset the status date |
 
+**Import dialog pass (2026-10-30):** at the owner's *"step 1 choose platform, step 2. ShopSelect and file, step 3. log
+result"* — decision [the-import-is-platform-then-shop-and-file-then-log](../../technical/frontend/order_list_decision.md#the-import-is-platform-then-shop-and-file-then-log).
+Frontend only.
+
+| | built 2026-10-30 |
+| --- | --- |
+| dialog | `ImportOrdersDialog` takes `teamId`; step 2 is `ShopSelect` narrowed to the picked marketplace above the drop zone, Import waits for both; *Another Marketplace* drops the shop and the file |
+| log | `pages/orders/components/OrderImportLog.tsx` — bar, the three counts (moved / already there / not applied), five not-applied rows then *and N more in the log*, *Show Log*. Its props (`OrderImportResult`) are what the stream will have to carry |
+| ⚠ until built | Import opens the log on ONE error line (*nothing was read*), never a sample result — my reading, recorded in the decision |
+| stories | `Pages/Orders/ImportOrdersDialog` (6), `Pages/Orders/OrderImportLog` (6) |
+| marks left | seller list **2** (import, dateType) |
+| samples | owner: *"file is same form like on examples\settlement_samples"*, *"you can create mock"*. Four MOCK exports in [examples/order_samples/](../../../examples/order_samples/README.md), Shopee and TikTok, two per shop four days apart; generated, column names and status words are a guess until a real export arrives |
+| backend *(same day)* | owner *"yes"* — [the-order-import-is-one-rpc-per-platform](../../technical/order/design_decision.md#the-order-import-is-one-rpc-per-platform). `ShopeeOrderImport` · `TiktokOrderImport` on OrderService (proto `OrderImportLogLevel`, `OrderImportTally`), core `selling_v1/order_import.go` + `order_import_log.go` (slog → stream), readers in `selling_service/order_import_readers/` (xlsx or csv, one order per ref, TikTok's description row skipped). Every move is `moveOrders`, note *"Shopee order import"*. Runs on `context.WithoutCancel`. No migration. Flow in [rpc.md](../../services/selling_service/rpc.md#a-marketplaces-order-export-imported--shopeeorderimport-and-tiktokorderimport) |
+| frontend *(same day)* | `useOrderImport` folds the stream into `OrderImportLog`; Shopee/TikTok only, others *not yet* at step 2; 10 MB cap client-side; the stub transport streams a fixed log (`orderImportScenario`) |
+| tests | readers 6 (on the mocks), handlers 9 (`shopee_order_import_test.go`, `tiktok_order_import_test.go`), race 2 (`-tags raceaudit`, ×20, safe — lock-order updated), perf 1 (`-tags perfaudit`); stories `Pages/Orders/ImportOrdersDialog` (8), `Pages/Orders/OrderImportLog` (6) |
+| marks left | seller list **2** — `import` is now `derived` (mock layouts, draft word tables), `dateType` |
+| bridge *(same day)* | owner *"yes"* — [a-completed-shipping-order-passes-through-shipped](../../technical/order/design_decision.md#a-completed-shipping-order-passes-through-shipped): `importBridges` gives `shipping` + completed the path shipped → completed, applied in rounds (`applyImported` / `moveImported`); 2 more handler tests |
+| cancelled *(same day)* | owner *"yes"* — [a-cancelled-order-with-nothing-live-is-already-there](../../technical/order/design_decision.md#a-cancelled-order-with-nothing-live-is-already-there): `decideImported` counts a cancelled ref with no live order as already there; tallies in the handler tests updated |
+| perf *(same day)* | owner *"yes"* to the audit: the ref lookup carries `order_external_ref_id <> ''` and keeps its partial index past 100 refs (0.29 ms per 200). The slow timeline INSERT is NOT GORM and NOT the note: a ~50 ms step once a statement's parameters pass a size, on the local Docker connection — no code change, re-measure on Linux ([audit](../../../audits/services/selling_service/performances/ShopeeOrderImport.md)) |
+| not done | an e2e spec for the import; a real export from either platform |
+
+**Status-date filter pass (2026-10-30):** at the owner's *"take this"* — the five status dates of
+[the-order-list-filters-by-seven-dates](../../technical/frontend/order_list_decision.md#the-order-list-filters-by-seven-dates).
+
+| | built 2026-10-30 |
+| --- | --- |
+| proto | `OrderDateField` + `ENTERED_PROCESSED` · `_PICKED` · `_SHIPPING` · `_COMPLETED` · `_RETURN` (3–7); `Order.date_entered_at_unix` (32 — 31 is `total_cost`). No migration |
+| backend | `scopedOrders` → `dateEnteredWindow`: `orders.id IN` the timeline rows into the status inside the window with no earlier row into it (ties by id). No window = no narrowing. `orderListColumns` became a function and adds a per-page-row `MIN` as `date_entered_at` only for a status date |
+| frontend | `DATE_FIELDS` maps the seven pills; every type sends its window; the column reads `dateEnteredAtUnix` under a status date, `statusAtUnix` under a tab alone. The `dateType` pending entry, its ⚠ on the pills and the column, and its copy are gone — the seller list's banner is down to **1** (import) |
+| stub | `ENTERED_STATUS` + `enteredAt` in stubTransport: the fixture's first timeline row into it, else its status date, else placement + the step's `STATUS_OFFSET` (now exported) for a step it has passed |
+| tests | 2 unit (`order_list_date_entered_test.go`), 1 perf (`-tags perfaudit`, `order_list_date_entered_perf_test.go`); story `AStatusDateNarrowsByItsFirstEntry` |
+| ⚠ open | the window seq-scans `order_timeline_logs` (every team): 50.6 ms list / 25.3 ms stat at 150 000 rows, 7.0 / 4.0 ms with `(status, created_at)` — proposed as `00031`, NOT added ([OrderList finding 5](../../../audits/services/selling_service/performances/OrderList.md#5-a-status-date-window-seq-scans-the-timeline-)) |
+
 ## What exists
 
 | | |

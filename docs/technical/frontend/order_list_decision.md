@@ -28,9 +28,10 @@ each old heading there now points here.
 | [the-seller-list-filters-by-warehouse](#the-seller-list-filters-by-warehouse) | one warehouse narrows the seller list and its tab counts; the warehouse's own list leaves it at any |
 | [the-date-filter-switches-created-or-platform](#the-date-filter-switches-created-or-platform) | the date filter reads created or the platform date, created by default; the tab counts follow it |
 | [the-urgency-bands-are-6-and-24-hours](#the-urgency-bands-are-6-and-24-hours) | urgent within 6 hours, today within 24 — fixed, the same for every channel |
-| [the-order-list-filters-by-seven-dates](#the-order-list-filters-by-seven-dates) | the date filter can mean Dibuat, Tanggal order, or the first entry into Diproses, Sudah diambil, Sudah diserahkan, Selesai or Retur; only Dibuat reaches the server, the rest carry a ⚠ |
+| [the-order-list-filters-by-seven-dates](#the-order-list-filters-by-seven-dates) | the date filter can mean Dibuat, Tanggal order, or the first entry into Diproses, Sudah diambil, Sudah diserahkan, Selesai or Retur; all seven reach the server *(since 2026-10-30)* |
 | [the-status-tabs-carry-no-counts](#the-status-tabs-carry-no-counts) | the order list's status tabs carry no counts — how many sit in each status is the statistics' to say |
 | [the-statistics-are-shut-and-read-when-opened](#the-statistics-are-shut-and-read-when-opened) | the statistics open shut on every visit, are read only once opened and then follow the filters; open or shut is page state, never kept |
+| [the-import-is-platform-then-shop-and-file-then-log](#the-import-is-platform-then-shop-and-file-then-log) | the Import dialog is three steps: the marketplace, then the shop and the file together, then the import's log |
 
 ## status-colours-are-carried-over-verbatim
 
@@ -597,6 +598,7 @@ flowchart LR
 | 🔄 *(2026-10-26)* | the `withdrawal` entry and *Edit Withdrawal* go — [no-withdrawal-is-typed-on-an-order](order_detail_decision.md#no-withdrawal-is-typed-on-an-order) |
 | the status half | still not built, and which marketplace status maps to which of ours is not decided |
 | 🔄 *(2026-10-29)* | the mapping is decided: only customer service's moves after handover, the rest listed with its reason — [the-import-moves-only-after-handover](../order/design_decision.md#the-import-moves-only-after-handover). Still not built |
+| 🔄 ✅ *(2026-10-30)* | the status half is built for Shopee and TikTok — [the-order-import-is-one-rpc-per-platform](../order/design_decision.md#the-order-import-is-one-rpc-per-platform) |
 | ✅ built *(2026-10-21)* | the dialog line in [ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx). The stale reasons found with it — the list's Export and Withdrawal, the order detail's Withdrawal — now say what is true |
 
 ---
@@ -751,6 +753,8 @@ flowchart LR
 | the date column | a status type gets the *Tgl {status}* column (sampled, `stageDate`), as a status tab already did; with Dibuat or Tanggal order — both columns already — it follows the tab |
 | the URL | `?date=<type>`, default `created` ([a-lists-filters-live-in-the-url](context_decision.md#a-lists-filters-live-in-the-url)); Hapus Filter puts it back to Dibuat. A type with no window is not counted as a filter — it narrows nothing |
 | ✅ built *(2026-10-23)* | [SellerOrders.tsx](../../../frontend/src/pages/orders/SellerOrders.tsx), the story `AStatusDateIsOfferedButNarrowsNothingYet` |
+| 🔄 ⚠ stale *(found 2026-10-30)* | *"what reaches the server: Dibuat only"* was already wrong when written: Tanggal order had reached it since the day before ([the-date-filter-switches-created-or-platform](#the-date-filter-switches-created-or-platform)), and the code sent both. A row written against the code of an earlier day, not today's |
+| 🔄 ✅ built *(2026-10-30)* | **all seven reach the server.** `OrderDateField` gained `ENTERED_PROCESSED`, `_PICKED`, `_SHIPPING`, `_COMPLETED`, `_RETURN`. `scopedOrders` narrows by the first `order_timeline_logs` row into the status, so the list, its statistics and the export read the same set. Each row carries `date_entered_at_unix`, the date the column shows, whether or not the order is still in that status. The `dateType` pending entry and its ⚠ are gone; the story is now `AStatusDateNarrowsByItsFirstEntry`. ⚠ The window reads every team's timeline until an index on `(status, created_at)` exists — proposed, not added ([OrderList audit, finding 5](../../../audits/services/selling_service/performances/OrderList.md#5-a-status-date-window-seq-scans-the-timeline-)) |
 
 ## the-status-tabs-carry-no-counts
 
@@ -792,3 +796,32 @@ stateDiagram-v2
 | where open/shut lives | **page state only** — not the URL, not storage; every visit opens shut, a refresh included |
 | the ⚠ marks | the strip's two (`summaryCost`, `summaryItems`) show only while it is open; the folded summary at the top still lists them |
 | ✅ built *(2026-10-23)* | [SellerOrders.tsx](../../../frontend/src/pages/orders/SellerOrders.tsx) (`useOrderStat` gained `enabled`), the story `TheStatisticsAreShutAndUnreadUntilOpened` counts the census calls |
+
+## the-import-is-platform-then-shop-and-file-then-log
+
+> Owner, in chat (2026-10-30): *"step 1 choose platform, step 2. ShopSelect and file, step 3. log result"* — to *"should
+> the dialog's first step be the shop rather than the marketplace?"*, asked because the import matches a row on shop + ref
+> ([the-import-moves-only-after-handover](../order/design_decision.md#the-import-moves-only-after-handover)) and the
+> dialog never asked for a shop. Not as recommended: the marketplace stays first, and the shop joins the file.
+
+**The verdict.** Three steps. The **marketplace** says which sheet this is, the **shop and the file** together say whose
+orders it names, and the **log** says what the import did with each row.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Marketplace
+  Marketplace --> ShopAndFile: a marketplace picked
+  ShopAndFile --> Marketplace: Another Marketplace - the shop and the file are dropped
+  ShopAndFile --> Log: Import - a shop of that marketplace and a file
+  Log --> [*]: Close
+```
+
+| | |
+| --- | --- |
+| step 1 | the marketplace grid, every marketplace offered, as before |
+| step 2 | `ShopSelect` narrowed to the picked marketplace, above the file's drop zone. **Import** waits for both |
+| step 3 | the log: a bar while the rows are read, the three counts (moved, already there, not applied), the first not-applied rows with their reasons, and every line behind *Show Log* — the settlement import's progress view, said for orders |
+| going back | *Another Marketplace* drops the shop with the file: a shop of the old marketplace is not a shop of the new one |
+| ⚠ until the import is built | *my reading, not asked:* **Import** opens step 3 on one error line — nothing was read — and never on a sample result, because a log that says *moved 41* after a click reads as done. The designed log is reviewed in the story `Pages/Orders/OrderImportLog` |
+| ✅ built *(2026-10-30)* | [ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx), [OrderImportLog.tsx](../../../frontend/src/pages/orders/components/OrderImportLog.tsx), and a story for each |
+| 🔄 *(2026-10-30, the same day)* | the ⚠ row above is spent: Import now runs the real stream ([the-order-import-is-one-rpc-per-platform](../order/design_decision.md#the-order-import-is-one-rpc-per-platform)). Shopee and TikTok are read; a marketplace with no reader says *not yet* at step 2, in place of the shop and the file. Closing the dialog mid-import stops the log, not the import |

@@ -38,7 +38,13 @@ import {
   LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
-import { OrderDateField, OrderService, OrderStatus, OrderTimelineFrom } from "../src/gen/warehouse/selling/v1/order_pb";
+import {
+  OrderDateField,
+  OrderImportLogLevel,
+  OrderService,
+  OrderStatus,
+  OrderTimelineFrom,
+} from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptCheckResult, ReceiptService } from "../src/gen/warehouse/shipment/v1/receipt_pb";
@@ -57,6 +63,7 @@ import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
 import {
   orderExportScenario,
+  orderImportScenario,
   orderStatScenario,
   receiptCheckScenario,
   receiptUpdateScenario,
@@ -138,6 +145,7 @@ import {
   orderDetailFor,
   orderDraftDetailFor,
   orderDrafts,
+  STATUS_OFFSET,
   pickLocationsFor,
   orders,
   productCosts,
@@ -297,6 +305,29 @@ function refuseTakeIfScripted() {
   throw new ConnectError(`order transaction refused: ${reason}`, Code.FailedPrecondition, undefined, [
     { desc: OrderTransactionRefusalSchema, value: { reason: refusal.reason, lines: refusal.lines } },
   ]);
+}
+
+// THE ORDER IMPORT'S STREAM, as the server writes it (order_import.go): the reading, the count, one line per order —
+// WARN for one not applied — and the tally on the last. The same log for either platform; the request is kept.
+async function* orderImportLog(platform: "shopee" | "tiktok", req: { shopId: bigint; fileContent: Uint8Array }) {
+  orderImportScenario.last = { platform, shopId: req.shopId, bytes: req.fileContent.length };
+
+  const info = OrderImportLogLevel.INFO;
+
+  yield { level: info, message: "reading Melati Official's order export", step: 0, count: 0 };
+  yield { level: info, message: "4 orders in the file", step: 0, count: 4 };
+  yield { level: info, message: "moving 1 orders to completed", step: 0, count: 4 };
+  yield { level: info, message: "2610201E5F6G7H: shipped → completed (Selesai)", step: 1, count: 4 };
+  yield { level: info, message: "2610212N1P2Q3R: shipping → shipped (Sedang Dikirim)", step: 2, count: 4 };
+  yield { level: info, message: "2610201A2B3C4D: already completed (Selesai)", step: 3, count: 4 };
+  yield { level: OrderImportLogLevel.WARN, message: "2610223W7X8Y9Z: cancelled on the platform (Batal)", step: 4, count: 4 };
+  yield {
+    level: info,
+    message: "done — 2 moved, 1 already there, 1 not applied",
+    step: 4,
+    count: 4,
+    tally: { moved: 2, alreadyThere: 1, notApplied: 1 },
+  };
 }
 
 export function resetLiabilityTerms() {
@@ -691,9 +722,53 @@ type OrderScopeFilter =
     }
   | undefined;
 
-// The moment the date window is measured against — the order's creation, or the buyer's order on the storefront.
-// An order with no platform date has nothing to fall inside a platform window, as on the server.
+// The status each status date reads (the-order-list-filters-by-seven-dates).
+const ENTERED_STATUS: Partial<Record<OrderDateField, OrderStatus>> = {
+  [OrderDateField.ENTERED_PROCESSED]: OrderStatus.PROCESSED,
+  [OrderDateField.ENTERED_PICKED]: OrderStatus.PICKED,
+  [OrderDateField.ENTERED_SHIPPING]: OrderStatus.SHIPPING,
+  [OrderDateField.ENTERED_COMPLETED]: OrderStatus.COMPLETED,
+  [OrderDateField.ENTERED_RETURN]: OrderStatus.RETURN,
+};
+
+// How far along the line each status is — an order further along went through every earlier step.
+const LINE_RANK: Partial<Record<OrderStatus, number>> = {
+  [OrderStatus.PROCESSED]: 1,
+  [OrderStatus.PICKED]: 2,
+  [OrderStatus.SHIPPING]: 3,
+  [OrderStatus.SHIPPED]: 4,
+  [OrderStatus.PROBLEM]: 5,
+  [OrderStatus.LOST]: 5,
+  [OrderStatus.COMPLETED]: 6,
+  [OrderStatus.RETURN]: 7,
+  [OrderStatus.RETURN_COMPLETED]: 8,
+};
+
+// WHEN THE ORDER FIRST ENTERED `status` — the server reads its first timeline row into it. A fixture's timeline is its
+// detail's rows, and most carry only the placement, so: a row into it if there is one; the order's own status date
+// while it holds that status; and for a step it has passed, its placement plus that step's offset. 0 = never entered.
+function enteredAt(o: (typeof orders)[number], status: OrderStatus): bigint {
+  const rows = (orderDetailFor(o.id)?.timelineLogs ?? []).filter((l) => l.status === status);
+  if (rows.length > 0) {
+    return rows.reduce((min, l) => (l.createdAtUnix < min ? l.createdAtUnix : min), rows[0]!.createdAtUnix);
+  }
+
+  if (o.status === status) return o.statusAtUnix;
+
+  const passed =
+    status === OrderStatus.RETURN
+      ? o.status === OrderStatus.RETURN_COMPLETED
+      : status !== OrderStatus.COMPLETED && (LINE_RANK[o.status] ?? 0) > (LINE_RANK[status] ?? 99);
+
+  return passed ? o.createdAtUnix + BigInt(STATUS_OFFSET[status] ?? 0) : 0n;
+}
+
+// The moment the date window is measured against — the order's creation, the buyer's order on the storefront, or the
+// first entry into a status. An order with no such date has nothing to fall inside the window, as on the server.
 function windowDate(o: (typeof orders)[number], filter: OrderScopeFilter): bigint {
+  const status = filter?.dateField === undefined ? undefined : ENTERED_STATUS[filter.dateField];
+  if (status !== undefined) return enteredAt(o, status);
+
   return filter?.dateField === OrderDateField.PLATFORM_CREATED ? o.platformCreatedAtUnix : o.createdAtUnix;
 }
 
@@ -1253,8 +1328,17 @@ export const transport = createRouterTransport(({ service }) => {
             // order can hold — so it must not be compared against one.
             (o) => !req.filter?.status || o.status === req.filter.status,
           )
-          // The row's unit count, summed from the order's lines as the server's query does.
-          .map((o) => ({ ...o, itemQuantity: unitsOf(o.id) })),
+          // The row's unit count, summed from the order's lines as the server's query does — and, when the date filter
+          // reads a status, the first entry into it.
+          .map((o) => {
+            const entered = req.filter?.dateField === undefined ? undefined : ENTERED_STATUS[req.filter.dateField];
+
+            return {
+              ...o,
+              itemQuantity: unitsOf(o.id),
+              dateEnteredAtUnix: entered === undefined ? 0n : enteredAt(o, entered),
+            };
+          }),
         req.page,
       ),
 
@@ -1350,6 +1434,10 @@ export const transport = createRouterTransport(({ service }) => {
         filename: "orders.xlsx",
       };
     },
+    // THE ORDER IMPORT (the-order-import-is-one-rpc-per-platform): one fixed log — two moves, one already there, one not
+    // applied — so the dialog's step 3 runs its real hook. What was asked is kept for the story to read.
+    shopeeOrderImport: (req) => orderImportLog("shopee", req),
+    tiktokOrderImport: (req) => orderImportLog("tiktok", req),
     orderStatusChange: (req) => ({
       results: req.orderIds.map((orderId) => {
         const order = orders.find(

@@ -44,6 +44,11 @@ service OrderService {
   // file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
   // courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
   rpc OrderReceiptUpdate(OrderReceiptUpdateRequest) returns (OrderReceiptUpdateResponse);
+  // THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
+  // export from the platform moves each order it names along customer service's moves after handover, and every other
+  // order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
+  rpc ShopeeOrderImport(ShopeeOrderImportRequest) returns (stream ShopeeOrderImportResponse);
+  rpc TiktokOrderImport(TiktokOrderImportRequest) returns (stream TiktokOrderImportResponse);
 
   // ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
   //
@@ -401,6 +406,14 @@ message Order {
   //
   // "" = none, which is a valid order on both doors. Stored as typed, trimmed.
   string buyer_username = 30;
+
+  // WHEN IT FIRST ENTERED THE STATUS THE LIST'S DATE FILTER READS (the-order-list-filters-by-seven-dates) — set by
+  // OrderList only when the filter's `date_field` names a status (ORDER_DATE_FIELD_ENTERED_*), so the date column can
+  // show the date the window was applied to. The FIRST row into that status: an order bounced back into Diproses
+  // keeps the day it was first processed. Unlike `status_at_unix`, the order need not be IN that status now.
+  //
+  // 0 = the filter reads no status, or no timeline row records the order entering it.
+  int64 date_entered_at_unix = 32;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -412,6 +425,16 @@ enum OrderDateField {
   ORDER_DATE_FIELD_CREATED = 1;
   // `platform_created_at` — when the buyer ordered on the storefront.
   ORDER_DATE_FIELD_PLATFORM_CREATED = 2;
+
+  // THE FIRST TIME THE ORDER ENTERED A STATUS (the-order-list-filters-by-seven-dates), read from its timeline — an
+  // order bounced back into Diproses keeps the day it was first processed. An order that never entered the status
+  // matches no window. The five statuses a person asks "when" about: Diproses, Sudah diambil, Sudah diserahkan,
+  // Selesai, Retur. The rest are not offered, and are not here.
+  ORDER_DATE_FIELD_ENTERED_PROCESSED = 3;
+  ORDER_DATE_FIELD_ENTERED_PICKED = 4;
+  ORDER_DATE_FIELD_ENTERED_SHIPPING = 5;
+  ORDER_DATE_FIELD_ENTERED_COMPLETED = 6;
+  ORDER_DATE_FIELD_ENTERED_RETURN = 7;
 }
 
 message OrderCreateRequest {
@@ -773,6 +796,97 @@ message OrderExportResponse {
   // Set on the LAST message only: the file's expiring link, and its name.
   string download_url = 4;
   string filename = 5;
+}
+
+// ── The order import ─────────────────────────────────────────────────────────────────────────────
+//
+// The platform is the RPC (the-order-import-is-one-rpc-per-platform): the dialog picks it first, then a shop of it.
+// The shop must be this team's, not deleted and on the RPC's platform — otherwise one ERROR line ends the stream and
+// nothing is read.
+
+// What a line says about its order — the screen colours it, and lists the WARN ones as not applied.
+enum OrderImportLogLevel {
+  ORDER_IMPORT_LOG_LEVEL_UNSPECIFIED = 0;
+  // A step, a move, or an order already where the file says.
+  ORDER_IMPORT_LOG_LEVEL_INFO = 1;
+  // An order NOT applied, with its reason — customer service's to-do list.
+  ORDER_IMPORT_LOG_LEVEL_WARN = 2;
+  // The import ended without touching an order: the shop, or the file.
+  ORDER_IMPORT_LOG_LEVEL_ERROR = 3;
+}
+
+// What became of the file's orders. The three sum to the orders in the file.
+message OrderImportTally {
+  uint32 moved = 1;
+  // Already where the file says — nothing written, so importing the same file twice changes nothing.
+  uint32 already_there = 2;
+  uint32 not_applied = 3;
+}
+
+message ShopeeOrderImportRequest {
+  // Who may make customer service's moves by hand.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The shop the file was exported from — its orders are the ones a ref is matched against.
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The export as downloaded, .xlsx or .csv. 10 MB, as the settlement import.
+  bytes file_content = 3 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 10485760
+  }];
+}
+
+// One step of the import (code-implementation-guideline.md): a leveled line, the progress, and on the last the tally.
+message ShopeeOrderImportResponse {
+  OrderImportLogLevel level = 1;
+  string message = 2;
+  // Orders handled so far, of the orders in the file — 0 until the file has been read.
+  uint32 step = 3;
+  uint32 count = 4;
+  // Set on the LAST message only.
+  OrderImportTally tally = 5;
+}
+
+message TiktokOrderImportRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  bytes file_content = 3 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 10485760
+  }];
+}
+
+message TiktokOrderImportResponse {
+  OrderImportLogLevel level = 1;
+  string message = 2;
+  uint32 step = 3;
+  uint32 count = 4;
+  OrderImportTally tally = 5;
 }
 
 // OrderStatusChange makes one plain move for many orders (one-status-change-for-every-plain-move).

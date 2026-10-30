@@ -189,6 +189,35 @@ would need an exception to the-pager-is-always-on-screen.
 
 ---
 
+### 5. A status-date window seq-scans the timeline 🔴
+
+*(2026-10-30, the status dates of [the-order-list-filters-by-seven-dates](../../../../docs/technical/frontend/order_list_decision.md#the-order-list-filters-by-seven-dates).)*
+A window on the first entry into a status is `orders.id IN (SELECT order_id FROM order_timeline_logs WHERE status = ? AND
+created_at BETWEEN … AND NOT EXISTS (an earlier row into it))`. `order_timeline_logs` has one index,
+`(order_id, created_at, id)`, and nothing that starts with `status`. So the subquery reads **every team's whole
+timeline** to find one week. Measured over 50 000 orders and 150 000 timeline rows, with one week of `completed` for
+team 2 (137 orders):
+
+| | as built | with `(status, created_at)` |
+| --- | --- | --- |
+| OrderList (count + page) | **50.6 ms**, 2 queries | **7.0 ms** |
+| OrderStat | **25.3 ms**, 1 query | **4.0 ms** |
+| the subquery | `Parallel Seq Scan on order_timeline_logs`, 149 041 rows removed | `Bitmap Index Scan` on the new index |
+
+```
+->  Parallel Seq Scan on order_timeline_logs tl  (actual time=1.410..11.198 rows=959 loops=1)
+      Rows Removed by Filter: 149041
+```
+
+The time is under every threshold today. It is 🔴 by the plan rule: the table holds every team's history and only grows,
+so this window gets slower with every status change anyone makes. The earlier-row check (`NOT EXISTS`) already uses
+`order_timeline_logs_order_idx`. The row's own date (`date_entered_at`, a MIN per page row) uses it too, for ~0.1 ms.
+
+**→ Recommend:** the index below. It is one b-tree on two narrow columns. It also serves any later "moves into X between
+A and B" read, such as the order metrics, should they ever read the timeline directly.
+
+---
+
 ## Proposed migration
 
 ```sql
@@ -212,6 +241,20 @@ Cost:
   and a trigram index is the one that serves it.
 - **Short terms.** A 1–2 character term cannot use trigrams and still scans. `search` has `max_len 100` and no
   `min_len`.
+
+
+```sql
+-- backend/services/selling_service/db_migrations/00031_order_timeline_status_created_idx.sql — finding 5
+-- +goose NO TRANSACTION
+-- +goose Up
+CREATE INDEX CONCURRENTLY order_timeline_logs_status_created_idx ON order_timeline_logs (status, created_at);
+
+-- +goose Down
+DROP INDEX CONCURRENTLY IF EXISTS order_timeline_logs_status_created_idx;
+```
+
+Cost: one more b-tree write for every timeline row (every move and every note). A note row has `status = ''`, so it
+lands in one large `''` bucket that no window reads.
 
 ---
 
@@ -239,6 +282,7 @@ Cost:
   took literals over the DSN option.
 - [ ] **Defer the subqueries past the LIMIT ([finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips-))?**
   It is a handler change with no contract change, and it is my pick.
+- [ ] **Add `order_timeline_logs (status, created_at)` for the status-date window ([finding 5](#5-a-status-date-window-seq-scans-the-timeline-))?** My pick: yes. It is the only thing between that window and a full read of every team's history.
 - [ ] At ~500 000 orders: an estimated total for root's unfiltered list, or a "has more" pager? The estimate is my pick
   ([finding 4](#4-roots-count-still-reads-the-whole-table-)). Nothing to decide today.
 
@@ -252,3 +296,4 @@ Cost:
 | 2026-10-21 | 3.7 ms | 2 | the row's `item_quantity` added — a correlated sum per row on `order_items_order_idx`, 0.002 ms a row; the page is still 0.08 ms in Postgres, measured over 100 000 lines |
 | 2026-10-22 | 4.0 ms | 2 | re-audit: `status_at` (a correlated MAX over 246 206 timeline rows), the `warehouse_id` filter, the tracking number in the search. `status_at` adds ~0.1 ms to a 20-row page. Now 🔴 on the search (112–158 ms, first measured here; the tracking number adds 8–21 ms per query) and on a deep OFFSET page (252 ms, two-thirds of it `status_at`) |
 | 2026-10-22 | 4.2 ms | 2 | finding 2 fixed — the page is chosen bare in a derived table and the two facts computed for its rows only: the last 200-row page **252 → 20.5 ms**. The search (finding 1) is unchanged at 112–120 ms and waits on the proposed migration |
+| 2026-10-30 | — | 2 | the status-date window (`ENTERED_*`) measured: 50.6 ms for the list and 25.3 ms for OrderStat at 150 000 timeline rows, by a seq scan of the timeline. 7.0 / 4.0 ms with the proposed `(status, created_at)` index — not applied (finding 5) |

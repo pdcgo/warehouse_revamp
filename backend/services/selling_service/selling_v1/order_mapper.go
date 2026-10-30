@@ -199,6 +199,8 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		PlatformShipmentDeadlineUnix: unixOrZero(o.PlatformShipmentDeadline),
 		// The buyer's marketplace username; "" = none.
 		BuyerUsername: o.BuyerUsername,
+		// The first entry into the status the list's date filter reads; 0 = not asked, or not recorded.
+		DateEnteredAtUnix: unixOrZero(o.DateEnteredAt),
 	}
 }
 

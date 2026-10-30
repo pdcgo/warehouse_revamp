@@ -79,6 +79,11 @@ export function withTakeRefusal(
   };
 }
 
+/** What the last order import (ShopeeOrderImport / TiktokOrderImport) was sent — which platform, which shop, how many bytes. */
+export const orderImportScenario = {
+  last: undefined as undefined | { platform: "shopee" | "tiktok"; shopId: bigint; bytes: number },
+};
+
 /**
  * How many times the order census (OrderStat) was asked — so a story can pin that the seller's list reads its
  * statistics only once they are opened (the-statistics-are-shut-and-read-when-opened).
@@ -91,6 +96,7 @@ export function resetSessionScenario() {
   sessionScenario.teamNames = {};
   teamCreateScenario.last = undefined;
   orderExportScenario.last = undefined;
+  orderImportScenario.last = undefined;
   receiptUpdateScenario.last = undefined;
   receiptCheckScenario.refused = 0;
   takeRefusalScenario.refusal = undefined;

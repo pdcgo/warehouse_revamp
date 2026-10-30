@@ -121,6 +121,10 @@ type Order struct {
 	// off the timeline it loads. nil = no row records the move. Read-only to GORM.
 	StatusAt *time.Time `gorm:"->;-:migration"`
 
+	// WHEN IT FIRST ENTERED THE STATUS THE LIST'S DATE FILTER READS (the-order-list-filters-by-seven-dates). Not a
+	// column: OrderList selects it only when the filter dates a status. nil = not asked, or no row records it.
+	DateEnteredAt *time.Time `gorm:"->;-:migration"`
+
 	// The lines; loaded on demand (OrderDetail).
 	Items []OrderItem `gorm:"foreignKey:OrderID"`
 

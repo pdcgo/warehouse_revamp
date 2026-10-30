@@ -833,3 +833,44 @@ sequenceDiagram
 | the clock | WIB (UTC+7), the people reading it keep that time |
 | as the caller | the names and the upload go through clients that forward the caller's token (`san_auth.ForwardBearer`): the file is stored under the caller's team, as them, as a private `order_export` document behind an expiring signed link |
 | the stream | the guideline's long-task shape ([code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md)): every step a slog line sent as `message`, with `done` and `total` on each, the link on the last |
+
+## A marketplace's order export, imported — `ShopeeOrderImport` and `TiktokOrderImport`
+
+One shop's order export moves each order it names along customer service's moves after handover, and lists every other
+order with its reason ([the-import-moves-only-after-handover](../../technical/order/design_decision.md#the-import-moves-only-after-handover),
+[the-order-import-is-one-rpc-per-platform](../../technical/order/design_decision.md#the-order-import-is-one-rpc-per-platform)).
+Both RPCs run `importOrders`; only the reader differs ([order_import_readers](../../../backend/services/selling_service/order_import_readers/)).
+
+```mermaid
+sequenceDiagram
+  participant fe as Import dialog
+  participant imp as importOrders
+  participant rd as order_import_readers
+  participant mv as moveOrders
+  fe->>imp: team_id, shop_id, file_content
+  imp->>imp: the shop - this team's, not deleted, on this platform
+  imp-->>fe: ERROR and end, when it is not
+  imp->>rd: the file
+  rd-->>imp: one order per ref, the platform's words and what they mean
+  imp-->>fe: ERROR and end, when it is not this platform's order export
+  imp->>imp: the shop's live orders with those refs, 200 a query - no lock
+  imp->>imp: each order - cancelled, unknown words, no match, two matches, behind ours, not handed over, already there, or a move
+  loop each target status, 200 orders a call
+    imp->>mv: the orders, the target, note "Shopee order import"
+    mv->>mv: FOR UPDATE in id order, re-check each move against the status diagram, UPDATE, timeline rows
+    mv-->>imp: moved, or refused with why
+    imp->>imp: publish OrderStatusChanged for each move, after the commit
+  end
+  imp-->>fe: one line per order - INFO moved or already there, WARN not applied
+  imp-->>fe: the tally - moved, already there, not applied
+```
+
+| | |
+| --- | --- |
+| the decision | made on an UNLOCKED read, then re-checked by `moveOrders` under the lock — a move made by someone else in between comes back refused or "already", never written twice ([lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |
+| a refusal | a WARN line, never an error of the RPC. Only the database failing fails it |
+| cancelled on the platform | listed only while a live order holds the ref; with none it is already there ([a-cancelled-order-with-nothing-live-is-already-there](../../technical/order/design_decision.md#a-cancelled-order-with-nothing-live-is-already-there)) |
+| two moves for one order | completed on the platform while `shipping` here is `shipped`, then `completed` — one round per step, the second only after the first commits ([a-completed-shipping-order-passes-through-shipped](../../technical/order/design_decision.md#a-completed-shipping-order-passes-through-shipped)). The status diagram gains no edge |
+| a closed tab | stops the lines, not the import: the work runs on `context.WithoutCancel`, as the settlement import does |
+| ⚠ the readers | built against the MOCK exports in [examples/order_samples](../../../examples/order_samples/README.md) — a real export may disagree |
+| ⚠ cost | 373 ms for 1 000 orders on a Windows dev machine, most of it a ~50 ms step per large statement traced to the local database connection, not the code — to be re-measured on Linux ([the audit](../../../audits/services/selling_service/performances/ShopeeOrderImport.md)) |

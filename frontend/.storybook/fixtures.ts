@@ -447,7 +447,7 @@ const orderRows = [
 // be found, which is the point of a fixture.
 const CARRIERS = ["JP", "SPX", "AJ"];
 
-const STATUS_OFFSET: Partial<Record<OrderStatus, number>> = {
+export const STATUS_OFFSET: Partial<Record<OrderStatus, number>> = {
   [OrderStatus.PROCESSED]: 3 * 3600,
   [OrderStatus.PICKED]: 5 * 3600,
   [OrderStatus.SHIPPING]: 20 * 3600,

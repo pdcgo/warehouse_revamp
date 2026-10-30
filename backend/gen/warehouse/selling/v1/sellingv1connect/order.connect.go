@@ -56,6 +56,12 @@ const (
 	// OrderServiceOrderReceiptUpdateProcedure is the fully-qualified name of the OrderService's
 	// OrderReceiptUpdate RPC.
 	OrderServiceOrderReceiptUpdateProcedure = "/warehouse.selling.v1.OrderService/OrderReceiptUpdate"
+	// OrderServiceShopeeOrderImportProcedure is the fully-qualified name of the OrderService's
+	// ShopeeOrderImport RPC.
+	OrderServiceShopeeOrderImportProcedure = "/warehouse.selling.v1.OrderService/ShopeeOrderImport"
+	// OrderServiceTiktokOrderImportProcedure is the fully-qualified name of the OrderService's
+	// TiktokOrderImport RPC.
+	OrderServiceTiktokOrderImportProcedure = "/warehouse.selling.v1.OrderService/TiktokOrderImport"
 	// OrderServiceOrderProductActivityByIdsProcedure is the fully-qualified name of the OrderService's
 	// OrderProductActivityByIds RPC.
 	OrderServiceOrderProductActivityByIdsProcedure = "/warehouse.selling.v1.OrderService/OrderProductActivityByIds"
@@ -101,6 +107,11 @@ type OrderServiceClient interface {
 	// file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
 	// courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
 	OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error)
+	// THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
+	// export from the platform moves each order it names along customer service's moves after handover, and every other
+	// order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
+	ShopeeOrderImport(context.Context, *connect.Request[v1.ShopeeOrderImportRequest]) (*connect.ServerStreamForClient[v1.ShopeeOrderImportResponse], error)
+	TiktokOrderImport(context.Context, *connect.Request[v1.TiktokOrderImportRequest]) (*connect.ServerStreamForClient[v1.TiktokOrderImportResponse], error)
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
 	// The selling team's product list asks one question of this service: when did each of these
@@ -193,6 +204,18 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderReceiptUpdate")),
 			connect.WithClientOptions(opts...),
 		),
+		shopeeOrderImport: connect.NewClient[v1.ShopeeOrderImportRequest, v1.ShopeeOrderImportResponse](
+			httpClient,
+			baseURL+OrderServiceShopeeOrderImportProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("ShopeeOrderImport")),
+			connect.WithClientOptions(opts...),
+		),
+		tiktokOrderImport: connect.NewClient[v1.TiktokOrderImportRequest, v1.TiktokOrderImportResponse](
+			httpClient,
+			baseURL+OrderServiceTiktokOrderImportProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("TiktokOrderImport")),
+			connect.WithClientOptions(opts...),
+		),
 		orderProductActivityByIds: connect.NewClient[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse](
 			httpClient,
 			baseURL+OrderServiceOrderProductActivityByIdsProcedure,
@@ -236,6 +259,8 @@ type orderServiceClient struct {
 	orderStatusChange         *connect.Client[v1.OrderStatusChangeRequest, v1.OrderStatusChangeResponse]
 	orderNoteCreate           *connect.Client[v1.OrderNoteCreateRequest, v1.OrderNoteCreateResponse]
 	orderReceiptUpdate        *connect.Client[v1.OrderReceiptUpdateRequest, v1.OrderReceiptUpdateResponse]
+	shopeeOrderImport         *connect.Client[v1.ShopeeOrderImportRequest, v1.ShopeeOrderImportResponse]
+	tiktokOrderImport         *connect.Client[v1.TiktokOrderImportRequest, v1.TiktokOrderImportResponse]
 	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
 	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
 	orderStat                 *connect.Client[v1.OrderStatRequest, v1.OrderStatResponse]
@@ -281,6 +306,16 @@ func (c *orderServiceClient) OrderNoteCreate(ctx context.Context, req *connect.R
 // OrderReceiptUpdate calls warehouse.selling.v1.OrderService.OrderReceiptUpdate.
 func (c *orderServiceClient) OrderReceiptUpdate(ctx context.Context, req *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error) {
 	return c.orderReceiptUpdate.CallUnary(ctx, req)
+}
+
+// ShopeeOrderImport calls warehouse.selling.v1.OrderService.ShopeeOrderImport.
+func (c *orderServiceClient) ShopeeOrderImport(ctx context.Context, req *connect.Request[v1.ShopeeOrderImportRequest]) (*connect.ServerStreamForClient[v1.ShopeeOrderImportResponse], error) {
+	return c.shopeeOrderImport.CallServerStream(ctx, req)
+}
+
+// TiktokOrderImport calls warehouse.selling.v1.OrderService.TiktokOrderImport.
+func (c *orderServiceClient) TiktokOrderImport(ctx context.Context, req *connect.Request[v1.TiktokOrderImportRequest]) (*connect.ServerStreamForClient[v1.TiktokOrderImportResponse], error) {
+	return c.tiktokOrderImport.CallServerStream(ctx, req)
 }
 
 // OrderProductActivityByIds calls warehouse.selling.v1.OrderService.OrderProductActivityByIds.
@@ -337,6 +372,11 @@ type OrderServiceHandler interface {
 	// file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
 	// courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
 	OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error)
+	// THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
+	// export from the platform moves each order it names along customer service's moves after handover, and every other
+	// order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
+	ShopeeOrderImport(context.Context, *connect.Request[v1.ShopeeOrderImportRequest], *connect.ServerStream[v1.ShopeeOrderImportResponse]) error
+	TiktokOrderImport(context.Context, *connect.Request[v1.TiktokOrderImportRequest], *connect.ServerStream[v1.TiktokOrderImportResponse]) error
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
 	// The selling team's product list asks one question of this service: when did each of these
@@ -425,6 +465,18 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderReceiptUpdate")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceShopeeOrderImportHandler := connect.NewServerStreamHandler(
+		OrderServiceShopeeOrderImportProcedure,
+		svc.ShopeeOrderImport,
+		connect.WithSchema(orderServiceMethods.ByName("ShopeeOrderImport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceTiktokOrderImportHandler := connect.NewServerStreamHandler(
+		OrderServiceTiktokOrderImportProcedure,
+		svc.TiktokOrderImport,
+		connect.WithSchema(orderServiceMethods.ByName("TiktokOrderImport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	orderServiceOrderProductActivityByIdsHandler := connect.NewUnaryHandler(
 		OrderServiceOrderProductActivityByIdsProcedure,
 		svc.OrderProductActivityByIds,
@@ -473,6 +525,10 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderNoteCreateHandler.ServeHTTP(w, r)
 		case OrderServiceOrderReceiptUpdateProcedure:
 			orderServiceOrderReceiptUpdateHandler.ServeHTTP(w, r)
+		case OrderServiceShopeeOrderImportProcedure:
+			orderServiceShopeeOrderImportHandler.ServeHTTP(w, r)
+		case OrderServiceTiktokOrderImportProcedure:
+			orderServiceTiktokOrderImportHandler.ServeHTTP(w, r)
 		case OrderServiceOrderProductActivityByIdsProcedure:
 			orderServiceOrderProductActivityByIdsHandler.ServeHTTP(w, r)
 		case OrderServiceOrderActivityStatProcedure:
@@ -522,6 +578,14 @@ func (UnimplementedOrderServiceHandler) OrderNoteCreate(context.Context, *connec
 
 func (UnimplementedOrderServiceHandler) OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderReceiptUpdate is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) ShopeeOrderImport(context.Context, *connect.Request[v1.ShopeeOrderImportRequest], *connect.ServerStream[v1.ShopeeOrderImportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.ShopeeOrderImport is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) TiktokOrderImport(context.Context, *connect.Request[v1.TiktokOrderImportRequest], *connect.ServerStream[v1.TiktokOrderImportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.TiktokOrderImport is not implemented"))
 }
 
 func (UnimplementedOrderServiceHandler) OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error) {

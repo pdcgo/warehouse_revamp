@@ -133,18 +133,25 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// March") is expressible rather than needing a far-future upper bound.
 	//
 	// WHICH DATE is the filter's choice (the-date-filter-switches-created-or-platform): when we wrote the row, by
-	// default, or when the buyer ordered. The column is picked from a closed set here, never interpolated from input.
-	dateColumn := "created_at"
-	if filter.GetDateField() == sellingv1.OrderDateField_ORDER_DATE_FIELD_PLATFORM_CREATED {
-		dateColumn = "platform_created_at"
-	}
+	// default, or when the buyer ordered — or the first time the order entered a status (dateEnteredWindow). The column
+	// is picked from a closed set here, never interpolated from input.
+	from, to := filter.GetCreatedFromUnix(), filter.GetCreatedToUnix()
 
-	if from := filter.GetCreatedFromUnix(); from > 0 {
-		query = query.Where(dateColumn+" >= ?", time.Unix(from, 0))
-	}
+	if status, ok := dateFieldStatuses[filter.GetDateField()]; ok {
+		query = dateEnteredWindow(query, status, from, to)
+	} else {
+		dateColumn := "created_at"
+		if filter.GetDateField() == sellingv1.OrderDateField_ORDER_DATE_FIELD_PLATFORM_CREATED {
+			dateColumn = "platform_created_at"
+		}
 
-	if to := filter.GetCreatedToUnix(); to > 0 {
-		query = query.Where(dateColumn+" <= ?", time.Unix(to, 0))
+		if from > 0 {
+			query = query.Where(dateColumn+" >= ?", time.Unix(from, 0))
+		}
+
+		if to > 0 {
+			query = query.Where(dateColumn+" <= ?", time.Unix(to, 0))
+		}
 	}
 
 	// WHO TYPED IT IN. An order whose creator was never recorded (0) matches nobody: the guard is the
@@ -177,13 +184,63 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	return query
 }
 
-// orderListColumns is what a list row selects: the order, plus the two facts it carries without its children — the
-// unit count over its lines (the-warehouse-row-fills-from-shop-and-user-by-ids) and when it entered its current status
-// (a-filtered-status-shows-its-own-date). Each is one correlated lookup per row of the PAGE, on an index led by
+// dateFieldStatuses is each date the filter can read off the timeline, and the status it is the FIRST entry into
+// (the-order-list-filters-by-seven-dates).
+var dateFieldStatuses = map[sellingv1.OrderDateField]string{
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_PROCESSED: orderStatusProcessed,
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_PICKED:    orderStatusPicked,
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_SHIPPING:  orderStatusShipping,
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_COMPLETED: orderStatusCompleted,
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_RETURN:    orderStatusReturn,
+}
+
+// dateEnteredWindow narrows to the orders whose FIRST row into `status` falls in the window: a timeline row into it,
+// inside the window, with no earlier row into the same status. Driven from the timeline, so a week's window reads that
+// week's rows. With no window at all it narrows nothing — every order, including those that never entered the status.
+//
+// An order bounced back into a status keeps the day it FIRST entered it; a row tied on the second is broken by id.
+func dateEnteredWindow(query *gorm.DB, status string, from, to int64) *gorm.DB {
+	if from <= 0 && to <= 0 {
+		return query
+	}
+
+	clause := "orders.id IN (SELECT tl.order_id FROM order_timeline_logs tl WHERE tl.status = ?"
+	args := []any{status}
+
+	if from > 0 {
+		clause += " AND tl.created_at >= ?"
+		args = append(args, time.Unix(from, 0))
+	}
+
+	if to > 0 {
+		clause += " AND tl.created_at <= ?"
+		args = append(args, time.Unix(to, 0))
+	}
+
+	clause += " AND NOT EXISTS (SELECT 1 FROM order_timeline_logs e WHERE e.order_id = tl.order_id AND e.status = tl.status" +
+		" AND (e.created_at, e.id) < (tl.created_at, tl.id)))"
+
+	return query.Where(clause, args...)
+}
+
+// orderListColumns is what a list row selects: the order, plus the facts it carries without its children — the unit
+// count over its lines (the-warehouse-row-fills-from-shop-and-user-by-ids), when it entered its current status
+// (a-filtered-status-shows-its-own-date) and, when the date filter reads a status, when it FIRST entered that one
+// (the-order-list-filters-by-seven-dates). Each is one correlated lookup per row of the PAGE, on an index led by
 // order_id: order_items_order_idx and order_timeline_logs_order_idx.
-const orderListColumns = "orders.*, " +
-	"(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = orders.id) AS item_quantity, " +
-	"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at"
+func orderListColumns(filter orderScopeFilter) (string, []any) {
+	columns := "orders.*, " +
+		"(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = orders.id) AS item_quantity, " +
+		"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at"
+
+	status, ok := dateFieldStatuses[filter.GetDateField()]
+	if !ok {
+		return columns, nil
+	}
+
+	return columns + ", (SELECT MIN(te.created_at) FROM order_timeline_logs te WHERE te.order_id = orders.id AND te.status = ?) AS date_entered_at",
+		[]any{status}
+}
 
 // OrderList returns the scoped team's orders, newest first, paginated. Summaries only — the lines
 // come from OrderDetail.
@@ -230,10 +287,12 @@ func (s *Service) OrderList(
 		Offset(offset).
 		Limit(int(page.GetLimit()))
 
+	columns, columnArgs := orderListColumns(req.Msg.GetFilter())
+
 	err = s.db.
 		WithContext(ctx).
 		Table("(?) AS orders", pageRows).
-		Select(orderListColumns).
+		Select(columns, columnArgs...).
 		Order(orderOrderClause(req.Msg.GetSort())).
 		Find(&orders).
 		Error

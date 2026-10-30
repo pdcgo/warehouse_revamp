@@ -179,6 +179,15 @@ const (
 	OrderDateField_ORDER_DATE_FIELD_CREATED OrderDateField = 1
 	// `platform_created_at` — when the buyer ordered on the storefront.
 	OrderDateField_ORDER_DATE_FIELD_PLATFORM_CREATED OrderDateField = 2
+	// THE FIRST TIME THE ORDER ENTERED A STATUS (the-order-list-filters-by-seven-dates), read from its timeline — an
+	// order bounced back into Diproses keeps the day it was first processed. An order that never entered the status
+	// matches no window. The five statuses a person asks "when" about: Diproses, Sudah diambil, Sudah diserahkan,
+	// Selesai, Retur. The rest are not offered, and are not here.
+	OrderDateField_ORDER_DATE_FIELD_ENTERED_PROCESSED OrderDateField = 3
+	OrderDateField_ORDER_DATE_FIELD_ENTERED_PICKED    OrderDateField = 4
+	OrderDateField_ORDER_DATE_FIELD_ENTERED_SHIPPING  OrderDateField = 5
+	OrderDateField_ORDER_DATE_FIELD_ENTERED_COMPLETED OrderDateField = 6
+	OrderDateField_ORDER_DATE_FIELD_ENTERED_RETURN    OrderDateField = 7
 )
 
 // Enum value maps for OrderDateField.
@@ -187,11 +196,21 @@ var (
 		0: "ORDER_DATE_FIELD_UNSPECIFIED",
 		1: "ORDER_DATE_FIELD_CREATED",
 		2: "ORDER_DATE_FIELD_PLATFORM_CREATED",
+		3: "ORDER_DATE_FIELD_ENTERED_PROCESSED",
+		4: "ORDER_DATE_FIELD_ENTERED_PICKED",
+		5: "ORDER_DATE_FIELD_ENTERED_SHIPPING",
+		6: "ORDER_DATE_FIELD_ENTERED_COMPLETED",
+		7: "ORDER_DATE_FIELD_ENTERED_RETURN",
 	}
 	OrderDateField_value = map[string]int32{
-		"ORDER_DATE_FIELD_UNSPECIFIED":      0,
-		"ORDER_DATE_FIELD_CREATED":          1,
-		"ORDER_DATE_FIELD_PLATFORM_CREATED": 2,
+		"ORDER_DATE_FIELD_UNSPECIFIED":       0,
+		"ORDER_DATE_FIELD_CREATED":           1,
+		"ORDER_DATE_FIELD_PLATFORM_CREATED":  2,
+		"ORDER_DATE_FIELD_ENTERED_PROCESSED": 3,
+		"ORDER_DATE_FIELD_ENTERED_PICKED":    4,
+		"ORDER_DATE_FIELD_ENTERED_SHIPPING":  5,
+		"ORDER_DATE_FIELD_ENTERED_COMPLETED": 6,
+		"ORDER_DATE_FIELD_ENTERED_RETURN":    7,
 	}
 )
 
@@ -374,6 +393,62 @@ func (OrderExportView) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{5}
 }
 
+// What a line says about its order — the screen colours it, and lists the WARN ones as not applied.
+type OrderImportLogLevel int32
+
+const (
+	OrderImportLogLevel_ORDER_IMPORT_LOG_LEVEL_UNSPECIFIED OrderImportLogLevel = 0
+	// A step, a move, or an order already where the file says.
+	OrderImportLogLevel_ORDER_IMPORT_LOG_LEVEL_INFO OrderImportLogLevel = 1
+	// An order NOT applied, with its reason — customer service's to-do list.
+	OrderImportLogLevel_ORDER_IMPORT_LOG_LEVEL_WARN OrderImportLogLevel = 2
+	// The import ended without touching an order: the shop, or the file.
+	OrderImportLogLevel_ORDER_IMPORT_LOG_LEVEL_ERROR OrderImportLogLevel = 3
+)
+
+// Enum value maps for OrderImportLogLevel.
+var (
+	OrderImportLogLevel_name = map[int32]string{
+		0: "ORDER_IMPORT_LOG_LEVEL_UNSPECIFIED",
+		1: "ORDER_IMPORT_LOG_LEVEL_INFO",
+		2: "ORDER_IMPORT_LOG_LEVEL_WARN",
+		3: "ORDER_IMPORT_LOG_LEVEL_ERROR",
+	}
+	OrderImportLogLevel_value = map[string]int32{
+		"ORDER_IMPORT_LOG_LEVEL_UNSPECIFIED": 0,
+		"ORDER_IMPORT_LOG_LEVEL_INFO":        1,
+		"ORDER_IMPORT_LOG_LEVEL_WARN":        2,
+		"ORDER_IMPORT_LOG_LEVEL_ERROR":       3,
+	}
+)
+
+func (x OrderImportLogLevel) Enum() *OrderImportLogLevel {
+	p := new(OrderImportLogLevel)
+	*p = x
+	return p
+}
+
+func (x OrderImportLogLevel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (OrderImportLogLevel) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_selling_v1_order_proto_enumTypes[6].Descriptor()
+}
+
+func (OrderImportLogLevel) Type() protoreflect.EnumType {
+	return &file_warehouse_selling_v1_order_proto_enumTypes[6]
+}
+
+func (x OrderImportLogLevel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use OrderImportLogLevel.Descriptor instead.
+func (OrderImportLogLevel) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{6}
+}
+
 type OrderProductActivityDataType int32
 
 const (
@@ -404,11 +479,11 @@ func (x OrderProductActivityDataType) String() string {
 }
 
 func (OrderProductActivityDataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_selling_v1_order_proto_enumTypes[6].Descriptor()
+	return file_warehouse_selling_v1_order_proto_enumTypes[7].Descriptor()
 }
 
 func (OrderProductActivityDataType) Type() protoreflect.EnumType {
-	return &file_warehouse_selling_v1_order_proto_enumTypes[6]
+	return &file_warehouse_selling_v1_order_proto_enumTypes[7]
 }
 
 func (x OrderProductActivityDataType) Number() protoreflect.EnumNumber {
@@ -417,7 +492,7 @@ func (x OrderProductActivityDataType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OrderProductActivityDataType.Descriptor instead.
 func (OrderProductActivityDataType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{7}
 }
 
 type OrderByExternalRefsDataType int32
@@ -450,11 +525,11 @@ func (x OrderByExternalRefsDataType) String() string {
 }
 
 func (OrderByExternalRefsDataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_selling_v1_order_proto_enumTypes[7].Descriptor()
+	return file_warehouse_selling_v1_order_proto_enumTypes[8].Descriptor()
 }
 
 func (OrderByExternalRefsDataType) Type() protoreflect.EnumType {
-	return &file_warehouse_selling_v1_order_proto_enumTypes[7]
+	return &file_warehouse_selling_v1_order_proto_enumTypes[8]
 }
 
 func (x OrderByExternalRefsDataType) Number() protoreflect.EnumNumber {
@@ -463,7 +538,7 @@ func (x OrderByExternalRefsDataType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OrderByExternalRefsDataType.Descriptor instead.
 func (OrderByExternalRefsDataType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{8}
 }
 
 type OrderCreatorListDataType int32
@@ -496,11 +571,11 @@ func (x OrderCreatorListDataType) String() string {
 }
 
 func (OrderCreatorListDataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_selling_v1_order_proto_enumTypes[8].Descriptor()
+	return file_warehouse_selling_v1_order_proto_enumTypes[9].Descriptor()
 }
 
 func (OrderCreatorListDataType) Type() protoreflect.EnumType {
-	return &file_warehouse_selling_v1_order_proto_enumTypes[8]
+	return &file_warehouse_selling_v1_order_proto_enumTypes[9]
 }
 
 func (x OrderCreatorListDataType) Number() protoreflect.EnumNumber {
@@ -509,7 +584,7 @@ func (x OrderCreatorListDataType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OrderCreatorListDataType.Descriptor instead.
 func (OrderCreatorListDataType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{9}
 }
 
 // OrderCreatorSort is the sort selection paired with the CREATOR slice.
@@ -544,11 +619,11 @@ func (x OrderCreatorSort) String() string {
 }
 
 func (OrderCreatorSort) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_selling_v1_order_proto_enumTypes[9].Descriptor()
+	return file_warehouse_selling_v1_order_proto_enumTypes[10].Descriptor()
 }
 
 func (OrderCreatorSort) Type() protoreflect.EnumType {
-	return &file_warehouse_selling_v1_order_proto_enumTypes[9]
+	return &file_warehouse_selling_v1_order_proto_enumTypes[10]
 }
 
 func (x OrderCreatorSort) Number() protoreflect.EnumNumber {
@@ -557,7 +632,7 @@ func (x OrderCreatorSort) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OrderCreatorSort.Descriptor instead.
 func (OrderCreatorSort) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{10}
 }
 
 // One row of an order's timeline (order-timeline-logs-replaces-order-events) — a STATUS CHANGE, or a NOTE written
@@ -1116,8 +1191,15 @@ type Order struct {
 	//
 	// "" = none, which is a valid order on both doors. Stored as typed, trimmed.
 	BuyerUsername string `protobuf:"bytes,30,opt,name=buyer_username,json=buyerUsername,proto3" json:"buyer_username,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// WHEN IT FIRST ENTERED THE STATUS THE LIST'S DATE FILTER READS (the-order-list-filters-by-seven-dates) — set by
+	// OrderList only when the filter's `date_field` names a status (ORDER_DATE_FIELD_ENTERED_*), so the date column can
+	// show the date the window was applied to. The FIRST row into that status: an order bounced back into Diproses
+	// keeps the day it was first processed. Unlike `status_at_unix`, the order need not be IN that status now.
+	//
+	// 0 = the filter reads no status, or no timeline row records the order entering it.
+	DateEnteredAtUnix int64 `protobuf:"varint,32,opt,name=date_entered_at_unix,json=dateEnteredAtUnix,proto3" json:"date_entered_at_unix,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
@@ -1323,6 +1405,13 @@ func (x *Order) GetBuyerUsername() string {
 		return x.BuyerUsername
 	}
 	return ""
+}
+
+func (x *Order) GetDateEnteredAtUnix() int64 {
+	if x != nil {
+		return x.DateEnteredAtUnix
+	}
+	return 0
 }
 
 type OrderCreateRequest struct {
@@ -2461,6 +2550,345 @@ func (x *OrderExportResponse) GetFilename() string {
 	return ""
 }
 
+// What became of the file's orders. The three sum to the orders in the file.
+type OrderImportTally struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Moved uint32                 `protobuf:"varint,1,opt,name=moved,proto3" json:"moved,omitempty"`
+	// Already where the file says — nothing written, so importing the same file twice changes nothing.
+	AlreadyThere  uint32 `protobuf:"varint,2,opt,name=already_there,json=alreadyThere,proto3" json:"already_there,omitempty"`
+	NotApplied    uint32 `protobuf:"varint,3,opt,name=not_applied,json=notApplied,proto3" json:"not_applied,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderImportTally) Reset() {
+	*x = OrderImportTally{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderImportTally) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderImportTally) ProtoMessage() {}
+
+func (x *OrderImportTally) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderImportTally.ProtoReflect.Descriptor instead.
+func (*OrderImportTally) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *OrderImportTally) GetMoved() uint32 {
+	if x != nil {
+		return x.Moved
+	}
+	return 0
+}
+
+func (x *OrderImportTally) GetAlreadyThere() uint32 {
+	if x != nil {
+		return x.AlreadyThere
+	}
+	return 0
+}
+
+func (x *OrderImportTally) GetNotApplied() uint32 {
+	if x != nil {
+		return x.NotApplied
+	}
+	return 0
+}
+
+type ShopeeOrderImportRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The shop the file was exported from — its orders are the ones a ref is matched against.
+	ShopId uint64 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// The export as downloaded, .xlsx or .csv. 10 MB, as the settlement import.
+	FileContent   []byte `protobuf:"bytes,3,opt,name=file_content,json=fileContent,proto3" json:"file_content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShopeeOrderImportRequest) Reset() {
+	*x = ShopeeOrderImportRequest{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShopeeOrderImportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShopeeOrderImportRequest) ProtoMessage() {}
+
+func (x *ShopeeOrderImportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShopeeOrderImportRequest.ProtoReflect.Descriptor instead.
+func (*ShopeeOrderImportRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ShopeeOrderImportRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ShopeeOrderImportRequest) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *ShopeeOrderImportRequest) GetFileContent() []byte {
+	if x != nil {
+		return x.FileContent
+	}
+	return nil
+}
+
+// One step of the import (code-implementation-guideline.md): a leveled line, the progress, and on the last the tally.
+type ShopeeOrderImportResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Level   OrderImportLogLevel    `protobuf:"varint,1,opt,name=level,proto3,enum=warehouse.selling.v1.OrderImportLogLevel" json:"level,omitempty"`
+	Message string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	// Orders handled so far, of the orders in the file — 0 until the file has been read.
+	Step  uint32 `protobuf:"varint,3,opt,name=step,proto3" json:"step,omitempty"`
+	Count uint32 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
+	// Set on the LAST message only.
+	Tally         *OrderImportTally `protobuf:"bytes,5,opt,name=tally,proto3" json:"tally,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShopeeOrderImportResponse) Reset() {
+	*x = ShopeeOrderImportResponse{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShopeeOrderImportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShopeeOrderImportResponse) ProtoMessage() {}
+
+func (x *ShopeeOrderImportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShopeeOrderImportResponse.ProtoReflect.Descriptor instead.
+func (*ShopeeOrderImportResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ShopeeOrderImportResponse) GetLevel() OrderImportLogLevel {
+	if x != nil {
+		return x.Level
+	}
+	return OrderImportLogLevel_ORDER_IMPORT_LOG_LEVEL_UNSPECIFIED
+}
+
+func (x *ShopeeOrderImportResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ShopeeOrderImportResponse) GetStep() uint32 {
+	if x != nil {
+		return x.Step
+	}
+	return 0
+}
+
+func (x *ShopeeOrderImportResponse) GetCount() uint32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *ShopeeOrderImportResponse) GetTally() *OrderImportTally {
+	if x != nil {
+		return x.Tally
+	}
+	return nil
+}
+
+type TiktokOrderImportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ShopId        uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	FileContent   []byte                 `protobuf:"bytes,3,opt,name=file_content,json=fileContent,proto3" json:"file_content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TiktokOrderImportRequest) Reset() {
+	*x = TiktokOrderImportRequest{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TiktokOrderImportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TiktokOrderImportRequest) ProtoMessage() {}
+
+func (x *TiktokOrderImportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TiktokOrderImportRequest.ProtoReflect.Descriptor instead.
+func (*TiktokOrderImportRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *TiktokOrderImportRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *TiktokOrderImportRequest) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *TiktokOrderImportRequest) GetFileContent() []byte {
+	if x != nil {
+		return x.FileContent
+	}
+	return nil
+}
+
+type TiktokOrderImportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Level         OrderImportLogLevel    `protobuf:"varint,1,opt,name=level,proto3,enum=warehouse.selling.v1.OrderImportLogLevel" json:"level,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Step          uint32                 `protobuf:"varint,3,opt,name=step,proto3" json:"step,omitempty"`
+	Count         uint32                 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
+	Tally         *OrderImportTally      `protobuf:"bytes,5,opt,name=tally,proto3" json:"tally,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TiktokOrderImportResponse) Reset() {
+	*x = TiktokOrderImportResponse{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TiktokOrderImportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TiktokOrderImportResponse) ProtoMessage() {}
+
+func (x *TiktokOrderImportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TiktokOrderImportResponse.ProtoReflect.Descriptor instead.
+func (*TiktokOrderImportResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *TiktokOrderImportResponse) GetLevel() OrderImportLogLevel {
+	if x != nil {
+		return x.Level
+	}
+	return OrderImportLogLevel_ORDER_IMPORT_LOG_LEVEL_UNSPECIFIED
+}
+
+func (x *TiktokOrderImportResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *TiktokOrderImportResponse) GetStep() uint32 {
+	if x != nil {
+		return x.Step
+	}
+	return 0
+}
+
+func (x *TiktokOrderImportResponse) GetCount() uint32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *TiktokOrderImportResponse) GetTally() *OrderImportTally {
+	if x != nil {
+		return x.Tally
+	}
+	return nil
+}
+
 // OrderStatusChange makes one plain move for many orders (one-status-change-for-every-plain-move).
 type OrderStatusChangeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -2478,7 +2906,7 @@ type OrderStatusChangeRequest struct {
 
 func (x *OrderStatusChangeRequest) Reset() {
 	*x = OrderStatusChangeRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[19]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2490,7 +2918,7 @@ func (x *OrderStatusChangeRequest) String() string {
 func (*OrderStatusChangeRequest) ProtoMessage() {}
 
 func (x *OrderStatusChangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[19]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2503,7 +2931,7 @@ func (x *OrderStatusChangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatusChangeRequest.ProtoReflect.Descriptor instead.
 func (*OrderStatusChangeRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{19}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *OrderStatusChangeRequest) GetTeamId() uint64 {
@@ -2544,7 +2972,7 @@ type OrderStatusChangeResponse struct {
 
 func (x *OrderStatusChangeResponse) Reset() {
 	*x = OrderStatusChangeResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[20]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2556,7 +2984,7 @@ func (x *OrderStatusChangeResponse) String() string {
 func (*OrderStatusChangeResponse) ProtoMessage() {}
 
 func (x *OrderStatusChangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[20]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2569,7 +2997,7 @@ func (x *OrderStatusChangeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatusChangeResponse.ProtoReflect.Descriptor instead.
 func (*OrderStatusChangeResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{20}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *OrderStatusChangeResponse) GetResults() []*OrderStatusChangeResult {
@@ -2595,7 +3023,7 @@ type OrderStatusChangeResult struct {
 
 func (x *OrderStatusChangeResult) Reset() {
 	*x = OrderStatusChangeResult{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[21]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2607,7 +3035,7 @@ func (x *OrderStatusChangeResult) String() string {
 func (*OrderStatusChangeResult) ProtoMessage() {}
 
 func (x *OrderStatusChangeResult) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[21]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2620,7 +3048,7 @@ func (x *OrderStatusChangeResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatusChangeResult.ProtoReflect.Descriptor instead.
 func (*OrderStatusChangeResult) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{21}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *OrderStatusChangeResult) GetOrderId() uint64 {
@@ -2666,7 +3094,7 @@ type OrderNoteCreateRequest struct {
 
 func (x *OrderNoteCreateRequest) Reset() {
 	*x = OrderNoteCreateRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[22]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2678,7 +3106,7 @@ func (x *OrderNoteCreateRequest) String() string {
 func (*OrderNoteCreateRequest) ProtoMessage() {}
 
 func (x *OrderNoteCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[22]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2691,7 +3119,7 @@ func (x *OrderNoteCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderNoteCreateRequest.ProtoReflect.Descriptor instead.
 func (*OrderNoteCreateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{22}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *OrderNoteCreateRequest) GetTeamId() uint64 {
@@ -2725,7 +3153,7 @@ type OrderNoteCreateResponse struct {
 
 func (x *OrderNoteCreateResponse) Reset() {
 	*x = OrderNoteCreateResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[23]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2737,7 +3165,7 @@ func (x *OrderNoteCreateResponse) String() string {
 func (*OrderNoteCreateResponse) ProtoMessage() {}
 
 func (x *OrderNoteCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[23]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2750,7 +3178,7 @@ func (x *OrderNoteCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderNoteCreateResponse.ProtoReflect.Descriptor instead.
 func (*OrderNoteCreateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{23}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *OrderNoteCreateResponse) GetLog() *OrderTimelineLog {
@@ -2777,7 +3205,7 @@ type OrderReceiptUpdateRequest struct {
 
 func (x *OrderReceiptUpdateRequest) Reset() {
 	*x = OrderReceiptUpdateRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[24]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2789,7 +3217,7 @@ func (x *OrderReceiptUpdateRequest) String() string {
 func (*OrderReceiptUpdateRequest) ProtoMessage() {}
 
 func (x *OrderReceiptUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[24]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2802,7 +3230,7 @@ func (x *OrderReceiptUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderReceiptUpdateRequest.ProtoReflect.Descriptor instead.
 func (*OrderReceiptUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{24}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *OrderReceiptUpdateRequest) GetTeamId() uint64 {
@@ -2843,7 +3271,7 @@ type OrderReceiptUpdateResponse struct {
 
 func (x *OrderReceiptUpdateResponse) Reset() {
 	*x = OrderReceiptUpdateResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[25]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2855,7 +3283,7 @@ func (x *OrderReceiptUpdateResponse) String() string {
 func (*OrderReceiptUpdateResponse) ProtoMessage() {}
 
 func (x *OrderReceiptUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[25]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2868,7 +3296,7 @@ func (x *OrderReceiptUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderReceiptUpdateResponse.ProtoReflect.Descriptor instead.
 func (*OrderReceiptUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{25}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *OrderReceiptUpdateResponse) GetOrder() *Order {
@@ -2896,7 +3324,7 @@ type OrderProductActivityItem struct {
 
 func (x *OrderProductActivityItem) Reset() {
 	*x = OrderProductActivityItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[26]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2908,7 +3336,7 @@ func (x *OrderProductActivityItem) String() string {
 func (*OrderProductActivityItem) ProtoMessage() {}
 
 func (x *OrderProductActivityItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[26]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2921,7 +3349,7 @@ func (x *OrderProductActivityItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderProductActivityItem.ProtoReflect.Descriptor instead.
 func (*OrderProductActivityItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{26}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *OrderProductActivityItem) GetLastOrderUnix() int64 {
@@ -2947,7 +3375,7 @@ type OrderProductActivityMapItem struct {
 
 func (x *OrderProductActivityMapItem) Reset() {
 	*x = OrderProductActivityMapItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[27]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2959,7 +3387,7 @@ func (x *OrderProductActivityMapItem) String() string {
 func (*OrderProductActivityMapItem) ProtoMessage() {}
 
 func (x *OrderProductActivityMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[27]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2972,7 +3400,7 @@ func (x *OrderProductActivityMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderProductActivityMapItem.ProtoReflect.Descriptor instead.
 func (*OrderProductActivityMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{27}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *OrderProductActivityMapItem) GetMapData() map[uint64]*OrderProductActivityItem {
@@ -2993,7 +3421,7 @@ type OrderProductActivityByIdsFilter struct {
 
 func (x *OrderProductActivityByIdsFilter) Reset() {
 	*x = OrderProductActivityByIdsFilter{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[28]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3005,7 +3433,7 @@ func (x *OrderProductActivityByIdsFilter) String() string {
 func (*OrderProductActivityByIdsFilter) ProtoMessage() {}
 
 func (x *OrderProductActivityByIdsFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[28]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3018,7 +3446,7 @@ func (x *OrderProductActivityByIdsFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderProductActivityByIdsFilter.ProtoReflect.Descriptor instead.
 func (*OrderProductActivityByIdsFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{28}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *OrderProductActivityByIdsFilter) GetProductIds() []uint64 {
@@ -3039,7 +3467,7 @@ type OrderProductActivityByIdsRequest struct {
 
 func (x *OrderProductActivityByIdsRequest) Reset() {
 	*x = OrderProductActivityByIdsRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[29]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3051,7 +3479,7 @@ func (x *OrderProductActivityByIdsRequest) String() string {
 func (*OrderProductActivityByIdsRequest) ProtoMessage() {}
 
 func (x *OrderProductActivityByIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[29]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3064,7 +3492,7 @@ func (x *OrderProductActivityByIdsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderProductActivityByIdsRequest.ProtoReflect.Descriptor instead.
 func (*OrderProductActivityByIdsRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{29}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *OrderProductActivityByIdsRequest) GetTeamId() uint64 {
@@ -3100,7 +3528,7 @@ type OrderProductActivityByIdsResponseItem struct {
 
 func (x *OrderProductActivityByIdsResponseItem) Reset() {
 	*x = OrderProductActivityByIdsResponseItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[30]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3112,7 +3540,7 @@ func (x *OrderProductActivityByIdsResponseItem) String() string {
 func (*OrderProductActivityByIdsResponseItem) ProtoMessage() {}
 
 func (x *OrderProductActivityByIdsResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[30]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3125,7 +3553,7 @@ func (x *OrderProductActivityByIdsResponseItem) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use OrderProductActivityByIdsResponseItem.ProtoReflect.Descriptor instead.
 func (*OrderProductActivityByIdsResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{30}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *OrderProductActivityByIdsResponseItem) GetD() isOrderProductActivityByIdsResponseItem_D {
@@ -3163,7 +3591,7 @@ type OrderProductActivityByIdsResponseList struct {
 
 func (x *OrderProductActivityByIdsResponseList) Reset() {
 	*x = OrderProductActivityByIdsResponseList{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[31]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3175,7 +3603,7 @@ func (x *OrderProductActivityByIdsResponseList) String() string {
 func (*OrderProductActivityByIdsResponseList) ProtoMessage() {}
 
 func (x *OrderProductActivityByIdsResponseList) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[31]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3188,7 +3616,7 @@ func (x *OrderProductActivityByIdsResponseList) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use OrderProductActivityByIdsResponseList.ProtoReflect.Descriptor instead.
 func (*OrderProductActivityByIdsResponseList) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{31}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *OrderProductActivityByIdsResponseList) GetItems() []*OrderProductActivityByIdsResponseItem {
@@ -3208,7 +3636,7 @@ type OrderProductActivityByIdsResponse struct {
 
 func (x *OrderProductActivityByIdsResponse) Reset() {
 	*x = OrderProductActivityByIdsResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[32]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3220,7 +3648,7 @@ func (x *OrderProductActivityByIdsResponse) String() string {
 func (*OrderProductActivityByIdsResponse) ProtoMessage() {}
 
 func (x *OrderProductActivityByIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[32]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3233,7 +3661,7 @@ func (x *OrderProductActivityByIdsResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use OrderProductActivityByIdsResponse.ProtoReflect.Descriptor instead.
 func (*OrderProductActivityByIdsResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{32}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *OrderProductActivityByIdsResponse) GetItems() map[uint64]*OrderProductActivityByIdsResponseList {
@@ -3252,7 +3680,7 @@ type OrderActivityStatRequest struct {
 
 func (x *OrderActivityStatRequest) Reset() {
 	*x = OrderActivityStatRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[33]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3264,7 +3692,7 @@ func (x *OrderActivityStatRequest) String() string {
 func (*OrderActivityStatRequest) ProtoMessage() {}
 
 func (x *OrderActivityStatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[33]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3277,7 +3705,7 @@ func (x *OrderActivityStatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderActivityStatRequest.ProtoReflect.Descriptor instead.
 func (*OrderActivityStatRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{33}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *OrderActivityStatRequest) GetTeamId() uint64 {
@@ -3299,7 +3727,7 @@ type OrderActivityPreview struct {
 
 func (x *OrderActivityPreview) Reset() {
 	*x = OrderActivityPreview{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[34]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3311,7 +3739,7 @@ func (x *OrderActivityPreview) String() string {
 func (*OrderActivityPreview) ProtoMessage() {}
 
 func (x *OrderActivityPreview) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[34]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3324,7 +3752,7 @@ func (x *OrderActivityPreview) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderActivityPreview.ProtoReflect.Descriptor instead.
 func (*OrderActivityPreview) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{34}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *OrderActivityPreview) GetLastOrderUnix() int64 {
@@ -3350,7 +3778,7 @@ type OrderActivityStatResponse struct {
 
 func (x *OrderActivityStatResponse) Reset() {
 	*x = OrderActivityStatResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[35]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3362,7 +3790,7 @@ func (x *OrderActivityStatResponse) String() string {
 func (*OrderActivityStatResponse) ProtoMessage() {}
 
 func (x *OrderActivityStatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[35]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3375,7 +3803,7 @@ func (x *OrderActivityStatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderActivityStatResponse.ProtoReflect.Descriptor instead.
 func (*OrderActivityStatResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{35}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *OrderActivityStatResponse) GetPreview() *OrderActivityPreview {
@@ -3422,7 +3850,7 @@ type OrderStatFilter struct {
 
 func (x *OrderStatFilter) Reset() {
 	*x = OrderStatFilter{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[36]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3434,7 +3862,7 @@ func (x *OrderStatFilter) String() string {
 func (*OrderStatFilter) ProtoMessage() {}
 
 func (x *OrderStatFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[36]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3447,7 +3875,7 @@ func (x *OrderStatFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatFilter.ProtoReflect.Descriptor instead.
 func (*OrderStatFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{36}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *OrderStatFilter) GetProductId() uint64 {
@@ -3537,7 +3965,7 @@ type OrderStatRequest struct {
 
 func (x *OrderStatRequest) Reset() {
 	*x = OrderStatRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[37]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3549,7 +3977,7 @@ func (x *OrderStatRequest) String() string {
 func (*OrderStatRequest) ProtoMessage() {}
 
 func (x *OrderStatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[37]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3562,7 +3990,7 @@ func (x *OrderStatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatRequest.ProtoReflect.Descriptor instead.
 func (*OrderStatRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{37}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *OrderStatRequest) GetTeamId() uint64 {
@@ -3609,7 +4037,7 @@ type OrderStatusCount struct {
 
 func (x *OrderStatusCount) Reset() {
 	*x = OrderStatusCount{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[38]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3621,7 +4049,7 @@ func (x *OrderStatusCount) String() string {
 func (*OrderStatusCount) ProtoMessage() {}
 
 func (x *OrderStatusCount) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[38]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3634,7 +4062,7 @@ func (x *OrderStatusCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatusCount.ProtoReflect.Descriptor instead.
 func (*OrderStatusCount) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{38}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *OrderStatusCount) GetStatus() OrderStatus {
@@ -3713,7 +4141,7 @@ type OrderStatPreview struct {
 
 func (x *OrderStatPreview) Reset() {
 	*x = OrderStatPreview{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[39]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3725,7 +4153,7 @@ func (x *OrderStatPreview) String() string {
 func (*OrderStatPreview) ProtoMessage() {}
 
 func (x *OrderStatPreview) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[39]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3738,7 +4166,7 @@ func (x *OrderStatPreview) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatPreview.ProtoReflect.Descriptor instead.
 func (*OrderStatPreview) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{39}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *OrderStatPreview) GetOrders_30D() int64 {
@@ -3768,7 +4196,7 @@ type OrderStatResponse struct {
 
 func (x *OrderStatResponse) Reset() {
 	*x = OrderStatResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[40]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3780,7 +4208,7 @@ func (x *OrderStatResponse) String() string {
 func (*OrderStatResponse) ProtoMessage() {}
 
 func (x *OrderStatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[40]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3793,7 +4221,7 @@ func (x *OrderStatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatResponse.ProtoReflect.Descriptor instead.
 func (*OrderStatResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{40}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *OrderStatResponse) GetPreview() *OrderStatPreview {
@@ -3821,7 +4249,7 @@ type OrderByExternalRefsFilter struct {
 
 func (x *OrderByExternalRefsFilter) Reset() {
 	*x = OrderByExternalRefsFilter{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[41]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3833,7 +4261,7 @@ func (x *OrderByExternalRefsFilter) String() string {
 func (*OrderByExternalRefsFilter) ProtoMessage() {}
 
 func (x *OrderByExternalRefsFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[41]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3846,7 +4274,7 @@ func (x *OrderByExternalRefsFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderByExternalRefsFilter.ProtoReflect.Descriptor instead.
 func (*OrderByExternalRefsFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{41}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *OrderByExternalRefsFilter) GetRefs() []string {
@@ -3867,7 +4295,7 @@ type OrderByExternalRefsRequest struct {
 
 func (x *OrderByExternalRefsRequest) Reset() {
 	*x = OrderByExternalRefsRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[42]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3879,7 +4307,7 @@ func (x *OrderByExternalRefsRequest) String() string {
 func (*OrderByExternalRefsRequest) ProtoMessage() {}
 
 func (x *OrderByExternalRefsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[42]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3892,7 +4320,7 @@ func (x *OrderByExternalRefsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderByExternalRefsRequest.ProtoReflect.Descriptor instead.
 func (*OrderByExternalRefsRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{42}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *OrderByExternalRefsRequest) GetTeamId() uint64 {
@@ -3930,7 +4358,7 @@ type OrderRefItem struct {
 
 func (x *OrderRefItem) Reset() {
 	*x = OrderRefItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[43]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3942,7 +4370,7 @@ func (x *OrderRefItem) String() string {
 func (*OrderRefItem) ProtoMessage() {}
 
 func (x *OrderRefItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[43]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3955,7 +4383,7 @@ func (x *OrderRefItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderRefItem.ProtoReflect.Descriptor instead.
 func (*OrderRefItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{43}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *OrderRefItem) GetOrderId() uint64 {
@@ -3996,7 +4424,7 @@ type OrderRefMapItem struct {
 
 func (x *OrderRefMapItem) Reset() {
 	*x = OrderRefMapItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[44]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4008,7 +4436,7 @@ func (x *OrderRefMapItem) String() string {
 func (*OrderRefMapItem) ProtoMessage() {}
 
 func (x *OrderRefMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[44]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4021,7 +4449,7 @@ func (x *OrderRefMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderRefMapItem.ProtoReflect.Descriptor instead.
 func (*OrderRefMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{44}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *OrderRefMapItem) GetMapData() map[uint64]*OrderRefItem {
@@ -4043,7 +4471,7 @@ type OrderByExternalRefsResponseItem struct {
 
 func (x *OrderByExternalRefsResponseItem) Reset() {
 	*x = OrderByExternalRefsResponseItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[45]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4055,7 +4483,7 @@ func (x *OrderByExternalRefsResponseItem) String() string {
 func (*OrderByExternalRefsResponseItem) ProtoMessage() {}
 
 func (x *OrderByExternalRefsResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[45]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4068,7 +4496,7 @@ func (x *OrderByExternalRefsResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderByExternalRefsResponseItem.ProtoReflect.Descriptor instead.
 func (*OrderByExternalRefsResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{45}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *OrderByExternalRefsResponseItem) GetD() isOrderByExternalRefsResponseItem_D {
@@ -4106,7 +4534,7 @@ type OrderByExternalRefsResponseList struct {
 
 func (x *OrderByExternalRefsResponseList) Reset() {
 	*x = OrderByExternalRefsResponseList{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[46]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4118,7 +4546,7 @@ func (x *OrderByExternalRefsResponseList) String() string {
 func (*OrderByExternalRefsResponseList) ProtoMessage() {}
 
 func (x *OrderByExternalRefsResponseList) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[46]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4131,7 +4559,7 @@ func (x *OrderByExternalRefsResponseList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderByExternalRefsResponseList.ProtoReflect.Descriptor instead.
 func (*OrderByExternalRefsResponseList) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{46}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *OrderByExternalRefsResponseList) GetItems() []*OrderByExternalRefsResponseItem {
@@ -4151,7 +4579,7 @@ type OrderByExternalRefsResponse struct {
 
 func (x *OrderByExternalRefsResponse) Reset() {
 	*x = OrderByExternalRefsResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[47]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4163,7 +4591,7 @@ func (x *OrderByExternalRefsResponse) String() string {
 func (*OrderByExternalRefsResponse) ProtoMessage() {}
 
 func (x *OrderByExternalRefsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[47]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4176,7 +4604,7 @@ func (x *OrderByExternalRefsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderByExternalRefsResponse.ProtoReflect.Descriptor instead.
 func (*OrderByExternalRefsResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{47}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *OrderByExternalRefsResponse) GetItems() map[string]*OrderByExternalRefsResponseList {
@@ -4195,7 +4623,7 @@ type OrderCreatorListFilter struct {
 
 func (x *OrderCreatorListFilter) Reset() {
 	*x = OrderCreatorListFilter{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[48]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4207,7 +4635,7 @@ func (x *OrderCreatorListFilter) String() string {
 func (*OrderCreatorListFilter) ProtoMessage() {}
 
 func (x *OrderCreatorListFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[48]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4220,7 +4648,7 @@ func (x *OrderCreatorListFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreatorListFilter.ProtoReflect.Descriptor instead.
 func (*OrderCreatorListFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{48}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{53}
 }
 
 type OrderCreatorListFilterSort struct {
@@ -4236,7 +4664,7 @@ type OrderCreatorListFilterSort struct {
 
 func (x *OrderCreatorListFilterSort) Reset() {
 	*x = OrderCreatorListFilterSort{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[49]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4248,7 +4676,7 @@ func (x *OrderCreatorListFilterSort) String() string {
 func (*OrderCreatorListFilterSort) ProtoMessage() {}
 
 func (x *OrderCreatorListFilterSort) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[49]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4261,7 +4689,7 @@ func (x *OrderCreatorListFilterSort) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreatorListFilterSort.ProtoReflect.Descriptor instead.
 func (*OrderCreatorListFilterSort) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{49}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *OrderCreatorListFilterSort) GetSortType() v1.CommonSortType {
@@ -4312,7 +4740,7 @@ type OrderCreatorListRequest struct {
 
 func (x *OrderCreatorListRequest) Reset() {
 	*x = OrderCreatorListRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[50]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4324,7 +4752,7 @@ func (x *OrderCreatorListRequest) String() string {
 func (*OrderCreatorListRequest) ProtoMessage() {}
 
 func (x *OrderCreatorListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[50]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4337,7 +4765,7 @@ func (x *OrderCreatorListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreatorListRequest.ProtoReflect.Descriptor instead.
 func (*OrderCreatorListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{50}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *OrderCreatorListRequest) GetTeamId() uint64 {
@@ -4387,7 +4815,7 @@ type OrderCreatorItem struct {
 
 func (x *OrderCreatorItem) Reset() {
 	*x = OrderCreatorItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[51]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4399,7 +4827,7 @@ func (x *OrderCreatorItem) String() string {
 func (*OrderCreatorItem) ProtoMessage() {}
 
 func (x *OrderCreatorItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[51]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4412,7 +4840,7 @@ func (x *OrderCreatorItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreatorItem.ProtoReflect.Descriptor instead.
 func (*OrderCreatorItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{51}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *OrderCreatorItem) GetUserId() uint64 {
@@ -4439,7 +4867,7 @@ type OrderCreatorMapItem struct {
 
 func (x *OrderCreatorMapItem) Reset() {
 	*x = OrderCreatorMapItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[52]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4451,7 +4879,7 @@ func (x *OrderCreatorMapItem) String() string {
 func (*OrderCreatorMapItem) ProtoMessage() {}
 
 func (x *OrderCreatorMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[52]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4464,7 +4892,7 @@ func (x *OrderCreatorMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreatorMapItem.ProtoReflect.Descriptor instead.
 func (*OrderCreatorMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{52}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *OrderCreatorMapItem) GetMapData() map[uint64]*OrderCreatorItem {
@@ -4486,7 +4914,7 @@ type OrderCreatorListResponseItem struct {
 
 func (x *OrderCreatorListResponseItem) Reset() {
 	*x = OrderCreatorListResponseItem{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[53]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4498,7 +4926,7 @@ func (x *OrderCreatorListResponseItem) String() string {
 func (*OrderCreatorListResponseItem) ProtoMessage() {}
 
 func (x *OrderCreatorListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[53]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4511,7 +4939,7 @@ func (x *OrderCreatorListResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreatorListResponseItem.ProtoReflect.Descriptor instead.
 func (*OrderCreatorListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{53}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *OrderCreatorListResponseItem) GetD() isOrderCreatorListResponseItem_D {
@@ -4552,7 +4980,7 @@ type OrderCreatorListResponse struct {
 
 func (x *OrderCreatorListResponse) Reset() {
 	*x = OrderCreatorListResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[54]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4564,7 +4992,7 @@ func (x *OrderCreatorListResponse) String() string {
 func (*OrderCreatorListResponse) ProtoMessage() {}
 
 func (x *OrderCreatorListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[54]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4577,7 +5005,7 @@ func (x *OrderCreatorListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreatorListResponse.ProtoReflect.Descriptor instead.
 func (*OrderCreatorListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{54}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *OrderCreatorListResponse) GetItems() []*OrderCreatorListResponseItem {
@@ -4646,7 +5074,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\vdocument_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
 	"documentId\x12$\n" +
 	"\bfilename\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\bfilename\x12%\n" +
-	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xba\t\n" +
+	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xeb\t\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -4674,7 +5102,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\rwarehouse_fee\x18\x1b \x01(\x01H\x00R\fwarehouseFee\x88\x01\x01\x127\n" +
 	"\x18platform_created_at_unix\x18\x1c \x01(\x03R\x15platformCreatedAtUnix\x12E\n" +
 	"\x1fplatform_shipment_deadline_unix\x18\x1d \x01(\x03R\x1cplatformShipmentDeadlineUnix\x12%\n" +
-	"\x0ebuyer_username\x18\x1e \x01(\tR\rbuyerUsernameB\x10\n" +
+	"\x0ebuyer_username\x18\x1e \x01(\tR\rbuyerUsername\x12/\n" +
+	"\x14date_entered_at_unix\x18  \x01(\x03R\x11dateEnteredAtUnixB\x10\n" +
 	"\x0e_warehouse_feeJ\x04\b\a\x10\bJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
 	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\xcc\a\n" +
@@ -4771,7 +5200,34 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x04done\x18\x02 \x01(\x03R\x04done\x12\x14\n" +
 	"\x05total\x18\x03 \x01(\x03R\x05total\x12!\n" +
 	"\fdownload_url\x18\x04 \x01(\tR\vdownloadUrl\x12\x1a\n" +
-	"\bfilename\x18\x05 \x01(\tR\bfilename\"\xdf\x01\n" +
+	"\bfilename\x18\x05 \x01(\tR\bfilename\"n\n" +
+	"\x10OrderImportTally\x12\x14\n" +
+	"\x05moved\x18\x01 \x01(\rR\x05moved\x12#\n" +
+	"\ralready_there\x18\x02 \x01(\rR\falreadyThere\x12\x1f\n" +
+	"\vnot_applied\x18\x03 \x01(\rR\n" +
+	"notApplied\"\xa0\x01\n" +
+	"\x18ShopeeOrderImportRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
+	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12/\n" +
+	"\ffile_content\x18\x03 \x01(\fB\f\xbaH\tz\a\x10\x01\x18\x80\x80\x80\x05R\vfileContent:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"\xde\x01\n" +
+	"\x19ShopeeOrderImportResponse\x12?\n" +
+	"\x05level\x18\x01 \x01(\x0e2).warehouse.selling.v1.OrderImportLogLevelR\x05level\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x12\n" +
+	"\x04step\x18\x03 \x01(\rR\x04step\x12\x14\n" +
+	"\x05count\x18\x04 \x01(\rR\x05count\x12<\n" +
+	"\x05tally\x18\x05 \x01(\v2&.warehouse.selling.v1.OrderImportTallyR\x05tally\"\xa0\x01\n" +
+	"\x18TiktokOrderImportRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
+	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12/\n" +
+	"\ffile_content\x18\x03 \x01(\fB\f\xbaH\tz\a\x10\x01\x18\x80\x80\x80\x05R\vfileContent:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"\xde\x01\n" +
+	"\x19TiktokOrderImportResponse\x12?\n" +
+	"\x05level\x18\x01 \x01(\x0e2).warehouse.selling.v1.OrderImportLogLevelR\x05level\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x12\n" +
+	"\x04step\x18\x03 \x01(\rR\x04step\x12\x14\n" +
+	"\x05count\x18\x04 \x01(\rR\x05count\x12<\n" +
+	"\x05tally\x18\x05 \x01(\v2&.warehouse.selling.v1.OrderImportTallyR\x05tally\"\xdf\x01\n" +
 	"\x18OrderStatusChangeRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x120\n" +
 	"\torder_ids\x18\x02 \x03(\x04B\x13\xbaH\x10\x92\x01\r\b\x01\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\borderIds\x12=\n" +
@@ -4955,11 +5411,16 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x11OrderTimelineFrom\x12#\n" +
 	"\x1fORDER_TIMELINE_FROM_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dORDER_TIMELINE_FROM_WAREHOUSE\x10\x01\x12\x1f\n" +
-	"\x1bORDER_TIMELINE_FROM_SELLING\x10\x02*w\n" +
+	"\x1bORDER_TIMELINE_FROM_SELLING\x10\x02*\xb8\x02\n" +
 	"\x0eOrderDateField\x12 \n" +
 	"\x1cORDER_DATE_FIELD_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18ORDER_DATE_FIELD_CREATED\x10\x01\x12%\n" +
-	"!ORDER_DATE_FIELD_PLATFORM_CREATED\x10\x02*{\n" +
+	"!ORDER_DATE_FIELD_PLATFORM_CREATED\x10\x02\x12&\n" +
+	"\"ORDER_DATE_FIELD_ENTERED_PROCESSED\x10\x03\x12#\n" +
+	"\x1fORDER_DATE_FIELD_ENTERED_PICKED\x10\x04\x12%\n" +
+	"!ORDER_DATE_FIELD_ENTERED_SHIPPING\x10\x05\x12&\n" +
+	"\"ORDER_DATE_FIELD_ENTERED_COMPLETED\x10\x06\x12#\n" +
+	"\x1fORDER_DATE_FIELD_ENTERED_RETURN\x10\a*{\n" +
 	"\x11OrderListDataType\x12$\n" +
 	" ORDER_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cORDER_LIST_DATA_TYPE_GENERAL\x10\x01\x12\x1e\n" +
@@ -4971,7 +5432,12 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x0fOrderExportView\x12!\n" +
 	"\x1dORDER_EXPORT_VIEW_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18ORDER_EXPORT_VIEW_SELLER\x10\x01\x12\x1f\n" +
-	"\x1bORDER_EXPORT_VIEW_WAREHOUSE\x10\x02*\x7f\n" +
+	"\x1bORDER_EXPORT_VIEW_WAREHOUSE\x10\x02*\xa1\x01\n" +
+	"\x13OrderImportLogLevel\x12&\n" +
+	"\"ORDER_IMPORT_LOG_LEVEL_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bORDER_IMPORT_LOG_LEVEL_INFO\x10\x01\x12\x1f\n" +
+	"\x1bORDER_IMPORT_LOG_LEVEL_WARN\x10\x02\x12 \n" +
+	"\x1cORDER_IMPORT_LOG_LEVEL_ERROR\x10\x03*\x7f\n" +
 	"\x1cOrderProductActivityDataType\x120\n" +
 	",ORDER_PRODUCT_ACTIVITY_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")ORDER_PRODUCT_ACTIVITY_DATA_TYPE_ACTIVITY\x10\x01*\x7f\n" +
@@ -4983,7 +5449,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"$ORDER_CREATOR_LIST_DATA_TYPE_CREATOR\x10\x01*V\n" +
 	"\x10OrderCreatorSort\x12\"\n" +
 	"\x1eORDER_CREATOR_SORT_UNSPECIFIED\x10\x00\x12\x1e\n" +
-	"\x1aORDER_CREATOR_SORT_LAST_AT\x10\x012\xaf\v\n" +
+	"\x1aORDER_CREATOR_SORT_LAST_AT\x10\x012\x9f\r\n" +
 	"\fOrderService\x12b\n" +
 	"\vOrderCreate\x12(.warehouse.selling.v1.OrderCreateRequest\x1a).warehouse.selling.v1.OrderCreateResponse\x12\\\n" +
 	"\tOrderList\x12&.warehouse.selling.v1.OrderListRequest\x1a'.warehouse.selling.v1.OrderListResponse\x12b\n" +
@@ -4992,7 +5458,9 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\vOrderExport\x12(.warehouse.selling.v1.OrderExportRequest\x1a).warehouse.selling.v1.OrderExportResponse0\x01\x12t\n" +
 	"\x11OrderStatusChange\x12..warehouse.selling.v1.OrderStatusChangeRequest\x1a/.warehouse.selling.v1.OrderStatusChangeResponse\x12n\n" +
 	"\x0fOrderNoteCreate\x12,.warehouse.selling.v1.OrderNoteCreateRequest\x1a-.warehouse.selling.v1.OrderNoteCreateResponse\x12w\n" +
-	"\x12OrderReceiptUpdate\x12/.warehouse.selling.v1.OrderReceiptUpdateRequest\x1a0.warehouse.selling.v1.OrderReceiptUpdateResponse\x12\x8c\x01\n" +
+	"\x12OrderReceiptUpdate\x12/.warehouse.selling.v1.OrderReceiptUpdateRequest\x1a0.warehouse.selling.v1.OrderReceiptUpdateResponse\x12v\n" +
+	"\x11ShopeeOrderImport\x12..warehouse.selling.v1.ShopeeOrderImportRequest\x1a/.warehouse.selling.v1.ShopeeOrderImportResponse0\x01\x12v\n" +
+	"\x11TiktokOrderImport\x12..warehouse.selling.v1.TiktokOrderImportRequest\x1a/.warehouse.selling.v1.TiktokOrderImportResponse0\x01\x12\x8c\x01\n" +
 	"\x19OrderProductActivityByIds\x126.warehouse.selling.v1.OrderProductActivityByIdsRequest\x1a7.warehouse.selling.v1.OrderProductActivityByIdsResponse\x12t\n" +
 	"\x11OrderActivityStat\x12..warehouse.selling.v1.OrderActivityStatRequest\x1a/.warehouse.selling.v1.OrderActivityStatResponse\x12\\\n" +
 	"\tOrderStat\x12&.warehouse.selling.v1.OrderStatRequest\x1a'.warehouse.selling.v1.OrderStatResponse\x12z\n" +
@@ -5011,8 +5479,8 @@ func file_warehouse_selling_v1_order_proto_rawDescGZIP() []byte {
 	return file_warehouse_selling_v1_order_proto_rawDescData
 }
 
-var file_warehouse_selling_v1_order_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
-var file_warehouse_selling_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 61)
+var file_warehouse_selling_v1_order_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
+var file_warehouse_selling_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
 var file_warehouse_selling_v1_order_proto_goTypes = []any{
 	(OrderStatus)(0),                              // 0: warehouse.selling.v1.OrderStatus
 	(OrderTimelineFrom)(0),                        // 1: warehouse.selling.v1.OrderTimelineFrom
@@ -5020,182 +5488,196 @@ var file_warehouse_selling_v1_order_proto_goTypes = []any{
 	(OrderListDataType)(0),                        // 3: warehouse.selling.v1.OrderListDataType
 	(OrderRowSort)(0),                             // 4: warehouse.selling.v1.OrderRowSort
 	(OrderExportView)(0),                          // 5: warehouse.selling.v1.OrderExportView
-	(OrderProductActivityDataType)(0),             // 6: warehouse.selling.v1.OrderProductActivityDataType
-	(OrderByExternalRefsDataType)(0),              // 7: warehouse.selling.v1.OrderByExternalRefsDataType
-	(OrderCreatorListDataType)(0),                 // 8: warehouse.selling.v1.OrderCreatorListDataType
-	(OrderCreatorSort)(0),                         // 9: warehouse.selling.v1.OrderCreatorSort
-	(*OrderTimelineLog)(nil),                      // 10: warehouse.selling.v1.OrderTimelineLog
-	(*OrderItem)(nil),                             // 11: warehouse.selling.v1.OrderItem
-	(*OrderAddress)(nil),                          // 12: warehouse.selling.v1.OrderAddress
-	(*OrderReceipt)(nil),                          // 13: warehouse.selling.v1.OrderReceipt
-	(*Order)(nil),                                 // 14: warehouse.selling.v1.Order
-	(*OrderCreateRequest)(nil),                    // 15: warehouse.selling.v1.OrderCreateRequest
-	(*OrderCreateResponse)(nil),                   // 16: warehouse.selling.v1.OrderCreateResponse
-	(*OrderListRequest)(nil),                      // 17: warehouse.selling.v1.OrderListRequest
-	(*OrderListFilter)(nil),                       // 18: warehouse.selling.v1.OrderListFilter
-	(*OrderListFilterSort)(nil),                   // 19: warehouse.selling.v1.OrderListFilterSort
-	(*OrderRowMapItem)(nil),                       // 20: warehouse.selling.v1.OrderRowMapItem
-	(*OrderListResponseItem)(nil),                 // 21: warehouse.selling.v1.OrderListResponseItem
-	(*OrderListResponse)(nil),                     // 22: warehouse.selling.v1.OrderListResponse
-	(*OrderDetailRequest)(nil),                    // 23: warehouse.selling.v1.OrderDetailRequest
-	(*OrderDetailResponse)(nil),                   // 24: warehouse.selling.v1.OrderDetailResponse
-	(*OrderCancelRequest)(nil),                    // 25: warehouse.selling.v1.OrderCancelRequest
-	(*OrderCancelResponse)(nil),                   // 26: warehouse.selling.v1.OrderCancelResponse
-	(*OrderExportRequest)(nil),                    // 27: warehouse.selling.v1.OrderExportRequest
-	(*OrderExportResponse)(nil),                   // 28: warehouse.selling.v1.OrderExportResponse
-	(*OrderStatusChangeRequest)(nil),              // 29: warehouse.selling.v1.OrderStatusChangeRequest
-	(*OrderStatusChangeResponse)(nil),             // 30: warehouse.selling.v1.OrderStatusChangeResponse
-	(*OrderStatusChangeResult)(nil),               // 31: warehouse.selling.v1.OrderStatusChangeResult
-	(*OrderNoteCreateRequest)(nil),                // 32: warehouse.selling.v1.OrderNoteCreateRequest
-	(*OrderNoteCreateResponse)(nil),               // 33: warehouse.selling.v1.OrderNoteCreateResponse
-	(*OrderReceiptUpdateRequest)(nil),             // 34: warehouse.selling.v1.OrderReceiptUpdateRequest
-	(*OrderReceiptUpdateResponse)(nil),            // 35: warehouse.selling.v1.OrderReceiptUpdateResponse
-	(*OrderProductActivityItem)(nil),              // 36: warehouse.selling.v1.OrderProductActivityItem
-	(*OrderProductActivityMapItem)(nil),           // 37: warehouse.selling.v1.OrderProductActivityMapItem
-	(*OrderProductActivityByIdsFilter)(nil),       // 38: warehouse.selling.v1.OrderProductActivityByIdsFilter
-	(*OrderProductActivityByIdsRequest)(nil),      // 39: warehouse.selling.v1.OrderProductActivityByIdsRequest
-	(*OrderProductActivityByIdsResponseItem)(nil), // 40: warehouse.selling.v1.OrderProductActivityByIdsResponseItem
-	(*OrderProductActivityByIdsResponseList)(nil), // 41: warehouse.selling.v1.OrderProductActivityByIdsResponseList
-	(*OrderProductActivityByIdsResponse)(nil),     // 42: warehouse.selling.v1.OrderProductActivityByIdsResponse
-	(*OrderActivityStatRequest)(nil),              // 43: warehouse.selling.v1.OrderActivityStatRequest
-	(*OrderActivityPreview)(nil),                  // 44: warehouse.selling.v1.OrderActivityPreview
-	(*OrderActivityStatResponse)(nil),             // 45: warehouse.selling.v1.OrderActivityStatResponse
-	(*OrderStatFilter)(nil),                       // 46: warehouse.selling.v1.OrderStatFilter
-	(*OrderStatRequest)(nil),                      // 47: warehouse.selling.v1.OrderStatRequest
-	(*OrderStatusCount)(nil),                      // 48: warehouse.selling.v1.OrderStatusCount
-	(*OrderStatPreview)(nil),                      // 49: warehouse.selling.v1.OrderStatPreview
-	(*OrderStatResponse)(nil),                     // 50: warehouse.selling.v1.OrderStatResponse
-	(*OrderByExternalRefsFilter)(nil),             // 51: warehouse.selling.v1.OrderByExternalRefsFilter
-	(*OrderByExternalRefsRequest)(nil),            // 52: warehouse.selling.v1.OrderByExternalRefsRequest
-	(*OrderRefItem)(nil),                          // 53: warehouse.selling.v1.OrderRefItem
-	(*OrderRefMapItem)(nil),                       // 54: warehouse.selling.v1.OrderRefMapItem
-	(*OrderByExternalRefsResponseItem)(nil),       // 55: warehouse.selling.v1.OrderByExternalRefsResponseItem
-	(*OrderByExternalRefsResponseList)(nil),       // 56: warehouse.selling.v1.OrderByExternalRefsResponseList
-	(*OrderByExternalRefsResponse)(nil),           // 57: warehouse.selling.v1.OrderByExternalRefsResponse
-	(*OrderCreatorListFilter)(nil),                // 58: warehouse.selling.v1.OrderCreatorListFilter
-	(*OrderCreatorListFilterSort)(nil),            // 59: warehouse.selling.v1.OrderCreatorListFilterSort
-	(*OrderCreatorListRequest)(nil),               // 60: warehouse.selling.v1.OrderCreatorListRequest
-	(*OrderCreatorItem)(nil),                      // 61: warehouse.selling.v1.OrderCreatorItem
-	(*OrderCreatorMapItem)(nil),                   // 62: warehouse.selling.v1.OrderCreatorMapItem
-	(*OrderCreatorListResponseItem)(nil),          // 63: warehouse.selling.v1.OrderCreatorListResponseItem
-	(*OrderCreatorListResponse)(nil),              // 64: warehouse.selling.v1.OrderCreatorListResponse
-	nil,                                           // 65: warehouse.selling.v1.OrderRowMapItem.MapDataEntry
-	nil,                                           // 66: warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry
-	nil,                                           // 67: warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry
-	nil,                                           // 68: warehouse.selling.v1.OrderRefMapItem.MapDataEntry
-	nil,                                           // 69: warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry
-	nil,                                           // 70: warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry
-	(*v1.CommonPagination)(nil),                   // 71: warehouse.common.v1.CommonPagination
-	(v11.Marketplace)(0),                          // 72: warehouse.marketplace.v1.Marketplace
-	(v1.CommonSortType)(0),                        // 73: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),                           // 74: warehouse.common.v1.GeneralSort
-	(*v1.GeneralMapItem)(nil),                     // 75: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),                           // 76: warehouse.common.v1.PageInfo
+	(OrderImportLogLevel)(0),                      // 6: warehouse.selling.v1.OrderImportLogLevel
+	(OrderProductActivityDataType)(0),             // 7: warehouse.selling.v1.OrderProductActivityDataType
+	(OrderByExternalRefsDataType)(0),              // 8: warehouse.selling.v1.OrderByExternalRefsDataType
+	(OrderCreatorListDataType)(0),                 // 9: warehouse.selling.v1.OrderCreatorListDataType
+	(OrderCreatorSort)(0),                         // 10: warehouse.selling.v1.OrderCreatorSort
+	(*OrderTimelineLog)(nil),                      // 11: warehouse.selling.v1.OrderTimelineLog
+	(*OrderItem)(nil),                             // 12: warehouse.selling.v1.OrderItem
+	(*OrderAddress)(nil),                          // 13: warehouse.selling.v1.OrderAddress
+	(*OrderReceipt)(nil),                          // 14: warehouse.selling.v1.OrderReceipt
+	(*Order)(nil),                                 // 15: warehouse.selling.v1.Order
+	(*OrderCreateRequest)(nil),                    // 16: warehouse.selling.v1.OrderCreateRequest
+	(*OrderCreateResponse)(nil),                   // 17: warehouse.selling.v1.OrderCreateResponse
+	(*OrderListRequest)(nil),                      // 18: warehouse.selling.v1.OrderListRequest
+	(*OrderListFilter)(nil),                       // 19: warehouse.selling.v1.OrderListFilter
+	(*OrderListFilterSort)(nil),                   // 20: warehouse.selling.v1.OrderListFilterSort
+	(*OrderRowMapItem)(nil),                       // 21: warehouse.selling.v1.OrderRowMapItem
+	(*OrderListResponseItem)(nil),                 // 22: warehouse.selling.v1.OrderListResponseItem
+	(*OrderListResponse)(nil),                     // 23: warehouse.selling.v1.OrderListResponse
+	(*OrderDetailRequest)(nil),                    // 24: warehouse.selling.v1.OrderDetailRequest
+	(*OrderDetailResponse)(nil),                   // 25: warehouse.selling.v1.OrderDetailResponse
+	(*OrderCancelRequest)(nil),                    // 26: warehouse.selling.v1.OrderCancelRequest
+	(*OrderCancelResponse)(nil),                   // 27: warehouse.selling.v1.OrderCancelResponse
+	(*OrderExportRequest)(nil),                    // 28: warehouse.selling.v1.OrderExportRequest
+	(*OrderExportResponse)(nil),                   // 29: warehouse.selling.v1.OrderExportResponse
+	(*OrderImportTally)(nil),                      // 30: warehouse.selling.v1.OrderImportTally
+	(*ShopeeOrderImportRequest)(nil),              // 31: warehouse.selling.v1.ShopeeOrderImportRequest
+	(*ShopeeOrderImportResponse)(nil),             // 32: warehouse.selling.v1.ShopeeOrderImportResponse
+	(*TiktokOrderImportRequest)(nil),              // 33: warehouse.selling.v1.TiktokOrderImportRequest
+	(*TiktokOrderImportResponse)(nil),             // 34: warehouse.selling.v1.TiktokOrderImportResponse
+	(*OrderStatusChangeRequest)(nil),              // 35: warehouse.selling.v1.OrderStatusChangeRequest
+	(*OrderStatusChangeResponse)(nil),             // 36: warehouse.selling.v1.OrderStatusChangeResponse
+	(*OrderStatusChangeResult)(nil),               // 37: warehouse.selling.v1.OrderStatusChangeResult
+	(*OrderNoteCreateRequest)(nil),                // 38: warehouse.selling.v1.OrderNoteCreateRequest
+	(*OrderNoteCreateResponse)(nil),               // 39: warehouse.selling.v1.OrderNoteCreateResponse
+	(*OrderReceiptUpdateRequest)(nil),             // 40: warehouse.selling.v1.OrderReceiptUpdateRequest
+	(*OrderReceiptUpdateResponse)(nil),            // 41: warehouse.selling.v1.OrderReceiptUpdateResponse
+	(*OrderProductActivityItem)(nil),              // 42: warehouse.selling.v1.OrderProductActivityItem
+	(*OrderProductActivityMapItem)(nil),           // 43: warehouse.selling.v1.OrderProductActivityMapItem
+	(*OrderProductActivityByIdsFilter)(nil),       // 44: warehouse.selling.v1.OrderProductActivityByIdsFilter
+	(*OrderProductActivityByIdsRequest)(nil),      // 45: warehouse.selling.v1.OrderProductActivityByIdsRequest
+	(*OrderProductActivityByIdsResponseItem)(nil), // 46: warehouse.selling.v1.OrderProductActivityByIdsResponseItem
+	(*OrderProductActivityByIdsResponseList)(nil), // 47: warehouse.selling.v1.OrderProductActivityByIdsResponseList
+	(*OrderProductActivityByIdsResponse)(nil),     // 48: warehouse.selling.v1.OrderProductActivityByIdsResponse
+	(*OrderActivityStatRequest)(nil),              // 49: warehouse.selling.v1.OrderActivityStatRequest
+	(*OrderActivityPreview)(nil),                  // 50: warehouse.selling.v1.OrderActivityPreview
+	(*OrderActivityStatResponse)(nil),             // 51: warehouse.selling.v1.OrderActivityStatResponse
+	(*OrderStatFilter)(nil),                       // 52: warehouse.selling.v1.OrderStatFilter
+	(*OrderStatRequest)(nil),                      // 53: warehouse.selling.v1.OrderStatRequest
+	(*OrderStatusCount)(nil),                      // 54: warehouse.selling.v1.OrderStatusCount
+	(*OrderStatPreview)(nil),                      // 55: warehouse.selling.v1.OrderStatPreview
+	(*OrderStatResponse)(nil),                     // 56: warehouse.selling.v1.OrderStatResponse
+	(*OrderByExternalRefsFilter)(nil),             // 57: warehouse.selling.v1.OrderByExternalRefsFilter
+	(*OrderByExternalRefsRequest)(nil),            // 58: warehouse.selling.v1.OrderByExternalRefsRequest
+	(*OrderRefItem)(nil),                          // 59: warehouse.selling.v1.OrderRefItem
+	(*OrderRefMapItem)(nil),                       // 60: warehouse.selling.v1.OrderRefMapItem
+	(*OrderByExternalRefsResponseItem)(nil),       // 61: warehouse.selling.v1.OrderByExternalRefsResponseItem
+	(*OrderByExternalRefsResponseList)(nil),       // 62: warehouse.selling.v1.OrderByExternalRefsResponseList
+	(*OrderByExternalRefsResponse)(nil),           // 63: warehouse.selling.v1.OrderByExternalRefsResponse
+	(*OrderCreatorListFilter)(nil),                // 64: warehouse.selling.v1.OrderCreatorListFilter
+	(*OrderCreatorListFilterSort)(nil),            // 65: warehouse.selling.v1.OrderCreatorListFilterSort
+	(*OrderCreatorListRequest)(nil),               // 66: warehouse.selling.v1.OrderCreatorListRequest
+	(*OrderCreatorItem)(nil),                      // 67: warehouse.selling.v1.OrderCreatorItem
+	(*OrderCreatorMapItem)(nil),                   // 68: warehouse.selling.v1.OrderCreatorMapItem
+	(*OrderCreatorListResponseItem)(nil),          // 69: warehouse.selling.v1.OrderCreatorListResponseItem
+	(*OrderCreatorListResponse)(nil),              // 70: warehouse.selling.v1.OrderCreatorListResponse
+	nil,                                           // 71: warehouse.selling.v1.OrderRowMapItem.MapDataEntry
+	nil,                                           // 72: warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry
+	nil,                                           // 73: warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry
+	nil,                                           // 74: warehouse.selling.v1.OrderRefMapItem.MapDataEntry
+	nil,                                           // 75: warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry
+	nil,                                           // 76: warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry
+	(*v1.CommonPagination)(nil),                   // 77: warehouse.common.v1.CommonPagination
+	(v11.Marketplace)(0),                          // 78: warehouse.marketplace.v1.Marketplace
+	(v1.CommonSortType)(0),                        // 79: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),                           // 80: warehouse.common.v1.GeneralSort
+	(*v1.GeneralMapItem)(nil),                     // 81: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),                           // 82: warehouse.common.v1.PageInfo
 }
 var file_warehouse_selling_v1_order_proto_depIdxs = []int32{
 	0,  // 0: warehouse.selling.v1.OrderTimelineLog.status:type_name -> warehouse.selling.v1.OrderStatus
 	1,  // 1: warehouse.selling.v1.OrderTimelineLog.from:type_name -> warehouse.selling.v1.OrderTimelineFrom
 	0,  // 2: warehouse.selling.v1.Order.status:type_name -> warehouse.selling.v1.OrderStatus
-	11, // 3: warehouse.selling.v1.Order.items:type_name -> warehouse.selling.v1.OrderItem
-	10, // 4: warehouse.selling.v1.Order.timeline_logs:type_name -> warehouse.selling.v1.OrderTimelineLog
-	12, // 5: warehouse.selling.v1.Order.address:type_name -> warehouse.selling.v1.OrderAddress
-	13, // 6: warehouse.selling.v1.Order.receipt:type_name -> warehouse.selling.v1.OrderReceipt
-	13, // 7: warehouse.selling.v1.OrderCreateRequest.receipt:type_name -> warehouse.selling.v1.OrderReceipt
-	11, // 8: warehouse.selling.v1.OrderCreateRequest.items:type_name -> warehouse.selling.v1.OrderItem
-	12, // 9: warehouse.selling.v1.OrderCreateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
-	14, // 10: warehouse.selling.v1.OrderCreateResponse.order:type_name -> warehouse.selling.v1.Order
-	18, // 11: warehouse.selling.v1.OrderListRequest.filter:type_name -> warehouse.selling.v1.OrderListFilter
-	19, // 12: warehouse.selling.v1.OrderListRequest.sort:type_name -> warehouse.selling.v1.OrderListFilterSort
+	12, // 3: warehouse.selling.v1.Order.items:type_name -> warehouse.selling.v1.OrderItem
+	11, // 4: warehouse.selling.v1.Order.timeline_logs:type_name -> warehouse.selling.v1.OrderTimelineLog
+	13, // 5: warehouse.selling.v1.Order.address:type_name -> warehouse.selling.v1.OrderAddress
+	14, // 6: warehouse.selling.v1.Order.receipt:type_name -> warehouse.selling.v1.OrderReceipt
+	14, // 7: warehouse.selling.v1.OrderCreateRequest.receipt:type_name -> warehouse.selling.v1.OrderReceipt
+	12, // 8: warehouse.selling.v1.OrderCreateRequest.items:type_name -> warehouse.selling.v1.OrderItem
+	13, // 9: warehouse.selling.v1.OrderCreateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
+	15, // 10: warehouse.selling.v1.OrderCreateResponse.order:type_name -> warehouse.selling.v1.Order
+	19, // 11: warehouse.selling.v1.OrderListRequest.filter:type_name -> warehouse.selling.v1.OrderListFilter
+	20, // 12: warehouse.selling.v1.OrderListRequest.sort:type_name -> warehouse.selling.v1.OrderListFilterSort
 	3,  // 13: warehouse.selling.v1.OrderListRequest.data_request:type_name -> warehouse.selling.v1.OrderListDataType
-	71, // 14: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	77, // 14: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.CommonPagination
 	0,  // 15: warehouse.selling.v1.OrderListFilter.status:type_name -> warehouse.selling.v1.OrderStatus
-	72, // 16: warehouse.selling.v1.OrderListFilter.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	78, // 16: warehouse.selling.v1.OrderListFilter.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
 	2,  // 17: warehouse.selling.v1.OrderListFilter.date_field:type_name -> warehouse.selling.v1.OrderDateField
-	73, // 18: warehouse.selling.v1.OrderListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	74, // 19: warehouse.selling.v1.OrderListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	79, // 18: warehouse.selling.v1.OrderListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	80, // 19: warehouse.selling.v1.OrderListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	4,  // 20: warehouse.selling.v1.OrderListFilterSort.order:type_name -> warehouse.selling.v1.OrderRowSort
-	65, // 21: warehouse.selling.v1.OrderRowMapItem.map_data:type_name -> warehouse.selling.v1.OrderRowMapItem.MapDataEntry
-	75, // 22: warehouse.selling.v1.OrderListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	20, // 23: warehouse.selling.v1.OrderListResponseItem.order:type_name -> warehouse.selling.v1.OrderRowMapItem
-	21, // 24: warehouse.selling.v1.OrderListResponse.items:type_name -> warehouse.selling.v1.OrderListResponseItem
-	76, // 25: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	14, // 26: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
-	14, // 27: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
-	18, // 28: warehouse.selling.v1.OrderExportRequest.filter:type_name -> warehouse.selling.v1.OrderListFilter
+	71, // 21: warehouse.selling.v1.OrderRowMapItem.map_data:type_name -> warehouse.selling.v1.OrderRowMapItem.MapDataEntry
+	81, // 22: warehouse.selling.v1.OrderListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	21, // 23: warehouse.selling.v1.OrderListResponseItem.order:type_name -> warehouse.selling.v1.OrderRowMapItem
+	22, // 24: warehouse.selling.v1.OrderListResponse.items:type_name -> warehouse.selling.v1.OrderListResponseItem
+	82, // 25: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	15, // 26: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
+	15, // 27: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
+	19, // 28: warehouse.selling.v1.OrderExportRequest.filter:type_name -> warehouse.selling.v1.OrderListFilter
 	5,  // 29: warehouse.selling.v1.OrderExportRequest.view:type_name -> warehouse.selling.v1.OrderExportView
-	0,  // 30: warehouse.selling.v1.OrderStatusChangeRequest.to:type_name -> warehouse.selling.v1.OrderStatus
-	31, // 31: warehouse.selling.v1.OrderStatusChangeResponse.results:type_name -> warehouse.selling.v1.OrderStatusChangeResult
-	0,  // 32: warehouse.selling.v1.OrderStatusChangeResult.status:type_name -> warehouse.selling.v1.OrderStatus
-	10, // 33: warehouse.selling.v1.OrderNoteCreateResponse.log:type_name -> warehouse.selling.v1.OrderTimelineLog
-	13, // 34: warehouse.selling.v1.OrderReceiptUpdateRequest.receipt:type_name -> warehouse.selling.v1.OrderReceipt
-	14, // 35: warehouse.selling.v1.OrderReceiptUpdateResponse.order:type_name -> warehouse.selling.v1.Order
-	66, // 36: warehouse.selling.v1.OrderProductActivityMapItem.map_data:type_name -> warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry
-	38, // 37: warehouse.selling.v1.OrderProductActivityByIdsRequest.filter:type_name -> warehouse.selling.v1.OrderProductActivityByIdsFilter
-	6,  // 38: warehouse.selling.v1.OrderProductActivityByIdsRequest.data_request:type_name -> warehouse.selling.v1.OrderProductActivityDataType
-	37, // 39: warehouse.selling.v1.OrderProductActivityByIdsResponseItem.activity:type_name -> warehouse.selling.v1.OrderProductActivityMapItem
-	40, // 40: warehouse.selling.v1.OrderProductActivityByIdsResponseList.items:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponseItem
-	67, // 41: warehouse.selling.v1.OrderProductActivityByIdsResponse.items:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry
-	44, // 42: warehouse.selling.v1.OrderActivityStatResponse.preview:type_name -> warehouse.selling.v1.OrderActivityPreview
-	72, // 43: warehouse.selling.v1.OrderStatFilter.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
-	2,  // 44: warehouse.selling.v1.OrderStatFilter.date_field:type_name -> warehouse.selling.v1.OrderDateField
-	46, // 45: warehouse.selling.v1.OrderStatRequest.filter:type_name -> warehouse.selling.v1.OrderStatFilter
-	0,  // 46: warehouse.selling.v1.OrderStatusCount.status:type_name -> warehouse.selling.v1.OrderStatus
-	49, // 47: warehouse.selling.v1.OrderStatResponse.preview:type_name -> warehouse.selling.v1.OrderStatPreview
-	48, // 48: warehouse.selling.v1.OrderStatResponse.by_status:type_name -> warehouse.selling.v1.OrderStatusCount
-	51, // 49: warehouse.selling.v1.OrderByExternalRefsRequest.filter:type_name -> warehouse.selling.v1.OrderByExternalRefsFilter
-	7,  // 50: warehouse.selling.v1.OrderByExternalRefsRequest.data_request:type_name -> warehouse.selling.v1.OrderByExternalRefsDataType
-	0,  // 51: warehouse.selling.v1.OrderRefItem.status:type_name -> warehouse.selling.v1.OrderStatus
-	68, // 52: warehouse.selling.v1.OrderRefMapItem.map_data:type_name -> warehouse.selling.v1.OrderRefMapItem.MapDataEntry
-	54, // 53: warehouse.selling.v1.OrderByExternalRefsResponseItem.order_ref:type_name -> warehouse.selling.v1.OrderRefMapItem
-	55, // 54: warehouse.selling.v1.OrderByExternalRefsResponseList.items:type_name -> warehouse.selling.v1.OrderByExternalRefsResponseItem
-	69, // 55: warehouse.selling.v1.OrderByExternalRefsResponse.items:type_name -> warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry
-	73, // 56: warehouse.selling.v1.OrderCreatorListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	9,  // 57: warehouse.selling.v1.OrderCreatorListFilterSort.creator:type_name -> warehouse.selling.v1.OrderCreatorSort
-	58, // 58: warehouse.selling.v1.OrderCreatorListRequest.filter:type_name -> warehouse.selling.v1.OrderCreatorListFilter
-	59, // 59: warehouse.selling.v1.OrderCreatorListRequest.sort:type_name -> warehouse.selling.v1.OrderCreatorListFilterSort
-	8,  // 60: warehouse.selling.v1.OrderCreatorListRequest.data_request:type_name -> warehouse.selling.v1.OrderCreatorListDataType
-	71, // 61: warehouse.selling.v1.OrderCreatorListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	70, // 62: warehouse.selling.v1.OrderCreatorMapItem.map_data:type_name -> warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry
-	62, // 63: warehouse.selling.v1.OrderCreatorListResponseItem.creator:type_name -> warehouse.selling.v1.OrderCreatorMapItem
-	63, // 64: warehouse.selling.v1.OrderCreatorListResponse.items:type_name -> warehouse.selling.v1.OrderCreatorListResponseItem
-	76, // 65: warehouse.selling.v1.OrderCreatorListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	14, // 66: warehouse.selling.v1.OrderRowMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.Order
-	36, // 67: warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderProductActivityItem
-	41, // 68: warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponseList
-	53, // 69: warehouse.selling.v1.OrderRefMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderRefItem
-	56, // 70: warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderByExternalRefsResponseList
-	61, // 71: warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderCreatorItem
-	15, // 72: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
-	17, // 73: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
-	23, // 74: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
-	25, // 75: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
-	27, // 76: warehouse.selling.v1.OrderService.OrderExport:input_type -> warehouse.selling.v1.OrderExportRequest
-	29, // 77: warehouse.selling.v1.OrderService.OrderStatusChange:input_type -> warehouse.selling.v1.OrderStatusChangeRequest
-	32, // 78: warehouse.selling.v1.OrderService.OrderNoteCreate:input_type -> warehouse.selling.v1.OrderNoteCreateRequest
-	34, // 79: warehouse.selling.v1.OrderService.OrderReceiptUpdate:input_type -> warehouse.selling.v1.OrderReceiptUpdateRequest
-	39, // 80: warehouse.selling.v1.OrderService.OrderProductActivityByIds:input_type -> warehouse.selling.v1.OrderProductActivityByIdsRequest
-	43, // 81: warehouse.selling.v1.OrderService.OrderActivityStat:input_type -> warehouse.selling.v1.OrderActivityStatRequest
-	47, // 82: warehouse.selling.v1.OrderService.OrderStat:input_type -> warehouse.selling.v1.OrderStatRequest
-	52, // 83: warehouse.selling.v1.OrderService.OrderByExternalRefs:input_type -> warehouse.selling.v1.OrderByExternalRefsRequest
-	60, // 84: warehouse.selling.v1.OrderService.OrderCreatorList:input_type -> warehouse.selling.v1.OrderCreatorListRequest
-	16, // 85: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
-	22, // 86: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
-	24, // 87: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
-	26, // 88: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
-	28, // 89: warehouse.selling.v1.OrderService.OrderExport:output_type -> warehouse.selling.v1.OrderExportResponse
-	30, // 90: warehouse.selling.v1.OrderService.OrderStatusChange:output_type -> warehouse.selling.v1.OrderStatusChangeResponse
-	33, // 91: warehouse.selling.v1.OrderService.OrderNoteCreate:output_type -> warehouse.selling.v1.OrderNoteCreateResponse
-	35, // 92: warehouse.selling.v1.OrderService.OrderReceiptUpdate:output_type -> warehouse.selling.v1.OrderReceiptUpdateResponse
-	42, // 93: warehouse.selling.v1.OrderService.OrderProductActivityByIds:output_type -> warehouse.selling.v1.OrderProductActivityByIdsResponse
-	45, // 94: warehouse.selling.v1.OrderService.OrderActivityStat:output_type -> warehouse.selling.v1.OrderActivityStatResponse
-	50, // 95: warehouse.selling.v1.OrderService.OrderStat:output_type -> warehouse.selling.v1.OrderStatResponse
-	57, // 96: warehouse.selling.v1.OrderService.OrderByExternalRefs:output_type -> warehouse.selling.v1.OrderByExternalRefsResponse
-	64, // 97: warehouse.selling.v1.OrderService.OrderCreatorList:output_type -> warehouse.selling.v1.OrderCreatorListResponse
-	85, // [85:98] is the sub-list for method output_type
-	72, // [72:85] is the sub-list for method input_type
-	72, // [72:72] is the sub-list for extension type_name
-	72, // [72:72] is the sub-list for extension extendee
-	0,  // [0:72] is the sub-list for field type_name
+	6,  // 30: warehouse.selling.v1.ShopeeOrderImportResponse.level:type_name -> warehouse.selling.v1.OrderImportLogLevel
+	30, // 31: warehouse.selling.v1.ShopeeOrderImportResponse.tally:type_name -> warehouse.selling.v1.OrderImportTally
+	6,  // 32: warehouse.selling.v1.TiktokOrderImportResponse.level:type_name -> warehouse.selling.v1.OrderImportLogLevel
+	30, // 33: warehouse.selling.v1.TiktokOrderImportResponse.tally:type_name -> warehouse.selling.v1.OrderImportTally
+	0,  // 34: warehouse.selling.v1.OrderStatusChangeRequest.to:type_name -> warehouse.selling.v1.OrderStatus
+	37, // 35: warehouse.selling.v1.OrderStatusChangeResponse.results:type_name -> warehouse.selling.v1.OrderStatusChangeResult
+	0,  // 36: warehouse.selling.v1.OrderStatusChangeResult.status:type_name -> warehouse.selling.v1.OrderStatus
+	11, // 37: warehouse.selling.v1.OrderNoteCreateResponse.log:type_name -> warehouse.selling.v1.OrderTimelineLog
+	14, // 38: warehouse.selling.v1.OrderReceiptUpdateRequest.receipt:type_name -> warehouse.selling.v1.OrderReceipt
+	15, // 39: warehouse.selling.v1.OrderReceiptUpdateResponse.order:type_name -> warehouse.selling.v1.Order
+	72, // 40: warehouse.selling.v1.OrderProductActivityMapItem.map_data:type_name -> warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry
+	44, // 41: warehouse.selling.v1.OrderProductActivityByIdsRequest.filter:type_name -> warehouse.selling.v1.OrderProductActivityByIdsFilter
+	7,  // 42: warehouse.selling.v1.OrderProductActivityByIdsRequest.data_request:type_name -> warehouse.selling.v1.OrderProductActivityDataType
+	43, // 43: warehouse.selling.v1.OrderProductActivityByIdsResponseItem.activity:type_name -> warehouse.selling.v1.OrderProductActivityMapItem
+	46, // 44: warehouse.selling.v1.OrderProductActivityByIdsResponseList.items:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponseItem
+	73, // 45: warehouse.selling.v1.OrderProductActivityByIdsResponse.items:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry
+	50, // 46: warehouse.selling.v1.OrderActivityStatResponse.preview:type_name -> warehouse.selling.v1.OrderActivityPreview
+	78, // 47: warehouse.selling.v1.OrderStatFilter.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	2,  // 48: warehouse.selling.v1.OrderStatFilter.date_field:type_name -> warehouse.selling.v1.OrderDateField
+	52, // 49: warehouse.selling.v1.OrderStatRequest.filter:type_name -> warehouse.selling.v1.OrderStatFilter
+	0,  // 50: warehouse.selling.v1.OrderStatusCount.status:type_name -> warehouse.selling.v1.OrderStatus
+	55, // 51: warehouse.selling.v1.OrderStatResponse.preview:type_name -> warehouse.selling.v1.OrderStatPreview
+	54, // 52: warehouse.selling.v1.OrderStatResponse.by_status:type_name -> warehouse.selling.v1.OrderStatusCount
+	57, // 53: warehouse.selling.v1.OrderByExternalRefsRequest.filter:type_name -> warehouse.selling.v1.OrderByExternalRefsFilter
+	8,  // 54: warehouse.selling.v1.OrderByExternalRefsRequest.data_request:type_name -> warehouse.selling.v1.OrderByExternalRefsDataType
+	0,  // 55: warehouse.selling.v1.OrderRefItem.status:type_name -> warehouse.selling.v1.OrderStatus
+	74, // 56: warehouse.selling.v1.OrderRefMapItem.map_data:type_name -> warehouse.selling.v1.OrderRefMapItem.MapDataEntry
+	60, // 57: warehouse.selling.v1.OrderByExternalRefsResponseItem.order_ref:type_name -> warehouse.selling.v1.OrderRefMapItem
+	61, // 58: warehouse.selling.v1.OrderByExternalRefsResponseList.items:type_name -> warehouse.selling.v1.OrderByExternalRefsResponseItem
+	75, // 59: warehouse.selling.v1.OrderByExternalRefsResponse.items:type_name -> warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry
+	79, // 60: warehouse.selling.v1.OrderCreatorListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	10, // 61: warehouse.selling.v1.OrderCreatorListFilterSort.creator:type_name -> warehouse.selling.v1.OrderCreatorSort
+	64, // 62: warehouse.selling.v1.OrderCreatorListRequest.filter:type_name -> warehouse.selling.v1.OrderCreatorListFilter
+	65, // 63: warehouse.selling.v1.OrderCreatorListRequest.sort:type_name -> warehouse.selling.v1.OrderCreatorListFilterSort
+	9,  // 64: warehouse.selling.v1.OrderCreatorListRequest.data_request:type_name -> warehouse.selling.v1.OrderCreatorListDataType
+	77, // 65: warehouse.selling.v1.OrderCreatorListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	76, // 66: warehouse.selling.v1.OrderCreatorMapItem.map_data:type_name -> warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry
+	68, // 67: warehouse.selling.v1.OrderCreatorListResponseItem.creator:type_name -> warehouse.selling.v1.OrderCreatorMapItem
+	69, // 68: warehouse.selling.v1.OrderCreatorListResponse.items:type_name -> warehouse.selling.v1.OrderCreatorListResponseItem
+	82, // 69: warehouse.selling.v1.OrderCreatorListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	15, // 70: warehouse.selling.v1.OrderRowMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.Order
+	42, // 71: warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderProductActivityItem
+	47, // 72: warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponseList
+	59, // 73: warehouse.selling.v1.OrderRefMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderRefItem
+	62, // 74: warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderByExternalRefsResponseList
+	67, // 75: warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderCreatorItem
+	16, // 76: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
+	18, // 77: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
+	24, // 78: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
+	26, // 79: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
+	28, // 80: warehouse.selling.v1.OrderService.OrderExport:input_type -> warehouse.selling.v1.OrderExportRequest
+	35, // 81: warehouse.selling.v1.OrderService.OrderStatusChange:input_type -> warehouse.selling.v1.OrderStatusChangeRequest
+	38, // 82: warehouse.selling.v1.OrderService.OrderNoteCreate:input_type -> warehouse.selling.v1.OrderNoteCreateRequest
+	40, // 83: warehouse.selling.v1.OrderService.OrderReceiptUpdate:input_type -> warehouse.selling.v1.OrderReceiptUpdateRequest
+	31, // 84: warehouse.selling.v1.OrderService.ShopeeOrderImport:input_type -> warehouse.selling.v1.ShopeeOrderImportRequest
+	33, // 85: warehouse.selling.v1.OrderService.TiktokOrderImport:input_type -> warehouse.selling.v1.TiktokOrderImportRequest
+	45, // 86: warehouse.selling.v1.OrderService.OrderProductActivityByIds:input_type -> warehouse.selling.v1.OrderProductActivityByIdsRequest
+	49, // 87: warehouse.selling.v1.OrderService.OrderActivityStat:input_type -> warehouse.selling.v1.OrderActivityStatRequest
+	53, // 88: warehouse.selling.v1.OrderService.OrderStat:input_type -> warehouse.selling.v1.OrderStatRequest
+	58, // 89: warehouse.selling.v1.OrderService.OrderByExternalRefs:input_type -> warehouse.selling.v1.OrderByExternalRefsRequest
+	66, // 90: warehouse.selling.v1.OrderService.OrderCreatorList:input_type -> warehouse.selling.v1.OrderCreatorListRequest
+	17, // 91: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
+	23, // 92: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
+	25, // 93: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
+	27, // 94: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
+	29, // 95: warehouse.selling.v1.OrderService.OrderExport:output_type -> warehouse.selling.v1.OrderExportResponse
+	36, // 96: warehouse.selling.v1.OrderService.OrderStatusChange:output_type -> warehouse.selling.v1.OrderStatusChangeResponse
+	39, // 97: warehouse.selling.v1.OrderService.OrderNoteCreate:output_type -> warehouse.selling.v1.OrderNoteCreateResponse
+	41, // 98: warehouse.selling.v1.OrderService.OrderReceiptUpdate:output_type -> warehouse.selling.v1.OrderReceiptUpdateResponse
+	32, // 99: warehouse.selling.v1.OrderService.ShopeeOrderImport:output_type -> warehouse.selling.v1.ShopeeOrderImportResponse
+	34, // 100: warehouse.selling.v1.OrderService.TiktokOrderImport:output_type -> warehouse.selling.v1.TiktokOrderImportResponse
+	48, // 101: warehouse.selling.v1.OrderService.OrderProductActivityByIds:output_type -> warehouse.selling.v1.OrderProductActivityByIdsResponse
+	51, // 102: warehouse.selling.v1.OrderService.OrderActivityStat:output_type -> warehouse.selling.v1.OrderActivityStatResponse
+	56, // 103: warehouse.selling.v1.OrderService.OrderStat:output_type -> warehouse.selling.v1.OrderStatResponse
+	63, // 104: warehouse.selling.v1.OrderService.OrderByExternalRefs:output_type -> warehouse.selling.v1.OrderByExternalRefsResponse
+	70, // 105: warehouse.selling.v1.OrderService.OrderCreatorList:output_type -> warehouse.selling.v1.OrderCreatorListResponse
+	91, // [91:106] is the sub-list for method output_type
+	76, // [76:91] is the sub-list for method input_type
+	76, // [76:76] is the sub-list for extension type_name
+	76, // [76:76] is the sub-list for extension extendee
+	0,  // [0:76] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_order_proto_init() }
@@ -5213,17 +5695,17 @@ func file_warehouse_selling_v1_order_proto_init() {
 		(*OrderListResponseItem_General)(nil),
 		(*OrderListResponseItem_Order)(nil),
 	}
-	file_warehouse_selling_v1_order_proto_msgTypes[24].OneofWrappers = []any{}
-	file_warehouse_selling_v1_order_proto_msgTypes[30].OneofWrappers = []any{
+	file_warehouse_selling_v1_order_proto_msgTypes[29].OneofWrappers = []any{}
+	file_warehouse_selling_v1_order_proto_msgTypes[35].OneofWrappers = []any{
 		(*OrderProductActivityByIdsResponseItem_Activity)(nil),
 	}
-	file_warehouse_selling_v1_order_proto_msgTypes[45].OneofWrappers = []any{
+	file_warehouse_selling_v1_order_proto_msgTypes[50].OneofWrappers = []any{
 		(*OrderByExternalRefsResponseItem_OrderRef)(nil),
 	}
-	file_warehouse_selling_v1_order_proto_msgTypes[49].OneofWrappers = []any{
+	file_warehouse_selling_v1_order_proto_msgTypes[54].OneofWrappers = []any{
 		(*OrderCreatorListFilterSort_Creator)(nil),
 	}
-	file_warehouse_selling_v1_order_proto_msgTypes[53].OneofWrappers = []any{
+	file_warehouse_selling_v1_order_proto_msgTypes[58].OneofWrappers = []any{
 		(*OrderCreatorListResponseItem_Creator)(nil),
 	}
 	type x struct{}
@@ -5231,8 +5713,8 @@ func file_warehouse_selling_v1_order_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_order_proto_rawDesc), len(file_warehouse_selling_v1_order_proto_rawDesc)),
-			NumEnums:      10,
-			NumMessages:   61,
+			NumEnums:      11,
+			NumMessages:   66,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

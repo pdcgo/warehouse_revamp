@@ -174,3 +174,4 @@ Cost: 8 bytes a row, and a one-time back-fill that rewrites every order row (run
 | Date | Median (team 50k) | Queries | Change |
 | --- | --- | --- | --- |
 | 2026-10-22 | 190 ms (root 252 ms) | 1 | first written audit: the units (`item_count`, a per-order SubPlan), the measurable FILTERs, the `warehouse_id` filter and the `receipt` search leg. Measured over 60 000 orders / 150 000 lines |
+| 2026-10-30 | 25.3 ms (status-date window) | 1 | the status-date window shares `scopedOrders` — measured and proposed under [OrderList finding 5](OrderList.md#5-a-status-date-window-seq-scans-the-timeline-): 4.0 ms with the index |

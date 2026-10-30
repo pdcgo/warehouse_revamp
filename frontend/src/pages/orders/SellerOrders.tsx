@@ -92,10 +92,21 @@ const CREATOR_CODEC = optionalCodec(idCodec);
 // THE DATES THE WINDOW CAN MEAN (`the-order-list-filters-by-seven-dates`) — when it was created, the order date the form
 // asks for, and the FIRST time it entered each status a person asks "when" about. The others (Menunggu, Dikirim,
 // Bermasalah, Hilang, Retur diterima, Batal) are left out: nobody looks for "the orders that went missing last week" by
-// the day they went missing, and seven pills already wrap twice. Only `created` reaches the server — see `pending.ts`.
+// the day they went missing, and seven pills already wrap twice. Every one reaches the server as its `OrderDateField`.
 const ORDER_DATE_TYPES = ["created", "mp", "processed", "picked", "shipping", "completed", "return"] as const;
 type OrderDateType = (typeof ORDER_DATE_TYPES)[number];
 const DATE_TYPE_CODEC = oneOfCodec<OrderDateType>([...ORDER_DATE_TYPES]);
+
+// What each date type asks the server to read: the row's own dates, or the FIRST timeline row into a status.
+const DATE_FIELDS: Record<OrderDateType, OrderDateField> = {
+  created: OrderDateField.CREATED,
+  mp: OrderDateField.PLATFORM_CREATED,
+  processed: OrderDateField.ENTERED_PROCESSED,
+  picked: OrderDateField.ENTERED_PICKED,
+  shipping: OrderDateField.ENTERED_SHIPPING,
+  completed: OrderDateField.ENTERED_COMPLETED,
+  return: OrderDateField.ENTERED_RETURN,
+};
 
 /** The status a date type is the entry into, or undefined for Dibuat and Tanggal order. */
 function dateTypeStage(type: OrderDateType) {
@@ -134,8 +145,7 @@ export function SellerOrdersPage() {
   const [pageSize, setPageSize] = useState(20);
 
   // The filters above the tabs. Every one REACHES THE SERVER — the list is paginated, so a client-side filter
-  // would narrow the loaded page only and leave the pager counting the whole set. Only five of the date filter's seven
-  // dates reach nothing yet (`dateType` in pending.ts).
+  // would narrow the loaded page only and leave the pager counting the whole set — the date filter's seven dates included.
   const [search, setSearch] = useUrlState("q", "", textCodec);
   const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
   const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
@@ -172,13 +182,10 @@ export function SellerOrdersPage() {
   const debouncedSearch = useDebounced(search.trim());
 
   const filters: OrderFilters = useMemo(() => {
-    // ⚠ ONLY DIBUAT AND TANGGAL ORDER SEND A WINDOW. `OrderListFilter` dates the row's created_at or the platform's
-    // (`date_field`, the-date-filter-switches-created-or-platform) and nothing else; sending the window for a status date
-    // would narrow by the wrong date while the trigger named the right one — so it narrows nothing, and the pill's mark
-    // says so (`dateType` in pending.ts).
-    const windowed = dateType === "created" || dateType === "mp";
-    const { fromUnix, toUnix } = windowed ? resolveRange(range) : { fromUnix: 0n, toUnix: 0n };
-    const dateField = dateType === "mp" ? OrderDateField.PLATFORM_CREATED : OrderDateField.CREATED;
+    // THE WINDOW READS THE DATE THE TRIGGER NAMES (the-order-list-filters-by-seven-dates): the row's created_at, the
+    // platform's order date, or the first time the order entered a status — read off its timeline by the server.
+    const { fromUnix, toUnix } = resolveRange(range);
+    const dateField = DATE_FIELDS[dateType];
 
     return {
       search: debouncedSearch,
@@ -288,17 +295,19 @@ export function SellerOrdersPage() {
       : undefined;
   }
 
-  // WHEN IT ENTERED THE STATUS THE COLUMN NAMES (a-filtered-status-shows-its-own-date) — the order's own
-  // `status_at_unix`, which dates its CURRENT status. So a row has the date only while it IS in that stage: under a
-  // status tab, every row; under a status date picked on another tab, only the rows still in it — the rest are blank,
-  // because the list does not carry the timeline (`dateType` in pending.ts). 0 is "no timeline row records the move",
-  // shown as nothing rather than as 1970.
-  function stageDateOf(status: OrderStatus, statusAt: bigint) {
-    if (!dateStage || stageOfStatus(status)?.id !== dateStage.id) {
-      return undefined;
-    }
+  // WHEN IT ENTERED THE STATUS THE COLUMN NAMES. Under a status DATE (the-order-list-filters-by-seven-dates) it is the
+  // date the window read — `date_entered_at_unix`, the FIRST entry into that status — on every row, whether or not the
+  // order is still in it. Under a status TAB alone (a-filtered-status-shows-its-own-date) it is `status_at_unix`, which
+  // dates the CURRENT status, so every row of the tab has it. 0 is "no timeline row records the move", shown as nothing
+  // rather than as 1970.
+  function stageDateOf(o: { status: OrderStatus; statusAtUnix: bigint; dateEnteredAtUnix: bigint }) {
+    const at = dateTypeStage(dateType)
+      ? o.dateEnteredAtUnix
+      : dateStage && stageOfStatus(o.status)?.id === dateStage.id
+        ? o.statusAtUnix
+        : 0n;
 
-    return statusAt > 0n ? statusAt : undefined;
+    return at > 0n ? at : undefined;
   }
 
   function stageBadgeFor(status: OrderStatus) {
@@ -514,9 +523,9 @@ export function SellerOrdersPage() {
           </FilterField>
         )}
 
-        {/* WHICH DATE, THEN WHICH WINDOW — one panel (`a-date-type-is-picked-inside-the-range-panel`). Dibuat and Tanggal
-            order are real (the-date-filter-switches-created-or-platform); the status dates are offered with their ⚠,
-            because the list cannot ask about them yet. */}
+        {/* WHICH DATE, THEN WHICH WINDOW — one panel (`a-date-type-is-picked-inside-the-range-panel`): Dibuat, Tanggal
+            order (the-date-filter-switches-created-or-platform), and the first entry into each of five statuses
+            (the-order-list-filters-by-seven-dates). */}
         <FilterField w="auto">
           <DateRangePicker<OrderDateType>
             value={range}
@@ -524,7 +533,6 @@ export function SellerOrdersPage() {
             fields={ORDER_DATE_TYPES.map((type) => ({
               value: type,
               label: type === "created" || type === "mp" ? t(`orders.dateType.${type}`) : t(`orders.stage.${type}`),
-              mark: type === "created" || type === "mp" ? undefined : <NotImplemented list={ORDERS_LIST_PENDING} id="dateType" />,
             }))}
             field={dateType}
             onFieldChange={(v) => refilter(() => setDateType(v))}
@@ -654,7 +662,6 @@ export function SellerOrdersPage() {
                               {t("orders.stageDateColumn", {
                                 status: t(`orders.stage.${dateStage.id}`),
                               })}
-                              {dateTypeStage(dateType) && <NotImplemented list={ORDERS_LIST_PENDING} id="dateType" />}
                             </Flex>
                           </Table.ColumnHeader>
                         )}
@@ -729,7 +736,7 @@ export function SellerOrdersPage() {
                             {dateStage && (
                               <Table.Cell>
                                 <DateCell
-                                  unix={stageDateOf(o.status, o.statusAtUnix)}
+                                  unix={stageDateOf(o)}
                                   testId="order-placed-stage"
                                 />
                               </Table.Cell>
@@ -810,7 +817,7 @@ export function SellerOrdersPage() {
         </Tabs.Content>
       </Tabs.Root>
 
-      <ImportOrdersDialog open={importing} onOpenChange={setImporting} />
+      <ImportOrdersDialog teamId={current.teamId} open={importing} onOpenChange={setImporting} />
     </Stack>
   );
 }

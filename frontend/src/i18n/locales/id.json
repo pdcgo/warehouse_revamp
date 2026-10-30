@@ -950,23 +950,45 @@
       "action": "Impor",
       "title": "Impor Pesanan",
       "chooseMarketplace": "Tiap marketplace mengekspor file yang berbeda, jadi tentukan dulu file ini berasal dari mana.",
-      "chooseFile": "File hasil ekspor {{marketplace}} — CSV atau Excel.",
+      "chooseShopAndFile": "Toko {{marketplace}} asal file ini, dan file-nya.",
       "updatesTitle": "Yang diubah file ini",
       "updatesStatus": "Setiap pesanan di dalamnya dipindah ke status yang dilaporkan marketplace.",
       "moneyFromSettlement": "Pencairan dan withdrawal tidak dibaca dari file ini — impor laporan marketplace di Impor Penyelesaian.",
+      "shop": "Toko",
+      "shopPlaceholder": "Pilih toko {{marketplace}}",
+      "file": "Ekspor pesanan",
+      "fileHelp": "File pesanan yang diekspor dari toko itu di {{marketplace}} — CSV atau Excel.",
+      "tooLarge": "File lebih dari 10 MB — ekspor rentang yang lebih pendek.",
+      "unsupported": "Pesanan {{marketplace}} belum bisa diimpor — Shopee dan TikTok sudah bisa.",
+      "keepsGoing": "Menutup ini hanya menghentikan log, bukan impornya: file tetap diproses sampai selesai.",
       "noFile": "Belum ada file",
       "dropHere": "Letakkan file di sini, atau klik untuk memilih",
       "back": "Ganti Marketplace",
-      "submit": "Impor"
+      "submit": "Impor",
+      "close": "Tutup",
+      "log": {
+        "reading": "Membaca file…",
+        "progress": "{{step}} dari {{count}} pesanan",
+        "tally": {
+          "moved": "Dipindah",
+          "alreadyThere": "Sudah sesuai",
+          "notApplied": "Tidak diterapkan"
+        },
+        "allApplied": "Setiap pesanan sudah sesuai file",
+        "notApplied_one": "{{count}} pesanan tidak diterapkan",
+        "notApplied_other": "{{count}} pesanan tidak diterapkan",
+        "moreInLog_one": "dan {{count}} lagi di log",
+        "moreInLog_other": "dan {{count}} lagi di log",
+        "failed": "Impor tidak berjalan",
+        "showLog_one": "Lihat Log ({{count}} baris)",
+        "showLog_other": "Lihat Log ({{count}} baris)",
+        "hideLog": "Sembunyikan Log"
+      }
     },
     "pending": {
       "import": {
         "label": "Impor",
-        "reason": "File hanya ditampilkan namanya: belum diunggah, belum diurai, dan tiap marketplace butuh pengurai sendiri."
-      },
-      "dateType": {
-        "label": "Filter menurut tanggal order atau tanggal status",
-        "reason": "Rentang tanggal daftar ini menyaring kapan pesanan dibuat, atau tanggal order marketplace. Lima tanggal status ada di log status pesanan, yang tidak dibawa daftar ini — jadi memilih salah satunya tidak mengirim rentang apa pun, dan tabel tetap seperti semula, bukan tersaring oleh tanggal yang salah."
+        "reason": "Ekspor Shopee dan TikTok dibaca sesuai susunan file contoh (mock) — belum pernah dicoba dengan ekspor asli — dan arti tiap kata status platform masih draf untuk ditinjau. Marketplace lain belum bisa diimpor."
       }
     },
     "title": "Pesanan",

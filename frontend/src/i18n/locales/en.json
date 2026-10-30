@@ -962,23 +962,45 @@
       "action": "Import",
       "title": "Import Orders",
       "chooseMarketplace": "Every storefront exports a different sheet, so start by saying which one this file came from.",
-      "chooseFile": "The file {{marketplace}} exported — CSV or Excel.",
+      "chooseShopAndFile": "Which {{marketplace}} shop the file came from, and the file itself.",
       "updatesTitle": "What this file changes",
       "updatesStatus": "Each order it names is moved to the status the marketplace reports.",
       "moneyFromSettlement": "Payouts and withdrawals are not read from this file — import the marketplace's statement on Settlement Imports.",
+      "shop": "Shop",
+      "shopPlaceholder": "Select a {{marketplace}} shop",
+      "file": "Order export",
+      "fileHelp": "The orders file exported from that shop on {{marketplace}} — CSV or Excel.",
+      "tooLarge": "The file is over 10 MB — export a shorter range.",
+      "unsupported": "{{marketplace}} orders cannot be imported yet — Shopee and TikTok can.",
+      "keepsGoing": "Closing this stops the log, not the import: it finishes the file either way.",
       "noFile": "No file chosen",
       "dropHere": "Drop the file here, or click to choose one",
       "back": "Another Marketplace",
-      "submit": "Import"
+      "submit": "Import",
+      "close": "Close",
+      "log": {
+        "reading": "Reading the file…",
+        "progress": "{{step}} of {{count}} orders",
+        "tally": {
+          "moved": "Moved",
+          "alreadyThere": "Already there",
+          "notApplied": "Not applied"
+        },
+        "allApplied": "Every order is where the file says",
+        "notApplied_one": "{{count}} order was not applied",
+        "notApplied_other": "{{count}} orders were not applied",
+        "moreInLog_one": "and {{count}} more in the log",
+        "moreInLog_other": "and {{count}} more in the log",
+        "failed": "The import did not run",
+        "showLog_one": "Show Log ({{count}} line)",
+        "showLog_other": "Show Log ({{count}} lines)",
+        "hideLog": "Hide Log"
+      }
     },
     "pending": {
       "import": {
         "label": "Import",
-        "reason": "The file is named on screen and goes no further: no upload, no parser, and each marketplace needs its own."
-      },
-      "dateType": {
-        "label": "Filtering by order date or a status date",
-        "reason": "The list's date window reads when an order was created, or the marketplace order date. The five status dates sit in the order's timeline, which the list does not carry — so picking one sends no window, and the table stays as it was rather than narrowed by the wrong date."
+        "reason": "Shopee and TikTok exports are read as laid out in mock files — no real export has been tried yet — and what each platform word means is a draft for review. Other marketplaces cannot be imported yet."
       }
     },
     "title": "Orders",

@@ -316,20 +316,22 @@ export const TheDateWindowHidesTheOldOrder: Story = {
   },
 };
 
-// THE WINDOW CAN MEAN SEVEN DATES AND ASK ABOUT ONE (the-order-list-filters-by-seven-dates). Picked inside the panel
+// THE WINDOW CAN MEAN SEVEN DATES, AND READS EACH (the-order-list-filters-by-seven-dates). Picked inside the panel
 // (a-date-type-is-picked-inside-the-range-panel), a status date keeps the panel open, is named on the trigger, kept in
-// the URL and given its date column — and, carrying its ⚠, sends NO window: the old order comes back rather than
-// being hidden by its created date while the trigger says Processed.
+// the URL and given its date column — and narrows by the FIRST time each order entered that status: a pending order
+// cancelled before it was ever processed goes, a picked one that was processed last week stays, dated on the day it was processed.
 const AtOrdersWithUrl = routedPage(
   [{ path: "/orders", element: <><OrdersPage /><LocationProbe /></> }],
   "/orders",
 );
 
-export const AStatusDateIsOfferedButNarrowsNothingYet: Story = {
+export const AStatusDateNarrowsByItsFirstEntry: Story = {
   render: () => <AtOrdersWithUrl />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const old = OWN.find((o) => o.id === 108n)!; // 120 days back
+    const old = OWN.find((o) => o.id === 108n)!; // shipping, placed 120 days back
+    const neverProcessed = OWN.find((o) => o.id === 107n)!; // cancelled from pending 7 days back — never processed
+    const pickedSince = OWN.find((o) => o.id === 105n)!; // picked, placed 5 days back — so processed then too
 
     await waitFor(() => expect(canvas.getByTestId(`order-row-${old.id}`)).toBeInTheDocument(), { timeout: 4000 });
 
@@ -339,19 +341,27 @@ export const AStatusDateIsOfferedButNarrowsNothingYet: Story = {
     await waitFor(() => expect(lastMonth).toBeVisible());
     await userEvent.click(lastMonth);
     await waitFor(() => expect(canvas.queryByTestId(`order-row-${old.id}`)).toBeNull(), { timeout: 4000 });
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${neverProcessed.id}`)).toBeInTheDocument());
 
     await userEvent.click(controls.getByTestId("orders-date"));
     const processed = await screen.findByTestId("orders-date-field-processed");
     await waitFor(() => expect(processed).toBeVisible());
-    await expect(within(screen.getByTestId("orders-date-field-created")).queryByTestId(/^not-implemented-/)).toBeNull();
-    await expect(within(processed).getByTestId(/^not-implemented-/)).toBeInTheDocument();
+    // Every date is real now: no ⚠ on any of the seven.
+    await expect(within(processed).queryByTestId(/^not-implemented-/)).toBeNull();
     await userEvent.click(processed);
 
     await expect(screen.getByTestId("orders-date-quick-1m")).toBeVisible();
     await waitFor(() => expect(controls.getByTestId("orders-date")).toHaveTextContent("Processed · Last 1 month"));
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("date=processed"));
-    await waitFor(() => expect(canvas.getByTestId(`order-row-${old.id}`)).toBeInTheDocument(), { timeout: 4000 });
+
+    // Never processed: gone. Processed 120 days back: still gone. Processed last week and picked since: here.
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${neverProcessed.id}`)).toBeNull(), { timeout: 4000 });
+    await expect(canvas.queryByTestId(`order-row-${old.id}`)).toBeNull();
+
+    const row = await canvas.findByTestId(`order-row-${pickedSince.id}`);
     await waitFor(() => expect(canvas.getByRole("columnheader", { name: /processed on/i })).toBeInTheDocument());
+    // Dated on the day it was processed, though it is no longer in that status.
+    await expect(within(row).getByTestId("order-placed-stage")).toHaveTextContent(/\d/);
   },
 };
 

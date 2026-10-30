@@ -53,6 +53,9 @@
 | [the-bulk-actions-are-always-on-screen](../frontend/warehouse_order_list_decision.md#the-bulk-actions-are-always-on-screen) | the action bar shows from the start; tick-only actions are off until a tick, and Export takes the filtered list when nothing is ticked |
 | [the-period-report-is-the-analytic-screen](#the-period-report-is-the-analytic-screen) | no order report screen and no extension of `/settlement/report`: the order figures are metrics on the one analytic screen |
 | [the-import-moves-only-after-handover](#the-import-moves-only-after-handover) | the order Import makes only customer service's moves after handover; everything else is listed with its reason, never applied |
+| [the-order-import-is-one-rpc-per-platform](#the-order-import-is-one-rpc-per-platform) | `ShopeeOrderImport` and `TiktokOrderImport` on selling's OrderService, each a stream of leveled log lines, shaped like the settlement import |
+| [a-completed-shipping-order-passes-through-shipped](#a-completed-shipping-order-passes-through-shipped) | the platform says completed, ours is `shipping`: the import moves it to `shipped`, then to `completed` — two hand moves, two rows |
+| [a-cancelled-order-with-nothing-live-is-already-there](#a-cancelled-order-with-nothing-live-is-already-there) | cancelled on the platform with no live order here is already there; with a live order it stays on the not-applied list |
 
 ---
 
@@ -291,3 +294,96 @@ flowchart LR
 | each marketplace's words | one table per marketplace, from its own export file, drafted for your review, not asked word by word |
 | B later | allowing *cancelled → cancel* for a `pending` order with one live match is a small step, taken only if the not-applied list shows it is needed |
 | built | not yet. The dialog's line *"each order it names is moved to the status the marketplace reports"* ([ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx)) changes when the status half is built |
+| 🔄 ✅ built *(2026-10-30)* | `ShopeeOrderImport` · `TiktokOrderImport` ([the-order-import-is-one-rpc-per-platform](#the-order-import-is-one-rpc-per-platform)); each move goes through `moveOrders` as the reading above said, with the note *"Shopee order import"*. ⚠ A platform `Selesai` on an order still `shipping` here is refused — the diagram has no shipping → completed — and a platform-cancelled order with no live order here is still listed. Both are raised in chat. The dialog's line stays: it is now true |
+| 🔄 *(2026-10-30)* | the first ⚠ is answered: [a-completed-shipping-order-passes-through-shipped](#a-completed-shipping-order-passes-through-shipped) — `shipping` + completed on the platform is two moves, through `shipped`. The `delivered, completed` row of the table above now reads *shipping, shipped, problem* |
+| 🔄 *(2026-10-30)* | the second ⚠ is answered: [a-cancelled-order-with-nothing-live-is-already-there](#a-cancelled-order-with-nothing-live-is-already-there) — the `cancelled` row is listed only while a live order holds the ref |
+
+## the-order-import-is-one-rpc-per-platform
+
+> Owner, in chat (2026-10-30): *"yes"* — to *"copy the settlement importer: `ShopeeOrderImport` and
+> `TiktokOrderImport(team_id, shop_id, file_content)`, each streaming its log back, the server refusing a shop that is not
+> on that platform, in `selling_service` — is that shape and placement OK?"*. As recommended. It reverses my earlier
+> *one RPC for every platform*: the dialog picks the platform first
+> ([the-import-is-platform-then-shop-and-file-then-log](../frontend/order_list_decision.md#the-import-is-platform-then-shop-and-file-then-log)),
+> so the platform is already the caller's choice, as it is in the settlement import.
+
+**The verdict.** One import per platform, on selling's `OrderService`, each a server stream of leveled log lines. The
+samples it is built against are the mocks in [examples/order_samples/](../../../examples/order_samples/README.md), laid out
+like `settlement_samples` (owner: *"file is same form like on examples\settlement_samples"*, *"you can create mock"*).
+
+```mermaid
+sequenceDiagram
+  participant fe as Import dialog
+  participant imp as ShopeeOrderImport
+  participant db as orders
+  fe->>imp: team_id, shop_id, file_content
+  imp->>db: the shop - this team's, not deleted, on Shopee
+  imp-->>fe: ERROR and end, when it is not
+  imp->>imp: read the file - one order per ref, the platform's words
+  imp-->>fe: count - the orders in the file
+  imp->>db: the shop's live orders with those refs
+  imp->>imp: each order - moved, already there, or not applied with its reason
+  imp->>db: moveOrders, one batch per target status
+  imp-->>fe: one line per order, then the tally
+```
+
+| | |
+| --- | --- |
+| the RPCs | `ShopeeOrderImport`, `TiktokOrderImport` — `team_id` (scope), `shop_id`, `file_content` up to 10 MB |
+| who | the selling team's Owner, Admin and CS, with Root and Administrator — who may make customer service's moves by hand |
+| the stream | `level`, `message`, `step`, `count`, and `tally` (moved, already there, not applied) on the last message |
+| the shop | this team's, not deleted, and on the RPC's platform — otherwise one ERROR line ends the stream and nothing is read |
+| the file | `.xlsx` or `.csv`; one order per ref, however many product rows it has; a file that is not this platform's order export is one ERROR line |
+| each move | `moveOrders`, the code `OrderStatusChange` runs: locked, re-checked, one timeline row naming the importer, the event published |
+| ⚠ my reading, not asked | the shop needs no per-user grant: a hand move needs none, and the import makes only hand moves |
+| ⚠ my reading, not asked | where the readers live — `selling_service/order_import_readers/`, beside their only caller, so [excel_readers Q5](../packages/excel_readers/context_clarify.md) stays open |
+
+## a-completed-shipping-order-passes-through-shipped
+
+> Owner, in chat (2026-10-30): *"yes"* — to *"an order still `shipping` here that the file says is `Selesai` is refused:
+> the status diagram has no shipping → completed, so customer service has to mark it shipped first. Platforms often go
+> straight from Sedang Dikirim to Selesai between two imports. Let the import make both moves — shipping → shipped →
+> completed — two timeline rows, both moves customer service already makes by hand?"*. As recommended.
+
+**The verdict.** When the platform says completed and ours is still `shipping`, the import makes the two moves customer
+service would have made by hand, in order: `shipping → shipped`, then `shipped → completed`. The status diagram is
+unchanged: no `shipping → completed` edge is added, and a hand move still cannot skip.
+
+```mermaid
+flowchart LR
+  F["the file - Selesai, or Shipped · Delivered, or Completed"] --> O{"ours"}
+  O -->|"shipped, problem"| C["→ completed - one move"]
+  O -->|"shipping"| S["→ shipped"] --> C2["→ completed - a second move"]
+  O -->|"before handover"| N["listed - not handed over yet"]
+```
+
+| | |
+| --- | --- |
+| the only bridge | `shipping` → `completed` passes through `shipped`. Every other move the import makes is a single edge |
+| the timeline | two rows, each with the import's note, the second after the first commits |
+| the line | `shipping → shipped → completed` — one line for the order, counted once as moved |
+| a move in between | each step is its own `moveOrders`, re-checked under the lock. If someone moves the order between the two steps, the second step is refused with its reason and the order is listed as not applied, saying which step it reached |
+| supersedes | the `delivered, completed` row of [the-import-moves-only-after-handover](#the-import-moves-only-after-handover)'s table, for `shipping` only |
+
+## a-cancelled-order-with-nothing-live-is-already-there
+
+> Owner, in chat (2026-10-30): *"yes"* — to *"a platform-cancelled order with no live order here (we cancelled it too, or
+> it was never made) is listed as not applied on every import — noise in customer service's to-do list. Count it as
+> already there when nothing is live here, and keep listing it when a live order is?"*. As recommended.
+
+**The verdict.** Cancelled on the platform is a to-do only while we still hold a live order for it. With none, there is
+nothing to do, and the import counts it as already there.
+
+```mermaid
+flowchart LR
+  C["the file - cancelled"] --> L{"a live order here, with that ref"}
+  L -->|"none - ours is cancel, or never made"| A["already there - cancelled on the platform, and no live order here"]
+  L -->|"one or more"| N["not applied - cancelled on the platform - customer service's to-do"]
+```
+
+| | |
+| --- | --- |
+| live | any status but `cancel` — the same matching every other row gets |
+| no live order | counted as already there, an INFO line, so importing the same file again stays quiet |
+| a live order | listed as before: customer service cancels a `pending` order by hand, and a later one goes back through the warehouse first |
+| supersedes | the `cancelled` row of [the-import-moves-only-after-handover](#the-import-moves-only-after-handover)'s table, for the case with nothing live |
