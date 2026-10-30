@@ -28,6 +28,7 @@ import { bundleService } from "./bundleStub";
 import { SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
 import { SupplierAnalyticService } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
+import { OrderAnalyticService } from "../src/gen/warehouse/selling/v1/order_analytic_pb";
 import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
   LiabilityCreditState,
@@ -75,6 +76,7 @@ import {
 } from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
 import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
 import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
+import { orderAnalyticService } from "./orderAnalyticStub";
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
@@ -910,6 +912,8 @@ export const transport = createRouterTransport(({ service }) => {
   service(SupplierChannelService, supplierChannelService);
   // Its figures — supplierFigureFixtures.ts, read as the folded table is (the-figures-screens-are-accepted).
   service(SupplierAnalyticService, supplierAnalyticService);
+  // The order metrics — orderAnalyticStub.ts answers them from the analytic samples, through the real wire path.
+  service(OrderAnalyticService, orderAnalyticService);
 
   // The rack registry (scoped by the warehouse, as the server is), Rack detail's reads and the two prototype writes —
   // rackStub.ts plays them, writeable, with the placement decisions.

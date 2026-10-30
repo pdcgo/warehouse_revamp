@@ -131,6 +131,7 @@ const DiscoverSuppliersPage = lazy(() =>
 const DiscoverSupplierDetailPage = lazy(() =>
   import("./pages/supplier-discover-detail").then((m) => ({ default: m.DiscoverSupplierDetailPage })),
 );
+const AnalyticPage = lazy(() => import("./pages/analytic").then((m) => ({ default: m.AnalyticPage })));
 const SupplierReportPage = lazy(() =>
   import("./pages/supplier-report").then((m) => ({ default: m.SupplierReportPage })),
 );
@@ -434,6 +435,8 @@ export const router = createBrowserRouter([
       // Suppliers ranked by what was restocked from them (the-figures-are-a-statistics-tab-and-a-supplier-report).
       // "report" is static too, so it outranks :supplierId the same way.
       { path: "inventories/suppliers/report", element: <SupplierReportPage /> },
+      // The analytic composer — its first served metrics are the order metrics (the-analytic-screen-is-accepted).
+      { path: "analytic", element: <AnalyticPage /> },
       // Racks are the warehouse's own shelves (#129), and this IS the placement list
       // (the-racks-page-is-the-placement-list) — the menu offers them to warehouse teams only, but
       // the route is open and the server's policy is what actually decides.

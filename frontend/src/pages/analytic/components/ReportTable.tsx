@@ -5,7 +5,7 @@ import { SortableHeader, type SortState } from "../../../components/chrome/Sorta
 import { type MetricDef, type TableGroup, isTimeGroup } from "../../../features/analytic/catalogue";
 import type { MetricBody, ReportKey, ReportSort } from "../../../features/analytic/provider";
 import { useIsMobile } from "../../../layouts/shell";
-import { formatFigure } from "../format";
+import { fieldLabel, formatFigure } from "../format";
 
 /** A column's sort id — `key` for the period, `<metricId>|<field>` for a figure. */
 function columnOf(sort: ReportSort | null): SortState<string> | null {
@@ -66,7 +66,7 @@ export function ReportTable({
             </Text>
             {columns.map(({ def, field, id }) => (
               <Flex key={id} justify="space-between" gap="3" fontSize="sm">
-                <Text color="fg.muted">{t(`analytic.field.${field.name}`)}</Text>
+                <Text color="fg.muted">{fieldLabel(t, def, field.name)}</Text>
                 <Text whiteSpace="nowrap" data-testid={`analytic-cell-${key}-${field.name}`}>
                   {formatFigure(field.kind, value(key, def.metricId, field.name))}
                 </Text>
@@ -97,12 +97,12 @@ export function ReportTable({
             ) : (
               <Table.ColumnHeader>{t(`analytic.group.${groupBy}`)}</Table.ColumnHeader>
             )}
-            {columns.map(({ field, id }) =>
+            {columns.map(({ def, field, id }) =>
               field.canSort ? (
                 <SortableHeader
                   key={id}
                   column={id}
-                  label={t(`analytic.field.${field.name}`)}
+                  label={fieldLabel(t, def, field.name)}
                   sort={current}
                   onSortChange={change}
                   end
@@ -110,7 +110,7 @@ export function ReportTable({
                 />
               ) : (
                 <Table.ColumnHeader key={id} textAlign="end">
-                  {t(`analytic.field.${field.name}`)}
+                  {fieldLabel(t, def, field.name)}
                 </Table.ColumnHeader>
               ),
             )}

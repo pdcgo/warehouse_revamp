@@ -359,3 +359,60 @@ stateDiagram-v2
 | an order lost after a return | it stays counted in Order Return Created and is also counted here. They are different metrics, so nothing is counted twice within one |
 | fed by | the Order Status Change event, which is not built yet, the same as the two returns |
 | Completed | not a metric. The *"four"* in earlier entries now means these five order metrics |
+
+---
+
+## the-order-metrics-count-from-the-fold-onward
+
+> Owner, in chat (2026-10-30): *"the past not filling is okay, we are on dev phase, not prod"* — to
+> [are-past-orders-folded](./order_statistic_metric_clarify.md#question), *"fold the orders placed before the fold
+> existed, once?"*. Against my yes.
+
+**The verdict.** No backfill. The five order metrics count from the moment the fold runs, and an order placed or moved
+before it has no row. This is the dev phase, so the only history left out is dev data. Production starts with the fold
+already running, so every production order is counted live.
+
+```mermaid
+flowchart LR
+  past["dev orders before the fold"] -.->|"not folded"| none["no rows"]
+  live["every order from the fold onward - dev, and all of production"] --> fold["the fold"]
+  fold --> rep["order_daily_reports"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the past, in dev | not folded. A period before the fold reads zero, and a cancel of an old order can count without its placement. Accepted for dev data |
+| to see figures in dev | place or move an order while the fold runs — `san dev run` makes its push subscriptions |
+| production | nothing to backfill, as long as its first order is placed with the fold running |
+| if that changes | reopen this before production. A backfill through the same fold is safe (the same event ids, and `order_event_logs` is never pruned), but exact only for moves since 2026-10-15, when the timeline began: `order_events` before it was dropped, not migrated |
+
+---
+
+## the-order-metric-ids-name-what-moved
+
+> Owner, in chat (2026-10-30): *"yes"* — to [which-metric-ids](./order_statistic_metric_clarify.md#question), *"keep
+> `metrics/orders/created`, `/cancelled`, `/return_created`, `/return_arrived`, `/lost_created`?"*. As recommended.
+
+**The verdict.** Each order metric's id is `metrics/orders/` and **what happened to the order**. An id names the move,
+so the cancel metric is `cancelled` while its fields stay `cancel_count` and `cancel_total`, which are yours. The `/`
+is part of the name, never a route, and nothing reads `metrics/orders` as a parent
+([a-metric-id-is-a-name-not-a-route](../analytic/rpc_provide_decision.md#a-metric-id-is-a-name-not-a-route)).
+
+```mermaid
+flowchart LR
+  c["Order Created"] --> c1["metrics/orders/created"]
+  x["Order Cancel"] --> x1["metrics/orders/cancelled"]
+  rc["Order Return Created"] --> rc1["metrics/orders/return_created"]
+  ra["Order Return Arrived"] --> ra1["metrics/orders/return_arrived"]
+  l["Lost Created"] --> l1["metrics/orders/lost_created"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the ids | `metrics/orders/created` · `metrics/orders/cancelled` · `metrics/orders/return_created` · `metrics/orders/return_arrived` · `metrics/orders/lost_created` |
+| where | `metric_id` on each metric in [order_analytic.proto](../../../proto/warehouse/selling/v1/order_analytic.proto), unique across services, checked at startup |
+| a change after this | breaks every saved link that names it, so it is a decision, never a quiet edit |

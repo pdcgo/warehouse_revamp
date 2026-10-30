@@ -5,7 +5,7 @@ import { LineGraph } from "../../../components/charts/LineGraph";
 import { type FieldKind, type MetricDef, type TableGroup, isTimeGroup } from "../../../features/analytic/catalogue";
 import type { MetricBody, ReportKey } from "../../../features/analytic/provider";
 import { formatRupiahCompact } from "../../../lib/money";
-import { formatFigure } from "../format";
+import { fieldLabel, formatFigure } from "../format";
 
 /** A figure on the side axis: money short (Rp 1,5jt) so the magnitude reads first, a count as the table writes it. */
 function formatTick(kind: FieldKind, value: number): string {
@@ -65,7 +65,7 @@ export function ReportGraphs({
             def.fields
               .filter((f) => f.kind === kind)
               .map((f) => ({
-                label: t(`analytic.field.${f.name}`),
+                label: fieldLabel(t, def, f.name),
                 values: points.map((key) => cells[def.metricId]?.[key]?.[f.name] ?? 0),
               })),
           )}

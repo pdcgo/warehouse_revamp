@@ -1,7 +1,25 @@
-// THE METRIC CATALOGUE — a TypeScript MIRROR of the decided proto options, until `warehouse/analytic_base/v1` exists
-// (docs/business/analytic/rpc_provide_clarify.md#the-contract). When the proto lands, the provider reads these same
-// facts off the generated descriptors with `getOption` and this list goes: the screen is built first and the contract
-// is derived from it (HARD RULE 6), so for now the screen states what it needs here.
+import { type DescMessage, getOption } from "@bufbuild/protobuf";
+
+import {
+  FieldStatType,
+  FilterType as PbFilterType,
+  GroupType as PbGroupType,
+  field_stat_type,
+  metric,
+  metric_sort,
+} from "../../gen/warehouse/analytic_base/v1/analytic_pb";
+import {
+  OrderCancelMetricSchema,
+  OrderCreatedMetricSchema,
+  OrderLostCreatedMetricSchema,
+  OrderReturnArrivedMetricSchema,
+  OrderReturnCreatedMetricSchema,
+} from "../../gen/warehouse/selling/v1/order_analytic_pb";
+
+// THE METRIC CATALOGUE. A metric a service SERVES is read off its generated descriptor with `getOption` — its id, its
+// filters, its groups, its fields' kinds and which can sort — so the screen states nothing the proto already does: the
+// five order metrics (order_statistic_metric.md). The rest are still a TypeScript MIRROR of the decided proto options,
+// backed by samples, until their services ship (HARD RULE 6 — the screen was built first).
 //
 // Every entry obeys the decisions in rpc_provide_decision.md:
 //   a metric is ONE measure and names the groups it can be read by   the-table-picks-one-group
@@ -10,22 +28,53 @@
 //   a sortable field is sorted by its proto name                     a-sort-field-is-its-proto-name
 
 /** GroupType — the table's grouping (the-table-picks-one-group). `summary` is the headline's, never a table's. */
-export type GroupType = "summary" | "daily" | "weekly" | "monthly" | "yearly" | "product" | "shop" | "supplier" | "team" | "user";
+export type GroupType =
+  | "summary"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "yearly"
+  | "product"
+  | "shop"
+  | "supplier"
+  | "team"
+  | "warehouse"
+  | "user";
 
 /** A group a TABLE can be read by — every GroupType but the headline's. */
 export type TableGroup = Exclude<GroupType, "summary">;
 
 export type TimeGroup = "daily" | "weekly" | "monthly" | "yearly";
 
-/** The groups this screen offers, ids before time. `team` and `user` exist in the contract; no sample metric has them. */
-export const TABLE_GROUPS: TableGroup[] = ["shop", "product", "supplier", "daily", "weekly", "monthly", "yearly"];
+/**
+ * The groups this screen offers, ids before time. `team` is the SELLER and `warehouse` the warehouse that ships
+ * (the-team-group-is-the-seller); `user` is whoever each metric books a fact to.
+ */
+export const TABLE_GROUPS: TableGroup[] = [
+  "shop",
+  "team",
+  "warehouse",
+  "user",
+  "product",
+  "supplier",
+  "daily",
+  "weekly",
+  "monthly",
+  "yearly",
+];
+
+/** The id groups — a row is an entity, named by a lookup. */
+export type IdGroup = "shop" | "team" | "warehouse" | "user" | "product" | "supplier";
 
 export function isTimeGroup(group: GroupType): group is TimeGroup {
   return group === "daily" || group === "weekly" || group === "monthly" || group === "yearly";
 }
 
 /** FilterType — what a metric can be narrowed by. Paging is not a filter (a-page-is-not-a-filter). */
-export type FilterType = "dateRange" | "shop" | "product" | "supplier";
+export type FilterType = "dateRange" | "shop" | "product" | "supplier" | "team" | "warehouse" | "user";
+
+/** Every filter, in the order the bar shows them. */
+export const FILTER_TYPES: FilterType[] = ["dateRange", "shop", "team", "warehouse", "user", "product", "supplier"];
 
 export type FieldKind = "count" | "money";
 
@@ -52,24 +101,76 @@ export interface MetricDef {
   requiredFilters: FilterType[];
   supportedGroupBy: GroupType[];
   fields: MetricField[];
+  /** The generated message, when a service SERVES the metric — the provider asks that service. Absent: a sample. */
+  schema?: DescMessage;
 }
+
+const FILTER_OF: Partial<Record<PbFilterType, FilterType>> = {
+  [PbFilterType.DATE_RANGE]: "dateRange",
+  [PbFilterType.PRODUCT]: "product",
+  [PbFilterType.TEAM]: "team",
+  [PbFilterType.SHOP]: "shop",
+  [PbFilterType.SUPPLIER]: "supplier",
+  [PbFilterType.WAREHOUSE]: "warehouse",
+  [PbFilterType.USER]: "user",
+};
+
+const GROUP_OF: Partial<Record<PbGroupType, GroupType>> = {
+  [PbGroupType.SUMMARY]: "summary",
+  [PbGroupType.DAILY]: "daily",
+  [PbGroupType.WEEKLY]: "weekly",
+  [PbGroupType.MONTHLY]: "monthly",
+  [PbGroupType.YEARLY]: "yearly",
+  [PbGroupType.PRODUCT]: "product",
+  [PbGroupType.SHOP]: "shop",
+  [PbGroupType.SUPPLIER]: "supplier",
+  [PbGroupType.TEAM]: "team",
+  [PbGroupType.USER]: "user",
+  [PbGroupType.WAREHOUSE]: "warehouse",
+};
+
+const known = <T,>(values: (T | undefined)[]): T[] => values.filter((v): v is T => v !== undefined);
+
+/**
+ * A served metric, read off its message: the `metric` option names it, its filters and its groups; each number field's
+ * `field_stat_type` says whether it is a count or money, and `metric_sort` whether a table may sort by it
+ * (a-field-declares-its-stat-type). The label key and the menu category are the screen's own.
+ */
+function servedMetric(schema: DescMessage, labelKey: string, service: string, category: MetricCategory): MetricDef {
+  const option = getOption(schema, metric);
+
+  return {
+    metricId: option.metricId,
+    labelKey,
+    service,
+    category,
+    supportedFilters: known(option.supportedFilters.map((f) => FILTER_OF[f])),
+    requiredFilters: known(option.requiredFilters.map((f) => FILTER_OF[f])),
+    supportedGroupBy: known(option.supportedGroupBy.map((g) => GROUP_OF[g])),
+    fields: schema.fields
+      .filter((f) => getOption(f, field_stat_type) !== FieldStatType.UNSPECIFIED)
+      .map((f) => ({
+        name: f.name,
+        kind: getOption(f, field_stat_type) === FieldStatType.CURRENCY ? "money" : "count",
+        canSort: getOption(f, metric_sort).canSort,
+      })),
+    schema,
+  };
+}
+
+/** The five order metrics, served by selling_service (order_statistic_metric.md). */
+export const ORDER_METRICS: MetricDef[] = [
+  servedMetric(OrderCreatedMetricSchema, "ordersCreated", "selling", "order"),
+  servedMetric(OrderCancelMetricSchema, "ordersCancelled", "selling", "order"),
+  servedMetric(OrderReturnCreatedMetricSchema, "ordersReturnCreated", "selling", "order"),
+  servedMetric(OrderReturnArrivedMetricSchema, "ordersReturnArrived", "selling", "order"),
+  servedMetric(OrderLostCreatedMetricSchema, "ordersLostCreated", "selling", "order"),
+];
 
 const TIME: GroupType[] = ["daily", "weekly", "monthly", "yearly"];
 
 export const METRICS: MetricDef[] = [
-  {
-    metricId: "metrics/orders",
-    labelKey: "orders",
-    service: "selling",
-    category: "order",
-    supportedFilters: ["dateRange", "shop", "product"],
-    requiredFilters: ["dateRange"],
-    supportedGroupBy: ["summary", ...TIME, "shop", "product"],
-    fields: [
-      { name: "order_count", kind: "count", canSort: true },
-      { name: "order_total", kind: "money", canSort: true },
-    ],
-  },
+  ...ORDER_METRICS,
   {
     metricId: "metrics/settlement",
     labelKey: "settlement",
@@ -134,7 +235,5 @@ export function metricSlug(metricId: string): string {
  * The date range is required by all of them, so it is always there.
  */
 export function sharedFilters(defs: MetricDef[]): FilterType[] {
-  const all: FilterType[] = ["dateRange", "shop", "product", "supplier"];
-
-  return all.filter((f) => defs.every((d) => d.supportedFilters.includes(f)));
+  return FILTER_TYPES.filter((f) => defs.every((d) => d.supportedFilters.includes(f)));
 }

@@ -1,5 +1,7 @@
-// ⚠ SAMPLE — INVENTED ROWS. No service answers MetricSearch or MetricData yet, so the Analytic screen is built on these
-// (pages/analytic/pending.ts marks every figure as a sample). Delete this file the day the first metric is wired.
+// ⚠ SAMPLE — INVENTED ROWS, for every metric no service answers yet (pages/analytic/pending.ts marks them). The five
+// ORDER metrics are served by selling_service in the app; their facts here are what the Storybook stub answers
+// OrderAnalyticService with, so a story reads stable numbers through the wire. Delete this file the day every metric
+// is served.
 //
 // The rows are generated, not typed: one fact per day per shop / product, from 2025-01-01 to today, drawn from a seeded
 // hash so every run — and every story — sees the same numbers for the same window.
@@ -67,8 +69,31 @@ export interface Fact {
   shop?: string;
   product?: string;
   supplier?: string;
+  /** The seller, the warehouse that ships and the order's creator — the order metrics' other keys. */
+  team?: string;
+  warehouse?: string;
+  user?: string;
   values: Record<string, number>;
 }
+
+/**
+ * THE ORDER FACTS' SELLER, WAREHOUSE AND CREATORS — the Storybook fixtures' own: Toko Melati (12) sells, Gudang Pusat
+ * (11) ships, and three of its people place the orders, so a story grouped by team, warehouse or user names real rows.
+ */
+export const SAMPLE_SELLER = "12";
+export const SAMPLE_WAREHOUSE = "11";
+const SAMPLE_CREATORS = ["61", "62", "65"];
+
+/** What the platform says the buyer paid, for a figure we priced at `total` — a little above our cost. */
+const mpOf = (total: number) => Math.round(total * 1.12);
+
+/** The four moves after a placement, each a chance per placed order, counted on the placement's day for the sample. */
+const ORDER_MOVES: { metricId: string; prefix: string; mp: string; chance: number }[] = [
+  { metricId: "metrics/orders/cancelled", prefix: "cancel", mp: "mp_total", chance: 0.08 },
+  { metricId: "metrics/orders/return_created", prefix: "return_created", mp: "return_created_mp_total", chance: 0.05 },
+  { metricId: "metrics/orders/return_arrived", prefix: "return_arrived", mp: "return_arrived_mp_total", chance: 0.03 },
+  { metricId: "metrics/orders/lost_created", prefix: "lost_created", mp: "lost_created_mp_total", chance: 0.01 },
+];
 
 /** A number in [0, 1), the same for the same seed on every run — FNV-1a, then an avalanche. */
 function seeded(seed: string): number {
@@ -89,7 +114,8 @@ function seeded(seed: string): number {
 function build(): Record<string, Fact[]> {
   const days = daySpine(SAMPLE_START, toDateInputValue(new Date()));
   const facts: Record<string, Fact[]> = {
-    "metrics/orders": [],
+    "metrics/orders/created": [],
+    ...Object.fromEntries(ORDER_MOVES.map((m) => [m.metricId, []])),
     "metrics/settlement": [],
     "metrics/inventory/lost": [],
     "metrics/ads": [],
@@ -105,13 +131,32 @@ function build(): Record<string, Fact[]> {
 
         const product = SAMPLE_PRODUCTS.find((p) => p.id === productId)!;
         const count = 1 + Math.floor(seeded(`oc|${day}|${shop.id}|${productId}`) * profile.most);
-        facts["metrics/orders"]!.push({
+        const total = count * product.price;
+        const who = {
           day,
           shop: shop.id,
-          product: productId,
-          supplier: product.supplier,
-          values: { order_count: count, order_total: count * product.price },
+          team: SAMPLE_SELLER,
+          warehouse: SAMPLE_WAREHOUSE,
+          user: SAMPLE_CREATORS[Number(shop.id) % SAMPLE_CREATORS.length]!,
+        };
+
+        facts["metrics/orders/created"]!.push({
+          ...who,
+          values: { created_count: count, created_total: total, mp_total: mpOf(total) },
         });
+
+        for (const move of ORDER_MOVES) {
+          if (seeded(`${move.prefix}|${day}|${shop.id}|${productId}`) >= move.chance) continue;
+
+          facts[move.metricId]!.push({
+            ...who,
+            values: {
+              [`${move.prefix}_count`]: 1,
+              [`${move.prefix}_total`]: product.price,
+              [move.mp]: mpOf(product.price),
+            },
+          });
+        }
       }
 
       if (profile.settlement > 0 && seeded(`s|${day}|${shop.id}`) < 0.5) {

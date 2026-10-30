@@ -3,14 +3,14 @@
 Critique, questions and a proposed design for [order_statistic_metric.md](./order_statistic_metric.md). That doc is
 yours, and this one is mine. Answered points are **deleted**, so this file is always the current open set.
 
-> **State (2026-10-29).** 10 decisions in [order_statistic_metric_decision.md](./order_statistic_metric_decision.md).
+> **State (2026-10-30).** 12 decisions in [order_statistic_metric_decision.md](./order_statistic_metric_decision.md).
 > There are five order metrics, each counting whole orders on the day of its own move: Created, Cancel, Return Created,
 > Return Arrived and Lost Created
 > ([lost-is-a-metric-and-completed-is-not](./order_statistic_metric_decision.md#lost-is-a-metric-and-completed-is-not)).
 > Product figures are inventory's, for later, and two questions are [parked](#parked).
 > ✅ **Built (2026-10-29):** the five metrics, the Order Status Change event and the fold that feeds them.
-> **Two questions opened while building** ([Question](#question)): the metric ids, and whether past orders are folded
-> once. Still waiting on you: two slips and one new contradiction under [Contradiction](#contradiction).
+> **Both questions the build opened are closed:** the ids are kept ([the-order-metric-ids-name-what-moved](./order_statistic_metric_decision.md#the-order-metric-ids-name-what-moved))
+> and past orders are not folded ([the-order-metrics-count-from-the-fold-onward](./order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)). Still waiting on you: two slips and one new contradiction under [Contradiction](#contradiction).
 >
 > ✅ The diagrams parse (`npm run lint:mermaid`).
 
@@ -96,7 +96,7 @@ moved it and when. The fold runs in the service that owns the orders, so it read
 ## the-order-metrics
 
 Each metric is one `metric_id`, served by `selling_service`, which owns the orders, in the shape `metrics/suppliers`
-already has. Everything here is decided except the ids ([which-metric-ids](#which-metric-ids)). ✅ Built 2026-10-29.
+already has. Everything here is decided, the ids included ([the-order-metric-ids-name-what-moved](./order_statistic_metric_decision.md#the-order-metric-ids-name-what-moved)). ✅ Built 2026-10-29.
 
 | metric | proposed id | counts on the day of | fields | fed by |
 | --- | --- | --- | --- | --- |
@@ -157,42 +157,8 @@ Why product was taken off the order metrics in the first place, with order #501 
 # Question
 
 Every question about what the metrics count is closed, each one in
-[order_statistic_metric_decision.md](./order_statistic_metric_decision.md). Building them opened two.
+[order_statistic_metric_decision.md](./order_statistic_metric_decision.md). Building them opened two, and both are closed: [the-order-metric-ids-name-what-moved](./order_statistic_metric_decision.md#the-order-metric-ids-name-what-moved),
+[the-order-metrics-count-from-the-fold-onward](./order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward).
 
-| # | question | → Recommend |
-| --- | --- | --- |
-| 1 | [which-metric-ids](#which-metric-ids) — keep `metrics/orders/created`, `/cancelled`, `/return_created`, `/return_arrived`, `/lost_created`? | keep them |
-| 2 | [are-past-orders-folded](#are-past-orders-folded) — fold the orders placed before the fold existed, once? | yes, once, through the same fold |
+✅ **No question is open.**
 
-## which-metric-ids
-
-Your doc names the five metrics but not their ids. They are built with the ids proposed in the
-[Proposed Design](#the-order-metrics): `metrics/orders/<what moved>`, the shape `metrics/suppliers` and
-`metrics/inventory/lost` already have. An id is a name the screen saves in a link
-([a-metric-id-is-a-name-not-a-route](../analytic/rpc_provide_decision.md#a-metric-id-is-a-name-not-a-route)), so it is cheap
-to change now and costly once people share links.
-
-**→ Recommend:** keep them. `cancelled` is the one that differs from its field names (`cancel_count`), because an id
-names what happened to the order, and the field names are yours.
-
-## are-past-orders-folded
-
-The fold counts from the moment it runs. Every order placed, cancelled or moved before that has no row, so the dev
-database's orders read zero on the analytic screen, and so would production's history on the day it ships.
-
-| option | what you get | cost |
-| --- | --- | --- |
-| **A — fold the past once** | every metric is complete from the first order | one `san` command, as supplier did for its past accepts ([past-accepts-are-backfilled-once](../supplier/context_decision.md#past-accepts-are-backfilled-once)): rebuild each order's events from the order and its timeline and run them through the same fold, so nothing counts twice |
-| B — count from today | nothing to build | every report before the first fold is empty, and a cancel of an old order counts while its placement never did |
-
-**→ Recommend:** A. The timeline has every move with its time and its person, so the past events can be rebuilt
-exactly, and running them through the same fold with the same event ids means a live event and a rebuilt one can never
-both count.
-
-```mermaid
-flowchart LR
-  o["orders and their timeline"] -->|"san - once"| e["the events they would have sent"]
-  e --> f["the same fold"]
-  l["live events"] --> f
-  f --> r["order_daily_reports"]
-```

@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  ArrowLeftRight, Boxes, Building2, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, Package, PackageOpen, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  ArrowLeftRight, Boxes, Building2, ChartLine, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, Package, PackageOpen, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
@@ -123,6 +123,11 @@ const WAREHOUSE_ORDERS: MenuItem = {
   icon: ShoppingCart,
 };
 const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Boxes };
+// THE ANALYTIC SCREEN (docs/business/analytic/rpc_provide.md) — offered with its first served metric, the order metrics
+// (the-analytic-screen-is-accepted: "route and menu entry, with the first real metric"). Every member of a selling or a
+// warehouse team reads every metric of the team (every-member-reads-every-metric-of-their-team), so it is not
+// role-gated; what each reader sees is the service's answer (a-warehouse-reads-the-orders-it-ships).
+const ANALYTIC: MenuItem = { to: "/analytic", label: "nav.analytic", icon: ChartLine };
 const EXPENSES: MenuItem = { to: "/expenses", label: "nav.expenses", icon: Receipt };
 // The WAREHOUSE's money screen, read day by day: the handling fees it charged, less its expenses.
 // ⚠ It used to serve a SELLING team too, reading expected margin from `revenue_service`. That service
@@ -272,6 +277,8 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     }
     // Stock lives at warehouses; root/admin oversee every warehouse's inventory (they pick one).
     operations.push(INVENTORY);
+    // Root reads every team's orders on it (a-warehouse-reads-the-orders-it-ships).
+    operations.push(ANALYTIC);
   }
 
   // A warehouse team gets a flat Products list; a selling team gets the Products sub-menu — My
@@ -282,6 +289,8 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     // reference screen: the crew opens it first and returns to it after every order. Below Products
     // so the catalogue still reads as the subject and the orders as what is happening to it.
     operations.push(WAREHOUSE_ORDERS);
+    // What the orders it ships came to — counts only (a-warehouse-sees-no-seller-money).
+    operations.push(ANALYTIC);
     // Inventories — restock, racks, batches, opname (#95) — closes the warehouse's operations. It sat below the
     // money section while the menu was one column; in sections it is where a warehouse's work is, beside its
     // orders (`the-sidebar-is-in-sections`).
@@ -300,6 +309,8 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     // Shops and orders are SELLING-team concepts (#66/#68).
     operations.push(SHOPS);
     operations.push(ORDERS);
+    // Right under the orders it reports on.
+    operations.push(ANALYTIC);
 
     // Costs (#170) are the MANAGER's: CostList is scoped to the team's managers on the server too — a person
     // taking orders has no business seeing the payroll number.

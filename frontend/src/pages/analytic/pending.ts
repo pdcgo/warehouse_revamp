@@ -3,8 +3,9 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 /** What the Analytic screen shows before its backend exists. The id is also its i18n key (`analytic.pending.<id>`). */
 export type AnalyticPendingId = "figures" | "catalogue" | "pickers";
 
-// The whole screen is built ahead of its backend (HARD RULE 6): every figure is invented, the metric list is a mirror of
-// the decided proto options rather than read from the services, and the three entity pickers list sample entities.
+// Built ahead of most of its backend (HARD RULE 6). The five ORDER metrics are served by selling_service and read off its
+// contract; every other metric's figures are still invented and its entry a mirror of the decided proto options; and the
+// product and supplier pickers list sample entities. Each entry goes when the last metric it covers is served.
 const PARTS: PendingPart<AnalyticPendingId>[] = [
   { id: "figures", kind: "sample" },
   { id: "catalogue", kind: "sample" },

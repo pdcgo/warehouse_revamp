@@ -1047,6 +1047,7 @@ flowchart LR
 | the pending marks | `figures`, `catalogue`, `pickers` — each is removed by the backend step that serves it for real |
 | a contract change after this | a new pass through the screen, not a quiet edit |
 | next | backend analysis, in the order of [the-pattern-replaces-the-shipped-analytics](#the-pattern-replaces-the-shipped-analytics) |
+| ✅ route and menu built *(2026-10-29)* | with the first served metrics, the five order metrics: `/analytic` routed, and an **Analytic** entry in Operations after the team's orders (after Inventory for root and admin), for every member — ⚠ the placement is my reading, not asked. The `figures` and `catalogue` marks stay for the metrics still on samples; `pickers` now covers product and supplier only |
 
 ---
 

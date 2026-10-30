@@ -6,6 +6,7 @@ import { BundleService } from "../gen/warehouse/product/v1/bundle_pb";
 import { ShopService } from "../gen/warehouse/selling/v1/selling_pb";
 import { OrderService } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
+import { OrderAnalyticService } from "../gen/warehouse/selling/v1/order_analytic_pb";
 import { TeamReturnConfigurationService } from "../gen/warehouse/selling/v1/return_configuration_pb";
 import { WarehouseFeeService } from "../gen/warehouse/warehouse/v1/warehouse_fee_pb";
 import { ShipmentChannelService } from "../gen/warehouse/shipment/v1/shipment_pb";
@@ -49,6 +50,7 @@ export const productClient = createClient(ProductService, transport);
 export const bundleClient = createClient(BundleService, transport);
 export const shopClient = createClient(ShopService, transport);
 export const orderClient = createClient(OrderService, transport);
+export const orderAnalyticClient = createClient(OrderAnalyticService, transport);
 // Drafts are PERSONAL as well as team-scoped (#192): the server narrows every call to the caller,
 // so a draft never appears for a colleague however the client asks.
 export const orderDraftClient = createClient(OrderDraftService, transport);

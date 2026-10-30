@@ -9,6 +9,7 @@
     "discoverProduct": "Discover Product",
     "shops": "Shops",
     "orders": "Orders",
+    "analytic": "Analytic",
     "inventory": "Inventory",
     "inventories": "Inventories",
     "restock": "Restock",
@@ -4212,6 +4213,9 @@
     "groupBy": "Group by",
     "group": {
       "shop": "Shop",
+      "team": "Seller",
+      "warehouse": "Warehouse",
+      "user": "Created by",
       "product": "Product",
       "supplier": "Supplier",
       "daily": "Daily",
@@ -4221,6 +4225,9 @@
     },
     "groupPlural": {
       "shop": "shops",
+      "team": "sellers",
+      "warehouse": "warehouses",
+      "user": "people",
       "product": "products",
       "supplier": "suppliers",
       "daily": "days",
@@ -4240,15 +4247,31 @@
       "expense": "Expense"
     },
     "metric": {
-      "orders": "Orders",
+      "ordersCreated": "Orders created",
+      "ordersCancelled": "Orders cancelled",
+      "ordersReturnCreated": "Returns created",
+      "ordersReturnArrived": "Returns arrived",
+      "ordersLostCreated": "Orders lost",
       "settlement": "Settlement",
       "stockLost": "Stock lost",
       "ads": "Ads expense",
       "expenses": "Expenses"
     },
     "field": {
-      "order_count": "Order count",
-      "order_total": "Order total",
+      "created_count": "Orders created",
+      "created_total": "Created total",
+      "mp_total": "MP total",
+      "cancel_count": "Orders cancelled",
+      "cancel_total": "Cancelled total",
+      "return_created_count": "Returns created",
+      "return_created_total": "Returns total",
+      "return_created_mp_total": "Returns MP total",
+      "return_arrived_count": "Returns arrived",
+      "return_arrived_total": "Arrived total",
+      "return_arrived_mp_total": "Arrived MP total",
+      "lost_created_count": "Orders lost",
+      "lost_created_total": "Lost total",
+      "lost_created_mp_total": "Lost MP total",
       "settlement_amount": "Settlement amount",
       "profit": "Profit",
       "lost_count": "Units lost",
@@ -4256,15 +4279,29 @@
       "ads_spend": "Ads spend",
       "expense_total": "Expenses"
     },
+    "fieldOf": {
+      "ordersCreated": {
+        "mp_total": "Created MP total"
+      },
+      "ordersCancelled": {
+        "mp_total": "Cancelled MP total"
+      }
+    },
     "cannotGroup": "Cannot be grouped by {{group}}",
     "filter": {
       "dateRange": "Date",
       "shop": "Shop",
+      "team": "Seller",
+      "warehouse": "Warehouse",
+      "user": "Person",
       "product": "Product",
       "supplier": "Supplier"
     },
     "all": {
       "shop": "All shops",
+      "team": "All sellers",
+      "warehouse": "All warehouses",
+      "user": "Everyone",
       "product": "All products",
       "supplier": "All suppliers"
     },
@@ -4305,14 +4342,14 @@
     "pending": {
       "figures": {
         "label": "Sample figures",
-        "reason": "Every number is invented — no service answers MetricSearch or MetricData yet."
+        "reason": "The order metrics are real. Every other metric's figures are invented — its service does not answer MetricSearch or MetricData yet."
       },
       "catalogue": {
         "label": "Metric list",
-        "reason": "The metrics are a fixed list in the screen; they will be read from each service's contract once it exists."
+        "reason": "The order metrics are read from selling's contract; the rest are a fixed list in the screen until their services ship."
       },
       "pickers": {
-        "label": "Shop, product and supplier filters",
+        "label": "Product and supplier filters",
         "reason": "They list sample entries; the real filters search the team's own."
       }
     }

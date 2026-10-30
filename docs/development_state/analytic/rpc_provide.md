@@ -2,8 +2,9 @@
 
 **DESIGN ACCEPTED (2026-10-27) — BACKEND, STEPS 1 AND 2 OF 4 DONE: the shared proto, its startup checks, and supplier — the
 first real metric, `metrics/suppliers`, its four old reads removed.** The Storybook screen on sample
-data passed design_accept ([the-analytic-screen-is-accepted](../../business/analytic/rpc_provide_decision.md#the-analytic-screen-is-accepted)). No metric, no
-handler, no menu entry yet.
+data passed design_accept ([the-analytic-screen-is-accepted](../../business/analytic/rpc_provide_decision.md#the-analytic-screen-is-accepted)).
+✅ **2026-10-29: the screen is live** — route `/analytic` and a menu entry, its first SERVED metrics the five order
+metrics ([order_statistic_metric.md](../order/order_statistic_metric.md)); every other metric is still a sample.
 How analytics reach the frontend: one composed table whose columns come from any number of services, for the same rows. 45 decisions (two superseded: a
 metric per grain became the table's `group_by`, and the summary metric became `group_by = SUMMARY`). No question open. A warehouse group beside the team group, so `TEAM` and `WAREHOUSE` each mean one team for every reader ([the-warehouse-is-its-own-group](../../business/analytic/rpc_provide_decision.md#the-warehouse-is-its-own-group)); `GROUP_TYPE_WAREHOUSE = 11` joins the proto with its first metric, not yet. The table and the graph are
 tabs, one view at a time ([the-table-and-the-graph-are-tabs](../../business/analytic/rpc_provide_decision.md#the-table-and-the-graph-are-tabs)). The chart is designed
@@ -58,10 +59,22 @@ sequenceDiagram
 
 ## What exists
 
-### The Analytic screen — Storybook only, sample data, ACCEPTED (2026-10-27)
+### The Analytic screen — ACCEPTED (2026-10-27), LIVE with the order metrics (2026-10-29)
 
-`Pages/Analytic/Composer` — the owner chose to build it now and add the **menu entry later**, when a real metric is
-wired, so nobody opens a page of invented numbers. **No route**: it is reachable in Storybook only.
+`Pages/Analytic/Composer`, and since 2026-10-29 the route `/analytic` with a menu entry — the step the acceptance named
+*"with the first real metric"*. ⚠ My reading, not asked: the entry sits in **Operations**, right after the team's orders
+(a selling team, a warehouse) or after Inventory (root and admin), for every member — not role-gated, since every member
+reads every metric of the team ([every-member-reads-every-metric-of-their-team](../../business/analytic/rpc_provide_decision.md#every-member-reads-every-metric-of-their-team)).
+
+| | wired 2026-10-29 |
+| --- | --- |
+| the catalogue | `ORDER_METRICS` in `features/analytic/catalogue.ts` are read off the generated descriptors with `getOption` — id, filters, groups, each field's `field_stat_type` and `metric_sort`; `MetricDef.schema` marks a served metric. The other four entries are still a typed mirror |
+| the provider | `loadReport(req, teamId)` is ASYNC: a served metric is ranked and filled by its service (`OrderAnalyticService`, one MetricData per question for all of its metrics), a sample by `sampleService`. `answeredFields` drops a column whose headline came back unset — a warehouse's money ([a-warehouse-sees-no-seller-money](../../business/order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money)) |
+| the page | TanStack Query with `listQuery` and a RefreshOverlay (HARD RULE 10); groups gain Seller (`team`), Warehouse and Created by (`user`), filters the same through ShopSelect, TeamSelect (by team type) and UserSelect; product and supplier keep their sample pickers. A row's id is named by ShopByIds / TeamByIds / UserByIDs (`useKeyNames`), a sample's by `sampleName` |
+| a shared field name | `fieldLabel` reads `analytic.fieldOf.<metric>.<field>` before `analytic.field.<field>` — Created and Cancel both have the owner's `mp_total` |
+| Storybook | `.storybook/orderAnalyticStub.ts` answers `OrderAnalyticService` from `sampleService`, so stories run the wire path; Gudang Pusat (11) gets counts only. 16 stories, two new (`AWarehouseSeesCountsOnly`, `GroupedBySellerNamesTheTeam`) |
+| e2e | `orders.spec.ts` *Analytic: the orders placed today count in Orders created, by shop* — through the emulator's push, the fold and both RPCs |
+| Vite | `optimizeDeps.include` names recharts and `@chakra-ui/charts`: the dev server first met them on this lazy route, re-optimised mid-session and served a stale chunk, so the page never loaded |
 
 | | |
 | --- | --- |
@@ -102,12 +115,13 @@ Frontend reads them through `features/{suppliers,settlement,financialAccount}/an
 ## What does not exist yet
 
 - a metric of settlement's or financial account's — supplier's is the only one
-- ⚠ `metrics/suppliers` on the composer: `features/analytic/catalogue.ts` still lists only its five SAMPLE metrics and
-  `provider.ts` reads `sample.ts`. Wiring the composer to a real service is step 4
-- the menu entry and a route for `/analytic` — added with the first real metric
+- `metrics/suppliers` on the composer — its service serves it, but the catalogue does not list it yet (supplier's own
+  screens read it). One `servedMetric(SupplierMetricSchema, …)` line and a client in `provider.ts`'s `clientOf`
+- ⚠ a sample metric filtered by a REAL shop reads zero — the shop picker is real now, and the samples' shops are
+  invented. It goes when those metrics are served
 - the cap on lines per graph — decided with the graph on screen ([the-chart-waits-for-a-chart-component](../../business/analytic/rpc_provide_decision.md#the-chart-waits-for-a-chart-component)); six colours, so a seventh line repeats the first
 - a RATIO graph — the catalogue's `kind` is only `count | money`; it comes when the provider reads `field_stat_type` off the descriptor
-- any `MetricSearch` / `MetricData` handler
+- a `MetricSearch` / `MetricData` handler outside supplier and selling — settlement is next in the agreed order
 
 ## Waiting on the owner
 
@@ -133,6 +147,6 @@ Frontend reads them through `features/{suppliers,settlement,financialAccount}/an
    - ⚠ **measure on a FRESH `warehouse_test`** (`go run ./tools/san db drop-test` before each perf test): a reused one
      read 2–4× slower and flipped a 30-day SUM to a whole-table scan
 3. settlement, then financial account.
-4. the route and menu entry, with the first real metric.
+4. ✅ the route and menu entry — with the order metrics, 2026-10-29.
 
 The chart is its own later pass ([the-chart-waits-for-a-chart-component](../../business/analytic/rpc_provide_decision.md#the-chart-waits-for-a-chart-component)).

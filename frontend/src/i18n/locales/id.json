@@ -9,6 +9,7 @@
     "discoverProduct": "Temukan Produk",
     "shops": "Toko",
     "orders": "Pesanan",
+    "analytic": "Analitik",
     "inventory": "Inventaris",
     "inventories": "Inventaris",
     "restock": "Restok",
@@ -4197,6 +4198,9 @@
     "groupBy": "Kelompokkan per",
     "group": {
       "shop": "Toko",
+      "team": "Penjual",
+      "warehouse": "Gudang",
+      "user": "Dibuat oleh",
       "product": "Produk",
       "supplier": "Supplier",
       "daily": "Harian",
@@ -4206,6 +4210,9 @@
     },
     "groupPlural": {
       "shop": "toko",
+      "team": "penjual",
+      "warehouse": "gudang",
+      "user": "orang",
       "product": "produk",
       "supplier": "supplier",
       "daily": "hari",
@@ -4225,15 +4232,31 @@
       "expense": "Biaya"
     },
     "metric": {
-      "orders": "Pesanan",
+      "ordersCreated": "Pesanan dibuat",
+      "ordersCancelled": "Pesanan dibatalkan",
+      "ordersReturnCreated": "Retur dibuat",
+      "ordersReturnArrived": "Retur diterima",
+      "ordersLostCreated": "Pesanan hilang",
       "settlement": "Penyelesaian",
       "stockLost": "Stok hilang",
       "ads": "Biaya iklan",
       "expenses": "Biaya"
     },
     "field": {
-      "order_count": "Jumlah pesanan",
-      "order_total": "Total pesanan",
+      "created_count": "Pesanan dibuat",
+      "created_total": "Total dibuat",
+      "mp_total": "Total MP",
+      "cancel_count": "Pesanan dibatalkan",
+      "cancel_total": "Total dibatalkan",
+      "return_created_count": "Retur dibuat",
+      "return_created_total": "Total retur",
+      "return_created_mp_total": "Total MP retur",
+      "return_arrived_count": "Retur diterima",
+      "return_arrived_total": "Total diterima",
+      "return_arrived_mp_total": "Total MP diterima",
+      "lost_created_count": "Pesanan hilang",
+      "lost_created_total": "Total hilang",
+      "lost_created_mp_total": "Total MP hilang",
       "settlement_amount": "Jumlah dana cair",
       "profit": "Laba",
       "lost_count": "Unit hilang",
@@ -4241,15 +4264,29 @@
       "ads_spend": "Biaya iklan",
       "expense_total": "Biaya"
     },
+    "fieldOf": {
+      "ordersCreated": {
+        "mp_total": "Total MP dibuat"
+      },
+      "ordersCancelled": {
+        "mp_total": "Total MP dibatalkan"
+      }
+    },
     "cannotGroup": "Tidak bisa dikelompokkan per {{group}}",
     "filter": {
       "dateRange": "Tanggal",
       "shop": "Toko",
+      "team": "Penjual",
+      "warehouse": "Gudang",
+      "user": "Orang",
       "product": "Produk",
       "supplier": "Supplier"
     },
     "all": {
       "shop": "Semua toko",
+      "team": "Semua penjual",
+      "warehouse": "Semua gudang",
+      "user": "Semua orang",
       "product": "Semua produk",
       "supplier": "Semua supplier"
     },
@@ -4290,14 +4327,14 @@
     "pending": {
       "figures": {
         "label": "Angka contoh",
-        "reason": "Semua angka dikarang — belum ada layanan yang menjawab MetricSearch atau MetricData."
+        "reason": "Metrik pesanan sudah asli. Angka metrik lainnya masih dikarang — layanannya belum menjawab MetricSearch atau MetricData."
       },
       "catalogue": {
         "label": "Daftar metrik",
-        "reason": "Metriknya daftar tetap di layar; nanti dibaca dari kontrak tiap layanan begitu kontraknya ada."
+        "reason": "Metrik pesanan dibaca dari kontrak selling; sisanya masih daftar tetap di layar sampai layanannya ada."
       },
       "pickers": {
-        "label": "Filter toko, produk dan supplier",
+        "label": "Filter produk dan supplier",
         "reason": "Isinya data contoh; filter aslinya mencari milik tim sendiri."
       }
     }

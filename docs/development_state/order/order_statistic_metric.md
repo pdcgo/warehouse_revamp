@@ -1,13 +1,14 @@
 # Development state — order / order_statistic_metric
 
-**BACKEND BUILT (2026-10-29), SCREEN NOT WIRED.** The five order metrics — Created, Cancel, Return Created, Return
-Arrived, Lost Created — each counting whole orders on the day of its own move. The event three of them needed, the fold
-and both reads exist and are tested; the analytic screen still shows its sample.
+**BUILT AND ON SCREEN (2026-10-29).** The five order metrics — Created, Cancel, Return Created, Return Arrived, Lost
+Created — each counting whole orders on the day of its own move. The event three of them needed, the fold, both reads,
+and the analytic screen (`/analytic`, in the menu) reading them for real. Detail of the screen:
+[analytic/rpc_provide.md](../analytic/rpc_provide.md).
 
 - Owner doc: [order_statistic_metric.md](../../business/order/order_statistic_metric.md) — ⚠ **untracked in git** until the owner commits it
 - Decisions: [order_statistic_metric_decision.md](../../business/order/order_statistic_metric_decision.md) — 10
-- Clarify: [order_statistic_metric_clarify.md](../../business/order/order_statistic_metric_clarify.md) — **2 questions**
-  opened by the build (the ids, a backfill), 1 new contradiction (a user 0 cannot be a key), 2 slips in the owner's doc
+- Clarify: [order_statistic_metric_clarify.md](../../business/order/order_statistic_metric_clarify.md) — **0 questions**
+  (the build's two closed: the ids kept, [the-order-metric-ids-name-what-moved](../../business/order/order_statistic_metric_decision.md#the-order-metric-ids-name-what-moved); past orders not folded, [the-order-metrics-count-from-the-fold-onward](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)), 1 new contradiction (a user 0 cannot be a key), 2 slips in the owner's doc
 - Flow: [selling rpc.md](../../services/selling_service/rpc.md#the-order-metrics--the-fold-and-orderanalyticservice) ·
   tables: [database-schema.md](../../database-schema.md) (`order_daily_reports`, `order_event_logs`)
 
@@ -37,13 +38,9 @@ go test -tags perfaudit -run TestPerf_OrderMetric -v ./backend/services/selling_
 
 ## What does not exist yet
 
-1. **The screen.** The five go under *Order* in `frontend/src/features/analytic/catalogue.ts`, replacing the sample
-   `metrics/orders`. The screen's provider (`features/analytic/provider.ts`) is still synchronous and sample-backed for
-   EVERY service — no metric reaches it through an RPC yet, `metrics/suppliers` included. Wiring means: an async
-   provider on TanStack Query calling `OrderAnalyticService` for the order metrics; `team`, `warehouse` and `user` as
-   groups and filters; names for real ids (`ShopByIds`, `TeamByIds`, `UserByIDs`); and dropping a column that came back
-   unset for a warehouse.
-2. **A backfill** of the orders placed before the fold — [are-past-orders-folded](../../business/order/order_statistic_metric_clarify.md#are-past-orders-folded), recommended, not decided.
+1. ✅ **The screen** (2026-10-29): read off the descriptors, asked over the wire, the warehouse's money columns dropped,
+   real names on the rows; e2e *Analytic: the orders placed today count in Orders created, by shop* proves the path.
+2. **A backfill** of the orders placed before the fold — [are-past-orders-folded](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward) — **not built, by decision**: the dev phase has no history worth folding (2026-10-30).
 3. **A replay and a dedup prune**, as supplier's fold has. Not asked for the order metrics.
 4. **Return Arrived** counts the move into `return_completed`, which only the return accept makes — and that is not
    built ([order context](context.md)), so the metric reads zero until it is.

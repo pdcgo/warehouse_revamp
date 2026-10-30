@@ -3,7 +3,7 @@
 // now (compare-in-another-tab-for-now) — a refresh keeps it, and a link can be sent. A link carries the REPORT, never any
 // access: whoever opens it sees only what their role and team allow.
 //
-//   ?g=shop&m=metrics/orders,metrics/settlement&r=30d&shop=13&s=metrics/orders:order_count:desc&p=2&n=20&v=graph
+//   ?g=shop&m=metrics/orders/created,metrics/settlement&r=30d&shop=13&s=metrics/orders/created:created_count:desc&p=2&n=20&v=graph
 //
 // Read forgivingly: a malformed value is ignored and the report opens without it — never an error page. A metric the
 // link names that no longer exists, or cannot be read by the link's group, is dropped.
@@ -19,6 +19,10 @@ export interface ReportState {
   shop: string;
   product: string;
   supplier: string;
+  /** The seller, the warehouse and the user a metric books a fact to (the-team-group-is-the-seller). "" = every. */
+  team: string;
+  warehouse: string;
+  user: string;
   /** null → the default sort for the group and the metrics (`defaultSort`). */
   sort: ReportSort | null;
   page: number;
@@ -91,6 +95,9 @@ export function parseReportState(params: URLSearchParams): ReportState {
     shop: idOf("shop"),
     product: idOf("product"),
     supplier: idOf("supplier"),
+    team: idOf("team"),
+    warehouse: idOf("warehouse"),
+    user: idOf("user"),
     sort: parseSort(params.get("s"), groupBy, metricIds),
     page: Number.isInteger(page) && page >= 1 ? page : 1,
     pageSize: PAGE_SIZES.includes(size) ? size : 20,
@@ -106,6 +113,9 @@ export function formatReportState(state: ReportState): URLSearchParams {
   if (state.shop) params.set("shop", state.shop);
   if (state.product) params.set("product", state.product);
   if (state.supplier) params.set("supplier", state.supplier);
+  if (state.team) params.set("team", state.team);
+  if (state.warehouse) params.set("warehouse", state.warehouse);
+  if (state.user) params.set("user", state.user);
   if (state.sort) params.set("s", formatSort(state.sort));
   if (state.page > 1) params.set("p", String(state.page));
   if (state.pageSize !== 20) params.set("n", String(state.pageSize));

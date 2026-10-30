@@ -786,6 +786,31 @@ test("Edit Resi: the seller replaces the tracking number while the parcel is in 
   await expect(page.getByTestId("section-notes")).toContainText(`Resi: ${TRACKING_NUMBER} → ${replaced}`);
 });
 
+// THE ORDER METRICS, END TO END (order_statistic_metric.md): the orders this spec placed reach the analytic screen
+// through the real path — OrderPlaced published, pushed by the emulator to selling's fold, folded into
+// order_daily_reports, ranked and filled by OrderAnalyticService. The fold is asynchronous, so the page is re-read until
+// the push has landed.
+test("Analytic: the orders placed today count in Orders created, by shop", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const headline = page.getByTestId("analytic-headline-created_count-value");
+
+  await expect
+    .poll(
+      async () => {
+        await page.goto("/analytic?g=shop&m=metrics/orders/created");
+        await expect(page.getByTestId("analytic-page")).toBeVisible();
+
+        return Number(((await headline.textContent({ timeout: 5000 })) ?? "0").replace(/\./g, ""));
+      },
+      { timeout: 30_000, intervals: [1_000, 2_000, 3_000] },
+    )
+    .toBeGreaterThan(0);
+
+  // The row is the order's shop, named by ShopByIds.
+  await expect(page.getByTestId("analytic-table")).toContainText(SHOP_NAME);
+});
+
 // Switches the app to the WAREHOUSE team — the crew's seat (#151).
 //
 // The pick screens are scoped to the warehouse, not to the selling team, so nothing about them can be

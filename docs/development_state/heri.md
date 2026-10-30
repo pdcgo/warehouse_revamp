@@ -18,12 +18,13 @@ Users & Role System, Documents, region, shipping, expense.
 | **Every time is Jakarta time** | dates show in WIB wherever they are read, and table cells use the short form (`29 Okt 13:05`) |
 | **Edit Resi works** | the selling team changes the tracking number, the label file or both until the parcel is handed to the courier. Each change is a note on the order naming the old and the new |
 | **The warehouse fee is what gets charged** | the balance now charges each order the fee the warehouse priced it at, not the old flat fee from Credit Terms |
+| **The order figures are on the Analytic screen** | Analytic is in the menu now. Orders created, cancelled, returned, arrived back and lost — counted on the day each happened, by shop, seller, warehouse, person or period. A warehouse sees the counts of the orders it ships, never the seller's money. The other metrics on that screen are still sample figures, and say so |
 | **Credit Terms is the limit only** | the old flat fee field is gone from Credit Terms and from the pair's terms tab — the warehouse fee rollout is finished. Past changes to the flat fee stay in the change log |
 
 **Checked:** unit tests, two people editing at once and an edit racing the handover (one result each time), 1 545 of
 1 546 component stories (the one is a known slow-machine flake), and the orders e2e.
 
-**Next:** the order figures on the analytic screen.
+**Next:** both of your questions on the order figures are answered — the metric ids stay, and the orders placed before the figures existed are not filled in, since this is still development. Up next: settlement on the Analytic screen. Its figures are already counted; it needs its two reads.
 The order import waits on one export file from each marketplace you use.
 <sub>agent detail: [order/context.md](order/context.md) · [teams/warehouse/context.md](teams/warehouse/context.md)</sub>
 

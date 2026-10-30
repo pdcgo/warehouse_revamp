@@ -1,13 +1,19 @@
-import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { Box, Flex, HStack, Heading, Icon, Stack, Tabs, Tag, Text } from "@chakra-ui/react";
 import { ChartLine, Info, Table2 } from "lucide-react";
 
+import { rpcError } from "../../api/clients";
+import { listQuery } from "../../api/queryClient";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { DateRangePicker } from "../../components/datetime/DateRangePicker";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
+import { ShopSelect } from "../../components/pickers/ShopSelect";
+import { UserSelect } from "../../components/pickers/UserSelect";
+import { TeamSelect } from "../../components/teams/TeamSelect";
 import {
   type FilterType,
   type MetricDef,
@@ -18,8 +24,8 @@ import {
   metricSlug,
   sharedFilters,
 } from "../../features/analytic/catalogue";
-import { type ReportResult, type ReportSort, loadReport } from "../../features/analytic/provider";
-import { SAMPLE_PRODUCTS, SAMPLE_SHOPS, SAMPLE_SUPPLIERS, type SampleEntity } from "../../features/analytic/sample";
+import { EMPTY_REPORT, type ReportSort, answeredFields, loadReport } from "../../features/analytic/provider";
+import { SAMPLE_PRODUCTS, SAMPLE_SUPPLIERS, type SampleEntity } from "../../features/analytic/sample";
 import {
   DEFAULT_RANGE,
   PAGE_SIZES,
@@ -32,20 +38,24 @@ import {
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { windowOf } from "../../features/settlement/window";
+import { useTeam } from "../../features/team/TeamContext";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useIsMobile } from "../../layouts/shell";
 import { CATEGORY_ICON, MetricPicker } from "./components/MetricPicker";
 import { PlainSelect } from "./components/PlainSelect";
 import { ReportGraphs } from "./components/ReportGraphs";
 import { ReportHeadline } from "./components/ReportHeadline";
 import { ReportTable } from "./components/ReportTable";
-import { keyLabel } from "./format";
+import { fieldLabel, keyLabel, useKeyNames } from "./format";
 import { ANALYTIC_PENDING } from "./pending";
 
-const EMPTY: ReportResult = { keys: [], hasNext: false, cells: {}, summary: {} };
+/** The filters still picked from SAMPLE entries — no served metric narrows by a product or a supplier yet. */
+type SampleFilter = "product" | "supplier";
 
-type EntityFilter = "shop" | "product" | "supplier";
+const SAMPLES: Record<SampleFilter, SampleEntity[]> = { product: SAMPLE_PRODUCTS, supplier: SAMPLE_SUPPLIERS };
 
-const ENTITIES: Record<EntityFilter, SampleEntity[]> = { shop: SAMPLE_SHOPS, product: SAMPLE_PRODUCTS, supplier: SAMPLE_SUPPLIERS };
+/** Every filter naming one entity — what a metric that cannot use one makes the screen drop. */
+const ENTITY_FILTERS = ["shop", "team", "warehouse", "user", "product", "supplier"] as const;
 
 const isDefaultRange = (state: ReportState) =>
   state.range.kind === "relative" && DEFAULT_RANGE.kind === "relative" && state.range.days === DEFAULT_RANGE.days;
@@ -65,14 +75,17 @@ function sortValue(sort: ReportSort | null): string {
 // table is GROUPED, which METRICS are its columns — from any service — one column to SORT by, and the filters every
 // chosen metric shares. One service ranks the rows; every service fills them (the-two-steps).
 //
-// ⚠ BUILT AHEAD OF ITS BACKEND (HARD RULE 6). The figures are invented (features/analytic/sample.ts), the metric list is a
-// mirror of the decided proto options, and the menu entry waits until a real metric is wired — the pending strip says so.
+// ⚠ PARTLY BUILT AHEAD OF ITS BACKEND (HARD RULE 6). The five ORDER metrics are served by selling_service and read off
+// its contract; every other metric's figures are still invented (features/analytic/sample.ts) and its entry a mirror of
+// the decided proto options — the pending strip says which.
 //
 // The whole state lives in the URL (the-report-lives-in-the-url), so a second tab is the compare view
 // (compare-in-another-tab-for-now).
 export function AnalyticPage() {
   const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
+  const { current } = useTeam();
+  const teamId = current?.teamId;
   const [params, setParams] = useSearchParams();
   const state = parseReportState(params);
 
@@ -88,23 +101,30 @@ export function AnalyticPage() {
     shop: shared.includes("shop") ? state.shop || undefined : undefined,
     product: shared.includes("product") ? state.product || undefined : undefined,
     supplier: shared.includes("supplier") ? state.supplier || undefined : undefined,
+    team: shared.includes("team") ? state.team || undefined : undefined,
+    warehouse: shared.includes("warehouse") ? state.warehouse || undefined : undefined,
+    user: shared.includes("user") ? state.user || undefined : undefined,
   };
 
-  const report = useMemo(
-    () =>
-      valid && sort
-        ? loadReport({
-            groupBy: state.groupBy,
-            metricIds: state.metricIds,
-            filters,
-            sort,
-            page: state.page,
-            pageSize: state.pageSize,
-          })
-        : EMPTY,
+  // THE REPORT — asked of every service that serves a chosen metric. `listQuery`: a page, a sort or a filter REFINES the
+  // same table, so the previous rows stay on screen behind the overlay while the next ones load (HARD RULE 10).
+  const query = useQuery({
+    ...listQuery,
     // The URL is the state: one string covers every input, and `from`/`to` move with the clock on a relative range.
-    [params.toString(), from, to],
-  );
+    queryKey: ["analytic", "report", String(teamId ?? 0n), params.toString(), from, to],
+    enabled: valid && sort !== null && teamId !== undefined,
+    queryFn: () =>
+      loadReport(
+        { groupBy: state.groupBy, metricIds: state.metricIds, filters, sort: sort!, page: state.page, pageSize: state.pageSize },
+        teamId!,
+      ),
+  });
+  const report = query.data ?? EMPTY_REPORT;
+
+  // A column the service left unset is not the reader's to see — a warehouse reads no seller money
+  // (a-warehouse-sees-no-seller-money) — so it goes, rather than reading 0.
+  const shown = answeredFields(defs, report);
+  const names = useKeyNames(state.groupBy, report.keys);
 
   const commit = (next: Partial<ReportState>, restart = true) =>
     setParams(formatReportState({ ...state, ...next, ...(restart ? { page: 1 } : {}) }), { replace: true });
@@ -144,7 +164,7 @@ export function AnalyticPage() {
     if (!def || state.metricIds.includes(metricId)) return;
 
     const next = sharedFilters([...defs, def]);
-    const lost = (["shop", "product", "supplier"] as const).filter((f) => state[f] !== "" && !next.includes(f));
+    const lost = ENTITY_FILTERS.filter((f) => state[f] !== "" && !next.includes(f));
 
     commit({
       metricIds: [...state.metricIds, metricId],
@@ -161,27 +181,50 @@ export function AnalyticPage() {
     }
   };
 
-  const filtering = [!isDefaultRange(state), ...(["shop", "product", "supplier"] as const).map((f) => shared.includes(f) && state[f] !== "")].filter(
-    Boolean,
-  ).length;
+  const filtering = [!isDefaultRange(state), ...ENTITY_FILTERS.map((f) => shared.includes(f) && state[f] !== "")].filter(Boolean).length;
 
   const sortOptions = [
     ...(isTimeGroup(state.groupBy)
       ? (["desc", "asc"] as const).map((dir) => ({ value: `key:${dir}`, label: t("analytic.sortOption", { field: t("analytic.period"), dir: t(`analytic.dateDir.${dir}`) }) }))
       : []),
-    ...defs.flatMap((def) =>
+    ...shown.flatMap((def) =>
       def.fields
         .filter((f) => f.canSort)
         .flatMap((f) =>
           (["desc", "asc"] as const).map((dir) => ({
             value: `${def.metricId}:${f.name}:${dir}`,
-            label: t("analytic.sortOption", { field: t(`analytic.field.${f.name}`), dir: t(`analytic.dir.${dir}`) }),
+            label: t("analytic.sortOption", { field: fieldLabel(t, def, f.name), dir: t(`analytic.dir.${dir}`) }),
           })),
         ),
     ),
   ];
 
-  const entityField = (kind: EntityFilter) =>
+  // A filter over the team's real entities — its shops, a seller, a warehouse, a person. Cleared, it reads every one.
+  const asId = (raw: string) => (raw ? BigInt(raw) : 0n);
+  const fromId = (id: bigint | undefined) => (id && id > 0n ? id.toString() : "");
+
+  const realField = (kind: "shop" | "team" | "warehouse" | "user") =>
+    shared.includes(kind) &&
+    teamId !== undefined && (
+      <FilterField key={kind} w="13rem" testId={`analytic-filter-${kind}`}>
+        {kind === "shop" && (
+          <ShopSelect teamId={teamId} value={asId(state.shop)} onChange={(id) => commit({ shop: fromId(id) })} placeholder={t("analytic.all.shop")} />
+        )}
+        {(kind === "team" || kind === "warehouse") && (
+          <TeamSelect
+            value={asId(state[kind])}
+            onChange={(id) => commit({ [kind]: fromId(id) })}
+            teamType={kind === "team" ? TeamType.SELLING : TeamType.WAREHOUSE}
+            placeholder={t(`analytic.all.${kind}`)}
+          />
+        )}
+        {kind === "user" && (
+          <UserSelect value={asId(state.user) || undefined} onChange={(id) => commit({ user: fromId(id) })} placeholder={t("analytic.all.user")} />
+        )}
+      </FilterField>
+    );
+
+  const entityField = (kind: SampleFilter) =>
     shared.includes(kind) && (
       <FilterField key={kind} w="13rem" testId={`analytic-filter-${kind}`}>
         <HStack gap="2">
@@ -189,7 +232,7 @@ export function AnalyticPage() {
             <PlainSelect
               items={[
                 { value: "all", label: t(`analytic.all.${kind}`) },
-                ...ENTITIES[kind].map((e) => ({ value: e.id, label: e.name })),
+                ...SAMPLES[kind].map((e) => ({ value: e.id, label: e.name })),
               ]}
               value={state[kind] || "all"}
               onChange={(v) => commit({ [kind]: v === "all" ? "" : v })}
@@ -259,12 +302,15 @@ export function AnalyticPage() {
         active={filtering > 0}
         count={filtering}
         testId="analytic-filters"
-        onClear={() => commit({ range: DEFAULT_RANGE, shop: "", product: "", supplier: "" })}
+        onClear={() => commit({ range: DEFAULT_RANGE, shop: "", product: "", supplier: "", team: "", warehouse: "", user: "" })}
       >
         <FilterField w="auto">
           <DateRangePicker value={state.range} onChange={(range) => commit({ range })} testId="analytic-range" />
         </FilterField>
-        {entityField("shop")}
+        {realField("shop")}
+        {realField("team")}
+        {realField("warehouse")}
+        {realField("user")}
         {entityField("product")}
         {entityField("supplier")}
         {isMobile && sortOptions.length > 0 && (
@@ -289,13 +335,19 @@ export function AnalyticPage() {
         </Text>
       )}
 
+      {query.isError && (
+        <Text fontSize="sm" color="fg.error" data-testid="analytic-error">
+          {rpcError(query.error)}
+        </Text>
+      )}
+
       {defs.length === 0 ? (
         <Text fontSize="sm" color="fg.muted" data-testid="analytic-empty">
           {t("analytic.empty.noMetric", { group: t(`analytic.groupPlural.${state.groupBy}`) })}
         </Text>
       ) : (
         <>
-          <ReportHeadline defs={defs} summary={report.summary} sort={sort} />
+          <ReportHeadline defs={shown} summary={report.summary} sort={sort} />
 
           {/* ONE VIEW AT A TIME (the-table-and-the-graph-are-tabs) — the same rows drawn as a table or as graphs. Switching
               keeps the page, the sort and the filters; the rows line and the pager belong to both, since the graph draws
@@ -318,6 +370,7 @@ export function AnalyticPage() {
               </Tabs.Trigger>
             </Tabs.List>
 
+            <RefreshOverlay busy={query.isFetching && !query.isPending}>
             <Stack gap="field" pt="card">
               {/* WHAT THE ROWS ARE, whenever a figure ranks them (the-rows-line-says-what-the-rows-are) — sorting by
                   Profit hands the rows to settlement, and without the line a shop leaving reads as a shop lost. */}
@@ -336,11 +389,11 @@ export function AnalyticPage() {
                 <ReportTable
                   groupBy={state.groupBy}
                   keys={report.keys}
-                  defs={defs}
+                  defs={shown}
                   cells={report.cells}
                   sort={sort}
                   onSortChange={(next) => commit({ sort: next })}
-                  labelOf={(key) => keyLabel(state.groupBy, key, t, i18n.language)}
+                  labelOf={(key) => keyLabel(state.groupBy, key, t, i18n.language, names)}
                 />
               </Tabs.Content>
               {/* THE TABLE AS GRAPHS — one per kind of number, drawn from the same cells (the-graph-draws-the-table). */}
@@ -348,9 +401,9 @@ export function AnalyticPage() {
                 <ReportGraphs
                   groupBy={state.groupBy}
                   keys={report.keys}
-                  defs={defs}
+                  defs={shown}
                   cells={report.cells}
-                  labelOf={(key) => keyLabel(state.groupBy, key, t, i18n.language)}
+                  labelOf={(key) => keyLabel(state.groupBy, key, t, i18n.language, names)}
                 />
               </Tabs.Content>
               {/* No total, only whether another page follows (a-page-says-whether-another-follows) — the growing pager. */}
@@ -358,13 +411,22 @@ export function AnalyticPage() {
                 page={state.page}
                 onPageChange={(page) => commit({ page }, false)}
                 hasNext={report.hasNext}
-                resetKey={[state.groupBy, state.metricIds.join(","), from, to, state.shop, state.product, state.supplier, sortValue(sort), state.pageSize].join("|")}
+                resetKey={[
+                  state.groupBy,
+                  state.metricIds.join(","),
+                  from,
+                  to,
+                  ...ENTITY_FILTERS.map((f) => state[f]),
+                  sortValue(sort),
+                  state.pageSize,
+                ].join("|")}
                 pageSize={state.pageSize}
                 pageSizeOptions={PAGE_SIZES}
                 onPageSizeChange={(pageSize) => commit({ pageSize })}
                 testId="analytic-pager"
               />
             </Stack>
+            </RefreshOverlay>
           </Tabs.Root>
         </>
       )}
