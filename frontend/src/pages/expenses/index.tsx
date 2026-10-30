@@ -23,16 +23,24 @@ import { rpcError } from "../../api/clients";
 import type { ExpenseRecord } from "../../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
-import { ExpenseKindSelect, expenseKindLabel } from "../../components/pickers/ExpenseKindSelect";
+import { COST_FILTER_KINDS, ExpenseKindSelect, expenseKindLabel } from "../../components/pickers/ExpenseKindSelect";
 import { Pagination } from "../../components/chrome/Pagination";
 import { toaster } from "../../components/feedback/Toaster";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
 import { thisMonth } from "../../lib/period";
+import { type UrlCodec, enumCodec, useUrlState } from "../../lib/urlState";
 import { RecordExpenseDialog } from "./components/RecordExpenseDialog";
 import { useExpenses, useVoidExpense } from "./queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// The month as the URL carries it — `2026-10`; anything else is read as "this month".
+const MONTH_CODEC: UrlCodec<string> = {
+  encode: (v) => v,
+  decode: (raw) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(raw) ? raw : undefined),
+};
+const KIND_CODEC = enumCodec(COST_FILTER_KINDS);
 
 
 // ExpensesPage lists what a team spent in a month (#170) — the money no order caused.
@@ -46,8 +54,11 @@ export function ExpensesPage() {
   // Only the FILTERS are state now (#175). The rows, the totals, the page count, the spinner and the
   // error are all derived from the query — nothing here re-declares them, so they cannot drift out
   // of step with each other the way six independent useStates could.
-  const [month, setMonth] = useState(thisMonth);
-  const [kind, setKind] = useState<ExpenseKind>(ExpenseKind.UNSPECIFIED);
+  //
+  // THE MONTH AND THE KIND LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same month. This
+  // month is the default, so it is left out: a bare link means "this month" whenever it is opened.
+  const [month, setMonth] = useUrlState("month", thisMonth(), MONTH_CODEC);
+  const [kind, setKind] = useUrlState<ExpenseKind>("kind", ExpenseKind.UNSPECIFIED, KIND_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<ExpenseRecord | null>(null);

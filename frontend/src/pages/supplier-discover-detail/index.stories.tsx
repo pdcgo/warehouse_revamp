@@ -125,8 +125,8 @@ export const ReadOnly: Story = {
   },
 };
 
-// Only the Products tab is marked — the supplier itself is a real read now.
-export const OnlyTheProductsAreSample: Story = {
+// The Products tab and the stores' and products' figures are marked — the supplier itself is a real read now.
+export const TheProductsAndTheFiguresAreSample: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
@@ -135,6 +135,22 @@ export const OnlyTheProductsAreSample: Story = {
       within(canvas.getByTestId("supplier-tab-products")).getByTestId("not-implemented-products"),
     ).toBeVisible();
     await expect(canvas.queryByTestId("not-implemented-supplier")).toBeNull();
+  },
+};
+
+// A STORE SHOWS ITS SOLD AND READY, as on the manage detail (the-detail-tabs-show-sold-and-ready) — read-only, so the
+// two columns are the table's last; marked 2 and 3 in THIS page's list.
+export const AStoreShowsItsSoldAndReady: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const table = await canvas.findByTestId("channels-table");
+    await waitFor(() => expect(within(table).getAllByRole("row").length).toBeGreaterThan(1));
+    const headers = within(table).getAllByRole("columnheader");
+    await expect(headers.at(-2)).toHaveTextContent(/^Sold/);
+    await expect(headers.at(-1)).toHaveTextContent(/^Ready/);
+    await expect(within(headers.at(-2)!).getByTestId("not-implemented-sold")).toHaveTextContent("2");
+    await expect(within(headers.at(-1)!).getByTestId("not-implemented-ready")).toHaveTextContent("3");
   },
 };
 
@@ -211,5 +227,30 @@ export const AnEmptySupplierShowsItsNameAndTeam: Story = {
     const canvas = await loaded(canvasElement);
     await canvas.findByTestId("discover-detail-team");
     await expect(canvas.queryByTestId("discover-detail-meta")).toBeNull();
+  },
+};
+
+// GUDANG TERKAIT, as on the manage detail (a-supplier-page-is-scoped-by-its-warehouses) — over the tabs, marked 4 and 5.
+export const TheWarehousesScopeThePage: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const row = await canvas.findByTestId("supplier-warehouses");
+    await expect(within(row).getByTestId("not-implemented-warehouses")).toHaveTextContent("4");
+    await expect(within(row).getByTestId("not-implemented-warehouseFilter")).toHaveTextContent("5");
+    await expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      canvas.getByTestId("supplier-tabs").getBoundingClientRect().top,
+    );
+  },
+};
+
+// EACH TAB EXPORTS ITS OWN TABLE, as on the manage detail (each-supplier-tab-exports-its-own-table) — read-only, so the
+// Export is the strip's only action; marked 7 in THIS page's list.
+export const EachTabExportsItsOwnTable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const button = await canvas.findByTestId("channels-export");
+    await expect(within(button).getByTestId("not-implemented-export")).toHaveTextContent("7");
   },
 };

@@ -1,20 +1,19 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
   Button,
   Flex,
   Heading,
-  Input,
   Spacer,
-  Spinner,
   Stack,
   Table,
   Tabs,
   Text,
 } from "@chakra-ui/react";
+import { Plus, SearchX, ShoppingCart } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
@@ -22,8 +21,7 @@ import { useOrders, useOrderStat } from "../../features/orders/queries";
 import type { OrderFilters } from "../../features/orders/queries";
 import { summariseOrderStat } from "../../features/orders/stat";
 import { ORDER_STATUS_TABS, orderTab } from "../../features/orders/statusTabs";
-import { DRAFTS_TAB, OrderTabs } from "../../features/orders/OrderTabs";
-import { useOrderDrafts } from "../../features/orderDrafts/queries";
+import { OrderTabs } from "../../features/orders/OrderTabs";
 import { CustomerLineItem } from "../../components/customers/CustomerLineItem";
 import { OrderLineItem } from "../../components/orders/OrderLineItem";
 import { Pagination } from "../../components/chrome/Pagination";
@@ -35,12 +33,20 @@ import {
   isAllDates,
   resolveRange,
 } from "../../components/datetime/DateRangePicker";
-import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { useDebounced } from "../../lib/useDebounced";
+import { dateRangeCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { formatRupiah } from "../../lib/money";
 import { OrderStatRow } from "./components/OrderStatRow";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { FilterSearch } from "../../components/chrome/FilterBar";
+import { useIsMobile } from "../../layouts/shell";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// The status tab as the URL spells it — only a real one is read back.
+const TAB_CODEC = oneOfCodec(ORDER_STATUS_TABS.map((item) => item.value));
 
 // OrdersPage lists the CURRENT selling TEAM's orders (#68), newest first, paginated. The team is the
 // scope — a team only ever sees its own orders (and, since #151, the ones shipping from it). Rows open
@@ -53,22 +59,22 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 //   counts by the tab you are standing in would blank the number you use to pick the next tab.
 export function WarehouseOrdersPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const navigate = useNavigate();
 
-  // `?status=` is how the DRAFTS tab comes back to a specific status — read once, as the initial
-  // value, and never again. Keeping it in the URL from then on would mean every tab click pushed a
-  // history entry, so Back would walk the tabs instead of leaving the screen.
-  const [params] = useSearchParams();
-  const [tab, setTab] = useState(() => orderTab(params.get("status") ?? "all").value);
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an
+  // order, opens the same narrowed list. `?status=` is also how the DRAFTS tab comes back to a specific status. It is
+  // written with `replace`, so a tab click never pushes a history entry and Back still leaves the screen.
+  const [tab, setTab] = useUrlState("status", "all", TAB_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
   // The three filters above the tabs. All of them are SERVER-SIDE: the list is paginated, so a
   // client-side filter would narrow the loaded page only and leave the pager counting the whole set.
-  const [search, setSearch] = useState("");
-  const [shopId, setShopId] = useState(0n);
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
 
   const teamId = current?.teamId;
 
@@ -108,14 +114,6 @@ export function WarehouseOrdersPage() {
   const query = useOrders({ teamId, page, pageSize, status: activeTab.status, filters });
   const statQuery = useOrderStat({ teamId, filters });
 
-  // How many drafts are waiting, for the badge on the Drafts tab. ONE ROW is fetched, not the list —
-  // the number comes from the pager's total, and this screen never shows a draft.
-  //
-  // Deliberately NOT narrowed by the filter bar above: those filters are OrderList's, and a draft has
-  // no status to filter by and no shop half the time. The badge answers "is there anything waiting",
-  // which is a question about the whole pile.
-  const draftsQuery = useOrderDrafts({ teamId, page: 1, pageSize: 1 });
-  const draftCount = draftsQuery.data?.totalItems;
 
   // Any filter change restarts at page 1, for the same reason a tab change does: the page number
   // belongs to the old result set, and page 4 of a narrower one is usually empty — which reads as
@@ -166,21 +164,30 @@ export function WarehouseOrdersPage() {
   }
 
   return (
-    <Stack gap="section">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter">
       <Flex align="center" gap="card">
         <Heading size="md">{t("orders.title")}</Heading>
         <Badge colorPalette="brand">
           {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
         </Badge>
         <Spacer />
-        <Button
-          size="xs"
-          colorPalette="brand"
-          data-testid="open-create-order"
-          onClick={() => navigate("/orders/new")}
-        >
-          {t("orders.newOrder")}
-        </Button>
+        {/* A phone's header action is its icon (a-phone-header-action-is-an-icon). */}
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("orders.actions")}
+            actions={[{ id: "create", label: t("orders.newOrder"), icon: Plus, primary: true, testId: "open-create-order", onClick: () => navigate("/orders/new") }]}
+          />
+        ) : (
+          <Button
+            size="xs"
+            colorPalette="brand"
+            data-testid="open-create-order"
+            onClick={() => navigate("/orders/new")}
+          >
+            {t("orders.newOrder")}
+          </Button>
+        )}
       </Flex>
 
       <OrderStatRow stat={stat} />
@@ -190,12 +197,12 @@ export function WarehouseOrdersPage() {
           out of what is left. A filter placed inside the tab panel would read as belonging to that
           tab alone. */}
       <Flex gap="card" wrap="wrap" align="center">
-        <Input
-          maxW="sm"
-          placeholder={t("orders.searchPlaceholder")}
+        {/* The shared search — its icon, and an × once typed in (every-filter-clears-from-its-own-x). */}
+        <FilterSearch
           value={search}
-          data-testid="orders-search"
-          onChange={(e) => refilter(() => setSearch(e.target.value))}
+          onChange={(value) => refilter(() => setSearch(value))}
+          placeholder={t("orders.searchPlaceholder")}
+          testId="orders-search"
         />
 
         {canFilterByShop && (
@@ -237,19 +244,10 @@ export function WarehouseOrdersPage() {
         <Spacer />
       </Flex>
 
-      {/* DRAFTS IS THE LAST TAB (owner), and selecting it LEAVES — the drafts screen is its own route
-          with its own selection and bulk delete, so the tab is a way in rather than a panel here.
-          Everything else on this strip is a status filter that stays on this page. */}
       <OrderTabs
         value={tab}
         count={tabCount}
-        draftCount={draftCount}
         onSelect={(value) => {
-          if (value === DRAFTS_TAB) {
-            void navigate("/order-drafts");
-            return;
-          }
-
           setTab(value);
           // Page 1, always. Staying on page 4 while the set underneath changes lands on a page that may
           // not exist in the new filter, and an empty table there reads as "no orders in this status".
@@ -267,9 +265,11 @@ export function WarehouseOrdersPage() {
               </Text>
             )}
 
+            {/* The first load shows the table's shape and its rows fade in, once (a-filter-answers-as-it-changes). */}
             {loading ? (
-              <Spinner colorPalette="brand" />
+              <ListSkeleton testId="orders-loading" />
             ) : (
+              <Box animationStyle="swap">
               <RefreshOverlay busy={query.isFetching && !query.isPending}>
                 <Table.Root size="sm" data-testid="orders-table">
                   <Table.Header>
@@ -335,22 +335,33 @@ export function WarehouseOrdersPage() {
                   </Table.Body>
                 </Table.Root>
               </RefreshOverlay>
+              </Box>
             )}
 
+            {/* Which emptiness this is, and the three cases are genuinely different. "No orders yet" is a statement
+                about the TEAM; the other two are statements about what you asked for. Saying the first while a filter
+                is narrowing the list would tell somebody their orders are gone when they are one Clear away. Filters
+                are named first because they outrank the tab: they narrow the whole screen, the tab counts included.
+                Each says what next (an-empty-list-shows-a-hint). */}
             {!loading && orders.length === 0 && !error && (
-              <Text color="fg.muted" data-testid="orders-empty">
-                {/* Which emptiness this is, and the three cases are genuinely different. "No orders
-                    yet" is a statement about the TEAM; the other two are statements about what you
-                    asked for. Saying the first while a filter is narrowing the list would tell
-                    somebody their orders are gone when they are one Clear away. Filters are named
-                    first because they outrank the tab: they narrow the whole screen, the tab counts
-                    included. */}
-                {filtered
-                  ? t("orders.noOrdersMatching")
-                  : activeTab.value === "all"
-                    ? t("orders.noOrders")
-                    : t("orders.noOrdersInStatus", { status: t(activeTab.labelKey) })}
-              </Text>
+              <EmptyHint
+                icon={filtered ? SearchX : ShoppingCart}
+                title={
+                  filtered
+                    ? t("orders.noOrdersMatching")
+                    : activeTab.value === "all"
+                      ? t("orders.noOrders")
+                      : t("orders.noOrdersInStatus", { status: t(activeTab.labelKey) })
+                }
+                description={
+                  filtered
+                    ? t("emptyHint.noMatch")
+                    : activeTab.value === "all"
+                      ? t("orders.noWarehouseOrdersHint")
+                      : undefined
+                }
+                testId="orders-empty"
+              />
             )}
 
             {!loading && (

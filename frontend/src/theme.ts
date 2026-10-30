@@ -167,6 +167,17 @@ const APP_FONT_STACK = `Lato, ${SYSTEM_FONT_STACK}`;
 // ever appears inside the phone-sized shell.
 const OPTION_PY = { base: "3", md: "1.5" };
 
+// A tree's row as a table's (see `treeView` below): square, a line under it, the hover turning in the hover beat, the
+// main tone's focus ring.
+const TREE_ROW = {
+  rounded: "none",
+  borderBottomWidth: "1px",
+  borderColor: "border",
+  transitionProperty: "background-color",
+  transitionDuration: "hover",
+  focusRingColor: "brand.focusRing",
+} as const;
+
 // What a field does UNDER THE POINTER, shared by every control that takes input (see the field recipes
 // below). The RESTING line stays the neutral `border` — a form at rest should read as a form, not as a
 // row of pink boxes — and only the reacting states carry the main tone:
@@ -192,6 +203,65 @@ const customConfig = defineConfig({
     // Cast to any: Chakra's generic recipe types only type `colorPalette` in defaultVariants
     // (they can't infer per-recipe variant keys from a partial override). The runtime merge
     // into the base recipe is unaffected.
+    // ── MOTION: SMALL, QUICK, THE SAME EVERYWHERE (owner: *"animasi juga atau transisi, sekarang terlihat flat"*,
+    // `motion-is-small-quick-and-shared`) — pure CSS through Chakra, no animation library. Four named styles:
+    //
+    //   enter   a page arriving — a fade and an 8px rise, 180ms
+    //   swap    one thing replaced in the same place (a tab's content, cards ⇄ table, a warehouse's figures) — a fade
+    //           alone, so the same spot does not hop
+    //   appear  a small control arriving — a filter's ×, Hapus Filter — a fade in the hover beat, 120ms
+    //   pop     a count that changed — the phone's Filter button — a little overshoot, so a pick in the sheet is felt
+    //           (owner: *"ada saran untuk animasi di filter?"*, `a-filter-answers-as-it-changes`)
+    //
+    // ⚠ PLAYED ON MOUNT, NEVER ON A REFRESH. Every read refetches (HARD RULE 10), so anything that animated on new
+    // data would flicker all day. An element animates when it appears; a refetch keeps it mounted, and it stays still.
+    // `key` a container on what the person CHANGED (the view, the warehouse) to replay `swap` on purpose.
+    animationStyles: {
+      enter: {
+        value: {
+          animationName: "slide-from-bottom, fade-in",
+          animationDuration: "enter",
+          animationTimingFunction: "ease-out",
+          "--slide-from-bottom-distance": "8px",
+        },
+      },
+      swap: {
+        value: {
+          animationName: "fade-in",
+          animationDuration: "enter",
+          animationTimingFunction: "ease-out",
+        },
+      },
+      appear: {
+        value: {
+          animationName: "fade-in",
+          animationDuration: "hover",
+          animationTimingFunction: "ease-out",
+        },
+      },
+      pop: {
+        value: {
+          animationName: "pop",
+          animationDuration: "enter",
+          animationTimingFunction: "ease-out",
+        },
+      },
+    },
+    keyframes: {
+      // Grows past its size and settles — `pop`'s.
+      pop: {
+        "0%": { scale: "0.6" },
+        "60%": { scale: "1.15" },
+        "100%": { scale: "1" },
+      },
+      // A section a nav click landed on — a soft tint of the main tone comes up and fades, once; no ring (owner: *"ga perlu
+      // border, jangan terlalu mencolok"*, a-nav-jump-blinks-where-it-lands).
+      "section-flash": {
+        "0%": { background: "transparent" },
+        "25%": { background: "var(--chakra-colors-brand-subtle)" },
+        "100%": { background: "transparent" },
+      },
+    },
     // ── A SCROLLING LIST KEEPS AWAY FROM ITS SCROLLBAR (owner) ────────────────────────────────────
     //
     // In a dialog — the product picker is the case that prompted it — the rows ran flush to the right
@@ -265,6 +335,9 @@ const customConfig = defineConfig({
           // The field outline, on the part that draws the box (see FIELD_OUTLINE).
           variant: { outline: { trigger: FIELD_OUTLINE } },
         },
+        // The × fades in when a pick makes it appear — Zag shows it from `hidden`, which replays the animation
+        // (`a-filter-answers-as-it-changes`).
+        base: { clearTrigger: { animationStyle: "appear" } },
       },
       combobox: {
         defaultVariants: { size: "sm" },
@@ -273,6 +346,8 @@ const customConfig = defineConfig({
           size: { sm: { item: { py: OPTION_PY } } },
           variant: { outline: { input: FIELD_OUTLINE } },
         },
+        // As the select's.
+        base: { clearTrigger: { animationStyle: "appear" } },
       },
       // Menu is used at its default `md` (every row-action kebab), whose padding already matches.
       menu: {
@@ -348,8 +423,56 @@ const customConfig = defineConfig({
       // ⚠ THE OVERRIDE HAS TO NAME THE VARIANT. Chakra sets `row: { bg: "bg" }` inside `variant.line`
       // — the default one — and a variant beats `base`, so a base-level override here changed
       // nothing at all and the rows stayed gray-950 in dark. Same trap as `nativeSelect` above.
+      //
+      // A row that lights up under the pointer (a-table-row-lights-up) turns in the hover beat rather than blinking —
+      // set once here on the cell, where every screen's LIGHTS_UP paints, instead of in each copy of it
+      // (`motion-is-small-quick-and-shared`). No variant sets a transition, so base is enough this time.
       table: {
+        base: { cell: { transitionProperty: "background-color", transitionDuration: "hover" } },
         variants: { variant: { line: { row: { bg: "transparent" } } } },
+      },
+      // ── A TREE READS LIKE THE APP'S TABLES (owner, on the category tree: *"secara tema kurang sesuai"*) ─────────
+      //
+      // Chakra's tree is a file explorer: rounded pills 32px tall floating on the page, a grey 2px focus ring. Every
+      // list in this app is a table — rows the full width, a line between them, a table row's height with an `xs`
+      // action in it (48px), lighting up under the pointer in the hover beat, the rose focus ring. So the tree's rows
+      // are those, and a branch's children read as the next rows down, set in by their depth.
+      //
+      // ⚠ THE PADDING IS NAMED ON THE `md` SIZE — the default — because the size variant sets those variables and a
+      // variant beats `base` (the trap `table` above walked into).
+      treeView: {
+        base: {
+          // A BRANCH OPENS ON A CLICK, SO IT SHOWS THE HAND (owner: *"setiap dia ingin membuka detail, dia cuma selector
+          // biasa"*) — as every list row that opens something does. Chakra leaves the tree's rows on the plain arrow. A
+          // leaf opens nothing, so it keeps the arrow: the hand would promise a click that does nothing.
+          branchControl: { ...TREE_ROW, cursor: "pointer" },
+          item: TREE_ROW,
+          // The chevron turns in the arriving beat, with the children it opens.
+          branchIndicator: { transitionDuration: "enter", transitionTimingFunction: "ease-out" },
+        },
+        variants: {
+          // A BRANCH SLIDES OPEN AND SHUT (owner: *"animasi kurang, tidak smooth"*) — Chakra's own height-and-fade, on
+          // a page's `animateContent`, retimed from its `moderate` to the app's 180ms beat
+          // (`motion-is-small-quick-and-shared`). Zag's collapsible waits for the closing one before it hides the
+          // children; where the device asks for less motion there is none, and nothing to wait for.
+          animateContent: {
+            true: {
+              branchContent: {
+                _open: { animationDuration: "enter", animationTimingFunction: "ease-out" },
+                _closed: { animationDuration: "enter", animationTimingFunction: "ease-in" },
+              },
+            },
+          },
+          size: {
+            md: {
+              tree: {
+                "--tree-padding-block": "spacing.2",
+                "--tree-padding-inline": "spacing.2",
+                "--tree-indentation": "spacing.5",
+              },
+            },
+          },
+        },
       },
       // ── A SELECTED TAB IS IN THE MAIN TONE (owner, `a-selected-tab-is-in-the-main-tone`) ─────────────
       //
@@ -360,14 +483,65 @@ const customConfig = defineConfig({
       // tab's count `Badge` would turn pink with it. Named on the `line` variant — the default, and a
       // variant beats `base`, the trap `table` above walked into.
       tabs: {
+        // ⚠ A CLOSING PANEL NEVER ANIMATES (`motion-is-small-quick-and-shared`). A panel given `animationStyle="swap"` is
+        // a Zag presence node, and presence holds a closing node on screen until its animation ends — UNLESS the
+        // animation is the one it already saw start. For the panel open on arrival it saw none (its `mounted` state
+        // records no animation), so the first time that tab was left it waited for an `animationend` that never came, and
+        // the old panel stayed on screen under the new one (owner: *"ketika pindah ke tab rincian, tabel tidak hilang di
+        // awal-awal, baru hilang saat kedua kali"*). With no animation on a closed panel, presence lets it go at once.
+        // `!important` because the panel's own `animationStyle` sits in the utilities layer, which outranks a recipe —
+        // an important declaration in an earlier layer outranks it back.
+        base: { content: { _closed: { animationName: "none !important" } } },
         variants: {
           variant: {
             line: {
               trigger: {
+                transitionProperty: "color",
+                transitionDuration: "hover",
+                // A row WITH a sliding indicator draws no underline of its own — the travelling one replaces it. By the
+                // thickness, which nothing else sets, so this never has to out-rank the colour below.
+                "&:has(~ [data-part=indicator])": { "--indicator-thickness": "0px" },
                 _selected: {
                   color: "brand.fg",
                   _horizontal: { "--indicator-color": "colors.brand.solid" },
                   _vertical: { "--indicator-color": "colors.brand.solid" },
+                },
+              },
+              // THE LINE THAT SLIDES (`motion-is-small-quick-and-shared`) — put a `<Tabs.Indicator />` last in the list
+              // and ONE underline travels to the picked tab, rather than one per tab switching on and off. A row without
+              // one is drawn as before. On the `line` variant, not a new one: a new variant name needs Chakra's typegen,
+              // which this project does not run.
+              //
+              // The box spans the picked tab and moves with it (Zag reads its pace from --transition-duration); its
+              // ::after is the 2px rose underline, laid on the list's grey rule. It sits above the tabs, so it must not
+              // take their clicks.
+              indicator: {
+                bg: "transparent",
+                shadow: "none",
+                zIndex: "1",
+                pointerEvents: "none",
+                "--transition-duration": "durations.enter",
+                "--transition-timing-function": "ease-out",
+                _horizontal: {
+                  _after: {
+                    content: '""',
+                    position: "absolute",
+                    insetX: "0",
+                    bottom: "-1px",
+                    height: "2px",
+                    bg: "brand.solid",
+                  },
+                },
+                // A vertical row (an order's Info · Timeline · Penyelesaian) — the line on the list's end rule instead.
+                _vertical: {
+                  _after: {
+                    content: '""',
+                    position: "absolute",
+                    insetY: "0",
+                    insetEnd: "-1px",
+                    width: "2px",
+                    bg: "brand.solid",
+                  },
                 },
               },
             },
@@ -502,6 +676,12 @@ const customConfig = defineConfig({
         control: { value: "0.5rem" }, //  8px
         card: { value: "0.75rem" }, // 12px
       },
+      // The app's two beats (`motion-is-small-quick-and-shared`): a hover or a press answers in 120ms; something
+      // arriving takes 180ms.
+      durations: {
+        hover: { value: "120ms" },
+        enter: { value: "180ms" },
+      },
     },
     semanticTokens: {
       // Every role and every neutral resolves to a step of THE PALETTE, in BOTH color modes (the
@@ -571,6 +751,29 @@ const customConfig = defineConfig({
             [TAILWIND.gray[100], TAILWIND.gray[700]],
             [TAILWIND.gray[800], TAILWIND.gray[300]],
           ),
+        },
+        // ── WHAT A DRAFT SAYS MUST BE SENT, IN A COLOUR OF ITS OWN (owner: *"kasih card dan warna yang beda sendiri …
+        // tapi warna yang agak pudar saja"*, then *"jangan ungu"*, `the-draft-opens-in-the-order-form`) ──────────────────
+        //
+        // A faded SAND — a slip of paper from the marketplace, read while our products are picked. A warm neutral that no
+        // role in this app speaks: browner and duller than the warning amber, so it never reads as a ⚠, and nowhere near
+        // rose (acting), indigo (primary), emerald, sky or red. CATEGORICAL, so its own colour is right here.
+        //
+        //   light  bg #fbf7ef · border #eadfc8 · title #8a6d3b (4.9:1 on the bg)
+        //   dark   bg #1f1b14 · border #3d3426 · title #e3c48c
+        //
+        // The list itself stays in the body ink — it is read, word for word, against the marketplace.
+        draftHint: {
+          bg: { value: { _light: "#fbf7ef", _dark: "#1f1b14" } },
+          border: { value: { _light: "#eadfc8", _dark: "#3d3426" } },
+          fg: { value: { _light: "#8a6d3b", _dark: "#e3c48c" } },
+        },
+        // ── A PRICE ON A CARD, IN RED (owner, on Discover: *"keterangan harga kasih warna merah"*,
+        // `a-discover-price-is-red-and-unlabelled`) — the marketplace convention the people using this app sell under,
+        // where the price is the red figure on a product card. Its OWN token and not `error`: a price is not a fault, and
+        // a palette change to the error role must not repaint every price. Red 600 on white, red 400 on the dark ground.
+        price: {
+          fg: { value: { _light: TAILWIND.red[600], _dark: TAILWIND.red[400] } },
         },
         // `teamType.<type>.badge` / `.avatar` / `.fg` — see TEAM TYPE COLOURS, above.
         teamType: {
@@ -670,6 +873,20 @@ const customConfig = defineConfig({
     },
   },
   globalCss: {
+    // ── LESS MOTION, WHEN THE DEVICE ASKS (`motion-is-small-quick-and-shared`) — for anyone whose phone or OS is set to
+    // reduce motion, no animation plays, Chakra's own included, and every transition ends at once.
+    //
+    // ⚠ OFF, NOT SHORTENED. A 0.01ms animation still paints its first keyframe for a frame — an entering element at
+    // opacity 0 — and a 0.01ms transition holds the old value for a frame; that frame is exactly where a story reads a
+    // computed style. Worse, it gave a transition to every element that named a property with no duration, which had
+    // been instant. A looping animation (a spinner, a skeleton's pulse) stops either way. Zag's presence reads
+    // `animation-name: none` as "nothing to wait for", so dialogs and popovers still open and close.
+    "*, *::before, *::after": {
+      _motionReduce: {
+        animationName: "none !important",
+        transitionDuration: "0s !important",
+      },
+    },
     // Drive the page off the SEMANTIC tokens, not a hardcoded white/gray (#213). The old value pinned
     // the app to light and defeated dark mode outright; these two flip with the `.dark` class.
     "html, body": {

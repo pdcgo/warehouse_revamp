@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { shipmentChannels } from "../../../.storybook/fixtures";
+import { LocationProbe, routedPage } from "../../../.storybook/pageStory";
 import { ShipmentChannelsPage } from "./index";
 
 // ⚠ PROTOTYPE for design_accept — docs/business/shipment/context_decision.md.
@@ -48,6 +49,31 @@ export const DeletedChannelsAreHiddenUntilAsked: Story = {
 
     const status = await canvas.findByTestId(`shipment-channel-status-${pos!.code}`);
     await expect(status).toHaveTextContent("Deleted");
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL that shows deleted channels, the
+// box is ticked and the deleted row is listed; a search is written back beside it.
+const AtFilteredUrl = routedPage(
+  [{ path: "/shipping", element: <><ShipmentChannelsPage /><LocationProbe /></> }],
+  "/shipping?deleted=1",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId(`shipment-channel-row-${pos!.code}`, {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    const showDeleted = within(canvas.getByTestId("shipment-channel-show-deleted")).getByRole("checkbox", { hidden: true });
+    await expect(showDeleted).toBeChecked();
+
+    await userEvent.type(canvas.getByTestId("shipment-channel-search"), pos!.code, { delay: 40 });
+    await waitFor(() => expect(location).toHaveTextContent(`q=${pos!.code}`));
+    await expect(location).toHaveTextContent("deleted=1");
+    await waitFor(() => expect(canvas.queryByTestId(`shipment-channel-row-${jne!.code}`)).toBeNull());
   },
 };
 

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { account, expectedBalance } from "../../../.storybook/financialAccountFixtures";
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { FinancialAccountType } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
@@ -82,13 +82,15 @@ export const Mobile: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    // The subtitle reads as a sentence, and the actions sit under the title rather than over it.
+    // The subtitle reads as a sentence, and the three actions are one ⋯ on the title's row — not labelled buttons on a
+    // row of their own (a-phone-header-action-is-an-icon).
     const heading = canvas.getByTestId("financial-accounts-heading").getBoundingClientRect();
     const subtitle = canvas.getByTestId("financial-accounts-subtitle").getBoundingClientRect();
-    const report = canvas.getByTestId("open-account-report").getBoundingClientRect();
+    const actions = canvas.getByTestId("financial-accounts-actions").getBoundingClientRect();
     await expect(subtitle.width).toBeGreaterThan(250);
-    await expect(report.top).toBeGreaterThanOrEqual(subtitle.bottom - 1);
-    await expect(report.top).toBeGreaterThan(heading.bottom);
+    await expect(canvas.queryByRole("button", { name: "Report" })).toBeNull();
+    await expect(actions.top).toBeLessThan(heading.bottom);
+    await expect(actions.right).toBeLessThanOrEqual(window.innerWidth);
 
     await expect(canvas.getByTestId("account-search")).toBeVisible();
     await expect(canvas.getByTestId("account-filters-open")).toBeVisible();
@@ -305,6 +307,35 @@ export const EveryFilterTheContractHas: Story = {
 
     await userEvent.click(canvas.getByTestId("account-filters-clear"));
     await waitFor(() => expect(canvas.getByTestId(`account-row-${BCA_GAJI.id}`)).toBeVisible());
+  },
+};
+
+// THE FILTERS, THE TYPE TAB AND THE SORT LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the search
+// and the type tab are read from it; a sort is written back beside them; and the archive's own `view` key is set
+// without wiping them — it drops only the type, as the archive starts at every type.
+const AtFilteredUrl = routedPage(
+  [{ path: "/financial-accounts", element: <><FinancialAccountsPage /><LocationProbe /></> }],
+  `/financial-accounts?q=bca&type=${FinancialAccountType.BANK_ACCOUNT}`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("account-search")).toHaveValue("bca");
+    await expect(canvas.getByTestId(`account-type-tab-${FinancialAccountType.BANK_ACCOUNT}`)).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.queryByTestId(`account-row-${SHOPEEPAY.id}`)).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("account-sort-name"));
+    await waitFor(() => expect(location).toHaveTextContent(/sort=name(%3A|:)asc/));
+
+    await userEvent.click(canvas.getByTestId("open-archived-accounts"));
+    await waitFor(() => expect(location).toHaveTextContent("view=archived"));
+    await expect(location).toHaveTextContent("q=bca");
+    await expect(location).toHaveTextContent(/sort=name(%3A|:)asc/);
+    await expect(location).not.toHaveTextContent("type=");
   },
 };
 

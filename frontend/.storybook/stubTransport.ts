@@ -57,6 +57,7 @@ import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
 import {
   orderExportScenario,
+  orderStatScenario,
   receiptCheckScenario,
   receiptUpdateScenario,
   sessionScenario,
@@ -76,6 +77,18 @@ import { financialAccountAnalyticService, financialAccountService } from "./fina
 import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
 import { orderAnalyticService } from "./orderAnalyticStub";
 import { settlementAnalyticService } from "./settlementAnalyticStub";
+import { shopService } from "./shopStub";
+import { categoryService } from "./categoryStub";
+import {
+  orderActivityStat,
+  orderProductActivityByIds,
+  ownerBatchList,
+  ownerCostLayerList,
+  ownerStockHistory,
+  ownerStockSample,
+  ownerStockStat,
+  productService,
+} from "./productStub";
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
@@ -116,7 +129,6 @@ const stubSourceType: Record<string, WireSourceType> = {
 };
 
 import {
-  categories,
   settlementImportLines,
   settlementImports,
   shipmentChannels,
@@ -867,33 +879,8 @@ export const transport = createRouterTransport(({ service }) => {
     ...userStub,
   });
 
-  service(ShopService, {
-    shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
-    // Across teams, basic fields only (the-warehouse-row-fills-from-shop-and-user-by-ids).
-    shopByIds: (req) => ({
-      items: Object.fromEntries(
-        shops
-          .filter((s) => (req.filter?.ids ?? []).includes(s.id))
-          .map((s) => [
-            s.id.toString(),
-            {
-              items: [
-                {
-                  d: {
-                    case: "basic" as const,
-                    value: {
-                      mapData: {
-                        [s.id.toString()]: { id: s.id, teamId: s.teamId, name: s.name, marketplace: s.marketplace },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ]),
-      ),
-    }),
-  });
+  // selling_service's shops — shopStub.ts, writeable: a team's own shops, soft deletes, the primary CS on a grant.
+  service(ShopService, shopService);
 
   // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
   service(RestockRequestService, restockRequestService);
@@ -918,11 +905,9 @@ export const transport = createRouterTransport(({ service }) => {
   service(TeamReturnConfigurationService, returnConfigurationService);
   service(WarehouseFeeService, warehouseFeeService);
 
-  service(CategoryService, {
-    // The one full-tree read the pagination rule exempts (a picker needs every node to assemble the
-    // tree), so there is no filter here — the drill-down happens in the component.
-    categoryList: () => ({ categories }),
-  });
+  // The global taxonomy — categoryStub.ts plays its rules, writeable: a parent must exist, a name once per parent, a
+  // delete is soft and refused while the category has sub-categories.
+  service(CategoryService, categoryService);
 
   // The courier catalogue, served with the rules shipment_service owns — so a story that passes here is
   // asserting on the decisions, not on a permissive echo. ShippingSelect and ShippingBadge read it too.
@@ -1056,60 +1041,17 @@ export const transport = createRouterTransport(({ service }) => {
     }),
   });
 
-  service(ProductService, {
-    // PAGED, because a caller genuinely walks it: OwnStockedProductPicker collects a team's whole
-    // catalogue 200 ids at a time to narrow a warehouse by it, and stops on a short page. An
-    // always-"1 of 1" stub would make that loop untestable.
-    productList: (req) =>
-      pagedColumnar(
-        "product",
-        // The ACTIVE or the ARCHIVED half, as the server answers it (an unset status is ACTIVE).
-        productsNow().filter(
-          (p) =>
-            p.teamId === req.teamId &&
-            p.deleted === (req.filter?.status === ProductStatus.ARCHIVED) &&
-            match(req.filter?.q, p.name, p.sku),
-        ),
-        req.page,
-      ),
-    // Discovery looks ACROSS teams — that is the whole difference from ProductList, so `team_id` is
-    // an authorization scope here and must NOT narrow the rows, or the "all" picker would be
-    // indistinguishable from the "own" one.
-    //
-    // Its two real narrowings do apply, because both are how AllProductPicker earns its keep:
-    // `ownerTeamId` is the in-dialog team filter, `excludeOwnTeam` is the "other teams only" case.
-    //
-    // PAGED, for the same reason ProductList is: the picker sends `page` and reads `total_items` off
-    // the answer, so a stub that always claimed "1 of 1" would hand back the whole catalogue in one
-    // page — the pager would never appear, and the dialog would never be seen holding the ten rows it
-    // actually holds. Discover is the RPC behind two of the three tabs, so that was the tabbed
-    // picker's entire overflow behaviour going untested.
-    productDiscover: (req) =>
-      pagedColumnar(
-        "product",
-        productsNow().filter(
-          (p) =>
-            // Never an archived product, and never one its owner has locked — the server leaves both out
-            // (product_discover.go), so a picker cannot offer what a borrower may not take.
-            !p.deleted &&
-            !p.crossLocked &&
-            (req.ownerTeamId === 0n || p.teamId === req.ownerTeamId) &&
-            (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
-            // ⚠ THE PRIORITY PARTITION, and an EMPTY LIST IS NO NARROWING on both — exactly as the
-            // server behaves. Treating empty as "match nothing" here would hide the trap the real
-            // contract sets: a caller sending `owner_team_ids: []` gets the whole catalogue back, and
-            // the stub has to reproduce that or the Priority tab's guard would look unnecessary.
-            (req.ownerTeamIds.length === 0 || req.ownerTeamIds.includes(p.teamId)) &&
-            (req.excludeOwnerTeamIds.length === 0 || !req.excludeOwnerTeamIds.includes(p.teamId)) &&
-            match(req.filter?.q, p.name, p.sku),
-        ),
-        req.page,
-      ),
-    // An archived product IS answered, as the server does — a line holding it still names it.
-    productByIds: (req) => byIds("product", productsNow(), req.filter?.ids ?? []),
-  });
+  // The catalogue — productStub.ts, writeable, with the server's rules: a team lists its own, a SKU once among the
+  // live, archive is soft, restore can collide. Discovery and by-ids read the same rows.
+  service(ProductService, productService);
 
   service(InventoryService, {
+    // The owner's side of a catalogue — the product screens' stat row and the detail page's Price, Batch and Stock
+    // history tabs. Figured for team 15 only (productStub.ts); every other team reads nothing.
+    ownerStockStat: (req) => ownerStockStat(req),
+    ownerCostLayerList: (req) => ownerCostLayerList(req),
+    ownerBatchList: (req) => ownerBatchList(req),
+    ownerStockHistory: (req) => ownerStockHistory(req),
     // What the warehouse HOLDS, paged — the catalogue the order form's picker browses. Note the
     // shape: a flat `items` array of {product_id, available}, NOT the columnar envelope the governed
     // List RPCs use. Inventory answers with the figure the list was built from, so there is no second
@@ -1162,6 +1104,13 @@ export const transport = createRouterTransport(({ service }) => {
       items: Object.fromEntries(
         (req.filter?.productIds ?? []).map((id) => {
           const key = id.toString();
+
+          // TEAM 15'S CATALOGUE answers from its batches (productStub.ts) — the product screens' figures, in the
+          // warehouse lens. Every other product keeps the shelf rule below.
+          const sample = ownerStockSample(id, req.teamId, req.filter?.warehouseId);
+          if (sample) {
+            return [key, { items: [{ d: { case: "stock" as const, value: { mapData: { [key]: sample } } } }] }];
+          }
 
           // ⚠ OWNERSHIP, not presence. This RPC establishes ownership through
           // `restock_requests.requesting_team_id`, so it can only answer about goods the CALLER
@@ -1276,6 +1225,10 @@ export const transport = createRouterTransport(({ service }) => {
   });
 
   service(OrderService, {
+    // When each product last sold, and the catalogue's headline — selling's half of the product screens. Figured for
+    // team 15 only (productStub.ts).
+    orderProductActivityByIds: (req) => orderProductActivityByIds(req),
+    orderActivityStat: (req) => orderActivityStat(req),
     // The write the order form exists to make. It answers with an id so the page can navigate to the
     // order it just placed — which is also what tells the unsaved-work blocker to stand down.
     //
@@ -1440,6 +1393,7 @@ export const transport = createRouterTransport(({ service }) => {
     },
 
     orderStat: (req) => {
+      orderStatScenario.calls += 1;
       const rows = visibleOrders(req.teamId, req.filter);
 
       // Per status, as the server's census: the units over every order, and the margin's inputs over the

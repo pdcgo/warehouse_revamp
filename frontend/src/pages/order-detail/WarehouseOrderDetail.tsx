@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Flex, Heading, Icon, Spacer, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Button, Flex, Heading, Icon, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft, Ban } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -14,6 +14,7 @@ import { toaster } from "../../components/feedback/Toaster";
 import { InfoPanel } from "./components/InfoPanel";
 import { NotesSection, noteWriter } from "./components/NotesSection";
 import { TimelinePanel } from "./components/TimelinePanel";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -92,8 +93,9 @@ export function WarehouseOrderDetailPage() {
     );
   }
 
+  // The page's shape while the order loads, not a spinner on an empty page (motion-is-small-quick-and-shared).
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading testId="order-detail-loading" />;
   }
 
   if (error || !order) {
@@ -117,7 +119,8 @@ export function WarehouseOrderDetailPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="order-detail-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="order-detail-page">
       <Button
         size="xs"
         variant="ghost"
@@ -184,6 +187,8 @@ export function WarehouseOrderDetailPage() {
           <Tabs.Trigger value="settlement" data-testid="order-detail-tab-settlement">
             {t("orders.detail.tab.settlement")}
           </Tabs.Trigger>
+          {/* The line slides down the list to the picked tab, and the panel fades in (motion-is-small-quick-and-shared). */}
+          <Tabs.Indicator />
         </Tabs.List>
 
         {/* minW="0" ON EVERY PANEL. A vertical Tabs.Root is a flex ROW, and a flex child defaults to
@@ -191,7 +196,7 @@ export function WarehouseOrderDetailPage() {
             not overflow its panel, it WIDENS it, and the whole page gains a horizontal scrollbar. The
             table's own scroll area can only work once the panel is allowed to be narrower than what it
             holds. */}
-        <Tabs.Content value="info" flex="1" minW="0">
+        <Tabs.Content value="info" flex="1" minW="0" animationStyle="swap">
           {/* The warehouse writes notes too — with ITS team id, which the server records as `from = warehouse`:
               "stok kosong di Rak A" is the building telling the seller something. */}
           <InfoPanel
@@ -209,14 +214,14 @@ export function WarehouseOrderDetailPage() {
           />
         </Tabs.Content>
 
-        <Tabs.Content value="timeline" flex="1" minW="0">
+        <Tabs.Content value="timeline" flex="1" minW="0" animationStyle="swap">
           <TimelinePanel order={order} actors={actors.data} actorFallback={actorFallback} />
         </Tabs.Content>
 
         {/* The four values passed down are the ones settlement is forbidden to know — it never sees
             the marketplace reference, and the names and goodsCost belong to selling_service. This page
             already holds all of them. */}
-        <Tabs.Content value="settlement" flex="1" minW="0">
+        <Tabs.Content value="settlement" flex="1" minW="0" animationStyle="swap">
           <SettlementTab
             orderId={order.id}
             shopId={order.shopId}

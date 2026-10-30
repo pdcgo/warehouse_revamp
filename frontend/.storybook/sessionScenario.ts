@@ -79,6 +79,12 @@ export function withTakeRefusal(
   };
 }
 
+/**
+ * How many times the order census (OrderStat) was asked — so a story can pin that the seller's list reads its
+ * statistics only once they are opened (the-statistics-are-shut-and-read-when-opened).
+ */
+export const orderStatScenario = { calls: 0 };
+
 export function resetSessionScenario() {
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
   sessionScenario.memberOf = null;
@@ -88,6 +94,7 @@ export function resetSessionScenario() {
   receiptUpdateScenario.last = undefined;
   receiptCheckScenario.refused = 0;
   takeRefusalScenario.refusal = undefined;
+  orderStatScenario.calls = 0;
 }
 
 /** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */

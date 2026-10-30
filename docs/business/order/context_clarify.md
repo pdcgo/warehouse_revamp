@@ -295,11 +295,14 @@ same day. Kept as a heading so the links into it hold.
 
 ## the-build-lets-a-person-draft-and-promotes-on-the-server
 
-✅ *(2026-10-29)* **Resolved** — the draft page keeps its Promote button, and it sends `OrderCreate` with
-`order_draft_id`; `OrderDraftPromote` and the create form's Save as Draft are removed
+✅ *(2026-10-29, the screen settled 2026-10-30)* **Resolved** — a draft opens IN the order form, seeded from it
+([the-draft-opens-in-the-order-form](../../technical/frontend/order_draft_decision.md#the-draft-opens-in-the-order-form)),
+and its Create sends `OrderCreate` with `order_draft_id`, so the draft is deleted inside the order's own transaction;
+`OrderDraftPromote` and the create form's Save as Draft are removed
 ([a-draft-becomes-an-order-through-order-create](./context_decision.md#a-draft-becomes-an-order-through-order-create)).
-The drafts list's intro no longer says drafts are saved from the order form. `manual` drafts already stored stay
-listed and promotable. Kept as a heading so the links into it hold.
+The draft page and its Promote button are gone with the merge of `frada`. The drafts list's intro no longer says drafts
+are saved from the order form. `manual` drafts already stored stay listed and open in the form. Kept as a heading so
+the links into it hold.
 
 ## the-warehouse-steps-rule-met-the-return-status
 

@@ -6,7 +6,7 @@ import { Truck } from "lucide-react";
 import { formatUnixDateTime } from "../../../lib/datetime";
 import { CopyText } from "../../../components/chrome/CopyText";
 import type { TrailEvent } from "../shipmentMock";
-import { Fact, SectionEmpty } from "./Section";
+import { Fact, SectionEmpty } from "../../../components/chrome/DetailSection";
 import { Rail } from "./Rail";
 
 // THE ORDER'S LEG OF THE PARCEL'S JOURNEY — out to the buyer: a courier, a tracking number, the ship-by

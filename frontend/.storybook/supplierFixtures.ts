@@ -120,3 +120,55 @@ export function channelFixture(id: bigint): ChannelFixture {
   }
   return found;
 }
+
+// ── A FULL LIST, for one story ──────────────────────────────────────────────────────────────────
+//
+// `manySuppliers(teamId, n)` — n plausible suppliers for one team, each with one to three stores, ids from 2000 so they
+// never meet the named fixtures above. Fed to the stub by `addSupplierRows` (supplierStub.ts) in a story that has to
+// show a page FULL — the AppShell's example page — and never added to the shared tables.
+
+const MANY_NAMES = [
+  "CV Benang Mas", "PT Kain Nusantara Jaya", "UD Sumber Rejeki", "Toko Kancing Sentosa", "PT Resleting Prima Abadi",
+  "CV Tekstil Makmur", "Grosir Batik Laweyan", "PT Rajut Indah", "UD Pita Cemerlang", "CV Busa Lestari",
+  "PT Label Woven Jaya", "Toko Benang Wol Ceria", "CV Kain Katun Sejati", "PT Denim Bandung", "UD Renda Ayu",
+  "CV Plastik Kemas", "PT Kardus Sukses", "Toko Jarum Mesin", "CV Hanger Murah", "PT Satin Mulia",
+  "UD Karet Elastis", "CV Linen Asri", "PT Polyester Raya", "Toko Sablon Kreatif",
+];
+const MANY_CITIES = ["Bandung", "Jakarta", "Surabaya", "Semarang", "Solo", "Pekalongan", "Medan", "Yogyakarta"];
+const MANY_STREETS = ["Jl. Cigondewah", "Jl. Tanah Abang", "Jl. Kapasan", "Jl. Pekojan", "Jl. Slamet Riyadi", "Jl. Hayam Wuruk"];
+const MANY_TYPES = [Marketplace.SHOPEE, Marketplace.TOKOPEDIA, Marketplace.LAZADA, Marketplace.TIKTOK, Marketplace.OTHER];
+
+export function manySuppliers(teamId: bigint, n: number): { suppliers: SupplierFixture[]; channels: ChannelFixture[] } {
+  const suppliers: SupplierFixture[] = [];
+  const channels: ChannelFixture[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const id = 2000n + BigInt(i);
+    const name = MANY_NAMES[i % MANY_NAMES.length]!;
+    suppliers.push({
+      id,
+      teamId,
+      name,
+      contact: `08${String(11 + (i % 9))}-${String(1000 + i * 37).slice(-4)}-${String(2000 + i * 53).slice(-4)}`,
+      address: `${MANY_STREETS[i % MANY_STREETS.length]} ${10 + i}, ${MANY_CITIES[i % MANY_CITIES.length]}`,
+      description: "",
+      deleted: false,
+    });
+
+    // One to three stores, so the badge column has varied rows.
+    for (let j = 0; j < 1 + (i % 3); j++) {
+      const channelType = MANY_TYPES[(i + j) % MANY_TYPES.length]!;
+      channels.push({
+        id: 20000n + BigInt(i * 10 + j),
+        supplierId: id,
+        channelType,
+        name: `${name} ${j + 1}`,
+        uri: "",
+        description: "",
+        deleted: false,
+      });
+    }
+  }
+
+  return { suppliers, channels };
+}

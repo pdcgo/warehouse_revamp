@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { categoryClient, inventoryClient, orderClient, productClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
-import { ProductListDataType, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
+import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
+import { ProductListDataType, ProductRowSort, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
+import type { SortState } from "../../components/chrome/SortableHeader";
 import {
   activityFromByIds,
   batchesFromList,
@@ -35,7 +37,14 @@ interface ProductListArgs {
    * that day changes the queryFn only.
    */
   warehouseId?: bigint;
+  /** `null` = the list's own order, newest first; otherwise by name, A to Z or back (the server sorts). */
+  sort?: SortState<ProductSortKey> | null;
 }
+
+/** The column the product list sorts from its heading — the one the contract orders the catalogue by that the row shows first. */
+export type ProductSortKey = "name";
+
+const SORT_COLUMN: Record<ProductSortKey, ProductRowSort> = { name: ProductRowSort.NAME };
 
 // The team's catalogue — or, for a WAREHOUSE, what it has been asked to hold.
 //
@@ -55,11 +64,20 @@ export function useProducts({
   pageSize,
   status = ProductStatus.ACTIVE,
   warehouseId = 0n,
+  sort = null,
 }: ProductListArgs) {
   return useQuery({
     // `status` is in the key because the two tabs are two different answers: caching the archived
     // page under the active one would show a dead SKU where the live catalogue belongs.
-    queryKey: key.products(teamId, { isWarehouse, q, page, pageSize, status, warehouseId: warehouseId.toString() }),
+    queryKey: key.products(teamId, {
+      isWarehouse,
+      q,
+      page,
+      pageSize,
+      status,
+      warehouseId: warehouseId.toString(),
+      sort: sort ? `${sort.by}:${sort.dir}` : "",
+    }),
     ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
@@ -88,6 +106,12 @@ export function useProducts({
       const res = await productClient.productList({
         teamId: teamId!,
         filter: { q, status },
+        sort: sort
+          ? {
+              sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
+              s: { case: "product", value: SORT_COLUMN[sort.by] },
+            }
+          : undefined,
         dataRequest: productListRowData(),
         page: { page, limit: pageSize },
       });
@@ -184,29 +208,78 @@ export function useProductStats(args: { teamId: bigint | undefined; warehouseId?
 //
 // Its own key rather than a flag on useProducts: it answers a different question against a different
 // RPC, and sharing an entry would let one team's catalogue render under the cross-team heading.
+//
+// THE CALLER'S OWN PRODUCTS CARRY THEIR COST (owner: *"khusus untuk team yang login … boleh menampilkan harga asli dan
+// harga cross"*, `discover-shows-the-cross-price`): OwnerStockByIds for the ids on this page that the caller owns — one
+// batch per page, as the product list's, and only those ids, because the read is owner-scoped and another team's
+// product would answer "none of yours" rather than its cost. Inside this entry, so a card never shows its price a beat
+// after its name.
+export type DiscoverSort = "newest" | "name" | "sku";
+
+const DISCOVER_SORT: Record<Exclude<DiscoverSort, "newest">, ProductRowSort> = {
+  name: ProductRowSort.NAME,
+  sku: ProductRowSort.SKU,
+};
+
 export function useDiscoverProducts(args: {
   teamId: bigint | undefined;
   q: string;
   page: number;
   pageSize: number;
+  /** Only this team's products — 0n is every team. */
+  ownerTeamId?: bigint;
+  /** Leave the caller's own products out — only what other teams hold. */
+  excludeOwnTeam?: boolean;
+  /** "newest" is the server's own order, newest first; name and SKU read A to Z. */
+  sort?: DiscoverSort;
 }) {
-  const { teamId, q, page, pageSize } = args;
+  const { teamId, q, page, pageSize, ownerTeamId = 0n, excludeOwnTeam = false, sort = "newest" } = args;
 
   return useQuery({
-    queryKey: key.products(teamId, { discover: true, q, page, pageSize }),
+    queryKey: key.products(teamId, {
+      discover: true,
+      q,
+      page,
+      pageSize,
+      ownerTeamId: ownerTeamId.toString(),
+      excludeOwnTeam,
+      sort,
+    }),
+    // A new team, page or sort refines the same browse — the cards stay up behind the overlay (HARD RULE 10).
+    ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await productClient.productDiscover({
         teamId: teamId!,
         filter: { q },
+        sort:
+          sort === "newest"
+            ? undefined
+            : { sortType: CommonSortType.ASC, s: { case: "product", value: DISCOVER_SORT[sort] } },
+        ownerTeamId,
+        excludeOwnTeam,
+        // The Discover PAGE sees a locked product too, with its lock (a-locked-product-shows-on-discover). Only here:
+        // every picker leaves it out, since it cannot be ordered.
+        includeLocked: true,
         dataRequest: productListRowData(),
         page: { page, limit: pageSize },
       });
 
-      return {
-        products: productsFromList(res.items, res.ids),
-        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
-      };
+      const products = productsFromList(res.items, res.ids);
+      const totalItems = Number(res.pageInfo?.totalItems ?? 0n);
+      const own = products.filter((p) => p.teamId === teamId).map((p) => p.id);
+
+      if (own.length === 0) {
+        return { products, totalItems, ownStock: emptyStock };
+      }
+
+      const stock = await inventoryClient.ownerStockByIds({
+        teamId: teamId!,
+        // 0n = every warehouse holding the caller's goods — the cost across all of them.
+        filter: { productIds: own, warehouseId: 0n },
+      });
+
+      return { products, totalItems, ownStock: ownerStockFromByIds(stock) };
     },
   });
 }
@@ -518,15 +591,19 @@ export function useArchiveProduct() {
 // It is a plain ProductUpdate carrying only `cross_locked`, which works because every other field on
 // that message is absent-means-untouched. A dedicated RPC would have bought nothing except a second
 // place for the scope check to be got wrong.
-export function useSetProductLocked() {
+// THE LOCK, as one write (`one-lock-three-ways`): whether another team may order the product — `crossLocked` — and the
+// minimum total stock under which it may not — `reservedStock`. Both are ProductUpdate's optional fields, so the rest of
+// the product is left alone; a `reservedStock` left out keeps the minimum the product already had.
+export function useSetProductLock() {
   const invalidate = useInvalidateProducts();
 
   return useMutation({
-    mutationFn: (vars: { teamId: bigint; productId: bigint; locked: boolean }) =>
+    mutationFn: (vars: { teamId: bigint; productId: bigint; crossLocked: boolean; reservedStock?: number }) =>
       productClient.productUpdate({
         teamId: vars.teamId,
         productId: vars.productId,
-        crossLocked: vars.locked,
+        crossLocked: vars.crossLocked,
+        reservedStock: vars.reservedStock,
       }),
     onSuccess: () => invalidate(),
   });

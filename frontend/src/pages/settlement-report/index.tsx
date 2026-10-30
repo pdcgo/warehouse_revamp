@@ -5,7 +5,7 @@ import { Badge, Box, Button, Flex, Group, Heading, Spacer, Stack, Text } from "@
 import { rpcError } from "../../api/clients";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { Pagination } from "../../components/chrome/Pagination";
-import { DateRangePicker } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker, LAST_MONTH } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -20,11 +20,16 @@ import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import type { PeriodGrain } from "../../lib/period";
+import { dateRangeCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { GroupTable } from "./components/GroupTable";
 import { ReportSummary } from "./components/ReportSummary";
 import { SeriesTable } from "./components/SeriesTable";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 
 const PAGE_SIZE = 20;
+
+const GRAIN_CODEC = oneOfCodec<PeriodGrain>(["day", "month", "year"]);
+const GROUP_CODEC = oneOfCodec<SettlementGroupBy>(["shop", "user"]);
 
 // SettlementReportPage — what the marketplace actually paid, against what buyers paid, over time
 // (docs/business/settlement/analytic_context.md).
@@ -48,9 +53,12 @@ export function SettlementReportPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
 
-  const [grain, setGrain] = useState<PeriodGrain>("day");
-  const [range, setRange] = useState<DateRange>({ kind: "relative", days: 30 });
-  const [groupBy, setGroupBy] = useState<SettlementGroupBy>("shop");
+  // THE WINDOW, THE GRAIN AND THE RANKING LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same
+  // report. The pages do not.
+  const [grain, setGrain] = useUrlState<PeriodGrain>("grain", "day", GRAIN_CODEC);
+  const [range, setRange] = useUrlState<DateRange>("range", LAST_MONTH, dateRangeCodec);
+  const [groupBy, setGroupBy] = useUrlState<SettlementGroupBy>("group", "shop", GROUP_CODEC);
+  const [shownGroupBy, setShownGroupBy] = useState<SettlementGroupBy>(groupBy);
   const [seriesPage, setSeriesPage] = useState(1);
   const [groupPage, setGroupPage] = useState(1);
 
@@ -122,8 +130,14 @@ export function SettlementReportPage() {
 
   const error = [summary, series, groups].find((query) => query.isError)?.error;
 
+  // The grouping the rows ON SCREEN are in — what the table's fade is keyed on.
+  if (!groups.isPending && !groups.isPlaceholderData && shownGroupBy !== groupBy) {
+    setShownGroupBy(groupBy);
+  }
+
   return (
-    <Stack gap="section" data-testid="settlement-report-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="settlement-report-page">
       <Flex align="center" gap="card" wrap="wrap">
         <Heading size="md">{t("settlementReport.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName}</Badge>
@@ -155,9 +169,14 @@ export function SettlementReportPage() {
       <Stack gap="field">
         <Heading size="sm">{t("settlementReport.overTime")}</Heading>
 
-        <RefreshOverlay busy={series.isFetching && !series.isPending}>
-          <SeriesTable grain={grain} points={series.data?.points ?? []} />
-        </RefreshOverlay>
+        {/* The table's shape on the first load, never the empty hint before anything was asked (motion-is-small-quick-and-shared). */}
+        {series.isPending && valid ? (
+          <ListSkeleton testId="report-series-loading" />
+        ) : (
+          <RefreshOverlay busy={series.isFetching && !series.isPending}>
+            <SeriesTable grain={grain} points={series.data?.points ?? []} />
+          </RefreshOverlay>
+        )}
 
         <Box>
           <Pagination
@@ -191,9 +210,17 @@ export function SettlementReportPage() {
           </Group>
         </Flex>
 
-        <RefreshOverlay busy={groups.isFetching && !groups.isPending}>
-          <GroupTable groupBy={groupBy} rows={groups.data?.rows ?? []} nameOf={nameOf} />
-        </RefreshOverlay>
+        {/* Per Toko ⇄ Per Pengguna swaps the table in place: it fades in when the regrouped rows LAND — keyed on the
+            grouping on screen, not the click, since the old rows stay up while the new ones load (HARD RULE 10). */}
+        {groups.isPending && valid ? (
+          <ListSkeleton testId="report-groups-loading" />
+        ) : (
+          <RefreshOverlay busy={groups.isFetching && !groups.isPending}>
+            <Box key={shownGroupBy} animationStyle="swap">
+              <GroupTable groupBy={groupBy} rows={groups.data?.rows ?? []} nameOf={nameOf} />
+            </Box>
+          </RefreshOverlay>
+        )}
 
         {/* No total: a metric page says only whether another follows (a-metric-page-has-no-total) — the growing pager
             (every-list-pages-with-the-growing-pager). */}

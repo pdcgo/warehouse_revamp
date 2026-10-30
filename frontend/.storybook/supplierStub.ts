@@ -44,6 +44,16 @@ export function resetSupplierStub() {
 
 resetSupplierStub();
 
+/**
+ * MORE ROWS FOR ONE STORY — call it from a story's `beforeEach`, after preview.tsx's reset, and the rows live until the
+ * next story resets the tables. For a screen that has to be seen FULL (the AppShell's example page), without growing
+ * the shared fixtures every other story counts on.
+ */
+export function addSupplierRows(more: { suppliers: SupplierFixture[]; channels: ChannelFixture[] }) {
+  suppliers.push(...more.suppliers.map((s) => ({ ...s })));
+  channels.push(...more.channels.map((c) => ({ ...c })));
+}
+
 const nextId = (rows: { id: bigint }[]) => rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
 
 const newestFirst = <R extends { id: bigint }>(rows: R[]) => [...rows].sort((a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0));
@@ -356,12 +366,13 @@ function addRow(m: Metric, r: FigureFixture): Metric {
   return { ...next, brokenRate: units > 0n ? Number(next.shippingBrokenCount) / Number(units) : 0 };
 }
 
-/** The rows the filters keep — the window (inclusive), whose restocks, one supplier. */
+/** The rows the filters keep — the window (inclusive), whose restocks, one supplier, the suppliers the search finds. */
 function figureRowsFor(filters: FilterItem[] | undefined): FigureFixture[] {
   let start = "";
   let end = "";
   let restockTeamId = 0n;
   let supplierId = 0n;
+  let keyword = "";
 
   for (const item of filters ?? []) {
     if (item.f.case === "dateRangeFilter") {
@@ -370,7 +381,19 @@ function figureRowsFor(filters: FilterItem[] | undefined): FigureFixture[] {
     }
     if (item.f.case === "teamFilter") restockTeamId = item.f.value.teamId;
     if (item.f.case === "supplierFilter") supplierId = item.f.value.supplierId;
+    if (item.f.case === "supplierKeywordFilter") keyword = item.f.value.q.trim().toLowerCase();
   }
+
+  // The search, as the server runs it (the-supplier-report-keeps-its-search): what SupplierList's `q` finds, deleted
+  // suppliers included — they are still ranked.
+  const found =
+    keyword === ""
+      ? undefined
+      : new Set(
+          suppliers
+            .filter((s) => matches(keyword, s.name, s.address, s.contact, ...liveStoresOf(s.id).map((c) => c.name)))
+            .map((s) => s.id),
+        );
 
   return figureFixtures.filter((r) => {
     const day = dayAgo(r.daysAgo);
@@ -379,7 +402,8 @@ function figureRowsFor(filters: FilterItem[] | undefined): FigureFixture[] {
       day >= start &&
       day <= end &&
       (restockTeamId === 0n || r.teamId === restockTeamId) &&
-      (supplierId === 0n || r.supplierId === supplierId)
+      (supplierId === 0n || r.supplierId === supplierId) &&
+      (found === undefined || found.has(r.supplierId))
     );
   });
 }

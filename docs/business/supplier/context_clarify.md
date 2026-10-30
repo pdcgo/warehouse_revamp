@@ -12,7 +12,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 > ([past-accepts-are-backfilled-once](./context_decision.md#past-accepts-are-backfilled-once)). **Nothing is open.**
 >
 > **In chat (2026-10-07): a search and a team picker on the Supplier Report, the picker on the Statistics tab, and a Team
-> filter on Discover** — [the-team-filter-picks-any-selling-team](./context_decision.md#the-team-filter-picks-any-selling-team) (against my two buttons), [superseded-the-supplier-report-searches-like-discover](./context_decision.md#superseded-the-supplier-report-searches-like-discover) (the search later dropped, [the-supplier-report-drops-its-search](../analytic/rpc_provide_decision.md#the-supplier-report-drops-its-search)),
+> filter on Discover** — [the-team-filter-picks-any-selling-team](./context_decision.md#the-team-filter-picks-any-selling-team) (against my two buttons), [superseded-the-supplier-report-searches-like-discover](./context_decision.md#superseded-the-supplier-report-searches-like-discover) (the search later dropped, [superseded-the-supplier-report-drops-its-search](../analytic/rpc_provide_decision.md#superseded-the-supplier-report-drops-its-search) (the search is back: [the-supplier-report-keeps-its-search](../analytic/rpc_provide_decision.md#the-supplier-report-keeps-its-search))),
 > [discover-filters-by-the-team-that-keeps-it](./context_decision.md#discover-filters-by-the-team-that-keeps-it) (**Q16 answered**, as recommended). Built. Q17 keeps its other four readings.
 >
 > **Prototyped (2026-10-07): the Statistics tab and the Supplier Report page**, on sample figures — [The screens](#the-screens).

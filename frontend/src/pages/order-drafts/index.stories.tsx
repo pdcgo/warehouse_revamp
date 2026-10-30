@@ -1,7 +1,8 @@
+import { Text } from "@chakra-ui/react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { asTeam, routedPage, LocationProbe } from "../../../.storybook/pageStory";
 import { orderDrafts, shops, teams, users } from "../../../.storybook/fixtures";
 import { OrderDraftsPage } from "./index";
 
@@ -39,13 +40,22 @@ const NO_PRICE = orderDrafts.find((d) => d.unmappedItemCount === 0 && d.platform
 const Routed = routedPage(
   [
     { path: "/order-drafts", element: <OrderDraftsPage /> },
-    marker("/order-drafts/:draftId", "at-draft-detail"),
-    marker("/orders", "at-order-list"),
+    // A draft opens IN THE ORDER FORM (the-draft-opens-in-the-order-form) — the probe shows which one it was asked for.
+    {
+      path: "/orders/new",
+      element: (
+        <>
+          <Text data-testid="at-order-form">order form</Text>
+          <LocationProbe />
+        </>
+      ),
+    },
   ],
   "/order-drafts",
 );
 
 const meta = {
+  // Its own story file, in the Order group (owner: *"storynya bagian dari order, tidak masalah"*).
   title: "Pages/Order/OrderDraftsPage",
   component: OrderDraftsPage,
   parameters: {
@@ -218,7 +228,8 @@ export const TheRowOpensTheDraft: Story = {
     const canvas = within(canvasElement);
 
     await userEvent.click(await canvas.findByTestId(`draft-updated-${UNMAPPED.id}`));
-    await waitFor(() => expect(canvas.getByTestId("at-draft-detail")).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId("at-order-form")).toBeInTheDocument());
+    await expect(canvas.getByTestId("location-search")).toHaveTextContent(`?draft=${UNMAPPED.id}`);
   },
 };
 
@@ -229,20 +240,24 @@ export const CopyingTheReferenceStaysHere: Story = {
     const row = await canvas.findByTestId(`draft-row-${UNMAPPED.id}`);
 
     await userEvent.click(within(row).getByTestId("order-ref"));
-    await expect(canvas.queryByTestId("at-draft-detail")).toBeNull();
+    await expect(canvas.queryByTestId("at-order-form")).toBeNull();
   },
 };
 
 /**
- * THE STRIP IS THE ORDER LIST'S, with Drafts active. A stage tab here is not a filter on drafts — it
- * goes back to the order list, landing on the tab that was clicked (`?status=`).
+ * A LIST OF ITS OWN (the-drafts-are-a-list-of-their-own) — its own title with the subtitle under it, and none of the
+ * order list's furniture: no stage strip, no New Order. The way in is the menu, Pesanan ▸ Draf.
  */
-export const AStageTabGoesBackToTheList: Story = {
+export const ItsOwnList: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(await canvas.findByTestId("orders-tab-processed"));
-    await waitFor(() => expect(canvas.getByTestId("at-order-list")).toBeInTheDocument());
+    await expect(await canvas.findByTestId("order-drafts-heading")).toHaveTextContent("Order Drafts");
+    await expect(canvas.getByTestId("order-drafts-subtitle")).toHaveTextContent("Open one to finish it in the order form");
+    await waitFor(() => expect(canvas.getByTestId(`draft-row-${UNMAPPED.id}`)).toBeInTheDocument());
+    await expect(canvas.queryByTestId("orders-tab-all")).toBeNull();
+    await expect(canvas.queryByTestId("orders-tab-drafts")).toBeNull();
+    await expect(canvas.queryByTestId("open-create-order")).toBeNull();
   },
 };
 

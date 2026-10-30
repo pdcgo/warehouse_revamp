@@ -1,9 +1,10 @@
 # Development state — supplier
 
-> 🔄 **2026-10-28 — the Supplier Report has no search.** The analytic keyword filter was removed
-> ([the-generic-keyword-is-removed](../../business/analytic/rpc_provide_decision.md#the-generic-keyword-is-removed)), and the
-> search with it ([the-supplier-report-drops-its-search](../../business/analytic/rpc_provide_decision.md#the-supplier-report-drops-its-search)).
-> `metrics/suppliers` filters by the window, the restocking team and one supplier; the report offers the first two.
+> 🔄 **2026-10-30 — the Supplier Report's search is back** ([the-supplier-report-keeps-its-search](../../business/analytic/rpc_provide_decision.md#the-supplier-report-keeps-its-search),
+> on merging `frada`): a typed `FILTER_TYPE_SUPPLIER_KEYWORD` on `metrics/suppliers`, matched as the supplier list's `q`
+> is, the headline what it found. `metrics/suppliers` filters by the window, the restocking team, one supplier and the
+> keyword; the report offers all but the one supplier. (It had been dropped on 2026-10-28 —
+> [superseded-the-supplier-report-drops-its-search](../../business/analytic/rpc_provide_decision.md#superseded-the-supplier-report-drops-its-search).)
 
 > 🔄 **2026-10-27 — the figures moved onto the analytic pattern.** The four reads (`AnalyticTimeSearch`,
 > `AnalyticProductSearch`, `AnalyticGroupSearch`, `AnalyticGroupMetric`) are GONE, replaced by one metric,

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { Alert, Spinner, Stack, Text } from "@chakra-ui/react";
+import { Alert, Stack, Text } from "@chakra-ui/react";
 
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { useTeam } from "../../../features/team/TeamContext";
@@ -7,6 +7,7 @@ import { useOrderSettlement, usePostSettlementEntry } from "../../../features/se
 import { OrderLedgerPanel } from "../../order-settlement/components/OrderLedgerPanel";
 import type { EntryDraft } from "../../order-settlement/components/AddEntryDialog";
 import type { PostingRole, SettlementEntry } from "../../order-settlement/model";
+import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
 
 // THE SETTLEMENT LEDGER IN ITS REAL SEAT — a third tab on the order detail page.
 //
@@ -114,7 +115,7 @@ export function SettlementTab({
   );
 
   if (query.isPending) {
-    return <Spinner data-testid="settlement-loading" />;
+    return <ListSkeleton rows={3} testId="settlement-loading" />;
   }
 
   // ⚠ NEVER SETTLED IS NOT SETTLED TO ZERO. The service returns NotFound rather than a zeroed row,

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orderDetailFor, orders, teams } from "../../../.storybook/fixtures";
 import { orderExportScenario } from "../../../.storybook/sessionScenario";
 
@@ -21,6 +21,8 @@ import { PickQueueNextPage } from "./index";
 //   | TheTabsAreTheWarehousesSteps       | to confirm + confirmed + picked + handed over + all, counted |
 //   | CopyingDoesNotOpenTheOrder         | the ref and the resi copy without leaving the list          |
 //   | TheFiltersAreTheCrews              | search, date, team, marketplace, courier                    |
+//   | TheSellerFilterNarrowsTheRows      | picking a seller team leaves that team's orders only        |
+//   | FiltersLiveInTheUrl                | the tab and filters are read from, and written to, the URL  |
 //   | TheMenuOffersOnlyAllowedMoves      | Dikonfirmasi may go forward to picked, or back to the queue  |
 //   | GoingBackAsksForAReason            | the warning dialog, and its button waits for a reason        |
 //   | AForwardStepRunsForReal            | Perlu konfirmasi → Dikonfirmasi calls OrderStatusChange      |
@@ -212,6 +214,29 @@ export const TheRowNamesItsShopAndCountsItsUnits: Story = {
     } else {
       await expect(row).toHaveTextContent(/Qty\s*4/);
     }
+  },
+};
+
+// THE STEP AND THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the tab and the search
+// are its; another tab is written back beside the search.
+const AtFilteredUrl = routedPage(
+  [{ path: "/warehouse-orders", element: <><PickQueueNextPage /><LocationProbe /></> }],
+  "/warehouse-orders?step=all&q=melati",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByTestId("warehouse-orders-search", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("melati");
+    await expect(canvas.getByTestId("pick-tab-all")).toHaveAttribute("aria-selected", "true");
+
+    await userEvent.click(canvas.getByTestId("pick-tab-confirm"));
+    await waitFor(() => expect(location).toHaveTextContent("step=confirm"));
+    await expect(location).toHaveTextContent("q=melati");
   },
 };
 

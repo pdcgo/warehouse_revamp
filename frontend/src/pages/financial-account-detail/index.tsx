@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useParams } from "react-router-dom";
-import { Alert, Badge, Flex, HStack, Heading, Link, Spinner, Stack, Text } from "@chakra-ui/react";
+import { Alert, Badge, Box, Flex, Heading, HStack, Link, Stack, Text } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
@@ -15,19 +15,23 @@ import {
 import { AccountActions } from "../../features/financialAccount/AccountActions";
 import { ProviderBadge } from "../../features/financialAccount/badges";
 import { useAccountBalances, useAccountLogs, useFinancialAccount } from "../../features/financialAccount/queries";
-import { TYPE_KEY, accountName, isUnknown, withShopNames } from "../../features/financialAccount/vocab";
+import { CHANGE_TYPES, TYPE_KEY, accountName, isUnknown, withShopNames } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { toDateInputValue } from "../../lib/datetime";
 import { canMoveAccountMoney, canTransferMoney } from "../../lib/roles";
+import { dateRangeCodec, enumCodec, listCodec, useUrlState } from "../../lib/urlState";
 import { AccountLogTable } from "./components/AccountLogTable";
 import { AccountSummary } from "./components/AccountSummary";
 import { ChangeTypeFilter } from "./components/ChangeTypeFilter";
 import { ShopLinks } from "./components/ShopLinks";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+const CHANGE_TYPES_CODEC = listCodec(enumCodec(CHANGE_TYPES));
 
 // A DateRange → the inclusive `yyyy-mm-dd` pair the log filters on; "" is an open end. Formatted back
 // in LOCAL time, as the settlement report does — `toISOString` would shift the boundary a day.
@@ -60,9 +64,10 @@ export function FinancialAccountDetailPage() {
   const isMobile = useIsMobile();
   const accountId = /^\d+$/.test(params.accountId ?? "") ? BigInt(params.accountId!) : 0n;
 
+  // THE STATEMENT'S FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same statement.
   // Several at once — the contract's `change_types` is a list (`the-statement-filters-several-types`).
-  const [changeTypes, setChangeTypes] = useState<FinancialAccountChangeType[]>([]);
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
+  const [changeTypes, setChangeTypes] = useUrlState<FinancialAccountChangeType[]>("types", [], CHANGE_TYPES_CODEC);
+  const [range, setRange] = useUrlState<DateRange>("range", ALL_DATES, dateRangeCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -86,7 +91,8 @@ export function FinancialAccountDetailPage() {
     return <Text color="fg.muted">{t("financialAccounts.selectTeam")}</Text>;
   }
 
-  if (accountQuery.isPending) return <Spinner colorPalette="brand" />;
+  // The page's shape while the account loads, not a spinner on an empty page (motion-is-small-quick-and-shared).
+  if (accountQuery.isPending) return <ListSkeleton heading testId="financial-account-loading" />;
 
   const account = accountQuery.data;
   if (!account) {
@@ -115,7 +121,8 @@ export function FinancialAccountDetailPage() {
   const filtering = [changeTypes.length > 0, !isAllDates(range)].filter(Boolean).length;
 
   return (
-    <Stack gap="section" data-testid="financial-account-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="financial-account-page">
       <BackLink />
 
       {/* ON A PHONE THE HEADER IS THE NAME AND ITS MENU (`the-phone-header-is-one-row`) — every action folds into it, so
@@ -230,11 +237,13 @@ export function FinancialAccountDetailPage() {
         )}
 
         {logs.isPending ? (
-          <Spinner colorPalette="brand" />
+          <ListSkeleton rows={4} testId="account-log-loading" />
         ) : (
-          <RefreshOverlay busy={logs.isFetching && !logs.isPending}>
-            <AccountLogTable logs={logs.data?.logs ?? []} actorName={actorName} describe={(text) => withShopNames(text, nameOf)} />
-          </RefreshOverlay>
+          <Box animationStyle="swap">
+            <RefreshOverlay busy={logs.isFetching && !logs.isPending}>
+              <AccountLogTable logs={logs.data?.logs ?? []} actorName={actorName} describe={(text) => withShopNames(text, nameOf)} />
+            </RefreshOverlay>
+          </Box>
         )}
 
         {/* THE PAGES GROW AS THEY ARE OPENED, as on the accounts list (`the-accounts-pager-grows-with-the-pages-opened`). */}

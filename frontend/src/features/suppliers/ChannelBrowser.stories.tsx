@@ -2,8 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "@chakra-ui/react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
+import { LocationProbe, routedPage } from "../../../.storybook/pageStory";
 import { channelFixture, supplierFixture } from "../../../.storybook/supplierFixtures";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { ChannelBrowser } from "./ChannelBrowser";
+import { LIST_FIGURE_MARKS } from "./SupplierFigures";
 
 // A supplier's Channels tab, shared by the manage detail (with its actions) and the discover detail (read-only)
 // — supplier-detail-has-channels-and-products-tabs. It reads its own page from SupplierChannelList, which searches,
@@ -24,7 +27,8 @@ const TEAM = 12n;
 const meta = {
   title: "Features/Suppliers/ChannelBrowser",
   component: ChannelBrowser,
-  args: { teamId: TEAM, supplierId: SUMBER.id },
+  // Any page's marks will do here — the page numbers them; the story only needs them drawn.
+  args: { teamId: TEAM, supplierId: SUMBER.id, figureMarks: LIST_FIGURE_MARKS, exportMark: null },
 } satisfies Meta<typeof ChannelBrowser>;
 
 export default meta;
@@ -105,6 +109,44 @@ export const FiltersByType: Story = {
 
     await waitFor(() => expect(canvas.queryByTestId(`channel-row-${SHOPEE_STORE.id}`)).toBeNull());
     await expect(canvas.getByTestId(`channel-row-${TOKOPEDIA_STORE.id}`)).toBeVisible();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url), `store.`-prefixed so the detail page's other tabs keep
+// theirs — opened at a URL, the search and the type are read from it; a change is written back.
+const AtFilteredUrl = routedPage(
+  [
+    {
+      path: "/inventories/suppliers/:supplierId",
+      element: (
+        <>
+          <ChannelBrowser teamId={TEAM} supplierId={SUMBER.id} figureMarks={LIST_FIGURE_MARKS} exportMark={null} />
+          <LocationProbe />
+        </>
+      ),
+    },
+  ],
+  `/inventories/suppliers/${SUMBER.id}?store.q=tokopedia&store.type=${Marketplace.TOKOPEDIA}`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+    const type = within(canvas.getByTestId("channels-type-filter")).getByTestId("marketplace-select");
+
+    await expect(canvas.getByTestId("channels-search")).toHaveValue("tokopedia");
+    await expect(type).toHaveTextContent("Tokopedia");
+    await canvas.findByTestId(`channel-row-${TOKOPEDIA_STORE.id}`);
+
+    await userEvent.click(type);
+    const shopee = await canvas.findByRole("option", { name: "Shopee" });
+    await waitFor(() => expect(shopee).toBeVisible());
+    await userEvent.click(shopee);
+    await waitFor(() => expect(location).toHaveTextContent(`store.type=${Marketplace.SHOPEE}`));
+    await expect(location).toHaveTextContent("store.q=tokopedia");
   },
 };
 

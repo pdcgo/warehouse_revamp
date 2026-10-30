@@ -21,6 +21,12 @@ export interface CategorySelectProps {
    */
   leafOnly?: boolean;
   disabled?: boolean;
+  /**
+   * How the panel is positioned — `absolute` (the default) or `fixed`. Pass `fixed` inside a box that SCROLLS its own
+   * content (Discover's filter panel): the panel is not portalled, so an absolute one is cut off at that box's edge,
+   * where a fixed one is laid out against the window.
+   */
+  positioningStrategy?: "absolute" | "fixed";
 }
 
 // A nested category node built from the flat CategoryList.
@@ -82,6 +88,7 @@ export function CategorySelect({
   excludeId,
   leafOnly = false,
   disabled,
+  positioningStrategy = "absolute",
 }: CategorySelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("catalog.categorySelect.placeholder");
@@ -158,7 +165,11 @@ export function CategorySelect({
   }
 
   return (
-    <Popover.Root open={open} onOpenChange={(e) => setOpen(e.open)} positioning={{ placement: "bottom-start" }}>
+    <Popover.Root
+      open={open}
+      onOpenChange={(e) => setOpen(e.open)}
+      positioning={{ placement: "bottom-start", strategy: positioningStrategy }}
+    >
       <Popover.Trigger asChild>
         <Button
           variant="outline"

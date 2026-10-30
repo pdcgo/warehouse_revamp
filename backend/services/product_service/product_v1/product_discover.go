@@ -16,10 +16,10 @@ import (
 // the request's team_id only authorizes the caller (use_scope). Each returned Product still carries
 // its owning team_id.
 //
-// A LOCKED product is absent here, and that is where the lock bites: discovery is how another team
-// finds something to build an order around, so a product its owner has kept back must not be in the
-// list in the first place. The owner's own ProductList still shows it — locking is about other
-// teams, not about hiding it from yourself.
+// A LOCKED product is absent by default, and that is where the lock bites: a picker is how another team builds an
+// order, so a product its owner has kept back must not be offered in the first place. The Discover PAGE asks for it
+// with `include_locked` (a-locked-product-shows-on-discover) — shown with its lock, still not orderable. The owner's own
+// ProductList shows it either way — locking is about other teams, not about hiding it from yourself.
 func (s *Service) ProductDiscover(
 	ctx context.Context,
 	req *connect.Request[productv1.ProductDiscoverRequest],
@@ -29,7 +29,11 @@ func (s *Service) ProductDiscover(
 	query := s.db.
 		WithContext(ctx).
 		Model(&product_service_models.Product{}).
-		Where("deleted = ? AND cross_locked = ?", false, false)
+		Where("deleted = ?", false)
+
+	if !req.Msg.GetIncludeLocked() {
+		query = query.Where("cross_locked = ?", false)
+	}
 
 	// "Somebody else's catalogue", for a caller showing own and other-team products as separate tabs.
 	// Applied HERE rather than in the client because the result is paginated: filtering after the page

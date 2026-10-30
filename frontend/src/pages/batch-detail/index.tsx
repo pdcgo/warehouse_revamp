@@ -36,8 +36,8 @@ import {
   ALL_DATES,
   DateRangePicker,
   resolveRange,
-  type DateRange,
 } from "../../components/datetime/DateRangePicker";
+import { dateRangeCodec, textCodec, useUrlState } from "../../lib/urlState";
 
 const HISTORY_PAGE_SIZE = 20;
 const PLACEMENTS_PAGE_SIZE = 20;
@@ -96,9 +96,12 @@ export function BatchDetailPage() {
   // Placements pages on its own (#218) — its own read, independent of the detail aggregate. The rack
   // search filters the loaded page client-side (a batch sits on a handful of shelves); changing it
   // resets to page 1.
+  //
+  // THE TWO LISTS' FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — the rack search here, the
+  // history's range below. The tab does not: it picks a different panel, not a narrower list.
   const [placementPage, setPlacementPage] = useState(1);
   const [placementPageSize, setPlacementPageSize] = useState(PLACEMENTS_PAGE_SIZE);
-  const [rackSearch, setRackSearch] = useState("");
+  const [rackSearch, setRackSearch] = useUrlState("rack", "", textCodec);
   const placementsQuery = useBatchPlacements({
     warehouseId,
     batchId,
@@ -113,7 +116,7 @@ export function BatchDetailPage() {
   // the loaded page. Changing either bound resets to page 1.
   const [historyPage, setHistoryPage] = useState(1);
   const [historyPageSize, setHistoryPageSize] = useState(HISTORY_PAGE_SIZE);
-  const [historyRange, setHistoryRange] = useState<DateRange>(ALL_DATES);
+  const [historyRange, setHistoryRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
   const { fromUnix: historyFromUnix, toUnix: historyToUnix } = resolveRange(historyRange);
   const historyQuery = useBatchHistory({
     warehouseId,

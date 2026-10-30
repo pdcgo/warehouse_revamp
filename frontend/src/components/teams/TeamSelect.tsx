@@ -26,6 +26,12 @@ export interface TeamSelectProps {
    */
   excludeTeamIds?: bigint[];
   /**
+   * Whether the picked team's face carries its type badge — on by default (`name [Selling]`). Off where the picker
+   * offers ONE type and the badge would only repeat what the field is for: the supplier screens' warehouse filter
+   * (owner: *"select gudang tidak perlu badge di select activenya"*).
+   */
+  showType?: boolean;
+  /**
    * Render the list in a portal (the default) or inline. Pass `false` inside a modal Dialog: a portalled listbox
    * renders OUTSIDE the dialog, where the modal makes it inert and aria-hidden — unclickable, and absent from the a11y
    * tree (the reason RackSelect and ShopSelect never portal). Kept on by default so every page-level use is unchanged.
@@ -39,7 +45,7 @@ export interface TeamSelectProps {
 // name with its type badge beside it — rather than collapsing to a bare name (owner). It fetches the
 // team list itself and emits the selected team id. Pass the optional teamType prop to restrict the
 // list to one team type (filtered server-side by TeamList).
-export const description = "Searchable team picker (Chakra Combobox) — search by name or code. Options render with TeamItem; the selected team shows as its name plus its type badge, so the picked team's type stays readable. Emits a team id. Optional teamType prop restricts it to one team type, and excludeTeamIds leaves teams out — an exclusion covering the current value clears it.";
+export const description = "Searchable team picker (Chakra Combobox) — search by name or code. Options render with TeamItem; the selected team shows as its name plus its type badge, so the picked team's type stays readable — `showType={false}` drops the badge where the picker offers one type and it would only repeat the field's purpose. Emits a team id. Optional teamType prop restricts it to one team type, and excludeTeamIds leaves teams out — an exclusion covering the current value clears it.";
 
 // A Team as TeamItem wants it — the option rows' shape, kept out of the JSX.
 function teamItemProps(team: Team) {
@@ -58,6 +64,7 @@ export function TeamSelect({
   disabled,
   teamType,
   excludeTeamIds,
+  showType = true,
   portalled = true,
 }: TeamSelectProps) {
 
@@ -233,7 +240,7 @@ export function TeamSelect({
             <Text lineClamp={1} minW="0">
               {selected.name}
             </Text>
-            <TeamTypeBadge type={selected.type} size="sm" flexShrink={0} />
+            {showType && <TeamTypeBadge type={selected.type} size="sm" flexShrink={0} />}
           </Box>
         )}
 

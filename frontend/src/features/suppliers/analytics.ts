@@ -110,6 +110,8 @@ interface Window {
   valid: boolean;
   /** Whose restocks are counted — 0n is every team's (the-team-filter-picks-any-selling-team). */
   restockTeamId: bigint;
+  /** The Supplier Report's search — the suppliers it finds, as the supplier list finds them; "" is every supplier. */
+  q?: string;
 }
 
 interface Paged {
@@ -119,10 +121,12 @@ interface Paged {
 
 type Filter = MessageInitShape<typeof FilterItemSchema>;
 
-/** The window and, when one is picked, the restocking team — the filters every supplier read carries. */
-function windowFilters({ from, to, restockTeamId }: Window): Filter[] {
+/** The window and, when one is picked, the restocking team and the search — the filters every supplier read carries. */
+function windowFilters({ from, to, restockTeamId, q = "" }: Window): Filter[] {
   const out: Filter[] = [{ f: { case: "dateRangeFilter", value: { dateMin: from, dateMax: to } } }];
   if (restockTeamId !== 0n) out.push({ f: { case: "teamFilter", value: { teamId: restockTeamId } } });
+  // The keyword filter (the-supplier-report-keeps-its-search) — only when something was typed.
+  if (q !== "") out.push({ f: { case: "supplierKeywordFilter", value: { q } } });
 
   return out;
 }
@@ -196,7 +200,7 @@ async function teamNames(client: QueryClient, ids: bigint[]): Promise<Map<string
  * window (audits/services/supplier_service/performances/MetricData.md, finding 1).
  */
 export function useSupplierHeadline(args: Window & { supplierId?: bigint }) {
-  const { teamId, from, to, valid, restockTeamId, supplierId = 0n } = args;
+  const { teamId, from, to, valid, restockTeamId, supplierId = 0n, q = "" } = args;
 
   return useQuery({
     ...listQuery,
@@ -206,6 +210,7 @@ export function useSupplierHeadline(args: Window & { supplierId?: bigint }) {
       from,
       to,
       restockTeamId: restockTeamId.toString(),
+      q,
     }),
     enabled: teamId !== undefined && valid,
     queryFn: () => {
@@ -347,14 +352,14 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
 }
 
 /**
- * Suppliers RANKED over the window — by restocked value, or by broken rate. No search
- * (the-supplier-report-drops-its-search). The headline, every ranked supplier together, is `useSupplierHeadline`.
+ * Suppliers RANKED over the window — by restocked value, or by broken rate — narrowed by the search when there is one
+ * (the-supplier-report-keeps-its-search). The headline, every ranked supplier together, is `useSupplierHeadline`.
  *
  * Three reads: the ranking (ids), then their figures and their names together — SupplierByIds, which names a DELETED
  * supplier too.
  */
 export function useSupplierRanking(args: Window & Paged & { rankBy: SupplierRankBy }) {
-  const { teamId, from, to, valid, restockTeamId, rankBy, page, pageSize } = args;
+  const { teamId, from, to, valid, restockTeamId, rankBy, page, pageSize, q = "" } = args;
   const client = useQueryClient();
 
   return useQuery({
@@ -364,6 +369,7 @@ export function useSupplierRanking(args: Window & Paged & { rankBy: SupplierRank
       from,
       to,
       restockTeamId: restockTeamId.toString(),
+      q,
       rankBy,
       page,
       pageSize,

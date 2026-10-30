@@ -47,6 +47,7 @@ import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { daysSinceUnix, formatUnixDate } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
+import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -67,6 +68,11 @@ const NAME_LOOKUP_SIZE = 200;
 // different people — a buyer in a selling team raised it, this warehouse's own crew counted it — so
 // the role also decides how the picker is SCOPED, not just which field the RPC gets.
 type ActorRole = "created" | "accepted";
+
+// The status tab, the date type and the person's role as the URL carries them — only what this list offers is read back.
+const STATUS_CODEC = oneOfCodec(RESTOCK_STATUS_TABS.map((item) => item.value));
+const DATE_FIELD_CODEC = enumCodec(RESTOCK_DATE_FIELDS.map((f) => f.value));
+const ACTOR_ROLE_CODEC = oneOfCodec<ActorRole>(["created", "accepted"]);
 
 // RestockWarehousePage — the RESTOCK LIST AS THE RECEIVING WAREHOUSE SEES IT (#133).
 //
@@ -96,10 +102,12 @@ export function RestockWarehousePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [tab, setTab] = useState("all");
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
+  // restock, opens the same narrowed queue. The page number stays on screen only.
+  const [tab, setTab] = useUrlState("status", "all", STATUS_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [requesterFilter, setRequesterFilter] = useState(0n);
+  const [requesterFilter, setRequesterFilter] = useUrlState("from", 0n, idCodec);
 
   // ONE PERSON FILTER WITH A TYPE (owner), not two pickers: "which person" and "in which role" are
   // asked together, the way the date range asks "which window" and "which date" in one control.
@@ -107,8 +115,8 @@ export function RestockWarehousePage() {
   // The cost, stated because it is invisible from the control: the pair can no longer be asked for.
   // The RPC still has both fields and would AND them, but the UI can only ever set one — "raised by
   // Ani AND counted by Budi" is not a question this screen offers.
-  const [actorRole, setActorRole] = useState<ActorRole>("created");
-  const [actorId, setActorId] = useState(0n);
+  const [actorRole, setActorRole] = useUrlState<ActorRole>("role", "created", ACTOR_ROLE_CODEC);
+  const [actorId, setActorId] = useUrlState("person", 0n, idCodec);
 
   // The people the role's question can be answered by — everyone who did that on a restock to this warehouse.
   const actorPeople = useRestockPeople({
@@ -116,8 +124,8 @@ export function RestockWarehousePage() {
     role: actorRole === "created" ? RestockActorRole.CREATED : RestockActorRole.ACCEPTED,
   });
 
-  const [range, setRange] = useState<DateRange>(DEFAULT_RANGE);
-  const [dateField, setDateField] = useState<RestockDateField>(RestockDateField.CREATED);
+  const [range, setRange] = useUrlState<DateRange>("range", DEFAULT_RANGE, dateRangeCodec);
+  const [dateField, setDateField] = useUrlState<RestockDateField>("date", RestockDateField.CREATED, DATE_FIELD_CODEC);
 
   const teamId = current?.teamId;
 
@@ -289,8 +297,8 @@ export function RestockWarehousePage() {
             onChange={(id) => refilter(() => setRequesterFilter(id))}
           />
         </Box>
-        {/* The range picker carries the DATE TYPE itself (#224): its `fields` segment chooses which of
-            a restock's three timestamps the window filters on. Without that, a range would silently
+        {/* The range picker carries the DATE TYPE itself (#224): its `fields` row, inside the panel, chooses which of
+            a restock's timestamps the window filters on. Without that, a range would silently
             pick one and mislabel the other two. Defaults to the last 7 days — see DEFAULT_RANGE. */}
         <DateRangePicker
           value={range}
@@ -302,7 +310,7 @@ export function RestockWarehousePage() {
         />
 
         {/* BY PERSON — the role segment and the picker read as ONE control (owner), so they sit in one
-            bordered group the way the range picker carries its date-type segment.
+            bordered group.
 
             THE ROLE DECIDES WHO IS OFFERED: the people who did THAT on this warehouse's restocks
             (a-who-filter-lists-the-people-on-its-rows), answered by inventory_service. "Raised by" is
@@ -316,9 +324,9 @@ export function RestockWarehousePage() {
 
             "Counted by" also implies an accepted restock: nobody counted an ongoing one, so pairing it
             with the Ongoing tab returns nothing. That is the honest answer, not a fault. */}
-        {/* ONE FORM GROUP: [ Raised by ▾ │ 🔍 person ]. The same shape DateRangePicker uses for its
-            date-field segment — an outer bordered Flex, a ghost Menu button with square corners, a
-            1px divider, and the real control with its own border dropped (`flush`). Two separate
+        {/* ONE FORM GROUP: [ Raised by ▾ │ 🔍 person ] — an outer bordered Flex, a ghost Menu button with square
+            corners, a 1px divider, and the real control with its own border dropped (`flush`). (DateRangePicker had
+            this shape for its date type until that moved inside its panel.) Two separate
             bordered boxes read as two independent filters; one box says the left half names what the
             right half is asking. */}
         <Flex

@@ -155,3 +155,26 @@ func TestProductCrossLocked_HiddenFromDiscoverOnly(t *testing.T) {
 		t.Fatalf("owner's list = %d products, want 2", len(own))
 	}
 }
+
+// THE DISCOVER PAGE SEES IT, with its lock (a-locked-product-shows-on-discover): asked with `include_locked`, the locked
+// product is served beside the open one. The default above is unchanged — a picker never asks.
+func TestProductCrossLocked_ShownToTheDiscoverPageWhenAsked(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	open := insertProduct(t, db, 2, "SKU-OPEN", "Anyone may sell this")
+	locked := insertProduct(t, db, 2, "SKU-LOCKED", "Ours only")
+	setProduct(t, db, locked, "cross_locked", true)
+
+	found, err := svc.ProductDiscover(context.Background(), connect.NewRequest(&productv1.ProductDiscoverRequest{
+		TeamId: 3, IncludeLocked: true, Page: &commonv1.CommonPagination{Page: 1, Limit: 50},
+	}))
+	if err != nil {
+		t.Fatalf("ProductDiscover: %v", err)
+	}
+
+	rows := listRows(found.Msg.GetItems())
+	if len(found.Msg.GetIds()) != 2 || !rows[locked].GetCrossLocked() || rows[open].GetCrossLocked() {
+		t.Fatalf("the Discover page should get both, the locked one marked — got ids %v", found.Msg.GetIds())
+	}
+}

@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { liabilityPositions, teams } from "../../../.storybook/fixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { LiabilityListPage } from "./index";
 
 const WAREHOUSE = teams.find((t) => t.id === 11n)!; // the creditor, watching its debtors
@@ -113,6 +114,28 @@ export const TheWarehouseAdminHasNoDefaultTerms: Story = {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.queryByTestId("liability-default-terms")).toBeNull();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the team type and "awaiting only" are
+// its own; a search typed is written back, the others kept.
+const AtFilteredUrl = routedPage(
+  [{ path: "/liability", element: <><LiabilityListPage /><LocationProbe /></> }],
+  `/liability?kind=${TeamType.SELLING}&awaiting=1`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("liability-kind")).toHaveValue(String(TeamType.SELLING));
+    await expect(within(canvas.getByTestId("liability-awaiting-only")).getByRole("checkbox")).toBeChecked();
+
+    await userEvent.type(canvas.getByTestId("liability-search"), "Toko", { delay: 40 });
+    await waitFor(() => expect(location).toHaveTextContent("q=Toko"));
+    await expect(location).toHaveTextContent("awaiting=1");
   },
 };
 

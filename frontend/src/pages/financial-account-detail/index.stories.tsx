@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { account, expectedBalance } from "../../../.storybook/financialAccountFixtures";
-import { asTeam, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { FinancialAccountChangeType as T } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -358,6 +358,31 @@ export const FilterTheStatementByType: Story = {
     await userEvent.click(withdrawal);
 
     await waitFor(() => expect(within(canvas.getByTestId("account-log-table")).getAllByRole("row")).toHaveLength(1 + 3));
+  },
+};
+
+// THE STATEMENT'S FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the types are read from
+// it; a window picked is written back beside them.
+const AtFilteredUrl = routedPage(
+  [{ path: "/financial-accounts/:accountId", element: <><FinancialAccountDetailPage /><LocationProbe /></> }],
+  `/financial-accounts/${BCA_OPS.id}?types=${T.WITHDRAWAL}`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, expectedBalance["1301"]!);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId(`account-log-type-chip-${T.WITHDRAWAL}`)).toHaveTextContent("Withdrawal");
+    await waitFor(() => expect(within(canvas.getByTestId("account-log-table")).getAllByRole("row")).toHaveLength(1 + 3));
+
+    await userEvent.click(canvas.getByTestId("account-log-range"));
+    const week = await screen.findByTestId("account-log-range-quick-7");
+    await waitFor(() => expect(week).toBeVisible());
+    await userEvent.click(week);
+    await waitFor(() => expect(location).toHaveTextContent("range=7d"));
+    await expect(location).toHaveTextContent(`types=${T.WITHDRAWAL}`);
   },
 };
 

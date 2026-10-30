@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { RouteObject } from "react-router-dom";
-import { RouterProvider, createMemoryRouter } from "react-router-dom";
+import { RouterProvider, createMemoryRouter, useLocation } from "react-router-dom";
 import { Text } from "@chakra-ui/react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -50,7 +50,10 @@ export function asTeam(teamId: bigint) {
  * `parameters: { dataRouter: true }` so `preview.tsx` stands its shared `<MemoryRouter>` down —
  * react-router refuses to render one router inside another.
  */
-export function routedPage(routes: RouteObject[], initialEntry: string) {
+/** Where a story opens: a path, or a path with the navigation `state` the screen that opened it would carry. */
+export type StoryEntry = string | { pathname: string; search?: string; state?: unknown };
+
+export function routedPage(routes: RouteObject[], initialEntry: StoryEntry) {
   return function RoutedPage() {
     const router = useMemo(
       () => createMemoryRouter(routes, { initialEntries: [initialEntry] }),
@@ -68,6 +71,15 @@ export function routedPage(routes: RouteObject[], initialEntry: string) {
  * A story asserts it ARRIVED. Mounting the real destination page instead would make this a test of
  * THAT page's queries — and a failure there would be reported against this screen.
  */
+/**
+ * The router's query string, on screen — what a story reads to see a filter written to the URL
+ * (a-lists-filters-live-in-the-url). Place it beside the page in the route's element.
+ */
+export function LocationProbe() {
+  const { search } = useLocation();
+  return <Text data-testid="location-search">{search}</Text>;
+}
+
 export function marker(path: string, testId: string): RouteObject {
   return { path, element: <Text data-testid={testId}>{testId}</Text> };
 }
@@ -79,11 +91,17 @@ export function marker(path: string, testId: string): RouteObject {
  *
  * TeamSelect PORTALS its listbox, so the option is found on `screen`, never inside the canvas; and the list animates
  * in, so the option is waited visible before it is clicked (until then `pointer-events: none` refuses the click).
+ *
+ * ⚠ A PAGE MAY HOLD SEVERAL — a product's page has a warehouse lens on three tabs, each portalling its own list — so
+ * the option is the VISIBLE one of those that match, never simply the first.
  */
 export async function pickTeam(field: HTMLElement, teamCode: string) {
   await userEvent.click(within(field).getByRole("combobox"));
 
-  const option = await screen.findByTestId(`team-select-option-${teamCode}`);
+  const id = `team-select-option-${teamCode}`;
+  const visible = () => screen.queryAllByTestId(id).find((o) => o.checkVisibility());
+  await waitFor(() => expect(visible()).toBeDefined());
+  const option = visible()!;
   await waitFor(() => expect(option).toBeVisible());
   await userEvent.click(option);
 }

@@ -15,6 +15,7 @@ import type { SettlementSort, SettlementSortKey } from "../../features/settlemen
 import { useIsMobile } from "../../layouts/shell";
 import { formatRupiah, formatSignedRupiah } from "../../lib/money";
 import { netReceived, type OrderSettlement } from "./model";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 
 // WHICH ORDERS LOST THE MOST AGAINST THEIR ESTIMATE — the settlement list.
 //
@@ -119,6 +120,11 @@ export interface OrderSettlementPageProps {
    * the next rows load, and which the overlay would otherwise make unclickable.
    */
   busy?: boolean;
+  /**
+   * The first page has not arrived — there are no rows to keep (HARD RULE 10), so the card and the table show their
+   * shape instead of zeroes over an empty table (motion-is-small-quick-and-shared).
+   */
+  loading?: boolean;
 }
 
 export function OrderSettlementPage({
@@ -129,6 +135,7 @@ export function OrderSettlementPage({
   sort,
   totals,
   busy = false,
+  loading = false,
 }: OrderSettlementPageProps) {
   const { t } = useTranslation();
 
@@ -138,7 +145,8 @@ export function OrderSettlementPage({
   const summary = useMemo(() => totals ?? settlementTotalsOf(orders), [totals, orders]);
 
   return (
-    <Stack gap="section" data-testid="order-settlement-page">
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack gap="section" animationStyle="enter" data-testid="order-settlement-page">
       <Heading size="md">{t("orderSettlement.listTitle")}</Heading>
 
       <Text fontSize="sm" color="fg.muted">
@@ -147,8 +155,12 @@ export function OrderSettlementPage({
 
       {filters && <SettlementFilterBar filters={filters} sort={sort} />}
 
+      {loading ? (
+        <ListSkeleton testId="settlement-list-loading" />
+      ) : (
       <RefreshOverlay busy={busy}>
-        <Stack gap="section">
+        {/* The rows fade in where the skeleton was, once. */}
+        <Stack gap="section" animationStyle="swap">
           <SettlementSummary totals={summary} />
 
           <Box overflowX="auto">
@@ -173,6 +185,7 @@ export function OrderSettlementPage({
           </Box>
         </Stack>
       </RefreshOverlay>
+      )}
 
       {paging && (
         <Pagination

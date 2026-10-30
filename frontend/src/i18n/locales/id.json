@@ -30,7 +30,12 @@
     "settlement": "Penyelesaian",
     "settlementReport": "Laporan Penyelesaian",
     "settlementImports": "Impor Penyelesaian",
+    "settlementList": "Daftar",
+    "settlementReportShort": "Laporan",
+    "settlementImportsShort": "Impor",
     "financialAccounts": "Akun Keuangan",
+    "accountsList": "Daftar Akun",
+    "accountsReport": "Laporan Akun",
     "suppliers": "Pemasok",
     "mySupplier": "Pemasok Saya",
     "discoverSupplier": "Temukan Pemasok",
@@ -39,14 +44,23 @@
     "sectionOperations": "Operasional",
     "sectionFinance": "Keuangan",
     "sectionTeam": "Tim",
-    "bundles": "Bundel"
+    "bundles": "Bundel",
+    "ordersList": "Daftar",
+    "orderDraftsShort": "Draf"
   },
   "menu": {
     "theme": "Tema",
     "themeLight": "Terang",
     "themeDark": "Gelap",
     "language": "Bahasa",
-    "signOut": "Keluar"
+    "signOut": "Keluar",
+    "profile": "Profil",
+    "editProfile": "Edit Profil",
+    "openMenu": "Buka Menu",
+    "searchPlaceholder": "Cari menu",
+    "noMatch": "Tidak ada menu yang cocok.",
+    "showProfile": "Tampilkan profil",
+    "showMenu": "Tampilkan menu"
   },
   "shell": {
     "menu": "Menu",
@@ -90,7 +104,8 @@
     "selectTeamView": "Pilih tim untuk melihat posisinya.",
     "theyOweYou": "Mereka berhutang {{amount}} kepada Anda",
     "youOweThem": "Anda berhutang {{amount}} kepada mereka",
-    "square": "Lunas"
+    "square": "Lunas",
+    "emptyHint": "Utang dan piutang dengan tim lain muncul di sini setelah tercatat."
   },
   "liabilityDetail": {
     "title": "Kewajiban",
@@ -191,7 +206,10 @@
     "previousPage": "Halaman sebelumnya",
     "nextPage": "Halaman berikutnya",
     "goToPage": "Ke halaman {{page}}",
-    "deleted": "Dihapus"
+    "deleted": "Dihapus",
+    "loading": "Memuat",
+    "clearSearch": "Hapus pencarian",
+    "actions": "Aksi"
   },
   "dateRange": {
     "all": "Semua tanggal",
@@ -199,12 +217,15 @@
     "lastNDays": "{{count}} hari terakhir",
     "absolute": "Rentang tanggal",
     "quick": "Rentang cepat",
+    "field": "Tanggal",
     "from": "Dari",
     "to": "Sampai",
     "apply": "Terapkan Rentang",
     "clear": "Semua tanggal",
     "fromOnly": "Dari {{date}}",
-    "toOnly": "Sampai {{date}}"
+    "toOnly": "Sampai {{date}}",
+    "lastNMonths_other": "{{count}} bulan terakhir",
+    "lastNYears_other": "{{count}} tahun terakhir"
   },
   "productLines": {
     "title": "Produk",
@@ -352,7 +373,103 @@
     "subtitle": "Jelajahi produk dari semua tim.",
     "selectTeam": "Pilih tim untuk menemukan produk.",
     "searchPlaceholder": "Cari SKU atau nama",
-    "empty": "Produk tidak ditemukan."
+    "empty": "Belum ada produk untuk ditemukan",
+    "count_other": "{{count}} produk",
+    "noneMatch": "Tidak ada produk yang cocok",
+    "emptyHint": "Produk tim lain muncul di sini begitu mereka membuat katalognya.",
+    "price": {
+      "cost": "Harga modal",
+      "cross": "Cross",
+      "crossHint": "Harga cross — yang dibayar tim lain untuk produk ini",
+      "costHint": "Harga modal — yang dibayar tim Anda"
+    },
+    "filter": {
+      "warehouse": "Gudang",
+      "warehouseAll": "Semua gudang",
+      "team": "Tim pemilik",
+      "teamAll": "Semua tim",
+      "hideMine": "Sembunyikan produk saya",
+      "category": "Kategori",
+      "categoryAll": "Semua kategori",
+      "stock": "Stok siap",
+      "crossRange": "Harga cross",
+      "lock": "Kunci"
+    },
+    "sort": {
+      "label": "Urutkan",
+      "newest": "Terbaru",
+      "name": "Nama A–Z",
+      "sku": "SKU A–Z"
+    },
+    "division": {
+      "label": "Pembagian produk",
+      "priority": "Prioritas",
+      "research": "Riset",
+      "general": "Umum"
+    },
+    "pending": {
+      "warehouse": {
+        "label": "Filter gudang",
+        "reason": "Stok dicatat di layanan inventaris, sedangkan daftar ini datang dari katalog produk. Menyaring daftar berhalaman menurut gudang butuh satu bacaan yang menggabungkan keduanya. Pilihannya disimpan, tapi belum menyaring."
+      },
+      "division": {
+        "label": "Pembagian produk",
+        "reason": "Prioritas, Riset dan Umum ditetapkan per produk, tapi aturannya belum ada di context bisnis dan belum disimpan di mana pun. Pilihannya disimpan, tapi belum menyaring."
+      },
+      "category": {
+        "label": "Filter kategori",
+        "reason": "Pencarian produk lintas tim belum menerima filter kategori. Pilihannya disimpan, tapi belum menyaring."
+      },
+      "stock": {
+        "label": "Filter stok",
+        "reason": "Sama seperti gudang: stok siap ada di layanan inventaris, dan daftar ini belum bisa disaring dengannya. Pilihannya disimpan, tapi belum menyaring."
+      },
+      "crossRange": {
+        "label": "Filter harga cross",
+        "reason": "Harga modal produk tim lain belum bisa dibaca lintas tim, jadi harga cross-nya belum bisa disaring. Isiannya disimpan, tapi belum menyaring."
+      },
+      "crossPrice": {
+        "label": "Harga cross produk tim lain",
+        "reason": "Harga modal produk tim lain belum bisa dibaca lintas tim. Harga cross yang tampil adalah contoh, dihitung dengan markup asli produknya. Produk tim Anda sendiri memakai angka asli."
+      },
+      "cardStock": {
+        "label": "Stok produk tim lain",
+        "reason": "Stok siap dan stok yang dikirim hanya bisa dibaca untuk produk tim Anda sendiri. Angka di kartu produk tim lain adalah contoh."
+      },
+      "divisionBadge": {
+        "label": "Badge pembagian produk",
+        "reason": "Pembagian Prioritas, Riset dan Umum belum disimpan di mana pun. Badge di kartu adalah contoh."
+      },
+      "lockFilter": {
+        "label": "Filter kunci",
+        "reason": "Produk yang dikunci tidak dikirim server ke Discover, dan apakah minimum sudah mengunci sebuah produk bergantung pada stok siapnya, yang ada di layanan inventaris. Pilihannya disimpan, tapi belum menyaring."
+      }
+    },
+    "stock": {
+      "ready": "Siap",
+      "ongoing": "Dikirim",
+      "readyHint": "Stok siap — bisa dijual sekarang",
+      "ongoingHint": "Dikirim — dalam perjalanan ke gudang"
+    },
+    "lock": {
+      "always": "Dikunci"
+    },
+    "range": {
+      "all": "Semua",
+      "custom": "Atur sendiri",
+      "min": "Min",
+      "max": "Maks",
+      "minOf": "{{what}} terendah",
+      "maxOf": "{{what}} tertinggi",
+      "ceiling": "Maksimal {{max}}",
+      "empty": "Kosong"
+    },
+    "lockFilter": {
+      "open": "Terbuka",
+      "locked": "Terkunci",
+      "openHint": "Tim lain bisa mengambilnya sekarang",
+      "lockedHint": "Dikunci pemiliknya, atau stok siapnya sudah di batas minimum atau di bawahnya"
+    }
   },
   "discoverDetail": {
     "back": "Temukan Produk",
@@ -416,6 +533,57 @@
     "totalStat": "Total produk",
     "noTeam": "Pilih tim untuk mengelola produknya.",
     "newProduct": "Produk Baru",
+    "archiveView": {
+      "open": "Arsip",
+      "title": "Arsip Produk",
+      "lead": "Produk yang dikeluarkan dari katalog — tidak muncul di picker maupun pesanan baru. Pulihkan untuk menjualnya lagi."
+    },
+    "filter": {
+      "lockAll": "Semua kunci",
+      "lockedNow": "Terkunci sekarang",
+      "stockAgeAll": "Semua umur stok",
+      "stockAgeAtLeast": "{{days}} hari atau lebih"
+    },
+    "pending": {
+      "lockFilter": {
+        "label": "Filter kunci",
+        "reason": "Daftar produk belum bisa disaring menurut kunci — pilihannya disimpan, tapi semua produk tetap tampil."
+      },
+      "stockAgeFilter": {
+        "label": "Filter umur stok",
+        "reason": "Daftar produk belum bisa disaring menurut umur stok — umurnya ada di data stok, jadi pilihannya disimpan, tapi semua produk tetap tampil."
+      }
+    },
+    "lock": {
+      "title": "Kunci",
+      "edit": "Ubah Kunci",
+      "mode": {
+        "open": "Terbuka",
+        "min": "Stok minimum",
+        "always": "Selalu dikunci"
+      },
+      "short": {
+        "open": "Terbuka",
+        "always": "Selalu dikunci"
+      },
+      "minShort": "Min {{n}} pcs",
+      "minLabel": "Stok minimum",
+      "minRequired": "Masukkan stok minimum, paling sedikit 1.",
+      "help": {
+        "open": "Tim mana pun boleh menjualnya di pesanan mereka, dan membayar markup kepada Anda.",
+        "min": "Tim lain berhenti bisa memesannya selama total stok di semua gudang di bawah angka ini — pesanan Anda sendiri tidak pernah berhenti.",
+        "always": "Tim lain tidak bisa memesannya, dan produk ini tidak muncul di pencarian mereka."
+      },
+      "lockedNow": "Terkunci",
+      "lockedNowHint": "Total stok {{total}} di bawah minimum {{min}} — tim lain tidak bisa memesannya sekarang",
+      "saved": "Kunci disimpan"
+    },
+    "lead": "Katalog tim ini — yang dijual, yang ada di rak, dan yang sedang dikirim.",
+    "leadWarehouse": "Produk milik tim lain yang disimpan di rak gudang ini.",
+    "none": "Belum ada produk.",
+    "emptyHint": "Tambahkan produk pertama untuk mulai menjualnya — stoknya menyusul begitu restok tiba.",
+    "emptyArchivedHint": "Produk yang diarsipkan menunggu di sini sampai dipulihkan.",
+    "emptyWarehouseHint": "Produk yang disimpan tim penjual di gudang ini muncul di sini.",
     "searchPlaceholder": "Cari SKU atau nama",
     "empty": "Produk tidak ditemukan.",
     "backToProducts": "Kembali ke Produk",
@@ -425,17 +593,29 @@
     "images": "Gambar",
     "cover": "Sampul",
     "addImages": "Tambah Gambar",
-    "imagesHelp": "{{used}}/{{max}} gambar. Yang pertama adalah sampul. JPG atau PNG.",
+    "imagesHelp": "{{used}}/{{max}} gambar. Seret ke kotak atau klik kotak kosong — kotak besar adalah sampul. JPG atau PNG.",
+    "imageDrop": "Seret gambar ke sini, atau klik untuk memilih",
+    "makeCover": "Jadikan sampul",
+    "removeImage": "Hapus gambar",
+    "imageAlt": "Gambar {{n}}",
     "table": {
       "actions": "Aksi",
       "product": "Produk",
       "ready": "Siap",
-      "ongoing": "Masuk",
+      "ongoing": "Dikirim",
       "reserved": "Dipesan",
       "oldestBatch": "Batch terlama",
       "lastOrder": "Pesanan terakhir",
       "lastRestock": "Restock terakhir",
+      "stockAge": "Umur stok",
+      "noOrderYet": "Belum ada pesanan",
+      "neverRestocked": "Belum pernah restock",
+      "days_other": "{{count}} hari",
+      "stockAgeTitle": "Unit tertua di rak tiba {{date}}",
+      "staleHint": "Di rak {{days}} hari atau lebih — stok yang sudah tidak bergerak",
+      "quietHint": "Tidak laku {{days}} hari atau lebih",
       "cross": "Cross",
+      "crossPriceHint": "Harga cross — yang dibayar tim lain",
       "locked": "Terkunci",
       "priceRange": "Rentang HPP"
     },
@@ -444,22 +624,9 @@
       "noTeam": "Pilih tim untuk melihat produknya.",
       "notFound": "Produk tidak ditemukan.",
       "noImages": "Tidak ada gambar.",
-      "tab": {
-        "info": "Info",
-        "price": "Harga",
-        "batch": "Batch",
-        "stockHistory": "Riwayat stok"
-      },
       "reservedHint": "Tidak pernah dijual, di gudang mana pun produk ini disimpan.",
-      "costHeading": "Biaya produk ini",
       "costHelp": "Produk tidak punya harga jual — harga yang dibayar pembeli ditentukan per pesanan, di toko yang menjualnya. Ini dua angka yang memang melekat pada katalog.",
-      "crossPrice": "Yang dibayar tim lain",
-      "crossPriceHint": "Harga modal Anda plus markup, per unit.",
-      "crossHeading": "Cross-sell",
-      "crossHelp": "Tim lain menjual produk ANDA lewat tokonya sendiri: barang keluar dari stok Anda, dan mereka membayar harga modal Anda plus markup.",
-      "crossMarkupHint": "Di atas harga modal Anda, per unit.",
       "lockedHint": "Terkunci membuatnya tidak muncul di pencarian tim lain — hanya milik Anda.",
-      "batchHeading": "Pengiriman",
       "batchHelp": "Setiap batch adalah satu pengiriman produk ini ke satu gudang, dan masing-masing membekukan harga modal unitnya.",
       "batch": {
         "delivery": "Pengiriman",
@@ -469,13 +636,29 @@
         "ready": "Siap",
         "value": "Nilai"
       },
-      "historyHeading": "Semua pergerakan",
       "historyHelp": "Yang tiba, terkirim, dihitung, disesuaikan, rusak atau ditemukan — terbaru dulu. Perpindahan antar rak di satu gudang adalah urusan gudang dan tidak ditampilkan di sini.",
       "history": {
         "afterInWarehouse": "Sisa di gudang itu"
       },
       "showImage": "Tampilkan gambar {{n}}",
       "warehouseNote": "Semua angka di bawah hanya untuk {{warehouse}} — bukan total Anda.",
+      "lensLabel": "Gudang",
+      "nothingOnAShelf": "tidak ada di rak",
+      "nav": {
+        "label": "Bagian produk",
+        "info": "Info",
+        "batch": "Batch",
+        "cross": "Tim lain",
+        "derived": "Turunan",
+        "warehouse": "Per gudang"
+      },
+      "section": {
+        "info": "Info Produk",
+        "batch": "Batch",
+        "cross": "Penjualan Tim Lain",
+        "derived": "Produk Turunan",
+        "warehouse": "Per Gudang"
+      },
       "layer": {
         "unitCost": "Harga modal",
         "ready": "Siap",
@@ -486,8 +669,73 @@
       "layerEmpty": "Tidak ada stok di rak, jadi tidak ada yang dihargai.",
       "layerTotal": "Stok dengan modal diketahui: {{value}}",
       "batchEmpty": "Belum ada pengiriman produk ini.",
+      "batchEmptyHint": "Pengiriman muncul di sini begitu restok produk ini diterima ke rak.",
+      "layerEmptyHint": "Harganya muncul begitu ada pengiriman produk ini di rak.",
+      "historyEmptyHint": "Setiap penerimaan, pengambilan, dan koreksi produk ini tercatat di sini saat terjadi.",
+      "emptyInWarehouse": "Coba gudang lain, atau semua gudang.",
       "batchTotal": "Siap dengan modal diketahui: {{value}}",
-      "historyEmpty": "Belum ada pergerakan."
+      "historyEmpty": "Belum ada pergerakan.",
+      "pending": {
+        "suppliers": {
+          "label": "Pemasok",
+          "reason": "Setiap batch mencatat pemasoknya, tapi batch dibaca per halaman — daftar semua pemasok perlu dikelompokkan oleh server. Baris yang tampil adalah contoh."
+        },
+        "derived": {
+          "label": "Produk turunan",
+          "reason": "Barang yang diretur ke tim lain selain pemiliknya menjadi produk tim itu. Tautan itu belum dicatat, dan baris yang tampil — dua arah — adalah contoh."
+        },
+        "daily": {
+          "label": "Keluar masuk harian",
+          "reason": "Setiap pergerakan ada di Riwayat Stok, tapi belum ada yang menjumlahkannya per hari — yang masuk, yang keluar, dan sisa stok di akhir hari. Baris yang tampil adalah contoh."
+        }
+      },
+      "suppliers": {
+        "supplier": "Pemasok",
+        "deliveries": "Kiriman",
+        "units": "Unit",
+        "lastCost": "Modal terakhir",
+        "last": "Kiriman terakhir",
+        "deliveriesCount_other": "{{count}} kiriman"
+      },
+      "derived": {
+        "from": "Turunan dari",
+        "fromNone": "Produk ini bukan turunan dari produk tim lain.",
+        "to": "Turunannya",
+        "toNone": "Belum ada tim lain yang membuat produk dari produk ini.",
+        "seeAll": "Lihat Semua ({{count}})",
+        "product": "Produk",
+        "team": "Tim",
+        "units": "Stok siap",
+        "ready": "{{n}} pcs siap"
+      },
+      "tab": {
+        "overview": "Overview",
+        "suppliers": "Pemasok",
+        "price": "Harga Modal",
+        "daily": "Keluar Masuk Harian",
+        "history": "Riwayat Stok"
+      },
+      "daily": {
+        "date": "Tanggal",
+        "in": "Masuk",
+        "out": "Keluar",
+        "balance": "Sisa"
+      },
+      "highlight": {
+        "ready": "{{n}} pcs siap",
+        "ongoing": "+{{n}} pcs dalam pengiriman",
+        "value": "modal {{value}}",
+        "status": {
+          "out": "Habis",
+          "low": "Hampir habis",
+          "ok": "Aman"
+        },
+        "why": {
+          "out": "Tidak ada stok siap di rak gudang mana pun.",
+          "low": "Stok siap kurang dari {{n}} pcs di semua gudang.",
+          "ok": "Stok siap {{n}} pcs atau lebih di semua gudang."
+        }
+      }
     },
     "field": {
       "sku": "SKU",
@@ -501,6 +749,14 @@
     "form": {
       "editTitle": "Ubah Produk",
       "newTitle": "Produk Baru",
+      "infoTitle": "Info Produk",
+      "crossTitle": "Penjualan Tim Lain",
+      "crossDescription": "Apakah tim lain boleh menjual produk ini di pesanan mereka, dan berapa yang mereka bayar di atas modal Anda.",
+      "skuPlaceholder": "Contoh: SKU-KOPI-250",
+      "skuTaken": "SKU ini sudah dipakai produk lain di tim ini — ubah dulu untuk menyimpan.",
+      "back": "Kembali",
+      "namePlaceholder": "Contoh: Kopi Arabika 250g",
+      "descriptionPlaceholder": "Contoh: kopi arabika bubuk kemasan 250 g, sangrai medium, tahan 12 bulan",
       "categoryPlaceholder": "Pilih kategori",
       "categoryHelp": "Setiap produk dikelompokkan di bawah kategori akhir.",
       "crossMarkupHelp": "Tambahan yang dibayar tim lain di atas harga modal Anda saat menjual produk ini di pesanan mereka. Kosongkan jika tidak ada.",
@@ -519,7 +775,7 @@
     "stat": {
       "ready": "Siap",
       "readyHint": "harga modal",
-      "ongoing": "Masuk",
+      "ongoing": "Dikirim",
       "ongoingHint": "perkiraan, harga modal",
       "pcs": "{{n}} pcs",
       "pending": "Menunggu layanan stok",
@@ -675,6 +931,7 @@
       "spend": "Nilai belanja",
       "margin": "Margin kotor",
       "total": "Total",
+      "toggle": "Statistik",
       "costNone_one": "Pesanan ini belum punya HPP atau harga MP-nya, jadi belum ada margin yang bisa ditampilkan.",
       "costNone_other": "Tidak satu pun dari {{total}} pesanan ini punya HPP sekaligus harga MP, jadi belum ada margin yang bisa ditampilkan.",
       "marginUnknown_one": "{{count}} dari {{total}} pesanan belum punya HPP atau harga MP-nya — margin di atas dihitung dari sisanya.",
@@ -706,6 +963,10 @@
       "import": {
         "label": "Impor",
         "reason": "File hanya ditampilkan namanya: belum diunggah, belum diurai, dan tiap marketplace butuh pengurai sendiri."
+      },
+      "dateType": {
+        "label": "Filter menurut tanggal order atau tanggal status",
+        "reason": "Rentang tanggal daftar ini menyaring kapan pesanan dibuat, atau tanggal order marketplace. Lima tanggal status ada di log status pesanan, yang tidak dibawa daftar ini — jadi memilih salah satunya tidak mengirim rentang apa pun, dan tabel tetap seperti semula, bukan tersaring oleh tanggal yang salah."
       }
     },
     "title": "Pesanan",
@@ -879,6 +1140,10 @@
     },
     "receiptColumn": "Resi",
     "placedMpColumn": "Tgl MP",
+    "dateType": {
+      "created": "Dibuat",
+      "mp": "Tanggal order"
+    },
     "stageDateColumn": "Tgl {{status}}",
     "totalMpColumn": "Total MP",
     "deadline": {
@@ -897,11 +1162,9 @@
     },
     "orderIdColumn": "ID Order",
     "orderTitleLabel": "Pesanan",
-    "statusMoved": "Pesanan dipindah ke {{status}}",
-    "dateField": {
-      "created": "Dibuat",
-      "platform": "Tgl MP"
-    }
+    "noOrdersHint": "Pesanan muncul di sini setelah dibuat atau diimpor.",
+    "noWarehouseOrdersHint": "Pesanan dari tim penjual yang dikirim dari gudang ini muncul di sini.",
+    "statusMoved": "Pesanan dipindah ke {{status}}"
   },
   "orderDetail": {
     "nav": {
@@ -980,7 +1243,7 @@
   },
   "orderDrafts": {
     "title": "Draf Pesanan",
-    "intro": "Pesanan yang belum selesai, dikirim aplikasi lain. Lengkapi lalu promosikan, atau hapus yang tidak dipakai; tidak ada yang hilang sendiri di sini, dan stok belum dipotong.",
+    "intro": "Pesanan yang belum selesai, dikirim aplikasi lain. Buka untuk melengkapinya di form pesanan, atau hapus yang tidak dipakai; tidak ada yang hilang sendiri di sini, dan stok tidak ditahan.",
     "selectTeamView": "Pilih tim untuk melihat draf pesanannya.",
     "reference": "Referensi",
     "lines": "Baris",
@@ -1045,7 +1308,8 @@
     },
     "missingOrderDate": "Tanggal pesanan marketplace belum diisi.",
     "missingRef": "Nomor pesanan marketplace belum diisi.",
-    "missingSellPrice": "Harga jual belum diisi."
+    "missingSellPrice": "Harga jual belum diisi.",
+    "noDraftsHint": "Draf yang dikirim aplikasi lain muncul di sini."
   },
   "restock": {
     "title": "Permintaan Restok",
@@ -1489,6 +1753,7 @@
       "name": "Nama",
       "code": "Kode",
       "marketplace": "Marketplace",
+      "primary": "CS utama",
       "actions": "Aksi"
     },
     "form": {
@@ -1504,7 +1769,10 @@
       "description": "Deskripsi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Buat"
+      "create": "Buat",
+      "namePlaceholder": "Contoh: Melati Official",
+      "shopCodePlaceholder": "Contoh: MEL-SHP",
+      "descriptionPlaceholder": "Contoh: toko utama di Shopee, kopi dan teh"
     },
     "users": {
       "userAdded": "Pengguna ditambahkan ke toko",
@@ -1513,17 +1781,25 @@
       "removeFailed": "Gagal menghapus",
       "heading": "Pengguna dengan akses",
       "addLabel": "Tambah pengguna",
-      "searchPlaceholder": "Cari semua pengguna",
+      "searchPlaceholder": "Ketik username anggota",
       "add": "Tambah",
       "empty": "Belum ada pengguna yang memiliki akses.",
       "removeTitle": "Hapus Akses",
       "removeConfirm": "Hapus akses {{label}} ke toko ini?",
       "remove": "Hapus",
-      "primaryBadge": "CS utama",
+      "primaryBadge": "Utama",
       "makePrimaryLabel": "Jadikan {{label}} CS utama",
       "primaryChanged": "CS utama diganti",
       "makePrimaryFailed": "Gagal mengganti CS utama",
-      "noPrimary": "Belum ada CS utama — toko ini tidak bisa mengimpor laporannya sampai salah satu penggunanya dijadikan utama."
+      "noPrimary": "Belum ada CS utama — toko ini tidak bisa mengimpor laporannya sampai salah satu penggunanya dijadikan utama.",
+      "title": "Pengguna dengan Akses",
+      "description": "Anggota tim yang mengurus toko ini. Baris laporan impor yang tidak punya pesanan dicatat atas nama CS utama.",
+      "emptyHint": "Tambahkan anggota tim yang mengurus pesanan dan laporan toko ini.",
+      "removeLabel": "Hapus akses {{label}}",
+      "makePrimaryTitle": "Jadikan Utama",
+      "makePrimary": "Jadikan Utama",
+      "makePrimaryConfirm": "Jadikan {{name}} CS utama? Baris laporan impor yang tidak punya pesanan akan dicatat atas namanya, menggantikan {{current}}.",
+      "makePrimaryConfirmNone": "Jadikan {{name}} CS utama? Baris laporan impor yang tidak punya pesanan akan dicatat atas namanya, dan toko ini bisa mengimpor lagi."
     },
     "detail": {
       "invalidId": "ID toko tidak valid.",
@@ -1533,9 +1809,57 @@
       "title": "Detail Toko",
       "edit": "Ubah",
       "code": "Kode",
-      "description": "Deskripsi"
+      "description": "Deskripsi",
+      "delete": "Hapus",
+      "deleted": "Toko \"{{name}}\" dihapus"
     },
-    "noPrimary": "Belum ada CS utama"
+    "noPrimary": "Belum ada CS utama",
+    "lead": "Etalase marketplace tempat tim ini berjualan — masing-masing dengan kodenya, marketplace-nya, dan orang yang mengurusnya.",
+    "none": "Tidak ada toko yang cocok",
+    "emptyHint": "Tambahkan etalase marketplace tempat tim ini berjualan.",
+    "editAction": "Ubah",
+    "primary": {
+      "change": "Ganti CS Utama",
+      "choose": "Pilih CS Utama",
+      "changeTitle": "Ganti CS Utama",
+      "chooseTitle": "Pilih CS Utama",
+      "why": "Baris laporan impor yang tidak punya pesanan — biaya, iklan, penarikan — dicatat atas nama CS utama. Hanya pengguna yang punya akses ke toko ini yang bisa dipilih.",
+      "pick": "Pengguna dengan akses",
+      "current": "Saat ini",
+      "nobody": "Belum ada yang punya akses",
+      "nobodyHint": "Beri akses di halaman toko — orang pertama otomatis jadi CS utama.",
+      "openShop": "Buka Toko",
+      "save": "Simpan",
+      "saved": "{{user}} sekarang CS utama {{shop}}",
+      "failed": "CS utama gagal diganti"
+    },
+    "filter": {
+      "marketplaceAll": "Semua marketplace",
+      "primaryAll": "Semua CS utama",
+      "optionsClear": "Hapus filter di panel"
+    },
+    "pending": {
+      "marketplaceFilter": {
+        "label": "Filter marketplace",
+        "reason": "Daftar toko belum bisa disaring per marketplace — pilihannya disimpan, tapi semua toko tetap tampil."
+      },
+      "primaryFilter": {
+        "label": "Filter CS utama",
+        "reason": "Daftar toko belum bisa disaring per CS utama — pilihannya disimpan, tapi semua toko tetap tampil."
+      },
+      "noPrimaryFilter": {
+        "label": "Filter belum ada CS utama",
+        "reason": "Daftar toko belum bisa disaring ke toko yang belum punya CS utama — centangnya disimpan, tapi semua toko tetap tampil."
+      }
+    },
+    "withdrawal": {
+      "title": "Akun Penarikan",
+      "description": "Rekening tempat dana marketplace toko ini ditarik.",
+      "none": "Belum ada akun penarikan",
+      "noneHint": "Hubungkan toko ini ke rekening di Akun Keuangan — penarikan dananya dicatat ke sana.",
+      "openAccount": "Buka Akun",
+      "openAccounts": "Buka Akun Keuangan"
+    }
   },
   "racks": {
     "title": "Rak",
@@ -1682,7 +2006,9 @@
       "contact": "Kontak",
       "actions": "Aksi",
       "supplier": "Pemasok",
-      "channels": "Toko pemasok"
+      "channels": "Toko pemasok",
+      "sold": "Terjual",
+      "ready": "Siap"
     },
     "form": {
       "saved": "Pemasok disimpan",
@@ -1729,6 +2055,30 @@
         "products": {
           "label": "Produk",
           "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun"
+        },
+        "sold": {
+          "label": "Terjual",
+          "reason": "angka contoh — unit terjual dan pesanan terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+        },
+        "ready": {
+          "label": "Siap",
+          "reason": "angka contoh — stok siap dan restok terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+        },
+        "warehouses": {
+          "label": "Gudang terkait",
+          "reason": "data contoh — belum ada yang mencatat di gudang mana restok dari pemasok ini diterima, jadi gudang dan ringkasannya masih karangan"
+        },
+        "warehouseFilter": {
+          "label": "Filter gudang",
+          "reason": "pilihan gudang baru mengganti ringkasan di bawahnya — belum ada tab yang bisa disaring per gudang"
+        },
+        "sales": {
+          "label": "Penjualan",
+          "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
+        },
+        "export": {
+          "label": "Ekspor",
+          "reason": "belum ada yang membuat file — tombolnya menyimpan tempat aksinya; isinya nanti tabel tab ini, sesuai filter yang aktif"
         }
       },
       "teamAll": "Semua tim",
@@ -1738,7 +2088,8 @@
         "table": "Tabel"
       },
       "noContact": "Belum ada kontak",
-      "typeChipAll": "Semua"
+      "typeChipAll": "Semua",
+      "emptyHint": "Pemasok muncul di sini setelah tim penjual menambahkannya."
     },
     "lead": "Pemasok yang dikelola tim ini — vendor tempat tim membeli stoknya.",
     "search": "Cari pemasok, alamat, atau toko",
@@ -1754,7 +2105,50 @@
       }
     },
     "editAction": "Ubah",
-    "actions": "Aksi pemasok"
+    "actions": "Aksi pemasok",
+    "pending": {
+      "sold": {
+        "label": "Terjual",
+        "reason": "angka contoh — semua unit yang terjual dan pesanan terakhirnya dijumlah dari produk-produk pemasok, dan belum ada yang menyebut produk mana dari pemasok mana"
+      },
+      "ready": {
+        "label": "Siap",
+        "reason": "angka contoh — stok siap dan restok terakhir dijumlah dari produk-produk pemasok, dan belum ada yang menyebut produk mana dari pemasok mana"
+      },
+      "soldRange": {
+        "label": "Filter Terjual",
+        "reason": "pilihan rentang hanya tampil di layar — daftar belum bisa disaring dengan jumlah yang belum ada, dan dari mana batas rentangnya diambil belum ditentukan"
+      },
+      "readyRange": {
+        "label": "Filter Siap",
+        "reason": "pilihan rentang hanya tampil di layar — daftar belum bisa disaring dengan jumlah yang belum ada, dan dari mana batas rentangnya diambil belum ditentukan"
+      },
+      "warehouse": {
+        "label": "Filter Gudang",
+        "reason": "pilihan gudang hanya tampil di layar — belum ada yang mencatat di gudang mana restok dari pemasok diterima, jadi daftar belum bisa disaring dengannya"
+      }
+    },
+    "lastOrder": "pesanan {{date}}",
+    "lastRestock": "restok {{date}}",
+    "rangeAll": "Semua",
+    "warehouseAll": "Semua gudang",
+    "tabExport": "Ekspor",
+    "relatedWarehouses": {
+      "label": "Gudang terkait",
+      "all": "Semua",
+      "none": "Belum pernah direstok ke gudang mana pun.",
+      "more": "+{{count}} Lagi",
+      "summary": {
+        "sold": "Terjual",
+        "ready": "Siap",
+        "units": "{{n}} unit",
+        "orders": "dari {{n}} transaksi",
+        "restocks": "{{n}} restok",
+        "last": "terakhir {{date}}"
+      }
+    },
+    "emptyHint": "Tambahkan pemasok tempat tim ini membeli stok.",
+    "rangeClear": "Hapus {{figure}}"
   },
   "supplierChannel": {
     "deleted": "Toko \"{{name}}\" dihapus",
@@ -1763,7 +2157,8 @@
     "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
     "delete": "Hapus",
     "section": {
-      "empty": "Belum ada toko pemasok."
+      "empty": "Belum ada toko pemasok.",
+      "emptyHint": "Tambahkan toko tempat pemasok ini berjualan — marketplace, situs, atau toko fisik."
     },
     "table": {
       "channel": "Toko pemasok",
@@ -1805,6 +2200,30 @@
       "products": {
         "label": "Produk",
         "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
+      },
+      "sold": {
+        "label": "Terjual",
+        "reason": "angka contoh — unit terjual dan pesanan terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+      },
+      "ready": {
+        "label": "Siap",
+        "reason": "angka contoh — stok siap dan restok terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+      },
+      "warehouses": {
+        "label": "Gudang terkait",
+        "reason": "data contoh — belum ada yang mencatat di gudang mana restok dari pemasok ini diterima, jadi gudang dan ringkasannya masih karangan"
+      },
+      "warehouseFilter": {
+        "label": "Filter gudang",
+        "reason": "pilihan gudang baru mengganti ringkasan di bawahnya — belum ada tab yang bisa disaring per gudang"
+      },
+      "sales": {
+        "label": "Penjualan",
+        "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
+      },
+      "export": {
+        "label": "Ekspor",
+        "reason": "belum ada yang membuat file — tombolnya menyimpan tempat aksinya; isinya nanti tabel tab ini, sesuai filter yang aktif"
       }
     },
     "tab": {
@@ -1821,7 +2240,8 @@
       "empty": "Belum ada produk.",
       "search": "Cari produk, SKU, atau toko",
       "storeAll": "Semua toko",
-      "none": "Tidak ada produk yang cocok."
+      "none": "Tidak ada produk yang cocok.",
+      "emptyHint": "Produk muncul di sini setelah restok yang dibeli di toko pemasok ini diterima."
     },
     "filter": {
       "search": "Cari nama, tautan, atau deskripsi",
@@ -1832,6 +2252,8 @@
   "supplierFigures": {
     "restocked": "Direstok",
     "restockedHint": "unit baik yang diterima ke stok",
+    "sales": "Penjualan",
+    "salesHint": "unit yang terjual ke pembeli",
     "lost": "Hilang di pengiriman",
     "lostHint": "unit yang kurang dalam paket yang diterima",
     "broken": "Rusak di pengiriman",
@@ -1847,6 +2269,7 @@
     "rateBroken": "{{rate}}% rusak",
     "line": {
       "restocked": "Direstok {{n}} · {{value}}",
+      "sales": "Penjualan {{n}} · {{value}}",
       "lost": "Hilang {{n}}",
       "broken": "Rusak {{n}}"
     },
@@ -1855,6 +2278,7 @@
       "product": "Produk",
       "team": "Tim",
       "restocked": "Direstok",
+      "sales": "Penjualan",
       "lost": "Hilang di pengiriman",
       "lostRate": "Tingkat hilang",
       "broken": "Rusak di pengiriman",
@@ -1866,7 +2290,7 @@
     "productNumber": "Produk #{{id}}"
   },
   "supplierStats": {
-    "overTime": "Dari Waktu ke Waktu",
+    "byPeriod": "Per Periode",
     "byProduct": "Per Produk",
     "empty": "Tidak ada restok dari pemasok ini pada periode ini.",
     "noProducts": "Tidak ada produk pada periode ini.",
@@ -1875,10 +2299,12 @@
   },
   "supplierReport": {
     "title": "Laporan Pemasok",
+    "search": "Cari pemasok, alamat, atau toko",
+    "none": "Tidak ada pemasok yang cocok.",
     "subtitle": "Pemasok mana yang paling banyak direstok, dan mana yang paling banyak rusak atau hilang di jalan. Buka pemasok untuk melihat angkanya dari waktu ke waktu.",
     "selectTeam": "Pilih tim untuk melihat laporan pemasok.",
     "ranking": "Peringkat",
-    "rankBy": "Urutkan menurut",
+    "rankBy": "Urutkan",
     "byValue": "Nilai Restok",
     "byBrokenRate": "Tingkat Rusak",
     "rankedName": "{{rank}}. {{name}}",
@@ -1892,7 +2318,19 @@
     "supplierNumber": "Pemasok #{{id}}",
     "deleted": "Dihapus",
     "rateTooFew": "Kurang dari {{n}} unit pada periode ini — tidak diperingkat bersama yang lain",
-    "rateMinNote": "Pemasok dengan kurang dari {{n}} unit pada periode ini diurutkan setelah yang lain, tingkatnya diredupkan — beberapa unit saja belum bisa menunjukkan cara pemasok mengemas."
+    "rateMinNote": "Pemasok dengan kurang dari {{n}} unit pada periode ini diurutkan setelah yang lain, tingkatnya diredupkan — beberapa unit saja belum bisa menunjukkan cara pemasok mengemas.",
+    "export": "Ekspor",
+    "actions": "Aksi laporan",
+    "pending": {
+      "export": {
+        "label": "Ekspor",
+        "reason": "Belum ada yang membuat file — isinya peringkat dengan angkanya, dan sehalaman atau seluruh peringkat, masih terbuka."
+      },
+      "sales": {
+        "label": "Penjualan",
+        "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
+      }
+    }
   },
   "teams": {
     "name": "Nama",
@@ -2246,15 +2684,44 @@
       "empty": "Belum ada kategori.",
       "newCategory": "Kategori Baru",
       "newTitle": "Kategori Baru",
-      "editTitle": "Ubah {{name}}",
       "deleteTitle": "Hapus Kategori",
       "deleteMessage": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
       "parent": "Induk",
       "parentHelpCreate": "Biarkan sebagai tingkat teratas untuk kategori akar.",
-      "parentHelpEdit": "Kategori tidak bisa menjadi induknya sendiri.",
       "createdToast": "Kategori \"{{name}}\" dibuat",
       "updatedToast": "Kategori \"{{name}}\" diperbarui",
-      "deletedToast": "Kategori \"{{name}}\" dihapus"
+      "deletedToast": "Kategori \"{{name}}\" dihapus",
+      "lead": "Pohon kategori produk — satu untuk semua tim.",
+      "searchPlaceholder": "Cari kategori",
+      "none": "Tidak ada kategori yang cocok",
+      "emptyHint": "Tambahkan kategori teratas untuk mengelompokkan produk, lalu sub-kategorinya.",
+      "childCount_one": "{{count}} sub-kategori",
+      "childCount_other": "{{count}} sub-kategori",
+      "expandAll": "Buka Semua",
+      "collapseAll": "Tutup Semua",
+      "addChild": "Sub-kategori",
+      "addChildLabel": "Tambah sub-kategori di bawah {{name}}",
+      "actionsLabel": "Aksi untuk {{name}}",
+      "rename": "Ubah Nama",
+      "renameTitle": "Ubah Nama {{name}}",
+      "move": "Pindahkan",
+      "moveTitle": "Pindahkan {{name}}",
+      "newParent": "Induk baru",
+      "moveHelp": "Pilih induk barunya, atau kosongkan untuk menjadikannya kategori teratas. Sub-kategorinya ikut pindah.",
+      "movedToast": "\"{{name}}\" dipindahkan",
+      "deleteBlocked": "Hapus sub-kategorinya dulu",
+      "namePlaceholder": "Contoh: Audio",
+      "newSubTitle": "Sub-kategori Baru",
+      "childrenColumn": "Sub-kategori",
+      "productsColumn": "Produk",
+      "productCount_one": "{{count}} produk",
+      "productCount_other": "{{count}} produk",
+      "pending": {
+        "productCount": {
+          "label": "Jumlah produk",
+          "reason": "angka contoh — belum ada yang menghitung produk di sebuah kategori: daftar produk belum bisa disaring per kategori."
+        }
+      }
     },
     "categorySelect": {
       "placeholder": "Pilih kategori…",
@@ -3228,6 +3695,25 @@
           "label": "Ekspor",
           "reason": "Belum ada yang membuat file — isinya periode dengan sembilan jenisnya atau juga rincian per akun dan penyedia, dan sehalaman atau seluruh rentang, masih terbuka."
         }
+      },
+      "views": {
+        "period": "Periode",
+        "breakdown": "Rincian"
+      },
+      "breakdown": {
+        "where": {
+          "title": "Saldo per Penyedia dan Akun",
+          "lead": "Saldo tiap akun, dikelompokkan per penyedia — di awal rentang, perubahannya, dan di akhir",
+          "name": "Penyedia · akun",
+          "unit": "Nilai dalam Rupiah (Rp)"
+        },
+        "what": {
+          "title": "Mutasi per Jenis",
+          "lead": "Dari saldo awal ke saldo akhir: uang yang masuk, lalu yang keluar",
+          "in": "Masuk",
+          "out": "Keluar"
+        },
+        "oneAccount": "Satu akun dipilih — rincian per akun dan per penyedia hanya untuk seluruh tim. Hapus filter akun untuk melihatnya."
       }
     },
     "newAccount": "Akun Baru",
@@ -3432,7 +3918,8 @@
       "automatic": "otomatis — dari tempat kejadiannya",
       "allTypes": "Semua jenis",
       "searchType": "Cari jenis",
-      "noType": "Tidak ada jenis yang cocok."
+      "noType": "Tidak ada jenis yang cocok.",
+      "emptyHint": "Mutasi muncul di sini saat uang masuk atau keluar dari akun ini."
     },
     "allShops": "Semua toko",
     "operationalOnly": "Hanya operasional",
@@ -3463,7 +3950,8 @@
       "markMessage": "{{name}} akan bisa dipilih untuk membayar restock dan biaya.",
       "unmarkTitle": "Hapus Tanda Operasional {{name}}",
       "unmarkMessage": "{{name}} tidak lagi bisa dipilih untuk membayar restock dan biaya."
-    }
+    },
+    "emptyHint": "Tambahkan rekening bank, e-wallet, dan kas tim ini."
   },
   "pending": {
     "title_one": "{{count}} bagian layar ini belum diimplementasi",
@@ -3508,6 +3996,16 @@
       "looksLike": "Referensi ini sepertinya",
       "useIt": "Pakai {{name}}"
     },
+    "contents": {
+      "label": "Isi pesanan",
+      "items": "Item",
+      "bundles": "Bundel",
+      "toItemsTitle": "Ganti ke Item?",
+      "toBundlesTitle": "Ganti ke Bundel?",
+      "dropItems_other": "{{count}} item yang sudah dipilih akan dihapus — satu pesanan berisi item atau bundel, tidak keduanya.",
+      "dropBundles_other": "{{count}} bundel yang sudah ditambahkan akan dihapus — satu pesanan berisi item atau bundel, tidak keduanya.",
+      "switch": "Ganti"
+    },
     "bundles": {
       "title": "Bundel",
       "help": "Bundel menaruh produknya ke pesanan. Tiap slot bisa diisi produk lain — batasnya ketentuan bundel dikali jumlah bundel yang dipesan.",
@@ -3517,6 +4015,10 @@
       "rule": "{{qty}} per bundel",
       "substitute": "Ganti Produk",
       "search": "Cari bundel",
+      "add": "Tambah Bundel",
+      "pickerTitle": "Pilih Bundel",
+      "slotCount_one": "{{count}} slot",
+      "slotCount_other": "{{count}} slot",
       "noMatch": "Tidak ada bundel yang cocok",
       "searching": "Mencari…",
       "slotLocked": "Dikunci pemiliknya — isi slot ini dengan produk lain.",
@@ -3641,6 +4143,20 @@
       },
       "lineShort": "{{name}}: diminta {{wanted}}, gudang memiliki {{available}}",
       "lineWanted": "{{name}}: diminta {{wanted}}"
+    },
+    "draftHints": {
+      "title": "Produk yang Harus Dikirim",
+      "quantity": "{{n}} × ",
+      "from": "Dari {{source}} — pilih produknya di bawah",
+      "fromManual": "Dari draf yang disimpan di form ini — pilih produknya di bawah"
+    },
+    "draft": {
+      "badge": "Draf {{ref}}",
+      "delete": "Hapus Draf",
+      "deleteTitle": "Hapus Draf",
+      "deleteConfirm": "Hapus draf {{ref}}? Data dari aplikasi ikut hilang, dan tidak bisa dibatalkan.",
+      "deleted": "Draf dihapus",
+      "deleteFailed": "Draf tidak terhapus"
     }
   },
   "quantityInput": {
@@ -3966,6 +4482,10 @@
         }
       }
     }
+  },
+  "emptyHint": {
+    "noMatch": "Coba kata lain, atau hapus filternya.",
+    "otherPeriod": "Coba rentang tanggal lain."
   },
   "opnameSession": {
     "title": "Stok Opname",

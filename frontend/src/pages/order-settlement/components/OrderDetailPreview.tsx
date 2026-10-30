@@ -102,20 +102,22 @@ export function OrderDetailPreview({
           <Tabs.Trigger value="settlement" data-testid="preview-tab-settlement">
             {t("orderSettlement.tab")}
           </Tabs.Trigger>
+          {/* The line slides to the picked tab, and the panel fades in (motion-is-small-quick-and-shared). */}
+          <Tabs.Indicator />
         </Tabs.List>
 
         {/* minW="0" on every panel — a vertical Tabs.Root is a flex ROW, and without it the wide
             tables inside widen the panel instead of scrolling within it. Same reason as the real
             page. */}
-        <Tabs.Content value="info" flex="1" minW="0">
+        <Tabs.Content value="info" flex="1" minW="0" animationStyle="swap">
           <InfoPanel order={order} teamId={12n} />
         </Tabs.Content>
 
-        <Tabs.Content value="timeline" flex="1" minW="0">
+        <Tabs.Content value="timeline" flex="1" minW="0" animationStyle="swap">
           <TimelinePanel order={order} actorFallback={() => ""} />
         </Tabs.Content>
 
-        <Tabs.Content value="settlement" flex="1" minW="0">
+        <Tabs.Content value="settlement" flex="1" minW="0" animationStyle="swap">
           <OrderLedgerPanel
             settlement={settlement}
             totalBeli={totalBeli}

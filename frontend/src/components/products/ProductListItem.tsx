@@ -3,6 +3,8 @@ import { Avatar, Badge, Button, HStack, Icon, Stack, Text } from "@chakra-ui/rea
 import { useTranslation } from "react-i18next";
 import { Package } from "lucide-react";
 
+import { CopyText } from "../chrome/CopyText";
+
 export interface ProductListItemProps {
   // Any product-shaped object — a Product, or the trimmed shape a list RPC returns. Everything is
   // optional so a caller can pass whatever slice it has.
@@ -41,6 +43,12 @@ export interface ProductListItemProps {
    * every screen already using this component is untouched.
    */
   onImageClick?: () => void;
+  /**
+   * Makes the SKU COPYABLE — a click puts it on the clipboard (`CopyText`), for a screen where the SKU is carried into
+   * another system: a marketplace listing, a supplier's sheet (owner, on the products list: *"sku copyable"*). The click
+   * does not reach a clickable row. Omit it and the SKU is plain text, as on every screen that does not need it.
+   */
+  skuCopyable?: boolean;
 }
 
 // ProductListItem is the shared way to show a product (#128): its cover image, name + SKU, the owning
@@ -48,7 +56,7 @@ export interface ProductListItemProps {
 // of these, so resolving stock or team names per item would be an N+1. The caller batches those and
 // passes them in. Everything that renders "a product in a list" should use this.
 export const description =
-  "The shared way to show a product — cover image (or a placeholder), name + SKU, the owning team, and optional stock badges: READY (on a shelf now, shown even at 0, because out-of-stock is the case worth seeing) and ONGOING (on an unaccepted restock, shown only when there is some). Pass `onImageClick` and the cover becomes a real button (focusable, labelled with the product's name) for opening the picture at a readable size; omit it and the avatar is static, as it is on every screen that does not need it.";
+  "The shared way to show a product — cover image (or a placeholder), name + SKU, the owning team, and optional stock badges: READY (on a shelf now, shown even at 0, because out-of-stock is the case worth seeing) and ONGOING (on an unaccepted restock, shown only when there is some). Pass `onImageClick` and the cover becomes a real button (focusable, labelled with the product's name) for opening the picture at a readable size; omit it and the avatar is static, as it is on every screen that does not need it. Pass `skuCopyable` and the SKU copies on a click (CopyText), without opening the row it sits on.";
 
 export function ProductListItem({
   product,
@@ -58,6 +66,7 @@ export function ProductListItem({
   action,
   size = "md",
   onImageClick,
+  skuCopyable = false,
 }: ProductListItemProps) {
   const { t } = useTranslation();
   const large = size === "lg";
@@ -132,11 +141,16 @@ export function ProductListItem({
           {title}
         </Text>
         <HStack gap="2" minW="0">
-          {sku && (
-            <Text fontSize="xs" color="fg.muted" lineClamp={1} flexShrink={0}>
-              {sku}
-            </Text>
-          )}
+          {sku &&
+            (skuCopyable ? (
+              <Text as="span" fontSize="xs" color="fg.muted" flexShrink={0}>
+                <CopyText value={sku} fontSize="xs" testId={`product-list-item-sku-${product.id ?? ""}`} />
+              </Text>
+            ) : (
+              <Text fontSize="xs" color="fg.muted" lineClamp={1} flexShrink={0}>
+                {sku}
+              </Text>
+            ))}
           {team && (
             <Badge colorPalette="gray" size="xs" lineClamp={1}>
               {team}

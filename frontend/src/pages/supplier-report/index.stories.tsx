@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { teams } from "../../../.storybook/fixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -10,7 +10,7 @@ import { SupplierReportPage } from "./index";
 
 // THE SUPPLIER REPORT (the-figures-are-a-statistics-tab-and-a-supplier-report, the-figures-screens-are-accepted) —
 // suppliers ranked by what was restocked from them, or by how much of it arrived broken, over a period. The stub serves
-// supplier_service's figures from supplierFigureFixtures.ts. The last 30 days hold:
+// supplier_service's figures from supplierFigureFixtures.ts. The last month holds:
 //
 //   supplier                     units  restocked     broken  rate
 //   31 PT Sumber Makmur   Melati   137   Rp 4.400.000    6     4,4%
@@ -66,6 +66,16 @@ function order(canvas: ReturnType<typeof within>): string[] {
 
 export const Default: Story = {};
 
+// A PHONE reads each supplier as a block (a-phone-reads-each-line-as-a-block) — named Mobile, right after Default
+// (every-page-has-a-mobile-story). A block that opens a supplier lights up while pressed.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(within(canvas.getByTestId("supplier-report-table")).queryAllByRole("columnheader")).toHaveLength(0);
+  },
+};
+
 export const ByBrokenRate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -78,12 +88,6 @@ export const OneTeamPicked: Story = {
     const canvas = await loaded(canvasElement);
     await pickTeam(canvas.getByTestId("supplier-report-team"), KENANGA.teamCode);
   },
-};
-
-// A phone reads each supplier as a block (a-phone-reads-each-line-as-a-block).
-// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only.
-export const Phone: Story = {
-  globals: { viewport: { value: "mobile2" } },
 };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
@@ -135,6 +139,18 @@ export const RankedByRateNeedsFiftyUnits: Story = {
   },
 };
 
+// The search finds suppliers as the supplier list does (the-supplier-report-keeps-its-search), and the headline is what
+// it found: "makmur" is PT Sumber Makmur and UD Makmur Jaya — Rp 7.400.000.
+export const TheSearchNarrowsTheRankingAndTheHeadline: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.type(canvas.getByTestId("supplier-report-search"), "makmur", { delay: 40 });
+
+    await waitFor(() => expect(order(canvas)).toEqual(["31", "34"]), { timeout: 3000 });
+    await expect(canvas.getByTestId("supplier-report-summary-restocked-value")).toHaveTextContent(rp(7_400_000n));
+  },
+};
+
 // Picking a team counts only its restocks (the-team-filter-picks-any-selling-team): Toko Kenanga bought from UD Makmur
 // Jaya and from PT Sumber Makmur — Rp 3.000.000 + Rp 900.000.
 export const PickingATeamNarrowsTheRanking: Story = {
@@ -144,6 +160,33 @@ export const PickingATeamNarrowsTheRanking: Story = {
 
     await waitFor(() => expect(order(canvas)).toEqual(["34", "31"]));
     await expect(canvas.getByTestId("supplier-report-summary-restocked-value")).toHaveTextContent(rp(3_900_000n));
+  },
+};
+
+// THE FILTERS AND THE ORDER LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the search and the
+// order are read from it; a range picked is written back, beside them.
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/suppliers/report", element: <><SupplierReportPage /><LocationProbe /></> }],
+  "/inventories/suppliers/report?q=makmur&rank=brokenRate",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("supplier-report-search")).toHaveValue("makmur");
+    const group = canvas.getByTestId("supplier-report-rank-by");
+    await expect(within(group).getByRole("radio", { name: "Broken Rate" })).toBeChecked();
+    await waitFor(() => expect(order(canvas)).toEqual(["34", "31"]));
+
+    await userEvent.click(canvas.getByTestId("supplier-report-range"));
+    const week = await screen.findByTestId("supplier-report-range-quick-7");
+    await waitFor(() => expect(week).toBeVisible());
+    await userEvent.click(week);
+    await waitFor(() => expect(location).toHaveTextContent("range=7d"));
+    await expect(location).toHaveTextContent("rank=brokenRate");
   },
 };
 
@@ -174,5 +217,100 @@ export const ADeletedSupplierOpensNothing: Story = {
     await userEvent.click(canvas.getByTestId("supplier-report-row-38"));
     await expect(canvas.queryByTestId("at-own-supplier")).toBeNull();
     await expect(canvas.getByTestId("supplier-report-table")).toBeVisible();
+  },
+};
+
+// ── The screen rules (a-table-row-lights-up, a-segmented-choice-is-in-the-main-tone, every-list-pages-with-the-growing-pager) ─
+
+// A ROW LIGHTS UP under the pointer, every cell — driven by `data-hover`, which Chakra's `_hover` honours.
+export const ARankedRowLightsUp: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const row = within(canvas.getByTestId("supplier-report-table")).getAllByRole("row")[1]!;
+    const cells = within(row).getAllByRole("cell");
+    const resting = getComputedStyle(cells[0]!).backgroundColor;
+    row.setAttribute("data-hover", "");
+    await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
+    await expect(getComputedStyle(cells[cells.length - 1]!).backgroundColor).toBe(getComputedStyle(cells[0]!).backgroundColor);
+  },
+};
+
+// THE ORDER IS A SEGMENTED CHOICE — a radio group, Nilai direstok chosen first; choosing the other moves the choice.
+export const TheOrderIsASegmentedChoice: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const group = canvas.getByTestId("supplier-report-rank-by");
+    await expect(group).toHaveAttribute("role", "radiogroup");
+    await expect(within(group).getByRole("radio", { name: "Restocked Value" })).toBeChecked();
+
+    await userEvent.click(canvas.getByTestId("supplier-report-rank-by-rate"));
+    await waitFor(() => expect(within(group).getByRole("radio", { name: "Broken Rate" })).toBeChecked());
+  },
+};
+
+// The ranking pages with the growing pager.
+export const TheRankingPagesWithTheGrowingPager: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("supplier-report-pager")).toBeVisible();
+    await expect(canvas.getByTestId("supplier-report-pager-page-1")).toBeVisible();
+  },
+};
+
+// THE ORDER READS AS AN ORDER — "Sort" before it, and each segment the sort-down arrow (the-report-order-shows-its-arrow).
+export const TheOrderShowsItsArrow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const group = canvas.getByTestId("supplier-report-rank-by");
+    await expect(group.parentElement).toHaveTextContent(/^Sort/);
+    await expect(group.querySelectorAll("svg.lucide-arrow-down-wide-narrow")).toHaveLength(2);
+  },
+};
+
+// EXPORT IS ON THE TITLE'S ROW, NOT BUILT — its icon, and the ⚠ number pointing at the not-implemented list
+// (the-report-export-is-marked).
+export const ExportIsMarkedNotBuilt: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const exportButton = canvas.getByTestId("supplier-report-export");
+    await expect(exportButton).toHaveTextContent("Export");
+    await expect(exportButton.querySelector("svg.lucide-download")).not.toBeNull();
+    await expect(within(exportButton).getByTestId("not-implemented-export")).toHaveTextContent("1");
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+  },
+};
+
+// SALES SIT BESIDE RESTOCKED, as on the Statistik tab (sales-sit-beside-restocked) — a Penjualan card after Direstok and
+// a Penjualan column after Direstok; sample figures, marked 2 in THIS page's list (Ekspor is 1).
+export const SalesSitBesideRestocked: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const card = canvas.getByTestId("supplier-report-summary-sales");
+    await expect(within(card).getByTestId("not-implemented-sales")).toHaveTextContent("2");
+
+    const headers = within(canvas.getByTestId("supplier-report-table")).getAllByRole("columnheader");
+    const restocked = headers.findIndex((h) => h.textContent === "Restocked");
+    await expect(headers[restocked + 1]).toHaveTextContent(/^Sales/);
+    await expect(within(headers[restocked + 1]!).getByTestId("not-implemented-sales")).toHaveTextContent("2");
+  },
+};
+
+// A PHONE'S HEADER IS ONE ROW (the-report-export-folds-on-a-phone, the-phone-header-is-one-row) — the title and the
+// export's ICON with its mark, on the title's row; one action, so no ⋯ (a-phone-header-action-is-an-icon). Wrapped under
+// the subtitle, the button stood alone.
+export const APhoneFoldsTheExport: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("supplier-report-menu")).toBeNull();
+    const exportIcon = canvas.getByRole("button", { name: "Export" });
+    await expect(exportIcon).toHaveAttribute("data-testid", "supplier-report-export");
+    await expect(exportIcon).not.toHaveTextContent("Export");
+    const title = canvas.getByRole("heading", { name: "Supplier Report" });
+    await expect(Math.abs(exportIcon.getBoundingClientRect().top - title.getBoundingClientRect().top)).toBeLessThan(12);
+    await expect(within(exportIcon.parentElement!).getByTestId("not-implemented-export")).toHaveTextContent("1");
   },
 };

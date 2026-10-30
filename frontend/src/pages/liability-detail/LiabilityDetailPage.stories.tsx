@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { teams } from "../../../.storybook/fixtures";
 import { account } from "../../../.storybook/financialAccountFixtures";
@@ -62,6 +62,33 @@ async function loaded(canvasElement: HTMLElement) {
   });
   return canvas;
 }
+
+// THE DATE RANGE LIVES IN THE URL (a-lists-filters-live-in-the-url) — opened at `?range=7d` the picker reads it; a new
+// window is written back.
+const AtFilteredUrl = routedPage(
+  [
+    { path: "/liability/:counterpartyId", element: <><LiabilityDetailPage /><LocationProbe /></> },
+    marker("/liability", "at-liability-list"),
+  ],
+  `/liability/${COUNTERPARTY}?range=7d`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+    const range = canvas.getByTestId("liability-detail-range");
+
+    await expect(range).toHaveTextContent("Last 7 days");
+
+    await userEvent.click(range);
+    const month = await screen.findByTestId("liability-detail-range-quick-1m");
+    await waitFor(() => expect(month).toBeVisible());
+    await userEvent.click(month);
+    await waitFor(() => expect(location).toHaveTextContent("range=1m"));
+  },
+};
 
 // The three things `team_balance_design.md` §Detail Pair Team Balance asks this page for.
 export const Default: Story = {

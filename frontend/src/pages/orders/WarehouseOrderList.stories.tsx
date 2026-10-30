@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, teams } from "../../../.storybook/fixtures";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
@@ -148,6 +148,29 @@ export const TheStatusTabNarrowsToOneStageOfTheCrewsWork: Story = {
   },
 };
 
+// THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the tab and the
+// search are its own; a tab click is written back with the search kept.
+const AtFilteredUrl = routedPage(
+  [{ path: "/orders", element: <><OrdersPage /><LocationProbe /></> }],
+  "/orders?status=picked&q=Ani",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByTestId("orders-search", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("Ani");
+    await expect(canvas.getByTestId("orders-tab-picked")).toHaveAttribute("aria-selected", "true");
+
+    await userEvent.click(canvas.getByTestId("orders-tab-shipping"));
+    await waitFor(() => expect(location).toHaveTextContent("status=shipping"));
+    await expect(location).toHaveTextContent("q=Ani");
+  },
+};
+
 // A status the queue currently has nothing in says so as a statement about THAT STATUS, not about
 // the warehouse — "no orders yet" over an empty Cancelled tab would read as if the building had
 // never shipped anything.
@@ -185,16 +208,14 @@ export const SearchReachesTheOtherTeamsOrderToo: Story = {
   },
 };
 
-// The DRAFTS tab is still here, and its badge reads 0 — a draft belongs to the team that typed it,
-// and a warehouse types none. The tab is not hidden for a warehouse, so the number is what says the
-// pile is empty rather than the tab's absence.
-export const TheDraftsBadgeIsZeroForAWarehouse: Story = {
+// NO DRAFTS TAB — a warehouse never has a draft, and the drafts are a list of their own now
+// (the-drafts-are-a-list-of-their-own).
+export const NoDraftsTab: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() =>
-      expect(canvas.getByTestId("orders-tab-count-drafts")).toHaveTextContent("0"),
-    );
+    await waitFor(() => expect(canvas.getByTestId("orders-tab-all")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("orders-tab-drafts")).toBeNull();
   },
 };
 

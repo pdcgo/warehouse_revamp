@@ -307,7 +307,8 @@ export const TheDateIsWhenTheAccountLastMoved: Story = {
     const canvas = within(canvasElement);
     let controls = await filterControls(canvasElement);
 
-    await expect(controls.getByTestId("settlement-date-field")).toHaveTextContent(/last moved/i);
+    // The trigger names the date it filters (a-date-type-is-picked-inside-the-range-panel).
+    await expect(controls.getByTestId("settlement-date-field-label")).toHaveTextContent(/last moved/i);
     await userEvent.click(controls.getByTestId("settlement-date"));
     const week = await screen.findByTestId("settlement-date-quick-7");
     await waitFor(() => expect(week).toBeVisible());

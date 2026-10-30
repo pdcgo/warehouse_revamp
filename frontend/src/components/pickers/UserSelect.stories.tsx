@@ -58,6 +58,42 @@ export const BelowTwoCharactersItDoesNotSearch: Story = {
   },
 };
 
+// A TEAM'S MEMBERS SHOW ON A CLICK, nothing typed (owner, on a shop's access panel: "select user langsung muncul
+// usernya tanpa ketik dulu") — a team is a bounded set. Searching everyone still waits for 2 characters (above).
+export const ATeamsMembersShowWithNothingTyped: Story = {
+  args: { teamId: 12n },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole("combobox"));
+
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(1));
+    await waitFor(() => expect(screen.getAllByRole("option")[0]).toBeVisible());
+    await expect(screen.queryByText("Type at least 2 characters")).toBeNull();
+  },
+};
+
+// …and opened again after a pick it offers every member, not the picked one alone (a-search-select-reopens-whole).
+export const ReopenedAfterAPickItOffersEveryMember: Story = {
+  args: { teamId: 12n },
+  render: (args) => {
+    const [value, setValue] = useState<bigint | undefined>(undefined);
+
+    return <UserSelect {...args} value={value} onChange={setValue} />;
+  },
+  play: async ({ canvasElement }) => {
+    const input = within(canvasElement).getByRole("combobox");
+
+    await userEvent.click(input);
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(1));
+    const all = screen.getAllByRole("option").length;
+    const first = screen.getAllByRole("option")[0]!;
+    await waitFor(() => expect(first).toBeVisible());
+    await userEvent.click(first);
+
+    await userEvent.click(input);
+    await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(all));
+  },
+};
+
 export const SearchesServerSide: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

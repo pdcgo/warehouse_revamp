@@ -6,7 +6,6 @@ import {
   Flex,
   Icon,
   SimpleGrid,
-  Spinner,
   Stack,
   Stat,
   Text,
@@ -24,6 +23,7 @@ import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 // CLAUDE.md's placement rule is HOW MANY PAGES USE IT, so they moved the moment that landed.
 import { CreditMeter } from "../../../features/liability/CreditMeter";
 import { TermsEditDialog } from "../../../features/liability/TermsEditDialog";
+import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
 
 // Big enough to hold every counterparty this creditor has terms for. There is no counterparty filter
 // on `LiabilityTermsList` yet, so the pair's row and the DEFAULT row are both picked out of one read
@@ -98,7 +98,7 @@ export function TermsPanel({
   const inherited = own === undefined && fallback !== undefined;
 
   if (termsQuery.isPending) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton rows={3} testId="liability-terms-loading" />;
   }
 
   return (

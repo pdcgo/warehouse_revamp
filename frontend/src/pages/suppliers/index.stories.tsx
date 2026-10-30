@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { supplierFixture } from "../../../.storybook/supplierFixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -111,6 +112,33 @@ export const SearchesByName: Story = {
   },
 };
 
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the list is narrowed by it; a change
+// is written back; Clear Filters writes them all away in one go (five filters, one navigation — none undoing another).
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/suppliers", element: <><SuppliersPage /><LocationProbe /></> }],
+  `/inventories/suppliers?q=cahaya&type=${Marketplace.SHOPEE}`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByTestId("supplier-search", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("cahaya");
+    await expect(canvas.getByTestId("marketplace-select")).toHaveTextContent("Shopee");
+
+    await userEvent.click(await canvas.findByTestId("suppliers-filter-clear"));
+    await waitFor(() => expect(location).toBeEmptyDOMElement());
+    await expect(search).toHaveValue("");
+
+    await userEvent.type(search, "sumber", { delay: 40 });
+    await waitFor(() => expect(location).toHaveTextContent("?q=sumber"));
+  },
+};
+
 // the-supplier-has-no-code: the form asks for a name, a contact, an address and a description — and nothing else.
 export const NewSupplierAsksNoCode: Story = {
   play: async ({ canvasElement }) => {
@@ -181,6 +209,9 @@ export const OnlyASellingTeamHasSuppliers: Story = {
 
     await canvas.findByTestId("suppliers-selling-only", {}, { timeout: 4000 });
     await expect(canvas.queryByTestId("open-create-supplier")).toBeNull();
+    // No figures, so nothing to filter them by — nor a warehouse to filter by.
+    await expect(canvas.queryByTestId("supplier-range-sold")).toBeNull();
+    await expect(canvas.queryByTestId("supplier-warehouse-filter")).toBeNull();
   },
 };
 
@@ -274,5 +305,133 @@ export const ASupplierRowLightsUp: Story = {
     row.setAttribute("data-hover", "");
     await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
     await expect(getComputedStyle(cells[cells.length - 1]!).backgroundColor).toBe(getComputedStyle(cells[0]!).backgroundColor);
+  },
+};
+
+// ── Sales and ready stock (`the-supplier-list-shows-sales-and-ready-stock`) ──────────────────────────────────
+
+// SALES AND READY STOCK ARE ON THE LIST, MARKED SAMPLE — two figure columns, each heading carrying its ⚠ number, the
+// not-implemented strip naming both; every unit sold with the last order under it, every unit ready with the last
+// restock under it (sales-are-all-time-with-their-last-dates); a supplier with no store has nothing to count, so a dash.
+export const SalesAndReadyStockAreMarkedSample: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const table = canvas.getByTestId("suppliers-table");
+
+    const sold = within(table).getByRole("columnheader", { name: /^Sold/ });
+    const ready = within(table).getByRole("columnheader", { name: /^Ready/ });
+    await expect(within(sold).getByTestId("not-implemented-sold")).toHaveTextContent("1");
+    await expect(within(ready).getByTestId("not-implemented-ready")).toHaveTextContent("2");
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+
+    await expect(canvas.getByTestId(`supplier-sold-${SUMBER.id}`)).toHaveTextContent(/^[\d.]+ordered \w+ \d+, \d{4}$/);
+    await expect(canvas.getByTestId(`supplier-ready-${SUMBER.id}`)).toHaveTextContent(/^[\d.]+restocked \w+ \d+, \d{4}$/);
+    await expect(canvas.getByTestId(`supplier-sold-${SINAR.id}`)).toHaveTextContent("—");
+    await expect(canvas.getByTestId(`supplier-ready-${SINAR.id}`)).toHaveTextContent("—");
+  },
+};
+
+// …and on a phone, a line each under the stores — with its mark.
+export const APhoneBlockCarriesItsFigures: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const line = canvas.getByTestId(`supplier-row-${SUMBER.id}-figures`);
+    await expect(line).toHaveTextContent(/Sold [\d.]+ · ordered .+Ready [\d.]+ · restocked /);
+    await expect(within(line).getByTestId("not-implemented-sold")).toBeInTheDocument();
+    await expect(canvas.queryByTestId(`supplier-row-${SINAR.id}-figures`)).toBeNull();
+  },
+};
+
+// THE CONTACT IS RIGHT OF THE SUPPLIER (the-contact-sits-right-of-the-supplier) — Pemasok, Kontak, then the stores and
+// the figures.
+export const TheContactIsRightOfTheSupplier: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const headers = within(canvas.getByTestId("suppliers-table"))
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent ?? "");
+    await expect(headers[0]).toMatch(/^Supplier/);
+    await expect(headers[1]).toBe("Contact");
+    await expect(headers[2]).toBe("Supplier stores");
+  },
+};
+
+// ── The figures filter (`supplier-figures-filter-by-range-pills`, `the-figure-filters-are-two-panels`) ──────────
+
+// SOLD AND READY FILTER BY RANGE PILLS, A PANEL EACH — a trigger per figure with its `dropped` mark beside it (3 and 4);
+// its panel narrow, the pills wrapping under one another, All first. A pick closes the panel and the trigger then reads
+// the band, in the main tone; the list does not move for it. Clear takes both back.
+export const TheFiguresFilterIsRangePills: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const soldFilter = canvas.getByTestId("supplier-range-sold");
+    const readyFilter = canvas.getByTestId("supplier-range-ready");
+    await expect(within(soldFilter).getByTestId("not-implemented-soldRange")).toHaveTextContent("3");
+    await expect(within(readyFilter).getByTestId("not-implemented-readyRange")).toHaveTextContent("4");
+
+    const soldTrigger = canvas.getByTestId("supplier-range-sold-trigger");
+    await expect(soldTrigger).toHaveTextContent(/^Sold$/);
+    await userEvent.click(soldTrigger);
+    const panel = await screen.findByTestId("supplier-range-sold-panel");
+    await waitFor(() => expect(panel).toBeVisible());
+    // Its own panel — Ready's stays shut — and narrow.
+    await expect(screen.queryByTestId("supplier-range-ready-panel")).not.toBeVisible();
+    await expect(panel.getBoundingClientRect().width).toBeLessThanOrEqual(320);
+    await expect(within(panel).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "All",
+      "< 500",
+      "500–1.000",
+      "1.000–2.500",
+      "2.500–5.000",
+      "≥ 5.000",
+    ]);
+    await expect(within(panel).getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(within(panel).getByRole("button", { name: "500–1.000" }));
+    await waitFor(() => expect(panel).not.toBeVisible());
+    await expect(soldTrigger).toHaveTextContent("Sold: 500–1.000");
+    // Dropped: every row is still there.
+    await expect(rowNames(canvas)).toHaveLength(4);
+
+    await userEvent.click(canvas.getByTestId("suppliers-filter-clear"));
+    await waitFor(() => expect(soldTrigger).toHaveTextContent(/^Sold$/));
+  },
+};
+
+// THE WAREHOUSE IS THE FIRST PICKER (the-warehouse-filters-before-the-team) — right after the search, before the store
+// type, where Discover's sits left of its team; its mark (5) beside it, not wired yet. A warehouse team has no list, so
+// no warehouse filter either.
+export const TheWarehouseIsTheFirstPicker: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const warehouse = canvas.getByTestId("supplier-warehouse-filter");
+    await expect(within(warehouse).getByTestId("not-implemented-warehouse")).toHaveTextContent("5");
+    await expect(warehouse.getBoundingClientRect().right).toBeLessThanOrEqual(
+      canvas.getByTestId("suppliers-type-filter").getBoundingClientRect().left,
+    );
+    await expect(warehouse.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+      canvas.getByTestId("supplier-search").getBoundingClientRect().right,
+    );
+  },
+};
+
+// …and on a phone each stands in the Filter sheet as a label over its pills — no panel inside a panel.
+export const APhoneFiltersByRangeInTheSheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("supplier-range-sold-trigger")).toBeNull();
+    await userEvent.click(canvas.getByTestId("suppliers-filter-open"));
+    const sheet = await screen.findByTestId("suppliers-filter-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+
+    const sold = within(sheet).getByTestId("supplier-range-sold");
+    await expect(within(sheet).getByTestId("supplier-range-ready")).toBeVisible();
+    await userEvent.click(within(sold).getByRole("button", { name: "≥ 5.000" }));
+    await expect(within(sheet).getByTestId("suppliers-filter-clear")).toBeVisible();
   },
 };

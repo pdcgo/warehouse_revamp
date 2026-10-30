@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { rackRow } from "../../../.storybook/rackStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -67,6 +67,29 @@ export const Search: Story = {
 
     await waitFor(() => expect(canvas.queryByTestId("rack-row-A-01-1")).toBeNull());
     await expect(canvas.getByTestId("rack-row-B-02-1")).toBeInTheDocument();
+  },
+};
+
+// THE SEARCH LIVES IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the list is narrowed by it; a new
+// search is written back.
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/racks", element: <><RacksPage /><LocationProbe /></> }],
+  "/inventories/racks?q=b-02",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByTestId("rack-search", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("b-02");
+    await expect(await canvas.findByTestId("rack-row-B-02-1")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("rack-row-A-01-1")).toBeNull();
+
+    await type(search, "a-01");
+    await waitFor(() => expect(location).toHaveTextContent("?q=a-01"));
   },
 };
 

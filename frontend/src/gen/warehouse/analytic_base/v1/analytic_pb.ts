@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/analytic_base/v1/analytic.proto.
  */
 export const file_warehouse_analytic_base_v1_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Cil3YXJlaG91c2UvYW5hbHl0aWNfYmFzZS92MS9hbmFseXRpYy5wcm90bxIad2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEigwEKCk1ldHJpY1NvcnQSGgoJbWV0cmljX2lkGAEgASgJQge6SARyAhABEhYKBWZpZWxkGAIgASgJQge6SARyAhABEkEKCXNvcnRfdHlwZRgDIAEoDjIkLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlNvcnRUeXBlQgi6SAWCAQIQASJ/Cg9EYXRlUmFuZ2VGaWx0ZXISNQoIZGF0ZV9taW4YASABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEjUKCGRhdGVfbWF4GAIgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JCIsCg1Qcm9kdWN0RmlsdGVyEhsKCnByb2R1Y3RfaWQYASABKARCB7pIBDICIAAiJgoKVGVhbUZpbHRlchIYCgd0ZWFtX2lkGAEgASgEQge6SAQyAiAAIiYKClNob3BGaWx0ZXISGAoHc2hvcF9pZBgBIAEoBEIHukgEMgIgACIuCg5TdXBwbGllckZpbHRlchIcCgtzdXBwbGllcl9pZBgBIAEoBEIHukgEMgIgACIwCg9XYXJlaG91c2VGaWx0ZXISHQoMd2FyZWhvdXNlX2lkGAEgASgEQge6SAQyAiAAIiYKClVzZXJGaWx0ZXISGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgACKKBAoKRmlsdGVySXRlbRJIChFkYXRlX3JhbmdlX2ZpbHRlchgBIAEoCzIrLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkRhdGVSYW5nZUZpbHRlckgAEkMKDnByb2R1Y3RfZmlsdGVyGAMgASgLMikud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuUHJvZHVjdEZpbHRlckgAEj0KC3RlYW1fZmlsdGVyGAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuVGVhbUZpbHRlckgAEj0KC3Nob3BfZmlsdGVyGAUgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuU2hvcEZpbHRlckgAEkUKD3N1cHBsaWVyX2ZpbHRlchgGIAEoCzIqLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlN1cHBsaWVyRmlsdGVySAASRwoQd2FyZWhvdXNlX2ZpbHRlchgHIAEoCzIrLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLldhcmVob3VzZUZpbHRlckgAEj0KC3VzZXJfZmlsdGVyGAggASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuVXNlckZpbHRlckgAQgoKAWYSBbpIAggBSgQIAhADUg5rZXl3b3JkX2ZpbHRlciJGChBQYWdpbmF0aW9uRmlsdGVyEhcKBm9mZnNldBgBIAEoBUIHukgEGgIoABIZCgVsaW1pdBgCIAEoBUIKukgHGgUYyAEoASLpAQoMTWV0cmljT3B0aW9uEkEKEXN1cHBvcnRlZF9maWx0ZXJzGAEgAygOMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVyVHlwZRJAChByZXF1aXJlZF9maWx0ZXJzGAIgAygOMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVyVHlwZRJBChJzdXBwb3J0ZWRfZ3JvdXBfYnkYAyADKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGUSEQoJbWV0cmljX2lkGAQgASgJIjcKClNvcnRPcHRpb24SEAoIY2FuX3NvcnQYASABKAgSFwoPcmFua19taW5fc2FtcGxlGAIgASgDIigKBklETGlzdBIeCgNpZHMYASADKARCEbpIDpIBCxDIARgBIgQyAiAAIkYKB0RheUxpc3QSOwoEZGF5cxgBIAMoCUItukgqkgEnEMgBGAEiIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kInkKCk1ldHJpY0tleXMSMQoDaWRzGAEgASgLMiIud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuSURMaXN0SAASMwoEZGF5cxgCIAEoCzIjLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkRheUxpc3RIAEIDCgFrKkwKCFNvcnRUeXBlEhkKFVNPUlRfVFlQRV9VTlNQRUNJRklFRBAAEhIKDlNPUlRfVFlQRV9ERVNDEAESEQoNU09SVF9UWVBFX0FTQxACKvABCgpGaWx0ZXJUeXBlEhsKF0ZJTFRFUl9UWVBFX1VOU1BFQ0lGSUVEEAASGgoWRklMVEVSX1RZUEVfREFURV9SQU5HRRABEhcKE0ZJTFRFUl9UWVBFX1BST0RVQ1QQAxIUChBGSUxURVJfVFlQRV9URUFNEAQSFAoQRklMVEVSX1RZUEVfU0hPUBAFEhgKFEZJTFRFUl9UWVBFX1NVUFBMSUVSEAYSGQoVRklMVEVSX1RZUEVfV0FSRUhPVVNFEAcSFAoQRklMVEVSX1RZUEVfVVNFUhAIIgQIAhACKhNGSUxURVJfVFlQRV9LRVlXT1JEKqUCCglHcm91cFR5cGUSGgoWR1JPVVBfVFlQRV9VTlNQRUNJRklFRBAAEhYKEkdST1VQX1RZUEVfU1VNTUFSWRABEhQKEEdST1VQX1RZUEVfREFJTFkQAhIVChFHUk9VUF9UWVBFX1dFRUtMWRADEhYKEkdST1VQX1RZUEVfTU9OVEhMWRAEEhUKEUdST1VQX1RZUEVfWUVBUkxZEAUSFgoSR1JPVVBfVFlQRV9QUk9EVUNUEAYSEwoPR1JPVVBfVFlQRV9TSE9QEAcSFwoTR1JPVVBfVFlQRV9TVVBQTElFUhAIEhMKD0dST1VQX1RZUEVfVEVBTRAJEhMKD0dST1VQX1RZUEVfVVNFUhAKEhgKFEdST1VQX1RZUEVfV0FSRUhPVVNFEAsqoAEKDUZpZWxkU3RhdFR5cGUSHwobRklFTERfU1RBVF9UWVBFX1VOU1BFQ0lGSUVEEAASGQoVRklFTERfU1RBVF9UWVBFX1JBVElPEAESFwoTRklFTERfU1RBVF9UWVBFX1FUWRACEhwKGEZJRUxEX1NUQVRfVFlQRV9DVVJSRU5DWRADEhwKGEZJRUxEX1NUQVRfVFlQRV9QT1NJVElPThAEOmMKBm1ldHJpYxIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxjThgMgASgLMigud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljT3B0aW9uUgZtZXRyaWM6aAoLbWV0cmljX3NvcnQSHS5nb29nbGUucHJvdG9idWYuRmllbGRPcHRpb25zGNOGAyABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Tb3J0T3B0aW9uUgptZXRyaWNTb3J0OnIKD2ZpZWxkX3N0YXRfdHlwZRIdLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE9wdGlvbnMY1IYDIAEoDjIpLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpZWxkU3RhdFR5cGVSDWZpZWxkU3RhdFR5cGVCWlpYZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9hbmFseXRpY19iYXNlL3YxO2FuYWx5dGljX2Jhc2V2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_descriptor]);
+  fileDesc("Cil3YXJlaG91c2UvYW5hbHl0aWNfYmFzZS92MS9hbmFseXRpYy5wcm90bxIad2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEigwEKCk1ldHJpY1NvcnQSGgoJbWV0cmljX2lkGAEgASgJQge6SARyAhABEhYKBWZpZWxkGAIgASgJQge6SARyAhABEkEKCXNvcnRfdHlwZRgDIAEoDjIkLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlNvcnRUeXBlQgi6SAWCAQIQASJ/Cg9EYXRlUmFuZ2VGaWx0ZXISNQoIZGF0ZV9taW4YASABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEjUKCGRhdGVfbWF4GAIgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JCIsCg1Qcm9kdWN0RmlsdGVyEhsKCnByb2R1Y3RfaWQYASABKARCB7pIBDICIAAiJgoKVGVhbUZpbHRlchIYCgd0ZWFtX2lkGAEgASgEQge6SAQyAiAAIiYKClNob3BGaWx0ZXISGAoHc2hvcF9pZBgBIAEoBEIHukgEMgIgACIuCg5TdXBwbGllckZpbHRlchIcCgtzdXBwbGllcl9pZBgBIAEoBEIHukgEMgIgACIwCg9XYXJlaG91c2VGaWx0ZXISHQoMd2FyZWhvdXNlX2lkGAEgASgEQge6SAQyAiAAIiYKClVzZXJGaWx0ZXISGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgACItChVTdXBwbGllcktleXdvcmRGaWx0ZXISFAoBcRgBIAEoCUIJukgGcgQQARhkIuAECgpGaWx0ZXJJdGVtEkgKEWRhdGVfcmFuZ2VfZmlsdGVyGAEgASgLMisud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRGF0ZVJhbmdlRmlsdGVySAASQwoOcHJvZHVjdF9maWx0ZXIYAyABKAsyKS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Qcm9kdWN0RmlsdGVySAASPQoLdGVhbV9maWx0ZXIYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5UZWFtRmlsdGVySAASPQoLc2hvcF9maWx0ZXIYBSABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5TaG9wRmlsdGVySAASRQoPc3VwcGxpZXJfZmlsdGVyGAYgASgLMioud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuU3VwcGxpZXJGaWx0ZXJIABJHChB3YXJlaG91c2VfZmlsdGVyGAcgASgLMisud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuV2FyZWhvdXNlRmlsdGVySAASPQoLdXNlcl9maWx0ZXIYCCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Vc2VyRmlsdGVySAASVAoXc3VwcGxpZXJfa2V5d29yZF9maWx0ZXIYCSABKAsyMS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5TdXBwbGllcktleXdvcmRGaWx0ZXJIAEIKCgFmEgW6SAIIAUoECAIQA1IOa2V5d29yZF9maWx0ZXIiRgoQUGFnaW5hdGlvbkZpbHRlchIXCgZvZmZzZXQYASABKAVCB7pIBBoCKAASGQoFbGltaXQYAiABKAVCCrpIBxoFGMgBKAEi6QEKDE1ldHJpY09wdGlvbhJBChFzdXBwb3J0ZWRfZmlsdGVycxgBIAMoDjImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlclR5cGUSQAoQcmVxdWlyZWRfZmlsdGVycxgCIAMoDjImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlclR5cGUSQQoSc3VwcG9ydGVkX2dyb3VwX2J5GAMgAygOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlEhEKCW1ldHJpY19pZBgEIAEoCSI3CgpTb3J0T3B0aW9uEhAKCGNhbl9zb3J0GAEgASgIEhcKD3JhbmtfbWluX3NhbXBsZRgCIAEoAyIoCgZJRExpc3QSHgoDaWRzGAEgAygEQhG6SA6SAQsQyAEYASIEMgIgACJGCgdEYXlMaXN0EjsKBGRheXMYASADKAlCLbpIKpIBJxDIARgBIiByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JCJ5CgpNZXRyaWNLZXlzEjEKA2lkcxgBIAEoCzIiLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLklETGlzdEgAEjMKBGRheXMYAiABKAsyIy53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5EYXlMaXN0SABCAwoBaypMCghTb3J0VHlwZRIZChVTT1JUX1RZUEVfVU5TUEVDSUZJRUQQABISCg5TT1JUX1RZUEVfREVTQxABEhEKDVNPUlRfVFlQRV9BU0MQAiqSAgoKRmlsdGVyVHlwZRIbChdGSUxURVJfVFlQRV9VTlNQRUNJRklFRBAAEhoKFkZJTFRFUl9UWVBFX0RBVEVfUkFOR0UQARIXChNGSUxURVJfVFlQRV9QUk9EVUNUEAMSFAoQRklMVEVSX1RZUEVfVEVBTRAEEhQKEEZJTFRFUl9UWVBFX1NIT1AQBRIYChRGSUxURVJfVFlQRV9TVVBQTElFUhAGEhkKFUZJTFRFUl9UWVBFX1dBUkVIT1VTRRAHEhQKEEZJTFRFUl9UWVBFX1VTRVIQCBIgChxGSUxURVJfVFlQRV9TVVBQTElFUl9LRVlXT1JEEAkiBAgCEAIqE0ZJTFRFUl9UWVBFX0tFWVdPUkQqpQIKCUdyb3VwVHlwZRIaChZHUk9VUF9UWVBFX1VOU1BFQ0lGSUVEEAASFgoSR1JPVVBfVFlQRV9TVU1NQVJZEAESFAoQR1JPVVBfVFlQRV9EQUlMWRACEhUKEUdST1VQX1RZUEVfV0VFS0xZEAMSFgoSR1JPVVBfVFlQRV9NT05USExZEAQSFQoRR1JPVVBfVFlQRV9ZRUFSTFkQBRIWChJHUk9VUF9UWVBFX1BST0RVQ1QQBhITCg9HUk9VUF9UWVBFX1NIT1AQBxIXChNHUk9VUF9UWVBFX1NVUFBMSUVSEAgSEwoPR1JPVVBfVFlQRV9URUFNEAkSEwoPR1JPVVBfVFlQRV9VU0VSEAoSGAoUR1JPVVBfVFlQRV9XQVJFSE9VU0UQCyqgAQoNRmllbGRTdGF0VHlwZRIfChtGSUVMRF9TVEFUX1RZUEVfVU5TUEVDSUZJRUQQABIZChVGSUVMRF9TVEFUX1RZUEVfUkFUSU8QARIXChNGSUVMRF9TVEFUX1RZUEVfUVRZEAISHAoYRklFTERfU1RBVF9UWVBFX0NVUlJFTkNZEAMSHAoYRklFTERfU1RBVF9UWVBFX1BPU0lUSU9OEAQ6YwoGbWV0cmljEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNOGAyABKAsyKC53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNPcHRpb25SBm1ldHJpYzpoCgttZXRyaWNfc29ydBIdLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE9wdGlvbnMY04YDIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlNvcnRPcHRpb25SCm1ldHJpY1NvcnQ6cgoPZmllbGRfc3RhdF90eXBlEh0uZ29vZ2xlLnByb3RvYnVmLkZpZWxkT3B0aW9ucxjUhgMgASgOMikud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmllbGRTdGF0VHlwZVINZmllbGRTdGF0VHlwZUJaWlhnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2FuYWx5dGljX2Jhc2UvdjE7YW5hbHl0aWNfYmFzZXYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_descriptor]);
 
 /**
  * MetricSort — the table's ONE sort (one-sort-field-per-table): a field of a metric, named by its proto name
@@ -179,6 +179,27 @@ export const UserFilterSchema: GenMessage<UserFilter> = /*@__PURE__*/
   messageDesc(file_warehouse_analytic_base_v1_analytic, 7);
 
 /**
+ * SupplierKeywordFilter — the SUPPLIER a row is about matches `q` as the supplier list's own search does: its name,
+ * address, contact, or a live store's name (the-supplier-report-keeps-its-search). Unlike the removed generic keyword
+ * (the-generic-keyword-is-removed), it means ONE thing, so only a metric about suppliers lists it.
+ *
+ * @generated from message warehouse.analytic_base.v1.SupplierKeywordFilter
+ */
+export type SupplierKeywordFilter = Message<"warehouse.analytic_base.v1.SupplierKeywordFilter"> & {
+  /**
+   * @generated from field: string q = 1;
+   */
+  q: string;
+};
+
+/**
+ * Describes the message warehouse.analytic_base.v1.SupplierKeywordFilter.
+ * Use `create(SupplierKeywordFilterSchema)` to create a new message.
+ */
+export const SupplierKeywordFilterSchema: GenMessage<SupplierKeywordFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 8);
+
+/**
  * FilterItem — one case per FilterType, and each case's NUMBER IS ITS FilterType's, so a set case maps to its type
  * without a table. 2 was the keyword (the-generic-keyword-is-removed) — reserved, so the numbers still match.
  *
@@ -230,6 +251,12 @@ export type FilterItem = Message<"warehouse.analytic_base.v1.FilterItem"> & {
      */
     value: UserFilter;
     case: "userFilter";
+  } | {
+    /**
+     * @generated from field: warehouse.analytic_base.v1.SupplierKeywordFilter supplier_keyword_filter = 9;
+     */
+    value: SupplierKeywordFilter;
+    case: "supplierKeywordFilter";
   } | { case: undefined; value?: undefined };
 };
 
@@ -238,7 +265,7 @@ export type FilterItem = Message<"warehouse.analytic_base.v1.FilterItem"> & {
  * Use `create(FilterItemSchema)` to create a new message.
  */
 export const FilterItemSchema: GenMessage<FilterItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 8);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 9);
 
 /**
  * PaginationFilter — on the search request only. The response says whether another page follows and never how many
@@ -263,7 +290,7 @@ export type PaginationFilter = Message<"warehouse.analytic_base.v1.PaginationFil
  * Use `create(PaginationFilterSchema)` to create a new message.
  */
 export const PaginationFilterSchema: GenMessage<PaginationFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 9);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 10);
 
 /**
  * MetricOption — what a metric declares about itself. Checked at startup by san_metric.ValidateDescriptors.
@@ -303,7 +330,7 @@ export type MetricOption = Message<"warehouse.analytic_base.v1.MetricOption"> & 
  * Use `create(MetricOptionSchema)` to create a new message.
  */
 export const MetricOptionSchema: GenMessage<MetricOption> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 10);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 11);
 
 /**
  * SortOption — on a metric's number field: whether a table may be sorted by it.
@@ -330,7 +357,7 @@ export type SortOption = Message<"warehouse.analytic_base.v1.SortOption"> & {
  * Use `create(SortOptionSchema)` to create a new message.
  */
 export const SortOptionSchema: GenMessage<SortOption> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 11);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 12);
 
 /**
  * IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER, WAREHOUSE. At most a page.
@@ -349,7 +376,7 @@ export type IDList = Message<"warehouse.analytic_base.v1.IDList"> & {
  * Use `create(IDListSchema)` to create a new message.
  */
 export const IDListSchema: GenMessage<IDList> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 12);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 13);
 
 /**
  * DayList — the keys of a time group: each bucket's first day. At most a page.
@@ -368,7 +395,7 @@ export type DayList = Message<"warehouse.analytic_base.v1.DayList"> & {
  * Use `create(DayListSchema)` to create a new message.
  */
 export const DayListSchema: GenMessage<DayList> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 13);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 14);
 
 /**
  * MetricKeys — the rows. Absent for GROUP_TYPE_SUMMARY.
@@ -399,7 +426,7 @@ export type MetricKeys = Message<"warehouse.analytic_base.v1.MetricKeys"> & {
  * Use `create(MetricKeysSchema)` to create a new message.
  */
 export const MetricKeysSchema: GenMessage<MetricKeys> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 14);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 15);
 
 /**
  * SortType — an unspecified sort reads as DESC, and the key DESC breaks every tie (the-key-breaks-every-tie).
@@ -477,6 +504,13 @@ export enum FilterType {
    * @generated from enum value: FILTER_TYPE_USER = 8;
    */
   USER = 8,
+
+  /**
+   * A supplier's name, address, contact or store — the Supplier Report's search (the-supplier-report-keeps-its-search).
+   *
+   * @generated from enum value: FILTER_TYPE_SUPPLIER_KEYWORD = 9;
+   */
+  SUPPLIER_KEYWORD = 9,
 }
 
 /**

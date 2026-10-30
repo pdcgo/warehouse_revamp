@@ -1,9 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { Badge, Flex, Table, Text } from "@chakra-ui/react";
+import { Handshake } from "lucide-react";
 
 import type { LiabilityLog } from "../../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../../lib/money";
 import { causeKey, fmtDate } from "../format";
+import { EmptyHint } from "../../../components/feedback/EmptyHint";
 
 // ONE DIRECTION OF ONE RELATIONSHIP'S LEDGER — the receivable or the payable tab of the liability detail.
 //
@@ -22,9 +24,7 @@ export function LiabilityLedgerTable({
 
   if (rows.length === 0) {
     return (
-      <Text color="fg.muted" py="card" data-testid="liability-ledger-empty">
-        {emptyText}
-      </Text>
+      <EmptyHint icon={Handshake} size="sm" title={emptyText} testId="liability-ledger-empty" />
     );
   }
 

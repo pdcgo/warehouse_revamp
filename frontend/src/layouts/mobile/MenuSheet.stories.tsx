@@ -16,7 +16,7 @@ import { MenuSheet } from "./MenuSheet";
 //   | ----------------------------- | ------------------------------------- | --------------------------- |
 //   | one group open at a time      | every group open, as sections         | a full screen has the room; |
 //   |                               |                                       | collapsing costs a tap each |
-//   | theme/lang/sign-out in a Menu | inline rows                           | a popup on the layer that IS |
+//   | theme/lang/sign-out in a Menu | the sheet's PROFILE view, flat        | a popup on the layer that IS |
 //   |                               |                                       | the dismissal               |
 //   | closes on the ROUTE changing  | closes on the TAP                     | re-tapping the screen you    |
 //   |                               |                                       | are on changes no route      |
@@ -78,7 +78,10 @@ export const EveryGroupIsOpenAtOnce: Story = {
     await waitFor(() => expect(screen.getByRole("link", { name: "Racks" })).toBeVisible());
     await expect(screen.getByRole("link", { name: "Batches" })).toBeVisible();
     // …and so is a top-level item that is not in any group, on the same screen.
-    await expect(screen.getByRole("link", { name: "Profile" })).toBeVisible();
+    await expect(screen.getByRole("link", { name: "Home" })).toBeVisible();
+    // Profile is not a line of the menu any more — Edit Profile in the profile view is its door
+    // (the-more-sheet-is-a-menu-and-a-profile).
+    await expect(screen.queryByRole("link", { name: "Profile" })).toBeNull();
   },
 };
 
@@ -98,14 +101,20 @@ export const TappingTheCurrentScreenStillClosesIt: Story = {
   },
 };
 
-// THE ACCOUNT BLOCK IS FLAT — the two app-wide preferences and the way out, each one tap. The desktop
-// hides them behind a popup on the user card; inside a sheet that is a layer to dismiss on the layer
-// that IS the dismissal, and the first tap of the pair does nothing a person can see.
+async function openProfile() {
+  await userEvent.click(await screen.findByTestId("menu-sheet-switch"));
+  await waitFor(() => expect(screen.getByTestId("menu-sheet")).toHaveAttribute("data-view", "profile"));
+}
+
+// THE PROFILE VIEW IS FLAT — the person, the two app-wide preferences and the way out, each one tap (the-more-sheet-is-
+// a-menu-and-a-profile). The desktop hides them behind a popup on the user card; inside a sheet that is a layer to
+// dismiss on the layer that IS the dismissal.
 export const ThemeLanguageAndSignOutAreOneTapEach: Story = {
   play: async () => {
+    await openProfile();
     await waitFor(() => expect(screen.getByTestId("current-user")).toHaveTextContent("ani"));
     // The role is scoped — "Warehouse Admin HERE", not a property of the person.
-    await expect(screen.getByText("Warehouse Admin")).toBeInTheDocument();
+    await expect(screen.getByText(/Warehouse Admin/)).toBeInTheDocument();
 
     await expect(screen.getByTestId("sign-out")).toBeInTheDocument();
 
@@ -127,16 +136,52 @@ export const ThemeLanguageAndSignOutAreOneTapEach: Story = {
   },
 };
 
-// THE ACCOUNT IS THE HEADER (owner, `the-more-sheet-starts-with-the-account`) — who is signed in, and as what here,
-// at the top of the sheet. The workspace is not in it: the top bar's team chip is where a phone switches team.
-export const TheAccountIsTheHeader: Story = {
+// THE MENU AND THE PROFILE, ONE SWITCH AT THE FOOT (the-more-sheet-is-a-menu-and-a-profile) — the sheet opens on the
+// menu, its search at the foot beside the switch; the switch turns it to the profile — the person and their team, Edit
+// Profile (Profile's door now), the preferences, the way out — where the search becomes Open Menu, and the switch is lit.
+// The workspace is not in it: the bottom bar's bubble is where a phone switches team.
+export const TheSheetIsAMenuAndAProfile: Story = {
   play: async () => {
     const sheet = await screen.findByTestId("menu-sheet");
-    const header = await screen.findByTestId("menu-sheet-account");
+    await expect(sheet).toHaveAttribute("data-view", "menu");
+    await expect(within(sheet).getByTestId("menu-sheet-search")).toBeVisible();
+    await expect(within(sheet).getByTestId("menu-sheet-switch")).toHaveAttribute("aria-pressed", "false");
 
-    await waitFor(() => expect(within(header).getByTestId("current-user")).toHaveTextContent("ani"));
-    await expect(within(header).getByText("Warehouse Admin")).toBeInTheDocument();
+    await openProfile();
+    const account = within(sheet).getByTestId("menu-sheet-account");
+    await waitFor(() => expect(within(account).getByTestId("current-user")).toHaveTextContent("ani"));
+    await expect(within(account).getByText("Warehouse Admin · Gudang Pusat")).toBeInTheDocument();
+    await expect(within(sheet).getByTestId("menu-sheet-edit-profile")).toHaveAttribute("href", "/profile");
+    await expect(within(sheet).queryByTestId("menu-sheet-search")).toBeNull();
+    await expect(within(sheet).getByTestId("menu-sheet-switch")).toHaveAttribute("aria-pressed", "true");
     await expect(within(sheet).queryByTestId("team-switcher")).toBeNull();
+
+    // Open Menu goes back, with the search.
+    await userEvent.click(within(sheet).getByTestId("menu-sheet-open-menu"));
+    await waitFor(() => expect(sheet).toHaveAttribute("data-view", "menu"));
+    await expect(within(sheet).getByTestId("menu-sheet-search")).toBeVisible();
+  },
+};
+
+// THE SEARCH FINDS A SCREEN BY ITS NAME OR ITS GROUP'S — a child is only "Racks" or "Batches", so a result says where it
+// lives, and the group's name finds all of it; nothing matching says so.
+export const TheSearchFindsAScreenByItsGroup: Story = {
+  play: async () => {
+    const search = await screen.findByTestId("menu-sheet-search");
+
+    await userEvent.type(search, "batch", { delay: 30 });
+    const results = await screen.findByTestId("menu-sheet-results");
+    const batches = within(results).getByRole("link", { name: /Batches/ });
+    await expect(batches).toHaveTextContent("Inventories");
+    await expect(within(results).getAllByRole("link")).toHaveLength(1);
+
+    await userEvent.clear(search);
+    await userEvent.type(search, "inventories", { delay: 30 });
+    await waitFor(() => expect(within(screen.getByTestId("menu-sheet-results")).getAllByRole("link").length).toBeGreaterThan(2));
+
+    await userEvent.clear(search);
+    await userEvent.type(search, "zzz", { delay: 30 });
+    await expect(await screen.findByTestId("menu-sheet-no-match")).toBeVisible();
   },
 };
 

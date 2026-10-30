@@ -2,18 +2,19 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { account } from "../../../.storybook/financialAccountFixtures";
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import {
   FinancialAccountChangeType as T,
   FinancialAccountProvider as P,
 } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
-import { formatRupiahNumber } from "../../lib/money";
+import { formatRupiahBare, formatRupiahNumber } from "../../lib/money";
 import { FinancialAccountReportPage } from "./index";
 
 // The account report — five cards and one table of periods (owner, `the-report-is-five-cards-and-one-table`), the
 // owner's six metrics (context.md lines 126–131) delivered the settlement way (analytics-are-delivered-the-settlement-way).
 //
-// Toko Melati over the last 30 days (today and the 29 before), from .storybook/financialAccountFixtures.ts:
+// Toko Melati over the last month — the report's default (LAST_MONTH) — from .storybook/financialAccountFixtures.ts,
+// which keeps every row either 27 days back or less, or 32 or more, so a 28- to 31-day month holds the same rows:
 //   opened at 11.300.000 · withdrawals +11.000.000 · expenses −3.600.000 · team payment −1.500.000 ·
 //   capital +1.000.000 · ads −900.000 · restocks −850.000 · the bank fee −6.500 · transfers net 0
 //   → +5.143.500 → closed at 16.443.500 — exactly what the accounts page's total says.
@@ -24,6 +25,9 @@ const MELATI_TIKTOK = account("Unknown — shop #25");
 
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatRupiahNumber(Math.abs(n))}`.replace(/\s/g, " ");
 const rp = (n: number) => formatRupiahNumber(n).replace(/\s/g, " ");
+// Saldo per Penyedia dan Akun says "Rp" once, over its figures (the-rincian-says-rp-once).
+const bare = (n: number) => formatRupiahBare(n);
+const signedBare = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatRupiahBare(Math.abs(n))}`;
 
 const Routed = routedPage(
   [{ path: "/financial-accounts/report", element: <FinancialAccountReportPage /> }, marker("/financial-accounts/:accountId", "at-account-detail")],
@@ -236,6 +240,28 @@ export const WhatMovedItByAccountAndProvider: Story = {
   },
 };
 
+// SWITCHING VIEW LEAVES ONLY THE NEW ONE (owner: *"ketika pindah ke tab rincian, tabel tidak hilang di awal-awal, baru
+// hilang saat kedua kali"*) — the Periode table goes the FIRST time Rincian is picked, not only from the second. The
+// bug lived in the panel's fade (motion-is-small-quick-and-shared), which this run's reduced motion switches off, so
+// the story holds the rule rather than reproducing the bug; it was reproduced with motion on.
+export const SwitchingViewLeavesOnlyTheNewOne: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("account-report-series")).toBeVisible();
+
+    for (let round = 0; round < 2; round++) {
+      await userEvent.click(canvas.getByTestId("account-report-view-breakdown"));
+      await waitFor(() => expect(canvas.queryByTestId("account-report-series")).toBeNull());
+      // Waited for: with motion on, the arriving panel starts its fade at opacity 0.
+      await waitFor(() => expect(canvas.getByTestId("account-report-breakdown")).toBeVisible());
+
+      await userEvent.click(canvas.getByTestId("account-report-view-period"));
+      await waitFor(() => expect(canvas.queryByTestId("account-report-breakdown")).toBeNull());
+      await waitFor(() => expect(canvas.getByTestId("account-report-series")).toBeVisible());
+    }
+  },
+};
+
 // account-grouped-joins-the-metrics: by account, the largest movement first — named by its shop, the server's
 // "Unknown — shop #25" read as Melati TikTok — an archived account still listed and marked, because its past happened,
 // and the Total row the team's own figures.
@@ -418,5 +444,200 @@ export const ClearPutsTheFiltersBack: Story = {
 
     await userEvent.click(canvas.getByTestId("account-report-filters-clear"));
     await waitFor(() => expect(canvas.getByTestId("account-report-close-value")).toHaveTextContent(rp(16_443_500)));
+  },
+};
+
+// THE FILTERS AND THE PERIODS' ORDER LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the account and
+// the grain are read from it; the order flipped is written back beside them. The view is not a filter: it stays out.
+const AtFilteredUrl = routedPage(
+  [{ path: "/financial-accounts/report", element: <><FinancialAccountReportPage /><LocationProbe /></> }],
+  `/financial-accounts/report?account=${BCA_OPS.id}&grain=month`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("account-report-close-value")).toHaveTextContent(rp(11_443_500)), {
+      timeout: 4000,
+    });
+    const location = canvas.getByTestId("location-search");
+
+    await waitFor(() => expect(canvas.getByTestId("account-report-account")).toHaveValue(BCA_OPS.name));
+    await expect(within(canvas.getByTestId("account-report-grain")).getByRole("radio", { name: "Monthly" })).toBeChecked();
+
+    await userEvent.click(canvas.getByTestId("account-report-sort-period"));
+    await waitFor(() => expect(location).toHaveTextContent(/sort=period(%3A|:)asc/));
+    await expect(location).toHaveTextContent(`account=${BCA_OPS.id}`);
+
+    await userEvent.click(canvas.getByTestId("account-report-view-breakdown"));
+    await waitFor(() => expect(canvas.getByTestId("account-report-view-breakdown")).toHaveAttribute("aria-selected", "true"));
+    await expect(location).not.toHaveTextContent("view");
+  },
+};
+
+// ── Periode and Rincian (`the-report-is-two-views-periode-and-rincian`, `rincian-answers-two-questions`) ───────────
+
+async function openBreakdown(canvas: ReturnType<typeof within>) {
+  await userEvent.click(canvas.getByTestId("account-report-view-breakdown"));
+  await waitFor(() => expect(canvas.getByTestId("account-report-view-breakdown")).toHaveAttribute("aria-selected", "true"));
+  return canvas.findByTestId("account-report-breakdown", {}, { timeout: 3000 });
+}
+
+// TWO VIEWS, PICKED OVER THE FILTERS — Periode first; Rincian is two cards, each titled by what it groups
+// (rincian-cards-are-named-by-what-they-group) with a line saying what it holds. The grain cuts a series, so it is Periode's only; Rincian's cards are the three
+// balances alone (the-rincian-view-has-three-plain-cards).
+export const TheBreakdownIsItsOwnView: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const views = canvas.getByTestId("account-report-views");
+    await expect(canvas.getByTestId("account-report-view-period")).toHaveAttribute("aria-selected", "true");
+    await expect(views.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      canvas.getByTestId("account-report-filters").getBoundingClientRect().top,
+    );
+    await expect(canvas.getByTestId("account-report-grain")).toBeVisible();
+
+    const breakdown = await openBreakdown(canvas);
+    await expect(canvas.queryByTestId("account-report-grain")).toBeNull();
+    await expect(within(breakdown).getByTestId("account-report-breakdown-where")).toHaveTextContent("Balance by Provider and Account");
+    await expect(within(breakdown).getByTestId("account-report-breakdown-what")).toHaveTextContent("Movements by Type");
+
+    await expect(canvas.queryByTestId("account-report-change-detail")).toBeNull();
+    await expect(canvas.queryByTestId("account-report-by-account")).toBeNull();
+    await expect(canvas.queryByTestId("account-report-by-provider")).toBeNull();
+    await userEvent.click(canvas.getByTestId("account-report-view-period"));
+    await waitFor(() => expect(canvas.getByTestId("account-report-by-account")).toBeVisible());
+    await expect(canvas.getByTestId("account-report-change-detail")).toBeVisible();
+  },
+};
+
+// WHERE THE MONEY IS — one table: each provider's row its subtotal, its accounts under it; an archived account marked,
+// not dropped; a Total that is the whole team. The figures are the cards' dialogs' — one ranking, two ways to read it.
+export const WhereTheMoneyIs: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const breakdown = await openBreakdown(canvas);
+
+    const table = await within(breakdown).findByTestId("breakdown-table-where");
+    await expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
+      "Provider · account",
+      "Opening balance",
+      "Net change",
+      "Closing balance",
+    ]);
+    await expect(within(table).getAllByTestId(/^breakdown-row-accountId-/)).toHaveLength(7);
+
+    // The closing balance reads from the left — its heading and every figure (the-rincian-close-is-left-aligned).
+    await expect(getComputedStyle(within(table).getAllByRole("columnheader")[3]).textAlign).toBe("start");
+    for (const cell of within(table).getAllByTestId("breakdown-close-cell")) {
+      await expect(getComputedStyle(cell).textAlign).toBe("start");
+    }
+
+    // The currency is said once, at the card's title — no figure in the table carries "Rp" (the-rincian-says-rp-once).
+    await expect(within(breakdown).getByTestId("account-report-breakdown-where-unit")).toHaveTextContent("Amounts in rupiah (Rp)");
+    await expect(table.textContent).not.toContain("Rp");
+
+    // BCA's row is its two accounts summed, and both sit under it.
+    const bca = within(table).getByTestId(`breakdown-row-provider-${P.BCA}`);
+    await expect(bca).toHaveTextContent(signedBare(1_293_500));
+    await expect(bca).toHaveTextContent(bare(12_043_500));
+    const ops = within(table).getByTestId(`breakdown-row-accountId-${BCA_OPS.id}`);
+    await expect(ops).toHaveTextContent(bare(11_443_500));
+    await expect(ops.getBoundingClientRect().top).toBeGreaterThan(bca.getBoundingClientRect().top);
+
+    await expect(within(table).getByTestId(`breakdown-row-accountId-${BNI.id}`)).toHaveTextContent("Archived");
+    const total = within(table).getByTestId("breakdown-total-where");
+    await expect(total).toHaveTextContent(signedBare(5_143_500));
+    await expect(total).toHaveTextContent(bare(16_443_500));
+
+    // An account row opens the account.
+    await userEvent.click(ops);
+    await expect(await canvas.findByTestId("at-account-detail")).toBeVisible();
+  },
+};
+
+// WHAT CHANGED THE BALANCE — the bridge: from the opening balance, money in, then money out, to the closing balance —
+// its two ends the cards' own; each group's subtotal on its heading; a bar per type in its group's tone.
+export const WhatChangedTheBalance: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const breakdown = await openBreakdown(canvas);
+
+    const bridge = await within(breakdown).findByTestId("breakdown-bridge");
+    await expect(within(bridge).getByTestId("breakdown-open")).toHaveTextContent(rp(11_300_000));
+    await expect(within(bridge).getByTestId("breakdown-close")).toHaveTextContent(rp(16_443_500));
+    await expect(within(bridge).getByTestId("breakdown-in-total")).toHaveTextContent(signed(12_000_000));
+    await expect(within(bridge).getByTestId("breakdown-out-total")).toHaveTextContent(signed(-6_856_500));
+
+    // The opening, then in, then out, then the closing — top to bottom.
+    const order = ["breakdown-open", "breakdown-in", "breakdown-out", "breakdown-close"].map(
+      (id) => within(bridge).getByTestId(id).getBoundingClientRect().top,
+    );
+    await expect([...order].sort((a, b) => a - b)).toEqual(order);
+
+    await expect(within(bridge).getByTestId(`breakdown-bar-${T.WITHDRAWAL}`)).toHaveAttribute("data-direction", "in");
+    await expect(within(bridge).getByTestId(`breakdown-bar-${T.EXPENSE}`)).toHaveAttribute("data-direction", "out");
+  },
+};
+
+// ONE ACCOUNT PICKED — where the money is, by provider and account, is the team's ranking, so it says so; what changed
+// the balance is that account's.
+export const RincianForOneAccount: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await pickAccount(canvas, BCA_OPS.id);
+    const breakdown = await openBreakdown(canvas);
+
+    await expect(within(breakdown).getByTestId("account-report-breakdown-where")).toHaveTextContent("One account is picked");
+    await expect(within(breakdown).queryByTestId("breakdown-table-where")).toBeNull();
+    await waitFor(() => expect(within(breakdown).getByTestId("breakdown-bridge")).toBeVisible());
+  },
+};
+
+// …and on a phone the two cards stack, the table a list — a provider's line, its accounts indented under it.
+export const MobileRincian: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const breakdown = await openBreakdown(canvas);
+
+    await expect(within(breakdown).queryByRole("table")).toBeNull();
+    const bca = await within(breakdown).findByTestId(`breakdown-row-accountId-${BCA_OPS.id}`);
+    await expect(bca).toHaveTextContent(bare(11_443_500));
+    await expect(bca.textContent).not.toContain("Rp");
+    await expect(within(breakdown).getByTestId("account-report-breakdown-where-unit")).toBeVisible();
+    const where = within(breakdown).getByTestId("account-report-breakdown-where").getBoundingClientRect();
+    const what = within(breakdown).getByTestId("account-report-breakdown-what").getBoundingClientRect();
+    await expect(what.top).toBeGreaterThanOrEqual(where.bottom);
+  },
+};
+
+// A PHONE'S PERIOD LISTS ONE TYPE A LINE (a-phone-period-lists-a-type-a-line) — a badge and its amount together, each
+// type on a line of its own; wrapped side by side, an amount could land on the next line away from its badge.
+export const MobilePeriodListsATypeALine: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const lists = await canvas.findAllByTestId(/^account-report-series-types-/);
+    const busy = lists.find((l) => l.children.length > 1)!;
+    const tops = [...busy.children].map((c) => c.getBoundingClientRect().top);
+    await expect(new Set(tops).size).toBe(tops.length);
+  },
+};
+
+// …and Rincian's rows on a phone carry the opening balance under the name (a-phone-breakdown-row-shows-its-opening) —
+// the desktop's Saldo awal column, which the two figures on the right had left out.
+export const MobileRincianShowsTheOpening: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const breakdown = await openBreakdown(canvas);
+
+    const open = await within(breakdown).findByTestId(`breakdown-row-accountId-${BCA_OPS.id}-open`);
+    await expect(open).toHaveTextContent(`Opening balance ${bare(10_750_000)}`);
+    await expect(within(breakdown).getByTestId(`breakdown-row-provider-${P.BCA}-open`)).toHaveTextContent(bare(10_750_000));
+    await expect(within(breakdown).getByTestId("breakdown-total-where-open")).toHaveTextContent(bare(11_300_000));
   },
 };

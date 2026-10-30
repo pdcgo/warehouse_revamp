@@ -1,19 +1,25 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { HStack, Icon, Link, Stack, Table, Text } from "@chakra-ui/react";
-import { ExternalLink } from "lucide-react";
+import { Box, Button, HStack, Icon, Link, Stack, Table, Text } from "@chakra-ui/react";
+import { ExternalLink, SearchX, Store } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { SupplierChannelRecord } from "./adapt";
 import { useSupplierChannelPage } from "./queries";
 import { useDebounced } from "../../lib/useDebounced";
+import { enumCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
-import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
+import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
+import { sampleStoreFigures } from "./sampleSupplierFigures";
+import { SupplierTabExport } from "./SupplierTabExport";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -55,10 +61,19 @@ export interface ChannelBrowserProps {
   supplierId: bigint;
   /** Page actions in the filter bar's action slot — Add Store on the manage page. */
   actions?: ReactNode;
+  /**
+   * The empty list's own action — Add Store again, under "no stores yet". ⚠ Its OWN node, never `actions` mounted a
+   * second time: the same trigger twice puts two elements behind one test id, which fails every spec that clicks it.
+   */
+  emptyAction?: ReactNode;
   /** Per-row actions; absent = read-only, as on the discover detail. */
   rowActions?: (channel: SupplierChannelRecord) => ReactNode;
   /** The page's own pending mark for the Description column, if it has one. */
   descriptionMark?: ReactNode;
+  /** The page's marks for Terjual and Siap — sample figures, numbered in the page's own pending list. */
+  figureMarks: FigureMarks;
+  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
+  exportMark: ReactNode;
 }
 
 // ChannelBrowser is a supplier's CHANNELS tab — on the manage detail and on the discover detail alike
@@ -69,18 +84,33 @@ export interface ChannelBrowserProps {
 // It reads for itself: the search, the type and the page go to SupplierChannelList, which searches, filters and
 // pages ON THE SERVER (useSupplierChannelPage). The search is debounced, so a word is one request, not one per
 // key — the previous rows stay up behind the RefreshOverlay while the answer loads (HARD RULE 10).
+//
+// EACH STORE'S TERJUAL AND SIAP (owner: *"di channel dan produk ada ready dan sold tadi"*,
+// `the-detail-tabs-show-sold-and-ready`) — the supplier list's figures, for what was bought at this store: the last two
+// columns before the actions, the last order and the last restock under them; on a phone, a line each.
+//
+//   Toko pemasok              Link        Deskripsi    Terjual ⚠2          Siap ⚠3           Aksi
+//   Sumber Makmur Official    shopee.…    …               1.204                86             [✎ Ubah] …
+//   [Shopee]                                         pesanan 5 Okt 2026  restok 20 Sep 2026
+//
+// ⚠ SAMPLE FIGURES (sampleStoreFigures) — nothing yet says which products were bought at which store.
 export function ChannelBrowser({
   teamId,
   supplierId,
   actions,
+  emptyAction,
   rowActions,
   descriptionMark,
+  figureMarks,
+  exportMark,
 }: ChannelBrowserProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
-  const [q, setQ] = useState("");
-  const [channelType, setChannelType] = useState<Marketplace>(Marketplace.UNSPECIFIED);
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `store.`-prefixed, since the Produk and Statistik
+  // tabs share the detail page's route and keep their own.
+  const [q, setQ] = useUrlState("store.q", "", textCodec);
+  const [channelType, setChannelType] = useUrlState("store.type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const filtering = q.trim() !== "" || channelType !== Marketplace.UNSPECIFIED;
@@ -91,6 +121,11 @@ export function ChannelBrowser({
     change();
     setPage(1);
   }
+  const clearFilters = () =>
+    refilter(() => {
+      setQ("");
+      setChannelType(Marketplace.UNSPECIFIED);
+    });
 
   const query = useSupplierChannelPage({ teamId, supplierId, q: term, channelType, page, pageSize });
   const channels = query.data?.channels ?? [];
@@ -101,15 +136,28 @@ export function ChannelBrowser({
 
   function list() {
     if (channels.length === 0 && !error) {
-      // Nothing at all, or nothing that matches — two different things to tell somebody.
+      // Nothing at all, or nothing that matches — two different things to tell somebody, each with what to do
+      // (an-empty-list-shows-a-hint): clear the filters, or add a store with the page's own action.
       return narrowed ? (
-        <Text color="fg.muted" data-testid="channels-none-match">
-          {t("supplierChannel.filter.none")}
-        </Text>
+        <EmptyHint
+          icon={SearchX}
+          size="sm"
+          title={t("supplierChannel.filter.none")}
+          description={t("emptyHint.noMatch")}
+          action={<Button variant="outline" colorPalette="gray" onClick={clearFilters}>
+              {t("common.clearFilters")}
+            </Button>}
+          testId="channels-none-match"
+        />
       ) : (
-        <Text color="fg.muted" data-testid="channels-empty">
-          {t("supplierChannel.section.empty")}
-        </Text>
+        <EmptyHint
+          icon={Store}
+          size="sm"
+          title={t("supplierChannel.section.empty")}
+          description={t("supplierChannel.section.emptyHint")}
+          action={emptyAction}
+          testId="channels-empty"
+        />
       );
     }
 
@@ -137,6 +185,11 @@ export function ChannelBrowser({
                   </Text>
                 )}
               </Stack>
+              <SupplierFigureLines
+                figures={sampleStoreFigures(ch.id)}
+                marks={figureMarks}
+                testId={`channel-row-${ch.id}-figures`}
+              />
               {rowActions?.(ch)}
             </Stack>
           ))}
@@ -156,6 +209,7 @@ export function ChannelBrowser({
                 {descriptionMark}
               </HStack>
             </Table.ColumnHeader>
+            <SupplierFigureHeaders marks={figureMarks} />
             {rowActions && <Table.ColumnHeader textAlign="end">{t("supplierChannel.table.actions")}</Table.ColumnHeader>}
           </Table.Row>
         </Table.Header>
@@ -177,6 +231,8 @@ export function ChannelBrowser({
                 </Text>
               </Table.Cell>
 
+              <SupplierFigureCells figures={sampleStoreFigures(ch.id)} id={ch.id} testIdPrefix="channel" />
+
               {rowActions && <Table.Cell textAlign="end">{rowActions(ch)}</Table.Cell>}
             </Table.Row>
           ))}
@@ -191,13 +247,18 @@ export function ChannelBrowser({
         testId="channels-filter"
         active={filtering}
         count={(q.trim() !== "" ? 1 : 0) + (channelType !== Marketplace.UNSPECIFIED ? 1 : 0)}
-        onClear={() =>
-          refilter(() => {
-            setQ("");
-            setChannelType(Marketplace.UNSPECIFIED);
-          })
+        onClear={clearFilters}
+        // The tab's Export, then the page's own action — the primary one stays rightmost. A phone's Export is in the sheet.
+        actions={
+          isMobile ? (
+            actions
+          ) : (
+            <>
+              <SupplierTabExport mark={exportMark} testId="channels-export" />
+              {actions}
+            </>
+          )
         }
-        actions={actions}
       >
         <FilterSearch
           value={q}
@@ -206,14 +267,18 @@ export function ChannelBrowser({
           testId="channels-search"
         />
 
-        {/* Seven types, static — a plain list, not a search (CLAUDE.md: bounded forever). Empty = every type. */}
+        {/* Seven types, static — a plain list, not a search (CLAUDE.md: bounded forever). Empty = every type; its ×
+            clears it (every-filter-clears-from-its-own-x). */}
         <FilterField w="15rem" testId="channels-type-filter">
           <MarketplaceSelect
+            clearable
             value={channelType}
             placeholder={t("supplierChannel.filter.typeAll")}
             onChange={(m) => refilter(() => setChannelType(m))}
           />
         </FilterField>
+        {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
+        {isMobile && <SupplierTabExport mark={exportMark} testId="channels-export" />}
       </FilterBar>
 
       {error && (
@@ -222,8 +287,14 @@ export function ChannelBrowser({
         </Text>
       )}
 
-      {query.isPending ? null : (
-        <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+      {/* The first load shows the list's shape, and the rows fade in over it — once; a refresh keeps them mounted
+          (`motion-is-small-quick-and-shared`). */}
+      {query.isPending ? (
+        <ListSkeleton rows={3} testId="channels-loading" />
+      ) : (
+        <Box animationStyle="swap">
+          <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+        </Box>
       )}
 
       {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}

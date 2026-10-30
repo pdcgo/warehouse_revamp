@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { orderDrafts, orders, shops, teams, users } from "../../../.storybook/fixtures";
-import { orderExportScenario } from "../../../.storybook/sessionScenario";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { orders, shops, teams, users } from "../../../.storybook/fixtures";
+import { orderExportScenario, orderStatScenario } from "../../../.storybook/sessionScenario";
 import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
 
@@ -218,6 +218,8 @@ export const TheSummaryFollowsTheFilterBar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    await userEvent.click(await canvas.findByTestId("order-summary-toggle", {}, { timeout: 4000 }));
+
     // `pending` is the owner's name for what the contract still calls PLACED.
     const placed = OWN.filter((o) => o.status === OrderStatus.PENDING);
     await waitFor(() =>
@@ -236,26 +238,42 @@ export const TheSummaryFollowsTheFilterBar: Story = {
   },
 };
 
-// …and the TAB does the opposite, deliberately. It narrows the table only: the counts are what you
-// read to decide which tab to open next, so recomputing them per tab would empty the very number you
-// were about to click.
-export const ATabNarrowsTheTableButNeverTheCounts: Story = {
+// THE STATISTICS ARE SHUT, AND UNREAD, UNTIL ASKED (the-statistics-are-shut-and-read-when-opened). Entering the page asks
+// for the list and not for the census; opening the strip asks, and it then follows the filters; shut, nothing is drawn.
+// And the tabs carry no counts (the-status-tabs-carry-no-counts) — how many sit in each status is the strip's to say.
+export const TheStatisticsAreShutAndUnreadUntilOpened: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const before = canvas.getByTestId("orders-tab-count-pending");
-    await waitFor(() => expect(before).not.toHaveTextContent("0"));
-    const count = before.textContent;
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${OWN[0]!.id}`)).toBeInTheDocument(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("order-summary")).toBeNull();
+    await expect(canvas.queryByTestId(/^orders-tab-count-/)).toBeNull();
+    await expect(orderStatScenario.calls).toBe(0);
 
-    await userEvent.click(canvas.getByTestId("orders-tab-shipping"));
+    const toggle = canvas.getByTestId("order-summary-toggle");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(toggle);
+
+    await waitFor(() => expect(canvas.getByTestId("order-summary")).toBeInTheDocument());
+    await expect(orderStatScenario.calls).toBe(1);
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(toggle);
+    await waitFor(() => expect(canvas.queryByTestId("order-summary")).toBeNull());
+  },
+};
+
+// …and the TAB narrows the table only.
+export const ATabNarrowsTheTable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("orders-tab-shipping", {}, { timeout: 4000 }));
 
     const handedOver = OWN.find((o) => o.status === OrderStatus.SHIPPING)!;
     const placed = OWN.find((o) => o.status === OrderStatus.PENDING)!;
     await waitFor(() => expect(canvas.getByTestId(`order-row-${handedOver.id}`)).toBeInTheDocument());
     await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
-
-    // The Pending tab still says how many are waiting, from the tab you are standing on.
-    await expect(canvas.getByTestId("orders-tab-count-pending")).toHaveTextContent(count!);
   },
 };
 
@@ -289,12 +307,51 @@ export const TheDateWindowHidesTheOldOrder: Story = {
 
     const controls = await filterControls(canvasElement);
     await userEvent.click(controls.getByTestId("orders-date"));
-    const last30 = await screen.findByTestId("orders-date-quick-30");
+    const last30 = await screen.findByTestId("orders-date-quick-1m");
     await waitFor(() => expect(last30).toBeVisible());
     await userEvent.click(last30);
 
     await waitFor(() => expect(canvas.queryByTestId(`order-row-${old.id}`)).toBeNull());
     await expect(canvas.getByTestId(`order-row-${recent.id}`)).toBeInTheDocument();
+  },
+};
+
+// THE WINDOW CAN MEAN SEVEN DATES AND ASK ABOUT ONE (the-order-list-filters-by-seven-dates). Picked inside the panel
+// (a-date-type-is-picked-inside-the-range-panel), a status date keeps the panel open, is named on the trigger, kept in
+// the URL and given its date column — and, carrying its ⚠, sends NO window: the old order comes back rather than
+// being hidden by its created date while the trigger says Processed.
+const AtOrdersWithUrl = routedPage(
+  [{ path: "/orders", element: <><OrdersPage /><LocationProbe /></> }],
+  "/orders",
+);
+
+export const AStatusDateIsOfferedButNarrowsNothingYet: Story = {
+  render: () => <AtOrdersWithUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const old = OWN.find((o) => o.id === 108n)!; // 120 days back
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${old.id}`)).toBeInTheDocument(), { timeout: 4000 });
+
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("orders-date"));
+    const lastMonth = await screen.findByTestId("orders-date-quick-1m");
+    await waitFor(() => expect(lastMonth).toBeVisible());
+    await userEvent.click(lastMonth);
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${old.id}`)).toBeNull(), { timeout: 4000 });
+
+    await userEvent.click(controls.getByTestId("orders-date"));
+    const processed = await screen.findByTestId("orders-date-field-processed");
+    await waitFor(() => expect(processed).toBeVisible());
+    await expect(within(screen.getByTestId("orders-date-field-created")).queryByTestId(/^not-implemented-/)).toBeNull();
+    await expect(within(processed).getByTestId(/^not-implemented-/)).toBeInTheDocument();
+    await userEvent.click(processed);
+
+    await expect(screen.getByTestId("orders-date-quick-1m")).toBeVisible();
+    await waitFor(() => expect(controls.getByTestId("orders-date")).toHaveTextContent("Processed · Last 1 month"));
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("date=processed"));
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${old.id}`)).toBeInTheDocument(), { timeout: 4000 });
+    await waitFor(() => expect(canvas.getByRole("columnheader", { name: /processed on/i })).toBeInTheDocument());
   },
 };
 
@@ -307,7 +364,7 @@ export const ClearAppearsOnlyWhileFilteringAndRestoresEverything: Story = {
 
     await expect(canvas.queryByTestId("orders-filters-clear")).toBeNull();
 
-    await userEvent.type(canvas.getByTestId("orders-search"), "Ani", { delay: 40 });
+    await userEvent.type(await canvas.findByTestId("orders-search", {}, { timeout: 4000 }), "Ani", { delay: 40 });
 
     // On a phone Clear is in the sheet's footer, beside Done.
     const controls = await filterControls(canvasElement);
@@ -316,9 +373,14 @@ export const ClearAppearsOnlyWhileFilteringAndRestoresEverything: Story = {
     await userEvent.click(controls.getByTestId("orders-filters-clear"));
 
     await waitFor(() => expect(controls.queryByTestId("orders-filters-clear")).toBeNull());
-    for (const o of OWN) {
-      await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
-    }
+    // The narrowed rows stay on screen while the whole list is read again (keepPreviousData), so the rows are WAITED
+    // for — under a loaded runner that read is slower than the click.
+    await waitFor(
+      () => {
+        for (const o of OWN) expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
+      },
+      { timeout: 4000 },
+    );
   },
 };
 
@@ -368,22 +430,37 @@ export const CopyingAReferenceDoesNotOpenTheOrder: Story = {
   },
 };
 
-// DRAFTS IS THE LAST TAB, and selecting it LEAVES — the drafts screen is its own route with its own
-// selection and bulk delete, so the tab is a way in rather than a panel here. Its badge counts the
-// whole pile, deliberately unfiltered by the bar above: "is there anything waiting" is a question
-// about all of them.
-export const TheDraftsTabCountsAndLeaves: Story = {
+// THE FILTERS AND THE STAGE TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the tab and the
+// search are its own; a tab click is written back with the search kept. `?status=` is also how the Drafts tab returns.
+const AtFilteredUrl = routedPage(
+  [{ path: "/orders", element: <><OrdersPage /><LocationProbe /></> }],
+  "/orders?status=shipped&q=Ani",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByTestId("orders-search", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("Ani");
+    await expect(canvas.getByTestId("orders-tab-shipped")).toHaveAttribute("aria-selected", "true");
+
+    await userEvent.click(canvas.getByTestId("orders-tab-pending"));
+    await waitFor(() => expect(location).toHaveTextContent("status=pending"));
+    await expect(location).toHaveTextContent("q=Ani");
+  },
+};
+
+// NO DRAFTS TAB — the drafts are a list of their own, reached from the menu (the-drafts-are-a-list-of-their-own). The
+// strip is the stages, and only the stages.
+export const NoDraftsTab: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() =>
-      expect(canvas.getByTestId("orders-tab-count-drafts")).toHaveTextContent(
-        String(orderDrafts.filter((d) => d.teamId === TEAM.id).length),
-      ),
-    );
-
-    await userEvent.click(canvas.getByTestId("orders-tab-drafts"));
-    await waitFor(() => expect(screen.getByTestId("at-order-drafts")).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId("orders-tab-all")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("orders-tab-drafts")).toBeNull();
   },
 };
 
@@ -469,9 +546,10 @@ export const TheRowShowsTheOrdersOwnTrackingNumber: Story = {
   },
 };
 
-// THE DATE FILTER SWITCHES WHICH DATE IT READS (the-date-filter-switches-created-or-platform). On *Dibuat*, the default,
-// the last 30 days hold #107, typed in 8 days ago; on *Tgl MP* it leaves, because #107 carries no marketplace date to
-// fall inside the window. An order with one stays either way.
+// THE DATE FILTER SWITCHES WHICH DATE IT READS (the-date-filter-switches-created-or-platform), picked as a pill inside the
+// range panel (a-date-type-is-picked-inside-the-range-panel). On *Dibuat*, the default, the last month holds #107, typed in
+// 8 days ago; on *Tanggal order* it leaves, because #107 carries no marketplace date to fall inside the window. An order
+// with one stays either way.
 export const TheDateSwitchReadsTheMarketplaceDate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -481,14 +559,15 @@ export const TheDateSwitchReadsTheMarketplaceDate: Story = {
 
     const controls = await filterControls(canvasElement);
     await userEvent.click(controls.getByTestId("orders-date"));
-    const last30 = await screen.findByTestId("orders-date-quick-30");
-    await waitFor(() => expect(last30).toBeVisible());
-    await userEvent.click(last30);
+    const lastMonth = await screen.findByTestId("orders-date-quick-1m");
+    await waitFor(() => expect(lastMonth).toBeVisible());
+    await userEvent.click(lastMonth);
 
     await waitFor(() => expect(canvas.getByTestId(`order-row-${noPlatformDate.id}`)).toBeInTheDocument());
 
-    await userEvent.click(controls.getByTestId("orders-date-field"));
-    const platform = await screen.findByRole("menuitem", { name: /Marketplace date/ });
+    // Picking a range closes the panel; the pill is inside it.
+    await userEvent.click(controls.getByTestId("orders-date"));
+    const platform = await screen.findByTestId("orders-date-field-mp");
     await waitFor(() => expect(platform).toBeVisible());
     await userEvent.click(platform);
 

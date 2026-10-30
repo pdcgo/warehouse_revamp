@@ -27,6 +27,7 @@ import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { UserItem } from "../../../components/entity/UserItem";
 import { formerUserId } from "../../../lib/users";
+import { idCodec, textCodec, useUrlState } from "../../../lib/urlState";
 import { Pagination } from "../../../components/chrome/Pagination";
 import { toaster } from "../../../components/feedback/Toaster";
 import {
@@ -79,10 +80,13 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
   // `undefined` in team mode is NOT the same as 0: 0 means "every user in the system", so falling
   // back to it while TeamProvider is still resolving would fire a root-scoped read on behalf of
   // someone who may not be an admin. Undefined simply means "not known yet", and the query waits.
-  const [filterTeamId, setFilterTeamId] = useState<bigint>(0n);
+  //
+  // THE SEARCH AND THE TEAM FILTER LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a person,
+  // opens the same narrowed list. `team` is the All User filter's alone — team mode ignores it. The page stays on screen.
+  const [filterTeamId, setFilterTeamId] = useUrlState("team", 0n, idCodec);
   const teamId = mode === "all" ? filterTeamId : current?.teamId;
 
-  const [q, setQ] = useState("");
+  const [q, setQ] = useUrlState("q", "", textCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 

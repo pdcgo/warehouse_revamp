@@ -53,9 +53,31 @@ when it applies one of these.
 | [every-page-has-a-mobile-story](#every-page-has-a-mobile-story) | every page's stories include one named **Mobile**, right after Default | the order screens |
 | [a-page-story-has-its-shells-gutter](#a-page-story-has-its-shells-gutter) | a page story is framed by its shell's gutter — 12px on a phone, 20px from `md` — never Storybook's padding on top | every page story |
 | [a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size) | on a phone the pager's buttons are centred and it draws no per-page selector | `GrowingPager`, every list |
+| [the-phone-shell-has-no-top-bar](#the-phone-shell-has-no-top-bar) | the phone shell has no top bar — the page starts at the top under its own title; the lit tab says where you are | the phone shell |
+| [the-phone-page-clears-the-bubble](#the-phone-page-clears-the-bubble) | a phone page's end scrolls clear of the workspace bubble — the shell's bottom padding is the bubble's rise plus a gap | the phone shell |
+| [a-page-picks-its-view-over-its-filters](#a-page-picks-its-view-over-its-filters) | a page with two ways to read its data puts them as line tabs **over** its filter strip — the view decides which filters there are | the supplier statistics, the account report |
+| [settlement-is-one-sub-menu](#settlement-is-one-sub-menu) | the selling team's Penyelesaian, Laporan Penyelesaian and Impor Penyelesaian are one sub-menu — **Penyelesaian ▸ Daftar · Laporan · Impor**; a CS who only imports gets that one link flat | the sidebar |
+| [the-accounts-hold-what-moves-them](#the-accounts-hold-what-moves-them) | **Akun Keuangan ▸ Daftar Akun · Laporan Akun · Biaya · Kewajiban** — the accounts and the two flows that move them, one group; a shut group carries its children's count | the sidebar |
+| [orders-and-drafts-are-one-sub-menu](order_draft_decision.md#the-drafts-are-a-list-of-their-own) | **Pesanan ▸ Daftar · Draf** — the drafts, a list of their own now, sit in the Orders group; the phone's Orders tab lights on them too | the sidebar |
+| [the-sidebar-stays-short](#the-sidebar-stays-short) | the sidebar must not grow long — related screens become one sub-menu, a child names only its screen, a section holds a few entries | the sidebar, every new screen |
+| [the-more-sheet-is-a-menu-and-a-profile](#the-more-sheet-is-a-menu-and-a-profile) | the phone's menu sheet is two views switched at its foot — the **menu** with a search, and the **profile** with Edit Profil, Tema, Bahasa and Keluar; Profil is no longer a menu line | the phone shell |
+| [an-empty-list-shows-a-hint](#an-empty-list-shows-a-hint) | an empty table or list shows `EmptyHint` — an icon, the title, a line on why or what next, and the action that fills it or clears the filter — not a bare grey line | every list |
+| [every-filter-clears-from-its-own-x](#every-filter-clears-from-its-own-x) | a filter with a value carries an × that clears it — a select's at its end, a panel trigger's attached to it, the search's inside it beside its search icon — besides the strip's Hapus Filter | the supplier screens first; the search on every list |
+| [the-quick-ranges-are-days-then-months-then-years](#the-quick-ranges-are-days-then-months-then-years) | a date range's quick picks are Today, 7 and 14 days, then 1, 3 and 6 months and 1 year — counted on the calendar; a dated screen opens on the last month | every `DateRangePicker` |
+| [a-lists-filters-live-in-the-url](#a-lists-filters-live-in-the-url) | a list's filters, its sort and a tab that narrows it are kept in the URL — a refresh, Back, or a pasted link opens the same narrowed list | every list with filters |
+| [a-phone-header-action-is-an-icon](#a-phone-header-action-is-an-icon) | on a phone a header's actions are their icons; past two they all fold into ⋯ — it REPLACES "every action into ⋯, even one" of [the-phone-header-is-one-row](#the-phone-header-is-one-row) | every phone header |
+| [a-one-type-picker-shows-the-name-alone](#a-one-type-picker-shows-the-name-alone) | a team filter that offers ONE type (warehouses, selling teams) shows its pick as the name alone — no type badge | the supplier screens, the seller's orders |
+| [a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes) | an × and Hapus Filter fade in as they appear, the phone's Filter count pops when it changes, a chip's pick turns in 120ms — the results never fade | every `FilterBar` |
+| [motion-is-small-quick-and-shared](#motion-is-small-quick-and-shared) | motion is pure CSS from the theme: a page rises and fades in, a swap fades in place, a first load is a skeleton, one tab underline slides, a hover answers in 120ms — and a refresh moves nothing | the supplier screens first |
+| [a-picker-dialog-keeps-its-height](#a-picker-dialog-keeps-its-height) | a picker dialog has a FIXED height — `min(88dvh, 48rem)`, on a desktop and a phone alike — and only its list scrolls | the product picker, then the bundle picker |
 | [a-counted-line-is-three-columns](#a-counted-line-is-three-columns) | a screen that counts line by line gives each line Accept Delivery's frame — what it is · what you type · what it means — in a fixed shape, under a sticky header | Accept Delivery, then the stock count's Count page |
 | [a-chart-is-chakras-chart](#a-chart-is-chakras-chart) | every chart is Chakra's `@chakra-ui/charts` (Recharts underneath), through a shared component in `components/charts/` — never a hand-drawn SVG | [the Analytic graph](../../business/analytic/rpc_provide_decision.md#the-graph-draws-the-table) |
 | [a-table-date-is-short-and-every-time-is-wib](#a-table-date-is-short-and-every-time-is-wib) | a table cell's date is `29 Okt 13:05`, the year only when it is not this year; every date and time on every screen is Jakarta time | the order screens |
+| [a-date-type-is-picked-inside-the-range-panel](#a-date-type-is-picked-inside-the-range-panel) | a date filter that can mean several dates picks WHICH date as radio pills at the top of its own panel, and the trigger names it — *Sudah diserahkan · 1 bulan terakhir*; it REPLACES the field segment of [a-date-range-filter-is-the-order-lists-picker](#a-date-range-filter-is-the-order-lists-picker) | [the order list](order_list_decision.md#the-order-list-filters-by-seven-dates), then every `DateRangePicker` with `fields` |
+| [a-limited-field-shows-its-count](#a-limited-field-shows-its-count) | a text field with a limit shows how much is used — **5/64** under it, at its end — and stops at the limit | [the product form](products_decision.md#a-taken-sku-is-said-under-the-sku), then every limited field as its screen is next touched |
+| [a-narrowed-page-stays-at-the-left](#a-narrowed-page-stays-at-the-left) | a page held narrower than the canvas — a form, a detail — stays at the canvas's LEFT edge; centring it was tried on the product form and withdrawn | every narrowed page |
+| [sticky-sticks-to-the-window](#sticky-sticks-to-the-window) | the desktop shell lets the window scroll, so `<main>` is `overflowX="clip"`, never `overflow="auto"` — anything else made every sticky header inside a page never stick | every desktop page |
+| [a-nav-jump-blinks-where-it-lands](#a-nav-jump-blinks-where-it-lands) | a detail page's section nav scrolls to the clicked section and that card BLINKS — a pale tint of the main tone, once, no ring or border | the product page and the order detail, every page on the shared `SectionNav` |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1129,6 +1151,382 @@ Per halaman [10 ⌄]    ‹ [1] 2 ›                         ‹ [1] 2 ›
 | amends | *per page: the selector sits beside it* in [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) — not on a phone. The pager itself is still always on screen |
 | not chosen | *Muat lebih banyak*, endless scroll, Prev/Next — offered, kept as it is |
 
+## the-phone-shell-has-no-top-bar
+
+> Owner, in chat (2026-10-13), looking at the phone AppShell's example page — the shell's bar *"Pemasok Saya"* right over
+> the page's own title *"Pemasok"*: *"mobile tidak ada headernya"* — *"heading appshellnya"*.
+
+```
+before                                   now
+┌ Pemasok Saya ───────────────┐          ┌────────────────────────────┐
+│ Pemasok [Toko Melati]        │          │ Pemasok [Toko Melati]       │   ← the page's own title, at the top
+│ Pemasok yang dikelola tim …  │          │ Pemasok yang dikelola tim … │
+│ …                            │          │ …                           │
+│ ⌂  🛒  (TM)  📦  ☰           │          │ ⌂  🛒  (TM)  📦  ☰ (lit)     │   ← where you are
+```
+
+| | |
+| --- | --- |
+| the shell | **no top bar** — the page from the top of the screen, then the tab bar; the non-member strip stays when it applies |
+| where you are | the page's own title, and the lit tab (*Lainnya* for a screen in the More menu) — as the desktop has the page's title and the lit sidebar item ([the-desktop-shell-has-no-top-bar](#the-desktop-shell-has-no-top-bar)) |
+| was | a bar naming the screen and only that ([the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) had moved the team out of it) — it said the page's title twice, one above the other |
+| a detail page | keeps its own one-row sticky header ([the-phone-header-is-one-row](#the-phone-header-is-one-row)) — that is the page's, not the shell's |
+| supersedes | the top bar in [the-phone-has-no-bell](#the-phone-has-no-bell) and [the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) — there is no bar left to carry a bell or a screen name |
+
+## the-phone-page-clears-the-bubble
+
+> Owner, in chat (2026-10-13): *"mobile app, paginasinya ketutupan"*.
+
+```
+before — scrolled to the end                 now
+│  …last supplier…          │                │  …last supplier…          │
+│      ‹ [1] 2 ›            │                │      ‹ [1] 2 ›            │
+│ ⌂   🛒  (TM)   📦   ☰      │  ← touching    │                           │  ← 48px under the page
+                                             │ ⌂   🛒  (TM)   📦   ☰      │
+```
+
+| | |
+| --- | --- |
+| the cause | the workspace bubble rises **28px** out of the tab bar ([the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre)), over the end of the page's scroll region — and a page's last thing is often centred under it: the pager ([a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size)) |
+| the fix | the phone shell's `<main>` keeps `card` on three sides and **`12` (48px) at the bottom** — the rise plus a gap — so a page's end always scrolls clear |
+| where | `MobileLayout` — every phone page at once; no page pads its own bottom for it |
+
+## a-page-picks-its-view-over-its-filters
+
+> Owner, in chat — on the supplier statistics: *"tipe dari waktu ke waktu dan per produk di atas filter"*
+> ([the-view-is-picked-over-the-filters](suppliers_decision.md#the-view-is-picked-over-the-filters)); and again on the
+> account report (2026-10-14): *"di atas filter ada tab, periode dan rincian"*
+> ([the-report-is-two-views-periode-and-rincian](financial_accounts_decision.md#the-report-is-two-views-periode-and-rincian)).
+> Said on a second screen, so it is a rule for every screen.
+
+```
+Title
+Periode · Rincian                    ← the views: line tabs, the chosen one in the main tone
+[filter] [filter] [filter]           ← the strip — what it holds depends on the view
+cards …                              ← what both views share
+the chosen view's table(s)
+```
+
+| | |
+| --- | --- |
+| where | the views are **line tabs over the filter strip**, under the title (and its not-implemented strip) — never a switch beside a table further down |
+| why | the view decides which filters there are (a grain belongs to a series, not to a breakdown), so it is picked before them |
+| the strip | a filter that means nothing in a view is not in that view's strip, and does not count toward *Hapus Filter* there |
+| shared | what both views read — the cards — sits over both, between the strip and the view |
+| mounting | only the open view is mounted (`lazyMount`, `unmountOnExit`) — its tables and its pager, never both |
+
+## settlement-is-one-sub-menu
+
+> Owner, in chat (2026-10-14): *"sekarang ke sidebar, aku ingin menu keuangan lebih simpel, ada ide?"* — on the proposal
+> of one Penyelesaian sub-menu: *"penyelesaian oke gitu"*.
+
+```
+before (a selling team's manager)       now
+Keuangan                                Keuangan
+  Biaya                                   Biaya
+  Kewajiban                               Kewajiban
+  Penyelesaian                            Penyelesaian ▸  Daftar
+  Laporan Penyelesaian                                    Laporan
+  Impor Penyelesaian                                      Impor
+  Akun Keuangan                           Akun Keuangan
+```
+
+| | |
+| --- | --- |
+| the group | **Penyelesaian ▸ Daftar · Laporan · Impor** — the payouts, their report and their imports are one subject, what the marketplace paid; as three siblings they said *Penyelesaian* three times. Under the heading a child names only its screen |
+| the shape | the Products and Suppliers sub-menus' — nothing new to learn |
+| a group of one | a CS, who may only import, gets **Impor Penyelesaian** flat, its full name — a heading over a single link is a click for nothing |
+| the routes | unchanged — only the menu moved, as Suppliers' did; the bottom bar never offered these |
+| a warehouse | unchanged — its money section (Laporan, Kewajiban, Akun Keuangan) was already short |
+| not taken | *Akun Keuangan ▸ Akun · Laporan Akun* — it would make the account report findable from the menu, at a click more to the accounts; left until the report is opened often |
+
+## the-accounts-hold-what-moves-them
+
+> Owner, in chat (2026-10-15), asking whether Biaya, Kewajiban and Akun Keuangan are related — told an expense is paid
+> from an account and a team payment moves money between two: *"ketiganya jadi 1 menu dan submenu apa bisa?"* — on the
+> proposal: *"pakai usulanmu, kedepannya kita ingin menu di samping tidak kepanjangan"*.
+
+```
+a selling team's manager                      a warehouse's manager
+Keuangan                                      Keuangan
+  Akun Keuangan ▸  Daftar Akun                  Akun Keuangan ▸  Daftar Akun
+                   Laporan Akun                                  Laporan Akun
+                   Biaya                                         Kewajiban
+                   Kewajiban (1)                Laporan
+  Penyelesaian ▸   Daftar · Laporan · Impor
+```
+
+| | |
+| --- | --- |
+| the group | **Akun Keuangan ▸ Daftar Akun · Laporan Akun · Biaya · Kewajiban** — an account is where the money sits; an expense is paid from one and a team payment moves money between two, so the flows sit under it ([an-expense-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid), [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)) |
+| Laporan Akun | in the menu for the first time — it was reached only from inside the accounts page |
+| the gates | unchanged — every member sees the accounts and their report; Biaya a selling team's manager's; Kewajiban both team types' managers'. A member's group is Daftar Akun and Laporan Akun |
+| the order | the accounts group leads the section — where the money is, before the flows; then Penyelesaian (a selling team) or the daily Laporan (a warehouse) |
+| settlement | **stays its own group** ([settlement-is-one-sub-menu](#settlement-is-one-sub-menu)) — its withdrawals reach an account, but its job, matching what a marketplace paid per order, is another; together it would be seven children of two jobs |
+| the count | Kewajiban's count ([the-sidebar-is-in-sections](#the-sidebar-is-in-sections)) **rides the group while it is shut** — beside the group's name, or on its icon when the sidebar is collapsed; open, Kewajiban carries it itself |
+| the routes | unchanged |
+| supersedes | the flat money items of [the-sidebar-is-in-sections](#the-sidebar-is-in-sections) (*Biaya · Kewajiban · … · Akun Keuangan*), and the *not taken* row of [settlement-is-one-sub-menu](#settlement-is-one-sub-menu) |
+| the names | *Kewajiban* kept for now; *Utang Piutang* (both directions, both team types) was offered and not yet chosen |
+
+## the-sidebar-stays-short
+
+> Owner, in chat (2026-10-15): *"kedepannya kita ingin menu di samping tidak kepanjangan"*.
+
+| | |
+| --- | --- |
+| the rule | the sidebar must not grow long. A screen added to it joins a group before it adds a top-level line |
+| a group | screens of **one subject** become one sub-menu (Produk, Pemasok, Penyelesaian, Akun Keuangan) — never two unrelated jobs under one heading just to save a line |
+| a child | names only **its screen** under the group's name — *Daftar · Laporan · Impor*, not *Laporan Penyelesaian* |
+| a group of one | for a role that can open one child only, the link stands flat under its full name — a heading over a single link is a click for nothing |
+| what waits | a count on a child rides its group while the group is shut |
+| a new screen | before adding a menu line, say which group it joins; a new top-level line needs a reason |
+
+## the-more-sheet-is-a-menu-and-a-profile
+
+> Owner, in chat (2026-10-15): *"tema, bahasa, dan keluar taruh di profile, jadi profile tidak masuk ke menu, menu ada
+> search di bawah, untuk mempermudah mencari menu, di sebelah search ada pengubah tampilan, tampilannya menu, kalau di
+> klik akan jadi detail profile dan preferensi seperti tema dan bahasa, searchnya jadi button buka lagi menu, jika di
+> klik kembali ke menu dan ada searchnya"* — on the drawing of it: *"benar, kurang lebih seperti itu, di profile juga ada
+> button edit profil, itu yang akan jadi pengganti menu profil tadi"*.
+
+```
+the menu (it opens here)                the profile
+┌──────────────────────────────┐        ┌──────────────────────────────┐
+│ Menu                       ✕ │        │ Profil                     ✕ │
+│ Beranda                      │        │ (A) ani                      │
+│ OPERASIONAL …                │        │     Pemilik · Toko Melati    │
+│ KEUANGAN …                   │        │ [✎ Edit Profil]              │
+│ TIM …                        │        │ Tema    [☀ | ☾]              │
+│                              │        │ Bahasa  [ID | EN]            │
+│                              │        │ [⎋ Keluar]                   │
+├──────────────────────────────┤        ├──────────────────────────────┤
+│ [⌕ Cari menu        ]  (👤)  │  ⇄     │ [☰ Buka Menu        ]  (👤)  │  ← the switch lit
+└──────────────────────────────┘        └──────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| two views | the sheet is the **menu** or the **profile**, switched by one button at its foot, beside the search. It opens on the menu every time, its search empty |
+| the header | the view's name (*Menu* / *Profil*) and ✕ — the person is the profile view's subject now, no longer the header |
+| the search | at the foot, where the thumb is. It narrows the menu to the screens whose name **or whose group's name** matches — a child is only *Daftar* or *Laporan*, so a result carries its group (*Laporan · Penyelesaian*) and the group's name finds all of it. Nothing matching says so |
+| the profile | the person, their role and team here; **Edit Profil** (the door to the profile page); **Tema** and **Bahasa** as the two switches; **Keluar** |
+| Profil | **no longer a line of the menu** — Edit Profil replaces it. The route stays; "where am I" still knows it |
+| on the profile | the search becomes **Buka Menu**, back to the menu with its search; the switch stays where it was, lit (pressed), and goes back too |
+| the workspace | not in the sheet — the bottom bar's bubble is where a phone switches team |
+| supersedes | [the-more-sheet-starts-with-the-account](#the-more-sheet-starts-with-the-account) (the account as the header) and the footer of switches under the menu; the switches themselves ([the-more-sheet-switches-theme-and-language](#the-more-sheet-switches-theme-and-language)) stand, in the profile view |
+| a desktop | unchanged — the user card's menu |
+
+## an-empty-list-shows-a-hint
+
+> Owner, in chat (2026-10-15): *"aku ingin table atau list yang kosong ada empty hint atau semacam itu, karena yang
+> sekarang terlalu polos, terapkan ke yang sudah kuubah saja, kalau bisa semua tanpa effort ya boleh semua, kalau tidak
+> ke yang sudah saja"*.
+
+```
+nothing yet                                    nothing matches
+┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐            ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+         ( 🏪 )                                         ( 🔍✕ )
+   Belum ada toko pemasok.                         Tidak ada pemasok yang cocok.
+   Tambahkan toko tempat pemasok ini …              Coba kata lain, atau hapus filternya.
+        [+ Tambah Toko]                                  [Hapus Filter]
+└ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘            └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+```
+
+| | |
+| --- | --- |
+| the component | `EmptyHint` (`components/feedback/`, Chakra's EmptyState) in a dashed box where the rows would be: an icon, a title, a line, an optional action. `sm` inside a card or a tab |
+| nothing yet | the subject's icon; the line says why it is empty or how it fills; the action that fills it where the page has one (*Tambah Pemasok*, *Tambah Toko*) |
+| nothing matches | a search-off icon; *Coba kata lain, atau hapus filternya.*; **Hapus Filter** where the list owns its filters — the strip's Clear and the hint's are one function |
+| an empty window | a figure's table over a period says *Coba rentang tanggal lain.* |
+| the title | keeps the sentence the screen said before, and the test id stays on it — a test reading the old line still reads it |
+| applied to | the screens the owner has reworked: the supplier list, Discover, the supplier page's Toko · Produk · Statistik, the Supplier Report; the accounts list, an account's statement, the account report's Periode and Rincian; Kewajiban's list and ledger; the seller's and the warehouse's orders; the drafts; the settlement report |
+| not yet | about forty other lists still say a bare grey line — **each takes the hint the day its screen is next reworked**; doing them all now was not effortless (each needs its own icon and line, in two languages) |
+
+## every-filter-clears-from-its-own-x
+
+> Owner, in chat (2026-10-15): *"panel ada closablenya untuk filter, misal marketplace terjual dan siap"* — then
+> *"search juga ada icon searchnya, ada clearablenya"*.
+
+```
+[⌕ sumber  ×] [Gudang Pusat  × ⌄] [Shopee  × ⌄] [Terjual: 500–1.000 ⌄][×] [Siap ⌄]   Hapus filter
+                          └ one filter back to "all" ┘                            └ every filter ┘
+```
+
+| | |
+| --- | --- |
+| what | a filter holding a value carries an **×** that sets it back to "all" — one filter, without opening it |
+| a select | the × at its end, before the chevron — Zag hides it while nothing is picked. A search select already had one; `MarketplaceSelect` takes `clearable`, which emits `UNSPECIFIED` (never nothing, #131) |
+| a panel trigger | an × **attached** to the trigger's end (`SupplierRangeFilter`) — a sibling, never a button inside the trigger |
+| the search | a search icon at its start, always; an × at its end once something is typed, which empties it and keeps the focus in the box. `FilterSearch` is shared, so **every list's search** has it now |
+| Hapus Filter | stays — it clears every filter at once ([clear-filters-is-red-and-bold](#clear-filters-is-red-and-bold)) |
+| a phone | the Filter sheet's pills already have *Semua*; the selects keep their × |
+| applied to | the supplier list, Discover, the supplier page's Toko and Produk tabs; the seller's orders' marketplace filter. The search on Kewajiban's list and the warehouse's orders was a bare input — it is the shared `FilterSearch` now. A form's required select leaves `clearable` off |
+| not yet | the other screens' filters (the order lists, the pick queue) take it when next reworked |
+
+## a-phone-header-action-is-an-icon
+
+> Owner, in chat (2026-10-15): *"di mobile, action di atas itu sangat memakan tempat, yang kusarankan adalah munculkan icon
+> saja sesuai actionnya dan jika lebih dari dua di situ pakai elipsis"*.
+
+```
+before (a phone)                          now
+Akun Keuangan                             Akun Keuangan  [Tim]               [⋯]   three → all behind ⋯
+Akun bank, e-wallet, dan kas …            Akun bank, e-wallet, dan kas …
+[▥ Laporan] [▤ Arsip] [＋ Akun Baru]  ← a row of their own
+
+Laporan Akun                              Laporan Akun                  [⬇]⚠1      one or two → their icons
+[⬇ Ekspor ⚠1]                         ← a row of its own
+```
+
+| | |
+| --- | --- |
+| one or two actions | each its **icon**, on the title's row — named by its label (spoken, and shown on a long press). The committing one in the brand fill, a destructive one red; a ⚠ mark beside its icon |
+| three or more | **all** of them behind one `⋯`, each line its icon and its name — never two icons and a menu of one |
+| the component | `CompactActions` (`components/chrome/`), with its story. Each action keeps the desktop button's test id |
+| a desktop | unchanged — the labelled buttons |
+| applied to | the accounts list (three → ⋯; the archive's back → icon), the account report (Ekspor), the supplier list (Tambah Pemasok — the dialog's own trigger, `compact`), a supplier's page (Ubah · Hapus), the Supplier Report (Ekspor — was a ⋯ of one line), the seller's orders (three → ⋯), the warehouse's orders and the drafts (Pesanan Baru, Hapus terpilih), a draft (Hapus), a pair's page (Bayar), an order's page (its actions — icons up to two, then ⋯) |
+| unchanged | an account's page — its menu holds more than two, so it stays ⋯ |
+| left as it is | the settlement list's *Laporan Penyelesaian*, on a row of its own over the title — the rule is about a header's actions, and that one was never in the header (owner: *"kalau dari awal tidak di judul, tidak masalah tidak diubah"*) |
+
+**What it replaced** (HARD RULE 11 — recorded, not only fixed): [the-phone-header-is-one-row](#the-phone-header-is-one-row)
+said *every action → the ⋯ menu, even when it holds only one*. A single action behind ⋯ is a tap for nothing, and the
+icon fits the same row. Stale sites, each brought in line: that row's own table (kept — the entry is append-only, this
+section supersedes it), the CLAUDE.md phone-header bullet, `OrderActionBar`'s `LIMIT_COMPACT = 0`, and the
+Supplier Report's ⋯ of one line ([the-report-export-folds-on-a-phone](suppliers_decision.md#the-report-export-folds-on-a-phone),
+which still reads *"actions fold into ⋯, even a single one"*).
+
+```mermaid
+flowchart LR
+  R["the-phone-header-is-one-row — every action into ⋯, even one"] -->|replaced by| N["a-phone-header-action-is-an-icon — 1–2 icons, 3+ into ⋯"]
+  N --> C1["CLAUDE.md phone-header bullet"]
+  N --> C2["OrderActionBar compact"]
+  N --> C3["the Supplier Report's ⋯ of one"]
+  N --> C4["a supplier's page — Ubah · Hapus"]
+```
+
+## a-one-type-picker-shows-the-name-alone
+
+> Owner, in chat (2026-10-15): *"select gudang tidak perlu badge di select activenya"*
+> ([the-warehouse-filter-shows-its-name-alone](suppliers_decision.md#the-warehouse-filter-shows-its-name-alone)); then, asked
+> whether Discover's team filter should follow, *"oke"* — and *"terapkan ke halaman yang sudah pernah kuedit"*.
+
+```
+offers every type                 offers one type
+[Toko Melati [Penjual]  × ⌄]      [Gudang Pusat  × ⌄]      the badge only repeats what the field is for
+```
+
+| | |
+| --- | --- |
+| the rule | a `TeamSelect` **filter** given a `teamType` shows its pick as the name alone — `showType={false}` |
+| unchanged | a picker over every type keeps `name [Type]`; the options keep their `TeamItem` rows |
+| applied to | the supplier list's and Discover's warehouse filter, Discover's team filter, the seller's orders' warehouse filter |
+| not decided | a **form's** one-type picker — Buat Pesanan's warehouse — still shows the badge; asked, not changed |
+
+## a-filter-answers-as-it-changes
+
+> Owner, in chat (2026-10-15): *"ada saran untuk animasi di filter?"* — the three proposed, then *"oke lakukan"*.
+
+```
+first filter set               the phone's sheet, a pick           a chip picked
+[⌕ sumber ×]  Hapus filter     [⚲ Filter (2)] → [⚲ Filter (3)]     (Semua) (Shopee)
+          ↑ fades in, 120ms                  ↑ pops: 0.6 → 1.15 → 1      ↑ its colour turns in 120ms
+```
+
+| | |
+| --- | --- |
+| an × appears | a select's, a combobox's, the search's, a range trigger's — **fade in**, `animationStyle="appear"` (120ms). The select and combobox × are set once in the theme |
+| Hapus Filter appears | fades in, in the row and in the phone's sheet |
+| the phone's Filter count | **pops** when the number changes — `animationStyle="pop"`, keyed on the count — so a pick inside the sheet is felt on the button under it |
+| a chip's pick | its colour turns in the hover beat (120ms), not Chakra's 200ms |
+| ✗ the results | do **not** fade when a filter changes: the search refilters each time typing settles, so the list would blink all day — `RefreshOverlay` already says it is refreshing ([motion-is-small-quick-and-shared](#motion-is-small-quick-and-shared)) |
+| ✗ panels and sheets | unchanged — Chakra's own scale-fade and slide |
+| where | `FilterBar`, `FilterSearch`, `FilterChips`, `SupplierRangeFilter`, the theme's select and combobox — so every list that uses them |
+
+## motion-is-small-quick-and-shared
+
+> Owner, in chat (2026-10-15): *"dan animasi juga atau transisi, sekarang terlihat flat, ada ide?"* — then *"misal di
+> supplier dulu ini, apa saja yang bisa dilakukan?"*, *"aku pakai saranmu saja tadi"*, and on *"pure CSS"*: *"oke baik"*.
+
+```
+first load            arrives                 a tab picked              a refresh
+▆▆▆▆▆▆▆   ▆▆  ▆▆      ░ page  ↑ 8px, 180ms    Toko  Produk  Statistik    nothing moves —
+▆▆▆▆▆     ▆▆  ▆▆  →   ▒ fades in              ───── ═════→              the rows stay mounted
+▆▆▆▆▆▆▆▆  ▆▆  ▆▆      █                       content fades in place     under RefreshOverlay
+```
+
+| | |
+| --- | --- |
+| how | pure CSS through Chakra — keyframes, `animationStyle`, transitions. No animation library |
+| the two beats | `durations.hover` **120ms** (a hover, a press) · `durations.enter` **180ms** (something arriving) — in `theme.ts` and nowhere else. Two smaller styles came later for the filters, `appear` and `pop` ([a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes)) |
+| `enter` | a PAGE arriving: a fade and an 8px rise — `animationStyle="enter"` on the page's root |
+| `swap` | one thing REPLACED in the same place: a fade alone, so the spot does not hop — a tab's content, Discover's cards ⇄ table, the warehouse summary under a picked chip, the report's rows in a new order. Keyed on what the person changed; the report's on the order the rows ON SCREEN are in, so it plays when they land, not on the click |
+| a tab's content | `swap`, not `enter` — on first paint the page is already rising, and a rise inside a rise reads as 16px |
+| first load | `ListSkeleton` (`components/feedback/`) — bars in the shape of the rows, `heading` for a detail page whose record has not arrived — then the rows fade in. Never a spinner on an empty page |
+| tabs | ONE underline that slides: a `<Tabs.Indicator />` last in a `line` tab list. The picked tab then draws no underline of its own. A row without one is drawn as before |
+| a table row | its light (a-table-row-lights-up) turns in the hover beat — set once on the table's cell in `theme.ts`, so **every** table has it |
+| a block that opens | `PRESSABLE` (`lib/motion.ts`): lights up, and gives a little under a thumb. A card in a grid: `LIFTS` — rises 2px with a shadow, settles under the press |
+| an empty hint | fades in where the rows were (an-empty-list-shows-a-hint) |
+| dialogs, popovers, sheets | Chakra's own scale-fade and slide — unchanged |
+| ⚠ never on a refresh | every read refetches (HARD RULE 10); an animation plays when an element MOUNTS, and a refetch keeps it mounted |
+| reduced motion | a device that asks gets no animation and instant transitions; the story tests run that way, since a computed style mid-transition is neither value. Motion is reviewed by eye in Storybook |
+| applied to | the supplier list, Discover, the supplier page and Discover's supplier page with their Toko · Produk · Statistik tabs, the Supplier Report. The row light and the tab transition are theme-wide |
+| then (owner: *"terapkan ke halaman yang sudah pernah kuedit"*) | the accounts list (its type tabs and phone blocks), an account's page, the account report (Periode · Rincian); Kewajiban's list and a pair's page (its six tabs, the terms panel); the seller's and the warehouse's orders (the stage tabs), Buat Pesanan, an order's page (its vertical tabs, the settlement tab); the drafts and a draft; the settlement list (its preview's tabs) and the settlement report (Per Toko ⇄ Per Pengguna fades when the regrouped rows land) |
+| a tab that FILTERS | the order lists' stage tabs and the accounts' type tabs slide their underline, but the rows under them do **not** fade — a tab there narrows the list, and a filter's results never fade ([a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes)). A tab that switches VIEW (Periode · Rincian, an order's Info · Timeline) fades its panel |
+| a vertical tab row | the line slides down the list's end rule (an order's page, the settlement preview) |
+| ⚠ a closing panel never animates | a fading tab panel is a Zag presence node, and presence keeps a closing node on screen until its animation ends — for the panel open on arrival it had seen no animation start, so the first time that tab was left the old panel stayed under the new one (owner, on the account report: *"tabel tidak hilang di awal-awal, baru hilang saat kedua kali"*). The tabs recipe sets `animation-name: none !important` on a closed panel, so it goes at once. `SwitchingViewLeavesOnlyTheNewOne` holds it; it was reproduced, and the fix proved, with motion on |
+| not yet | every other screen takes `enter`, the skeleton and the sliding underline the day it is next reworked |
+
+## the-quick-ranges-are-days-then-months-then-years
+
+> Owner, in chat (2026-10-15): *"untuk presets range tanggal di atas 14 hari ada 1,2,3,6 bulan, 1,2,3 tahun"* — then, seeing
+> it, *"2 bulan, 2 3 tahun hilang"* and *"default 1 bulan"*.
+
+```
+before                 now
+Hari ini               Hari ini
+7 hari terakhir        7 hari terakhir
+14 hari terakhir       14 hari terakhir
+30 hari terakhir   →   1 bulan terakhir · 3 bulan terakhir · 6 bulan terakhir
+90 hari terakhir   →   1 tahun terakhir
+```
+
+| | |
+| --- | --- |
+| the list | Today, 7 days, 14 days, then **1, 3, 6 months**, then **1 year**. 30 and 90 days are gone — a month and three months stand for them. 2 months, 2 and 3 years were proposed and taken out again |
+| the default | every dated screen opens on the **last month** (`LAST_MONTH`) — the account report, the settlement report, the Supplier Report, a supplier's Statistik, the daily statement. It was 30 days. The restock list keeps its 7 days |
+| ⚠ stories | a month back is 28 to 31 days, so a story fixture never sits 28–30 days back — at 30 it would be inside the window in November and outside it in October. Inside every window: 27 days or less; outside every window: 32 or more |
+| counted on the calendar | a month back is the same date a month back: on 15 Oct, *1 bulan terakhir* is 16 Sep – 15 Oct (inclusive of today, as *7 hari* is seven days). The 31st clamps to a shorter month's end — 31 Mar − 1 month starts on 1 Mar |
+| a year | twelve months — so it is a calendar year back, leap day or not |
+| still live | stored as the count (`{ months: 3 }`), never as dates, like the day presets: opened tomorrow it is still the last three months |
+| the label | *N bulan terakhir* / *N tahun terakhir*; a twelve-month window reads as years |
+
+## a-lists-filters-live-in-the-url
+
+> Owner, in chat (2026-10-15): *"untuk halaman tabel dan list pakai filter, filternya disimpan ke querystring biar tidak hilang
+> saat refresh"*.
+
+```
+/inventories/suppliers?q=sumber&type=1&range=3m
+                       └ search ┘ └ Shopee ┘ └ last 3 months ┘
+refresh → the same list · Back from a supplier → the same list · a pasted link → the same list
+```
+
+| | |
+| --- | --- |
+| in the URL | every filter, the sort, and a tab or segment that **narrows** the same list (a stage tab, a type tab, Per Toko ⇄ Per Pengguna) |
+| not in the URL | the page number, the page size, a dialog, a selection, and a tab that switches to a **different view** (Periode · Rincian, a supplier page's Toko · Produk · Statistik) |
+| a default | is left out — an untouched list has a bare URL, and a link without a key means the default |
+| a date range | stays relative: `range=7d`, `range=3m`; an absolute one is `2026-10-01..2026-10-15`, all dates `all` |
+| writing | `replace`, so Back leaves the list instead of stepping back through every letter typed; the writes of one click are one navigation (Clear Filters resets five at once) |
+| reading | once, when the page opens; after that the state is the screen's own, mirrored to the URL — a search box driven by the URL would lag a keystroke behind |
+| a hand-edited URL | a key it cannot read (an unknown marketplace, a bad date) falls back to the default |
+| siblings on one page | prefix their keys — the supplier page's Toko tab `store.q`, Produk `product.q`, Statistik `stat.range` — so one tab never reads another's search |
+| the hook | `useUrlState(key, default, codec)` in `lib/urlState.ts`, a drop-in for `useState`, with codecs for text, ids, enums, switches, sorts, lists and date ranges |
+| tested | each list's `FiltersLiveInTheUrl` story opens it at a filtered URL and watches a change written back |
+| ⚠ its own writes are not followed | a write returns as a REPLACE navigation, and the router can commit it a keystroke late; following it set the search box back and dropped letters (seen only when the story run was under load). The hook follows a URL changed from outside — Back, a link — and never its own echo |
+| applied to | the suppliers, Discover, a supplier page's Toko · Produk · Statistik, the Supplier Report; the accounts list (its type tab and sort, beside `view=archived`), an account's statement, the account report; the seller's and the warehouse's orders (the stage tab was already `status`), the settlement list and report, the settlement imports, the daily statement; Kewajiban's list and a pair's date range; batches and a batch, stock, products, Discover products, racks, shops, shipment channels, the pick queue (its step tab), returns; restock and transfers (both sides), users, teams (the type tab), expenses |
+| nothing to keep | the drafts and the balance sheet hold no filter of their own |
+
 ## a-counted-line-is-three-columns
 
 > Owner, in chat (2026-10-14), previewing the stock count prototype: *"why count page so weird ? any recomendation ? like
@@ -1218,6 +1616,135 @@ flowchart LR
 | a date filter's day | ⚠ My reading, not asked: the pickers and range filters still cut days at the viewer's own midnight. Until they move to WIB midnights, a row near midnight can fall on the other side of a filter for a viewer outside WIB. Moved when a filter is next touched |
 | first applied | the order screens' row cells ([OrderRowCells.tsx](../../../frontend/src/features/orders/OrderRowCells.tsx)) |
 | ✅ built *(2026-10-29)* | `APP_TIME_ZONE` on every formatter and `formatUnixDateTimeShort` / `formatRfc3339DateTimeShort` in [lib/datetime.ts](../../../frontend/src/lib/datetime.ts). Short in the table cells of the order rows, the draft list, stock counts, restocks, both transfer lists, the stock movement ledger and the pick queue. Detail pages, timelines and hover titles keep the full form. Pinned by story `TheRowIsRealFieldsOnly` (order drafts). Legacy pages untouched |
+
+## a-picker-dialog-keeps-its-height
+
+> Owner, in chat (2026-10-23), on the order form's bundle picker: *"modal bundelnya heightnya fix kan seperti produk"* —
+> the product picker's rule (*"ONLY THE TABLE SCROLLS"*, said on that picker and kept in its code) asked for a second
+> time, so it is a rule for every picker.
+
+```
+┌ Pilih … ─────────────────── × ┐   pinned
+│ [⌕ search            ]        │   pinned — a filter you cannot see cannot be cleared
+│ ╭ rows ─────────────── ▲ ╮    │   THE ONLY SCROLLER, its bar on the dialog's edge
+│ ╰─────────────────────── ╯    │
+│ Kosongkan     Batal Konfirmasi │   pinned
+└───────────────────────────────┘   height: min(88dvh, 48rem) — whatever the rows
+```
+
+| | |
+| --- | --- |
+| the height | **fixed** — `min(88dvh, 48rem)` on the dialog's content: a full panel on a laptop, never more than the screen on a phone (`dvh` survives the address bar sliding away) |
+| a phone | **the same rule** — at a phone's height the `88dvh` side wins, so the dialog fills most of the screen and keeps that size |
+| why fixed | a fitted dialog changes height as a search narrows the list or a page turns — the footer, and Confirm in it, moves out from under the pointer that just used it. A browse surface that keeps its shape is worth the empty space a short list leaves |
+| what scrolls | only the rows — the header, the search and the footer stay put (`layerStyle="scrollList"`, the box pulled out through the body's padding so its bar rides the dialog's edge) |
+| applied to | `ProductPickerShell` (every product picker), `BundlePicker` (the order form) |
+
+## a-date-type-is-picked-inside-the-range-panel
+
+> Owner, in chat (2026-10-23), on the order list's date filter: *"boleh, tapi apa bisa dijadikan 1 dengan panel, atau ada
+> keterbatasannya?"* — then *"oke, begitu saja"* to the date type as radio pills inside the panel, as the picker's ONLY
+> shape, every screen with `fields` moving with it.
+
+```
+[ 📅 Sudah diserahkan · 1 bulan terakhir ▾ ]      the trigger names both
+┌──────────────────────────────────────────┐
+│ Tanggal                                  │
+│ (○ Dibuat) (○ Tanggal order ⚠) (◉ …)     │      picked first — the panel stays open
+├─────────────────────────┬────────────────┤
+│ Rentang tanggal         │ Rentang cepat  │      the window, as before
+│ calendar · Terapkan     │ Hari ini …     │
+└─────────────────────────┴────────────────┘
+```
+
+| | |
+| --- | --- |
+| where the type is | a **Tanggal** row of `RadioPills` across the top of the panel, over both panes. It was a Menu segment fused to the trigger's left — a second popover beside the first, for one question |
+| why one panel | "which orders went to the courier last month" is ONE question; the type and the window are answered in one place, the type first because it decides what the window means |
+| picking a type | keeps the panel open — the window is the next thing to answer. A quick range or Terapkan closes it, as before |
+| the trigger | *{type} · {window}*, the type in the muted colour — the choice is readable with the panel shut |
+| many types | the pills wrap inside the width the two panes give the panel (`w="0" minW="full"`); they never widen it |
+| a type the screen cannot filter on | offered with its ⚠ inside the pill (`DateField.mark`, `RadioPillOption.mark`) |
+| one type | **shown, not offered** — named on the trigger and in the row as plain text; a single radio is a choice with no alternative (the settlement list's *Terakhir bergerak*) |
+| applied to | the order list, batches, returns, restock (both sides), the settlement list — every `DateRangePicker` given `fields` |
+
+## a-limited-field-shows-its-count
+
+> Owner, in chat (2026-10-23), on the product form: *"karena aku tahu ada batas di sini, inputnya harus kasih tahu batas
+> juga misal 5/64, ini keputusan untuk tampilan lainnya nanti tapi kita kerjakan di form produk dulu"*.
+
+```
+SKU *
+[ SKU-ANG-001                         ]
+                                  11/64      ← muted; amber once full
+```
+
+| | |
+| --- | --- |
+| which fields | every **text** field the server limits (`max_len` in the proto) — a SKU, a name, a description, a note |
+| the count | **used/limit**, under the field at its end, in the muted colour; **amber at the limit**, saying why nothing more goes in |
+| the box | `maxLength` is the same number, so a value the server would refuse cannot be typed — the limit is met while typing, never as a refusal after Save |
+| where the number lives | mirrored once per domain beside the proto rule it copies (`features/products/limits.ts`), never typed into a screen |
+| component | [`CharCount`](../../../frontend/src/components/inputs/CharCount.tsx) (`Components/Inputs/CharCount`) |
+| not | a number field — its limit is the stepper's `max`, not a count |
+| rollout | the product form first; every other limited field when its screen is next touched |
+
+## a-narrowed-page-stays-at-the-left
+
+> Owner, in chat (2026-10-23), on the product form: *"oke tengahkan formnya, untuk kasus seperti ini juga di masa
+> depan"* — then, having seen it centred: *"ga jadi, kembalikan ke kiri"*.
+
+```
+│[ form, max 5xl          ]                 │      at the left edge, beside the sidebar — as every page starts
+```
+
+| | |
+| --- | --- |
+| the rule | a page whose root is held to a `maxW` narrower than the canvas keeps it at the **left edge** — no `mx="auto"` |
+| why it is written down | centring was asked, built and withdrawn the same day; without this a later screen would propose it again |
+| applies to | the product form, the bundle form and detail, the restock request form, a warehouse's edit page — and every narrowed page after them |
+
+## sticky-sticks-to-the-window
+
+> Found on the product page (2026-10-24): *"di halaman asli yang heading stickynya tidak muncul"* — sticky in Storybook,
+> never in the app.
+
+| | |
+| --- | --- |
+| why | the desktop shell lets the **window** scroll (the sidebar sticks to it), so `<main>` grows with the page and never scrolls itself. `overflow: auto` on it still made it a SCROLL CONTAINER, and every `position: sticky` inside a page stuck to that box — which never moved — instead of the window: it never stuck |
+| the rule | the desktop `<main>` is `overflowX="clip"` — a page still cannot scroll sideways, and clip is not a scroll container |
+| what it fixed | the product page's sticky bar, the order detail's header, the stock count's and Accept Delivery's sticky blocks — all broken on a desktop, all fine in Storybook, where there is no shell |
+| the phone | unchanged — its shell is a fixed frame and `<main>` really scrolls, so sticky works against it |
+| where | [DesktopLayout.tsx](../../../frontend/src/layouts/desktop/DesktopLayout.tsx) |
+
+## a-nav-jump-blinks-where-it-lands
+
+> Owner, in chat (2026-10-26), on the product page: *"kalau navigate lewat navigasi di kiri, yang di klik kasih blink
+> highlight"*, then, on the first version (a ring in the main tone, twice): *"ga perlu border, jangan terlalu
+> mencolok"*.
+
+```mermaid
+sequenceDiagram
+  participant N as SectionNav
+  participant S as useScrollSpy
+  participant C as the section card
+  N->>S: a click on a section
+  S->>C: scroll it into view
+  S->>S: wait for scrollend, or at once when nothing had to scroll
+  S->>C: set data-flash
+  C->>C: section-flash, 1.2s — a pale tint of the main tone comes up once and fades
+  S->>C: remove data-flash
+```
+
+| | |
+| --- | --- |
+| when | a click in the section nav — the desktop column or the phone's chips; never on scrolling |
+| what | the card it lands on takes a **pale tint** of the main tone (`brand.subtle`), **once**, and fades (`section-flash` in theme.ts, 1.2s) — so the eye finds the card it was taken to, most of all when the page cannot scroll far enough to put it at the top |
+| ⚠ not loud | **no ring, no border, no second pulse** — the card keeps its own grey border throughout. The first version ringed it in `brand.solid` twice and was too loud; a hint where you landed, not an alarm |
+| when it starts | once the jump has landed (`scrollend`), at once when nothing had to scroll, after the scroll lock at the latest |
+| a second click | restarts the blink |
+| where | `useScrollSpy` sets `data-flash`, `DetailSection`'s card animates on it — every page built on the shared kit gets it: the product page and the order detail today |
+| ✅ built *(2026-10-26)* | the product page's story `EverySectionIsOnThePage` waits for the blink and for it to end |
 
 ## Recorded elsewhere
 

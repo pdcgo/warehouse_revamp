@@ -6,7 +6,7 @@ import {
   type FinancialAccountChangeType,
   FinancialAccountProvider as P,
 } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
-import { formatRupiahNumber } from "../../lib/money";
+import { formatRupiahBare, formatRupiahNumber } from "../../lib/money";
 import { CHANGE_TYPE_KEY, CHANGE_TYPE_PALETTE, PROVIDER_KEY } from "./vocab";
 
 // The domain's three ways of SHOWING a fact — used by the accounts list, an account's page and the
@@ -53,12 +53,15 @@ export function BalanceText({
   testId,
   hint,
   bold = false,
+  bare = false,
 }: {
   balance: number | undefined;
   size?: "sm" | "md" | "lg" | "2xl";
   testId?: string;
   /** The figure in bold — a list's balance column, the number the row is read for. */
   bold?: boolean;
+  /** The figure without its "Rp" — for a table that says the currency once (`the-rincian-says-rp-once`). */
+  bare?: boolean;
   /**
    * Below zero, put the ⚠ on a line UNDER the figure with these words, instead of beside it (owner,
    * `a-balance-below-zero-says-to-check-the-bank`) — the figure stays a clean column of numbers.
@@ -76,6 +79,7 @@ export function BalanceText({
   }
 
   const below = balance < 0;
+  const figure = bare ? formatRupiahBare(balance) : formatRupiahNumber(balance);
 
   // ⚠ INLINE, so a cell's `textAlign="end"` reaches it. A block-level flex row ignores text-align and sat at
   // the cell's left edge under a right-aligned heading (owner: *"angkanya juga tidak right"*).
@@ -83,7 +87,7 @@ export function BalanceText({
     return (
       <Box display="inline-block" data-testid={testId} data-below-zero>
         <Text fontSize={size} fontWeight={bold ? "bold" : size === "sm" ? undefined : "semibold"} color="fg.error">
-          {formatRupiahNumber(balance)}
+          {figure}
         </Text>
         <Text
           fontSize="xs"
@@ -110,7 +114,7 @@ export function BalanceText({
         />
       )}
       <Text fontSize={size} fontWeight={bold ? "bold" : size === "sm" ? undefined : "semibold"} color={below ? "fg.error" : undefined}>
-        {formatRupiahNumber(balance)}
+        {figure}
       </Text>
     </HStack>
   );

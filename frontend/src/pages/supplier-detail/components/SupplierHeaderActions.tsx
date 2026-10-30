@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Button, HStack, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Button, HStack, Icon } from "@chakra-ui/react";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
@@ -10,10 +10,11 @@ import { toaster } from "../../../components/feedback/Toaster";
 import type { SupplierRecord } from "../../../features/suppliers/adapt";
 import { useDeleteSupplier } from "../../../features/suppliers/queries";
 import { SupplierFormDialog } from "../../../features/suppliers/SupplierFormDialog";
+import { CompactActions } from "../../../components/chrome/CompactActions";
 
 // THE SUPPLIER'S OWN ACTIONS, on its page — Ubah and Hapus, the list row's pair (`a-supplier-action-is-labelled`), until
-// now offered on the list alone. A desktop shows them as labelled buttons beside the name; a phone folds them into ⋯,
-// so its header stays one row (`the-phone-header-is-one-row`). Hapus confirms, keeps the supplier for its figures
+// now offered on the list alone. A desktop shows them as labelled buttons beside the name; a phone shows their icons, on
+// the name's row — two, so no ⋯ (`a-phone-header-action-is-an-icon`). Hapus confirms, keeps the supplier for its figures
 // (a-deleted-supplier-is-kept-for-its-figures), and goes back to the list — the page it was on no longer opens.
 export function SupplierHeaderActions({
   teamId,
@@ -22,7 +23,7 @@ export function SupplierHeaderActions({
 }: {
   teamId: bigint;
   supplier: SupplierRecord;
-  /** On a phone: everything in a ⋯ menu. */
+  /** On a phone: the icons alone. */
   folded: boolean;
 }) {
   const { t } = useTranslation();
@@ -45,27 +46,14 @@ export function SupplierHeaderActions({
   return (
     <>
       {folded ? (
-        <Menu.Root positioning={{ placement: "bottom-end" }}>
-          <Menu.Trigger asChild>
-            <IconButton size="sm" variant="ghost" aria-label={t("suppliers.actions")} data-testid="supplier-detail-menu">
-              <Icon as={MoreHorizontal} boxSize="4" />
-            </IconButton>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content>
-                <Menu.Item value="edit" data-testid="supplier-detail-edit" onClick={() => setEditing(true)}>
-                  <Icon as={Pencil} boxSize="4" />
-                  {t("suppliers.editAction")}
-                </Menu.Item>
-                <Menu.Item value="delete" color="fg.error" data-testid="supplier-detail-delete" onClick={() => setDeleting(true)}>
-                  <Icon as={Trash2} boxSize="4" />
-                  {t("suppliers.delete")}
-                </Menu.Item>
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
+        <CompactActions
+          menuLabel={t("suppliers.actions")}
+          menuTestId="supplier-detail-menu"
+          actions={[
+            { id: "edit", label: t("suppliers.editAction"), icon: Pencil, testId: "supplier-detail-edit", onClick: () => setEditing(true) },
+            { id: "delete", label: t("suppliers.delete"), icon: Trash2, danger: true, testId: "supplier-detail-delete", onClick: () => setDeleting(true) },
+          ]}
+        />
       ) : (
         <HStack gap="1.5" flexShrink={0}>
           <Button size="xs" variant="outline" data-testid="supplier-detail-edit" onClick={() => setEditing(true)}>

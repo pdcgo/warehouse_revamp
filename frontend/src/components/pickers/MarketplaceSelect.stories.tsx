@@ -67,6 +67,35 @@ export const EmitsTheEnum: Story = {
   },
 };
 
+// A FILTER CLEARS FROM ITS OWN × (every-filter-clears-from-its-own-x) — `clearable` shows one on a picked value, and
+// clearing emits UNSPECIFIED, the "none" sentinel, never nothing (#131). Nothing picked, nothing to clear.
+export const ClearableForAFilter: Story = {
+  args: { placeholder: "All types" },
+  render: (args) => {
+    const [value, setValue] = useState<Marketplace>(Marketplace.SHOPEE);
+
+    return (
+      <MarketplaceSelect
+        {...args}
+        clearable
+        value={value}
+        onChange={(m) => {
+          setValue(m);
+          args.onChange?.(m);
+        }}
+      />
+    );
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("marketplace-select-clear"));
+    await expect(args.onChange).toHaveBeenCalledWith(Marketplace.UNSPECIFIED);
+    await expect(canvas.getByTestId("marketplace-select")).toHaveTextContent("All types");
+    await expect(canvas.getByTestId("marketplace-select-clear")).not.toBeVisible();
+  },
+};
+
 export const Interactive: Story = {
   render: (args) => {
     const [value, setValue] = useState<Marketplace | undefined>(undefined);

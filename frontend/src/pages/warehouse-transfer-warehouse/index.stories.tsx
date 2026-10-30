@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { WarehouseTransferWarehousePage } from "./index";
@@ -82,5 +82,30 @@ export const NoValues: Story = {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.queryByText(/Rp\s/)).toBeNull();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the direction and the tab are its; a
+// change is written back.
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/transfer", element: <><WarehouseTransferWarehousePage /><LocationProbe /></> }],
+  "/inventories/transfer?direction=incoming&status=shipped",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("transfer-row-608", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("transfer-direction-incoming")).toHaveAttribute("data-state", "checked");
+    await expect(canvas.getByTestId("transfer-tab-shipped")).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.queryByTestId("transfer-row-601")).toBeNull();
+
+    await userEvent.type(canvas.getByTestId("transfer-search"), "SCP", { delay: 40 });
+    await waitFor(() => expect(location).toHaveTextContent("q=SCP"));
+    await expect(location).toHaveTextContent("direction=incoming");
+    await expect(canvas.getByTestId("transfer-row-608")).toBeInTheDocument();
   },
 };

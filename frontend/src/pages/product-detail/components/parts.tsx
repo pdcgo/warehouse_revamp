@@ -49,10 +49,13 @@ export function WhenOrNever({ unix }: { unix?: bigint }) {
   return <Text>{formatUnixDate(unix)}</Text>;
 }
 
-// The WAREHOUSE LENS control, on each of the three tabs whose figures are per-warehouse.
+// The WAREHOUSE LENS control — ONE on the page, over the figures and every section that is per-warehouse
+// (the-product-page-is-one-page-of-sections); it was one per tab while the page had tabs.
 //
 // The shared TeamSelect restricted to WAREHOUSE teams — the same picker the product list uses, not a
-// second dropdown of this page's own. It carries its own ✕, so there is no separate clear button.
+// second dropdown of this page's own. It carries its own ✕ (every-filter-clears-from-its-own-x), so there is
+// no separate clear button; every option is a warehouse, so the pick reads as its name alone
+// (a-one-type-picker-shows-the-name-alone). The full width of a phone, a field's width beside a heading.
 export function WarehouseFilter({
   value,
   onChange,
@@ -65,16 +68,20 @@ export function WarehouseFilter({
   const { t } = useTranslation();
 
   return (
-    <Box minW="16rem" data-testid={testId}>
+    <Box w={{ base: "full", sm: "16rem" }} data-testid={testId}>
       <TeamSelect
-        value={value}
+        value={value > 0n ? value : undefined}
         onChange={onChange}
         teamType={TeamType.WAREHOUSE}
+        showType={false}
         placeholder={t("products.allWarehouses")}
       />
     </Box>
   );
 }
+
+// A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up); Chakra's `_hover` honours `data-hover`.
+export const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
 // Choosing a warehouse RESTATES every figure below as that warehouse's — it does not merely hide
 // rows. Saying so is the point: a stock number that quietly became one building's, while still

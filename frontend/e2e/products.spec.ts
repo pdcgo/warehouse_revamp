@@ -37,9 +37,10 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByTestId("current-user")).toHaveText(username);
 }
 
+// The list, or — before the first product — its hint (an-empty-list-shows-a-hint).
 async function gotoProducts(page: Page) {
   await page.goto("/products");
-  await expect(page.getByTestId("products-table")).toBeVisible();
+  await expect(page.getByTestId("products-table").or(page.getByTestId("products-empty"))).toBeVisible();
 }
 
 test.describe.configure({ mode: "serial" });
@@ -184,6 +185,7 @@ test("Edit: edit is a PAGE, pre-filled; the rename persists", async ({ page }) =
   await page.getByTestId("product-edit-name").fill(`${NAME} renamed`);
   await page.getByTestId("product-edit-save").click();
 
+  // Opened from the list, the save returns to the list (the-form-returns-where-it-was-opened).
   await expect(page.getByTestId("products-table")).toBeVisible();
   await expect(page.getByTestId(`product-row-${SKU}`)).toContainText(`${NAME} renamed`);
 });

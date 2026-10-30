@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Alert,
+  Badge,
+  Box,
   Button,
   Card,
   Field,
@@ -17,11 +19,15 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useCreateOrder } from "../../features/orders/queries";
-import { useOrderDraft } from "../../features/orderDrafts/queries";
+import { useDeleteOrderDrafts, useOrderDraft } from "../../features/orderDrafts/queries";
+import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
+import { DraftProductHints } from "./components/DraftProductHints";
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { useIsMobile } from "../../layouts/shell";
 import { useStockTakeQuote } from "../../features/inventory/queries";
 import {
   MarketplaceInfoForm,
@@ -29,15 +35,17 @@ import {
 } from "../../components/orders/MarketplaceInfoForm";
 import type { MarketplaceInfoValue } from "../../components/orders/MarketplaceInfoForm";
 import { OrderItemCard } from "../../components/orders/OrderItemCard";
-import { ProductListExternal } from "../../components/products/ProductListExternal";
-import type { ExternalProduct } from "../../components/products/ProductListExternal";
 import type { PickedProduct } from "../../components/products/ProductSelect";
 import { emptyAddress } from "../../components/customers/AddressPicker";
 import type { AddressValue } from "../../components/customers/AddressPicker";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { RadioPills } from "../../components/inputs/RadioPills";
+
+/** What the order is filled from — its own lines, or bundles — and never both (an-order-holds-items-or-bundles). */
+type OrderContents = "items" | "bundles";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { DatePicker } from "../../components/datetime/DatePicker";
-import { dateTimeInputToUnix, todayDateInput } from "../../lib/datetime";
+import { dateTimeInputToUnix, todayDateInput, unixToDateTimeInput } from "../../lib/datetime";
 import { useProductsByIds } from "../../features/products/queries";
 import { useTeams } from "../../features/teams/queries";
 import type { BundleDraft } from "../../features/orders/form/bundles";
@@ -88,6 +96,57 @@ function addressTouched(a: AddressValue): boolean {
   return Object.values(a).some((v) => v.trim() !== "");
 }
 
+// The source of a HAND-WRITTEN draft — one saved from this form before Save as Draft was removed
+// (a-draft-becomes-an-order-through-order-create); every other draft names the app that pushed it. Its reference is
+// ours, no marketplace's, so it is not copied into the order's ref (a manual draft has its ref typed).
+const DRAFT_SOURCE = "manual";
+
+// A draft's address as the form holds one — the same frozen shape an order carries, field for field.
+function addressOf(draft: OrderDraft): AddressValue {
+  const a = draft.address;
+  if (!a) return emptyAddress;
+
+  return {
+    provinsiCode: a.provinsiCode,
+    provinsiName: a.provinsiName,
+    kabupatenCode: a.kabupatenCode,
+    kabupatenName: a.kabupatenName,
+    kecamatanCode: a.kecamatanCode,
+    kecamatanName: a.kecamatanName,
+    desaCode: a.desaCode,
+    desaName: a.desaName,
+    kodePos: a.kodePos,
+    addressLine: a.addressLine,
+  };
+}
+
+// Everything the leave-guard counts as WORK, as one comparable string. On a draft the form opens already filled, so
+// "dirty" means changed since it was seeded, not merely non-empty — leaving a draft untouched loses nothing (the draft
+// is still on the list), and must not ask whether to discard it.
+interface WorkFields {
+  customerName: string;
+  customerPhone: string;
+  shopId: bigint;
+  orderRef: string;
+  shippingCode: string;
+  note: string;
+  receipt: boolean;
+  address: AddressValue;
+  platformTotal: string;
+  lines: LineDraft[];
+  bundles: number;
+  receiptCode: string;
+  orderDate: string;
+  deadline: string;
+  buyerUsername: string;
+}
+
+function workSignature(w: WorkFields): string {
+  return JSON.stringify({ ...w, lines: w.lines.map((l) => [l.productId, l.quantity]) }, (_, v) =>
+    typeof v === "bigint" ? v.toString() : v,
+  );
+}
+
 // `?draft=` comes from a URL, so it is whatever somebody typed. Anything that is not a positive whole
 // number means NO DRAFT — the query is disabled at 0n and the card renders nothing, which is the right
 // answer for a mistyped link and for an absent parameter alike. `BigInt("x")` throws, so this cannot
@@ -115,33 +174,29 @@ export function OrderCreatePage() {
 
   const teamId = current?.teamId;
 
-  // ── WHAT THE EXTENSION SENT ──────────────────────────────────────────────────────────────────────
+  // ── A DRAFT IS FINISHED HERE (owner: *"order draft detail page itu dilebur dengan order create"*,
+  // `the-draft-opens-in-the-order-form`) ─────────────────────────────────────────────────────────────
   //
-  // `/orders/new?draft=201` opens this form ALONGSIDE the draft a browser extension pushed in, so the
-  // person types the order while reading the marketplace's own words. Without the id the parameter is
-  // absent, the query never runs, and the form is exactly what it was — a hand-written order has no
-  // extension behind it and must not show a card claiming one.
+  // `/orders/new?draft=201` is the draft's page: this form, SEEDED from what the app pushed (the shop, its order id,
+  // the warehouse, the buyer, the address, the courier, the price it read), with the scraped lines as a text list above
+  // the products — read while our products are picked. Create places the order and deletes the draft; the draft can
+  // also be deleted from the header. Without the id the parameter is absent, the query never runs, and the form is
+  // exactly what it was.
   //
-  // ⚠ IT IS READ-ONLY HERE, and nothing on it is copied into the form. The scraped text names no
-  // product of ours (`OrderDraftItem.product_id` is 0 until a person maps it), so there is nothing to
-  // prefill with — auto-picking a catalogue product by matching titles is exactly what the draft
-  // design refused, because a wrong guess is indistinguishable from a person's choice once it is in
-  // the form. Reading the lines and picking the products is the human act, and this card is the half
-  // being read from.
+  // ⚠ THE SCRAPED LINES ARE NOT COPIED IN. A marketplace title names no product of ours (`product_id` is 0 until a
+  // person maps it), and auto-picking by matching titles is what the draft design refused: a wrong guess is
+  // indistinguishable from a person's choice once it is in the form. A line that IS mapped (a draft saved from this
+  // form) comes in as the product it names.
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const externalDraftId = parseDraftId(searchParams.get("draft"));
   const externalDraft = useOrderDraft({ teamId, draftId: externalDraftId });
-
-  const externalItems: ExternalProduct[] = useMemo(
-    () =>
-      (externalDraft.data?.items ?? []).map((item) => ({
-        id: item.id,
-        name: item.externalName,
-        price: item.unitPrice,
-        quantity: item.quantity,
-      })),
-    [externalDraft.data],
-  );
+  const draft = externalDraft.data ?? null;
+  const draftMode = externalDraftId > 0n;
+  const deleteDrafts = useDeleteOrderDrafts();
+  const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(false);
+  // What the form held right after it was seeded — the leave-guard's "nothing changed" on a draft.
+  const [seedSignature, setSeedSignature] = useState<string | null>(null);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -196,6 +251,12 @@ export function OrderCreatePage() {
   // marked on its card and listed at the top of the page. The exception is the bundle: its
   // products ARE placed, as ordinary lines (see `allLines`); only the grouping is lost.
   const [bundles, setBundles] = useState<BundleDraft[]>([]);
+  // ITEMS OR BUNDLES, NEVER BOTH (owner: *"order create items dan bundle cuma boleh pilih salah satu"*,
+  // `an-order-holds-items-or-bundles`) — one radio pill chooses which card the order is filled from. Items first: a draft
+  // seeds items, and most orders are typed line by line. Leaving a card that already holds something asks first
+  // (`switchingTo`), because the switch empties it.
+  const [contents, setContents] = useState<OrderContents>("items");
+  const [switchingTo, setSwitchingTo] = useState<OrderContents | null>(null);
   // WHEN THE ORDER HAPPENED — and it starts EMPTY (owner).
   //
   // ⚠ NO DEFAULT OF TODAY. It was pre-filled with now, on the argument that most orders are typed in
@@ -251,6 +312,70 @@ export function OrderCreatePage() {
       cancelled = true;
     };
   }, [teamId]);
+
+  // SEED FROM THE DRAFT, once per draft — after this the form is the person's. The draft's warehouse wins over the
+  // team's default: the app read where this order ships from. A draft the app pushed carries the marketplace's own
+  // order id; one saved from this form carries a reference of ours, which is no marketplace's and is not copied.
+  const seededDraft = useRef("");
+
+  useEffect(() => {
+    if (!draft || seededDraft.current === draft.id.toString()) return;
+    seededDraft.current = draft.id.toString();
+
+    const orderRef = draft.source !== DRAFT_SOURCE ? draft.externalId : "";
+    // What the buyer paid — the draft's own `platform_total` (the-draft-price-is-platform-total); when the app sent none,
+    // the rows' prices summed (`the-draft-sell-price-starts-from-the-rows`). The CS may type over it either way.
+    const scraped = draft.items.reduce((sum, item) => sum + item.unitPrice * BigInt(item.quantity), 0n);
+    const seededTotal = draft.platformTotal > 0n ? draft.platformTotal : scraped;
+    const platformTotal = seededTotal > 0n ? seededTotal.toString() : "";
+    // The platform's own dates and the buyer's username, as the app pushed them — empty when it sent none.
+    const seededOrderDate = draft.platformCreatedAtUnix > 0n ? unixToDateTimeInput(draft.platformCreatedAtUnix) : "";
+    const seededDeadline =
+      draft.platformShipmentDeadlineUnix > 0n ? unixToDateTimeInput(draft.platformShipmentDeadlineUnix) : "";
+    const seededAddress = addressOf(draft);
+    const seededLines: LineDraft[] = [];
+    for (const item of draft.items) {
+      if (item.productId <= 0n || seededLines.some((l) => l.productId === item.productId)) continue;
+      seededLines.push({
+        productId: item.productId,
+        sku: item.externalSku,
+        name: item.externalName,
+        imageUrl: "",
+        thumbnailUrl: "",
+        quantity: String(item.quantity > 0 ? item.quantity : 1),
+      });
+    }
+
+    setCustomerName(draft.customerName);
+    setCustomerPhone(draft.customerPhone);
+    setAddress(seededAddress);
+    setShippingCode(draft.shippingCode);
+    setMarketplace((prev) => ({ ...prev, shopId: draft.shopId, orderExternalRefId: orderRef, platformTotal }));
+    setOrderDate(seededOrderDate);
+    setDeadline(seededDeadline);
+    setBuyerUsername(draft.buyerUsername);
+    if (draft.warehouseId > 0n) setWarehouseId(draft.warehouseId);
+    setLines(seededLines);
+    setSeedSignature(
+      workSignature({
+        customerName: draft.customerName,
+        customerPhone: draft.customerPhone,
+        shopId: draft.shopId,
+        orderRef,
+        shippingCode: draft.shippingCode,
+        note: "",
+        receipt: false,
+        address: seededAddress,
+        platformTotal,
+        lines: seededLines,
+        bundles: 0,
+        receiptCode: "",
+        orderDate: seededOrderDate,
+        deadline: seededDeadline,
+        buyerUsername: draft.buyerUsername,
+      }),
+    );
+  }, [draft]);
 
   // ⚠ EVERY PRODUCT ON THE ORDER, picked by hand or arrived inside a bundle. One list, because
   // everything downstream — the stock read, the HPP read, the ownership read, the totals, the
@@ -386,6 +511,31 @@ export function OrderCreatePage() {
 
   function setBundleQuantity(key: string, quantity: string) {
     setBundles((prev) => prev.map((b) => (b.key === key ? { ...b, quantity } : b)));
+  }
+
+  // ── Items or bundles ──────────────────────────────────────────────────────────────────────────
+  //
+  // A switch from an empty card is immediate; from one that holds lines or bundles it waits for the confirm, which then
+  // empties the card being left — an order never carries both (an-order-holds-items-or-bundles).
+  function chooseContents(next: OrderContents) {
+    if (next === contents) return;
+
+    const holding = contents === "items" ? lines.length : bundles.length;
+    if (holding > 0) {
+      setSwitchingTo(next);
+      return;
+    }
+
+    setContents(next);
+  }
+
+  async function confirmSwitch() {
+    if (switchingTo === null) return;
+
+    if (contents === "items") setLines([]);
+    else setBundles([]);
+    setContents(switchingTo);
+    setSwitchingTo(null);
   }
 
   function removeBundle(key: string) {
@@ -556,8 +706,26 @@ export function OrderCreatePage() {
   // Anything typed at all. Used only to decide whether leaving needs a confirmation — the warehouse is
   // excluded on purpose, because it arrives PRE-FILLED and a page nobody has touched must not claim to
   // have unsaved work.
-  const dirty =
-    customerName.trim() !== "" ||
+  const workNow = workSignature({
+    customerName,
+    customerPhone,
+    shopId,
+    orderRef: marketplace.orderExternalRefId,
+    shippingCode,
+    note,
+    receipt: hasReceipt(receipt),
+    address,
+    platformTotal: marketplace.platformTotal,
+    lines,
+    bundles: bundles.length,
+    receiptCode,
+    orderDate,
+    deadline,
+    buyerUsername,
+  });
+  const dirty = draftMode
+    ? seedSignature !== null && workNow !== seedSignature
+    : customerName.trim() !== "" ||
     customerPhone.trim() !== "" ||
     shopId > 0n ||
     marketplace.orderExternalRefId.trim() !== "" ||
@@ -705,6 +873,20 @@ export function OrderCreatePage() {
     return line?.name || line?.sku || `#${productId.toString()}`;
   }
 
+  // DELETE THE DRAFT — the app's work dropped, from its own page. Confirmed first: it is not undone.
+  async function removeDraft() {
+    if (teamId === undefined || !draftMode) return;
+
+    try {
+      await deleteDrafts.mutateAsync({ teamId, draftIds: [externalDraftId] });
+      toaster.create({ type: "success", title: t("orderForm.draft.deleted") });
+      savedRef.current = true;
+      void navigate("/order-drafts");
+    } catch (err) {
+      toaster.create({ type: "error", title: t("orderForm.draft.deleteFailed"), description: rpcError(err) });
+    }
+  }
+
   if (!current) {
     return (
       <Stack gap="section">
@@ -719,7 +901,8 @@ export function OrderCreatePage() {
   return (
     // No `maxW`: the page fills the content area, the way the list pages do. A two-column grid wants
     // the room — the wider the window, the more of it the lines get.
-    <Stack gap="section" data-testid="order-create-page">
+    // It arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack gap="section" animationStyle="enter" data-testid="order-create-page">
       <Flex align="center" gap="card">
         <IconButton
           size="xs"
@@ -730,7 +913,44 @@ export function OrderCreatePage() {
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>
-        <Heading size="md">{t("orders.newOrderTitle")}</Heading>
+        <Heading size="md" truncate={isMobile} minW="0">
+          {t("orders.newOrderTitle")}
+        </Heading>
+        {/* FROM A DRAFT — which one, and the way to drop it (the-draft-opens-in-the-order-form). */}
+        {draft && (
+          <>
+            <Badge colorPalette="gray" flexShrink={0} data-testid="order-create-draft-ref">
+              {t("orderForm.draft.badge", { ref: draft.externalId })}
+            </Badge>
+            <Box flex="1" />
+            {isMobile ? (
+              <CompactActions
+                menuLabel={t("common.actions")}
+                actions={[
+                  {
+                    id: "delete",
+                    label: t("orderForm.draft.delete"),
+                    icon: Trash2,
+                    danger: true,
+                    testId: "order-create-delete-draft",
+                    onClick: () => setConfirmDeleteDraft(true),
+                  },
+                ]}
+              />
+            ) : (
+              <Button
+                size="xs"
+                variant="outline"
+                colorPalette="error"
+                data-testid="order-create-delete-draft"
+                onClick={() => setConfirmDeleteDraft(true)}
+              >
+                <Icon as={Trash2} boxSize="4" />
+                {t("orderForm.draft.delete")}
+              </Button>
+            )}
+          </>
+        )}
       </Flex>
 
       {error && (
@@ -920,47 +1140,57 @@ export function OrderCreatePage() {
               </Card.Body>
             </Card.Root>
 
-            {/* ── WHAT THE EXTENSION SENT ── ABOVE the picker, and only when there is a draft ──
-                This is the text being worked FROM and the picker below is the work, so the screen
-                reads top to bottom: the marketplace's own words first, our catalogue second. It
-                renders NOTHING without `?draft=`, so a hand-written order is the form it always
-                was. */}
-            {externalItems.length > 0 && (
-              <ProductListExternal
-                items={externalItems}
-                source={externalDraft.data?.source}
-                showTotal
+            {/* ── WHAT THE DRAFT SAYS MUST BE SENT ── ABOVE the products, as a list of text (owner,
+                the-draft-opens-in-the-order-form). The marketplace's own words first, our catalogue second —
+                it is read while the products below are picked. Nothing without `?draft=`. */}
+            {draft && draft.items.length > 0 && <DraftProductHints items={draft.items} source={draft.source} />}
+
+            {/* WHAT IS BEING SOLD — as ITEMS or as BUNDLES, never both (an-order-holds-items-or-bundles): one radio
+                pill picks the card, and only that card shows. */}
+            <Stack gap="1.5" data-testid="order-contents-field">
+              <Text fontSize="xs" fontWeight="bold" color="fg.label">
+                {t("orderForm.contents.label")}
+              </Text>
+              <RadioPills
+                value={contents}
+                onChange={chooseContents}
+                ariaLabel={t("orderForm.contents.label")}
+                testId="order-contents"
+                options={[
+                  { value: "items", label: t("orderForm.contents.items"), testId: "order-contents-items" },
+                  { value: "bundles", label: t("orderForm.contents.bundles"), testId: "order-contents-bundles" },
+                ]}
+              />
+            </Stack>
+
+            {contents === "items" ? (
+              <OrderItemCard
+                teamId={cardTeamId}
+                warehouseId={warehouseId}
+                lines={lines}
+                stock={stock}
+                costs={costs}
+                busy={quoteBusy}
+                onPick={pickProducts}
+                onPatch={patchLine}
+                onRemove={removeLine}
+              />
+            ) : (
+              /* THE SAME QUESTION ASKED IN BUNDLES. Its own card: a bundle's slots are edited against a ceiling, and
+                 that does not fit a table of flat lines. The products it contributes are the order's lines. */
+              <BundleCard
+                teamId={cardTeamId}
+                warehouseId={warehouseId}
+                bundles={bundles}
+                stock={stock}
+                costs={costs}
+                onAdd={addBundle}
+                onQuantity={setBundleQuantity}
+                onRemove={removeBundle}
+                onFill={fillSlot}
+                onFillQuantity={setFillQuantity}
               />
             )}
-
-            {/* WHAT IS BEING SOLD — the items card. */}
-            <OrderItemCard
-              teamId={cardTeamId}
-              warehouseId={warehouseId}
-              lines={lines}
-              stock={stock}
-              costs={costs}
-              busy={quoteBusy}
-              onPick={pickProducts}
-              onPatch={patchLine}
-              onRemove={removeLine}
-            />
-
-            {/* …AND THE SAME QUESTION ASKED IN BUNDLES. A second card rather than a section of the
-                one above: a bundle's slots are edited against a ceiling, and that does not fit a
-                table of flat lines. The products it contributes are counted with the rest. */}
-            <BundleCard
-              teamId={cardTeamId}
-              warehouseId={warehouseId}
-              bundles={bundles}
-              stock={stock}
-              costs={costs}
-              onAdd={addBundle}
-              onQuantity={setBundleQuantity}
-              onRemove={removeBundle}
-              onFill={fillSlot}
-              onFillQuantity={setFillQuantity}
-            />
 
             {/* WHERE A RETURN WOULD LAND — only for goods belonging to another team, so the card is
                 empty on an ordinary own-catalogue order. */}
@@ -1071,6 +1301,31 @@ export function OrderCreatePage() {
         placing={saving}
         onClose={() => setGate([])}
         onPlaceAnyway={() => void place()}
+      />
+
+      {/* Leaving a card that holds something empties it — asked first (an-order-holds-items-or-bundles). */}
+      <ConfirmDialog
+        open={switchingTo !== null}
+        onOpenChange={(open) => {
+          if (!open) setSwitchingTo(null);
+        }}
+        title={t(switchingTo === "bundles" ? "orderForm.contents.toBundlesTitle" : "orderForm.contents.toItemsTitle")}
+        message={
+          contents === "items"
+            ? t("orderForm.contents.dropItems", { count: lines.length })
+            : t("orderForm.contents.dropBundles", { count: bundles.length })
+        }
+        confirmLabel={t("orderForm.contents.switch")}
+        onConfirm={confirmSwitch}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteDraft}
+        onOpenChange={setConfirmDeleteDraft}
+        title={t("orderForm.draft.deleteTitle")}
+        message={t("orderForm.draft.deleteConfirm", { ref: draft?.externalId ?? "" })}
+        confirmLabel={t("orderForm.draft.delete")}
+        onConfirm={removeDraft}
       />
 
       <ConfirmDialog

@@ -137,7 +137,8 @@ export function AccountActions({
       disabled={extra.disabled}
       color={extra.danger ? "fg.error" : undefined}
       data-testid={`account-${value}-${id}`}
-      onClick={onSelect}
+      // A disabled item's DOM click still fires — the menu only skips SELECTING it — so it gets no handler.
+      onClick={extra.disabled ? undefined : onSelect}
     >
       <Icon as={icon} boxSize="4" />
       <Span flex="1">{label}</Span>

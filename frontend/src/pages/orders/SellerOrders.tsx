@@ -1,21 +1,23 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
   Button,
+  Collapsible,
   Flex,
   Heading,
+  HStack,
   Icon,
+  Skeleton,
   Spacer,
-  Spinner,
   Stack,
   Table,
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { Download, Plus, Upload } from "lucide-react";
+import { BarChart3, ChevronDown, Download, Plus, SearchX, ShoppingCart, Upload } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { OrderDateField, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
@@ -24,13 +26,9 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useOrderCreators, useOrders, useOrderStat } from "../../features/orders/queries";
 import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
-import {
-  orderSummaryRows,
-  orderSummaryTotal,
-  summariseOrderStat,
-} from "../../features/orders/stat";
+import { orderSummaryRows, orderSummaryTotal } from "../../features/orders/stat";
 import { ALL_STAGE, ORDER_STAGES, orderStage, stageOfStatus } from "../../features/orders/stages";
-import { DRAFTS_TAB, StageTabs } from "../../features/orders/StageTabs";
+import { StageTabs } from "../../features/orders/StageTabs";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import {
   CreatedCell,
@@ -46,7 +44,6 @@ import { deadlineUrgency, hoursFromNow, orderDeadline, orderPlatformDate } from 
 import { OrderRowActions } from "./components/OrderRowActions";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeams } from "../../features/teams/queries";
-import { useOrderDrafts } from "../../features/orderDrafts/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDERS_LIST_PENDING } from "./pending";
@@ -57,7 +54,7 @@ import {
   FilterSearch,
 } from "../../components/chrome/FilterBar";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
-import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { useTypists } from "../../features/orders/typists";
@@ -68,13 +65,42 @@ import {
   isAllDates,
   resolveRange,
 } from "../../components/datetime/DateRangePicker";
-import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { useDebounced } from "../../lib/useDebounced";
+import {
+  dateRangeCodec,
+  enumCodec,
+  idCodec,
+  oneOfCodec,
+  optionalCodec,
+  textCodec,
+  useUrlState,
+} from "../../lib/urlState";
 import { OrderSummary } from "../../features/orders/OrderSummary";
 import { orderFee } from "../../features/orders/margin";
 import { ImportOrdersDialog } from "./components/ImportOrdersDialog";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../layouts/shell";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// How the status tab and the creator are spelled in the URL — only a real one is read back.
+const STAGE_CODEC = oneOfCodec<string>([ALL_STAGE, ...ORDER_STAGES.map((item) => item.id)]);
+const CREATOR_CODEC = optionalCodec(idCodec);
+
+// THE DATES THE WINDOW CAN MEAN (`the-order-list-filters-by-seven-dates`) — when it was created, the order date the form
+// asks for, and the FIRST time it entered each status a person asks "when" about. The others (Menunggu, Dikirim,
+// Bermasalah, Hilang, Retur diterima, Batal) are left out: nobody looks for "the orders that went missing last week" by
+// the day they went missing, and seven pills already wrap twice. Only `created` reaches the server — see `pending.ts`.
+const ORDER_DATE_TYPES = ["created", "mp", "processed", "picked", "shipping", "completed", "return"] as const;
+type OrderDateType = (typeof ORDER_DATE_TYPES)[number];
+const DATE_TYPE_CODEC = oneOfCodec<OrderDateType>([...ORDER_DATE_TYPES]);
+
+/** The status a date type is the entry into, or undefined for Dibuat and Tanggal order. */
+function dateTypeStage(type: OrderDateType) {
+  return type === "created" || type === "mp" ? undefined : orderStage(type);
+}
 
 // THE ORDERS LIST, WITH WHAT THE OWNER ASKED IT TO GROW — a PREVIEW (owner).
 //
@@ -97,30 +123,32 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // Marketplace is seven values that change when the company enters a new country — it stays a list.
 export function SellerOrdersPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const navigate = useNavigate();
 
-  const [params] = useSearchParams();
-  const [tab, setTab] = useState(
-    () => orderStage(params.get("status") ?? "")?.id ?? ALL_STAGE,
-  );
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an
+  // order, opens the same narrowed list. Written with `replace`, so Back leaves the screen rather than walking the tabs.
+  const [tab, setTab] = useUrlState<string>("status", ALL_STAGE, STAGE_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
   // The filters above the tabs. Every one REACHES THE SERVER — the list is paginated, so a client-side filter
-  // would narrow the loaded page only and leave the pager counting the whole set.
-  const [search, setSearch] = useState("");
-  const [shopId, setShopId] = useState(0n);
-  const [warehouseId, setWarehouseId] = useState(0n);
-  const [creatorId, setCreatorId] = useState<bigint | undefined>(undefined);
-  const [marketplace, setMarketplace] = useState<Marketplace>(
-    Marketplace.UNSPECIFIED,
-  );
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
-  // Which date the window reads — created, by default (the-date-filter-switches-created-or-platform).
-  const [dateField, setDateField] = useState<OrderDateField>(OrderDateField.CREATED);
+  // would narrow the loaded page only and leave the pager counting the whole set. Only five of the date filter's seven
+  // dates reach nothing yet (`dateType` in pending.ts).
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
+  const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
+  const [creatorId, setCreatorId] = useUrlState<bigint | undefined>("creator", undefined, CREATOR_CODEC);
+  const [marketplace, setMarketplace] = useUrlState("market", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
+  const [dateType, setDateType] = useUrlState<OrderDateType>("date", "created", DATE_TYPE_CODEC);
 
   const [importing, setImporting] = useState(false);
+
+  // THE STATISTICS ARE SHUT UNTIL ASKED (owner, `the-statistics-are-shut-and-read-when-opened`) — page state, never the
+  // URL or storage: every visit opens on the list with the figures shut, and nothing is read for them until they open.
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const teamId = current?.teamId;
 
@@ -144,7 +172,13 @@ export function SellerOrdersPage() {
   const debouncedSearch = useDebounced(search.trim());
 
   const filters: OrderFilters = useMemo(() => {
-    const { fromUnix, toUnix } = resolveRange(range);
+    // ⚠ ONLY DIBUAT AND TANGGAL ORDER SEND A WINDOW. `OrderListFilter` dates the row's created_at or the platform's
+    // (`date_field`, the-date-filter-switches-created-or-platform) and nothing else; sending the window for a status date
+    // would narrow by the wrong date while the trigger named the right one — so it narrows nothing, and the pill's mark
+    // says so (`dateType` in pending.ts).
+    const windowed = dateType === "created" || dateType === "mp";
+    const { fromUnix, toUnix } = windowed ? resolveRange(range) : { fromUnix: 0n, toUnix: 0n };
+    const dateField = dateType === "mp" ? OrderDateField.PLATFORM_CREATED : OrderDateField.CREATED;
 
     return {
       search: debouncedSearch,
@@ -156,13 +190,17 @@ export function SellerOrdersPage() {
       warehouseId,
       dateField,
     };
-  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId, marketplace, warehouseId, dateField]);
+  }, [debouncedSearch, shopId, canFilterByShop, range, dateType, creatorId, marketplace, warehouseId]);
 
   // The "created by" filter's people: everyone who typed in an order this team may list
   // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
   const creators = useOrderCreators({ teamId });
 
   const stage = orderStage(tab);
+
+  // WHICH STATUS THE EXTRA DATE COLUMN DATES. A status date type wins — it is the date the window is about, so the
+  // rows show it; with Dibuat or Tanggal order (both already columns) it is the tab's status, as before.
+  const dateStage = dateTypeStage(dateType) ?? stage;
 
   // A tab IS one status (one-tab-per-status), so it always narrows the table; All narrows nothing.
   const listStatus = stage ? stage.status : OrderStatus.UNSPECIFIED;
@@ -176,10 +214,10 @@ export function SellerOrdersPage() {
     status: listStatus,
     filters,
   });
-  const statQuery = useOrderStat({ teamId, filters });
+  // ⚠ READ ONLY WHILE OPEN. Shut, the census is not asked at all — entering the page costs the list and nothing else.
+  // Open, it follows the filter bar like the list does (its key carries the filters); shut again, it stops.
+  const statQuery = useOrderStat({ teamId, filters, enabled: statsOpen });
 
-  const draftsQuery = useOrderDrafts({ teamId, page: 1, pageSize: 1 });
-  const draftCount = draftsQuery.data?.totalItems;
 
   // Any filter change restarts at page 1: the page number belongs to the old result set, and page 4
   // of a narrower one is usually empty — which reads as "nothing matched" when plenty did.
@@ -202,8 +240,6 @@ export function SellerOrdersPage() {
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
-  // `stat` survives for the TAB BADGES alone — the counts on the triggers, which every order screen
-  // feeds the same way.
   // ── WHOSE ORDER IS THIS: two lookups, only one of which ever runs ───────────────────────────────
   //
   // A selling team resolves SHOPS; a warehouse resolves TEAMS. Neither list carries the other's
@@ -252,10 +288,16 @@ export function SellerOrdersPage() {
       : undefined;
   }
 
-  // WHEN IT ENTERED THE STATUS BEING FILTERED (a-filtered-status-shows-its-own-date) — the order's own
-  // `status_at_unix`. Under a status tab every row IS in that status, so its current-status date answers the
-  // column. 0 is "no timeline row records the move", shown as nothing rather than as 1970.
-  function stageDateOf(statusAt: bigint) {
+  // WHEN IT ENTERED THE STATUS THE COLUMN NAMES (a-filtered-status-shows-its-own-date) — the order's own
+  // `status_at_unix`, which dates its CURRENT status. So a row has the date only while it IS in that stage: under a
+  // status tab, every row; under a status date picked on another tab, only the rows still in it — the rest are blank,
+  // because the list does not carry the timeline (`dateType` in pending.ts). 0 is "no timeline row records the move",
+  // shown as nothing rather than as 1970.
+  function stageDateOf(status: OrderStatus, statusAt: bigint) {
+    if (!dateStage || stageOfStatus(status)?.id !== dateStage.id) {
+      return undefined;
+    }
+
     return statusAt > 0n ? statusAt : undefined;
   }
 
@@ -270,8 +312,6 @@ export function SellerOrdersPage() {
       ? { teamId: id, ...teamNames.get(id.toString()) }
       : undefined;
   }
-
-  const stat = summariseOrderStat(statQuery.data);
 
   // THE SUMMARY'S OWN READING of the same census, one row per status in tab order so the strip and
   // the tabs read down the page in the same sequence. Every figure is the server's: the units, and the
@@ -298,22 +338,6 @@ export function SellerOrdersPage() {
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
-  // The badge on a tab. A stage sums every proto status it covers, so `processed` reads three at once
-  // — the count is the one half of it the census CAN answer.
-  function tabCount(value: string): number {
-    if (value === ALL_STAGE) {
-      return ORDER_STAGES.reduce(
-        (sum, item) =>
-          sum + item.statuses.reduce((n, s) => n + stat.count(s), 0),
-        0,
-      );
-    }
-
-    const item = orderStage(value);
-
-    return item ? item.statuses.reduce((n, s) => n + stat.count(s), 0) : 0;
-  }
-
   if (!current) {
     return (
       <Stack gap="section">
@@ -326,7 +350,8 @@ export function SellerOrdersPage() {
   }
 
   return (
-    <Stack gap="section">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter">
       {/* WHAT THIS SCREEN CANNOT DO, FIRST AND FOLDED AWAY — the same strip the order form carries,
           from the same component. It is above everything, the header included, because it is a
           statement about the whole page rather than about the table under it. */}
@@ -344,6 +369,19 @@ export function SellerOrdersPage() {
             nothing out of the screen, Import changes orders that already exist, New Order writes one.
             Only the last is the brand button — three coloured buttons side by side would say all
             three are the thing to do. */}
+        {/* ON A PHONE THE ACTIONS ARE ICONS, AND PAST TWO THEY FOLD INTO ⋯ (a-phone-header-action-is-an-icon) — labelled
+            buttons wrapped onto rows of their own. The desktop keeps its labelled buttons. */}
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("orders.actions")}
+            menuTestId="orders-actions"
+            actions={[
+              { id: "export", label: t("orders.export.action"), icon: Download, testId: "orders-export", onClick: () => teamId !== undefined && void exporter.start({ teamId, filters, status: listStatus, view: OrderExportView.SELLER }) },
+              { id: "import", label: t("orders.import.action"), icon: Upload, mark: <NotImplemented list={ORDERS_LIST_PENDING} id="import" />, testId: "orders-import", onClick: () => setImporting(true) },
+              { id: "create", label: t("orders.newOrder"), icon: Plus, primary: true, testId: "open-create-order", onClick: () => navigate("/orders/new") },
+            ]}
+          />
+        ) : (
         <Flex gap="2" align="center" wrap="wrap">
           {/* THE LIST AS A FILE (one-export-is-the-list-as-a-file): exactly the rows on screen with this filter and
               tab, every page of them. */}
@@ -389,10 +427,11 @@ export function SellerOrdersPage() {
             {t("orders.newOrder")}
           </Button>
         </Flex>
+        )}
       </Flex>
 
       {/* The filter bar sits ABOVE the tabs, and the order is the meaning: these narrow which orders
-          exist for the whole screen — the tab counts included — while the tab picks one status out of
+          exist for the whole screen — the statistics included — while the tab picks one status out of
           what is left. A filter inside the tab panel would read as belonging to that tab alone.
 
           It is the shared FilterBar rather than a hand-rolled Flex: six controls is exactly the width
@@ -409,7 +448,7 @@ export function SellerOrdersPage() {
             setCreatorId(undefined);
             setMarketplace(Marketplace.UNSPECIFIED);
             setRange(ALL_DATES);
-            setDateField(OrderDateField.CREATED);
+            setDateType("created");
           })
         }
       >
@@ -427,6 +466,8 @@ export function SellerOrdersPage() {
             teamType={TeamType.WAREHOUSE}
             value={warehouseId > 0n ? warehouseId : undefined}
             placeholder={t("orders.warehouseAll")}
+            // Every option is a warehouse — the pick reads as its name alone (a-one-type-picker-shows-the-name-alone).
+            showType={false}
             onChange={(id) => refilter(() => setWarehouseId(id))}
           />
         </FilterField>
@@ -453,6 +494,8 @@ export function SellerOrdersPage() {
             can see in full is a keystroke tax. */}
         <FilterField w="15rem" testId="orders-marketplace-filter">
           <MarketplaceSelect
+            // Its × clears it (every-filter-clears-from-its-own-x).
+            clearable
             value={marketplace}
             placeholder={t("orders.marketplaceAll")}
             onChange={(m) => refilter(() => setMarketplace(m))}
@@ -471,36 +514,28 @@ export function SellerOrdersPage() {
           </FilterField>
         )}
 
-        {/* WHICH DATE, THEN WHICH WINDOW (the-date-filter-switches-created-or-platform): when we wrote it down —
-            the default — or when the buyer ordered on the storefront. One control, because the two answer
-            different questions about the same orders: "what came in today" against "the buyers' Saturday". */}
+        {/* WHICH DATE, THEN WHICH WINDOW — one panel (`a-date-type-is-picked-inside-the-range-panel`). Dibuat and Tanggal
+            order are real (the-date-filter-switches-created-or-platform); the status dates are offered with their ⚠,
+            because the list cannot ask about them yet. */}
         <FilterField w="auto">
-          <DateRangePicker<OrderDateField>
+          <DateRangePicker<OrderDateType>
             value={range}
             onChange={(r) => refilter(() => setRange(r))}
-            fields={[
-              { value: OrderDateField.CREATED, label: t("orders.dateField.created") },
-              { value: OrderDateField.PLATFORM_CREATED, label: t("orders.dateField.platform") },
-            ]}
-            field={dateField}
-            onFieldChange={(f) => refilter(() => setDateField(f))}
+            fields={ORDER_DATE_TYPES.map((type) => ({
+              value: type,
+              label: type === "created" || type === "mp" ? t(`orders.dateType.${type}`) : t(`orders.stage.${type}`),
+              mark: type === "created" || type === "mp" ? undefined : <NotImplemented list={ORDERS_LIST_PENDING} id="dateType" />,
+            }))}
+            field={dateType}
+            onFieldChange={(v) => refilter(() => setDateType(v))}
             testId="orders-date"
           />
         </FilterField>
       </FilterBar>
 
-      {/* DRAFTS IS THE LAST TAB (owner), and selecting it LEAVES — the drafts screen is its own route
-          with its own selection and bulk delete, so the tab is a way in rather than a panel here. */}
       <StageTabs
         value={tab}
-        count={tabCount}
-        draftCount={draftCount}
         onSelect={(value) => {
-          if (value === DRAFTS_TAB) {
-            void navigate("/order-drafts");
-            return;
-          }
-
           setTab(value);
           setPage(1);
         }}
@@ -516,16 +551,46 @@ export function SellerOrdersPage() {
           ⚠ NO 30-DAY TILES any more. Every figure follows the filter bar's date range, so the screen
           has ONE window instead of two; the old pair was labelled "30d" while the filter silently
           narrowed them to whatever was picked. */}
-      <OrderSummary
-        rows={summaryRows}
-        total={summaryTotal}
-        selectedKey={tab}
-        badge={(row) => {
-          const item = orderStage(row.key);
+      {/* SHUT BY DEFAULT (`the-statistics-are-shut-and-read-when-opened`): a button under the tabs, and the strip is
+          mounted — and read — only while it is open. */}
+      <Collapsible.Root open={statsOpen} onOpenChange={(e) => setStatsOpen(e.open)} lazyMount unmountOnExit>
+        <Collapsible.Trigger asChild>
+          <Button variant="ghost" size="xs" alignSelf="flex-start" data-testid="order-summary-toggle">
+            <Icon as={BarChart3} boxSize="4" />
+            {t("orders.summary.toggle")}
+            <Icon
+              as={ChevronDown}
+              boxSize="4"
+              color="fg.muted"
+              transform={statsOpen ? "rotate(180deg)" : undefined}
+              transition="transform 120ms"
+            />
+          </Button>
+        </Collapsible.Trigger>
+        <Collapsible.Content>
+          <Box pt="card">
+            {statQuery.isPending ? (
+              // The first read after opening: the strip's shape, not a strip of zeros that reads as "nothing sold".
+              <HStack gap="card" role="status" aria-label={t("common.loading")} data-testid="order-summary-loading">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Skeleton key={i} h="20" flex="1" borderRadius="l2" />
+                ))}
+              </HStack>
+            ) : (
+              <OrderSummary
+                rows={summaryRows}
+                total={summaryTotal}
+                selectedKey={tab}
+                badge={(row) => {
+                  const item = orderStage(row.key);
 
-          return item ? <OrderStatusBadge status={item.status} /> : null;
-        }}
-      />
+                  return item ? <OrderStatusBadge status={item.status} /> : null;
+                }}
+              />
+            )}
+          </Box>
+        </Collapsible.Content>
+      </Collapsible.Root>
 
       <Tabs.Root value={tab}>
         <Tabs.Content value={tab}>
@@ -536,9 +601,12 @@ export function SellerOrdersPage() {
               </Text>
             )}
 
+            {/* The first load shows the table's shape and its rows fade in, once — a tab or a filter changing keeps
+                them mounted, so nothing fades again (a-filter-answers-as-it-changes). */}
             {loading ? (
-              <Spinner colorPalette="brand" />
+              <ListSkeleton testId="orders-loading" />
             ) : (
+              <Box animationStyle="swap">
               <RefreshOverlay busy={query.isFetching && !query.isPending}>
                 {/* ⚠ A DOZEN COLUMNS DO NOT FIT A PHONE, and the layout rule is that the PAGE never scrolls
                     sideways — only a table, inside its own container. Grinding the columns down
@@ -577,14 +645,17 @@ export function SellerOrdersPage() {
                           platform's own, `platform_created_at` and `platform_shipment_deadline`. */}
                         <Table.ColumnHeader>{t("orders.placedMpColumn")}</Table.ColumnHeader>
 
-                        {/* ⚠ ONLY WHILE A STATUS IS FILTERED. "When did this ship" is a question you
-                          ask while looking at shipped orders; on every other tab the column would be
-                          blank, and a permanently blank column is one people stop reading. */}
-                        {stage && (
+                        {/* ⚠ ONLY WHILE A STATUS IS FILTERED — by its tab, or by the date filter's type. "When did
+                          this ship" is a question you ask while looking at shipped orders; on every other tab the
+                          column would be blank, and a permanently blank column is one people stop reading. */}
+                        {dateStage && (
                           <Table.ColumnHeader>
-                            {t("orders.stageDateColumn", {
-                              status: t(`orders.stage.${stage.id}`),
-                            })}
+                            <Flex gap="1" align="center">
+                              {t("orders.stageDateColumn", {
+                                status: t(`orders.stage.${dateStage.id}`),
+                              })}
+                              {dateTypeStage(dateType) && <NotImplemented list={ORDERS_LIST_PENDING} id="dateType" />}
+                            </Flex>
                           </Table.ColumnHeader>
                         )}
 
@@ -655,10 +726,10 @@ export function SellerOrdersPage() {
                               <MpDateCell unix={orderPlatformDate(o)} deadline={deadline} />
                             </Table.Cell>
 
-                            {stage && (
+                            {dateStage && (
                               <Table.Cell>
                                 <DateCell
-                                  unix={stageDateOf(o.statusAtUnix)}
+                                  unix={stageDateOf(o.status, o.statusAtUnix)}
                                   testId="order-placed-stage"
                                 />
                               </Table.Cell>
@@ -699,18 +770,27 @@ export function SellerOrdersPage() {
                   </Table.Root>
                 </Box>
               </RefreshOverlay>
+              </Box>
             )}
 
             {!loading && orders.length === 0 && !error && (
-              <Text color="fg.muted" data-testid="orders-empty">
-                {filtered
-                  ? t("orders.noOrdersMatching")
-                  : stage === undefined
-                    ? t("orders.noOrders")
-                    : t("orders.noOrdersInStatus", {
-                        status: t(`orders.stage.${stage.id}`),
-                      })}
-              </Text>
+              // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint) — the filters to clear, or how orders arrive.
+              <EmptyHint
+                icon={filtered ? SearchX : ShoppingCart}
+                title={
+                  filtered
+                    ? t("orders.noOrdersMatching")
+                    : stage === undefined
+                      ? t("orders.noOrders")
+                      : t("orders.noOrdersInStatus", {
+                          status: t(`orders.stage.${stage.id}`),
+                        })
+                }
+                description={
+                  filtered ? t("emptyHint.noMatch") : stage === undefined ? t("orders.noOrdersHint") : undefined
+                }
+                testId="orders-empty"
+              />
             )}
 
             {!loading && (

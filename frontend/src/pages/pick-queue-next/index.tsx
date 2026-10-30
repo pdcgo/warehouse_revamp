@@ -29,12 +29,11 @@ import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { Pagination } from "../../components/chrome/Pagination";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { ShippingSelect } from "../../components/pickers/ShippingSelect";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
-import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { CopyText } from "../../components/chrome/CopyText";
 import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
@@ -60,6 +59,7 @@ import { NotImplementedSummary } from "../../features/pending/NotImplementedSumm
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTimeShort, formatUnixRelative } from "../../lib/datetime";
 import { useDebounced } from "../../lib/useDebounced";
+import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { WAREHOUSE_ORDERS_PENDING } from "./pending";
 import type { WarehouseStep } from "./steps";
 import { commonMoves, isBack, stepLabelKey, stepOfStatus } from "./steps";
@@ -111,6 +111,10 @@ function warehouseLabelKey(status: OrderStatus): string | undefined {
   return orderStatusLabelKey(status);
 }
 
+// Every tab is a status now, so any of them is read back from the URL.
+const TAB_CODEC = oneOfCodec(WAREHOUSE_TABS.map((item) => item.id));
+const MARKETPLACE_CODEC = enumCodec(MARKETPLACES);
+
 /** Every status an order can be in — what "Semua" counts. */
 const EVERY_STATUS = ORDER_STATUSES.map((meta) => meta.status);
 
@@ -130,16 +134,18 @@ export function PickQueueNextPage() {
   const { t } = useTranslation();
   const mobile = useIsMobile();
 
-  const [tab, setTab] = useState("toConfirm");
+  // THE STEP TAB AND THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an
+  // order, opens the same narrowed list. The selection, the page and the dialogs do not.
+  const [tab, setTab] = useUrlState("step", "toConfirm", TAB_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState("");
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
   // The crew's three filters — seller team, marketplace, courier (the-filter-gains-seller-marketplace-and-courier).
   // The shipment-state switch is gone: the status tabs are it.
-  const [sellerId, setSellerId] = useState(0n);
-  const [marketplace, setMarketplace] = useState<Marketplace>(Marketplace.UNSPECIFIED);
-  const [courier, setCourier] = useState("");
+  const [sellerId, setSellerId] = useUrlState("team", 0n, idCodec);
+  const [marketplace, setMarketplace] = useUrlState("marketplace", Marketplace.UNSPECIFIED, MARKETPLACE_CODEC);
+  const [courier, setCourier] = useUrlState("courier", "", textCodec);
 
   // ── THE WORKBENCH (`a-warehouse-step-moves-by-the-old-systems-table`, `scanning-is-the-crews-hands`) ──
   const [selected, setSelected] = useState<Set<string>>(new Set());

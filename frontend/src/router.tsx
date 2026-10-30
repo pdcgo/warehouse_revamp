@@ -56,9 +56,6 @@ const OrderDetailPage = lazy(() =>
 const OrderDraftsPage = lazy(() =>
   import("./pages/order-drafts").then((m) => ({ default: m.OrderDraftsPage })),
 );
-const OrderDraftDetailPage = lazy(() =>
-  import("./pages/order-draft-detail").then((m) => ({ default: m.OrderDraftDetailPage })),
-);
 const LiabilityListPage = lazy(() =>
   import("./pages/liability-list").then((m) => ({ default: m.LiabilityListPage })),
 );
@@ -311,6 +308,8 @@ export const router = createBrowserRouter([
       // The courier catalogue — shipment_service (docs/business/shipment). Root only, from the nav.
       { path: "shipping", element: <ShipmentChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
+      // The archive, a page of its own (the-archive-is-a-page-of-its-own) — reached from the list's Arsip button.
+      { path: "products/archived", element: <ProductsPage archived /> },
       { path: "products/discover", element: <DiscoverProductsPage /> },
       { path: "products/discover/:productId", element: <DiscoverProductDetailPage /> },
       { path: "products/new", element: <ProductEditPage /> },
@@ -356,9 +355,12 @@ export const router = createBrowserRouter([
       // would put not-orders inside the orders screen — the same concern that gave them their own
       // table rather than an ORDER_STATUS_DRAFT.
       { path: "order-drafts", element: <OrderDraftsPage /> },
-      // A detail view is a PAGE, not a dialog (CLAUDE.md) — and this one especially: mapping a
-      // scraped line to a real product is work somebody sits down to, not a focused action.
-      { path: "order-drafts/:draftId", element: <OrderDraftDetailPage /> },
+      // A DRAFT OPENS IN THE ORDER FORM (the-draft-opens-in-the-order-form) — its own page was folded into
+      // /orders/new?draft=, which it seeds. The old address still lands, by a loader redirect like the ones above.
+      {
+        path: "order-drafts/:draftId",
+        loader: ({ params }) => redirect(`/orders/new?draft=${params.draftId ?? ""}`),
+      },
       // The ledger of what teams owe each other (#185). Its own top-level section — a warehouse team
       // has no money screens at all today, and this gives it one.
       //

@@ -780,9 +780,9 @@ frontend/
       Layout.tsx      the picker: a breakpoint chooses desktop or mobile
       shell.ts        the breakpoint + the page canvas — both shells read them
       nav.ts          the menu, the "where am I" match, the bottom bar — SHARED
-      TeamSwitcher.tsx  shared: the sidebar's card, and the mobile top bar's chip
-      desktop/        DesktopLayout (sidebar + breadcrumb top bar), Sidebar
-      mobile/         MobileLayout (compact top bar), BottomNav, MenuSheet
+      TeamSwitcher.tsx  shared: the sidebar's card, and the phone tab bar's centre bubble
+      desktop/        DesktopLayout (sidebar beside the page, no top bar), Sidebar
+      mobile/         MobileLayout (the page and a bottom tab bar, no top bar), BottomNav, MenuSheet
     pages/<page>/
       index.tsx       THE page component — one directory per SCREEN
       components/     used by THIS page and nothing else
@@ -793,10 +793,13 @@ frontend/
 ```
 
 **A phone gets a DIFFERENT SHELL, not the desktop one squeezed.** `Layout` reads one media query
-(`useIsMobile`, Chakra's `md`) and mounts `DesktopLayout` — a persistent 258px sidebar beside a
-breadcrumb top bar — or `MobileLayout`: a compact top bar (team chip, screen name, notifications), and
-navigation moved to a **bottom tab bar** the thumb reaches, carrying this team's three destinations
-plus **More**, which opens the full menu as a full-screen sheet. There is no hamburger on a phone.
+(`useIsMobile`, Chakra's `md`) and mounts `DesktopLayout` — a persistent 258px sidebar beside the page,
+no top bar — or `MobileLayout`: the page with **no top bar either**, and navigation moved to a **bottom
+tab bar** the thumb reaches, carrying this team's destinations, the workspace bubble in its centre, and
+**More**, which opens the full menu as a sheet from the bottom. There is no hamburger on a phone. Neither
+shell names the screen over the page: the page's own title does, and the lit menu item or tab says where you are
+([the-desktop-shell-has-no-top-bar](docs/technical/frontend/context_decision.md#the-desktop-shell-has-no-top-bar),
+[the-phone-shell-has-no-top-bar](docs/technical/frontend/context_decision.md#the-phone-shell-has-no-top-bar)).
 
 - ⚠ **Exactly ONE shell mounts** — a JS breakpoint, never `hideFrom`/`hideBelow`. Hiding one with CSS
   renders both: two `<Outlet/>`s (every page mounted twice), two `navigation` landmarks, and two of
@@ -851,8 +854,8 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
 | `entity/` | 6 | show a product / a team / a shop / a person the same way everywhere |
 | `badges/` | 6 | a status or a kind, in its ONE standard colour |
-| `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
-| `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
+| `feedback/` | 5 | what the app says back — `ConfirmDialog`, `EmptyHint`, `ListSkeleton`, `RefreshOverlay`, `Toaster` |
+| `chrome/` | 9 | app furniture — `FilterBar`, `FilterChips`, `GrowingPager`, `SortableHeader`, `CompactActions` (a phone header's actions), `CopyText`, `Logo`, `Pagination`, `ColorModeToggle` |
 | `inputs/` | 3 | a typed value, formatted or masked — money, a password, a quantity |
 | `charts/` | 1 | a graph — `LineGraph`, on Chakra's `@chakra-ui/charts` ([a-chart-is-chakras-chart](docs/technical/frontend/context_decision.md#a-chart-is-chakras-chart)); a screen never draws Recharts itself |
 
@@ -912,7 +915,9 @@ list, because searching seven options you can already see in full is a keystroke
   screen is one somebody scrolls.
 - **Where the search RUNS depends on the size, not on the control.** A bounded-ish list loads whole and
   filters in the field (`ShopSelect`, `TeamSelect`); an unbounded one searches the server, debounced,
-  with a minimum term (`UserSelect`, `ProductSelect`). Both are the same control to the person using it.
+  with a minimum term (`UserSelect` over everyone, `ProductSelect`). Both are the same control to the person using it.
+  A `UserSelect` scoped to a TEAM is the exception: its members are bounded, so a click shows the first page with
+  nothing typed and typing narrows it on the server (owner, on a shop's access panel).
 - ⚠ **A combobox whose collection fills in LATE renders BLANK when it was prefilled.** Zag derives the
   input's text at machine init and thereafter only when `value` changes — so a value already set while
   the list is still in flight resolves against an empty collection and never recovers. Both search
@@ -948,6 +953,9 @@ More UI rules:
   or more), collapse them behind a single overflow trigger (a kebab `IconButton`, `MoreHorizontal`)
   opening a Chakra [`Menu`](https://chakra-ui.com/docs/components/menu) — not a row of buttons. **Every
   menu item carries a leading icon** (lucide via `<Icon>`). One or two actions may stay inline.
+  ⚠ **A disabled `Menu.Item` still fires its `onClick`** — Zag only skips *selecting* it, the DOM click goes through
+  (owner: *"hapus disabled masih bisa ku klik"*). Act through the menu's `onSelect`, or give a disabled item no
+  handler (`onClick={disabled ? undefined : …}`), and pin it with a story that clicks the disabled item.
 - **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
   reversible — goes through a [`ConfirmDialog`](frontend/src/components/feedback/ConfirmDialog.tsx) (Chakra
   `Dialog`) before it runs. Never a bare one-click destructive button.
@@ -972,8 +980,10 @@ More UI rules:
   [one-context-per-column-and-never-three-lines](docs/technical/frontend/context_decision.md#one-context-per-column-and-never-three-lines).
 - **A phone gets its own arrangement, not the desktop's squeezed** (owner) — three rules, each a JS
   breakpoint (never CSS hiding):
-  - a **sticky header is ONE row** — back, the title, the status, `⋯`. Actions fold into `⋯` (even a
-    single one), and anything else (a deadline, a mark) moves to the first line under it;
+  - a **header is ONE row** — back, the title, the status, the actions. Actions are their **icons**, and
+    past two they all fold into `⋯` ([`CompactActions`](frontend/src/components/chrome/CompactActions.tsx),
+    [a-phone-header-action-is-an-icon](docs/technical/frontend/context_decision.md#a-phone-header-action-is-an-icon));
+    anything else (a deadline, a mark) moves to the first line under it;
   - a **wide table becomes one block per row** — names at full width, the arithmetic as a line
     (`Rp 48.000 × 2 · Toko Melati … Rp 96.000`), never five clamped columns in a scroll box;
   - a **filter strip is the search plus a Filter button** opening a bottom sheet of full-width controls

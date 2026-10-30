@@ -48,9 +48,14 @@ import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiah, formatRupiahNumber } from "../../lib/money";
+import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// The status tab and the date type as the URL carries them — only a tab, or a date, this list offers is read back.
+const STATUS_CODEC = oneOfCodec(RESTOCK_STATUS_TABS.map((item) => item.value));
+const DATE_FIELD_CODEC = enumCodec(RESTOCK_DATE_FIELDS.map((f) => f.value));
 
 // How many names to resolve for the id columns. A page of restocks can only name as many warehouses
 // and suppliers as it has rows, so one modest read covers every page-size the pager offers.
@@ -90,17 +95,19 @@ export function RestockSellingPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [tab, setTab] = useState("all");
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
+  // restock, opens the same narrowed list. The page number stays on screen only.
+  const [tab, setTab] = useUrlState("status", "all", STATUS_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  const [search, setSearch] = useState("");
-  const [warehouseFilter, setWarehouseFilter] = useState(0n);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [warehouseFilter, setWarehouseFilter] = useUrlState("warehouse", 0n, idCodec);
   // 0 = anybody. Two ids, not one: see the pickers below for why the two sides are separate filters.
-  const [createdByFilter, setCreatedByFilter] = useState(0n);
-  const [acceptedByFilter, setAcceptedByFilter] = useState(0n);
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
-  const [dateField, setDateField] = useState<RestockDateField>(RestockDateField.CREATED);
+  const [createdByFilter, setCreatedByFilter] = useUrlState("creator", 0n, idCodec);
+  const [acceptedByFilter, setAcceptedByFilter] = useUrlState("acceptor", 0n, idCodec);
+  const [range, setRange] = useUrlState<DateRange>("range", ALL_DATES, dateRangeCodec);
+  const [dateField, setDateField] = useUrlState<RestockDateField>("date", RestockDateField.CREATED, DATE_FIELD_CODEC);
 
   const teamId = current?.teamId;
 
@@ -282,8 +289,8 @@ export function RestockSellingPage() {
             onChange={(id) => refilter(() => setAcceptedByFilter(id ?? 0n))}
           />
         </Box>
-        {/* The range picker carries the DATE TYPE itself (#224): its `fields` segment chooses which
-            of a restock's three timestamps the window filters on. Without that, a range would
+        {/* The range picker carries the DATE TYPE itself (#224): its `fields` row, inside the panel, chooses which
+            of a restock's timestamps the window filters on. Without that, a range would
             silently pick one and mislabel the other two. */}
         <DateRangePicker
           value={range}

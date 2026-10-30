@@ -2,10 +2,9 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 
 // WHAT THIS SCREEN CANNOT DO YET.
 //
-// Every column on the draft row is a real field (`the-draft-list-is-the-drafts-tab`). The gaps are
-// above the table: the strip it shares with the order list (the owner's eight stages over a contract
-// that still carries the old six statuses), and the summary's "ready" card, which can only count the
-// page on screen.
+// Every column on the draft row is a real field (`the-draft-list-is-the-drafts-tab`). The one gap is above the table:
+// the summary's "ready" card, which can only count the page on screen. (The order list's stage strip, and its mark, left
+// with `the-drafts-are-a-list-of-their-own`.)
 
 /** One unwired part of the screen. The id is also its i18n key (`orderDrafts.pending.<id>`). */
 export type PendingId = "readyCount";

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box, Button, Flex, HStack, Heading, Icon, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, HStack, Heading, Icon, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -15,6 +17,18 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { DISCOVER_SUPPLIER_DETAIL_PENDING } from "./pending";
+import type { FigureMarks } from "../../features/suppliers/SupplierFigures";
+import { RelatedWarehouses } from "../../features/suppliers/RelatedWarehouses";
+import { sampleWarehousesFor } from "../../features/suppliers/sampleWarehouses";
+
+// Each store's and product's Terjual and Siap carry THIS page's marks (`the-detail-tabs-show-sold-and-ready`).
+const FIGURE_MARKS: FigureMarks = {
+  sold: <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="sold" />,
+  ready: <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="ready" />,
+};
+
+// Each tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`).
+const EXPORT_MARK = <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="export" />;
 
 function parseSupplierId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -51,6 +65,8 @@ export function DiscoverSupplierDetailPage() {
   const { t } = useTranslation();
 
   const id = parseSupplierId(supplierId);
+  // The warehouse the page is scoped to — 0n is every one (a-supplier-page-is-scoped-by-its-warehouses).
+  const [warehouseId, setWarehouseId] = useState(0n);
   const query = useDiscoverSupplier({ teamId: current?.teamId, supplierId: id });
   const supplier = query.data ?? null;
   // The WHOLE store list — the Products tab's sample rows are made from every store. The Channels tab reads its
@@ -84,8 +100,9 @@ export function DiscoverSupplierDetailPage() {
     );
   }
 
+  // The page's shape while the supplier loads, not a spinner on an empty page (`motion-is-small-quick-and-shared`).
   if (query.isPending && id !== 0n) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading testId="discover-detail-loading" />;
   }
 
   if (error || !supplier) {
@@ -100,7 +117,8 @@ export function DiscoverSupplierDetailPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="discover-detail-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="discover-detail-page">
       {back}
 
       <Stack gap="2">
@@ -125,6 +143,25 @@ export function DiscoverSupplierDetailPage() {
 
       <NotImplementedSummary list={DISCOVER_SUPPLIER_DETAIL_PENDING} />
 
+      {/* GUDANG TERKAIT — the warehouses its restocks were received at, and the page's scope: a chip picked narrows every
+          tab (`a-supplier-page-is-scoped-by-its-warehouses`). Over the tabs, since a tab cannot narrow the tabs beside it.
+          Each chip is a warehouse's name; under them, what this supplier's goods did in the chosen one or in all
+          (`a-warehouse-chip-is-its-name-and-the-summary-follows-it`). Sample warehouses, and a pick that only switches
+          that summary — both marked. */}
+      <RelatedWarehouses
+        warehouses={sampleWarehousesFor(supplier.id, channelsQuery.data?.length ?? 0)}
+        value={warehouseId}
+        onChange={setWarehouseId}
+        marks={
+          <>
+            <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="warehouses" />
+            <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="warehouseFilter" />
+          </>
+        }
+      />
+
+      {/* The underline SLIDES to the picked tab, and the tab's content fades in where the last one was
+          (`motion-is-small-quick-and-shared`). A fade, not a rise: on first paint the page itself is already rising. */}
       <Tabs.Root defaultValue="channels" lazyMount unmountOnExit data-testid="supplier-tabs">
         <Tabs.List>
           <Tabs.Trigger value="channels" data-testid="supplier-tab-channels">
@@ -139,19 +176,21 @@ export function DiscoverSupplierDetailPage() {
           <Tabs.Trigger value="statistics" data-testid="supplier-tab-statistics">
             {t("supplierChannel.tab.statistics")}
           </Tabs.Trigger>
+          <Tabs.Indicator />
         </Tabs.List>
 
         {/* Read-only: no Add Store, no row actions — this is another team's supplier. */}
-        <Tabs.Content value="channels">
-          <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} />
+        <Tabs.Content value="channels" animationStyle="swap">
+          <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
-        <Tabs.Content value="products">
-          <ProductBrowser channels={channelsQuery.data ?? []} />
+        <Tabs.Content value="products" animationStyle="swap">
+          <ProductBrowser channels={channelsQuery.data ?? []} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
-        <Tabs.Content value="statistics">
-          <SupplierStatistics supplierId={supplier.id} />
+        <Tabs.Content value="statistics" animationStyle="swap">
+          <SupplierStatistics supplierId={supplier.id} salesMark={<NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="sales" />}
+            exportMark={EXPORT_MARK} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

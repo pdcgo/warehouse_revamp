@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -196,5 +196,29 @@ export const TheArrivedTab: Story = {
     await userEvent.click(canvas.getByTestId("restock-tab-arrived"));
     await waitFor(() => expect(canvas.queryByTestId("restock-row-501")).toBeNull());
     await expect(canvas.getByTestId("restock-row-502")).toBeVisible();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the tab and the search are its; a
+// change is written back.
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/restock", element: <><RestockSellingPage /><LocationProbe /></> }],
+  "/inventories/restock?status=arrived&q=JNT",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("restock-row-502", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("restock-search")).toHaveValue("JNT");
+    await expect(canvas.getByTestId("restock-tab-arrived")).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.queryByTestId("restock-row-501")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("restock-tab-accepted"));
+    await waitFor(() => expect(location).toHaveTextContent("status=accepted"));
+    await expect(location).toHaveTextContent("q=JNT");
   },
 };

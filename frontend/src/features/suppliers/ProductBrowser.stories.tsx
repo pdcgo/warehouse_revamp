@@ -4,9 +4,10 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { SupplierChannelRecord } from "./adapt";
 import { ProductBrowser } from "./ProductBrowser";
+import { LIST_FIGURE_MARKS } from "./SupplierFigures";
 import { sampleProductsFor } from "./sampleProducts";
 import { formatUnixDate } from "../../lib/datetime";
-import { pickTeam } from "../../../.storybook/pageStory";
+import { LocationProbe, pickTeam, routedPage } from "../../../.storybook/pageStory";
 
 // A supplier's Products tab, shared by the manage and discover details. ⚠ SAMPLE rows — two invented products
 // per channel (sampleProducts.ts) until the link an accepted restock writes is built
@@ -27,7 +28,8 @@ const SEVEN = Array.from({ length: 7 }, (_, i) => channel(10 + i, Marketplace.LA
 const meta = {
   title: "Features/Suppliers/ProductBrowser",
   component: ProductBrowser,
-  args: { channels: TWO },
+  // Any page's marks will do here — the page numbers them; the story only needs them drawn.
+  args: { channels: TWO, figureMarks: LIST_FIGURE_MARKS, exportMark: null },
 } satisfies Meta<typeof ProductBrowser>;
 
 export default meta;
@@ -186,6 +188,39 @@ export const ClearPutsEveryFilterBack: Story = {
     await userEvent.click(canvas.getByTestId("products-filter-clear"));
     await waitFor(() => expect(within(canvas.getByTestId("products-table")).getAllByRole("row")).toHaveLength(1 + 4));
     await expect(within(canvas.getByTestId("products-table")).getByRole("columnheader", { name: "Team" })).toBeVisible();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url), `product.`-prefixed so the detail page's other tabs
+// keep theirs — opened at a URL, the store is read from it; a search typed is written back beside it.
+const AtFilteredUrl = routedPage(
+  [
+    {
+      path: "/inventories/suppliers/:supplierId",
+      element: (
+        <>
+          <ProductBrowser channels={TWO} figureMarks={LIST_FIGURE_MARKS} exportMark={null} />
+          <LocationProbe />
+        </>
+      ),
+    },
+  ],
+  "/inventories/suppliers/1?product.store=2",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await waitFor(() => expect(canvas.getByTestId("products-store")).toHaveValue("Sumber Makmur Store"));
+    await expect(within(canvas.getByTestId("products-table")).getAllByRole("row")).toHaveLength(1 + 2);
+
+    await userEvent.type(canvas.getByTestId("products-search"), "sumber", { delay: 40 });
+    await waitFor(() => expect(location).toHaveTextContent("product.q=sumber"));
+    await expect(location).toHaveTextContent("product.store=2");
   },
 };
 

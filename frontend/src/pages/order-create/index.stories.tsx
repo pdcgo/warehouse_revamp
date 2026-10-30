@@ -34,7 +34,8 @@ const routes = [
   // orders list would make this a test of that page's queries instead.
   { path: "/orders", element: <Text data-testid="at-orders">Orders</Text> },
   { path: "/orders/:orderId", element: <Text data-testid="at-order-detail">Order detail</Text> },
-  { path: "/order-drafts/:draftId", element: <Text data-testid="at-draft-detail">Draft detail</Text> },
+  // Where a saved draft, and a deleted one, go: the drafts list (the-draft-opens-in-the-order-form).
+  { path: "/order-drafts", element: <Text data-testid="at-drafts">Drafts</Text> },
 ];
 
 // ⚠ MEMOISED. Storybook calls `render` on every re-render, so building the router inline would hand
@@ -328,6 +329,24 @@ export const ARefusedTakeNamesItsReasonAndTheLine: Story = {
 //
 // Toko Melati's own Paket Hemat (BundleList) — the CS places orders and reads the team's bundles.
 const HEMAT = bundleFixture("Paket Hemat", users[0]!.id);
+const DAPUR = bundleFixture("Paket Dapur");
+
+async function addBundles(canvas: ReturnType<typeof within>, ids: string[]) {
+  await userEvent.click(await canvas.findByTestId("bundle-add"));
+  const dialog = await screen.findByTestId("bundle-picker-dialog");
+  await waitFor(() => expect(dialog).toBeVisible());
+  // The rows are the server's answer to the search, so they arrive after the dialog does.
+  for (const id of ids) await userEvent.click(await within(dialog).findByTestId(`bundle-pick-${id}`, {}, { timeout: 4000 }));
+  await userEvent.click(within(dialog).getByTestId("bundle-picker-confirm"));
+  await waitFor(() => expect(screen.queryByTestId("bundle-picker-dialog")).toBeNull());
+}
+
+// The form opened FROM A DRAFT — `?draft=201`: three scraped lines, two of them mapped to products 71 and 72, one not.
+function RoutedFromDraft() {
+  const router = useMemo(() => createMemoryRouter(routes, { initialEntries: ["/order-create?draft=201"] }), []);
+
+  return <RouterProvider router={router} />;
+}
 
 export const ABundlesProductsAreOrderedLikeAnyOther: Story = {
   beforeEach: () => {
@@ -337,11 +356,8 @@ export const ABundlesProductsAreOrderedLikeAnyOther: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(within(await canvas.findByTestId("bundle-search")).getByRole("combobox"));
-
-    const hemat = await screen.findByTestId(`bundle-option-${HEMAT.id}`, {}, { timeout: 4000 });
-    await waitFor(() => expect(hemat).toBeVisible());
-    await userEvent.click(hemat);
+    await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
+    await addBundles(canvas, [HEMAT.id.toString()]);
 
     // Gula Pasir (73) has TWELVE on the shelf in the fixtures.
     const qty = await canvas.findByTestId("slot-qty-73");
@@ -364,10 +380,8 @@ export const ALockedProductLeavesItsSlotEmpty: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(within(await canvas.findByTestId("bundle-search")).getByRole("combobox"));
-    const hemat = await screen.findByTestId(`bundle-option-${HEMAT.id}`, {}, { timeout: 4000 });
-    await waitFor(() => expect(hemat).toBeVisible());
-    await userEvent.click(hemat);
+    await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
+    await addBundles(canvas, [HEMAT.id.toString()]);
 
     const note = await canvas.findByTestId(/^slot-unavailable-.*-73$/);
     await expect(note).toHaveTextContent("Locked by its owner");
@@ -388,10 +402,8 @@ export const ABorrowedProductMappedBeforeArrivesLocked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(within(await canvas.findByTestId("bundle-search")).getByRole("combobox"));
-    const hemat = await screen.findByTestId(`bundle-option-${HEMAT.id}`, {}, { timeout: 4000 });
-    await waitFor(() => expect(hemat).toBeVisible());
-    await userEvent.click(hemat);
+    await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
+    await addBundles(canvas, [HEMAT.id.toString()]);
 
     const locked = await canvas.findByTestId("return-map-locked-73", {}, { timeout: 4000 });
     await waitFor(() => expect(locked).toHaveTextContent("Beras Pandan Wangi 5kg"));
@@ -905,5 +917,161 @@ export const TheInvoiceChargesWhatTheTakeWouldDraw: Story = {
     const row = await canvas.findByTestId("invoice-row-product-11");
     await waitFor(() => expect(row).toHaveTextContent(formatRupiah(17_500n)));
     await expect(row).not.toHaveTextContent(formatRupiah(18_000n));
+  },
+};
+
+// ── Items or bundles, and the bundle dialog (frada) ──────────────────────────────────────────────
+
+// BUNDLES ARE ADDED THE WAY ITEMS ARE (owner: *"tambah bundle buat seperti item"*, bundles-are-added-like-items) — a
+// Tambah Bundel button under the card's title opening a dialog: a search that also reads the slot labels, ticked rows,
+// Kosongkan · Batal · Konfirmasi. Several at once; Confirm waits for a tick.
+export const BundlesAreAddedLikeItems: Story = {
+  // The bundles are Toko Melati's.
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_CS)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByTestId("order-contents-bundles"));
+
+    await userEvent.click(await canvas.findByTestId("bundle-add"));
+    const dialog = await screen.findByTestId("bundle-picker-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    const inDialog = within(dialog);
+    await expect(inDialog.getByTestId("bundle-picker-confirm")).toBeDisabled();
+
+    // The search is the server's, and reads a bundle's products too — "tepung" finds Paket Dapur, not Paket Hemat.
+    const height = dialog.getBoundingClientRect().height;
+    await userEvent.type(inDialog.getByTestId("bundle-picker-search"), "tepung", { delay: 30 });
+    await waitFor(() => expect(inDialog.queryByTestId(`bundle-pick-${HEMAT.id}`)).toBeNull());
+    await expect(await inDialog.findByTestId(`bundle-pick-${DAPUR.id}`, {}, { timeout: 4000 })).toBeVisible();
+    // A FIXED HEIGHT (a-picker-dialog-keeps-its-height) — the list narrowed, the panel did not.
+    await expect(dialog.getBoundingClientRect().height).toBe(height);
+    await userEvent.clear(inDialog.getByTestId("bundle-picker-search"));
+
+    // Two at once.
+    await userEvent.click(await inDialog.findByTestId(`bundle-pick-${HEMAT.id}`, {}, { timeout: 4000 }));
+    await userEvent.click(await inDialog.findByTestId(`bundle-pick-${DAPUR.id}`, {}, { timeout: 4000 }));
+    await userEvent.click(inDialog.getByTestId("bundle-picker-confirm"));
+
+    await waitFor(() => expect(canvas.getAllByTestId(new RegExp(`^bundle-(${HEMAT.id}|${DAPUR.id})-\\d+$`))).toHaveLength(2));
+  },
+};
+
+// AN ORDER HOLDS ITEMS OR BUNDLES, NEVER BOTH (owner: *"order create items dan bundle cuma boleh pilih salah satu"*,
+// an-order-holds-items-or-bundles). One radio pill picks the card — Items first, and only that card shows. Leaving an
+// empty card is immediate; leaving one that holds something asks first, and the confirm empties it.
+export const AnOrderHoldsItemsOrBundles: Story = {
+  // The bundles are Toko Melati's.
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_CS)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("order-items-help")).toBeVisible();
+    await expect(canvas.queryByTestId("bundle-add")).toBeNull();
+
+    // An empty items card — the switch is immediate.
+    await userEvent.click(canvas.getByTestId("order-contents-bundles"));
+    await expect(await canvas.findByTestId("bundle-add")).toBeVisible();
+    await expect(canvas.queryByTestId("order-items-help")).toBeNull();
+
+    await addBundles(canvas, [HEMAT.id.toString()]);
+    await canvas.findByTestId("slot-qty-74");
+
+    // A card holding a bundle — the switch asks, and Cancel keeps it.
+    await userEvent.click(canvas.getByTestId("order-contents-items"));
+    let dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog).toHaveTextContent("will be removed");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await expect(canvas.getByTestId("slot-qty-74")).toBeVisible();
+
+    // …and the confirm empties it and switches.
+    await userEvent.click(canvas.getByTestId("order-contents-items"));
+    dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await expect(await canvas.findByTestId("order-items-help")).toBeVisible();
+
+    await userEvent.click(canvas.getByTestId("order-contents-bundles"));
+    await expect(await canvas.findByTestId("bundle-empty")).toBeVisible();
+  },
+};
+
+// ── A draft opens in this form (`the-draft-opens-in-the-order-form`) ──────────────────────────────────────
+
+// SEEDED FROM THE DRAFT — the buyer, the shop, the warehouse; its mapped lines arrive as the products they name; its
+// scraped lines are a list of TEXT above the products (the unmapped mug included, which is on no line); the header says
+// which draft, with Delete Draft beside it; and there is no Save as Draft — a draft is finished here, not drafted again.
+export const ADraftOpensInTheForm: Story = {
+  render: () => <RoutedFromDraft />,
+  // The drafts are Toko Melati's.
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Bu Lestari"), {
+      timeout: 4000,
+    });
+    await expect(canvas.getByTestId("order-create-draft-ref")).toHaveTextContent("Draft MEL-9001");
+    await expect(canvas.getByTestId("order-create-delete-draft")).toBeVisible();
+    await expect(canvas.queryByTestId("order-create-save-draft")).toBeNull();
+
+    const hints = canvas.getByTestId("draft-product-hints");
+    await expect(within(hints).getAllByRole("listitem")).toHaveLength(3);
+    await expect(canvas.getByTestId("draft-product-hint-0")).toHaveTextContent("2 × Kopi Arabika Gayo 250gr Biji Sangrai");
+    await expect(canvas.getByTestId("draft-product-hint-2")).toHaveTextContent("Mug Keramik Motif Batik (bonus)");
+    // A hint, not a row: no table, no picker, no input inside it.
+    await expect(within(hints).queryAllByRole("textbox")).toHaveLength(0);
+    // In a card of its own colour — a faded sand (draftHint.bg), never a role's tint — titled, and naming the app that
+    // pushed it.
+    await expect(getComputedStyle(hints).backgroundColor).toBe("rgb(251, 247, 239)");
+    await expect(hints).toHaveTextContent("Products to Send");
+    await expect(canvas.getByTestId("draft-product-hints-source")).toHaveTextContent("From ScraperX");
+
+    // The two mapped lines are on the order; the mug is not.
+    await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
+    await expect(canvas.getByTestId("order-line-1")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("order-line-2")).toBeNull();
+  },
+};
+
+// LEAVING AN UNTOUCHED DRAFT ASKS NOTHING — the form opened filled, but nothing was changed, and the draft is still on
+// the list. Only work done here is worth a "discard?".
+export const LeavingAnUntouchedDraftAsksNothing: Story = {
+  render: () => <RoutedFromDraft />,
+  // The drafts are Toko Melati's.
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Bu Lestari"), {
+      timeout: 4000,
+    });
+    await userEvent.click(canvas.getByTestId("order-create-back"));
+    await waitFor(() => expect(canvas.getByTestId("at-orders")).toBeInTheDocument());
+  },
+};
+
+// DELETE DRAFT CONFIRMS, then goes back to the drafts list.
+export const DeletingTheDraftGoesBackToTheList: Story = {
+  render: () => <RoutedFromDraft />,
+  // The drafts are Toko Melati's.
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("order-create-delete-draft", {}, { timeout: 4000 }));
+    const dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog).toHaveTextContent("MEL-9001");
+
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await waitFor(() => expect(canvas.getByTestId("at-drafts")).toBeInTheDocument());
   },
 };

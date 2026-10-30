@@ -1,16 +1,22 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Stack, Table, Tabs, Text } from "@chakra-ui/react";
 
+import { ChartColumn, Package } from "lucide-react";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
-import { DateRangePicker } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker, LAST_MONTH } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
-import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
+import { PERIOD_GRAINS, PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
 import type { PeriodGrain } from "../../lib/period";
+import { dateRangeCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { windowOf } from "../settlement/window";
+import { formatPeriod } from "../../lib/datetime";
 import { useTeam } from "../team/TeamContext";
 import {
   type SupplierFigurePoint,
@@ -20,10 +26,13 @@ import {
   useSupplierHeadline,
 } from "./analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "./FigureParts";
+import { SupplierTabExport } from "./SupplierTabExport";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { unitsReceived } from "./figures";
 
 const PAGE_SIZE = 10;
+
+const GRAIN_CODEC = oneOfCodec(PERIOD_GRAINS);
 
 // A ROW LIGHTS UP under the pointer, every cell of it (owner, on the Statistik tab: *"kasih hoverable"* — the supplier
 // list's `a-supplier-row-lights-up`), so a row of five figures can be read across. On the cells, not the row, so the
@@ -36,6 +45,10 @@ export const description =
 export interface SupplierStatisticsProps {
   /** Any team's supplier — its figures count every team's restocks from it. */
   supplierId: bigint;
+  /** The page's ⚠ for Penjualan (sales-sit-beside-restocked) — numbered in the page's own pending list. */
+  salesMark: ReactNode;
+  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
+  exportMark: ReactNode;
 }
 
 type StatisticsView = "time" | "product";
@@ -46,7 +59,7 @@ type StatisticsView = "time" | "product";
 // TWO VIEWS, each its own page within the tab (owner: *"dari waktu dan per produk bedakan halamannya"*,
 // `the-statistics-tab-is-two-views`) — they were two tables stacked, the second under a pager of the first:
 //
-//   Dari Waktu ke Waktu | Per Produk                                  ← which view — a tab row, over the filters
+//   Per Periode | Per Produk                                          ← which view — a tab row, over the filters (the-first-view-is-per-periode)
 //   [Semua tim ⌄] [30 hari terakhir ⌄] [Harian|Bulanan|Tahunan]     ← the grain right of the window, Over Time only
 //   Total · Direstok · Hilang · Rusak                                 ← the headline: the whole window, both views
 //   the view's table, and its pager
@@ -58,15 +71,19 @@ type StatisticsView = "time" | "product";
 //
 // ⚠ FOLDED, NOT LIVE: the figures are supplier_service's fold of *Restock Accepted* (the-report-is-processed-like-settlement),
 // so an accept a moment ago can take a moment to appear.
-export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
+export function SupplierStatistics({ supplierId, salesMark, exportMark }: SupplierStatisticsProps) {
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const { t } = useTranslation();
 
+  // Per Periode or Per Produk is a VIEW, not a filter — it stays on screen only.
   const [view, setView] = useState<StatisticsView>("time");
-  const [grain, setGrain] = useState<PeriodGrain>("day");
-  const [range, setRange] = useState<DateRange>({ kind: "relative", days: 30 });
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `stat.`-prefixed, since the Toko and Produk tabs
+  // share the detail page's route and keep their own.
+  const [grain, setGrain] = useUrlState<PeriodGrain>("stat.grain", "day", GRAIN_CODEC);
+  const [range, setRange] = useUrlState<DateRange>("stat.range", LAST_MONTH, dateRangeCodec);
   // Whose restocks — 0n is every team's.
-  const [restockTeamId, setRestockTeamId] = useState(0n);
+  const [restockTeamId, setRestockTeamId] = useUrlState("stat.team", 0n, idCodec);
   const [seriesPage, setSeriesPage] = useState(1);
   const [productPage, setProductPage] = useState(1);
 
@@ -121,10 +138,15 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
   // Nothing at all in the window — said once, instead of a headline of zeroes over a table of zeroes.
   const quiet = headline.data !== undefined && unitsReceived(headline.data) === 0;
 
+  // AN EMPTY WINDOW SAYS WHAT NEXT (an-empty-list-shows-a-hint) — another range, or another team.
   const empty = (
-    <Text color="fg.muted" data-testid="statistics-empty">
-      {restockTeamId !== 0n ? t("supplierStats.emptyTeam") : t("supplierStats.empty")}
-    </Text>
+    <EmptyHint
+      icon={ChartColumn}
+      size="sm"
+      title={restockTeamId !== 0n ? t("supplierStats.emptyTeam") : t("supplierStats.empty")}
+      description={t("emptyHint.otherPeriod")}
+      testId="statistics-empty"
+    />
   );
 
   return (
@@ -142,15 +164,20 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
             (a-selected-tab-is-in-the-main-tone). */}
         <Tabs.List data-testid="statistics-views">
           <Tabs.Trigger value="time" data-testid="statistics-view-time">
-            {t("supplierStats.overTime")}
+            {t("supplierStats.byPeriod")}
           </Tabs.Trigger>
           <Tabs.Trigger value="product" data-testid="statistics-view-product">
             {t("supplierStats.byProduct")}
           </Tabs.Trigger>
+          {/* The underline slides to the picked view, and the view fades in where the other was
+              (`motion-is-small-quick-and-shared`). */}
+          <Tabs.Indicator />
         </Tabs.List>
 
         <FilterBar
           testId="statistics-filter"
+          // Exports the view on screen — Per Periode or Per Produk — as narrowed.
+          actions={isMobile ? undefined : <SupplierTabExport mark={exportMark} testId="statistics-export" />}
           active={restockTeamId !== 0n}
           count={restockTeamId !== 0n ? 1 : 0}
           onClear={() => pickTeam(0n)}
@@ -168,6 +195,8 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
               <PeriodGrainPicker value={grain} onChange={pickGrain} testId="statistics-grain" />
             </FilterField>
           )}
+          {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
+          {isMobile && <SupplierTabExport mark={exportMark} testId="statistics-export" />}
         </FilterBar>
 
         {!valid && (
@@ -177,17 +206,20 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
         )}
 
         <RefreshOverlay busy={headline.isFetching && !headline.isPending}>
-          <FiguresSummary figures={headline.data} testId="statistics-summary" />
+          <FiguresSummary figures={headline.data} salesMark={salesMark} testId="statistics-summary" />
         </RefreshOverlay>
 
         <Stack gap="field">
-          <Tabs.Content value="time" p="0">
-            {quiet ? (
+          <Tabs.Content value="time" p="0" animationStyle="swap">
+            {/* The first load shows the table's shape; the rows fade in over it (motion-is-small-quick-and-shared). */}
+            {series.isPending && valid ? (
+              <ListSkeleton testId="statistics-series-loading" />
+            ) : quiet ? (
               empty
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={series.isFetching && !series.isPending}>
-                  <SeriesTable points={series.data?.points ?? []} />
+                  <SeriesTable points={series.data?.points ?? []} grain={grain} salesMark={salesMark} />
                 </RefreshOverlay>
 
                 {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
@@ -203,13 +235,15 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
             )}
           </Tabs.Content>
 
-          <Tabs.Content value="product" p="0">
-            {quiet ? (
+          <Tabs.Content value="product" p="0" animationStyle="swap">
+            {products.isPending && valid ? (
+              <ListSkeleton testId="statistics-products-loading" />
+            ) : quiet ? (
               empty
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={products.isFetching && !products.isPending}>
-                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} />}
+                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} salesMark={salesMark} />}
                 </RefreshOverlay>
 
                 <GrowingPager
@@ -230,8 +264,16 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
 }
 
 // One row per period, NEWEST first — every period in the window, the quiet ones included: a missing row reads as a
-// period that did not load. The bucket is its own label: `2026-10-07`, `2026-10`, `2026`.
-function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
+// period that did not load. Each reads at its grain (a-period-reads-as-its-grain): `2026-10-07`, `Oktober 2026`, `2026`.
+function SeriesTable({
+  points,
+  grain,
+  salesMark,
+}: {
+  points: SupplierFigurePoint[];
+  grain: PeriodGrain;
+  salesMark: ReactNode;
+}) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -255,12 +297,13 @@ function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
               data-testid={`statistics-series-row-${point.at}`}
               data-quiet="true"
             >
-              {point.at} · {t("supplierStats.quietPeriod")}
+              {formatPeriod(point.at, grain)} · {t("supplierStats.quietPeriod")}
             </Text>
           ) : (
             <FigureBlock
+              salesMark={salesMark}
               key={point.at}
-              title={point.at}
+              title={formatPeriod(point.at, grain)}
               figures={point.figures}
               testId={`statistics-series-row-${point.at}`}
             />
@@ -276,14 +319,14 @@ function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("supplierFigures.col.period")}</Table.ColumnHeader>
-            <FigureHeaders />
+            <FigureHeaders salesMark={salesMark} />
           </Table.Row>
         </Table.Header>
         <Table.Body>
           {points.map((point) => (
             <Table.Row key={point.at} data-testid={`statistics-series-row-${point.at}`} css={LIGHTS_UP}>
               <Table.Cell>
-                <Text fontSize="sm">{point.at}</Text>
+                <Text fontSize="sm">{formatPeriod(point.at, grain)}</Text>
               </Table.Cell>
               <FigureCells figures={point.figures} />
             </Table.Row>
@@ -297,7 +340,15 @@ function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
 // Product Grouped — the restocking team's product, so two teams buying one item are two rows, each naming its team
 // (every-accepted-line-links-its-own-product). The Team column goes when one team is picked: it would say the same
 // name on every row.
-function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam: boolean }) {
+function ProductTable({
+  rows,
+  showTeam,
+  salesMark,
+}: {
+  rows: SupplierProductRow[];
+  showTeam: boolean;
+  salesMark: ReactNode;
+}) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -317,9 +368,13 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
 
   if (rows.length === 0) {
     return (
-      <Text fontSize="sm" color="fg.muted" data-testid="statistics-products-empty">
-        {t("supplierStats.noProducts")}
-      </Text>
+      <EmptyHint
+        icon={Package}
+        size="sm"
+        title={t("supplierStats.noProducts")}
+        description={t("emptyHint.otherPeriod")}
+        testId="statistics-products-empty"
+      />
     );
   }
 
@@ -328,6 +383,7 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
       <Stack gap="2" data-testid="statistics-products">
         {rows.map((row) => (
           <FigureBlock
+            salesMark={salesMark}
             key={row.key}
             title={productLabel(row)}
             // The team as a badge beside the SKU — the Produk tab's phone block.
@@ -347,7 +403,7 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
           <Table.Row>
             <Table.ColumnHeader>{t("supplierFigures.col.product")}</Table.ColumnHeader>
             {showTeam && <Table.ColumnHeader>{t("supplierFigures.col.team")}</Table.ColumnHeader>}
-            <FigureHeaders />
+            <FigureHeaders salesMark={salesMark} />
           </Table.Row>
         </Table.Header>
         <Table.Body>

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { SimpleGrid, Stat, Text } from "@chakra-ui/react";
+import { SummaryCard, SummaryStrip } from "../../../features/orders/SummaryCard";
 import { formatRupiah } from "../../../lib/money";
 import { formatUnixDate } from "../../../lib/datetime";
 
@@ -21,23 +21,20 @@ interface ProductStatsProps {
   lastOrderUnix?: bigint;
   /** When stock last ARRIVED (unix seconds). */
   lastRestockUnix?: bigint;
-  /** The warehouse lens, when one is chosen — the stock tiles then describe only that warehouse. */
+  /** The warehouse lens, when one is chosen — the stock cards then describe only that warehouse. */
   warehouseName?: string;
 }
 
-// The catalogue's headline numbers — the guideline's stat "preview" (guidelines/service-guideline.md).
+// The catalogue's headline numbers, as THE ORDER LIST'S CARD STRIP (a-list-summary-is-the-order-lists-card-strip) —
+// grey cards with a thin line, none wider than a fifth of the row (a-summary-card-is-at-most-a-fifth).
 //
-// Ready and ongoing each carry a COUNT and a VALUATION because they answer different questions off
-// the same rows — "can I sell it?" and "what is it worth / what have I committed?" — and a screen
-// showing only one of the two sends you elsewhere for the other half. Last order and last restock are
-// the two DATES that say whether this catalogue is alive: nothing sold in three weeks, or nothing
-// arriving, is a fact you want on the way in, not after you go looking.
+// Ready and ongoing each carry a COUNT and a VALUATION because they answer different questions off the same rows — "can
+// I sell it?" and "what is it worth / what have I committed?" — and a screen showing only one of the two sends you
+// elsewhere for the other half. Last order and last restock are the two DATES that say whether this catalogue is alive:
+// nothing sold in three weeks, or nothing arriving, is a fact you want on the way in, not after you go looking.
 //
-// ⚠ Everything except the product count is OPTIONAL and currently arrives undefined. Stock lives in
-// inventory_service (per warehouse, warehouse roles only), orders in selling_service, restocks in
-// inventory_service — none of them exposes a per-catalogue read a SELLING team may call. Undefined
-// renders an em dash rather than a zero: "we do not know" and "you have none" are different
-// statements, and the confident version of the wrong one is worse than a blank.
+// Undefined renders an em dash rather than a zero: "we do not know" and "you have none" are different statements, and
+// the confident version of the wrong one is worse than a blank.
 export function ProductStats({
   totalItems,
   ready,
@@ -48,113 +45,73 @@ export function ProductStats({
 }: ProductStatsProps) {
   const { t } = useTranslation();
 
-  // Same rule as the table headers: a stock figure narrowed to one warehouse has to say so, or it
-  // reads as the total.
+  // Same rule as the table headers: a stock figure narrowed to one warehouse has to say so, or it reads as the total.
   const scoped = (label: string) => (warehouseName ? label + " · " + warehouseName : label);
 
   return (
-    <SimpleGrid columns={{ base: 1, md: 3, xl: 5 }} gap="card">
-      <Stat.Root>
-        <Stat.Label>{t("products.totalStat")}</Stat.Label>
-        <Stat.ValueText data-testid="products-total">{totalItems}</Stat.ValueText>
-      </Stat.Root>
+    <SummaryStrip testId="products-stats">
+      <SummaryCard label={t("products.totalStat")} value={totalItems} testId="products-total" />
 
-      <StockStat
+      <StockCard
         label={scoped(t("products.stat.ready"))}
         hint={t("products.stat.readyHint")}
         figure={ready}
         testId="products-ready-stock"
       />
 
-      <StockStat
+      <StockCard
         label={scoped(t("products.stat.ongoing"))}
         hint={t("products.stat.ongoingHint")}
         figure={ongoing}
         testId="products-ongoing-stock"
       />
 
-      <DateStat
+      <DateCard
         label={t("products.stat.lastOrder")}
         hint={t("products.stat.lastOrderHint")}
         unix={lastOrderUnix}
         testId="products-last-order"
       />
 
-      <DateStat
+      <DateCard
         label={t("products.stat.lastRestock")}
         hint={t("products.stat.lastRestockHint")}
         unix={lastRestockUnix}
         testId="products-last-restock"
       />
-    </SimpleGrid>
+    </SummaryStrip>
   );
 }
 
-function StockStat({
-  label,
-  hint,
-  figure,
-  testId,
-}: {
-  label: string;
-  hint: string;
-  figure?: StockFigure;
-  testId: string;
-}) {
+// The units as the figure; what they are worth at cost as the quiet line under it.
+function StockCard({ label, hint, figure, testId }: { label: string; hint: string; figure?: StockFigure; testId: string }) {
   const { t } = useTranslation();
 
   return (
-    <Stat.Root>
-      <Stat.Label>{label}</Stat.Label>
-      <Stat.ValueText data-testid={testId}>
-        {figure ? t("products.stat.pcs", { n: figure.qty.toString() }) : "—"}
-      </Stat.ValueText>
-      <Stat.HelpText>
-        {figure ? (
-          <>
-            {formatRupiah(figure.value)}{" "}
-            <Text as="span" color="fg.subtle">
-              {hint}
-            </Text>
-          </>
-        ) : (
-          <Text as="span" color="fg.subtle">
-            {t("products.stat.pending")}
-          </Text>
-        )}
-      </Stat.HelpText>
-    </Stat.Root>
+    <SummaryCard
+      label={label}
+      value={figure ? t("products.stat.pcs", { n: figure.qty.toString() }) : "—"}
+      muted={!figure}
+      line={figure ? `${formatRupiah(figure.value)} · ${hint}` : t("products.stat.pending")}
+      testId={testId}
+    />
   );
 }
 
-function DateStat({
-  label,
-  hint,
-  unix,
-  testId,
-}: {
-  label: string;
-  hint: string;
-  unix?: bigint;
-  testId: string;
-}) {
+function DateCard({ label, hint, unix, testId }: { label: string; hint: string; unix?: bigint; testId: string }) {
   const { t } = useTranslation();
 
-  // 0 is "never happened", which is a real answer and reads as such — unlike undefined, which means
-  // nobody has told us yet.
+  // 0 is "never happened", which is a real answer and reads as such — unlike undefined, which means nobody has told
+  // us yet.
   const never = unix === 0n;
 
   return (
-    <Stat.Root>
-      <Stat.Label>{label}</Stat.Label>
-      <Stat.ValueText data-testid={testId}>
-        {unix === undefined ? "—" : never ? t("products.stat.never") : formatUnixDate(unix)}
-      </Stat.ValueText>
-      <Stat.HelpText>
-        <Text as="span" color="fg.subtle">
-          {unix === undefined ? t("products.stat.pending") : hint}
-        </Text>
-      </Stat.HelpText>
-    </Stat.Root>
+    <SummaryCard
+      label={label}
+      value={unix === undefined ? "—" : never ? t("products.stat.never") : formatUnixDate(unix)}
+      muted={unix === undefined}
+      line={unix === undefined ? t("products.stat.pending") : hint}
+      testId={testId}
+    />
   );
 }

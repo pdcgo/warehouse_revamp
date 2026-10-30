@@ -1,29 +1,23 @@
-import { Badge, Flex, Tabs } from "@chakra-ui/react";
+import { Flex, Tabs } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { ALL_STAGE, ORDER_STAGES } from "./stages";
 
-/** The value the DRAFTS tab carries — not a stage: a draft is a different record in a different table. */
-export const DRAFTS_TAB = "drafts";
-
 // THE STATUS FILTER: one tab per status, plus All (one-tab-per-status), in the status diagram's order.
-// Every tab is a real status now (00015), so each carries its count — a 0 is a measurement.
 //
-// ⚠ TWO SCREENS DRAW IT — the seller's order list and the drafts screen, which is that list's Drafts
-// tab (`the-draft-list-is-the-drafts-tab`). The warehouse's list draws its own steps.
+// ⚠ NO COUNTS ON THE TABS (owner: *"tabs gaada angkanya"*, `the-status-tabs-carry-no-counts`). A count is a census read
+// on every visit and every filter change, for twelve badges somebody glances past on the way to a tab. How many orders
+// sit in each status is what the statistics answer — shut until asked (`the-statistics-are-shut-and-read-when-opened`).
+//
+// The seller's order list draws it. Drafts is not on it — the drafts are a list of their own, reached from the menu
+// (`the-drafts-are-a-list-of-their-own`). The warehouse's list draws its own steps.
 export function StageTabs({
   value,
   onSelect,
-  count,
-  draftCount,
 }: {
-  /** The active tab: a stage id, `ALL_STAGE`, or `DRAFTS_TAB`. */
+  /** The active tab: a stage id, or `ALL_STAGE`. */
   value: string;
   onSelect: (value: string) => void;
-  /** The badge for one tab. */
-  count: (value: string) => number;
-  /** Undefined hides the badge — a screen that has not counted them shows no number, not a 0. */
-  draftCount?: number;
 }) {
   const { t } = useTranslation();
 
@@ -50,13 +44,6 @@ export function StageTabs({
             data-testid={`orders-tab-${ALL_STAGE}`}
           >
             {t("orders.tab.allStatus")}
-            <Badge
-              size="xs"
-              variant="subtle"
-              data-testid={`orders-tab-count-${ALL_STAGE}`}
-            >
-              {count(ALL_STAGE)}
-            </Badge>
           </Tabs.Trigger>
 
           {ORDER_STAGES.map((stage) => (
@@ -68,31 +55,12 @@ export function StageTabs({
               data-testid={`orders-tab-${stage.id}`}
             >
               {t(`orders.stage.${stage.id}`)}
-              <Badge size="xs" variant="subtle" data-testid={`orders-tab-count-${stage.id}`}>
-                {count(stage.id)}
-              </Badge>
             </Tabs.Trigger>
           ))}
 
-          {/* DRAFTS IS THE LAST TAB (owner), and selecting it LEAVES — the drafts screen is its own
-            route with its own selection and bulk delete. */}
-          <Tabs.Trigger
-            value={DRAFTS_TAB}
-            flexShrink="0"
-            whiteSpace="nowrap"
-            data-testid={`orders-tab-${DRAFTS_TAB}`}
-          >
-            {t("orders.tab.drafts")}
-            {draftCount !== undefined && (
-              <Badge
-                size="xs"
-                variant="subtle"
-                data-testid={`orders-tab-count-${DRAFTS_TAB}`}
-              >
-                {draftCount}
-              </Badge>
-            )}
-          </Tabs.Trigger>
+          {/* One underline, sliding to the picked tab (motion-is-small-quick-and-shared). The rows under it do not fade:
+              a tab is a filter (a-filter-answers-as-it-changes). */}
+          <Tabs.Indicator />
         </Tabs.List>
       </Tabs.Root>
 

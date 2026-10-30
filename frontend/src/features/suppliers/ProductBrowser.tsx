@@ -1,19 +1,26 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, HStack, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Button, HStack, Stack, Table, Text } from "@chakra-ui/react";
+import { Package, SearchX } from "lucide-react";
 import type { SupplierChannelRecord } from "./adapt";
 import { ChannelName, LIGHTS_UP } from "./ChannelBrowser";
 import { sampleProductsFor, type SampleProduct } from "./sampleProducts";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatUnixDate } from "../../lib/datetime";
+import { idCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { RestockTeamFilter } from "./FigureParts";
 import { SupplierStoreSelect } from "./SupplierStoreSelect";
+import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
+import { sampleProductFigures } from "./sampleSupplierFigures";
+import { SupplierTabExport } from "./SupplierTabExport";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -47,21 +54,37 @@ function Bought({ product }: { product: SampleProduct }) {
 // the store it was bought at, and when: the last restock and the first (a-link-remembers-its-last-restock), newest
 // first. Searched, narrowed to one store or one team (owner: *"di produk tambah toko pemasok"*, *"tim juga"*), and paged.
 //
-//   Produk                        Tim               Toko pemasok              Terakhir dibeli
-//   [▦] Kain Katun Jepang 1 rol   [TM] Toko Melati  Sumber Makmur Official    8 Okt 2026
-//       KTN-JP-01                      Penjual      [Shopee]                  pertama 9 Sep 2026
+//   Produk                        Tim               Toko pemasok              Terakhir dibeli      Terjual ⚠2          Siap ⚠3
+//   [▦] Kain Katun Jepang 1 rol   [TM] Toko Melati  Sumber Makmur Official    8 Okt 2026              412               37
+//       KTN-JP-01                      Penjual      [Shopee]                  pertama 9 Sep 2026  pesanan 6 Okt 2026
 //
-// ⚠ SAMPLE ROWS. The link a restock writes is not built yet, so the rows are invented from the supplier's channels;
-// each page that mounts this carries the `sample` mark. The search and the pager run over those rows here; the real
-// read will do both on the server.
-export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[] }) {
+// ITS TERJUAL AND SIAP (owner: *"di channel dan produk ada ready dan sold tadi"*, `the-detail-tabs-show-sold-and-ready`)
+// — the supplier list's figures, for this product: the last two columns, the last order under Terjual. No restock date
+// under Siap — *Terakhir dibeli*, just left of it, is that date.
+//
+// ⚠ SAMPLE ROWS. The link a restock writes is not built yet, so the rows are invented from the supplier's channels —
+// and their figures with them; each page that mounts this carries the `sample` marks. The search and the pager run over
+// those rows here; the real read will do both on the server.
+export function ProductBrowser({
+  channels,
+  figureMarks,
+  exportMark,
+}: {
+  channels: SupplierChannelRecord[];
+  /** The page's marks for Terjual and Siap — numbered in the page's own pending list. */
+  figureMarks: FigureMarks;
+  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
+  exportMark: ReactNode;
+}) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
-  const [q, setQ] = useState("");
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `product.`-prefixed, since the Toko and Statistik
+  // tabs share the detail page's route and keep their own.
+  const [q, setQ] = useUrlState("product.q", "", textCodec);
   // One of the supplier's stores, and one selling team — 0n is every one.
-  const [storeId, setStoreId] = useState(0n);
-  const [teamId, setTeamId] = useState(0n);
+  const [storeId, setStoreId] = useUrlState("product.store", 0n, idCodec);
+  const [teamId, setTeamId] = useUrlState("product.team", 0n, idCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -70,6 +93,12 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
     change();
     setPage(1);
   }
+  const clearFilters = () =>
+    refilter(() => {
+      setQ("");
+      setStoreId(0n);
+      setTeamId(0n);
+    });
 
   const all = sampleProductsFor(channels);
   const term = q.trim().toLowerCase();
@@ -87,14 +116,26 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
 
   function list() {
     if (products.length === 0) {
+      // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint).
       return filtering ? (
-        <Text color="fg.muted" data-testid="products-none-match">
-          {t("supplierChannel.products.none")}
-        </Text>
+        <EmptyHint
+          icon={SearchX}
+          size="sm"
+          title={t("supplierChannel.products.none")}
+          description={t("emptyHint.noMatch")}
+          action={<Button variant="outline" colorPalette="gray" onClick={clearFilters}>
+              {t("common.clearFilters")}
+            </Button>}
+          testId="products-none-match"
+        />
       ) : (
-        <Text color="fg.muted" data-testid="products-empty">
-          {t("supplierChannel.products.empty")}
-        </Text>
+        <EmptyHint
+          icon={Package}
+          size="sm"
+          title={t("supplierChannel.products.empty")}
+          description={t("supplierChannel.products.emptyHint")}
+          testId="products-empty"
+        />
       );
     }
 
@@ -122,6 +163,11 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
                   </Text>
                 )}
               </Stack>
+              <SupplierFigureLines
+                figures={sampleProductFigures(p.channel.id, p.id)}
+                marks={figureMarks}
+                testId={`product-row-${p.key}-figures`}
+              />
             </Stack>
           ))}
         </Stack>
@@ -136,6 +182,7 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
             {showTeam && <Table.ColumnHeader>{t("supplierChannel.products.team")}</Table.ColumnHeader>}
             <Table.ColumnHeader>{t("supplierChannel.products.channel")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("supplierChannel.products.lastBought")}</Table.ColumnHeader>
+            <SupplierFigureHeaders marks={figureMarks} />
           </Table.Row>
         </Table.Header>
 
@@ -160,6 +207,7 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
               <Table.Cell>
                 <Bought product={p} />
               </Table.Cell>
+              <SupplierFigureCells figures={sampleProductFigures(p.channel.id, p.id)} id={p.key} testIdPrefix="product" />
             </Table.Row>
           ))}
         </Table.Body>
@@ -171,15 +219,10 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
     <Stack gap="card" data-testid="products-section">
       <FilterBar
         testId="products-filter"
+        actions={isMobile ? undefined : <SupplierTabExport mark={exportMark} testId="products-export" />}
         active={filtering}
         count={(term !== "" ? 1 : 0) + (storeId !== 0n ? 1 : 0) + (teamId !== 0n ? 1 : 0)}
-        onClear={() =>
-          refilter(() => {
-            setQ("");
-            setStoreId(0n);
-            setTeamId(0n);
-          })
-        }
+        onClear={clearFilters}
       >
         <FilterSearch
           value={q}
@@ -203,6 +246,8 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
             testId="products-store"
           />
         </FilterField>
+        {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
+        {isMobile && <SupplierTabExport mark={exportMark} testId="products-export" />}
       </FilterBar>
 
       {list()}

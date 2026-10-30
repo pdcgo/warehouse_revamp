@@ -44,15 +44,17 @@ service SupplierAnalyticMaintenanceService {
 //
 // Groups: SUPPLIER and PRODUCT — the RESTOCKING team's product, so two teams buying one item are two keys
 // (every-accepted-line-links-its-own-product) — and every period. Filters: the window (required); TEAM, whose
-// restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier. No keyword — the Supplier
-// Report's search went with it (the-supplier-report-drops-its-search).
+// restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier; SUPPLIER_KEYWORD, the Supplier
+// Report's search (the-supplier-report-keeps-its-search).
 message SupplierMetric {
   option (warehouse.analytic_base.v1.metric) = {
     metric_id: "metrics/suppliers"
     supported_filters: [
       FILTER_TYPE_DATE_RANGE,
       FILTER_TYPE_TEAM,
-      FILTER_TYPE_SUPPLIER
+      FILTER_TYPE_SUPPLIER,
+      // The Supplier Report's search (the-supplier-report-keeps-its-search).
+      FILTER_TYPE_SUPPLIER_KEYWORD
     ]
     required_filters: [FILTER_TYPE_DATE_RANGE]
     supported_group_by: [

@@ -108,6 +108,20 @@ export const ClickableCoverIsARealButton: Story = {
   },
 };
 
+// A COPYABLE SKU (the products list: *"sku copyable"*) — the SKU becomes CopyText, a button named for what it copies.
+// Without the prop it stays plain text, which StaticCoverHasNoButton below also pins (no button anywhere).
+export const CopyableSku: Story = {
+  args: { skuCopyable: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const sku = canvas.getByTestId(`product-list-item-sku-${product.id}`);
+
+    await expect(sku.tagName).toBe("BUTTON");
+    await expect(sku).toHaveAccessibleName(new RegExp(product.sku));
+    await expect(sku).toHaveTextContent(product.sku);
+  },
+};
+
 // The other half of the rule: the default row has no control on its cover.
 export const StaticCoverHasNoButton: Story = {
   args: { stock: 42n },

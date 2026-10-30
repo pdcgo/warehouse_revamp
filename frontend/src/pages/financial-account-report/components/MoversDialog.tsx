@@ -15,6 +15,8 @@ export interface Mover {
   /** An account's provider, or the provider a provider row IS — drawn as its coloured badge either way. */
   provider?: FinancialAccountProvider;
   archived?: boolean;
+  /** Where it opened the window — the Rincian tab reads it; the dialog does not. */
+  open?: number;
   change: number;
   close: number;
   /** Where the row leads — an account's own page, its statement. A provider row leads nowhere. */

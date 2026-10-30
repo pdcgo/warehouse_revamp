@@ -1,24 +1,35 @@
-import { Button, HStack } from "@chakra-ui/react";
+import type { ElementType, ReactNode } from "react";
+import { Button, HStack, Icon } from "@chakra-ui/react";
 
 export const description =
-  "A filter as a row of rounded chips — All first, then each option; one is chosen at a time, drawn in the main tone. For a small, fixed set a person narrows by often (a store type), where seeing every option at once beats opening a picker. Wraps on a desktop; one row that scrolls sideways on a phone. Emits the chosen value, and the `all` value for All.";
+  "A filter as a row of rounded chips — All first (or no All, for a set always narrowed to one option), then each option, with its icon when it has one; one is chosen at a time, drawn in the main tone. For a small, fixed set a person narrows by often (a store type), where seeing every option at once beats opening a picker. Wraps on a desktop; one row that scrolls sideways on a phone. Emits the chosen value, and the `all` value for All. A chip may carry a hover title; the row may end with a control of its own (a \"+3 more\").";
 
 export interface FilterChipOption<V extends string | number> {
   value: V;
   label: string;
+  /** What a hover says about it — when the label alone does not explain its numbers. */
+  title?: string;
+  /** A leading icon — the one the same thing carries elsewhere (a card's badge), so the chip and the badge are matched at a glance. */
+  icon?: ElementType;
 }
 
 export interface FilterChipsProps<V extends string | number> {
   value: V;
   onChange: (value: V) => void;
-  /** The All chip's value — what "no narrowing" is held as (0, UNSPECIFIED, ""). */
-  all: V;
-  allLabel: string;
+  /**
+   * The All chip's value — what "no narrowing" is held as (0, UNSPECIFIED, ""). Omit it, with `allLabel`, for a set that
+   * is ALWAYS narrowed to one of its options — no All chip, one option always chosen (Discover's division: owner, *"filter
+   * semua tidak perlu, cuma per tipe saja"*).
+   */
+  all?: V;
+  allLabel?: string;
   options: FilterChipOption<V>[];
   /** Spoken name of the group. */
   ariaLabel: string;
   /** One row that scrolls sideways, instead of wrapping — for a phone. */
   scroll?: boolean;
+  /** A control at the row's end, after the last chip — a "+3 more" that unfolds the rest. */
+  trailing?: ReactNode;
   testId?: string;
 }
 
@@ -38,9 +49,11 @@ export function FilterChips<V extends string | number>({
   options,
   ariaLabel,
   scroll = false,
+  trailing,
   testId = "filter-chips",
 }: FilterChipsProps<V>) {
-  const chips: FilterChipOption<V>[] = [{ value: all, label: allLabel }, ...options];
+  const chips: FilterChipOption<V>[] =
+    all !== undefined && allLabel !== undefined ? [{ value: all, label: allLabel }, ...options] : options;
 
   return (
     <HStack
@@ -68,14 +81,19 @@ export function FilterChips<V extends string | number>({
             borderWidth="1px"
             borderColor={chosen ? "brand.solid" : "border"}
             fontWeight="normal"
+            // The pick turns in the hover beat, not Chakra's slower default (`a-filter-answers-as-it-changes`).
+            transitionDuration="hover"
             aria-pressed={chosen}
+            title={chip.title}
             data-testid={`${testId}-${String(chip.value)}`}
             onClick={() => onChange(chip.value)}
           >
+            {chip.icon && <Icon as={chip.icon} boxSize="3.5" />}
             {chip.label}
           </Button>
         );
       })}
+      {trailing}
     </HStack>
   );
 }

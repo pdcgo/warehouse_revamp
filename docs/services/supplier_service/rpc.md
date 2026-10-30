@@ -147,7 +147,7 @@ sequenceDiagram
   participant S as supplier_service
   participant N as supplier and team names
   par the page and the headline
-    UI->>S: MetricSearch — SUPPLIER, window, team, sort restock_valuation or broken_rate, offset and limit
+    UI->>S: MetricSearch — SUPPLIER, window, team, the search, sort restock_valuation or broken_rate, offset and limit
     S-->>UI: the ranked supplier ids, has_next
   and
     UI->>S: MetricData — SUMMARY, the same filters, no keys

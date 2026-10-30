@@ -34,8 +34,15 @@ export function DesktopLayout() {
         <NotMemberStrip />
 
         {/* The content area stays WHITE by default (so a freshly-built component isn't tinted grey);
-            a page opts INTO the grey canvas by route — see `usesGreyCanvas`. */}
-        <Box as="main" flex="1" overflow="auto" p="page" bg={greyCanvas ? GREY_CANVAS : undefined}>
+            a page opts INTO the grey canvas by route — see `usesGreyCanvas`.
+
+            ⚠ `overflowX="clip"`, NEVER `overflow="auto"`. This shell lets the WINDOW scroll (the sidebar sticks to
+            it), so <main> grows with the page and never scrolls itself — but `overflow: auto` still made it a scroll
+            container, and every `position: sticky` inside a page stuck to that box instead of the window, i.e. never
+            stuck (owner, on the product page: *"di halaman asli yang heading stickynya tidak muncul"*; the order
+            detail's header, the stock count's and Accept Delivery's had the same fault). `clip` still keeps a page from
+            scrolling sideways, without becoming a scroll container. */}
+        <Box as="main" flex="1" overflowX="clip" p="page" bg={greyCanvas ? GREY_CANVAS : undefined}>
           {/* Each route's page is code-split (React.lazy in router.tsx); this boundary shows a
               spinner for the brief moment its chunk is fetched. */}
           <Suspense fallback={<Spinner colorPalette="brand" />}>

@@ -1,6 +1,36 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  ArrowLeftRight, Boxes, Building2, ChartLine, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, Package, PackageOpen, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  ArrowLeftRight,
+  Boxes,
+  Building2,
+  CalendarRange,
+  ChartColumn,
+  ChartLine,
+  CircleUser,
+  ClipboardCheck,
+  ClipboardList,
+  Compass,
+  Factory,
+  FilePen,
+  FileUp,
+  FolderTree,
+  Grid3x3,
+  Handshake,
+  House,
+  Landmark,
+  Layers,
+  Package,
+  PackageOpen,
+  Receipt,
+  Scale,
+  Settings,
+  ShoppingCart,
+  Store,
+  TrendingDown,
+  Truck,
+  Undo2,
+  Users,
+} from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
@@ -91,19 +121,27 @@ const CATEGORIES: MenuItem = { to: "/categories", label: "nav.categories", icon:
 const SHIPPING: MenuItem = { to: "/shipping", label: "nav.shipping", icon: Truck };
 const PRODUCTS: MenuItem = { to: "/products", label: "nav.products", icon: Package };
 const SHOPS: MenuItem = { to: "/shops", label: "nav.shops", icon: Store };
-// Orders, and DRAFTS IS INSIDE IT — a tab on that screen rather than a menu item of its own (owner).
+// The selling team's Orders. The phone's bottom bar carries it as one tab.
+const ORDERS: MenuItem = { to: "/orders", label: "nav.orders", icon: ShoppingCart };
+const ORDER_DRAFTS: MenuItem = { to: "/order-drafts", label: "nav.orderDrafts", icon: FilePen };
+// The phone's Orders tab CLAIMS the drafts (`alsoMatches`): the bar has no Drafts tab — the list is reached from More —
+// and with no top bar the lit tab is the shell's one statement of where you are, so standing on Drafts lights the tab of
+// the group it belongs to. The sidebar does not need it: Drafts is an item of its own there.
+const ORDERS_TAB: MenuItem = { ...ORDERS, alsoMatches: [ORDER_DRAFTS.to] };
+
+// ORDERS AND ITS DRAFTS, ONE SUB-MENU (owner: *"draft perlu dipisahkan dari list pesanan, dia jadi list sendiri"*,
+// `the-drafts-are-a-list-of-their-own`). The drafts were a TAB of the order list; now they are a list of their own, and
+// a list of its own needs a way in. Beside Orders as a second top-level item would repeat "Pesanan" and lengthen the
+// sidebar (`the-sidebar-stays-short`), so the two are one group whose children name only their screen:
 //
-// It used to sit beside this one, on the argument that a draft was never an order. That is still
-// true of the schema and the route, and neither changed; what was wrong was the MENU. Nobody goes
-// looking for "drafts" — they go looking for the order they were half-way through, and that search
-// starts at Orders. A second top-level item made the sidebar answer a question about our tables.
-const ORDERS: MenuItem = {
-  to: "/orders",
+//   Pesanan ▸  Daftar · Draf
+const ORDERS_GROUP: MenuGroup = {
   label: "nav.orders",
   icon: ShoppingCart,
-  // The drafts screen keeps its own route, so Orders has to claim it — otherwise standing on Drafts
-  // highlights nothing and the phone's top bar goes blank.
-  alsoMatches: ["/order-drafts"],
+  children: [
+    { ...ORDERS, label: "nav.ordersList" },
+    { ...ORDER_DRAFTS, label: "nav.orderDraftsShort" },
+  ],
 };
 
 // The WAREHOUSE's Orders — the orders shipping FROM this building (#151), which is the work its crew
@@ -156,10 +194,60 @@ const SETTLEMENT_IMPORTS: MenuItem = {
   label: "nav.settlementImports",
   icon: FileUp,
 };
+
+// THE THREE AS ONE SUB-MENU (owner: *"aku ingin menu keuangan lebih simpel"* — on the proposal: *"penyelesaian oke gitu"*,
+// `settlement-is-one-sub-menu`): the payouts, their report and their imports are one subject — what the marketplace paid
+// — and as three siblings they repeated "Penyelesaian" three times. Under the group heading the children need only say
+// which screen: Daftar · Laporan · Impor. The routes are unchanged; only the menu moved, as Suppliers' did.
+function settlementFor(role: Role | undefined): MenuEntry | undefined {
+  const children: MenuItem[] = [];
+  if (isTeamManager(role)) {
+    children.push({ ...SETTLEMENT, label: "nav.settlementList" });
+    children.push({ ...SETTLEMENT_REPORT, label: "nav.settlementReportShort" });
+  }
+  if (canImportSettlement(role)) {
+    children.push({ ...SETTLEMENT_IMPORTS, label: "nav.settlementImportsShort" });
+  }
+
+  // A group of one is a heading over a single link — a CS, who only imports, gets that link flat, its full name.
+  if (children.length === 0) return undefined;
+  if (children.length === 1) return children[0]!.to === SETTLEMENT_IMPORTS.to ? SETTLEMENT_IMPORTS : SETTLEMENT;
+  return { label: "nav.settlement", icon: Scale, children };
+}
 // The money a team actually HOLDS — its bank, wallet and cash accounts (docs/business/financial_account).
 // Every member of a selling or warehouse team sees it (seeing-is-team-wide-moving-is-admin-and-up); the
 // page hides the buttons that move money from anyone below admin, and the server refuses them anyway.
 const FINANCIAL_ACCOUNTS: MenuItem = { to: "/financial-accounts", label: "nav.financialAccounts", icon: Landmark };
+
+// THE ACCOUNTS AND WHAT MOVES THEM, ONE SUB-MENU (owner: *"ketiganya jadi 1 menu dan submenu apa bisa?"* — on the
+// proposal: *"pakai usulanmu, kedepannya kita ingin menu di samping tidak kepanjangan"*, `the-accounts-hold-what-moves-them`).
+// An account is where the money sits; an expense is paid FROM one and a team payment moves money between two
+// (an-expense-must-name-the-account-that-paid, a-team-payment-posts-on-accept) — so Biaya and Kewajiban sit under it,
+// with the account report the menu never offered before:
+//
+//   Akun Keuangan ▸  Daftar Akun · Laporan Akun · Biaya · Kewajiban
+//
+// Every member sees the accounts and their report (seeing-is-team-wide-moving-is-admin-and-up); Biaya is a selling
+// team's manager's, Kewajiban both team types' managers' — their gates are unchanged, only where they sit moved.
+// Settlement stays a group of its own: its withdrawals do reach an account, but its job — matching what a
+// marketplace paid per order — is another.
+function accountsFor(teamType: TeamType | undefined, role: Role | undefined): MenuGroup {
+  const children: MenuItem[] = [
+    { ...FINANCIAL_ACCOUNTS, label: "nav.accountsList" },
+    { to: "/financial-accounts/report", label: "nav.accountsReport", icon: ChartColumn },
+  ];
+  // Costs (#170) are the MANAGER's: CostList is scoped to the team's managers on the server too.
+  if (teamType === TeamType.SELLING && isTeamManager(role)) {
+    children.push(EXPENSES);
+  }
+  // Liability is back office for both team types that can be a counterparty — a selling team owes its warehouse, a
+  // warehouse is owed by the teams it fulfils for; isTeamManager is the role set the RPCs are policed on.
+  if (isTeamManager(role)) {
+    children.push(LIABILITY);
+  }
+
+  return { label: "nav.financialAccounts", icon: Landmark, children };
+}
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 // The person's own page. On a desktop it is offered from the user card, not the menu (`the-sidebar-is-in-sections`).
@@ -303,19 +391,19 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     // Suppliers right under it — who the restocks in Inventories come from. A selling team's alone: a warehouse
     // does not own the suppliers a selling team orders from (#212).
     operations.push(SUPPLIERS_GROUP);
-    // Shops and orders are SELLING-team concepts (#66/#68).
+    // Shops and orders are SELLING-team concepts (#66/#68). Orders is a group with its drafts.
     operations.push(SHOPS);
-    operations.push(ORDERS);
+    operations.push(ORDERS_GROUP);
 
-    // Costs (#170) are the MANAGER's: CostList is scoped to the team's managers on the server too — a person
-    // taking orders has no business seeing the payroll number.
-    //
     // ⚠ NO Revenue, Profit or Statement item for a selling team any more. All three were made
     // ENTIRELY of `revenue_service`'s expected margin, and that service has been removed with its
-    // statistics deferred. Expenses stands alone because it never read revenue at all.
-    if (isTeamManager(role)) {
-      finance.push(EXPENSES);
-    }
+    // statistics deferred. Expenses stays because it never read revenue at all — it is in the accounts group.
+  }
+
+  // THE MONEY SECTION IS TWO GROUPS FOR A SELLING TEAM (`the-accounts-hold-what-moves-them`, `the-sidebar-stays-short`):
+  // the accounts with what moves them, then settlement. The accounts lead — where the money is, before the flows.
+  if (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) {
+    finance.push(accountsFor(teamType, role));
   }
 
   // A WAREHOUSE gets the daily statement too (owner, 2026-08-14), even though it has none of the
@@ -328,28 +416,10 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     finance.push(STATEMENT);
   }
 
-  // Liability is BACK OFFICE, and it is offered to both team types that can be a counterparty: a
-  // selling team owes its warehouse, a warehouse is owed by the teams it fulfils for. isTeamManager
-  // is exactly the role set the RPCs are policed on — staff and customer service never chase debt.
-  if (
-    (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) &&
-    isTeamManager(role)
-  ) {
-    finance.push(LIABILITY);
-  }
-
-  if (teamType === TeamType.SELLING && isTeamManager(role)) {
-    finance.push(SETTLEMENT);
-    finance.push(SETTLEMENT_REPORT);
-  }
-
-  if (teamType === TeamType.SELLING && canImportSettlement(role)) {
-    finance.push(SETTLEMENT_IMPORTS);
-  }
-
-  // The accounts close the money section, for EVERY member — the one money screen not gated on a role.
-  if (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) {
-    finance.push(FINANCIAL_ACCOUNTS);
+  // Settlement — the payouts, their report, their imports — one sub-menu (`settlement-is-one-sub-menu`). Selling only.
+  if (teamType === TeamType.SELLING) {
+    const settlement = settlementFor(role);
+    if (settlement) finance.push(settlement);
   }
 
   // Users is offered to anyone who could plausibly manage a team's membership. The backend
@@ -419,7 +489,7 @@ function bottomBarCandidates(teamType: TeamType | undefined): MenuItem[] {
       ];
     // A selling team's: the orders they are taking, and the catalogue they take them from.
     case TeamType.SELLING:
-      return [HOME, ORDERS, PRODUCTS];
+      return [HOME, ORDERS_TAB, PRODUCTS];
     // Root/admin oversee — the teams, and the stock those teams hold.
     case TeamType.ROOT:
     case TeamType.ADMIN:

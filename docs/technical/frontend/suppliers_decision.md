@@ -44,6 +44,30 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [discover-table-shows-the-description](#discover-table-shows-the-description) | Discover's table view carries the supplier's description, a column of its own after Kontak |
 | [the-discover-detail-reads-as-the-supplier-page](#the-discover-detail-reads-as-the-supplier-page) | the Discover detail reads as the supplier's own page — the name, the team that keeps it, then the same identity line; no actions |
 | [discover-detail-puts-the-team-left-and-the-contact-right](#discover-detail-puts-the-team-left-and-the-contact-right) | under the Discover detail's name: the team on the left, the identity line right beside it; stacked on a phone |
+| [a-period-reads-as-its-grain](#a-period-reads-as-its-grain) | in the supplier figures, a month reads as its name and year (*Oktober 2026*), a year as the year alone |
+| [the-first-view-is-per-periode](#the-first-view-is-per-periode) | the Statistik tab's first view is named *Per Periode* (en *By Period*) — a pair with *Per Produk* |
+| [the-supplier-report-follows-the-screen-rules](#the-supplier-report-follows-the-screen-rules) | the Supplier Report applies the every-screen rules: the growing pager, every row lighting up, the order as a segmented choice, a Mobile story |
+| [the-report-order-shows-its-arrow](#the-report-order-shows-its-arrow) | the report's order reads as an order — *Urutkan* before it, each segment the sort-down arrow; not moved into the headings |
+| [the-report-export-is-marked](#the-report-export-is-marked) | the Supplier Report carries an *Ekspor* action on its title's row, marked not built (`dropped`) |
+| [the-supplier-list-shows-sales-and-ready-stock](#the-supplier-list-shows-sales-and-ready-stock) | the supplier list carries *Terjual 30 hari* and *Siap* per supplier — sample figures, each marked, until the store-product link sums them |
+| [the-contact-sits-right-of-the-supplier](#the-contact-sits-right-of-the-supplier) | in the supplier list, *Kontak* is the column right of *Pemasok* |
+| [sales-are-all-time-with-their-last-dates](#sales-are-all-time-with-their-last-dates) | *Terjual* counts every unit ever sold with the last order under it, and *Siap* carries the last restock under it |
+| [supplier-figures-filter-by-range-pills](#supplier-figures-filter-by-range-pills) | *Terjual* and *Siap* filter by range pills in one Filter panel — not built yet, and where the bands come from is open |
+| [the-figure-filters-are-two-panels](#the-figure-filters-are-two-panels) | *Terjual* and *Siap* each have their own trigger and a narrow panel; the trigger reads the picked band |
+| [discover-shows-the-same-figures-and-filters](#discover-shows-the-same-figures-and-filters) | Discover carries the supplier list's *Terjual* and *Siap* — on each card and as the table's last columns — and the same range filters |
+| [a-card-reads-its-figures-as-icons](#a-card-reads-its-figures-as-icons) | on a Discover card the figures are one row under the contact — an icon and the units, no dates |
+| [a-card-figure-is-a-pale-badge](#a-card-figure-is-a-pale-badge) | each card figure is a pale badge the store badges' size — *Terjual* indigo, *Siap* green |
+| [a-card-figure-is-toned-down](#a-card-figure-is-toned-down) | the card badges' tint is halved and the units are in the text colour; the icon keeps the tone |
+| [the-warehouse-filters-before-the-team](#the-warehouse-filters-before-the-team) | a *Gudang* filter on Discover left of the team, and on the supplier list as its first picker — not built yet |
+| [the-detail-tabs-show-sold-and-ready](#the-detail-tabs-show-sold-and-ready) | the supplier's page shows *Terjual* and *Siap* per store (Toko tab) and per product (Produk tab) — sample figures |
+| [a-supplier-page-is-scoped-by-its-warehouses](#a-supplier-page-is-scoped-by-its-warehouses) | *Gudang terkait* — the warehouses its restocks went to, as chips over the tabs that also scope every tab |
+| [the-warehouse-number-is-explained](#the-warehouse-number-is-explained) | a muted hint on the *Gudang terkait* line says the chip's number is its restocks from this supplier |
+| [a-warehouse-chip-is-its-name-and-the-summary-follows-it](#a-warehouse-chip-is-its-name-and-the-summary-follows-it) | a warehouse chip is its name only; under the chips, before the tabs, the chosen warehouse's (or all) sold, ready, restocks, last restock and last order |
+| [the-summary-is-sold-and-ready-with-their-counts](#the-summary-is-sold-and-ready-with-their-counts) | the warehouse summary is two cards — Terjual with its orders and the last, Siap with its restocks and the last |
+| [sales-sit-beside-restocked](#sales-sit-beside-restocked) | *Penjualan* sits right after *Direstok* — card, column and phone line — on the Statistik tab and the Supplier Report, in Direstok's format |
+| [each-supplier-tab-exports-its-own-table](#each-supplier-tab-exports-its-own-table) | each tab of the supplier's page has its own *Ekspor* at the right of its filter strip; on a phone, in the Filter sheet — not built yet |
+| [the-report-export-folds-on-a-phone](#the-report-export-folds-on-a-phone) | on a phone the Supplier Report's header is one row — the title and ⋯, with *Ekspor* inside |
+| [the-warehouse-filter-shows-its-name-alone](#the-warehouse-filter-shows-its-name-alone) | a picked warehouse in the supplier screens' warehouse filter reads as its name, without the [Gudang] badge |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -736,3 +760,526 @@ Kain tekstil grosir untuk konveksi.
 | tried first | two halves — the identity line from the middle of the page; beside a short team name the hole between them was too wide |
 | a phone | stacked — the team, then the identity line |
 | refines | the header order in [the-discover-detail-reads-as-the-supplier-page](#the-discover-detail-reads-as-the-supplier-page) |
+
+## a-period-reads-as-its-grain
+
+> Owner, in chat (2026-10-12): *"statistik kan ada tahunan bulanan harian, untuk bulanan tahun dan nama bulan, untuk
+> tahun cuma tahun saja"*.
+
+```
+Harian                Bulanan                 Tahunan
+2026-10-07            Oktober 2026            2026
+2026-10-06            September 2026          2025
+```
+
+| grain | the period reads | was |
+| --- | --- | --- |
+| day | `2026-10-07` — unchanged | `2026-10-07` |
+| month | **the month's name and its year**, in the app's language — *Oktober 2026* (en *October 2026*) | `2026-10-01` — the bucket's first day |
+| year | **the year alone** — *2026* | `2026-01-01` |
+
+| | |
+| --- | --- |
+| where | the Statistik tab's Over Time — the desktop table and the phone blocks, quiet periods included |
+| the helper | `formatPeriod(at, grain)` in `lib/datetime.ts` — the app's language ([a-date-speaks-the-apps-language](context_decision.md#a-date-speaks-the-apps-language)) |
+| not yet | the account report and the settlement report each keep their own label — `2026-10` for a month |
+
+## the-first-view-is-per-periode
+
+> Owner, in chat (2026-10-12): *"dari waktu ke waktu itu per periode"*.
+
+```
+before                                   now
+Dari Waktu ke Waktu | Per Produk         Per Periode | Per Produk
+```
+
+| | |
+| --- | --- |
+| the name | **Per Periode** (en *By Period*) — the two views read as a pair: by period, by product |
+| was | *Dari Waktu ke Waktu* (en *Over Time*) — the i18n key moved with it, `supplierStats.overTime` → `supplierStats.byPeriod` |
+| earlier entries | [the-statistics-tab-is-two-views](#the-statistics-tab-is-two-views) and those after it say *Dari Waktu ke Waktu* — read it as *Per Periode* |
+
+## the-supplier-report-follows-the-screen-rules
+
+> Owner, in chat (2026-10-12), after the report's filters, data and orders were listed: *"terapkan yang umum dulu"* —
+> the every-screen rules first; moving the order into the headings stays open.
+
+```
+Peringkat                                      (▣ Nilai Restok | ⊠ Tingkat Rusak)   ← a segmented choice
+#  Pemasok              Dikelola oleh   Direstok  Hilang  Tingkat hilang  Rusak  Tingkat rusak
+1  PT Sumber Makmur     [TM] Toko …     130 …     1 …     0,7%            6 …    4,4%          ← lights up, every cell
+                                                                                  ‹ [1] ›     ← the growing pager
+```
+
+| rule | applied |
+| --- | --- |
+| [every-list-pages-with-the-growing-pager](context_decision.md#every-list-pages-with-the-growing-pager) | `GrowingPager`, 20 a page as before, no size picker (it had none); centred on a phone |
+| [a-table-row-lights-up](context_decision.md#a-table-row-lights-up) | every cell in `bg.muted` — a deleted supplier's row too, read across though it opens nothing; a phone block lights up while pressed when it opens a supplier |
+| [a-segmented-choice-is-in-the-main-tone](context_decision.md#a-segmented-choice-is-in-the-main-tone) | *Urutkan menurut* — **Nilai Restok · Tingkat Rusak** — is a `SegmentGroup` with an icon each, the chosen segment pale rose; it was an attached pair of solid and outline buttons |
+| [every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story) | the phone story is **Mobile**, right after Default — it was *Phone*, fourth |
+| still open | the order from the headings ([a-table-sorts-from-its-headings](context_decision.md#a-table-sorts-from-its-headings)) — the contract sorts one way only, so a heading could choose the order but not flip it |
+
+## the-report-order-shows-its-arrow
+
+> Owner, in chat (2026-10-12): *"sortnya kasih panah biar kelihatan itu sort?"* — offered the arrows in the segmented
+> choice (A) or in the table's headings (B, one direction only); asked how B works without an ascending order, then:
+> *"janagan deh, a aja"* — and, on seeing it: *"urutkan saja"*.
+
+```
+before                                         now
+Peringkat         (▣ Nilai Restok | ⊠ Tingkat Rusak)   Peringkat   Urutkan (⇣ Nilai Restok | ⇣ Tingkat Rusak)
+                   ↑ a money and a box icon — read as a filter       ↑ said in words   ↑ the sort-down arrow, each
+```
+
+| | |
+| --- | --- |
+| the label | **Urutkan** (en *Sort*), visible, before the choice — first drawn as *Urutkan menurut* |
+| the icons | the sort-down arrow (`ArrowDownWideNarrow`) on both segments — the contract ranks **one way only**, largest first, so there is no other arrow to show |
+| not chosen | the arrows in the headings ([a-table-sorts-from-its-headings](context_decision.md#a-table-sorts-from-its-headings)) — a heading that cannot flip reads as broken; the order stays one control above the table |
+| closes | the open point in [the-supplier-report-follows-the-screen-rules](#the-supplier-report-follows-the-screen-rules) |
+
+## the-report-export-is-marked
+
+> Owner, in chat (2026-10-12), on the Supplier Report: *"ada export di sini, kasih unimplemented jadinya"*.
+
+```
+Laporan Pemasok                                                        [⤓ Ekspor ⚠1]
+Pemasok mana yang paling banyak direstok, …
+⚠ 1 bagian layar ini belum diimplementasi        (folded)
+```
+
+| | |
+| --- | --- |
+| the action | **Ekspor** on the title's row — a grey outline with its download icon ([an-action-button-carries-its-icon](context_decision.md#an-action-button-carries-its-icon)), as the account report's |
+| not built | marked `dropped` in `pages/supplier-report/pending.ts` — nothing builds a file; whether it carries the ranking with its figures, this page or the whole ranking, is open |
+| the header | the title and its subtitle one block, the action beside it; the subtitle wraps under on a phone |
+
+## the-supplier-list-shows-sales-and-ready-stock
+
+> Owner, in chat (2026-10-13): *"sekarang ke suppliers, di situ ada harusnya penjualan dan stock ready"* — told the per-
+> supplier sums do not exist yet, only per-product figures: *"tampilkan saja dulu, tulis unimpelemted karena memang belum
+> ada, jadi ada data penjualan dan stock ready di tabel suppliers"*.
+
+```
+⚠ 2 bagian layar ini belum diimplementasi                                   [Lihat 2 bagiannya]
+Pemasok ⇅            Toko pemasok                Terjual 30 hari ⚠1   Siap ⚠2   Kontak          Aksi
+PT Banyak Toko       [Shopee ×3] [Tokopedia ×2] …               167      155   0811-5555-6666  [✎ Ubah] [🗑 Hapus]
+Toko Grosir Sinar    —                                            —        —   —               …
+
+on a phone
+PT Banyak Toko
+[Shopee ×3] [Tokopedia ×2] …
+Terjual 30 hari 167 · Siap 155  ⚠1 ⚠2
+```
+
+| | |
+| --- | --- |
+| the columns | **Terjual 30 hari** — units sold in the last 30 days, over the supplier's products — and **Siap** — units ready on a shelf, the same way (*Siap* is the ready stock's word everywhere in the app); right-aligned, after *Toko pemasok* |
+| not real | both **`sample`** in `pages/suppliers/pending.ts`, each heading with its ⚠ number and the strip at the top — a supplier's figures are its products' (`OrderProductActivityByIds` sells, `OwnerStockByIds` holds, both per product), and nothing yet says which products are a supplier's: the store-product link is not built, and nothing sums per supplier |
+| no store | a dash — a supplier with no store has no product to count |
+| a phone | one line under the stores, *Terjual 30 hari 167 · Siap 155*, with both marks; none for a store-less supplier |
+| a warehouse team | no strip — it has no supplier list to mark |
+| the figures | invented per supplier id (`pages/suppliers/sampleFigures.ts`), the same every render — deleted the day the sum exists |
+
+## the-contact-sits-right-of-the-supplier
+
+> Owner, in chat (2026-10-13), on the supplier list: *"kontak di kanan pemasok"*.
+
+```
+before                                                           now
+Pemasok · Toko pemasok · Terjual 30 hari · Siap · Kontak · Aksi   Pemasok · Kontak · Toko pemasok · Terjual 30 hari · Siap · Aksi
+```
+
+| | |
+| --- | --- |
+| the order | **Pemasok · Kontak** · Toko pemasok · Terjual 30 hari · Siap · Aksi — who to call is read with the name, before its stores and figures |
+| the cell | the number on one line (`nowrap`), a dash when there is none |
+| was | the contact second to last, after the figures — [the-suppliers-list-follows-the-screen-rules](#the-suppliers-list-follows-the-screen-rules) placed it after the stores |
+| a phone | unchanged — the block carries no contact ([a-phone-supplier-is-its-name-and-stores](#a-phone-supplier-is-its-name-and-stores)) |
+
+## sales-are-all-time-with-their-last-dates
+
+> Owner, in chat (2026-10-13), asking why the sales were 30 days and not all of them: *"tidak pakai api itu, semuanya
+> saja, dan kasih last order di bawah terjual, last restok di bawah ready"*.
+
+```
+Pemasok ⇅          Kontak           Toko pemasok              Terjual ⚠1        Siap ⚠2         Aksi
+PT Banyak Toko     0811-5555-6666   [Shopee ×3] [Tokopedia ×2]      4.135             155        [✎ Ubah] [🗑 Hapus]
+                                                              pesanan 3 Okt 2026  restok 30 Sep 2026
+Toko Grosir Sinar  —                —                                 —                 —
+
+on a phone
+PT Banyak Toko
+[Shopee ×3] [Tokopedia ×2] …
+Terjual 4.135 · pesanan 3 Okt 2026  ⚠1
+Siap 155 · restok 30 Sep 2026       ⚠2
+```
+
+| | |
+| --- | --- |
+| the figure | **Terjual** — every unit sold, ALL time, over the supplier's products; no window, so not tied to the per-product 30-day read |
+| under it | the **last order**'s date, `pesanan <date>` — a small muted line, so a supplier whose goods stopped selling shows it |
+| Siap | unchanged, with the **last restock**'s date under it, `restok <date>` |
+| a phone | two lines, each figure with its date and its own mark |
+| still | both `sample`, both marked — the figures and both dates are invented per supplier id until the store-product link sums them |
+| supersedes | the *Terjual 30 hari* column of [the-supplier-list-shows-sales-and-ready-stock](#the-supplier-list-shows-sales-and-ready-stock) — the rest of it stands |
+
+## supplier-figures-filter-by-range-pills
+
+> Owner, in chat (2026-10-13): *"karena kita ada sold dan ready, di sini kita akan ada filter untuk keduanya, tentu masih
+> unimplemented, filter di supplier kita pakai panel dan isinya pill range, nilai range belum ditentukan dari mana tapi
+> mungkin akan ada 2 skema bisa pakai total jadi rangenya buat sendiri atau pakai ranges yang sudah jadi tentunya"*.
+
+```
+[⌕ Cari pemasok, alamat, atau toko] [Semua jenis toko ⌄] [⚙ Filter 1]  Hapus Filter
+                                                        ┌──────────────────────────────────────────────────────────┐
+                                                        │ Terjual ⚠3                                                │
+                                                        │ (Semua) (< 500) (500–1.000) (1.000–2.500) (2.500–5.000) (≥ 5.000) │
+                                                        │ Siap ⚠4                                                   │
+                                                        │ (Semua) (< 50) (50–100) (100–250) (250–500) (≥ 500)       │
+                                                        └──────────────────────────────────────────────────────────┘
+on a phone — the Filter sheet: Semua jenis toko · Terjual (pills) · Siap (pills) · Urutkan
+```
+
+| | |
+| --- | --- |
+| the trigger | one **Filter** button after the store type, counting the figure filters on — the accounts list's panel ([operational-and-archived-share-one-filter-panel](financial_accounts_decision.md#operational-and-archived-share-one-filter-panel)) |
+| the panel | a popover holding **Terjual** and **Siap**, each a row of range pills (`FilterChips`), *Semua* first; a pick applies at once and the panel stays open for the other row; each row is one line |
+| on a phone | the two rows stand in the Filter sheet as they are — no panel inside a panel |
+| not built | both **`dropped`** (⚠3, ⚠4): a pick is held and thrown away, since the list cannot narrow by a sum that does not exist. It counts toward *Hapus Filter*, which takes both back |
+| a warehouse team | no trigger — it has no figures |
+| **open: the bands' source** | two schemes — **drawn from the totals** (the bands made from the figures themselves) or **a ready-made set**. Today a fixed placeholder set per figure (`pages/suppliers/figureRanges.ts`). **→ Recommend:** a ready-made set, one per figure — a pill then means the same thing every day and on every team, so *"Terjual ≥ 1.000"* can be said between the pair at the shelf; bands drawn from the totals move as sales grow, and need the totals before the panel can draw |
+
+## the-figure-filters-are-two-panels
+
+> Owner, in chat (2026-10-13), on the figures panel: *"pisahkan aja panelnya, terlalu lebar juga panelnya"*.
+
+```
+[⌕ Cari pemasok…] [Semua jenis toko ⌄] [Terjual: 500–1.000 ⌄] ⚠3  [Siap ⌄] ⚠4   Hapus Filter
+                                                                  ┌──────────────────────────┐
+                                                                  │ (Semua) (< 50) (50–100)   │
+                                                                  │ (100–250) (250–500) (≥ 500)│
+                                                                  └──────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the triggers | **two**, *Terjual* and *Siap*, after the store type — each opens its own panel; no shared *Filter* button and no count |
+| a trigger | names its figure; once a band is picked it reads it, *Terjual: 500–1.000*, pale rose with a rose border, as a chosen pill ([a-chosen-option-is-in-the-main-tone](context_decision.md#a-chosen-option-is-in-the-main-tone)) |
+| the mark | beside the trigger, ⚠3 and ⚠4 — seen without opening the panel |
+| the panel | narrow (at most 320px): the pills wrap, three to a line, *Semua* first. A pick closes it — one choice, as a select's |
+| on a phone | unchanged — each figure a label over its pills in the Filter sheet |
+| supersedes | the trigger and the panel of [supplier-figures-filter-by-range-pills](#supplier-figures-filter-by-range-pills); its pills, the `dropped` marks and the open question of the bands stand |
+
+## discover-shows-the-same-figures-and-filters
+
+> Owner, in chat (2026-10-13): *"data dan filter yang sama ada di discovers"*.
+
+```
+Temukan Pemasok
+⚠ 4 bagian layar ini belum diimplementasi                                [Lihat 4 bagiannya]
+[⌕ Cari …] [Semua tim ⌄] [Terjual ⌄] ⚠3  [Siap ⌄] ⚠4                     (▦ Kartu | ☰ Tabel)
+(Semua) (Shopee) (Tokopedia) …
+
+card                                          table
+PT Sumber Makmur                              Pemasok · Tim · Toko pemasok · Kontak · Deskripsi · Terjual ⚠1 · Siap ⚠2
+Jl. Soekarno-Hatta 112, Bandung               …                                       2.579        803
+────────────                                                              pesanan 7 Okt 2026  restok 18 Sep 2026
+[TM] Toko Melati
+[Shopee] [Tokopedia] [Other]
+Terjual 2.579 · pesanan 7 Okt 2026  ⚠1
+Siap 803 · restok 18 Sep 2026       ⚠2
+0812-1111-2222                          ↗
+```
+
+| | |
+| --- | --- |
+| the figures | the supplier list's: *Terjual* (all time) with the last order, *Siap* with the last restock ([sales-are-all-time-with-their-last-dates](#sales-are-all-time-with-their-last-dates)) |
+| a card | two lines under the stores, each with its mark, as the supplier list's phone block — none for a store-less supplier |
+| the table | the two columns **last**, at the right edge, as on the supplier list; a dash for a store-less supplier. The team (at least 10rem) and the contact (one line) keep their width, so the stores' badges give way |
+| the filters | *Terjual* and *Siap* after the team, a panel each ([the-figure-filters-are-two-panels](#the-figure-filters-are-two-panels)); on a phone, in the Filter sheet under the team. They count toward *Hapus Filter* |
+| the marks | the same four, the same numbers — one shared list (`features/suppliers/figuresPending.ts`) — and the strip under the title |
+| shared | the figures (`SupplierFigures`), the filters (`SupplierRangeFilter`), the bands and the sample figures moved to `features/suppliers/` — two pages use them, each with its story under *Features/Suppliers* |
+| extends | the card of [a-discover-card-reads-who-whose-where](#a-discover-card-reads-who-whose-where) gains the figures between its stores and its contact |
+
+## a-card-reads-its-figures-as-icons
+
+> Owner, in chat (2026-10-13), on Discover's card: *"di card tidak ada ordered dan restocked date, terjual dan ready icon
+> saja jadi 1 baris"* — *"di bawah kontak"*.
+
+```
+[Shopee] [Tokopedia] [Other]
+0812-1111-2222
+🛒 2.579 ⚠1   ✓ 803 ⚠2                    ↗
+```
+
+| | |
+| --- | --- |
+| the row | one line, **under the contact**, the arrow at its right end — the card's last line |
+| the figures | an icon and the units: a cart for *Terjual*, a checked package for *Siap* — not the plain package, which is a product without a picture. No dates on a card |
+| the words | for a screen reader and on hover only |
+| a store-less supplier | a dash for each, unmarked — every card has the row |
+| supersedes | the card's two lines of [discover-shows-the-same-figures-and-filters](#discover-shows-the-same-figures-and-filters); the table and the supplier list's phone block keep their dates |
+
+## a-card-figure-is-a-pale-badge
+
+> Owner, in chat (2026-10-13), on the icon row: *"terlalu besar, sama kasih sedikit highlight biar kelihatan, tapi desainnya
+> gimana?"* — on the proposal of small pale badges: *"oke"*; then *"secara ukuran teks sama kaya badge toko?"*.
+
+```
+0812-1111-2222
+[🛒 2.579] ⚠1  [✓ 803] ⚠2                  ↗
+ indigo         green
+```
+
+| | |
+| --- | --- |
+| each figure | a pale badge — the icon and the units, bold — with its ⚠ mark beside it |
+| the size | the store badges' exactly: the theme's default badge, 12px text, 20px tall — no size of its own (it was `xs`, 10px, and read smaller than the badges above it) |
+| the tones | *Siap* `success`, the tone the app already gives ready stock (the product item's badge); *Terjual* `primary`, a tone with no status meaning |
+| a store-less supplier | grey badges with a dash, unmarked |
+
+## a-card-figure-is-toned-down
+
+> Owner, in chat (2026-10-13), on the pale badges: *"sedikit kurangi warnanya"*.
+
+| | |
+| --- | --- |
+| the tint | half the tone's pale background (`colorPalette.subtle/50`) |
+| the units | in the text colour, not the tone's |
+| the icon | keeps the tone — it is what tells the two apart |
+
+## the-warehouse-filters-before-the-team
+
+> Owner, in chat (2026-10-13): *"di sini ada filter gudang dan di suppliers juga sama, di kiri filter tim"*.
+
+```
+Discover        [⌕ Cari …] [Semua gudang ⌄] ⚠5 [Semua tim ⌄] [Terjual ⌄] ⚠3 [Siap ⌄] ⚠4      (▦ Kartu | ☰ Tabel)
+Pemasok         [⌕ Cari …] [Semua gudang ⌄] ⚠5 [Semua jenis toko ⌄] [Terjual ⌄] ⚠3 [Siap ⌄] ⚠4
+on a phone      the Filter sheet: Semua gudang · (Semua tim) · … — the warehouse first
+```
+
+| | |
+| --- | --- |
+| the filter | **Gudang** — the suppliers whose restocks are received at that warehouse. The warehouse search select (`TeamSelect` over warehouse teams), *Semua gudang* when none is picked — the orders list's warehouse filter |
+| where | on Discover **left of the team**; on the supplier list, which has no team picker, in the same place — the first picker after the search |
+| not built | **`dropped`**, ⚠5 beside it inside its slot: nothing records where a supplier's goods are received, so a pick is held and thrown away. It counts toward *Hapus Filter* |
+| the numbering | appended as the fifth part, so ⚠1–⚠4 keep their meaning; the shared list was renamed `features/suppliers/listPending.ts` (it was `figuresPending.ts`), since it now holds more than the figures |
+| a warehouse team | no warehouse filter on the supplier list — it has no list ([only-a-selling-team-has-suppliers](../../business/supplier/context_decision.md#only-a-selling-team-has-suppliers)) |
+| shared | `SupplierWarehouseFilter` in `features/suppliers/`, with its story under *Features/Suppliers* |
+
+## the-detail-tabs-show-sold-and-ready
+
+> Owner, in chat (2026-10-13), on the supplier's page: *"sekarang untuk detailnya, di channel dan produk ada ready dan sold
+> tadi"*.
+
+```
+⚠ 3 bagian layar ini belum diimplementasi
+Toko · Produk ⚠1 · Statistik
+
+Toko         Toko pemasok          Tautan      Deskripsi   Terjual ⚠2          Siap ⚠3             Aksi
+             Sumber Makmur Store   tokopedia…  —              1.074                 43             [✎ Ubah] [🗑 Hapus]
+             [Tokopedia]                                  pesanan 4 Okt 2026  restok 13 Sep 2026
+
+Produk       Produk         Tim          Toko pemasok   Terakhir dibeli      Terjual ⚠2          Siap ⚠3
+             [▦] Kain Katun Toko Melati  sumbermakmur…  8 Okt 2026              601                 46
+                 KTN-JP-01               [Other]        pertama 8 Sep 2026  pesanan 6 Okt 2026
+```
+
+| | |
+| --- | --- |
+| the figures | the supplier list's *Terjual* (all time, the last order under it) and *Siap* — per **store** on the Toko tab, per **product** on the Produk tab |
+| where | the last two columns — before *Aksi* on the Toko tab, the table's end on the Produk tab; on a phone, a line each in the store's and the product's block |
+| a product's Siap | **no restock date** under it — *Terakhir dibeli*, just left of it, is that date |
+| both pages | the manage detail and the Discover detail alike — both mount the same tabs |
+| the marks | `sample`, numbered in **each page's own** pending list: *Produk* ⚠1, *Terjual* ⚠2, *Siap* ⚠3. The figure pieces now take the page's marks rather than the supplier list's, since a badge's number is its position in its page's list |
+| not built | invented per store and per product (`sampleStoreFigures`, `sampleProductFigures`) — nothing records which products were bought at which store. They are not summed from each other, so a store's figure is not its products' total |
+
+## a-supplier-page-is-scoped-by-its-warehouses
+
+> Owner, in chat (2026-10-13): *"di detail ini harusnya ada daftar gudang terkait yang sudah digunakan untuk restok, jadi
+> ada listnya, dan aku ingin itu juga bisa jadi filter, tapi aku bingung desainnya"* — on the proposal of one row of chips
+> over the tabs, scoping every tab: *"oke gitu saja"*.
+
+```
+PT Sumber Makmur                                            [✎ Ubah] [🗑 Hapus]
+📞 0812-1111-2222   📍 Jl. Soekarno-Hatta 112, Bandung
+⚠ 5 bagian layar ini belum diimplementasi
+Gudang terkait ⚠4 ⚠5
+(Semua) (Gudang Cabang · 11) (Gudang Bandung · 6)
+          ↑ restocks from this supplier received there — a hover says so, with the last one's date
+Toko · Produk ⚠1 · Statistik
+```
+
+| | |
+| --- | --- |
+| the list | **Gudang terkait** — every warehouse this supplier's restocks were received at, the most restocked first, each chip *name · restocks*; a hover: *12 restok dari pemasok ini, terakhir 3 Okt 2026* |
+| the filter | the same chips: *Semua* first and chosen, one at a time. The chosen warehouse is the **page's scope** — every tab (Toko, Produk, Statistik) narrows to it |
+| where | under the supplier's header and the not-implemented strip, **over the tabs** — a tab cannot narrow the tabs beside it, so it is not a tab of its own |
+| why chips | a supplier's warehouses are few, so all of them at once beats a picker — Discover's store type, the same way ([a-store-type-filter-is-chips](#a-store-type-filter-is-chips)) |
+| many | more than eight fold behind **+N Lagi**, which unfolds the rest; on a phone the row scrolls sideways instead |
+| never restocked | *Belum pernah direstok ke gudang mana pun.* — in words, as a store-less supplier's stores are |
+| both pages | the manage detail and the Discover detail |
+| not built | the warehouses and their counts **`sample`** (⚠4), the pick **`dropped`** (⚠5) — nothing records where a supplier's goods are received, and no tab narrows by a warehouse yet |
+| the meaning | the list pages' *Gudang* filter's ([the-warehouse-filters-before-the-team](#the-warehouse-filters-before-the-team)): where the restocks were received |
+| shared | `SupplierWarehouseChips` in `features/suppliers/` with its story; `FilterChips` gained a hover title per chip and a `trailing` slot (the *+N Lagi*) |
+
+## the-warehouse-number-is-explained
+
+> Owner, in chat (2026-10-13), told the number on a warehouse chip is its restocks from this supplier: *"kasih keterangan
+> kalau begitu"*.
+
+```
+desktop   Gudang terkait ⚠4 ⚠5  angka = jumlah restok dari pemasok ini
+          (Semua) (Gudang Cabang · 11) (Gudang Bandung · 6)
+
+a phone   Gudang terkait ⚠4 ⚠5
+          angka = jumlah restok dari pemasok ini      ← wraps under the label, flush left
+          (Semua) (Gudang Cabang · 11) …
+```
+
+| | |
+| --- | --- |
+| the hint | *angka = jumlah restok dari pemasok ini* — 12px muted, on the label's line, so it is read before the chips |
+| a narrow screen | it wraps under the label, flush left |
+| the hover | stays, and still adds the last restock's date |
+| never restocked | no hint — no numbers to explain |
+| why | the hover alone hid the meaning from a phone and from anyone not hovering |
+
+## a-warehouse-chip-is-its-name-and-the-summary-follows-it
+
+> Owner, in chat (2026-10-13): *"gini aja, chip gudang cuma gudang"* — *"lalu di bawahnya kasih detail gudang ini atau
+> semua, dijual berapa stock ready berapa, jumlah restok, terakhir restock dan pesan sebelum tab"*.
+
+```
+Gudang terkait ⚠4 ⚠5
+(Semua) (Gudang Cabang) (Gudang Bandung)
+┌ Terjual ┐ ┌ Siap ┐ ┌ Jumlah restok ┐ ┌ Restok terakhir ┐ ┌ Pesanan terakhir ┐
+│ 1.507   │ │ 11   │ │ 11            │ │ 5 Okt 2026      │ │ 7 Okt 2026       │
+│ unit    │ │ unit │ │ kali          │ │                 │ │                  │
+Toko · Produk ⚠1 · Statistik
+```
+
+| | |
+| --- | --- |
+| a chip | the warehouse's **name only** — no number, no hover, no hint |
+| the summary | under the chips, **before the tabs**: what this supplier's goods did in the chosen warehouse — *Terjual* (units, all time), *Siap* (units), *Jumlah restok* (times), *Restok terakhir*, *Pesanan terakhir* |
+| Semua | every warehouse together — the units and the restocks summed, the latest of each date |
+| the cards | the app's `SummaryStrip` — the Statistik tab's cards ([the-figures-headline-is-the-card-strip](#the-figures-headline-is-the-card-strip)); on a phone two to a row |
+| never restocked | the words, and no summary |
+| the marks | ⚠4 now covers the warehouses **and** their summary (sample); ⚠5 the pick, which so far only switches the summary — no tab narrows by a warehouse yet |
+| shared | `SupplierWarehouseChips` became `RelatedWarehouses` (chips and summary, one component, its story under *Features/Suppliers*) |
+| supersedes | the chip's *name · restocks* and its hover in [a-supplier-page-is-scoped-by-its-warehouses](#a-supplier-page-is-scoped-by-its-warehouses), and [the-warehouse-number-is-explained](#the-warehouse-number-is-explained) entirely — there is no number on a chip to explain. The chips as the page's scope, over the tabs, stand |
+
+## the-summary-is-sold-and-ready-with-their-counts
+
+> Owner, in chat (2026-10-13), on the five cards under the warehouse chips: *"terjual bawahnya dari ... transaksi .
+> terakhir order ... ready bawahnya restok last restock"*.
+
+```
+desktop   ┌ Terjual                                 ┐ ┌ Siap                            ┐
+          │ 1.507 unit                              │ │ 11 unit                         │
+          │ dari 77 transaksi · terakhir 7 Okt 2026 │ │ 11 restok · terakhir 5 Okt 2026 │
+
+a phone   ┌ Terjual           ┐ ┌ Siap               ┐
+          │ 1.963 unit        │ │ 69 unit            │
+          │ dari 113 transaksi│ │ 17 restok          │
+          │ terakhir 7 Okt 2026│ │ terakhir 5 Okt 2026│
+```
+
+| | |
+| --- | --- |
+| the cards | **two** — *Terjual* and *Siap*; the units in the figure (*1.507 unit*) |
+| under Terjual | **dari N transaksi · terakhir \<date\>** — the orders the units went out on, and the last of them |
+| under Siap | **N restok · terakhir \<date\>** — the restocks from this supplier received there, and the last of them |
+| on a phone | the count and the date a line each — two cards share a row, and one line would be cut before the date |
+| Semua | the units, orders and restocks summed; the latest of each date |
+| supersedes | the five cards of [a-warehouse-chip-is-its-name-and-the-summary-follows-it](#a-warehouse-chip-is-its-name-and-the-summary-follows-it) — *Jumlah restok*, *Restok terakhir* and *Pesanan terakhir* folded into these two lines. The chips and the strip's place stand |
+
+## sales-sit-beside-restocked
+
+> Owner, in chat (2026-10-14): *"di sebelah restocked ada penjualan, jumlah transaksi bawahnya unit, hal yang sama ada di
+> report"* — then *"atau sama saja formatnya unit bawahnya harga"*.
+
+```
+the cards    ┌ Total ───────┐ ┌ Direstok ────┐ ┌ Penjualan ⚠ ─┐ ┌ Hilang di… ──┐ ┌ Rusak di… ───┐
+             │ Rp 4.645.000 │ │ Rp 4.400.000 │ │ Rp 4.576.000 │ │ Rp 50.000    │ │ Rp 195.000   │
+             │ 137 unit     │ │ 130 unit     │ │ 104 unit     │ │ 1 unit · 0,7%│ │ 6 unit · 4,4%│
+
+the table    Periode · Direstok · Penjualan ⚠ · Hilang di pengiriman · Tingkat hilang · Rusak di pengiriman · Tingkat rusak
+                         130          104
+                   Rp 4.400.000   Rp 4.576.000
+
+a phone      Direstok 40 · Rp 2.000.000
+             Penjualan 32 · Rp 2.080.000 ⚠
+             Hilang 1 · 2,3%    Rusak 2 · 4,7%
+```
+
+| | |
+| --- | --- |
+| where | **right after Direstok**, everywhere Direstok is — a card in the strip, a column in the table, a line in a phone's block — on the **Statistik tab** (both supplier pages, Per Periode and Per Produk) and on the **Supplier Report** |
+| the format | **Direstok's**, as the owner settled it: in a cell the units over the rupiah, on a card the rupiah over the units; a quiet row is one muted 0 |
+| the card's note | *unit yang terjual ke pembeli* |
+| not built | **`sample`** on every page, marked in its own list — the supplier pages ⚠6, the report ⚠2. The supplier figures count what came IN from a supplier; nothing yet counts what went out to a buyer |
+| the sample | four in five of the row's units restocked, at 30% over their cost (`sampleSales.ts`) — **one fixed ratio**, so a card's total is its rows' sum, as Direstok's is. A ratio varying by row made the report's card read 242 units over rows adding up to 372 |
+| not taken | the first wording — the transactions over the units — was replaced by *"sama saja formatnya"* before it was built |
+
+## each-supplier-tab-exports-its-own-table
+
+> Owner, in chat (2026-10-14): *"di detail ada export untuk table di bawah, di taruh mana?"* — on the proposal of one
+> Export per tab, at the right end of its filter strip: *"oke"*.
+
+```
+Toko       [Cari …] [Semua jenis toko ⌄]                    [⬇ Ekspor ⚠7]  [+ Tambah Toko]
+Produk     [Cari …] [Semua tim ⌄] [Semua toko ⌄]                          [⬇ Ekspor ⚠7]
+Statistik  [Semua tim ⌄] [30 hari ⌄] [Harian|Bulanan|Tahunan]             [⬇ Ekspor ⚠7]
+
+a phone    [Cari nama…] [⚙ Filter] [+ Tambah Toko]
+           Filter sheet:  Semua jenis toko ⌄
+                          [        ⬇ Ekspor ⚠7        ]
+```
+
+| | |
+| --- | --- |
+| where | **each tab's own filter strip**, its right end — not the page header, which sits over three tabs and could not say which table it takes |
+| what it takes | the tab's table **as narrowed** — the search, the filters, the period and grain, and the Gudang terkait chip; on Statistik, the view on screen (Per Periode or Per Produk) |
+| the button | the Supplier Report's: a grey outline, the download icon, *Ekspor*, the mark inside. On the Toko tab it sits **left of Tambah Toko**, so the primary action stays rightmost |
+| on a phone | **inside the Filter sheet**, full width and labelled. The proposal was the icon alone in the row — built, it squeezed the search beside Filter and Tambah Toko to *"Cari nar…"*, so it moved |
+| both pages | the manage detail and the Discover detail (read-only: the Export is the Toko strip's only action) |
+| not built | **`dropped`**, ⚠7 in each page's list — nothing builds a file; the button holds the action's place |
+| shared | `SupplierTabExport` in `features/suppliers/` with its story; each tab places it — the strip's actions on a desktop, a child of the FilterBar (so, the sheet) on a phone |
+
+## the-report-export-folds-on-a-phone
+
+> Owner, in chat (2026-10-14): *"export di report mobile kurang bagus"*.
+
+```
+before (a phone)                          now
+Laporan Pemasok                           Laporan Pemasok                     ⋯
+Pemasok mana yang paling banyak …         Pemasok mana yang paling banyak …
+[⬇ Ekspor ⚠1]   ← alone, under the text                     ⋯ opens:  [⬇ Ekspor ⚠1]
+```
+
+| | |
+| --- | --- |
+| on a phone | the header is **one row** — the title and **⋯**; *Ekspor* is the menu's item, its download icon and its ⚠1 with it. The subtitle under the row |
+| why | wrapped under the subtitle, the button stood alone — an action belonging to nothing |
+| the rule | [the-phone-header-is-one-row](context_decision.md#the-phone-header-is-one-row) — actions fold into ⋯, even a single one; the report had not applied it |
+| a desktop | unchanged — the grey *Ekspor* on the title's row ([the-report-export-is-marked](#the-report-export-is-marked)) |
+
+## the-warehouse-filter-shows-its-name-alone
+
+> Owner, in chat (2026-10-15): *"select gudang tidak perlu badge di select activenya"*.
+
+```
+before                                   now
+[Gudang Pusat [Gudang]   × ⌄]            [Gudang Pusat            × ⌄]
+```
+
+| | |
+| --- | --- |
+| what | the warehouse filter's picked face is the warehouse's **name alone** — no type badge |
+| why | every option in it is a warehouse; the badge only repeats what the field is for |
+| how | `TeamSelect`'s `showType={false}` — the badge stays on by default, so a picker over every type keeps `name [Type]` |
+| where | `SupplierWarehouseFilter` — the supplier list and Discover. The options keep their `TeamItem` rows |
+| still open | Discover's team filter offers selling teams only and still shows [Penjual] on its pick — the same argument; asked, not changed |

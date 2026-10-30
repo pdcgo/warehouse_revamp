@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -125,5 +125,30 @@ export const TheCourierIsNamed: Story = {
     const row = canvas.getByTestId("restock-row-501");
     await waitFor(() => expect(within(row).getByTestId("shipment-channel-badge-jne")).toHaveTextContent("JNE"));
     await expect(row).toHaveTextContent("JNE0123456789");
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the tab and the person's role are
+// its; a change is written back. The 7-day window is the default, so it is not in the URL at all.
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/restock", element: <><RestockWarehousePage /><LocationProbe /></> }],
+  "/inventories/restock?status=arrived&role=accepted",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("restock-row-502", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("restock-tab-arrived")).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.getByTestId("restock-inbound-actor-role")).toHaveTextContent("Counted by");
+    await expect(canvas.queryByTestId("restock-row-501")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("restock-tab-ongoing"));
+    await waitFor(() => expect(location).toHaveTextContent("status=ongoing"));
+    await expect(location).toHaveTextContent("role=accepted");
+    await expect(location).not.toHaveTextContent("range=");
   },
 };

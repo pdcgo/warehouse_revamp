@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Minus, Plus } from "lucide-react";
 
 export const description =
-  "The shared whole-number field — a quantity, a count. Chakra's NumberInput for the behaviour (parsing, clamping, keyboard arrows, no scroll-wheel edits) with its cramped default steppers replaced by a − and a + FLANKING the box, which are reachable with a thumb and render the same in every browser. Holds a STRING, like every other field in a form draft, so a cleared box stays empty instead of collapsing to 0.";
+  "The shared whole-number field — a quantity, a count. Chakra's NumberInput for the behaviour (parsing, clamping, keyboard arrows, no scroll-wheel edits) with its cramped default steppers replaced by a − and a + FLANKING the box, which are reachable with a thumb and render the same in every browser. Holds a STRING, like every other field in a form draft, so a cleared box stays empty instead of collapsing to 0. In an invalid field the whole control — the box and both buttons — takes the error edge.";
 
 export interface QuantityInputProps {
   /** Kept as a STRING while editing: an empty input is not 0, and a form draft holds what was typed. */
@@ -15,6 +15,8 @@ export interface QuantityInputProps {
   /** The BOX's width — the two buttons sit outside it. Defaults to a table cell's narrow field. */
   width?: string;
   size?: "xs" | "sm" | "md";
+  /** Shown while the box is empty — a form field's **0**, never its value (every-form-field-shows-an-example). */
+  placeholder?: string;
   "aria-label"?: string;
   testId?: string;
 }
@@ -47,6 +49,7 @@ export function QuantityInput({
   disabled,
   width = "12",
   size = "xs",
+  placeholder,
   testId,
   ...rest
 }: QuantityInputProps) {
@@ -66,6 +69,9 @@ export function QuantityInput({
       allowMouseWheel={false}
       inputMode="numeric"
       onValueChange={(e) => onChange(e.value)}
+      // INVALID IS THE WHOLE CONTROL, not the middle of it (owner, on the product form's minimum). A field marks the box
+      // red; left alone, the − and + kept their grey edges and the red box read as a second box set inside the first.
+      css={{ "&[data-invalid] button": { borderColor: "border.error" } }}
     >
       {/* `attached` joins the three into one control, so it reads as a single field with two ends
           rather than as a button, a box and another button that happen to be adjacent. */}
@@ -89,6 +95,7 @@ export function QuantityInput({
           w={width}
           textAlign="center"
           px="1"
+          placeholder={placeholder}
           data-testid={testId}
           aria-label={rest["aria-label"]}
         />

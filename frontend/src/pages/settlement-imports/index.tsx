@@ -25,6 +25,7 @@ import { useUploadedFiles } from "../../features/settlementImport/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import { UploadedFileStatus } from "../../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
+import { idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { ImportFileDialog } from "./components/ImportFileDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -37,6 +38,7 @@ const STATUS_FILTERS: { value: string; statuses: UploadedFileStatus[]; label: st
   { value: "done", statuses: [UploadedFileStatus.DONE], label: "settlementImports.status.done" },
   { value: "failed", statuses: [UploadedFileStatus.FAILED], label: "settlementImports.status.failed" },
 ];
+const STATUS_CODEC = oneOfCodec(STATUS_FILTERS.map((f) => f.value));
 
 // SettlementImportsPage — the platform statements a selling team has imported, and the way in for
 // the next one. Design: docs/business/settlement/settlement_importer_decision.md.
@@ -54,8 +56,9 @@ export function SettlementImportsPage() {
   const { current } = useTeam();
   const teamId = current?.teamId;
 
-  const [shopId, setShopId] = useState(0n);
-  const [status, setStatus] = useState("");
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a file, opens the same list.
+  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
+  const [status, setStatus] = useUrlState("status", "", STATUS_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 

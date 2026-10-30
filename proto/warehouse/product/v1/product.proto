@@ -387,6 +387,13 @@ message ProductDiscoverRequest {
       uint64: {gt: 0}
     }
   }];
+
+  // Serve a product its owner LOCKED as well (a-locked-product-shows-on-discover). The Discover PAGE asks for it: a
+  // seller browsing should see the product exists and that it is closed to them, its lock on the card. Every PICKER
+  // leaves it false — a locked product is never offered to build an order around, and the take refuses it anyway.
+  //
+  // ⚠ It shows the product; it does not open it. Nothing about ordering one changes.
+  bool include_locked = 10;
 }
 
 message ProductDiscoverResponse {

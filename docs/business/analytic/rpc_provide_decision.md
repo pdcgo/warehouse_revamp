@@ -1207,7 +1207,9 @@ flowchart LR
 
 ---
 
-## the-supplier-report-drops-its-search
+## superseded-the-supplier-report-drops-its-search
+
+⛔ **Superseded 2026-10-30** by [the-supplier-report-keeps-its-search](#the-supplier-report-keeps-its-search): the search is back, as its own typed filter.
 
 > Owner, in chat (2026-10-28): *"b"* — to [the-supplier-search-loses-its-filter](./rpc_provide_clarify.md#question),
 > *"keep the Supplier Report's search as `FILTER_TYPE_SUPPLIER_KEYWORD` (A), or let the search go (B)?"* — B, against
@@ -1626,3 +1628,36 @@ FINANCE
 | the phone | the More sheet draws `menuFor`, so Analytic follows Home there too. The bottom bar is unchanged — its three tabs are a decision of their own |
 | the sections | ⚠ widens [the-sidebar-is-in-sections](../../technical/frontend/context_decision.md#the-sidebar-is-in-sections), whose lead section was Home alone |
 | pinned by | `Layouts/Desktop/Sidebar` → `TheMenuIsInSections`: the lead section's links are exactly Home, Analytic |
+
+---
+
+## the-supplier-report-keeps-its-search
+
+> Owner, in chat (2026-10-30), on merging `frada`: *"for supplier report, Discover, locked product, we follow frada"* —
+> `frada`'s Supplier Report has a search. It reverses [superseded-the-supplier-report-drops-its-search](#superseded-the-supplier-report-drops-its-search) (*"b"*, 2026-10-28), and so lands on the option
+> that answer declined: A, a supplier-only keyword filter.
+
+**The verdict.** The Supplier Report has a search again. It is a TYPED filter, `FILTER_TYPE_SUPPLIER_KEYWORD`, and it
+means one thing: the supplier a row is about matches as the supplier list's own `q` does — its name, address,
+contact, or a live store's name. That is why it does not bring back
+[the-generic-keyword-is-removed](#the-generic-keyword-is-removed)'s problem, a keyword that meant whatever each metric
+chose: only a metric about suppliers lists it.
+
+```mermaid
+flowchart LR
+  r["Supplier Report - the search box"] -->|"SupplierKeywordFilter q"| s["metrics/suppliers"]
+  s --> m["rows whose supplier matches - name, address, contact, a live store"]
+  m --> k["the ranking and the headline - what the search found"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the contract | `SupplierKeywordFilter { q }` (1–100 characters), `FilterItem` case 9, `FILTER_TYPE_SUPPLIER_KEYWORD = 9` in `analytic_base` |
+| who lists it | `metrics/suppliers` alone — its filters are now the window (required), `TEAM`, `SUPPLIER`, `SUPPLIER_KEYWORD` |
+| the match | supplier_service's own tables, a subquery: `suppliers` name / address / contact, or a live `supplier_channels` name, `ILIKE` with the pattern's wildcards neutralised. A DELETED supplier is found — it is still ranked ([a-deleted-supplier-is-kept-for-its-figures](../supplier/context_decision.md#a-deleted-supplier-is-kept-for-its-figures)) |
+| the headline | what the search found — the same filter on the SUMMARY |
+| the screen | `frada`'s: the search box in the filter bar, in the URL as `q`, its own empty hint (*No supplier matches.*), counted by Clear |
+| the Analytic screen | does not offer it — no metric there is about suppliers yet |
+| tests | `TestMetricSearch_TheKeywordFindsSuppliersAsTheListDoes`; the stories `TheSearchNarrowsTheRankingAndTheHeadline` and `FiltersLiveInTheUrl` |

@@ -26,11 +26,18 @@ import {
   DateRangePicker,
   isAllDates,
   resolveRange,
-  type DateRange,
 } from "../../components/datetime/DateRangePicker";
 import { formatRupiah } from "../../lib/money";
+import { dateRangeCodec, enumCodec, textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE = 20;
+
+const EXPIRY_CODEC = enumCodec<number>([
+  BatchExpiryFilter.UNSPECIFIED,
+  BatchExpiryFilter.EXPIRING_SOON,
+  BatchExpiryFilter.NO_EXPIRY,
+]);
+const DATE_FIELD_CODEC = enumCodec<number>([BatchDateField.ARRIVED, BatchDateField.EXPIRING]);
 
 function formatDateUnix(unix: bigint): string {
   return new Date(Number(unix) * 1000).toLocaleDateString(undefined, {
@@ -54,10 +61,12 @@ export function BatchesPage() {
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const warehouseId = isWarehouse ? current?.teamId : undefined;
 
-  const [search, setSearch] = useState("");
-  const [expiry, setExpiry] = useState<number>(BatchExpiryFilter.UNSPECIFIED);
-  const [dateField, setDateField] = useState<number>(BatchDateField.ARRIVED);
-  const [dateRange, setDateRange] = useState<DateRange>(ALL_DATES);
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a batch, opens the same
+  // narrowed list.
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [expiry, setExpiry] = useUrlState("expiry", BatchExpiryFilter.UNSPECIFIED, EXPIRY_CODEC);
+  const [dateField, setDateField] = useUrlState("date", BatchDateField.ARRIVED, DATE_FIELD_CODEC);
+  const [dateRange, setDateRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
   const [page, setPage] = useState(1);
 
   const { fromUnix, toUnix } = resolveRange(dateRange);
@@ -150,8 +159,8 @@ export function BatchesPage() {
           <NativeSelect.Indicator />
         </NativeSelect.Root>
 
-        {/* Date range on the Arrived or Expiring date (#217/#225) — the time-type segment and the window
-            live in one control now: find what came in, or expires, in a window. */}
+        {/* Date range on the Arrived or Expiring date (#217/#225) — the date type and the window are one control,
+            one panel (a-date-type-is-picked-inside-the-range-panel): find what came in, or expires, in a window. */}
         <DateRangePicker
           value={dateRange}
           testId="batches-date-range"

@@ -30,8 +30,8 @@ const (
 //
 // Groups: SUPPLIER and PRODUCT — the RESTOCKING team's product, so two teams buying one item are two keys
 // (every-accepted-line-links-its-own-product) — and every period. Filters: the window (required); TEAM, whose
-// restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier. No keyword — the Supplier
-// Report's search went with it (the-supplier-report-drops-its-search).
+// restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier; SUPPLIER_KEYWORD, the Supplier
+// Report's search (the-supplier-report-keeps-its-search).
 type SupplierMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Units accepted as good stock.
@@ -783,7 +783,7 @@ var File_warehouse_supplier_v1_supplier_analytic_proto protoreflect.FileDescript
 
 const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\n" +
-	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xdb\x03\n" +
+	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xdc\x03\n" +
 	"\x0eSupplierMetric\x12/\n" +
 	"\rrestock_count\x18\x01 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\frestockCount\x127\n" +
@@ -798,8 +798,8 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\x19shipping_broken_valuation\x18\x06 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x17shippingBrokenValuation\x12-\n" +
 	"\vbroken_rate\x18\a \x01(\x01B\f\x9a\xb5\x18\x04\b\x01\x102\xa0\xb5\x18\x01R\n" +
-	"brokenRate:(\x9a\xb5\x18$\n" +
-	"\x03\x01\x04\x06\x12\x01\x01\x1a\a\x01\x02\x03\x04\x05\b\x06\"\x11metrics/suppliers\"\xc1\x01\n" +
+	"brokenRate:)\x9a\xb5\x18%\n" +
+	"\x04\x01\x04\x06\t\x12\x01\x01\x1a\a\x01\x02\x03\x04\x05\b\x06\"\x11metrics/suppliers\"\xc1\x01\n" +
 	"\x12SupplierMetricByID\x12J\n" +
 	"\x05items\x18\x01 \x03(\v24.warehouse.supplier.v1.SupplierMetricByID.ItemsEntryR\x05items\x1a_\n" +
 	"\n" +

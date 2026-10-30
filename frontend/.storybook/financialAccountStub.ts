@@ -109,6 +109,15 @@ export function resetFinancialAccounts() {
   nextGroupId = 100n;
 }
 
+/**
+ * A STORY'S SETUP: leave a shop withdrawing into no account. Every fixture shop is linked to one, and the contract has
+ * no unlink (FinancialAccountShopSet only moves the link), so a shop page's "no withdrawal account" state is set here.
+ * `resetFinancialAccounts` (preview's beforeEach) puts the link back.
+ */
+export function unlinkShopForStory(shopId: bigint) {
+  for (const a of accounts) a.shopIds = a.shopIds.filter((id) => id !== shopId);
+}
+
 // ── The arithmetic ──────────────────────────────────────────────────────────────────────────────
 
 // Whole rupiah as a row posts (rupiah-is-floating-point's mitigation) — so a balance compares exactly.

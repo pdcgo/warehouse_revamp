@@ -39,6 +39,7 @@ type metricScope struct {
 	start, end    time.Time
 	restockTeamID uint64 // TEAM — whose restocks; 0 = every team's
 	supplierID    uint64 // SUPPLIER — one supplier; 0 = every supplier
+	keyword       string // SUPPLIER_KEYWORD — the suppliers the search finds; "" = every supplier
 }
 
 // parseFilters reads a request's filters. Each case's field number IS its FilterType
@@ -92,6 +93,8 @@ func parseFilters(items []*analytic_basev1.FilterItem) (metricScope, error) {
 			scope.restockTeamID = item.GetTeamFilter().GetTeamId()
 		case analytic_basev1.FilterType_FILTER_TYPE_SUPPLIER:
 			scope.supplierID = item.GetSupplierFilter().GetSupplierId()
+		case analytic_basev1.FilterType_FILTER_TYPE_SUPPLIER_KEYWORD:
+			scope.keyword = item.GetSupplierKeywordFilter().GetQ()
 		}
 	}
 
@@ -104,12 +107,24 @@ func parseFilters(items []*analytic_basev1.FilterItem) (metricScope, error) {
 	return scope, nil
 }
 
-// rows is the report table narrowed by every filter — the window, the team and the supplier.
+// rows is the report table narrowed by every filter — the window, the team, the supplier and the search.
+//
+// The search finds suppliers as SupplierList does — name, address, contact, a live store's name
+// (the-supplier-report-keeps-its-search). supplier_service holds both tables, so it is a subquery over its own rows, never
+// a call; a DELETED supplier is still found, as it is still ranked (a-deleted-supplier-is-kept-for-its-figures).
 func (m metricScope) rows(db *gorm.DB) *gorm.DB {
 	query := window(db, m.start, m.end, m.restockTeamID)
 
 	if m.supplierID != 0 {
 		query = query.Where("r.supplier_id = ?", m.supplierID)
+	}
+
+	if pattern := likePattern(m.keyword); pattern != "" {
+		query = query.Where(
+			"r.supplier_id IN (SELECT s.id FROM suppliers s WHERE s.name ILIKE ? OR s.address ILIKE ? OR s.contact ILIKE ? "+
+				"OR EXISTS (SELECT 1 FROM supplier_channels c WHERE c.supplier_id = s.id AND c.deleted_at IS NULL AND c.name ILIKE ?))",
+			pattern, pattern, pattern, pattern,
+		)
 	}
 
 	return query

@@ -87,6 +87,8 @@ const (
 	// Landed with the first metric to list them, the order metrics (docs/business/order/order_statistic_metric.md).
 	FilterType_FILTER_TYPE_WAREHOUSE FilterType = 7
 	FilterType_FILTER_TYPE_USER      FilterType = 8
+	// A supplier's name, address, contact or store — the Supplier Report's search (the-supplier-report-keeps-its-search).
+	FilterType_FILTER_TYPE_SUPPLIER_KEYWORD FilterType = 9
 )
 
 // Enum value maps for FilterType.
@@ -100,16 +102,18 @@ var (
 		6: "FILTER_TYPE_SUPPLIER",
 		7: "FILTER_TYPE_WAREHOUSE",
 		8: "FILTER_TYPE_USER",
+		9: "FILTER_TYPE_SUPPLIER_KEYWORD",
 	}
 	FilterType_value = map[string]int32{
-		"FILTER_TYPE_UNSPECIFIED": 0,
-		"FILTER_TYPE_DATE_RANGE":  1,
-		"FILTER_TYPE_PRODUCT":     3,
-		"FILTER_TYPE_TEAM":        4,
-		"FILTER_TYPE_SHOP":        5,
-		"FILTER_TYPE_SUPPLIER":    6,
-		"FILTER_TYPE_WAREHOUSE":   7,
-		"FILTER_TYPE_USER":        8,
+		"FILTER_TYPE_UNSPECIFIED":      0,
+		"FILTER_TYPE_DATE_RANGE":       1,
+		"FILTER_TYPE_PRODUCT":          3,
+		"FILTER_TYPE_TEAM":             4,
+		"FILTER_TYPE_SHOP":             5,
+		"FILTER_TYPE_SUPPLIER":         6,
+		"FILTER_TYPE_WAREHOUSE":        7,
+		"FILTER_TYPE_USER":             8,
+		"FILTER_TYPE_SUPPLIER_KEYWORD": 9,
 	}
 )
 
@@ -671,6 +675,53 @@ func (x *UserFilter) GetUserId() uint64 {
 	return 0
 }
 
+// SupplierKeywordFilter — the SUPPLIER a row is about matches `q` as the supplier list's own search does: its name,
+// address, contact, or a live store's name (the-supplier-report-keeps-its-search). Unlike the removed generic keyword
+// (the-generic-keyword-is-removed), it means ONE thing, so only a metric about suppliers lists it.
+type SupplierKeywordFilter struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Q             string                 `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierKeywordFilter) Reset() {
+	*x = SupplierKeywordFilter{}
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierKeywordFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierKeywordFilter) ProtoMessage() {}
+
+func (x *SupplierKeywordFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierKeywordFilter.ProtoReflect.Descriptor instead.
+func (*SupplierKeywordFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SupplierKeywordFilter) GetQ() string {
+	if x != nil {
+		return x.Q
+	}
+	return ""
+}
+
 // FilterItem — one case per FilterType, and each case's NUMBER IS ITS FilterType's, so a set case maps to its type
 // without a table. 2 was the keyword (the-generic-keyword-is-removed) — reserved, so the numbers still match.
 type FilterItem struct {
@@ -684,6 +735,7 @@ type FilterItem struct {
 	//	*FilterItem_SupplierFilter
 	//	*FilterItem_WarehouseFilter
 	//	*FilterItem_UserFilter
+	//	*FilterItem_SupplierKeywordFilter
 	F             isFilterItem_F `protobuf_oneof:"f"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -691,7 +743,7 @@ type FilterItem struct {
 
 func (x *FilterItem) Reset() {
 	*x = FilterItem{}
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[8]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -703,7 +755,7 @@ func (x *FilterItem) String() string {
 func (*FilterItem) ProtoMessage() {}
 
 func (x *FilterItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[8]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -716,7 +768,7 @@ func (x *FilterItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilterItem.ProtoReflect.Descriptor instead.
 func (*FilterItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *FilterItem) GetF() isFilterItem_F {
@@ -789,6 +841,15 @@ func (x *FilterItem) GetUserFilter() *UserFilter {
 	return nil
 }
 
+func (x *FilterItem) GetSupplierKeywordFilter() *SupplierKeywordFilter {
+	if x != nil {
+		if x, ok := x.F.(*FilterItem_SupplierKeywordFilter); ok {
+			return x.SupplierKeywordFilter
+		}
+	}
+	return nil
+}
+
 type isFilterItem_F interface {
 	isFilterItem_F()
 }
@@ -821,6 +882,10 @@ type FilterItem_UserFilter struct {
 	UserFilter *UserFilter `protobuf:"bytes,8,opt,name=user_filter,json=userFilter,proto3,oneof"`
 }
 
+type FilterItem_SupplierKeywordFilter struct {
+	SupplierKeywordFilter *SupplierKeywordFilter `protobuf:"bytes,9,opt,name=supplier_keyword_filter,json=supplierKeywordFilter,proto3,oneof"`
+}
+
 func (*FilterItem_DateRangeFilter) isFilterItem_F() {}
 
 func (*FilterItem_ProductFilter) isFilterItem_F() {}
@@ -835,6 +900,8 @@ func (*FilterItem_WarehouseFilter) isFilterItem_F() {}
 
 func (*FilterItem_UserFilter) isFilterItem_F() {}
 
+func (*FilterItem_SupplierKeywordFilter) isFilterItem_F() {}
+
 // PaginationFilter — on the search request only. The response says whether another page follows and never how many
 // (a-metric-page-has-no-total, a-page-says-whether-another-follows).
 type PaginationFilter struct {
@@ -847,7 +914,7 @@ type PaginationFilter struct {
 
 func (x *PaginationFilter) Reset() {
 	*x = PaginationFilter{}
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[9]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -859,7 +926,7 @@ func (x *PaginationFilter) String() string {
 func (*PaginationFilter) ProtoMessage() {}
 
 func (x *PaginationFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[9]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -872,7 +939,7 @@ func (x *PaginationFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaginationFilter.ProtoReflect.Descriptor instead.
 func (*PaginationFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PaginationFilter) GetOffset() int32 {
@@ -905,7 +972,7 @@ type MetricOption struct {
 
 func (x *MetricOption) Reset() {
 	*x = MetricOption{}
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[10]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -917,7 +984,7 @@ func (x *MetricOption) String() string {
 func (*MetricOption) ProtoMessage() {}
 
 func (x *MetricOption) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[10]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -930,7 +997,7 @@ func (x *MetricOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricOption.ProtoReflect.Descriptor instead.
 func (*MetricOption) Descriptor() ([]byte, []int) {
-	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *MetricOption) GetSupportedFilters() []FilterType {
@@ -974,7 +1041,7 @@ type SortOption struct {
 
 func (x *SortOption) Reset() {
 	*x = SortOption{}
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[11]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -986,7 +1053,7 @@ func (x *SortOption) String() string {
 func (*SortOption) ProtoMessage() {}
 
 func (x *SortOption) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[11]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -999,7 +1066,7 @@ func (x *SortOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SortOption.ProtoReflect.Descriptor instead.
 func (*SortOption) Descriptor() ([]byte, []int) {
-	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SortOption) GetCanSort() bool {
@@ -1026,7 +1093,7 @@ type IDList struct {
 
 func (x *IDList) Reset() {
 	*x = IDList{}
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[12]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1038,7 +1105,7 @@ func (x *IDList) String() string {
 func (*IDList) ProtoMessage() {}
 
 func (x *IDList) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[12]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1051,7 +1118,7 @@ func (x *IDList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IDList.ProtoReflect.Descriptor instead.
 func (*IDList) Descriptor() ([]byte, []int) {
-	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *IDList) GetIds() []uint64 {
@@ -1071,7 +1138,7 @@ type DayList struct {
 
 func (x *DayList) Reset() {
 	*x = DayList{}
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[13]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1083,7 +1150,7 @@ func (x *DayList) String() string {
 func (*DayList) ProtoMessage() {}
 
 func (x *DayList) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[13]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1096,7 +1163,7 @@ func (x *DayList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DayList.ProtoReflect.Descriptor instead.
 func (*DayList) Descriptor() ([]byte, []int) {
-	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DayList) GetDays() []string {
@@ -1120,7 +1187,7 @@ type MetricKeys struct {
 
 func (x *MetricKeys) Reset() {
 	*x = MetricKeys{}
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[14]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1132,7 +1199,7 @@ func (x *MetricKeys) String() string {
 func (*MetricKeys) ProtoMessage() {}
 
 func (x *MetricKeys) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[14]
+	mi := &file_warehouse_analytic_base_v1_analytic_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1145,7 +1212,7 @@ func (x *MetricKeys) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricKeys.ProtoReflect.Descriptor instead.
 func (*MetricKeys) Descriptor() ([]byte, []int) {
-	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *MetricKeys) GetK() isMetricKeys_K {
@@ -1261,7 +1328,9 @@ const file_warehouse_analytic_base_v1_analytic_proto_rawDesc = "" +
 	"\fwarehouse_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\vwarehouseId\".\n" +
 	"\n" +
 	"UserFilter\x12 \n" +
-	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\"\xef\x04\n" +
+	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\"0\n" +
+	"\x15SupplierKeywordFilter\x12\x17\n" +
+	"\x01q\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\x01q\"\xdc\x05\n" +
 	"\n" +
 	"FilterItem\x12Y\n" +
 	"\x11date_range_filter\x18\x01 \x01(\v2+.warehouse.analytic_base.v1.DateRangeFilterH\x00R\x0fdateRangeFilter\x12R\n" +
@@ -1273,7 +1342,8 @@ const file_warehouse_analytic_base_v1_analytic_proto_rawDesc = "" +
 	"\x0fsupplier_filter\x18\x06 \x01(\v2*.warehouse.analytic_base.v1.SupplierFilterH\x00R\x0esupplierFilter\x12X\n" +
 	"\x10warehouse_filter\x18\a \x01(\v2+.warehouse.analytic_base.v1.WarehouseFilterH\x00R\x0fwarehouseFilter\x12I\n" +
 	"\vuser_filter\x18\b \x01(\v2&.warehouse.analytic_base.v1.UserFilterH\x00R\n" +
-	"userFilterB\n" +
+	"userFilter\x12k\n" +
+	"\x17supplier_keyword_filter\x18\t \x01(\v21.warehouse.analytic_base.v1.SupplierKeywordFilterH\x00R\x15supplierKeywordFilterB\n" +
 	"\n" +
 	"\x01f\x12\x05\xbaH\x02\b\x01J\x04\b\x02\x10\x03R\x0ekeyword_filter\"U\n" +
 	"\x10PaginationFilter\x12\x1f\n" +
@@ -1301,7 +1371,7 @@ const file_warehouse_analytic_base_v1_analytic_proto_rawDesc = "" +
 	"\bSortType\x12\x19\n" +
 	"\x15SORT_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eSORT_TYPE_DESC\x10\x01\x12\x11\n" +
-	"\rSORT_TYPE_ASC\x10\x02*\xf0\x01\n" +
+	"\rSORT_TYPE_ASC\x10\x02*\x92\x02\n" +
 	"\n" +
 	"FilterType\x12\x1b\n" +
 	"\x17FILTER_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n" +
@@ -1311,7 +1381,8 @@ const file_warehouse_analytic_base_v1_analytic_proto_rawDesc = "" +
 	"\x10FILTER_TYPE_SHOP\x10\x05\x12\x18\n" +
 	"\x14FILTER_TYPE_SUPPLIER\x10\x06\x12\x19\n" +
 	"\x15FILTER_TYPE_WAREHOUSE\x10\a\x12\x14\n" +
-	"\x10FILTER_TYPE_USER\x10\b\"\x04\b\x02\x10\x02*\x13FILTER_TYPE_KEYWORD*\xa5\x02\n" +
+	"\x10FILTER_TYPE_USER\x10\b\x12 \n" +
+	"\x1cFILTER_TYPE_SUPPLIER_KEYWORD\x10\t\"\x04\b\x02\x10\x02*\x13FILTER_TYPE_KEYWORD*\xa5\x02\n" +
 	"\tGroupType\x12\x1a\n" +
 	"\x16GROUP_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12GROUP_TYPE_SUMMARY\x10\x01\x12\x14\n" +
@@ -1350,7 +1421,7 @@ func file_warehouse_analytic_base_v1_analytic_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_analytic_base_v1_analytic_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_warehouse_analytic_base_v1_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_warehouse_analytic_base_v1_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_warehouse_analytic_base_v1_analytic_proto_goTypes = []any{
 	(SortType)(0),                       // 0: warehouse.analytic_base.v1.SortType
 	(FilterType)(0),                     // 1: warehouse.analytic_base.v1.FilterType
@@ -1364,15 +1435,16 @@ var file_warehouse_analytic_base_v1_analytic_proto_goTypes = []any{
 	(*SupplierFilter)(nil),              // 9: warehouse.analytic_base.v1.SupplierFilter
 	(*WarehouseFilter)(nil),             // 10: warehouse.analytic_base.v1.WarehouseFilter
 	(*UserFilter)(nil),                  // 11: warehouse.analytic_base.v1.UserFilter
-	(*FilterItem)(nil),                  // 12: warehouse.analytic_base.v1.FilterItem
-	(*PaginationFilter)(nil),            // 13: warehouse.analytic_base.v1.PaginationFilter
-	(*MetricOption)(nil),                // 14: warehouse.analytic_base.v1.MetricOption
-	(*SortOption)(nil),                  // 15: warehouse.analytic_base.v1.SortOption
-	(*IDList)(nil),                      // 16: warehouse.analytic_base.v1.IDList
-	(*DayList)(nil),                     // 17: warehouse.analytic_base.v1.DayList
-	(*MetricKeys)(nil),                  // 18: warehouse.analytic_base.v1.MetricKeys
-	(*descriptorpb.MessageOptions)(nil), // 19: google.protobuf.MessageOptions
-	(*descriptorpb.FieldOptions)(nil),   // 20: google.protobuf.FieldOptions
+	(*SupplierKeywordFilter)(nil),       // 12: warehouse.analytic_base.v1.SupplierKeywordFilter
+	(*FilterItem)(nil),                  // 13: warehouse.analytic_base.v1.FilterItem
+	(*PaginationFilter)(nil),            // 14: warehouse.analytic_base.v1.PaginationFilter
+	(*MetricOption)(nil),                // 15: warehouse.analytic_base.v1.MetricOption
+	(*SortOption)(nil),                  // 16: warehouse.analytic_base.v1.SortOption
+	(*IDList)(nil),                      // 17: warehouse.analytic_base.v1.IDList
+	(*DayList)(nil),                     // 18: warehouse.analytic_base.v1.DayList
+	(*MetricKeys)(nil),                  // 19: warehouse.analytic_base.v1.MetricKeys
+	(*descriptorpb.MessageOptions)(nil), // 20: google.protobuf.MessageOptions
+	(*descriptorpb.FieldOptions)(nil),   // 21: google.protobuf.FieldOptions
 }
 var file_warehouse_analytic_base_v1_analytic_proto_depIdxs = []int32{
 	0,  // 0: warehouse.analytic_base.v1.MetricSort.sort_type:type_name -> warehouse.analytic_base.v1.SortType
@@ -1383,22 +1455,23 @@ var file_warehouse_analytic_base_v1_analytic_proto_depIdxs = []int32{
 	9,  // 5: warehouse.analytic_base.v1.FilterItem.supplier_filter:type_name -> warehouse.analytic_base.v1.SupplierFilter
 	10, // 6: warehouse.analytic_base.v1.FilterItem.warehouse_filter:type_name -> warehouse.analytic_base.v1.WarehouseFilter
 	11, // 7: warehouse.analytic_base.v1.FilterItem.user_filter:type_name -> warehouse.analytic_base.v1.UserFilter
-	1,  // 8: warehouse.analytic_base.v1.MetricOption.supported_filters:type_name -> warehouse.analytic_base.v1.FilterType
-	1,  // 9: warehouse.analytic_base.v1.MetricOption.required_filters:type_name -> warehouse.analytic_base.v1.FilterType
-	2,  // 10: warehouse.analytic_base.v1.MetricOption.supported_group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	16, // 11: warehouse.analytic_base.v1.MetricKeys.ids:type_name -> warehouse.analytic_base.v1.IDList
-	17, // 12: warehouse.analytic_base.v1.MetricKeys.days:type_name -> warehouse.analytic_base.v1.DayList
-	19, // 13: warehouse.analytic_base.v1.metric:extendee -> google.protobuf.MessageOptions
-	20, // 14: warehouse.analytic_base.v1.metric_sort:extendee -> google.protobuf.FieldOptions
-	20, // 15: warehouse.analytic_base.v1.field_stat_type:extendee -> google.protobuf.FieldOptions
-	14, // 16: warehouse.analytic_base.v1.metric:type_name -> warehouse.analytic_base.v1.MetricOption
-	15, // 17: warehouse.analytic_base.v1.metric_sort:type_name -> warehouse.analytic_base.v1.SortOption
-	3,  // 18: warehouse.analytic_base.v1.field_stat_type:type_name -> warehouse.analytic_base.v1.FieldStatType
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	16, // [16:19] is the sub-list for extension type_name
-	13, // [13:16] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	12, // 8: warehouse.analytic_base.v1.FilterItem.supplier_keyword_filter:type_name -> warehouse.analytic_base.v1.SupplierKeywordFilter
+	1,  // 9: warehouse.analytic_base.v1.MetricOption.supported_filters:type_name -> warehouse.analytic_base.v1.FilterType
+	1,  // 10: warehouse.analytic_base.v1.MetricOption.required_filters:type_name -> warehouse.analytic_base.v1.FilterType
+	2,  // 11: warehouse.analytic_base.v1.MetricOption.supported_group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	17, // 12: warehouse.analytic_base.v1.MetricKeys.ids:type_name -> warehouse.analytic_base.v1.IDList
+	18, // 13: warehouse.analytic_base.v1.MetricKeys.days:type_name -> warehouse.analytic_base.v1.DayList
+	20, // 14: warehouse.analytic_base.v1.metric:extendee -> google.protobuf.MessageOptions
+	21, // 15: warehouse.analytic_base.v1.metric_sort:extendee -> google.protobuf.FieldOptions
+	21, // 16: warehouse.analytic_base.v1.field_stat_type:extendee -> google.protobuf.FieldOptions
+	15, // 17: warehouse.analytic_base.v1.metric:type_name -> warehouse.analytic_base.v1.MetricOption
+	16, // 18: warehouse.analytic_base.v1.metric_sort:type_name -> warehouse.analytic_base.v1.SortOption
+	3,  // 19: warehouse.analytic_base.v1.field_stat_type:type_name -> warehouse.analytic_base.v1.FieldStatType
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	17, // [17:20] is the sub-list for extension type_name
+	14, // [14:17] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_analytic_base_v1_analytic_proto_init() }
@@ -1406,7 +1479,7 @@ func file_warehouse_analytic_base_v1_analytic_proto_init() {
 	if File_warehouse_analytic_base_v1_analytic_proto != nil {
 		return
 	}
-	file_warehouse_analytic_base_v1_analytic_proto_msgTypes[8].OneofWrappers = []any{
+	file_warehouse_analytic_base_v1_analytic_proto_msgTypes[9].OneofWrappers = []any{
 		(*FilterItem_DateRangeFilter)(nil),
 		(*FilterItem_ProductFilter)(nil),
 		(*FilterItem_TeamFilter)(nil),
@@ -1414,8 +1487,9 @@ func file_warehouse_analytic_base_v1_analytic_proto_init() {
 		(*FilterItem_SupplierFilter)(nil),
 		(*FilterItem_WarehouseFilter)(nil),
 		(*FilterItem_UserFilter)(nil),
+		(*FilterItem_SupplierKeywordFilter)(nil),
 	}
-	file_warehouse_analytic_base_v1_analytic_proto_msgTypes[14].OneofWrappers = []any{
+	file_warehouse_analytic_base_v1_analytic_proto_msgTypes[15].OneofWrappers = []any{
 		(*MetricKeys_Ids)(nil),
 		(*MetricKeys_Days)(nil),
 	}
@@ -1425,7 +1499,7 @@ func file_warehouse_analytic_base_v1_analytic_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_analytic_base_v1_analytic_proto_rawDesc), len(file_warehouse_analytic_base_v1_analytic_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   15,
+			NumMessages:   16,
 			NumExtensions: 3,
 			NumServices:   0,
 		},

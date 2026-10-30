@@ -11,10 +11,10 @@ import { signed } from "./MetricColumns";
 import type { Mover } from "./MoversDialog";
 
 /** A movement, signed and coloured — green in, red out, as on every statement. */
-export function SignedAmount({ amount }: { amount: number }) {
+export function SignedAmount({ amount, bare = false }: { amount: number; bare?: boolean }) {
   return (
     <Span color={amount > 0 ? "fg.success" : amount < 0 ? "fg.error" : undefined} whiteSpace="nowrap">
-      {signed(amount)}
+      {signed(amount, bare)}
     </Span>
   );
 }
@@ -42,6 +42,10 @@ function Balance({ amount }: { amount: number | undefined }) {
 //                     contract's ranking cannot be narrowed to it.
 //
 // A card stays a card: only the word "Rincian" is pressed (as on the settlement margin card).
+//
+// IN THE RINCIAN VIEW, THREE CARDS AND NO "RINCIAN" (owner: *"di rincian statisticnya tidak perlu rincian lagi, akun dan
+// penyedia pun tidak perlu ada"*, `the-rincian-view-has-three-plain-cards`) — the view IS the breakdown, so its tables
+// say what the buttons and the two mover cards would: the page passes neither `onDetail` nor `movers` there.
 export function ReportSummary({
   metric,
   from,
@@ -53,7 +57,8 @@ export function ReportSummary({
   metric: Metric | undefined;
   from: string;
   to: string;
-  onDetail: () => void;
+  /** Opens what the net change is made of — absent in the Rincian view, whose Per Jenis table already is that. */
+  onDetail?: () => void;
   /** The ranked accounts and providers — undefined while one account is picked, and the two cards are not drawn. */
   movers?: { account: Mover[] | undefined; provider: Mover[] | undefined };
   onMovers: (kind: "account" | "provider") => void;
@@ -111,7 +116,7 @@ export function ReportSummary({
       />
       <SummaryCard
         label={t("financialAccounts.report.change")}
-        mark={details(onDetail, "account-report-change-detail")}
+        mark={onDetail ? details(onDetail, "account-report-change-detail") : undefined}
         value={metric ? <SignedAmount amount={metric.change} /> : "—"}
         line={share ? t("financialAccounts.report.ofOpen", { share }) : undefined}
         testId="account-report-change"

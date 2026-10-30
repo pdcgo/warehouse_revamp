@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { orderClient, orderDraftClient } from "../../api/clients";
+import { orderDraftClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
 import { draftsFromList, orderDraftListRowData } from "./adapt";
 import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
@@ -112,19 +112,3 @@ export function useDeleteOrderDrafts() {
   });
 }
 
-// PROMOTE IS OrderCreate WITH THE DRAFT'S ID (a-draft-becomes-an-order-through-order-create) — the one door into
-// `orders`, sent with what the draft page has on screen. It creates an ORDER and destroys the draft, so it stales BOTH
-// domains. Invalidating only drafts would leave the orders list without the order that was just created — the screen
-// would not be wrong about anything it fetched, it simply fetched before the promotion.
-export function usePromoteOrderDraft() {
-  const client = useQueryClient();
-
-  return useMutation({
-    mutationFn: (vars: Parameters<typeof orderClient.orderCreate>[0] & { orderDraftId: bigint }) =>
-      orderClient.orderCreate(vars),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ["orderDrafts"] });
-      await client.invalidateQueries({ queryKey: ["orders"] });
-    },
-  });
-}

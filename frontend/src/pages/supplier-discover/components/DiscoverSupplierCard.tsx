@@ -1,10 +1,13 @@
 import { useTranslation } from "react-i18next";
-import { Card, Flex, Icon, Separator, Text } from "@chakra-ui/react";
+import { Card, Flex, Icon, Separator, Stack, Text } from "@chakra-ui/react";
 import { ArrowUpRight } from "lucide-react";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import type { DiscoverSupplier } from "../../../features/suppliers/discover";
 import { ChannelTypes } from "../../../features/suppliers/ChannelTypes";
+import { LIST_FIGURE_MARKS, SupplierFigureIcons } from "../../../features/suppliers/SupplierFigures";
+import { sampleFiguresFor } from "../../../features/suppliers/sampleSupplierFigures";
 import { TeamItem } from "../../../components/entity/TeamItem";
+import { LIFTS } from "../../../lib/motion";
 
 // ONE SUPPLIER AS A CARD — Discover's default view (`discover-is-cards-or-a-table`), drawn after the owner's reference
 // card (*"card 4, sama kasih panah itu di bawah kanan"*, `a-discover-card-reads-who-whose-where`):
@@ -15,10 +18,13 @@ import { TeamItem } from "../../../components/entity/TeamItem";
 //   [TM] Toko Melati                              ← whose it is — the team that keeps it
 //        Selling
 //   [Shopee] [Tokopedia] [Other]                  ← where it sells, or "Belum ada toko pemasok"
-//   0812-1111-2222                            ↗   ← the contact, and the arrow that says the card opens
+//   0812-1111-2222                                ← the contact
+//   🛒 2.579 ⚠1   ✓ 803 ⚠2                    ↗   ← its figures as icons, one row, no dates (a-card-reads-its-figures-as-icons),
+//                                                    and the arrow that says the card opens
 //
 // The whole card opens the supplier's Discover detail, so it lights up under a pointer and while pressed
-// (a-table-row-lights-up).
+// (a-table-row-lights-up) — and rises a little, so in a grid the one about to open stands out
+// (`motion-is-small-quick-and-shared`).
 export function DiscoverSupplierCard({ supplier, onOpen }: { supplier: DiscoverSupplier; onOpen: () => void }) {
   const { t } = useTranslation();
 
@@ -26,9 +32,7 @@ export function DiscoverSupplierCard({ supplier, onOpen }: { supplier: DiscoverS
     <Card.Root
       variant="outline"
       size="sm"
-      cursor="pointer"
-      _hover={{ bg: "bg.muted" }}
-      _active={{ bg: "bg.muted" }}
+      {...LIFTS}
       onClick={onOpen}
       data-testid={`discover-supplier-row-${supplier.id}`}
     >
@@ -55,13 +59,20 @@ export function DiscoverSupplierCard({ supplier, onOpen }: { supplier: DiscoverS
       </Card.Body>
 
       <Card.Footer>
-        <Flex justify="space-between" align="center" gap="2" w="full" minW="0">
+        <Stack gap="2" w="full" minW="0">
           <Text fontSize="xs" color="fg.muted" lineClamp={1} data-testid={`discover-card-contact-${supplier.id}`}>
             {supplier.contact || t("suppliers.discover.noContact")}
           </Text>
-          {/* ↗ — the card opens the supplier; the arrow says so, bottom right. */}
-          <Icon as={ArrowUpRight} boxSize="4" color="fg.muted" flexShrink={0} aria-hidden="true" />
-        </Flex>
+          <Flex justify="space-between" align="center" gap="2">
+            <SupplierFigureIcons
+              figures={sampleFiguresFor(supplier)}
+              marks={LIST_FIGURE_MARKS}
+              testId={`discover-card-figures-${supplier.id}`}
+            />
+            {/* ↗ — the card opens the supplier; the arrow says so, bottom right. */}
+            <Icon as={ArrowUpRight} boxSize="4" color="fg.muted" flexShrink={0} aria-hidden="true" />
+          </Flex>
+        </Stack>
       </Card.Footer>
     </Card.Root>
   );

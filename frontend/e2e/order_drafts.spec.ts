@@ -117,14 +117,14 @@ test("Order drafts: several are selected and deleted in one action (#195)", asyn
   await expect(page.getByTestId("order-drafts-empty")).toBeVisible();
 });
 
-// #196 — the detail screen, where scraped text becomes a real product.
+// A DRAFT OPENS IN THE ORDER FORM (the-draft-opens-in-the-order-form) — the draft's own page, with its row mapping,
+// Save and Promote (#196), was folded into /orders/new?draft=ID, which it seeds. A draft SAVED FROM THE FORM reopening
+// there is orders.spec.ts's; what only a PUSHED draft brings is checked here: the scrape as text above the products,
+// the buyer it carried, and the way to drop it.
 //
-// Deliberately NOT a full promote-through-the-UI run: promoting deducts stock, so that path needs a
-// category, a shop, a warehouse, a product AND a seeded stock level — the whole fixture chain
-// orders.spec.ts already builds and exercises. The backend's promote rules have their own unit tests
-// (#194). What only a browser can check is what this screen PUTS IN FRONT OF SOMEBODY: the evidence
-// beside the mapping, and a Promote button that says why it is disabled.
-test("Order drafts: the detail shows the scrape beside the mapping, and says why it cannot promote (#196)", async ({
+// Deliberately NOT a Create through the form: that needs a category, a shop, a warehouse, a product AND a seeded stock
+// level — the whole fixture chain orders.spec.ts already builds and exercises.
+test("Order drafts: a pushed draft opens in the order form, its scrape as text, and is deleted from there", async ({
   page,
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
@@ -137,23 +137,25 @@ test("Order drafts: the detail shows the scrape beside the mapping, and says why
   // The ROW opens the draft — clicked on its date, because the reference itself is a copy button and
   // copying must not navigate.
   await page.getByTestId(/^draft-row-/).filter({ hasText: ref }).getByTestId(/^draft-updated-/).click();
-  await expect(page.getByTestId("draft-detail-page")).toBeVisible();
+  await expect(page).toHaveURL(/\/orders\/new\?draft=\d+$/);
+  await expect(page.getByTestId("order-create-draft-ref")).toHaveText(`Draft ${ref}`);
 
-  // THE EVIDENCE OF WHAT WAS ORDERED, on screen and not replaced by the mapping. Without it nobody
-  // can tell a wrong match from a right one — which is the whole reason both halves live on the line.
-  await expect(page.getByTestId("draft-line-scraped-0")).toHaveText("Kaos Polos Hitam L");
-  await expect(page.getByTestId("draft-line-unmapped-0")).toBeVisible();
+  // THE EVIDENCE OF WHAT WAS ORDERED — the marketplace's own words, verbatim, above the products, and which app sent
+  // them. Nothing in it is copied into a line: a scraped title names no product of ours.
+  await expect(page.getByTestId("draft-product-hints-source")).toContainText("e2e-scraper");
+  await expect(page.getByTestId("draft-product-hint-0")).toHaveText(/^2 × Kaos Polos Hitam L · Rp\s?50\.000$/);
 
-  // Promote is refused, and the reasons are beside the button rather than behind a click.
-  await expect(page.getByTestId("draft-promote")).toBeDisabled();
-  await expect(page.getByTestId("draft-gaps")).toBeVisible();
+  // Seeded once from the draft; after that the form is the person's.
+  await expect(page.getByTestId("order-create-customer-name")).toHaveValue("Budi");
 
-  // A person's edit lands, and the app may never overwrite that field again.
-  await page.getByTestId("draft-customer-name").fill("Budi Santoso");
-  await page.getByTestId("draft-save").click();
-  await expect(page.getByTestId("draft-save")).toBeDisabled();
+  // A draft is finished here or left on the list as it is — no Save as Draft on it.
+  await expect(page.getByTestId("order-create-save-draft")).toHaveCount(0);
 
-  await pushDraft(page, ref);
-  await page.reload();
-  await expect(page.getByTestId("draft-customer-name")).toHaveValue("Budi Santoso");
+  // Dropping it confirms (destructive actions always confirm), then lands back on the list without it.
+  await page.getByTestId("order-create-delete-draft").click();
+  await expect(page.getByText(`Delete draft ${ref}?`)).toBeVisible();
+  await page.getByTestId("confirm-action").click();
+
+  await expect(page).toHaveURL(/\/order-drafts$/);
+  await expect(page.getByTestId(/^draft-row-/).filter({ hasText: ref })).toHaveCount(0);
 });

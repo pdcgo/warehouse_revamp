@@ -97,6 +97,9 @@ export function Sidebar() {
     }
   }, [location.pathname, offersLiability, refetchAwaiting]);
   const countOf = (item: MenuItem) => (item.to === "/liability" ? (awaiting.data ?? 0) : 0);
+  // A GROUP CARRIES ITS CHILDREN'S COUNT while it is shut (`the-accounts-hold-what-moves-them`) — Kewajiban sits in the
+  // accounts group now, and a count hidden in a closed drawer is a count nobody acts on.
+  const countOfGroup = (group: MenuGroup) => group.children.reduce((sum, child) => sum + countOf(child), 0);
 
   // Open the group you are actually IN. With only one group allowed open (#123), landing on a
   // sub-menu route with every group shut would hide the very item that is highlighted. Keyed to the
@@ -243,6 +246,10 @@ export function Sidebar() {
               <Icon as={group.icon} boxSize="4" />
               {/* The dot says "there is more behind this" — a group, not a page. */}
               <Box position="absolute" bottom="-1" right="-1.5" boxSize="1.5" rounded="full" bg="currentColor" />
+              {/* …and its children's count rides the corner, as a top-level item's does. */}
+              {countOfGroup(group) > 0 && (
+                <CornerCount count={countOfGroup(group)} active={false} testId={`nav-group-count-${group.label}`} />
+              )}
             </Box>
           </Flex>
         </Popover.Trigger>
@@ -303,6 +310,19 @@ export function Sidebar() {
           <Text flex="1" textAlign="start">
             {t(group.label)}
           </Text>
+          {/* Shut, the group says what waits inside it; open, the child says it itself. */}
+          {!groupOpen && countOfGroup(group) > 0 && (
+            <Badge
+              size="sm"
+              variant="solid"
+              rounded="full"
+              bg="brand.solid"
+              color="brand.contrast"
+              data-testid={`nav-group-count-${group.label}`}
+            >
+              {countOfGroup(group)}
+            </Badge>
+          )}
           {/* One chevron that TURNS, rather than two that swap — swapping is a jump cut, and the
               rotation is the same motion the drawer below is making (#123). */}
           <Icon

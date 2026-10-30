@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Button, Card, Field, Flex, Icon, SimpleGrid, Stack, Text, Textarea } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { FileClock, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 // THE LAST THING YOU WRITE, AND THE BUTTON YOU PRESS AFTER IT (owner).
 //
@@ -25,25 +25,8 @@ interface NoteAndSubmitCardProps {
   /** Create is a SUBMIT — the form around it owns the handler (see the page). */
   canSave: boolean;
   saving: boolean;
-  /**
-   * THE SECOND BUTTON, the draft page's Save. Omitted, the card has Create alone: the new order's form has no Save as
-   * Draft, because a person never drafts (a-draft-becomes-an-order-through-order-create).
-   */
-  canDraft?: boolean;
-  savingDraft?: boolean;
-  onSaveDraft?: () => void;
-  /**
-   * THE DRAFT PAGE'S VARIANT (`the-draft-page-wears-the-order-form`) — the same card with Save and
-   * Promote instead of Create alone. Omitted, it is the new order's card.
-   */
-  variant?: {
-    saveLabel: string;
-    saveTestId: string;
-    submitLabel: string;
-    submitTestId: string;
-    /** Promote is a click, not the form's submit — the draft page has no <form> around it. */
-    onSubmit: () => void;
-  };
+  // ⚠ CREATE ALONE — no Save as Draft, because a person never drafts (a-draft-becomes-an-order-through-order-create),
+  // and a draft is finished on this same form (the-draft-opens-in-the-order-form), so there is no Promote either.
   /** A ⚠ beside the note's title — on a draft, the note is not stored. */
   noteMark?: ReactNode;
   /** Under the buttons — on a draft, what still stands between it and an order. */
@@ -57,10 +40,6 @@ export function NoteAndSubmitCard({
   compact,
   canSave,
   saving,
-  canDraft = false,
-  savingDraft = false,
-  onSaveDraft,
-  variant,
   noteMark,
   footer,
 }: NoteAndSubmitCardProps) {
@@ -91,36 +70,18 @@ export function NoteAndSubmitCard({
           </Field.Root>
 
           <Stack gap="2">
-            <SimpleGrid columns={onSaveDraft ? 2 : 1} gap="2">
-              {/* THE DRAFT PAGE'S SAVE asks for far less than Promote — a draft keeps anything, in any state — so it
-                  is enabled while Promote is still refusing, and NO STOCK MOVES. */}
-              {onSaveDraft && (
-                <Button
-                  type="button"
-                  w="full"
-                  variant="outline"
-                  loading={savingDraft}
-                  disabled={!canDraft || saving}
-                  data-testid={variant?.saveTestId ?? "order-create-save-draft"}
-                  onClick={onSaveDraft}
-                >
-                  <Icon as={FileClock} boxSize="4" />
-                  {variant?.saveLabel}
-                </Button>
-              )}
-
+            <SimpleGrid columns={1} gap="2">
               {/* ⚠ A SUBMIT, not a click handler: the page wraps this card in its <form>, so Enter in
                   any field places the order the same way this button does. */}
               <Button
-                type={variant ? "button" : "submit"}
+                type="submit"
                 w="full"
                 colorPalette="brand"
                 loading={saving}
-                disabled={!canSave || savingDraft}
-                data-testid={variant?.submitTestId ?? "order-create-save"}
-                onClick={variant?.onSubmit}
+                disabled={!canSave}
+                data-testid="order-create-save"
               >
-                {variant?.submitLabel ?? t("orders.createOrder")}
+                {t("orders.createOrder")}
               </Button>
             </SimpleGrid>
 

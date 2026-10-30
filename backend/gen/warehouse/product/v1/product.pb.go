@@ -1296,8 +1296,14 @@ type ProductDiscoverRequest struct {
 	// contradictory ask returns nothing, which is the honest answer.
 	OwnerTeamIds        []uint64 `protobuf:"varint,8,rep,packed,name=owner_team_ids,json=ownerTeamIds,proto3" json:"owner_team_ids,omitempty"`
 	ExcludeOwnerTeamIds []uint64 `protobuf:"varint,9,rep,packed,name=exclude_owner_team_ids,json=excludeOwnerTeamIds,proto3" json:"exclude_owner_team_ids,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Serve a product its owner LOCKED as well (a-locked-product-shows-on-discover). The Discover PAGE asks for it: a
+	// seller browsing should see the product exists and that it is closed to them, its lock on the card. Every PICKER
+	// leaves it false — a locked product is never offered to build an order around, and the take refuses it anyway.
+	//
+	// ⚠ It shows the product; it does not open it. Nothing about ordering one changes.
+	IncludeLocked bool `protobuf:"varint,10,opt,name=include_locked,json=includeLocked,proto3" json:"include_locked,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProductDiscoverRequest) Reset() {
@@ -1391,6 +1397,13 @@ func (x *ProductDiscoverRequest) GetExcludeOwnerTeamIds() []uint64 {
 		return x.ExcludeOwnerTeamIds
 	}
 	return nil
+}
+
+func (x *ProductDiscoverRequest) GetIncludeLocked() bool {
+	if x != nil {
+		return x.IncludeLocked
+	}
+	return false
 }
 
 type ProductDiscoverResponse struct {
@@ -2298,7 +2311,7 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\x13ProductListResponse\x12C\n" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.product.v1.ProductListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xad\x04\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xd4\x04\n" +
 	"\x16ProductDiscoverRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12?\n" +
 	"\x06filter\x18\x02 \x01(\v2'.warehouse.product.v1.ProductListFilterR\x06filter\x12?\n" +
@@ -2308,7 +2321,9 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\x10exclude_own_team\x18\x06 \x01(\bR\x0eexcludeOwnTeam\x12\"\n" +
 	"\rowner_team_id\x18\a \x01(\x04R\vownerTeamId\x127\n" +
 	"\x0eowner_team_ids\x18\b \x03(\x04B\x11\xbaH\x0e\x92\x01\v\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\fownerTeamIds\x12F\n" +
-	"\x16exclude_owner_team_ids\x18\t \x03(\x04B\x11\xbaH\x0e\x92\x01\v\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\x13excludeOwnerTeamIds:\v\x92\xb5\x18\a\n" +
+	"\x16exclude_owner_team_ids\x18\t \x03(\x04B\x11\xbaH\x0e\x92\x01\v\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\x13excludeOwnerTeamIds\x12%\n" +
+	"\x0einclude_locked\x18\n" +
+	" \x01(\bR\rincludeLocked:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"\xac\x01\n" +
 	"\x17ProductDiscoverResponse\x12C\n" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.product.v1.ProductListResponseItemR\x05items\x12\x10\n" +

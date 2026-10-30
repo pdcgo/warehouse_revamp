@@ -10,6 +10,13 @@ export function formatRupiah(amount: bigint): string {
   return `Rp ${amount.toLocaleString("id-ID")}`;
 }
 
+// formatRupiahRange writes a price range on ONE line — "Rp 45.700 – Rp 47.200" — or one price when both ends agree, since
+// "Rp 5.000 – Rp 5.000" is noise (`a-cost-range-reads-as-a-range`). The product list, the product's page and Discover
+// write a cost range, and its cross price, with this one function.
+export function formatRupiahRange(min: bigint, max: bigint): string {
+  return min === max ? formatRupiah(min) : `${formatRupiah(min)} – ${formatRupiah(max)}`;
+}
+
 // formatSignedRupiah writes BOTH signs — "+Rp 4.000", "−Rp 10.000", "Rp 0" — for an amount whose
 // direction is the point (a change, a running balance, a settlement adjustment). formatRupiah writes the
 // minus the same way and leaves a positive amount bare.
@@ -23,6 +30,13 @@ export function formatSignedRupiah(amount: bigint): string {
 // is not money anyone can hand over, and the server rounds as a row posts anyway.
 export function formatRupiahNumber(amount: number): string {
   return formatRupiah(BigInt(Math.round(amount)));
+}
+
+// formatRupiahBare is formatRupiahNumber without its "Rp" — "10.750.000", "−150.000" — for a table that says the
+// currency ONCE, over its columns, instead of on every figure (owner: `the-rincian-says-rp-once`). The minus stays in
+// front, the same "−".
+export function formatRupiahBare(amount: number): string {
+  return formatRupiahNumber(amount).replace("Rp ", "");
 }
 
 // The Indonesian short-scale suffixes, largest first so the first match wins.

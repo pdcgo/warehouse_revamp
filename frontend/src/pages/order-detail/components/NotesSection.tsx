@@ -11,7 +11,7 @@ import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
 import { useCreateOrderNote } from "../../../features/orders/queries";
 import { orderNotes, timelineFromKey } from "../../../features/orders/timelineLogs";
 import { formatUnixDateTime } from "../../../lib/datetime";
-import { SectionEmpty } from "./Section";
+import { SectionEmpty } from "../../../components/chrome/DetailSection";
 
 /** The contract's limit (`OrderNoteCreateRequest.note`): 1 to 500 characters, trimmed. */
 export const NOTE_MAX = 500;

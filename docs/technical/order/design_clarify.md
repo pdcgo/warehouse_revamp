@@ -388,6 +388,43 @@ flowchart LR
 
 ---
 
+## two branches designed the order list and the drafts apart, and the merge combined them
+
+**The example.** `frada` (screen work, 2026-10-13 → 10-30) and `backup/inventory` (2026-10-21 → 10-30) decided the same
+screens in parallel; `frada` was merged into `backup/inventory` on 2026-10-30. Where they disagreed, the merge built
+this — one cause, so one entry:
+
+| site | `backup/inventory` | `frada` | the merge built |
+| --- | --- | --- | --- |
+| the order list's date filter | Dibuat or the platform date ([the-date-filter-switches-created-or-platform](../frontend/order_list_decision.md#the-date-filter-switches-created-or-platform), 10-22) | seven dates, the timeline's five included ([the-order-list-filters-by-seven-dates](../frontend/order_list_decision.md#the-order-list-filters-by-seven-dates), 10-23) | the seven pills; Dibuat and Tanggal order narrow the list (`date_field`), the five status dates carry ⚠ and send no window |
+| the status tabs | counts that follow the warehouse and the date filter ([the-seller-list-filters-by-warehouse](../frontend/order_list_decision.md#the-seller-list-filters-by-warehouse)) | no counts, the statistics read only when opened ([the-status-tabs-carry-no-counts](../frontend/order_list_decision.md#the-status-tabs-carry-no-counts), 10-23) | no counts |
+| the status-date column | the current status's `status_at_unix`, under a status tab | the picked date type's stage, sampled | real for the rows still in that stage, blank for the rest |
+| a draft | its own page, Promote sends `OrderCreate` + `order_draft_id` ([a-draft-becomes-an-order-through-order-create](../../business/order/context_decision.md#a-draft-becomes-an-order-through-order-create), 10-29) | opens IN the order form, the page deleted ([the-draft-opens-in-the-order-form](../frontend/order_draft_decision.md#the-draft-opens-in-the-order-form), 10-15) | `frada`'s screen on our wire: `/orders/new?draft=ID`, its Create sends `order_draft_id` and the server deletes the draft |
+| Save as Draft | removed (10-29) | kept on a new order | removed |
+| adding a bundle | a search box over `BundleList(q)` (HARD RULE 9) | a dialog of ticked rows over SAMPLE bundles ([bundles-are-added-like-items](../frontend/order_create_decision.md#bundles-are-added-like-items), 10-23) | `frada`'s dialog, on the server's search |
+| a locked product in Discover | left out (`product_discover.go`) | shown with *Selalu dikunci* in two stories | ✅ shown, as `frada` — your call ([a-locked-product-shows-on-discover](../frontend/products_decision.md#a-locked-product-shows-on-discover)); the pickers still leave it out |
+| the Supplier Report's search | dropped ([superseded-the-supplier-report-drops-its-search](../../business/analytic/rpc_provide_decision.md#superseded-the-supplier-report-drops-its-search)) | a search box | ✅ kept, as `frada` — your call ([the-supplier-report-keeps-its-search](../../business/analytic/rpc_provide_decision.md#the-supplier-report-keeps-its-search)) |
+
+**→ Recommend** confirm the last column. The decision files are append-only, so what the merge superseded stays written,
+and two entries need your word to be marked superseded:
+- the *"tab counts follow"* half of [the-seller-list-filters-by-warehouse](../frontend/order_list_decision.md#the-seller-list-filters-by-warehouse) and of [the-date-filter-switches-created-or-platform](../frontend/order_list_decision.md#the-date-filter-switches-created-or-platform) → [the-status-tabs-carry-no-counts](../frontend/order_list_decision.md#the-status-tabs-carry-no-counts);
+- *"the draft page's Promote"* in [a-draft-becomes-an-order-through-order-create](../../business/order/context_decision.md#a-draft-becomes-an-order-through-order-create) → the order form's Create.
+
+What stops it recurring: two lines designing one screen merge before both build on it — here both built the order list
+and the drafts in the same week.
+
+```mermaid
+flowchart LR
+  F["frada - the screens"] --> M["the merge, 2026-10-30"]
+  B["backup/inventory - the wire and the data"] --> M
+  M --> L["order list - seven date pills, two real, no tab counts"]
+  M --> D["a draft opens in the form - Create sends order_draft_id"]
+  M --> U["bundle dialog - on BundleList"]
+  M --> X["Discover - a locked product shown, never offered"]
+```
+
+---
+
 ## Question
 
 1. ✅ *(2026-10-29)* **Overtaken: neither — the order figures are metrics on the one analytic screen** —

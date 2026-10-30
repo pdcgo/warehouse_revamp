@@ -74,21 +74,22 @@ async function openProducts(canvas: ReturnType<typeof within>) {
 
 export const Default: Story = {};
 
-// A PHONE KEEPS THE HEADER ONE ROW (the-phone-header-is-one-row) — the name and ⋯, Ubah and Hapus inside it; the line
-// of who the supplier is under it.
+// A PHONE KEEPS THE HEADER ONE ROW (the-phone-header-is-one-row) — the name and Ubah and Hapus as their ICONS, two so no
+// ⋯ (a-phone-header-action-is-an-icon); the line of who the supplier is under it.
 export const Mobile: Story = {
   globals: { viewport: { value: "mobile2" } },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.queryByTestId("supplier-detail-edit")).toBeNull();
-    const menu = canvas.getByTestId("supplier-detail-menu");
+    await expect(canvas.queryByTestId("supplier-detail-menu")).toBeNull();
+    const edit = canvas.getByRole("button", { name: "Edit" });
+    await expect(edit).toHaveAttribute("data-testid", "supplier-detail-edit");
+    await expect(edit).not.toHaveTextContent("Edit");
     const name = canvas.getByTestId("supplier-detail-name").getBoundingClientRect();
-    await expect(menu.getBoundingClientRect().top).toBeLessThan(name.bottom);
+    await expect(edit.getBoundingClientRect().top).toBeLessThan(name.bottom);
 
-    await userEvent.click(menu);
-    await waitFor(() => expect(screen.getByTestId("supplier-detail-edit")).toBeVisible());
-    await expect(screen.getByTestId("supplier-detail-delete")).toBeVisible();
+    await userEvent.click(canvas.getByTestId("supplier-detail-delete"));
+    await waitFor(() => expect(screen.getByRole("alertdialog")).toBeVisible());
   },
 };
 
@@ -142,6 +143,28 @@ export const ChannelsAndProductsTabs: Story = {
       "Statistics",
     ]);
     await expect(canvas.getByTestId("supplier-tab-channels")).toHaveAttribute("aria-selected", "true");
+  },
+};
+
+// ONE UNDERLINE, AND IT TRAVELS (motion-is-small-quick-and-shared) — the tab row carries the sliding indicator, and the
+// picked tab draws no underline of its own under it; two would read as a double line wherever they overlap. Its slide
+// is reviewed by eye: the test browser asks for reduced motion.
+export const OneUnderlineThatSlides: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const tablist = canvas.getByRole("tablist");
+    const indicator = tablist.querySelector("[data-part=indicator]");
+    await expect(indicator).not.toBeNull();
+    await expect(getComputedStyle(indicator!, "::after").height).toBe("2px");
+
+    const picked = canvas.getByTestId("supplier-tab-channels");
+    await expect(getComputedStyle(picked, "::before").height).toBe("0px");
+
+    // It follows the pick — over the tab, not merely somewhere in the row.
+    await openProducts(canvas);
+    const products = canvas.getByTestId("supplier-tab-products").getBoundingClientRect();
+    await waitFor(() => expect(Math.round(indicator!.getBoundingClientRect().left)).toBe(Math.round(products.left)));
   },
 };
 
@@ -499,5 +522,147 @@ export const TheAddStoreFormShowsExamples: Story = {
     await expect(name).toHaveAttribute("placeholder", "e.g. Sumber Makmur Official");
     await expect(screen.getByTestId("channel-uri")).toHaveAttribute("placeholder", "e.g. https://shopee.co.id/sumbermakmur");
     await expect(screen.getByTestId("channel-description")).toHaveAttribute("placeholder", "e.g. free shipping over 5 rolls");
+  },
+};
+
+// ── Terjual and Siap on the tabs (`the-detail-tabs-show-sold-and-ready`) ─────────────────────────────────────────
+
+// A STORE SHOWS ITS SOLD AND READY — the supplier list's figures for what was bought at this store: the last two columns
+// before the actions, the last order and the last restock under them, each heading with THIS page's mark (2 and 3 —
+// Products is 1).
+export const AStoreShowsItsSoldAndReady: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+
+    const table = canvas.getByTestId("channels-table");
+    const headers = within(table).getAllByRole("columnheader");
+    await expect(headers.at(-3)).toHaveTextContent(/^Sold/);
+    await expect(headers.at(-2)).toHaveTextContent(/^Ready/);
+    await expect(within(headers.at(-3)!).getByTestId("not-implemented-sold")).toHaveTextContent("2");
+    await expect(within(headers.at(-2)!).getByTestId("not-implemented-ready")).toHaveTextContent("3");
+    await expect(canvas.getByTestId(`channel-sold-${SHOPEE_STORE.id}`)).toHaveTextContent(/^[\d.]+ordered \w+ \d+, \d{4}$/);
+    await expect(canvas.getByTestId(`channel-ready-${SHOPEE_STORE.id}`)).toHaveTextContent(/^[\d.]+restocked \w+ \d+, \d{4}$/);
+  },
+};
+
+// A PRODUCT SHOWS ITS SOLD AND READY — the last two columns, the last order under Terjual; no restock date under Siap,
+// since Last bought, just left of it, is that date.
+export const AProductShowsItsSoldAndReady: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+    await openProducts(canvas);
+
+    const table = await canvas.findByTestId("products-table");
+    const headers = within(table).getAllByRole("columnheader");
+    await expect(headers.at(-2)).toHaveTextContent(/^Sold/);
+    await expect(headers.at(-1)).toHaveTextContent(/^Ready/);
+    const key = `${SHOPEE_STORE.id}-0`;
+    await expect(canvas.getByTestId(`product-sold-${key}`)).toHaveTextContent(/^[\d.]+ordered /);
+    await expect(canvas.getByTestId(`product-ready-${key}`)).toHaveTextContent(/^[\d.]+$/);
+  },
+};
+
+// …and on a phone, a line each in the store's block and in the product's — the product's Siap without a date.
+export const APhoneStoreAndProductCarryTheirFigures: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const store = await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}-figures`);
+    await expect(store).toHaveTextContent(/Sold [\d.]+ · ordered .+Ready [\d.]+ · restocked /);
+    await expect(within(store).getByTestId("not-implemented-sold")).toHaveTextContent("2");
+
+    await openProducts(canvas);
+    const product = await canvas.findByTestId(`product-row-${SHOPEE_STORE.id}-0-figures`);
+    await expect(product).toHaveTextContent(/Sold [\d.]+ · ordered .+Ready [\d.]+$/);
+  },
+};
+
+// ── Gudang terkait (`a-supplier-page-is-scoped-by-its-warehouses`) ────────────────────────────────────────────
+
+// THE WAREHOUSES SCOPE THE PAGE — the warehouses its restocks were received at, as chips over the tabs (the page's
+// scope, not one tab's); Semua first; under them, before the tabs, the summary of the chosen one or of all. Marked 4
+// (sample) and 5 (the pick only switches the summary).
+export const TheWarehousesScopeThePage: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const row = canvas.getByTestId("supplier-warehouses");
+    await expect(within(row).getByTestId("not-implemented-warehouses")).toHaveTextContent("4");
+    await expect(within(row).getByTestId("not-implemented-warehouseFilter")).toHaveTextContent("5");
+    await expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      canvas.getByTestId("supplier-tabs").getBoundingClientRect().top,
+    );
+
+    // Each chip is a warehouse's name, nothing more (a-warehouse-chip-is-its-name-and-the-summary-follows-it)…
+    const chips = within(within(row).getByTestId("supplier-warehouses-chips")).getAllByRole("button");
+    await expect(chips[0]).toHaveTextContent("All");
+    await expect(chips[0]).toHaveAttribute("aria-pressed", "true");
+    await expect(chips[1]).toHaveTextContent(/^Gudang \S+$/);
+
+    // …and under them what this supplier's goods did there: units sold, from how many orders and the last; units ready,
+    // from how many restocks and the last (the-summary-is-sold-and-ready-with-their-counts).
+    const summary = within(row).getByTestId("supplier-warehouse-summary");
+    await expect(within(summary).getAllByText(/^(Sold|Ready)$/)).toHaveLength(2);
+    await expect(within(summary).getByTestId("supplier-warehouse-summary-sold")).toHaveTextContent(/from [\d.]+ orders · last /);
+    await expect(within(summary).getByTestId("supplier-warehouse-summary-ready")).toHaveTextContent(/[\d.]+ restocks · last /);
+    await userEvent.click(chips[1]!);
+    await expect(chips[1]).toHaveAttribute("aria-pressed", "true");
+  },
+};
+
+// …and a supplier with no store was never restocked — said in words.
+export const NoStoresMeansNoWarehouses: Story = {
+  render: () => <AtSinar />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(await canvas.findByTestId("supplier-warehouses-none")).toBeVisible();
+  },
+};
+
+// ── Each tab's Export (`each-supplier-tab-exports-its-own-table`) ─────────────────────────────────────────────────
+
+// EACH TAB EXPORTS ITS OWN TABLE — a grey Export at the right end of the tab's filter strip, left of the tab's primary
+// action (Tambah Toko), carrying THIS page's mark (7): nothing builds a file yet.
+export const EachTabExportsItsOwnTable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+
+    const channels = canvas.getByTestId("channels-export");
+    await expect(channels).toHaveTextContent(/^Export/);
+    await expect(within(channels).getByTestId("not-implemented-export")).toHaveTextContent("7");
+    await expect(channels.getBoundingClientRect().right).toBeLessThanOrEqual(
+      canvas.getByTestId("add-channel").getBoundingClientRect().left,
+    );
+    await expect(channels.getBoundingClientRect().left).toBeGreaterThan(
+      canvas.getByTestId("channels-search").getBoundingClientRect().right,
+    );
+
+    await openProducts(canvas);
+    await expect(await canvas.findByTestId("products-export")).toHaveTextContent(/^Export/);
+
+    await userEvent.click(canvas.getByTestId("supplier-tab-statistics"));
+    await expect(await canvas.findByTestId("statistics-export", {}, { timeout: 3000 })).toHaveTextContent(/^Export/);
+  },
+};
+
+// …and on a phone it is in the Filter sheet, full width and labelled — beside the search, Filter and Tambah Toko it
+// squeezed the search to a few letters.
+export const APhoneExportIsInTheSheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+
+    await expect(canvas.queryByTestId("channels-export")).toBeNull();
+    await userEvent.click(canvas.getByTestId("channels-filter-open"));
+    const sheet = await screen.findByTestId("channels-filter-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    const button = within(sheet).getByTestId("channels-export");
+    await expect(button).toHaveTextContent(/^Export/);
+    await expect(within(button).getByTestId("not-implemented-export")).toHaveTextContent("7");
   },
 };

@@ -144,6 +144,34 @@ func TestMetricSearch_TeamNarrowsTheKeys(t *testing.T) {
 	}
 }
 
+// THE SEARCH finds suppliers as the supplier list does (the-supplier-report-keeps-its-search): "toko" is Toko Sinar and
+// Toko Kecil, ranked as ever; "tutup" finds Lama Tutup, deleted and still ranked (a-deleted-supplier-is-kept-for-its-figures).
+func TestMetricSearch_TheKeywordFindsSuppliersAsTheListDoes(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	_, sinar, kecil, lama := seedRanking(t, db, svc)
+
+	keyword := func(q string) *analytic_basev1.FilterItem {
+		return &analytic_basev1.FilterItem{F: &analytic_basev1.FilterItem_SupplierKeywordFilter{
+			SupplierKeywordFilter: &analytic_basev1.SupplierKeywordFilter{Q: q},
+		}}
+	}
+
+	toko := search(t, svc, &supplierv1.MetricSearchRequest{
+		GroupBy: bySupplier, Filters: october(keyword("toko")), Sort: sortBy("restock_valuation", desc),
+	})
+	if want := []uint64{sinar.ID, kecil.ID}; !slices.Equal(toko.GetKeys().GetIds().GetIds(), want) {
+		t.Fatalf("toko = %v, want %v", toko.GetKeys().GetIds().GetIds(), want)
+	}
+
+	tutup := search(t, svc, &supplierv1.MetricSearchRequest{
+		GroupBy: bySupplier, Filters: october(keyword("TUTUP")), Sort: sortBy("restock_valuation", desc),
+	})
+	if want := []uint64{lama.ID}; !slices.Equal(tutup.GetKeys().GetIds().GetIds(), want) {
+		t.Fatalf("tutup = %v, want %v — a deleted supplier is found, case aside", tutup.GetKeys().GetIds().GetIds(), want)
+	}
+}
+
 // No total: a page says only whether another follows (a-page-says-whether-another-follows), and a page past the end
 // is empty rather than an error.
 func TestMetricSearch_PagesSayWhetherAnotherFollows(t *testing.T) {

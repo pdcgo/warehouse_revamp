@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Badge, Box, Button, Flex, HStack, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Badge, Box, Button, Flex, HStack, Heading, Icon, Stack, Table, Text } from "@chakra-ui/react";
+import { Factory, Pencil, SearchX, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -16,15 +16,35 @@ import {
 } from "../../features/suppliers/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
+import { PRESSABLE } from "../../lib/motion";
+import { enumCodec, idCodec, nullableCodec, sortCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { SortableHeader, type SortState } from "../../components/chrome/SortableHeader";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
-import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { SupplierFormDialog } from "../../features/suppliers/SupplierFormDialog";
 import { SupplierSortSelect } from "./components/SupplierSortSelect";
+import {
+  NO_FIGURE_RANGES,
+  rangesOn,
+  SupplierRangeFilters,
+  useUrlFigureRanges,
+} from "../../features/suppliers/SupplierRangeFilter";
+import {
+  LIST_FIGURE_MARKS,
+  SupplierFigureCells,
+  SupplierFigureHeaders,
+  SupplierFigureLines,
+} from "../../features/suppliers/SupplierFigures";
+import { sampleFiguresFor } from "../../features/suppliers/sampleSupplierFigures";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
+import { SupplierWarehouseFilter } from "../../features/suppliers/SupplierWarehouseFilter";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -43,14 +63,20 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 //
 //   Pemasok  [Toko Melati]                                   [+ Tambah Pemasok]
 //   Pemasok yang dikelola tim ini — …
-//   [⌕ Cari pemasok, alamat, atau toko] [Semua jenis toko ⌄]   Hapus filter   ← the shared FilterBar
-//   Pemasok ⇅           · Toko pemasok     · Kontak        · [✎ Ubah] [🗑 Hapus]   ← the name sorts, A to Z first
-//   PT Sumber Makmur      [Shopee] ×2        0812-…
-//   Jl. Kopo 9, Bandung
+//   [⌕ Cari pemasok, alamat, atau toko] [Semua gudang ⌄]⚠ [Semua jenis toko ⌄] [Terjual ⌄]⚠ [Siap ⌄]⚠   Hapus filter
+//                                ← the shared FilterBar; each figure opens its own panel of range pills
+//   Pemasok ⇅   · Kontak   · Toko pemasok   · Terjual ⚠        · Siap ⚠          · [✎ Ubah] [🗑 Hapus]   ← A to Z first
+//   PT Sumber Makmur   0812-…   [Shopee ×2]     1.240              155
+//   Jl. Kopo 9, Bandung                          pesanan 8 Okt 2026  restok 2 Okt 2026   ← the last of each, under it
 //                                            Per halaman [20 ⌄]  ‹ [1] ›          ← the growing pager
 //
 // The columns are Discover's, minus the team — the supplier and where it is, two lines; its stores as one badge per
-// type (ChannelTypes, shared); its contact. On a phone a supplier is a block, and the sort is the Filter sheet's.
+// type (ChannelTypes, shared); its contact; and its figures (SupplierFigures, shared with Discover). On a phone a supplier
+// is a block, and the sort is the Filter sheet's.
+
+// The one column the list sorts by (SupplierSortKey).
+const SORT_CODEC = nullableCodec(sortCodec(["name"] as const));
+
 export function SuppliersPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -58,17 +84,28 @@ export function SuppliersPage() {
   const isMobile = useIsMobile();
   const canManage = current?.teamType === TeamType.SELLING;
 
-  const [q, setQ] = useState("");
-  const [channelType, setChannelType] = useState<Marketplace>(Marketplace.UNSPECIFIED);
+  // THE FILTERS AND THE SORT LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a supplier,
+  // opens the same narrowed list.
+  const [q, setQ] = useUrlState("q", "", textCodec);
+  const [channelType, setChannelType] = useUrlState("type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
+  // The warehouse the supplier's restocks are received at, and the range pills — both held on screen and thrown away
+  // (`dropped`): nothing narrows the list by either yet. 0n is any warehouse.
+  const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
+  const [ranges, setRanges] = useUrlFigureRanges();
   // `null` = the list's own order, newest first — no heading stands for it.
-  const [sort, setSort] = useState<SortState<SupplierSortKey> | null>(null);
+  const [sort, setSort] = useUrlState<SortState<SupplierSortKey> | null>("sort", null, SORT_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<ManagedSupplier | null>(null);
 
   // Typed, then settled — a word is one request to the server, not one per key.
   const term = useDebounced(q.trim());
-  const filtering = (q.trim() !== "" ? 1 : 0) + (channelType !== Marketplace.UNSPECIFIED ? 1 : 0);
+  // The dropped picks count, so Clear is there to take them back — though the rows do not move for them.
+  const filtering =
+    (q.trim() !== "" ? 1 : 0) +
+    (warehouseId !== 0n ? 1 : 0) +
+    (channelType !== Marketplace.UNSPECIFIED ? 1 : 0) +
+    rangesOn(ranges);
   // What the rows on screen were asked with, which is what "nothing matches" is about.
   const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED;
 
@@ -152,12 +189,36 @@ export function SuppliersPage() {
 
   const open = (supplier: ManagedSupplier) => navigate(`/inventories/suppliers/${supplier.id}`);
 
+  // Every filter back to its start — the strip's Clear and a no-match hint's, one function.
+  const clearFilters = () =>
+    refilter(() => {
+      setQ("");
+      setChannelType(Marketplace.UNSPECIFIED);
+      setWarehouseId(0n);
+      setRanges(NO_FIGURE_RANGES);
+    });
+
   function list() {
     if (suppliers.length === 0 && !error) {
-      return (
-        <Text color="fg.muted" data-testid={narrowed ? "suppliers-none-match" : "suppliers-empty"}>
-          {narrowed ? t("suppliers.none") : t("suppliers.empty")}
-        </Text>
+      // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint) — nothing matches: clear the filters; nothing yet: add one.
+      return narrowed ? (
+        <EmptyHint
+          icon={SearchX}
+          title={t("suppliers.none")}
+          description={t("emptyHint.noMatch")}
+          action={<Button variant="outline" colorPalette="gray" onClick={clearFilters}>
+              {t("common.clearFilters")}
+            </Button>}
+          testId="suppliers-none-match"
+        />
+      ) : (
+        <EmptyHint
+          icon={Factory}
+          title={t("suppliers.empty")}
+          description={canManage ? t("suppliers.emptyHint") : undefined}
+          action={canManage ? <SupplierFormDialog testId="open-create-supplier-empty" /> : undefined}
+          testId="suppliers-empty"
+        />
       );
     }
 
@@ -176,10 +237,9 @@ export function SuppliersPage() {
               borderRadius="md"
               p="3"
               gap="1.5"
-              cursor="pointer"
-              // The block lights up too — under a pointer, and while a thumb presses it.
-              _hover={{ bg: "bg.muted" }}
-              _active={{ bg: "bg.muted" }}
+              // The block lights up too — under a pointer, and while a thumb presses it, giving a little
+              // (`motion-is-small-quick-and-shared`).
+              {...PRESSABLE}
               onClick={() => open(supplier)}
             >
               <Text fontWeight="bold">{supplier.name}</Text>
@@ -192,6 +252,9 @@ export function SuppliersPage() {
                   {t("suppliers.noStores")}
                 </Text>
               )}
+              {/* Its sales and its ready stock, a line each with the last time it moved — sample figures, each line
+                  carrying its ⚠ number. A store-less supplier has no product, so no lines. */}
+              <SupplierFigureLines figures={sampleFiguresFor(supplier)} marks={LIST_FIGURE_MARKS} testId={`supplier-row-${supplier.id}-figures`} />
               {/* The labelled buttons at the block's FOOT — beside the name they squeezed it into a narrow column. */}
               {canManage && (
                 <Box pt="1" onClick={(e) => e.stopPropagation()}>
@@ -218,8 +281,13 @@ export function SuppliersPage() {
               firstDir="asc"
               testId="supplier-sort-name"
             />
-            <Table.ColumnHeader>{t("suppliers.table.channels")}</Table.ColumnHeader>
+            {/* The contact right of the supplier (owner: *"kontak di kanan pemasok"*, `the-contact-sits-right-of-the-supplier`)
+                — who to call, read with the name, before its stores and figures. */}
             <Table.ColumnHeader>{t("suppliers.table.contact")}</Table.ColumnHeader>
+            <Table.ColumnHeader>{t("suppliers.table.channels")}</Table.ColumnHeader>
+            {/* SALES AND READY STOCK, SAMPLE FIGURES (owner: *"tampilkan saja dulu, tulis unimplemented karena memang belum
+                ada"*, `the-supplier-list-shows-sales-and-ready-stock`) — each heading carries its ⚠ number. */}
+            <SupplierFigureHeaders marks={LIST_FIGURE_MARKS} />
             {canManage && <Table.ColumnHeader textAlign="end">{t("suppliers.table.actions")}</Table.ColumnHeader>}
           </Table.Row>
         </Table.Header>
@@ -242,10 +310,13 @@ export function SuppliersPage() {
                   </Text>
                 </Stack>
               </Table.Cell>
+              <Table.Cell whiteSpace="nowrap" data-testid={`supplier-contact-${supplier.id}`}>
+                {supplier.contact || "—"}
+              </Table.Cell>
               <Table.Cell>
                 <ChannelTypes channels={supplier.channels} />
               </Table.Cell>
-              <Table.Cell>{supplier.contact || "—"}</Table.Cell>
+              <SupplierFigureCells figures={sampleFiguresFor(supplier)} id={supplier.id} testIdPrefix="supplier" />
 
               {canManage && (
                 // Stop the row's navigate from firing when a row action is used.
@@ -261,9 +332,11 @@ export function SuppliersPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="suppliers-page">
-      <Flex align="start" gap="card" wrap="wrap">
-        {/* The title block takes a basis, so New Supplier wraps under it rather than squeezing it. */}
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="suppliers-page">
+      <Flex align="start" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
+        {/* The title block takes a basis, so New Supplier wraps under it rather than squeezing it — on a desktop. On a
+            phone New Supplier is its ＋ alone, on the title's row (a-phone-header-action-is-an-icon). */}
         <Stack gap="1" flex="1 1 16rem" minW="0">
           <HStack gap="card" wrap="wrap">
             <Heading size="md">{t("suppliers.title")}</Heading>
@@ -273,8 +346,11 @@ export function SuppliersPage() {
             {t("suppliers.lead")}
           </Text>
         </Stack>
-        {canManage && <SupplierFormDialog />}
+        {canManage && <SupplierFormDialog compact={isMobile} />}
       </Flex>
+
+      {/* What is not real yet — only where the list is: a warehouse team has no suppliers to show figures for. */}
+      {canManage && <NotImplementedSummary list={SUPPLIER_LIST_PENDING} />}
 
       {!canManage && (
         <Text color="fg.muted" data-testid="suppliers-selling-only">
@@ -288,12 +364,7 @@ export function SuppliersPage() {
         testId="suppliers-filter"
         active={filtering > 0}
         count={filtering}
-        onClear={() =>
-          refilter(() => {
-            setQ("");
-            setChannelType(Marketplace.UNSPECIFIED);
-          })
-        }
+        onClear={clearFilters}
       >
         <FilterSearch
           value={q}
@@ -302,14 +373,25 @@ export function SuppliersPage() {
           testId="supplier-search"
         />
 
-        {/* "Which of ours sell on Shopee?" — seven types, static, a plain list. Empty = any type. */}
+        {/* THE WAREHOUSE, FIRST AFTER THE SEARCH — where Discover's sits, left of its team (owner: *"di suppliers juga
+            sama"*, `the-warehouse-filters-before-the-team`); this list has no team picker, since it is one team's. A
+            selling team's only; marked, not wired. */}
+        {canManage && <SupplierWarehouseFilter value={warehouseId} onChange={setWarehouseId} />}
+
+        {/* "Which of ours sell on Shopee?" — seven types, static, a plain list. Empty = any type; its × clears it
+            (every-filter-clears-from-its-own-x). */}
         <FilterField w="15rem" testId="suppliers-type-filter">
           <MarketplaceSelect
+            clearable
             value={channelType}
             placeholder={t("suppliers.typeAll")}
             onChange={(m) => refilter(() => setChannelType(m))}
           />
         </FilterField>
+
+        {/* Terjual and Siap as range pills, a panel each (`the-figure-filters-are-two-panels`) — a selling team's only: a
+            warehouse team has no figures to narrow by. On a phone each stands in the sheet as a label over its pills. */}
+        {canManage && <SupplierRangeFilters value={ranges} onChange={setRanges} />}
 
         {isMobile && (
           <FilterField testId="suppliers-sort-field">
@@ -324,10 +406,14 @@ export function SuppliersPage() {
         </Text>
       )}
 
+      {/* THE FIRST LOAD SHOWS THE LIST'S SHAPE, and the rows fade in over it (`motion-is-small-quick-and-shared`). Once —
+          a refresh keeps the rows mounted, so nothing fades again. */}
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <ListSkeleton testId="suppliers-loading" />
       ) : (
-        <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+        <Box animationStyle="swap">
+          <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+        </Box>
       )}
 
       {/* THE PAGES GROW AS THEY ARE OPENED, as on the accounts list and the report. */}

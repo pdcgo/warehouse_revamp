@@ -8,17 +8,15 @@ import {
   Flex,
   Heading,
   Icon,
-  Input,
   NativeSelect,
   SimpleGrid,
   Spacer,
-  Spinner,
   Stack,
   Stat,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Handshake } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
@@ -33,8 +31,15 @@ import { canSetLiabilityTerms } from "../../lib/roles";
 import { Button } from "@chakra-ui/react";
 import { Pagination } from "../../components/chrome/Pagination";
 import { formatRupiah } from "../../lib/money";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { FilterSearch } from "../../components/chrome/FilterBar";
+import { boolCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE = 20;
+
+// The team-type filter's values, as its select writes them.
+const KIND_CODEC = oneOfCodec(["all", TeamType.WAREHOUSE.toString(), TeamType.SELLING.toString()]);
 
 // How the age of the oldest unsettled entry reads — the actionable signal (#221). The colour escalates
 // with age; a manager chases the reddening rows first.
@@ -66,10 +71,11 @@ export function LiabilityListPage() {
 
   const teamId = current?.teamId;
 
-  const [unsettledOnly, setUnsettledOnly] = useState(true);
-  const [awaitingOnly, setAwaitingOnly] = useState(false);
-  const [search, setSearch] = useState("");
-  const [kind, setKind] = useState<string>("all");
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a pair, opens the same list.
+  const [unsettledOnly, setUnsettledOnly] = useUrlState("unsettled", true, boolCodec);
+  const [awaitingOnly, setAwaitingOnly] = useUrlState("awaiting", false, boolCodec);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [kind, setKind] = useUrlState<string>("kind", "all", KIND_CODEC);
   const [page, setPage] = useState(1);
   const [defaultTermsOpen, setDefaultTermsOpen] = useState(false);
 
@@ -172,7 +178,8 @@ export function LiabilityListPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="liability-list-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="liability-list-page">
       <Flex align="center" gap="card" wrap="wrap">
         <Heading size="md">{t("liability.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName}</Badge>
@@ -213,12 +220,12 @@ export function LiabilityListPage() {
       </SimpleGrid>
 
       <Flex gap="card" wrap="wrap" align="center">
-        <Input
-          maxW="xs"
-          placeholder={t("liability.searchPlaceholder")}
+        {/* The shared search — its icon, and an × once typed in (every-filter-clears-from-its-own-x). */}
+        <FilterSearch
           value={search}
-          data-testid="liability-search"
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={setSearch}
+          placeholder={t("liability.searchPlaceholder")}
+          testId="liability-search"
         />
         <NativeSelect.Root maxW="44">
           <NativeSelect.Field
@@ -276,13 +283,14 @@ export function LiabilityListPage() {
       </Flex>
 
       {query.isPending ? (
-        <Spinner colorPalette="brand" />
+        <ListSkeleton testId="liability-loading" />
       ) : query.isError ? (
         <Text color="error.fg" data-testid="liability-error">
           {rpcError(query.error)}
         </Text>
       ) : (
-        <Stack gap="card">
+        // The rows fade in where the skeleton was, once (motion-is-small-quick-and-shared).
+        <Stack gap="card" animationStyle="swap">
           <Table.Root size="sm" data-testid="liability-table">
             <Table.Header>
               <Table.Row>
@@ -379,9 +387,12 @@ export function LiabilityListPage() {
           </Table.Root>
 
           {rows.length === 0 ? (
-            <Text color="fg.muted" data-testid="liability-empty">
-              {t("liability.empty")}
-            </Text>
+            <EmptyHint
+              icon={Handshake}
+              title={t("liability.empty")}
+              description={t("liability.emptyHint")}
+              testId="liability-empty"
+            />
           ) : (
             <Pagination page={page} pageSize={PAGE_SIZE} count={total} onPageChange={setPage} />
           )}

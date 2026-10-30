@@ -27,6 +27,9 @@ export const SECTIONS: { key: SectionKey; titleKey: string; navKey: string; icon
   { key: "settlement", titleKey: "orderDetail.settlement.title", navKey: "orderDetail.nav.settlement", icon: Landmark },
 ];
 
+/** Every key, in order — the stable list `useScrollSpy` reads. */
+export const SECTION_KEYS: SectionKey[] = SECTIONS.map((s) => s.key);
+
 /** The DOM id a section carries and the nav scrolls to. */
 export function sectionDomId(key: SectionKey): string {
   return `order-section-${key}`;

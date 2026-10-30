@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Stack, Table, Text } from "@chakra-ui/react";
+import { ScrollText } from "lucide-react";
 
 import type { FinancialAccountLog } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { BalanceText, ChangeText, ChangeTypeBadge } from "../../../features/financialAccount/badges";
@@ -8,6 +9,7 @@ import { BY_HAND } from "../../../features/financialAccount/vocab";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatUnixDate } from "../../../lib/datetime";
 import { AccountLogDetailDialog } from "./AccountLogDetailDialog";
+import { EmptyHint } from "../../../components/feedback/EmptyHint";
 
 // A ROW LIGHTS UP UNDER THE POINTER (owner: *"hoverable juga"*, `a-statement-row-lights-up`) — as the report's table
 // does: set on every cell, by Chakra's `_hover`, which a story can drive with `data-hover`.
@@ -48,9 +50,12 @@ export function AccountLogTable({
 
   if (logs.length === 0) {
     return (
-      <Text fontSize="sm" color="fg.muted" data-testid="account-log-empty">
-        {t("financialAccounts.log.empty")}
-      </Text>
+      <EmptyHint
+        icon={ScrollText}
+        title={t("financialAccounts.log.empty")}
+        description={t("financialAccounts.log.emptyHint")}
+        testId="account-log-empty"
+      />
     );
   }
 

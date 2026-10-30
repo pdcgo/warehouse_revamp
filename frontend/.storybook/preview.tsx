@@ -24,6 +24,9 @@ import { resetFinancialAccounts } from "./financialAccountStub";
 import { resetSessionScenario } from "./sessionScenario";
 import { resetUserStub } from "./userStub";
 import { resetSupplierStub } from "./supplierStub";
+import { resetShopStub } from "./shopStub";
+import { resetCategoryStub } from "./categoryStub";
+import { resetProductStub } from "./productStub";
 import { resetRestockStub } from "./restockStub";
 import { resetWarehouseTransferStub } from "./warehouseTransferStub";
 import { resetOpnameStub } from "./opnameStub";
@@ -396,6 +399,11 @@ const preview: Preview = {
     resetUserStub();
     // …and the suppliers and their channels, which a create, an edit or a delete writes to.
     resetSupplierStub();
+    resetShopStub();
+    // …and the category tree, which the category screen's create, edit and delete write to.
+    resetCategoryStub();
+    // …and the catalogue, which a product create, edit, archive or restore writes to.
+    resetProductStub();
     // …and the restocks, which every create, edit, sign-for, accept, lost and cancel writes to.
     resetRestockStub();
     resetWarehouseTransferStub();

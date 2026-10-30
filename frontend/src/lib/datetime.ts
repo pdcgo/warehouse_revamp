@@ -7,6 +7,7 @@
 // the exact bug these helpers exist to prevent, so every parse builds the Date from parts in local time.
 
 import i18next from "i18next";
+import type { PeriodGrain } from "./period";
 
 // THE APP'S LANGUAGE, NOT THE BROWSER'S, for every human date below (owner: *"yesterday tidak ikut i18n?"*). They all
 // passed `undefined` as the locale, which is the browser's: an English browser printed "yesterday" and "Oct 7, 2026"
@@ -156,6 +157,26 @@ export function monthGrid(viewMonth: Date): Date[] {
  * and renders as an em dash — the same glyph an UNKNOWN uses, because to a reader both mean "there
  * is no date here", and the caller that needs to tell them apart already knows which it is holding.
  */
+/**
+ * A series bucket's label at its grain (owner: *"untuk bulanan tahun dan nama bulan, untuk tahun cuma tahun saja"*,
+ * `a-period-reads-as-its-grain`) — the bucket's first day, `yyyy-mm-dd`, as an RPC series returns it:
+ *
+ *   day     `2026-10-07` → `2026-10-07`     unchanged
+ *   month   `2026-10-01` → `Oktober 2026`   the month's NAME and its year, in the app's language
+ *   year    `2026-01-01` → `2026`           the year alone
+ *
+ * A `yyyy-mm` or `yyyy` bucket reads the same — the month is built from its 1st through the one local-date parser.
+ */
+export function formatPeriod(at: string, grain: PeriodGrain): string {
+  if (grain === "year") return at.slice(0, 4);
+  if (grain === "day") return at;
+
+  const d = parseLocalDate(`${at.slice(0, 7)}-01`);
+  if (!d) return at.slice(0, 7);
+
+  return d.toLocaleDateString(appLocale(), { month: "long", year: "numeric" });
+}
+
 export function formatUnixDate(unix: bigint): string {
   if (unix <= 0n) return "—";
 

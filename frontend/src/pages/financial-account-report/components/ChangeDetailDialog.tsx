@@ -15,6 +15,18 @@ import { SignedAmount } from "./ReportSummary";
 //
 // Opened from "Rincian ›" on the Perubahan bersih card — never from the card, a card is not a control
 // (financial_accounts_decision.md, `the-accounts-page-has-no-banners`).
+/**
+ * The types that moved the money, in the order the breakdown reads them — what came in, then what went out, each the
+ * largest first. Shared with the Rincian tab's Per Jenis (the-report-is-two-views-periode-and-rincian).
+ */
+export function typesThatMoved(metric: Metric | undefined) {
+  return metric
+    ? CHANGE_TYPES.map((type) => ({ type, amount: metric[FIELD_OF[type]!] as number }))
+        .filter((x) => x.amount !== 0)
+        .sort((a, b) => (a.amount > 0 === b.amount > 0 ? Math.abs(b.amount) - Math.abs(a.amount) : a.amount > 0 ? -1 : 1))
+    : [];
+}
+
 export function ChangeDetailDialog({
   open,
   onOpenChange,
@@ -33,11 +45,7 @@ export function ChangeDetailDialog({
 }) {
   const { t } = useTranslation();
 
-  const moved = metric
-    ? CHANGE_TYPES.map((type) => ({ type, amount: metric[FIELD_OF[type]!] }))
-        .filter((x) => x.amount !== 0)
-        .sort((a, b) => (a.amount > 0 === b.amount > 0 ? Math.abs(b.amount) - Math.abs(a.amount) : a.amount > 0 ? -1 : 1))
-    : [];
+  const moved = typesThatMoved(metric);
 
   return (
     <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)}>

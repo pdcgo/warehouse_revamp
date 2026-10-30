@@ -76,6 +76,16 @@ message UserFilter {
   uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
 }
 
+// SupplierKeywordFilter — the SUPPLIER a row is about matches `q` as the supplier list's own search does: its name,
+// address, contact, or a live store's name (the-supplier-report-keeps-its-search). Unlike the removed generic keyword
+// (the-generic-keyword-is-removed), it means ONE thing, so only a metric about suppliers lists it.
+message SupplierKeywordFilter {
+  string q = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
 // FilterItem — one case per FilterType, and each case's NUMBER IS ITS FilterType's, so a set case maps to its type
 // without a table. 2 was the keyword (the-generic-keyword-is-removed) — reserved, so the numbers still match.
 message FilterItem {
@@ -92,6 +102,7 @@ message FilterItem {
     SupplierFilter supplier_filter = 6;
     WarehouseFilter warehouse_filter = 7;
     UserFilter user_filter = 8;
+    SupplierKeywordFilter supplier_keyword_filter = 9;
   }
 }
 
@@ -110,6 +121,8 @@ enum FilterType {
   // Landed with the first metric to list them, the order metrics (docs/business/order/order_statistic_metric.md).
   FILTER_TYPE_WAREHOUSE = 7;
   FILTER_TYPE_USER = 8;
+  // A supplier's name, address, contact or store — the Supplier Report's search (the-supplier-report-keeps-its-search).
+  FILTER_TYPE_SUPPLIER_KEYWORD = 9;
 }
 
 // PaginationFilter — on the search request only. The response says whether another page follows and never how many

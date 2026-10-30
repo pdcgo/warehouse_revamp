@@ -1,16 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, pickTeam } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
 import { dayAgo } from "../../../.storybook/supplierFigureFixtures";
 import { formatRupiah } from "../../lib/money";
 import { SupplierStatistics, description } from "./SupplierStatistics";
+import { NotImplemented } from "../pending/NotImplemented";
+import type { PendingList } from "../pending/registry";
 
 // A SUPPLIER'S STATISTICS TAB (the-figures-are-a-statistics-tab-and-a-supplier-report, the-figures-screens-are-accepted)
 // — on both supplier details. The stub serves supplier_service's figures from supplierFigureFixtures.ts.
 //
-// PT Sumber Makmur (31) in the last 30 days — three accepts, and a fourth 40 days back that no default window counts:
+// PT Sumber Makmur (31) in the last month — three accepts, and a fourth 40 days back that no default window counts:
 //
 //   2 days ago   Toko Melati    Beras  40 good  Rp 2.000.000 · 1 short Rp 50.000 · 2 broken Rp 100.000
 //   5 days ago   Toko Kenanga   Gula   60 good  Rp   900.000 ·                    · 3 broken Rp  45.000
@@ -23,10 +25,13 @@ const MELATI = teams.find((t) => t.id === 12n)!;
 // formatRupiah uses a no-break space; toHaveTextContent normalises the element's whitespace.
 const rp = (amount: bigint) => formatRupiah(amount).replace(/\s/g, " ");
 
+// The page hands in its own mark for Penjualan (sales-sit-beside-restocked) — a one-part list stands in for it here.
+const SALES_ONLY: PendingList<"sales"> = { ns: "supplierReport", parts: [{ id: "sales", kind: "sample" }] };
+
 const meta = {
   title: "Features/Suppliers/SupplierStatistics",
   component: SupplierStatistics,
-  args: { supplierId: 31n },
+  args: { supplierId: 31n, salesMark: <NotImplemented list={SALES_ONLY} id="sales" />, exportMark: null },
   parameters: { signedIn: true, docs: { description: { component: description } } },
   beforeEach: asTeam(MELATI.id),
 } satisfies Meta<typeof SupplierStatistics>;
@@ -297,7 +302,16 @@ export const EachRateFollowsItsFigure: Story = {
     const headers = within(canvas.getByTestId("statistics-series"))
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    await expect(headers).toEqual(["Period", "Restocked", "Lost in shipping", "Lost rate", "Broken in shipping", "Broken rate"]);
+    // Sales sits right after Restocked (sales-sit-beside-restocked), its heading carrying the page's mark.
+    await expect(headers).toEqual([
+      "Period",
+      "Restocked",
+      expect.stringMatching(/^Sales/),
+      "Lost in shipping",
+      "Lost rate",
+      "Broken in shipping",
+      "Broken rate",
+    ]);
 
     // 2 broken of 43 received on that day; 1 lost.
     const row = canvas.getByTestId(`statistics-series-row-${dayAgo(2)}`);
@@ -345,5 +359,103 @@ export const AProductShowsItsPicture: Story = {
 
     const gula = within(table).getByTestId("statistics-product-row-13|73");
     await expect(within(gula).queryByRole("img")).toBeNull();
+  },
+};
+
+// ── A period reads at its grain (`a-period-reads-as-its-grain`) ────────────────────────────────────────────
+
+const monthName = (at: string) =>
+  new Date(Number(at.slice(0, 4)), Number(at.slice(5, 7)) - 1, 1).toLocaleDateString("en", { month: "long", year: "numeric" });
+
+// MONTHLY: the month's name and its year — "October 2026", never "2026-10-01".
+export const AMonthReadsAsItsName: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("statistics-grain-month"));
+
+    const month = `${dayAgo(2).slice(0, 7)}-01`;
+    const row = await canvas.findByTestId(`statistics-series-row-${month}`);
+    await expect(row).toHaveTextContent(monthName(month));
+    await expect(row).not.toHaveTextContent(month);
+  },
+};
+
+// YEARLY: the year alone.
+export const AYearReadsAsTheYear: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("statistics-grain-year"));
+
+    const year = `${dayAgo(2).slice(0, 4)}-01-01`;
+    const row = await canvas.findByTestId(`statistics-series-row-${year}`);
+    await waitFor(() => expect(within(row).getAllByRole("cell")[0]).toHaveTextContent(new RegExp(`^${year.slice(0, 4)}$`)));
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url), `stat.`-prefixed so the detail page's other tabs keep
+// theirs — opened at a URL, the grain is read from it; a grain picked is written back. The view is not a filter: it
+// stays out of the URL.
+const AtFilteredUrl = routedPage(
+  [
+    {
+      path: "/inventories/suppliers/:supplierId",
+      element: (
+        <>
+          <SupplierStatistics supplierId={31n} salesMark={<NotImplemented list={SALES_ONLY} id="sales" />} exportMark={null} />
+          <LocationProbe />
+        </>
+      ),
+    },
+  ],
+  "/inventories/suppliers/31?stat.grain=month",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(within(canvas.getByTestId("statistics-grain")).getByRole("radio", { name: "Monthly" })).toBeChecked();
+    await canvas.findByTestId(`statistics-series-row-${dayAgo(2).slice(0, 7)}-01`);
+
+    await userEvent.click(canvas.getByTestId("statistics-grain-year"));
+    await waitFor(() => expect(location).toHaveTextContent("stat.grain=year"));
+
+    await openByProduct(canvas);
+    await expect(location).toHaveTextContent(/^\?stat\.grain=year$/);
+  },
+};
+
+// THE TWO VIEWS ARE PER PERIODE AND PER PRODUK — a pair of names (the-first-view-is-per-periode).
+export const TheViewsArePerPeriodAndPerProduct: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(within(canvas.getByTestId("statistics-views")).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "By Period",
+      "By Product",
+    ]);
+  },
+};
+
+// SALES SIT BESIDE RESTOCKED (sales-sit-beside-restocked) — a Penjualan card right after Direstok, rupiah over units as
+// Direstok's; and a Penjualan column right after Direstok, units over rupiah as Direstok's; each carrying the page's mark.
+export const SalesSitBesideRestocked: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const cards = within(canvas.getByTestId("statistics-summary")).getAllByText(/^(Total|Restocked|Sales|Lost in shipping|Broken in shipping)$/);
+    await expect(cards.map((c) => c.textContent)).toEqual(["Total", "Restocked", "Sales", "Lost in shipping", "Broken in shipping"]);
+    const sales = canvas.getByTestId("statistics-summary-sales");
+    await expect(within(sales).getByTestId("not-implemented-sales")).toBeVisible();
+    await expect(canvas.getByTestId("statistics-summary-sales-value")).toHaveTextContent(/^Rp/);
+    await expect(canvas.getByTestId("statistics-summary-sales-units")).toHaveTextContent(/^[\d.]+ units?$/);
+
+    const headers = within(canvas.getByTestId("statistics-series")).getAllByRole("columnheader").map((h) => h.textContent ?? "");
+    await expect(headers[headers.indexOf("Restocked") + 1]).toMatch(/^Sales/);
+    // The day 40 were restocked sold some of them; a quiet day sold nothing — one muted 0, as Direstok's.
+    const busy = canvas.getByTestId(`statistics-series-row-${dayAgo(2)}`);
+    await expect(within(busy).getByTestId("figure-sales")).toHaveTextContent(/^[\d.]+Rp/);
   },
 };

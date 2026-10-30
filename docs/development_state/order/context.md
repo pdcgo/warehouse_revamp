@@ -1,5 +1,11 @@
 # Development state — order
 
+> 🔀 **2026-10-30 — `frada` merged in.** The order screens now carry its work on our wire: the order list's seven date
+> pills (Dibuat and Tanggal order real, the five status dates ⚠), no tab counts, the statistics read only when opened, the
+> filters in the URL; a draft opens IN the order form (`/orders/new?draft=ID`, the draft page deleted) and its Create
+> sends `order_draft_id`; bundles added through a dialog on `BundleList`. Where the two lines disagreed:
+> [two-branches-designed-the-order-list-and-the-drafts-apart-and-the-merge-combined-them](../../technical/order/design_clarify.md#two-branches-designed-the-order-list-and-the-drafts-apart-and-the-merge-combined-them).
+
 **Pass:** `implementation` + `technical_test` + `Audit RPC` (2026-10-21) — the build that follows the order context's
 design closing. Four slices, built together at the owner's ask: **the eleven statuses with one status move**, **root
 reads every team's orders**, **settlement listens to the order events** (and the emulator pushes locally), and **the

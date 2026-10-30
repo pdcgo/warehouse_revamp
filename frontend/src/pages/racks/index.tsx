@@ -26,6 +26,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { Pagination } from "../../components/chrome/Pagination";
 import { toaster } from "../../components/feedback/Toaster";
 import { RackFormDialog } from "./components/RackFormDialog";
+import { textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -43,7 +44,8 @@ export function RacksPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [q, setQ] = useState("");
+  // THE SEARCH LIVES IN THE URL (a-lists-filters-live-in-the-url) — Back from a rack opens the same narrowed list.
+  const [q, setQ] = useUrlState("q", "", textCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<Rack | null>(null);
