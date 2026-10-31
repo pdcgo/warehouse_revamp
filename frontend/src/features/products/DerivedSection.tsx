@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, CloseButton, Dialog, HStack, Icon, Image, Portal, Stack, Table, Text, Tooltip } from "@chakra-ui/react";
 import { Package } from "lucide-react";
 
-import type { SampleDerived } from "../sampleMock";
-import { LIGHTS_UP } from "./parts";
+import type { SampleDerived } from "./derivedSample";
+
+// A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up).
+const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
 // PRODUK TURUNAN — the link a RETURN TO ANOTHER TEAM makes between two products (owner: *"barang yang retur ke team beda
 // team"*), shown BOTH WAYS, because the product on screen can be either end of it (owner: *"bisa jadi yang sekarang itu
@@ -18,7 +20,10 @@ import { LIGHTS_UP } from "./parts";
 // the SKU and its READY STOCK as just "N pcs", what the number is said by a tooltip (owner: *"tidak perlu dikasih
 // tanggal"*, *"pcs stok readynya bukan diretur sejumlah"*, then *"cuma pcs aja di produk turunan, siapnya jadi tooltip
 // aja"*) — and "Lihat Semua" opens the whole list in a dialog, as a table with the derived product's name and SKU.
-// ⚠ The rows are SAMPLES until the link exists (pending.ts `derived`).
+// ⚠ The rows are SAMPLES until the link exists (each page's pending.ts `derived`).
+//
+// The product's own page and its discover detail both (owner: *"produk turunan juga ditampilkan"*,
+// the-discover-detail-shows-no-markup) — the body of the section card each page draws.
 
 /** How many the card shows before "see all". */
 const IN_CARD = 3;

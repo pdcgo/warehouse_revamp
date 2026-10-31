@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -25,6 +25,8 @@ import { ArrowLeft, Lock, PackagePlus } from "lucide-react";
 
 import { productClient, rpcError } from "../../api/clients";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
+import { usePresetProduct } from "../../features/products/presetProduct";
+import { cameFrom } from "../../lib/cameFrom";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -121,10 +123,14 @@ export function RestockRequestFormPage() {
   const id = parseRequestId(requestId);
   const teamId = current?.teamId;
 
-  const backTo = isEdit ? `/inventories/restock/${id}` : "/inventories/restock";
+  // OPENED FROM A PRODUCT'S PAGE (a-product-page-opens-the-order-and-restock-forms) — `?product=` starts a NEW restock
+  // with that product as its first line, `&warehouse=` with that warehouse; Back and Save return to the page.
+  const preset = usePresetProduct(isEdit ? undefined : teamId);
+  const openedFrom = cameFrom(useLocation());
+  const backTo = isEdit ? `/inventories/restock/${id}` : (openedFrom ?? "/inventories/restock");
 
   // ── The draft ────────────────────────────────────────────────────────────────────────────────
-  const [warehouseId, setWarehouseId] = useState<bigint>(0n);
+  const [warehouseId, setWarehouseId] = useState<bigint>(() => (isEdit ? 0n : preset.warehouseId));
   const [lines, setLines] = useState<LineDraft[]>([]);
   // REQUIRED (a-restock-names-its-paying-account) — the operational account that paid.
   const [financeAccountId, setFinanceAccountId] = useState<bigint>(0n);
@@ -139,6 +145,14 @@ export function RestockRequestFormPage() {
   const [note, setNote] = useState("");
 
   const [error, setError] = useState("");
+
+  // ── Create from a product's page: that product as the first line, once ───────────────────────
+  const seededPreset = useRef("");
+  useEffect(() => {
+    if (isEdit || !preset.product || seededPreset.current === preset.productId.toString()) return;
+    seededPreset.current = preset.productId.toString();
+    setLines([{ ...lineFromPicked(preset.product), count: preset.quantity }]);
+  }, [isEdit, preset.product, preset.productId, preset.quantity]);
 
   // ── Edit: the stored restock, read once into the draft ──────────────────────────────────────
   const detail = useRestockRequest({ teamId: isEdit ? teamId : undefined, requestId: id });

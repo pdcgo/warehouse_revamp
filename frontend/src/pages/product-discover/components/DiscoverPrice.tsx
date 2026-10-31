@@ -4,10 +4,9 @@ import { HStack, Portal, Stack, Text, Tooltip } from "@chakra-ui/react";
 
 import type { OwnerStockRow } from "../../../features/products/adapt";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { withMarkup } from "../../../lib/markup";
+import { discoverPriceOf } from "../../../features/products/discoverSample";
 import { formatRupiahRange } from "../../../lib/money";
 import { DISCOVER_PENDING } from "../pending";
-import { sampleCostRange } from "../sampleMock";
 
 // THE PRICE ON A DISCOVER CARD (owner: *"secara default yang muncul di sini adalah harga cross, tapi khusus untuk team yang
 // login atau contextnya dipilih, boleh menampilkan harga asli dan harga cross"*, `discover-shows-the-cross-price`) — and
@@ -37,41 +36,36 @@ export function DiscoverPrice({
   stock?: OwnerStockRow;
 }) {
   const { t } = useTranslation();
+  // The rule is shared with the discover detail (discoverPriceOf), so a card and its page never disagree.
+  const price = discoverPriceOf(productId, markupBps, own, stock);
+  const range = (r?: { min: bigint; max: bigint }) => (r ? formatRupiahRange(r.min, r.max) : "—");
 
   if (own) {
-    const known = stock?.costKnown === true;
-
     return (
       <Stack gap="0" data-testid={`discover-price-${productId}`} data-own="true">
         <Price
           hint={t("discover.price.crossHint")}
           label={t("discover.price.cross")}
-          value={
-            known
-              ? formatRupiahRange(withMarkup(stock.costMin, markupBps), withMarkup(stock.costMax, markupBps))
-              : "—"
-          }
+          value={range(price.cross)}
           cross
           testId={`discover-price-cross-${productId}`}
         />
         <Price
           hint={t("discover.price.costHint")}
           label={t("discover.price.cost")}
-          value={known ? formatRupiahRange(stock.costMin, stock.costMax) : "—"}
+          value={range(price.cost)}
           testId={`discover-price-cost-${productId}`}
         />
       </Stack>
     );
   }
 
-  const sample = sampleCostRange(productId);
-
   return (
     <Stack gap="0" data-testid={`discover-price-${productId}`}>
       <Price
         hint={t("discover.price.crossHint")}
         label={t("discover.price.cross")}
-        value={formatRupiahRange(withMarkup(sample.min, markupBps), withMarkup(sample.max, markupBps))}
+        value={range(price.cross)}
         cross
         mark={<NotImplemented list={DISCOVER_PENDING} id="crossPrice" />}
         testId={`discover-price-cross-${productId}`}

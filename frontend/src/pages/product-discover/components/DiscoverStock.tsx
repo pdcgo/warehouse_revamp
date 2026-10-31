@@ -7,7 +7,7 @@ import type { OwnerStockRow } from "../../../features/products/adapt";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { LOW_STOCK_PCS, STOCK_STATUS_TONE, readyStatus } from "../../../features/products/stockAge";
 import { DISCOVER_PENDING } from "../pending";
-import { sampleStock } from "../sampleMock";
+import { sampleStock } from "../../../features/products/discoverSample";
 
 // THE STOCK ON A DISCOVER CARD (owner: *"di cardnya ada stok ready dan stok ongoing, teksnya tooltips saja, kasih icon
 // untuk stocknya"*, `a-discover-card-shows-its-stock`) — two figures, each an icon and a count, what they are in a tooltip:

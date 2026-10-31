@@ -337,6 +337,18 @@ function batchesOf(productId: bigint): SampleBatch[] {
 
 const inLens = (warehouseId: bigint | undefined) => (b: SampleBatch) => !warehouseId || b.warehouseId === warehouseId;
 
+/**
+ * What one warehouse's shelves hold of a team-15 product — its batches there, added up — so StockAvailability agrees with
+ * the owner's own figures (the discover detail reads both). `undefined` for a product not figured, which keeps the
+ * fixtures' shelf rule.
+ */
+export function shelfSample(productId: bigint, warehouseId: bigint): bigint | undefined {
+  if (!figured(productId)) return undefined;
+  return batchesOf(productId)
+    .filter(inLens(warehouseId))
+    .reduce((s, b) => s + b.ready, 0n);
+}
+
 /** The OwnerStockItem a product's batches add up to, in a warehouse lens — `undefined` for a product not figured. */
 export function ownerStockSample(productId: bigint, teamId: bigint, warehouseId: bigint | undefined) {
   if (teamId !== FIGURED_TEAM || !figured(productId)) return undefined;

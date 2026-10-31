@@ -1,14 +1,17 @@
 import { useTranslation } from "react-i18next";
 import { HStack, Stack, Table, Text } from "@chakra-ui/react";
 
-import { useIsMobile } from "../../../layouts/shell";
-import { formatUnixDate } from "../../../lib/datetime";
-import type { SampleDay } from "../sampleMock";
-import { LIGHTS_UP } from "./parts";
+import { useIsMobile } from "../../layouts/shell";
+import { formatUnixDate } from "../../lib/datetime";
+import type { SampleDay } from "./dailySample";
+
+// A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up).
+const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
 // KELUAR MASUK HARIAN — per day: what came in, what went out, and what was on hand at the end of it. The read for "how
 // fast does this go" that the movement list answers only by counting. The chosen warehouse's, under its tab
-// (the-warehouse-zone-is-tabs). ⚠ The rows are SAMPLES until the server sums the movements per day (pending.ts `daily`).
+// (the-warehouse-zone-is-tabs) — on the product's own page and its discover detail alike (the-discover-detail-has-the-
+// warehouse-zone). ⚠ The rows are SAMPLES until the server sums the movements per day (each page's pending.ts `daily`).
 export function DailySection({ days }: { days: SampleDay[] }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();

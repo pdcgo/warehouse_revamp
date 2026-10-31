@@ -3,15 +3,17 @@ import { useTranslation } from "react-i18next";
 import { Flex, Stack, Text } from "@chakra-ui/react";
 import { History } from "lucide-react";
 
-import { GrowingPager } from "../../../components/chrome/GrowingPager";
-import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
-import { MovementTable, type MovementRow } from "../../../features/inventory/MovementTable";
-import { useOwnerStockHistory } from "../../../features/products/queries";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
+import { MovementTable, type MovementContextColumn, type MovementRow } from "../inventory/MovementTable";
+import { useOwnerStockHistory } from "./queries";
 
 // The STOCK HISTORY section — every movement of this product: what arrived, what shipped, what was
 // counted, adjusted, damaged or found, newest first. The Batch section says what the owner HAS; this says
 // how it got that way, which is the section somebody reads when a number looks wrong. Its card, title and the
-// warehouse lens are the page's (the-product-page-is-one-page-of-sections).
+// warehouse lens are the page's (the-product-page-is-one-page-of-sections) — the product's own page, and the discover
+// detail on the team's own product (the-discover-detail-has-the-warehouse-zone). It reads the OWNER's ledger, which
+// answers only the team that owns the product — another team's reads SampleHistorySection below until it is opened.
 //
 // The columns are deliberately NOT the warehouse's (#209/#232). That table carries a Place — the shelf
 // a movement touched — because moving between two shelves is the warehouse's whole job. A catalogue
@@ -21,17 +23,67 @@ import { useOwnerStockHistory } from "../../../features/products/queries";
 
 const PAGE_SIZE = 20;
 
+/** The ledger's context columns: the warehouse always, the batch on the owner's page only. */
+const columnsOf = (batch: boolean): MovementContextColumn[] => (batch ? ["warehouse", "batch"] : ["warehouse"]);
+
+/**
+ * ANOTHER TEAM'S STOCK HISTORY — the same ledger, its rows the sample (historySample.ts), since OwnerStockHistory answers
+ * only the owning team while every team may read it (stock-history-is-everyones). A handful of rows, so no pager. The
+ * caller marks the tab.
+ */
+export function SampleHistorySection({
+  movements,
+  warehouseId,
+  warehouseLabel,
+  batch = true,
+}: {
+  movements: MovementRow[];
+  /** The page's warehouse lens — 0n is everywhere. */
+  warehouseId: bigint;
+  warehouseLabel: (id: bigint) => string;
+  /** The Batch column — the discover detail leaves it out (the-discover-history-names-no-batch). */
+  batch?: boolean;
+}) {
+  const { t } = useTranslation();
+  const rows = warehouseId === 0n ? movements : movements.filter((m) => m.warehouseId === warehouseId);
+
+  return (
+    <Stack gap="card">
+      <Text fontSize="sm" color="fg.muted">
+        {t("products.detail.historyHelp")}
+      </Text>
+      <MovementTable
+        movements={rows}
+        testId="pd-history"
+        wording="transaction"
+        columns={columnsOf(batch)}
+        afterLabel={t("products.detail.history.afterInWarehouse")}
+        emptyText={t("products.detail.historyEmpty")}
+        emptyIcon={History}
+        emptyDescription={warehouseId > 0n ? t("products.detail.emptyInWarehouse") : t("products.detail.historyEmptyHint")}
+        warehouseLabel={warehouseLabel}
+      />
+    </Stack>
+  );
+}
+
 export function HistorySection({
   teamId,
   productId,
   warehouseId,
   warehouseLabel,
+  batch = true,
 }: {
   teamId: bigint | undefined;
   productId: bigint;
   /** The page's warehouse lens — 0n is everywhere. */
   warehouseId: bigint;
   warehouseLabel: (id: bigint) => string;
+  /**
+   * The Batch column — the owner's page shows which delivery each movement drew on; the discover detail leaves it out
+   * (owner: *"riwayat stok tidak ada batch"*, the-discover-history-names-no-batch).
+   */
+  batch?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -79,7 +131,8 @@ export function HistorySection({
             <MovementTable
               movements={rows}
               testId="pd-history"
-              columns={["warehouse", "batch"]}
+              wording="transaction"
+              columns={columnsOf(batch)}
               // WHAT THIS BALANCE IS, said in the header rather than assumed: the owner's on-hand of
               // this product IN THAT BUILDING. Never the pair's total — two warehouses are two
               // histories that happen to be read together, and no order was ever filled from a sum

@@ -84,6 +84,19 @@ export function marker(path: string, testId: string): RouteObject {
   return { path, element: <Text data-testid={testId}>{testId}</Text> };
 }
 
+/** A marker that also says the QUERY it was reached with (`location-search`) — for a page that opens a form preset by it. */
+export function markerWithSearch(path: string, testId: string): RouteObject {
+  return {
+    path,
+    element: (
+      <>
+        <Text data-testid={testId}>{testId}</Text>
+        <LocationProbe />
+      </>
+    ),
+  };
+}
+
 // ── Picking a team in a filter ──────────────────────────────────────────────────────────────────
 
 /**

@@ -472,45 +472,56 @@
     }
   },
   "discoverDetail": {
-    "back": "Temukan Produk",
+    "backTo": "Kembali ke Temukan Produk",
     "selectTeam": "Pilih tim untuk menemukan produk.",
     "invalidId": "ID produk tidak valid.",
     "notFound": "Produk tidak ditemukan.",
-    "owner": "Pemilik",
-    "markupHint": "Yang Anda bayar di atas modal pemilik, per unit.",
-    "reservedHint": "Pemilik menyimpan sebanyak ini di setiap rak — tidak dibagikan.",
-    "noImage": "Tidak ada gambar.",
-    "own": "Ini produk tim Anda sendiri.",
+    "team": "Tim",
+    "coverOnly": "Hanya sampul",
+    "crossPrice": "Harga cross",
+    "cost": "Harga modal",
     "openOwn": "Buka di Produk Saya",
     "archived": "Diarsipkan oleh pemiliknya — tidak lagi ditawarkan ke tim lain.",
     "locked": "Dikunci oleh pemiliknya — tim lain tidak dapat memakainya.",
-    "stockHeading": "Stok di Setiap Gudang",
-    "stockHelp": "Pesanan dikirim dari satu gudang, jadi di sinilah Anda bisa mengambilnya, dan berapa banyak.",
+    "notOffered": "Tidak ditawarkan ke tim lain, jadi tidak ada stok yang bisa diambil.",
+    "priceHeading": "Harga per Gudang",
+    "priceNav": "Harga",
+    "stockHelp": "Pesanan dikirim dari satu gudang — di sinilah stoknya siap, dan berapa harganya di gudang itu.",
     "warehouse": "Gudang",
-    "onShelf": "Di rak",
-    "canTake": "Bisa Anda ambil",
+    "ready": "Siap",
     "noWarehouses": "Belum ada gudang.",
-    "suppliersHeading": "Pemasok",
-    "suppliersHelp": "Toko pemasok yang menjual produk ini. Tim mana pun boleh restok dari mereka, bukan hanya pemiliknya.",
-    "noSuppliers": "Belum ada pemasok yang mencantumkan produk ini.",
-    "supplier": "Pemasok",
-    "store": "Toko",
     "pending": {
-      "canTake": {
-        "label": "Bisa Anda ambil",
-        "reason": "stok di rak dikurangi stok cadangan pemilik — apakah cadangan hanya mengikat tim lain, dan di mana batasnya, masih terbuka"
-      },
-      "unitCost": {
-        "label": "Modal Anda per unit",
-        "reason": "harga satuan ditambah markup — siapa yang boleh melihat harga satuan pemilik belum diputuskan, jadi tidak ditampilkan"
+      "division": {
+        "label": "Prioritas / Riset",
+        "reason": "data contoh — pembagian produk diatur per produk tapi belum disimpan di mana pun, jadi sama dengan contoh di kartu Temukan Produk"
       },
       "gallery": {
         "label": "Gambar",
         "reason": "hanya sampul — galeri lengkap datang dari ProductDetail, yang hanya menjawab tim pemilik"
       },
+      "ongoing": {
+        "label": "Dalam pengiriman",
+        "reason": "data contoh — stok tim lain yang masih dikirim belum bisa dibaca lintas tim; stok siap di atasnya nyata, jumlah semua rak"
+      },
+      "crossPrice": {
+        "label": "Harga cross",
+        "reason": "data contoh — modal dikarang lalu ditambah markup asli produk, di Info dan dibagi per gudang yang menyimpannya; modal tim lain belum bisa dibaca, dan siapa yang boleh melihatnya belum diputuskan"
+      },
+      "derived": {
+        "label": "Produk turunan",
+        "reason": "data contoh — barang yang diretur ke tim lain menjadi produk tim itu; tautan itu belum dicatat, jadi baris yang tampil sama dengan contoh di halaman produk pemiliknya"
+      },
       "suppliers": {
         "label": "Pemasok",
-        "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, yang belum dibangun, jadi toko yang menjualnya masih karangan"
+        "reason": "data contoh — pemasok, toko pemasok, dan link tokonya asli; bahwa produk ini dibeli di toko itu, serta jumlah kiriman dan unitnya, masih karangan sampai restok yang diterima mencatat tokonya"
+      },
+      "daily": {
+        "label": "Keluar masuk harian",
+        "reason": "data contoh — pergerakan stok belum dijumlahkan per hari; sama dengan contoh di halaman produk pemiliknya"
+      },
+      "history": {
+        "label": "Riwayat stok",
+        "reason": "data contoh — riwayat stok boleh dibaca semua tim, tapi baru tim pemilik yang bisa membacanya; tiap gudang berakhir di stok siapnya yang asli. Produk tim Anda sendiri memakai riwayat asli"
       }
     }
   },
@@ -588,6 +599,17 @@
     "empty": "Produk tidak ditemukan.",
     "backToProducts": "Kembali ke Produk",
     "edit": "Ubah",
+    "newOrder": "Buat Pesanan",
+    "newRestock": "Restok",
+    "start": {
+      "warehouse": "Gudang",
+      "quantity": "Jumlah",
+      "ready": "Siap {{n}} pcs",
+      "ofReady": "Dari {{n}} pcs siap di gudang ini.",
+      "overReady": "Melebihi stok siap di gudang ini ({{n}} pcs).",
+      "continue": "Lanjutkan",
+      "noStock": "Stok siap habis di semua gudang."
+    },
     "save": "Simpan",
     "create": "Buat",
     "images": "Gambar",
@@ -678,7 +700,7 @@
       "pending": {
         "suppliers": {
           "label": "Pemasok",
-          "reason": "Setiap batch mencatat pemasoknya, tapi batch dibaca per halaman — daftar semua pemasok perlu dikelompokkan oleh server. Baris yang tampil adalah contoh."
+          "reason": "Pemasok, toko pemasok, dan link tokonya asli. Bahwa produk ini dibeli di toko itu masih karangan sampai restok yang diterima mencatat tokonya, dan kiriman, unit, serta modal terakhir perlu batch dikelompokkan per pemasok oleh server."
         },
         "derived": {
           "label": "Produk turunan",
@@ -691,11 +713,13 @@
       },
       "suppliers": {
         "supplier": "Pemasok",
+        "store": "Toko pemasok",
         "deliveries": "Kiriman",
         "units": "Unit",
         "lastCost": "Modal terakhir",
         "last": "Kiriman terakhir",
-        "deliveriesCount_other": "{{count}} kiriman"
+        "deliveriesCount_other": "{{count}} kiriman",
+        "none": "Belum ada pemasok yang tercatat untuk produk ini."
       },
       "derived": {
         "from": "Turunan dari",
@@ -2629,12 +2653,23 @@
     "movement": {
       "when": "Waktu",
       "what": "Kegiatan",
+      "transaction": "Transaksi",
       "change": "Perubahan",
       "by": "Oleh",
       "batch": "Batch",
       "place": "Tempat",
       "product": "Produk",
       "warehouse": "Gudang"
+    },
+    "transaction": {
+      "restock": "Restok",
+      "order": "Pesanan",
+      "transferIn": "Transfer masuk",
+      "transferOut": "Transfer keluar",
+      "adjustment": "Penyesuaian",
+      "return": "Retur",
+      "move": "Pindah rak",
+      "sample": "Sampel"
     }
   },
   "address": {

@@ -1075,3 +1075,42 @@ export const DeletingTheDraftGoesBackToTheList: Story = {
     await waitFor(() => expect(canvas.getByTestId("at-drafts")).toBeInTheDocument());
   },
 };
+
+// ── Opened from a product's page (a-product-page-opens-the-order-and-restock-forms) ─────────────────────────────────
+
+const GULA_ID = products.find((p) => p.name === "Gula Pasir 1kg")!.id;
+
+// The discover detail of Gula opened this form, with Gudang Pusat picked — so the address carries `?product=` and
+// `&warehouse=`, and the navigation's state says where it came from.
+function RoutedFromProductPage() {
+  const router = useMemo(
+    () =>
+      createMemoryRouter(
+        [...routes, { path: "/products/discover/:productId", element: <Text data-testid="at-product-page">Product</Text> }],
+        {
+          initialEntries: [
+            { pathname: "/order-create", search: `?product=${GULA_ID}&warehouse=11&qty=3`, state: { from: `/products/discover/${GULA_ID}` } },
+          ],
+        },
+      ),
+    [],
+  );
+
+  return <RouterProvider router={router} />;
+}
+
+// THE PRODUCT IS THE FIRST LINE, at the quantity chosen on the page (the-order-and-restock-start-on-the-page) — and Back,
+// the form untouched, returns to the page it was opened from without asking whether to discard anything.
+export const OpenedFromAProductPageStartsWithIt: Story = {
+  render: () => <RoutedFromProductPage />,
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-line-0")).toHaveTextContent("Gula Pasir 1kg"), { timeout: 4000 });
+    await expect(canvas.getByTestId("order-line-qty-0")).toHaveValue("3");
+
+    await userEvent.click(canvas.getByTestId("order-create-back"));
+    await waitFor(() => expect(canvas.getByTestId("at-product-page")).toBeInTheDocument());
+  },
+};

@@ -88,6 +88,7 @@ import {
   ownerStockSample,
   ownerStockStat,
   productService,
+  shelfSample,
 } from "./productStub";
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
@@ -1087,10 +1088,14 @@ export const transport = createRouterTransport(({ service }) => {
     // ⚠ PER WAREHOUSE. The fixture stock is one building's (WAREHOUSE_ID), so any other warehouse
     // answers zeros. Answering every warehouse with the same shelf made a screen that lists several
     // warehouses side by side (the discover detail) show one stock as if it were held twice.
+    // Team 15's catalogue answers from its batches (productStub.ts), in both warehouses; every other product keeps the
+    // fixture shelf rule — only WAREHOUSE_ID holds it.
     stockAvailability: (req) => ({
       items: req.productIds.map((id) => ({
         productId: id,
-        available: req.warehouseId === WAREHOUSE_ID ? (warehouseStock[id.toString()] ?? 0n) : 0n,
+        available:
+          shelfSample(id, req.warehouseId) ??
+          (req.warehouseId === WAREHOUSE_ID ? (warehouseStock[id.toString()] ?? 0n) : 0n),
       })),
     }),
 

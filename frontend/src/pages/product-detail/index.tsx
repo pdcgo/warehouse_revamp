@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -7,24 +7,19 @@ import {
   Badge,
   Box,
   Button,
-  Carousel,
-  Flex,
   Grid,
   Heading,
   HStack,
   Icon,
-  IconButton,
-  Image,
   Stack,
   Tabs,
   Text,
   useBreakpointValue,
 } from "@chakra-ui/react";
-import { Archive, ArrowLeft, Pencil, RotateCcw } from "lucide-react";
+import { Archive, ArrowLeft, PackagePlus, Pencil, RotateCcw, ShoppingCart } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../api/clients";
 import { CompactActions } from "../../components/chrome/CompactActions";
-import { CopyText } from "../../components/chrome/CopyText";
 import { Fact, Section } from "../../components/chrome/DetailSection";
 import { SectionNav } from "../../components/chrome/SectionNav";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
@@ -50,19 +45,27 @@ import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { formatUnixDate } from "../../lib/datetime";
 import { formatMarkup, withMarkup } from "../../lib/markup";
 import { formatRupiah, formatRupiahRange } from "../../lib/money";
-import { scrollerOf, useScrollSpy } from "../../lib/useScrollSpy";
+import { useScrollSpy } from "../../lib/useScrollSpy";
+import { useStickyTitle } from "../../lib/useStickyTitle";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { FigureRows, type FigureRow } from "../../features/products/FigureRows";
+import { ProductStickyStrip, ProductTitleRow } from "../../features/products/ProductTitleRow";
+import { StockHighlight } from "../../features/products/StockHighlight";
 import { PRODUCT_DETAIL_PENDING } from "./pending";
+import { DailySection } from "../../features/products/DailySection";
+import { sampleDaily } from "../../features/products/dailySample";
+import { DerivedSection } from "../../features/products/DerivedSection";
+import { sampleDerived } from "../../features/products/derivedSample";
+import { HistorySection } from "../../features/products/HistorySection";
+import { ProductGallery } from "../../features/products/ProductGallery";
+import { orderFormFor, restockFormFor } from "../../features/products/presetProduct";
+import { type StartKind, StartFormDialog } from "../../features/products/StartFormDialog";
+import { SuppliersSection } from "../../features/products/SuppliersSection";
+import { WarehouseFilter, WarehouseNote } from "../../features/products/WarehouseLens";
 import { BatchSection } from "./components/BatchSection";
-import { DailySection } from "./components/DailySection";
-import { DerivedSection } from "./components/DerivedSection";
-import { StockHighlight } from "./components/StockHighlight";
-import { SuppliersSection } from "./components/SuppliersSection";
-import { sampleDaily, sampleDerived, sampleSuppliers } from "./sampleMock";
-import { HistorySection } from "./components/HistorySection";
 import { PriceSection } from "./components/PriceSection";
-import { WarehouseFilter, WarehouseNote, WhenOrNever } from "./components/parts";
+import { WhenOrNever } from "./components/parts";
 import {
   PRODUCT_MAIN_SECTIONS,
   PRODUCT_SECTION_KEYS,
@@ -132,49 +135,6 @@ function useStockFigures(stock: OwnerStockRow | undefined, markupBps: number): S
           : t("products.table.stockAgeTitle", { date: formatUnixDate(stock!.oldestBatchUnix) }),
     },
   ];
-}
-
-/** One row of a figures list — a label, the figure, and what it means beside it. */
-interface FigureRow {
-  key: string;
-  label: string;
-  value: ReactNode;
-  line?: string;
-  testId?: string;
-}
-
-/** A list of figures, ONE PER LINE, DOWN — Info's record and the warehouse Overview read the same way. */
-function FigureRows({ rows, prefix }: { rows: FigureRow[]; prefix: string }) {
-  return (
-    <Stack gap="0" data-testid={prefix}>
-      {rows.map((f) => (
-        <Grid
-          key={f.key}
-          templateColumns="8rem minmax(0, 1fr)"
-          gap="card"
-          alignItems="baseline"
-          py="2"
-          borderBottomWidth="1px"
-          borderColor="border.muted"
-          data-testid={`${prefix}-${f.key}`}
-        >
-          <Text fontSize="xs" fontWeight="bold" color="fg.label">
-            {f.label}
-          </Text>
-          <HStack gap="2" minW="0" align="baseline" wrap="wrap">
-            <Box fontWeight="bold" data-testid={f.testId}>
-              {f.value || "—"}
-            </Box>
-            {f.line && (
-              <Text fontSize="xs" color="fg.muted" minW="0">
-                {f.line}
-              </Text>
-            )}
-          </HStack>
-        </Grid>
-      ))}
-    </Stack>
-  );
 }
 
 /**
@@ -300,6 +260,8 @@ export function ProductDetailPage() {
   // hold it by now. Null while there is no conflict to resolve.
   const [conflict, setConflict] = useState<{ product: Product; reason: string } | null>(null);
   const [archiving, setArchiving] = useState(false);
+  // WHICH FORM IS BEING STARTED — the warehouse and quantity asked here first (the-order-and-restock-start-on-the-page).
+  const [starting, setStarting] = useState<StartKind | null>(null);
 
   const product = query.data?.product ?? null;
   const categories = query.data?.categories ?? [];
@@ -389,87 +351,18 @@ export function ProductDetailPage() {
   // ONLY THE NAME STICKS (owner: *"nama produk sticky, header kembali ke produk dan action tidak perlu sticky"*) — and only
   // once the name in Info has scrolled away, so the page never shows it twice. The bar is drawn OVER the page rather
   // than in its flow, so appearing moves nothing; on a phone it sits under the section chips, which always stick.
-  const sticky = useRef<HTMLDivElement>(null);
-  const nameBar = useRef<HTMLDivElement>(null);
-  const infoName = useRef<HTMLHeadingElement>(null);
-  const [pastName, setPastName] = useState(false);
+  const stick = useStickyTitle(product !== null, isMobile);
   // WHICH WAREHOUSE TAB IS OPEN — Overview first. Only that tab is mounted, so only its rows are read
   // (the-warehouse-zone-is-tabs): the cost layers and the movements wait until somebody opens them.
   const [warehouseTab, setWarehouseTab] = useState<WarehouseTab>("overview");
-  const [stickyHeight, setStickyHeight] = useState(0);
   const { active, scrollTo } = useScrollSpy(
     product !== null,
-    nameBar,
+    stick.bar,
     PRODUCT_SECTION_KEYS,
     productSectionDomId,
     wide ? PRODUCT_MAIN_SECTIONS : undefined,
   );
   const navSections = PRODUCT_SECTIONS.map((s) => ({ key: s.key, label: t(s.navKey), icon: s.icon }));
-
-  // What a jump has to clear: the chips (a phone) plus the name bar — published as `--detail-header-h`.
-  useEffect(() => {
-    const bar = nameBar.current;
-    const strip = sticky.current;
-
-    if (!bar || !strip) {
-      return;
-    }
-
-    const measure = () => setStickyHeight(strip.getBoundingClientRect().height + bar.getBoundingClientRect().height);
-    const observer = new ResizeObserver(measure);
-
-    measure();
-    observer.observe(bar);
-    observer.observe(strip);
-
-    return () => observer.disconnect();
-  }, [product !== null, isMobile]);
-
-  // WHETHER THE NAME IN INFO HAS GONE BEHIND THE BAR — the moment the bar takes over saying it. Measured on every
-  // scroll against WHERE THE BAR IS DRAWN, not with an IntersectionObserver: the observer's margin had to follow the
-  // bar's own height, so the bar appearing re-armed it and it flipped back and forth (owner: *"judul stickynya ngebug di
-  // bolak balik"*), and the page's entrance moves the name without the observer hearing it. Captured on `window`, so
-  // whichever ancestor scrolls — `<main>` in the app, the window in Storybook — is heard, as useScrollSpy does.
-  useEffect(() => {
-    if (product === null) {
-      return;
-    }
-
-    let frame = 0;
-
-    const decide = () => {
-      const name = infoName.current;
-      const bar = nameBar.current;
-
-      if (!name || !bar) {
-        return;
-      }
-
-      // WHERE THE BAR STANDS ONCE IT STICKS — the top of whatever scrolls (`<main>` in the app, the document in
-      // Storybook), plus the strip above it on a phone, plus the bar's own height. NOT where the bar is drawn right now:
-      // at the top of the page the bar sits just above the title, and measured there the title read as already behind
-      // it, so the bar showed from the start (owner: *"stickymu bermasalah, muncul terus"*).
-      const scroller = scrollerOf(name);
-      const top = scroller === document.scrollingElement ? 0 : scroller.getBoundingClientRect().top;
-      const strip = isMobile ? (sticky.current?.getBoundingClientRect().height ?? 0) : 0;
-      setPastName(name.getBoundingClientRect().bottom <= top + strip + bar.getBoundingClientRect().height);
-    };
-
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(decide);
-    };
-
-    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    window.addEventListener("resize", onScroll);
-    decide();
-
-    return () => {
-      window.removeEventListener("scroll", onScroll, { capture: true });
-      window.removeEventListener("resize", onScroll);
-      cancelAnimationFrame(frame);
-    };
-  }, [product !== null, isMobile]);
 
   if (!current) {
     return (
@@ -554,77 +447,19 @@ export function ProductDetailPage() {
   const infoSection = section(
     "info",
     <Grid templateColumns={{ base: "1fr", md: "minmax(0, 1fr) minmax(0, 3fr)" }} gap="section" alignItems="start">
-      <Box>
-        {product.images.length === 0 ? (
-          <Text color="fg.muted" fontSize="sm" data-testid="product-detail-no-images">
-            {t("products.detail.noImages")}
-          </Text>
-        ) : product.images.length === 1 ? (
-          /* ONE image is not a carousel — arrows and a single indicator would promise a second picture. */
-          <Box data-testid="product-detail-images">
-            <Image
-              src={product.images[0].url || product.images[0].thumbnailUrl}
-              alt={`${product.name} image 1`}
-              aspectRatio={1}
-              objectFit="cover"
-              w="full"
-              borderWidth="1px"
-              borderRadius="md"
-              data-testid="product-detail-image-0"
-            />
-          </Box>
-        ) : (
-          /* SEVERAL images — one at full width at a time, with THUMBNAILS as the indicators: a thumbnail says which
-             picture you are about to get, which is the whole reason to look at a second one. Position 0 is the cover. */
-          <Carousel.Root slideCount={product.images.length} slidesPerPage={1} loop allowMouseDrag data-testid="product-detail-images">
-            <Carousel.ItemGroup>
-              {product.images.map((img, i) => (
-                <Carousel.Item key={`${img.url}-${i}`} index={i}>
-                  <Image
-                    src={img.url || img.thumbnailUrl}
-                    alt={`${product.name} image ${i + 1}`}
-                    aspectRatio={1}
-                    objectFit="cover"
-                    w="full"
-                    borderWidth="1px"
-                    borderRadius="md"
-                    data-testid={`product-detail-image-${i}`}
-                  />
-                </Carousel.Item>
-              ))}
-            </Carousel.ItemGroup>
-            <Carousel.IndicatorGroup display="flex" gap="2" mt="2" flexWrap="wrap" justifyContent="flex-start">
-              {product.images.map((img, i) => (
-                <Carousel.Indicator
-                  key={`${img.url}-thumb-${i}`}
-                  index={i}
-                  unstyled
-                  aria-label={t("products.detail.showImage", { n: i + 1 })}
-                  cursor="pointer"
-                  boxSize="10"
-                  p="0"
-                  borderRadius="md"
-                  overflow="hidden"
-                  borderWidth="2px"
-                  borderColor="transparent"
-                  opacity="0.55"
-                  transition="opacity 0.15s, border-color 0.15s"
-                  _hover={{ opacity: 1 }}
-                  css={{ "&[data-current]": { opacity: 1, borderColor: "colorPalette.solid" } }}
-                  colorPalette="brand"
-                >
-                  <Image src={img.thumbnailUrl || img.url} alt="" w="full" h="full" objectFit="cover" />
-                </Carousel.Indicator>
-              ))}
-            </Carousel.IndicatorGroup>
-          </Carousel.Root>
-        )}
-      </Box>
+      <ProductGallery images={product.images} name={product.name} prefix="product-detail" />
 
       <Stack gap="section" minW="0">
         {/* THE ONE THING THAT STANDS OUT — how much is ready, and whether the stock is healthy
             (the-stock-headline-stands-out). */}
-        <StockHighlight stock={totalStock} />
+        <StockHighlight
+          ready={totalStock?.readyQty}
+          line={
+            totalStock
+              ? `${t("products.detail.highlight.ongoing", { n: totalStock.ongoingQty.toString() })} · ${t("products.detail.highlight.value", { value: formatRupiah(totalStock.readyValue) })}`
+              : t("products.stat.pending")
+          }
+        />
 
         {/* THE RECORD AS ONE LIST, DOWN — the category first, read like the figures under it, then Siap, Dikirim, Rentang
             HPP and Umur stok as the product's TOTALS (owner: *"kategori samakan seperti siap, dikirim gitu"*). */}
@@ -646,85 +481,102 @@ export function ProductDetailPage() {
   // *"kembali dan actionnya juga, jadi default icon di sebelah judul, yang actionnya di nempel di kanan, di stickynya juga
   // ada"*). ONE builder, drawn twice: as the page's title right above the Info card, and as the sticky bar once that title
   // has scrolled behind it — so the bar is the same row in small, and nothing can be done from one that the other lacks.
-  // The sticky copy's test ids carry `-sticky`, so the page's own stay unique. ────────────────────────────────────────
+  // The sticky copy's test ids carry `-sticky`, so the page's own stay unique. The row itself is shared with the
+  // discover detail (ProductTitleRow, the-discover-detail-is-the-product-page). ──────────────────────────────────────
   const headerRow = (stuck: boolean) => {
     const id = (base: string) => (stuck ? base.replace("product-detail-", "product-detail-sticky-") : base);
 
     return (
-      <Flex align="center" gap={stuck ? "2" : "card"} minW="0">
-        {/* BACK, as an icon beside the name. An archived product goes back to the archive it was opened from
-            (the-archive-is-a-page-of-its-own). */}
-        <IconButton
-          size="sm"
-          variant="ghost"
-          flexShrink={0}
-          aria-label={t("products.backToProducts")}
-          title={t("products.backToProducts")}
-          data-testid={id("product-detail-back")}
-          onClick={() => navigate(archived ? "/products/archived" : "/products")}
-        >
-          <Icon as={ArrowLeft} boxSize="4" />
-        </IconButton>
-
-        <Stack gap={stuck ? "0" : "1"} minW="0" flex="1">
-          <HStack gap="2" minW="0">
-            <Heading
-              ref={stuck ? undefined : infoName}
-              size={stuck ? "md" : "lg"}
-              truncate={stuck}
-              minW="0"
-              data-testid={stuck ? undefined : "product-detail-name"}
-            >
-              {product.name}
-            </Heading>
-            {archived && (
-              <Badge colorPalette="gray" flexShrink={0} data-testid={id("product-detail-archived")}>
-                {t("products.tab.archived")}
-              </Badge>
-            )}
-          </HStack>
-          {/* The SKU to copy, UNDER the name (owner: *"skunya di bawah nama produk"*, *"sku di sticky taruh bawahnya"*). */}
-          <Box fontSize="sm" color="fg.muted" data-testid={stuck ? "product-detail-sticky-sku" : undefined}>
-            <CopyText value={product.sku} testId={stuck ? undefined : "product-detail-sku"} />
-          </Box>
-        </Stack>
-
-        {/* THE ACTIONS, held to the right. On a phone they fold into ⋯ (a-phone-header-action-is-an-icon). */}
-        {isMobile ? (
-          <CompactActions
-            menuLabel={t("products.table.actions")}
-            actions={
-              archived
-                ? [{ id: "restore", label: t("products.restore"), icon: RotateCcw, testId: id("product-detail-restore"), onClick: () => restore(product) }]
-                : [
-                    { id: "edit", label: t("products.edit"), icon: Pencil, testId: id("product-detail-edit"), onClick: openEdit },
-                    { id: "archive", label: t("products.archive"), icon: Archive, danger: true, testId: id("product-detail-archive"), onClick: () => setArchiving(true) },
-                  ]
-            }
-          />
-        ) : archived ? (
-          /* UNARCHIVE. No confirmation: putting a product back is the reversible direction, and the only thing that can
-             go wrong — the SKU being taken — is caught by the server and answered with a dialog. */
-          <Button size="xs" variant="outline" flexShrink={0} loading={restoreProduct.isPending} data-testid={id("product-detail-restore")} onClick={() => restore(product)}>
-            <Icon as={RotateCcw} boxSize="4" />
-            {t("products.restore")}
-          </Button>
-        ) : (
-          <HStack gap="2" flexShrink={0}>
-            <Button size="xs" variant="outline" data-testid={id("product-detail-edit")} onClick={openEdit}>
-              <Icon as={Pencil} boxSize="4" />
-              {t("products.edit")}
-            </Button>
-            {/* ARCHIVE confirms: it takes the product out of the pickers, new orders and restocks. */}
-            <Button size="xs" variant="outline" colorPalette="error" data-testid={id("product-detail-archive")} onClick={() => setArchiving(true)}>
-              <Icon as={Archive} boxSize="4" />
-              {t("products.archive")}
-            </Button>
-          </HStack>
-        )}
-      </Flex>
+      <ProductTitleRow
+        stuck={stuck}
+        prefix="product-detail"
+        backLabel={t("products.backToProducts")}
+        // An archived product goes back to the archive it was opened from (the-archive-is-a-page-of-its-own).
+        onBack={() => navigate(archived ? "/products/archived" : "/products")}
+        name={product.name}
+        titleRef={stick.title}
+        sku={product.sku}
+        badges={
+          archived && (
+            <Badge colorPalette="gray" flexShrink={0} data-testid={id("product-detail-archived")}>
+              {t("products.tab.archived")}
+            </Badge>
+          )
+        }
+        actions={headerActions(id)}
+      />
     );
   };
+
+  // THE ACTIONS, held to the right. On a phone they fold into ⋯ (a-phone-header-action-is-an-icon).
+  // ORDER AND RESTOCK FROM HERE (owner: *"bagaimana cara untuk membuat order dan restok langsung di detail ini"*, then
+  // *"oke"*, a-product-page-opens-the-order-and-restock-forms) — the warehouse and the quantity asked first, here
+  // (the-order-and-restock-start-on-the-page), then the existing form with this product on its first line; its Back and
+  // Save come back here.
+  // NOTHING READY ANYWHERE, NOTHING TO ORDER (owner, asked: *"jika stok ready 0?"* — the button held back,
+  // an-empty-product-cannot-start-an-order): the take draws at creation, so the form would only refuse it. Restok stays.
+  const noStock = totalStock !== undefined && totalStock.readyQty === 0n;
+  const openOrder = () => setStarting("order");
+  const openRestock = () => setStarting("restock");
+  const continueTo = (kind: StartKind, warehouse: bigint, quantity: number) =>
+    navigate((kind === "order" ? orderFormFor : restockFormFor)(product!.id, warehouse, quantity), {
+      state: fromHere(location),
+    });
+
+  function headerActions(id: (base: string) => string) {
+    if (isMobile) {
+      return (
+        <CompactActions
+          menuLabel={t("products.table.actions")}
+          actions={
+            archived
+              ? [{ id: "restore", label: t("products.restore"), icon: RotateCcw, testId: id("product-detail-restore"), onClick: () => restore(product!) }]
+              : [
+                  { id: "order", label: t("products.newOrder"), icon: ShoppingCart, testId: id("product-detail-order"), disabled: noStock, onClick: noStock ? undefined : openOrder },
+                  { id: "restock", label: t("products.newRestock"), icon: PackagePlus, testId: id("product-detail-restock"), onClick: openRestock },
+                  { id: "edit", label: t("products.edit"), icon: Pencil, testId: id("product-detail-edit"), onClick: openEdit },
+                  { id: "archive", label: t("products.archive"), icon: Archive, danger: true, testId: id("product-detail-archive"), onClick: () => setArchiving(true) },
+                ]
+          }
+        />
+      );
+    }
+
+    if (archived) {
+      // UNARCHIVE. No confirmation: putting a product back is the reversible direction, and the only thing that can go
+      // wrong — the SKU being taken — is caught by the server and answered with a dialog.
+      return (
+        <Button size="xs" variant="outline" flexShrink={0} loading={restoreProduct.isPending} data-testid={id("product-detail-restore")} onClick={() => restore(product!)}>
+          <Icon as={RotateCcw} boxSize="4" />
+          {t("products.restore")}
+        </Button>
+      );
+    }
+
+    return (
+      <HStack gap="2" flexShrink={0}>
+        <Box title={noStock ? t("products.start.noStock") : undefined}>
+          <Button size="xs" variant="outline" disabled={noStock} data-testid={id("product-detail-order")} onClick={openOrder}>
+            <Icon as={ShoppingCart} boxSize="4" />
+            {t("products.newOrder")}
+          </Button>
+        </Box>
+        <Button size="xs" variant="outline" data-testid={id("product-detail-restock")} onClick={openRestock}>
+          <Icon as={PackagePlus} boxSize="4" />
+          {t("products.newRestock")}
+        </Button>
+        <Button size="xs" variant="outline" data-testid={id("product-detail-edit")} onClick={openEdit}>
+          <Icon as={Pencil} boxSize="4" />
+          {t("products.edit")}
+        </Button>
+        {/* ARCHIVE confirms: it takes the product out of the pickers, new orders and restocks. */}
+        <Button size="xs" variant="outline" colorPalette="error" data-testid={id("product-detail-archive")} onClick={() => setArchiving(true)}>
+          <Icon as={Archive} boxSize="4" />
+          {t("products.archive")}
+        </Button>
+      </HStack>
+    );
+  }
   const title = headerRow(false);
 
   // ── WHERE IT CAME FROM — the deliveries across every warehouse (each row names its own), so above the picker. ─────
@@ -799,9 +651,10 @@ export function ProductDetailPage() {
         </Tabs.Content>
 
         {/* PEMASOK — who supplies it, a tab of its own (owner: *"pemasok beda tab sama overview"*); the tab names it, so
-            the panel carries no heading, and its ⚠ rides on the tab, as Keluar Masuk Harian's does. */}
+            the panel carries no heading, and its ⚠ rides on the tab, as Keluar Masuk Harian's does. With the store it was
+            bought at, and the owner's last cost (the-supplier-tab-names-the-store). */}
         <Tabs.Content value="suppliers" data-testid="pd-panel-suppliers">
-          <SuppliersSection suppliers={sampleSuppliers(product.id)} />
+          <SuppliersSection teamId={teamId} productId={product.id} showCost />
         </Tabs.Content>
 
         <Tabs.Content value="price" data-testid="pd-panel-price">
@@ -825,40 +678,36 @@ export function ProductDetailPage() {
       gap="section"
       animationStyle="enter"
       data-testid="product-detail-page"
-      style={{ ["--detail-header-h" as string]: `${stickyHeight}px` }}
+      style={{ ["--detail-header-h" as string]: `${stick.height}px` }}
     >
       <NotImplementedSummary list={PRODUCT_DETAIL_PENDING} />
 
       {/* THE STICKY STRIP — the section chips on a phone (always), and the header bar under them, drawn over the page once
           the title has gone behind it. On a desktop the strip itself has no height: the bar overlays, nothing moves. */}
-      <Box ref={sticky} position="sticky" top="0" zIndex={10} h={isMobile ? undefined : "0"} data-testid="product-detail-header">
-        {isMobile && (
-          <Box bg="bg" py="2" borderBottomWidth="1px" borderColor="border">
-            <SectionNav compact sections={navSections} ariaLabel={t("products.detail.nav.label")} active={active} onSelect={scrollTo} />
-          </Box>
-        )}
-        <Box
-          ref={nameBar}
-          position="absolute"
-          top={isMobile ? "100%" : "0"}
-          left="0"
-          right="0"
-          bg="bg"
-          py="2"
-          borderBottomWidth="1px"
-          borderColor="border"
-          opacity={pastName ? 1 : 0}
-          visibility={pastName ? "visible" : "hidden"}
-          transition="opacity 120ms"
-          aria-hidden={!pastName}
-          data-testid="product-detail-name-bar"
-          data-shown={pastName || undefined}
-        >
-          {/* THE SAME ROW, IN SMALL — back, the name with the SKU under it, the actions on the right (owner: *"di stickynya
-              juga ada"*). */}
-          {headerRow(true)}
-        </Box>
-      </Box>
+      <ProductStickyStrip
+        prefix="product-detail"
+        stripRef={stick.strip}
+        barRef={stick.bar}
+        shown={stick.past}
+        isMobile={isMobile}
+        chips={<SectionNav compact sections={navSections} ariaLabel={t("products.detail.nav.label")} active={active} onSelect={scrollTo} />}
+      >
+        {/* THE SAME ROW, IN SMALL — back, the name with the SKU under it, the actions on the right (owner: *"di stickynya
+            juga ada"*). */}
+        {headerRow(true)}
+      </ProductStickyStrip>
+
+      {starting && (
+        <StartFormDialog
+          kind={starting}
+          open
+          onOpenChange={(open) => !open && setStarting(null)}
+          teamId={teamId}
+          product={product}
+          initialWarehouseId={warehouseId}
+          onContinue={(warehouse, quantity) => continueTo(starting, warehouse, quantity)}
+        />
+      )}
 
       <ConfirmDialog
         open={archiving}

@@ -10,7 +10,7 @@ import { readyStatus } from "../../features/products/stockAge";
 import { withMarkup } from "../../lib/markup";
 import { formatRupiahRange } from "../../lib/money";
 import { DiscoverProductsPage } from "./index";
-import { sampleDivision, sampleStock } from "./sampleMock";
+import { sampleDivision, sampleStock } from "../../features/products/discoverSample";
 
 // The cross-team browse (#106): every team's products, as a grid of cards, each naming its owner — with its filters in
 // a panel beside the grid (discover-filters-in-a-side-panel) and the cross price on every card

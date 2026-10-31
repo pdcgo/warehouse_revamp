@@ -366,3 +366,29 @@ export const AStoredLineKeepsItsSnapshot: Story = {
     await expect(canvas.getByTestId("restock-qty-1")).toHaveValue(String(kopi.count));
   },
 };
+
+// ── Opened from a product's page (a-product-page-opens-the-order-and-restock-forms) ─────────────────────────────────
+
+// Beras's own page opened this form with Gudang Pusat picked — the product and the warehouse in the address, and the
+// page in the navigation's state.
+const FromProductPage = routedPage(
+  [
+    { path: "/inventories/restock/new", element: <RestockRequestFormPage key="create" /> },
+    marker("/products/:productId", "at-product-page"),
+  ],
+  { pathname: "/inventories/restock/new", search: `?product=${BERAS}&warehouse=11`, state: { from: `/products/${BERAS}` } },
+);
+
+// THE PRODUCT IS THE FIRST LINE, and Back returns to the page that opened the form.
+export const OpenedFromAProductPageStartsWithIt: Story = {
+  render: () => <FromProductPage />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-create-page");
+
+    await waitFor(() => expect(canvas.getByTestId("restock-line-0")).toHaveTextContent("Beras Pandan Wangi 5kg"), {
+      timeout: 4000,
+    });
+    await userEvent.click(canvas.getByTestId("restock-create-back"));
+    await canvas.findByTestId("at-product-page");
+  },
+};

@@ -426,6 +426,34 @@ export function useProductActivity(args: {
   });
 }
 
+// WHAT THE TEAM'S OWN PRODUCT COST IN EACH WAREHOUSE — the discover detail's price per warehouse (owner: *"harga tiap
+// gudang bisa berbeda, dan bisa range juga per gudang"*, each-warehouse-says-ready-and-its-price). OwnerStockByIds in each
+// warehouse's lens, asked once per warehouse as useAvailabilityByWarehouse asks StockAvailability: the fan-out is bounded
+// by the warehouse list, and the answers arrive together, so the table never shows half its prices.
+//
+// The owner's figures — no other team may read them — so the caller asks only for its OWN product (`productId` 0n for
+// anybody else's disables it). A warehouse the read says nothing about stays undefined: unknown, never a zero cost.
+export function useOwnerStockByWarehouse(args: { teamId: bigint | undefined; productId: bigint; warehouseIds: bigint[] }) {
+  const { teamId, productId } = args;
+  const warehouses = Array.from(new Set(args.warehouseIds.map((id) => id.toString()))).sort();
+
+  return useQuery({
+    queryKey: key.products(teamId, { ownerStockOf: productId.toString(), warehouses }),
+    enabled: teamId !== undefined && productId > 0n && warehouses.length > 0,
+    queryFn: async () => {
+      const answers = await Promise.all(
+        warehouses.map((w) =>
+          inventoryClient.ownerStockByIds({ teamId: teamId!, filter: { productIds: [productId], warehouseId: BigInt(w) } }),
+        ),
+      );
+
+      return new Map<string, OwnerStockRow | undefined>(
+        warehouses.map((w, i) => [w, ownerStockFromByIds(answers[i]!).get(productId.toString())]),
+      );
+    },
+  });
+}
+
 // ── The detail page's three ROW-level reads (#232) ──────────────────────────────────────────────
 //
 // Price, Batch and Stock history. Each is its OWN entry rather than one call per tab-switch: the three

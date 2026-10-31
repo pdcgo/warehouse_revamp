@@ -214,5 +214,6 @@ test("Discover: products across teams are listed (#106)", async ({ page }) => {
   await page.getByTestId(`discover-open-${SKU_IMG}`).click();
   await expect(page).toHaveURL(/\/products\/discover\/\d+$/);
   await expect(page.getByTestId("discover-detail-page")).toContainText(SKU_IMG);
-  await expect(page.getByTestId("discover-detail-stock")).toBeVisible();
+  // The owner's page's shape (the-discover-detail-is-the-product-page) — Per Gudang is one of its sections.
+  await expect(page.getByTestId("dd-section-warehouse")).toBeVisible();
 });

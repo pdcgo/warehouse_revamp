@@ -478,45 +478,56 @@
     }
   },
   "discoverDetail": {
-    "back": "Discover Products",
+    "backTo": "Back to Discover Products",
     "selectTeam": "Select a team to discover products.",
     "invalidId": "Invalid product id.",
     "notFound": "Product not found.",
-    "owner": "Owner",
-    "markupHint": "What you pay over the owner's cost, per unit.",
-    "reservedHint": "The owner keeps this many on every shelf — they are not shared.",
-    "noImage": "No image.",
-    "own": "This is your team's own product.",
+    "team": "Team",
+    "coverOnly": "Cover only",
+    "crossPrice": "Cross price",
+    "cost": "Cost",
     "openOwn": "Open in My Product",
     "archived": "Archived by its owner — no longer offered to other teams.",
     "locked": "Locked by its owner — other teams cannot use it.",
-    "stockHeading": "Stock by Warehouse",
-    "stockHelp": "An order ships from one warehouse, so this is where you can get it from, and how many.",
+    "notOffered": "Not offered to other teams, so there is no stock to take.",
+    "priceHeading": "Price by Warehouse",
+    "priceNav": "Price",
+    "stockHelp": "An order ships from one warehouse — this is where it is ready, and what it costs there.",
     "warehouse": "Warehouse",
-    "onShelf": "On shelf",
-    "canTake": "You can take",
+    "ready": "Ready",
     "noWarehouses": "No warehouses yet.",
-    "suppliersHeading": "Suppliers",
-    "suppliersHelp": "The supplier stores that sell this product. Any team may restock from them, not only the owner.",
-    "noSuppliers": "No supplier lists this product yet.",
-    "supplier": "Supplier",
-    "store": "Store",
     "pending": {
-      "canTake": {
-        "label": "You can take",
-        "reason": "on shelf minus the owner's reserved stock — whether the reserve binds only other teams, and where its boundary sits, is still open"
-      },
-      "unitCost": {
-        "label": "Your cost per unit",
-        "reason": "the unit price plus the markup — who may see the owner's unit price is not decided, so it is not shown"
+      "division": {
+        "label": "Priority / Research",
+        "reason": "sample — a product's division is set per product but stored nowhere yet, so it is the same invented one the Discover card shows"
       },
       "gallery": {
         "label": "Images",
         "reason": "only the cover — the full gallery comes from ProductDetail, which answers only the owning team"
       },
+      "ongoing": {
+        "label": "On its way",
+        "reason": "sample — another team's stock on its way cannot be read across teams yet; the ready figure above it is real, every shelf summed"
+      },
+      "crossPrice": {
+        "label": "Cross price",
+        "reason": "sample — an invented cost with the product's real markup over it, in Info and shared out among the warehouses holding it; another team's cost cannot be read yet, and who may see it is not decided"
+      },
+      "derived": {
+        "label": "Derived products",
+        "reason": "sample — goods returned to another team become that team's product; the link is not recorded yet, so the rows are the same ones the owner's product page shows"
+      },
       "suppliers": {
         "label": "Suppliers",
-        "reason": "sample rows — a product is linked to a supplier's store when a restock bought there is accepted, which is not built yet, so which stores sell it is invented"
+        "reason": "sample — the suppliers, their stores and the stores' links are real; that this product was bought at that store, and the deliveries and units, are invented until an accepted restock records the store"
+      },
+      "daily": {
+        "label": "Daily in and out",
+        "reason": "sample — stock movements are not summed per day yet; the same sample as the owner's product page"
+      },
+      "history": {
+        "label": "Stock history",
+        "reason": "sample — every team may read the stock history, but only the owning team can read it yet; each warehouse ends at its real ready stock. Your own team's products show the real history"
       }
     }
   },
@@ -594,6 +605,17 @@
     "empty": "No products found.",
     "backToProducts": "Back to Products",
     "edit": "Edit",
+    "newOrder": "Create Order",
+    "newRestock": "Restock",
+    "start": {
+      "warehouse": "Warehouse",
+      "quantity": "Quantity",
+      "ready": "{{n}} pcs ready",
+      "ofReady": "Of {{n}} pcs ready in this warehouse.",
+      "overReady": "More than is ready in this warehouse ({{n}} pcs).",
+      "continue": "Continue",
+      "noStock": "No stock is ready in any warehouse."
+    },
     "save": "Save",
     "create": "Create",
     "images": "Images",
@@ -685,7 +707,7 @@
       "pending": {
         "suppliers": {
           "label": "Suppliers",
-          "reason": "Every batch names its supplier, but the batches are read a page at a time — a list of every supplier needs the server to group them. The rows shown are samples."
+          "reason": "The suppliers, their stores and the stores' links are real. That this product was bought at that store is invented until an accepted restock records the store, and the deliveries, units and last cost need the server to group the batches per supplier."
         },
         "derived": {
           "label": "Derived products",
@@ -698,12 +720,14 @@
       },
       "suppliers": {
         "supplier": "Supplier",
+        "store": "Supplier store",
         "deliveries": "Deliveries",
         "units": "Units",
         "lastCost": "Last cost",
         "last": "Last delivery",
         "deliveriesCount_one": "{{count}} delivery",
-        "deliveriesCount_other": "{{count}} deliveries"
+        "deliveriesCount_other": "{{count}} deliveries",
+        "none": "No supplier is recorded for this product yet."
       },
       "derived": {
         "from": "Derived from",
@@ -2642,12 +2666,23 @@
     "movement": {
       "when": "When",
       "what": "What",
+      "transaction": "Transaction",
       "change": "Change",
       "by": "By",
       "batch": "Batch",
       "place": "Place",
       "product": "Product",
       "warehouse": "Warehouse"
+    },
+    "transaction": {
+      "restock": "Restock",
+      "order": "Order",
+      "transferIn": "Transfer in",
+      "transferOut": "Transfer out",
+      "adjustment": "Adjustment",
+      "return": "Return",
+      "move": "Shelf move",
+      "sample": "Sample"
     }
   },
   "address": {

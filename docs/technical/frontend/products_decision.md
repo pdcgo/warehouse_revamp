@@ -59,6 +59,19 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [the-minimum-closes-at-the-minimum](#the-minimum-closes-at-the-minimum) | a minimum closes a product when its ready stock is AT or under it (≤) — the Terkunci badge and Discover's filter alike; the business context still says `<`, reported there |
 | [a-locked-product-shows-on-discover](#a-locked-product-shows-on-discover) | Discover shows a product its owner LOCKED, with its *Selalu dikunci* badge — `ProductDiscover`'s `include_locked`, asked by the page alone; every picker still leaves it out |
 | [the-card-states-are-pinned-on-the-page](#the-card-states-are-pinned-on-the-page) | Discover's card has no story of its own — its states are pinned by the page's stories, which carry a locked product |
+| [the-discover-detail-is-the-product-page](#the-discover-detail-is-the-product-page) | the discover detail takes the product page's shape — the title row and its sticky bar, a nav beside Info (the large ready figure, the record as a list), Penjualan Tim Lain, Per Gudang and Pemasok ⚠ — with the card's badges and cross price — ⚠ the markup, the owner row, the cover and Produk Turunan REPLACED by [the-discover-detail-shows-no-markup](#the-discover-detail-shows-no-markup); Per Gudang's columns by [each-warehouse-says-ready-and-its-price](#each-warehouse-says-ready-and-its-price) |
+| [the-discover-detail-shows-no-markup](#the-discover-detail-shows-no-markup) | the discover detail shows no markup percentage; the owner is **Tim** and its name alone; the pictures are the product page's gallery; **Produk Turunan** ⚠ sits beside Penjualan Tim Lain, as on the product page |
+| [each-warehouse-says-ready-and-its-price](#each-warehouse-says-ready-and-its-price) | the discover detail's Stok di Setiap Gudang says **Siap** and the **cross price** per warehouse — a range where its units came in at different costs; *Bisa Anda ambil* is gone — ⚠ its title and place REPLACED by [the-discover-detail-has-the-warehouse-zone](#the-discover-detail-has-the-warehouse-zone) |
+| [the-discover-detail-has-the-warehouse-zone](#the-discover-detail-has-the-warehouse-zone) | the discover detail gets the product page's **Per Gudang** card — the picker, Overview (Siap, Dikirim, Umur stok), Pemasok, Keluar Masuk Harian, Riwayat Stok — WITHOUT Harga Modal; **Harga per Gudang** stands above it in its stead — ⚠ the Overview's figures REPLACED by [the-overview-says-the-cross-range](#the-overview-says-the-cross-range) |
+| [the-supplier-tab-names-the-store](#the-supplier-tab-names-the-store) | Pemasok, on both product pages, names the **toko pemasok** it was bought at — the name, the marketplace under it, the name opening the store's link; the last cost on the owner's page only |
+| [stock-history-is-everyones](#stock-history-is-everyones) | every team may read a product's **Riwayat Stok** — the discover detail shows it for another team's product, sample rows ending at the real shelf until the read is opened |
+| [the-lock-is-the-title-badge](#the-lock-is-the-title-badge) | the discover detail has no Penjualan Tim Lain card — the lock is the badge beside the name, and a minimum in force reads **🔒 Terkunci · Min N pcs** |
+| [the-overview-says-the-cross-range](#the-overview-says-the-cross-range) | the discover detail's Per Gudang Overview is **Siap · Dikirim · Harga cross** (a range, red) for the picked warehouse — no Umur stok |
+| [the-discover-history-names-no-batch](#the-discover-history-names-no-batch) | the discover detail's Riwayat Stok has no **Batch** column — the warehouse names each movement; the product page keeps it |
+| [a-product-page-opens-the-order-and-restock-forms](#a-product-page-opens-the-order-and-restock-forms) | the product page has **Buat Pesanan** and **Restok**, the discover detail **Buat Pesanan** only — each opens the existing form with this product (and the picked warehouse) on it, and returns here — ⚠ opening straight into the form REPLACED by [the-order-and-restock-start-on-the-page](#the-order-and-restock-start-on-the-page) |
+| [the-product-history-names-the-transaction](#the-product-history-names-the-transaction) | on both product pages Riwayat Stok's column is **Transaksi** — Restok, Pesanan, Transfer, Penyesuaian, Retur — not the shelf's Diterima / Diambil |
+| [the-order-and-restock-start-on-the-page](#the-order-and-restock-start-on-the-page) | Buat Pesanan and Restok first ask, on the page, the **warehouse** (each with its ready stock — the stock check) and the **quantity**; the form then opens with both on its first line |
+| [an-empty-product-cannot-start-an-order](#an-empty-product-cannot-start-an-order) | with no stock ready in any warehouse, **Buat Pesanan** is held back with *Stok siap habis di semua gudang* — on both pages; Restok stays |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -1314,3 +1327,331 @@ flowchart LR
 | who asks | `useDiscoverProducts` (the Discover page) alone; `AllProductPicker` and `useProductSearch` do not |
 | the mark | `locked` (`missing`) leaves the page's pending list: the badge is seen now. `lockFilter` stays — the server has no lock filter, and a minimum's half needs ready stock |
 | tests | `TestProductCrossLocked_ShownToTheDiscoverPageWhenAsked`, beside `TestProductCrossLocked_HiddenFromDiscoverOnly` (the default); `frada`'s stories `TheLocksAreOnTheGrid`, `TheBadgesAreOnTheCover` |
+
+---
+
+## the-discover-detail-is-the-product-page
+
+> Owner, in chat (2026-10-30): *"nah sekarang kita ke detail discover dibuat mirip yang detail produk biasa"*.
+
+**The verdict.** Another team's product reads like your own product's page: the same title row and sticky bar, the
+same nav beside one page of sections, Info with the large ready figure and the record as one list down, and Penjualan Tim
+Lain beside it. What the owner's page has and a borrower may not read — Batch, Produk Turunan, the warehouse tabs
+(Harga Modal, Keluar Masuk Harian, Riwayat Stok) — is not carried over. In its place, what the borrower came for: where
+to take it from (Per Gudang) and who sells it (Pemasok).
+
+```
+[←] Gula Pasir 1kg  [⚗ Riset] ⚠ [🔒 Dikunci]                        [↗ Buka di Produk Saya]   ← own product only
+    SKU-GULA-1K ⧉
+┌ nav ───────┐ ┌ Info Produk ───────────────────────────────────┐ ┌ Penjualan Tim Lain ┐
+│ Info       │ │ [sampul]     12 pcs siap  (● Aman)              │ │ Markup cross 1.5%  │
+│ Tim lain   │ │ Hanya        +0 pcs dalam pengiriman ⚠          │ │ Kunci  🔓 Terbuka  │
+│ Per gudang │ │ sampul ⚠     Pemilik      Toko Kenanga          │ └────────────────────┘
+│ Pemasok    │ │              Kategori     Rumah Tangga          │
+│            │ │              Harga cross ⚠ Rp 82.215 – Rp 83.230│   ← red, as on the card
+│            │ │              Deskripsi                          │
+│            │ └─────────────────────────────────────────────────┘
+│            │ ┌ Stok di Setiap Gudang ─ Gudang · Di rak · Bisa Anda ambil ⚠ ┐
+│            │ ┌ Pemasok ⚠ ─ pemasok (its team) · toko ─────────────────────┐
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the title row | the product page's — back as an icon, the name, the SKU to copy under it — with the CARD'S badges beside the name (the division ⚠ and the lock, `DiscoverBadges`) and Arsip. Its one action, on the team's own product only: **Buka di Produk Saya** (an icon on a phone). The "this is your own product" banner is gone — the action says it |
+| sticky | the same row in small once the title has scrolled away, the section chips always on a phone — the product page's own code, shared (`useStickyTitle`, `ProductStickyStrip`) |
+| Info | the cover (*Hanya sampul* ⚠ — a by-ids row has no gallery); the **large ready figure** with its chip — every warehouse's shelf SUMMED, so it is the Per Gudang table added up; under it what is on its way (⚠ another team's, the card's sample); then **Pemilik**, **Kategori**, **Harga cross** (red; ⚠ another team's — the card's own rule, `discoverPriceOf`, so card and page never differ) and, on the team's own product, **Harga modal**; then the description |
+| not on offer | a locked or archived product says why IN PLACE of the ready figure — the warning that stood over the page — and Per Gudang says *Tidak ditawarkan…* rather than vanishing, so the nav's sections never change |
+| Penjualan Tim Lain | the product page's card, read-only: the markup, and the lock's reading (`ProductLockControl`, not editable) with its Terkunci badge when a minimum is in force. The separate *Stok cadangan* figure is gone — the reserve IS the lock's minimum (one-lock-three-ways), read as *Min N pcs* |
+| Per Gudang | every warehouse — on the shelf, and what another team may take (⚠ derived); a block per warehouse on a phone |
+| Pemasok ⚠ | as before, inside the section card; a block per supplier on a phone |
+| marks | `division`, `gallery`, `ongoing`, `crossPrice` (sample — it REPLACES the `unitCost` *missing* mark: the price is shown now, as on the card), `canTake`, `suppliers` |
+| shared | moved to `features/products/` because two pages read them: `ProductTitleRow` + `ProductStickyStrip` (new), `FigureRows`, `StockHighlight` (now takes the ready figure and its line), `DiscoverBadges` (takes the page's own ⚠), `division.ts`, `discoverSample.ts` (was the discover page's `sampleMock.ts`, plus `discoverPriceOf`); `lib/useStickyTitle.ts` (new). The product page reads them unchanged on screen. `RecordField` (`Field`, `Stat`) is deleted — this page was its last reader |
+| no API change | every figure was already read — `ProductByIds`, `StockAvailability` per warehouse, and `OwnerStockByIds` on the team's own product |
+| ✅ built *(2026-10-30)* | [product-discover-detail/index.tsx](../../../frontend/src/pages/product-discover-detail/index.tsx); the stories `TheOwnersPageShape`, `TheCrossPriceIsTheCards`, `TheCardsBadgesAreOnTheTitle`, `TheReadyFigureIsTheShelvesSummed`, `LockedSaysSoAndOffersNoStock`, `Mobile` |
+
+⚠ **Still open, not settled here**: *Bisa Anda ambil* takes the reserve off EACH warehouse's shelf, while
+[one-lock-three-ways](#one-lock-three-ways) reads the minimum against the TOTAL of every warehouse. The `canTake` mark
+already says the rule is unsettled — point 5 of [product clarify](../../business/product/context_clarify.md).
+
+**What went stale** (HARD RULE 11), one cause — the files moved to `features/products/` — four sites: the *✅ built*
+links to `pages/product-discover/components/DiscoverBadges.tsx` in
+[a-discover-card-shows-its-division-and-lock](#a-discover-card-shows-its-division-and-lock),
+[prioritas-is-primary-riset-is-warning](#prioritas-is-primary-riset-is-warning) and
+[umum-carries-no-badge-and-stock-can-be-empty](#umum-carries-no-badge-and-stock-can-be-empty), and the link to
+`pages/product-discover/division.ts` in [a-filter-chip-wears-its-badges-icon](#a-filter-chip-wears-its-badges-icon) —
+read them as [features/products/DiscoverBadges.tsx](../../../frontend/src/features/products/DiscoverBadges.tsx) and
+[features/products/division.ts](../../../frontend/src/features/products/division.ts).
+
+## the-discover-detail-shows-no-markup
+
+> Owner, in chat (2026-10-30), on the discover detail: *"persentase markup tidak perlu diperlihatkan, pemilik jelas selling
+> dan tidak perlu gambar, cuma namanya saja, atau tulis tim saja biar lebih jelas, gambar produk ada, produk turunan juga
+> ditampilkan"*.
+
+```
+┌ Info Produk ────────────────────────────────┐ ┌ Penjualan Tim Lain ┐
+│ [gambar]   12 pcs siap  ● Aman              │ │ Kunci  🔓 Terbuka  │   ← no Markup cross
+│ Hanya      Tim          Toko Kenanga        │ └────────────────────┘
+│ sampul ⚠   Kategori     Rumah Tangga        │ ┌ Produk Turunan ⚠ ──┐   ← the product page's, beside it
+│            Harga cross ⚠ Rp 82.215 – …      │ │ Turunan dari · …   │
+└─────────────────────────────────────────────┘ └────────────────────┘
+```
+
+| | |
+| --- | --- |
+| no markup | Penjualan Tim Lain holds the **lock alone** — the markup's percentage is not on the page. What a borrower pays is the cross price in Info, which still carries the markup inside it |
+| Tim | the owner row reads **Tim**, and its value is the team's **name alone** — no avatar, no *Selling* badge: whoever owns a product on Discover is a selling team, so both said nothing |
+| the pictures | the product page's gallery, shared (`features/products/ProductGallery`) — one picture square, several as a carousel with thumbnails, none as a sentence. A by-ids row carries only the cover, so that is the one picture shown, marked *Hanya sampul* ⚠ (`gallery`); a product with no cover has no images at all, and carries no mark |
+| Produk Turunan | the product page's section and its sample rows (`features/products/DerivedSection`, `derivedSample.ts`, both moved there), beside Penjualan Tim Lain on a wide screen and after it below that; in the nav as **Turunan**; marked `derived` (sample) |
+| stories | the Default story's Gula carries a drawn picture (`SUGAR_PICTURE`, this story file only); `NamesTheTeamNotTheMarkup`, `ThePictureAndTheDerivedProducts`, `NoPictureSaysSo` |
+| ✅ built *(2026-10-30)* | [product-discover-detail/index.tsx](../../../frontend/src/pages/product-discover-detail/index.tsx) |
+
+**What it replaces** (HARD RULE 11), one cause — the owner's review of the page — four sites in
+[the-discover-detail-is-the-product-page](#the-discover-detail-is-the-product-page): its sketch and its *Penjualan Tim
+Lain* row (*"the markup, and the lock's reading"*), its *Info* row (*"Pemilik"*, *"the cover"*), and its verdict that
+Produk Turunan *"is not carried over"*. Read them as this entry says.
+
+## each-warehouse-says-ready-and-its-price
+
+> Owner, in chat (2026-10-30), after the column was explained: *"bisa diambil kurasa tidak perlu, di rak berarti ready
+> saja atau siap, malah yang perlu adalah harga, karena harga tiap gudang bisa berbeda, dan bisa range juga per gudang"*.
+
+```
+Stok di Setiap Gudang
+Gudang          Siap      Harga cross ⚠
+Gudang Pusat    54 pcs    Rp 51.412 – Rp 52.312     ← red, as on the card
+                          Rp 45.700 – Rp 46.500     ← the cost under it — the team's OWN product only
+Gudang Cabang   25 pcs    Rp 53.100
+Gudang Timur    0 pcs     —                         ← nothing on the shelf, nothing priced
+```
+
+| | |
+| --- | --- |
+| Siap | the column *Di rak* is **Siap** — what is ready on that warehouse's shelves (`StockAvailability`), as `N pcs`; 0 in the error tone. Info's large figure is still this column added up |
+| no *Bisa Anda ambil* | the shelf less the owner's reserve is gone, and with it the `canTake` mark. The reserve reads on the lock (*Min N pcs*), never off a warehouse's figure — so the per-warehouse-vs-total clash it raised no longer reaches the screen |
+| the price | **Harga cross** per warehouse — each warehouse's units came in at their own costs, so its price is its own, a RANGE when they differ. Red and bold as the card's; on the team's own product the cost under it, smaller, naming itself in a tooltip |
+| the team's own | real: `OwnerStockByIds` in each warehouse's lens (`useOwnerStockByWarehouse`, one call per warehouse, as `useAvailabilityByWarehouse`) |
+| another team's | ⚠ `crossPrice` (the same mark as Info's): the card's invented range SHARED OUT among the warehouses holding it, in id order (`sampleWarehouseCross`) — so the slices together are the range the card and Info say |
+| phone | a block per warehouse: the name and *Siap N pcs*, then the price |
+| stub | `stockAvailability` answers team 15's catalogue from its batches (`shelfSample`), so its two warehouses and their different costs can be shown |
+| ✅ built *(2026-10-30)* | [WarehouseStock.tsx](../../../frontend/src/pages/product-discover-detail/components/WarehouseStock.tsx); the stories `EachWarehouseHasItsPrice`, `YourOwnProductPricesEachWarehouse`, `EveryWarehouseHasARow`, `AReserveReadsOnTheLock` |
+
+**What it replaces** (HARD RULE 11), one cause, two sites in
+[the-discover-detail-is-the-product-page](#the-discover-detail-is-the-product-page): its *Per Gudang* row (*"on the
+shelf, and what another team may take (⚠ derived)"*) and its *⚠ Still open* note about the reserve taken off each
+warehouse — both stale. The business question behind that note (point 5 and Q13 of
+[product clarify](../../business/product/context_clarify.md)) is still open; this page simply no longer computes it.
+
+## the-discover-detail-has-the-warehouse-zone
+
+> Owner, in chat (2026-10-30): *"di detail produk biasa kan ada per gudang itu masukkan ke detail discover ini dengan
+> tanpa harga modal"*, then *"yang harga per gudang sebelumnya tidak perlu dihilangkan, itu penggantinya"* and *"tapi
+> harganya tidak masuk section per gudang ini, tapi di atasnya"*.
+
+```
+┌ Info Produk ─────────────────────┐  ┌ Penjualan Tim Lain ┐
+└──────────────────────────────────┘  ├ Produk Turunan ⚠ ──┤
+┌ Harga per Gudang ⚠ ──────────────┐  └────────────────────┘
+│ Gudang · Siap · Harga cross      │   ← every warehouse, never lensed — where the product page has Batch
+└──────────────────────────────────┘
+┌ Per Gudang ─────────── [ Semua gudang ▾ ] ┐
+│ Overview · Pemasok ⚠ · Keluar Masuk Harian ⚠ · Riwayat Stok │   ← no Harga Modal
+│ Siap 12 pcs · Dikirim 0 pcs ⚠ · Umur stok 44 hari ⚠         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| Per Gudang | the product page's warehouse card: the picker in its header (the full width under the title on a phone), the note when a warehouse is picked, and tabs — only the open one mounted |
+| no Harga Modal | the owner's cost layers are not a tab here. In their stead, **Harga per Gudang** (each-warehouse-says-ready-and-its-price), a section of its own ABOVE the card — so it is every warehouse at once and the picker never narrows it |
+| Overview | the lens's small figures, the product page's less Rentang HPP: **Siap** (the shelves), **Dikirim**, **Umur stok**. Own product: all real (OwnerStockByIds in the lens). Another team's: Siap real; Dikirim the card's sample, all of it bound for the first warehouse (`sampleOngoingAt`) ⚠ `ongoing`; Umur stok invented ⚠ `age` |
+| Pemasok | the product page's tab — [the-supplier-tab-names-the-store](#the-supplier-tab-names-the-store) — without the last cost |
+| Keluar Masuk Harian | the product page's sample, ⚠ `daily` |
+| Riwayat Stok | the owner's ledger (OwnerStockHistory), which answers only the owning team: real on the team's own product; another team's says *Riwayat stok hanya bisa dibaca tim pemilik produk ini.*, ⚠ `history` (missing) |
+| nav | Info · Tim lain · Turunan · Harga · Per gudang — the separate Pemasok section is gone |
+| shared | `WarehouseFilter`/`WarehouseNote` (`features/products/WarehouseLens`), `DailySection` + `dailySample.ts`, `HistorySection` moved to `features/products/`; the product page reads them unchanged |
+| ✅ built *(2026-10-30)* | the stories `TheOwnersPageShape`, `TheOverviewFollowsThePicker`, `AnotherTeamsHistoryIsTheOwners`, `LockedSaysSoAndOffersNoStock` |
+
+**What it replaces** (HARD RULE 11), one cause: [each-warehouse-says-ready-and-its-price](#each-warehouse-says-ready-and-its-price)'s
+table keeps its columns but is now titled **Harga per Gudang**, its mark on the section's title — its sketch's *Stok di
+Setiap Gudang* heading is stale. [the-discover-detail-is-the-product-page](#the-discover-detail-is-the-product-page)'s
+*Per Gudang* and *Pemasok ⚠* rows, and its verdict that the warehouse tabs are *"not carried over"*, are stale too.
+
+## the-supplier-tab-names-the-store
+
+> Owner, in chat (2026-10-30): *"pemasok di keduanya ada toko pemasoknya, lalu kalau ada linknya bearti toko pemasok bisa
+> buka link itu"*, then *"badge toko di bawah nama toko, kepanjangan soalnya"*.
+
+```
+Pemasok          Toko pemasok              Kiriman  Unit     Modal terakhir   Kiriman terakhir
+PT Banyak Toko   Banyak Toko Shopee 2 ↗    4        120 pcs  Rp 45.100        25 Okt 2026     ← Modal terakhir: owner's page only
+Toko Melati      [Shopee]
+```
+
+| | |
+| --- | --- |
+| both pages | ONE component (`features/products/SuppliersSection`) and ONE sample (`supplierSample.ts`), so a product names the same suppliers on its own page and its discover detail |
+| Pemasok | the supplier, its team under it — opens the supplier's discover detail |
+| Toko pemasok | the **supplier's store** it was bought at (never the team's own shop: a restock line names a supplier channel, [a-line-names-the-channel-it-was-bought-from](../../business/inventory/restock_decision.md#a-line-names-the-channel-it-was-bought-from)) — the name, the **marketplace badge under it**; with a link, the name opens the store in a new tab with an ↗; without one, plain text |
+| Modal terakhir | the owner's last unit cost — on the owner's page only; the discover detail never shows another team's cost |
+| sample | the suppliers, their stores and the links are REAL (every team's suppliers, as Discover Suppliers reads them); that this product was bought at that store, and the deliveries, units and last cost, are invented — until an accepted restock records the store ([restock-accepted-links-the-product-to-its-channel](../../business/supplier/context_decision.md#restock-accepted-links-the-product-to-its-channel)) and the batches are grouped per supplier |
+| ✅ built *(2026-10-30)* | the stories `SuppliersOpenTheSupplierDiscoverDetail`, `TheSupplierStoreOpensItsLink`; the product page's `SamplesFillTheGaps` |
+
+**What it replaces** (HARD RULE 11): the product page's Pemasok rows were invented names (*PT Sumber Makmur*, …) with no
+store — the sample of [the-warehouse-picker-splits-the-page](#the-warehouse-picker-splits-the-page)'s *⚠ sections* row; and
+the discover detail's own sample (`sampleSuppliers.ts`, deleted) named a supplier and a store with no figures. The two
+disagreed about one product; they no longer can.
+
+## stock-history-is-everyones
+
+> Owner, in chat (2026-10-30): *"riwayat stok boleh dibaca semua orang"*.
+
+**The verdict.** Any team may read a product's stock history — what came in, what went out, and what was left, per
+warehouse. The discover detail's Riwayat Stok tab shows it for another team's product too.
+
+| | |
+| --- | --- |
+| the team's own product | the real ledger (`OwnerStockHistory`), as on the product page |
+| another team's | ⚠ `history` (sample): `OwnerStockHistory` answers only the owning team. The rows (`historySample.ts`) tell each warehouse's story — one delivery in, four orders out — ENDING AT ITS REAL SHELF, so the ledger never contradicts Harga per Gudang above it; the warehouse picker narrows them |
+| the server | a read of a product's movements for ANY team — `OwnerStockHistory` opened, or a sibling. Recorded in [development_state/product/discover.md](../../development_state/product/discover.md) as backend work |
+| ✅ built *(2026-10-30)* | `SampleHistorySection` beside `HistorySection` ([HistorySection.tsx](../../../frontend/src/features/products/HistorySection.tsx)); the story `AnotherTeamsHistoryIsShown` |
+
+**What it replaces** (HARD RULE 11): [the-discover-detail-has-the-warehouse-zone](#the-discover-detail-has-the-warehouse-zone)'s
+*Riwayat Stok* row — *"another team's says Riwayat stok hanya bisa dibaca tim pemilik produk ini., ⚠ history (missing)"*
+— is stale: it is shown, as a sample.
+
+## the-lock-is-the-title-badge
+
+> Owner, in chat (2026-10-30): *"yang section penjualan team lain sepertinya tidak perlu soalnya tanda lockednya sudah ada
+> sebagai badge di atas"*, then *"tapi kalau min gimana?"*.
+
+```
+Kopi Arabika 250g  [⚗ Riset] ⚠  [↘ Min 2 pcs]                 ← a minimum not reached: 40 ready
+Kopi Arabika 250g  [⚗ Riset] ⚠  [🔒 Terkunci · Min 40 pcs]     ← reached (≤): another team cannot take it now
+Teh Melati 100g    [★ Prioritas] ⚠ [🔒 Dikunci]                ← locked by its owner
+```
+
+| | |
+| --- | --- |
+| no card | the discover detail drops **Penjualan Tim Lain** — with the markup already gone ([the-discover-detail-shows-no-markup](#the-discover-detail-shows-no-markup)) it held only the lock, which the title's badge says. Produk Turunan stands alone beside Info; the nav is Info · Turunan · Harga · Per gudang |
+| the minimum | what the card's lock control added was whether a minimum is IN FORCE. The badge says it now: given the ready stock summed over every shelf (`totalReady`), a minimum it has reached — AT or under it, [the-minimum-closes-at-the-minimum](#the-minimum-closes-at-the-minimum) — reads **🔒 Terkunci · Min N pcs** with the reason in a tooltip; one not reached keeps **↘ Min N pcs** |
+| the card | the Discover card's badge is unchanged — another team's stock there is a sample, so it says the setting alone |
+| ✅ built *(2026-10-30)* | [DiscoverBadges.tsx](../../../frontend/src/features/products/DiscoverBadges.tsx) (`totalReady`); the stories `AReserveReadsOnTheLock`, `AMinimumInForceSaysLocked`, `TheOwnersPageShape` |
+
+**What it replaces** (HARD RULE 11), one cause, three sites: [the-discover-detail-is-the-product-page](#the-discover-detail-is-the-product-page)'s
+*Penjualan Tim Lain* row, [the-discover-detail-shows-no-markup](#the-discover-detail-shows-no-markup)'s *no markup* row
+(*"Penjualan Tim Lain holds the lock alone"*) and its sketch, and the side column of
+[the-discover-detail-has-the-warehouse-zone](#the-discover-detail-has-the-warehouse-zone)'s sketch — no such card any more.
+
+## the-overview-says-the-cross-range
+
+> Owner, in chat (2026-10-31): *"untuk discover detail di overview tidak perlu umur [stok], malah butuh rentang harga
+> cross"*.
+
+```
+Per Gudang                         [ Gudang Pusat ▾ ]
+Overview · Pemasok ⚠ · Keluar Masuk Harian ⚠ · Riwayat Stok
+  Siap          12 pcs
+  Dikirim ⚠     0 pcs
+  Harga cross ⚠ Rp 82.215 – Rp 83.230      ← red; "—" where the picked warehouse holds none
+```
+
+| | |
+| --- | --- |
+| the rows | **Siap**, **Dikirim**, **Harga cross** — the cross price RANGE for the picked warehouse, every warehouse while none is picked. **Umur stok** leaves the discover detail's Overview; the product page's Overview keeps it |
+| the figure | the same as the page's other two prices, so the three never disagree: every warehouse → Info's cross price; one warehouse → that warehouse's row of Harga per Gudang (the team's own product from its cost in that warehouse's lens, another team's from the shared-out sample). Red, as every price a borrower pays |
+| marks | another team's: ⚠ `crossPrice` (the same mark as Info's and Harga per Gudang's). The `age` mark and its sample (`sampleStockAgeDays`) are gone |
+| ✅ built *(2026-10-31)* | [product-discover-detail/index.tsx](../../../frontend/src/pages/product-discover-detail/index.tsx); the story `TheOverviewFollowsThePicker` |
+
+**What it replaces** (HARD RULE 11): [the-discover-detail-has-the-warehouse-zone](#the-discover-detail-has-the-warehouse-zone)'s
+*Overview* row (*"Siap, Dikirim, Umur stok … ⚠ age"*) and its sketch's Overview line are stale.
+
+## the-discover-history-names-no-batch
+
+> Owner, in chat (2026-10-31): *"yang discover detail riwayat stok tidak ada batch"*.
+
+| | |
+| --- | --- |
+| the columns | the discover detail's Riwayat Stok reads Waktu · Apa · **Gudang** · Perubahan · Sesudahnya — no **Batch**, on another team's product (the sample) and on the team's own alike |
+| the product page | unchanged — its Riwayat Stok keeps Batch, which its own Batch section explains |
+| how | `HistorySection` and `SampleHistorySection` take `batch` (default on); the discover detail passes `batch={false}` |
+| ✅ built *(2026-10-31)* | [HistorySection.tsx](../../../frontend/src/features/products/HistorySection.tsx); the story `AnotherTeamsHistoryIsShown` asserts the headings |
+
+## a-product-page-opens-the-order-and-restock-forms
+
+> Owner, in chat (2026-10-31): *"bagaimana cara untuk membuat order dan restok langsung di detail ini, tapi … discover cuma
+> order saja"*, then *"oke"* to opening the existing forms with the product on them.
+
+```
+Product page (own)   [←] Minyak Goreng Sawit 2L     [🛒 Buat Pesanan] [📦 Restok] [✎ Ubah] [Arsipkan]   ← ⋯ on a phone
+Discover detail      [←] Gula Pasir 1kg  [⚗ Riset]  [🛒 Buat Pesanan]   ← held back, with the reason, when locked
+```
+
+| | |
+| --- | --- |
+| the actions | the product page: **Buat Pesanan** and **Restok** before Ubah and Arsipkan (none on an archived product, which keeps Pulihkan). The discover detail: **Buat Pesanan** only, beside *Buka di Produk Saya* on the team's own product |
+| where they go | the EXISTING forms — `/orders/new?product=<id>` and `/inventories/restock/new?product=<id>`, plus `&warehouse=<id>` when the warehouse lens has one picked (`orderFormFor`, `restockFormFor`, [presetProduct.ts](../../../frontend/src/features/products/presetProduct.ts)). Not a dialog: the order form holds every pre-create check, and a second copy would drift |
+| the forms | read the preset (`usePresetProduct`, ProductByIds — so another team's product comes in as a borrowed line): the product is the first line, quantity 1, as a pick adds it; the warehouse starts as the preset's, ahead of the team's default. The order form's "untouched" is the form as seeded, so leaving it unchanged asks nothing. A draft (`?draft=`) and an edit never read the preset |
+| returning | the page passes `fromHere`; Back and Create/Save return to it (`cameFrom`), else each form's own default as before |
+| held back | on the discover detail, another team's product that is locked by its owner or under a minimum in force, and any archived product — the button disabled, its reason on hover |
+| ✅ built *(2026-10-31)* | the stories `OrderAndRestockOpenTheirForms`, `RestockOpensWithThePickedWarehouse` (product page), `OrderOpensTheOrderForm`, `OrderIsHeldBackWhileLocked` (discover detail), `OpenedFromAProductPageStartsWithIt` (order form, restock form) |
+
+## the-product-history-names-the-transaction
+
+> Owner, in chat (2026-10-31): *"untuk riwayat itu diterima diambil itu type transaksi harusnya"*, then *"oke"* to the
+> table below.
+
+| movement kind | warehouse screens (unchanged) | product pages |
+| --- | --- | --- |
+| RECEIVE | Diterima | **Restok** |
+| PICK | Diambil | **Pesanan** |
+| TRANSFER_IN / OUT | Ditransfer masuk / keluar | **Transfer masuk / keluar** |
+| ADJUST | Dihitung | **Penyesuaian** |
+| RETURN | Dikembalikan | **Retur** |
+
+| | |
+| --- | --- |
+| the column | **Transaksi** (EN *Transaction*), where the warehouse's ledger says *Kegiatan* |
+| how | `MovementTable` takes `wording="transaction"`, worded by `transactionLabel` beside `kindLabel` in [movementKind.ts](../../../frontend/src/features/inventory/movementKind.ts) — one switch beside the other, so a new kind is not missed in one. `HistorySection` and `SampleHistorySection` pass it, on the product page and the discover detail alike |
+| ✅ built *(2026-10-31)* | the stories of both pages' Riwayat Stok |
+
+## the-order-and-restock-start-on-the-page
+
+> Owner, in chat (2026-10-31): *"untuk buat order maupun restok lebih baik bisa input valuenya sejak awal di halaman
+> detail, untuk order ada pilih gudang dan cek stok dulu berarti"*.
+
+```
+┌ Buat Pesanan ──────────────────────────────┐
+│ Gula Pasir 1kg · SKU-GULA-1K                │
+│ Gudang   (●) Gudang Pusat     Siap 12 pcs   │   ← every warehouse with its ready stock: the stock check
+│          ( ) Gudang Cabang    Habis          │   ← an order cannot ship from an empty one — not pickable
+│ Jumlah   [ − 3 + ]                           │
+│          Dari 12 pcs siap di gudang ini.     │   ← more than that: said in red, Lanjutkan held
+│                        [Batal] [Lanjutkan →] │
+└──────────────────────────────────────────────┘
+        → /orders/new?product=73&warehouse=11&qty=3
+```
+
+| | |
+| --- | --- |
+| where | **Buat Pesanan** (both pages) and **Restok** (the product page) open this dialog first — a focused action, so a dialog; `StartFormDialog` ([StartFormDialog.tsx](../../../frontend/src/features/products/StartFormDialog.tsx)) |
+| order | the warehouse it ships from: every warehouse listed with its ready stock (`StockAvailability`, read when the dialog opens); an empty one cannot be picked. Preselected: the page's lens warehouse if it holds some, else the fullest. The quantity: at least 1, at most what is ready there |
+| restock | the warehouse it lands in — any, its current stock shown — preselected from the lens; the quantity at least 1 |
+| then | **Lanjutkan** opens the form with `?product=&warehouse=&qty=` — the product its first line AT that quantity, the warehouse set (`usePresetProduct` now carries `quantity`). The form still checks everything; this only starts it |
+| ✅ built *(2026-10-31)* | the stories `OrderAndRestockOpenTheirForms`, `RestockOpensWithThePickedWarehouse` (product page), `OrderOpensTheOrderForm` (discover detail — the empty warehouse, the over-quantity), `OpenedFromAProductPageStartsWithIt` (order form, at qty 3) |
+
+**What it replaces** (HARD RULE 11): [a-product-page-opens-the-order-and-restock-forms](#a-product-page-opens-the-order-and-restock-forms)'s
+*where they go* row — the buttons no longer navigate straight to the form; its sketch and the rest stand.
+
+## an-empty-product-cannot-start-an-order
+
+> Owner, in chat (2026-10-31): *"jika stok ready 0? tanya saja"* — then, of three ways, the button held back.
+
+| | |
+| --- | --- |
+| the rule | with **0 ready in every warehouse**, **Buat Pesanan** is disabled, its reason on hover: *Stok siap habis di semua gudang.* — the product page (the team's own total, `OwnerStockByIds`) and the discover detail (every shelf summed, the team's own product included). The form would only refuse it: the take draws at creation |
+| Restok | unchanged — an empty product is the reason to restock |
+| one warehouse empty | the dialog already handles it ([the-order-and-restock-start-on-the-page](#the-order-and-restock-start-on-the-page)): an empty warehouse cannot be picked |
+| ✅ built *(2026-10-31)* | the stories `OrderIsHeldBackWithNoStock` (product page, discover detail) — Tepung, which no shelf holds |
