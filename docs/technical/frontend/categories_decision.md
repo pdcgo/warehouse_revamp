@@ -5,8 +5,8 @@ Administrator. **Append-only** (RULE 12): a reversed decision is renamed and its
 
 The rules every screen follows are in [context_decision.md](context_decision.md). There is no business context for
 categories of their own yet: the owner's product context names `categories` as a product attribute, and
-[a-product-files-under-many-categories](../../business/product/context_decision.md#a-product-files-under-many-categories)
-is the one decision that touches them.
+[a-product-files-under-many-categories](../../business/product/context_decision.md#superseded-a-product-files-under-many-categories)
+is the one decision that touches them — 🔄 superseded 2026-10-31 by [a-product-has-one-category](../../business/product/context_decision.md#a-product-has-one-category).
 
 | decision | what it decided |
 | --- | --- |
@@ -124,7 +124,7 @@ Nama                              Sub-kategori   Produk ⚠1                  Ak
 | | |
 | --- | --- |
 | the column | **Produk**, after *Sub-kategori*, its ⚠ number on the heading; on a phone the row's count line says *1 sub-kategori · 102 produk*, and the strip at the top carries the explanation |
-| ⚠ the figures | **invented** (`sampleProductCount`, the same figure for the same category every render) and marked `sample` in `pages/categories/pending.ts` — nothing counts the products filed under a node: ProductList has no category filter, and a product under several nodes ([a-product-files-under-many-categories](../../business/product/context_decision.md#a-product-files-under-many-categories)) is decided but not built. Deleted the day the count exists |
+| ⚠ the figures | **invented** (`sampleProductCount`, the same figure for the same category every render) and marked `sample` in `pages/categories/pending.ts` — nothing counts the products filed under a node: ProductList has no category filter, and a product under several nodes ([a-product-files-under-many-categories](../../business/product/context_decision.md#superseded-a-product-files-under-many-categories)) is decided but not built — 🔄 superseded 2026-10-31: a product has one category ([a-product-has-one-category](../../business/product/context_decision.md#a-product-has-one-category)). Deleted the day the count exists |
 | not settled | whether a branch's count includes its sub-categories' products. The sample is the node's own; the real one is the owner's call when the count is built |
 | the add action | **＋ Sub-kategori** (EN *＋ Sub-category*) — the ＋ already says *add*. Its spoken name stays *Tambah sub-kategori di bawah …*. The actions column is 11rem again, still a minimum |
 | a disabled ⋯ item | **does nothing.** Hapus, off while a node has sub-categories, still opened its confirm on a click: a disabled `Menu.Item` fires its DOM `onClick`, the menu only skips selecting it. The items act through the menu's `onSelect` now. The same hole was closed in `CompactActions` (shared), the account row's actions, the pick queue's Print and restock accept's Accept — and CLAUDE.md's row-actions rule says so |

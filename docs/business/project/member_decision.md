@@ -223,3 +223,66 @@ flowchart LR
 took A knowing this: the question being answered is *"what did each person ship"*, not *"how is it
 going right now"*. If the second question is ever asked, the answer is the `## Now` block from
 option C, not a move to daily entries.
+
+## ledger-is-retired-as-a-context
+
+> Owner, in chat (2026-10-31): *"yes"* — to *"should `ledger` be retired as a context?"*, the ledger half of
+> [Q1](./member_clarify.md#question), *who owns `ledger`?* As recommended, against my earlier *"→ Toni"*, whose
+> premise — analytic is ledger's only reader, and Toni's — no longer held.
+
+**The verdict.** `ledger` is **not a context** any more, so nobody owns it. There is no central book: every service keeps
+its own ledger ([the-template-is-an-index](../../technical/ledger/mutation_and_ledger_decision.md#the-template-is-an-index)),
+and the financial statistics the doc drew are served by each service's metrics
+([the-pattern-replaces-the-shipped-analytics](../analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)).
+A central copy would be a second source of truth to keep in step.
+
+```mermaid
+flowchart LR
+  subgraph "the ledger doc drew"
+    S1["settlement log"] --> B["one central book"]
+    P1["purchasing log"] --> B
+    I1["inventory log"] --> B
+    E1["expense log"] --> B
+  end
+  subgraph "what stands"
+    S2["settlement's ledger"] --> M["each service's metrics"]
+    L2["liability's ledger"] --> M
+    I2["inventory's ledgers"] --> M
+    F2["financial accounts"] --> M
+  end
+```
+
+| | |
+| --- | --- |
+| the ledger context | retired — [ledger/context.md](../ledger/context.md) describes a book that will not be built; reported in its clarify |
+| its open questions | Q5, who reconciles the logs against the book — closed: there is no book. Q7, what lag a money screen may show — moved to the metric pattern ([a-money-figure-says-how-current-it-is](../analytic/rpc_provide_decision.md#a-money-metric-says-as-of-when)) |
+| purchasing | not a context either — the restock is inventory's ([inventory-owns-the-restock-end-to-end](../inventory/context_decision.md#inventory-owns-the-restock-end-to-end)) |
+| the technical template | [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) stays — it is how each service builds ITS ledger |
+| still open in Q1 | the two riders: does `category` go with Products, and `team` with Users & Roles? |
+
+**What it ripples** (HARD RULE 11) — the sites that name the retired book: [settlement context.md](../settlement/context.md)
+line 33 and [settlement-publishes-to-the-book](../settlement/context_decision.md#settlement-publishes-to-the-book)'s *Financial
+Ledger* consumer, reported in [settlement-posts-to-a-retired-book](../settlement/context_clarify.md#settlement-posts-to-a-retired-book).
+
+## category-goes-with-products-and-team-with-users
+
+> Owner, in chat (2026-10-31): *"yes"* — to the two riders left in [Q1](./member_clarify.md#question): *does `category` go
+> with Products, and `team` with Users & Roles?* As recommended.
+
+**The verdict.** Each goes with the context that is its only reason to exist: **`category`** with **Products** — a
+category exists to file a product ([a-product-has-one-category](../product/context_decision.md#a-product-has-one-category)) —
+and **`team`** with **Users & Roles** — a team exists to hold people and their roles.
+
+| context | goes with | so, by [member.md](./member.md) |
+| --- | --- | --- |
+| `category` (4 RPCs) | Products | Toni's |
+| `team` (9 RPCs) | Users & Roles | Heri's |
+
+```mermaid
+flowchart LR
+  C["category"] --> P["Products"]
+  T["team"] --> U["Users and Roles"]
+```
+
+⚠ **What it does not settle:** whether ownership follows member.md or practice — on this branch Heri decides Products
+too ([Q2](./member_clarify.md#question), in the overtaken list).

@@ -1,5 +1,10 @@
 # Development state — mcp
 
+> 🔄 **2026-10-31 — every MCP question is answered; nothing is built.** Our server hosts the MCP behind an OAuth login
+> ([our-server-hosts-the-mcp](../../business/mcp/context_decision.md#our-server-hosts-the-mcp)); the login mints a named, one-team,
+> 90-day credential, root's reading every team; the owner and admin connect; the agent reads through the metric pattern
+> plus three reads; buyer data is not cleared. See the decision file's index. The next MCP pass can start.
+
 **Pass:** business analysis of the owner's [mcp/context.md](../../business/mcp/context.md) — a local MCP app shipped
 to users, so their own AI agent can read and analyze their data through the RPC API. Questions:
 [context_clarify.md](../../business/mcp/context_clarify.md) — **6 open** (Q3–Q8). Decisions:
@@ -12,7 +17,7 @@ to users, so their own AI agent can read and analyze their data through the RPC 
 | --- | --- |
 | [an-agent-only-reads-for-now](../../business/mcp/context_decision.md#an-agent-only-reads-for-now) *(Q1)* | an agent runs **no write**, destructive or not · the **server** refuses it — the access interceptor, before the handler, on an agent's credential · a read is an RPC declared `idempotency_level = NO_SIDE_EFFECTS` (my spec — no proto carries it yet) · tools listed with `readOnlyHint: true` · rules out the session token as the agent's credential |
 | [the-mcp-uses-the-official-go-sdk](../../business/mcp/context_decision.md#the-mcp-uses-the-official-go-sdk) *(owner's §General 3)* | every MCP piece on `modelcontextprotocol/go-sdk`, the version `go.mod` pins (v1.7.0, shared with `san remote`) · it issues no token, so any OAuth login is ours to build · ⚠ its localhost guard 403s a loopback request with a public `Host` |
-| [the-tools-live-in-the-shipped-app](../../business/mcp/context_decision.md#the-tools-live-in-the-shipped-app) *(Q2a — against my B)* | option A: a Go app on the user's machine, MCP over stdio (`StdioTransport`), calling our Connect RPCs over HTTPS with the agent's credential · tools compiled in · **no `/mcp` on our server** · accepts that a breaking RPC change breaks un-updated copies |
+| [the-tools-live-in-the-shipped-app](../../business/mcp/context_decision.md#superseded-the-tools-live-in-the-shipped-app) *(Q2a — against my B)* | option A: a Go app on the user's machine, MCP over stdio (`StdioTransport`), calling our Connect RPCs over HTTPS with the agent's credential · tools compiled in · **no `/mcp` on our server** · accepts that a breaking RPC change breaks un-updated copies |
 | [chatgpt-and-claude-are-the-agents-for-now](../../business/mcp/context_decision.md#chatgpt-and-claude-are-the-agents-for-now) *(Q2b)* | ChatGPT reaches only a public HTTPS URL, OAuth or no auth, never stdio · Claude: custom connectors are public URLs called from Anthropic's cloud (OAuth), and Claude Desktop / Claude Code also run a local stdio program |
 
 ⛔ **The last two conflict** — ChatGPT cannot reach the shipped app. Recorded as a contradiction in the clarify

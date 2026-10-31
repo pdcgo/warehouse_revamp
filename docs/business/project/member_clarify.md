@@ -221,13 +221,10 @@ flowchart TD
 
 ## Question
 
-1. ⛔ **Who owns `ledger`?** The last unowned context — **7 open questions**, and each party can
-   point at the other. 🔄 **→ Toni**, reversing my last answer: every input is an *event* so no
-   producer waits on it, and its **only reader is analytic**, which is his. Ledger + analytic is one
-   reporting lane. ⚠ Whoever takes it inherits **purchasing**, which is a producer in your own
-   diagram and has no service and no doc ([ledger C5](../ledger/context_clarify.md#critique)).
-   **Two riders never named:** does `category` (4 RPC) go with Products, and `team` (9 RPC) with
-   Users & Roles? I read yes to both.
+1. ✅ *(2026-10-31)* **Answered, in two halves:** `ledger` is retired ([ledger-is-retired-as-a-context](./member_decision.md#ledger-is-retired-as-a-context)),
+   and `category` goes with Products, `team` with Users & Roles
+   ([category-goes-with-products-and-team-with-users](./member_decision.md#category-goes-with-products-and-team-with-users)). Kept as a
+   line so the numbers hold.
 2. **Does this doc grant DECISION authority, or only the work?** Concretely: from now on, does a
    `_clarify.md` in `inventory/` address **Toni** rather than *"the owner"*?
 3. **Who settles a BOUNDARY?** Today's instance: the warehouse's loss reimbursement writes Toni's

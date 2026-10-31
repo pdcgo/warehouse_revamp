@@ -1181,3 +1181,96 @@ flowchart LR
 | posted | once per transfer, by balance from the event ([balance-posts-the-transfers-on-site-debt-from-the-event](../inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)) |
 | not built | liability has no subscription to `warehouse-transfer-accepted` and no case for it in `push_handler.go`, so today the charge is booked nowhere |
 | your doc | §What Things That Affect The Team Balance, cause 2, says *"to receive restock"*. Widening it to a transfer is yours: [cause-2-names-the-restock-only](./context_clarify.md#cause-2-names-the-restock-only) |
+
+## an-entry-stays-disputable-forever
+
+> Owner, in chat (2026-10-31): *"yes, it can disputed forever"* — to [Q5](./context_clarify.md#question), *is an entry
+> disputable forever?*, after I recommended withdrawing it: no dispute feature exists, and a false `found` is bounded by
+> [a-surplus-claims-a-lost-unit-first](../inventory/opname_decision.md#a-surplus-claims-a-lost-unit-first). Against my
+> first recommendation, a window on the entry.
+
+**The verdict.** An entry never becomes final by time. There is **no dispute window** — no N days after which silence
+counts as agreement, and no state that closes an entry against argument. An entry from any month can be contested as
+much as one from today.
+
+```mermaid
+flowchart LR
+  E["an entry on a team's balance"] --> D["contestable - today, next month, any month"]
+  F["a found from the warehouse"] -->|"once stock problems are built"| C["must claim an open lost problem first"]
+  C --> M["so a found reverses only a real loss"]
+```
+
+| | |
+| --- | --- |
+| a window | none — no entry is agreed by silence |
+| a dispute feature | none is built or designed; contesting an entry happens between the teams |
+| the false `found` | bounded by [a-surplus-claims-a-lost-unit-first](../inventory/opname_decision.md#a-surplus-claims-a-lost-unit-first): a found unit claims an open `lost` problem before any money comes back — ⛔ not built (`warehouse_stock_problems` does not exist) |
+| ✅ built | nothing to build — no window exists today |
+
+**What it costs — accepted.** Nothing in the system says an old figure is settled; a month already reported can still be
+argued over.
+
+## a-payment-always-moves-money
+
+> Owner, in chat (2026-10-31): *"cash you mean is bank transfer ?"*, then *"yes"* to *"a payment always moves money from
+> one account to another, with proof attached — never goods, and no netting of its own"*. It answers
+> [Q3](./context_clarify.md#question) (repaying in goods) and
+> [team balance Q2](../../technical/balance/team_balance_design_clarify.md#question) (an `offset` method), both as one
+> question.
+
+**The verdict.** A payment between two teams is **money moving** from one of the payer's financial accounts to one of
+the receiver's — a bank transfer, an e-wallet transfer, or cash handed over from a cash box — always with proof attached
+([a-payment-must-carry-proof](#a-payment-must-carry-proof)). It is never goods, and there is no netting method: the pair
+balance already nets ([the-grain-is-the-team-pair](#the-grain-is-the-team-pair)).
+
+| | |
+| --- | --- |
+| a bank account | a bank transfer — its screenshot |
+| an e-wallet | a wallet transfer — its receipt |
+| a cash box | cash handed over — a photo of the signed handover note |
+| goods instead of money | **no** — goods moving is a restock; if the teams agree it settles money, a payment is recorded beside it, each a record of its own kind |
+| netting | **not a payment** — what W owes A and what A owes W post into one pair balance, so it already reads as the net, and one payment settles it |
+
+```mermaid
+flowchart LR
+  E1["W owes A - 300k, lost goods"] --> B["the pair balance - A owes W 700k"]
+  E2["A owes W - 1M, fees"] --> B
+  B --> P["one payment of 700k - money from an account, with proof"]
+  G["goods sent instead"] -.->|"a restock, not a payment"| R["restock"]
+```
+
+**What it closes:** [a-payment-must-carry-proof](#a-payment-must-carry-proof) named `offset` as still open — it is not a
+method. My own recommendation to allow `offset` was made before reading the pair grain, and was wrong.
+
+✅ **Built** — nothing to change: a payment already names `from_account_id` and `to_account_id`, any of the three
+account types, and refuses without proof.
+
+## a-return-may-carry-the-couriers-ask
+
+> Owner, in chat (2026-10-31): *"return have to. but its courrier rarely ask"* — to [Q4](./context_clarify.md#question),
+> *is the return half of `cod_fee` in scope now?* Against my *later*.
+
+**The verdict.** The return half is in scope. When a warehouse person **accepts a return**
+([order_return.md](../order/order_return.md), *"Warehouse Person Accepting Return"*), they may enter what the courier
+asked at the door — **optional**, because the courier rarely asks. If they enter one, the selling team owes the
+warehouse that amount, exactly as a restock's courier charge does
+([cod-fee-is-the-couriers-incidental-ask](#cod-fee-is-the-couriers-incidental-ask)).
+
+```mermaid
+flowchart LR
+  R["a returned parcel arrives"] --> A["the warehouse person accepts the return"]
+  A --> Q{"did the courier ask anything?"}
+  Q -->|"usually not"| N["nothing posted"]
+  Q -->|"yes - amount and note"| E["the return-accepted event carries it"]
+  E --> L["liability - the selling team owes the warehouse"]
+```
+
+| | |
+| --- | --- |
+| where it is entered | the return accept, by the warehouse person — an amount and a short note, both optional, empty by default |
+| ⚠ my spec — the shape | the restock's: `warehouse_additional_cost` and its note on the accept, carried by the accepted event, posted by liability from the event ([restock_courier_charge.go](../../../backend/services/liability_service/liability_v1/restock_courier_charge.go)) |
+| the entry | `INCIDENTAL_FEE`, the selling team owing the warehouse, keyed by the order |
+| empty | posts nothing — the common case |
+| `inventory/return.md` | still unplanned: this is the money at the door, not the stock side of a return |
+
+⛔ **Not built.** The return accept has no courier field, and liability posts no return charge.

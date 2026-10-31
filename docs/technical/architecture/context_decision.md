@@ -76,3 +76,26 @@ single-timezone standards carry a DST caveat; this one does not.
 
 ⚠ **What it does NOT decide**: whether a *user* in another timezone sees their own day or Jakarta's. The
 system's calendar is Jakarta; the presentation question is separate and not raised by anything yet.
+
+## region-stays-its-own-service
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q8](./context_clarify.md#question), *does `region_service` stay its own
+> service?* As recommended.
+
+**The verdict.** `region_service` stays its own service. Its one job is the province → regency → district → village
+tree that the address pickers read; no other service routes or prices by region — an order keeps its address as plain
+names ([an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names)), and the
+warehouse fee is a percent per warehouse ([warehouse-prices-balance-records](../../business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)).
+
+```mermaid
+flowchart LR
+  P["the address pickers"] --> R["region_service - the area tree"]
+  O["an order"] -.->|"keeps plain names, no region id"| X["no region read"]
+```
+
+| | |
+| --- | --- |
+| what it holds | the area tree, read by the address pickers |
+| who reads it | the frontend only |
+| revisit when | tracking, or a fee, needs a region |
+| ✅ built | nothing changes — this is what runs |

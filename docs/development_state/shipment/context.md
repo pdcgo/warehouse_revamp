@@ -41,7 +41,7 @@ order form's question, and it has not been raised yet.
 ```mermaid
 flowchart LR
   subgraph "shipment_service"
-    T["shipment_channels — seeded jne, jnt, sicepat"]
+    T["shipment_channels — seeded jne, jnt, sicepat and eight more"]
   end
   PAGE["/shipping — ShipmentChannelsPage, root only"] -->|"List, Create, Update, Delete, Restore"| T
   OLD["ShippingSelect, ShippingBadge — code bridge"] -->|"List, include_deleted"| T
@@ -54,7 +54,7 @@ flowchart LR
 | layer | where |
 | --- | --- |
 | contract | `proto/warehouse/shipment/v1/shipment.proto` — reads `allow_all`, writes `ROLE_ROOT`; `receipt.proto` — `ReceiptCheck`, `allow_only_authenticated` |
-| migration | `backend/services/shipment_service/db_migrations/00001_create_shipment_channels.sql` (plain unique index on code, seed) |
+| migration | `backend/services/shipment_service/db_migrations/00001_create_shipment_channels.sql` (plain unique index on code, seed); `00002_seed_more_shipment_channels.sql` — the eight more couriers live orders ship by (the-channels-are-what-orders-ship-by, 2026-10-31) |
 | handlers | `backend/services/shipment_service/shipment_v1/` — one file per RPC; update/delete/restore share `write_row.go` (single `UPDATE … RETURNING`) |
 | unit tests | 25, one `<rpc>_test.go` per RPC — the channels on real Postgres, `receipt_check_test.go` (9) with no database |
 | wiring | `wire.go` + `service_api.go` (replaced shipping_service) |
@@ -74,7 +74,7 @@ flowchart LR
 | | why |
 | --- | --- |
 | selling orders + restocks still store `shipping_code` | the move to `shipment_channel_id` is the ORDER redesign's ([the-old-catalogue-bridges-by-code](../../business/shipment/context_decision.md#the-old-catalogue-bridges-by-code)) |
-| codes outside the seed (`anteraja`, `tiki`, …) on old rows render as the raw code | root creates the channel to name them |
+| codes outside the seed (`tiki`, `ninja`, …) on old rows render as the raw code | root creates the channel to name them |
 | `shippings` + `shipping_service_version` remain in existing databases | no service migrates another's table |
 | `docs/technical/architecture/context_clarify.md` still proposes a `shipping_service` | a proposal in an agent clarify, superseded by the shipment decisions — re-examine it with that doc |
 

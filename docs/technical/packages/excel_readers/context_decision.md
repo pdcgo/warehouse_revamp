@@ -20,6 +20,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [order-is-fund](#order-is-fund) | TikTok `Order` → `fund`, including the 53 sampled orders that settle ZERO |
 | [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
 | [the-built-tiktok-item-is-the-contract](#the-built-tiktok-item-is-the-contract) | the TikTok items as built ARE the TikTok contract — the doc's Shopee-shaped struct is superseded, and every TikTok key hashes their fields |
+| [only-shopee-and-tiktok-for-now](#only-shopee-and-tiktok-for-now) | two readers, Shopee and TikTok, and no third for now; a Tokopedia order inside a TikTok file is that TikTok shop's row |
 
 ---
 
@@ -588,3 +589,27 @@ flowchart LR
 
 - **Whether keys survive the 2026-09 layout** — an adjustment's `Type` may follow its respelled Reports label, and no
   period has been downloaded in both layouts to check: [the reader's questions](./context_clarify.md#question).
+
+## only-shopee-and-tiktok-for-now
+
+> Owner, in chat (2026-10-31): *"for now we just supported shopee and tiktok"* — to [Q2](./context_clarify.md#question),
+> *is Tokopedia a third reader, or a column value?*
+
+**The verdict.** For now the importer reads **two** platforms — Shopee and TikTok — and no third. A Tokopedia order that
+arrives inside a TikTok workbook (`Order Source = Tokopedia`) is a row of that **TikTok** shop's file, like any other. A
+shop registered under any other marketplace — Tokopedia included — has no settlement import.
+
+```mermaid
+flowchart LR
+  T["a TikTok workbook - TikTok Shop and Tokopedia orders"] --> S["a TikTok shop - every row imported"]
+  K["a shop registered as Tokopedia"] -.->|"refused - no reader for now"| X["no import"]
+```
+
+| | |
+| --- | --- |
+| readers | `san_excel_readers`' Shopee and TikTok — unchanged |
+| a Tokopedia row in a TikTok file | imported with the file, into the TikTok shop |
+| the shop check | unchanged — a file goes only into a shop of its own platform ([import_run.go](../../../../backend/services/settlement_importer_service/settlement_importer_v1/import_run.go)) |
+| `MARKETPLACE_TOKOPEDIA` | stays in the enum; a shop may still be registered so, it only has no import |
+| ✅ built | nothing to build — this is what runs today |
+| when it comes back | a shop that settles outside Shopee and TikTok — then a reader for that platform's own export |

@@ -709,7 +709,7 @@ it has no control over. No action — recorded so it is not re-litigated.
 
 # Question
 
-**Six are open — 1, 2, 3, 9, 8, 10.** Everything else below is a deleted-pointer to the decision that
+**None is open.** Everything else below is a deleted-pointer to the decision that
 closed it, kept rather than removed because the `_decision.md` files cite these ordinals and a silent
 renumber would repoint them.
 
@@ -719,24 +719,20 @@ renumber would repoint them.
 > demonstrated inside a single file. Every pointer therefore names its **verdict**, and the verdict is
 > the thing to cite.
 
-1. **Item 2 — everything the warehouse laid out, or only the COD at the door?** And does the warehouse's
-   own ops fee post on the same entry?
-   ⚠ **Sharper now that it ships:** `SourceTypeCODFee` is superseded and posts nothing;
-   `SourceTypeRestockOutlay` posts **the sum of the restock's cost lines, one call per delivery**. So the
-   breadth question moved into `restock_cost_lines` — whatever may be entered there is chargeable.
-   **→ I recommend a typed cost-line enum, with the ops fee separated by nature** — the ledger has one
-   `restock_outlay` line and cannot tell *fronted* from *earned*, which is [Critique 2](#critique) landing
-   in shipped code.
-2. **Item 6 — is `offset` a payment method?** The reject half is now [Critique 11](#critique), because the
-   shipped statuses answer it with *"no"* rather than leaving it open. What is still genuinely undecided
-   is whether a warehouse may settle by **cancelling out** what it owes a team against what that team owes
-   it. **→ I recommend allowing it as `method = offset` with no cash** — the pair grain makes it the
-   natural move, and forbidding it just means two fake transfers.
-3. **After a reimbursement, who owns the goods if they are found?** The warehouse paid COGS for them. Item
-   5 as written returns them to the owner and reverses the money.
-   **→ I recommend exactly that** — it matches what physically happened — but the alternative (the
-   warehouse keeps them, no reversal) is defensible and it is your call. ⚠ The code has already taken the
-   first option: `PostStockDamage(..., reversal: true)`.
+1. ✅ **Answered: only the courier's incidental ask at the door, one open kind (`incidental_fee`); the warehouse's own fee
+   posts separately as `order_fee`** —
+   [cod-fee-is-the-couriers-incidental-ask](../../business/balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask),
+   [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words),
+   [warehouse-prices-balance-records](../../business/teams/warehouse/context_decision.md#warehouse-prices-balance-records).
+   Against my typed cost-line enum. Kept as a line so the numbers hold.
+2. ✅ *(2026-10-31)* **Answered: no — netting is not a payment** — [a-payment-always-moves-money](../../business/balance/context_decision.md#a-payment-always-moves-money):
+   the pair balance already nets, and a payment always moves money. Against my `offset`. Kept as a line so the numbers
+   hold.
+3. ✅ *(2026-10-13)* **Answered: the owner — a found unit claims the open lost problem, returns to its batch, and the
+   reimbursement reverses** —
+   [a-surplus-claims-a-lost-unit-first](../../business/inventory/opname_decision.md#a-surplus-claims-a-lost-unit-first),
+   [a-shortage-writes-a-row-per-batch](../../business/inventory/opname_decision.md#a-shortage-writes-a-row-per-batch).
+   As recommended. Kept as a line so the numbers hold.
 > ⛔ **Q4 is DELETED — every entry names who posted it.**
 > [every-entry-names-who-posted-it](./team_balance_design_decision.md#every-entry-names-who-posted-it).
 > ⚠ Its second half closed **against** this file's recommendation, and from the code: I proposed a

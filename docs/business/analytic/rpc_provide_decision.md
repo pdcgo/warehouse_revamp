@@ -1661,3 +1661,93 @@ flowchart LR
 | the screen | `frada`'s: the search box in the filter bar, in the URL as `q`, its own empty hint (*No supplier matches.*), counted by Clear |
 | the Analytic screen | does not offer it — no metric there is about suppliers yet |
 | tests | `TestMetricSearch_TheKeywordFindsSuppliersAsTheListDoes`; the stories `TheSearchNarrowsTheRankingAndTheHeadline` and `FiltersLiveInTheUrl` |
+
+## a-metric-is-added-whole-for-now
+
+> Owner, in chat (2026-10-31): *"for now, just metric is enough"* — to [the-picker-ticks-fields](./rpc_provide_clarify.md#question),
+> *may a metric open one level further so its fields can be ticked one by one?* Against my A, and **for now** — as
+> [compare-in-another-tab-for-now](#compare-in-another-tab-for-now) deferred the A / B view.
+
+**The verdict.** Add Metric adds a metric **whole** — every field a column — as it does today. The picker does not open a
+metric into its fields. The tree's third level (`fields :` in §Metric That Exist in Analytic) says what a metric
+carries; it is not a picker level.
+
+```
+Add Metric
+  Settlement
+    ☑ Settlement by type    → its 10 fields, 10 columns — as today
+```
+
+| | |
+| --- | --- |
+| the picker | category → metric; ticking a metric adds all its fields |
+| the cost, accepted for now | a wide metric draws all its columns — settlement by type's 10 do not fit a phone |
+| ✅ built | nothing to build — this is what runs today ([MetricPicker.tsx](../../../frontend/src/pages/analytic/components/MetricPicker.tsx)) |
+| when it comes back | a metric too wide to read, or a person who wants two of its fields — then the picker opens a metric into its fields, as the tree draws them; ticking the metric still takes them all |
+
+## a-metric-reads-at-most-a-year
+
+> Owner, in chat (2026-10-31): *"yes, i follow your recomendation"* — to [supplier Q19](../supplier/context_clarify.md#question),
+> *how far back may the Supplier Report rank?*, asked as a rule for every metric: order and settlement share the gap. As
+> recommended.
+
+**The verdict.** A metric's date range is **at most 366 days**, on every metric of every service. A longer range is
+refused, with a message naming the limit. A ranking reads every daily row in its window, so an unlimited range is one
+that gets slower every day the business runs — a year is 63 ms for `metrics/suppliers`, three years ~600 ms
+([MetricSearch.md](../../../audits/services/supplier_service/performances/MetricSearch.md)).
+
+```mermaid
+flowchart LR
+  W["a metric's date range"] --> C{"366 days or fewer?"}
+  C -->|"yes"| R["read - about 63 ms for a year"]
+  C -->|"no"| X["refused - pick a year at most"]
+  M["later, only on request - a monthly summary table"] -.-> L["multi-year rankings"]
+```
+
+| | |
+| --- | --- |
+| the limit | `date_max − date_min` of at most 366 days, both days inclusive — a leap year fits |
+| where | each service's metric filter parse — `selling`, `settlement`, `supplier` — beside its *range backwards* check, as `InvalidArgument` |
+| ⚠ my spec — no range at all | refused too: a request with no date range is *since the start*, the very read the cap exists to stop |
+| the screen | the analytic date picker offers no range over a year, and shows the refusal's message if one is sent |
+| the cost, accepted | *which supplier was best over two years?* is two one-year rankings |
+| when it comes back | someone asks for a multi-year ranking — then a monthly summary table, written by the same fold |
+
+⛔ **Not built.** None of the three services limits the range today
+([supplier metric_shared.go](../../../backend/services/supplier_service/supplier_v1/metric_shared.go)).
+
+## a-money-metric-says-as-of-when
+
+> Owner, in chat (2026-10-31): *"tell more"*, then *"i follow your recomendation"* — to
+> [a-money-figure-says-how-current-it-is](./rpc_provide_clarify.md#question), moved here from the retired ledger. As
+> recommended — for honesty, not diagnosis.
+
+**The verdict.** Every money metric says **as of when**: the time of the newest event its service has folded. A figure
+is a projection, seconds behind its source normally and longer while a retry or a replay holds an event back; a screen
+that shows the time is honest about that, where one that shows nothing reads as live.
+
+```
+an order settles → event published → the fold applies it, stamping settlement_event_logs
+                                      → the metric reads the report rows → "as of 14:04"
+```
+
+```mermaid
+flowchart LR
+  E["an event"] --> F["the service's fold"]
+  F --> L["its event log - stamped"]
+  F --> T["the report rows"]
+  T --> R["MetricData"]
+  L -->|"the newest stamp"| R
+  R --> S["the screen - as of 14:04"]
+```
+
+| | |
+| --- | --- |
+| the time | the newest `created_at` in the service's event log — `settlement_event_logs`, and its peers in order and supplier |
+| per | service, not metric — one fold per service, so all of its metrics share one *as of* |
+| the contract | one field on the metric response, added — not a breaking change |
+| the screen | *as of 14:04* under the table, in Jakarta time |
+| what it tells | everything up to that time is in the figure |
+| ⚠ what it cannot tell | a quiet day from a stuck fold — both stop the time moving; that is the operator's, through the dead-letter topic and the lease's loud log ([a-dead-replays-lock-expires-after-a-minute](../settlement/meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute)) |
+
+⛔ **Not built.**

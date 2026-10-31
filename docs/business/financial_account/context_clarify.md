@@ -461,6 +461,25 @@ flowchart LR
 ⚠ **One in another of yours:** `technical/architecture/context.md` §Microservice lists no financial account
 service — reported in [its clarify](../../technical/architecture/context_clarify.md).
 
+## an-expense-void-is-now-a-negative-adjustment
+
+**The example.** [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid):
+*"a void publishes the reversal — the account gets its money back"*, and the types table above: *"a void reverses it"*.
+[every-correction-is-a-signed-adjustment](../analytic/context_decision.md#every-correction-is-a-signed-adjustment)
+(2026-10-31) removes the void: every correction is an adjustment with a signed amount, and **Batalkan** writes minus the
+whole amount.
+
+**Which is stale:** the *void* lines — the newer decision is yours. The money does the same thing; only the word and its
+reach change: a negative adjustment gives money back, and a **positive** one, which a void never could, takes more.
+**→ Recommend:** when the expense event is built, this service posts an adjustment by its sign to **the account of the
+expense it names** — one rule, no reversal case of its own.
+
+```mermaid
+flowchart LR
+  E["expense 77 - paid from BCA - +5.000.000"] --> A["BCA - minus 5.000.000"]
+  J["adjustment for 77 - minus 4.500.000"] -->|"the expense's account"| A2["BCA - plus 4.500.000 back"]
+```
+
 # Awaiting
 
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —

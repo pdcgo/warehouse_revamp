@@ -104,9 +104,7 @@ flowchart LR
    already carries.**
 3. **How many people build on `dev` at once?** ([G1](#what-is-genuinely-missing--not-covered-by-any-of-the-four)) **→ I recommend writing down whatever the
    answer is today, even if it is "one". The workflow is only sound under an assumption nothing states.**
-4. **Does production exist yet as an environment?** ([G2, G3](#what-is-genuinely-missing--not-covered-by-any-of-the-four)) **→ If not, "there is no production
-   yet" is a complete and useful answer — and it explains why `deploy` is a tool requirement with no
-   workflow behind it.**
+4. ✅ **Answered — [no-switch-over-the-ledgers-replace-todays-tables](../stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)**: no — nothing runs in production yet (owner, 2026-10-15: *"we not on production yet"*). Kept as a line so the numbers hold.
 
 ---
 

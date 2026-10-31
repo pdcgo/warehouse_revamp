@@ -31,6 +31,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-receipt-check-prototype-is-accepted](#the-receipt-check-prototype-is-accepted) | the owner previewed the receipt file stories and accepted screen and contract — the backend may be built |
 | [an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once](#an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once) | no page limit; attachments up to 15 MB; two label checks at once, the next one is "no check" |
 | [the-label-check-stays-at-2-mb](#the-label-check-stays-at-2-mb) | the label check keeps reading files up to 2 MB; a 2–15 MB label still attaches, is not read, and the numbers are typed |
+| [the-channels-are-what-orders-ship-by](#the-channels-are-what-orders-ship-by) | eight more couriers are seeded — `spx`, `grabexpress`, `jntcargo`, `idexpress`, `lex`, `anteraja`, `gosend`, `pos`; the list is what orders actually ship by, and an aggregator (KiriminAja) is never a channel |
 
 ---
 
@@ -670,3 +671,51 @@ flowchart LR
 | a 2–15 MB PDF | uploads and attaches as any file; the form answers it `unreadable` without sending it, and the person types the tracking number and the order id |
 | `san_receipt_readers` | unchanged — nothing is pushed to it |
 | ✅ built | nothing to build — this is what runs today ([receipt-check-caps-the-body-before-reading](#receipt-check-caps-the-body-before-reading)) |
+
+---
+
+## the-channels-are-what-orders-ship-by
+
+> Owner, in chat (2026-10-31): *"yes, follow your recomendation"* — answering [Q1](./context_clarify.md#question), *are
+> SPX, GrabExpress, J&T Cargo, ID Express, LEX, AnterAja, GoSend and Pos Indonesia channels?* As recommended, and seeded the
+> way [the-three-channels-are-seeded](#the-three-channels-are-seeded) seeded the first three.
+
+**The verdict.** Every courier our live orders ship by is a channel. The eight that labels from live orders show, and
+that [context.md](./context.md) §Shipment Channel That Exists did not list, arrive with a migration — so every database,
+production included, has them before root does anything, and [no-order-without-a-courier](../order/context_decision.md#no-order-without-a-courier)
+can be built without refusing an order a seller ships today. The list is **what orders actually ship by**, checked
+against real labels, not a fixed set.
+
+```mermaid
+flowchart LR
+  L["a live order's label"] --> C{"which courier carries it?"}
+  C -->|"jne, jnt, sicepat - 00001"| Y["its channel"]
+  C -->|"the eight - 00002"| Y
+  K["a KiriminAja booking"] -->|"the courier it booked, e.g. ID Express"| C
+  Y --> O["the order's shipment_channel_id"]
+```
+
+**The spec.**
+
+| code | name | seen on |
+| --- | --- | --- |
+| `spx` | SPX Express | Shopee labels — instant, `STD`, `ECO` |
+| `grabexpress` | GrabExpress | a same-day label |
+| `jntcargo` | J&T Cargo | a TikTok label — J&T's freight brand, not J&T Express (`jnt`) |
+| `idexpress` | ID Express | a label booked through KiriminAja |
+| `lex` | LEX | Lazada's own courier |
+| `anteraja` | AnterAja | Shopee labels |
+| `gosend` | GoSend | a same-day Shopee label |
+| `pos` | Pos Indonesia | Shopee labels |
+
+| | |
+| --- | --- |
+| where | [00002_seed_more_shipment_channels.sql](../../../backend/services/shipment_service/db_migrations/00002_seed_more_shipment_channels.sql) — rows, no schema change |
+| a code root already made | kept as it is: the insert skips a code that exists (`ON CONFLICT (code) DO NOTHING`), deleted or not ([a-deleted-code-is-restored-not-recreated](#a-deleted-code-is-restored-not-recreated)) |
+| down | removes nothing — a channel is never removed ([a-channel-is-soft-deleted](#a-channel-is-soft-deleted)), an order may already point at one, and re-running up is harmless |
+| an aggregator | never a channel — KiriminAja books a courier, and the order points at the courier it booked ([a-channel-is-a-courier](#a-channel-is-a-courier)) |
+| the next courier | root adds it from the channels page; seeding it too is for one every database needs |
+
+**What it leaves** (HARD RULE 11): [context.md](./context.md) §Shipment Channel That Exists still lists three — yours to
+update, reported in the clarify's [the-channel-list-names-three](./context_clarify.md#the-channel-list-names-three).
+[the-three-channels-are-seeded](#the-three-channels-are-seeded) stays true of `00001`.

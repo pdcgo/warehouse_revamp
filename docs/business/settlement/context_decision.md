@@ -90,6 +90,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-source-is-a-badge](../../technical/frontend/order_settlement_decision.md#the-source-is-a-badge) | an entry's source — Import · Manual · Order — is a badge in the ledger; the list row shows none |
 | [a-wrong-day-is-refolded-from-the-log](#a-wrong-day-is-refolded-from-the-log) | a report day that is wrong while the log is right is re-folded from the log by an operator command — one report, one shop, one date |
 | [settlement-opens-the-sale-from-the-order-event](#settlement-opens-the-sale-from-the-order-event) | settlement writes `initial_total` and its cancel from the order events; the order never calls settlement |
+| [problem-funding-is-what-the-platform-pays](#problem-funding-is-what-the-platform-pays) | problem funding is whatever the platform pays, under its own label — no type of its own, no claim screen |
 
 ---
 
@@ -3930,3 +3931,41 @@ flowchart LR
 | the tables | both read both ([one-settlement-metric-reads-both-tables](#one-settlement-metric-reads-both-tables)) |
 | one definition | the formulas leave `frontend/src/features/settlement/measure.ts` for the service, and the Settlement Report reads the served fields |
 | the old reads | `AnalyticTimeSearch`, `AnalyticGroupSearch`, `AnalyticGroupMetric` go in the same change ([the-pattern-replaces-the-shipped-analytics](../analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)) |
+
+## problem-funding-is-what-the-platform-pays
+
+> Owner, in chat (2026-10-31): *"tell more"*, then *"yes"* — to [Q2](./context_clarify.md#question), *is `problem
+> funding` the same as `marketplace_adjustment` — and is it a claim we file?* As recommended.
+
+**The verdict.** *Problem funding* ([context.md](./context.md) line 12) is not a settlement type of its own and not a
+claim our system files. It is **whatever the platform pays** for a problem order, recorded under **the platform's own
+label** when it arrives in the settlement file. A seller files the claim on the marketplace's seller center; our system
+sees only the money.
+
+```
+a parcel is lost → the seller claims it on the marketplace → the platform pays, days later
+  → a row in that period's settlement export → booked on the order it names, or the shop
+```
+
+| the platform | its row | booked as |
+| --- | --- | --- |
+| TikTok | `Logistics reimbursement` | `logistic_reimbursement` |
+| TikTok | `Platform reimbursement` | `platform_reimbursement` |
+| TikTok | `Shipping insurance compensation` | `shipment_adjustment` |
+| Shopee | `Penyesuaian` — only its description says what it was | `marketplace_adjustment` |
+
+```mermaid
+flowchart LR
+  C["the seller's claim - on the marketplace"] --> P["the platform pays"]
+  P --> X["the settlement export"]
+  X --> I["the importer - the platform's own label"]
+  I --> O["the order's settlement ledger and the Settlement metric"]
+```
+
+| | |
+| --- | --- |
+| a type of its own | none — the importer's maps already carry every label ([reimbursements-get-their-own-types](../../technical/packages/excel_readers/context_decision.md#reimbursements-get-their-own-types)) |
+| a claim screen | none — claims are filed on the marketplace |
+| the cost, accepted | a Shopee compensation cannot be told from another Shopee adjustment by type — only by its description, which the importer does not read because Shopee rewords it without notice |
+| your worked example | right for Shopee (a reimbursement IS `marketplace_adjustment` there); for TikTok it would be `platform_reimbursement` — the doc names no platform, so it stands |
+| ✅ built | nothing to build — this is what the importer does |

@@ -4,6 +4,10 @@ What I read out of [ledger_context.md](./context.md), and what is still open.
 **That doc is yours — this one is mine.** Answered points are **deleted**, so this file is always the
 current open set.
 
+> ⛔ **Retired 2026-10-31** — `ledger` is no longer a context ([ledger-is-retired-as-a-context](../project/member_decision.md#ledger-is-retired-as-a-context)):
+> every service keeps its own ledger, and the statistics are each service's metrics. **No question is open here.** Q5 is
+> closed with the book it asked about; Q7 moved to the metric pattern. What is below is kept for the record.
+
 > **Re-examined after line 4 landed.** ✅ **Closed and deleted:** the whole *authority vs projection* fork,
 > both option tables, my `book-blocks-broker-reports` proposal, its transaction block and both of its
 > sequence diagrams — you have ruled, and the arrow I asked you to reverse stays as you drew it. Two
@@ -155,32 +159,35 @@ than no gate**, because it also produces a false audit trail.
 
 ## Question
 
-1. **⚠ NARROWED — the gate SHIPPED, and it shipped as recommended.**
-   `liability_service.CheckCredit` is a synchronous read of `liability_balances` (the projection, not the
-   entries), **outside** the posting path, and it **blocks** — with the reasoning written into the code:
-   *"the ledger records what happened and must never decline to record it."* So *where it lives* and
-   *block-or-warn* are answered. ([gate-reads-exposure-not-the-book](#gate-reads-exposure-not-the-book))
-   **What is still open is the business half, and it is yours**: whether the admin/root **override is
-   recorded and expires**, and whether the gate must never block a **payment**. Both are asked at their
-   proper home — [balance Q2](../balance/context_clarify.md#question) and
-   [technical balance Q6](../../technical/balance/team_balance_design_clarify.md#question).
-2. **Does a `*_log` row carry the frozen amounts, or only the fact?** ([Critique 7](#critique))
-   **→ I recommend the frozen amounts — the layer, the qty, the unit price, the markup, the fee.**
-3. **Which box writes a PAYMENT?** ([Critique 1](#critique))
-   **→ I recommend a fifth source with a two-phase `payment_log`.**
-4. **What is the idempotency key for a posted entry?** ([Critique 3](#critique))
-   **→ I recommend the causing act's natural key.**
-5. **Who reconciles the four logs against the book, how often, and who is paged?**
-   ([Critique 2](#critique)) **→ I recommend daily, per pair, tolerance zero, a named owner.**
-6. **Is an entry ever reversed or corrected, and how?** ([Critique 6](#critique))
-   **→ I recommend append-only with compensating entries.**
-7. **What lag is acceptable, and does a money screen show how far behind it is?**
-   ([blocking-is-synchronous-reading-may-lag](#blocking-is-synchronous-reading-may-lag))
-   **→ I recommend every projected money screen carries an "as of".**
+1. ✅ **Answered — [a-limit-change-is-recorded](../balance/context_decision.md#a-limit-change-is-recorded) · [three-roles-edit-the-threshold](../balance/context_decision.md#three-roles-edit-the-threshold) · [the-block-stops-orders-only](../balance/context_decision.md#the-block-stops-orders-only)**: no separate override — root edits the same recorded limit; a block stops order creation only, never a payment. Kept as a line so the numbers hold.
+2. ✅ **Answered — [settlement-publishes-to-the-book](../settlement/context_decision.md#settlement-publishes-to-the-book) · [the-event-carries-the-warehouse-fee](../teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)**: the frozen amounts — the source freezes the money, the consumer decides the accounts. Kept as a line so the numbers hold.
+3. ✅ **Answered — [the-debtor-claims-the-creditor-decides](../balance/context_decision.md#the-debtor-claims-the-creditor-decides) · [a-team-payment-posts-on-accept](../financial_account/context_decision.md#a-team-payment-posts-on-accept)**: the balance service — the debtor claims, the creditor accepts or rejects, and only acceptance posts. Kept as a line so the numbers hold.
+4. ✅ **Answered — [one-contract-for-both-handler-types](../../technical/event_architecture/context_decision.md#one-contract-for-both-handler-types) · [the-template-is-an-index](../../technical/ledger/mutation_and_ledger_decision.md#the-template-is-an-index)**: each consumer claims the event's `event_id` inside its own transaction, deduping in its own table. Kept as a line so the numbers hold.
+5. ✅ *(2026-10-31)* **Closed — there is no book to reconcile:** [ledger-is-retired-as-a-context](../project/member_decision.md#ledger-is-retired-as-a-context).
+   Kept as a line so the numbers hold.
+6. ✅ **Answered — [ledger-logs-are-append-only](../../technical/ledger/mutation_and_ledger_decision.md#ledger-logs-are-append-only)**: append-only — a log row is never updated or deleted; a correction is a new row. Kept as a line so the numbers hold.
+7. ➡ *(2026-10-31)* **Moved to the metric pattern**, where it can be answered:
+   [a-money-figure-says-how-current-it-is](../analytic/rpc_provide_decision.md#a-money-metric-says-as-of-when).
 
 ---
 
 # Contradiction
+
+## the-ledger-doc-draws-a-retired-context
+
+**The example.** [context.md](./context.md) — *"Ledger and Financial Statistic Contexts"*, *"ledger is downstream
+projection"*, one book fed by settlement, purchasing, inventory and other expense.
+[ledger-is-retired-as-a-context](../project/member_decision.md#ledger-is-retired-as-a-context) (2026-10-31): there is
+no central book and no ledger context.
+
+**Which is stale:** the doc — the decision is yours and newer.
+**→ Recommend:** delete `ledger/context.md`, or leave one line in it pointing at the decision — and the folder's two
+clarify files go with it.
+
+```mermaid
+flowchart LR
+  D["ledger/context.md, one central book"] -.->|"retired"| X["each service's own ledger and metrics"]
+```
 
 ## a blocking duty was left inside an object that has just been made eventual
 

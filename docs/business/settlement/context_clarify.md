@@ -997,7 +997,7 @@ the cheapest moment it will ever be to choose.
 
 ## Question
 
-**Four open here**, and none is about the ledger's mechanics — those are all settled. ⚠ **Numbering was
+**One open here**, and none is about the ledger's mechanics — those are all settled. ⚠ **Numbering was
 compacted** when eight questions were answered or moved in one week; older references in this file's
 narrative point at the numbers they had then, and every answer lives in
 [context_decision.md](./context_decision.md).
@@ -1008,53 +1008,16 @@ narrative point at the numbers they had then, and every answer lives in
    ([the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date)). Kept as
    a line so the numbers hold.
 
-2. **Is `problem funding` from `§2` the same as `marketplace_adjustment`?** Your worked example uses that
-   type for a *reimbursement*, which is what I would call problem funding.
-   **→ I recommend yes, one type covers both** — but if it is a claim **we file** rather than one the
-   platform pays unprompted, it needs a screen to file it from, and that is a different thing to build.
+2. ✅ **Answered 2026-10-31 — what the platform pays, under its own label**: [problem-funding-is-what-the-platform-pays](./context_decision.md#problem-funding-is-what-the-platform-pays)
+   — no type of its own, no claim screen. Kept as a line so the numbers hold.
 
-3. ⛔ **Who publishes a ledger change, and does `SettlementPost` become the publisher?** ➡ **Re-routed
-   here** (RULE 7b) from [analytic Q1](./analytic_context_clarify.md#question) — the owner scoped that
-   doc to *receiving*: *"who send it is other service responsbility and out of this context topic"*. This
-   is the doc for the write path, so the question lands here.
-   ⛔ **Checked in the checkout: nothing publishes anything.** There is no event message in
-   [settlement.proto](../../../proto/warehouse/settlement/v1/settlement.proto), no `EventSender` in
-   `settlement_v1.Service`, and nothing emitted from
-   [post_entry.go](../../../backend/services/settlement_service/settlement_v1/post_entry.go).
-   ⚠ **And *"other service"* is worth confirming** — **nothing but `SettlementPost` writes
-   `settlement_logs`**, so if a service outside settlement is meant to publish ledger changes, that is new
-   and belongs in the architecture clarify.
-   **→ I recommend `SettlementPost` publish, after commit, carrying the ROW.**
-   ⚠ **This REVERSES my own earlier recommendation of a thin id-only event**, which rested on *"everything
-   else is readable in-process"*. That is true of the fold and **false of every other consumer**: the
-   Financial Ledger (`context.md` §General Brief 2) is a **different service** and cannot read
-   `settlement_logs` at all (HARD RULE 3), so a thin event forces a cross-service RPC per event and
-   rebuilds the coupling the event removes. And `order_created_by_user_id` — which the user report keys
-   on — **is on no settlement table**, so it must ride regardless. Once one field must travel, the
-   log-is-the-source-of-truth purity is already spent, and Pub/Sub's **1 KB minimum per delivery** makes
-   the rest free.
-   ⚠ **What was RIGHT in the thin argument, and does not apply here**: a fat event normally risks a
-   replay folding *current* state — but `settlement_logs` is **append-only and immutable**, so reading a
-   row back later returns exactly what it said. That hazard is absent, which is why this had to be argued
-   on the other consumers rather than on the replay.
-   ⚠ **Same precedent as `OrderPlacedEvent`** — [order_place.go:285](../../../backend/services/selling_service/selling_v1/order_place.go#L285) already
-   publishes with *"a publish failure does NOT fail the order"*. That is the right trade here too, and it
-   is what made the reconcile pass necessary rather than optional — and you declined it
-   ([the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built)). A dropped publish is a movement the report
-   never sees, and nothing now detects it: the same trust
-   [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)
-   already places in the publish.
-   🔨 **BUILT as recommended (2026-09-14)** — kept open only for your yes, because the answer is now in
-   the code: re-posting the same `unique_id` republishes, which is the repair for a lost publish.
+3. ✅ **Answered 2026-08-27 — settlement publishes**: [settlement-publishes-to-the-book](./context_decision.md#settlement-publishes-to-the-book) —
+   it writes its log row, then publishes the frozen money; the Financial Ledger projects from the event. Kept as a
+   line so the numbers hold.
 
-4. **An order with `marketplace_total = 0` opens NO account — is that right?** 🆕 from the build.
-   `order.proto` says 0 is *not recorded* — a phone order has no marketplace sale — and the screens
-   already refuse to compute against an `initial_total` of 0. So `OrderPlace` posts nothing for it, and a
-   person can still open the account by hand from the order page.
-   ⚠ **The cost**: if a marketplace total is ever typed in AFTER placement, nothing opens the account
-   automatically. No order edit path exists today, so this is latent.
-   **→ I recommend keeping it** — an account opened at 0 would be permanently "not recorded" and would
-   block nothing, while cluttering the list with rows that can never compute.
+4. ✅ **Answered 2026-09-16 — a 0 total cannot be placed**: [platform-total-is-required-at-finalize](../order/context_decision.md#platform-total-is-required-at-finalize),
+   [settlement-opens-the-sale-from-the-order-event](./context_decision.md#settlement-opens-the-sale-from-the-order-event) —
+   create refuses it; settlement's skip stays only for older orders. Kept as a line so the numbers hold.
 
 5. **A cancel undoes the LIVE sale, whatever it now is — is that the reading you meant?** 🆕 from the
    build. [a-cancel-is-an-opposite-row](./context_decision.md#a-cancel-is-an-opposite-row) says *"the
@@ -1069,6 +1032,24 @@ narrative point at the numbers they had then, and every answer lives in
 
 
 # Contradiction
+
+## settlement-posts-to-a-retired-book
+
+**The example.** [context.md](./context.md) line 33: *"we have `Settlement Log` part of `ledger_context` and it publish to
+the broker and post to the Financial Ledger"*; and [settlement-publishes-to-the-book](./context_decision.md#settlement-publishes-to-the-book)
+draws that book as the event's consumer. [ledger-is-retired-as-a-context](../project/member_decision.md#ledger-is-retired-as-a-context)
+(2026-10-31): there is no Financial Ledger and no `ledger_context`.
+
+**Which is stale:** the book, in both — the retirement is yours and newer. **What still holds:** settlement writes its
+log and publishes `SettlementLogPosted`; its own report fold and every other consumer read it. Only the book is gone.
+**→ Recommend:** line 33 reads *"`Settlement Log` is settlement's own ledger; it publishes each row to the broker"*.
+
+```mermaid
+flowchart LR
+  L["settlement log"] --> B["the broker"]
+  B --> F["settlement's report fold"]
+  B -.->|"retired"| X["the Financial Ledger"]
+```
 
 ## my own two clarify files specified the same event two different ways
 

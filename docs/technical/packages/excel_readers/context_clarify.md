@@ -251,23 +251,17 @@ backend/pkgs/san_excel_readers/
 
 # Question
 
-1. **Do the transaction types stay verbatim strings, or become a Go enum?** The samples show 4 Shopee
-   types and 7 TikTok ones, but `Program Ekspor Shopee FLEXI` appears exactly **once** in 3788 rows, so
-   the list is clearly not closed. An enum makes an unseen type a parse failure; a string makes it the
-   caller's problem. **→ I recommend verbatim strings plus a `Known(t) bool` helper** — a new platform
-   fee should not fail an upload.
-2. **Is `Tokopedia` a third reader, or a column value?** `Order Source` in the TikTok exports is
-   `TikTok Shop` (2693 rows) and **`Tokopedia`** (22 rows) — same workbook, same layout. But
-   [settlement's context](../../../business/settlement/context.md) lists `tokopedia` beside `shopee`
-   and `tiktok` as a platform. If Tokopedia also exports its *own* settlement workbook, that is a third
-   reader this doc does not scope. **→ I think it is only a column here and a Tokopedia-native export is
-   a separate question** — confirm.
-3. **Confirm the TikTok key.** ✅ Built: md5 over the ten stable columns, which is unique in all 13
-   samples and — the property that matters — gives the SAME key when an order appears in two
-   overlapping exports (43 such orders, all stable). It separates the settle-then-reverse pair in
-   `overlapping_earning.xlsx` and `pivan_fund_invalid.xlsx`. **→ Worth telling
-   [settlement](../../../business/settlement/context_clarify.md) that its `hash(date + order_ref_id)`
-   best effort is superseded on both platforms.**
+1. ✅ **Answered — [shopee-maps-on-tipe-transaksi-alone](context_decision.md#shopee-maps-on-tipe-transaksi-alone),
+   [an-unmapped-type-is-an-error-on-both-platforms](context_decision.md#an-unmapped-type-is-an-error-on-both-platforms)**:
+   the verbatim type maps through a table to a `SettlementType`; an unmapped one is an error, never `other`. Kept as a
+   line so the numbers hold.
+2. ✅ **Answered — [only-shopee-and-tiktok-for-now](context_decision.md#only-shopee-and-tiktok-for-now)**: two readers
+   and no third for now; a Tokopedia order inside a TikTok file is that TikTok shop's row. Kept as a line so the numbers
+   hold.
+3. ✅ **Answered — [the-built-tiktok-item-is-the-contract](context_decision.md#the-built-tiktok-item-is-the-contract),
+   [the-row-key-is-the-only-dedupe](../../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)**:
+   confirmed — the built item's ten columns are the hash, and that `GenerateUniqueID` is the importer's only dedupe.
+   Kept as a line so the numbers hold.
 4. **Are `wderror` and `x` real platform values, or hand-edited fixtures?** `salah_tarik.xlsx` has one
    row with `Type = "wderror"` and one with `Order Source = "x"`. Both look typed in. If they are
    deliberate corruption fixtures, say so — they should then assert an *error path* rather than be
@@ -276,13 +270,14 @@ backend/pkgs/san_excel_readers/
    generic — but the contract is `…SettlementDocument`, and `examples/shipped_samples/` hints at a
    second report kind. **→ If shipping reports are coming the package name is right and the sub-scope
    belongs in the path (`shopee/settlement.go`). If not, name it `san_settlement_readers`.**
-6. **Routed to [settlement](../../../business/settlement/context_clarify.md): is a `Gagal` row booked?**
-   The reader returns every row and carries no `Status`
-   ([hash-the-whole-struct](context_decision.md#hash-the-whole-struct)), so this is entirely settlement's
-   call now. The evidence it needs is #12: both `Gagal` rows in the corpus are failed withdrawals that
-   **already left the wallet**, each reversed by a separate row a day later, and the `Saldo Akhir` chain
-   counts both. **→ Recommend booking every row** — skipping the failures is what corrupts the balance.
-7. **Do TikTok keys survive the 2026-09 layout, or do its adjustments get booked twice?** Unmeasurable
+6. ✅ **Answered — [only-a-successful-withdrawal-is-recorded](../../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)**:
+   no — a failed withdrawal and its refund are both skipped; only a completed one is recorded. Kept as a line so the
+   numbers hold.
+7. ⏸ *Parked by the owner (2026-10-31): "park it"* — it needs one period downloaded again in the new layout
+   (2025-12-11 to 12-15, `gmv_payment.xlsx`'s), which only the owner can fetch. **Reopens** when that file exists, or
+   the first time a shop's period is imported twice. ⚠ Until then a re-imported TikTok period may book its
+   adjustments twice.
+   **Do TikTok keys survive the 2026-09 layout, or do its adjustments get booked twice?** Unmeasurable
    from the samples — no order appears in both an old-layout and a new-layout file. ⚠ But the new layout
    gives a specific reason to doubt it for **adjustment** rows. An adjustment's `Type` has always been
    **its Reports label, verbatim** (all 22 in the samples), and the new Reports tree respells or drops

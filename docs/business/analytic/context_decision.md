@@ -214,3 +214,61 @@ flowchart LR
 | when it was made | its own timestamp and its maker, shown on the row |
 | the report | the event carries the expense's day, so the fold lands it in that day ([a-report-is-fed-by-events-only-for-now](#a-report-is-fed-by-events-only-for-now)) |
 | the month's list | shows the expense and its adjustment together |
+
+## every-correction-is-a-signed-adjustment
+
+> Owner, in chat (2026-10-31): *"whats void, its seems weird"*, then *"for 1, 2, 3, 4 yes"* — answering
+> [what-a-void-and-a-reducing-adjustment-write](./context_clarify.md#question). Against my first recommendation, which
+> kept Void as its own button; on *"weird"* I recommended dropping it, and that was taken.
+
+**The verdict.** There is **one** way to correct an expense: an **adjustment**. It carries a **signed** amount, never 0,
+names the expense it fixes, and counts on that expense's day
+([an-adjustment-counts-on-the-day-it-fixes](#an-adjustment-counts-on-the-day-it-fixes)). **Void is not a concept any
+more** — nothing marks a row voided, because the row never changes
+([an-expense-is-never-edited](#an-expense-is-never-edited)). **Batalkan** stays on the screen as a shortcut: it writes an
+adjustment of minus the whole amount, so nobody types it. `ExpenseUpdate` is removed; the page's **Edit** becomes
+**Adjust**.
+
+```
+expense 77           28 Sep   +5.000.000
+adjustment for 77    28 Sep   −4.500.000   Adjust, made 3 Oct by ani
+September                      500.000
+
+expense 78           28 Sep   +1.200.000
+adjustment for 78    28 Sep   −1.200.000   Batalkan, the whole amount pre-filled
+September                            0     every row still visible
+```
+
+```mermaid
+flowchart LR
+  E["an expense - positive, never changed"] --> R["the report and the account"]
+  A["Adjust - a signed amount, names the expense"] --> R
+  B["Batalkan - an adjustment of minus the whole amount"] --> A
+  U["ExpenseUpdate, voided_at"] -.->|"removed"| X["nothing"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| an expense | amount **> 0**, never changed after it is saved |
+| an adjustment | a row of its own kind: amount **signed, ≠ 0**; names the expense it fixes; its day is that expense's day, copied |
+| Batalkan | the screen's shortcut for an adjustment of **−(the expense's amount)** |
+| Edit | becomes **Adjust** — the person types the correction, not the new total |
+| removed | `ExpenseUpdate`; `voided_at` and Void as a state |
+| the events | an adjustment publishes like any new row — the reports and the account receive it with its sign |
+| ⚠ my spec — the floor | an expense and its adjustments never sum below 0 — a correction cannot turn a cost into income |
+| ⚠ my spec — no chains | an adjustment names an EXPENSE, never another adjustment — a mistaken adjustment is fixed by a second one on the same expense |
+| ⚠ my spec — rows voided today | dev data only, so the build turns each into its expense plus an adjustment of minus its amount |
+
+**What it ripples** (HARD RULE 11) — sites that say *void* and become stale when this is built:
+
+| site | says | becomes |
+| --- | --- | --- |
+| [an-expense-must-name-the-account-that-paid](../financial_account/context_decision.md#an-expense-must-name-the-account-that-paid) | *"a void publishes the reversal — the account gets its money back"* | a negative adjustment gives the money back; a positive one takes more — reported in the [financial_account clarify](../financial_account/context_clarify.md#an-expense-void-is-now-a-negative-adjustment) |
+| [financial_account clarify](../financial_account/context_clarify.md) types table | `expense`, `ads_expense`: *"a void reverses it"* | the same, by an adjustment's sign |
+| [expense_service/rpc.md](../../services/expense_service/rpc.md) §Voided rows | voided rows excluded and struck through | updated by the build, in the same commit |
+| [database-schema.md](../../database-schema.md) `expense_records` | `voided_at` | updated by the build's migration, in the same commit |
+
+⛔ **Not built.** [expense_update.go](../../../backend/services/expense_service/expense_v1/expense_update.go) still
+overwrites in place and `expense_service` publishes nothing — the build is its own pass.

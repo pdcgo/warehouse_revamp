@@ -212,15 +212,11 @@ are both built in liability today, and none of them is in your field list.
 
 ### closed-means-refused
 
-An open/close grid nothing consults is decoration — that is its state today.
-
-| | → |
-| --- | --- |
-| order create / finalize names a warehouse closed at that moment | **refuse**, naming the day and the next opening |
-| the warehouse picker | shows closed warehouses **disabled**, with the reason |
-| timezone | one, fixed: **Asia/Jakarta**. A per-warehouse timezone is a real feature only when a warehouse sits outside WIB |
-| one-off dates | the weekly grid cannot say *Idul Fitri*. **→ Recommend a `warehouse_closures` exception list** (date, reason) beside the grid |
-| receiving vs operating | keep both, and be explicit: **`receiving_hours` gates orders, `operating_hours` gates restock and return arrival** |
+🔄 **Replaced 2026-10-31** by [a-closed-day-warns-and-never-refuses](./context_decision.md#a-closed-day-warns-and-never-refuses):
+a paid marketplace order has to be recorded at any hour, so a closed warehouse is marked on the form and the picker with
+its next opening, never refused, and the hours gate no restock. Still standing from this proposal: one timezone,
+**Asia/Jakarta**, and the open question of one-off dates ([are-there-one-off-closures](#question)). Kept as a heading so
+the links into it hold.
 
 ---
 
@@ -229,7 +225,7 @@ An open/close grid nothing consults is decoration — that is its state today.
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **flat-vs-percent-is-a-live-rate-change** | `liability_terms.handling_fee` is charging money **today**, flat per order. 🔄 *(2026-10-19)* A warehouse's **default** flat fee carries over as `0%`, floor = cap; a **per-seller** flat fee has no form under one rate per warehouse | carry the default row over exactly, and tell a seller with its own row the day its charge changes. Never a silent reinterpretation of the old column |
-| **nobody-reads-the-calendar** | `receiving_hours` has a table, a proto, an editor and a test, and **no caller** — an order can be placed into a warehouse that is shut | [closed-means-refused](#closed-means-refused) |
+| **nobody-reads-the-calendar** | `receiving_hours` has a table, a proto, an editor and a test, and **no caller** — an order can be placed into a warehouse that is shut | ✅ decided 2026-10-31: [a-closed-day-warns-and-never-refuses](./context_decision.md#a-closed-day-warns-and-never-refuses) — the form warns; ⛔ not built |
 | **location-is-free-text** | one string cannot be matched against `region_service`, cannot suggest the nearest warehouse, and cannot fill a courier pickup form. `orders` already freezes provinsi→desa codes **and** names for exactly this reason | the same shape as the order address: codes + names + `address_line`, with the free text kept as the last line |
 | **who-may-change-a-price-others-pay** | `WarehouseInfoUpdate` is `WAREHOUSE_OWNER` / `WAREHOUSE_ADMIN`. A fee is money other teams owe — a rate edited unilaterally at 2am changes every order placed after it | the rate is writable by `ROOT`/`ADMIN` **and** the warehouse owner, every edit is logged with the actor, and the seller sees the rate on the order form before finalizing. If a rate is meant to be *agreed* rather than *set*, that is a different feature and worth saying |
 | **the-fee-is-invisible-to-the-payer** | nothing in the doc lets a selling team **see** a warehouse's rate before choosing it. Today the first sight of the charge is a ledger row | `WarehouseFeeCalculate` is callable by any authenticated team, pricing the caller's own order, and the order form shows the chosen warehouse's fee ([the-fee-is-priced-one-warehouse-at-a-time](./context_decision.md#the-fee-is-priced-one-warehouse-at-a-time)) |
@@ -271,18 +267,18 @@ reversed my own `repeated`: the form picks one warehouse, where the stock is. Ke
 heading so the links into it hold.
 
 ### does-the-warehouse-profile-move-out-of-team-service
-`warehouse_infos` (location + both weekly grids) lives in `team_service` and is built. Does it move whole into
-`warehouse_service`? **→ Recommend yes, in one migration** — otherwise the warehouse profile is owned by two
-services and the doc is true of neither.
+✅ **Answered (2026-10-31): yes, whole** — [the-warehouse-profile-lives-in-warehouse-service](./context_decision.md#the-warehouse-profile-lives-in-warehouse-service):
+location and both weekly grids move to `warehouse_service`; a selling team's default warehouse stays in `team_service`.
+⛔ Not built. Kept as a heading so the links into it hold.
 
 ### what-does-a-closed-day-actually-do
-Refuse the order · warn and allow · queue it to the next open day. And does it gate **restock arrival** too?
-**→ Recommend refuse for orders (`receiving_hours`) and refuse for arrivals (`operating_hours`)**, both naming
-the next opening. Today neither is read at all.
+✅ **Answered (2026-10-31): warn, never refuse** — [a-closed-day-warns-and-never-refuses](./context_decision.md#a-closed-day-warns-and-never-refuses):
+the order is created and the form names the next opening; the hours gate no restock. Against my first *refuse*. ⛔ Not
+built. Kept as a heading so the links into it hold.
 
 ### are-there-one-off-closures
-The weekly grid cannot express a public holiday. **→ Recommend a `warehouse_closures` date list** with a
-reason, read by the same check.
+✅ **Answered (2026-10-31): yes** — [a-warehouse-records-its-holidays](./context_decision.md#a-warehouse-records-its-holidays): a date range
+and a reason, read by the closed-day warning. ⛔ Not built. Kept as a heading so the links into it hold.
 
 ### is-the-fee-refunded-on-return-or-lost
 ✅ **Overtaken and closed (2026-10-19):** a return keeps the fee ([a-return-keeps-both-fees](../../order/context_decision.md#a-return-keeps-both-fees)),
@@ -292,8 +288,8 @@ Kept as a heading so the links into it hold.
 
 
 ### is-a-warehouse-ever-two-buildings
-Everything built assumes `warehouse_id` is a warehouse **team**. If one team can run two locations, that
-changes `stock`, `racks` and `orders.warehouse_id` — not this service. **→ Recommend one team per building.**
+✅ **Answered (2026-10-31): one team per building** — [one-warehouse-team-is-one-building](./context_decision.md#one-warehouse-team-is-one-building).
+Kept as a heading so the links into it hold.
 
 ### what-is-NOT-the-warehouse-services-job
 Stock, racks and opname are inventory's. The balance and the posting are liability's. Identity and membership

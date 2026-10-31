@@ -330,8 +330,7 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
 
 ## Question
 
-1. **Is a payment between teams a FIFTH source into the book, or an Other Expense?** ([Critique 5](#critique))
-   **→ I recommend a fifth source — a payment is neither a cost nor a sale.**
+1. ✅ **Answered — [balance-manages-reports-and-takes-payments](../../business/balance/context_decision.md#balance-manages-reports-and-takes-payments) · [the-template-is-an-index](../ledger/mutation_and_ledger_decision.md#the-template-is-an-index)**: balance's own — posted on the creditor's accept in balance's own ledger; each service keeps its own; never an Other Expense. Kept as a line so the numbers hold.
 2. ➡ **MOVED — *how is a half-succeeded order found?* is now [order: a-lost-publish-is-not-tracked-on-the-order](../../business/order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order).**
    (owner, 2026-09-10: *"for ensure order half success or not, its order service responsibility"*.) RULE 7b —
    this doc cannot answer it: the order is what is half-done, and `order_service` owns the order.
@@ -339,15 +338,9 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
    [the gate runs before the draw, and this doc says it cannot](#the-gate-runs-before-the-draw-and-this-doc-says-it-cannot).
    My `draw → gate → commit → release` recommendation described an ordering the shipped code deliberately
    inverted, so it is **withdrawn** as written.
-3. **Who enforces the reserve — the service owning the number, or the one owning the quantity?**
-   ([Critique 3](#critique)) **→ I recommend the number is the product's, the check is inventory's.**
-4. **Is purchasing its own service, or the restock document?**
-   ([purchasing-is-the-restock-document](#purchasing-is-the-restock-document))
-   **→ I recommend the restock document, until a supplier payable or a payment moment is described.**
-5. **Do statistics get their own service?**
-   **→ I recommend no — money statistics are `ledger_service` (already the projection engine), operational
-   statistics stay in the service that owns the rows. A `report_service` reading five databases is the one
-   design that makes every boundary above meaningless.**
+3. ✅ **Answered — [the-take-checks-the-product-first](../../business/inventory/order_decision.md#the-take-checks-the-product-first) · [the-reserve-is-read-before-the-take](../../business/inventory/order_decision.md#the-reserve-is-read-before-the-take)**: inventory's take refuses the line, reading the reserve from product_service before its transaction. As recommended. Kept as a line so the numbers hold.
+4. ✅ **Answered — [inventory-owns-the-restock-end-to-end](../../business/inventory/context_decision.md#inventory-owns-the-restock-end-to-end)**: the restock document — no purchasing context; the buy is the selling team creating a restock in inventory. Kept as a line so the numbers hold.
+5. ✅ **Answered — [analytic-is-a-pattern-not-a-data-product](../../business/analytic/context_decision.md#analytic-is-a-pattern-not-a-data-product) · [the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)**: no — each owning service implements the analytic pattern through its own `MetricSearch` / `MetricData`. Kept as a line so the numbers hold.
 6. ➡ **Re-routed 2026-09-28 to [shop Q2](../../business/shop/context_clarify.md#question)** — the owner's new
    *Shop Service* doc is the one that answers where a shop lives. It now recommends a `shop_service` of its own,
    not `team_service`: settlement has to ask about shops, and selling already calls settlement. Kept as a line so
@@ -358,11 +351,8 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
    from the owner's `settlement/context.md` edit of 2026-09-24). My `order_service` recommendation is
    overtaken. What is still open — whether it counts toward settlement's position — is
    [settlement Q1](../../business/settlement/context_clarify.md#question).
-8. **Does `region_service` stay its own service?** My old answer — *"shipping's, a region is a destination"* —
-   is **withdrawn**: shipment was decided as the courier catalogue alone, and an order stores its address as
-   plain names ([an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names)),
-   so no service routes or prices by region.
-   **→ I recommend keeping it separate while its only job is address typing; revisit when tracking or a fee needs a region.**
+8. ✅ *(2026-10-31)* **Answered: yes, its own service** — [region-stays-its-own-service](./context_decision.md#region-stays-its-own-service).
+   Kept as a line so the numbers hold.
 9. **What does `systems/` hold?** ([Critique 7](#critique))
 10. **After the split, is the gate half called `balance_service` (your line 7) or `liability_service` (what
     shipped)?** Your list already contains **both halves of the split I recommend** — line 6

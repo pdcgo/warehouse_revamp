@@ -551,27 +551,8 @@ flowchart LR
 > ✅ **Answered and deleted: Q16**, *a separate error for spam?* Yes: `ErrNotShippingLabel`, for a file that matches no
 > layout and has no image ([a-non-label-gets-its-own-error](./context_decision.md#a-non-label-gets-its-own-error)).
 
-17. **Five labels read cleanly, yet don't match what their orders store: what do the orders store?** Your tool saved
-    each for a receipt mismatch. Each prints one value, many times, and its barcode agrees.
-
-    | label | the reader returns | so the stored receipt is |
-    | --- | --- | --- |
-    | `shopee_instant_01.pdf` | its pickup code | ⚠ **not the pickup code**: this one tests [the-pickup-code-is-the-receipt](./context_decision.md#the-pickup-code-is-the-receipt) |
-    | `shopee_halu_02.pdf`, `shopee_spx_01.pdf`, `shopee_std_02.pdf` | its tracking number, printed 5–8 times | something else |
-    | `lazada_lex_02.pdf` | its `LXAD-…` tracking number (the order number explanation was withdrawn) | something else |
-
-    ```mermaid
-    flowchart LR
-      L["the label: one value, printed many times"] --> R["Extract's Receipt"]
-      O["the order: its stored receipt"] --> C{"equal?"}
-      R --> C
-      C -->|"no, on five orders"| Q["what does the order store, and why?"]
-    ```
-
-    → Please paste the `source` your tool logged on each `receipt not match` line. Three causes would each need a
-    different fix: the stored value is **another format** of the same number (the reader can normalise), it was
-    **typed by hand** before the label existed (the order is wrong, not the reader), or the parcel was **re-shipped**
-    under a new label (the reader is right, and the order should be updated).
+17. ✅ *(2026-10-31)* **Answered: only a warning, for now** — [a-receipt-mismatch-is-only-a-warning](./context_decision.md#a-receipt-mismatch-is-only-a-warning):
+    the five samples are not investigated. Kept as a line so the numbers hold.
 
 > ✅ **Answered and deleted: Q18**, *the submodule: its own Go module, in a new folder?* Yes, all six points as
 > recommended: [the-reader-is-a-submodule-with-its-own-module](./context_decision.md#the-reader-is-a-submodule-with-its-own-module).

@@ -21,6 +21,7 @@ The open set is [context_clarify.md](./context_clarify.md).
 | [a-lazada-receipt-is-its-tracking-number](#a-lazada-receipt-is-its-tracking-number) | A Lazada label's `Receipt` is the courier's tracking number, its `OrderID` the 16-digit order number |
 | [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module) | The package is the public repo `pdcgo/san_receipt_readers`, a submodule at `backend/packages/`, with its own `go.mod` |
 | [the-label-samples-may-be-committed](#the-label-samples-may-be-committed) | The label PDFs in `examples/receipt_file_samples/` are not sensitive: they stay committed, the repo stays public |
+| [a-receipt-mismatch-is-only-a-warning](#a-receipt-mismatch-is-only-a-warning) | a label that disagrees with the typed resi only warns at submit; the five mismatched samples are not investigated, for now |
 
 ---
 
@@ -445,3 +446,28 @@ flowchart LR
 | the submodule | unchanged: `*.pdf` stays gitignored in `pdcgo/san_receipt_readers`, whose own history holds no PDF |
 | reverses | the privacy row of [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module), *"the real samples stay untracked"* |
 | stale, outside this repo's docs | the submodule's README, line 25, still says the folder is untracked |
+
+## a-receipt-mismatch-is-only-a-warning
+
+> Owner, in chat (2026-10-31): *"what warning ?"*, *"the warning is just warn its different ?"*, then *"for now just warn
+> thats different thats it"* — to [Q17](./context_clarify.md#question), *five labels read cleanly, yet don't match what
+> their orders store: what do the orders store?*
+
+**The verdict.** For now a mismatch between the label and the typed resi is **only a warning**, and nothing more is done
+about it. The five mismatched samples are not investigated; the reader is not changed for them.
+
+```
+CS attaches the label → the reader fills an EMPTY Resi box, never a typed one
+CS submits, the typed resi differs →
+  "Nomor resi tidak cocok dengan file resi, yang tertulis SPXID0123456."
+  → CS fixes the box, or places the order anyway
+```
+
+| | |
+| --- | --- |
+| the warning | at submit, on the order form ([checks.ts](../../../../frontend/src/features/orders/form/checks.ts) `checkScanMatches`) — for the resi, the order id, or both |
+| overrule | yes — *place anyway*; the server never verifies a label ([receipt-check-returns-what-the-library-reads](../../../business/shipment/context_decision.md#receipt-check-returns-what-the-library-reads)) |
+| the five samples | not investigated — `shopee_instant_01`, `shopee_halu_02`, `shopee_spx_01`, `shopee_std_02`, `lazada_lex_02` |
+| [the-pickup-code-is-the-receipt](#the-pickup-code-is-the-receipt) | stands — `shopee_instant_01` is not taken as evidence against it |
+| when it comes back | a wrong resi on a real order, traced to the reader |
+| ✅ built | nothing to build — this is what runs |
