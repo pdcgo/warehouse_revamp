@@ -231,7 +231,7 @@
   },
   "productLines": {
     "title": "Products",
-    "sku": "SKU",
+    "sku": "Product code",
     "name": "Name",
     "qty": "Qty",
     "unitPrice": "Unit price",
@@ -309,7 +309,7 @@
       "receivedOn": "Received on",
       "receivedByLabel": "Received by",
       "lines": "Returned items",
-      "sku": "SKU",
+      "sku": "Product code",
       "product": "Product",
       "qty": "Qty",
       "sellable": "Sellable",
@@ -377,7 +377,7 @@
     "title": "Discover Products",
     "subtitle": "Browse products from every team.",
     "selectTeam": "Select a team to discover products.",
-    "searchPlaceholder": "Search SKU or name",
+    "searchPlaceholder": "Search product code or name",
     "empty": "No products to discover yet",
     "count_one": "{{count}} product",
     "count_other": "{{count}} products",
@@ -405,7 +405,7 @@
       "label": "Sort",
       "newest": "Newest",
       "name": "Name A–Z",
-      "sku": "SKU A–Z"
+      "sku": "Product code A–Z"
     },
     "division": {
       "label": "Product division",
@@ -590,7 +590,7 @@
     "emptyHint": "Add the first product to start selling it — its stock follows once a restock arrives.",
     "emptyArchivedHint": "An archived product waits here until it is restored.",
     "emptyWarehouseHint": "Products the selling teams keep in this warehouse appear here.",
-    "searchPlaceholder": "Search SKU or name",
+    "searchPlaceholder": "Search product code or name",
     "empty": "No products found.",
     "backToProducts": "Back to Products",
     "edit": "Edit",
@@ -746,7 +746,7 @@
       }
     },
     "field": {
-      "sku": "SKU",
+      "sku": "Product code",
       "name": "Name",
       "description": "Description",
       "category": "Category",
@@ -760,8 +760,8 @@
       "infoTitle": "Product Info",
       "crossTitle": "Sales by Other Teams",
       "crossDescription": "Whether another team may sell this product on its own orders, and what it pays over your cost.",
-      "skuPlaceholder": "e.g. SKU-KOPI-250",
-      "skuTaken": "Another product in this team already uses this SKU — change it to save.",
+      "skuPlaceholder": "e.g. KOPI-250",
+      "skuTaken": "Another product in this team already uses this product code — change it to save.",
       "back": "Back",
       "namePlaceholder": "e.g. Arabica Coffee 250g",
       "descriptionPlaceholder": "e.g. ground arabica in a 250 g pouch, medium roast, best before 12 months",
@@ -800,8 +800,8 @@
     },
     "restoreDialog": {
       "title": "Restore Product",
-      "newSku": "New SKU",
-      "newSkuHelp": "Archiving freed the old SKU and another product took it. Give this one a free SKU to bring it back.",
+      "newSku": "New product code",
+      "newSkuHelp": "Archiving freed the old product code and another product took it. Give this one a free product code to bring it back.",
       "confirmLabel": "Restore"
     },
     "allWarehouses": "All warehouses",
@@ -1073,7 +1073,7 @@
     "note": "Note",
     "notePlaceholder": "Deliver after 5pm, wrap the glass one, …",
     "noteHelp": "Anything the people handling this order need to know. Free text — nothing here is calculated or checked.",
-    "sku": "SKU",
+    "sku": "Product code",
     "name": "Name",
     "lineTotal": "Line total",
     "lineShort": "Only {{ready}} in this warehouse — this order needs {{wanted}}",
@@ -1360,9 +1360,9 @@
     "teamRef": "Team #{{id}}",
     "warehouseRef": "Warehouse #{{id}}",
     "selling": {
-      "searchPlaceholder": "Search restock, tracking, invoice or SKU"
+      "searchPlaceholder": "Search restock, tracking, invoice or product code"
     },
-    "searchPlaceholder": "Search restock, tracking, order or SKU",
+    "searchPlaceholder": "Search restock, tracking, order or product code",
     "warehouseAll": "All warehouses",
     "stat": {
       "ongoing": "Ongoing",
@@ -2273,7 +2273,7 @@
       "lastBought": "Last bought",
       "firstBought": "first {{date}}",
       "empty": "No products yet.",
-      "search": "Search product, SKU or store",
+      "search": "Search product, product code or store",
       "storeAll": "Every store",
       "none": "No products match.",
       "emptyHint": "Products appear here once a restock bought at this supplier's stores is accepted."
@@ -2605,10 +2605,10 @@
     "title": "Inventory",
     "pickWarehousePlaceholder": "Pick a warehouse",
     "pickWarehousePrompt": "Pick a warehouse to see its stock.",
-    "searchPlaceholder": "Search products by SKU or name",
+    "searchPlaceholder": "Search products by product code or name",
     "empty": "No products in this warehouse's catalogue.",
     "table": {
-      "sku": "SKU",
+      "sku": "Product code",
       "product": "Product",
       "onHand": "On hand",
       "actions": "Actions"
@@ -3496,7 +3496,7 @@
       },
       "barcode": {
         "label": "Barcode",
-        "reason": "Products have no barcode yet, so the validation scan matches each item's SKU."
+        "reason": "Products have no barcode yet, so the validation scan matches each item's product code."
       },
       "printMerge": {
         "label": "Printing labels together",
@@ -4247,7 +4247,7 @@
   "warehouseTransfer": {
     "selectTeam": "Pick a team to see its transfers.",
     "newTransfer": "New Transfer",
-    "searchPlaceholder": "Search number, tracking number, SKU or product",
+    "searchPlaceholder": "Search number, tracking number, product code or product",
     "warehouseAll": "All warehouses",
     "ownerAll": "All teams",
     "toAll": "Going anywhere",
@@ -4625,7 +4625,7 @@
         "racks": "Racks",
         "products": "Products"
       },
-      "search": "Search a product by name or SKU",
+      "search": "Search a product by name or product code",
       "rackAll": "Every rack",
       "onlyDifferences": "Only differences",
       "tabs": {

@@ -229,7 +229,7 @@
   },
   "productLines": {
     "title": "Produk",
-    "sku": "SKU",
+    "sku": "Kode produk",
     "name": "Nama",
     "qty": "Jml",
     "unitPrice": "Harga satuan",
@@ -304,7 +304,7 @@
       "receivedOn": "Diterima pada",
       "receivedByLabel": "Diterima oleh",
       "lines": "Barang retur",
-      "sku": "SKU",
+      "sku": "Kode produk",
       "product": "Produk",
       "qty": "Jumlah",
       "sellable": "Layak jual",
@@ -372,7 +372,7 @@
     "title": "Temukan Produk",
     "subtitle": "Jelajahi produk dari semua tim.",
     "selectTeam": "Pilih tim untuk menemukan produk.",
-    "searchPlaceholder": "Cari SKU atau nama",
+    "searchPlaceholder": "Cari kode produk atau nama",
     "empty": "Belum ada produk untuk ditemukan",
     "count_other": "{{count}} produk",
     "noneMatch": "Tidak ada produk yang cocok",
@@ -399,7 +399,7 @@
       "label": "Urutkan",
       "newest": "Terbaru",
       "name": "Nama A–Z",
-      "sku": "SKU A–Z"
+      "sku": "Kode produk A–Z"
     },
     "division": {
       "label": "Pembagian produk",
@@ -584,7 +584,7 @@
     "emptyHint": "Tambahkan produk pertama untuk mulai menjualnya — stoknya menyusul begitu restok tiba.",
     "emptyArchivedHint": "Produk yang diarsipkan menunggu di sini sampai dipulihkan.",
     "emptyWarehouseHint": "Produk yang disimpan tim penjual di gudang ini muncul di sini.",
-    "searchPlaceholder": "Cari SKU atau nama",
+    "searchPlaceholder": "Cari kode produk atau nama",
     "empty": "Produk tidak ditemukan.",
     "backToProducts": "Kembali ke Produk",
     "edit": "Ubah",
@@ -738,7 +738,7 @@
       }
     },
     "field": {
-      "sku": "SKU",
+      "sku": "Kode produk",
       "name": "Nama",
       "description": "Deskripsi",
       "category": "Kategori",
@@ -752,8 +752,8 @@
       "infoTitle": "Info Produk",
       "crossTitle": "Penjualan Tim Lain",
       "crossDescription": "Apakah tim lain boleh menjual produk ini di pesanan mereka, dan berapa yang mereka bayar di atas modal Anda.",
-      "skuPlaceholder": "Contoh: SKU-KOPI-250",
-      "skuTaken": "SKU ini sudah dipakai produk lain di tim ini — ubah dulu untuk menyimpan.",
+      "skuPlaceholder": "Contoh: KOPI-250",
+      "skuTaken": "Kode produk ini sudah dipakai produk lain di tim ini — ubah dulu untuk menyimpan.",
       "back": "Kembali",
       "namePlaceholder": "Contoh: Kopi Arabika 250g",
       "descriptionPlaceholder": "Contoh: kopi arabika bubuk kemasan 250 g, sangrai medium, tahan 12 bulan",
@@ -792,8 +792,8 @@
     },
     "restoreDialog": {
       "title": "Pulihkan Produk",
-      "newSku": "SKU baru",
-      "newSkuHelp": "Pengarsipan membebaskan SKU lama dan produk lain sudah memakainya. Beri SKU yang belum dipakai untuk memulihkannya.",
+      "newSku": "Kode produk baru",
+      "newSkuHelp": "Pengarsipan membebaskan kode produk lama dan produk lain sudah memakainya. Beri kode produk yang belum dipakai untuk memulihkannya.",
       "confirmLabel": "Pulihkan"
     },
     "allWarehouses": "Semua gudang",
@@ -1061,7 +1061,7 @@
     "note": "Catatan",
     "notePlaceholder": "Kirim setelah jam 5 sore, bungkus yang kaca, …",
     "noteHelp": "Hal yang perlu diketahui orang yang menangani pesanan ini. Teks bebas — tidak dihitung dan tidak dicek.",
-    "sku": "SKU",
+    "sku": "Kode produk",
     "name": "Nama",
     "lineTotal": "Total baris",
     "lineShort": "Hanya {{ready}} di gudang ini — pesanan ini butuh {{wanted}}",
@@ -1348,9 +1348,9 @@
     "teamRef": "Tim #{{id}}",
     "warehouseRef": "Gudang #{{id}}",
     "selling": {
-      "searchPlaceholder": "Cari restok, resi, faktur, atau SKU"
+      "searchPlaceholder": "Cari restok, resi, faktur, atau kode produk"
     },
-    "searchPlaceholder": "Cari restok, resi, pesanan atau SKU",
+    "searchPlaceholder": "Cari restok, resi, pesanan atau kode produk",
     "warehouseAll": "Semua gudang",
     "stat": {
       "ongoing": "Masuk",
@@ -2260,7 +2260,7 @@
       "lastBought": "Terakhir dibeli",
       "firstBought": "pertama {{date}}",
       "empty": "Belum ada produk.",
-      "search": "Cari produk, SKU, atau toko",
+      "search": "Cari produk, kode produk, atau toko",
       "storeAll": "Semua toko",
       "none": "Tidak ada produk yang cocok.",
       "emptyHint": "Produk muncul di sini setelah restok yang dibeli di toko pemasok ini diterima."
@@ -2592,10 +2592,10 @@
     "title": "Inventaris",
     "pickWarehousePlaceholder": "Pilih gudang",
     "pickWarehousePrompt": "Pilih gudang untuk melihat stoknya.",
-    "searchPlaceholder": "Cari produk berdasarkan SKU atau nama",
+    "searchPlaceholder": "Cari produk berdasarkan kode produk atau nama",
     "empty": "Tidak ada produk dalam katalog gudang ini.",
     "table": {
-      "sku": "SKU",
+      "sku": "Kode produk",
       "product": "Produk",
       "onHand": "Tersedia",
       "actions": "Aksi"
@@ -3477,7 +3477,7 @@
       },
       "barcode": {
         "label": "Barcode",
-        "reason": "Produk belum punya barcode, jadi scan validasi mencocokkan SKU setiap barang."
+        "reason": "Produk belum punya barcode, jadi scan validasi mencocokkan kode produk setiap barang."
       },
       "printMerge": {
         "label": "Cetak resi sekaligus",
@@ -4225,7 +4225,7 @@
   "warehouseTransfer": {
     "selectTeam": "Pilih tim untuk melihat transfernya.",
     "newTransfer": "Transfer Baru",
-    "searchPlaceholder": "Cari nomor, nomor resi, SKU atau produk",
+    "searchPlaceholder": "Cari nomor, nomor resi, kode produk atau produk",
     "warehouseAll": "Semua gudang",
     "ownerAll": "Semua tim",
     "toAll": "Ke mana saja",
@@ -4603,7 +4603,7 @@
         "racks": "Rak",
         "products": "Produk"
       },
-      "search": "Cari produk berdasarkan nama atau SKU",
+      "search": "Cari produk berdasarkan nama atau kode produk",
       "rackAll": "Semua rak",
       "onlyDifferences": "Hanya yang selisih",
       "tabs": {

@@ -88,15 +88,14 @@ message ProductImages {
 }
 
 message ProductCreateRequest {
-  // Write: the team's managers. Team-level roles are legal here because team_id carries use_scope.
+  // Write: the SELLING team's managers — a warehouse owns no product (the-product-writes-drop-the-warehouse-roles).
+  // Team-level roles are legal here because team_id carries use_scope.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -489,9 +488,7 @@ message ProductUpdateRequest {
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -570,9 +567,7 @@ message ProductDeleteRequest {
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -594,15 +589,14 @@ message ProductDeleteResponse {}
 // succeeding under a silently renamed SKU: a SKU is how a human finds a box on a shelf, and renaming
 // one behind their back is worse than making them choose.
 message ProductRestoreRequest {
-  // Write: the same managers who may archive. Team-level roles are legal — team_id carries use_scope.
+  // Write: the same SELLING managers who may archive (the-product-writes-drop-the-warehouse-roles). Team-level roles are
+  // legal — team_id carries use_scope.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_SELLING_ADMIN
     ]
   };
 

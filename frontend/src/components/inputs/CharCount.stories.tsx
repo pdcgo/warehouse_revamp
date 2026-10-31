@@ -12,7 +12,7 @@ function Harness({ initial = "", max = 12 }: { initial?: string; max?: number })
 
   return (
     <Field.Root maxW="sm">
-      <Field.Label>SKU</Field.Label>
+      <Field.Label>Product code</Field.Label>
       <Input value={value} maxLength={max} data-testid="field" onChange={(e) => setValue(e.target.value)} />
       <CharCount value={value} max={max} testId="count" />
     </Field.Root>

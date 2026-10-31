@@ -3,7 +3,7 @@
 // Concurrency audit for the ShipmentChannel write RPCs (the audit-sql skill).
 //
 // ⚠ san_race.New is given NO tables: `shipment_channels` holds migration-seeded reference rows
-// (jne/jnt/sicepat) that the rolling-back unit tests read, and a DELETE FROM would wipe them from
+// (jne, jnt, sicepat and the eight of 00002) that the rolling-back unit tests read, and a DELETE FROM would wipe them from
 // warehouse_test. Every row here uses a `race_` code and is deleted by that prefix instead.
 //
 //	go test -tags raceaudit -run TestRace_ShipmentChannel -v ./backend/services/shipment_service/shipment_v1/

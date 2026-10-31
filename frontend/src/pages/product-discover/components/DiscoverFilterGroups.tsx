@@ -148,9 +148,10 @@ export function DiscoverFilterGroups({
         />
       </FilterGroup>
 
-      {/* TERBUKA · TERKUNCI (owner: *"filter terkunci dan terbuka, terkunci itu yang kena dikunci dan stoknya <= min"*) —
-          Terkunci is a product its owner locked, or one whose minimum has closed it: ready stock at or under the
-          minimum. Terbuka is every other — another team may take it now. */}
+      {/* TERBUKA · TERKUNCI (owner: *"filter terkunci dan terbuka, terkunci itu yang kena dikunci dan stoknya <= min"*,
+          the boundary since settled as `a-minimum-closes-only-under-it`) — Terkunci is a product its owner locked, or
+          one whose minimum has closed it: ready stock UNDER the minimum. Terbuka is every other — another team may take
+          it now. */}
       <FilterGroup
         label={t("discover.filter.lock")}
         mark={<NotImplemented list={DISCOVER_PENDING} id="lockFilter" />}

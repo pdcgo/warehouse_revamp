@@ -15,9 +15,10 @@ func TestShipmentChannelCreate_CreatesALiveChannel(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	got := mustCreate(t, svc, "anteraja", "AnterAja")
+	// A courier no migration seeds — `anteraja` was this test's code until 00002 seeded it.
+	got := mustCreate(t, svc, "ninja", "Ninja Xpress")
 
-	if got.GetId() == 0 || got.GetCode() != "anteraja" || got.GetIsDeleted() {
+	if got.GetId() == 0 || got.GetCode() != "ninja" || got.GetIsDeleted() {
 		t.Fatalf("created = %+v", got)
 	}
 

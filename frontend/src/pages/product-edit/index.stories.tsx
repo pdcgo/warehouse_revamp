@@ -179,7 +179,7 @@ export const EveryFieldShowsAnExample: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("product-edit-sku")).toHaveAttribute("placeholder", "e.g. SKU-KOPI-250");
+    await expect(canvas.getByTestId("product-edit-sku")).toHaveAttribute("placeholder", "e.g. KOPI-250");
     await expect(canvas.getByTestId("product-edit-name")).toHaveAttribute("placeholder", "e.g. Arabica Coffee 250g");
     await expect(canvas.getByTestId("product-edit-description").getAttribute("placeholder")).toMatch(/^e\.g\. /);
     await expect(canvas.getByTestId("product-edit-cross-markup")).toHaveAttribute("placeholder", "0");
@@ -310,7 +310,7 @@ export const ATakenSkuIsSaidUnderTheSku: Story = {
     await pickDapur(canvas);
     await userEvent.click(canvas.getByTestId("product-edit-save"));
 
-    await waitFor(() => expect(canvas.getByTestId("product-edit-sku-taken")).toHaveTextContent("already uses this SKU"));
+    await waitFor(() => expect(canvas.getByTestId("product-edit-sku-taken")).toHaveTextContent("already uses this product code"));
     await expect(canvas.queryByTestId("product-edit-error")).toBeNull();
     await expect(canvas.queryByTestId("at-products")).toBeNull();
     await expect(canvas.getByTestId("product-edit-name")).toHaveValue("Minyak Goreng Sawit 2L — Karton Baru");

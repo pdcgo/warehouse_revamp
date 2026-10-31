@@ -20,7 +20,7 @@ export const WithFacts: Story = {
   render: (args) => (
     <Section {...args} testId="section" action={<Button size="xs" variant="outline"><Pencil />Edit</Button>}>
       <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-        <Fact label="SKU">SKU-ANG-001</Fact>
+        <Fact label="Product code">ANG-001</Fact>
         <Fact label="Category">Rumah Tangga › Dapur</Fact>
         <Fact label="Note" />
         <Fact label="Description" full>

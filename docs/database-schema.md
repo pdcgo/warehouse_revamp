@@ -189,7 +189,8 @@ erDiagram
 ```
 
 - **`shipment_channels`** — the courier catalogue, one row per COURIER (never courier + service level).
-  Seeded with `jne`, `jnt`, `sicepat` by the migration, because it must exist in production too.
+  Seeded with `jne`, `jnt`, `sicepat` (00001) and `spx`, `grabexpress`, `jntcargo`, `idexpress`, `lex`, `anteraja`,
+  `gosend`, `pos` (00002, the-channels-are-what-orders-ship-by), because it must exist in production too.
   Curated by root only. No relations — it stands alone; other services hold its `id` (or, until the
   order redesign, its `code`) with no FK.
 - **The unique index on `code` is PLAIN, not partial.** A deleted channel keeps its code, and creating
