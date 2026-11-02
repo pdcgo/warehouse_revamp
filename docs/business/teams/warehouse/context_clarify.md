@@ -292,12 +292,29 @@ Kept as a heading so the links into it hold.
 Kept as a heading so the links into it hold.
 
 ### what-is-NOT-the-warehouse-services-job
-Stock, racks and opname are inventory's. The balance and the posting are liability's. Identity and membership
-are team's. **→ Recommend a *Whats Not* section** naming those four, as the order context has.
+✅ **Answered (2026-10-31)** — [the-warehouse-service-owns-the-profile-and-the-fee](./context_decision.md#the-warehouse-service-owns-the-profile-and-the-fee):
+it owns the profile, the closures and the fee; stock, money owed, membership and orders are not its job. Kept as a
+heading so the links into it hold.
 
 ---
 
 # Contradiction
+
+## responsibility-names-team-services-job
+
+**The example.** [context.md](./context.md) §Responsbility 1: *"we must have warehouse service that manage warehouse teams"*.
+[the-warehouse-service-owns-the-profile-and-the-fee](./context_decision.md#the-warehouse-service-owns-the-profile-and-the-fee)
+(2026-10-31): managing teams is team_service's; this service owns the profile, the closures and the fee.
+
+**Which is stale:** the line — the decision is yours and newer. **→ Recommend:** §Responsbility 1 reads *"warehouse service
+owns a warehouse's profile (location, hours, closures) and its fee"*, and a *Whats Not* section names stock (inventory),
+money owed (liability), members (team) and orders (selling).
+
+```mermaid
+flowchart LR
+  D["context.md, manage warehouse teams"] -.->|"stale"| T["team_service's job"]
+  D -.->|"should say"| W["profile, closures, fee"]
+```
 
 ## the-fee-rate-would-exist-in-two-services
 

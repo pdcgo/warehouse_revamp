@@ -33,20 +33,8 @@ per-measure rule applied correctly first time, and it is the third doc to do it.
 
 # Question
 
-1. **Cumulative or outstanding?** (#2) It decides whether this ledger ever goes down, and therefore
-   whether it needs a second flow.
-2. **How does this relate to [team_balance_desgin.md](../balance/team_balance_design.md)?** Both are ledgers keyed
-   by `team_id` holding money for the same team. If a cost reduces a team's balance, one operation writes
-   **both** — which is the cross-ledger invariant problem from
-   [`stock_design_clarity.md`](../stock/design_clarify.md), arriving in a second place.
-
-```mermaid
-flowchart TB
-  E["an electricity bill arrives"] --> C["cost ledger — team_id"]
-  E -.->|"does it also move this?"| B["team balance ledger — team_id"]
-  C --> Q["if both: one transaction, and an invariant<br/>if only one: which, and why not the other"]
-  B --> Q
-```
+1. ✅ *(2026-11-02)* **Answered: neither — no balance is kept** — [an-operating-cost-is-an-expense-row](./design_decision.md#an-operating-cost-is-an-expense-row). Kept as a line so the numbers hold.
+2. ✅ *(2026-11-02)* **Answered: a cost never moves a team balance** — [an-operating-cost-never-moves-a-team-balance](../../business/balance/context_decision.md#an-operating-cost-never-moves-a-team-balance). Kept as a line so the numbers hold.
 
 ---
 

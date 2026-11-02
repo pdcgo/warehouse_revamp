@@ -41,8 +41,7 @@ mine.** Answered points are **deleted**, so this file is always the current open
 Siblings: [business_level](../../business/business_level_clarify.md) · [product_context](../../business/product/context_clarify.md) ·
 [order_context](../../business/order/context_clarify.md) · [inventory_context](../../business/inventory/context_clarify.md) ·
 [balance_context](../../business/balance/context_clarify.md) · [ledger_context](../../business/ledger/context_clarify.md) ·
-[user_context](../../business/user/context_clarify.md) ·
-[systems/systems_product_context](../../business/product/systems_clarify.md).
+[user_context](../../business/user/context_clarify.md).
 
 ---
 
@@ -353,29 +352,27 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
    [settlement Q1](../../business/settlement/context_clarify.md#question).
 8. ✅ *(2026-10-31)* **Answered: yes, its own service** — [region-stays-its-own-service](./context_decision.md#region-stays-its-own-service).
    Kept as a line so the numbers hold.
-9. **What does `systems/` hold?** ([Critique 7](#critique))
-10. **After the split, is the gate half called `balance_service` (your line 7) or `liability_service` (what
-    shipped)?** Your list already contains **both halves of the split I recommend** — line 6
-    `settlement_service` is the order payout, line 7 `balance_service` is the pair rows, the threshold and
-    the payments. The code went to `liability_service` for the second one, and the frontend renders
-    "Liability"/"Kewajiban".
-    ⚠ **Sharpened by [liability-stays](../balance/team_balance_design_decision.md#liability-stays)**
-    (2026-08-29): the owner floated renaming the shipped service to `balance_*`, read the cost, and
-    cancelled it. That is **evidence, not an answer** — a split creates a NEW service, which is a
-    different act from renaming an existing one — but it points the same way this recommendation does.
-    **→ I recommend `liability_service`, and editing line 7 to match.** *Balance* is the noun for the
-    **number** (`last_balance`, `balance_after`) all over this system — reusing it for the service that
-    gates would make "the balance service holds the balance" ambiguous with every other balance. *Liability*
-    names what the row IS. This is a one-line edit to your doc, not a rename.
-11. **Is `export_service` a service, and is it in the list?** `settlement_context.md` §General Brief 3
-    names it and defers it; `architecture/context.md` does not list it.
-    **→ I recommend adding the line now and building it later** — a service named in one doc and absent
-    from the doc that names services is how `settlement`/`balance`/`liability` became three names for one
-    box.
+9. ✅ *(2026-11-02)* **Answered: nothing — there is no `systems/`** — [there-is-no-systems-tree](./context_decision.md#there-is-no-systems-tree). Kept as a line so the numbers hold.
+10. ✅ *(2026-10-31)* **Answered: `liability_service`** — [the-balance-service-is-liability-service](./context_decision.md#the-balance-service-is-liability-service).
+    Kept as a line so the numbers hold.
+11. ✅ *(2026-11-02)* **Answered: built as `settlement_importer_service`** — [export-service-is-the-settlement-importer](./context_decision.md#export-service-is-the-settlement-importer). Kept as a line so the numbers hold.
 
 ---
 
 # Contradiction
+
+## the-list-names-balance-service
+
+**The example.** [context.md](./context.md) line 7: *"`balance_service`, mirrored pair rows, debt threshold, **the gate**,
+payments between teams"*. [the-balance-service-is-liability-service](./context_decision.md#the-balance-service-is-liability-service)
+(2026-10-31), and the code: `liability_service`.
+
+**Which is stale:** line 7's name — the decision is yours and newer. **→ Recommend:** line 7 reads `liability_service`.
+
+```mermaid
+flowchart LR
+  D["context.md line 7, balance_service"] -.->|"stale"| L["liability_service, as built"]
+```
 
 ## the gate runs before the draw, and this doc says it cannot
 

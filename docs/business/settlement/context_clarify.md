@@ -997,7 +997,7 @@ the cheapest moment it will ever be to choose.
 
 ## Question
 
-**One open here**, and none is about the ledger's mechanics — those are all settled. ⚠ **Numbering was
+**None open here.** ⚠ **Numbering was
 compacted** when eight questions were answered or moved in one week; older references in this file's
 narrative point at the numbers they had then, and every answer lives in
 [context_decision.md](./context_decision.md).
@@ -1019,19 +1019,25 @@ narrative point at the numbers they had then, and every answer lives in
    [settlement-opens-the-sale-from-the-order-event](./context_decision.md#settlement-opens-the-sale-from-the-order-event) —
    create refuses it; settlement's skip stays only for older orders. Kept as a line so the numbers hold.
 
-5. **A cancel undoes the LIVE sale, whatever it now is — is that the reading you meant?** 🆕 from the
-   build. [a-cancel-is-an-opposite-row](./context_decision.md#a-cancel-is-an-opposite-row) says *"the
-   exact opposite of `initial_total`"*, which has two readings the moment a person corrects the sale by
-   reverse-then-repost: the opposite of the **original** row, or of the **live** sale.
-   | a 120.000 sale corrected to 110.000, then cancelled | cancel by the original | cancel by the live sale |
-   | --- | --- | --- |
-   | the cancel row | +120.000 | +110.000 |
-   | live sale after | **−10.000** ⛔ | 0 ✅ |
-   **→ I recommend the live sale** — built that way: `CancelSale` reads the amount under the account's
-   lock, a cancel above the live sale is refused, and a cancel with nothing live writes no row.
+5. ✅ *(2026-11-02)* **Answered: the live sale, as built** — [a-cancel-reverses-the-live-sale](./context_decision.md#a-cancel-reverses-the-live-sale). Kept as a line so the numbers hold.
 
 
 # Contradiction
+
+## the-doc-still-names-export-service
+
+**The example.** [context.md](./context.md) line 34: *"this `settlement_service` not covered automatic importing file. its
+`export_service` responsbility [defer for now, talk later]"*. The importer was built on 2026-09-29 as
+**`settlement_importer_service`**, from your own [settlement_importer.md](./settlement_importer.md)
+([export-service-is-the-settlement-importer](../../technical/architecture/context_decision.md#export-service-is-the-settlement-importer)).
+
+**Which is stale:** line 34 — the name and the *defer*. **→ Recommend:** line 34 points at
+[settlement_importer.md](./settlement_importer.md).
+
+```mermaid
+flowchart LR
+  D["context.md line 34, export_service, deferred"] -.->|"stale"| I["settlement_importer_service, built 2026-09-29"]
+```
 
 ## settlement-posts-to-a-retired-book
 

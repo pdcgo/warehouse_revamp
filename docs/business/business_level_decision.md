@@ -7,6 +7,8 @@ open. Earlier answers to this doc's questions live in the context that could ans
 | | |
 | --- | --- |
 | [transparency-is-every-charge-traceable](#transparency-is-every-charge-traceable) | *transparency accounting* means: every charge a team bears shows what caused it, its frozen amount and who recorded it — never overwritten |
+| [a-team-has-exactly-one-type](#a-team-has-exactly-one-type) | a team is exactly one type — root, admin, warehouse or selling; a person may span types |
+| [placement-is-a-context-of-its-own](#placement-is-a-context-of-its-own) | §Warehouse 8 promotes placement: it is a context of its own, `inventory/placement.md` |
 
 ---
 
@@ -41,3 +43,40 @@ flowchart LR
 
 **What follows:** a new kind of charge between teams owes this claim — a cause, a frozen amount, an actor, both sides'
 view — or it is not transparent by the project's own definition.
+
+## a-team-has-exactly-one-type
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q3](./business_level_clarify.md#question), *can a
+> TEAM be two types?*
+
+**The verdict.** No: a team has **exactly one type** — root, admin, warehouse or selling. A person may belong to teams of
+different types (`user_context.md` §General), but each team is one of them. The schema holds one `type` per team, and
+the menu is built from it.
+
+```
+team 7     type = warehouse                                  one value, never two
+Ani        a member of team 7 (warehouse) and team 12 (selling)   a person may span types
+```
+
+| | |
+| --- | --- |
+| ✅ built | nothing changes |
+
+## placement-is-a-context-of-its-own
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q6](./business_level_clarify.md#question), *is
+> §Warehouse 8 a promotion of placement to a first-class capability, or a restatement of §Warehouse 4?*
+
+**The verdict.** A promotion. Placement is a context of its own — [placement.md](./inventory/placement.md), yours — so
+§Warehouse 8, *"manage placements of the stocks"*, is the warehouse's job naming it. §Warehouse 4's *"warehouse managing
+phisique of goods and placement of goods"* stands beside it; how the two lines read is your doc's wording, not a question.
+
+```mermaid
+flowchart LR
+  W["the warehouse team"] --> P["placement, its own context"]
+  P --> D["inventory/placement.md"]
+```
+
+| | |
+| --- | --- |
+| ✅ built | nothing changes |

@@ -286,3 +286,58 @@ flowchart LR
 
 ⚠ **What it does not settle:** whether ownership follows member.md or practice — on this branch Heri decides Products
 too ([Q2](./member_clarify.md#question), in the overtaken list).
+
+## each-branch-decides-its-own-design
+
+> Owner, in chat (2026-11-02): *"toni like custom our subsystem in inventory related, but in same time i have one to."*, then
+> *"left the main. im active develop on this"* — to [Q3](./member_clarify.md#question) *(who settles a boundary?)* and
+> [Q4](./member_clarify.md#question) *(who breaks a tie?)*, and [Q2](./member_clarify.md#question) with them.
+
+**The verdict.** Two people each develop their own design of the inventory subsystem, one per branch
+([the-two-inventory-designs-live-on-separate-branches](../inventory/context_decision.md#the-two-inventory-designs-live-on-separate-branches)),
+and on each branch its developer decides **everything** — every boundary between contexts, every tie, every
+cross-cutting call. [member.md](./member.md)'s lanes say who builds what; they do not move a decision off its branch.
+
+```
+backup/inventory  →  Heri's design   →  Heri settles every boundary and breaks every tie
+thoni             →  Toni's design   →  Toni does, for that design
+```
+
+```mermaid
+flowchart LR
+  H["backup/inventory - Heri, developing now"] --> HD["Heri decides everything here"]
+  T["thoni - Toni"] --> TD["Toni decides his design there"]
+  M["which design reaches main"] -.->|"not asked - left for later"| X["no question opened"]
+```
+
+| | |
+| --- | --- |
+| Q3 — a boundary | on this branch, Heri settles it |
+| Q4 — a tie | on this branch, Heri breaks it |
+| Q2 — does member.md grant decision authority? | not across branches: on each, its developer decides |
+| `main` | left aside — the owner is developing on `backup/inventory`; no question is opened about which design reaches it |
+
+## each-developer-works-on-their-own-branch
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q5](./member_clarify.md#question), *does the
+> single-`dev`-branch rule survive two people?* Earlier the same day: *"left the main. im active develop on this branch"*.
+
+**The verdict.** There is no single shared `dev` branch any more. Each developer works on a long-lived branch of their
+own and decides its design ([each-branch-decides-its-own-design](#each-branch-decides-its-own-design)). `dev` has been
+idle since 2026-10-12. Which work reaches `main`, and how, is left aside — not asked.
+
+```
+backup/inventory   Heri — active
+thoni              Toni
+frada, hfrada      merged across when wanted (5739fd0e: frada into backup/inventory)
+dev                idle since 2026-10-12
+```
+
+| | |
+| --- | --- |
+| where work lands | the developer's own branch, committed only when they say so |
+| between branches | a merge by hand, when asked |
+| `main` | left aside |
+| ⚠ CLAUDE.md §Git workflow | still says *commit straight to `dev`* — reported in [claude-md-still-sends-every-commit-to-dev](./member_clarify.md#claude-md-still-sends-every-commit-to-dev), not edited |
+| also closes | [workflow Q3](../../technical/development/workflow_clarify.md#question), *how many people build on `dev` at once?* |
+| ✅ built | nothing to build |

@@ -12,7 +12,7 @@
 > | perf | 🔴 heavy, and no worse than the reads they replaced — [MetricData](../../../audits/services/settlement_service/performances/MetricData.md) 285 ms @ 20 days, [MetricSearch](../../../audits/services/settlement_service/performances/MetricSearch.md) 138 ms @ shops. The fix (the running sum) is still the open question of 2026-09-14 |
 > | the screen | the Settlement Report reads the pair (`features/settlement/analytics.ts`); `measure.ts` maps the served fields and derives nothing; the ranking pages with the growing pager; the *Not recorded* person row is gone (left out of the `USER` group, as decided). The Analytic screen serves both metrics (`catalogue.ts`), with a `ratio` kind: a percentage, its own graph, "—" when unset |
 > | Storybook | `.storybook/settlementAnalyticStub.ts` folds one ledger book (`fixtures.ts` `settlementBook`, a shop and a person on every row) with the service's rules — the report stories and the Analytic stories read it |
-> | not built | `take_rate` cannot sort yet — [a-take-rate-ranks-above-what-sale](../../business/settlement/analytic_context_clarify.md#a-take-rate-ranks-above-what-sale) |
+> | not built | `take_rate` cannot sort yet — decided 2026-11-02, it ranks above Rp 1.000.000 of sales: [a-take-rate-ranks-above-one-million-of-sales](../../business/settlement/context_decision.md#a-take-rate-ranks-above-one-million-of-sales) |
 
 **Pass:** `implementation` + `technical_test`, **COMPLETE** (2026-09-14). Backend `dabc331`; the report
 screen and docs in the commit after it. 🔨 **Widened 2026-09-29 for the settlement importer** (9f20652): the five types,

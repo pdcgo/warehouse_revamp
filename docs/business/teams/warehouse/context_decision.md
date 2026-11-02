@@ -19,6 +19,7 @@ the old one, never an edit to it (HARD RULE 12). The open set lives in [context_
 | [a-closed-day-warns-and-never-refuses](#a-closed-day-warns-and-never-refuses) | an order into a closed warehouse is created, with a warning naming the next opening; nothing refuses it, and the hours gate no restock |
 | [a-warehouse-records-its-holidays](#a-warehouse-records-its-holidays) | a warehouse keeps a list of one-off closures — a date range and a reason — read by the closed-day warning beside the weekly grid |
 | [one-warehouse-team-is-one-building](#one-warehouse-team-is-one-building) | a warehouse team is one building; a second site is a second warehouse team |
+| [the-warehouse-service-owns-the-profile-and-the-fee](#the-warehouse-service-owns-the-profile-and-the-fee) | the warehouse service owns the profile, the closures and the fee — never stock, money owed, membership or orders |
 
 ---
 
@@ -495,3 +496,29 @@ flowchart LR
 | `warehouse_id` | is a warehouse team's id, everywhere — stock, racks, orders, the fee |
 | a second site | a second warehouse team, made like the first |
 | ✅ built | nothing changes — this is what runs |
+
+## the-warehouse-service-owns-the-profile-and-the-fee
+
+> Owner, in chat (2026-10-31): *"yes"* — to [what-is-NOT-the-warehouse-services-job](./context_clarify.md#question), on the
+> split recommended. As recommended.
+
+**The verdict.** The warehouse service owns three things, and names four it does not, so it never grows into
+*everything about the warehouse*.
+
+| **owns** | **not its job — whose it is** |
+| --- | --- |
+| the profile: location, receiving and operating hours ([the-warehouse-profile-lives-in-warehouse-service](#the-warehouse-profile-lives-in-warehouse-service)) | stock, racks, the stock count — **inventory** |
+| one-off closures ([a-warehouse-records-its-holidays](#a-warehouse-records-its-holidays)) | what teams owe each other, and posting it — **liability** |
+| the fee, and `WarehouseFeeCalculate` | the team, its members and roles — **team** / **user** |
+| | the orders it ships — **selling** |
+
+```mermaid
+flowchart LR
+  W["warehouse_service"] --> P["profile, hours, closures"]
+  W --> F["the fee"]
+  W -.->|"not its job"| X["stock, money owed, members, orders"]
+```
+
+**What it leaves** (HARD RULE 11): [context.md](./context.md) §Responsbility 1, *"we must have warehouse service that manage
+warehouse teams"* — managing teams is team_service's — and the doc has no *Whats Not*; reported in the clarify's
+[responsibility-names-team-services-job](./context_clarify.md#responsibility-names-team-services-job).

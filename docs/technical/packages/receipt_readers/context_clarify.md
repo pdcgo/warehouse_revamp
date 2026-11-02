@@ -441,19 +441,15 @@ flowchart LR
 > returned ([courier-is-not-read](./context_decision.md#courier-is-not-read)), so the answer would never reach
 > anyone. `HALU` still selects the SiCepat layout, which only decides the tracking number's shape.
 
-1. **Which app produced `jnttest.pdf`?** → **Probably TikTok's own label printer.** `tiktok_tokped_jnt_cargo.pdf`
-   is a TikTok / Tokopedia label with the same generator (`wkhtmltopdf` + `pdfcpu`) and the same fonts, and
-   `jnttest.pdf`'s order id is a TikTok one. I recommend closing this as "TikTok, J&T Express". Confirm?
+1. ✅ *(2026-11-02)* **Answered: TikTok, J&T Express** — [jnttest-is-a-tiktok-jnt-express-label](./context_decision.md#jnttest-is-a-tiktok-jnt-express-label).
+   Kept as a line so the numbers hold.
 
 > ✅ **Answered and deleted: Q3**, *which service hosts the scan?* `shipment_service`, as `ReceiptCheck`
 > ([receipt-check-is-shipments](../../../business/shipment/context_decision.md#receipt-check-is-shipments)).
 > ➡ **Re-routed: Q2**, the caller flow, went to shipment as its Q4 and is answered there: the bytes, sent beside the
 > upload ([receipt-check-takes-the-file-bytes](../../../business/shipment/context_decision.md#receipt-check-takes-the-file-bytes)).
 
-4. **Do sellers upload photos of labels?** [document.proto:34](../../../../proto/warehouse/document/v1/document.proto#L34)
-   accepts both. → I recommend **PDF only** for now: a photo needs OCR, which is a different package with a
-   different cost. ⚠ A PDF can hold a photo too: `jnt_eco_01.pdf` is a label printed as a picture
-   ([Q13](#question)), so "PDF only" doesn't mean "text only".
+4. ✅ *(2026-11-02)* **Answered: PDF only** — [a-label-is-read-from-a-pdf-only](./context_decision.md#a-label-is-read-from-a-pdf-only). Kept as a line so the numbers hold.
 > ✅ **Answered and deleted: Q5**, *sample privacy*: the label samples are not sensitive and stay committed
 > ([the-label-samples-may-be-committed](./context_decision.md#the-label-samples-may-be-committed)), against my *never commit them*. Kept as a line so the numbers hold.
 
@@ -466,84 +462,20 @@ flowchart LR
 > label no courier layout knows is read from its `Resi:` box when a barcode says the same
 > ([a-shopee-resi-is-confirmed-by-its-barcode](./context_decision.md#a-shopee-resi-is-confirmed-by-its-barcode)).
 
-8. **`Phone`: only one label prints the recipient's.** A Shopee label prints only the **sender's** phone, under
-   `Pengirim:`, and a TikTok label masks the recipient's (`(+62)81*******00`). The KiriminAja label prints it in
-   full, under the name. So `Phone` is filled on one label in thirty-seven.
-
-   ```mermaid
-   flowchart LR
-     S["Shopee, 15 samples"] --> SP["one phone, the SENDER's"]
-     T["TikTok, 3 samples"] --> TP["recipient's phone, masked"]
-     K["KiriminAja, 1 sample"] --> KP["recipient's phone, in full"]
-     SP --> E["Phone is empty"]
-     TP --> E
-     KP --> F["Phone is filled"]
-   ```
-
-   → I recommend **keeping the field as the recipient's phone**, as built: KiriminAja shows it's printed when the
-   label's app has it. Never the sender's: it would autofill the seller's own number as the customer's. Or did
-   you mean the sender's?
-9. **A masked value: empty, or as printed?** TikTok's courier labels print the name as `a**i` and the phone as
-   `(+62)81*******00` (its instant label prints the name in full, the phone still masked).
-   Built: anything with a `*` comes back `""`, because autofilling `a**i` as a customer's name is worse than
-   leaving the box empty. → I recommend **keeping that**. Do you want the masked form instead?
-10. **The address: one string, wrapped words split.** The label's address box wraps **inside** words
-    (`Gro` / `gol Sel`, `kelurahan b` / `enda`), and on these PDFs a wrap inside a word can't be told from a wrap
-    between words. Built: lines joined by a space, so a split word stays split (`Gro gol Sel`) and is never glued
-    to its neighbour (`KALIMANTANBARAT`). Separately, a Shopee label also prints the region in boxes
-    (`KOTA JAKARTA BARAT | KEMBANGAN`), which match `order_addresses`' region columns.
-    → I recommend **one string as built**, plus a later contract field for the region boxes if the order form
-    wants them structured. Your call: it's a contract change.
-11. **A KiriminAja label: is its booking number the order id?** It prints no marketplace order id. The only id
-    on it is KiriminAja's own, `OID-…`, under `No. Trx KiriminAja`.
-
-    | option | `OrderID` for this label | cost |
-    | --- | --- | --- |
-    | **a** ✅ | `""`: no marketplace order id is printed | the person types the order's reference, or it stays empty |
-    | **b** | the `OID-…` booking number | an aggregator's number in the field every other label fills with the marketplace's |
-
-    → I recommend **a** (built), **unless** your orders store the `OID-…` as their reference. Your iterate tool
-    logs `ord.OrderRefID` beside the result, so the next KiriminAja order's log line answers it: if they match,
-    switch to **b**.
+8. ✅ *(2026-11-02)* **Answered: the recipient's, never the sender's** — [the-phone-is-the-recipients-never-the-senders](./context_decision.md#the-phone-is-the-recipients-never-the-senders).
+9. ✅ *(2026-11-02)* **Answered: empty** — [a-masked-value-comes-back-empty](./context_decision.md#a-masked-value-comes-back-empty).
+10. ✅ *(2026-11-02)* **Answered: one string, as built** — [the-address-is-one-string-joined-by-spaces](./context_decision.md#the-address-is-one-string-joined-by-spaces).
+    Q8 to Q10 are kept as lines so the numbers hold.
+11. ✅ *(2026-11-02)* **Answered: left empty** — [a-kiriminaja-label-leaves-the-order-id-empty](./context_decision.md#a-kiriminaja-label-leaves-the-order-id-empty):
+    the `OID-…` is the aggregator's. Kept as a line so the numbers hold.
 
 > ✅ **Answered and deleted: Q12**, *a Lazada label's order id?* The 16-digit order number: the receipt is the courier's
 > tracking number ([a-lazada-receipt-is-its-tracking-number](./context_decision.md#a-lazada-receipt-is-its-tracking-number)).
 
-13. **A label printed as a picture: the receipt from its barcode, or OCR for the rest too?** `jnt_eco_01.pdf` has no
-    text, only an image of the label. Its QR code and Code 128 carry the tracking number. Everything else is pixels.
-
-    | option | reads | cost |
-    | --- | --- | --- |
-    | **a** ✅ | `Receipt` from the QR or Code 128, and `OrderID` when a barcode carries it (SPX, `shopee_std_01.pdf`). The recipient `""` | one pure-Go dependency (`gozxing`, MIT), 3 ms a label, 50 ms for five JPEGs |
-    | **b** | **a**, plus OCR for the order id and the recipient | Tesseract through cgo (a native library in every server image) or a cloud OCR API (a cost per call, and the buyer's address leaves the system) |
-    | **c** | nothing: an error, the person types it all | none, but the one field we can read for free is thrown away |
-
-    ```mermaid
-    flowchart LR
-      P["a page with no text"] --> B["decode every image's QR and Code 128, JPEGs too"]
-      B -->|"a J and T or SPX number, every copy agreeing"| R["Receipt"]
-      B -->|"beside an SPX number, a Shopee order number"| OID["OrderID"]
-      B -->|"nothing, or not that shape"| U["unknown layout"]
-      P -.->|"option b only"| O["OCR: order id, name, address"]
-    ```
-
-    → I recommend **a** (built). The receipt is what your tool checks and what the order form needs most, and it's the
-    one field that's machine-readable on purpose. Revisit **b** only if picture labels turn out common: your tool
-    saves each one it can't read, so the samples folder will show how often they come. *(2026-10-05)* The second one,
-    `shopee_std_01.pdf`, carries its order number in a barcode too, so **a** reads it. On that label, OCR would add only
-    the recipient.
-14. **A Shopee reservation label: is the reservation number the order id?** `shopee_spx_02.pdf` ships to an SPX hub,
-    not a buyer, and prints `No.Reservasi:` (19 characters) where an order label prints `No. Pesanan:` (14).
-
-    | option | `OrderID` for this label | cost |
-    | --- | --- | --- |
-    | **a** ✅ | the reservation number | the form's Shopee reference rule (12–14 characters) would warn on 19 |
-    | **b** | `""` | the one Shopee reference on the label is thrown away |
-
-    → I recommend **a** (built): it's Shopee's own number for this shipment, captioned where the order number would
-    be. Your tool's log shows `ord.OrderRefID` beside it, which settles it. If they match, the form's rule needs a
-    second shape. Related: its `CustomerName` is the hub's name, as printed, because the hub *is* the recipient.
-    Does a reservation order belong in the warehouse's order list at all, or is it a stock transfer?
+13. ✅ *(2026-11-02)* **Answered: barcodes only, no OCR** — [a-picture-label-is-read-from-its-barcodes-only](./context_decision.md#a-picture-label-is-read-from-its-barcodes-only).
+    Kept as a line so the numbers hold.
+14. ✅ *(2026-11-02)* **Answered: the reservation number, as built** — [a-reservation-number-is-read-as-the-order-id](./context_decision.md#a-reservation-number-is-read-as-the-order-id).
+    Kept as a line so the numbers hold.
 
 > ✅ **Answered and deleted: Q15**, *a label the seller made: read it or refuse it?* Refuse: it's spam
 > ([a-file-that-is-not-a-courier-label-is-refused](./context_decision.md#a-file-that-is-not-a-courier-label-is-refused)).

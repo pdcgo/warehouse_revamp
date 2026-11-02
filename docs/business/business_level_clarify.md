@@ -181,15 +181,11 @@ negative half — the doc that defines the four teams' responsibilities says who
 
 1. ✅ **Answered — [the-admin-team-monitors-all-and-manages-its-own](./user/context_decision.md#the-admin-team-monitors-all-and-manages-its-own)**: monitor all, manage own — it reads every warehouse and selling team, and writes only inside itself. Kept as a line so the numbers hold.
 2. ✅ **Answered — [a-shortage-writes-a-row-per-batch](./inventory/opname_decision.md#a-shortage-writes-a-row-per-batch)**: oldest batch first, as a sale takes — one row per batch, each at that batch's own price. Kept as a line so the numbers hold.
-3. **Can a TEAM be two types?** — the person half is now answered (`user_context.md` §General: yes).
-   ([Critique 5](#critique)) **→ I recommend exactly one type per team.**
+3. ✅ *(2026-11-02)* **Answered: exactly one** — [a-team-has-exactly-one-type](./business_level_decision.md#a-team-has-exactly-one-type). Kept as a line so the numbers hold.
 4. ✅ **Answered — [a-lost-parcel-is-settled-by-hand](./order/context_decision.md#a-lost-parcel-is-settled-by-hand)**: not the warehouse — custody ends at handover; CS enters the platform's claim by hand on the order's settlement. Kept as a line so the numbers hold.
 5. ✅ *(2026-10-31)* **Answered: every charge a team bears is traceable** — [transparency-is-every-charge-traceable](./business_level_decision.md#transparency-is-every-charge-traceable):
    its cause, its frozen amount and who recorded it, never overwritten. Kept as a line so the numbers hold.
-6. **Is §Warehouse 8 a PROMOTION of placement to a first-class capability, or a restatement of the clause
-   already in §Warehouse 4?** ([Critique 7](#critique))
-   **→ I recommend promotion, with the clause folded out of item 4 — and if it is a restatement, delete one
-   rather than leaving both.**
+6. ✅ *(2026-11-02)* **Answered: a promotion** — [placement-is-a-context-of-its-own](./business_level_decision.md#placement-is-a-context-of-its-own). Kept as a line so the numbers hold.
 
 ---
 

@@ -194,6 +194,22 @@ cosmetic only.
 
 # Contradiction
 
+## claude-md-still-sends-every-commit-to-dev
+
+**The example.** `CLAUDE.md` §Git workflow: *"All work happens on a single long-lived **`dev`** branch. Commit straight
+to `dev`"*. [each-developer-works-on-their-own-branch](./member_decision.md#each-developer-works-on-their-own-branch) (2026-11-02): each developer works on a branch of their own,
+and `dev` has been idle since 2026-10-12.
+
+**Which is stale:** CLAUDE.md's — the decision is yours and newer, and every agent reads CLAUDE.md first. **→ Recommend:**
+the section says *work lands on the developer's own branch, committed only when asked; never push or merge `main`
+without an ask*. I edit CLAUDE.md only when you ask.
+
+```mermaid
+flowchart LR
+  C["CLAUDE.md, commit straight to dev"] -.->|"stale"| B["each developer's own branch, as practised"]
+  C --> A["an agent that obeys it commits to the wrong branch"]
+```
+
 ## the readme enumerates the domains as a closed list, and the tree has since grown two that are not in it
 
 > [business/readme.md](../readme.md): *"One `<big_context>` per domain (`inventory`, `order`,
@@ -225,19 +241,11 @@ flowchart TD
    and `category` goes with Products, `team` with Users & Roles
    ([category-goes-with-products-and-team-with-users](./member_decision.md#category-goes-with-products-and-team-with-users)). Kept as a
    line so the numbers hold.
-2. **Does this doc grant DECISION authority, or only the work?** Concretely: from now on, does a
-   `_clarify.md` in `inventory/` address **Toni** rather than *"the owner"*?
-3. **Who settles a BOUNDARY?** Today's instance: the warehouse's loss reimbursement writes Toni's
-   event onto Heri's balance. My proposal is *caller proposes, callee accepts*.
-4. **Who is the TIEBREAK?** ▼ narrowed — the addressee half is answered: this machine is **Heri's**,
-   and every one of the **389 commits** in the repository has one author, so *"the owner"* in
-   `CLAUDE.md` and in all 16 `_clarify.md` files has meant Heri throughout. What is still open is
-   whether that continues once Toni decides his own contexts: **who settles a cross-cutting call** —
-   the hard rules, the proto contract, merging to `main` — when two deciders have no majority
-   ([Critique 4](#critique))?
-5. 🆕 **Does the single-`dev`-branch rule survive two people?** It was written when one person
-   worked here, for a reason that still holds — you preview the running app on `dev`. With two, it
-   also means each person's half-finished work is in the tree the other pulls, and a red `dev`
-   stops both. **→ Recommend:** keep `dev` as the preview branch, and each person works on
-   `dev-<name>`, merging into `dev` only green. It costs one merge and changes nothing you look at.
-   ⚠ It edits a rule in `CLAUDE.md`, so it is yours to decide (HARD RULE 8).
+2. ✅ *(2026-11-02)* **Answered: on each branch, its developer decides** — [each-branch-decides-its-own-design](./member_decision.md#each-branch-decides-its-own-design).
+   Kept as a line so the numbers hold.
+3. ✅ *(2026-11-02)* **Answered: on each branch, its developer decides** — [each-branch-decides-its-own-design](./member_decision.md#each-branch-decides-its-own-design).
+   Kept as a line so the numbers hold.
+4. ✅ *(2026-11-02)* **Answered: on each branch, its developer decides** — [each-branch-decides-its-own-design](./member_decision.md#each-branch-decides-its-own-design).
+   Kept as a line so the numbers hold.
+5. ✅ *(2026-11-02)* **Answered: no shared `dev` — each developer's own branch** — [each-developer-works-on-their-own-branch](./member_decision.md#each-developer-works-on-their-own-branch).
+   Kept as a line so the numbers hold.

@@ -14,9 +14,78 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**33 open questions across 41 files.** The seven below are shown; **26 are not** — they are not closed, only
-smaller. ⚠ **17 of the 33 look overtaken** ([listed below](#looks-overtaken)) and stay counted until you confirm
-each. The per-file counts are at the bottom.
+**0 open questions across 41 files.** The per-file counts are at the bottom.
+
+▼ *(2026-11-02)* **0**: the overtaken list, closed in one answer — all 16 confirmed and recorded as 13 decisions
+(two pairs were one question asked twice): [each-developer-works-on-their-own-branch](business/project/member_decision.md#each-developer-works-on-their-own-branch) ·
+[the-workflow-lives-in-the-development-lifecycle](technical/development/workflow_decision.md#the-workflow-lives-in-the-development-lifecycle) · [an-operating-cost-never-moves-a-team-balance](business/balance/context_decision.md#an-operating-cost-never-moves-a-team-balance) ·
+[an-orders-warehouse-fee-is-read-on-the-order](business/balance/context_decision.md#an-orders-warehouse-fee-is-read-on-the-order) · [an-operating-cost-is-an-expense-row](technical/cost/design_decision.md#an-operating-cost-is-an-expense-row) ·
+[a-cancel-reverses-the-live-sale](business/settlement/context_decision.md#a-cancel-reverses-the-live-sale) · [wderror-is-refused-like-any-unmapped-type](technical/packages/excel_readers/context_decision.md#wderror-is-refused-like-any-unmapped-type) ·
+[a-label-is-read-from-a-pdf-only](technical/packages/receipt_readers/context_decision.md#a-label-is-read-from-a-pdf-only) · [the-shared-lock-is-cross-locked](business/product/context_decision.md#the-shared-lock-is-cross-locked) ·
+[a-team-has-exactly-one-type](business/business_level_decision.md#a-team-has-exactly-one-type) · [placement-is-a-context-of-its-own](business/business_level_decision.md#placement-is-a-context-of-its-own) ·
+[there-is-no-systems-tree](technical/architecture/context_decision.md#there-is-no-systems-tree) · [export-service-is-the-settlement-importer](technical/architecture/context_decision.md#export-service-is-the-settlement-importer).
+Two stale lines found on the way are reported, not fixed: CLAUDE.md §Git workflow
+([claude-md-still-sends-every-commit-to-dev](business/project/member_clarify.md#claude-md-still-sends-every-commit-to-dev)) and settlement context.md line 34
+([the-doc-still-names-export-service](business/settlement/context_clarify.md#the-doc-still-names-export-service)). Net −16.
+
+▼ *(2026-11-02)* **16**: receipt_readers Q14 closed — a reservation label's number is its order id, whatever the label
+is for ([a-reservation-number-is-read-as-the-order-id](technical/packages/receipt_readers/context_decision.md#a-reservation-number-is-read-as-the-order-id)), as built. **Every question that is
+really open is now answered**; what is left is the overtaken list. Net −1.
+
+▼ *(2026-11-02)* **17**: receipt_readers Q13 closed — a picture label is read from its barcodes only, no OCR
+([a-picture-label-is-read-from-its-barcodes-only](technical/packages/receipt_readers/context_decision.md#a-picture-label-is-read-from-its-barcodes-only)), as built. #1 is now Q14 alone. Net −1.
+
+▼ *(2026-11-02)* **18**: the old #1, receipt_readers Q8, Q9 and Q10, closed in one answer, all as built — the phone is
+the recipient's, never the sender's ([the-phone-is-the-recipients-never-the-senders](technical/packages/receipt_readers/context_decision.md#the-phone-is-the-recipients-never-the-senders)), a
+masked value comes back empty ([a-masked-value-comes-back-empty](technical/packages/receipt_readers/context_decision.md#a-masked-value-comes-back-empty)), the address
+is one string ([the-address-is-one-string-joined-by-spaces](technical/packages/receipt_readers/context_decision.md#the-address-is-one-string-joined-by-spaces)). Two rows are left. Net −3.
+
+▼ *(2026-11-02)* **21**: the old #1, settlement analytic Q9, closed — a take rate ranks only the keys that sold at least
+Rp 1.000.000 in the range ([a-take-rate-ranks-above-one-million-of-sales](business/settlement/context_decision.md#a-take-rate-ranks-above-one-million-of-sales)), as recommended, not built yet.
+Three rows are left. Net −1.
+
+▼ *(2026-11-02)* **22**: the old #1, excel_readers Q5, closed — `san_excel_readers` keeps its name and reads settlement
+files only ([the-package-keeps-its-name-and-reads-settlements](technical/packages/excel_readers/context_decision.md#the-package-keeps-its-name-and-reads-settlements)),
+against my earlier rename. Four rows are left. Net −1.
+
+▼ *(2026-11-02)* **23**: the old #1, receipt_readers Q11, closed — a KiriminAja label fills no order id; its `OID-…`
+is the aggregator's ([a-kiriminaja-label-leaves-the-order-id-empty](technical/packages/receipt_readers/context_decision.md#a-kiriminaja-label-leaves-the-order-id-empty)),
+as recommended and as built. Five rows are left. Net −1.
+
+▼ *(2026-11-02)* **24**: the old #1, member Q3 and Q4, closed with Q2 — on each branch its developer decides everything:
+Heri on `backup/inventory`, Toni on `thoni` ([each-branch-decides-its-own-design](business/project/member_decision.md#each-branch-decides-its-own-design)).
+Which design reaches `main` is left aside, not asked: *"im active develop on this branch"*. Member Q2 leaves the overtaken
+list. Six rows are left. Net −3.
+
+▼ *(2026-11-02)* **27**: the old #1, balance Q7, closed — no outsider is ever owed: a supplier is paid at the restock,
+a courier at the door, and a monthly courier bill *"not happen"*
+([no-outsider-is-owed-in-the-system](business/balance/context_decision.md#no-outsider-is-owed-in-the-system)). The
+rest move up one; the overtaken list itself becomes #7. Net −1.
+
+▼ *(2026-11-02)* **28**: the old #1, receipt_readers Q1, closed — `jnttest.pdf` is a TikTok J&T Express label
+([jnttest-is-a-tiktok-jnt-express-label](technical/packages/receipt_readers/context_decision.md#jnttest-is-a-tiktok-jnt-express-label)),
+as recommended. The rest move up one; receipt_readers Q13 and Q14 enter at #7 — **every open question that is not in
+the overtaken list is now in the seven.** Net −1.
+
+▼ *(2026-10-31)* **29**: the old #1, balance Q6, closed — a creditor may send a payment request, a notice that posts
+nothing and blocks nothing ([a-creditor-may-request-payment](business/balance/context_decision.md#a-creditor-may-request-payment)),
+as recommended. ⛔ Not built. The rest move up one; receipt_readers Q8–Q10 enter together at #7. Net −1.
+
+▼ *(2026-10-31)* **30**: the old #1, the warehouse's *Whats Not*, closed — it owns the profile, the closures and the
+fee; stock, money owed, members and orders are not its job
+([the-warehouse-service-owns-the-profile-and-the-fee](business/teams/warehouse/context_decision.md#the-warehouse-service-owns-the-profile-and-the-fee)),
+as recommended. One contradiction: your §Responsbility 1 still says *manage warehouse teams*. **The warehouse context
+has no open question.** The rest move up one; settlement's take rate enters at #7. Net −1.
+
+▼ *(2026-10-31)* **31**: the old #1, architecture Q10, closed — the balance service is `liability_service`, as built
+([the-balance-service-is-liability-service](technical/architecture/context_decision.md#the-balance-service-is-liability-service)),
+as recommended. One contradiction: your list's line 7 still says `balance_service`. The rest move up one;
+excel_readers Q5 enters at #7. Net −1.
+
+▼ *(2026-10-31)* **32**: the old #1, product Q7, closed — the field is `product_code`, composed on write as
+`<team_code>-<the team's part>`, globally unique; `sku` goes
+([the-field-is-product-code-composed-on-write](business/product/context_decision.md#the-field-is-product-code-composed-on-write)),
+as recommended. ⛔ Not built. The rest move up one; receipt_readers Q11 enters at #7. Net −1.
 
 🔄 *(2026-10-31)* **33**: the screen now says *Product code* (*Kode produk*), never "SKU"
 ([the-screen-says-product-code](technical/frontend/products_decision.md#the-screen-says-product-code)) — built. Product Q7
@@ -216,92 +285,44 @@ The old #1 changed meaning on checking: the expense correction does not block "e
 expense events exists yet. The round-by-round log that grew above the seven is dropped; up to this rebuild it is in
 git: `git show eda0ca92:docs/biggest_question.md`.
 
-```mermaid
-flowchart LR
-  Q1["1 sku or product_code"] --> M1["the name every caller reads"]
-  Q2["2 balance or liability, by name"] --> M2["a list naming a service that does not exist"]
-  Q3["3 what the warehouse service is not"] --> M3["a service that grows into everything"]
-  Q4["4 a creditor with no way to ask"] --> M4["only the limit to lower"]
-  Q5["5 which app made jnttest.pdf"] --> M5["a label under the right name"]
-  Q6["6 a courier billed monthly"] --> M6["where an outside bill lives"]
-  Q7["7 a boundary and a tie"] --> M7["how a cross-cutting call is settled"]
-```
-
-| # | The question | Blocks | Asked in | My recommendation |
-| --- | --- | --- | --- | --- |
-| **1** | **Does the FIELD become `product_code`, composed on write?** The screen already says *Product code* ([the-screen-says-product-code](technical/frontend/products_decision.md#the-screen-says-product-code)). Your doc names one globally unique `product_code`, composed as `<team_code>-<what the team types>` ([the-code-is-composed-from-the-team-code](business/product/context_decision.md#the-code-is-composed-from-the-team-code)); the wire and the database still store only `sku`, the team's part, unique per team | the composed code — and an archived product's code, which today's index frees but the archive decision keeps | [product Q7](business/product/context_clarify.md#question) | rename `sku` → `product_code` and compose it on write, as your doc says — one code on the sticker, at the scan, everywhere |
-| **2** | **Is the balance service `balance_service` or `liability_service`?** Your architecture list says `balance_service`; the code shipped `liability_service`, and the screens say *Liability* / *Kewajiban*. [liability-stays](technical/balance/team_balance_design_decision.md#liability-stays) cancelled the rename, but calls itself evidence for this question, not its answer | your architecture list naming a service that does not exist | [architecture Q10](technical/architecture/context_clarify.md#question) | `liability_service`, as built — then your list's line 7 says so |
-| **3** | **What is NOT the warehouse service's job?** Your warehouse doc says only *"manage warehouse teams"* — the one thing `team_service` already does. What is not its job is unwritten: stock, racks and the count are inventory's, the balance and its postings are liability's, identity and membership are team's | the warehouse service growing into the warehouse's everything | [warehouse](business/teams/warehouse/context_clarify.md#what-is-NOT-the-warehouse-services-job) | a *Whats Not* section naming those, as the order context has |
-| **4** | **How does a creditor chase a debtor who never looks?** Payment is debtor-initiated by design — your payment flow opens with *"Team A see -100.000"*. The debtor now sees its limits and an 80% badge ([the-debtor-sees-the-limits-set-on-it](technical/balance/team_balance_design_decision.md#the-debtor-sees-the-limits-set-on-it)), but the creditor's only lever is lowering the limit, which stops the debtor trading rather than asking it to pay | a creditor with no way to ask for its money | [balance Q6](business/balance/context_clarify.md#question) | a request-for-payment that posts nothing — a notice, never a block |
-| **5** | **Which app produced `jnttest.pdf`?** The label is read under the TikTok layouts already; only its name waits. It shares its generator and fonts with a TikTok / Tokopedia label, and its order id is a TikTok one | a label filed under the right platform's name | [receipt_readers Q1](technical/packages/receipt_readers/context_clarify.md#question) | close it as *TikTok, J&T Express* |
-| **6** | **Are suppliers and couriers this balance's?** Half answered: a restock bought on credit is recorded as paid when raised ([a-restock-must-name-the-account-that-paid](business/financial_account/context_decision.md#a-restock-must-name-the-account-that-paid)), so a supplier is never owed here. Left: a courier invoiced monthly, rather than paid at the door | where a monthly courier bill lives | [balance Q7](business/balance/context_clarify.md#question) | not in the team balance — an outsider cannot confirm a payment; name where it does live |
-| **7** | **Who settles a boundary between two people's contexts, and who breaks a tie?** Today's instance: the warehouse's loss reimbursement writes an inventory event onto a team's balance — two people's contexts. Q4's addressee half is answered ("the owner" has meant Heri); left: who settles a cross-cutting call — the hard rules, the proto contract, merging to `main` — once two people decide | how a call that spans two people's contexts is settled | [member Q3, Q4](business/project/member_clarify.md#question) | the caller proposes, the callee accepts; a tie goes to Heri |
+**None.** Every question is answered.
 
 Until production every ⛔ above is a risk to dev data, not an incident —
 [no-switch-over-the-ledgers-replace-todays-tables](technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables).
 
-**Runners-up:**
-[the overtaken list](#looks-overtaken) — 17 questions the code or your docs moved past; one yes each closes them ·
-[receipt_readers Q8, Q9, Q10](technical/packages/receipt_readers/context_clarify.md#question) — the label's phone, a masked
-value and the address; nothing reads them yet, so they could be ⏸ parked. ·
-[receipt_readers Q11](technical/packages/receipt_readers/context_clarify.md#question) — a KiriminAja label prints only
-its own `OID-…`; is that the order id?
-
-**Worth merging at source:** [receipt_readers Q8, Q9, Q10](technical/packages/receipt_readers/context_clarify.md#question) read fields nothing
-consumes yet, so they could be ⏸ parked.
+**Runners-up:** none.
 
 ## looks-overtaken
 
-Counted, because no decision closes them — but the code or your own docs moved past each. **One yes per row closes
-it.**
+**None left** — all 16 confirmed on 2026-11-02, each recorded as a decision beside the doc that asked it.
 
-| Asked in | The question | Why it looks overtaken |
-| --- | --- | --- |
-| [member Q5](business/project/member_clarify.md#question) | does the single-`dev`-branch rule survive two people? | `dev` has been idle since 2026-10-12; work lands on `backup/inventory`, `thoni`, `frada`, `hfrada`, merged across. ⚠ **CLAUDE.md §Git workflow still says *commit straight to `dev`*, and every agent reads it** |
-| [workflow Q3](technical/development/workflow_clarify.md#question) | how many people build on `dev` at once? | the same question as member Q5 |
-| [member Q2](business/project/member_clarify.md#question) | does member.md grant decision authority, or only the work? | in practice you decide stock and analytic on this branch, and Toni designs their own stock doc on `thoni` |
-| [balance Q1](business/balance/context_clarify.md#question) | does an operating cost ever move a team balance? | you ruled *never recharged onward* on 2026-07-21 — recorded only in the expense migration's comment, never as a decision |
-| [cost Q2](technical/cost/design_clarify.md#question) | does a cost also move the team balance? | the same question as balance Q1 |
-| [cost Q1](technical/cost/design_clarify.md#question) | is `costs.balance` cumulative or outstanding? | `costs` / `cost_logs` were never built; an expense is paid at create and never edited, so nothing is outstanding |
-| [balance Q9](business/balance/context_clarify.md#question) | should an order's warehouse fee be readable beside its settlement? | the fee is kept on the order and built ([warehouse-prices-balance-records](business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)) |
-| [settlement Q5](business/settlement/context_clarify.md#question) | does a cancel undo the live sale or the original row? | [cancel-zeroes-the-live-sale](business/settlement/context_decision.md#cancel-zeroes-the-live-sale) only holds if it is the live sale, and it is built that way |
-| [excel_readers Q4](technical/packages/excel_readers/context_clarify.md#question) | are `wderror` and `x` real values or hand-edited fixtures? | an unmapped type is held either way, so nothing depends on the answer |
-| [receipt_readers Q4](technical/packages/receipt_readers/context_clarify.md#question) | do sellers upload photos of labels? | PDF-only is built and accepted ([the-receipt-check-prototype-is-accepted](business/shipment/context_decision.md#the-receipt-check-prototype-is-accepted)) |
-| [product Q10](business/product/context_clarify.md#question) | is `is_private` the shared lock, or a second switch? | no `is_private` exists anywhere; `cross_locked` is the one lock ([one-lock-three-ways](technical/frontend/products_decision.md#one-lock-three-ways)) |
-| [business_level Q3](business/business_level_clarify.md#question) | can a team be two types? | the schema holds one `type` per team, and the menu is built from it |
-| [business_level Q6](business/business_level_clarify.md#question) | is §Warehouse 8 a promotion of placement? | placement is its own context now ([placement.md](business/inventory/placement.md)) |
-| [architecture Q9](technical/architecture/context_clarify.md#question) | what does `systems/` hold? | you deleted `systems.md` on 2026-09-12; CLAUDE.md's three trees have no `systems` rung |
-| [architecture Q11](technical/architecture/context_clarify.md#question) | is `export_service` a service? | it was built as `settlement_importer_service` (2026-09-29) |
-| [workflow Q1](technical/development/workflow_clarify.md#question) | fold workflow.md into level.md? | the workflow lives in [development_lifecycle.md](development_lifecycle.md); workflow.md is a one-line stub |
-| [workflow Q2](technical/development/workflow_clarify.md#question) | is CLAUDE.md the projection of workflow.md? | CLAUDE.md derives from development_lifecycle.md |
-
-## Where the other 26 are
+## Where they are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **33**, the whole set, not to 26. *Overtaken* is how many of a file's open questions are in the
+the column sums to **0**, the whole set. *Overtaken* is how many of a file's open questions are in the
 [list above](#looks-overtaken); *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Overtaken | Feeds |
 | --- | ---: | ---: | --- |
-| [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 8 | 1 | #5 |
-| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 2 | 1 | #1 |
-| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 4 | 2 | #4, #6 |
+| [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 0 |  |  |
+| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 0 |  |  |
+| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 0 |  |  |
 | [business/mcp/context_clarify.md](business/mcp/context_clarify.md#question) | 0 |  |  |
-| [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 1 |  | #3 |
-| [business/project/member_clarify.md](business/project/member_clarify.md#question) | 4 | 2 | #7 |
+| [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 0 |  |  |
+| [business/project/member_clarify.md](business/project/member_clarify.md#question) | 0 |  |  |
 | [business/inventory/adjustment_clarify.md](business/inventory/adjustment_clarify.md#question) | 0 |  |  |
-| [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 2 | 1 |  |
-| [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 3 | 2 | #2 |
-| [business/business_level_clarify.md](business/business_level_clarify.md#question) | 2 | 2 |  |
-| [technical/development/workflow_clarify.md](technical/development/workflow_clarify.md#question) | 3 | 3 |  |
+| [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 0 |  |  |
+| [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 0 |  |  |
+| [business/business_level_clarify.md](business/business_level_clarify.md#question) | 0 |  |  |
+| [technical/development/workflow_clarify.md](technical/development/workflow_clarify.md#question) | 0 |  |  |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 0 |  |  |
-| [business/settlement/context_clarify.md](business/settlement/context_clarify.md#question) | 1 | 1 |  |
-| [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | 2 |  |
+| [business/settlement/context_clarify.md](business/settlement/context_clarify.md#question) | 0 |  |  |
+| [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 0 |  |  |
 | [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 0 |  |  |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 0 |  |  |
 | [business/analytic/rpc_provide_clarify.md](business/analytic/rpc_provide_clarify.md#question) | 0 |  |  |
 | [business/settlement/meta_context_clarify.md](business/settlement/meta_context_clarify.md#question) | 0 |  |  |
-| [business/settlement/analytic_context_clarify.md](business/settlement/analytic_context_clarify.md#question) | 1 |  |  |
+| [business/settlement/analytic_context_clarify.md](business/settlement/analytic_context_clarify.md#question) | 0 |  |  |
 | [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 0 |  |  |
 | [business/supplier/context_clarify.md](business/supplier/context_clarify.md#question) | 0 |  |  |
 | [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 0 |  |  |
@@ -327,7 +348,7 @@ the column sums to **33**, the whole set, not to 26. *Overtaken* is how many of 
 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡), withdrawn or ⏸ parked is not open, and **a question whose parts are all answered or moved
-> counts as closed** even when its own line carries no ✅. Rows sum to **33** across **41** files.
+> counts as closed** even when its own line carries no ✅. Rows sum to **0** across **41** files.
 >
 > ⚠ **Stale at source, found on this pass and not fixed** — each is a clarify's own text:
 > [product](business/product/context_clarify.md)'s preamble and its decision file cite drifted question numbers (Q9

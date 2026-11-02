@@ -13,8 +13,8 @@ mine.** Answered points are deleted, so this file is always the current open set
 > [one-settlement-metric-reads-both-tables](./context_decision.md#one-settlement-metric-reads-both-tables) — `MetricSearch` / `MetricData` in
 > [settlement_analytic.proto](../../../proto/warehouse/settlement/v1/settlement_analytic.proto), the Settlement Report and the Analytic screen on them,
 > the three old reads removed. The pattern's answer for a balance is
-> [a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type). One question is left, not blocking:
-> [a-take-rate-ranks-above-what-sale](#a-take-rate-ranks-above-what-sale) here. Ticking fields was answered no, for now:
+> [a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type). The last question is answered:
+> [a-take-rate-ranks-above-one-million-of-sales](./context_decision.md#a-take-rate-ranks-above-one-million-of-sales). Ticking fields was answered no, for now:
 > [a-metric-is-added-whole-for-now](../analytic/rpc_provide_decision.md#a-metric-is-added-whole-for-now).
 
 | today | on the pattern |
@@ -54,33 +54,6 @@ flowchart LR
 | `### Field that tracked.` lists nine. The five types of 2026-09-24 — `withdrawal`, `shipment_adjustment`, `logistic_reimbursement`, `platform_reimbursement`, `marketplace_program` — are folded and served, and not listed | add them: it is the list the metric's fields are read from |
 | `## How Rpc Api Deliver Analytical Data.` describes the three reads the move removed (2026-10-30) | replace it with a pointer to [rpc_provide.md](../analytic/rpc_provide.md) — the move has shipped |
 
-
-## a-take-rate-ranks-above-what-sale
-
-> 🆕 **2026-10-30, from the build.** `take_rate` is served, but **not sortable**: a rate ranks only above a minimum sample
-> ([a-rate-ranks-only-above-its-minimum-sample](../analytic/rpc_provide_decision.md#a-rate-ranks-only-above-its-minimum-sample)), and settlement's has
-> not been decided. Nothing waits on it — the Settlement Report ranks by position.
-
-Ranked by `gap`, the biggest shops lead: that is size, not leakage. Ranked by `take_rate` with no minimum, a shop that
-sold Rp 20.000 and received nothing leads at 100%. A minimum sale is what makes the rate a ranking of what the platform
-takes.
-
-```mermaid
-flowchart LR
-  s["shops in the window"] --> q{"sold at least the minimum?"}
-  q -->|"yes"| r["ranked by take rate"]
-  q -->|"no"| f["follow, unranked, by key"]
-```
-
-| | |
-| --- | --- |
-| A — not sortable, as built | ✅ nothing misleading · ❌ *"which shop does the platform take the most from"* cannot be asked |
-| **B — sortable above a minimum sale**: `rank_min_sample` on `take_rate`, its sample being `sales` in rupiah | ✅ supplier's pattern, one number in the proto · ❌ one threshold reads differently over a week and over a year |
-| C — sortable, no minimum | ❌ the smallest shops lead |
-
-**→ Recommend B, at Rp 1.000.000 of sales.** What breaks: over a single day most shops fall below it and the rate
-ranks almost nobody. I think that is right, because a day's take rate is mostly timing (the fund lands days after the
-sale), not a property of the shop.
 
 ## 🔁 This round — two new sections, 2026-09-10
 
@@ -1454,7 +1427,7 @@ doc** and the recommendation stays on the table.
 
 ## Question
 
-**One open** — Q9, [a-take-rate-ranks-above-what-sale](#a-take-rate-ranks-above-what-sale). Q1 to Q7 were answered 2026-09-28 and Q8 on 2026-10-30; they stay as one-line pointers so the numbers hold; Q7 by the owner's `settlement_importer.md`. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**None open.** Q1 to Q7 were answered 2026-09-28, Q8 on 2026-10-30 and Q9 on 2026-11-02; they stay as one-line pointers so the numbers hold; Q7 by the owner's `settlement_importer.md`. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1501,8 +1474,8 @@ yet**, so no order opens an account today.
 8. ✅ **Answered 2026-10-30 — a settlement metric reads both tables**: [one-settlement-metric-reads-both-tables](./context_decision.md#one-settlement-metric-reads-both-tables),
    and what it serves: [settlement-serves-its-headline-and-its-breakdown](./context_decision.md#settlement-serves-its-headline-and-its-breakdown). Kept as a line so the numbers hold.
 
-9. 🆕 **Should a take rate rank, and above what sale?** — [a-take-rate-ranks-above-what-sale](#a-take-rate-ranks-above-what-sale). Built unsortable until decided.
-   **→ Recommend** sortable above Rp 1.000.000 of sales in the window.
+9. ✅ **Answered 2026-11-02 — a take rate ranks above Rp 1.000.000 of sales**: [a-take-rate-ranks-above-one-million-of-sales](./context_decision.md#a-take-rate-ranks-above-one-million-of-sales).
+   Not built yet. Kept as a line so the numbers hold.
 
 
 # Contradiction

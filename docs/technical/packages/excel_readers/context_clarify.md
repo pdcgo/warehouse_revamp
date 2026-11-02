@@ -262,14 +262,10 @@ backend/pkgs/san_excel_readers/
    [the-row-key-is-the-only-dedupe](../../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)**:
    confirmed — the built item's ten columns are the hash, and that `GenerateUniqueID` is the importer's only dedupe.
    Kept as a line so the numbers hold.
-4. **Are `wderror` and `x` real platform values, or hand-edited fixtures?** `salah_tarik.xlsx` has one
-   row with `Type = "wderror"` and one with `Order Source = "x"`. Both look typed in. If they are
-   deliberate corruption fixtures, say so — they should then assert an *error path* rather than be
-   parsed. If a platform really emits them, Q1 is already settled as "strings".
-5. **Does this package read *only* settlement reports?** The name is `san_excel_readers` — plural,
-   generic — but the contract is `…SettlementDocument`, and `examples/shipped_samples/` hints at a
-   second report kind. **→ If shipping reports are coming the package name is right and the sub-scope
-   belongs in the path (`shopee/settlement.go`). If not, name it `san_settlement_readers`.**
+4. ✅ *(2026-11-02)* **Answered: it does not matter** — [wderror-is-refused-like-any-unmapped-type](context_decision.md#wderror-is-refused-like-any-unmapped-type). Kept as a line so the numbers hold.
+5. ✅ *(2026-11-02)* **Answered: the name stays; it reads settlement files only** —
+   [the-package-keeps-its-name-and-reads-settlements](context_decision.md#the-package-keeps-its-name-and-reads-settlements).
+   Kept as a line so the numbers hold.
 6. ✅ **Answered — [only-a-successful-withdrawal-is-recorded](../../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)**:
    no — a failed withdrawal and its refund are both skipped; only a completed one is recorded. Kept as a line so the
    numbers hold.

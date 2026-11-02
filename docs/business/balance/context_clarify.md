@@ -535,8 +535,7 @@ flowchart LR
 > as [no-overdue-only-the-threshold](./context_decision.md#no-overdue-only-the-threshold). Q1 below is
 > the old Q2, promoted because that decision made it the only way a block ever ends.
 
-1. **Does an operating cost ever move a team balance?** ([Critique 5](#critique))
-   **→ I recommend no for v1.**
+1. ✅ *(2026-11-02)* **Answered: never** — [an-operating-cost-never-moves-a-team-balance](./context_decision.md#an-operating-cost-never-moves-a-team-balance). Kept as a line so the numbers hold.
 > ⛔ **Q2 is DELETED — `found` posts with NO acknowledgement**, and it closed **against** this file's
 > recommendation:
 > [found-posts-without-a-handshake](./context_decision.md#found-posts-without-a-handshake). ✅ It
@@ -551,25 +550,18 @@ flowchart LR
 5. ✅ *(2026-10-31)* **Answered: yes, forever — no dispute window** —
    [an-entry-stays-disputable-forever](./context_decision.md#an-entry-stays-disputable-forever), against my window; a
    false `found` is bounded by the claim rule once stock problems are built. Kept as a line so the numbers hold.
-6. **How does a creditor CHASE?** ([Critique 11](#critique)) Today the only lever is lowering the
-   limit, which stops the debtor trading rather than asking it to pay.
-   ⚠ **Narrowed by §Payment Flow, not answered.** The flow opens *"Team A see -100.000"* — the debtor
-   notices on their own — so payment is **debtor-initiated by design**, and there is no step in which
-   a creditor asks for one. What survives is the debtor who never looks.
-   **→ I recommend a request-for-payment that posts nothing** — a notice, not a block.
-7. **🆕 Are external payables — suppliers, couriers — in scope for this ledger?**
-   ([Critique 12](#critique)) They cannot use cause 6, because an outsider cannot confirm a payment.
-   **→ I recommend no for v1, but name where they DO live** — the current answer is "nowhere".
+6. ✅ *(2026-10-31)* **Answered: a payment request that posts nothing** — [a-creditor-may-request-payment](./context_decision.md#a-creditor-may-request-payment).
+   ⛔ Not built. Kept as a line so the numbers hold.
+7. ✅ *(2026-11-02)* **Answered: no outsider is ever owed** — [no-outsider-is-owed-in-the-system](./context_decision.md#no-outsider-is-owed-in-the-system):
+   a supplier is paid at the restock, a courier at the door; a monthly courier bill does not happen. Kept as a line so
+   the numbers hold.
 > ⛔ **Q8 is DEFERRED and leaves this file** —
 > [the-daily-report-is-deferred](./context_decision.md#the-daily-report-is-deferred). Parked is not
 > open, so it stops being counted here; the decision file holds it for when it comes back.
 > ⚠ **What it leaves broken is deliberate**: §Responsbility 2 promises every team a daily report and
 > the shipped page refuses all but warehouses.
 
-9. **🆕 Should one ORDER's warehouse fee be readable beside its settlement?** ([Critique 17](#critique))
-   The entry knows the `order_id`, the filter does not, so an order's true P&L exists in no screen.
-   **→ I recommend one `order_id` filter on `LiabilityEntryListFilter`** — and explicitly **not** a
-   copy of the fee in settlement's ledger.
+9. ✅ *(2026-11-02)* **Answered: yes, on the order** — [an-orders-warehouse-fee-is-read-on-the-order](./context_decision.md#an-orders-warehouse-fee-is-read-on-the-order). Kept as a line so the numbers hold.
 > ⛔ **TWO QUESTIONS DELETED, both answered the way this file recommended.**
 > [an-incidental-line-must-say-what-it-was-for](./context_decision.md#an-incidental-line-must-say-what-it-was-for)
 > — every cost line requires a note, which unblocks the LAST step of the vocabulary migration.

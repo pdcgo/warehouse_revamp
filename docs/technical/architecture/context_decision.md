@@ -7,6 +7,8 @@ away.
 | decision | what it decided |
 | --- | --- |
 | [the-system-runs-on-jakarta-time](#the-system-runs-on-jakarta-time) | one calendar for the whole system — WIB (UTC+7). Every `DATE`, every day boundary, every report window |
+| [there-is-no-systems-tree](#there-is-no-systems-tree) | there is no `systems/` rung — three trees: business, technical, development_state |
+| [export-service-is-the-settlement-importer](#export-service-is-the-settlement-importer) | `export_service` was built as `settlement_importer_service` (2026-09-29); there is no `export_service` |
 
 ---
 
@@ -99,3 +101,63 @@ flowchart LR
 | who reads it | the frontend only |
 | revisit when | tracking, or a fee, needs a region |
 | ✅ built | nothing changes — this is what runs |
+
+## the-balance-service-is-liability-service
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q10](./context_clarify.md#question), *is the balance service named
+> `balance_service` or `liability_service`?* As recommended, and as
+> [liability-stays](../balance/team_balance_design_decision.md#liability-stays) already kept the shipped name.
+
+**The verdict.** The service that holds the pair rows, the threshold (the gate) and the payments between teams is
+**`liability_service`**. *Balance* stays the word for the NUMBER (`last_balance`, `balance_after`); *liability* names
+what the rows are.
+
+```mermaid
+flowchart LR
+  S["settlement_service - the order's payout"] --> O["an order's money"]
+  L["liability_service - pair rows, the gate, payments"] --> P["what teams owe each other"]
+```
+
+| | |
+| --- | --- |
+| the code | unchanged — `liability_service`, `warehouse.liability.v1`, the *Liability* / *Kewajiban* screens |
+| your list | [context.md](./context.md) line 7 still says `balance_service` — reported in the clarify's [the-list-names-balance-service](./context_clarify.md#the-list-names-balance-service) |
+
+## there-is-no-systems-tree
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q9](./context_clarify.md#question), *what does
+> `systems/` hold?*
+
+**The verdict.** Nothing — there is no `systems/` rung. You deleted its one doc (`product/systems.md`) on 2026-09-12, and
+the docs have three trees (CLAUDE.md HARD RULE 7):
+
+```
+docs/business/<big>/<small>.md            what the business needs
+docs/technical/<big>/<small>.md           how it gets built
+docs/development_state/<big>/<small>.md   how far it has got
+```
+
+| | |
+| --- | --- |
+| ✅ built | nothing to build |
+
+## export-service-is-the-settlement-importer
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q11](./context_clarify.md#question), *is
+> `export_service` a service, and is it in the list?*
+
+**The verdict.** It was built under another name: **`settlement_importer_service`** (2026-09-29), the service that reads
+a marketplace's settlement export, from your [settlement_importer.md](../../business/settlement/settlement_importer.md).
+There is no `export_service`.
+
+```mermaid
+flowchart LR
+  E["export_service, deferred in settlement context.md"] -.->|"built as"| I["settlement_importer_service"]
+  I --> S["settlement_service, the ledger it posts to"]
+```
+
+| | |
+| --- | --- |
+| ⚠ [settlement context.md](../../business/settlement/context.md) line 34 | still names `export_service` — reported in [the-doc-still-names-export-service](../../business/settlement/context_clarify.md#the-doc-still-names-export-service) |
+| ⚠ the list in [context.md](./context.md), lines 5–15 | does not name it — one of several built services the list predates. Yours to add |
+| ✅ built | `backend/services/settlement_importer_service/` |

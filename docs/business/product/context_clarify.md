@@ -270,20 +270,14 @@ flowchart LR
 6. ✅ *(2026-10-07)* **Answered — the courier's ask stays IN the unit price**, against my recommendation:
    [the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price).
 
-7. **Is `product_code` the real field name?** ([Critique 13](#critique))
-   🔄 *(2026-10-31)* **Narrowed:** the SCREEN says *Product code* now ([the-screen-says-product-code](../../technical/frontend/products_decision.md#the-screen-says-product-code)).
-   Left: does the FIELD become `product_code`, composed on write as [the-code-is-composed-from-the-team-code](./context_decision.md#the-code-is-composed-from-the-team-code) says?
-   🔄 **→ I now recommend RENAMING `sku` → `product_code`, reversing what I said last round.** *Globally unique*
-   is not what an SKU is — a stock-keeping unit is a seller's own code — so the shipped name would describe the
-   opposite of your rule. `cross_markup_bps` stays as it is: percent to a person, basis points on the wire.
+7. ✅ *(2026-10-31)* **Answered: `product_code`, composed on write** — [the-field-is-product-code-composed-on-write](./context_decision.md#the-field-is-product-code-composed-on-write);
+   `sku` goes. ⛔ Not built. Kept as a line so the numbers hold.
 8. ✅ *(2026-10-31)* **Answered and built: the four writes drop the warehouse roles** —
    [the-product-writes-drop-the-warehouse-roles](./context_decision.md#the-product-writes-drop-the-warehouse-roles); no team-type read,
    since a selling role exists only in a selling team. Kept as a line so the numbers hold.
 9. ✅ *(2026-10-31)* **Answered: one category, not several** — [a-product-has-one-category](./context_decision.md#a-product-has-one-category),
    reversing *"categories is plural"*; no primary and no cap to choose. Kept as a line so the numbers hold.
-10. **🆕 Is `is_private` the shared lock, or a second switch?** ([Critique 15](#critique))
-    **→ I recommend it is the same switch, under the shipped name `cross_locked`** — three names for one flag is how
-    two screens start disagreeing about what it does.
+10. ✅ *(2026-11-02)* **Answered: there is no `is_private`** — [the-shared-lock-is-cross-locked](./context_decision.md#the-shared-lock-is-cross-locked). Kept as a line so the numbers hold.
 11. ✅ *(2026-10-31)* **Answered, then replaced the same day: a used product is archived, never deleted** —
     [a-used-product-is-archived-never-deleted](./context_decision.md#a-used-product-is-archived-never-deleted), your
     redesign of [superseded-a-delete-waits-until-nothing-needs-the-product](./context_decision.md#superseded-a-delete-waits-until-nothing-needs-the-product).

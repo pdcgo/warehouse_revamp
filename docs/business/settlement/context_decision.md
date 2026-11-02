@@ -91,6 +91,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-wrong-day-is-refolded-from-the-log](#a-wrong-day-is-refolded-from-the-log) | a report day that is wrong while the log is right is re-folded from the log by an operator command — one report, one shop, one date |
 | [settlement-opens-the-sale-from-the-order-event](#settlement-opens-the-sale-from-the-order-event) | settlement writes `initial_total` and its cancel from the order events; the order never calls settlement |
 | [problem-funding-is-what-the-platform-pays](#problem-funding-is-what-the-platform-pays) | problem funding is whatever the platform pays, under its own label — no type of its own, no claim screen |
+| [a-take-rate-ranks-above-one-million-of-sales](#a-take-rate-ranks-above-one-million-of-sales) | `take_rate` sorts, ranking only the keys that sold at least Rp 1.000.000 in the range; the rest follow, unranked |
+| [a-cancel-reverses-the-live-sale](#a-cancel-reverses-the-live-sale) | a cancel reverses the LIVE sale, after every correction — never the original row |
 
 ---
 
@@ -3969,3 +3971,57 @@ flowchart LR
 | the cost, accepted | a Shopee compensation cannot be told from another Shopee adjustment by type — only by its description, which the importer does not read because Shopee rewords it without notice |
 | your worked example | right for Shopee (a reimbursement IS `marketplace_adjustment` there); for TikTok it would be `platform_reimbursement` — the doc names no platform, so it stands |
 | ✅ built | nothing to build — this is what the importer does |
+
+## a-take-rate-ranks-above-one-million-of-sales
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — to [Q9](./analytic_context_clarify.md#question), *should a
+> take rate rank, and above what sale?* As recommended.
+
+**The verdict.** `take_rate` becomes **sortable**, and ranks only the keys — a shop, a team, a person — that sold at
+least **Rp 1.000.000** in the chosen range. The rest follow, unranked, in key order. It is supplier's rule
+([a-rate-ranks-only-above-its-minimum-sample](../analytic/rpc_provide_decision.md#a-rate-ranks-only-above-its-minimum-sample)),
+with the sample counted as `sales` in rupiah instead of units.
+
+```
+October, sorted by take rate     sales            take rate
+  Toko A                         Rp 10.000.000    15%     ranked
+  Toko B                         Rp  2.500.000    12%     ranked
+  Toko C                         Rp     20.000    100%    under the minimum — follows, unranked
+```
+
+```mermaid
+flowchart LR
+  s["keys in the range"] --> q{"sold at least Rp 1.000.000?"}
+  q -->|"yes"| r["ranked by take rate"]
+  q -->|"no"| f["follow, unranked, in key order"]
+```
+
+| | |
+| --- | --- |
+| the proto | `take_rate`: `metric_sort = {can_sort: true, rank_min_sample: 1000000}` — the sample is the key's `sales` in the range |
+| the minimum | Rp 1.000.000, one number for every range |
+| under the minimum | still listed and its rate still served — only left out of the ranking |
+| no sales at all | `take_rate` unset, as today, and never ranked |
+| the cost, accepted | over a single day most shops fall under it and almost nobody ranks. That is right: a day's take rate is mostly timing, because the money lands days after the sale |
+| ⏳ not built | `take_rate` is still unsortable. The build: the proto option, the sort in `metric_search.go` reading `sales` as the sample, and a test of the example above |
+
+## a-cancel-reverses-the-live-sale
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q5](./context_clarify.md#question), *a cancel undoes
+> the LIVE sale, whatever it now is — is that the reading you meant?*
+
+**The verdict.** Yes: a cancel reverses the **live** sale — what the sale is after every correction — not the original
+row. It is the reading [cancel-zeroes-the-live-sale](#cancel-zeroes-the-live-sale) already needs, and it is built.
+
+| a 120.000 sale corrected to 110.000, then cancelled | by the original row | by the live sale ✅ |
+| --- | --- | --- |
+| the cancel row | +120.000 | +110.000 |
+| the live sale after | −10.000 ⛔ | 0 |
+
+| | |
+| --- | --- |
+| the cancel's amount | the live sale, read under the account's lock |
+| a cancel above the live sale | refused |
+| a cancel with nothing live | writes no row |
+| [a-cancel-is-an-opposite-row](#a-cancel-is-an-opposite-row)'s *"the exact opposite of `initial_total`"* | reads as the LIVE `initial_total` |
+| ✅ built | `CancelSale` |

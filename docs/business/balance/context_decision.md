@@ -29,6 +29,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [found-posts-without-a-handshake](#found-posts-without-a-handshake) | cause 5 posts **unilaterally** — no acknowledgement. ⚠ against recommendation, and it hands the whole weight to the unbuilt dispute |
 | [an-accepted-payment-is-final](#an-accepted-payment-is-final) | once the creditor accepts, the payment **never changes and is never reversed**. `LiabilityPaymentReverse` is removed. ⚠ against recommendation |
 | [a-transfer-charge-is-a-transfer-fee](#a-transfer-charge-is-a-transfer-fee) | a warehouse transfer's door charge is its own source type, `TRANSFER_FEE`, keyed by the transfer |
+| [an-operating-cost-never-moves-a-team-balance](#an-operating-cost-never-moves-a-team-balance) | an operating cost — payroll, electricity, ads — is its own team's expense and never moves a team balance |
+| [an-orders-warehouse-fee-is-read-on-the-order](#an-orders-warehouse-fee-is-read-on-the-order) | an order's warehouse fee is kept on the order and read on its page, beside its settlement — no `order_id` filter on the entries |
 
 ---
 
@@ -1274,3 +1276,106 @@ flowchart LR
 | `inventory/return.md` | still unplanned: this is the money at the door, not the stock side of a return |
 
 ⛔ **Not built.** The return accept has no courier field, and liability posts no return charge.
+
+## a-creditor-may-request-payment
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q6](./context_clarify.md#question), *how does a creditor ask a debtor to
+> pay?*, on the payment request recommended. As recommended.
+
+**The verdict.** A creditor may send a **payment request**: a notice to the debtor that it is owed, which **posts
+nothing and blocks nothing**. Payment still starts with the debtor, through the payment flow as it is
+([the-debtor-claims-the-creditor-decides](#the-debtor-claims-the-creditor-decides)). Lowering the limit stays the last
+resort, never the way to ask.
+
+```
+Gudang Bekasi is owed Rp 700.000 by Toko A
+  Bekasi presses Request Payment on the pair detail
+  → Toko A sees on its balance: "Gudang Bekasi asks you to pay Rp 700.000"
+  → Toko A pays through the payment flow, or does not — nothing moves by itself
+```
+
+```mermaid
+flowchart LR
+  C["the creditor - Request Payment"] --> N["a notice on the debtor's balance"]
+  N --> D["the debtor pays - the payment flow, as it is"]
+  C -.->|"last resort, unchanged"| L["lower the limit"]
+```
+
+| | |
+| --- | --- |
+| who sends it | the creditor team's owner and admin, from the pair detail |
+| what it says | who asks, the amount owed at that moment, when |
+| what it moves | nothing — no entry, no block, no due date |
+| what the debtor sees | the request on its balance and on the pair detail, until it pays or the request is replaced |
+| built | ⛔ not built |
+
+## no-outsider-is-owed-in-the-system
+
+> Owner, in chat (2026-11-02): *"thats not happen"* — to [Q7](./context_clarify.md#question), *are external payables —
+> suppliers, couriers — in scope?*, asked as *does a courier ever bill monthly instead of being paid at the door?*
+
+**The verdict.** No outsider is ever owed in the system, so there are no external payables to design. A supplier is paid
+when the restock is raised ([a-restock-must-name-the-account-that-paid](../financial_account/context_decision.md#a-restock-must-name-the-account-that-paid)),
+and a courier is paid at the door — never billed monthly.
+
+| outsider | paid | recorded |
+| --- | --- | --- |
+| a supplier | when the restock is raised, from a named account | the restock and the account |
+| a courier, on a restock or a return | at the door, from the warehouse's cash box | owed back by the selling team ([cod-fee-is-the-couriers-incidental-ask](#cod-fee-is-the-couriers-incidental-ask), [a-return-may-carry-the-couriers-ask](#a-return-may-carry-the-couriers-ask)) |
+| a courier billed monthly | — | does not happen |
+
+```mermaid
+flowchart LR
+  S["a supplier"] -->|"paid at the restock"| A["an account"]
+  C["a courier"] -->|"paid at the door"| B["the warehouse's cash box"]
+  M["a monthly courier invoice"] -.->|"does not happen"| X["nothing to design"]
+```
+
+**When it comes back:** a contract courier that invoices — then the invoice is the warehouse's expense on the day it is
+paid, from the account that paid it.
+
+## an-operating-cost-never-moves-a-team-balance
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q1](./context_clarify.md#question), *does an
+> operating cost ever move a team balance?* Your own ruling of 2026-07-21, until now written only in a migration's comment.
+
+**The verdict.** An operating cost — payroll, electricity, ads — **never** moves a team balance. It is an expense of the
+team that paid it, and it is **never recharged onward**: a warehouse's payroll is the warehouse's cost, not the selling
+teams' it fulfils for. A balance moves only for what crosses between two teams.
+
+```
+warehouse payroll Rp 8.000.000   → an expense, on the warehouse's team        ✅
+                                 → a balance with the selling teams           never
+```
+
+| | |
+| --- | --- |
+| an operating cost | one `expense_records` row, on one team |
+| a team balance | moved only by what crosses between two teams — fees, goods, payments |
+| the source | `expense_service` migration `00001`: *"never recharged onward"* (owner, 2026-07-21) |
+| also closes | [cost Q2](../../technical/cost/design_clarify.md#question), *does a cost also move the team balance?* |
+| ✅ built | nothing changes |
+
+## an-orders-warehouse-fee-is-read-on-the-order
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q9](./context_clarify.md#question), *should one
+> order's warehouse fee be readable beside its settlement?*
+
+**The verdict.** Yes, and it already is. The order keeps its own warehouse fee
+([warehouse-prices-balance-records](../teams/warehouse/context_decision.md#warehouse-prices-balance-records)), so the
+order's page shows it beside the order's settlement. No `order_id` filter on the liability entry list, and no copy of
+the fee in settlement's ledger.
+
+```mermaid
+flowchart LR
+  W["WarehouseFeeCalculate"] --> O["the order keeps the fee"]
+  O --> P["the order's page, the fee beside its settlement"]
+  O --> B["balance records the amount"]
+```
+
+| | |
+| --- | --- |
+| the fee | on the order — `selling_service` migration `00019` |
+| where it is read | the order's page |
+| `LiabilityEntryListFilter.order_id` | not added |
+| ✅ built | nothing to build |

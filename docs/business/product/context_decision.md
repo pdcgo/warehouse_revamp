@@ -551,3 +551,57 @@ Mon 14:00  the owner locks SKU-1
 | where the lock is read | at the take, when an order is placed ([order_transaction_create.go](../../../backend/services/inventory_service/inventory_v1/order_transaction_create.go)) |
 | an order already placed | untouched — picked, shipped and finished as usual |
 | ✅ built | nothing changes — this is what runs |
+
+## the-field-is-product-code-composed-on-write
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q7](./context_clarify.md#question), *should `sku` become `product_code`,
+> composed on write as `ABC-SHOE-42`, as your doc says?* As recommended — the second time; I had first recommended
+> keeping `sku` beside it.
+
+**The verdict.** A product has **one** code, named **`product_code`**, as [context.md](./context.md) names it. It is
+**composed on write** ([the-code-is-composed-from-the-team-code](#the-code-is-composed-from-the-team-code)): the team
+types its own part, and what is stored — on the sticker, at the scan, everywhere — is `<team_code>-<that part>`.
+`sku` goes, from the wire, the database and the code.
+
+```
+team ABC types   SHOE-42
+stored           product_code = ABC-SHOE-42      globally unique, one code everywhere
+```
+
+```mermaid
+flowchart LR
+  T["team_code ABC - team_service, immutable"] --> C["product_code ABC-SHOE-42"]
+  U["what the team types - SHOE-42"] --> C
+  C --> S["the sticker, the scan, every screen"]
+```
+
+| | |
+| --- | --- |
+| the field | `product_code`, replacing `sku` in the proto, the `products` table, Go and TypeScript |
+| composed | `<team_code>-<the team's part>`, on create, by product_service — `team_code` read from team_service; it is immutable, so a composed code never goes stale |
+| unique | **globally**, every row — an archived product keeps its code ([a-used-product-is-archived-never-deleted](#a-used-product-is-archived-never-deleted)), so today's partial index (`WHERE deleted = FALSE`, per team) becomes one unique index over all rows |
+| freed | only by a Delete, which removes a never-used product's row |
+| the form | the team prefix shown fixed, the team typing the rest |
+| ⚠ my spec — editing it | the team's part may be corrected only while the product has no history, the same line Delete uses — once a sticker can exist, the code is fixed |
+| ⚠ my spec — today's rows | dev data only: re-entered, or recomposed once by a `san` command that reads each team's code through team_service — no migration reads another service's table (HARD RULE 3) |
+| the screen | already says *Product code* ([the-screen-says-product-code](../../technical/frontend/products_decision.md#the-screen-says-product-code)) |
+
+⛔ **Not built.** The field is still `sku`, per team, and freed by archiving.
+
+## the-shared-lock-is-cross-locked
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q10](./context_clarify.md#question), *is `is_private`
+> the shared lock, or a second switch?*
+
+**The verdict.** There is no `is_private`. The one switch that keeps a product from other teams is **`cross_locked`**,
+one setting with three ways ([one-lock-three-ways](../../technical/frontend/products_decision.md#one-lock-three-ways)).
+Nothing in the proto, the services or the screens carries `is_private`.
+
+```
+is_private      nowhere — not in the proto, the schema or the screens
+cross_locked    the product's one sharing lock
+```
+
+| | |
+| --- | --- |
+| ✅ built | nothing changes |
