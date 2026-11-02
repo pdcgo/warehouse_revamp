@@ -178,6 +178,30 @@ export const CancelAsksAboutTheMoney: Story = {
     const row = trailRows(canvasElement)[1]!;
     await expect(row).toHaveTextContent("money returned");
     await expect(actionsIn(canvasElement)).toEqual([]);
+    // Cancelled, nothing is left to warn about — the page's not-implemented strip goes with the dialog.
+    await waitFor(() => expect(canvas.queryByTestId("not-implemented-summary")).toBeNull());
+  },
+};
+
+// THE CANCEL WARNING IS MARKED (a-restock-cancel-warns-it-will-be-checked) — nothing checks a cancellation yet, so the
+// warning carries its ⚠ and the page lists it, while the restock can still be cancelled; a record shows no strip.
+export const TheCancelWarningIsMarked: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await userEvent.click(canvas.getByTestId("restock-action-cancel-501"));
+    const review = await screen.findByTestId("restock-cancel-review");
+    await waitFor(() => expect(review).toBeVisible());
+    await expect(within(review).getByTestId("not-implemented-cancelReview")).toHaveTextContent("1");
+  },
+};
+
+export const ARecordShowsNoMarks: Story = {
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
   },
 };
 

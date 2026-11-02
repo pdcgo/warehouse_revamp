@@ -117,7 +117,8 @@ export const MobileStatementRowOpensItsDetail: Story = {
 
     // The type sits right under the date, on the same left edge.
     const [date, type] = Array.from(left!.firstElementChild!.children);
-    await expect(date).toHaveTextContent("Oct");
+    // The fixture's dates are counted back from today, so the month is whichever it is now — read as a date, not "Oct".
+    await expect(date).toHaveTextContent(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}\b/);
     await expect(type).toHaveTextContent("Adjustment");
     const d = date!.getBoundingClientRect();
     const ty = type!.getBoundingClientRect();

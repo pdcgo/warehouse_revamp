@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Flex, Tabs } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
@@ -14,15 +15,21 @@ import { ALL_STAGE, ORDER_STAGES } from "./stages";
 export function StageTabs({
   value,
   onSelect,
+  end,
 }: {
   /** The active tab: a stage id, or `ALL_STAGE`. */
   value: string;
   onSelect: (value: string) => void;
+  /**
+   * What closes the row on its right — the Statistik button (a-statistics-button-ends-the-tab-row). It stays put while the
+   * tabs scroll in the width left to them, and the row's rule runs on under it.
+   */
+  end?: ReactNode;
 }) {
   const { t } = useTranslation();
 
   return (
-    <Flex align="center" gap="2" w="full" minW="0">
+    <Flex align="stretch" w="full" minW="0">
       <Tabs.Root
         value={value}
         onValueChange={(e) => onSelect(e.value)}
@@ -64,6 +71,11 @@ export function StageTabs({
         </Tabs.List>
       </Tabs.Root>
 
+      {end && (
+        <Flex align="center" flexShrink={0} ps="2" borderBottomWidth="1px" borderColor="border">
+          {end}
+        </Flex>
+      )}
     </Flex>
   );
 }

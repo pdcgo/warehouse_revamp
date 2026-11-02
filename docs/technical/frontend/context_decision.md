@@ -78,6 +78,8 @@ when it applies one of these.
 | [a-narrowed-page-stays-at-the-left](#a-narrowed-page-stays-at-the-left) | a page held narrower than the canvas — a form, a detail — stays at the canvas's LEFT edge; centring it was tried on the product form and withdrawn | every narrowed page |
 | [sticky-sticks-to-the-window](#sticky-sticks-to-the-window) | the desktop shell lets the window scroll, so `<main>` is `overflowX="clip"`, never `overflow="auto"` — anything else made every sticky header inside a page never stick | every desktop page |
 | [a-nav-jump-blinks-where-it-lands](#a-nav-jump-blinks-where-it-lands) | a detail page's section nav scrolls to the clicked section and that card BLINKS — a pale tint of the main tone, once, no ring or border | the product page and the order detail, every page on the shared `SectionNav` |
+| [a-selected-tab-is-bold](#a-selected-tab-is-bold) | the picked tab is **bold** as well as rose — on every tab row, set once in the theme | [the restock list](restock_decision.md#the-restock-statistics-count-transactions-under-the-tabs) |
+| [a-statistics-button-ends-the-tab-row](#a-statistics-button-ends-the-tab-row) | a list's **Statistik** button ends its status-tab row on a desktop and is an icon beside Filter on a phone — never a row of its own; `StatsToggle` | [the restock list](restock_decision.md#the-statistics-button-ends-the-tab-row), then the order list |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1745,6 +1747,44 @@ sequenceDiagram
 | a second click | restarts the blink |
 | where | `useScrollSpy` sets `data-flash`, `DetailSection`'s card animates on it — every page built on the shared kit gets it: the product page and the order detail today |
 | ✅ built *(2026-10-26)* | the product page's story `EverySectionIsOnThePage` waits for the blink and for it to end |
+
+## a-selected-tab-is-bold
+
+> Owner, in chat (2026-10-31), on the restock list: *"sepertinya tab aktif perlu bold"* — then, asked whether it holds for
+> every screen, *"lebih baik iya"*.
+
+```
+before                                       now
+Semua Status · Dalam Perjalanan · Tiba        **Semua Status** · Dalam Perjalanan · Tiba
+‾‾‾‾‾‾‾‾‾‾‾‾ rose, regular                    ‾‾‾‾‾‾‾‾‾‾‾‾ rose, bold
+```
+
+| | |
+| --- | --- |
+| the rule | the picked tab's label is **bold**, besides rose ([a-selected-tab-is-in-the-main-tone](#a-selected-tab-is-in-the-main-tone)) — every tab row on every screen |
+| where | `theme.ts`, the `tabs` recipe's `line` variant, `_selected` — once, so no screen sets it |
+| the cost | Lato has no medium weight, so the step is regular → bold, and a label grows a little as it is picked; the row does not wrap for it |
+| pinned by | the restock list's `TheScreenRules` story reads the picked tab's weight |
+
+## a-statistics-button-ends-the-tab-row
+
+> Owner, in chat (2026-10-31), on the restock list: *"apa ada desain lain buka tutup statistik? kurasa banyak ruang
+> kosong"* — *"A, tapi dimobile akan masalah"*; then, asked whether the seller's order list follows, *"samakan"*.
+
+```
+a desktop                                                        a phone
+Semua Status · Dibuat · Diproses · …→       [📊 Statistik ⌄]     [⌕ Cari …] [⚙ Filter] [📊]
+──────────────────────────────────────────────────────────       Semua Status · Dibuat · …→
+[the statistics, when open]                                      [the statistics, when open]
+```
+
+| | |
+| --- | --- |
+| the rule | a list whose statistics open under its status tabs puts the **Statistik** button at the **right end of the tab row** on a desktop — it never takes a row of its own. The tabs scroll in the width left to them; the row's rule runs on under the button |
+| a phone | the button is an **icon beside Filter**, in `FilterBar`'s `actions` — the tab row there already scrolls sideways under its tabs, and a button pinned to it would cover them. Drawn in the main tone while open |
+| the component | `StatsToggle` (`components/chrome/`) — `compact` for the phone's icon; it carries `aria-expanded`. `StageTabs` takes it as `end` |
+| unchanged | [the-statistics-are-shut-and-read-when-opened](order_list_decision.md#the-statistics-are-shut-and-read-when-opened): shut on every visit, page state only, nothing read until opened |
+| applied to | the restock list ([the-statistics-button-ends-the-tab-row](restock_decision.md#the-statistics-button-ends-the-tab-row)), the seller's order list |
 
 ## Recorded elsewhere
 

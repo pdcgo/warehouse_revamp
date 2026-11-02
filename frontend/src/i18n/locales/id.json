@@ -1350,15 +1350,60 @@
     "teamRef": "Tim #{{id}}",
     "warehouseRef": "Gudang #{{id}}",
     "selling": {
-      "searchPlaceholder": "Cari restok, resi, faktur, atau SKU"
+      "title": "Restok",
+      "actions": "Aksi restok",
+      "searchPlaceholder": "Cari restok, resi, faktur, atau SKU",
+      "none": "Tidak ada restok yang cocok.",
+      "emptyHint": "Restok dibuat saat tim ini membeli barang untuk dikirim ke gudang.",
+      "statistics": "Statistik",
+      "summary": {
+        "total": "Total",
+        "transactionCount_one": "{{count}} transaksi",
+        "transactionCount_other": "{{count}} transaksi",
+        "pileLine": "{{units}} pcs · {{value}}",
+        "transactions": "Transaksi",
+        "units": "Jumlah barang",
+        "pcs": "{{count}} pcs",
+        "skus": "Jumlah SKU",
+        "skusLine": "produk yang berbeda",
+        "goods": "Nilai barang",
+        "courierCharge": "Ongkir COD",
+        "courierChargeLine": "dibayar gudang ke kurir",
+        "value": "Nilai transaksi",
+        "valueLine": "barang + ongkir",
+        "details": "Rincian",
+        "paymentsTitle": "Nilai Transaksi per Akun Pembayar",
+        "paymentsNone": "Belum ada akun operasional untuk membayar restok."
+      },
+      "pending": {
+        "export": {
+          "label": "Ekspor",
+          "reason": "Belum ada yang membuat file restok — kliknya dibuang."
+        },
+        "courier": {
+          "label": "Filter kurir",
+          "reason": "Daftar restok belum bisa memfilter kurir — pilihannya disimpan, barisnya tidak berubah."
+        },
+        "summary": {
+          "label": "Statistik restok",
+          "reason": "Belum ada yang menghitung restok tim per status — semua angka contoh, dan tidak mengikuti filter."
+        },
+        "payments": {
+          "label": "Nilai per akun pembayar",
+          "reason": "Setiap restok menyimpan akun pembayarnya, tapi belum ada yang menjumlahkannya — akunnya asli, pembagiannya contoh."
+        },
+        "cancelReview": {
+          "label": "Pemeriksaan pembatalan",
+          "reason": "Dialog pembatalan bilang pembatalan akan diperiksa; belum ada yang memeriksanya."
+        }
+      },
+      "export": "Ekspor",
+      "exportPending": "Ekspor restok belum tersedia.",
+      "courierAll": "Semua kurir"
     },
     "searchPlaceholder": "Cari restok, resi, pesanan atau SKU",
     "warehouseAll": "Semua gudang",
     "stat": {
-      "ongoing": "Masuk",
-      "ongoingHint": "pcs dipesan, belum tiba",
-      "ongoingValue": "Nilai barang masuk",
-      "ongoingValueHint": "yang sudah kamu keluarkan untuknya",
       "inboundProducts": "Produk menunggu",
       "inboundProductsHint": "jenis barang untuk dirakkan",
       "inboundUnits": "Pcs menunggu",
@@ -1433,7 +1478,13 @@
       "problemWorth": "senilai {{amount}}",
       "goodOfOrdered": "Unit baik masuk stok",
       "missingBadge_one": "kurang {{count}}",
-      "missingBadge_other": "kurang {{count}}"
+      "missingBadge_other": "kurang {{count}}",
+      "pending": {
+        "cancelReview": {
+          "label": "Pemeriksaan pembatalan",
+          "reason": "Dialog pembatalan bilang pembatalan akan diperiksa; belum ada yang memeriksanya."
+        }
+      }
     },
     "timeline": {
       "created": "Restok dibuat",
@@ -1468,16 +1519,13 @@
     "table": {
       "status": "Status",
       "restock": "Restok",
-      "destination": "Tujuan",
       "from": "Dari",
       "supplier": "Pemasok",
       "product": "Produk",
-      "value": "Nilai",
       "shipment": "Pengiriman",
       "receipt": "Tanda terima",
       "accepted": "Diterima",
       "reference": "Referensi",
-      "receiptValue": "Resi {{value}}",
       "by": "oleh {{name}}",
       "userRef": "Pengguna #{{id}}",
       "actions": "Aksi",
@@ -1485,11 +1533,15 @@
       "itemsSummary_other": "{{count}} produk · {{pieces}} pcs",
       "firstAndMore": "{{sku}} +{{count}} lainnya",
       "noProducts": "Tidak ada produk",
-      "invoiceValue": "Faktur {{value}}",
       "missingBadge_one": "kurang {{count}}",
       "missingBadge_other": "kurang {{count}}",
       "moreSuppliers_one": "+{{count}} pemasok lain",
-      "moreSuppliers_other": "+{{count}} pemasok lain"
+      "moreSuppliers_other": "+{{count}} pemasok lain",
+      "warehouse": "Gudang",
+      "total": "Total",
+      "created": "Dibuat",
+      "invoiceLabel": "Faktur",
+      "receiptLabel": "Resi"
     },
     "form": {
       "warehouse": "Gudang",
@@ -1566,6 +1618,7 @@
     "cancel": {
       "title": "Batalkan Restok #{{id}}",
       "message": "Restok ini masih dalam perjalanan. Setelah dibatalkan, tidak bisa dibuka lagi.",
+      "review": "Pembatalan restok akan diperiksa.",
       "confirm": "Batalkan Restok",
       "keep": "Simpan Restok",
       "moneyQuestion": "Apakah uangnya kembali?",

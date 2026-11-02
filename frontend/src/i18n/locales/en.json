@@ -1362,15 +1362,60 @@
     "teamRef": "Team #{{id}}",
     "warehouseRef": "Warehouse #{{id}}",
     "selling": {
-      "searchPlaceholder": "Search restock, tracking, invoice or SKU"
+      "title": "Restock",
+      "actions": "Restock actions",
+      "searchPlaceholder": "Search restock, tracking, invoice or SKU",
+      "none": "No restocks match.",
+      "emptyHint": "A restock is raised when this team buys goods to send to a warehouse.",
+      "statistics": "Statistics",
+      "summary": {
+        "total": "Total",
+        "transactionCount_one": "{{count}} transaction",
+        "transactionCount_other": "{{count}} transactions",
+        "pileLine": "{{units}} pcs · {{value}}",
+        "transactions": "Transactions",
+        "units": "Units",
+        "pcs": "{{count}} pcs",
+        "skus": "SKUs",
+        "skusLine": "different products",
+        "goods": "Goods value",
+        "courierCharge": "Courier COD",
+        "courierChargeLine": "paid by the warehouse at the door",
+        "value": "Transaction value",
+        "valueLine": "goods + shipping",
+        "details": "Details",
+        "paymentsTitle": "Transaction Value by Paying Account",
+        "paymentsNone": "No operational account to pay restocks from."
+      },
+      "pending": {
+        "export": {
+          "label": "Export",
+          "reason": "Nothing makes a restock file yet — the click is thrown away."
+        },
+        "courier": {
+          "label": "Filtering by courier",
+          "reason": "The restock list cannot ask for a courier yet — the pick is kept, the rows do not move."
+        },
+        "summary": {
+          "label": "Restock statistics",
+          "reason": "Nothing counts a team's restocks by status yet — every figure is a sample, and it does not follow the filters."
+        },
+        "payments": {
+          "label": "Value by paying account",
+          "reason": "Each restock names its paying account, but nothing sums them yet — the accounts are real, the split is a sample."
+        },
+        "cancelReview": {
+          "label": "Checking a cancellation",
+          "reason": "The cancel dialog says a cancellation will be checked; nothing checks it yet."
+        }
+      },
+      "export": "Export",
+      "exportPending": "Exporting restocks is not available yet.",
+      "courierAll": "All couriers"
     },
     "searchPlaceholder": "Search restock, tracking, order or SKU",
     "warehouseAll": "All warehouses",
     "stat": {
-      "ongoing": "Ongoing",
-      "ongoingHint": "pcs in flight — ordered, not landed",
-      "ongoingValue": "Ongoing value",
-      "ongoingValueHint": "what you've committed on them",
       "inboundProducts": "Products waiting",
       "inboundProductsHint": "different items to shelve",
       "inboundUnits": "Pieces waiting",
@@ -1446,7 +1491,13 @@
       "problemWorth": "worth {{amount}}",
       "goodOfOrdered": "Good units into stock",
       "missingBadge_one": "{{count}} missing",
-      "missingBadge_other": "{{count}} missing"
+      "missingBadge_other": "{{count}} missing",
+      "pending": {
+        "cancelReview": {
+          "label": "Checking a cancellation",
+          "reason": "The cancel dialog says a cancellation will be checked; nothing checks it yet."
+        }
+      }
     },
     "timeline": {
       "created": "Restock raised",
@@ -1481,16 +1532,13 @@
     "table": {
       "status": "Status",
       "restock": "Restock",
-      "destination": "Destination",
       "from": "From",
       "supplier": "Supplier",
       "product": "Products",
-      "value": "Value",
       "shipment": "Shipment",
       "receipt": "Receipt",
       "accepted": "Accepted",
       "reference": "Reference",
-      "receiptValue": "Resi {{value}}",
       "by": "by {{name}}",
       "userRef": "User #{{id}}",
       "actions": "Actions",
@@ -1498,11 +1546,15 @@
       "itemsSummary_other": "{{count}} products · {{pieces}} pcs",
       "firstAndMore": "{{sku}} +{{count}} more",
       "noProducts": "No products",
-      "invoiceValue": "Invoice {{value}}",
       "missingBadge_one": "{{count}} missing",
       "missingBadge_other": "{{count}} missing",
       "moreSuppliers_one": "+{{count}} more supplier",
-      "moreSuppliers_other": "+{{count}} more suppliers"
+      "moreSuppliers_other": "+{{count}} more suppliers",
+      "warehouse": "Warehouse",
+      "total": "Total",
+      "created": "Created",
+      "invoiceLabel": "Invoice",
+      "receiptLabel": "Tracking"
     },
     "form": {
       "warehouse": "Warehouse",
@@ -1579,6 +1631,7 @@
     "cancel": {
       "title": "Cancel Restock #{{id}}",
       "message": "It is still on its way. Once cancelled it cannot be reopened.",
+      "review": "Cancelling a restock will be checked.",
       "confirm": "Cancel Restock",
       "keep": "Keep Restock",
       "moneyQuestion": "Did the money come back?",

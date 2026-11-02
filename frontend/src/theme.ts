@@ -503,6 +503,9 @@ const customConfig = defineConfig({
                 "&:has(~ [data-part=indicator])": { "--indicator-thickness": "0px" },
                 _selected: {
                   color: "brand.fg",
+                  // BOLD TOO (owner, on the restock list: *"tab aktif perlu bold"*, then *"lebih baik iya"* for every
+                  // screen; a-selected-tab-is-bold) — the picked tab reads at a glance, not only by its colour.
+                  fontWeight: "bold",
                   _horizontal: { "--indicator-color": "colors.brand.solid" },
                   _vertical: { "--indicator-color": "colors.brand.solid" },
                 },

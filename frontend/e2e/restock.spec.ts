@@ -227,9 +227,12 @@ test("Restock requests page renders for root", async ({ page }) => {
 
   await page.goto("/inventories/restock");
 
-  // The list always renders its table once loaded (empty for a fresh e2e DB). That is enough to
-  // prove the page mounts, the client is wired, and the list RPC is reachable for root.
-  await expect(page.getByTestId("restock-requests-table")).toBeVisible();
+  // Once loaded the list renders its table, or — for a fresh e2e DB — its empty hint
+  // (an-empty-list-shows-a-hint). Either proves the page mounts, the client is wired, and the list RPC
+  // is reachable for root.
+  await expect(
+    page.getByTestId("restock-requests-table").or(page.getByTestId("restock-requests-empty")),
+  ).toBeVisible();
 });
 
 // a-who-filter-lists-the-people-on-its-rows: the two "who" filters offer the people on this team's restocks —

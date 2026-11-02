@@ -1,7 +1,9 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
+  Alert,
   Button,
   Field,
   HStack,
@@ -66,11 +68,16 @@ export interface SellingRestockActionsProps {
    * (a desktop header, where there is room to name them).
    */
   variant: "menu" | "buttons";
+  /**
+   * The screen's ⚠ mark for the cancel dialog's warning — nothing checks a cancellation yet
+   * (a-restock-cancel-warns-it-will-be-checked). Each screen numbers it in its own pending list.
+   */
+  cancelReviewMark?: ReactNode;
 }
 
 // The actions, and the two dialogs behind them. Nothing renders when the status allows nothing — a disabled button
 // would offer an act the server can only refuse.
-export function SellingRestockActions({ request, teamId, variant }: SellingRestockActionsProps) {
+export function SellingRestockActions({ request, teamId, variant, cancelReviewMark }: SellingRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<"" | "cancel" | "markLost">("");
@@ -146,7 +153,7 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
 
       {/* Mounted only while open, so each opening starts from an unanswered question. */}
       {dialog === "cancel" && (
-        <CancelRestockDialog request={request} teamId={teamId} onClose={() => setDialog("")} />
+        <CancelRestockDialog request={request} teamId={teamId} reviewMark={cancelReviewMark} onClose={() => setDialog("")} />
       )}
       {dialog === "markLost" && (
         <MarkLostDialog request={request} teamId={teamId} onClose={() => setDialog("")} />
@@ -160,10 +167,12 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
 function CancelRestockDialog({
   request,
   teamId,
+  reviewMark,
   onClose,
 }: {
   request: RestockRequest;
   teamId: bigint;
+  reviewMark?: ReactNode;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -190,6 +199,18 @@ function CancelRestockDialog({
       confirmDisabled={answer === ""}
       onConfirm={confirm}
     >
+      {/* A CANCELLATION IS CHECKED (owner: *"untuk cancel order kasih warning akan diperiksa katanya"*,
+          a-restock-cancel-warns-it-will-be-checked) — said before the confirm, in the warning tone, so nobody cancels
+          thinking it goes unseen. Who checks it, and how, is not on this screen. */}
+      <Alert.Root status="warning" mb="field" data-testid="restock-cancel-review">
+        <Alert.Indicator />
+        <Alert.Title>
+          <HStack gap="1.5">
+            {t("restock.cancel.review")}
+            {reviewMark}
+          </HStack>
+        </Alert.Title>
+      </Alert.Root>
       <Field.Root required>
         <Field.Label>
           <HStack gap="1.5">

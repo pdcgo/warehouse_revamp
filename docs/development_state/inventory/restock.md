@@ -1,5 +1,32 @@
 # Development state — inventory / restock
 
+🔀 **2026-10-31: the selling list follows the screen rules** — uncommitted, for the owner's pass
+([the-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-list-follows-the-screen-rules)).
+`pages/restock-selling`: a title, the card strip, `FilterBar`, two-line cells, a block per restock on a phone,
+`EmptyHint`, `GrowingPager`, a Mobile story. Then the owner's column order
+([the-restock-list-leads-with-its-references](../../technical/frontend/restock_decision.md#the-restock-list-leads-with-its-references)):
+Referensi first, the order and tracking numbers copyable and capped (`CopyText` `maxW`), no #id on the desktop row.
+Then the statistics
+([the-restock-statistics-count-transactions-under-the-tabs](../../technical/frontend/restock_decision.md#the-restock-statistics-count-transactions-under-the-tabs)):
+under the tabs, shut until opened, ⚠ **all sample** (`pages/restock-selling/pending.ts`: `summary`, `payments`). **Backend
+needed:** one read under the list's own filters returning, per status and in total, the restock count, the units, the
+distinct products, the goods value, the shipping, the courier's charge at the door — and the transaction value per paying
+account. The selling list no longer reads `OwnerStockStat`. Then Ekspor and a courier filter
+([the-restock-list-exports-and-filters-by-courier](../../technical/frontend/restock_decision.md#the-restock-list-exports-and-filters-by-courier)),
+⚠ both `dropped`. **Backend needed:** `shipment_id` on `RestockRequestListFilter` (and on the statistics read), and a
+restock export — a server stream ending in a file link, as `OrderExport`, over the list's own filter and tab.
+The cancel dialog warns that a cancellation will be checked
+([a-restock-cancel-warns-it-will-be-checked](../../technical/frontend/restock_decision.md#a-restock-cancel-warns-it-will-be-checked)),
+⚠ marked `missing` on the list and the selling detail: nothing checks one yet. The Statistik button ends the tab row on a desktop and is an
+icon beside Filter on a phone
+([the-statistics-button-ends-the-tab-row](../../technical/frontend/restock_decision.md#the-statistics-button-ends-the-tab-row)),
+since a rule for every list, the seller's order list included
+([a-statistics-button-ends-the-tab-row](../../technical/frontend/context_decision.md#a-statistics-button-ends-the-tab-row),
+`components/chrome/StatsToggle`).
+Screen decisions for the restock screens now go in
+[docs/technical/frontend/restock_decision.md](../../technical/frontend/restock_decision.md). Not yet: the selling detail,
+the form, and every warehouse-side restock screen.
+
 ✅ **2026-10-17: the accept is on the ledgers, the tables carry the owner's names, the money is `double`** — uncommitted,
 for the owner's review ([ledgers.md](ledgers.md), stages 2a, 2c, 2b).
 
@@ -174,7 +201,8 @@ stage hunk by hunk.
 
 ## Elsewhere
 
-- The list pages have no phone arrangement yet (one block per row, FilterBar sheet).
+- The warehouse's list has no phone arrangement yet (one block per row, FilterBar sheet); the selling list has had one
+  since 2026-10-31.
 - warehouse-product's **Incoming** reads ongoing restocks only (comment at `pages/warehouse-product/index.tsx:99`).
   An arrived box is incoming too, but the activity read takes one status.
 - The receipt photo's upload type is not designed. It stays a `dropped` mark.

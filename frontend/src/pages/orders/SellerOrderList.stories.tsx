@@ -263,6 +263,35 @@ export const TheStatisticsAreShutAndUnreadUntilOpened: Story = {
   },
 };
 
+// THE STATISTIK BUTTON ENDS THE TAB ROW (owner: *"samakan"*, a-statistics-button-ends-the-tab-row) — level with the tabs,
+// at the row's right end, while the thirteen tabs scroll in the width left to them. No row of its own.
+export const TheStatisticsButtonEndsTheTabRow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = await canvas.findByTestId("order-summary-toggle", {}, { timeout: 4000 });
+    const row = canvas.getByRole("tablist").getBoundingClientRect();
+    const button = toggle.getBoundingClientRect();
+
+    await expect(button.top).toBeGreaterThanOrEqual(row.top - 1);
+    await expect(button.bottom).toBeLessThanOrEqual(row.bottom + 1);
+    await expect(button.left).toBeGreaterThanOrEqual(row.right);
+  },
+};
+
+// …on a phone it is an icon beside Filter.
+export const OnAPhoneTheStatisticsButtonSitsBesideFilter: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = await canvas.findByTestId("order-summary-toggle", {}, { timeout: 4000 });
+
+    await expect(canvas.getByTestId("orders-filters")).toContainElement(toggle);
+    await expect(toggle).toHaveAccessibleName("Statistics");
+    await userEvent.click(toggle);
+    await waitFor(() => expect(canvas.getByTestId("order-summary")).toBeInTheDocument());
+  },
+};
+
 // …and the TAB narrows the table only.
 export const ATabNarrowsTheTable: Story = {
   play: async ({ canvasElement }) => {

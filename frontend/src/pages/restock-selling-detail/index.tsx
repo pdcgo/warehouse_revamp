@@ -13,7 +13,10 @@ import { useIsMobile } from "../../layouts/shell";
 import { InfoPanel } from "./components/InfoPanel";
 import { ProductsPanel } from "./components/ProductsPanel";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
-import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
+import { SellingRestockActions, sellingActions } from "../../features/restock/SellingRestockActions";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { RESTOCK_SELLING_DETAIL_PENDING } from "./pending";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -111,8 +114,14 @@ export function RestockSellingDetailPage() {
     </Badge>
   );
 
+  // ⚠ The cancel dialog's warning promises a check nothing does yet — marked, and listed at the top while the restock can
+  // still be cancelled; a restock past that has no such dialog to warn about.
+  const cancellable = sellingActions(request.status).includes("cancel");
+  const reviewMark = <NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="cancelReview" />;
+
   return (
     <Stack gap="section" data-testid="restock-detail-page">
+      {cancellable && <NotImplementedSummary list={RESTOCK_SELLING_DETAIL_PENDING} />}
       {isMobile ? (
         // THE PHONE HEADER IS ONE ROW — back, the number, the status, ⋯. A missing count moves to the line under it.
         <Stack gap="1">
@@ -135,7 +144,7 @@ export function RestockSellingDetailPage() {
               request={request}
               teamId={teamId}
               variant="menu"
-             
+              cancelReviewMark={reviewMark}
             />
           </Flex>
           {missingBadge && <Box>{missingBadge}</Box>}
@@ -158,7 +167,7 @@ export function RestockSellingDetailPage() {
               request={request}
               teamId={teamId}
               variant="buttons"
-             
+              cancelReviewMark={reviewMark}
             />
           </Flex>
         </>

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { inventoryClient, restockClient } from "../../api/clients";
+import { restockClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
 import { fetchActors, peopleFor, useActors, WHO_FILTER_SIZE } from "../users/queries";
@@ -134,38 +134,7 @@ export function useRestockPeople(args: { teamId: bigint | undefined; role: Resto
   });
 }
 
-// THE ONGOING STOCK HEADLINE (owner) — how much this team has bought that has not landed yet, and
-// what it is worth.
-//
-// It is `OwnerStockStat`, not a total of the rows on screen, and that is the point: the tile
-// describes what the team has in flight, while the table beside it shows twenty rows narrowed by a
-// search box and a status tab. Adding up the visible rows would make the headline move every time
-// somebody typed, which is the one thing a headline must not do.
-//
-// Server-side "ongoing" is exactly this screen's subject: Σ of the lines on PENDING restocks, scoped
-// to the requesting team — so the tile and the Pending tab can never tell different stories.
-//
-// It takes the WAREHOUSE FILTER and nothing else. A warehouse lens restates the question ("what is
-// in flight to Jakarta") rather than narrowing a list; a date range or a search box does not — those
-// pick rows, and a headline that followed them would stop being a headline.
-export function useRestockOngoing(args: { teamId: bigint | undefined; warehouseId?: bigint }) {
-  const { teamId, warehouseId = 0n } = args;
-
-  return useQuery({
-    queryKey: key.restock(teamId, { ongoing: true, warehouseId: warehouseId.toString() }),
-    enabled: teamId !== undefined,
-    queryFn: async () => {
-      const res = await inventoryClient.ownerStockStat({ teamId: teamId!, filter: { warehouseId } });
-
-      return {
-        qty: res.preview?.ongoingQty ?? 0n,
-        value: res.preview?.ongoingValueEst ?? 0n,
-      };
-    },
-  });
-}
-
-// THE INBOUND HEADLINE (owner) — the warehouse side's mirror of useRestockOngoing above: what is
+// THE INBOUND HEADLINE (owner) — the warehouse side's in-flight figures (the selling list's were OwnerStockStat): what is
 // still waiting at this warehouse's door, over every PENDING restock targeting it.
 //
 // A SEPARATE RPC rather than the same one read differently, and the reason is not tidiness. The
