@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { ProductLinesPopover, description, type ProductLine } from "./ProductLinesPopover";
+import { ProductLinesDialog, description, type ProductLine } from "./ProductLinesDialog";
 
 const lines: ProductLine[] = [
   { id: "1", sku: "SKU-KOPI-250", name: "Kopi Arabika 250g", quantity: 3n, totalPrice: 10_000 },
@@ -10,8 +10,8 @@ const lines: ProductLine[] = [
 ];
 
 const meta = {
-  title: "Components/Products/ProductLinesPopover",
-  component: ProductLinesPopover,
+  title: "Components/Products/ProductLinesDialog",
+  component: ProductLinesDialog,
   parameters: {
     docs: { description: { component: description } },
   },
@@ -19,7 +19,7 @@ const meta = {
     lines,
     label: `${lines[0]!.sku} +${lines.length - 1} more`,
   },
-} satisfies Meta<typeof ProductLinesPopover>;
+} satisfies Meta<typeof ProductLinesDialog>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -38,7 +38,7 @@ export const LongProductNames: Story = {
   },
 };
 
-// It lists EVERY line, including the product the table row already names. A popover that started at
+// It lists EVERY line, including the product the table row already names. A list that started at
 // the second product would read as if the first had been left out.
 export const ListsEveryLineIncludingTheNamedOne: Story = {
   play: async ({ canvasElement }) => {
@@ -94,7 +94,7 @@ export const TriggerDoesNotBubbleToTheRow: Story = {
         document.body.setAttribute("data-row-clicked", "yes");
       }}
     >
-      <ProductLinesPopover {...args} />
+      <ProductLinesDialog {...args} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -108,15 +108,30 @@ export const TriggerDoesNotBubbleToTheRow: Story = {
   },
 };
 
-// ON A PHONE THE POPOVER FITS THE SCREEN (a-date-range-panel-fits-a-phone, found beside it) — its floor yields to the
-// screen's width, and the table scrolls inside it.
-export const OnAPhoneThePopoverFitsTheScreen: Story = {
+// IT OPENS AS A DIALOG (the-product-lines-open-in-a-dialog) — the list in the middle of the screen, titled, closed by its
+// ×; it was a popover hanging off the row.
+export const ItOpensAsADialog: Story = {
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByTestId("product-lines-more"));
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+
+    await expect(dialog).toHaveTextContent("Products");
+    await expect(within(dialog).getByTestId("product-lines")).toBeVisible();
+  },
+};
+
+// ON A PHONE EACH LINE IS A BLOCK (a-phone-reads-each-line-as-a-block) — the name at full width, the SKU and the
+// arithmetic under it; no columns. The dialog fits the screen (nothing-runs-past-a-phones-edge).
+export const OnAPhoneEachLineIsABlock: Story = {
   globals: { viewport: { value: "mobile1" } },
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByTestId("product-lines-more"));
-    const table = await screen.findByTestId("product-lines");
-    const content = table.closest('[data-part="content"]')!;
+    const list = await screen.findByTestId("product-lines");
+    const content = list.closest('[data-part="content"]')!;
 
+    await expect(within(list).queryAllByRole("columnheader")).toHaveLength(0);
+    await expect(list).toHaveTextContent(/SKU-KOPI-250 · 3 × Rp/);
     await expect(content.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
     await expect(content.getBoundingClientRect().left).toBeGreaterThanOrEqual(0);
   },

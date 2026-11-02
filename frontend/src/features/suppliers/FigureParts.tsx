@@ -4,7 +4,6 @@ import { Box, Flex, HStack, Span, Stack, Table, Text } from "@chakra-ui/react";
 
 import { formatRupiah } from "../../lib/money";
 import { SummaryCard, SummaryStrip } from "../orders/SummaryCard";
-import { useIsMobile } from "../../layouts/shell";
 import { PRESSABLE } from "../../lib/motion";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -86,10 +85,9 @@ export function FiguresSummary({
   const received = figures ? unitsReceived(figures) : 0;
   const sales = figures ? sampleSalesFrom(figures) : undefined;
 
-  // HOW A FIGURE IS MADE is a desktop line: on a phone two cards share a row and the note was always cut to "unit
-  // yang…" (owner: *"iya"*, `a-phone-card-shows-no-note`) — the label, the figure and its units say enough there.
-  const isMobile = useIsMobile();
-  const note = (key: string) => (isMobile ? undefined : t(key));
+  // HOW A FIGURE IS MADE is a desktop line — SummaryCard itself drops a note on a phone now, on every screen
+  // (a-phone-card-shows-no-note).
+  const note = (key: string) => t(key);
 
   return (
     <SummaryStrip testId={testId}>

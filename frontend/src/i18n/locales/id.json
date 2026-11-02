@@ -1352,7 +1352,7 @@
     "selling": {
       "title": "Restok",
       "actions": "Aksi restok",
-      "searchPlaceholder": "Cari restok, resi, faktur, atau SKU",
+      "searchPlaceholder": "Cari restok, resi, order ID, atau SKU",
       "none": "Tidak ada restok yang cocok.",
       "emptyHint": "Restok dibuat saat tim ini membeli barang untuk dikirim ke gudang.",
       "statistics": "Statistik",
@@ -1395,6 +1395,18 @@
         "cancelReview": {
           "label": "Pemeriksaan pembatalan",
           "reason": "Dialog pembatalan bilang pembatalan akan diperiksa; belum ada yang memeriksanya."
+        },
+        "sellingNoteBy": {
+          "label": "Siapa dan kapan catatan ditulis",
+          "reason": "Tidak tersimpan — yang tampil adalah pembuatan atau perubahan terakhir restok, yang mungkin hanya mengubah baris."
+        },
+        "warehouseNote": {
+          "label": "Catatan gudang",
+          "reason": "Belum ada tempat menyimpan catatan gudang pada restok."
+        },
+        "lateNote": {
+          "label": "Mengubah catatan setelahnya",
+          "reason": "Setelah restok tiba, server mengunci catatannya — perubahan saat itu tidak tersimpan."
         }
       },
       "export": "Ekspor",
@@ -1433,9 +1445,9 @@
       "restocksHint": "dalam perjalanan atau di pintu"
     },
     "detail": {
-      "title": "Permintaan Restok",
-      "requestTitle": "Permintaan Restok #{{id}}",
-      "back": "Kembali ke Permintaan Restok",
+      "title": "Restok",
+      "requestTitle": "Restok #{{id}}",
+      "back": "Kembali ke Restok",
       "notFound": "Permintaan restok tidak ditemukan.",
       "invalidId": "ID permintaan restok tidak valid.",
       "delivery": "Kiriman",
@@ -1459,7 +1471,7 @@
       "payment": "Pembayaran",
       "paidFrom": "Dibayar dari",
       "accountRef": "Akun #{{id}}",
-      "invoice": "Faktur",
+      "invoice": "Order ID",
       "subtotal": "Barang",
       "shipping": "Ongkir",
       "total": "Total",
@@ -1476,15 +1488,42 @@
       "placement": "Penempatan",
       "lineNote": "Catatan: {{note}}",
       "problemWorth": "senilai {{amount}}",
-      "goodOfOrdered": "Unit baik masuk stok",
+      "goodOfOrdered": "Stok aman untuk diterima gudang",
       "missingBadge_one": "kurang {{count}}",
       "missingBadge_other": "kurang {{count}}",
       "pending": {
         "cancelReview": {
           "label": "Pemeriksaan pembatalan",
           "reason": "Dialog pembatalan bilang pembatalan akan diperiksa; belum ada yang memeriksanya."
+        },
+        "sellingNoteBy": {
+          "label": "Siapa dan kapan catatan ditulis",
+          "reason": "Tidak tersimpan — yang tampil adalah pembuatan atau perubahan terakhir restok, yang mungkin hanya mengubah baris."
+        },
+        "warehouseNote": {
+          "label": "Catatan gudang",
+          "reason": "Belum ada tempat menyimpan catatan gudang pada restok."
+        },
+        "trailChanges": {
+          "label": "Isi perubahan di Riwayat",
+          "reason": "Server mencatat bahwa restok diubah, bukan apa yang berubah."
+        },
+        "lateNote": {
+          "label": "Mengubah catatan setelahnya",
+          "reason": "Setelah restok tiba, server mengunci catatannya — perubahan saat itu tidak tersimpan."
         }
-      }
+      },
+      "navLabel": "Bagian restok",
+      "receiptPhotoLabel": "Foto label",
+      "section": {
+        "courier": "Ongkir COD"
+      },
+      "warehouseNoteNone": "Belum ada catatan dari gudang.",
+      "adjustment": "Penyesuaian",
+      "adjustmentOpen": "Penyesuaian {{name}}",
+      "asOrdered": "Sesuai",
+      "goodShort": "Baik {{count}}",
+      "notCounted": "Belum dihitung"
     },
     "timeline": {
       "created": "Restok dibuat",
@@ -1540,7 +1579,7 @@
       "warehouse": "Gudang",
       "total": "Total",
       "created": "Dibuat",
-      "invoiceLabel": "Faktur",
+      "invoiceLabel": "Order ID",
       "receiptLabel": "Resi"
     },
     "form": {
@@ -1804,7 +1843,8 @@
         "lostFailed": "Gagal menandai hilang",
         "arrived": "Paket diterima — restok sudah tiba",
         "arriveFailed": "Gagal menandai tiba"
-      }
+      },
+      "notes": "Catatan"
     },
     "lost": {
       "title": "Tandai Restok #{{id}} Hilang",
@@ -1814,6 +1854,16 @@
       "reason": "Alasan",
       "reasonPlaceholder": "mis. kurir mengembalikannya ke pengirim",
       "reasonHint": "Opsional — disimpan di riwayat restok."
+    },
+    "notes": {
+      "title": "Catatan Restok",
+      "edit": "Ubah",
+      "editTitle": "Ubah Catatan",
+      "sellingLabel": "Catatan tim penjual",
+      "save": "Simpan Catatan",
+      "saved": "Catatan disimpan",
+      "saveFailed": "Gagal menyimpan catatan",
+      "notStored": "Catatan belum tersimpan — setelah restok tiba, server belum menerima perubahan catatan."
     }
   },
   "shops": {

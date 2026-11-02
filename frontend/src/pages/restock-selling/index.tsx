@@ -300,8 +300,9 @@ export function RestockSellingPage() {
     );
   }
 
-  // The row's ⋯ — what the status allows. A row whose status allows nothing has no menu at all rather than a disabled
-  // one. Stops the row's navigate from firing when it is used.
+  // The row's ⋯ — what the status allows, and Catatan in every status (owner: *"di listnya aku ingin ada modal
+  // menampilkan catatannya … di aksi, bisa edit juga"*, the-list-opens-the-notes-in-a-dialog), so every row has one now.
+  // Stops the row's navigate from firing when it is used — the dialog's clicks included, which bubble through the portal.
   function rowActions(request: RestockRequest) {
     if (teamId === undefined) return null;
 
@@ -311,7 +312,13 @@ export function RestockSellingPage() {
           request={request}
           teamId={teamId}
           variant="menu"
+          withNotes
           cancelReviewMark={<NotImplemented list={RESTOCK_SELLING_PENDING} id="cancelReview" />}
+          notesMarks={{
+            sellingBy: <NotImplemented list={RESTOCK_SELLING_PENDING} id="sellingNoteBy" />,
+            late: <NotImplemented list={RESTOCK_SELLING_PENDING} id="lateNote" />,
+            warehouse: <NotImplemented list={RESTOCK_SELLING_PENDING} id="warehouseNote" />,
+          }}
         />
       </Box>
     );

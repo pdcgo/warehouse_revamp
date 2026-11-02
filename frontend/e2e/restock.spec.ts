@@ -353,7 +353,7 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   // through it: an unselected Chakra tab panel is hidden but still in the DOM, so a `toContainText`
   // against the whole page would pass on text nobody can see — and would keep passing if the tab
   // stopped opening.
-  await page.getByTestId("restock-detail-tab-products").click();
+  await page.getByTestId("section-nav-products").click();
   await expect(page.getByTestId("restock-detail-products")).toContainText(skuA);
   await expect(page.getByTestId("restock-detail-products")).toContainText(skuB);
 
@@ -362,12 +362,12 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   // silently leave a step with a date and no person — and nothing else on the page would notice.
   // It asserts the line EXISTS rather than which name is in it, because the account the suite logs
   // in as is the fixture's business, not this assertion's.
-  await page.getByTestId("restock-detail-tab-timeline").click();
+  await page.getByTestId("section-nav-timeline").click();
   await expect(page.locator("[data-kind='created'] [data-testid$='-by']")).toBeVisible();
   // A pending request ends with what has NOT happened yet, rather than stopping dead at "raised".
   await expect(page.getByTestId("restock-timeline-awaiting")).toBeVisible();
 
-  await page.getByTestId("restock-detail-tab-info").click();
+  await page.getByTestId("section-nav-delivery").click();
 
   // …and EDITING it shows the cover too, which is a SEPARATE path worth its own assertion: a stored
   // restock line holds sku/name and no image at all, so the form has to resolve covers by id rather
@@ -509,7 +509,11 @@ test("Restock detail: broken and missing show with the warehouse's notes (#154)"
   const productId = ground.productId;
 
   await page.goto(`/inventories/restock/${created.request.id}`);
-  await page.getByTestId("restock-detail-tab-products").click();
+  await page.getByTestId("section-nav-products").click();
+
+  // The count is ONE column, Penyesuaian, and its figures open in a dialog (the-count-is-one-adjustment-column).
+  await page.getByTestId(`restock-detail-adjustment-${productId}`).click();
+  await expect(page.getByTestId(`restock-detail-adjustment-${productId}-dialog`)).toBeVisible();
 
   // RECEIVED is what was in the box, broken included (any-warehouse-member-counts-what-arrived); GOOD is what became
   // stock. And the shortfall is flagged once, in the header.
@@ -531,8 +535,9 @@ test("Restock detail: broken and missing show with the warehouse's notes (#154)"
   await expect(page.getByTestId(`restock-detail-broken-${productId}-value`)).toContainText("100.000");
   await expect(page.getByTestId(`restock-detail-missing-${productId}-value`)).toContainText("50.000");
 
-  // The columns are there on a restock NOBODY HAS COUNTED too, reading "—" rather than 0 — a box on its way has not
-  // arrived empty.
+  // A restock NOBODY HAS COUNTED reads "—" rather than 0 — a box on its way has not arrived empty — and has nothing to
+  // open.
+  await page.keyboard.press("Escape");
   const pending = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
     teamId: "1",
     warehouseId: ground.warehouseId,
@@ -541,10 +546,8 @@ test("Restock detail: broken and missing show with the warehouse's notes (#154)"
   });
 
   await page.goto(`/inventories/restock/${pending.request.id}`);
-  await page.getByTestId("restock-detail-tab-products").click();
-  await expect(page.getByTestId(`restock-detail-missing-${productId}`)).toHaveText("—");
-  await expect(page.getByTestId(`restock-detail-broken-${productId}`)).toHaveText("—");
-  await expect(page.getByTestId(`restock-detail-received-${productId}`)).toHaveText("—");
+  await page.getByTestId("section-nav-products").click();
+  await expect(page.getByTestId(`restock-detail-adjustment-${productId}`)).toHaveText("—");
 });
 
 // THE COURIER'S CHARGE, ON THE SCREEN OF THE TEAM THAT OWES IT (#155/#184). The warehouse types it at the door; the
@@ -593,7 +596,7 @@ test("Restock detail: the courier's charge shows on its own and stays out of the
   await expect(page.getByTestId("restock-detail-total")).toContainText("515.000");
 
   // ── THE HISTORY ──────────────────────────────────────────────────────────────────────────────
-  await page.getByTestId("restock-detail-tab-timeline").click();
+  await page.getByTestId("section-nav-timeline").click();
 
   // Two steps, in order — raised, then counted in — and the charge is on the second, where it was paid.
   const steps = page.locator("[data-testid^='restock-timeline-'][data-kind]");

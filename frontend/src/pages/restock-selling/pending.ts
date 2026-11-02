@@ -4,7 +4,7 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // not. The list shrinks by one entry each time something behind it lands.
 
 /** One unwired part of the page. The id is also its i18n key (`restock.selling.pending.<id>`). */
-export type PendingId = "export" | "courier" | "summary" | "payments" | "cancelReview";
+export type PendingId = "export" | "courier" | "summary" | "payments" | "cancelReview" | "sellingNoteBy" | "lateNote" | "warehouseNote";
 
 // In the order they sit on the screen — the number on a badge is its position here.
 const PARTS: PendingPart<PendingId>[] = [
@@ -23,6 +23,13 @@ const PARTS: PendingPart<PendingId>[] = [
   // ⚠ NOTHING CHECKS A CANCELLATION. The cancel dialog warns that it will be (owner: *"taruh di unimplemented juga khusus
   // ini"*, a-restock-cancel-warns-it-will-be-checked); no screen, queue or record does it — the check is MISSING.
   { id: "cancelReview", kind: "missing" },
+  // ⚠ THE NOTES DIALOG (the-list-opens-the-notes-in-a-dialog) carries the restock page's two note marks: who wrote the
+  // selling note and when is the restock's last raise or edit (derived); the warehouse's note has no field (missing).
+  { id: "sellingNoteBy", kind: "derived" },
+  // ⚠ A NOTE EDITED PAST THE RESTOCK'S WAY IS THROWN AWAY (the-note-is-edited-in-any-status): the server keeps the head of a
+  // restock closed once it arrives; Ubah is there, the save says it was not kept.
+  { id: "lateNote", kind: "dropped" },
+  { id: "warehouseNote", kind: "missing" },
 ];
 
 /** What the badges and the summary on this page read. `ns` is where its copy lives. */

@@ -194,6 +194,15 @@ export function restockWire(id: bigint) {
   return toWire(found, true);
 }
 
+// Change one restock for a story — a case the fixtures do not hold (a restock with no order id). Call it from the
+// story's `beforeEach`, which runs after preview's reset, so the change lasts that story only.
+export function patchRestock(id: bigint, fields: Partial<Pick<RestockFixture, "invoiceRefId" | "receipt" | "logs">>) {
+  const found = rows.find((r) => r.id === id);
+  if (!found) throw new Error(`no restock ${id}`);
+
+  Object.assign(found, fields);
+}
+
 const rupiah = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
 
 export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestService>> = {

@@ -1364,7 +1364,7 @@
     "selling": {
       "title": "Restock",
       "actions": "Restock actions",
-      "searchPlaceholder": "Search restock, tracking, invoice or SKU",
+      "searchPlaceholder": "Search restock, tracking, order ID or SKU",
       "none": "No restocks match.",
       "emptyHint": "A restock is raised when this team buys goods to send to a warehouse.",
       "statistics": "Statistics",
@@ -1407,6 +1407,18 @@
         "cancelReview": {
           "label": "Checking a cancellation",
           "reason": "The cancel dialog says a cancellation will be checked; nothing checks it yet."
+        },
+        "sellingNoteBy": {
+          "label": "Who wrote the note, and when",
+          "reason": "Not stored — shown is the restock's last raise or edit, which may have changed only a line."
+        },
+        "warehouseNote": {
+          "label": "The warehouse's note",
+          "reason": "Nothing stores a warehouse note on the restock yet."
+        },
+        "lateNote": {
+          "label": "Editing the note later",
+          "reason": "Once the restock has arrived the server keeps its note closed — an edit then is not saved."
         }
       },
       "export": "Export",
@@ -1446,9 +1458,9 @@
       "restocksHint": "on their way or at the door"
     },
     "detail": {
-      "title": "Restock Request",
-      "requestTitle": "Restock Request #{{id}}",
-      "back": "Back to Restock Requests",
+      "title": "Restock",
+      "requestTitle": "Restock #{{id}}",
+      "back": "Back to Restock",
       "notFound": "Restock request not found.",
       "invalidId": "Invalid restock request id.",
       "delivery": "Delivery",
@@ -1472,7 +1484,7 @@
       "payment": "Payment",
       "paidFrom": "Paid from",
       "accountRef": "Account #{{id}}",
-      "invoice": "Invoice",
+      "invoice": "Order ID",
       "subtotal": "Goods",
       "shipping": "Shipping",
       "total": "Total",
@@ -1489,15 +1501,42 @@
       "placement": "Placement",
       "lineNote": "Note: {{note}}",
       "problemWorth": "worth {{amount}}",
-      "goodOfOrdered": "Good units into stock",
+      "goodOfOrdered": "Safe stock taken in by the warehouse",
       "missingBadge_one": "{{count}} missing",
       "missingBadge_other": "{{count}} missing",
       "pending": {
         "cancelReview": {
           "label": "Checking a cancellation",
           "reason": "The cancel dialog says a cancellation will be checked; nothing checks it yet."
+        },
+        "sellingNoteBy": {
+          "label": "Who wrote the note, and when",
+          "reason": "Not stored — shown is the restock's last raise or edit, which may have changed only a line."
+        },
+        "warehouseNote": {
+          "label": "The warehouse's note",
+          "reason": "Nothing stores a warehouse note on the restock yet."
+        },
+        "trailChanges": {
+          "label": "What an edit changed",
+          "reason": "The server records that the restock was edited, not what changed."
+        },
+        "lateNote": {
+          "label": "Editing the note later",
+          "reason": "Once the restock has arrived the server keeps its note closed — an edit then is not saved."
         }
-      }
+      },
+      "navLabel": "Restock sections",
+      "receiptPhotoLabel": "Label photo",
+      "section": {
+        "courier": "Courier COD"
+      },
+      "warehouseNoteNone": "No note from the warehouse yet.",
+      "adjustment": "Adjustment",
+      "adjustmentOpen": "Adjustment of {{name}}",
+      "asOrdered": "As ordered",
+      "goodShort": "Good {{count}}",
+      "notCounted": "Not counted yet"
     },
     "timeline": {
       "created": "Restock raised",
@@ -1553,7 +1592,7 @@
       "warehouse": "Warehouse",
       "total": "Total",
       "created": "Created",
-      "invoiceLabel": "Invoice",
+      "invoiceLabel": "Order ID",
       "receiptLabel": "Tracking"
     },
     "form": {
@@ -1817,7 +1856,8 @@
         "lostFailed": "Mark lost failed",
         "arrived": "Signed for — the restock has arrived",
         "arriveFailed": "Sign for box failed"
-      }
+      },
+      "notes": "Notes"
     },
     "lost": {
       "title": "Mark Restock #{{id}} as Lost",
@@ -1827,6 +1867,16 @@
       "reason": "Why",
       "reasonPlaceholder": "e.g. the courier returned it to the sender",
       "reasonHint": "Optional — it is kept on the restock's timeline."
+    },
+    "notes": {
+      "title": "Restock Notes",
+      "edit": "Edit",
+      "editTitle": "Edit Note",
+      "sellingLabel": "The selling team's note",
+      "save": "Save Notes",
+      "saved": "Notes saved",
+      "saveFailed": "Couldn't save the notes",
+      "notStored": "Not saved — once the restock has arrived the server does not take a note change yet."
     }
   },
   "shops": {

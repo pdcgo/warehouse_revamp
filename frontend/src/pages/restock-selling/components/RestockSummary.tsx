@@ -65,7 +65,7 @@ export function RestockSummary({
           <SummaryCard
             label={t("restock.selling.summary.skus")}
             value={selected.skus.toLocaleString("id-ID")}
-            line={t("restock.selling.summary.skusLine")}
+            note={t("restock.selling.summary.skusLine")}
             testId="restock-summary-measure-skus"
           />
           <SummaryCard
@@ -76,7 +76,7 @@ export function RestockSummary({
           <SummaryCard
             label={t("restock.selling.summary.courierCharge")}
             value={formatRupiahNumber(selected.courierCharge)}
-            line={t("restock.selling.summary.courierChargeLine")}
+            note={t("restock.selling.summary.courierChargeLine")}
             testId="restock-summary-measure-courier-charge"
           />
           <SummaryCard
@@ -102,7 +102,7 @@ export function RestockSummary({
               ) : undefined
             }
             value={formatRupiahNumber(pileValue(selected))}
-            line={t("restock.selling.summary.valueLine")}
+            note={t("restock.selling.summary.valueLine")}
             testId="restock-summary-measure-value"
           />
         </SummaryStrip>

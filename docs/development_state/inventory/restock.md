@@ -1,5 +1,23 @@
 # Development state — inventory / restock
 
+🔀 **2026-11-02: the selling detail follows the screen rules** — uncommitted, for the owner's pass
+([the-restock-detail-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-detail-follows-the-screen-rules)).
+`pages/restock-selling-detail`: icon actions on a phone (`SellingRestockActions` `compact`), product lines as blocks on a
+phone, two-line cells, Default and Mobile stories. Then the product page's shape
+([the-restock-detail-is-the-product-pages-shape](../../technical/frontend/restock_decision.md#the-restock-detail-is-the-product-pages-shape)):
+one page of sections with the nav on the left, the order id and the tracking number as the title, no tabs; *Faktur* is
+*Order ID* everywhere ([the-store-reference-is-the-order-id](../../technical/frontend/restock_decision.md#the-store-reference-is-the-order-id)).
+The notes: one per writer ([the-notes-are-one-per-writer](../../technical/frontend/restock_decision.md#the-notes-are-one-per-writer)),
+⚠ the warehouse note, the note's author and an edit's content all unstored. **Backend needed:** a warehouse note with its
+author and time, the selling note's author and time, an edit's trail row naming what changed.
+The selling note is edited in any status ([the-note-is-edited-in-any-status](../../technical/frontend/restock_decision.md#the-note-is-edited-in-any-status)),
+⚠ kept only while ongoing. **Backend needed:** a note change the server takes in any status.
+On a phone the restock page edits it in a bottom sheet, the list's dialog in place
+([a-phone-edits-the-note-in-a-sheet](../../technical/frontend/restock_decision.md#a-phone-edits-the-note-in-a-sheet)).
+The timeline centres each icon, gives every person one width, and runs its line icon to icon
+([the-timeline-is-centred-and-lines-up](../../technical/frontend/restock_decision.md#the-timeline-is-centred-and-lines-up)).
+Next on the selling side: the form.
+
 🔀 **2026-10-31: the selling list follows the screen rules** — uncommitted, for the owner's pass
 ([the-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-list-follows-the-screen-rules)).
 `pages/restock-selling`: a title, the card strip, `FilterBar`, two-line cells, a block per restock on a phone,

@@ -10,13 +10,17 @@ import { scrollerOf } from "./useScrollSpy";
 //
 //   strip    the sticky box — on a phone it holds the section chips, which always stick
 //   bar      the title bar drawn over the page, under the strip
-//   title    the page's own heading — the bar shows once it has gone behind the bar
+//   title    the page's own title ROW — the bar shows once ALL of it has gone behind the bar
 //   past     whether it has — the bar's `opacity` / `visibility`
 //   height   the strip plus the bar — published as `--detail-header-h`, what a nav jump has to clear
+//
+// ⚠ THE ROW, NOT THE HEADING (owner, on a restock on a phone: *"mobile heading bug seperti ini"*). Watching the heading
+// alone showed the bar while the rest of the row — the status that wrapped under it, the tracking number or SKU line —
+// still stood under the bar, so the status and the reference read twice, the page's peeking out below the bar's.
 export function useStickyTitle(ready: boolean, isMobile: boolean) {
   const strip = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLDivElement>(null);
-  const title = useRef<HTMLHeadingElement>(null);
+  const title = useRef<HTMLDivElement>(null);
   const [past, setPast] = useState(false);
   const [height, setHeight] = useState(0);
 

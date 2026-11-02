@@ -31,8 +31,8 @@ export function ProductTitleRow({
   backLabel: string;
   onBack: () => void;
   name: string;
-  /** The page's own heading — what useStickyTitle watches. Ignored on the bar's copy. */
-  titleRef?: RefObject<HTMLHeadingElement>;
+  /** The page's own row — what useStickyTitle watches, all of it. Ignored on the bar's copy. */
+  titleRef?: RefObject<HTMLDivElement>;
   /** Beside the name — the archived badge, a lock, a division. */
   badges?: ReactNode;
   sku: string;
@@ -40,7 +40,7 @@ export function ProductTitleRow({
   actions?: ReactNode;
 }) {
   return (
-    <Flex align="center" gap={stuck ? "2" : "card"} minW="0">
+    <Flex ref={stuck ? undefined : titleRef} align="center" gap={stuck ? "2" : "card"} minW="0">
       <IconButton
         size="sm"
         variant="ghost"
@@ -56,7 +56,6 @@ export function ProductTitleRow({
       <Stack gap={stuck ? "0" : "1"} minW="0" flex="1">
         <HStack gap="2" minW="0">
           <Heading
-            ref={stuck ? undefined : titleRef}
             size={stuck ? "md" : "lg"}
             truncate={stuck}
             minW="0"

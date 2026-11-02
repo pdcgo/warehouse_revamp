@@ -82,6 +82,8 @@ when it applies one of these.
 | [a-statistics-button-ends-the-tab-row](#a-statistics-button-ends-the-tab-row) | a list's **Statistik** button ends its status-tab row on a desktop and is an icon beside Filter on a phone — never a row of its own; `StatsToggle` | [the restock list](restock_decision.md#the-statistics-button-ends-the-tab-row), then the order list |
 | [a-date-range-panel-fits-a-phone](#a-date-range-panel-fits-a-phone) | on a phone the date range panel is the screen's width, stacked — the date types wrap, the quick ranges a wrapped row over the calendar — and scrolls inside rather than off the screen | every `DateRangePicker`, found on the restock list |
 | [nothing-runs-past-a-phones-edge](#nothing-runs-past-a-phones-edge) | on a phone — down to 320px — nothing runs past the screen's edge: a panel is capped at the screen, a row of tabs or a table scrolls inside its own box, a row of controls lets its search give way | every screen; swept on every Mobile story |
+| [a-phone-card-shows-no-note](#a-phone-card-shows-no-note) | on a phone a summary card drops its NOTE — how the figure is made — and keeps its label, figure and data line; `SummaryCard` does it on every screen | [the supplier figures](suppliers_decision.md#a-phone-card-shows-no-note), then every card |
+| [a-sticky-bar-waits-for-the-whole-title-row](#a-sticky-bar-waits-for-the-whole-title-row) | a detail page's sticky title bar shows once its WHOLE title row has gone behind it — the heading, what wrapped beside it, the reference line under it — never while part of the row still shows below; `useStickyTitle` | the restock page on a phone, then every detail page with a sticky title |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1835,6 +1837,53 @@ flowchart LR
 | clean | every other Mobile story and popover at 320 and 360px |
 | pinned by | a 320px story each: `OnAPhoneThePanelFitsTheScreen` (both range pickers), `OnAPhoneThePopoverFitsTheScreen`, `OnAPhoneTheTabsScrollSideways` (with the table and the page width), `OnAPhoneTheStatisticsButtonSitsBesideFilter` |
 | a new screen | its Mobile story is looked at at 320px too, not only at the workbench's default phone |
+
+## a-phone-card-shows-no-note
+
+> Owner, in chat (2026-11-02), asked whether the supplier screens' rule holds for every screen — a card's explanatory line
+> cut mid-word on a phone: *"disembunyikan"*. Decided first on [the supplier figures](suppliers_decision.md#a-phone-card-shows-no-note).
+
+```
+a phone, two cards a row
+before                          now
+┌ Ongkir COD        ┐           ┌ Ongkir COD        ┐
+│ Rp 104.000        │           │ Rp 104.000        │
+│ dibayar gudang k… │  ← cut    └───────────────────┘
+└───────────────────┘
+```
+
+| | |
+| --- | --- |
+| the rule | on a phone a `SummaryCard` draws no **note** — the quiet second line saying how the figure is made. Its label, figure and **line** stay |
+| line vs note | a figure's own data (*12 transaksi · Rp 24,5jt*, a count) belongs in `line`, which a phone keeps; an explanation (*barang + ongkir*, *dibayar gudang ke kurir*) is a `note`. The restock statistics moved their three explanations from `line` to `note` |
+| a note that is data | `keepNote` — a supplier's warehouse cards split a count from its date on a phone, and the date stays |
+| where | `SummaryCard` itself, a JS breakpoint — every screen at once: the supplier figures (whose local switch is gone), the account report, the order settlement, the restock statistics |
+
+## a-sticky-bar-waits-for-the-whole-title-row
+
+> Owner, in chat (2026-11-02), a screenshot of a restock on a phone: *"mobile heading bug seperti ini"* — the bar showing
+> the order id, the status and the tracking number, and under it the page's own status and tracking number still in view.
+
+```
+  BEFORE — the heading has gone          AFTER — the whole row has gone
+┌ [Kiriman] [Pembayaran] [Produk] ┐   ┌ [Kiriman] [Pembayaran] [Produk] ┐
+│ ←  INV/202… ⧉ [Dalam Perjalanan] │   │ ←  INV/202… ⧉ [Dalam Perjalanan] │
+│    Resi JNE0123456789 ⧉          │   │    Resi JNE0123456789 ⧉          │
+├──────────────────────────────────┤   ├──────────────────────────────────┤
+│    [Dalam Perjalanan]       ← twice   │ ┌ Kiriman ─────────────────────┐ │
+│    Resi JNE0123456789 ⧉     ← twice   │ │ …                             │ │
+│ ┌ Kiriman ────────────────────┐  │   │                                  │
+```
+
+| | |
+| --- | --- |
+| the rule | the bar shows once the page's **whole title row** has gone behind it — never while part of that row still shows below the bar |
+| why the row | on a phone the title row is taller than its heading: the status wraps under the order id, and the tracking number (a product's SKU) sits under that. Watching the heading alone showed the bar while those still stood under it, so the status and the reference read twice |
+| where | `useStickyTitle` — its `title` ref is the row (`HTMLDivElement`), which `ProductTitleRow` and `RestockTitleRow` hang on their outer row. Every detail page with a sticky title at once: the product, the discover detail, the restock |
+| pinned by | `OnAPhoneTheBarWaitsForTheWholeTitle` (the restock page) — scrolled 6px at a time on a phone, the page's row never shows below a shown bar, and the bar does show. Against the heading it failed by 37px, as the screenshot |
+
+**What it refines:** [the-title-row-is-the-sticky-bar](products_decision.md#the-title-row-is-the-sticky-bar) said
+the bar shows *"once the title has gone behind it"*, and *the title* was built as the heading. It is the row.
 
 ## Recorded elsewhere
 

@@ -1,22 +1,33 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Box, Button, Flex, Heading, Icon, IconButton, Spacer, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Badge, Box, Button, Grid, Heading, Icon, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
+import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
 import { useRestockRequest } from "../../features/restock/queries";
 import { shortfall } from "../../features/restock/summary";
-import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
-import { useIsMobile } from "../../layouts/shell";
-import { InfoPanel } from "./components/InfoPanel";
-import { ProductsPanel } from "./components/ProductsPanel";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
-import { SellingRestockActions, sellingActions } from "../../features/restock/SellingRestockActions";
+import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
+import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
+import { Section } from "../../components/chrome/DetailSection";
+import { SectionNav } from "../../components/chrome/SectionNav";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../layouts/shell";
+import { useScrollSpy } from "../../lib/useScrollSpy";
+import { useStickyTitle } from "../../lib/useStickyTitle";
+import { CourierChargeFacts, DeliveryFacts, PaymentFacts } from "./components/RestockFacts";
+import { RestockNotes } from "../../features/restock/RestockNotes";
+import { ProductsPanel } from "./components/ProductsPanel";
+import { RestockTitleRow } from "./components/RestockTitleRow";
 import { RESTOCK_SELLING_DETAIL_PENDING } from "./pending";
+import { RESTOCK_SECTIONS, type RestockSectionKey, restockSection, restockSectionDomId } from "./sections";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -30,20 +41,23 @@ function parseRequestId(raw: string | undefined): bigint {
 // RestockSellingDetailPage — ONE RESTOCK AS THE SELLING TEAM SEES IT.
 //
 // The selling team raised it, paid for it, and is the only side that changes it: everything but the two acts at the
-// warehouse door is theirs (the-warehouse-signs-and-accepts-the-team-does-the-rest). So the header carries the
+// warehouse door is theirs (the-warehouse-signs-and-accepts-the-team-does-the-rest). So the title row carries the
 // status and the actions the status allows — Edit · Cancel · Mark Lost while ongoing, Edit Lines once arrived, nothing
 // once it is a record (see SellingRestockActions for the matrix).
 //
-// THREE TABS, split by the question being asked:
+// THE PRODUCT PAGE'S SHAPE (owner: *"kalau menggunakan yang sesuai dengan produk detail … halaman jadi 1 dan tidak
+// dipisah berdasarkan tab, di kiri itu cuma jadi navigasi saja"*, the-restock-detail-is-the-product-pages-shape):
 //
-//   Info      — the parcel (courier, tracking number, photo), the payment (account, invoice, total = goods +
-//               shipping), and once accepted the courier's charge this team owes the warehouse, on its own.
-//   Products  — each line: where it was bought, its note, and what the box held — ordered, received, good, broken,
-//               missing, each problem priced by the system.
-//   Timeline  — the trail: every status change and every edit, who and when (edits-are-in-the-same-trail).
+//   ┌ Kiriman      ┐   ←  Order ID INV/2026/10/1001 ⧉  [Dalam Perjalanan]          [✎ Ubah] [⊘ Batalkan] [⊠ Hilang]
+//   │ Pembayaran   │      Resi JNE0123456789 ⧉
+//   │ Ongkir COD   │   ┌ Kiriman ────────────────────────────────────────┐
+//   │ Produk       │   │ …                                                │
+//   │ Catatan      │   ┌ Pembayaran …
+//   └ Riwayat      ┘   …
 //
-// Vertical tabs on a desktop (one record read section by section); horizontal on a phone, where a column of tab
-// labels would take half the width. The phone header is ONE row — back, the number, the status, ⋯.
+// ONE PAGE OF SECTIONS, the left column only the navigation that scrolls to them (Section, SectionNav, useScrollSpy) —
+// it was three tabs. The title row is the order id and the tracking number (RestockTitleRow); once it scrolls away the
+// same row sticks, small. On a phone the section chips stick at the top and the actions are their icons, ⋯ past two.
 export function RestockSellingDetailPage() {
   const { t } = useTranslation();
   const { requestId } = useParams();
@@ -67,6 +81,28 @@ export function RestockSellingDetailPage() {
   // TeamDetail is unscoped, so the destination warehouse's NAME is readable here. "Warehouse #3" is not a place.
   const warehouse = useTeamDetail({ teamId: warehouseId, enabled: warehouseId > 0n });
 
+  // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
+  // The courier's charge is a section only once accepted — the warehouse enters it at the door.
+  const accepted = request?.status === RestockRequestStatus.ACCEPTED;
+  const keys = RESTOCK_SECTIONS.map((s) => s.key).filter((key) => key !== "courier" || accepted);
+  // The money column only where there is room beside the nav — Chakra's `xl`, as the product page. `ssr: false` reads the
+  // screen on the first render, so a wide screen never paints the one column first and then jumps.
+  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
+  const stick = useStickyTitle(request !== null, isMobile);
+  // With the money beside the main column, scrolling lights only the main one — the side cards are short and sit high,
+  // so they would win while the reader is halfway down the products; they light when clicked.
+  const { active, scrollTo } = useScrollSpy(
+    request !== null,
+    stick.bar,
+    keys,
+    restockSectionDomId,
+    wide ? keys.filter((key) => key !== "payment" && key !== "courier") : undefined,
+  );
+  const navSections = keys.map((key) => {
+    const entry = restockSection(key);
+    return { key, label: t(entry.titleKey), icon: entry.icon };
+  });
+
   const back = () => navigate("/inventories/restock");
 
   if (!current) {
@@ -80,8 +116,9 @@ export function RestockSellingDetailPage() {
     );
   }
 
+  // The first load shows the page's shape (motion-is-small-quick-and-shared).
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading rows={3} testId="restock-detail-loading" />;
   }
 
   if (error || !request || teamId === undefined) {
@@ -98,113 +135,166 @@ export function RestockSellingDetailPage() {
     );
   }
 
-  // Missing units are a fact about the whole delivery, so they sit in the header — the reader must not have to open a
-  // tab to learn it went wrong. 0 until accepted: an uncounted box is not short.
+  // Missing units are a fact about the whole delivery, so they sit in the title row — the reader must not have to scroll
+  // to learn it went wrong. 0 until accepted: an uncounted box is not short.
   const missing = shortfall(request);
   const warehouseName = warehouse.data?.name || t("restock.warehouseRef", { id: request.warehouseId.toString() });
 
-  const status = (
-    <Box data-testid="restock-detail-status">
-      <RestockStatusBadge status={request.status} />
-    </Box>
-  );
-  const missingBadge = missing > 0n && (
-    <Badge colorPalette="warning" data-testid="restock-detail-missing">
-      {t("restock.detail.missingBadge", { count: Number(missing) })}
-    </Badge>
-  );
-
-  // ⚠ The cancel dialog's warning promises a check nothing does yet — marked, and listed at the top while the restock can
-  // still be cancelled; a restock past that has no such dialog to warn about.
-  const cancellable = sellingActions(request.status).includes("cancel");
+  // ⚠ The cancel dialog's warning promises a check nothing does yet — marked in the dialog.
   const reviewMark = <NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="cancelReview" />;
 
-  return (
-    <Stack gap="section" data-testid="restock-detail-page">
-      {cancellable && <NotImplementedSummary list={RESTOCK_SELLING_DETAIL_PENDING} />}
-      {isMobile ? (
-        // THE PHONE HEADER IS ONE ROW — back, the number, the status, ⋯. A missing count moves to the line under it.
-        <Stack gap="1">
-          <Flex align="center" gap="2">
-            <IconButton
-              size="xs"
-              variant="ghost"
-              aria-label={t("restock.detail.back")}
-              data-testid="restock-detail-back"
-              onClick={back}
-            >
-              <Icon as={ArrowLeft} boxSize="4" />
-            </IconButton>
-            <Heading size="md" truncate data-testid="restock-detail-title">
-              #{request.id.toString()}
-            </Heading>
-            {status}
-            <Spacer />
-            <SellingRestockActions
-              request={request}
-              teamId={teamId}
-              variant="menu"
-              cancelReviewMark={reviewMark}
-            />
-          </Flex>
-          {missingBadge && <Box>{missingBadge}</Box>}
-        </Stack>
-      ) : (
+  // ── THE TITLE ROW — back, the order id with the tracking number under it, the status, and the actions held to the right.
+  // ONE builder, drawn twice: as the page's title, and as the sticky bar once that title has scrolled behind it. ─────────
+  const titleRow = (stuck: boolean) => (
+    <RestockTitleRow
+      stuck={stuck}
+      request={request}
+      backLabel={t("restock.detail.back")}
+      onBack={back}
+      titleRef={stick.title}
+      badges={
         <>
-          <Button size="xs" variant="ghost" alignSelf="flex-start" data-testid="restock-detail-back" onClick={back}>
-            <Icon as={ArrowLeft} boxSize="4" />
-            {t("restock.detail.back")}
-          </Button>
-
-          <Flex align="center" gap="card" wrap="wrap">
-            <Heading size="md" data-testid="restock-detail-title">
-              {t("restock.detail.requestTitle", { id: request.id.toString() })}
-            </Heading>
-            {status}
-            {missingBadge}
-            <Spacer />
+          <Box flexShrink={0} data-testid={stuck ? undefined : "restock-detail-status"}>
+            <RestockStatusBadge status={request.status} />
+          </Box>
+          {missing > 0n && (
+            <Badge colorPalette="warning" flexShrink={0} data-testid={stuck ? undefined : "restock-detail-missing"}>
+              {t("restock.detail.missingBadge", { count: Number(missing) })}
+            </Badge>
+          )}
+        </>
+      }
+      actions={
+        // Labelled buttons on a desktop; on a phone their icons, ⋯ past two (a-phone-header-action-is-an-icon). The bar's
+        // copy is always the compact one — the same actions, in small — its test ids suffixed `-sticky`, so a test finds
+        // each of the page's once.
+        stuck ? (
+          <Box data-testid="restock-detail-sticky-actions">
             <SellingRestockActions
               request={request}
               teamId={teamId}
-              variant="buttons"
+              variant="compact"
               cancelReviewMark={reviewMark}
+              idSuffix="-sticky"
             />
-          </Flex>
-        </>
-      )}
+          </Box>
+        ) : (
+          <SellingRestockActions
+            request={request}
+            teamId={teamId}
+            variant={isMobile ? "compact" : "buttons"}
+            cancelReviewMark={reviewMark}
+          />
+        )
+      }
+    />
+  );
 
+  /** A section card, keyed by its entry in `sections.ts` — its id, icon and title come from there. */
+  const section = (key: RestockSectionKey, children: ReactNode, testId: string, marks?: ReactNode) => {
+    const entry = restockSection(key);
 
-      <Tabs.Root
-        defaultValue="info"
-        orientation={isMobile ? "horizontal" : "vertical"}
-        data-testid="restock-detail-tabs"
+    return (
+      <Section id={restockSectionDomId(key)} icon={entry.icon} title={t(entry.titleKey)} marks={marks} testId={testId}>
+        {children}
+      </Section>
+    );
+  };
+
+  const title = titleRow(false);
+  const delivery = section("delivery", <DeliveryFacts request={request} warehouseName={warehouseName} />, "restock-detail-info");
+  const payment = section("payment", <PaymentFacts request={request} teamId={teamId} />, "restock-detail-payment");
+  const courier =
+    accepted &&
+    section("courier", <CourierChargeFacts request={request} warehouseName={warehouseName} />, "restock-detail-courier-charge-card");
+  const products = section("products", <ProductsPanel request={request} teamId={teamId} />, "restock-detail-products");
+  // ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's, real; the warehouse's, not stored yet.
+  const note = section(
+    "note",
+    <RestockNotes
+      request={request}
+      teamId={teamId}
+      sellingByMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="sellingNoteBy" />}
+      lateMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="lateNote" />}
+      warehouseMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="warehouseNote" />}
+    />,
+    "restock-detail-note-section",
+  );
+  // The timeline draws no card of its own inside its section (never a card inside a card); it keeps `restock-detail-timeline`.
+  // THE SYSTEM'S VOICE (the-notes-are-one-per-writer) — every move, who and when. ⚠ An edit's row should say what
+  // changed; the server writes only that something did.
+  const timeline = section(
+    "timeline",
+    <RestockTimeline request={request} bare />,
+    "restock-detail-timeline-section",
+    <NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="trailChanges" />,
+  );
+
+  return (
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack
+      gap="section"
+      animationStyle="enter"
+      data-testid="restock-detail-page"
+      style={{ ["--detail-header-h" as string]: `${stick.height}px` }}
+    >
+      {/* What is not real yet — always, now that the notes and the timeline carry marks of their own. */}
+      <NotImplementedSummary list={RESTOCK_SELLING_DETAIL_PENDING} />
+
+      {/* THE STICKY STRIP — the section chips on a phone (always), and the title bar under them, drawn over the page once
+          the title has gone behind it. On a desktop the strip has no height: the bar overlays, nothing moves. */}
+      <ProductStickyStrip
+        prefix="restock-detail"
+        stripRef={stick.strip}
+        barRef={stick.bar}
+        shown={stick.past}
+        isMobile={isMobile}
+        chips={<SectionNav compact sections={navSections} ariaLabel={t("restock.detail.navLabel")} active={active} onSelect={scrollTo} />}
       >
-        <Tabs.List minW={isMobile ? undefined : "40"}>
-          <Tabs.Trigger value="info" data-testid="restock-detail-tab-info">
-            {t("restock.detail.tab.info")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="products" data-testid="restock-detail-tab-products">
-            {t("restock.detail.tab.products")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="timeline" data-testid="restock-detail-tab-timeline">
-            {t("restock.detail.tab.timeline")}
-          </Tabs.Trigger>
-        </Tabs.List>
+        {titleRow(true)}
+      </ProductStickyStrip>
 
-        {/* minW="0" ON EVERY PANEL: a vertical Tabs.Root is a flex row, and a flex child will not shrink below its
-            content without it — a wide table would widen the panel and scroll the whole page sideways. */}
-        <Tabs.Content value="info" flex="1" minW="0">
-          <InfoPanel request={request} teamId={teamId} warehouseName={warehouseName} />
-        </Tabs.Content>
+      {/* THE NAVIGATION, THEN THE SECTIONS. ⚠ `minmax(0, 1fr)` so a wide table scrolls in its own box instead of pushing
+          the column, and `alignItems="start"` so the nav's cell can stick. */}
+      <Grid templateColumns={isMobile ? "minmax(0, 1fr)" : "13rem minmax(0, 1fr)"} gap="section" alignItems="start">
+        {!isMobile && (
+          <Box position="sticky" top="calc(var(--detail-header-h, 0px) + 1rem)">
+            <SectionNav sections={navSections} ariaLabel={t("restock.detail.navLabel")} active={active} onSelect={scrollTo} />
+          </Box>
+        )}
 
-        <Tabs.Content value="products" flex="1" minW="0">
-          <ProductsPanel request={request} teamId={teamId} />
-        </Tabs.Content>
-
-        <Tabs.Content value="timeline" flex="1" minW="0">
-          <RestockTimeline request={request} />
-        </Tabs.Content>
-      </Tabs.Root>
+        {/* THE MONEY ON THE RIGHT, SMALL (owner: *"pembayaran terlalu kurang desainnya buat lebih kecil saja taruh kanan"*,
+            payment-is-a-receipt-on-the-right) — Pembayaran, and Ongkir COD under it once accepted, a 20rem column beside the
+            main one where the screen has room for it (`xl`, as the product page's side cards); in the one column below
+            that, in the nav's order. A JS branch, so no card exists twice. */}
+        {wide ? (
+          <Stack gap="section" minW="0" w="full">
+            {title}
+            <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
+              <Stack gap="section" minW="0">
+                {delivery}
+                {products}
+                {note}
+                {timeline}
+              </Stack>
+              <Stack gap="section" minW="0">
+                {payment}
+                {courier}
+              </Stack>
+            </Grid>
+          </Stack>
+        ) : (
+          <Stack gap="section" minW="0" w="full">
+            {title}
+            {delivery}
+            {payment}
+            {courier}
+            {products}
+            {note}
+            {timeline}
+          </Stack>
+        )}
+      </Grid>
     </Stack>
   );
 }

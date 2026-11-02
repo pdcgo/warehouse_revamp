@@ -3,6 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
+import { patchRestock } from "../../../.storybook/restockStub";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { RestockSellingDetailPage } from "./index";
@@ -36,7 +37,8 @@ const At507 = routedAt(507n);
 const meta = {
   title: "Pages/Inventory/Restock/RestockSellingDetail",
   component: At501,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  // No "padded" layout: a page story is framed by its shell's gutter (a-page-story-has-its-shells-gutter).
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(12n)();
     asRole(Role.SELLING_OWNER)();
@@ -52,9 +54,12 @@ async function loaded(canvasElement: HTMLElement) {
   return canvas;
 }
 
+// ONE PAGE OF SECTIONS now (the-restock-detail-is-the-product-pages-shape): every section is mounted, so "opening" one is
+// a jump from the navigation — the nav item for it, as somebody reading the page would click.
 async function openTab(canvas: ReturnType<typeof within>, tab: "info" | "products" | "timeline") {
-  await userEvent.click(canvas.getByTestId(`restock-detail-tab-${tab}`));
-  await waitFor(() => expect(canvas.getByTestId(`restock-detail-tab-${tab}`)).toHaveAttribute("aria-selected", "true"));
+  const key = tab === "info" ? "delivery" : tab;
+  await userEvent.click(canvas.getByTestId(`section-nav-${key}`));
+  await expect(canvas.getByTestId(`restock-detail-${tab === "info" ? "info" : tab === "products" ? "products" : "timeline"}`)).toBeInTheDocument();
 }
 
 async function expectStatus(canvas: ReturnType<typeof within>, status: RestockRequestStatus) {
@@ -65,9 +70,10 @@ async function expectStatus(canvas: ReturnType<typeof within>, status: RestockRe
 
 // The action buttons in the header — `restock-action-<kind>-<id>`.
 function actionsIn(canvasElement: HTMLElement): string[] {
-  return [...canvasElement.querySelectorAll<HTMLElement>("[data-testid^='restock-action-']")].map(
-    (el) => el.dataset.testid ?? "",
-  );
+  // The page's own — the sticky bar's copy of the same actions carries `-sticky`.
+  return [...canvasElement.querySelectorAll<HTMLElement>("[data-testid^='restock-action-']")]
+    .map((el) => el.dataset.testid ?? "")
+    .filter((id) => !id.endsWith("-sticky"));
 }
 
 function trailRows(canvasElement: HTMLElement): HTMLElement[] {
@@ -75,6 +81,23 @@ function trailRows(canvasElement: HTMLElement): HTMLElement[] {
 }
 
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
+
+export const Default: Story = {};
+
+// A PHONE (the-restock-detail-follows-the-screen-rules) — the header ONE row that stays: back, the number, the status,
+// the actions (three, so one ⋯); the tabs across the top; the product lines as blocks.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    // The section chips stick at the top; the title row carries the actions — three, so one ⋯.
+    const strip = canvas.getByTestId("restock-detail-header");
+    await expect(getComputedStyle(strip).position).toBe("sticky");
+    await expect(within(strip).getByTestId("section-nav-strip")).toBeVisible();
+    await expect(canvas.getByTestId("restock-actions-501")).toBeVisible();
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};
 
 export const Ongoing: Story = {};
 
@@ -178,13 +201,11 @@ export const CancelAsksAboutTheMoney: Story = {
     const row = trailRows(canvasElement)[1]!;
     await expect(row).toHaveTextContent("money returned");
     await expect(actionsIn(canvasElement)).toEqual([]);
-    // Cancelled, nothing is left to warn about — the page's not-implemented strip goes with the dialog.
-    await waitFor(() => expect(canvas.queryByTestId("not-implemented-summary")).toBeNull());
   },
 };
 
 // THE CANCEL WARNING IS MARKED (a-restock-cancel-warns-it-will-be-checked) — nothing checks a cancellation yet, so the
-// warning carries its ⚠ and the page lists it, while the restock can still be cancelled; a record shows no strip.
+// warning carries its ⚠, the first of the page's list.
 export const TheCancelWarningIsMarked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -197,11 +218,192 @@ export const TheCancelWarningIsMarked: Story = {
   },
 };
 
-export const ARecordShowsNoMarks: Story = {
+// ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's note, real, with who and when (⚠ derived: the
+// restock's last raise or edit); the warehouse's, not stored yet (⚠ missing); and the system's voice is the Riwayat,
+// whose edit rows should say what changed (⚠ missing). A record shows them too.
+export const TheNotesAreOnePerWriter: Story = {
   render: () => <At503 />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    const selling = canvas.getByTestId("restock-detail-note-selling");
+    await waitFor(() => expect(within(selling).getByTestId("restock-detail-note-selling-by")).toHaveTextContent(/^Ani Rahayu · /));
+    await expect(within(selling).getByTestId("not-implemented-sellingNoteBy")).toHaveTextContent("2");
+
+    const warehouse = canvas.getByTestId("restock-detail-note-warehouse");
+    await expect(warehouse).toHaveTextContent("No note from the warehouse yet.");
+    await expect(within(warehouse).getByTestId("not-implemented-warehouseNote")).toHaveTextContent("4");
+
+    await expect(within(canvas.getByTestId("restock-detail-timeline-section")).getByTestId("not-implemented-trailChanges")).toHaveTextContent("5");
+  },
+};
+
+// THE NOTE IS EDITED ON THE PAGE TOO (owner: *"edit di detailnya?"*, the-note-is-edited-from-a-button) — Ubah in the
+// Catatan section, the edit in place, saved and read again; the same SellingNote as the list's dialog.
+export const TheNoteIsEditedOnThePage: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const section = canvas.getByTestId("restock-detail-note-section");
+
+    await expect(within(section).getByTestId("restock-detail-note")).toHaveTextContent("Untuk promo 10.10");
+    await userEvent.click(within(section).getByTestId("restock-notes-edit"));
+    const input = await within(section).findByTestId("restock-notes-input");
+    await expect(input).toHaveFocus();
+    await userEvent.clear(input);
+    await userEvent.type(input, "Urgent", { delay: 30 });
+    await userEvent.click(within(section).getByTestId("restock-notes-save"));
+
+    await waitFor(() => expect(within(section).getByTestId("restock-detail-note")).toHaveTextContent("Urgent"));
+    await expect(within(section).queryByTestId("restock-notes-input")).toBeNull();
+  },
+};
+
+// ON A PHONE THE EDIT IS A SHEET (owner: *"edit catatan di mobile tidak bagus"*, a-phone-edits-the-note-in-a-sheet) — Ubah
+// opens a bottom sheet with the textarea focused and Batal | Simpan as two equal halves; nothing is edited in the page.
+// Simpan shuts it, and the page reads the saved note.
+export const OnAPhoneTheNoteIsEditedInASheet: Story = {
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const section = canvas.getByTestId("restock-detail-note-section");
+
+    await userEvent.click(within(section).getByTestId("restock-notes-edit"));
+    const sheet = await screen.findByTestId("restock-notes-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(within(section).queryByTestId("restock-notes-input")).toBeNull();
+
+    const input = within(sheet).getByTestId("restock-notes-input");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    // Two equal halves, together the sheet's width.
+    const cancel = within(sheet).getByTestId("restock-notes-cancel-edit").getBoundingClientRect();
+    const save = within(sheet).getByTestId("restock-notes-save").getBoundingClientRect();
+    await expect(Math.abs(cancel.width - save.width)).toBeLessThan(2);
+    await expect(cancel.width + save.width).toBeGreaterThan(sheet.getBoundingClientRect().width * 0.8);
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "Urgent", { delay: 30 });
+    await userEvent.click(within(sheet).getByTestId("restock-notes-save"));
+
+    await waitFor(() => expect(screen.queryByTestId("restock-notes-sheet")).toBeNull());
+    await waitFor(() => expect(within(section).getByTestId("restock-detail-note")).toHaveTextContent("Urgent"));
+  },
+};
+
+// …and Batal shuts the sheet with the note as it was.
+export const OnAPhoneBatalLeavesTheNote: Story = {
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const section = canvas.getByTestId("restock-detail-note-section");
+
+    await userEvent.click(within(section).getByTestId("restock-notes-edit"));
+    const sheet = await screen.findByTestId("restock-notes-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await userEvent.type(within(sheet).getByTestId("restock-notes-input"), " lagi", { delay: 30 });
+    await userEvent.click(within(sheet).getByTestId("restock-notes-cancel-edit"));
+
+    await waitFor(() => expect(screen.queryByTestId("restock-notes-sheet")).toBeNull());
+    await expect(within(section).getByTestId("restock-detail-note")).toHaveTextContent("Untuk promo 10.10");
+  },
+};
+
+// …and a restock past its way still offers Ubah (the-note-is-edited-in-any-status) — marked, since the server does not
+// keep the note once the box has arrived.
+export const ARecordsNoteHasAMarkedUbah: Story = {
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const section = canvas.getByTestId("restock-detail-note-section");
+
+    await expect(within(section).getByTestId("restock-notes-edit")).toBeVisible();
+    await expect(within(section).getByTestId("not-implemented-lateNote")).toHaveTextContent("3");
+  },
+};
+
+// THE BAR WAITS FOR THE WHOLE TITLE ROW (owner, a screenshot: *"mobile heading bug seperti ini"*) — on a phone the status
+// wraps under the order id and the tracking number sits under that; watching the heading alone showed the bar while those
+// still stood below it, so both read twice. Scrolled a few pixels at a time: whenever the bar shows, nothing of the
+// page's row is left under it — and it does show, once the row has gone.
+export const OnAPhoneTheBarWaitsForTheWholeTitle: Story = {
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const bar = canvas.getByTestId("restock-detail-name-bar");
+    const row = canvas.getByTestId("restock-detail-back").parentElement!;
+    const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    let shownOnce = false;
+    for (let y = 0; y <= 480; y += 6) {
+      window.scrollTo(0, y);
+      await frames();
+      if (bar.dataset.shown) {
+        shownOnce = true;
+        await expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(bar.getBoundingClientRect().bottom + 1);
+      }
+    }
+    await expect(shownOnce).toBe(true);
+    window.scrollTo(0, 0);
+  },
+};
+
+// THE TIMELINE LINES UP (the-timeline-is-centred-and-lines-up) — each step's icon at the middle of its step, not its top;
+// every person one width, so the rule beside them runs straight down; and the line runs from the first icon's centre to
+// the last's, unbroken — not above the first, not short of the last (owner: *"garis riwayatnya masih belum ngikut"*).
+export const TheTimelineLinesUp: Story = {
+  render: () => <At502 />,
+  play: async ({ canvasElement }) => {
+    await loaded(canvasElement);
+    await waitFor(() => expect(trailRows(canvasElement).length).toBeGreaterThanOrEqual(3));
+    const steps = trailRows(canvasElement);
+
+    const widths = steps.map((step) => step.querySelector<HTMLElement>("[data-testid$='-by']")!.getBoundingClientRect().width);
+    await expect(new Set(widths.map(Math.round)).size).toBe(1);
+
+    for (const step of steps) {
+      const indicator = step.querySelector<HTMLElement>(".chakra-timeline__indicator")!.getBoundingClientRect();
+      const content = step.querySelector<HTMLElement>(".chakra-timeline__content")!;
+      const box = content.getBoundingClientRect();
+      const gap = parseFloat(getComputedStyle(content).paddingBottom);
+      const middle = box.top + (box.height - gap) / 2;
+      await expect(Math.abs(indicator.top + indicator.height / 2 - middle)).toBeLessThan(3);
+    }
+
+    // The line: every icon of the trail (the awaiting step's too), and every piece of line behind them.
+    const timeline = canvasElement.querySelector<HTMLElement>("[data-testid='restock-detail-timeline']")!;
+    const centres = [...timeline.querySelectorAll<HTMLElement>(".chakra-timeline__indicator")].map((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top + r.height / 2;
+    });
+    const pieces = [...timeline.querySelectorAll<HTMLElement>(".chakra-timeline__separator")]
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.height > 0)
+      .sort((a, b) => a.top - b.top);
+    await expect(Math.abs(pieces[0]!.top - centres[0]!)).toBeLessThan(2);
+    await expect(Math.abs(pieces.at(-1)!.bottom - centres.at(-1)!)).toBeLessThan(2);
+    for (let i = 1; i < pieces.length; i++) {
+      await expect(Math.abs(pieces[i]!.top - pieces[i - 1]!.bottom)).toBeLessThan(2);
+    }
+  },
+};
+
+// The server's bare "edited" is not shown on an edit's row — it says nothing the row's title does not. 501 is given the
+// row the server writes today: an edit, its description the one word.
+export const ABareEditSaysNoMore: Story = {
+  beforeEach: () =>
+    patchRestock(501n, {
+      logs: [
+        { id: 1n, fromStatus: RestockRequestStatus.UNSPECIFIED, toStatus: RestockRequestStatus.ONGOING, actorUserId: 61n, description: "created", atUnix: 1_790_000_000n },
+        { id: 2n, fromStatus: RestockRequestStatus.ONGOING, toStatus: RestockRequestStatus.ONGOING, actorUserId: 61n, description: "edited", atUnix: 1_790_003_600n },
+      ],
+    }),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const edit = canvas.getByTestId("restock-timeline-2");
+
+    await expect(edit).toHaveAttribute("data-kind", "edit");
+    await expect(within(edit).queryByTestId("restock-timeline-2-description")).toBeNull();
   },
 };
 
@@ -274,6 +476,9 @@ export const TheParcelAndThePayment: Story = {
 // them broken — so 7 good, 2 broken worth 132.333,33 with the warehouse's note, 1 missing worth 66.166,67. Each is the
 // landed price, 650.000 ÷ 10 + (30.000 shipping + 5.000 courier's charge) ÷ 30 ordered = 66.166,67
 // (the-problem-price-is-filled-by-the-system, all-qty-is-every-unit-ordered).
+//
+// THE COUNT IS ONE COLUMN, PENYESUAIAN (the-count-is-one-adjustment-column) — the good units and what went wrong as
+// badges; its detail, every figure, opens in a dialog. The problem is MISSING (Kurang), never Lost.
 export const TheMissingColumn: Story = {
   render: () => <At503 />,
   play: async ({ canvasElement }) => {
@@ -281,28 +486,35 @@ export const TheMissingColumn: Story = {
     await openTab(canvas, "products");
 
     const table = canvas.getByTestId("restock-detail-items");
-    await expect(canvas.getByTestId("restock-detail-col-missing")).toHaveTextContent("Missing");
-    await expect(within(table).queryByRole("columnheader", { name: /^Lost/ })).toBeNull();
+    const headings = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    await expect(headings).toEqual(["Product", "Supplier", "Ordered", "Adjustment", "Unit price", "Line total"]);
 
-    await expect(canvas.getByTestId("restock-detail-received-74")).toHaveTextContent("9");
-    await expect(canvas.getByTestId("restock-detail-good-74")).toHaveTextContent("7");
-    await expect(canvas.getByTestId("restock-detail-broken-74-count")).toHaveTextContent("2");
-    await expect(canvas.getByTestId("restock-detail-broken-74-value")).toHaveTextContent("Rp 132.333");
-    await expect(canvas.getByTestId("restock-detail-broken-74-note")).toHaveTextContent("Karung sobek");
-    await expect(canvas.getByTestId("restock-detail-missing-74-count")).toHaveTextContent("1");
-    await expect(canvas.getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.167");
+    const cell = canvas.getByTestId("restock-detail-adjustment-74");
+    await expect(cell).toHaveTextContent(/Good 7.*Broken 2.*Missing 1/);
+    await userEvent.click(cell);
+    const dialog = await screen.findByTestId("restock-detail-adjustment-74-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+
+    await expect(within(dialog).getByTestId("restock-detail-ordered-74")).toHaveTextContent("10");
+    await expect(within(dialog).getByTestId("restock-detail-received-74")).toHaveTextContent("9");
+    await expect(within(dialog).getByTestId("restock-detail-good-74")).toHaveTextContent("7");
+    await expect(within(dialog).getByTestId("restock-detail-broken-74-count")).toHaveTextContent("2");
+    await expect(within(dialog).getByTestId("restock-detail-broken-74-value")).toHaveTextContent("Rp 132.333");
+    await expect(within(dialog).getByTestId("restock-detail-broken-74-note")).toHaveTextContent("Karung sobek");
+    await expect(within(dialog).getByTestId("restock-detail-missing-74-count")).toHaveTextContent("1");
+    await expect(within(dialog).getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.167");
     await expect(canvas.getByTestId("restock-detail-missing")).toHaveTextContent("1 missing");
   },
 };
 
-// Before the count, the count columns are "—" — not counted yet — never the 0 the fields hold.
+// Before the count, the adjustment is "—" — not counted yet — never the 0 the fields hold, and nothing to open.
 export const NotCountedYetReadsAsADash: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await openTab(canvas, "products");
 
-    await expect(canvas.getByTestId("restock-detail-received-74")).toHaveTextContent("—");
-    await expect(canvas.getByTestId("restock-detail-missing-74")).toHaveTextContent("—");
+    await expect(canvas.getByTestId("restock-detail-adjustment-74")).toHaveTextContent("—");
+    await expect(canvas.getByTestId("restock-detail-adjustment-74").tagName).not.toBe("BUTTON");
   },
 };
 
@@ -360,6 +572,133 @@ export const TheLineNote: Story = {
     const canvas = await loaded(canvasElement);
     await openTab(canvas, "products");
 
-    await expect(canvas.getByTestId("restock-detail-line-note-71")).toHaveTextContent("extra stock");
+    // An icon at the end of the product — its words in its name and its tooltip, so the cell stays two lines.
+    const note = canvas.getByTestId("restock-detail-line-note-71");
+    await expect(note).toHaveAccessibleName(/^Note: extra stock/);
+    await userEvent.hover(note);
+    const text = await screen.findByTestId("restock-detail-line-note-71-text");
+    await waitFor(() => expect(text).toBeVisible());
+    await expect(text).toHaveTextContent("extra stock");
+  },
+};
+
+// ── The product page's shape (the-restock-detail-is-the-product-pages-shape) ───────────────────────────────────
+
+// ONE PAGE, NO TABS — every section on it, the left column only the navigation; the ORDER ID is the title, copyable,
+// with the tracking number under it; back is its icon; the restock's own number is not shown.
+export const OnePageLedByTheOrderId: Story = {
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByRole("tab")).toBeNull();
+    for (const key of ["delivery", "payment", "courier", "products", "note", "timeline"]) {
+      await expect(canvas.getByTestId(`section-nav-${key}`)).toBeVisible();
+    }
+    // The value alone, no label before it (the-title-is-the-reference-alone); the tracking number under it, labelled.
+    await expect(canvas.getByTestId("restock-detail-title")).toHaveTextContent(/^INV\/2026\/09\/0412$/);
+    await expect(canvas.getByTestId("restock-detail-tracking")).toHaveTextContent("SCP5544332211");
+    await expect(canvas.getByTestId("restock-detail-page")).not.toHaveTextContent("#503");
+    await expect(canvas.getByTestId("restock-detail-back")).toHaveTextContent("");
+    await expect(canvas.getByTestId("restock-detail-back")).toHaveAccessibleName("Back to Restock");
+  },
+};
+
+// THE ORDER ID IS OPTIONAL — with none, the tracking number leads, alone, and there is no second line to repeat it
+// (the-title-is-the-reference-alone).
+export const WithNoOrderIdTheTrackingNumberLeads: Story = {
+  beforeEach: () => patchRestock(501n, { invoiceRefId: "" }),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("restock-detail-title")).toHaveTextContent(/^JNE0123456789$/);
+    await expect(canvas.getByTestId("restock-detail-tracking-copy")).toHaveAccessibleName("Copy: JNE0123456789");
+    await expect(canvas.getAllByTestId("restock-detail-tracking")).toHaveLength(1);
+  },
+};
+
+// PEMBAYARAN IS A SMALL RECEIPT (payment-is-a-receipt-on-the-right) — which account, then each line's figure held right on
+// its own row, the total last.
+export const PaymentIsAReceipt: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const total = canvas.getByTestId("restock-detail-total");
+    const label = within(canvas.getByTestId("restock-detail-payment")).getByText("Total");
+
+    await expect(total).toHaveTextContent("Rp 2.080.000");
+    await expect(Math.abs(total.getBoundingClientRect().top - label.getBoundingClientRect().top)).toBeLessThan(2);
+    await expect(total.getBoundingClientRect().left).toBeGreaterThan(label.getBoundingClientRect().right);
+  },
+};
+
+// The courier's charge is a section only once accepted — an ongoing restock's nav has no Ongkir COD.
+export const OngkirCodIsASectionOnceAccepted: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.queryByTestId("section-nav-courier")).toBeNull();
+  },
+};
+
+// ── The screen rules (the-restock-detail-follows-the-screen-rules) ─────────────────────────────────────────────
+
+// ON A PHONE ONE ACTION IS ITS ICON (a-phone-header-action-is-an-icon) — arrived offers Edit Lines alone: its pencil,
+// not a menu of one.
+export const OnAPhoneOneActionIsItsIcon: Story = {
+  render: () => <At502 />,
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("restock-action-edit-lines-502")).toHaveAccessibleName("Edit Lines");
+    await expect(canvas.queryByTestId("restock-actions-502")).toBeNull();
+  },
+};
+
+// ON A PHONE EACH LINE IS A BLOCK (a-phone-reads-each-line-as-a-block) — 503's rice: the product, where it was bought,
+// 10 × the unit price beside the line's total, what came and was good, and each problem with its worth and note.
+export const OnAPhoneEachLineIsABlock: Story = {
+  render: () => <At503 />,
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openTab(canvas, "products");
+
+    const items = canvas.getByTestId("restock-detail-items");
+    await expect(within(items).queryAllByRole("columnheader")).toHaveLength(0);
+    const rice = canvas.getByTestId("restock-detail-item-74");
+    await expect(rice).toHaveTextContent(/10 × Rp/);
+    await expect(within(rice).getByTestId("restock-detail-received-74")).toHaveTextContent("9");
+    await expect(within(rice).getByTestId("restock-detail-good-74")).toHaveTextContent("7");
+    await expect(within(rice).getByTestId("restock-detail-broken-74-note")).toHaveTextContent("Karung sobek");
+    await expect(within(rice).getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.167");
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};
+
+// A PRODUCT ROW LIGHTS UP UNDER THE POINTER, every cell (a-table-row-lights-up); a line that came as ordered says so,
+// in the success tone (the-count-is-one-adjustment-column).
+export const AProductRowLightsUpAndStaysTwoLines: Story = {
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openTab(canvas, "products");
+
+    const row = canvas.getByTestId("restock-detail-item-74");
+    const cells = within(row).getAllByRole("cell");
+    const resting = getComputedStyle(cells[0]!).backgroundColor;
+    row.setAttribute("data-hover", "");
+    await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
+
+    // 503's tea came as ordered.
+    await expect(canvas.getByTestId("restock-detail-adjustment-72")).toHaveTextContent("As ordered");
+  },
+};
+
+// THE REFERENCES COPY (the-restock-list-leads-with-its-references) — the invoice and the tracking number, as on the list.
+export const TheReferencesCopy: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("restock-detail-invoice-copy")).toHaveAccessibleName(/^Copy: INV\//);
+    await expect(canvas.getByTestId("restock-detail-tracking-copy")).toHaveAccessibleName("Copy: JNE0123456789");
   },
 };

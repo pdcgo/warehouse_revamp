@@ -121,6 +121,8 @@ export function RelatedWarehouses({
                 t("suppliers.relatedWarehouses.summary.orders", { n: units(summary.orders) }),
                 t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(summary.lastOrderAt) }),
               )}
+              // A phone puts the date on a line of its own — data, kept (a-phone-card-shows-no-note).
+              keepNote
               testId="supplier-warehouse-summary-sold"
             />
             <SummaryCard
@@ -130,6 +132,8 @@ export function RelatedWarehouses({
                 t("suppliers.relatedWarehouses.summary.restocks", { n: units(summary.restocks) }),
                 t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(summary.lastRestockAt) }),
               )}
+              // A phone puts the date on a line of its own — data, kept (a-phone-card-shows-no-note).
+              keepNote
               testId="supplier-warehouse-summary-ready"
             />
           </SummaryStrip>
