@@ -98,10 +98,12 @@ export function ProductLinesPopover({
               trigger (`--available-width`, which the positioner sets) — never by a guess that is
               too wide on a phone.
               The table then scrolls sideways INSIDE that box rather than pushing it wider, so a
-              delivery with long product names stays readable instead of running off the screen. */}
+              delivery with long product names stays readable instead of running off the screen.
+              ⚠ THE FLOOR YIELDS TO THE SCREEN (a-date-range-panel-fits-a-phone, found beside it): a min-width beats a
+              max-width, so a bare `sm` floor made the box 24rem on a 20rem phone, past its edge. */}
           <Popover.Content
             w="auto"
-            minW="sm"
+            minW="min(var(--chakra-sizes-sm), calc(100vw - 1.5rem))"
             maxW="min(var(--available-width), 42rem)"
             onClick={(e) => e.stopPropagation()}
           >

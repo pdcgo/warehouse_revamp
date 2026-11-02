@@ -74,6 +74,13 @@ export const Mobile: Story = {
     await expect(within(accepted).getByTestId("restock-value-503")).toHaveTextContent("Rp 980.000");
     await expect(within(accepted).getByTestId("restock-missing-503")).toHaveTextContent("1 missing");
     await waitFor(() => expect(within(accepted).getByTestId("restock-supplier-503")).toHaveTextContent("PT Sumber Makmur"));
+    // FOUR LINES, THE REFERENCE LEADING (a-phone-restock-is-four-lines): the invoice and the tracking number, copyable;
+    // the pieces; no store and no SKU — those are the detail page's.
+    await expect(within(accepted).getByTestId("restock-invoice-503")).toHaveTextContent("INV/2026/09/0412");
+    await expect(within(accepted).getByTestId("restock-receipt-503")).toHaveTextContent("SCP5544332211");
+    await expect(accepted).toHaveTextContent("30 pcs");
+    await expect(accepted).not.toHaveTextContent("Sumber Makmur Store");
+    await expect(accepted).not.toHaveTextContent("SKU-");
     await expect(within(canvas.getByTestId("restock-row-501")).getByTestId("restock-actions-501")).toBeVisible();
     await expect(canvas.getByTestId("open-create-restock")).toHaveAccessibleName("New Restock");
 
@@ -238,14 +245,16 @@ export const TheStatisticsButtonEndsTheTabRow: Story = {
   },
 };
 
-// …on a phone it is an icon beside Filter, in the search row — the six tabs already scroll sideways there.
+// …on a phone it is an icon beside Filter, in the search row — the six tabs already scroll sideways there. On the
+// narrowest phone too: the search gives way, so the icon is never pushed off the screen.
 export const OnAPhoneTheStatisticsButtonSitsBesideFilter: Story = {
-  globals: { viewport: { value: "mobile2" } },
+  globals: { viewport: { value: "mobile1" } },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const toggle = canvas.getByTestId("restock-summary-toggle");
 
     await expect(canvas.getByTestId("restock-filter")).toContainElement(toggle);
+    await expect(toggle.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
     await expect(toggle).toHaveAccessibleName("Statistics");
     await expect(canvas.getByRole("tablist")).not.toContainElement(toggle);
 

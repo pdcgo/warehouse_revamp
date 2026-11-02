@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Collapsible, Flex, HStack, Heading, Icon, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
-import { ClipboardList, Download, Plus, SearchX, Warehouse } from "lucide-react";
+import { ClipboardList, Download, Plus, SearchX } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import {
@@ -24,7 +24,7 @@ import type { LineSupplierProps } from "../../features/restock/LineSupplier";
 import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
-import { committedValue, shortfall } from "../../features/restock/summary";
+import { askedQuantity, committedValue, shortfall } from "../../features/restock/summary";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
 import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
@@ -252,22 +252,20 @@ export function RestockSellingPage() {
     return user ? user.name || user.username : t("restock.table.userRef", { id: id.toString() });
   }
 
-  // When it was raised and BY WHOM — one line, under the number it belongs to. Date AND TIME (owner): several restocks
-  // are raised in one morning, and the day alone cannot put them in order for the person who raised them.
-  function raised(request: RestockRequest) {
-    const by = actorLabel(request.createdByUserId);
+  // WHO IT WAS BOUGHT FROM, as words — the phone's line. The first line's supplier, and how many others the lines name;
+  // a restock connected to none says so.
+  function supplierName(request: RestockRequest): string {
+    const named = request.items.filter((item) => item.supplierId > 0n);
+    const first = named[0];
+    if (!first) return t("restock.lineSupplier.none");
 
-    return (
-      <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap">
-        {formatUnixDateTimeShort(request.createdAtUnix)}
-        {by && (
-          <Span data-testid={`restock-created-by-${request.id}`}>
-            {" · "}
-            {t("restock.table.by", { name: by })}
-          </Span>
-        )}
-      </Span>
-    );
+    const name =
+      suppliers[first.supplierId.toString()]?.name ??
+      t("restock.lineSupplier.unknownSupplier", { id: first.supplierId.toString() });
+    const others = new Set(named.map((item) => item.supplierId.toString()));
+    others.delete(first.supplierId.toString());
+
+    return others.size > 0 ? `${name} ${t("restock.table.moreSuppliers", { count: others.size })}` : name;
   }
 
   // A date cell: when, then by whom under it — two lines, one event. A dash until it happens.
@@ -377,13 +375,23 @@ export function RestockSellingPage() {
     }
 
     if (isMobile) {
-      // A PHONE READS EACH RESTOCK AS A BLOCK (a-phone-reads-each-line-as-a-block) — the number and its status, when and
-      // by whom, where it was bought, where it is going, then what is in it beside what it cost. The accepted date, the
-      // references and the courier are the detail page's.
+      // A PHONE READS EACH RESTOCK AS FOUR LINES (owner: *"restok mobile terlalu compact dan banyak kurang bagus"*, then
+      // *"[referensi] perlu, karena itu adalah yang paling utama"*; a-phone-restock-is-four-lines) — one line that leads,
+      // the rest quiet, and room around them:
+      //
+      //   Faktur INV/2026/10/1001 ⧉              Rp 2.080.000     the reference leads, the value beside it — both bold
+      //   Resi JNE0123456789 ⧉                         64 pcs     the tracking number, and how many pieces
+      //   PT Sumber Makmur · Gudang Pusat                         from whom, to where
+      //   [Dalam Perjalanan] 29 Okt 14:43 · Ani Rahayu       ⋯     where it has got to, and when
+      //
+      // The store, the products' SKUs and the accepted date are the detail page's, a tap away.
       return (
-        <Stack gap="2" data-testid="restock-requests-table">
+        <Stack gap="3" data-testid="restock-requests-table">
           {requests.map((request) => {
             const warehouse = warehouseTeams[request.warehouseId.toString()];
+            const invoice = request.invoiceRefId.trim();
+            const receipt = request.receipt.trim();
+            const by = actorLabel(request.createdByUserId);
 
             return (
               <Stack
@@ -391,40 +399,68 @@ export function RestockSellingPage() {
                 data-testid={`restock-row-${request.id}`}
                 borderWidth="1px"
                 borderRadius="md"
-                p="3"
-                gap="1.5"
+                p="4"
+                gap="2"
                 // It opens the restock, so it lights up and gives a little under a thumb (a-table-row-lights-up).
                 {...PRESSABLE}
                 onClick={() => open(request)}
               >
-                <Flex align="start" gap="2">
-                  <Stack gap="0.5" flex="1" minW="0">
-                    <HStack gap="2" wrap="wrap">
-                      <Text fontWeight="bold">#{request.id.toString()}</Text>
-                      <RestockStatusBadge status={request.status} />
-                      {missingBadge(request)}
-                    </HStack>
-                    {raised(request)}
-                  </Stack>
-                  {rowActions(request)}
-                </Flex>
-
-                <Box data-testid={`restock-supplier-${request.id}`}>
-                  <RowSupplier request={request} suppliers={suppliers} stores={stores} />
-                </Box>
-
-                <HStack gap="1.5" fontSize="sm" color="fg.muted" minW="0">
-                  <Icon as={Warehouse} boxSize="4" flexShrink={0} />
-                  <Text truncate>
-                    {warehouse?.name || t("restock.warehouseRef", { id: request.warehouseId.toString() })}
-                  </Text>
-                </HStack>
-
-                <Flex align="end" justify="space-between" gap="2">
-                  <RestockItemsCell items={request.items} />
+                {/* The reference — the store's order number — and what it cost. A restock with no invoice is named by
+                    its own number instead, so the line never stands empty. */}
+                <Flex align="baseline" justify="space-between" gap="3">
+                  <HStack gap="1" minW="0" fontWeight="bold">
+                    {invoice !== "" ? (
+                      <>
+                        <Span fontSize="xs" color="fg.muted" fontWeight="normal" flexShrink={0}>
+                          {t("restock.table.invoiceLabel")}
+                        </Span>
+                        <CopyText value={invoice} maxW="9.5rem" testId={`restock-invoice-${request.id}`} />
+                      </>
+                    ) : (
+                      <Span>#{request.id.toString()}</Span>
+                    )}
+                  </HStack>
                   <Text fontWeight="bold" whiteSpace="nowrap" data-testid={`restock-value-${request.id}`}>
                     {formatRupiahNumber(committedValue(request))}
                   </Text>
+                </Flex>
+
+                {/* The tracking number, and how many pieces are in the box — under the value they make. */}
+                <Flex align="baseline" justify="space-between" gap="3" fontSize="sm" color="fg.muted">
+                  <HStack gap="1" minW="0">
+                    <Span fontSize="xs" flexShrink={0}>
+                      {t("restock.table.receiptLabel")}
+                    </Span>
+                    {receipt !== "" ? (
+                      <CopyText value={receipt} mono maxW="9.5rem" testId={`restock-receipt-${request.id}`} />
+                    ) : (
+                      <Span>—</Span>
+                    )}
+                  </HStack>
+                  <Span whiteSpace="nowrap">{t("restock.selling.summary.pcs", { count: askedQuantity(request.items).toString() })}</Span>
+                </Flex>
+
+                {/* From whom, to where. */}
+                <Text fontSize="sm" color="fg.muted" truncate>
+                  <Span data-testid={`restock-supplier-${request.id}`}>{supplierName(request)}</Span>
+                  {" · "}
+                  {warehouse?.name || t("restock.warehouseRef", { id: request.warehouseId.toString() })}
+                </Text>
+
+                {/* Where it has got to, and when it was raised — with its ⋯. */}
+                <Flex align="center" gap="2">
+                  <RestockStatusBadge status={request.status} />
+                  {missingBadge(request)}
+                  <Text fontSize="xs" color="fg.muted" truncate flex="1" minW="0">
+                    {formatUnixDateTimeShort(request.createdAtUnix)}
+                    {by && (
+                      <Span data-testid={`restock-created-by-${request.id}`}>
+                        {" · "}
+                        {by}
+                      </Span>
+                    )}
+                  </Text>
+                  {rowActions(request)}
                 </Flex>
               </Stack>
             );

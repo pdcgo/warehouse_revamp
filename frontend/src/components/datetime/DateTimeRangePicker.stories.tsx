@@ -133,3 +133,22 @@ export const LabelAndResolveRules: Story = {
     await expect(isAllTimes(ALL_TIMES)).toBe(true);
   },
 };
+
+// ON A PHONE THE PANEL FITS THE SCREEN (a-date-range-panel-fits-a-phone) — the window over the quick ranges, at the
+// screen's width; side by side the panes ran past a phone's edge.
+export const OnAPhoneThePanelFitsTheScreen: Story = {
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByTestId("dtrange"));
+    const panel = await screen.findByTestId("dtrange-panel");
+    await waitFor(() => expect(panel).toBeVisible());
+
+    for (const id of ["dtrange-panel", "dtrange-apply", "dtrange-quick-5"]) {
+      await expect(screen.getByTestId(id).getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+    }
+    // Stacked: the quick ranges under the window, not beside it.
+    await expect(screen.getByTestId("dtrange-quick-5").getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      screen.getByTestId("dtrange-apply").getBoundingClientRect().bottom,
+    );
+  },
+};

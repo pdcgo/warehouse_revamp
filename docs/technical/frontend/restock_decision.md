@@ -15,6 +15,7 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [the-statistics-button-ends-the-tab-row](#the-statistics-button-ends-the-tab-row) | the Statistik button sits at the right end of the tab row on a desktop, and is an icon beside Filter on a phone — no row of its own. A rule for every list since: [a-statistics-button-ends-the-tab-row](context_decision.md#a-statistics-button-ends-the-tab-row) |
 | [the-restock-list-exports-and-filters-by-courier](#the-restock-list-exports-and-filters-by-courier) | **Ekspor** beside *Restok Baru* and a **courier** filter after the warehouse — both on screen and marked `dropped`: the contract has neither yet |
 | [a-restock-cancel-warns-it-will-be-checked](#a-restock-cancel-warns-it-will-be-checked) | the cancel dialog says, in a warning, that a cancellation is checked — on the list's ⋯ and on the detail's header alike |
+| [a-phone-restock-is-four-lines](#a-phone-restock-is-four-lines) | on a phone a restock is four lines with room around them — the reference and the value lead, bold; the tracking number and the pieces; the supplier and the warehouse; the status and when — the store, the SKUs and the accepted date are the detail page's |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -201,3 +202,30 @@ Restok                                                              [⬇] [+]
 | pinned by | `CancelFromTheRowAsksAboutTheMoney` reads it |
 | ⚠ my reading | *"cancel order"* read as the restock's **Batalkan** — this conversation is on the restock list. The sales order's cancel is unchanged |
 | ⚠ marked *(2026-10-31)* | owner: *"taruh di unimplemented juga khusus ini"* — nothing checks a cancellation, so the warning carries a `missing` mark (`cancelReview`): the restock list numbers it 5, after its other four; the selling detail gained a pending list of this one entry, its strip shown only while the restock can still be cancelled. `SellingRestockActions` takes the mark as `cancelReviewMark`, so each screen numbers it in its own list |
+
+## a-phone-restock-is-four-lines
+
+> Owner, in chat (2026-11-02): *"restok mobile terlalu compact dan banyak kurang bagus, ada ide?"* — offered three lines led
+> by the supplier, then: *"[referensi] perlu, karena itu adalah yang paling utama"*; and on using it for every list, *"untuk
+> semua, tapi lihat di sini dulu mungkin aku berubah pikiran"*.
+
+```
+before — seven lines of one weight, tight          now — four lines, one leads
+#501 [Dalam Perjalanan]                  ⋯         ┌──────────────────────────────────────────┐
+29 Okt 14:43 · oleh Ani Rahayu                     │ Faktur INV/2026/10/1001 ⧉   Rp 2.080.000 │  ← bold
+PT Sumber Makmur +1 pemasok lain                   │ Resi JNE0123456789 ⧉              64 pcs │
+[Shopee] Sumber Makmur Official                    │ PT Sumber Makmur · Gudang Pusat          │
+▣ Gudang Pusat                                     │ [Dalam Perjalanan] 29 Okt 14:43 · Ani  ⋯ │
+3 produk · 64 pcs                                  └──────────────────────────────────────────┘
+SKU-BERAS-5K +2 lainnya       Rp 2.080.000
+```
+
+| line | |
+| --- | --- |
+| 1 | **the reference leads** — the store's order number, labelled *Faktur*, bold and copyable — and the **value** on the right, bold. No invoice: the restock's own *#501* |
+| 2 | *Resi* and the tracking number, copyable — both references cut at 9.5rem with the whole in a tooltip ([the-restock-list-leads-with-its-references](#the-restock-list-leads-with-its-references)); a dash when there is none — and the **pieces** on the right, under the value they make |
+| 3 | the supplier (with *+N pemasok lain*) · the warehouse, quiet, one line, cut when long; *Belum terhubung ke pemasok* when the lines name none |
+| 4 | the status, a *kurang N* beside it, when it was raised and by whom, and the ⋯ |
+| room | 16px inside a block, 8px between lines, 12px between blocks — it was 12, 6 and 8 |
+| gone from the block | the store, the SKU line, the warehouse icon, *oleh* — all the detail page's, a tap away |
+| ⚠ every list | the owner means it for every phone list, **after looking at it here** — not applied elsewhere yet |

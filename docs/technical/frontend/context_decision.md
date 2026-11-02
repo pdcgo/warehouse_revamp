@@ -80,6 +80,8 @@ when it applies one of these.
 | [a-nav-jump-blinks-where-it-lands](#a-nav-jump-blinks-where-it-lands) | a detail page's section nav scrolls to the clicked section and that card BLINKS — a pale tint of the main tone, once, no ring or border | the product page and the order detail, every page on the shared `SectionNav` |
 | [a-selected-tab-is-bold](#a-selected-tab-is-bold) | the picked tab is **bold** as well as rose — on every tab row, set once in the theme | [the restock list](restock_decision.md#the-restock-statistics-count-transactions-under-the-tabs) |
 | [a-statistics-button-ends-the-tab-row](#a-statistics-button-ends-the-tab-row) | a list's **Statistik** button ends its status-tab row on a desktop and is an icon beside Filter on a phone — never a row of its own; `StatsToggle` | [the restock list](restock_decision.md#the-statistics-button-ends-the-tab-row), then the order list |
+| [a-date-range-panel-fits-a-phone](#a-date-range-panel-fits-a-phone) | on a phone the date range panel is the screen's width, stacked — the date types wrap, the quick ranges a wrapped row over the calendar — and scrolls inside rather than off the screen | every `DateRangePicker`, found on the restock list |
+| [nothing-runs-past-a-phones-edge](#nothing-runs-past-a-phones-edge) | on a phone — down to 320px — nothing runs past the screen's edge: a panel is capped at the screen, a row of tabs or a table scrolls inside its own box, a row of controls lets its search give way | every screen; swept on every Mobile story |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1785,6 +1787,54 @@ Semua Status · Dibuat · Diproses · …→       [📊 Statistik ⌄]     [⌕
 | the component | `StatsToggle` (`components/chrome/`) — `compact` for the phone's icon; it carries `aria-expanded`. `StageTabs` takes it as `end` |
 | unchanged | [the-statistics-are-shut-and-read-when-opened](order_list_decision.md#the-statistics-are-shut-and-read-when-opened): shut on every visit, page state only, nothing read until opened |
 | applied to | the restock list ([the-statistics-button-ends-the-tab-row](restock_decision.md#the-statistics-button-ends-the-tab-row)), the seller's order list |
+
+## a-date-range-panel-fits-a-phone
+
+> Owner, in chat (2026-11-02), on the restock list: *"ternyata yang tanggal kepotong di mobile"*.
+
+```
+before — a phone                          now
+┌ Date ──────────────────────────┐…      ┌ Date ───────────────────────┐
+│ (●Created) (○Arrived) (○Accep… │…      │ (●Created) (○Arrived)       │
+│ Absolute range │ Quick ran…    │…      │ (○Accepted) (○Lost) (○Canc…)│   ← the types wrap
+│  November 2026 │ Today         │…      │ Quick ranges                │
+│  …calendar…    │ Last 7 da…    │…      │ [Today] [Last 7 days] [14…] │   ← a wrapped row
+└────────────────┴── cut by the screen   │ [1 month] [3 months] …      │
+                                          │ Absolute range · calendar   │
+                                          │ [Apply Range]               │
+                                          └─────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the cause | the panel drew its two panes side by side, ~29rem — wider than a phone, so the quick ranges and the last date types ran off the right edge |
+| a phone | the panel is the screen's width less its gutters; the date types wrap; the **quick ranges** come first, as a wrapped row of outlined buttons — one tap, the common answer — and the calendar with Apply under them. No taller than the room it has: it scrolls inside |
+| a desktop | unchanged — the calendar left, the quick ranges a column on its right |
+| how | a JS breakpoint in `DateRangePicker` (`md`, as `FilterBar`'s), so one layout mounts. Every screen with a date range takes it at once |
+| pinned by | `OnAPhoneThePanelFitsTheScreen` (320px): nothing past the right edge, the quick ranges over the calendar |
+| found with it | on a 320px phone the search row — the search, Filter and the 📊 of [a-statistics-button-ends-the-tab-row](#a-statistics-button-ends-the-tab-row) — pushed the icon off the screen: `FilterSearch` would not shrink below its content. It may now (`minW="0"`), pinned by the restock list's `OnAPhoneTheStatisticsButtonSitsBesideFilter` at 320px |
+
+## nothing-runs-past-a-phones-edge
+
+> Owner, in chat (2026-11-02), after [a-date-range-panel-fits-a-phone](#a-date-range-panel-fits-a-phone): *"di tempat lain
+> harusnya ada yang kasusnya serupa"*.
+
+```mermaid
+flowchart LR
+  P["a phone, 320px"] --> A["a panel"] --> A2["capped at the screen width less its gutters, scrolls inside"]
+  P --> B["a row of tabs"] --> B2["one row, scrolls sideways, a tab never shrinks"]
+  P --> C["a table"] --> C2["scrolls inside its own box, never drags the page"]
+  P --> D["a row of controls"] --> D2["the search gives way first"]
+```
+
+| | |
+| --- | --- |
+| the rule | on a phone, down to **320px**, nothing a person needs runs past the screen's edge. A popover or panel is capped at the screen's width; a min-width never beats that cap. A tab row and a table scroll **inside their own box**; the page itself never scrolls sideways |
+| how it was swept | every page's **Mobile** story and every popover-owning component at 320 and 360px: each popover, date picker, menu and combobox opened in turn, and every visible element measured against the edge, a scrolling box counting only when the box itself fits |
+| found and fixed | `DateRangePicker` ([a-date-range-panel-fits-a-phone](#a-date-range-panel-fits-a-phone)); `FilterSearch` (the 📊 pushed off); `ProductLinesPopover` — its `sm` floor beat its cap, 384px on a 320px screen; `DateTimeRangePicker` — the same two panes as the date range, stacked the same way; `OrderTabs` (the warehouse's order list) — the last status tabs ran off; the warehouse's order **table** — no box of its own, so it dragged the whole page sideways |
+| clean | every other Mobile story and popover at 320 and 360px |
+| pinned by | a 320px story each: `OnAPhoneThePanelFitsTheScreen` (both range pickers), `OnAPhoneThePopoverFitsTheScreen`, `OnAPhoneTheTabsScrollSideways` (with the table and the page width), `OnAPhoneTheStatisticsButtonSitsBesideFilter` |
+| a new screen | its Mobile story is looked at at 320px too, not only at the workbench's default phone |
 
 ## Recorded elsewhere
 

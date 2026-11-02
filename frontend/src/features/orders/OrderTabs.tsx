@@ -18,9 +18,18 @@ export function OrderTabs({ value, onSelect, count }: OrderTabsProps) {
 
   return (
     <Tabs.Root value={value} onValueChange={(e) => onSelect(e.value)}>
-      <Tabs.List>
+      {/* ONE ROW THAT SCROLLS SIDEWAYS when it does not fit, as StageTabs' — on a 20rem phone the last tabs ran past the
+          screen's edge (a-date-range-panel-fits-a-phone, found beside it). A trigger refuses to shrink, or the labels
+          squash into each other before the row scrolls. */}
+      <Tabs.List flexWrap="nowrap" overflowX="auto" overflowY="hidden" maxW="full">
         {ORDER_STATUS_TABS.map((item) => (
-          <Tabs.Trigger key={item.value} value={item.value} data-testid={`orders-tab-${item.value}`}>
+          <Tabs.Trigger
+            key={item.value}
+            value={item.value}
+            flexShrink="0"
+            whiteSpace="nowrap"
+            data-testid={`orders-tab-${item.value}`}
+          >
             {t(item.labelKey)}
             <Badge size="xs" variant="subtle" data-testid={`orders-tab-count-${item.value}`}>
               {count(item.value)}

@@ -107,3 +107,17 @@ export const TriggerDoesNotBubbleToTheRow: Story = {
     await expect(document.body.getAttribute("data-row-clicked")).toBeNull();
   },
 };
+
+// ON A PHONE THE POPOVER FITS THE SCREEN (a-date-range-panel-fits-a-phone, found beside it) — its floor yields to the
+// screen's width, and the table scrolls inside it.
+export const OnAPhoneThePopoverFitsTheScreen: Story = {
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByTestId("product-lines-more"));
+    const table = await screen.findByTestId("product-lines");
+    const content = table.closest('[data-part="content"]')!;
+
+    await expect(content.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(content.getBoundingClientRect().left).toBeGreaterThanOrEqual(0);
+  },
+};
