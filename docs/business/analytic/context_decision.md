@@ -45,7 +45,7 @@ flowchart TD
 ⚠ **The same edit contradicts itself two paragraphs later.** `## Streaming Processing` now names **three
 specific report tables** — team, shop, supplier — which is exactly the *"what report that we have"* the
 sentence above disclaims. See
-[the-doc-disclaims-reports-and-then-names-three](./context_clarify.md#the-doc-disclaims-reports-and-then-names-three).
+[the-doc-disclaims-reports-and-then-names-three](./context_clarify.md#contradiction).
 
 ---
 
@@ -90,7 +90,7 @@ flowchart LR
 
 ⚠ **The contradiction gets sharper, not smaller.** A doc whose stated responsibility is *a pattern* still
 names three concrete business report tables — team, shop, supplier — in `## Streaming Processing`.
-See [the-doc-disclaims-reports-and-then-names-three](./context_clarify.md#the-doc-disclaims-reports-and-then-names-three).
+See [the-doc-disclaims-reports-and-then-names-three](./context_clarify.md#contradiction).
 
 ---
 
@@ -128,7 +128,7 @@ flowchart LR
 | | |
 | --- | --- |
 | ⏸ **parked** | *which consumer goes first* · the settlement event and its publisher · when the analytic service gets built |
-| ⛔ **NOT parked — it is now the whole job** | the contract itself: what a source must promise, what the fold must promise, what a report must promise ([C17](./context_clarify.md#critique) → [what-the-pattern-owes-an-implementer](./context_clarify.md#what-the-pattern-owes-an-implementer)) |
+| ⛔ **NOT parked — it is now the whole job** | the contract itself: what a source must promise, what the fold must promise, what a report must promise ([C17](./context_clarify.md#critique) → [what-the-pattern-owes-an-implementer](./context_clarify.md#question)) |
 | ⛔ **also NOT parked** | the three named report tables still contradict the doc's stated responsibility, and a **pattern** is exactly the wrong place for them ([C15](./context_clarify.md#critique)) |
 
 ---
@@ -159,7 +159,7 @@ flowchart LR
 | a lost publish | the report is wrong until noticed; with [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted), that is an accepted cost |
 | the repair | whatever [settlement's drift question](../settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) settles — it now covers every lost event |
 | the nightly reconcile | not built — [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) item 2 still promises it: [the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other](./context_clarify.md#the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other) |
-| later | the catch-up path ([what-the-pattern-owes-an-implementer](./context_clarify.md#what-the-pattern-owes-an-implementer)) needs no change to a source log, only a way to read one from row N |
+| later | the catch-up path ([what-the-pattern-owes-an-implementer](./context_clarify.md#question)) needs no change to a source log, only a way to read one from row N |
 
 ---
 

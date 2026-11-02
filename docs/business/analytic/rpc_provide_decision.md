@@ -38,7 +38,7 @@ flowchart LR
 | which team's numbers | the top-level `team_id`, `use_scope` — ROOT/ADMINISTRATOR in team 1 see every team's |
 | `MetricOption` | `metric_id`, `supported_filters`, `required_filters` — **no** `roles` |
 | why I give way | the scope already narrows every metric to the caller's own team, so the shared role list only matters for a metric that some roles **of the same team** must not see |
-| still open | that one case — [a-metric-some-roles-must-not-see](./rpc_provide_clarify.md#a-metric-some-roles-must-not-see), [Q1](./rpc_provide_clarify.md#question) |
+| still open | that one case — [a-metric-some-roles-must-not-see](./rpc_provide_clarify.md#question), [Q1](./rpc_provide_clarify.md#question) |
 
 ---
 
@@ -126,7 +126,7 @@ flowchart LR
 | kept | `AnalyticReplayCompute` and `AnalyticMaintenanceRun` — they repair the fold, they do not read it |
 | the order | supplier → settlement → financial account |
 | one shape per service | the old reads go in the same change that moves the screen — never two paths to one number |
-| each report's own rules | carried over, never dropped in the move — see [a-rate-needs-a-minimum-sample](./rpc_provide_clarify.md#a-rate-needs-a-minimum-sample) |
+| each report's own rules | carried over, never dropped in the move — see [a-rate-needs-a-minimum-sample](#a-rate-ranks-only-above-its-minimum-sample) |
 | the guideline | [service-guideline.md](../../../guidelines/service-guideline.md) is the owner's: a pointer from it to this doc is theirs to add |
 
 **Is it more robust?** As a system, yes: one provider, one rule for ties, totals, pages and missing keys, and a table
@@ -195,7 +195,7 @@ flowchart LR
 
 > Owner (2026-10-26), in [rpc_provide.md](./rpc_provide.md) `### Service RPC Contracts.` — `MetricDataResponse` became
 > `repeated MetricData metric_datas`, each a `oneof m`. Resolves the contradiction
-> [one-metric-out-many-asked](./rpc_provide_clarify.md#one-metric-out-many-asked), as first recommended.
+> [one-metric-out-many-asked](#one-call-answers-every-asked-metric), as first recommended.
 
 **The verdict.** One `MetricData` call answers **every** metric it was asked for: the response is a list, one item per
 asked `metrics_ids` entry, and each item is a `oneof` holding that one metric's map.
@@ -291,7 +291,7 @@ sequenceDiagram
 > Owner (2026-10-26), in chat — *"for pagination, yes"* — and in [rpc_provide.md](./rpc_provide.md):
 > `FILTER_TYPE_PAGINATION` removed from `FilterType`, and `PaginationFilter pagination` added to `MetricSearchResponse`.
 > As recommended for the filter; where the page sits is still open
-> ([the-page-is-on-the-response](./rpc_provide_clarify.md#the-page-is-on-the-response)).
+> ([the-page-is-on-the-response](#a-page-is-not-a-filter)).
 
 **The verdict.** Paging is **not** a filter. A metric does not declare it, so adding a metric can never switch paging
 off — every `MetricSearch` pages, always (HARD RULE 9).
@@ -477,7 +477,7 @@ flowchart LR
 
 > Owner (2026-10-26), in [rpc_provide.md](./rpc_provide.md) `## Proto Contracts.` — `MetricSort` became
 > `{ metric_id, field, sort_type }`, and `SortOption.sort_key` became `field_sort_key`. To the contradiction
-> [metric-key-means-three-things](./rpc_provide_clarify.md#metric-key-means-three-things). The sort as recommended;
+> [metric-key-means-three-things](#a-sort-names-its-metric-and-field). The sort as recommended;
 > the sort key **kept**, against my *"the field's name is the key"*.
 
 **The verdict.** A sort names **which metric** and **which field** — two metrics can both carry `order_count`, and the
@@ -496,7 +496,7 @@ flowchart LR
 | --- | --- |
 | `MetricSort` | `string metric_id` · `string field` · `SortType sort_type` |
 | `SortOption` | `bool can_sort` · `string field_sort_key` |
-| what `MetricSort.field` carries | still open — [the-sort-field-has-two-names](./rpc_provide_clarify.md#the-sort-field-has-two-names) |
+| what `MetricSort.field` carries | still open — [the-sort-field-has-two-names](#a-sort-field-is-its-proto-name) |
 
 **Also in the same edit:** `DateRangeFilter` is now `string date_min` / `string date_max`. That is
 [a-day-is-a-jakarta-date-string](#a-day-is-a-jakarta-date-string) under **your** field names — `date_min` / `date_max`
@@ -507,7 +507,7 @@ replace the `start_date` / `end_date` written there, and every rule of that entr
 ## a-sort-field-is-its-proto-name
 
 > Owner (2026-10-26), in chat — *"okey, i remove field_sort_key"* — and in [rpc_provide.md](./rpc_provide.md):
-> `SortOption` is now `{ can_sort }` alone. To [the-sort-field-has-two-names](./rpc_provide_clarify.md#the-sort-field-has-two-names),
+> `SortOption` is now `{ can_sort }` alone. To [the-sort-field-has-two-names](#a-sort-field-is-its-proto-name),
 > after comparing the two. As recommended. Supersedes the `field_sort_key` row of
 > [a-sort-names-its-metric-and-field](#a-sort-names-its-metric-and-field).
 
@@ -537,7 +537,7 @@ flowchart LR
 ## a-metric-page-has-no-total
 
 > Owner, in chat (2026-10-26): *"returning total is expensive, so frontend just call next and next, and if data empty,
-> its reach end of page. and its okay"* — to [the-page-is-on-the-response](./rpc_provide_clarify.md#the-page-is-on-the-response),
+> its reach end of page. and its okay"* — to [the-page-is-on-the-response](#a-page-is-not-a-filter),
 > *"the asked page on the request, `PageInfo` with the totals on the response?"*. Against my recommendation on the
 > totals.
 
@@ -567,13 +567,13 @@ sequenceDiagram
 | the end | a page with no keys |
 | the pager | `GrowingPager` ([every-list-pages-with-the-growing-pager](../../technical/frontend/context_decision.md#every-list-pages-with-the-growing-pager)) — never `Pagination`, which needs a total |
 | ⚠ HARD RULE 9 | [CLAUDE.md](../../../CLAUDE.md) says a growing list *"returns a `warehouse.common.v1.PageInfo page_info`"*. A metric search does not — an exception, the owner's to write into the rule |
-| the last full page | open — [the-last-page-is-an-empty-click](./rpc_provide_clarify.md#the-last-page-is-an-empty-click) |
+| the last full page | open — [the-last-page-is-an-empty-click](#a-page-says-whether-another-follows) |
 
 ---
 
 ## a-page-says-whether-another-follows
 
-> Owner, in chat (2026-10-26): *"ok"* — to [the-last-page-is-an-empty-click](./rpc_provide_clarify.md#the-last-page-is-an-empty-click),
+> Owner, in chat (2026-10-26): *"ok"* — to [the-last-page-is-an-empty-click](#a-page-says-whether-another-follows),
 > *"a `bool has_next`, found by reading limit + 1 rows?"*. As recommended. Refines the end of
 > [a-metric-page-has-no-total](#a-metric-page-has-no-total): the end is `has_next = false`, not an empty page.
 
@@ -602,7 +602,7 @@ flowchart LR
 
 ## a-rate-ranks-only-above-its-minimum-sample
 
-> Owner, in chat (2026-10-26): *"ok"* — to [a-rate-needs-a-minimum-sample](./rpc_provide_clarify.md#a-rate-needs-a-minimum-sample),
+> Owner, in chat (2026-10-26): *"ok"* — to [a-rate-needs-a-minimum-sample](#a-rate-ranks-only-above-its-minimum-sample),
 > *"declare a minimum on rate fields, named `rank_min_sample`?"*, after asking whether it is for performance (it is
 > not — it is for the ranking to mean something). As recommended.
 
@@ -641,7 +641,7 @@ double broken_rate  [(metric_sort) = { can_sort: true, rank_min_sample: 50 }]
 ## the-key-breaks-every-tie
 
 > Owner, in chat (2026-10-26): *"we default sort by desc"*, then — after *"why we add shop_id in order?"* was walked
-> through — *"okey i accept it"*. To [ties-move-rows-between-pages](./rpc_provide_clarify.md#ties-move-rows-between-pages).
+> through — *"okey i accept it"*. To [ties-move-rows-between-pages](#the-key-breaks-every-tie).
 > As recommended, with the direction the owner's: DESC.
 
 **The verdict.** Every `MetricSearch` ends its `ORDER BY` with the row's **key, descending**. Rows that tie on the
@@ -817,7 +817,7 @@ flowchart LR
 | a metric id | `metrics/orders` — the group is no longer in it. Supersedes the *last segment is the key* row of [a-metric-id-is-a-name-not-a-route](#a-metric-id-is-a-name-not-a-route); its other rules stand |
 | one key per table | [a-metric-has-one-key](#a-metric-has-one-key) holds **per table**: one `group_by`, never shop × day |
 | a grain | a `group_by` value — supersedes [superseded-one-metric-per-grain](#superseded-one-metric-per-grain). A week is still Monday–Sunday ([a-week-is-monday-to-sunday-jakarta](#a-week-is-monday-to-sunday-jakarta)) |
-| the body's key | proposed, not decided: the body carries no key field (`metric_key` goes); two map wrappers per metric, by id and by day — [group-by-belongs-to-the-table](./rpc_provide_clarify.md#group-by-belongs-to-the-table) |
+| the body's key | proposed, not decided: the body carries no key field (`metric_key` goes); two map wrappers per metric, by id and by day — [group-by-belongs-to-the-table](#the-key-lives-in-the-map) |
 
 ---
 
@@ -1203,7 +1203,7 @@ flowchart LR
 | `FilterType` | `UNSPECIFIED` · `DATE_RANGE` · `PRODUCT` · `TEAM` · `SHOP` · `SUPPLIER` |
 | the number 2 | reserved in `FilterType` and in `FilterItem`, so case N stays `FilterType` N ([a-filter-names-one-id-and-shares-its-types-number](#a-filter-names-one-id-and-shares-its-types-number)) |
 | the code it removes | `KeywordFilter` in `analytic_base`; `FILTER_TYPE_KEYWORD` on `metrics/suppliers`, its keyword join and their tests |
-| ⚠ still open | the Supplier Report's search is sent as that keyword — [the-supplier-search-loses-its-filter](./rpc_provide_clarify.md#the-supplier-search-loses-its-filter). The code waits for it |
+| ⚠ still open | the Supplier Report's search is sent as that keyword — [the-supplier-search-loses-its-filter](#the-supplier-report-keeps-its-search). The code waits for it |
 
 ---
 
@@ -1301,7 +1301,7 @@ extend google.protobuf.FieldOptions {
 | | |
 | --- | --- |
 | replaces | the screen's own `kind: "count" \| "money"` in `features/analytic/catalogue.ts` — that copy goes when the provider reads the descriptor |
-| open | whether every field must carry it, and what checks it — [a-stat-type-is-checked-at-startup](./rpc_provide_clarify.md#a-stat-type-is-checked-at-startup) |
+| open | whether every field must carry it, and what checks it — [a-stat-type-is-checked-at-startup](#every-number-field-carries-a-stat-type) |
 
 ---
 
@@ -1339,7 +1339,7 @@ flowchart LR
 | `SUMMARY` | no graph, because the headline already shows it. ⚠ My reading of A, not asked |
 | not this graph | one line per shop over the days ([a-metric-has-one-key](#a-metric-has-one-key)), a line per key rather than per column. It is a different chart |
 | when | the chart pass ([the-chart-waits-for-a-chart-component](#the-chart-waits-for-a-chart-component)), which still starts with a chart component. The cap on lines per graph is decided there |
-| depends on | every number field carrying its stat type, since a field without one has no graph to go into ([a-stat-type-is-checked-at-startup](./rpc_provide_clarify.md#a-stat-type-is-checked-at-startup)) |
+| depends on | every number field carrying its stat type, since a field without one has no graph to go into ([a-stat-type-is-checked-at-startup](#every-number-field-carries-a-stat-type)) |
 
 ---
 

@@ -196,6 +196,10 @@ cosmetic only.
 
 ## claude-md-still-sends-every-commit-to-dev
 
+✅ *(2026-11-02)* **Fixed, on your ask** (*"do it"*): CLAUDE.md §Git workflow and the FAQ's branch entry
+([workflow.md](../../faq/workflow.md#which-branch-do-i-commit-to-do-i-open-a-pr-per-task)) now say each developer's own
+branch, committed only when you say so. Kept as a heading so the links into it hold; as it was found:
+
 **The example.** `CLAUDE.md` §Git workflow: *"All work happens on a single long-lived **`dev`** branch. Commit straight
 to `dev`"*. [each-developer-works-on-their-own-branch](./member_decision.md#each-developer-works-on-their-own-branch) (2026-11-02): each developer works on a branch of their own,
 and `dev` has been idle since 2026-10-12.

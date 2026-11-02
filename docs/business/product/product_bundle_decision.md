@@ -56,7 +56,7 @@ flowchart LR
 | deleting a bundle | a hard delete — no order refers to it |
 | editing a bundle | changes only the orders created after the edit |
 | a "bundles sold" report | not built — the marketplace's listing stats cover it |
-| the order form's pending mark `bundle` | stops being `dropped`, since the grouping is not stored **by design**. It stays on the card as `sample` until the bundles come from the backend instead of [mockData.ts](../../../frontend/src/features/orders/form/mockData.ts) |
+| the order form's pending mark `bundle` | stops being `dropped`, since the grouping is not stored **by design**. It stays on the card as `sample` until the bundles come from the backend instead of `mockData.ts` (removed 2026-10-28 — the bundles now come from the backend, through [bundles/adapt.ts](../../../frontend/src/features/bundles/adapt.ts)) |
 
 ---
 

@@ -38,8 +38,8 @@ type SettlementMetric struct {
 	Gap int64 `protobuf:"varint,4,opt,name=gap,proto3" json:"gap,omitempty"`
 	// gap ÷ sales, worked out from the key's own sums — never an average of rates. UNSET with no sales to divide by.
 	//
-	// ⚠ NOT SORTABLE YET: a rate needs a minimum sample to rank by (a-rate-ranks-only-above-its-minimum-sample), and
-	// which sale is too small to rank has not been decided (analytic_context_clarify.md#a-take-rate-ranks-above-what-sale).
+	// Ranked only among keys that SOLD at least Rp 1.000.000 in the window — its sample is `sales`, in rupiah; the rest
+	// follow, in key order (a-take-rate-ranks-above-one-million-of-sales, a-rate-ranks-only-above-its-minimum-sample).
 	TakeRate *float64 `protobuf:"fixed64,5,opt,name=take_rate,json=takeRate,proto3,oneof" json:"take_rate,omitempty"`
 	// THE POSITION at the period's END, as a positive number: −close_balance — what buyers paid, less everything the
 	// platform moved, withdrawals included (#the-report-headline-is-position-to-date). A balance: it adds up across keys,
@@ -836,7 +836,7 @@ var File_warehouse_settlement_v1_settlement_analytic_proto protoreflect.FileDesc
 
 const file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc = "" +
 	"\n" +
-	"1warehouse/settlement/v1/settlement_analytic.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xbd\x02\n" +
+	"1warehouse/settlement/v1/settlement_analytic.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xc7\x02\n" +
 	"\x10SettlementMetric\x12 \n" +
 	"\x05sales\x18\x01 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05sales\x12&\n" +
@@ -845,8 +845,8 @@ const file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc = "" +
 	"\twithdrawn\x18\x03 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\twithdrawn\x12\x1c\n" +
 	"\x03gap\x18\x04 \x01(\x03B\n" +
-	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x03gap\x12&\n" +
-	"\ttake_rate\x18\x05 \x01(\x01B\x04\xa0\xb5\x18\x01H\x00R\btakeRate\x88\x01\x01\x124\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x03gap\x120\n" +
+	"\ttake_rate\x18\x05 \x01(\x01B\x0e\x9a\xb5\x18\x06\b\x01\x10\xc0\x84=\xa0\xb5\x18\x01H\x00R\btakeRate\x88\x01\x01\x124\n" +
 	"\x10position_to_date\x18\x06 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x04R\x0epositionToDate:+\x9a\xb5\x18'\n" +
 	"\x04\x01\x04\x05\b\x12\x01\x01\x1a\b\x01\x02\x03\x04\x05\t\a\n" +

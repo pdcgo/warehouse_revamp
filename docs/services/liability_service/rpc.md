@@ -260,7 +260,7 @@ day of every period.
 
 > ⚠ The business is UTC+7, so an entry posted before 07:00 local lands on the previous day here. It is
 > deliberate *consistency* rather than a fresh decision — see
-> [revenue_service/rpc.md](../revenue_service/rpc.md) for the full note.
+> `revenue_service/rpc.md` (removed with the service on 2026-08-29 — `git show 0d4cbc49^:docs/services/revenue_service/rpc.md`) for the full note.
 
 ### The totals are built in the fold, not by a second query
 

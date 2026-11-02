@@ -286,7 +286,7 @@ flowchart LR
 | the balance | unchanged — a warehouse receivable ([the-warehouse-receivable-is-order-fee-cod-fee-and-found](../balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found)) |
 | the arithmetic | floating point ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)) |
 | a mistyped ask | corrected by revaluing the batch — [batch.md §Change Price Flow](../inventory/batch.md#change-price-flow-example) |
-| the build | already includes it — `freight := rr.ShippingCost + costLineTotal` ([restock_request_fulfill.go:206](../../../backend/services/inventory_service/inventory_v1/restock_request_fulfill.go#L206)). ⚠ But `freightPerUnit` is **integer** division, so a Rp 5.000 ask over 1.000 units adds **0** — against the arithmetic row |
+| the build | already includes it — `freight := rr.ShippingCost + costLineTotal` (`restock_request_fulfill.go:206` then; ✅ *(2026-11-02)* now [restock_request_accept.go:165](../../../backend/services/inventory_service/inventory_v1/restock_request_accept.go#L165), `freight := rr.ShipmentCost + courierCharge`, and money is `float64`, so the integer division below is gone). ⚠ But `freightPerUnit` is **integer** division, so a Rp 5.000 ask over 1.000 units adds **0** — against the arithmetic row |
 
 **What it does NOT settle:** whether the divisor is the ordered or the arrived quantity ([Q2](./context_clarify.md#question)),
 and how freight and the ask split across a restock's lines — by quantity or by value

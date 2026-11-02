@@ -249,7 +249,7 @@ re-derivation now exists in **two** places —
 | --- | --- | --- |
 | **1** | ✅ **SETTLED — one transaction** ([dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction)). The mark-then-compute hole is closed: a failure now rolls the dedup row back with the fold, so the redelivery genuinely reprocesses. | ⚠ **What the doc still has to say**: the duplicate test is `ON CONFLICT DO NOTHING` + **rows affected = 0**, never a caught PK violation — a raw constraint error aborts the whole transaction. And `pg_advisory_xact_lock` per scope in a **fixed order** (shop, then user), because one event writes both tables and the shift takes an unbounded row range. |
 | **2** | ✅ **SETTLED — the replay clears its range** ([a-replay-deletes-its-range-first](./context_decision.md#a-replay-deletes-its-range-first)), which removes the doubling. ✅ And the user-table half of the data loss is gone too, now that the creator is on the state row. ⛔ **What survives is the genesis anchor**: a `start_date` at or before the genesis day deletes the only record of everything before it, and the re-fold does not read that prehistory either. | **A floor on `start_date`, refused at or below the genesis day** — worked through in [the replay floor](#the-replay-floor--elaborated), where the obvious repair turns out to be wrong. [Q1](#question). |
-| **3** | ✅ **SETTLED — `order_settlements.created_by_user_id`** ([the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)), stamped once when the account opens. It closes all three at once: the live fold, the genesis seed (`GROUP BY created_by_user_id, team_id`) and the replay — the state row survives the DELETE, so the user is available on every replayed row. **The data-loss path is gone.** | ⚠ **It is not free yet.** `selling_service` must record an author on the order first ([`orders`](backend/services/selling_service/selling_service_models/order.go) has no creator column and `AuthorUserID` lives on `order_drafts`), and `SettlementPostRequest` needs the field — **two migrations in two lanes**, and until both land the opening call has nothing to pass. ⚠ And `0` must read as *not recorded*: an account opened by an exporter's `fund` before any `initial_total` has no creator, so the report needs an explicit **unattributed** bucket or its columns will silently fail to sum to the shop report. |
+| **3** | ✅ **SETTLED — `order_settlements.created_by_user_id`** ([the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)), stamped once when the account opens. It closes all three at once: the live fold, the genesis seed (`GROUP BY created_by_user_id, team_id`) and the replay — the state row survives the DELETE, so the user is available on every replayed row. **The data-loss path is gone.** | ⚠ **It is not free yet.** `selling_service` must record an author on the order first ([`orders`](../../../backend/services/selling_service/selling_service_models/order.go) has no creator column and `AuthorUserID` lives on `order_drafts`), and `SettlementPostRequest` needs the field — **two migrations in two lanes**, and until both land the opening call has nothing to pass. ⚠ And `0` must read as *not recorded*: an account opened by an exporter's `fund` before any `initial_total` has no creator, so the report needs an explicit **unattributed** bucket or its columns will silently fail to sum to the shop report. |
 | **4** | ✅ **SETTLED — the webhook is open** ([the-event-webhook-is-open](./context_decision.md#the-event-webhook-is-open)), against my recommendation. The reasoning that makes it survivable is recorded there: a forged POST corrupts a **projection**, not the ledger, and `settlement_logs` is not reachable from this path. | ⚠ **Two things follow and belong in the doc.** **(a)** `AnalyticReplayCompute` is now the **repair path for a reachable failure**, not a maintenance convenience — which is why [Q2](#question) has to be finished. **(b)** The app layer is settled, so the cheap mitigation is at the **ingress**: allow only Pub/Sub's ranges or a service account at the load balancer. No code, contradicts nothing. |
 | **5** | ⚠ **A 500 while `process_event_lock` is held feeds the DEAD-LETTER QUEUE with good events.** Pub/Sub counts every non-2xx as a delivery attempt, so a maintenance window longer than `max_delivery_attempts × backoff` dead-letters messages that were never malformed. ⚠ **The replay algorithm makes this reachable rather than theoretical** — a replay is exactly when the lock is held, and exactly when events keep arriving. | **State the maximum safe window**, derived from the subscription's retry policy — or **detach the subscription** during a replay, which stops delivery without consuming attempts. ⚠ Prefer 503 to 500 either way: it is the honest code for *"try later"*. |
 | **6** | ✅ **SETTLED — stored** ([the-carry-is-stored-not-derived](./context_decision.md#the-carry-is-stored-not-derived)), against my recommendation. The cascade stays, the `prev` lookup stays, the read is one row. ⚠ **It half-reverses [open-and-close-are-log-sums-at-the-day-boundaries](./context_decision.md#open-and-close-are-log-sums-at-the-day-boundaries)** — the definition survives as the invariant, "no carry" and "rebuildable per day" do not. | ⛔ **What it makes urgent is GENESIS** — a carry's first row anchors the chain, and every live shop already holds balances, so `0` is wrong for all of them and wrong **silently**. **→ Seed day zero from `SUM(order_settlements.last_balance)` per scope at migration time.** That is [Q1](#question), and it is cheap exactly once. |
@@ -339,8 +339,8 @@ shorter than what is written.
 ⛔ **Step 1 derives `day` from `created_at` converted to GMT+7. The report was decided to bucket on
 `posted_on`** ([posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report)) — and
 `posted_on` is `DATE NOT NULL DEFAULT CURRENT_DATE` in the shipped migration
-([00001_create_settlement_ledger.sql:62](backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62)),
-stamped `time.Now()` in Go ([post_entry.go:201](backend/services/settlement_service/settlement_v1/post_entry.go#L201)),
+([00001_create_settlement_ledger.sql:62](../../../backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62)),
+stamped `time.Now()` in Go ([post_entry.go:201](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L201)),
 with **no timezone configured anywhere in the repo** — so it lands on the UTC date.
 
 ```mermaid
@@ -1475,7 +1475,7 @@ yet**, so no order opens an account today.
    and what it serves: [settlement-serves-its-headline-and-its-breakdown](./context_decision.md#settlement-serves-its-headline-and-its-breakdown). Kept as a line so the numbers hold.
 
 9. ✅ **Answered 2026-11-02 — a take rate ranks above Rp 1.000.000 of sales**: [a-take-rate-ranks-above-one-million-of-sales](./context_decision.md#a-take-rate-ranks-above-one-million-of-sales).
-   Not built yet. Kept as a line so the numbers hold.
+   ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 
 
 # Contradiction
@@ -1517,7 +1517,7 @@ flowchart TB
 **→ Recommend the state tables be named EXPLICITLY in the replay** — **re-seeded inside the delete
 transaction** from the daily rows that survive it, never inheriting a predicate they cannot match, and
 never as a step *after* the replay: the seek is asynchronous and the RPC returns before the range is
-rebuilt ([the working](#-this-breaks-my-own-earlier-recommendation-and-here-is-the-repair)). **→ And what
+rebuilt ([the working](#-the-obvious-repair-is-wrong--do-not-re-seed-from-order_settlements)). **→ And what
 stops it recurring**: the decision was written as *"three tables"*, a **count**, when what it meant was
 *"every table the fold writes"*. A rule stated as a list goes stale the moment the list grows; the same
 rule stated as **the set the fold touches** would have covered these two on the day they appeared.
@@ -1584,8 +1584,8 @@ statements are one unit — an edit to either is an edit to both, in the same pa
 > convert to **GMT+7** and get the date as `day`."*
 
 **Two derivations of one day, and they are not the same day.** `posted_on` is
-`DATE NOT NULL DEFAULT CURRENT_DATE` ([migration:62](backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62))
-and stamped `time.Now()` ([post_entry.go:201](backend/services/settlement_service/settlement_v1/post_entry.go#L201)),
+`DATE NOT NULL DEFAULT CURRENT_DATE` ([migration:62](../../../backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62))
+and stamped `time.Now()` ([post_entry.go:201](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L201)),
 with no timezone set anywhere in the repo — so it lands on the **UTC** date, while the fold computes a
 **Jakarta** date. For every movement written between 00:00 and 07:00 WIB the log says one day and the
 report says the next.

@@ -516,7 +516,7 @@ excellence — worth one row, since the table is what a reader copies.
 > cites settlement pointing at analytic *"for the principle"* — the line withdrawn here. That decision may
 > still be right, but its evidence is gone.
 >
-> ⚠ **And `open_balance` is elaborated in full** — [snapshot, carry, and what I would actually build](#open_balance--snapshot-carry-and-what-i-would-actually-build).
+> ⚠ **And `open_balance` is elaborated in full** — and since decided: [the-carry-is-stored-not-derived](./context_decision.md#the-carry-is-stored-not-derived).
 > The short version: the snapshot is the definition, the carry is the implementation, genesis must never
 > be `0` for a shop that already trades, and a reconcile is the only thing that can notice the chain
 > breaking.
@@ -825,8 +825,8 @@ flowchart TB
 
 | | state today | |
 | --- | --- | --- |
-| **the amount** | ✅ **`orders.MarketplaceTotal` exists** — on the model ([order.go:71](backend/services/selling_service/selling_service_models/order.go#L71)) and in the contract ([order.proto:228](proto/warehouse/selling/v1/order.proto#L228)). Nothing to build | |
-| **the creator** | ⛔ **`OrderPlace` never reads who is calling** — no actor, no identity, nothing. But `san_auth.GetIdentity(ctx)` is right there and **three services already use it** ([document_service](backend/services/document_service/document_v1/request_upload.go#L45), [expense_service](backend/services/expense_service/expense_v1/service.go#L75)) | it is one read and one column, following a pattern already established |
+| **the amount** | ✅ **`orders.MarketplaceTotal` exists** — on the model ([order.go:71](../../../backend/services/selling_service/selling_service_models/order.go#L71)) and in the contract ([order.proto:228](../../../proto/warehouse/selling/v1/order.proto#L228)). Nothing to build | |
+| **the creator** | ⛔ **`OrderPlace` never reads who is calling** — no actor, no identity, nothing. But `san_auth.GetIdentity(ctx)` is right there and **three services already use it** ([document_service](../../../backend/services/document_service/document_v1/request_upload.go#L45), [expense_service](../../../backend/services/expense_service/expense_v1/service.go#L75)) | it is one read and one column, following a pattern already established |
 | **the idempotency key** | ✅ **already solved by accident.** `SettlementPostRequest.unique_id` is caller-supplied ([the-recipe-is-the-callers-problem](./context_decision.md#the-recipe-is-the-callers-problem)), and `order_place.go` already derives a stable one for its event — `"order-placed:" + order_id`, explicitly *"DERIVED from the order, never a fresh UUID: a redelivery and a replay are the same logical fact and must collide"* | **use the same recipe** — a retry then cannot double-open an account |
 | **the call** | ⛔ does not exist. Nothing in `selling_service` imports `settlement_v1` | |
 | **the failure rule** | ⛔ **unwritten — this is the question** | |
@@ -960,8 +960,8 @@ outright that nothing listens:
 
 | shipped today | carries | settlement would write |
 | --- | --- | --- |
-| [`OrderPlacedEvent`](../../../proto/warehouse/selling/v1/events.proto) — topic `order-placed` | `team_id`, `order_id`, `revenue`, `cogs`, `shipping_cost`, `warehouse_id`, actor | `initial_total` |
-| [`OrderCancelledEvent`](../../../proto/warehouse/selling/v1/events.proto) — topic `order-cancelled` | `team_id`, `order_id`, `actor_id` | `initial_total_cancel` |
+| [`OrderPlaced`](../../../proto/warehouse/events/v1/event.proto) — topic `order-placed` | `team_id`, `order_id`, `revenue`, `cogs`, `shipping_cost`, `warehouse_id`, actor | `initial_total` |
+| [`OrderCancelled`](../../../proto/warehouse/events/v1/event.proto) — topic `order-cancelled` | `team_id`, `order_id`, `actor_id` | `initial_total_cancel` |
 
 > *"⚠ IT CURRENTLY HAS NO CONSUMER, AND IS PUBLISHED ANYWAY — deliberately … **Do not stop publishing
 > it because nothing listens.**"* — `events.proto`
@@ -1023,6 +1023,22 @@ narrative point at the numbers they had then, and every answer lives in
 
 
 # Contradiction
+
+## the-doc-links-to-a-deleted-rpc-context
+
+**The example.** Links in your doc that point at a file that is not there:
+
+| line | the link | the file now |
+| --- | --- | --- |
+| 6 | `[read this](./rpc_context.md)` | none — a one-line file, deleted on 2026-10-01. How the reports are served is [analytic_context.md](./analytic_context.md) and [rpc_provide.md](../analytic/rpc_provide.md) |
+
+**→ Recommend:** drop line 6, or point it at `../analytic/rpc_provide.md`. Found by a link check over every doc (2026-11-02); reported, not edited.
+
+```mermaid
+flowchart LR
+  L["a link in the doc"] -.->|"the file moved or went"| X["nothing there"]
+  L -->|"repointed"| F["the file as it is now"]
+```
 
 ## the-doc-still-names-export-service
 
@@ -1258,7 +1274,7 @@ order — and it is the same argument: the ledger is evidence, the report is a v
 > `settlement_context.md` `## Settlement State` — *"we have settlement state, we called
 > **`order_settlements`**"*
 >
-> shipped: [order_settlement.go](backend/services/settlement_service/settlement_service_models/order_settlement.go)
+> shipped: [order_settlement.go](../../../backend/services/settlement_service/settlement_service_models/order_settlement.go)
 > — `TableName() = "order_settlements"`, the proto message is `OrderSettlement`, and
 > [the-state-holds-initial-total-and-last-balance](./context_decision.md#the-state-holds-initial-total-and-last-balance)
 > recorded that name.

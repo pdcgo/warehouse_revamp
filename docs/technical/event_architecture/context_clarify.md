@@ -97,7 +97,7 @@ mine. Answered points are **deleted**, so this is always the current open set.
 >
 > ✅ 🆕 **Identity comes from `ctx`** — the value, at least: the caller reads it there. **Q6 · 6f elaborated**
 > ([here](#6f--which-values-ride-on-ctx)) and its last half is settled — the meta attributes are ONE map,
-> [spelled out as literal output](#-the-meta-half--one-bag-or-two-spelled-out). ⚠ One thing it surfaces: `GetIdentity` **errors** when
+> [spelled out as literal output](#question). ⚠ One thing it surfaces: `GetIdentity` **errors** when
 > nothing set it, and the only place in the repo that sets it is the access interceptor — so a pull worker, a push
 > handler, `tools/san` and every backfill publish with no identity. **Q14** narrows to the number, that case,
 > `expired_at` and the trust rule.
@@ -203,7 +203,7 @@ mine. Answered points are **deleted**, so this is always the current open set.
 > my recommendation: `warehouse.event_base.v1` is removed, and the topic option lives in `warehouse.events.v1`.
 > ⚠ **Not deleted from the code yet** — selling's two live events and `TopicName()` compile against it, so the
 > delete must land in the SAME change that adds the new option and moves them; the decision lists every site.
-> Re-examined: two more guideline sites ([contradiction](#the-guideline-still-describes-the-shapes-this-pass-replaced)),
+> Re-examined: two more guideline sites ([contradiction](#-resolved--the-guideline-described-the-shapes-this-pass-replaced)),
 > and **no proto question is left** — what blocks the first event is now the library, not the contract.
 >
 > 🆕 **You cancelled multi-topic** — recorded as
@@ -219,7 +219,7 @@ mine. Answered points are **deleted**, so this is always the current open set.
 > service's to handle. Its section here is deleted. **Re-examined (RULE 11):** settlement already meets it —
 > every write is a delta, and the cascade shifts later days · ⚠ liability does not — a cancel that arrives
 > first lets the late placement charge a cancelled order · three more guideline sites
-> ([contradiction](#the-guideline-still-describes-the-shapes-this-pass-replaced)) · six places in this file
+> ([contradiction](#-resolved--the-guideline-described-the-shapes-this-pass-replaced)) · six places in this file
 > that assumed a key, rewritten.
 >
 > ✅ **Five decided before it, four as recommended.** Their sections here are deleted — each decision
@@ -235,7 +235,7 @@ mine. Answered points are **deleted**, so this is always the current open set.
 >
 > ⚠ **Re-examined for ripples (RULE 11) — three found.** `context.md` still reads as before them at six
 > places ([contradiction](#contextmd-lags-five-decisions)) · the guideline nests the metadata in
-> `EventMetadata meta = 1`, four more stale sites ([contradiction](#the-guideline-still-describes-the-shapes-this-pass-replaced)) ·
+> `EventMetadata meta = 1`, four more stale sites ([contradiction](#-resolved--the-guideline-described-the-shapes-this-pass-replaced)) ·
 > latent, in code: liability's *"the ledger's write path has no wire surface"* holds only while liability
 > has no push route ([push-routes-are-open-by-default](./context_decision.md#push-routes-are-open-by-default)).
 >
@@ -556,7 +556,7 @@ token's own `Identity` ([event-carries-the-callers-identity](./context_decision.
 | | |
 | --- | --- |
 | the envelope's numbering | `event_id` 1 · `occurred_at` 2 · `aggregate_id` 3 · `metadata` 4 · **5–99 growth** · variants 100+ in blocks — [typed-fields-for-what-the-library-reads](./context_decision.md#typed-fields-for-what-the-library-reads) |
-| so 5 is | the first free number, and the number the guideline already gave the actor (`string actor = 5`) — taking it turns that [stale site](#the-guideline-still-describes-the-shapes-this-pass-replaced) into a type change rather than a renumber |
+| so 5 is | the first free number, and the number the guideline already gave the actor (`string actor = 5`) — taking it turns that [stale site](#-resolved--the-guideline-described-the-shapes-this-pass-replaced) into a type change rather than a renumber |
 
 ⚠ **But under `protojson` the number is not on the wire — the NAME is** ([events-are-encoded-with-protojson](./context_decision.md#events-are-encoded-with-protojson)).
 So the choice that is permanent here is the word `identity`, not the digit 5. Renaming the field later drops it

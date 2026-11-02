@@ -309,7 +309,7 @@ sequenceDiagram
 | keys | every id with a row up to the window's end — a quiet one still ranks. Id 0 (no one recorded) left out | every period of the window, quiet ones included | none |
 | movement | Σ over the window | Σ over the period clipped to the window | Σ over the window |
 | `position_to_date` | −Σ over the key's positions of each one's latest close, at the window's end | the same, at the clipped period's end — a period outside the window is zero | at the window's end |
-| `take_rate` | gap ÷ sales of the key's own sums; unset with no sale; not sortable yet | the same | the same |
+| `take_rate` | gap ÷ sales of the key's own sums; unset with no sale. Sorts, ranking only the keys that sold at least Rp 1.000.000 in the window; the rest follow in key order ([a-take-rate-ranks-above-one-million-of-sales](../../business/settlement/context_decision.md#a-take-rate-ranks-above-one-million-of-sales)) | the same, each period its own sales | the same |
 | search span | — | 366 days · 260 weeks · 60 months · 20 years | never searched |
 | scope | the team, or every team from the ROOT team — so `TEAM` crosses teams only for ROOT and ADMIN | the same | the same |
 

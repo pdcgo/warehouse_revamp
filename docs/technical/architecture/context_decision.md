@@ -62,11 +62,11 @@ single-timezone standards carry a DST caveat; this one does not.
 
 | | |
 | --- | --- |
-| ⛔ **the DSN sets no timezone** | [`san_dbtarget/target.go:49`](backend/pkgs/san_dbtarget/target.go#L49) builds `host=… port=… user=… password=… dbname=… sslmode=disable` with **no `TimeZone=`**, so the session inherits the server default — **UTC** in the Postgres image. **→ One line, and it is the whole standard for every service at once.** ⚠ Add it to `ProductionDSN` too, and to `san_testdb`, or tests pass on a different calendar than production |
-| ⛔ **`settlement_logs.posted_on`** | `DATE NOT NULL DEFAULT CURRENT_DATE` ([migration:62](backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62)) — today the **UTC** date. It is the column every settlement report buckets on |
+| ⛔ **the DSN sets no timezone** | [`san_dbtarget/target.go:49`](../../../backend/pkgs/san_dbtarget/target.go#L49) builds `host=… port=… user=… password=… dbname=… sslmode=disable` with **no `TimeZone=`**, so the session inherits the server default — **UTC** in the Postgres image. **→ One line, and it is the whole standard for every service at once.** ⚠ Add it to `ProductionDSN` too, and to `san_testdb`, or tests pass on a different calendar than production |
+| ⛔ **`settlement_logs.posted_on`** | `DATE NOT NULL DEFAULT CURRENT_DATE` ([migration:62](../../../backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62)) — today the **UTC** date. It is the column every settlement report buckets on |
 | ⚠ **`expense_records.occurred_at`** | `DATE NOT NULL` — the only other `DATE` in the system, so **there are exactly two columns to get right**, and that is the argument for doing it now |
 | ⚠ **~40 `time.Now()` calls in handlers** | each yields host-local time. Harmless for a `TIMESTAMPTZ`, wrong for anything cast to a date. With the DSN set, the cast is Jakarta and these stay correct — which is why the DSN is the fix and 40 edits are not |
-| ✅ **nothing depends on UTC on purpose** | one `.UTC().Format(time.RFC3339)` in [inventory_service/service.go:265](backend/services/inventory_service/inventory_v1/service.go#L265), which is an RFC3339 wire value and correct as it is |
+| ✅ **nothing depends on UTC on purpose** | one `.UTC().Format(time.RFC3339)` in [inventory_service/service.go:265](../../../backend/services/inventory_service/inventory_v1/service.go#L265), which is an RFC3339 wire value and correct as it is |
 
 ### What it closes
 

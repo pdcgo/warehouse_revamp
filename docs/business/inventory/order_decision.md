@@ -167,7 +167,7 @@ flowchart LR
 | the read | one call to product_service, every line's product by id, **before** the transaction opens |
 | what is checked | private · reserved stock — your §What We Should Check |
 | a line not allowed | the take returns *Product Not Allowed* and writes nothing |
-| where the rules live | inventory's take, beside the stock they protect — the order's finalize question is narrowed to match ([finalize-enforces-every-rule-on-both-doors](../order/context_clarify.md#finalize-enforces-every-rule-on-both-doors)) |
+| where the rules live | inventory's take, beside the stock they protect — the order's finalize question is narrowed to match ([finalize-enforces-every-rule-on-both-doors](../order/context_decision.md#the-debt-check-runs-before-the-take)) |
 
 **What it does NOT settle** — all in [order_clarify](./order_clarify.md):
 

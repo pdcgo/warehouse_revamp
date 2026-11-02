@@ -28,7 +28,7 @@ the old one, never an edit to it (HARD RULE 12). The open set lives in [context_
 **Decided 2026-09-16**, written into `context.md` §Responsbility 2:
 
 > *"for `warehouse_fee` warehouse service just give rpc for calculate. how the fee handle and recorded is
-> responsbility of [balance](../balance/context.md) and called by [order](../order/context.md)"*
+> responsbility of [balance](../../balance/context.md) and called by [order](../../order/context.md)"*
 
 It settles the fork this context opened with — three services, three jobs, no overlap.
 

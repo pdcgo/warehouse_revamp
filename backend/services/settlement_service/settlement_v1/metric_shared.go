@@ -124,13 +124,30 @@ func measuresSelect() string {
 	return strings.Join(parts, ", ")
 }
 
-// init refuses a build in which a served field has no definition, or a by-type field names no report column — either
-// would be silently zero on every screen.
+// rankSample names, for a rate that ranks only above a minimum, the measured field the minimum COUNTS — the take
+// rate's is the key's sales, in rupiah (a-take-rate-ranks-above-one-million-of-sales). The minimum itself is read off
+// the proto (rank_min_sample); only what it is a minimum OF lives here, beside the definition of both.
+var rankSample = map[string]string{
+	"take_rate": "sales",
+}
+
+// init refuses a build in which a served field has no definition, a by-type field names no report column, or a rate
+// carries a minimum with no sample to count it on — each would be silently wrong on every screen.
 func init() {
 	for _, metric := range settlementMetrics {
 		for _, name := range fieldNames(metric.desc) {
 			if _, ok := measureSQL[name]; !ok {
 				panic(fmt.Sprintf("settlement metrics: %s.%s has no definition in measureSQL", metric.desc.FullName(), name))
+			}
+
+			_, option, err := san_metric.SortField(metric.desc, name)
+			if err != nil || option.GetRankMinSample() == 0 {
+				continue
+			}
+
+			if _, ok := measureSQL[rankSample[name]]; !ok {
+				panic(fmt.Sprintf("settlement metrics: %s.%s ranks above a minimum and rankSample names no measured field for it",
+					metric.desc.FullName(), name))
 			}
 		}
 	}

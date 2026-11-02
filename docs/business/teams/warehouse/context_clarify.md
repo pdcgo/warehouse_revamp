@@ -28,8 +28,8 @@ deleted, so this file is always the current open set; what you settle goes in `c
 > the access interceptor cannot scope it · and it prices **one** warehouse per call, so the order form comparing
 > three is three round trips.
 
-Siblings: [order](../order/context_clarify.md) · [balance](../balance/context_clarify.md) ·
-[inventory](../inventory/context_clarify.md) · [technical/balance](../../technical/balance/team_balance_design_clarify.md).
+Siblings: [order](../../order/context_clarify.md) · [balance](../../balance/context_clarify.md) ·
+[inventory](../../inventory/context_clarify.md) · [technical/balance](../../../technical/balance/team_balance_design_clarify.md).
 
 ---
 
@@ -164,7 +164,7 @@ sequenceDiagram
 
 ### the-rate-moves-in-five-steps
 
-The elaboration of [who-owns-the-rate-after-this](#who-owns-the-rate-after-this). **What is true today, read
+The elaboration of [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). **What is true today, read
 off the code** — this is what any answer has to survive:
 
 | | today |
@@ -185,7 +185,7 @@ is shipped.
 
 | | |
 | --- | --- |
-| ✅ **A — the rate moves**, balance posts what it is handed | **DECIDED** — [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). One owner, one number. Same shape as [the-cross-markup-belongs-to-the-product](../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
+| ✅ **A — the rate moves**, balance posts what it is handed | **DECIDED** — [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). One owner, one number. Same shape as [the-cross-markup-belongs-to-the-product](../../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
 | **B — the rate stays**, `warehouse_service` only calculates | ⛔ ruled out: `WarehouseFeeCalculate` would be a proxy for another service's column, and `warehouse_service` would own nothing it can answer for |
 | **C — both hold a copy** | ✅ ruled out: `handling_fee` is dropped as the last step of the move ([the-flat-rate-is-dropped-last](./context_decision.md#the-flat-rate-is-dropped-last)) |
 
@@ -300,6 +300,23 @@ heading so the links into it hold.
 
 # Contradiction
 
+## the-doc-links-one-folder-short
+
+**The example.** Links in your doc that point at a file that is not there:
+
+| line | the link | the file now |
+| --- | --- | --- |
+| 6 | `[balance](../balance/context.md)` | [../../balance/context.md](../../balance/context.md) — the doc sits one folder deeper, under `teams/` |
+| 6 | `[order](../order/context.md)` | [../../order/context.md](../../order/context.md) |
+
+**→ Recommend:** add one `../` to each. Found by a link check over every doc (2026-11-02); reported, not edited.
+
+```mermaid
+flowchart LR
+  L["a link in the doc"] -.->|"the file moved or went"| X["nothing there"]
+  L -->|"repointed"| F["the file as it is now"]
+```
+
 ## responsibility-names-team-services-job
 
 **The example.** [context.md](./context.md) §Responsbility 1: *"we must have warehouse service that manage warehouse teams"*.
@@ -325,7 +342,7 @@ flowchart LR
 
 *"`double order_total` … `double max_fee` … `double calculated_warehouse_fee`"* (§Rpc That Must Exist). Meanwhile the
 build stores money as `int64`: over 100 `int64` fields with money names (`total`, `price`, `cost`, `fee`…) across the
-protos, against 10 `double` fields, all in `financial_account`. [expense.proto](../../../proto/warehouse/expense/v1/expense.proto)
+protos, against 10 `double` fields, all in `financial_account`. [expense.proto](../../../../proto/warehouse/expense/v1/expense.proto)
 even states `int64` as the rule in a comment.
 
 🔄 *(2026-10-10)* **Which is wrong: the BUILD, not your payload.** I first said the opposite. Your `double` follows
@@ -378,17 +395,17 @@ flowchart LR
 ## the-warehouse-profile-is-already-owned-elsewhere
 
 *"Property or Field that must Have — Location Info, Open/Close Order Day info"* (this doc) — while
-[database-schema.md](../../database-schema.md) has **`warehouse_infos`** holding exactly those, in
+[database-schema.md](../../../database-schema.md) has **`warehouse_infos`** holding exactly those, in
 `team_service`, with `WarehouseInfoDetail` / `WarehouseInfoUpdate` shipped and a frontend editor on them.
 **Which is wrong:** neither — they are the same requirement written twice, in two services.
 **→ Recommend** [the move](#the-warehouse-profile-moves-out-of-team-service), so one of them stops being true.
 
 ## the-order-fee-column-the-order-context-promises-is-not-built
 
-*"`warehouse_fee`"* in [order/context.md](../order/context.md) §Table That Must Have — while no `warehouse_fee`
+*"`warehouse_fee`"* in [order/context.md](../../order/context.md) §Table That Must Have — while no `warehouse_fee`
 column, field or proto exists anywhere in the build, and the amount lives **only** as a `liability_entries` row
 posted after the fact. **Which is wrong:** the build. **→ Recommend** the freeze
-([does-the-order-freeze-the-fee](#does-the-order-freeze-the-fee)) — it is the same change that makes this
+([the-order-freezes-the-fee-and-the-ledger-posts-it](#the-order-freezes-the-fee-and-the-ledger-posts-it)) — it is the same change that makes this
 column mean something.
 
 ---

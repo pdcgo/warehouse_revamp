@@ -534,6 +534,23 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 
 # Contradiction
 
+## the-doc-links-to-the-ledgers-old-names
+
+**The example.** Links in your doc that point at a file that is not there:
+
+| line | the link | the file now |
+| --- | --- | --- |
+| 52 | `[see this](./placement_ledger.md)` | [placement.md](./placement.md) — renamed |
+| 55 | `[see this](./batch_ledger.md)` | [batch.md](./batch.md) — renamed on 2026-10-08 |
+
+**→ Recommend:** point the two links at `./placement.md` and `./batch.md`. Found by a link check over every doc (2026-11-02); reported, not edited.
+
+```mermaid
+flowchart LR
+  L["a link in the doc"] -.->|"the file moved or went"| X["nothing there"]
+  L -->|"repointed"| F["the file as it is now"]
+```
+
 ## the-link-names-its-team-two-ways
 
 *(2026-10-16)* Your two docs, one table:

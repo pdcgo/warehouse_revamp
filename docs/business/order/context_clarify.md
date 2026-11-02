@@ -93,8 +93,8 @@ are deleted, so this file is always the current open set; what was settled is in
 > ✅ `finalize-enforces-every-rule-on-both-doors` — **nothing left in it**, deleted: the debt is the new box, the reserve and
 > the shared lock are the take's ([the-take-checks-the-product-first](../inventory/order_decision.md#the-take-checks-the-product-first)),
 > there is one door now (the app only drafts), and the team is the request's own scoped `team_id`.
-> 🔄 [a-blocked-line-refuses-the-whole-order](#a-blocked-line-refuses-the-whole-order) — the box has no refusal branch.
-> 🆕 [the-warehouse-is-a-creditor-too](#the-warehouse-is-a-creditor-too), with its
+> 🔄 [a-blocked-line-refuses-the-whole-order](./context_decision.md#over-the-limit-refuses-the-create) — the box has no refusal branch.
+> 🆕 [the-warehouse-is-a-creditor-too](./context_decision.md#the-warehouse-is-a-creditor-on-every-order), with its
 > [Contradiction](#the-debt-check-skips-the-warehouse), and the critique `the-owners-are-needed-before-the-take`.
 >
 > 🔄 **Re-examined 2026-10-15 — a duplicate ref is warned, not refused**

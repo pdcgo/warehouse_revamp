@@ -28,8 +28,7 @@ file is always the current open set, never a log.
 
 Siblings: [user_context](./user/context_clarify.md) · [product_context](./product/context_clarify.md) ·
 [balance_context](./balance/context_clarify.md) · [order_context](./order/context_clarify.md) ·
-[inventory_context](./inventory/context_clarify.md) ·
-[systems/systems_product_context](./product/systems_clarify.md).
+[inventory_context](./inventory/context_clarify.md).
 
 ---
 

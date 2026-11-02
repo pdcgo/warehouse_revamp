@@ -728,7 +728,7 @@ erDiagram
     ([a-warehouse-reads-the-orders-it-ships](business/order/order_statistic_metric_decision.md#a-warehouse-reads-the-orders-it-ships)).
     Root reads every row; over 100 000 rows a year of it is a 13–30 ms scan.
   - **Not backfilled.** Orders placed before the fold ran have no row
-    ([are-past-orders-folded](business/order/order_statistic_metric_clarify.md#are-past-orders-folded)).
+    ([are-past-orders-folded](business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)).
 
 `backend/services/category_service/db_migrations/`
 

@@ -113,7 +113,7 @@ Verified against the shipped contract — both halves already exist and are alre
 | trigger | one toolbar action on `/liability`, beside the search — **not** a row, because the default is not a counterparty |
 | body | `TermsEditDialog` with no `editing` counterparty and no `options` picker — the counterparty is fixed at 0 |
 | wording | the dialog says *"terms for any team without their own"*. It must never read as *"terms for team 0"* |
-| ⚠ file move | `TermsEditDialog` currently lives in [pages/liability-detail/components/](../../../frontend/src/pages/liability-detail/components/TermsEditDialog.tsx). A second page importing it makes it a domain component — it moves to **`features/liability/`**, per CLAUDE.md's placement rule. `CreditMeter` moves with it: the dialog imports `limitStateOf` from it |
+| ⚠ file move | `TermsEditDialog` currently lives in [pages/liability-detail/components/](../../../frontend/src/features/liability/TermsEditDialog.tsx). A second page importing it makes it a domain component — it moves to **`features/liability/`**, per CLAUDE.md's placement rule. `CreditMeter` moves with it: the dialog imports `limitStateOf` from it |
 | the pair section | shows the inherited value with a **"using the default"** marker until somebody overrides it — an exception to a rule should look like one |
 
 ### ⛔ A synthetic `/liability/0` route stays refused

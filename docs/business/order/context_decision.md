@@ -451,7 +451,7 @@ list offers them as a filter under the `processed` tab. A per-step count line wa
 out — what a seller does with these is pick one.
 
 **Why this is the same rule twice already recorded.**
-[return-means-received-by-the-warehouse](./context_clarify.md#return-means-received-by-the-warehouse)
+[return-means-received-by-the-warehouse](./context_clarify.md#question)
 put a return's transit on a return record rather than on the order, and shipment tracking was
 deferred to the shipment. Picking and packed are the third instance, so the set of eight
 ([superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses)) is not a simplification for its own
@@ -873,7 +873,7 @@ if the create succeeds and the draft is not removed, the draft stays in the queu
 | 🔄 *(2026-10-15)* | **amended by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)** — the second attempt is now **warned**, not refused. The net is the person reading the warning |
 | ⚠ **→ Recommend** | the create-order request carries `order_draft_id`, and the backend removes the draft in the same transaction. The seeding stays in the browser; only the cleanup moves back |
 
-⚠ **And it reopens who writes `order_draft_items`.** [the-two-draft-line-tables-are-not-linked](#the-two-draft-line-tables-are-not-linked)
+⚠ **And it reopens who writes `order_draft_items`.** [the-two-draft-line-tables-are-not-linked](#superseded-the-two-draft-line-tables-are-not-linked)
 assumed the push owns the platform lines and a **person** owns ours. With finalize happening entirely in the
 browser, nobody saves a mapping back to the draft — so either the **app** writes `order_draft_items` too, or
 that table has no writer at all. Asked in the clarify.
@@ -1194,7 +1194,7 @@ comes back when the event is consumed — so a cancelled order's goods are brief
 
 ⚠ **What it makes load-bearing.** A lost Order Cancel publish now strands stock as well as leaving fees
 charged, which is why the publish needs its sent-at stamp
-([half-finished-orders-are-found-from-the-order](./context_clarify.md#half-finished-orders-are-found-from-the-order)).
+([half-finished-orders-are-found-from-the-order](#a-lost-publish-is-not-tracked-on-the-order)).
 And inventory must release **idempotently**, keyed on the order — a redelivered cancel must not return the
 same units twice.
 
@@ -1618,7 +1618,7 @@ flowchart LR
 | what it still lacks | a **screen that sets it** and a **server that reads it**. Today it is written by `TeamInfoUpdate` and read by nobody |
 | `shops.return_warehouse_id` | **not built** |
 | `team_return_configurations` | **not built** — [order_return.md](./order_return.md) §Table Must Have asks for it, and the owner's doc is theirs to amend (RULE 7b) |
-| on the order | `orders.return_warehouse_id`, resolved from the team at create — its freezing is [still open](./order_return_clarify.md#frozen-on-the-order) |
+| on the order | `orders.return_warehouse_id`, resolved from the team at create — its freezing is [still open](./order_return_clarify.md#question) |
 
 ⚠ **This reverses my recommendation, and the reasoning I lost on is worth keeping.** I argued the platform
 prints the return address **per shop**, so a team with three shops could have three of them and a parcel would
@@ -1727,7 +1727,7 @@ should be *whoever scanned the parcel*, because a person standing in a building 
 building they are in. That assumes the return is created **by someone in the receiving warehouse** — which is
 an assumption about who does this job, and it was never established. If Customer Service creates returns from
 an office, there is no building to read, and the proposal has nothing to stand on. **That is now the open
-question** ([who-creates-the-return](./order_return_clarify.md#who-creates-the-return)).
+question** ([who-creates-the-return](./order_return_clarify.md#question)).
 
 ```mermaid
 flowchart LR
@@ -2434,8 +2434,8 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the refusal | the box has no *over the limit* branch — [a-blocked-line-refuses-the-whole-order](./context_clarify.md#a-blocked-line-refuses-the-whole-order) |
-| the warehouse | checked only when a shared product is present, while the build and balance check the fulfilling warehouse on every order — [the-warehouse-is-a-creditor-too](./context_clarify.md#the-warehouse-is-a-creditor-too) |
+| the refusal | the box has no *over the limit* branch — [a-blocked-line-refuses-the-whole-order](#over-the-limit-refuses-the-create) |
+| the warehouse | checked only when a shared product is present, while the build and balance check the fulfilling warehouse on every order — [the-warehouse-is-a-creditor-too](#the-warehouse-is-a-creditor-on-every-order) |
 | where the owners come from | the take returns them, but it runs after the check — [the-owners-are-needed-before-the-take](./context_clarify.md#critique) |
 
 ---

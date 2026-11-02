@@ -1,9 +1,13 @@
+import { getOption } from "@bufbuild/protobuf";
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 
 import { bucketOfDay, timeSpine } from "../src/features/analytic/provider";
 import type { TimeGroup } from "../src/features/analytic/catalogue";
-import { type FilterItem, GroupType, SortType } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
-import type { SettlementAnalyticService } from "../src/gen/warehouse/settlement/v1/settlement_analytic_pb";
+import { type FilterItem, GroupType, SortType, metric_sort } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
+import {
+  type SettlementAnalyticService,
+  SettlementMetricSchema,
+} from "../src/gen/warehouse/settlement/v1/settlement_analytic_pb";
 import { type SettlementBookRow, dayKey, settlementBook } from "./fixtures";
 
 // THE SETTLEMENT METRICS, as settlement_service serves them — folded from the ledger book in fixtures.ts with the
@@ -136,42 +140,75 @@ function fieldOf(figures: ReturnType<typeof figuresOf>, metricId: string, field:
   return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
 }
 
+/**
+ * What a rate's minimum COUNTS — the service's `rankSample`: the take rate's is the key's sales, in rupiah
+ * (a-take-rate-ranks-above-one-million-of-sales). The minimum itself is read off the proto, as the service reads it.
+ */
+const RANK_SAMPLE: Record<string, string> = { take_rate: "sales" };
+
+function rankMinimum(metricId: string, field: string): number {
+  if (metricId !== "metrics/settlement") return 0;
+  const descriptor = SettlementMetricSchema.fields.find((f) => f.name === field);
+
+  return descriptor ? Number(getOption(descriptor, metric_sort).rankMinSample) : 0;
+}
+
 export const settlementAnalyticService: Partial<ServiceImpl<typeof SettlementAnalyticService>> = {
   metricSearch: (req) => {
     const { scope, rows } = scopeOf(req.teamId, req.groupBy, req.filters);
     const metricId = req.sort?.metricId ?? "";
     const field = req.sort?.field ?? "";
     const time = TIME[req.groupBy];
+    const sampleField = RANK_SAMPLE[field] ?? field;
 
-    let ranked: { key: string; value: number; tie: string }[];
+    let ranked: { key: string; value: number; sample: number; tie: string }[];
 
     if (time) {
-      ranked = timeSpine(scope.from, scope.to, time).map((key) => ({
-        key,
-        value: fieldOf(periodFigures(rows, scope, key, time), metricId, field),
-        tie: key,
-      }));
+      ranked = timeSpine(scope.from, scope.to, time).map((key) => {
+        const figures = periodFigures(rows, scope, key, time);
+
+        return {
+          key,
+          value: fieldOf(figures, metricId, field),
+          sample: fieldOf(figures, metricId, sampleField),
+          tie: key,
+        };
+      });
     } else {
       const ids = [...new Set(rows.filter((row) => row.date <= scope.to).map((row) => idOf(row, req.groupBy)))].filter(
         (id) => id > 0n,
       );
-      ranked = ids.map((id) => ({
-        key: String(id),
-        value: fieldOf(
-          figuresOf(
-            rows.filter((row) => idOf(row, req.groupBy) === id),
-            scope.from,
-            scope.to,
-          ),
-          metricId,
-          field,
-        ),
-        tie: String(id).padStart(20, "0"),
-      }));
+      ranked = ids.map((id) => {
+        const figures = figuresOf(
+          rows.filter((row) => idOf(row, req.groupBy) === id),
+          scope.from,
+          scope.to,
+        );
+
+        return {
+          key: String(id),
+          value: fieldOf(figures, metricId, field),
+          sample: fieldOf(figures, metricId, sampleField),
+          tie: String(id).padStart(20, "0"),
+        };
+      });
     }
 
+    // A rate with a minimum ranks only the keys whose sample reaches it; the rest follow, in key order, whichever way
+    // it is sorted (a-rate-ranks-only-above-its-minimum-sample).
+    const minimum = rankMinimum(metricId, field);
     const sign = req.sort?.sortType === SortType.ASC ? 1 : -1;
-    ranked.sort((a, b) => sign * (a.value - b.value) || (a.tie < b.tie ? 1 : a.tie > b.tie ? -1 : 0));
+    const byTie = (a: { tie: string }, b: { tie: string }) => (a.tie < b.tie ? 1 : a.tie > b.tie ? -1 : 0);
+    ranked.sort((a, b) => {
+      if (minimum > 0) {
+        const aRanks = a.sample >= minimum;
+        const bRanks = b.sample >= minimum;
+        if (aRanks !== bRanks) return aRanks ? -1 : 1;
+        if (!aRanks) return byTie(a, b);
+      }
+
+      return sign * (a.value - b.value) || byTie(a, b);
+    });
 
     const offset = req.page?.offset ?? 0;
     const limit = req.page?.limit ?? 20;

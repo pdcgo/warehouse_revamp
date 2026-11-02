@@ -91,9 +91,15 @@ message SettlementMetric {
   ];
   // gap ÷ sales, worked out from the key's own sums — never an average of rates. UNSET with no sales to divide by.
   //
-  // ⚠ NOT SORTABLE YET: a rate needs a minimum sample to rank by (a-rate-ranks-only-above-its-minimum-sample), and
-  // which sale is too small to rank has not been decided (analytic_context_clarify.md#a-take-rate-ranks-above-what-sale).
-  optional double take_rate = 5 [(warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_RATIO];
+  // Ranked only among keys that SOLD at least Rp 1.000.000 in the window — its sample is `sales`, in rupiah; the rest
+  // follow, in key order (a-take-rate-ranks-above-one-million-of-sales, a-rate-ranks-only-above-its-minimum-sample).
+  optional double take_rate = 5 [
+    (warehouse.analytic_base.v1.metric_sort) = {
+      can_sort: true
+      rank_min_sample: 1000000
+    },
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_RATIO
+  ];
   // THE POSITION at the period's END, as a positive number: −close_balance — what buyers paid, less everything the
   // platform moved, withdrawals included (#the-report-headline-is-position-to-date). A balance: it adds up across keys,
   // never across periods (a-position-is-its-own-stat-type). Never "outstanding" — nobody is going to collect it.

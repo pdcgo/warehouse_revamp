@@ -16,8 +16,8 @@ UTC.
 
 | | what | ⚠ |
 | --- | --- | --- |
-| **1** | `TimeZone=Asia/Jakarta` in [`san_dbtarget.LocalDSN`](backend/pkgs/san_dbtarget/target.go#L49) **and** `ProductionDSN` | this one line is the whole standard for every service at once — do it first and most of the rest verifies itself |
-| **2** | the same in [`san_testdb`](backend/pkgs/san_testdb/) | ⛔ **skip this and tests pass on a different calendar than production** — the worst possible outcome, because it makes the bug invisible where it would be caught |
+| **1** | `TimeZone=Asia/Jakarta` in [`san_dbtarget.LocalDSN`](../../../backend/pkgs/san_dbtarget/target.go#L49) **and** `ProductionDSN` | this one line is the whole standard for every service at once — do it first and most of the rest verifies itself |
+| **2** | the same in [`san_testdb`](../../../backend/pkgs/san_testdb) | ⛔ **skip this and tests pass on a different calendar than production** — the worst possible outcome, because it makes the bug invisible where it would be caught |
 | **3** | `settlement_logs.posted_on` — a column comment saying it is a Jakarta date | the migration's `DEFAULT CURRENT_DATE` becomes Jakarta automatically once 1 is done. **No DDL change is needed** |
 | **4** | `expense_records.occurred_at` — the only other `DATE` in the system | it is **caller-supplied**, so check what the frontend sends: a native date input gives the browser's local date, which is already Jakarta for users in Indonesia |
 | **5** | a test asserting `CURRENT_DATE` equals the Jakarta date | one assertion, and it is what stops this regressing to UTC the next time a DSN is touched |
@@ -28,7 +28,7 @@ UTC.
 | --- | --- |
 | **~40 `time.Now()` calls in handlers** | they produce host-local instants, which is harmless for `TIMESTAMPTZ`. GORM writes a `time.Time` into a `type:date` column by letting **Postgres** truncate it in the session timezone — so once step 1 lands, `PostedOn: time.Now()` stores the Jakarta date with no Go change |
 | **stored `TIMESTAMPTZ` values** | absolute instants. A session timezone changes rendering and date casts, never what is stored |
-| **`.UTC().Format(time.RFC3339)`** in [inventory_service](backend/services/inventory_service/inventory_v1/service.go#L265) | an RFC3339 wire value, correct as it is |
+| **`.UTC().Format(time.RFC3339)`** in [inventory_service](../../../backend/services/inventory_service/inventory_v1/service.go#L265) | an RFC3339 wire value, correct as it is |
 
 ### ⛔ The one thing to decide before applying it
 

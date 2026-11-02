@@ -1844,7 +1844,7 @@ flowchart LR
 
 ### Why this is safe here, and it is a property of the schema rather than a hope
 
-**`posted_on` is server-stamped** — [post_entry.go:201](backend/services/settlement_service/settlement_v1/post_entry.go#L201)
+**`posted_on` is server-stamped** — [post_entry.go:201](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L201)
 writes `time.Now()`, and the write API has no field for it. So **no row can ever land in a past
 bucket**: once a day closes, the set of rows in it is final, and the same query re-run next year returns
 the same number.
@@ -1936,7 +1936,7 @@ The report now **cannot exist until four missing pieces do**, and the first is s
 | | state today |
 | --- | --- |
 | settlement publishes its log rows | ⛔ `settlement_v1.Service` holds a `*gorm.DB` and no `EventSender`, and no settlement event message exists. The protocol's `Dispatch Event` is the drawn path, not a built one |
-| a broker | ⚠ the dev server has **none** — [event_sender.go](backend/cmd/app_development/event_sender.go) is a synchronous in-process loopback with *"no retries, no redelivery, no dead-lettering"* |
+| a broker | ⚠ the dev server has **none** — [event_sender.go](../../../backend/cmd/app_development/event_sender.go) is a synchronous in-process loopback with *"no retries, no redelivery, no dead-lettering"* |
 | a consumer that folds | ⛔ nothing consumes anything but `order-placed` / `order-cancelled` |
 | a report table, and a service to own it | ⛔ no migration, and no analytic or report service in `backend/services/` |
 
@@ -2433,7 +2433,7 @@ flowchart LR
 | | |
 | --- | --- |
 | when | in the migration that creates the tables — it is cheap at exactly this one moment |
-| the source | `SELECT shop_id, team_id, SUM(last_balance) FROM order_settlements GROUP BY shop_id, team_id`. ✅ **`order_settlements` carries `ShopID` and `TeamID`** ([order_settlement.go](backend/services/settlement_service/settlement_service_models/order_settlement.go)), so this is one indexed aggregate with no join |
+| the source | `SELECT shop_id, team_id, SUM(last_balance) FROM order_settlements GROUP BY shop_id, team_id`. ✅ **`order_settlements` carries `ShopID` and `TeamID`** ([order_settlement.go](../../../backend/services/settlement_service/settlement_service_models/order_settlement.go)), so this is one indexed aggregate with no join |
 | `day` | the day **before** the tables go live, so the first real day's `prev` lookup (`day < @day`) finds it |
 | ⚠ **the row's own columns** | `open_balance = close_balance = SUM(last_balance)`, and **every movement column 0**. Setting `open = 0, close = SUM` would break `close − open = Σ movements` on the seed row itself — no movements happened on a synthetic day |
 | why the state table and not the log | `order_settlements.last_balance` is one row per account, exact by construction. The equivalent over `settlement_logs` is a `DISTINCT ON` across every row ever written |
@@ -2521,7 +2521,7 @@ flowchart LR
 
 ### ⚠ What it still needs, and it is in another lane
 
-`selling_service` has to record an author on the order — [`orders`](backend/services/selling_service/selling_service_models/order.go)
+`selling_service` has to record an author on the order — [`orders`](../../../backend/services/selling_service/selling_service_models/order.go)
 has no creator column at all, and `AuthorUserID` lives on `order_drafts`, so an order placed without a
 draft has none. **Two migrations in two lanes**, and until both land the opening call has nothing to pass.
 `SettlementPostRequest` also needs the field.
@@ -2616,7 +2616,7 @@ repairable and a lost order is not**, and the repair needs nothing we would not 
 `marketplace_total` is frozen on the order, and the idempotency key is derived from the order id, so a
 retry cannot double-open the account.
 
-⚠ **This is the same answer the neighbouring publish already gives** — [order_place.go:285](backend/services/selling_service/selling_v1/order_place.go#L285),
+⚠ **This is the same answer the neighbouring publish already gives** — [order_place.go:285](../../../backend/services/selling_service/selling_v1/order_place.go#L285),
 *"A publish failure does NOT fail the order"* — but it is now **decided for the call**, not inherited from
 an argument about an event. The two differ in what they leave behind; they agree on what to do about it.
 
@@ -2652,7 +2652,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| source | `san_auth.GetIdentity(ctx).GetIdentityId()` — ✅ the pattern already used by [document_service](backend/services/document_service/document_v1/request_upload.go#L45) and [expense_service](backend/services/expense_service/expense_v1/service.go#L75) |
+| source | `san_auth.GetIdentity(ctx).GetIdentityId()` — ✅ the pattern already used by [document_service](../../../backend/services/document_service/document_v1/request_upload.go#L45) and [expense_service](../../../backend/services/expense_service/expense_v1/service.go#L75) |
 | stored | `orders.created_by_user_id`, at placement, never updated |
 | ⚠ **not client-supplied** | a client-provided creator is a client that can attribute someone else's sales. Reading the token is what makes it trustworthy |
 | passed to | `SettlementPost`, which stamps `order_settlements.created_by_user_id` once ([the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row)) |
@@ -3925,7 +3925,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| **Settlement** | `sales` = −(`initial_total` + `initial_total_cancel`) · `received` = Σ every type but the sale and withdrawals · `withdrawn` = −`withdrawal` · `gap` = `sales` − `received`: `CURRENCY`, summed · `take_rate` = `gap` ÷ `sales`, worked out from the sums: `RATIO` · `position_to_date` = −`close_balance` at the window's end: a position ([a-position-is-not-a-sum](../analytic/rpc_provide_clarify.md#a-position-is-not-a-sum), still open) |
+| **Settlement** | `sales` = −(`initial_total` + `initial_total_cancel`) · `received` = Σ every type but the sale and withdrawals · `withdrawn` = −`withdrawal` · `gap` = `sales` − `received`: `CURRENCY`, summed · `take_rate` = `gap` ÷ `sales`, worked out from the sums: `RATIO` · `position_to_date` = −`close_balance` at the window's end: a position ([a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type), still open) |
 | **Settlement by type** | the ten types that make up `received`: `fund`, `external_ads_fee`, `affiliate_fee`, `marketplace_adjustment`, `shipment_adjustment`, `logistic_reimbursement`, `platform_reimbursement`, `marketplace_program`, `other`, `system_adjustment`. `CURRENCY`, summed, each with the ledger's sign, so a fee is negative |
 | the identity | `received` is the sum of Settlement by type's fields, so the breakdown always explains the headline |
 | not in either | `initial_total`, `initial_total_cancel`, `change` and `open_balance`: the basis the measures are made of |
@@ -4003,7 +4003,7 @@ flowchart LR
 | under the minimum | still listed and its rate still served — only left out of the ranking |
 | no sales at all | `take_rate` unset, as today, and never ranked |
 | the cost, accepted | over a single day most shops fall under it and almost nobody ranks. That is right: a day's take rate is mostly timing, because the money lands days after the sale |
-| ⏳ not built | `take_rate` is still unsortable. The build: the proto option, the sort in `metric_search.go` reading `sales` as the sample, and a test of the example above |
+| ✅ built *(2026-11-02)* | the proto option on `take_rate`; `rankSample` in `metric_shared.go` names `sales` as its sample, and its `init` refuses a rate with a minimum and no sample; `MetricSearch` orders the keys under the minimum after the rest, in key order; `TestMetricSearch_ATakeRateRanksOnlyAboveAMillionOfSales` is the example above, both ways; the Storybook stub ranks the same way. The Analytic screen offers the sort with no change of its own — it reads `can_sort` off the proto |
 
 ## a-cancel-reverses-the-live-sale
 

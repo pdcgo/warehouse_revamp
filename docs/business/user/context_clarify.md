@@ -46,7 +46,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"i follow your recomendation"* — Q28 | ✅ all five parts: [the-switcher-offers-every-team](./context_decision.md#the-switcher-offers-every-team) · [a-non-member-root-acts-under-a-strip](./context_decision.md#a-non-member-root-acts-under-a-strip) · [the-admin-team-monitors-read-only](./context_decision.md#the-admin-team-monitors-read-only) · [the-switcher-ships-with-the-create-team-form](./context_decision.md#the-switcher-ships-with-the-create-team-form) · Critique 29 deleted. **No question is open in this context** |
 > | *(you asked)* elaborate Q28 | 🔄 **Q28** split into five parts, checked against the build: the switcher already searches but only your memberships · `TeamList` already pages and searches every team · 21 screens read the current role · a reload restores only memberships · the admin team's reads mean marking 142 team-scoped requests by hand · recommend Root's and the Administrator's half with Q27 now, the admin team's half as its own pass |
 > | *"continue"* — step 1a built | ✅ the two admin-team roles, their six policies, the labels, the Owner grant · ▲ **Q28** the switcher lists memberships only, so Q27 would cut Root and the Administrator off from the teams they create, and the admin team's reads have no screen (Critique 29) |
-> | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#the-prototype--what-accepting-it-accepts) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
+> | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#question) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
 > | *"for q17, q19 i follow your recomendation, for q18 settlement is customer service too"* | ✅ [removing-a-member-drops-their-shop-access](./context_decision.md#removing-a-member-drops-their-shop-access) · ✅ [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), against my recommendation on settlements · ✅ [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · Critique 21 deleted · only **Q20** left |
 > | the member-flow heading now names the Admin | ✅ [the-member-flow-leaves-out-the-admins](#the-member-flow-leaves-out-the-admins) resolved · your diagram parses |
 > | §warehouse team, line 51: `warehouse_admin` fixed | ✅ Critique 14 deleted |
@@ -428,7 +428,7 @@ Data. The second wins ([a-user-has-no-short-code](./context_decision.md#a-user-h
 | site | it said | now |
 | --- | --- | --- |
 | the decision `short-code-is-a-unique-alias` | a unique alias | renamed [superseded-short-code-is-a-unique-alias](./context_decision.md#superseded-short-code-is-a-unique-alias), ⛔ kept as a record |
-| [the user record](#the-user-record--proposed) | a short_code row, required | removed. Required is name and username |
+| [the user record](#the-user-record--decided) | a short_code row, required | removed. Required is name and username |
 | Critique 25, Q24 | four rules for it | deleted, closed |
 | Q23 | waits on Q24 | waits on nothing |
 | Q25, and the state report | *required: name, username, short_code* · a build row for the column | name and username · the row removed |

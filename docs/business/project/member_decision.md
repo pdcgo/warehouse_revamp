@@ -182,7 +182,7 @@ stateDiagram-v2
 **coordinate** — `<big_context>/<small_context>.md`, the same coordinates as the owner's two trees,
 so one context is one lookup in three files. A per-person file is a **second index over the same
 facts**. How the two coexist is proposed, not decided:
-[member_clarify.md](./member_clarify.md#the-progress-report-and-the-state-file-are-different-tenses).
+[member_clarify.md](./member_clarify.md#the-progress-report---decided-and-the-audience-moved-it).
 
 ## a-report-fires-per-slice
 
@@ -338,6 +338,6 @@ dev                idle since 2026-10-12
 | where work lands | the developer's own branch, committed only when they say so |
 | between branches | a merge by hand, when asked |
 | `main` | left aside |
-| ⚠ CLAUDE.md §Git workflow | still says *commit straight to `dev`* — reported in [claude-md-still-sends-every-commit-to-dev](./member_clarify.md#claude-md-still-sends-every-commit-to-dev), not edited |
+| ✅ CLAUDE.md §Git workflow | updated 2026-11-02 on the owner's ask, with the FAQ's branch entry — it had said *commit straight to `dev`* ([claude-md-still-sends-every-commit-to-dev](./member_clarify.md#claude-md-still-sends-every-commit-to-dev)) |
 | also closes | [workflow Q3](../../technical/development/workflow_clarify.md#question), *how many people build on `dev` at once?* |
 | ✅ built | nothing to build |

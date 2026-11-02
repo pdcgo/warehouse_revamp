@@ -278,7 +278,7 @@ sequenceDiagram
 | where | the access interceptor ([interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57)) wraps the stream's connection, and its first `Receive` runs the check a unary call gets — policy, then team scope — unchanged |
 | the scope in `ctx` | not available: `next` is called before `Receive` decodes the request, so a stream handler reads `team_id` off its own request |
 | the proof | one test — a non-member calling a mounted server stream is refused before the handler runs, and a member streams |
-| in the same commit | `CLAUDE.md` §Rules that are easy to get wrong, [docs/faq/contract.md:82](../../faq/contract.md#L82) and [docs/faq/workflow.md:204](../../faq/workflow.md#L204) — *server streams are authorized on their request, client and bidi streams are refused* — and the comment at [tools/san/remote/auth.go:34](../../../tools/san/remote/auth.go#L34) |
+| in the same commit | `CLAUDE.md` §Rules that are easy to get wrong, [docs/faq/contract.md](../../faq/contract.md#where-do-i-declare-who-may-call-an-rpc) and [docs/faq/workflow.md](../../faq/workflow.md#why-does-san-remote-have-its-own-token-instead-of-a-normal-login) — *server streams are authorized on their request, client and bidi streams are refused* — and the comment at [tools/san/remote/auth.go:34](../../../tools/san/remote/auth.go#L34) |
 | ✅ state | **built 2026-09-29** (19c9a95) — a server stream's token is checked from its headers before the handler runs, and its one request through `Receive`, before the handler body; client and bidi streams stay refused. Was: not built |
 
 ## an-upload-is-never-reverted

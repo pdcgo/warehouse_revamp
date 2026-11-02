@@ -20,14 +20,14 @@ An ordinary page is 3–8 ms, and `status_at` costs about 0.1 ms of a 20-row pag
 | **root · search a tracking number · 20** | **119 ms** | 2 | 🔴 [finding 1](#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-) |
 | **root · search digits · 20** | **112 ms** | 2 | 🔴 [finding 1](#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-) |
 | warehouse 900 · search a tracking number · 20 | 47 ms | 2 | 🟡 the same read over 16 667 orders |
-| **root · all · 200 · last page (offset 49 800)** | **252 ms** | 2 | 🔴 [finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips-) |
+| **root · all · 200 · last page (offset 49 800)** | **252 ms** | 2 | 🔴 [finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips--fixed-2026-10-22) |
 | root · all · 20 · sort by total | 37 ms | 2 | 🟡 [finding 3](#3-sorting-by-total-sorts-every-order-in-scope-) |
 
 ✅ **No N+1.** Every case makes 2 queries, at 20 rows and at 200.
 ✅ **`status_at` is cheap on an ordinary page.** It adds 0.04–0.11 ms at 20 rows and 0.3–0.6 ms at 200 (EXPLAIN with it
 and without it). The plan is an Index Scan Backward on `order_timeline_logs_order_idx` (`Index Cond: order_id = orders.id`,
 `Filter: status = orders.status`, 0–1 rows removed), taking the newest matching row as `Limit 1`. Only
-[finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips-) makes it material.
+[finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips--fixed-2026-10-22) makes it material.
 
 The table is the quietest of five full runs. A peer session shared the Postgres, so the small cases moved between 3
 and 11 ms from run to run. Across all five runs, root's search took 112–158 ms and the last page 237–275 ms.
@@ -280,7 +280,7 @@ lands in one large `''` bucket that no window reads.
   adopt it: a label scan is the warehouse's most frequent search, and the index serves three RPCs.
 - [ ] **Ids-first in `scopedOrders`, or `force_custom_plan` in the DSN?** I would take ids-first, as AnalyticGroupSearch
   took literals over the DSN option.
-- [ ] **Defer the subqueries past the LIMIT ([finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips-))?**
+- [ ] **Defer the subqueries past the LIMIT ([finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips--fixed-2026-10-22))?**
   It is a handler change with no contract change, and it is my pick.
 - [ ] **Add `order_timeline_logs (status, created_at)` for the status-date window ([finding 5](#5-a-status-date-window-seq-scans-the-timeline-))?** My pick: yes. It is the only thing between that window and a full read of every team's history.
 - [ ] At ~500 000 orders: an estimated total for root's unfiltered list, or a "has more" pager? The estimate is my pick

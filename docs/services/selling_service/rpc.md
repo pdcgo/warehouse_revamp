@@ -420,7 +420,7 @@ The envelope carries `event_id` (derived from the order, so a redelivery and a r
 which is a record of who published, never something a consumer authorises from.
 
 > The full flow, the delivery trade-off, and why the event carries the money rather than just an order
-> id are in [revenue_service/rpc.md](../revenue_service/rpc.md).
+> id are in `revenue_service/rpc.md` (removed with the service on 2026-08-29 — `git show 0d4cbc49^:docs/services/revenue_service/rpc.md`).
 
 ## The order metrics — the fold and `OrderAnalyticService`
 
@@ -456,7 +456,7 @@ sequenceDiagram
 | a redelivery | the claim is the write: a second claim finds the row and folds nothing. Raced 40/40 |
 | the reads | one statement each, after the team-type lookup. A seller's or a warehouse's read uses its scope index (1–8 ms over 100 000 rows); root's scans (13–30 ms) |
 | an id of 0 | left out of an id group: `IDList` takes ids above 0 ([a-no-user-row-cannot-be-a-key](../../business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key)) |
-| ⚠ not built | a backfill of the orders before the fold ([are-past-orders-folded](../../business/order/order_statistic_metric_clarify.md#are-past-orders-folded)), a replay and a dedup prune — supplier's fold has all three |
+| ⚠ not built | a backfill of the orders before the fold ([are-past-orders-folded](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)), a replay and a dedup prune — supplier's fold has all three |
 
 ## Draft orders — `OrderDraftPush` and the blanks-only merge (#190, #191)
 

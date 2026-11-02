@@ -152,7 +152,7 @@ from "that day did not load".
 
 `occurred_at` is a **DATE**, chosen by a person — there is no instant to convert and therefore no zone
 to get wrong. The revenue half buckets a `TIMESTAMPTZ` and has to name one; see
-[revenue_service/rpc.md](../revenue_service/rpc.md) for the UTC-vs-UTC+7 caveat that carries.
+`revenue_service/rpc.md` (removed with the service on 2026-08-29 — `git show 0d4cbc49^:docs/services/revenue_service/rpc.md`) for the UTC-vs-UTC+7 caveat that carries.
 
 ### Voided rows
 

@@ -170,7 +170,7 @@ flowchart LR
 ```
 
 **The spec.** `SupplierCreate` refuses a team whose type is not SELLING, with one lookup in `team_service`. Today it
-writes into any team it is given ([supplier_create.go:12](../../../backend/services/inventory_service/inventory_v1/supplier_create.go#L12)).
+writes into any team it is given ([supplier_create.go:12](../../../backend/services/supplier_service/supplier_v1/supplier_create.go)).
 The selling roles on its policy keep out a warehouse's own people, but Root and the Administrator bypass the scope, and
 they can create one in a warehouse team.
 

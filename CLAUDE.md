@@ -1173,14 +1173,15 @@ written for the next agent, not for a person: what exists, what does not, what w
 
 ## Git workflow
 
-All work happens on a single long-lived **`dev`** branch. Commit straight to `dev` — do **not**
-create a branch or a PR per task. The owner keeps `dev` checked out to preview the running app and
-review as work lands, so branch-switching just gets in the way.
+**Each developer works on a long-lived branch of their own** — Heri on `backup/inventory`, Toni on `thoni`
+([each-developer-works-on-their-own-branch](docs/business/project/member_decision.md#each-developer-works-on-their-own-branch)).
+Commit on the branch that is checked out, and **only when the owner says so** — finish the work, show what changed,
+ask. Do **not** create a branch or a PR per task. `dev` is no longer the shared branch (idle since 2026-10-12).
 
-- Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright spec for
+- Keep the branch green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright spec for
   the work in hand should pass at each commit. CI runs the full suite.
-- Promote to `main` by merging `dev` → `main` **when the owner asks**. Never force-push `main`;
-  never push `main` or merge without an explicit ask.
+- Work moves between branches by a merge, **when the owner asks**. Never force-push `main`; never push
+  `main` or merge into it without an explicit ask.
 
 CI (`.github/workflows/ci.yml`) runs on push-to-`main` and every PR: buf lint + generated-drift
 check, `go build/vet/test`, frontend build, and Playwright e2e against Postgres + Redis service
