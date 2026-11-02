@@ -35,6 +35,7 @@ import { resetProductScenario } from "./productScenario";
 import { resetRackStub } from "./rackStub";
 import { resetReturnConfigurationStub, resetReturnMapStub } from "./returnConfigurationStub";
 import { resetWarehouseFeeStub } from "./warehouseFeeStub";
+import { resetAgentStub } from "./agentStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
 import type { Lang } from "../src/i18n/language";
@@ -420,6 +421,8 @@ const preview: Preview = {
     resetReturnMapStub();
     // …and the warehouses' fees, which the settings card saves.
     resetWarehouseFeeStub();
+    // …and the AI agents' connections and each team's switch, which a connect, a revoke or the switch writes.
+    resetAgentStub();
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
     // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
     stubUploads();

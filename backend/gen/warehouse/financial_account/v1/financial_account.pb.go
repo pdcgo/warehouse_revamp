@@ -5280,12 +5280,12 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x12AnalyticMetricSort\x12$\n" +
 	" ANALYTIC_METRIC_SORT_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bANALYTIC_METRIC_SORT_CHANGE\x10\x01\x12&\n" +
-	"\"ANALYTIC_METRIC_SORT_CLOSE_BALANCE\x10\x022\xbe\x11\n" +
-	"\x17FinancialAccountService\x12\x91\x01\n" +
-	"\x14FinancialAccountList\x12;.warehouse.financial_account.v1.FinancialAccountListRequest\x1a<.warehouse.financial_account.v1.FinancialAccountListResponse\x12\x94\x01\n" +
-	"\x15FinancialAccountByIds\x12<.warehouse.financial_account.v1.FinancialAccountByIdsRequest\x1a=.warehouse.financial_account.v1.FinancialAccountByIdsResponse\x12\x9d\x01\n" +
-	"\x18FinancialAccountOverview\x12?.warehouse.financial_account.v1.FinancialAccountOverviewRequest\x1a@.warehouse.financial_account.v1.FinancialAccountOverviewResponse\x12\x9a\x01\n" +
-	"\x17FinancialAccountLogList\x12>.warehouse.financial_account.v1.FinancialAccountLogListRequest\x1a?.warehouse.financial_account.v1.FinancialAccountLogListResponse\x12\x97\x01\n" +
+	"\"ANALYTIC_METRIC_SORT_CLOSE_BALANCE\x10\x022\xd2\x11\n" +
+	"\x17FinancialAccountService\x12\x96\x01\n" +
+	"\x14FinancialAccountList\x12;.warehouse.financial_account.v1.FinancialAccountListRequest\x1a<.warehouse.financial_account.v1.FinancialAccountListResponse\"\x03\x90\x02\x01\x12\x99\x01\n" +
+	"\x15FinancialAccountByIds\x12<.warehouse.financial_account.v1.FinancialAccountByIdsRequest\x1a=.warehouse.financial_account.v1.FinancialAccountByIdsResponse\"\x03\x90\x02\x01\x12\xa2\x01\n" +
+	"\x18FinancialAccountOverview\x12?.warehouse.financial_account.v1.FinancialAccountOverviewRequest\x1a@.warehouse.financial_account.v1.FinancialAccountOverviewResponse\"\x03\x90\x02\x01\x12\x9f\x01\n" +
+	"\x17FinancialAccountLogList\x12>.warehouse.financial_account.v1.FinancialAccountLogListRequest\x1a?.warehouse.financial_account.v1.FinancialAccountLogListResponse\"\x03\x90\x02\x01\x12\x97\x01\n" +
 	"\x16FinancialAccountCreate\x12=.warehouse.financial_account.v1.FinancialAccountCreateRequest\x1a>.warehouse.financial_account.v1.FinancialAccountCreateResponse\x12\x97\x01\n" +
 	"\x16FinancialAccountUpdate\x12=.warehouse.financial_account.v1.FinancialAccountUpdateRequest\x1a>.warehouse.financial_account.v1.FinancialAccountUpdateResponse\x12\x9d\x01\n" +
 	"\x18FinancialAccountIdentify\x12?.warehouse.financial_account.v1.FinancialAccountIdentifyRequest\x1a@.warehouse.financial_account.v1.FinancialAccountIdentifyResponse\x12\x9a\x01\n" +
@@ -5295,11 +5295,11 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x17FinancialAccountCapital\x12>.warehouse.financial_account.v1.FinancialAccountCapitalRequest\x1a?.warehouse.financial_account.v1.FinancialAccountCapitalResponse\x12\xa0\x01\n" +
 	"\x19FinancialAccountReconcile\x12@.warehouse.financial_account.v1.FinancialAccountReconcileRequest\x1aA.warehouse.financial_account.v1.FinancialAccountReconcileResponse\x12\x9a\x01\n" +
 	"\x17FinancialAccountShopSet\x12>.warehouse.financial_account.v1.FinancialAccountShopSetRequest\x1a?.warehouse.financial_account.v1.FinancialAccountShopSetResponse\x12\xaf\x01\n" +
-	"\x1eFinancialAccountOperationalSet\x12E.warehouse.financial_account.v1.FinancialAccountOperationalSetRequest\x1aF.warehouse.financial_account.v1.FinancialAccountOperationalSetResponse2\xd1\x03\n" +
-	"\x1fFinancialAccountAnalyticService\x12\x8b\x01\n" +
-	"\x12AnalyticTimeSearch\x129.warehouse.financial_account.v1.AnalyticTimeSearchRequest\x1a:.warehouse.financial_account.v1.AnalyticTimeSearchResponse\x12\x8e\x01\n" +
-	"\x13AnalyticGroupSearch\x12:.warehouse.financial_account.v1.AnalyticGroupSearchRequest\x1a;.warehouse.financial_account.v1.AnalyticGroupSearchResponse\x12\x8e\x01\n" +
-	"\x13AnalyticGroupMetric\x12:.warehouse.financial_account.v1.AnalyticGroupMetricRequest\x1a;.warehouse.financial_account.v1.AnalyticGroupMetricResponseBbZ`github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1;financial_accountv1b\x06proto3"
+	"\x1eFinancialAccountOperationalSet\x12E.warehouse.financial_account.v1.FinancialAccountOperationalSetRequest\x1aF.warehouse.financial_account.v1.FinancialAccountOperationalSetResponse2\xe0\x03\n" +
+	"\x1fFinancialAccountAnalyticService\x12\x90\x01\n" +
+	"\x12AnalyticTimeSearch\x129.warehouse.financial_account.v1.AnalyticTimeSearchRequest\x1a:.warehouse.financial_account.v1.AnalyticTimeSearchResponse\"\x03\x90\x02\x01\x12\x93\x01\n" +
+	"\x13AnalyticGroupSearch\x12:.warehouse.financial_account.v1.AnalyticGroupSearchRequest\x1a;.warehouse.financial_account.v1.AnalyticGroupSearchResponse\"\x03\x90\x02\x01\x12\x93\x01\n" +
+	"\x13AnalyticGroupMetric\x12:.warehouse.financial_account.v1.AnalyticGroupMetricRequest\x1a;.warehouse.financial_account.v1.AnalyticGroupMetricResponse\"\x03\x90\x02\x01BbZ`github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1;financial_accountv1b\x06proto3"
 
 var (
 	file_warehouse_financial_account_v1_financial_account_proto_rawDescOnce sync.Once

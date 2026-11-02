@@ -25,9 +25,17 @@ service WarehouseTransferService {
   // batches oldest first — and too few at A fails the create.
   rpc WarehouseTransferCreate(WarehouseTransferCreateRequest) returns (WarehouseTransferCreateResponse);
   // Every side lists: the selling team its own transfers, a warehouse those leaving it and those coming to it.
-  rpc WarehouseTransferList(WarehouseTransferListRequest) returns (WarehouseTransferListResponse);
+  rpc WarehouseTransferList(WarehouseTransferListRequest) returns (WarehouseTransferListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // One transfer in full, with its lines, its pick list, its problems and its trail. Same scope as List.
-  rpc WarehouseTransferDetail(WarehouseTransferDetailRequest) returns (WarehouseTransferDetailResponse);
+  rpc WarehouseTransferDetail(WarehouseTransferDetailRequest) returns (WarehouseTransferDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The selling team edits the shipping cost, its paying account and the note — until accepted. The lines are never
   // edited (a-transfers-lines-are-never-edited).
   rpc WarehouseTransferUpdate(WarehouseTransferUpdateRequest) returns (WarehouseTransferUpdateResponse);
@@ -115,8 +123,8 @@ message WarehouseTransferProblem {
 message WarehouseTransferItem {
   uint64 id = 1;
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  // sku/name snapshot at create.
-  string sku = 3;
+  // product code/name snapshot at create.
+  string product_code = 3;
   string name = 4;
   // How many were sent.
   int64 count = 5 [(buf.validate.field).int64.gt = 0];
@@ -285,7 +293,7 @@ message WarehouseTransferListFilter {
   // Created within the period. Both 0 = any time.
   int64 from_unix = 5;
   int64 to_unix = 6;
-  // Free text over its number (a whole id only), the tracking number, and a line's SKU or name.
+  // Free text over its number (a whole id only), the tracking number, and a line's product code or name.
   string q = 7 [(buf.validate.field).string.max_len = 100];
 }
 

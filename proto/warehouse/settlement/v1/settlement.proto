@@ -38,9 +38,17 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/set
 //   - **Not editable.** Append-only (#a-correction-is-a-new-row). A mistake is offset by a further row.
 service SettlementService {
   // The list screen — one row per order, ranked by loss.
-  rpc OrderSettlementList(OrderSettlementListRequest) returns (OrderSettlementListResponse);
+  rpc OrderSettlementList(OrderSettlementListRequest) returns (OrderSettlementListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The panel on the order detail page — one account plus its whole log, oldest first.
-  rpc OrderSettlementDetail(OrderSettlementDetailRequest) returns (OrderSettlementDetailResponse);
+  rpc OrderSettlementDetail(OrderSettlementDetailRequest) returns (OrderSettlementDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // The WRITE surface, split from the reads for the reason every split in this repo is made: a service

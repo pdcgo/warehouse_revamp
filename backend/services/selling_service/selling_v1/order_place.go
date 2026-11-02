@@ -146,7 +146,7 @@ func (s *Service) placeOrder(
 	// and refuses one listed twice, and every money figure of the line is that one draw
 	// (an-order-is-costed-at-what-leaves-the-shelf). The one merged line is what is stored. A line's price is not compared:
 	// it is the take's, stamped below (an-order-line-carries-no-marketplace-price). Lines naming one product under two
-	// skus or names are refused rather than merged — see mergeOrderLines.
+	// product codes or names are refused rather than merged — see mergeOrderLines.
 	p.items, err = mergeOrderLines(p.items)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -258,7 +258,9 @@ func (s *Service) placeOrder(
 			// (settlement #the-creator-is-read-from-the-token-at-placement): a client-supplied creator is
 			// a client that can attribute somebody else's sales. 0 when the caller is unidentifiable.
 			CreatedByUserID: eventActor(ctx),
-			Items:           orderItemModels(p.items),
+			// ...and whether they placed it from outside the team (an-override-is-stamped-in-every-service).
+			IsOverride: eventOverride(ctx),
+			Items:      orderItemModels(p.items),
 		}
 
 		// THE HEADER FIRST, THE LINES AFTER THE PICK. A line's money is written ONCE, complete
@@ -280,11 +282,12 @@ func (s *Service) placeOrder(
 		// time.Now(): the row says when the order came into being, and the two must be the same instant or
 		// the timeline disagrees with the header beside it.
 		logs := []selling_service_models.OrderTimelineLog{{
-			OrderID:   order.ID,
-			Status:    orderStatusPending,
-			From:      timelineFromSelling,
-			ActorID:   eventActor(ctx),
-			CreatedAt: order.CreatedAt,
+			OrderID:    order.ID,
+			Status:     orderStatusPending,
+			From:       timelineFromSelling,
+			ActorID:    eventActor(ctx),
+			IsOverride: eventOverride(ctx),
+			CreatedAt:  order.CreatedAt,
 		}}
 
 		// THE FORM'S NOTE IS THE ORDER'S FIRST NOTE ROW (a-note-is-a-timeline-row): no status, from selling, by the
@@ -294,11 +297,12 @@ func (s *Service) placeOrder(
 		note := strings.TrimSpace(p.note)
 		if note != "" {
 			logs = append(logs, selling_service_models.OrderTimelineLog{
-				OrderID:   order.ID,
-				Note:      note,
-				From:      timelineFromSelling,
-				ActorID:   eventActor(ctx),
-				CreatedAt: order.CreatedAt,
+				OrderID:    order.ID,
+				Note:       note,
+				From:       timelineFromSelling,
+				ActorID:    eventActor(ctx),
+				IsOverride: eventOverride(ctx),
+				CreatedAt:  order.CreatedAt,
 			})
 		}
 
@@ -475,6 +479,10 @@ func (s *Service) placeOrder(
 				// this event causes are posted by a consumer with no request context to read one from
 				// (every-entry-names-who-posted-it).
 				ActorId: eventActor(ctx),
+				// ...and whether they placed it from outside the team — the answer `orders.is_override` was stamped with
+				// above, so the fees and the opening row a consumer posts for this actor say so too
+				// (an-override-is-stamped-in-every-service).
+				ActorIsOverride: eventOverride(ctx),
 				// What settlement opens the order's account from — the order never calls settlement
 				// (settlement-opens-the-sale-from-the-order-event).
 				ShopId:        order.ShopID,

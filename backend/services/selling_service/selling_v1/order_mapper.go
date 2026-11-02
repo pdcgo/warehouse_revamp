@@ -113,6 +113,13 @@ func eventActor(ctx context.Context) uint64 {
 	return identity.GetIdentityId()
 }
 
+// eventOverride is whether eventActor is Root or the Administrator acting in a team they hold no role in — through
+// the root-team bypass, not a membership (an-override-is-stamped-in-every-service). Stamped beside every actor this
+// service records; false for a caller with no identity, as eventActor's 0 is.
+func eventOverride(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
+}
+
 // eventIdentity is what the sender's identity PARAMETER takes (identity-is-a-sender-parameter): the
 // caller's identity when the access interceptor put one on the ctx, and an explicit SYSTEM identity
 // when it did not.
@@ -146,12 +153,12 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		}
 
 		items = append(items, &sellingv1.OrderItem{
-			Id:        o.Items[i].ID,
-			ProductId: o.Items[i].ProductID,
-			Sku:       o.Items[i].SKU,
-			Name:      o.Items[i].Name,
-			Quantity:  o.Items[i].Quantity,
-			UnitCost:  o.Items[i].UnitCost,
+			Id:          o.Items[i].ID,
+			ProductId:   o.Items[i].ProductID,
+			ProductCode: o.Items[i].ProductCode,
+			Name:        o.Items[i].Name,
+			Quantity:    o.Items[i].Quantity,
+			UnitCost:    o.Items[i].UnitCost,
 			// The rest of the line's frozen money, as the take priced it; absent = never frozen, never a 0.
 			Total:              o.Items[i].Total,
 			UnitCostWithMarkup: o.Items[i].UnitCostWithMarkup,
@@ -286,10 +293,10 @@ func orderItemModels(in []*sellingv1.OrderItem) []selling_service_models.OrderIt
 	out := make([]selling_service_models.OrderItem, 0, len(in))
 	for _, it := range in {
 		out = append(out, selling_service_models.OrderItem{
-			ProductID: it.GetProductId(),
-			SKU:       it.GetSku(),
-			Name:      it.GetName(),
-			Quantity:  it.GetQuantity(),
+			ProductID:   it.GetProductId(),
+			ProductCode: it.GetProductCode(),
+			Name:        it.GetName(),
+			Quantity:    it.GetQuantity(),
 		})
 	}
 

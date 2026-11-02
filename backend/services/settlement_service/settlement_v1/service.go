@@ -182,6 +182,13 @@ func actorFrom(ctx context.Context) uint64 {
 	return identity.GetIdentityId()
 }
 
+// overrideFrom is whether actorFrom is Root or the Administrator posting inside a team they hold no role in — through
+// the root-team bypass, not a membership (an-override-is-stamped-in-every-service). Stamped beside the actor on the
+// row it writes.
+func overrideFrom(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
+}
+
 func totalPages(total int64, limit uint32) uint32 {
 	if limit == 0 {
 		return 0

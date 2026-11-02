@@ -107,7 +107,7 @@ func TestOrderCreate_AShortRealTakeKeepsItsCodeAndDetail(t *testing.T) {
 // twoLinesOf is an order of one product on two lines — 2 picked by hand, 1 from a bundle — agreeing on everything else.
 func twoLinesOf(team, shop, warehouse, product uint64) *sellingv1.OrderCreateRequest {
 	line := func(quantity uint32) *sellingv1.OrderItem {
-		return &sellingv1.OrderItem{ProductId: product, Sku: "SKU", Name: "Kaos", Quantity: quantity}
+		return &sellingv1.OrderItem{ProductId: product, ProductCode: "SKU", Name: "Kaos", Quantity: quantity}
 	}
 
 	return &sellingv1.OrderCreateRequest{

@@ -1142,7 +1142,7 @@ func (x *RackSummary) GetLastCountedAt() string {
 type RackStockLine struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Opaque product_service id. The product may belong to ANOTHER team's catalogue — a warehouse holds
-	// other teams' goods — so its sku/name are resolved separately (ProductByIds), never assumed to be
+	// other teams' goods — so its product code/name are resolved separately (ProductByIds), never assumed to be
 	// in this warehouse's own catalogue.
 	ProductId uint64 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	// How many of it are on THIS rack. Not the warehouse's total for the product, which is a SUM across
@@ -2670,15 +2670,15 @@ const file_warehouse_inventory_v1_rack_proto_rawDesc = "" +
 	"\x13RackHistoryDataType\x12&\n" +
 	"\"RACK_HISTORY_DATA_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eRACK_HISTORY_DATA_TYPE_GENERAL\x10\x01\x12#\n" +
-	"\x1fRACK_HISTORY_DATA_TYPE_MOVEMENT\x10\x022\x8e\a\n" +
+	"\x1fRACK_HISTORY_DATA_TYPE_MOVEMENT\x10\x022\xa2\a\n" +
 	"\vRackService\x12c\n" +
 	"\n" +
-	"RackCreate\x12).warehouse.inventory.v1.RackCreateRequest\x1a*.warehouse.inventory.v1.RackCreateResponse\x12]\n" +
-	"\bRackList\x12'.warehouse.inventory.v1.RackListRequest\x1a(.warehouse.inventory.v1.RackListResponse\x12c\n" +
+	"RackCreate\x12).warehouse.inventory.v1.RackCreateRequest\x1a*.warehouse.inventory.v1.RackCreateResponse\x12b\n" +
+	"\bRackList\x12'.warehouse.inventory.v1.RackListRequest\x1a(.warehouse.inventory.v1.RackListResponse\"\x03\x90\x02\x01\x12h\n" +
 	"\n" +
-	"RackDetail\x12).warehouse.inventory.v1.RackDetailRequest\x1a*.warehouse.inventory.v1.RackDetailResponse\x12`\n" +
-	"\tRackStock\x12(.warehouse.inventory.v1.RackStockRequest\x1a).warehouse.inventory.v1.RackStockResponse\x12f\n" +
-	"\vRackHistory\x12*.warehouse.inventory.v1.RackHistoryRequest\x1a+.warehouse.inventory.v1.RackHistoryResponse\x12c\n" +
+	"RackDetail\x12).warehouse.inventory.v1.RackDetailRequest\x1a*.warehouse.inventory.v1.RackDetailResponse\"\x03\x90\x02\x01\x12e\n" +
+	"\tRackStock\x12(.warehouse.inventory.v1.RackStockRequest\x1a).warehouse.inventory.v1.RackStockResponse\"\x03\x90\x02\x01\x12k\n" +
+	"\vRackHistory\x12*.warehouse.inventory.v1.RackHistoryRequest\x1a+.warehouse.inventory.v1.RackHistoryResponse\"\x03\x90\x02\x01\x12c\n" +
 	"\n" +
 	"RackUpdate\x12).warehouse.inventory.v1.RackUpdateRequest\x1a*.warehouse.inventory.v1.RackUpdateResponse\x12c\n" +
 	"\n" +

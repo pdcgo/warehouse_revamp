@@ -90,7 +90,7 @@ export function LinesCard({ request, teamId }: { request: RestockRequest; teamId
                           {item.name}
                         </Span>
                         <Span fontSize="xs" color="fg.muted">
-                          {item.sku}
+                          {item.productCode}
                         </Span>
                         {item.note && (
                           <Span

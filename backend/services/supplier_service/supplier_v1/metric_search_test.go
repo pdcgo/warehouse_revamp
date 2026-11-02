@@ -301,6 +301,9 @@ func TestMetricSearch_RefusesWhatTheMetricDoesNotOffer(t *testing.T) {
 			Sort: sortBy("restock_valuation", desc)}},
 		{"a backwards window", &supplierv1.MetricSearchRequest{GroupBy: bySupplier, Filters: filters(dateRange("2026-10-31", "2026-10-01")),
 			Sort: sortBy("restock_valuation", desc)}},
+		// a-metric-reads-at-most-a-year: 2024 is 366 days, a day more is refused.
+		{"367 days", &supplierv1.MetricSearchRequest{GroupBy: bySupplier, Filters: filters(dateRange("2024-01-01", "2025-01-01")),
+			Sort: sortBy("restock_valuation", desc)}},
 		{"a summary", &supplierv1.MetricSearchRequest{GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SUMMARY, Filters: october(),
 			Sort: sortBy("restock_valuation", desc)}},
 		{"a group it does not offer", &supplierv1.MetricSearchRequest{GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP, Filters: october(),

@@ -173,7 +173,7 @@ export const FoundButNeverStockedHere: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "gula merah", { delay: 20 });
     await waitFor(() => expect(input).toHaveValue("gula merah"));
-    const option = await screen.findByTestId("product-select-option-SKU-ANG-006", {}, { timeout: 4000 });
+    const option = await screen.findByTestId("product-select-option-SL-03-ANG-006", {}, { timeout: 4000 });
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 

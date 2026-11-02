@@ -30,7 +30,7 @@ func TestStockCost_TheAverageOfTheUnitsHeld(t *testing.T) {
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
 				{
-					ProductId: productX, Sku: "SKU1", Name: "Widget",
+					ProductId: productX, ProductCode: "SKU1", Name: "Widget",
 					Count: lineQty, Total: float64(unitPrice * lineQty),
 				},
 			},
@@ -105,7 +105,7 @@ func TestStockCost_ScopedToTheWarehouse(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: theirs,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 5, Total: 4242},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 5, Total: 4242},
 		},
 	}))
 	if err != nil {
@@ -149,7 +149,7 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			// Deliberately indivisible: 10.000 / 3 = 3.333,33…
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 3, Total: 10000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 3, Total: 10000},
 		},
 	}))
 	if err != nil {
@@ -206,7 +206,7 @@ func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 100000},
 		},
 	}))
 	if err != nil {
@@ -248,7 +248,7 @@ func TestStockCost_FreightIsSpreadOverEveryUnitOrdered(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		ShipmentCost: 20000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 100000},
 		},
 	}))
 	if err != nil {
@@ -299,8 +299,8 @@ func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		ShipmentCost: 20000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 8, Total: 80000},
-			{ProductId: productY, Sku: "SKU2", Name: "Gadget", Count: 2, Total: 40000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 8, Total: 80000},
+			{ProductId: productY, ProductCode: "SKU2", Name: "Gadget", Count: 2, Total: 40000},
 		},
 	}))
 	if err != nil {

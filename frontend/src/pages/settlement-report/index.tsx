@@ -25,6 +25,8 @@ import { GroupTable } from "./components/GroupTable";
 import { ReportSummary } from "./components/ReportSummary";
 import { SeriesTable } from "./components/SeriesTable";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 
 const PAGE_SIZE = 20;
 
@@ -81,7 +83,11 @@ export function SettlementReportPage() {
 
   const teamId = current?.teamId;
   const { from, to } = windowOf(range);
-  const valid = from !== "" && to !== "" && from <= to;
+  // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
+  // under the picker says why rather than showing a refusal.
+  const span = spanDays(from, to);
+  const tooLong = span > MAX_PERIOD_DAYS;
+  const valid = from !== "" && to !== "" && from <= to && !tooLong;
 
   const summary = useSettlementSummary({ teamId, from, to, valid });
   const series = useSettlementSeries({
@@ -152,7 +158,9 @@ export function SettlementReportPage() {
 
       {!valid && (
         <Text fontSize="sm" color="fg.error" data-testid="report-range-invalid">
-          {t("settlementReport.rangeInvalid")}
+          {tooLong
+            ? t("settlementReport.rangeTooLong", { days: span, max: MAX_PERIOD_DAYS })
+            : t("settlementReport.rangeInvalid")}
         </Text>
       )}
 
@@ -165,6 +173,13 @@ export function SettlementReportPage() {
       <RefreshOverlay busy={summary.isFetching && !summary.isPending}>
         <ReportSummary measure={summary.data} />
       </RefreshOverlay>
+
+      {/* AS OF WHEN the figures are (a-money-metric-says-as-of-when) — a fold is a projection, never live. */}
+      {summary.data?.asOfUnix !== undefined && summary.data?.asOfUnix > 0n && (
+        <Text fontSize="xs" color="fg.muted" data-testid="report-as-of">
+          {t("common.asOf", { time: formatUnixDateTimeShort(summary.data?.asOfUnix) })}
+        </Text>
+      )}
 
       <Stack gap="field">
         <Heading size="sm">{t("settlementReport.overTime")}</Heading>

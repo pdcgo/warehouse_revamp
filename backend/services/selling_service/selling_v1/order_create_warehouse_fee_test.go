@@ -22,8 +22,8 @@ func feeOrderReq(shopID uint64) *sellingv1.OrderCreateRequest {
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 2},
-			{ProductId: 2, Sku: "SKU2", Name: "Gadget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
+			{ProductId: 2, ProductCode: "SKU2", Name: "Gadget", Quantity: 1},
 		},
 	}
 }

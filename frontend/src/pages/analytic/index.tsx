@@ -48,6 +48,8 @@ import { ReportHeadline } from "./components/ReportHeadline";
 import { ReportTable } from "./components/ReportTable";
 import { fieldLabel, keyLabel, useKeyNames } from "./format";
 import { ANALYTIC_PENDING } from "./pending";
+import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 
 /** The filters still picked from SAMPLE entries — no served metric narrows by a product or a supplier yet. */
 type SampleFilter = "product" | "supplier";
@@ -93,7 +95,11 @@ export function AnalyticPage() {
   const shared: FilterType[] = defs.length > 0 ? sharedFilters(defs) : ["dateRange"];
   const sort = state.sort ?? defaultSort(state.groupBy, state.metricIds);
   const { from, to } = windowOf(state.range);
-  const valid = from !== "" && to !== "" && from <= to;
+  // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
+  // under the picker says why rather than showing a refusal.
+  const span = spanDays(from, to);
+  const tooLong = span > MAX_PERIOD_DAYS;
+  const valid = from !== "" && to !== "" && from <= to && !tooLong;
 
   const filters = {
     from,
@@ -331,7 +337,9 @@ export function AnalyticPage() {
 
       {!valid && (
         <Text fontSize="sm" color="fg.error" data-testid="analytic-range-invalid">
-          {t("analytic.rangeInvalid")}
+          {tooLong
+            ? t("analytic.rangeTooLong", { days: span, max: MAX_PERIOD_DAYS })
+            : t("analytic.rangeInvalid")}
         </Text>
       )}
 
@@ -406,6 +414,12 @@ export function AnalyticPage() {
                   labelOf={(key) => keyLabel(state.groupBy, key, t, i18n.language, names)}
                 />
               </Tabs.Content>
+              {/* AS OF WHEN the figures are (a-money-metric-says-as-of-when) — the oldest of the services read. */}
+              {report.asOfUnix !== undefined && report.asOfUnix > 0n && (
+                  <Text fontSize="xs" color="fg.muted" data-testid="analytic-as-of">
+                    {t("common.asOf", { time: formatUnixDateTimeShort(report.asOfUnix) })}
+                  </Text>
+                )}
               {/* No total, only whether another page follows (a-page-says-whether-another-follows) — the growing pager. */}
               <GrowingPager
                 page={state.page}

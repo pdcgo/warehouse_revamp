@@ -72,6 +72,12 @@ export interface ReportResult {
   cells: Record<string, Record<ReportKey, MetricBody>>;
   /** metricId → the headline body, group SUMMARY. */
   summary: Record<string, MetricBody>;
+  /**
+   * AS OF WHEN (a-money-metric-says-as-of-when) — the OLDEST of the served services' times: each service's figures hold
+   * what its fold claimed up to its own time, so the table as a whole holds what was claimed up to the oldest. Unset
+   * when no served metric is asked, or no served service has folded anything yet.
+   */
+  asOfUnix?: bigint;
 }
 
 export const EMPTY_REPORT: ReportResult = { keys: [], hasNext: false, cells: {}, summary: {} };
@@ -296,7 +302,7 @@ interface MetricClient {
     filters: Filter[];
     keys?: MessageInitShape<typeof MetricKeysSchema>;
     metricIds: string[];
-  }): Promise<{ metricDatas: AnyMetricData[] }>;
+  }): Promise<{ metricDatas: AnyMetricData[]; asOfUnix: bigint }>;
 }
 
 function clientOf(def: MetricDef): MetricClient {
@@ -364,6 +370,7 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
     summary[def.metricId] = sampleService.summary(def, req.filters);
   }
 
+  const asOfs: bigint[] = [];
   const byService = new Map<string, MetricDef[]>();
   for (const def of defs.filter((d) => d.schema)) byService.set(def.service, [...(byService.get(def.service) ?? []), def]);
 
@@ -380,6 +387,8 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
           : undefined,
       ]);
 
+      if (headline.asOfUnix > 0n) asOfs.push(headline.asOfUnix);
+
       served.forEach((def, i) => {
         summary[def.metricId] = answerOf(def.schema!, headline.metricDatas[i]!).summary ?? {};
 
@@ -389,7 +398,9 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
     }),
   );
 
-  return { keys, hasNext, cells, summary };
+  const asOfUnix = asOfs.length > 0 ? asOfs.reduce((a, b) => (b < a ? b : a)) : undefined;
+
+  return { keys, hasNext, cells, summary, asOfUnix };
 }
 
 /**

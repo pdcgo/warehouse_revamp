@@ -14,7 +14,7 @@ import (
 
 // ProductList returns one half of the scoped team's catalogue, paginated — ACTIVE by default, or the
 // ARCHIVED half when the filter asks for it (the two tabs on the product list). The filter's `q`
-// filters by name or SKU; `sort` orders the page (default newest-first); `data_request` selects which
+// filters by name or product code; `sort` orders the page (default newest-first); `data_request` selects which
 // slices the response carries per product. See the guideline list shape in
 // guidelines/service-guideline.md.
 func (s *Service) ProductList(
@@ -30,11 +30,11 @@ func (s *Service) ProductList(
 	query := s.db.
 		WithContext(ctx).
 		Model(&product_service_models.Product{}).
-		Where("team_id = ? AND deleted = ?", req.Msg.GetTeamId(), archived)
+		Where("team_id = ? AND archived = ?", req.Msg.GetTeamId(), archived)
 
 	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
-		query = query.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
+		query = query.Where("name ILIKE ? OR product_code ILIKE ?", pattern, pattern)
 	}
 
 	var total int64

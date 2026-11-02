@@ -186,7 +186,7 @@ flowchart LR
 | an expense row | never changes after it is saved. `ExpenseUpdate` is removed |
 | a correction | a new row: another expense to add cost, or an adjustment to correct one. Proposed: the adjustment names the expense it corrects |
 | the reports | each new row publishes its event, so the events-only reports ([a-report-is-fed-by-events-only-for-now](#a-report-is-fed-by-events-only-for-now)) need nothing special |
-| ⛔ today | `ExpenseUpdate` overwrites `amount` and `occurred_at` in place and publishes nothing ([expense_update.go](../../../backend/services/expense_service/expense_v1/expense_update.go)) |
+| ✅ built *(2026-11-02)* | `ExpenseUpdate` is gone — see [every-correction-is-a-signed-adjustment](#every-correction-is-a-signed-adjustment). Was: `ExpenseUpdate` overwrote `amount` and `occurred_at` in place and published nothing (`expense_update.go`, deleted) |
 | still open, in [Q6](./context_clarify.md#question) | ~~the adjustment's date~~ ✅ [an-adjustment-counts-on-the-day-it-fixes](#an-adjustment-counts-on-the-day-it-fixes) · whether `ExpenseVoid` stays · how an adjustment that reduces is written, since amounts are always positive today |
 
 ---
@@ -270,5 +270,14 @@ flowchart LR
 | [expense_service/rpc.md](../../services/expense_service/rpc.md) §Voided rows | voided rows excluded and struck through | updated by the build, in the same commit |
 | [database-schema.md](../../database-schema.md) `expense_records` | `voided_at` | updated by the build's migration, in the same commit |
 
-⛔ **Not built.** [expense_update.go](../../../backend/services/expense_service/expense_v1/expense_update.go) still
-overwrites in place and `expense_service` publishes nothing — the build is its own pass.
+✅ **Built 2026-11-02.**
+
+| | |
+| --- | --- |
+| the contract | `ExpenseAdjust` replaces `ExpenseUpdate` and `ExpenseVoid`; a row carries `adjusts_expense_id` and, on an expense, `net_amount` ([expense.proto](../../../proto/warehouse/expense/v1/expense.proto)) |
+| the table | migration `00002`: `adjusts_expense_id`, a CHECK per kind of row, `voided_at` dropped, every voided row turned into its expense plus an adjustment of minus its amount |
+| the floor | [expense_adjust.go](../../../backend/services/expense_service/expense_v1/expense_adjust.go) locks the expense row, refuses an adjustment of an adjustment and a net below 0 |
+| Batalkan | ⚠ my build detail: it writes minus the expense's **net**, not its original amount — on an expense already corrected down, minus the original would cross the floor and be refused |
+| the screen | *Edit* is **Adjust** — a direction (Reduce / Add) and an amount, showing what it will count for; **Batalkan** confirms, then adjusts by minus the net; an adjustment is its own muted row with its sign; an expense shows *now Rp …* once corrected |
+| tests | `expense_adjust_test.go` (the example above, Batalkan, adding, the floor, no chains, the refusals), the schema CHECK, the daily day at 0, and `e2e/expenses.spec.ts` |
+| ⛔ still not built | the events — `expense_service` publishes nothing yet, so no report or account hears an adjustment |

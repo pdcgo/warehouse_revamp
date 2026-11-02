@@ -19,7 +19,7 @@ func TestProductReservedStock_CreateListUpdate(t *testing.T) {
 	svc := newService(t, db)
 
 	created, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
-		TeamId: 2, Sku: "SKU-1", Name: "Widget", CategoryId: 1, ReservedStock: 5,
+		TeamId: 2, ProductCodePart: "SKU-1", Name: "Widget", CategoryId: 1, ReservedStock: 5,
 	}))
 	if err != nil {
 		t.Fatalf("ProductCreate: %v", err)
@@ -61,7 +61,7 @@ func TestProductReservedStock_AbsentOnUpdateLeavesItAlone(t *testing.T) {
 	svc := newService(t, db)
 
 	created, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
-		TeamId: 2, Sku: "SKU-1", Name: "Widget", CategoryId: 1, ReservedStock: 12,
+		TeamId: 2, ProductCodePart: "SKU-1", Name: "Widget", CategoryId: 1, ReservedStock: 12,
 	}))
 	if err != nil {
 		t.Fatalf("ProductCreate: %v", err)
@@ -87,7 +87,7 @@ func TestProductReservedStock_DefaultsToNone(t *testing.T) {
 	svc := newService(t, db)
 
 	created, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
-		TeamId: 2, Sku: "SKU-1", Name: "Widget", CategoryId: 1,
+		TeamId: 2, ProductCodePart: "SKU-1", Name: "Widget", CategoryId: 1,
 	}))
 	if err != nil {
 		t.Fatalf("ProductCreate: %v", err)

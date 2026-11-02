@@ -160,7 +160,7 @@ func (s *Service) RestockRequestUpdate(
 			return totalsErr
 		}
 
-		row, logErr := recordRestockLogRow(tx, rr.ID, rr.Status, rr.Status, actorFrom(ctx), restockLogEdited, editedAt)
+		row, logErr := recordRestockLogRow(tx, rr.ID, rr.Status, rr.Status, actorFrom(ctx), overrideFrom(ctx), restockLogEdited, editedAt)
 		if logErr != nil {
 			return logErr
 		}

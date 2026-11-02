@@ -65,7 +65,7 @@ func (s *Service) RestockRequestArrive(
 			return updErr
 		}
 
-		logErr := recordRestockLog(tx, rr.ID, from, restockStatusArrived, actor, restockLogArrived, now)
+		logErr := recordRestockLog(tx, rr.ID, from, restockStatusArrived, actor, overrideFrom(ctx), restockLogArrived, now)
 		if logErr != nil {
 			return logErr
 		}

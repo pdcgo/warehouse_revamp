@@ -48,14 +48,30 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/lia
 // and the pre-order credit check (#189).
 service LiabilityService {
   // The position list (#185) — one row per counterparty, BOTH DIRECTIONS in one list.
-  rpc LiabilityPositionList(LiabilityPositionListRequest) returns (LiabilityPositionListResponse);
+  rpc LiabilityPositionList(LiabilityPositionListRequest) returns (LiabilityPositionListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The counterparty detail's running history (#185).
-  rpc LiabilityLogList(LiabilityLogListRequest) returns (LiabilityLogListResponse);
+  rpc LiabilityLogList(LiabilityLogListRequest) returns (LiabilityLogListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // What the ledger moved PER DAY — a warehouse's income half of the daily statement.
-  rpc LiabilityDaily(LiabilityDailyRequest) returns (LiabilityDailyResponse);
+  rpc LiabilityDaily(LiabilityDailyRequest) returns (LiabilityDailyResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The DEBTOR's side of a limit (the-debtor-sees-the-limits-set-on-it): for each team the asking team owes,
   // the limit that team set on it, the debt it already carries, and how close it stands.
-  rpc LiabilityCreditByIds(LiabilityCreditByIdsRequest) returns (LiabilityCreditByIdsResponse);
+  rpc LiabilityCreditByIds(LiabilityCreditByIdsRequest) returns (LiabilityCreditByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // Liability is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
@@ -68,20 +84,36 @@ service LiabilityPaymentService {
   rpc LiabilityPaymentRecord(LiabilityPaymentRecordRequest) returns (LiabilityPaymentRecordResponse);
   rpc LiabilityPaymentConfirm(LiabilityPaymentConfirmRequest) returns (LiabilityPaymentConfirmResponse);
   rpc LiabilityPaymentReject(LiabilityPaymentRejectRequest) returns (LiabilityPaymentRejectResponse);
-  rpc LiabilityPaymentList(LiabilityPaymentListRequest) returns (LiabilityPaymentListResponse);
+  rpc LiabilityPaymentList(LiabilityPaymentListRequest) returns (LiabilityPaymentListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // A CREDITOR asks its debtor to pay (a-creditor-may-request-payment): a notice that POSTS NOTHING and BLOCKS NOTHING. Payment still starts
+  // with the debtor, through LiabilityPaymentRecord. Sending again replaces the request; the debtor recording a
+  // payment to that creditor clears it.
+  rpc LiabilityPaymentRequestSend(LiabilityPaymentRequestSendRequest) returns (LiabilityPaymentRequestSendResponse);
 }
 
 // A creditor's own terms toward its debtors (#189): how much it will let a team owe it. The fee a warehouse charges per
 // order is not a term — it is warehouse_service's, frozen on each order (the-flat-rate-is-dropped-last) — and neither is
 // the markup on its products, which is the product's (the-ledger-charges-the-frozen-line-total).
 service LiabilityTermsService {
-  rpc LiabilityTermsList(LiabilityTermsListRequest) returns (LiabilityTermsListResponse);
+  rpc LiabilityTermsList(LiabilityTermsListRequest) returns (LiabilityTermsListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc LiabilityTermsSet(LiabilityTermsSetRequest) returns (LiabilityTermsSetResponse);
   // Removing a credit limit means DELETING the terms row, never zeroing it — see LiabilityTerms.
   rpc LiabilityTermsDelete(LiabilityTermsDeleteRequest) returns (LiabilityTermsDeleteResponse);
   // Every change to a limit, in order — see LiabilityTermsChange for why the latest values are not
   // enough.
-  rpc LiabilityTermsHistoryList(LiabilityTermsHistoryListRequest) returns (LiabilityTermsHistoryListResponse);
+  rpc LiabilityTermsHistoryList(LiabilityTermsHistoryListRequest) returns (LiabilityTermsHistoryListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // WHAT CAUSED an entry (§4.4). A typed pair `(source_type, source_id)`, never a free-text note:
@@ -251,6 +283,47 @@ message LiabilityPosition {
   // for it — a payment nobody notices is a debt that stays open for no reason. It is the row-level
   // half of the nav badge.
   uint32 awaiting_confirmation = 4;
+
+  // THE OPEN PAYMENT REQUEST on this pair, either way (a-creditor-may-request-payment): the counterparty asking this team to pay, or this
+  // team having asked it. Absent when there is none. It moves nothing — the debtor still pays through the payment flow.
+  LiabilityPaymentRequest payment_request = 5;
+}
+
+// LiabilityPaymentRequest — a creditor's notice that it is owed (a-creditor-may-request-payment). No entry, no block, no due date.
+message LiabilityPaymentRequest {
+  // Who asks, and who is asked.
+  uint64 creditor_team_id = 1;
+  uint64 debtor_team_id = 2;
+  // What the debtor owed when it was asked, whole rupiah — the moment's figure, not a live one.
+  int64 amount = 3;
+  uint64 requested_by_user_id = 4;
+  int64 requested_at_unix = 5;
+}
+
+message LiabilityPaymentRequestSendRequest {
+  // The CREDITOR team's owner and admin (a-creditor-may-request-payment) — warehouse or selling, whichever is owed.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The creditor — the team that is owed — and the scope.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The debtor asked. It must owe the creditor something now.
+  uint64 debtor_team_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message LiabilityPaymentRequestSendResponse {
+  LiabilityPaymentRequest request = 1;
 }
 
 message LiabilityPositionListFilter {

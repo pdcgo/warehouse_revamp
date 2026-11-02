@@ -270,7 +270,7 @@ flowchart LR
    [the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price).
 
 7. ✅ *(2026-10-31)* **Answered: `product_code`, composed on write** — [the-field-is-product-code-composed-on-write](./context_decision.md#the-field-is-product-code-composed-on-write);
-   `sku` goes. ⛔ Not built. Kept as a line so the numbers hold.
+   `sku` goes. ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 8. ✅ *(2026-10-31)* **Answered and built: the four writes drop the warehouse roles** —
    [the-product-writes-drop-the-warehouse-roles](./context_decision.md#the-product-writes-drop-the-warehouse-roles); no team-type read,
    since a selling role exists only in a selling team. Kept as a line so the numbers hold.

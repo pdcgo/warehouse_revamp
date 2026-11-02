@@ -22,9 +22,10 @@ type OrderLine struct {
 type Order struct {
 	WarehouseID uint64
 	// The ORDERING team — the transaction's team (an-order-transaction-is-the-ordering-teams).
-	TeamID  uint64
-	ActorID uint64
-	Lines   []OrderLine
+	TeamID     uint64
+	ActorID    uint64
+	IsOverride bool
+	Lines      []OrderLine
 }
 
 // TakenLine is what one line took: its units and the value its owner's batches gave up.
@@ -70,6 +71,7 @@ func PostOrder(tx *gorm.DB, o Order) (models.InventoryTransaction, []TakenLine, 
 		TeamID:      o.TeamID,
 		TxType:      models.TxOrder,
 		ActorID:     o.ActorID,
+		IsOverride:  o.IsOverride,
 	})
 	if err != nil {
 		return t, nil, err

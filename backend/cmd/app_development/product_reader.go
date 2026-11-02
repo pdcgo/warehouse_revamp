@@ -11,9 +11,9 @@ import (
 )
 
 // inventoryProductReader answers inventory's ProductReader from product_service: who owns a product, whether the owner
-// locked it from other teams, its reserve, its markup, its sku and name. A restock carries only the team's own products
+// locked it from other teams, its reserve, its markup, its product code and name. A restock carries only the team's own products
 // (a-restock-carries-only-the-teams-own-products), the order take checks the rest before it opens a transaction
-// (the-take-checks-the-product-first), and a transfer line snapshots the sku and name at create.
+// (the-take-checks-the-product-first), and a transfer line snapshots the product code and name at create.
 //
 // It calls the handler directly, as productCatalog does: the calling RPC has already run its own policy against the
 // caller's team, and ProductByIds is scoped to that same team.
@@ -62,7 +62,7 @@ func (r *inventoryProductReader) Facts(
 					Private:        row.GetCrossLocked(),
 					ReservedStock:  int64(row.GetReservedStock()),
 					CrossMarkupBps: row.GetCrossMarkupBps(),
-					SKU:            row.GetSku(),
+					ProductCode:    row.GetProductCode(),
 					Name:           row.GetName(),
 				}
 			}

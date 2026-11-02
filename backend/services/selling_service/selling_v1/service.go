@@ -32,7 +32,7 @@ type Service struct {
 	// this service owns, so selling_service never imports liability_service — see credit_checker.go.
 	credit CreditChecker
 	// Product LABELS, for promoting a draft (#194). A draft line stores only a product_id, and an
-	// order line freezes the sku and name — see product_catalog.go for why they cannot come from the
+	// order line freezes the product code and name — see product_catalog.go for why they cannot come from the
 	// request the way OrderCreate's do.
 	catalog ProductCatalog
 	// A user's role in a team — what ShopAccessCheck needs to tell a manager, who writes on any shop,

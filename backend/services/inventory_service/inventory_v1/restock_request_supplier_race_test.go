@@ -42,7 +42,7 @@ const (
 )
 
 func raceRestockItems() []*inventoryv1.RestockRequestItem {
-	return []*inventoryv1.RestockRequestItem{{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100}}
+	return []*inventoryv1.RestockRequestItem{{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100}}
 }
 
 // raceRestockItemsFrom is the same line naming a supplier — the supplier rides each line

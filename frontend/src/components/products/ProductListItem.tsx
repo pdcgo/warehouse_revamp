@@ -11,7 +11,7 @@ export interface ProductListItemProps {
   product: {
     id?: bigint;
     teamId?: bigint;
-    sku?: string;
+    productCode?: string;
     name?: string;
     defaultImageUrl?: string;
     defaultImageThumbnailUrl?: string;
@@ -48,7 +48,7 @@ export interface ProductListItemProps {
    * another system: a marketplace listing, a supplier's sheet (owner, on the products list: *"sku copyable"*). The click
    * does not reach a clickable row. Omit it and the SKU is plain text, as on every screen that does not need it.
    */
-  skuCopyable?: boolean;
+  productCodeCopyable?: boolean;
 }
 
 // ProductListItem is the shared way to show a product (#128): its cover image, name + SKU, the owning
@@ -66,7 +66,7 @@ export function ProductListItem({
   action,
   size = "md",
   onImageClick,
-  skuCopyable = false,
+  productCodeCopyable = false,
 }: ProductListItemProps) {
   const { t } = useTranslation();
   const large = size === "lg";
@@ -77,10 +77,10 @@ export function ProductListItem({
 
   const title =
     product.name ||
-    product.sku ||
+    product.productCode ||
     (product.id !== undefined ? t("productListItem.productFallback", { id: product.id.toString() }) : "");
   // Don't repeat the SKU underneath when it IS the title (a product with no name).
-  const sku = product.sku && product.sku !== title ? product.sku : undefined;
+  const productCode = product.productCode && product.productCode !== title ? product.productCode : undefined;
 
   const team =
     teamName ||
@@ -141,14 +141,14 @@ export function ProductListItem({
           {title}
         </Text>
         <HStack gap="2" minW="0">
-          {sku &&
-            (skuCopyable ? (
+          {productCode &&
+            (productCodeCopyable ? (
               <Text as="span" fontSize="xs" color="fg.muted" flexShrink={0}>
-                <CopyText value={sku} fontSize="xs" testId={`product-list-item-sku-${product.id ?? ""}`} />
+                <CopyText value={productCode} fontSize="xs" testId={`product-list-item-sku-${product.id ?? ""}`} />
               </Text>
             ) : (
               <Text fontSize="xs" color="fg.muted" lineClamp={1} flexShrink={0}>
-                {sku}
+                {productCode}
               </Text>
             ))}
           {team && (

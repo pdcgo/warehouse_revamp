@@ -32,7 +32,7 @@ export interface TransferPlacementFixture {
 export interface TransferLineFixture {
   id: bigint;
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   count: bigint;
   /** The value the out-leg took — exact, from A's batches. */
@@ -87,10 +87,10 @@ export interface TransferFixture {
   logs: TransferLogFixture[];
 }
 
-const BERAS = { productId: 74n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg" };
-const KOPI = { productId: 71n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g" };
-const TEH = { productId: 72n, sku: "SKU-TEH-100", name: "Teh Melati 100g" };
-const GULA = { productId: 73n, sku: "SKU-GULA-1K", name: "Gula Pasir 1kg" };
+const BERAS = { productId: 74n, productCode: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg" };
+const KOPI = { productId: 71n, productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g" };
+const TEH = { productId: 72n, productCode: "SKU-TEH-100", name: "Teh Melati 100g" };
+const GULA = { productId: 73n, productCode: "SKU-GULA-1K", name: "Gula Pasir 1kg" };
 
 const at = (placementId: bigint, quantity: number): TransferPlacementFixture => ({
   placementId,
@@ -99,7 +99,7 @@ const at = (placementId: bigint, quantity: number): TransferPlacementFixture => 
 
 function line(
   id: number,
-  product: { productId: bigint; sku: string; name: string },
+  product: { productId: bigint; productCode: string; name: string },
   count: number,
   total: number,
   picks: TransferPlacementFixture[],

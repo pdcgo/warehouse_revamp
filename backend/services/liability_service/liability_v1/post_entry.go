@@ -54,6 +54,12 @@ type Posting struct {
 	// because a caller failed to thread an id is a ledger that loses money to a plumbing bug. The
 	// callers are where the id is required.
 	ActorID uint64
+
+	// Whether that person was Root or the Administrator acting inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service). Both legs carry it, as both carry the actor. Set by the caller that
+	// knows who acted — never derived here, because PostEntry is policy-free and an event-driven posting has no caller:
+	// an order's fees, its reversal and a restock's courier charge take it from the event's `actor_is_override`.
+	IsOverride bool
 }
 
 // PostEntry writes BOTH LEGS of one movement, in one transaction.
@@ -172,6 +178,7 @@ func (s *Service) postLeg(
 		GroupID:        groupID,
 		BalanceAfter:   balance,
 		ActorID:        p.ActorID,
+		IsOverride:     p.IsOverride,
 	}
 
 	err = tx.Create(&entry).Error

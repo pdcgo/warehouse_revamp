@@ -4,7 +4,7 @@ import { fromHere } from "../../lib/cameFrom";
 import { Badge, Box, Button, Flex, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
 import { Archive, ArrowLeft, Plus } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
@@ -125,6 +125,7 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
 
   // The list as it stands rides along, so the form's Back returns to it filtered (the-form-returns-where-it-was-opened).
   const openCreate = () => navigate("/products/new", { state: fromHere(location) });
+  const writable = canWrite(current);
   const openArchive = () => navigate("/products/archived");
 
   return (
@@ -167,7 +168,9 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
               menuLabel={t("products.table.actions")}
               actions={[
                 { id: "archive", label: t("products.archiveView.open"), icon: Archive, testId: "open-archived-products", onClick: openArchive },
-                { id: "create", label: t("products.newProduct"), icon: Plus, primary: true, testId: "open-create-product", onClick: openCreate },
+                ...(writable
+                  ? [{ id: "create", label: t("products.newProduct"), icon: Plus, primary: true, testId: "open-create-product", onClick: openCreate }]
+                  : []),
               ]}
             />
           ) : (
@@ -176,10 +179,12 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
                 <Icon as={Archive} boxSize="4" />
                 {t("products.archiveView.open")}
               </Button>
-              <Button size="xs" colorPalette="brand" data-testid="open-create-product" onClick={openCreate}>
-                <Icon as={Plus} boxSize="4" />
-                {t("products.newProduct")}
-              </Button>
+              {writable && (
+                <Button size="xs" colorPalette="brand" data-testid="open-create-product" onClick={openCreate}>
+                  <Icon as={Plus} boxSize="4" />
+                  {t("products.newProduct")}
+                </Button>
+              )}
             </HStack>
           ))}
       </Flex>
@@ -291,7 +296,7 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
           onSortChange={setSort}
           filtered={filterCount > 0}
           onClearFilters={clearFilters}
-          onCreate={archived ? undefined : openCreate}
+          onCreate={archived || !writable ? undefined : openCreate}
         />
       )}
     </Stack>

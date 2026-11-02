@@ -82,7 +82,7 @@ func (s *Service) RestockRequestCreate(
 		// THE FIRST ROW OF ITS TRAIL (every-status-change-is-logged). `rr.CreatedAt` rather than a fresh time.Now():
 		// the log must carry the same instant the row does, or the trail and the created-date filter disagree about
 		// which second the restock was raised.
-		logErr := recordRestockLog(tx, rr.ID, "", restockStatusOngoing, rr.CreatedByUserID, restockLogCreated, rr.CreatedAt)
+		logErr := recordRestockLog(tx, rr.ID, "", restockStatusOngoing, rr.CreatedByUserID, overrideFrom(ctx), restockLogCreated, rr.CreatedAt)
 		if logErr != nil {
 			return logErr
 		}

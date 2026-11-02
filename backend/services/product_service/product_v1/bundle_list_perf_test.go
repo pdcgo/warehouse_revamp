@@ -51,9 +51,9 @@ func seedBundles(t *testing.T, db *gorm.DB) bundleSeed {
 			name = fmt.Sprintf("Gula %d", i)
 		}
 		products = append(products, product_service_models.Product{
-			TeamID: perfBundleTeam + uint64(i%perfBundleTeams),
-			SKU:    fmt.Sprintf("SKU-%05d", i),
-			Name:   name,
+			TeamID:      perfBundleTeam + uint64(i%perfBundleTeams),
+			ProductCode: fmt.Sprintf("SKU-%05d", i),
+			Name:        name,
 		})
 	}
 	san_perf.SeedRows(t, db, &products)
@@ -102,7 +102,7 @@ func perfService(t *testing.T) (*product_v1.Service, *gorm.DB, *san_perf.Probe, 
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	seed := seedBundles(t, db)
 
-	return product_v1.NewService(db), db, probe, seed
+	return product_v1.NewService(db, nil, nil), db, probe, seed
 }
 
 func perfCtx() context.Context {

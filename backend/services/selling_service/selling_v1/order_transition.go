@@ -95,18 +95,20 @@ func loadScopedOrder(tx *gorm.DB, teamID, orderID uint64, dst *selling_service_m
 // timeline nothing else can reconstruct — the row keeps only its current status — and that gap is
 // invisible until somebody opens the order weeks later and finds a step missing.
 //
-// `actor` is the caller (eventActor), 0 when unidentifiable. It is a parameter rather than read from a
-// context in here because this function has no ctx and should not grow one for a field: the handler
-// knows who is asking.
+// `actor` is the caller (eventActor), 0 when unidentifiable, and `override` whether they acted from outside the
+// scoped team (eventOverride, an-override-is-stamped-in-every-service). Both are parameters rather than read from a
+// context in here because this function has no ctx and should not grow one for a field: the handler knows who is
+// asking.
 func setOrderStatus(
 	tx *gorm.DB,
 	order *selling_service_models.Order,
 	status string,
 	from string,
 	actor uint64,
+	override bool,
 	note string,
 ) error {
-	_, err := setOrdersStatus(tx, []timelineMove{{order: order, from: from}}, status, actor, note)
+	_, err := setOrdersStatus(tx, []timelineMove{{order: order, from: from}}, status, actor, override, note)
 
 	return err
 }
@@ -129,6 +131,7 @@ func setOrdersStatus(
 	moves []timelineMove,
 	status string,
 	actor uint64,
+	override bool,
 	note string,
 ) ([]selling_service_models.OrderTimelineLog, error) {
 	if len(moves) == 0 {
@@ -147,12 +150,13 @@ func setOrdersStatus(
 	for _, move := range moves {
 		ids = append(ids, move.order.ID)
 		logs = append(logs, selling_service_models.OrderTimelineLog{
-			OrderID:   move.order.ID,
-			Status:    status,
-			Note:      note,
-			From:      move.from,
-			ActorID:   actor,
-			CreatedAt: now,
+			OrderID:    move.order.ID,
+			Status:     status,
+			Note:       note,
+			From:       move.from,
+			ActorID:    actor,
+			IsOverride: override,
+			CreatedAt:  now,
 		})
 	}
 

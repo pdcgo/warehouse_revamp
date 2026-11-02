@@ -35,7 +35,7 @@ func acceptWithCOD(
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: codSellingTeam, WarehouseId: codWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -96,7 +96,7 @@ func TestRestockAccept_TheEventCarriesTheCourierCharge(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: codSellingTeam, WarehouseId: codWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {

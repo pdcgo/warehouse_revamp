@@ -22,7 +22,7 @@ go run ./tools/san user reset-password --username ani
 | --- | --- | --- |
 | **the schema** | [`migrate`](#migrate) | goose, per service (HARD RULE 3) |
 | **the fixtures** | [`seed`](#seed) · [`db`](#db) · [`region`](#region) | dev data, the test database, reference data |
-| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) | acts on real data, through the real services |
+| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) · [`product recompose-codes`](#product-recompose-codes) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
 | **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
 
@@ -84,6 +84,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
 | [`supplier move`](#supplier-move) | Copy inventory_service's suppliers and stores into supplier_service, ids kept. One-shot, safe to re-run |
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
+| [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
@@ -148,7 +149,7 @@ go run ./tools/san migrate status --service user_service
 
 | Flag | Notes |
 | --- | --- |
-| `--service` / `-s` | Which service. **Prompts when omitted.** Discovered from the filesystem, so the list never goes stale |
+| `--service` / `-s` | Which service. **Prompts when omitted.** Discovered from the filesystem, so the list never goes stale — every `backend/services/*` with a `db_migrations` of its own; a service that owns no table (`mcp_service`) has nothing to migrate and is not offered |
 | `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt. Not needed for `create` |
 
 **Two prompts, in this order: database, then service.** The dangerous choice comes first, so
@@ -192,7 +193,7 @@ A test pins the order (`TestMigrationOrderPinsTheDependencies`).
 
 | Message | Cause |
 | --- | --- |
-| `unknown service "x" — have: [...]` | Typo. The list is the filesystem, so anything missing from it does not exist |
+| `unknown service "x" — have: [...]` | Typo — or a service with no `db_migrations` (`mcp_service`). The list is the filesystem, so anything missing from it does not exist |
 | `not inside a warehouse_revamp checkout: no go.mod beside backend/services …` | Run from outside the repo |
 | `a goose command is required (up, down, status, create, ...)` | `san migrate` with no goose verb |
 | `create needs a name: migrate create <name> --service <svc>` | `create` with no migration name |
@@ -298,6 +299,7 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | 4 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
 | 5 | the suppliers inventory_service set aside, into supplier_service | [`supplier move`](#supplier-move) |
 | 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
+| 6b | the product codes written before a code was composed — each team's code put in front, once | [`product recompose-codes`](#product-recompose-codes) |
 | 7 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller`, and Dev Warehouse's fee while it has none | [`seed dev`](#seed) |
 | 8 | the product-category tree | [`seed categories`](#seed) |
 | 9 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
@@ -602,6 +604,70 @@ therefore refuses any start on or before the live fold's first day.
 | --- | --- |
 | `supplier: event processing is locked (process_event_lock)` | A replay is running — the fold refuses while it holds the lock. Run the backfill after it finishes |
 | `relation "supplier_product_daily_reports" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first |
+
+---
+
+## `product recompose-codes`
+
+Puts each team's code in front of the product codes written before a code was **composed on write**
+([the-field-is-product-code-composed-on-write](../business/product/context_decision.md#the-field-is-product-code-composed-on-write)):
+`SHOE-42` of team `ABC` becomes `ABC-SHOE-42`. Archived products too — they keep their code. **Safe to re-run**: a code
+that already begins with its team's code and a dash is left alone. [`dev setup`](#dev-setup) runs it after the supplier
+steps.
+
+```sh
+go run ./tools/san product recompose-codes                      # prompts: Local or Production
+go run ./tools/san product recompose-codes --dsn "$DATABASE_URL"
+```
+
+| Flag | |
+| --- | --- |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+The team codes are read through **team_service's `TeamByIds` handler**, validated as the interceptor would — never its
+table, and no migration could have done it (HARD RULE 3). The write is product_service's own
+`product_v1.RecomposeProductCodes`, so the composition (`<team_code>-<part>`) is the one ProductCreate uses.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san product recompose-codes
+  participant PROD as product_service — RecomposeProductCodes
+  participant TEAM as team_service — TeamByIds handler
+  SAN->>PROD: run, in ONE transaction
+  PROD->>PROD: every product, locked, oldest first
+  PROD->>TEAM: the owning teams' codes, 200 ids a call
+  TEAM-->>PROD: id to team_code — a deleted or unknown team is omitted
+  PROD->>PROD: per row — no team code, leave it and name it, already prefixed, leave it, else compose
+  PROD->>PROD: a code two rows would share, refuse the whole run and name both
+  PROD->>PROD: park each changed row on a placeholder unique by id, then set its composed code
+  PROD-->>SAN: recomposed, already composed, left without a team code
+```
+
+| guard | stops |
+| --- | --- |
+| `<team_code>-` prefix check | a second run prefixing twice (`ABC-ABC-SHOE-42`) |
+| the collision check, before any write | two products ending up on one code — the run is refused with both named, nothing written |
+| the placeholder step | two rows trading codes tripping the unique index half way through |
+
+⚠ **Order, restock and transfer lines keep the code they were written under** — they are snapshots, and the command
+does not touch them. ⚠ A code a person typed with the team's prefix already, before composition existed, reads as
+composed and is left as it is — it is exactly the string composition would have produced.
+
+### Output
+
+```
+[Database Local] product codes: 12 recomposed, 0 already composed
+[Database Local] product codes: 1 left as they were — their team has no code: products [57]
+```
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `two products would carry one code: product 9 would become "ABC-SHOE-42", which product 4 already carries …` | Two of today's rows compose to one code. Rename one in the product form, then run it again |
+| `column "product_code" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first — product `00008` renames the column |
 
 ---
 

@@ -4,7 +4,7 @@ import { Button, Flex, Heading, Icon, Spacer, Stack, Tabs, Text } from "@chakra-
 import { ArrowLeft, Ban } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useOrder, useCancelOrder } from "../../features/orders/queries";
 import { SettlementTab } from "./components/SettlementTab";
 import { useActors } from "../../features/users/queries";
@@ -151,7 +151,7 @@ export function WarehouseOrderDetailPage() {
             still this team's decision, from PENDING only: a processed or picked order is handed back to
             pending by the warehouse first (who-may-cancel-a-pending-order). */}
 
-        {order.status === OrderStatus.PENDING && (
+        {order.status === OrderStatus.PENDING && canWrite(current) && (
           <ConfirmDialog
             title={t("orders.cancelOrder")}
             message={t("orders.cancelMessage", { id: order.id.toString() })}

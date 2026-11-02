@@ -267,13 +267,13 @@ func restockRequestToProto(r *inventory_service_models.Restock) *inventoryv1.Res
 		src := &r.Items[i]
 
 		item := &inventoryv1.RestockRequestItem{
-			Id:        src.ID,
-			ProductId: src.ProductID,
-			Sku:       src.SKU,
-			Name:      src.Name,
-			Count:     src.Count,
-			Total:     src.Total,
-			PriceUnit: src.PriceUnit,
+			Id:          src.ID,
+			ProductId:   src.ProductID,
+			ProductCode: src.ProductCode,
+			Name:        src.Name,
+			Count:       src.Count,
+			Total:       src.Total,
+			PriceUnit:   src.PriceUnit,
 			// What was in the box, broken included (any-warehouse-member-counts-what-arrived).
 			ReceivedCount: src.ReceivedCount,
 			Problems:      problems[src.ProductID],
@@ -354,7 +354,7 @@ func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service
 	for _, item := range in {
 		out = append(out, inventory_service_models.RestockItem{
 			ProductID:         item.GetProductId(),
-			SKU:               item.GetSku(),
+			ProductCode:       item.GetProductCode(),
 			Name:              item.GetName(),
 			Count:             item.GetCount(),
 			Total:             item.GetTotal(),
@@ -433,10 +433,11 @@ func recordRestockLog(
 	requestID uint64,
 	from, to string,
 	actor uint64,
+	override bool,
 	description string,
 	at time.Time,
 ) error {
-	_, err := recordRestockLogRow(tx, requestID, from, to, actor, description, at)
+	_, err := recordRestockLogRow(tx, requestID, from, to, actor, override, description, at)
 
 	return err
 }
@@ -447,6 +448,7 @@ func recordRestockLogRow(
 	requestID uint64,
 	from, to string,
 	actor uint64,
+	override bool,
 	description string,
 	at time.Time,
 ) (inventory_service_models.RestockLog, error) {
@@ -455,6 +457,7 @@ func recordRestockLogRow(
 		FromStatus:  from,
 		ToStatus:    to,
 		ActorUserID: actor,
+		IsOverride:  override,
 		Description: description,
 		CreatedAt:   at,
 	}

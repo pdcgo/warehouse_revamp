@@ -2,6 +2,7 @@ package product_v1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -17,7 +18,34 @@ import (
 func newService(t *testing.T, db *gorm.DB) *product_v1.Service {
 	t.Helper()
 
-	return product_v1.NewService(db)
+	return product_v1.NewService(db, history, teamCodes)
+}
+
+// teamCodes is the team code every product code is composed from (the-field-is-product-code-composed-on-write): team N's
+// code is "T<N>", so team 2's SHOE-42 is stored as T2-SHOE-42. The real one asks team_service at the composition root.
+var teamCodes = fakeTeamCodes{}
+
+// noCodeTeam is a team team_service does not know — its code reads "", and nothing can be composed for it.
+const noCodeTeam = 99
+
+type fakeTeamCodes struct{}
+
+func (fakeTeamCodes) TeamCode(_ context.Context, teamID uint64) (string, error) {
+	if teamID == noCodeTeam {
+		return "", nil
+	}
+
+	return fmt.Sprintf("T%d", teamID), nil
+}
+
+// history is the product HISTORY the delete asks (a-used-product-is-archived-never-deleted): the ids listed have one.
+// Tests set it; the real one joins inventory and the order side at the composition root.
+var history = fakeHistory{}
+
+type fakeHistory map[uint64]bool
+
+func (h fakeHistory) ProductHasHistory(_ context.Context, productID uint64) (bool, error) {
+	return h[productID], nil
 }
 
 // listRows pulls the PRODUCT (row) slice out of a guideline list response, keyed by product id. The
@@ -55,11 +83,11 @@ func byIdsRows(items map[uint64]*productv1.ProductByIdsResponseList) map[uint64]
 	return out
 }
 
-// insertProduct seeds an active product directly and returns its id.
-func insertProduct(t *testing.T, db *gorm.DB, teamID uint64, sku, name string) uint64 {
+// insertProduct seeds an active product directly, its code stored exactly as given, and returns its id.
+func insertProduct(t *testing.T, db *gorm.DB, teamID uint64, code, name string) uint64 {
 	t.Helper()
 
-	p := product_service_models.Product{TeamID: teamID, SKU: sku, Name: name}
+	p := product_service_models.Product{TeamID: teamID, ProductCode: code, Name: name}
 
 	err := db.Create(&p).Error
 	if err != nil {

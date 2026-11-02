@@ -55,6 +55,15 @@ flowchart LR
 | the retries | unchanged — 5 attempts from a 10 s backoff ([setup.go](../../../backend/pkgs/event_source/setup.go)) reach past the minute |
 | `supplier_service` | the same lock, the same `updated_at`, the same lease |
 
-⛔ **Not built.** Both [settlement](../../../backend/services/settlement_service/settlement_v1/analytic_replay_compute.go)'s
-and [supplier](../../../backend/services/supplier_service/supplier_v1/analytic_replay_compute.go)'s replay take the
-lock only when it is `off`, and both folds refuse any `on`.
+✅ **Built 2026-11-02**, the same in both services — `event_lock.go` in
+[settlement](../../../backend/services/settlement_service/settlement_v1/event_lock.go) and
+[supplier](../../../backend/services/supplier_service/supplier_v1/event_lock.go).
+
+| | |
+| --- | --- |
+| the age | read in SQL — `updated_at < NOW() - 60 seconds` — so the database's clock decides, never a server's |
+| the fold | an `on` lock past its lease reads as released, and the event is folded |
+| the next replay | takes the row `FOR UPDATE`, and takes the lock when it is `off` or past its lease |
+| ⚠ my build detail — the release | lets go only of the lock it took, matched by its `updated_at`: a replay that outlived its lease must not release the next replay's lock while that one deletes |
+| the log | error level, naming when the lock was taken — once per lock per process |
+| tests | per service: a live lock still refuses, a lock two minutes old is folded past, and a replay takes it over and releases it; the race audits pass on the new code |

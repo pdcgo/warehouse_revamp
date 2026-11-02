@@ -54,8 +54,12 @@ flowchart LR
 
 **What it resolves** (HARD RULE 11): the clarify's contradiction *a-recount-books-money-on-one-screen-only*.
 
-⛔ **Not built.** The recount branch of [stock_adjust.go](../../../backend/services/inventory_service/inventory_v1/stock_adjust.go)
-still moves no money.
+✅ **Built 2026-11-02.** The recount branch of [stock_adjust.go](../../../backend/services/inventory_service/inventory_v1/stock_adjust.go)
+reads what `PostRecount` already returns for the line — the owner, its adjustment transaction and the value of the
+batches taken — and, for a shortfall, posts `PostStockDamage` as *lost* inside the transaction (none when the owner is
+the warehouse) and one `PostStockLoss` under the recount's note after commit. No contract or schema change; the Adjust
+screen is unchanged. Tests: `TestStockAdjust_ARecountShortfallIsOwed`, `…SurplusOwesNothing`,
+`…OfTheWarehousesOwnGoodsOwesNobody`, and the write-off in `TestStockAdjust_WritesOffLossValue`.
 
 ## the-finished-count-comes-next-not-a-refined-port
 

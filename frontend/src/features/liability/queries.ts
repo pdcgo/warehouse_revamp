@@ -390,3 +390,44 @@ export function useDeleteTerms() {
     },
   });
 }
+
+// ─── the payment request (a-creditor-may-request-payment) ───────────────────────────────────────
+
+// ONE PAIR'S POSITION — what the pair detail reads for the open payment request, either way. The list filtered to one
+// counterparty, square pairs included: a request outlives nothing but a payment, and the screen must see it.
+//
+// The plain default, not `listQuery`: the key carries the counterparty, and keeping the previous key's row would show
+// one pair's request under another pair's name.
+export function useLiabilityPosition(teamId: bigint | undefined, counterpartyId: bigint) {
+  return useQuery({
+    queryKey: key.liability(teamId, { position: counterpartyId.toString() }),
+    enabled: teamId !== undefined && counterpartyId > 0n,
+    queryFn: async () => {
+      const res = await liabilityClient.liabilityPositionList({
+        teamId: teamId!,
+        filter: { counterpartyId, unsettledOnly: false },
+        dataRequest: positionRowData(),
+        page: { page: 1, limit: 1 },
+      });
+
+      return positionsFromList(res.items, res.ids)[0] ?? null;
+    },
+  });
+}
+
+// ASK A DEBTOR TO PAY — a notice on its balance. It POSTS NOTHING and BLOCKS NOTHING; sending again replaces the request
+// with the moment's figure. Every liability read is invalidated so both the pair and the list show it.
+export function useRequestPayment() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { teamId: bigint; debtorTeamId: bigint }) =>
+      liabilityPaymentClient.liabilityPaymentRequestSend({
+        teamId: args.teamId,
+        debtorTeamId: args.debtorTeamId,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["liability"] });
+    },
+  });
+}

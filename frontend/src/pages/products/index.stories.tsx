@@ -2,20 +2,21 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
-import { asRole } from "../../../.storybook/sessionScenario";
+import { asAdminTeam, asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { ProductsPage } from "./index";
 
 // THE PRODUCTS LIST — a selling team's catalogue: the stat row, the search and the warehouse lens, a row per product
 // with its stock, cost and sales figures, the lock in the row, Edit and Archive — and the ARCHIVE, a page of its own
 // opened from the header's Arsip button (the-archive-is-a-page-of-its-own), each row there offering Restore. The stub is
-// productStub.ts, writeable, with the server's rules — a SKU once among the live, archive is soft, restore can collide.
+// productStub.ts, writeable, with the server's rules — a code composed under the team's code (SL-03) and held once over
+// every row, archive keeps the code, so unarchive cannot collide.
 //
 // Toko Anggrek (team 15) holds 44 live products with invented but consistent figures:
 //
-//   SKU-ANG-001  Minyak Goreng Sawit 2L — Satuan     79 ready (30 + 24 in Gudang Pusat, 25 in Gudang Cabang)
-//   SKU-ANG-003  Tepung Terigu Serbaguna 1kg — Satuan nothing on a shelf
-//   archived:    SKU-ANG-001 (an older pack — its SKU now taken by the live one), SKU-ANG-LAMA
+//   SL-03-ANG-001  Minyak Goreng Sawit 2L — Satuan     79 ready (30 + 24 in Gudang Pusat, 25 in Gudang Cabang)
+//   SL-03-ANG-003  Tepung Terigu Serbaguna 1kg — Satuan nothing on a shelf
+//   archived:    SL-03-ANG-001 (an older pack — its SKU now taken by the live one), SL-03-ANG-LAMA
 
 function asAnggrekOwner() {
   asTeam(15n)();
@@ -44,7 +45,7 @@ type Story = StoryObj<typeof meta>;
 
 async function loaded(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  await canvas.findByTestId("product-row-SKU-ANG-001", {}, { timeout: 5000 });
+  await canvas.findByTestId("product-row-SL-03-ANG-001", {}, { timeout: 5000 });
   return canvas;
 }
 
@@ -52,7 +53,7 @@ async function loaded(canvasElement: HTMLElement) {
 async function openArchived(canvas: ReturnType<typeof within>) {
   await userEvent.click(canvas.getByTestId("open-archived-products"));
   await canvas.findByTestId("products-archive-page");
-  await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-LAMA")).toBeVisible());
+  await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-LAMA")).toBeVisible());
 }
 
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
@@ -84,9 +85,9 @@ export const TheCatalogueAndItsFigures: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("products-total-value")).toHaveTextContent(/^44$/));
     await waitFor(() => expect(canvas.getByTestId("products-ready-stock")).toHaveTextContent("pcs"));
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("79 pcs"));
-    await expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("Minyak Goreng Sawit 2L — Satuan");
-    await expect(canvas.getByTestId("product-row-SKU-ANG-003")).toHaveTextContent("0 pcs");
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("79 pcs"));
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("Minyak Goreng Sawit 2L — Satuan");
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-003")).toHaveTextContent("0 pcs");
   },
 };
 
@@ -94,10 +95,10 @@ export const TheCatalogueAndItsFigures: Story = {
 export const TheWarehouseLensRestatesTheStock: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("79 pcs"));
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("79 pcs"));
 
     await pickTeam(canvas.getByTestId("product-warehouse-filter"), "WH-02");
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("25 pcs"));
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("25 pcs"));
     await expect(canvas.getByTestId("products-total-value")).toHaveTextContent(/^44$/);
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("warehouse=14"));
   },
@@ -131,7 +132,7 @@ export const TheFiguresAreTheCardStrip: Story = {
  * (each-date-rides-under-its-stock): when it was last ordered under Reserved, when stock last arrived under Ongoing; only
  * the stock's age, in days, keeps a column. Old stock is in the warning tone.
  *
- * Only what holds on any later day is asserted: an age grows, so SKU-ANG-020 (its oldest units in since 20 Aug) is past
+ * Only what holds on any later day is asserted: an age grows, so SL-03-ANG-020 (its oldest units in since 20 Aug) is past
  * the 60 days now and stays past them. */
 export const TheDatesRideUnderTheirStock: Story = {
   play: async ({ canvasElement }) => {
@@ -144,20 +145,20 @@ export const TheDatesRideUnderTheirStock: Story = {
     await expect(header).not.toHaveTextContent("Oldest batch");
     await expect(header).not.toHaveTextContent("Reserved");
 
-    await waitFor(() => expect(canvas.getByTestId("stock-age-SKU-ANG-001")).toHaveTextContent(/^\d+ days?$/));
-    await expect(canvas.getByTestId("stock-age-SKU-ANG-020").firstElementChild).toHaveAttribute("data-stale", "true");
+    await waitFor(() => expect(canvas.getByTestId("stock-age-SL-03-ANG-001")).toHaveTextContent(/^\d+ days?$/));
+    await expect(canvas.getByTestId("stock-age-SL-03-ANG-020").firstElementChild).toHaveAttribute("data-stale", "true");
 
     // Under Reserved, its last order — or that it has none; under Ongoing, its last restock. As DATES, never "… ago"
     // (a-row-date-reads-as-a-date); only the stock's age is in days.
-    const row = canvas.getByTestId("product-row-SKU-ANG-002");
+    const row = canvas.getByTestId("product-row-SL-03-ANG-002");
     // The line is the date alone; what it is, is its tooltip (a-second-line-names-itself-in-a-tooltip).
-    await expect(within(row).getByTestId("last-order-SKU-ANG-002")).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
-    await expect(within(row).getByTestId("last-restock-SKU-ANG-002")).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+    await expect(within(row).getByTestId("last-order-SL-03-ANG-002")).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+    await expect(within(row).getByTestId("last-restock-SL-03-ANG-002")).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
     await expect(row).not.toHaveTextContent("ago");
-    await expect(canvas.getByTestId("last-order-SKU-ANG-001")).toHaveTextContent("No order yet");
+    await expect(canvas.getByTestId("last-order-SL-03-ANG-001")).toHaveTextContent("No order yet");
 
-    await userEvent.hover(within(row).getByTestId("last-restock-SKU-ANG-002"));
-    const hint = await screen.findByTestId("last-restock-SKU-ANG-002-hint");
+    await userEvent.hover(within(row).getByTestId("last-restock-SL-03-ANG-002"));
+    const hint = await screen.findByTestId("last-restock-SL-03-ANG-002-hint");
     await waitFor(() => expect(hint).toBeVisible());
     await expect(hint).toHaveTextContent("Last restock");
   },
@@ -169,14 +170,14 @@ export const TheCostRangeReadsAsARange: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     // Product, Cross, then the cost (the-cross-price-rides-under-the-markup).
-    const costOf = (sku: string) => within(canvas.getByTestId(`product-row-${sku}`)).getAllByRole("cell")[2]!;
+    const costOf = (productCode: string) => within(canvas.getByTestId(`product-row-${productCode}`)).getAllByRole("cell")[2]!;
 
     // The cost is the cell's first line; the cross price is the line under it.
-    const rangeOf = (sku: string) => costOf(sku).querySelector("p")!;
-    await waitFor(() => expect(rangeOf("SKU-ANG-001")).toHaveTextContent(/^Rp 45\.700 – Rp 47\.200$/));
-    // SKU-ANG-006 came in one delivery — one price, no dash.
-    await expect(rangeOf("SKU-ANG-006")).toHaveTextContent(/^Rp [\d.]+$/);
-    await expect(costOf("SKU-ANG-003")).toHaveTextContent(/^—$/);
+    const rangeOf = (productCode: string) => costOf(productCode).querySelector("p")!;
+    await waitFor(() => expect(rangeOf("SL-03-ANG-001")).toHaveTextContent(/^Rp 45\.700 – Rp 47\.200$/));
+    // SL-03-ANG-006 came in one delivery — one price, no dash.
+    await expect(rangeOf("SL-03-ANG-006")).toHaveTextContent(/^Rp [\d.]+$/);
+    await expect(costOf("SL-03-ANG-003")).toHaveTextContent(/^—$/);
   },
 };
 
@@ -193,33 +194,33 @@ export const TheCrossPriceRidesUnderTheCost: Story = {
     await expect(headings.indexOf("Cost range")).toBe(headings.indexOf("Cross") + 1);
     await expect(headings.indexOf("Lock")).toBe(headings.indexOf("Cost range") + 1);
 
-    await expect(canvas.getByTestId("cross-SKU-ANG-001")).toHaveTextContent(/^12\.5%$/);
+    await expect(canvas.getByTestId("cross-SL-03-ANG-001")).toHaveTextContent(/^12\.5%$/);
 
     // The cross price sits in the COST's cell, under the range.
-    const costCell = within(canvas.getByTestId("product-row-SKU-ANG-001")).getAllByRole("cell")[2]!;
+    const costCell = within(canvas.getByTestId("product-row-SL-03-ANG-001")).getAllByRole("cell")[2]!;
     await waitFor(() =>
-      expect(within(costCell).getByTestId("cross-price-SKU-ANG-001")).toHaveTextContent(/^Rp 51\.412 – Rp 53\.100$/),
+      expect(within(costCell).getByTestId("cross-price-SL-03-ANG-001")).toHaveTextContent(/^Rp 51\.412 – Rp 53\.100$/),
     );
-    await expect(canvas.getByTestId("cross-price-SKU-ANG-006")).toHaveTextContent(/^Rp 10\.255$/);
-    await expect(canvas.queryByTestId("cross-price-SKU-ANG-003")).toBeNull();
+    await expect(canvas.getByTestId("cross-price-SL-03-ANG-006")).toHaveTextContent(/^Rp 10\.255$/);
+    await expect(canvas.queryByTestId("cross-price-SL-03-ANG-003")).toBeNull();
 
     // The line names itself on hover, not in its text (a-second-line-names-itself-in-a-tooltip).
-    await userEvent.hover(canvas.getByTestId("cross-price-SKU-ANG-001"));
-    const hint = await screen.findByTestId("cross-price-SKU-ANG-001-hint");
+    await userEvent.hover(canvas.getByTestId("cross-price-SL-03-ANG-001"));
+    const hint = await screen.findByTestId("cross-price-SL-03-ANG-001-hint");
     await waitFor(() => expect(hint).toBeVisible());
     await expect(hint).toHaveTextContent("Cross price");
   },
 };
 
 /** The SKU copies on a click — and the click does not open the row it sits on. */
-export const TheSkuCopiesWithoutOpeningTheRow: Story = {
+export const TheProductCodeCopiesWithoutOpeningTheRow: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const sku = within(canvas.getByTestId("product-row-SKU-ANG-001")).getByTestId("product-list-item-sku-700");
+    const productCode = within(canvas.getByTestId("product-row-SL-03-ANG-001")).getByTestId("product-list-item-sku-700");
 
-    await expect(sku).toHaveAccessibleName(/SKU-ANG-001/);
-    await userEvent.click(sku);
-    await waitFor(() => expect(sku.hasAttribute("data-copied") || sku.hasAttribute("data-copy-failed")).toBe(true));
+    await expect(productCode).toHaveAccessibleName(/SL-03-ANG-001/);
+    await userEvent.click(productCode);
+    await waitFor(() => expect(productCode.hasAttribute("data-copied") || productCode.hasAttribute("data-copy-failed")).toBe(true));
     await expect(canvas.queryByTestId("at-product-detail")).toBeNull();
   },
 };
@@ -247,7 +248,7 @@ export const LockAndAgeFiltersAreHeldAndMarked: Story = {
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("age=60"));
 
     // Thrown away: an open product, and a young one, still show.
-    await expect(canvas.getByTestId("product-row-SKU-ANG-002")).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-002")).toBeVisible();
 
     await userEvent.click(within(canvas.getByTestId("products-filter")).getByRole("button", { name: "Clear Filters" }));
     await waitFor(() => expect(canvas.getByTestId("location-search")).not.toHaveTextContent("lock="));
@@ -274,7 +275,7 @@ export const TheHeadingSortsByName: Story = {
 export const TheWholeRowLightsUp: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const row = canvas.getByTestId("product-row-SKU-ANG-001");
+    const row = canvas.getByTestId("product-row-SL-03-ANG-001");
     const cells = within(row).getAllByRole("cell");
 
     const resting = getComputedStyle(cells[0]!).backgroundColor;
@@ -295,19 +296,19 @@ export const NothingMatchesAndClears: Story = {
     await expect(empty).toHaveTextContent("No products found.");
 
     await userEvent.click(within(empty).getByRole("button", { name: "Clear Filters" }));
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-001")).toBeVisible());
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toBeVisible());
     await expect(canvas.getByTestId("product-search")).toHaveValue("");
   },
 };
 
 /** The search reads the name and the SKU, on the live tab. */
-export const SearchesByNameOrSku: Story = {
+export const SearchesByNameOrProductCode: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await userEvent.type(canvas.getByTestId("product-search"), "lada", { delay: 40 });
-    await waitFor(() => expect(canvas.queryByTestId("product-row-SKU-ANG-001")).toBeNull());
-    await expect(canvas.getByTestId("product-row-SKU-ANG-010")).toHaveTextContent("Lada Bubuk");
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-001")).toBeNull());
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-010")).toHaveTextContent("Lada Bubuk");
   },
 };
 
@@ -325,16 +326,16 @@ export const TheArchiveIsAPageOfItsOwn: Story = {
     await expect(canvas.queryByTestId("product-lock-filter")).toBeNull();
     await expect(canvas.queryByTestId("open-create-product")).toBeNull();
 
-    await expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("Kemasan Lama");
-    await expect(canvas.queryByTestId("product-row-SKU-ANG-002")).toBeNull();
-    await expect(canvas.getByTestId("restore-SKU-ANG-LAMA")).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-001-L")).toHaveTextContent("Kemasan Lama");
+    await expect(canvas.queryByTestId("product-row-SL-03-ANG-002")).toBeNull();
+    await expect(canvas.getByTestId("restore-SL-03-ANG-LAMA")).toBeVisible();
     // The lock only READS on an archived row — no button to open its editor.
-    await expect(canvas.getByTestId("lock-SKU-ANG-LAMA")).toHaveTextContent("Open");
-    await expect(canvas.getByTestId("lock-SKU-ANG-LAMA").tagName).not.toBe("BUTTON");
+    await expect(canvas.getByTestId("lock-SL-03-ANG-LAMA")).toHaveTextContent("Open");
+    await expect(canvas.getByTestId("lock-SL-03-ANG-LAMA").tagName).not.toBe("BUTTON");
 
     await userEvent.click(canvas.getByTestId("products-archive-back"));
     await waitFor(() => expect(canvas.getByTestId("products-page")).toBeInTheDocument());
-    await expect(canvas.getByTestId("product-row-SKU-ANG-002")).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-002")).toBeVisible();
   },
 };
 
@@ -343,53 +344,37 @@ export const ArchiveConfirmsFirst: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("delete-SKU-ANG-002"));
+    await userEvent.click(canvas.getByTestId("archive-SL-03-ANG-002"));
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
-    await expect(dialog).toHaveTextContent("SKU-ANG-002");
+    await expect(dialog).toHaveTextContent("SL-03-ANG-002");
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
-    await waitFor(() => expect(canvas.queryByTestId("product-row-SKU-ANG-002")).toBeNull());
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-002")).toBeNull());
 
     await openArchived(canvas);
-    await expect(canvas.getByTestId("product-row-SKU-ANG-002")).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-002")).toBeVisible();
   },
 };
 
-/** Restoring under a SKU a live product took meanwhile is refused, naming the holder — and the screen asks for a new
- * SKU and restores under that. */
-export const RestoreCollidesAndAsksForANewSku: Story = {
+/** UNARCHIVE COMES BACK UNDER THE CODE IT KEPT (the-field-is-product-code-composed-on-write) — an archived product holds its
+ * code, so nothing can have taken it and there is nothing to resolve: one click, no dialog, and it is live again under
+ * the same code. */
+export const UnarchiveComesBackUnderTheCodeItKept: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await openArchived(canvas);
 
-    await userEvent.click(canvas.getByTestId("restore-SKU-ANG-001"));
-    const dialog = await screen.findByTestId("restore-conflict-dialog");
-    await waitFor(() => expect(dialog).toBeVisible());
-    await expect(dialog).toHaveTextContent("Minyak Goreng Sawit 2L — Satuan");
-
-    await userEvent.type(within(dialog).getByTestId("restore-new-sku"), "SKU-ANG-001-L", { delay: 20 });
-    await userEvent.click(within(dialog).getByTestId("restore-with-new-sku"));
-    await waitFor(() => expect(canvas.queryByTestId("product-row-SKU-ANG-001")).toBeNull());
-    await expect(canvas.getByTestId("product-row-SKU-ANG-LAMA")).toBeVisible();
-  },
-};
-
-/** A free SKU restores at once — the product leaves the Archived tab. */
-export const RestoreWithAFreeSku: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await openArchived(canvas);
-
-    await userEvent.click(canvas.getByTestId("restore-SKU-ANG-LAMA"));
-    await waitFor(() => expect(canvas.queryByTestId("product-row-SKU-ANG-LAMA")).toBeNull());
-    await expect(screen.queryByTestId("restore-conflict-dialog")).toBeNull();
+    await userEvent.click(canvas.getByTestId("restore-SL-03-ANG-001-L"));
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-001-L")).toBeNull());
+    await expect(screen.queryByRole("dialog")).toBeNull();
+    await expect(await screen.findByText(/"SL-03-ANG-001-L" unarchived/)).toBeVisible();
   },
 };
 
 /** Open the lock's popover on a row and wait for it — it portals, so it is found on `screen`. */
-async function openLock(canvas: ReturnType<typeof within>, sku: string) {
-  await userEvent.click(canvas.getByTestId(`lock-${sku}`));
-  const panel = await screen.findByTestId(`lock-${sku}-panel`);
+async function openLock(canvas: ReturnType<typeof within>, productCode: string) {
+  await userEvent.click(canvas.getByTestId(`lock-${productCode}`));
+  const panel = await screen.findByTestId(`lock-${productCode}-panel`);
   await waitFor(() => expect(panel).toBeVisible());
   return within(panel);
 }
@@ -399,40 +384,40 @@ async function openLock(canvas: ReturnType<typeof within>, sku: string) {
 export const TheLockIsEditedInTheRow: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(canvas.getByTestId("lock-SKU-ANG-001")).toHaveTextContent("Min 4 pcs");
-    await expect(canvas.getByTestId("lock-SKU-ANG-002")).toHaveTextContent("Open");
+    await expect(canvas.getByTestId("lock-SL-03-ANG-001")).toHaveTextContent("Min 4 pcs");
+    await expect(canvas.getByTestId("lock-SL-03-ANG-002")).toHaveTextContent("Open");
 
-    const panel = await openLock(canvas, "SKU-ANG-001");
-    await expect(panel.getByTestId("lock-SKU-ANG-001-field-minimum")).toHaveValue("4");
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-001-field-mode-always"));
-    await expect(panel.queryByTestId("lock-SKU-ANG-001-field-minimum")).toBeNull();
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-001-save"));
+    const panel = await openLock(canvas, "SL-03-ANG-001");
+    await expect(panel.getByTestId("lock-SL-03-ANG-001-field-minimum")).toHaveValue("4");
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-001-field-mode-always"));
+    await expect(panel.queryByTestId("lock-SL-03-ANG-001-field-minimum")).toBeNull();
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-001-save"));
 
-    await waitFor(() => expect(canvas.getByTestId("lock-SKU-ANG-001")).toHaveTextContent("Always locked"));
+    await waitFor(() => expect(canvas.getByTestId("lock-SL-03-ANG-001")).toHaveTextContent("Always locked"));
     await expect(canvas.queryByTestId("at-product-detail")).toBeNull();
 
     // Back to the minimum — the 4 was kept.
-    const again = await openLock(canvas, "SKU-ANG-001");
-    await userEvent.click(again.getByTestId("lock-SKU-ANG-001-field-mode-min"));
-    await expect(again.getByTestId("lock-SKU-ANG-001-field-minimum")).toHaveValue("4");
+    const again = await openLock(canvas, "SL-03-ANG-001");
+    await userEvent.click(again.getByTestId("lock-SL-03-ANG-001-field-mode-min"));
+    await expect(again.getByTestId("lock-SL-03-ANG-001-field-minimum")).toHaveValue("4");
   },
 };
 
-/** A minimum above the stock on hand closes the product to other teams NOW — the row says so with a badge. SKU-ANG-002
+/** A minimum above the stock on hand closes the product to other teams NOW — the row says so with a badge. SL-03-ANG-002
  * holds 43 ready; a minimum of 50 is in force. A minimum needs at least 1 to be saved. */
 export const AMinimumAboveTheStockLocksItNow: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(canvas.queryByTestId("lock-SKU-ANG-002-now")).toBeNull();
+    await expect(canvas.queryByTestId("lock-SL-03-ANG-002-now")).toBeNull();
 
-    const panel = await openLock(canvas, "SKU-ANG-002");
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-002-field-mode-min"));
-    await expect(panel.getByTestId("lock-SKU-ANG-002-save")).toBeDisabled();
-    await userEvent.type(panel.getByTestId("lock-SKU-ANG-002-field-minimum"), "50", { delay: 30 });
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-002-save"));
+    const panel = await openLock(canvas, "SL-03-ANG-002");
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-002-field-mode-min"));
+    await expect(panel.getByTestId("lock-SL-03-ANG-002-save")).toBeDisabled();
+    await userEvent.type(panel.getByTestId("lock-SL-03-ANG-002-field-minimum"), "50", { delay: 30 });
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-002-save"));
 
-    await waitFor(() => expect(canvas.getByTestId("lock-SKU-ANG-002")).toHaveTextContent("Min 50 pcs"));
-    await expect(await canvas.findByTestId("lock-SKU-ANG-002-now")).toHaveTextContent("Locked");
+    await waitFor(() => expect(canvas.getByTestId("lock-SL-03-ANG-002")).toHaveTextContent("Min 50 pcs"));
+    await expect(await canvas.findByTestId("lock-SL-03-ANG-002-now")).toHaveTextContent("Locked");
   },
 };
 
@@ -441,15 +426,15 @@ export const AMinimumAboveTheStockLocksItNow: Story = {
 export const TheLensHidesTheBadge: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const panel = await openLock(canvas, "SKU-ANG-002");
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-002-field-mode-min"));
-    await userEvent.type(panel.getByTestId("lock-SKU-ANG-002-field-minimum"), "50", { delay: 30 });
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-002-save"));
-    await canvas.findByTestId("lock-SKU-ANG-002-now");
+    const panel = await openLock(canvas, "SL-03-ANG-002");
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-002-field-mode-min"));
+    await userEvent.type(panel.getByTestId("lock-SL-03-ANG-002-field-minimum"), "50", { delay: 30 });
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-002-save"));
+    await canvas.findByTestId("lock-SL-03-ANG-002-now");
 
     await pickTeam(canvas.getByTestId("product-warehouse-filter"), "WH-02");
-    await waitFor(() => expect(canvas.queryByTestId("lock-SKU-ANG-002-now")).toBeNull());
-    await expect(canvas.getByTestId("lock-SKU-ANG-002")).toHaveTextContent("Min 50 pcs");
+    await waitFor(() => expect(canvas.queryByTestId("lock-SL-03-ANG-002-now")).toBeNull());
+    await expect(canvas.getByTestId("lock-SL-03-ANG-002")).toHaveTextContent("Min 50 pcs");
   },
 };
 
@@ -458,7 +443,7 @@ export const RowsAndActionsOpenTheirPages: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("open-product-SKU-ANG-001"));
+    await userEvent.click(canvas.getByTestId("open-product-SL-03-ANG-001"));
     await waitFor(() => expect(canvas.getByTestId("at-product-detail")).toBeInTheDocument());
   },
 };
@@ -467,7 +452,7 @@ export const EditOpensTheForm: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("edit-SKU-ANG-001"));
+    await userEvent.click(canvas.getByTestId("edit-SL-03-ANG-001"));
     await waitFor(() => expect(canvas.getByTestId("at-product-edit")).toBeInTheDocument());
   },
 };
@@ -489,7 +474,46 @@ export const TheSearchComesBackFromTheUrl: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByTestId("product-search", {}, { timeout: 5000 })).toHaveValue("lada");
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-010")).toBeVisible());
-    await expect(canvas.queryByTestId("product-row-SKU-ANG-001")).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-010")).toBeVisible());
+    await expect(canvas.queryByTestId("product-row-SL-03-ANG-001")).toBeNull();
+  },
+};
+
+/** DELETE, for good (a-used-product-is-archived-never-deleted) — offered on the Archived view, confirmed first. The edition
+ * nobody ever stocked goes; one with a history is refused, and the toast says why: archive it instead. */
+export const DeleteRemovesOnlyANeverUsedProduct: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openArchived(canvas);
+
+    await userEvent.click(canvas.getByTestId("delete-SL-03-ANG-001-L"));
+    let dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await expect(await screen.findByText(/has a history/)).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-001-L")).toBeVisible();
+
+    await userEvent.click(canvas.getByTestId("delete-SL-03-ANG-LAMA"));
+    dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog).toHaveTextContent("SL-03-ANG-LAMA");
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-LAMA")).toBeNull());
+  },
+};
+
+/** the-admin-team-monitors-read-only — the admin team READING Toko Anggrek's catalogue (not a member, picked from All
+ * teams): every row and figure, the way into the archive — and no New Product, no Edit, no Archive. The list is the
+ * same screen; canWrite is what takes the writes away. */
+export const MonitoringOffersNoWrite: Story = {
+  beforeEach: asAdminTeam(),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-003")).toBeVisible();
+    await expect(canvas.getByTestId("open-archived-products")).toBeVisible();
+    await expect(canvas.queryByTestId("open-create-product")).toBeNull();
+    await expect(canvas.queryByTestId("edit-SL-03-ANG-001")).toBeNull();
+    await expect(canvas.queryByTestId("archive-SL-03-ANG-001")).toBeNull();
   },
 };

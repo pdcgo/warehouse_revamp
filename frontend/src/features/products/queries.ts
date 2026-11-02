@@ -216,9 +216,10 @@ export function useProductStats(args: { teamId: bigint | undefined; warehouseId?
 // after its name.
 export type DiscoverSort = "newest" | "name" | "sku";
 
+// "sku" is the sort's KEY — its i18n label and the select's value — and keeps that name; it sorts by the product code.
 const DISCOVER_SORT: Record<Exclude<DiscoverSort, "newest">, ProductRowSort> = {
   name: ProductRowSort.NAME,
-  sku: ProductRowSort.SKU,
+  sku: ProductRowSort.PRODUCT_CODE,
 };
 
 export function useDiscoverProducts(args: {
@@ -573,15 +574,24 @@ export function useSaveProduct() {
   });
 }
 
-// ARCHIVE. The RPC is still called ProductDelete on the wire, but nothing is deleted: the row keeps
-// its id, its stock outlives it, and its past orders still name it — so every word the user reads
-// says Archive, and the Archived tab is where it goes.
+// ARCHIVE (a-used-product-is-archived-never-deleted) — any time, even with stock on a shelf: the row keeps its id, its
+// stock outlives it, and its past orders still name it. The Archived tab is where it goes.
 export function useArchiveProduct() {
   const invalidate = useInvalidateProducts();
 
   return useMutation({
-    mutationFn: (vars: Parameters<typeof productClient.productDelete>[0]) =>
-      productClient.productDelete(vars),
+    mutationFn: (vars: Parameters<typeof productClient.productArchive>[0]) => productClient.productArchive(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// DELETE — for good, and ONLY a product with no history: never stocked, ordered or restocked. The server refuses any
+// other with FailedPrecondition, and its reason is what the screen shows: archive it instead.
+export function useDeleteProduct() {
+  const invalidate = useInvalidateProducts();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof productClient.productDelete>[0]) => productClient.productDelete(vars),
     onSuccess: () => invalidate(),
   });
 }
@@ -609,15 +619,13 @@ export function useSetProductLock() {
   });
 }
 
-// RESTORE — the way back out of the Archived tab, and the one write on these screens that can fail
-// for a reason the user must act on: archiving FREES the SKU, so another product may hold it by now.
-// The server refuses and names the holder; `sku` is how the caller then restores under a free one.
-export function useRestoreProduct() {
+// UNARCHIVE — the way back out of the Archived tab. It cannot collide: an archived product KEEPS its code, which nothing
+// else can take while it is away (the-field-is-product-code-composed-on-write), so it comes back under the same one.
+export function useUnarchiveProduct() {
   const invalidate = useInvalidateProducts();
 
   return useMutation({
-    mutationFn: (vars: Parameters<typeof productClient.productRestore>[0]) =>
-      productClient.productRestore(vars),
+    mutationFn: (vars: Parameters<typeof productClient.productUnarchive>[0]) => productClient.productUnarchive(vars),
     onSuccess: () => invalidate(),
   });
 }

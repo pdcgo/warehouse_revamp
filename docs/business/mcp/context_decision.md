@@ -41,7 +41,7 @@ flowchart TD
 
 | | |
 | --- | --- |
-| what counts as a read | ⚠ my spec: an RPC declared `option idempotency_level = NO_SIDE_EFFECTS;` — the standard proto marker. **No proto carries it today**, so each read is marked as it is offered to agents |
+| what counts as a read | ⚠ my spec: an RPC declared `option idempotency_level = NO_SIDE_EFFECTS;` — the standard proto marker. each read is marked as it is offered to agents — ✅ built 2026-11-02 on the RPCs the tools call; the interceptor refuses an agent's call to anything else |
 | where it is enforced | the access interceptor, on every call: an agent's credential on an RPC not so declared → `PermissionDenied`, before the handler runs. A person's session is unaffected |
 | a read with a side effect | is not a read, and stays unmarked — `CheckAccess` renews a token · beside settlement's report reads, `AnalyticReplayCompute` rebuilds the reports and `AnalyticMaintenanceRun` prunes a table |
 | what the agent is told | every tool is listed with MCP's `readOnlyHint: true`. A hint that lets the agent skip asking the person, never the enforcement |
@@ -185,8 +185,12 @@ flowchart LR
 and [context.md](./context.md) §General 1 (*"we have local mcp app that shipped to user"*) and its flow's *Local MCP* box
 are now stale — reported in the clarify's [the-doc-ships-a-local-app](./context_clarify.md#the-doc-ships-a-local-app).
 
-⛔ **Not built.** No MCP server for users exists yet (`san remote mcp` serves the checkout to a coding agent, not a team's
-data).
+✅ **Built 2026-11-02.** Our server serves the MCP at `/mcp` behind our OAuth — discovery
+(`/.well-known/oauth-authorization-server`, `…/oauth-protected-resource/mcp`), dynamic registration (`/oauth/register`),
+`/oauth/authorize` sending the browser to the app's `/connect-agent`, and `/oauth/token` with PKCE
+([user_service/agent_oauth](../../../backend/services/user_service/agent_oauth/)). `PUBLIC_URL` and `APP_URL` say where they
+are; the endpoint is stateless Streamable HTTP. Verified end to end against a running server — connect, token, every
+tool, a refused write, a revoke refused at once. Nothing is shipped to the user's machine.
 
 ## an-agent-gets-its-own-team-credential
 
@@ -219,7 +223,11 @@ flowchart LR
   X["/profile - revoke"] -.-> C
 ```
 
-⛔ **Not built.**
+✅ **Built 2026-11-02.** `AgentService` ([agent.proto](../../../proto/warehouse/user/v1/agent.proto)) and user_service
+`00011`: the connect page mints a one-time code (`AgentConnect`), the agent trades it with its PKCE verifier at
+`/oauth/token` for a bearer `wha_…` kept only as its SHA-256 — named, one team, 90 days, no refresh. Revoked from
+/profile (`AgentConnectionRevoke`), at once: the next call is a 401. ⚠ my build details: a code lives 5 minutes and is
+spent by the statement that reads it (a wrong verifier spends it too); the last use is stamped at most once a minute.
 
 ## a-roots-agent-reads-every-team
 
@@ -245,7 +253,9 @@ flowchart LR
 | an owner of two selling teams | two connections — one per team |
 | the cost, accepted | a root agent's credential reaches the whole business; it is still read-only, expires in 90 days and is revoked on its own |
 
-⛔ **Not built.**
+✅ **Built 2026-11-02.** A credential minted for team 0 reads every team — only root or the root team's administrator may
+pick it (`AgentConnect`), and the interceptor lets it read only while its person still holds that bypass. A root
+person's ONE-team credential stays in its team, and is refused an unscoped root-only RPC too.
 
 ## the-owner-decides-who-connects-an-agent
 
@@ -276,7 +286,10 @@ flowchart LR
 **Why not every member**, though [every-member-reads-every-metric-of-their-team](../analytic/rpc_provide_decision.md#every-member-reads-every-metric-of-their-team):
 reading on the screen keeps the data inside the system; an agent sends it to a third party.
 
-⛔ **Not built.**
+✅ **Built 2026-11-02.** `AgentConnect` lets the owner and admin connect, CS and staff once
+`TeamAgentPolicySet` turned it on (`team_agent_policies`, no row = off); the owner lists and revokes every connection
+reading the team (`AgentConnectionTeamList`, `AgentConnectionTeamRevoke`) from the team's Settings. ⚠ my build detail: root's
+every-team connections are not in a team's list — no team's owner may revoke them.
 
 ## the-agent-reads-through-the-metric-pattern
 
@@ -308,7 +321,13 @@ flowchart LR
 | not yet | stock and expenses — they reach the agent when each has a metric |
 | replaces | the 11 reads in the clarify's *The first tools* (`OrderStat`, `ProductStockSummary`, `ExpenseDaily`, …) |
 
-⛔ **Not built.**
+✅ **Built 2026-11-02.** [mcp_service](../../../backend/services/mcp_service/) at `/mcp` — `list_metrics` (read off the
+descriptors, every metric of the order, settlement and supplier services), `read_metric` (`MetricSearch` then
+`MetricData`, or the headline), `search_products`, `find_orders` (by marketplace refs, each order whole),
+`balance_positions`. Every tool calls our RPCs with the agent's bearer, so the interceptor holds it to reading and to its
+team. Rate: 120 calls a minute per connection, 20 at once, per instance. ⚠ my build detail: a sixth tool, `list_teams` —
+root's every-team connection must name a team on every read, and nothing else turns a name into an id.
+[docs/services/mcp_service/rpc.md](../../services/mcp_service/rpc.md).
 
 ## buyer-data-reaches-the-agent
 
@@ -333,4 +352,5 @@ flowchart LR
 | a lookup by name | possible — *"Budi's order"* can be asked |
 | the cost, accepted | the buyers' details go to the agent's provider (OpenAI, Anthropic), which the buyers did not agree to — a personal-data exposure the company carries |
 
-⛔ **Not built.**
+✅ **Built 2026-11-02.** `find_orders` answers `OrderDetail` as the screen reads it — the buyer's name, phone and address
+included; nothing is cleared.

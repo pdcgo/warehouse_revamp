@@ -1301,8 +1301,16 @@ func (*MetricData_LostCreatedByDay) isMetricData_M() {}
 func (*MetricData_LostCreatedSummary) isMetricData_M() {}
 
 type MetricDataResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MetricDatas   []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	MetricDatas []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	// AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+	// `order_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+	// behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+	// every metric it serves shares it. 0 = nothing folded yet.
+	//
+	// ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+	// dead-letter topic and the lease's log.
+	AsOfUnix      int64 `protobuf:"varint,2,opt,name=as_of_unix,json=asOfUnix,proto3" json:"as_of_unix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1342,6 +1350,13 @@ func (x *MetricDataResponse) GetMetricDatas() []*MetricData {
 		return x.MetricDatas
 	}
 	return nil
+}
+
+func (x *MetricDataResponse) GetAsOfUnix() int64 {
+	if x != nil {
+		return x.AsOfUnix
+	}
+	return 0
 }
 
 var File_warehouse_selling_v1_order_analytic_proto protoreflect.FileDescriptor
@@ -1504,13 +1519,15 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x12lost_created_by_id\x18\r \x01(\v20.warehouse.selling.v1.OrderLostCreatedMetricByIDH\x00R\x0flostCreatedById\x12b\n" +
 	"\x13lost_created_by_day\x18\x0e \x01(\v21.warehouse.selling.v1.OrderLostCreatedMetricByDayH\x00R\x10lostCreatedByDay\x12`\n" +
 	"\x14lost_created_summary\x18\x0f \x01(\v2,.warehouse.selling.v1.OrderLostCreatedMetricH\x00R\x12lostCreatedSummaryB\x03\n" +
-	"\x01m\"Y\n" +
+	"\x01m\"w\n" +
 	"\x12MetricDataResponse\x12C\n" +
-	"\fmetric_datas\x18\x01 \x03(\v2 .warehouse.selling.v1.MetricDataR\vmetricDatas2\xde\x01\n" +
-	"\x14OrderAnalyticService\x12e\n" +
-	"\fMetricSearch\x12).warehouse.selling.v1.MetricSearchRequest\x1a*.warehouse.selling.v1.MetricSearchResponse\x12_\n" +
+	"\fmetric_datas\x18\x01 \x03(\v2 .warehouse.selling.v1.MetricDataR\vmetricDatas\x12\x1c\n" +
 	"\n" +
-	"MetricData\x12'.warehouse.selling.v1.MetricDataRequest\x1a(.warehouse.selling.v1.MetricDataResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"as_of_unix\x18\x02 \x01(\x03R\basOfUnix2\xe8\x01\n" +
+	"\x14OrderAnalyticService\x12j\n" +
+	"\fMetricSearch\x12).warehouse.selling.v1.MetricSearchRequest\x1a*.warehouse.selling.v1.MetricSearchResponse\"\x03\x90\x02\x01\x12d\n" +
+	"\n" +
+	"MetricData\x12'.warehouse.selling.v1.MetricDataRequest\x1a(.warehouse.selling.v1.MetricDataResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_order_analytic_proto_rawDescOnce sync.Once

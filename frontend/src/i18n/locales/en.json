@@ -65,6 +65,11 @@
   "shell": {
     "menu": "Menu",
     "notMember": "Not a member of this team — acting as {{role}}.",
+    "monitoring": "Monitoring — read-only. You are not in this team, so nothing here can be changed.",
+    "monitoringRole": "Monitoring",
+    "readOnlyTitle": "Read-only",
+    "readOnlyBody": "You are monitoring this team. This screen changes its data, so it is not offered here.",
+    "readOnlyBack": "Go Back",
     "switchTeam": "Switch Team",
     "noTeams": "No teams found.",
     "myTeams": "My teams",
@@ -105,7 +110,9 @@
     "theyOweYou": "They owe you {{amount}}",
     "youOweThem": "You owe them {{amount}}",
     "square": "Square",
-    "emptyHint": "What this team owes other teams, and is owed, shows here once it is recorded."
+    "emptyHint": "What this team owes other teams, and is owed, shows here once it is recorded.",
+    "requestSent": "Payment requested",
+    "requestAsked": "Asks you to pay"
   },
   "liabilityDetail": {
     "title": "Liability",
@@ -187,7 +194,16 @@
     "recordFromAccountHelp": "The account the transfer left. When they accept, the amount comes out of it.",
     "confirmToAccount": "Received into",
     "confirmToAccountPlaceholder": "Select the account it arrived in",
-    "confirmToAccountHelp": "The account you saw the money arrive in. Accepting is final, so check it against your bank first."
+    "confirmToAccountHelp": "The account you saw the money arrive in. Accepting is final, so check it against your bank first.",
+    "requestPayment": "Request Payment",
+    "requestTitle": "Request Payment",
+    "requestMessage": "{{name}} will see that you ask it to pay {{amount}}. Nothing is posted and nothing is blocked — it still pays through Make Payment.",
+    "requestConfirm": "Send Request",
+    "requestDone": "{{name}} has been asked to pay",
+    "requestFailed": "Could not send the request",
+    "requestAskedTitle": "{{name}} asks you to pay {{amount}}",
+    "requestAskedHelp": "Asked on {{date}}. Pay through Make Payment — nothing moves by itself.",
+    "requestSent": "You asked {{name}} to pay {{amount}} on {{date}}."
   },
   "common": {
     "perPage": "Per page",
@@ -209,7 +225,8 @@
     "deleted": "Deleted",
     "loading": "Loading",
     "clearSearch": "Clear search",
-    "actions": "Actions"
+    "actions": "Actions",
+    "asOf": "As of {{time}} WIB"
   },
   "dateRange": {
     "all": "All dates",
@@ -522,17 +539,17 @@
   },
   "products": {
     "toast": {
-      "deleted": "Product \"{{sku}}\" deleted",
+      "deleted": "Product \"{{productCode}}\" deleted",
       "deleteFailed": "Delete failed",
       "saved": "Product saved",
-      "created": "Product \"{{sku}}\" created",
+      "created": "Product \"{{productCode}}\" created",
       "uploadFailed": "Upload failed",
       "tooManyImages": "Only {{max}} images allowed",
       "keptFirst": "Kept the first {{room}}.",
-      "archived": "Product \"{{sku}}\" archived",
+      "archived": "Product \"{{productCode}}\" archived",
       "archiveFailed": "Archive failed",
-      "restored": "Product \"{{sku}}\" restored",
-      "restoreFailed": "Restore failed",
+      "restored": "Product \"{{productCode}}\" unarchived",
+      "restoreFailed": "Unarchive failed",
       "lockFailed": "Could not change the lock"
     },
     "heading": "Products",
@@ -761,7 +778,8 @@
       "crossTitle": "Sales by Other Teams",
       "crossDescription": "Whether another team may sell this product on its own orders, and what it pays over your cost.",
       "skuPlaceholder": "e.g. KOPI-250",
-      "skuTaken": "Another product in this team already uses this product code — change it to save.",
+      "skuTaken": "This product code is already taken — by an active or an archived product. Change it to save.",
+      "skuFixedHelp": "Your team's code is put in front. The rest can be corrected until the product is first stocked, ordered or restocked.",
       "back": "Back",
       "namePlaceholder": "e.g. Arabica Coffee 250g",
       "descriptionPlaceholder": "e.g. ground arabica in a 250 g pouch, medium roast, best before 12 months",
@@ -778,7 +796,7 @@
       "active": "Active",
       "archived": "Archived"
     },
-    "restore": "Restore",
+    "restore": "Unarchive",
     "emptyArchived": "Nothing archived.",
     "stat": {
       "ready": "Ready",
@@ -795,17 +813,17 @@
     },
     "archiveDialog": {
       "title": "Archive Product",
-      "message": "Archive \"{{sku}}\"? It leaves your catalogue, pickers and new orders, and moves to the Archived tab. You can restore it later.",
+      "message": "Archive \"{{productCode}}\"? It leaves your catalogue, pickers and new orders, and moves to the Archived tab. You can restore it later.",
       "confirmLabel": "Archive"
     },
-    "restoreDialog": {
-      "title": "Restore Product",
-      "newSku": "New product code",
-      "newSkuHelp": "Archiving freed the old product code and another product took it. Give this one a free product code to bring it back.",
-      "confirmLabel": "Restore"
-    },
     "allWarehouses": "All warehouses",
-    "archive": "Archive"
+    "archive": "Archive",
+    "delete": "Delete",
+    "deleteDialog": {
+      "title": "Delete Product",
+      "message": "Delete \"{{productCode}}\" for good? Only a product that was never stocked, ordered or restocked can be deleted, and its product code becomes free. A product with a history stays archived.",
+      "confirmLabel": "Delete"
+    }
   },
   "bundles": {
     "title": "Bundles",
@@ -1494,7 +1512,7 @@
       "actions": "Actions",
       "itemsSummary_one": "{{count}} product · {{pieces}} pcs",
       "itemsSummary_other": "{{count}} products · {{pieces}} pcs",
-      "firstAndMore": "{{sku}} +{{count}} more",
+      "firstAndMore": "{{productCode}} +{{count}} more",
       "noProducts": "No products",
       "invoiceValue": "Invoice {{value}}",
       "missingBadge_one": "{{count}} missing",
@@ -2322,6 +2340,7 @@
     "everyTeam": "Every team",
     "teamNumber": "Team #{{id}}",
     "rangeInvalid": "Pick a start and an end date — the figures need both ends.",
+    "rangeTooLong": "That range covers {{days}} days. A report reads at most {{max}} — pick a year at most.",
     "productNumber": "Product #{{id}}"
   },
   "supplierStats": {
@@ -2626,9 +2645,9 @@
     "cancel": "Cancel",
     "countedOnHandError": "Counted on-hand must be zero or a positive whole number.",
     "placeRequiredError": "Choose the place you counted — a rack, or the unplaced pile.",
-    "adjustedToast": "Adjusted {{sku}} to {{counted}} at this place",
+    "adjustedToast": "Adjusted {{productCode}} to {{counted}} at this place",
     "adjustStockTitle": "Adjust Stock",
-    "adjustProductSummary": "{{name}} ({{sku}}) — {{onHand}} on hand across every place in this warehouse",
+    "adjustProductSummary": "{{name}} ({{productCode}}) — {{onHand}} on hand across every place in this warehouse",
     "placeCounted": "Place counted",
     "placeCountedHelper": "The rack you stood at and counted, or the unplaced pile.",
     "countedOnHand": "Counted on-hand",
@@ -2650,7 +2669,7 @@
     "move": "Move",
     "rowActions": "Actions",
     "moveStockTitle": "Move Stock",
-    "moveProductSummary": "{{name}} ({{sku}}) — {{onHand}} on hand across every place in this warehouse",
+    "moveProductSummary": "{{name}} ({{productCode}}) — {{onHand}} on hand across every place in this warehouse",
     "moveFrom": "From",
     "moveFromHelper": "Where the stock sits now — a rack, or the unplaced pile.",
     "moveTo": "To",
@@ -2660,7 +2679,7 @@
     "moveReasonPlaceholder": "e.g. put away, shelf reorganised",
     "movePlacesRequiredError": "Choose both places — where the stock is now, and where it is going.",
     "moveSamePlaceError": "Pick two different places — a move has to go somewhere else.",
-    "movedToast": "Moved {{qty}} × {{sku}}",
+    "movedToast": "Moved {{qty}} × {{productCode}}",
     "movement": {
       "when": "When",
       "what": "What",
@@ -3159,11 +3178,7 @@
     "total": "Total",
     "record": "Record Expense",
     "recordTitle": "Record Expense",
-    "editTitle": "Edit Expense",
     "save": "Save",
-    "edit": "Edit",
-    "void": "Void",
-    "voided": "Voided",
     "dateHelp": "The date the expense belongs to — payroll paid on the 5th is last month's expense.",
     "table": {
       "date": "Date",
@@ -3182,16 +3197,31 @@
       "any": "Any kind",
       "choose": "Choose a kind"
     },
-    "voidDialog": {
-      "title": "Void Expense Record",
-      "message": "This expense will stop counting toward the totals. It stays on the list so the retraction is visible.",
-      "confirm": "Void"
-    },
     "toast": {
       "recorded": "Expense recorded",
-      "updated": "Expense updated",
-      "voided": "Expense voided",
-      "voidFailed": "Could not void the expense"
+      "adjusted": "Adjustment recorded",
+      "cancelled": "Expense cancelled",
+      "cancelFailed": "Could not cancel the expense"
+    },
+    "adjust": "Adjust",
+    "adjustTitle": "Adjust Expense",
+    "adjustFor": "{{kind}} · {{date}} · counts for {{now}} now",
+    "adjustDirection": "Correction",
+    "adjustReduce": "Reduce",
+    "adjustAdd": "Add",
+    "adjustAmount": "By how much",
+    "adjustAfter": "After this correction it counts for {{after}}.",
+    "adjustBelowZero": "It counts for {{now}} now — a correction cannot take it below 0.",
+    "adjustNotePlaceholder": "e.g. typed 5.000.000, the invoice says 500.000",
+    "adjustSave": "Save Adjustment",
+    "adjustment": "Adjustment",
+    "netNow": "now {{net}}",
+    "cancel": "Cancel Expense",
+    "cancelNote": "Cancelled",
+    "cancelDialog": {
+      "title": "Cancel Expense",
+      "message": "An adjustment of minus {{net}} is recorded on the same day, so this expense counts for nothing. Both rows stay on the list.",
+      "confirm": "Cancel Expense"
     }
   },
   "opname": {
@@ -3244,6 +3274,7 @@
     "openReport": "Report",
     "selectTeam": "Select a team to view its settlement report.",
     "rangeInvalid": "Pick a start and an end date — a report needs both ends.",
+    "rangeTooLong": "That range covers {{days}} days. A report reads at most {{max}} — pick a year at most.",
     "sales": "Selling price",
     "salesHint": "What buyers paid, cancels netted",
     "received": "Received",
@@ -4298,7 +4329,7 @@
       "noProducts": "No products",
       "itemsSummary_one": "{{count}} product · {{pieces}} pcs",
       "itemsSummary_other": "{{count}} products · {{pieces}} pcs",
-      "firstAndMore": "{{sku}} +{{count}} more",
+      "firstAndMore": "{{productCode}} +{{count}} more",
       "problemUnits_one": "{{count}} unit broken or missing",
       "problemUnits_other": "{{count}} units broken or missing",
       "perPiece": "{{amount}} / pcs",
@@ -4892,6 +4923,7 @@
       "graph": "Graph"
     },
     "rangeInvalid": "The start date is after the end date.",
+    "rangeTooLong": "That range covers {{days}} days. A report reads at most {{max}} — pick a year at most.",
     "empty": {
       "noMetric": "Add a metric to start — each metric becomes columns, and each of the {{group}} a row.",
       "noRows": "Nothing happened in this period."
@@ -4917,6 +4949,88 @@
         "label": "Product and supplier filters",
         "reason": "They list sample entries; the real filters search the team's own."
       }
+    }
+  },
+  "warehouseHours": {
+    "closedBadge": "Closed",
+    "closed": "Closed now — the order is still recorded, and handled when the warehouse opens.",
+    "closedUntil": "Closed now — the order is still recorded, and handled from {{next}} WIB.",
+    "closedFor": "Closed for {{reason}} — the order is still recorded, and handled when the warehouse opens.",
+    "closedForUntil": "Closed for {{reason}} — the order is still recorded, and handled from {{next}} WIB.",
+    "closuresTitle": "Closures",
+    "closuresHelp": "Days the warehouse is closed beyond its weekly hours — a holiday, a stock-take. An order on one is still recorded; the form says when it will be handled.",
+    "closuresEmpty": "No closures ahead.",
+    "firstDay": "First day",
+    "lastDay": "Last day",
+    "reason": "Reason",
+    "reasonPlaceholder": "e.g. Idul Fitri",
+    "addClosure": "Add Closure",
+    "closureAdded": "Closure added",
+    "closureAddFailed": "Could not add the closure",
+    "closureDeleted": "Closure deleted",
+    "closureDeleteFailed": "Could not delete the closure",
+    "closureDeleteTitle": "Delete Closure",
+    "closureDeleteMessage": "Delete the closure \"{{reason}}\"? Orders on those days are no longer warned.",
+    "closureDeleteConfirm": "Delete"
+  },
+  "agents": {
+    "title": "AI Agents",
+    "row": {
+      "span": "Connected {{connected}} · Expires {{expires}}",
+      "lastUsed": "Last used {{lastUsed}}",
+      "never": "never",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke {{name}}?",
+      "revokeMessage": "{{client}} stops reading your data at once. To use it again, connect it again from {{client}}.",
+      "revoked": "{{name}} revoked",
+      "revokeFailed": "Could not revoke the connection",
+      "teamNumber": "Team #{{id}}"
+    },
+    "connect": {
+      "titleGeneric": "Connect an AI Agent",
+      "title": "Connect {{client}}",
+      "lead": "{{client}} wants to read your data.",
+      "factReadOnly": "It can only read — it cannot add, change or delete anything.",
+      "factBuyer": "Orders reach {{client}} whole — the buyer's name, phone and address included.",
+      "factDays": "The connection lasts 90 days; after that you connect it again.",
+      "factRevoke": "You can revoke it at any time from your Profile.",
+      "team": "Team",
+      "teamPlaceholder": "Select the team it reads",
+      "noTeamFound": "No teams found",
+      "everyTeam": "Every team",
+      "everyTeamHint": "Root's reach — reads every team",
+      "everyTeamHelper": "It reads every team in the business, as Root does. Still read-only.",
+      "notAllowedTitle": "The owner has not allowed members to connect agents",
+      "notAllowedHint": "Ask the owner of {{team}} to turn it on in the team's Settings.",
+      "name": "Connection name",
+      "namePlaceholder": "e.g. ChatGPT, Heri's laptop",
+      "nameHelper": "You will see this name in your Profile.",
+      "failed": "Could not connect",
+      "deny": "Deny",
+      "allow": "Allow",
+      "teamsFailed": "Could not load your teams",
+      "invalidTitle": "This connection link is not valid",
+      "invalidHint": "Nothing was connected. Start again from the agent — add or reconnect the connector in ChatGPT or Claude.",
+      "goToApp": "Go to the App"
+    },
+    "profile": {
+      "hint": "Agents you connected read your data with their own credential — read-only, for 90 days. Revoking one signs you out of nothing else.",
+      "emptyTitle": "No agent connected",
+      "emptyHint": "Connect ChatGPT or Claude with the URL below.",
+      "howTitle": "Connect an Agent",
+      "howHint": "In ChatGPT or Claude, add a custom connector with this URL:"
+    },
+    "team": {
+      "hint": "An agent sends what it reads — the buyers' names, phones and addresses included — to its provider. The owner and admins may connect one; CS and staff only when this is on.",
+      "membersMayConnect": "CS and staff may connect agents",
+      "membersOn": "CS and staff may now connect agents",
+      "membersOff": "Only the owner and admins may connect agents now",
+      "policyFailed": "Could not save the setting",
+      "listTitle": "Connections Reading This Team",
+      "listHint": "Whoever connected them. Root's every-team connections are not listed here.",
+      "connectedBy": "Connected by {{name}}",
+      "emptyTitle": "No agent reads this team",
+      "emptyHint": "A member connects one from ChatGPT or Claude, and it appears here."
     }
   }
 }

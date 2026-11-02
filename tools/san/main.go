@@ -8,6 +8,7 @@
 //	san region     reference data
 //	san user       operations on real data, through the real services
 //	san supplier   supplier_service one-shots — the move, the figures backfill
+//	san product    product_service one-shots — the product-code recompose
 //	san remote     serve this checkout to a coding agent (Connect RPC + MCP)
 //	san dev        set up and run the local stack — docker, the API and the UI, in one terminal
 //
@@ -78,6 +79,7 @@ func main() {
 			// Operations on real data, and the workspace server.
 			userCommand(),
 			supplierCommand(),
+			productCommand(),
 			pubsubCommand(),
 			remoteCommand(),
 

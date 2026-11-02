@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { asRole } from "../../../.storybook/sessionScenario";
+import { asAdminTeam, asRole } from "../../../.storybook/sessionScenario";
 import { unlinkShopForStory } from "../../../.storybook/financialAccountStub";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { ShopDetailPage } from "./index";
@@ -308,5 +308,21 @@ export const BackGoesToTheList: Story = {
 
     await userEvent.click(canvas.getByTestId("shop-detail-back"));
     await waitFor(() => expect(canvas.getByTestId("at-shops")).toBeInTheDocument());
+  },
+};
+
+/** the-admin-team-monitors-read-only — a shop of a team the admin team MONITORS: its details and who works on it, read.
+ * No Edit, no Delete, no one added, made primary or removed. */
+export const MonitoringOffersNoWrite: Story = {
+  beforeEach: asAdminTeam(),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(await canvas.findByTestId("shop-users-list", {}, { timeout: 4000 })).toBeVisible();
+    await expect(canvas.queryByTestId("shop-detail-edit")).toBeNull();
+    await expect(canvas.queryByTestId("shop-detail-delete")).toBeNull();
+    await expect(canvas.queryByTestId("shop-add-user")).toBeNull();
+    await expect(canvas.queryAllByTestId(/^remove-shop-user-/)).toHaveLength(0);
+    await expect(canvas.queryAllByTestId(/^make-primary-/)).toHaveLength(0);
   },
 };

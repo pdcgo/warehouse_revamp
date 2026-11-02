@@ -28,7 +28,7 @@ type Service struct {
 	// Whether a restock's supplier is a live one — asked of supplier_service, which owns suppliers since
 	// the-supplier-gets-its-own-service. See supplier_checker.go in the composition root.
 	suppliers SupplierChecker
-	// What inventory must know of a product — its owner, lock, reserve, markup, sku and name — asked of product_service. A
+	// What inventory must know of a product — its owner, lock, reserve, markup, product code and name — asked of product_service. A
 	// restock and a transfer carry only the team's own products, and the order take checks the rest. See product_reader.go
 	// in the composition root.
 	products ProductReader
@@ -125,4 +125,11 @@ func actorFrom(ctx context.Context) uint64 {
 	}
 
 	return identity.GetIdentityId()
+}
+
+// overrideFrom answers whether the actor is Root or the Administrator writing in a team they hold no role in
+// (an-override-is-stamped-in-every-service). It travels beside actorFrom's id onto every row that records who acted:
+// the ledger transaction, a restock's trail row, a transfer's trail row. A call with no person in ctx reads false.
+func overrideFrom(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
 }

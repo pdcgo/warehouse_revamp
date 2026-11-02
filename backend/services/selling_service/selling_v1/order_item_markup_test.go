@@ -34,8 +34,8 @@ func TestOrderCreate_ALineFreezesEveryFigureOfTheTake(t *testing.T) {
 
 	req := borrowedOrderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: ourProduct, Sku: "OWN", Name: "Our own", Quantity: 2},
-		{ProductId: borrowedA, Sku: "THEIRS", Name: "Borrowed", Quantity: 3},
+		{ProductId: ourProduct, ProductCode: "OWN", Name: "Our own", Quantity: 2},
+		{ProductId: borrowedA, ProductCode: "THEIRS", Name: "Borrowed", Quantity: 3},
 	}
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
@@ -112,8 +112,8 @@ func TestOrderCreate_ABorrowedLineRaisesTheGoodsCostByItsMarkupAndTheFeeFollows(
 
 	req := borrowedOrderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: ourProduct, Sku: "OWN", Name: "Our own", Quantity: 2},
-		{ProductId: borrowedA, Sku: "THEIRS", Name: "Borrowed", Quantity: 3},
+		{ProductId: ourProduct, ProductCode: "OWN", Name: "Our own", Quantity: 2},
+		{ProductId: borrowedA, ProductCode: "THEIRS", Name: "Borrowed", Quantity: 3},
 	}
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
@@ -195,8 +195,8 @@ func TestOrderCreateFromDraft_TheLineCarriesNoMarketplacePrice(t *testing.T) {
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: 41, Sku: "SKU41", Name: "Catalogue SKU41", Quantity: 2},
-		{ProductId: 42, Sku: "SKU42", Name: "Catalogue SKU42", Quantity: 1},
+		{ProductId: 41, ProductCode: "SKU41", Name: "Catalogue SKU41", Quantity: 2},
+		{ProductId: 42, ProductCode: "SKU42", Name: "Catalogue SKU42", Quantity: 1},
 	}
 
 	created, err := createSvc.OrderCreate(context.Background(), connect.NewRequest(req))

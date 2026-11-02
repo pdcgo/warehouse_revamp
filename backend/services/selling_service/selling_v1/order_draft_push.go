@@ -75,6 +75,10 @@ func (s *Service) pushDraft(
 		created bool
 	)
 
+	// Whether the author pushes from outside the team (an-override-is-stamped-in-every-service) — stamped beside the
+	// author on both paths, and following the push exactly as the author does.
+	override := eventOverride(ctx)
+
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// FOR UPDATE, because the merge is read-then-write: two pushes of the same draft would
 		// otherwise both read the touched set, both decide a field is free, and the later one would
@@ -89,14 +93,14 @@ func (s *Service) pushDraft(
 		if errors.Is(findErr, gorm.ErrRecordNotFound) {
 			created = true
 
-			return createDraft(tx, msg, authorID, &draft)
+			return createDraft(tx, msg, authorID, override, &draft)
 		}
 
 		if findErr != nil {
 			return findErr
 		}
 
-		return mergeDraft(tx, msg, authorID, &draft)
+		return mergeDraft(tx, msg, authorID, override, &draft)
 	})
 	if err != nil {
 		return nil, false, err
@@ -111,6 +115,7 @@ func createDraft(
 	tx *gorm.DB,
 	msg *sellingv1.OrderDraftPushRequest,
 	authorID uint64,
+	override bool,
 	draft *selling_service_models.OrderDraft,
 ) error {
 	address := msg.GetAddress()
@@ -118,6 +123,7 @@ func createDraft(
 	*draft = selling_service_models.OrderDraft{
 		TeamID:        msg.GetTeamId(),
 		AuthorUserID:  authorID,
+		IsOverride:    override,
 		Source:        msg.GetSource(),
 		ExternalID:    msg.GetExternalId(),
 		TouchedFields: "[]",
@@ -159,6 +165,7 @@ func mergeDraft(
 	tx *gorm.DB,
 	msg *sellingv1.OrderDraftPushRequest,
 	authorID uint64,
+	override bool,
 	draft *selling_service_models.OrderDraft,
 ) error {
 	touched := decodeTouched(draft.TouchedFields)
@@ -166,8 +173,9 @@ func mergeDraft(
 	// The author follows the push (§6.3). A draft is personal and a colleague cannot pick one up, so
 	// re-pushing under the right person's login is the ONLY way to hand a draft over — making this
 	// the escape hatch that "personal" leans on, rather than an accident.
-	updates := map[string]any{"author_user_id": authorID}
+	updates := map[string]any{"author_user_id": authorID, "is_override": override}
 	draft.AuthorUserID = authorID
+	draft.IsOverride = override
 
 	if !touched[draftFieldShopID] {
 		updates["shop_id"] = msg.GetShopId()

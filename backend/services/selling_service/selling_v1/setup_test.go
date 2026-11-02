@@ -127,7 +127,7 @@ func (c *fakeCatalog) Snapshots(
 		}
 
 		sku := "SKU" + strconv.FormatUint(id, 10)
-		out[id] = selling_v1.ProductSnapshot{SKU: sku, Name: "Catalogue " + sku, TeamID: c.owners[id]}
+		out[id] = selling_v1.ProductSnapshot{ProductCode: sku, Name: "Catalogue " + sku, TeamID: c.owners[id]}
 	}
 
 	return out, nil
@@ -208,7 +208,7 @@ func placeOrderAs(
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {

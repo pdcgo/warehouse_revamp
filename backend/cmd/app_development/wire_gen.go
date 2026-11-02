@@ -56,7 +56,9 @@ func InitializeApp() (*App, error) {
 	userServiceClient := NewUserClient(config, mainInternalHTTPClient)
 	team_v1Service := team_v1.NewService(db, userServiceClient)
 	shipment_v1Service := shipment_v1.NewService(db)
-	product_v1Service := product_v1.NewService(db)
+	product_v1ProductHistory := NewProductHistory(db)
+	teamCodes := NewProductTeamCodes(config, mainInternalHTTPClient)
+	product_v1Service := product_v1.NewService(db, product_v1ProductHistory, teamCodes)
 	financialAccountServiceClient := NewFinancialAccountClient(config, mainInternalHTTPClient)
 	accountChecker := NewLiabilityAccountChecker(financialAccountServiceClient)
 	teamNamer := NewLiabilityTeamNamer(config, mainInternalHTTPClient)
@@ -99,7 +101,11 @@ func InitializeApp() (*App, error) {
 	sellingTeams := NewSupplierSellingTeams(teamServiceClient)
 	supplier_v1ReplayBroker := NewSupplierReplayBroker(client)
 	supplier_v1Service := supplier_v1.NewService(db, sellingTeams, supplier_v1ReplayBroker)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, analytic, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, supplier_v1Service, warehouse_v1Service, docstoreConfig, roleResolver, signer)
+	store := NewAgentStore(db)
+	agentService := user_v1.NewAgentService(db, store, roleResolver)
+	agentEndpoints := NewAgentEndpoints(config, store, mainInternalHTTPClient)
+	access_interceptorsTeamKinds := NewTeamKinds(db)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, analytic, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, supplier_v1Service, warehouse_v1Service, agentService, store, agentEndpoints, access_interceptorsTeamKinds, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

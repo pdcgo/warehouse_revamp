@@ -72,7 +72,7 @@ type Story = StoryObj<typeof meta>;
 
 async function loaded(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  await canvas.findByTestId(`discover-card-${KOPI.sku}`, {}, { timeout: 4000 });
+  await canvas.findByTestId(`discover-card-${KOPI.productCode}`, {}, { timeout: 4000 });
   return canvas;
 }
 
@@ -130,7 +130,7 @@ export const EveryTeamsProductsNamedByOwner: Story = {
     const canvas = await loaded(canvasElement);
 
     for (const product of [KOPI, GULA, BERAS]) {
-      const card = canvas.getByTestId(`discover-card-${product.sku}`);
+      const card = canvas.getByTestId(`discover-card-${product.productCode}`);
       // The names land after the products (one TeamByIds per page), so the card first reads "Team #<id>".
       await waitFor(() => expect(card).toHaveTextContent(teamName(product.teamId)));
     }
@@ -183,7 +183,7 @@ export const EveryGapIsMarked: Story = {
     }
     await expect(within(canvas.getByTestId("discover-division")).getByTestId("not-implemented-division")).toBeInTheDocument();
     await expect(
-      within(canvas.getByTestId(`discover-card-${KOPI.sku}`)).getByTestId("not-implemented-crossPrice"),
+      within(canvas.getByTestId(`discover-card-${KOPI.productCode}`)).getByTestId("not-implemented-crossPrice"),
     ).toBeInTheDocument();
   },
 };
@@ -232,7 +232,7 @@ export const YourOwnProductSaysCostAndCross: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const stock = ownerStockSample(MINYAK.id, FIGURED_TEAM, 0n)!;
-    const card = canvas.getByTestId(`discover-card-${MINYAK.sku}`);
+    const card = canvas.getByTestId(`discover-card-${MINYAK.productCode}`);
 
     await waitFor(() =>
       expect(canvas.getByTestId(`discover-price-cost-${MINYAK.id}`)).toHaveTextContent(
@@ -261,14 +261,14 @@ export const YourOwnProductSaysCostAndCross: Story = {
 export const HideMineLeavesOtherTeams: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(canvas.getByTestId(`discover-card-${BERAS.sku}`)).toBeInTheDocument();
+    await expect(canvas.getByTestId(`discover-card-${BERAS.productCode}`)).toBeInTheDocument();
 
     await userEvent.click(canvas.getByText("Hide my products"));
 
     await expect(within(canvas.getByTestId("discover-filter-hide-mine")).getByRole("checkbox")).toBeChecked();
     await expect(screen.queryByRole("listbox")).toBeNull();
-    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${BERAS.sku}`)).toBeNull());
-    await expect(canvas.getByTestId(`discover-card-${KOPI.sku}`)).toBeInTheDocument();
+    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${BERAS.productCode}`)).toBeNull());
+    await expect(canvas.getByTestId(`discover-card-${KOPI.productCode}`)).toBeInTheDocument();
   },
 };
 
@@ -391,23 +391,23 @@ export const SortsByName: Story = {
     await userEvent.click(byName);
 
     const first = [...liveProducts()].sort((a, b) => a.name.localeCompare(b.name))[0]!;
-    await waitFor(() => expect(cards(canvas)[0]).toHaveAttribute("data-testid", `discover-card-${first.sku}`));
+    await waitFor(() => expect(cards(canvas)[0]).toHaveAttribute("data-testid", `discover-card-${first.productCode}`));
   },
 };
 
-export const SearchesSkuAndName: Story = {
+export const SearchesProductCodeAndName: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const search = canvas.getByTestId("discover-search");
 
     await userEvent.type(search, "gula", { delay: 40 });
-    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.sku}`)).toBeNull());
-    await expect(canvas.getByTestId(`discover-card-${GULA.sku}`)).toBeVisible();
+    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.productCode}`)).toBeNull());
+    await expect(canvas.getByTestId(`discover-card-${GULA.productCode}`)).toBeVisible();
 
     await userEvent.clear(search);
-    await userEvent.type(search, TEH.sku, { delay: 40 });
-    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${GULA.sku}`)).toBeNull());
-    await expect(canvas.getByTestId(`discover-card-${TEH.sku}`)).toBeVisible();
+    await userEvent.type(search, TEH.productCode, { delay: 40 });
+    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${GULA.productCode}`)).toBeNull());
+    await expect(canvas.getByTestId(`discover-card-${TEH.productCode}`)).toBeVisible();
   },
 };
 
@@ -423,12 +423,12 @@ export const FiltersLiveInTheUrl: Story = {
   render: () => <AtFilteredUrl />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByTestId(`discover-card-${GULA.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${GULA.productCode}`, {}, { timeout: 4000 });
     const search = canvas.getByTestId("discover-search");
     const location = canvas.getByTestId("location-search");
 
     await expect(search).toHaveValue("gula");
-    await expect(canvas.queryByTestId(`discover-card-${KOPI.sku}`)).toBeNull();
+    await expect(canvas.queryByTestId(`discover-card-${KOPI.productCode}`)).toBeNull();
 
     await userEvent.clear(search);
     await userEvent.type(search, "kopi", { delay: 40 });
@@ -449,7 +449,7 @@ export const NothingMatches: Story = {
     await expect(cards(canvas)).toHaveLength(0);
 
     await userEvent.click(within(hint).getByRole("button"));
-    await canvas.findByTestId(`discover-card-${KOPI.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${KOPI.productCode}`, {}, { timeout: 4000 });
   },
 };
 
@@ -459,13 +459,13 @@ export const PagesThroughTheCatalogue: Story = {
     await expect(cards(canvas)).toHaveLength(PAGE_SIZE);
 
     await userEvent.click(canvas.getByTestId("discover-pager-next"));
-    await canvas.findByTestId(`discover-card-${PAGE_2_FIRST.sku}`, {}, { timeout: 4000 });
-    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.sku}`)).toBeNull());
+    await canvas.findByTestId(`discover-card-${PAGE_2_FIRST.productCode}`, {}, { timeout: 4000 });
+    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.productCode}`)).toBeNull());
     await expect(cards(canvas)).toHaveLength(PAGE_SIZE);
 
     // The short last page.
     await userEvent.click(canvas.getByTestId("discover-pager-next"));
-    await canvas.findByTestId(`discover-card-${LAST.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${LAST.productCode}`, {}, { timeout: 4000 });
     await waitFor(() => expect(cards(canvas)).toHaveLength(LAST_PAGE_COUNT));
   },
 };
@@ -477,13 +477,13 @@ export const SearchStartsAgainFromPageOne: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("discover-pager-next"));
-    await canvas.findByTestId(`discover-card-${PAGE_2_FIRST.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${PAGE_2_FIRST.productCode}`, {}, { timeout: 4000 });
     await userEvent.click(canvas.getByTestId("discover-pager-next"));
-    await canvas.findByTestId(`discover-card-${LAST.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${LAST.productCode}`, {}, { timeout: 4000 });
 
     await userEvent.type(canvas.getByTestId("discover-search"), "kopi", { delay: 40 });
 
-    await canvas.findByTestId(`discover-card-${KOPI.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${KOPI.productCode}`, {}, { timeout: 4000 });
     await expect(canvas.queryByTestId("discover-none-match")).toBeNull();
   },
 };
@@ -510,7 +510,7 @@ export const ACardOpensTheDiscoverDetail: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId(`discover-open-${GULA.sku}`));
+    await userEvent.click(canvas.getByTestId(`discover-open-${GULA.productCode}`));
     await canvas.findByTestId("at-discover-detail");
   },
 };

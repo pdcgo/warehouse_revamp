@@ -19,12 +19,12 @@
 /** A product's cover, or a generated stand-in when it has none. */
 export function coverFor(product: {
   productId: bigint;
-  sku: string;
+  productCode: string;
   imageUrl?: string;
   thumbnailUrl?: string;
 }): string {
   return (
-    product.thumbnailUrl || product.imageUrl || mockProductImage(product.productId, product.sku)
+    product.thumbnailUrl || product.imageUrl || mockProductImage(product.productId, product.productCode)
   );
 }
 

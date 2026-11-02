@@ -8,7 +8,7 @@ import {
   type SettlementAnalyticService,
   SettlementMetricSchema,
 } from "../src/gen/warehouse/settlement/v1/settlement_analytic_pb";
-import { type SettlementBookRow, dayKey, settlementBook } from "./fixtures";
+import { type SettlementBookRow, dayKey, settlementBook, FOLDED_AS_OF } from "./fixtures";
 
 // THE SETTLEMENT METRICS, as settlement_service serves them — folded from the ledger book in fixtures.ts with the
 // service's own rules, so a story checks the screen against the arithmetic the RPC keeps, not against itself:
@@ -232,6 +232,7 @@ export const settlementAnalyticService: Partial<ServiceImpl<typeof SettlementAna
       const figures = figuresOf(rows, scope.from, scope.to);
 
       return {
+        asOfUnix: FOLDED_AS_OF,
         metricDatas: req.metricIds.map((id) => ({ m: { case: `${prefixOf(id)}Summary`, value: pick(figures, id) } })),
       } as never;
     }
@@ -253,6 +254,7 @@ export const settlementAnalyticService: Partial<ServiceImpl<typeof SettlementAna
     );
 
     return {
+      asOfUnix: FOLDED_AS_OF,
       metricDatas: req.metricIds.map((id) => ({
         m: {
           case: `${prefixOf(id)}${time ? "ByDay" : "ById"}`,

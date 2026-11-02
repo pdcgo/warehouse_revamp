@@ -15,6 +15,7 @@ type NewTransaction struct {
 	TeamID      uint64
 	TxType      inventory_service_models.TxType
 	ActorID     uint64
+	IsOverride  bool // an-override-is-stamped-in-every-service: the caller decides it from the request, the ledger stores it
 	Description string
 	// A sample's recipient (a-sample-keeps-its-recipient).
 	Recipient string
@@ -27,6 +28,7 @@ func CreateTransaction(tx *gorm.DB, in NewTransaction) (inventory_service_models
 		TeamID:         in.TeamID,
 		TxType:         in.TxType,
 		CreateByUserID: in.ActorID,
+		IsOverride:     in.IsOverride,
 		Description:    in.Description,
 		Recipient:      in.Recipient,
 	}

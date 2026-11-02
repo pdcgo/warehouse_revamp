@@ -52,6 +52,11 @@ type LiabilityPayment struct {
 	RecordedBy  uint64
 	ConfirmedBy uint64
 
+	// Whether each of those two people was Root or the Administrator acting inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service) — ONE FLAG PER ACTOR, because the row records two acts.
+	RecordedIsOverride  bool
+	ConfirmedIsOverride bool
+
 	// WHERE THE MONEY LEFT AND WHERE IT LANDED (a-team-payment-posts-on-accept) — opaque
 	// financial_account_service ids, no FK. The payer names From when recording; the creditor names To
 	// when accepting. 0 = not named: To until accepted, From on a payment recorded before the column

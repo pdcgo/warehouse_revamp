@@ -17,13 +17,21 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sup
 // As SupplierService: READS CROSS TEAMS, WRITES DO NOT, and DELETE IS SOFT (a-store-delete-is-soft-too) — a
 // restock line names its store, so a deleted store still finds its supplier.
 service SupplierChannelService {
-  rpc SupplierChannelList(SupplierChannelListRequest) returns (SupplierChannelListResponse);
+  rpc SupplierChannelList(SupplierChannelListRequest) returns (SupplierChannelListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SupplierChannelCreate(SupplierChannelCreateRequest) returns (SupplierChannelCreateResponse);
   rpc SupplierChannelUpdate(SupplierChannelUpdateRequest) returns (SupplierChannelUpdateResponse);
   rpc SupplierChannelDelete(SupplierChannelDeleteRequest) returns (SupplierChannelDeleteResponse);
   // Stores by id, DELETED ONES INCLUDED — what a restock line reads to show its store, with a deleted badge when it is
   // (a-deleted-supplier-still-shows-with-a-badge). The one read that returns a deleted store.
-  rpc SupplierChannelByIds(SupplierChannelByIdsRequest) returns (SupplierChannelByIdsResponse);
+  rpc SupplierChannelByIds(SupplierChannelByIdsRequest) returns (SupplierChannelByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message SupplierChannel {

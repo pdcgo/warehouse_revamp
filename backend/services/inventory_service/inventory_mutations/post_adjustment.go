@@ -35,6 +35,8 @@ type Recount struct {
 	WarehouseID uint64
 	PlacementID uint64
 	ActorID     uint64
+	// Stamped on every transaction the recount writes (an-override-is-stamped-in-every-service).
+	IsOverride  bool
 	Description string
 	Lines       []RecountLine
 }
@@ -150,6 +152,7 @@ func PostRecount(tx *gorm.DB, r Recount) ([]models.InventoryTransaction, []Recou
 				TeamID:      line.OwnerTeamID,
 				TxType:      models.TxAdjustment,
 				ActorID:     r.ActorID,
+				IsOverride:  r.IsOverride,
 				Description: r.Description,
 			})
 			if err != nil {
@@ -255,6 +258,7 @@ type BatchAdjust struct {
 	// True returns the units to the batch and the rack; false takes them off both.
 	Found       bool
 	ActorID     uint64
+	IsOverride  bool
 	Description string
 }
 
@@ -288,6 +292,7 @@ func PostBatchAdjust(tx *gorm.DB, a BatchAdjust) (BatchAdjusted, error) {
 		TeamID:      batch.TeamID,
 		TxType:      models.TxAdjustment,
 		ActorID:     a.ActorID,
+		IsOverride:  a.IsOverride,
 		Description: a.Description,
 	})
 	if err != nil {

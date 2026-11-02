@@ -215,7 +215,7 @@ export const ConfirmEmitsTheSnapshots: Story = {
 
     await waitFor(() =>
       expect(args.onChange).toHaveBeenCalledWith([
-        expect.objectContaining({ id: products[1]!.id, sku: products[1]!.sku, name: products[1]!.name }),
+        expect.objectContaining({ id: products[1]!.id, productCode: products[1]!.productCode, name: products[1]!.name }),
       ]),
     );
   },
@@ -262,7 +262,7 @@ export const Interactive: Story = {
       <>
         <OwnProductPicker {...args} value={picked.map((p) => p.id)} onChange={setPicked} />
         <Text mt="3" fontSize="sm" data-testid="picked">
-          {picked.length ? picked.map((p) => p.sku).join(", ") : "(nothing picked)"}
+          {picked.length ? picked.map((p) => p.productCode).join(", ") : "(nothing picked)"}
         </Text>
       </>
     );
@@ -277,6 +277,6 @@ export const Interactive: Story = {
     await userEvent.click(option);
     await userEvent.click(await screen.findByTestId("product-picker-confirm"));
 
-    await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent(products[0]!.sku));
+    await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent(products[0]!.productCode));
   },
 };

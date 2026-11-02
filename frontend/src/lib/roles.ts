@@ -330,3 +330,30 @@ export function canChangeBundle(args: { role: Role | undefined; createdByUserId:
 export function isGlobalAdmin(role: Role | undefined): boolean {
   return role === Role.ROOT || role === Role.ADMINISTRATOR;
 }
+
+// canRequestPayment mirrors LiabilityPaymentRequestSend: the creditor team's owner and admin, warehouse or selling —
+// whichever is owed (a-creditor-may-request-payment). The request posts nothing, so the warehouse Admin may send it.
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canRequestPayment(role: Role | undefined): boolean {
+  return canSetLiabilityTerms(role) || role === Role.WAREHOUSE_ADMIN;
+}
+
+// canOverseeTeamAgents mirrors AgentConnectionTeamList, AgentConnectionTeamRevoke and TeamAgentPolicySet: the team's
+// OWNER, Root and the Administrator — connecting an agent sends the team's data to a third party, so who may is the
+// owner's decision, and the owner sees and revokes every connection reading the team
+// (the-owner-decides-who-connects-an-agent). The team's Admin may connect one, and does not oversee the others.
+//
+// ⚠ THIS IS UX ONLY. Hiding a card hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canOverseeTeamAgents(role: Role | undefined): boolean {
+  return role === Role.ROOT || role === Role.ADMINISTRATOR || role === Role.SELLING_OWNER || role === Role.WAREHOUSE_OWNER;
+}
+
+// connectNeedsOwnersConsent: the roles that may connect an agent to a team ONLY once its owner has turned it on — the
+// selling CS and the warehouse staff (the-owner-decides-who-connects-an-agent). The owner, the admin and Root connect
+// without asking. AgentConnect is the boundary; this only lets the connect page say why before the person tries.
+export function connectNeedsOwnersConsent(role: Role | undefined): boolean {
+  return role === Role.SELLING_CS || role === Role.WAREHOUSE_STAFF;
+}

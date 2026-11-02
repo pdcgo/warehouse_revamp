@@ -269,16 +269,16 @@ heading so the links into it hold.
 ### does-the-warehouse-profile-move-out-of-team-service
 ✅ **Answered (2026-10-31): yes, whole** — [the-warehouse-profile-lives-in-warehouse-service](./context_decision.md#the-warehouse-profile-lives-in-warehouse-service):
 location and both weekly grids move to `warehouse_service`; a selling team's default warehouse stays in `team_service`.
-⛔ Not built. Kept as a heading so the links into it hold.
+✅ Built 2026-11-02. Kept as a heading so the links into it hold.
 
 ### what-does-a-closed-day-actually-do
 ✅ **Answered (2026-10-31): warn, never refuse** — [a-closed-day-warns-and-never-refuses](./context_decision.md#a-closed-day-warns-and-never-refuses):
-the order is created and the form names the next opening; the hours gate no restock. Against my first *refuse*. ⛔ Not
-built. Kept as a heading so the links into it hold.
+the order is created and the form names the next opening; the hours gate no restock. Against my first *refuse*. ✅ Built
+2026-11-02. Kept as a heading so the links into it hold.
 
 ### are-there-one-off-closures
 ✅ **Answered (2026-10-31): yes** — [a-warehouse-records-its-holidays](./context_decision.md#a-warehouse-records-its-holidays): a date range
-and a reason, read by the closed-day warning. ⛔ Not built. Kept as a heading so the links into it hold.
+and a reason, read by the closed-day warning. ✅ Built 2026-11-02. Kept as a heading so the links into it hold.
 
 ### is-the-fee-refunded-on-return-or-lost
 ✅ **Overtaken and closed (2026-10-19):** a return keeps the fee ([a-return-keeps-both-fees](../../order/context_decision.md#a-return-keeps-both-fees)),

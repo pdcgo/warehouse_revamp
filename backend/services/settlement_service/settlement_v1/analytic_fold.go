@@ -2,11 +2,9 @@ package settlement_v1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -14,7 +12,6 @@ import (
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_event"
-	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
 )
 
 // errFoldLocked is the webhook's answer while `process_event_lock` is held. It is an ERROR on purpose:
@@ -221,47 +218,4 @@ func advisoryLock(tx *gorm.DB, key string) error {
 	}
 
 	return nil
-}
-
-// eventLockValue is the ONE encoding of `process_event_lock`.
-type eventLockValue struct {
-	Lock *bool `json:"lock"`
-}
-
-var (
-	lockOn  = `{"lock":true}`
-	lockOff = `{"lock":false}`
-)
-
-// readEventLock reads the maintenance switch.
-//
-// ⚠ A MISSING OR UNPARSEABLE VALUE IS AN ERROR, never "unlocked". For a lock, failing open is the wrong
-// direction: the guard would silently stop existing at exactly the moment it is misconfigured.
-func readEventLock(tx *gorm.DB) (bool, error) {
-	var meta settlement_service_models.SettlementServiceMetadata
-
-	err := tx.
-		Where("key = ?", settlement_service_models.MetadataProcessEventLock).
-		Take(&meta).
-		Error
-	if err != nil {
-		return false, fmt.Errorf("settlement: cannot read %s: %w", settlement_service_models.MetadataProcessEventLock, err)
-	}
-
-	return parseEventLock(meta.Value)
-}
-
-func parseEventLock(value string) (bool, error) {
-	decoded := eventLockValue{}
-
-	decoder := json.NewDecoder(strings.NewReader(value))
-	decoder.DisallowUnknownFields()
-
-	err := decoder.Decode(&decoded)
-	if err != nil || decoded.Lock == nil {
-		return false, fmt.Errorf("settlement: %s is %q, not {\"lock\":true|false}",
-			settlement_service_models.MetadataProcessEventLock, value)
-	}
-
-	return *decoded.Lock, nil
 }

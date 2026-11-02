@@ -15,6 +15,9 @@ type CourierCharge struct {
 	Amount        int64
 	// Who counted the box in — read from the stored restock, never from the envelope (every-entry-names-who-posted-it).
 	ActorID uint64
+	// Whether they counted it in as Root or the Administrator from outside the warehouse, as the accept stored it
+	// (an-override-is-stamped-in-every-service). Stamped on both legs beside the actor.
+	ActorIsOverride bool
 }
 
 // ChargeRestockCourier posts what the selling team owes the warehouse for the courier's charge, ONE posting per
@@ -32,6 +35,7 @@ func (s *Service) ChargeRestockCourier(ctx context.Context, c CourierCharge) err
 		SourceType:     SourceTypeIncidentalFee,
 		SourceID:       c.RestockID,
 		ActorID:        c.ActorID,
+		IsOverride:     c.ActorIsOverride,
 	})
 
 	// A redelivery: the debt is already on the books, which is the right answer, not a failure.

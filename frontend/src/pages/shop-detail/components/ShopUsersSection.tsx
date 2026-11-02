@@ -25,6 +25,7 @@ import { toaster } from "../../../components/feedback/Toaster";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../../layouts/shell";
+import { useCanWrite } from "../../../features/team/TeamContext";
 
 // ShopUsersSection manages who may work on a shop (#86). It lists the granted users (resolving the
 // opaque ids to names via UserByIDs), adds one via the shared UserSelect SCOPED TO THE TEAM — a shop is
@@ -54,6 +55,8 @@ export function ShopUsersSection({
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  // Who may work on the shop is READ while the admin team monitors the team — no add, no primary, no remove.
+  const writable = useCanWrite();
   const [userIds, setUserIds] = useState<bigint[]>([]);
   const [users, setUsers] = useState<Record<string, PublicUser>>({});
   const [loading, setLoading] = useState(true);
@@ -163,6 +166,7 @@ export function ShopUsersSection({
             </Alert.Root>
           )}
 
+          {writable && (
           <Flex gap="card" align={isMobile ? "stretch" : "end"} direction={isMobile ? "column" : "row"}>
             <Field.Root flex="1">
               <Field.Label>{t("shops.users.addLabel")}</Field.Label>
@@ -185,6 +189,7 @@ export function ShopUsersSection({
               {t("shops.users.add")}
             </Button>
           </Flex>
+          )}
 
           {error && (
             <Box color="error.fg" fontSize="sm" data-testid="shop-users-error">
@@ -233,6 +238,7 @@ export function ShopUsersSection({
                         </Badge>
                       )}
                     </HStack>
+                    {writable && (
                     <HStack gap="1" flexShrink={0}>
                       {!primary && (
                         <IconButton
@@ -258,6 +264,7 @@ export function ShopUsersSection({
                         <Icon as={UserMinus} boxSize="4" />
                       </IconButton>
                     </HStack>
+                    )}
                   </Flex>
                 );
               })}

@@ -37,6 +37,7 @@ func (s *Service) SettlementPost(
 		ReversesID:      msg.GetReversesId(),
 		Note:            msg.GetNote(),
 		ActorID:         actorFrom(ctx),
+		IsOverride:      overrideFrom(ctx),
 		CreatedByUserID: msg.GetCreatedByUserId(),
 	}, postOptions{})
 	if err != nil {
@@ -76,6 +77,11 @@ type PostInput struct {
 	Note           string
 	ActorID        uint64
 
+	// Whether ActorID posted from outside the team (an-override-is-stamped-in-every-service) — set by SettlementPost
+	// from the request's resolved role, and by an order event's post from the event's `actor_is_override`: that row
+	// names the order's actor, so it carries that act's flag.
+	IsOverride bool
+
 	// Who created the order. Stamped onto the account ONLY by the post that opens it, and ignored by
 	// every later one (#the-creator-is-stamped-on-the-state-row).
 	CreatedByUserID uint64
@@ -99,7 +105,9 @@ type CancelInput struct {
 	OccurredOn string
 
 	ActorID uint64
-	Note    string
+	// Whether the CANCEL was an override (an-override-is-stamped-in-every-service), from the event beside its actor.
+	IsOverride bool
+	Note       string
 }
 
 // ErrNothingToCancel is a cancel against an account with no live sale — one that never opened (an
@@ -177,6 +185,7 @@ func (s *Service) CancelSale(ctx context.Context, in CancelInput) (PostResult, e
 		SourceType: settlementv1.SourceType_SOURCE_TYPE_ORDER,
 		OccurredOn: in.OccurredOn,
 		ActorID:    in.ActorID,
+		IsOverride: in.IsOverride,
 		Note:       in.Note,
 	}, postOptions{changeFromLiveSale: true})
 }
@@ -434,6 +443,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 			ShopID:         in.ShopID,
 			TeamID:         in.TeamID,
 			ActorID:        in.ActorID,
+			IsOverride:     in.IsOverride,
 			UserID:         userID,
 			SourceType:     sourceText,
 			SettlementType: typeText,

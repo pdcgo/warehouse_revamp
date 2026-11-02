@@ -11,17 +11,20 @@ import {
   Input,
   Stack,
 } from "@chakra-ui/react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Logo } from "../../components/chrome/Logo";
 import { PasswordInput } from "../../components/inputs/PasswordInput";
 import { ForgotPasswordDialog } from "./components/ForgotPasswordDialog";
 import { useAuth } from "../../features/auth/AuthContext";
+import { returnPath } from "../../features/auth/returnTo";
 
 export function LoginPage() {
   const { t } = useTranslation();
   const { identity, login } = useAuth();
   const navigate = useNavigate();
+  // Back where the visitor was sent from — the path and its query, e.g. an agent's connect page — or home.
+  const back = returnPath(useLocation().state);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +33,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   if (identity) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={back} replace />;
   }
 
   async function onSubmit(event: FormEvent) {
@@ -41,7 +44,7 @@ export function LoginPage() {
 
     try {
       await login(username, password, remember);
-      void navigate("/", { replace: true });
+      void navigate(back, { replace: true });
     } catch (err) {
       // The server returns the SAME message for an unknown user and a wrong password — do not
       // embellish it here, or the UI reintroduces the account-enumeration leak the API avoids.

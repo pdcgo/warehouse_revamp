@@ -96,36 +96,32 @@ func TestExpenseDaily_GroupsByDayAscendingWithTheKindSplit(t *testing.T) {
 	}
 }
 
-// A voided expense leaves no trace on its day, exactly as it leaves none in the period totals.
-//
-// The list screen still shows it, struck through, because an entry made and then withdrawn is what
-// somebody looking at a changed total wants to see. A daily series is only ever read as money, so a day
-// whose only entry was voided must VANISH rather than read as a zero — a zero would assert somebody
-// looked at that day and found nothing, which is a different claim.
-func TestExpenseDaily_VoidedEntriesLeaveNoTraceOnTheDay(t *testing.T) {
+// A CANCELLED expense's day reads 0, made of two rows — the mistake and its correction, both counted, neither hidden
+// (every-correction-is-a-signed-adjustment). The day does not vanish: something WAS entered on it and taken back, and
+// its two entries say so, which an absent day could not.
+func TestExpenseDaily_ACancelledExpenseLeavesItsDayAtZero(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
 	record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_ADS, 2_000_000, "2026-07-03")
-	// The 4th's ONLY entry, and it was a mistake.
+	// The 4th's ONLY entry, and it was a mistake — Batalkan writes minus the whole of it.
 	mistake := record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_OTHER, 9_000_000, "2026-07-04")
-
-	_, err := svc.ExpenseVoid(context.Background(), connect.NewRequest(&expensev1.ExpenseVoidRequest{
-		TeamId: teamA, ExpenseId: mistake.GetId(),
-	}))
-	if err != nil {
-		t.Fatalf("ExpenseVoid: %v", err)
-	}
+	adjust(t, svc, mistake.GetId(), -9_000_000)
 
 	got := daily(t, svc, period("2026-07-01", "2026-07-31"))
 
 	days := got.GetDays()
-	if len(days) != 1 {
-		t.Fatalf("got %d day rows, want 1 — the 4th's only entry was voided: %+v", len(days), days)
+	if len(days) != 2 {
+		t.Fatalf("got %d day rows, want 2 — the 4th keeps its two entries: %+v", len(days), days)
 	}
 
-	if days[0].GetDate() != "2026-07-03" || days[0].GetTotal() != 2_000_000 {
-		t.Fatalf("surviving day is %s / %d, want 2026-07-03 / 2000000", days[0].GetDate(), days[0].GetTotal())
+	if days[1].GetDate() != "2026-07-04" || days[1].GetTotal() != 0 || days[1].GetEntries() != 2 {
+		t.Fatalf("the 4th is %s / %d / %d entries, want 2026-07-04 / 0 / 2",
+			days[1].GetDate(), days[1].GetTotal(), days[1].GetEntries())
+	}
+
+	if total := got.GetTotals().GetTotal(); total != 2_000_000 {
+		t.Fatalf("the month's total = %d, want 2.000.000 — the cancelled 9.000.000 counts for nothing", total)
 	}
 }
 

@@ -343,7 +343,7 @@ Kept as lines so the numbers hold.
 
 19. ✅ *(2026-10-31)* **Answered: a year at most, for every metric** —
     [a-metric-reads-at-most-a-year](../analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year), recorded with the metric
-    pattern because order and settlement share the limit. ⛔ Not built. Kept as a line so the numbers hold.
+    pattern because order and settlement share the limit. ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 
 ## Parked — talk later
 

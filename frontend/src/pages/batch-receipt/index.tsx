@@ -209,7 +209,7 @@ export function BatchReceiptPage() {
                       {l.name}
                     </Text>
                     <Text as="span" color="fg.subtle" ml="1">
-                      {l.sku}
+                      {l.productCode}
                     </Text>
                     {on && (
                       <Badge ml="2" colorPalette="brand" size="sm">

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanWrite } from "../team/TeamContext";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Field, HStack, Icon, IconButton, Input, Menu, Portal, Stack } from "@chakra-ui/react";
 import { ClipboardCheck, MoreHorizontal, PackageCheck, PackageOpen, Truck } from "lucide-react";
@@ -70,9 +71,11 @@ export function WarehouseTransferActions({ transfer, teamId, variant, pending }:
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<"" | "process" | "ship" | "arrive">("");
+  // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const writable = useCanWrite();
 
   const actions = warehouseTransferActions(transfer.status, directionFor(transfer, teamId));
-  if (actions.length === 0) return null;
+  if (actions.length === 0 || !writable) return null;
 
   const id = transfer.id.toString();
 

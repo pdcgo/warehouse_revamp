@@ -26,7 +26,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // The product as the app draws a product everywhere — its picture, its name, its SKU under it.
 function productOf(p: SampleProduct) {
-  return { id: p.id, name: p.name, sku: p.sku, defaultImageThumbnailUrl: p.thumbnailUrl };
+  return { id: p.id, name: p.name, productCode: p.productCode, defaultImageThumbnailUrl: p.thumbnailUrl };
 }
 
 // WHEN IT WAS BOUGHT — the last restock, and the first under it when they differ: one fact read twice, so one cell
@@ -106,7 +106,7 @@ export function ProductBrowser({
   // The product, its SKU, or the channel it is bought from — what somebody looking for a source would type.
   const matching = all.filter(
     (p) =>
-      (term === "" || [p.name, p.sku, p.channel.name].some((field) => field.toLowerCase().includes(term))) &&
+      (term === "" || [p.name, p.productCode, p.channel.name].some((field) => field.toLowerCase().includes(term))) &&
       (storeId === 0n || p.channel.id === storeId) &&
       (teamId === 0n || p.teamId === teamId),
   );

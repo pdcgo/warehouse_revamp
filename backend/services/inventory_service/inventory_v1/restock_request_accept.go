@@ -40,7 +40,10 @@ func (s *Service) RestockRequestAccept(
 		return nil, restockErr(errRestockCostNoteMissing)
 	}
 
-	var rr inventory_service_models.Restock
+	var (
+		rr        inventory_service_models.Restock
+		acceptLog inventory_service_models.RestockLog
+	)
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loadErr := tx.
@@ -159,6 +162,7 @@ func (s *Service) RestockRequestAccept(
 		}
 
 		actor := actorFrom(ctx)
+		override := overrideFrom(ctx)
 
 		// THE FREIGHT every unit carries: the shipping and the courier's charge — part of what the goods cost to get here
 		// (the-couriers-ask-is-in-the-unit-price), outside the restock's total, inside the unit price.
@@ -273,6 +277,7 @@ func (s *Service) RestockRequestAccept(
 			WarehouseID: rr.WarehouseID,
 			TeamID:      rr.TeamID,
 			ActorID:     actor,
+			IsOverride:  override,
 			Lines:       ledgerLines,
 		})
 		if ledgerErr != nil {
@@ -319,7 +324,11 @@ func (s *Service) RestockRequestAccept(
 			return statusErr
 		}
 
-		logErr := recordRestockLog(tx, rr.ID, from, restockStatusAccepted, actor, acceptDescription(rr, courierCharge), acceptedAt)
+		var logErr error
+
+		// Kept: the event reads the accept's override stamp from this row (an-override-is-stamped-in-every-service).
+		acceptLog, logErr = recordRestockLogRow(tx, rr.ID, from, restockStatusAccepted, actor, override,
+			acceptDescription(rr, courierCharge), acceptedAt)
 		if logErr != nil {
 			return logErr
 		}
@@ -334,7 +343,7 @@ func (s *Service) RestockRequestAccept(
 	}
 
 	// AFTER the commit, never inside: downstream folds must not be able to fail the accept.
-	s.publishAccepted(ctx, &rr)
+	s.publishAccepted(ctx, &rr, acceptLog)
 
 	return connect.NewResponse(&inventoryv1.RestockRequestAcceptResponse{
 		Request: restockRequestToProto(&rr),

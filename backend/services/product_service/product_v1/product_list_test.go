@@ -46,7 +46,7 @@ func TestProductList_QueryAndPaging(t *testing.T) {
 	insertProduct(t, db, 2, "NUT-1", "Steel nut")
 	insertProduct(t, db, 2, "GLUE-1", "Adhesive")
 
-	// q matches name OR sku.
+	// q matches name OR product code.
 	resp, err := svc.ProductList(context.Background(), connect.NewRequest(&productv1.ProductListRequest{
 		TeamId: 2,
 		Filter: &productv1.ProductListFilter{Q: "steel"},

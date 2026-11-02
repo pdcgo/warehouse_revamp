@@ -107,7 +107,7 @@ export const returnConfigurationService: Partial<ServiceImpl<typeof TeamReturnCo
     }
     if (shared.teamId === req.teamId) {
       throw new ConnectError(
-        `${shared.sku} is this team's own product — only another team's product is mapped for returns`,
+        `${shared.productCode} is this team's own product — only another team's product is mapped for returns`,
         Code.FailedPrecondition,
       );
     }
@@ -115,7 +115,7 @@ export const returnConfigurationService: Partial<ServiceImpl<typeof TeamReturnCo
     const own = productNamed(req.ownProductId);
     if (!own || own.teamId !== req.teamId) {
       throw new ConnectError(
-        `${own?.sku ?? `product ${req.ownProductId}`} is not one of this team's products — a return can only come back as your own`,
+        `${own?.productCode ?? `product ${req.ownProductId}`} is not one of this team's products — a return can only come back as your own`,
         Code.FailedPrecondition,
       );
     }

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Code, ConnectError } from "@connectrpc/connect";
 
-import { warehouseFeeClient } from "../../api/clients";
+import { warehouseFeeClient, warehouseInfoClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 
 /** What the order form is told about the fee for the order on screen — a price, or the warehouse's refusal. */
@@ -86,5 +86,21 @@ export function useSetWarehouseFee() {
     mutationFn: async (vars: { teamId: bigint; feePercent: number; minFee: number; maxFee?: number }) =>
       (await warehouseFeeClient.warehouseFeeSet(vars)).fee,
     onSuccess: () => client.invalidateQueries({ queryKey: ["warehouseFee"] }),
+  });
+}
+
+/**
+ * WHETHER A WAREHOUSE RECEIVES ORDERS NOW (a-closed-day-warns-and-never-refuses) — and if not, its next opening and, for
+ * a one-off closure, why. It only MARKS: the order is created whatever this says. Read fresh, like every read here.
+ */
+export function useWarehouseReceiving(warehouseId: bigint) {
+  return useQuery({
+    queryKey: ["warehouseReceiving", warehouseId.toString()],
+    enabled: warehouseId > 0n,
+    queryFn: async () => {
+      const res = await warehouseInfoClient.warehouseReceivingStatus({ warehouseIds: [warehouseId] });
+
+      return res.states[warehouseId.toString()] ?? null;
+    },
   });
 }

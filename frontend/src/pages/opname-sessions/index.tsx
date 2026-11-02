@@ -7,7 +7,7 @@ import { ClipboardList, Eye, Plus } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { type OpnameSession, OpnameSessionStatus } from "../../gen/warehouse/inventory/v1/opname_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActiveOpnameSession, useOpnameSessions } from "../../features/opname/queries";
 import { OpnamePlanBadge, OpnameSessionStatusBadge } from "../../features/opname/OpnameBadges";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
@@ -44,6 +44,8 @@ export function OpnameSessionsPage() {
   const teamId = current?.teamId;
   const status = TABS.find((x) => x.value === tab)!.status;
   const manager = canManageOpname(current?.role);
+  // `manager` also decides a READ (the watch page); starting and counting are writes, gated on canWrite as well.
+  const writable = canWrite(current);
 
   const list = useOpnameSessions({ teamId, status, page, pageSize });
   const active = useActiveOpnameSession(teamId);
@@ -80,7 +82,7 @@ export function OpnameSessionsPage() {
             {t("opnameSession.subtitle")}
           </Text>
         </Stack>
-        {manager && (
+        {manager && writable && (
           <Button
             size="xs"
             colorPalette="brand"
@@ -120,15 +122,17 @@ export function OpnameSessionsPage() {
               </Text>
             )}
             <HStack gap="2" pt="1" wrap="wrap">
-              <Button
-                size="xs"
-                colorPalette="brand"
-                onClick={() => navigate(`/inventories/opname/sessions/${activeSession.id}/count`)}
-                data-testid="opname-active-count"
-              >
-                <Icon as={ClipboardList} boxSize="4" />
-                {t("opnameSession.active.count")}
-              </Button>
+              {writable && (
+                <Button
+                  size="xs"
+                  colorPalette="brand"
+                  onClick={() => navigate(`/inventories/opname/sessions/${activeSession.id}/count`)}
+                  data-testid="opname-active-count"
+                >
+                  <Icon as={ClipboardList} boxSize="4" />
+                  {t("opnameSession.active.count")}
+                </Button>
+              )}
               {manager && (
                 <Button
                   size="xs"

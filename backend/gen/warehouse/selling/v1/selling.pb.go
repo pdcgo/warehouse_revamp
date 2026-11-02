@@ -2463,22 +2463,22 @@ const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\x11ShopByIdsDataType\x12%\n" +
 	"!SHOP_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dSHOP_BY_IDS_DATA_TYPE_GENERAL\x10\x01\x12\x1f\n" +
-	"\x1bSHOP_BY_IDS_DATA_TYPE_BASIC\x10\x022\xeb\b\n" +
+	"\x1bSHOP_BY_IDS_DATA_TYPE_BASIC\x10\x022\xff\b\n" +
 	"\vShopService\x12_\n" +
 	"\n" +
-	"ShopCreate\x12'.warehouse.selling.v1.ShopCreateRequest\x1a(.warehouse.selling.v1.ShopCreateResponse\x12Y\n" +
-	"\bShopList\x12%.warehouse.selling.v1.ShopListRequest\x1a&.warehouse.selling.v1.ShopListResponse\x12_\n" +
+	"ShopCreate\x12'.warehouse.selling.v1.ShopCreateRequest\x1a(.warehouse.selling.v1.ShopCreateResponse\x12^\n" +
+	"\bShopList\x12%.warehouse.selling.v1.ShopListRequest\x1a&.warehouse.selling.v1.ShopListResponse\"\x03\x90\x02\x01\x12d\n" +
 	"\n" +
-	"ShopDetail\x12'.warehouse.selling.v1.ShopDetailRequest\x1a(.warehouse.selling.v1.ShopDetailResponse\x12_\n" +
+	"ShopDetail\x12'.warehouse.selling.v1.ShopDetailRequest\x1a(.warehouse.selling.v1.ShopDetailResponse\"\x03\x90\x02\x01\x12_\n" +
 	"\n" +
 	"ShopUpdate\x12'.warehouse.selling.v1.ShopUpdateRequest\x1a(.warehouse.selling.v1.ShopUpdateResponse\x12_\n" +
 	"\n" +
-	"ShopDelete\x12'.warehouse.selling.v1.ShopDeleteRequest\x1a(.warehouse.selling.v1.ShopDeleteResponse\x12e\n" +
-	"\fShopUserList\x12).warehouse.selling.v1.ShopUserListRequest\x1a*.warehouse.selling.v1.ShopUserListResponse\x12b\n" +
+	"ShopDelete\x12'.warehouse.selling.v1.ShopDeleteRequest\x1a(.warehouse.selling.v1.ShopDeleteResponse\x12j\n" +
+	"\fShopUserList\x12).warehouse.selling.v1.ShopUserListRequest\x1a*.warehouse.selling.v1.ShopUserListResponse\"\x03\x90\x02\x01\x12b\n" +
 	"\vShopUserAdd\x12(.warehouse.selling.v1.ShopUserAddRequest\x1a).warehouse.selling.v1.ShopUserAddResponse\x12k\n" +
 	"\x0eShopUserRemove\x12+.warehouse.selling.v1.ShopUserRemoveRequest\x1a,.warehouse.selling.v1.ShopUserRemoveResponse\x12w\n" +
-	"\x12ShopUserSetPrimary\x12/.warehouse.selling.v1.ShopUserSetPrimaryRequest\x1a0.warehouse.selling.v1.ShopUserSetPrimaryResponse\x12n\n" +
-	"\x0fShopAccessCheck\x12,.warehouse.selling.v1.ShopAccessCheckRequest\x1a-.warehouse.selling.v1.ShopAccessCheckResponse\x12\\\n" +
+	"\x12ShopUserSetPrimary\x12/.warehouse.selling.v1.ShopUserSetPrimaryRequest\x1a0.warehouse.selling.v1.ShopUserSetPrimaryResponse\x12s\n" +
+	"\x0fShopAccessCheck\x12,.warehouse.selling.v1.ShopAccessCheckRequest\x1a-.warehouse.selling.v1.ShopAccessCheckResponse\"\x03\x90\x02\x01\x12\\\n" +
 	"\tShopByIds\x12&.warehouse.selling.v1.ShopByIdsRequest\x1a'.warehouse.selling.v1.ShopByIdsResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (

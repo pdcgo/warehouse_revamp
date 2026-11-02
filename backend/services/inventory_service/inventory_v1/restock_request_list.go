@@ -175,7 +175,7 @@ func applyRestockDateRange(query *gorm.DB, filter *inventoryv1.RestockRequestLis
 }
 
 // applyRestockSearch narrows by FREE TEXT over what a person remembers about a restock (owner): its
-// number, the courier's tracking number, the order it was for, or a SKU / product name on one of its
+// number, the courier's tracking number, the order it was for, or a product code / product name on one of its
 // lines.
 //
 // The lines are matched with EXISTS rather than a JOIN, for the reason the product filter above gives:
@@ -184,8 +184,8 @@ func applyRestockDateRange(query *gorm.DB, filter *inventoryv1.RestockRequestLis
 //
 // A NUMBER IS AMBIGUOUS, AND THE HASH IS HOW SOMEBODY RESOLVES IT.
 //
-// "500" is both a plausible restock number and a plausible SKU fragment (TMB-500-005), so a bare
-// numeric term searches the id AND the text — narrowing it to the id would make the SKU unfindable.
+// "500" is both a plausible restock number and a plausible product code fragment (TMB-500-005), so a bare
+// numeric term searches the id AND the text — narrowing it to the id would make the product code unfindable.
 // The cost is that a short number is noisy: "9" also matches tracking number JP1830099.
 //
 // So "#9" means THE NUMBER, ALONE. The hash is what a person types when they mean the id — they copied
@@ -218,7 +218,7 @@ func applyRestockSearch(query *gorm.DB, q string) *gorm.DB {
 		"LOWER(invoice_ref_id) LIKE ?",
 		"EXISTS (SELECT 1 FROM restock_items i " +
 			"WHERE i.restock_id = restocks.id " +
-			"AND (LOWER(i.sku) LIKE ? OR LOWER(i.name) LIKE ?))",
+			"AND (LOWER(i.product_code) LIKE ? OR LOWER(i.name) LIKE ?))",
 	}
 	args := []any{like, like, like, like}
 

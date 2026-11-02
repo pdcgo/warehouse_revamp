@@ -19,7 +19,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Rack } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { RackTotals } from "../../features/racks/adapt";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useDeleteRack, useRacks } from "./queries";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -97,7 +97,7 @@ export function RacksPage() {
         <Heading size="md">{t("racks.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        <RackFormDialog />
+        {canWrite(current) && <RackFormDialog />}
       </Flex>
 
       <HStack>
@@ -161,6 +161,7 @@ export function RacksPage() {
 
                   {/* Stop the row's navigate from firing when a row action is used. */}
                   <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                    {canWrite(current) && (
                     <HStack justify="end" gap="1">
                       <IconButton
                         size="xs"
@@ -190,6 +191,7 @@ export function RacksPage() {
                         }
                       />
                     </HStack>
+                    )}
                   </Table.Cell>
                 </Table.Row>
               ))}

@@ -111,7 +111,7 @@ async function restockGround(page: Page, tag: string) {
   const cat = await api(page, "category.v1.CategoryService/CategoryCreate", { name: category });
   const product = await api(page, "product.v1.ProductService/ProductCreate", {
     teamId: "1",
-    sku: skuA,
+    productCodePart: skuA,
     name: `E2E ${skuA}`,
     categoryId: cat.category.id,
   });
@@ -168,13 +168,13 @@ async function seed(page: Page, tag: string) {
       const cover =
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
-      for (const sku of [skuA, skuB]) {
+      for (const productCode of [skuA, skuB]) {
         await call("product.v1.ProductService/ProductCreate", {
           teamId: "1",
-          sku,
-          name: `E2E ${sku}`,
+          productCodePart: productCode,
+          name: `E2E ${productCode}`,
           categoryId: cat.category.id,
-          images: sku === skuA ? [{ url: cover, thumbnailUrl: cover }] : [],
+          images: productCode === skuA ? [{ url: cover, thumbnailUrl: cover }] : [],
         });
       }
     },
@@ -194,8 +194,8 @@ async function seed(page: Page, tag: string) {
 //
 // `ticked` is the state EXPECTED AFTER the click — this toggles, so a row that was already ticked
 // comes back unticked, which is the untick half of the reconcile test below.
-async function tick(page: Page, sku: string, ticked = true) {
-  await page.getByTestId("product-picker-search").fill(sku);
+async function tick(page: Page, productCode: string, ticked = true) {
+  await page.getByTestId("product-picker-search").fill(productCode);
 
   // Each row's testid carries the product's ID, which this test has no way to know — so the row is
   // found by the SKU it displays.
@@ -207,7 +207,7 @@ async function tick(page: Page, sku: string, ticked = true) {
   const row = page
     .getByTestId("product-picker-list")
     .locator('[data-testid^="product-picker-option-"]')
-    .filter({ hasText: sku });
+    .filter({ hasText: productCode });
   await expect(row).toHaveCount(1);
 
   // The row IS the checkbox's label, so the click goes to its control — the row's centre lands on the
@@ -244,7 +244,7 @@ test("Restock list: raised-by and accepted-by offer who did it, and narrow to th
     teamId: "1",
     warehouseId: ground.warehouseId,
     financeAccountId: ground.accountId,
-    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 2, total: 20000 }],
+    items: [{ productId: ground.productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 2, total: 20000 }],
   });
 
   await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
@@ -485,7 +485,7 @@ test("Restock detail: broken and missing show with the warehouse's notes (#154)"
     teamId: "1",
     warehouseId: ground.warehouseId,
     financeAccountId: ground.accountId,
-    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
+    items: [{ productId: ground.productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
   });
 
   await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
@@ -534,7 +534,7 @@ test("Restock detail: broken and missing show with the warehouse's notes (#154)"
     teamId: "1",
     warehouseId: ground.warehouseId,
     financeAccountId: ground.accountId,
-    items: [{ productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 4, total: 100000 }],
+    items: [{ productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 4, total: 100000 }],
   });
 
   await page.goto(`/inventories/restock/${pending.request.id}`);
@@ -560,7 +560,7 @@ test("Restock detail: the courier's charge shows on its own and stays out of the
     warehouseId: ground.warehouseId,
     financeAccountId: ground.accountId,
     shipmentCost: 15000,
-    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
+    items: [{ productId: ground.productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
   });
 
   await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {

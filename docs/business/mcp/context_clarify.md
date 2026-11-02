@@ -267,7 +267,7 @@ sequenceDiagram
 
 8. ✅ **Answered 2026-10-31 — C, our server hosts the MCP**:
    [our-server-hosts-the-mcp](./context_decision.md#our-server-hosts-the-mcp) — a public URL behind an OAuth login, and the
-   shipped app goes. ⛔ Not built. Kept as a line so the numbers hold.
+   shipped app goes. ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 
 # Contradiction
 

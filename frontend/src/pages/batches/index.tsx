@@ -224,7 +224,7 @@ export function BatchesPage() {
                   <Table.Cell>
                     {b.name}
                     <Text as="span" color="fg.subtle" ml="1">
-                      {b.sku}
+                      {b.productCode}
                     </Text>
                   </Table.Cell>
                   {/* The catalogue OWNER (#142) — a warehouse holds several teams' goods. Distinct from

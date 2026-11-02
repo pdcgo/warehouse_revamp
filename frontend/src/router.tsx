@@ -1,9 +1,12 @@
-import { lazy } from "react";
+import { Suspense, lazy } from "react";
+import type { ReactElement } from "react";
+import { Center, Spinner } from "@chakra-ui/react";
 import { createBrowserRouter, redirect } from "react-router-dom";
 import { AuthGate, ProtectedRoute } from "./features/auth/AuthGate";
 import { LoginPage } from "./pages/login/index";
 import { Layout } from "./layouts/Layout";
 import { TeamProvider, useTeam } from "./features/team/TeamContext";
+import { WriteRoute } from "./features/team/WriteRoute";
 import { TeamType } from "./gen/warehouse/team/v1/team_pb";
 
 // The app SHELL (auth gate, protected route, team provider, layout) and the LOGIN page load eagerly —
@@ -213,6 +216,37 @@ const SettingsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import("./pages/profile").then((m) => ({ default: m.ProfilePage })),
 );
+// Where an AI agent's OAuth login lands (our-server-hosts-the-mcp). Code-split like every page: almost nobody opens it,
+// and never twice a day.
+const ConnectAgentPage = lazy(() =>
+  import("./pages/connect-agent").then((m) => ({ default: m.ConnectAgentPage })),
+);
+
+// THE CONNECT PAGE'S FRAME: signed in, OUTSIDE the shell. It needs an identity — the agent's credential is minted for a
+// person — but no sidebar and no current team: the page loads the person's teams itself, and the team it connects is
+// picked on it. Its own Suspense boundary, since the shell's (around Layout's <Outlet/>) is not above it.
+function ConnectAgentRoute() {
+  return (
+    <ProtectedRoute>
+      <Suspense
+        fallback={
+          <Center minH="100dvh">
+            <Spinner size="lg" colorPalette="brand" />
+          </Center>
+        }
+      >
+        <ConnectAgentPage />
+      </Suspense>
+    </ProtectedRoute>
+  );
+}
+
+// A route that exists only to CHANGE something — a create or edit form, an accept, a count, a finalize. While the admin
+// team monitors the team it says read-only instead (WriteRoute, the-admin-team-monitors-read-only). A route that reads
+// is never wrapped.
+function write(page: ReactElement) {
+  return <WriteRoute>{page}</WriteRoute>;
+}
 
 // TeamProvider sits INSIDE the protected route: memberships are only loadable once there is an
 // identity, and TeamAccessList requires a token.
@@ -290,6 +324,17 @@ export const router = createBrowserRouter([
       </AuthGate>
     ),
   },
+  // Top-level, beside /login — not a child of the shell. The authorize endpoint sends the browser here with the agent's
+  // client_id, redirect_uri, state and PKCE challenge; a signed-out visitor is sent to /login and comes back with them
+  // (ProtectedRoute carries the search, the login page returns to it).
+  {
+    path: "/connect-agent",
+    element: (
+      <AuthGate>
+        <ConnectAgentRoute />
+      </AuthGate>
+    ),
+  },
   {
     path: "/",
     element: (
@@ -303,7 +348,7 @@ export const router = createBrowserRouter([
       { path: "teams/:teamId", element: <TeamDetailPage backTo="/teams" /> },
       // The warehouse edit surface is a dedicated page (it carries the weekly hours); every team
       // type reaches it under /teams. Non-warehouse teams edit in a dialog instead (#59).
-      { path: "teams/:teamId/edit", element: <WarehouseEditPage /> },
+      { path: "teams/:teamId/edit", element: write(<WarehouseEditPage />) },
       { path: "categories", element: <CategoriesPage /> },
       // The courier catalogue — shipment_service (docs/business/shipment). Root only, from the nav.
       { path: "shipping", element: <ShipmentChannelsPage /> },
@@ -312,15 +357,15 @@ export const router = createBrowserRouter([
       { path: "products/archived", element: <ProductsPage archived /> },
       { path: "products/discover", element: <DiscoverProductsPage /> },
       { path: "products/discover/:productId", element: <DiscoverProductDetailPage /> },
-      { path: "products/new", element: <ProductEditPage /> },
+      { path: "products/new", element: write(<ProductEditPage />) },
       // A selling team's bundles (docs/business/product/product_bundle.md). The
       // static segment outranks `products/:productId`, so "bundles" is never read as a product id.
       { path: "products/bundles", element: <BundlesPage /> },
-      { path: "products/bundles/new", element: <BundleEditPage /> },
+      { path: "products/bundles/new", element: write(<BundleEditPage />) },
       { path: "products/bundles/:bundleId", element: <BundleDetailPage /> },
-      { path: "products/bundles/:bundleId/edit", element: <BundleEditPage /> },
+      { path: "products/bundles/:bundleId/edit", element: write(<BundleEditPage />) },
       { path: "products/:productId", element: <ProductDetailPage /> },
-      { path: "products/:productId/edit", element: <ProductEditPage /> },
+      { path: "products/:productId/edit", element: write(<ProductEditPage />) },
       { path: "shops", element: <ShopsPage /> },
       { path: "shops/:shopId", element: <ShopDetailPage /> },
       { path: "orders", element: <OrdersPage /> },
@@ -329,7 +374,7 @@ export const router = createBrowserRouter([
       // ⚠ /revenue and /profit are GONE with `revenue_service`, and there is deliberately no redirect:
       // both were made entirely of its expected margin, so there is nowhere truthful to send a reader.
       { path: "statement", element: <DailyStatementPage /> },
-      { path: "orders/new", element: <OrderCreatePage /> },
+      { path: "orders/new", element: write(<OrderCreatePage />) },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
       // The WAREHOUSE's orders (#151) — the ones shipping FROM this building, and the screen where the
       // crew records what it has done to each. Top-level and order-named, beside the selling team's
@@ -397,11 +442,11 @@ export const router = createBrowserRouter([
       // distinct `key`s so that switching between them REMOUNTS rather than reconciles — same component
       // type at the same position otherwise keeps its state, which would carry a loaded request's
       // fields into a blank create form.
-      { path: "inventories/restock/new", element: <RestockRequestFormPage key="create" /> },
+      { path: "inventories/restock/new", element: write(<RestockRequestFormPage key="create" />) },
       { path: "inventories/restock/:requestId", element: <RestockDetailRoute /> },
-      { path: "inventories/restock/:requestId/edit", element: <RestockRequestFormPage key="edit" /> },
+      { path: "inventories/restock/:requestId/edit", element: write(<RestockRequestFormPage key="edit" />) },
       // The warehouse ACCEPTS a delivery here (#157) — a page, not a dialog.
-      { path: "inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },
+      { path: "inventories/restock/:requestId/accept", element: write(<RestockAcceptPage />) },
       // After accepting, print the shelf labels for what landed (#207) — the step after accept.
       { path: "inventories/restock/:requestId/labels", element: <RestockLabelsPage /> },
       // The goods-received receipt for the delivery (#219) — a printable document, reached from an
@@ -410,10 +455,10 @@ export const router = createBrowserRouter([
       // A selling team moving its own stock between warehouses — one path, two screens (WarehouseTransferRoute).
       // `new` is static, so it ranks above :transferId whatever the order here. Create only: lines are never edited.
       { path: "inventories/transfer", element: <WarehouseTransferRoute /> },
-      { path: "inventories/transfer/new", element: <WarehouseTransferFormPage /> },
+      { path: "inventories/transfer/new", element: write(<WarehouseTransferFormPage />) },
       { path: "inventories/transfer/:transferId", element: <WarehouseTransferDetailRoute /> },
       // Warehouse B counts the box in — a page, not a dialog.
-      { path: "inventories/transfer/:transferId/accept", element: <WarehouseTransferAcceptPage /> },
+      { path: "inventories/transfer/:transferId/accept", element: write(<WarehouseTransferAcceptPage />) },
       { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
       // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
       // catalogue entry it does not own.
@@ -422,12 +467,12 @@ export const router = createBrowserRouter([
       // One return's receive & inspect record (#163) — reached by clicking a row; a PAGE, not a
       // dialog (CLAUDE.md).
       { path: "inventories/returns/:returnId", element: <ReturnDetailPage /> },
-      { path: "inventories/opname", element: <OpnamePage /> },
+      { path: "inventories/opname", element: write(<OpnamePage />) },
       // Under /inventories/opname, so the menu's Opname stays lit (nav.ts matches the longest prefix).
       { path: "inventories/opname/sessions", element: <OpnameSessionsPage /> },
       { path: "inventories/opname/sessions/:sessionId", element: <OpnameSessionDetailPage /> },
-      { path: "inventories/opname/sessions/:sessionId/count", element: <OpnameCountPage /> },
-      { path: "inventories/opname/sessions/:sessionId/finalize", element: <OpnameFinalizePage /> },
+      { path: "inventories/opname/sessions/:sessionId/count", element: write(<OpnameCountPage />) },
+      { path: "inventories/opname/sessions/:sessionId/finalize", element: write(<OpnameFinalizePage />) },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Every team's suppliers, searched across teams — independent of the team's own list above

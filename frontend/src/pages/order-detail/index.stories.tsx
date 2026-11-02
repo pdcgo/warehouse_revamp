@@ -255,7 +255,7 @@ export const ALineShowsItsProductPicture: Story = {
 
     await waitFor(() => expect(within(line).getByRole("img")).toHaveAttribute("src", BERAS.defaultImageThumbnailUrl));
     await expect(line).toHaveTextContent(BERAS.name);
-    await expect(line).toHaveTextContent(BERAS.sku);
+    await expect(line).toHaveTextContent(BERAS.productCode);
   },
 };
 
@@ -268,7 +268,7 @@ export const ALineWithNoPictureKeepsThePlaceholder: Story = {
     for (const item of FULL.items) {
       const line = canvas.getByTestId(`order-item-${item.id}`);
       await expect(line).toHaveTextContent(item.name);
-      await expect(line).toHaveTextContent(item.sku);
+      await expect(line).toHaveTextContent(item.productCode);
       await expect(within(line).queryByRole("img")).toBeNull();
     }
   },

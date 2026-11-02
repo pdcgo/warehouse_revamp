@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { teamClient } from "../../api/clients";
+import { teamClient, warehouseInfoClient } from "../../api/clients";
 import { useInvalidateTeams } from "../../features/teams/queries";
 
 // The warehouse screens' writes (#177).
@@ -20,7 +20,7 @@ import { useInvalidateTeams } from "../../features/teams/queries";
 // hand-written copy of the shape rejects exactly the value the caller has.
 interface SaveWarehouseVars
   extends Pick<
-    Parameters<typeof teamClient.warehouseInfoUpdate>[0],
+    Parameters<typeof warehouseInfoClient.warehouseInfoUpdate>[0],
     "operatingHours" | "receivingHours" | "location"
   > {
   teamId: bigint;
@@ -40,7 +40,7 @@ export function useSaveWarehouse() {
   return useMutation({
     mutationFn: async ({ teamId, name, description, ...info }: SaveWarehouseVars) => {
       await teamClient.teamUpdate({ teamId, name, description });
-      await teamClient.warehouseInfoUpdate({ teamId, ...info });
+      await warehouseInfoClient.warehouseInfoUpdate({ teamId, ...info });
     },
     onSuccess: () => invalidateTeams(),
   });

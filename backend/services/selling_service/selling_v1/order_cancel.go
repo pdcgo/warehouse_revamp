@@ -59,7 +59,7 @@ func (s *Service) OrderCancel(
 		}
 
 		// A cancel is the selling team's (who-may-cancel-a-pending-order).
-		statusErr := setOrderStatus(tx, &order, orderStatusCancel, timelineFromSelling, eventActor(ctx), "")
+		statusErr := setOrderStatus(tx, &order, orderStatusCancel, timelineFromSelling, eventActor(ctx), eventOverride(ctx), "")
 		if statusErr != nil {
 			return statusErr
 		}
@@ -108,6 +108,9 @@ func (s *Service) OrderCancel(
 				// different person, so the reversal entries name this one
 				// (every-entry-names-who-posted-it).
 				ActorId: eventActor(ctx),
+				// ...and whether the CANCEL was an override — the answer its timeline row was stamped with above, never
+				// the placement's (an-override-is-stamped-in-every-service).
+				ActorIsOverride: eventOverride(ctx),
 				// The shop whose account settlement cancels the sale on — the order never calls
 				// settlement (settlement-opens-the-sale-from-the-order-event).
 				ShopId: order.ShopID,

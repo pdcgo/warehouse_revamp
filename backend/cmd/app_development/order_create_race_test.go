@@ -115,7 +115,7 @@ func twoUnits(shop uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
 		TeamId: ocTeam, ShopId: shop, WarehouseId: ocWarehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: 1_790_000_000, PlatformTotal: 60_000,
-		Items: []*sellingv1.OrderItem{{ProductId: ocProduct, Sku: "KAOS", Name: "Kaos", Quantity: 2}},
+		Items: []*sellingv1.OrderItem{{ProductId: ocProduct, ProductCode: "KAOS", Name: "Kaos", Quantity: 2}},
 	}
 }
 

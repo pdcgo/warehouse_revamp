@@ -590,9 +590,10 @@ type RestockRequestItem struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Id        uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	ProductId uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// sku/name snapshot at raise time (the product may live in another team's catalogue).
-	Sku  string `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// product code/name snapshot at raise time (the product may live in another team's catalogue).
+	// At most 75: a team code (10) + "-" + the team's part (64) — the composed code (the-field-is-product-code-composed-on-write).
+	ProductCode string `protobuf:"bytes,3,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
+	Name        string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// How many were ORDERED. Renamed in place from `quantity`.
 	Count int64 `protobuf:"varint,5,opt,name=count,proto3" json:"count,omitempty"`
 	// The line's TOTAL, as the invoice prints it (a-line-is-typed-as-its-total) — the truth. Renamed in place from
@@ -662,9 +663,9 @@ func (x *RestockRequestItem) GetProductId() uint64 {
 	return 0
 }
 
-func (x *RestockRequestItem) GetSku() string {
+func (x *RestockRequestItem) GetProductCode() string {
 	if x != nil {
-		return x.Sku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -1359,7 +1360,7 @@ type RestockRequestListFilter struct {
 	DateField RestockDateField `protobuf:"varint,4,opt,name=date_field,json=dateField,proto3,enum=warehouse.inventory.v1.RestockDateField" json:"date_field,omitempty"`
 	FromUnix  int64            `protobuf:"varint,5,opt,name=from_unix,json=fromUnix,proto3" json:"from_unix,omitempty"`
 	ToUnix    int64            `protobuf:"varint,6,opt,name=to_unix,json=toUnix,proto3" json:"to_unix,omitempty"`
-	// Free text over its number (a whole id only), the tracking number, the invoice reference, and a line's SKU or
+	// Free text over its number (a whole id only), the tracking number, the invoice reference, and a line's product code or
 	// name.
 	Q string `protobuf:"bytes,7,opt,name=q,proto3" json:"q,omitempty"`
 	// Only restocks raised BY THIS TEAM; 0 = every team. Warehouse side only.
@@ -3155,10 +3156,10 @@ func (x *RestockRequestLabelsRequest) GetRequestId() uint64 {
 // One printable label = one PLACEMENT of good units. A line split across two placements is two labels sharing one
 // batch — one batch per line (one-batch-per-line). Broken and missing units never became stock, so never appear.
 type RestockLabel struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	ProductId uint64                 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Sku       string                 `protobuf:"bytes,2,opt,name=sku,proto3" json:"sku,omitempty"`
-	Name      string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	ProductId   uint64                 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	ProductCode string                 `protobuf:"bytes,2,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// The batch the line minted.
 	BatchId  uint64 `protobuf:"varint,4,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
 	Quantity int64  `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
@@ -3207,9 +3208,9 @@ func (x *RestockLabel) GetProductId() uint64 {
 	return 0
 }
 
-func (x *RestockLabel) GetSku() string {
+func (x *RestockLabel) GetProductCode() string {
 	if x != nil {
-		return x.Sku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -3333,12 +3334,12 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\"s\n" +
 	"\x10RestockPlacement\x12*\n" +
 	"\fplacement_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\vplacementId\x12#\n" +
-	"\bquantity\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantityJ\x04\b\x02\x10\x03R\bunplaced\"\xc8\x04\n" +
+	"\bquantity\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantityJ\x04\b\x02\x10\x03R\bunplaced\"\xd9\x04\n" +
 	"\x12RestockRequestItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12\x1b\n" +
-	"\x03sku\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x03sku\x12\x1e\n" +
+	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12,\n" +
+	"\fproduct_code\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18KR\vproductCode\x12\x1e\n" +
 	"\x04name\x18\x04 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12\x1d\n" +
 	"\x05count\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\x12&\n" +
@@ -3572,11 +3573,11 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\trequestId:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"\xd3\x01\n" +
+	"\x05\x01\x02\x06\t\b\"\xe4\x01\n" +
 	"\fRestockLabel\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x10\n" +
-	"\x03sku\x18\x02 \x01(\tR\x03sku\x12\x12\n" +
+	"product_id\x18\x01 \x01(\x04R\tproductId\x12!\n" +
+	"\fproduct_code\x18\x02 \x01(\tR\vproductCode\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x19\n" +
 	"\bbatch_id\x18\x04 \x01(\x04R\abatchId\x12\x1a\n" +
 	"\bquantity\x18\x05 \x01(\x03R\bquantity\x12%\n" +
@@ -3623,19 +3624,19 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\"RESTOCK_ACTOR_LIST_DATA_TYPE_ACTOR\x10\x01*V\n" +
 	"\x10RestockActorSort\x12\"\n" +
 	"\x1eRESTOCK_ACTOR_SORT_UNSPECIFIED\x10\x00\x12\x1e\n" +
-	"\x1aRESTOCK_ACTOR_SORT_LAST_AT\x10\x012\xae\v\n" +
+	"\x1aRESTOCK_ACTOR_SORT_LAST_AT\x10\x012\xc9\v\n" +
 	"\x15RestockRequestService\x12\x81\x01\n" +
-	"\x14RestockRequestCreate\x123.warehouse.inventory.v1.RestockRequestCreateRequest\x1a4.warehouse.inventory.v1.RestockRequestCreateResponse\x12{\n" +
-	"\x12RestockRequestList\x121.warehouse.inventory.v1.RestockRequestListRequest\x1a2.warehouse.inventory.v1.RestockRequestListResponse\x12u\n" +
-	"\x10RestockActorList\x12/.warehouse.inventory.v1.RestockActorListRequest\x1a0.warehouse.inventory.v1.RestockActorListResponse\x12\x81\x01\n" +
-	"\x14RestockRequestDetail\x123.warehouse.inventory.v1.RestockRequestDetailRequest\x1a4.warehouse.inventory.v1.RestockRequestDetailResponse\x12\x81\x01\n" +
+	"\x14RestockRequestCreate\x123.warehouse.inventory.v1.RestockRequestCreateRequest\x1a4.warehouse.inventory.v1.RestockRequestCreateResponse\x12\x80\x01\n" +
+	"\x12RestockRequestList\x121.warehouse.inventory.v1.RestockRequestListRequest\x1a2.warehouse.inventory.v1.RestockRequestListResponse\"\x03\x90\x02\x01\x12z\n" +
+	"\x10RestockActorList\x12/.warehouse.inventory.v1.RestockActorListRequest\x1a0.warehouse.inventory.v1.RestockActorListResponse\"\x03\x90\x02\x01\x12\x86\x01\n" +
+	"\x14RestockRequestDetail\x123.warehouse.inventory.v1.RestockRequestDetailRequest\x1a4.warehouse.inventory.v1.RestockRequestDetailResponse\"\x03\x90\x02\x01\x12\x81\x01\n" +
 	"\x14RestockRequestUpdate\x123.warehouse.inventory.v1.RestockRequestUpdateRequest\x1a4.warehouse.inventory.v1.RestockRequestUpdateResponse\x12\x81\x01\n" +
 	"\x14RestockRequestArrive\x123.warehouse.inventory.v1.RestockRequestArriveRequest\x1a4.warehouse.inventory.v1.RestockRequestArriveResponse\x12\x81\x01\n" +
 	"\x14RestockRequestAccept\x123.warehouse.inventory.v1.RestockRequestAcceptRequest\x1a4.warehouse.inventory.v1.RestockRequestAcceptResponse\x12\x87\x01\n" +
 	"\x16RestockRequestMarkLost\x125.warehouse.inventory.v1.RestockRequestMarkLostRequest\x1a6.warehouse.inventory.v1.RestockRequestMarkLostResponse\x12\x81\x01\n" +
-	"\x14RestockRequestCancel\x123.warehouse.inventory.v1.RestockRequestCancelRequest\x1a4.warehouse.inventory.v1.RestockRequestCancelResponse\x12\x81\x01\n" +
-	"\x14RestockRequestLabels\x123.warehouse.inventory.v1.RestockRequestLabelsRequest\x1a4.warehouse.inventory.v1.RestockRequestLabelsResponse\x12{\n" +
-	"\x12RestockInboundStat\x121.warehouse.inventory.v1.RestockInboundStatRequest\x1a2.warehouse.inventory.v1.RestockInboundStatResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
+	"\x14RestockRequestCancel\x123.warehouse.inventory.v1.RestockRequestCancelRequest\x1a4.warehouse.inventory.v1.RestockRequestCancelResponse\x12\x86\x01\n" +
+	"\x14RestockRequestLabels\x123.warehouse.inventory.v1.RestockRequestLabelsRequest\x1a4.warehouse.inventory.v1.RestockRequestLabelsResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
+	"\x12RestockInboundStat\x121.warehouse.inventory.v1.RestockInboundStatRequest\x1a2.warehouse.inventory.v1.RestockInboundStatResponse\"\x03\x90\x02\x01BRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
 
 var (
 	file_warehouse_inventory_v1_restock_request_proto_rawDescOnce sync.Once

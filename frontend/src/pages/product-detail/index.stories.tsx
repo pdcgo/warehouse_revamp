@@ -14,13 +14,13 @@ import type { OwnerStockRow } from "../../features/products/adapt";
 // Activity, Derived ⚠), and the warehouse card below with its TABS (the-warehouse-zone-is-tabs): Overview (its figures,
 // Suppliers ⚠), Cost price, Daily ⚠, Stock history. The stub is productStub.ts, its figures consistent across them:
 //
-//   700  SKU-ANG-001  Minyak Goreng Sawit 2L — Satuan   (Toko Anggrek, team 15)
+//   700  SL-03-ANG-001  Minyak Goreng Sawit 2L — Satuan   (Toko Anggrek, team 15)
 //        info        two pictures, a description, 12.5% markup, 4 held back
 //        batch 7001  Gudang Pusat   ready 30 of 60  @ Rp 45.700
 //        batch 7002  Gudang Cabang  ready 25 of 40  @ Rp 47.200
 //        batch 7003  Gudang Pusat   ready 24 of 24  @ Rp 46.500     → 79 ready, Rp 3.667.000
 //        history     receive 60, pick 30, receive 40, pick 15, receive 24 → balance 79
-//   790  SKU-ANG-001  the archived older pack — its SKU now held by 700
+//   790  SL-03-ANG-001-L  the archived older pack — it kept its code, so it comes back under it
 //    74  another team's product — not found here
 
 function asAnggrekOwner() {
@@ -104,7 +104,7 @@ export const TheProductsName: Story = {
 
     await expect(canvas.getByTestId("product-detail-name")).toHaveTextContent(/^Minyak Goreng Sawit 2L — Satuan$/);
     await expect(info.queryByTestId("product-detail-name")).toBeNull();
-    await expect(canvas.getByTestId("product-detail-sku")).toHaveTextContent("SKU-ANG-001");
+    await expect(canvas.getByTestId("product-detail-sku")).toHaveTextContent("SL-03-ANG-001");
     await expect(info.queryByTestId("product-detail-sku")).toBeNull();
     await waitFor(() => expect(info.getByTestId("product-detail-category")).toHaveTextContent("Rumah Tangga"));
   },
@@ -218,7 +218,7 @@ export const TheHeaderRowSticks: Story = {
     await waitFor(() => expect(bar).toHaveAttribute("data-shown", "true"));
     await expect(bar).toHaveTextContent("Minyak Goreng Sawit 2L — Satuan");
     // The SKU, back and the actions ride with it (owner: *"di stickynya juga ada skuid"*, *"di stickynya juga ada"*).
-    await expect(within(bar).getByTestId("product-detail-sticky-sku")).toHaveTextContent("SKU-ANG-001");
+    await expect(within(bar).getByTestId("product-detail-sticky-sku")).toHaveTextContent("SL-03-ANG-001");
     await expect(within(bar).getByTestId("product-detail-sticky-back")).toBeInTheDocument();
     await expect(within(bar).getByTestId("product-detail-sticky-edit")).toBeInTheDocument();
 
@@ -456,7 +456,7 @@ export const ArchiveConfirmsFirst: Story = {
     await userEvent.click(canvas.getByTestId("product-detail-archive"));
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
-    await expect(dialog).toHaveTextContent("SKU-ANG-001");
+    await expect(dialog).toHaveTextContent("SL-03-ANG-001");
 
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
     await waitFor(() => expect(canvas.getByTestId("product-detail-archived")).toBeVisible());
@@ -464,20 +464,18 @@ export const ArchiveConfirmsFirst: Story = {
   },
 };
 
-/** Restoring the older pack collides — its SKU is now SKU-ANG-001's live product — and restores under a new one. */
-export const RestoreCollidesAndAsksForANewSku: Story = {
+/** Unarchiving the older pack brings it back under the code it KEPT — nothing could take it while it was archived, so
+ * there is no dialog to answer (the-field-is-product-code-composed-on-write). */
+export const UnarchiveComesBackUnderTheCodeItKept: Story = {
   render: () => <AtArchivedPack />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("product-detail-restore"));
-    const dialog = await screen.findByTestId("restore-conflict-dialog");
-    await waitFor(() => expect(dialog).toBeVisible());
-    await userEvent.type(within(dialog).getByTestId("restore-new-sku"), "SKU-ANG-001-L", { delay: 20 });
-    await userEvent.click(within(dialog).getByTestId("restore-with-new-sku"));
 
     await waitFor(() => expect(canvas.queryByTestId("product-detail-archived")).toBeNull());
-    await expect(canvas.getByTestId("product-detail-page")).toHaveTextContent("SKU-ANG-001-L");
+    await expect(screen.queryByRole("dialog")).toBeNull();
+    await expect(canvas.getByTestId("product-detail-sku")).toHaveTextContent("SL-03-ANG-001-L");
   },
 };
 

@@ -111,11 +111,12 @@ func (s *Service) OrderReceiptUpdate(
 		return recordTimelineLogs(tx, []selling_service_models.OrderTimelineLog{{
 			OrderID: order.ID,
 			// No status: the edit moves nothing.
-			Status:    "",
-			Note:      strings.Join(notes, " · "),
-			From:      timelineFromSelling,
-			ActorID:   eventActor(ctx),
-			CreatedAt: now,
+			Status:     "",
+			Note:       strings.Join(notes, " · "),
+			From:       timelineFromSelling,
+			ActorID:    eventActor(ctx),
+			IsOverride: eventOverride(ctx),
+			CreatedAt:  now,
 		}})
 	})
 	if err != nil {

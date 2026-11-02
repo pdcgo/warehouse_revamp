@@ -17,14 +17,14 @@ import type { CrossLine, MappedProduct } from "./ReturnMappingCard";
 // until a story says so (preview.tsx resets the stub's maps per story).
 const BERAS: CrossLine = {
   productId: 74n,
-  sku: "SKU-BERAS-5K",
+  productCode: "SKU-BERAS-5K",
   name: "Beras Pandan Wangi 5kg",
   ownerTeamId: 12n,
   ownerName: "Toko Melati",
 };
 const GULA: CrossLine = {
   productId: 73n,
-  sku: "SKU-GULA-1K",
+  productCode: "SKU-GULA-1K",
   name: "Gula Pasir 1kg",
   ownerTeamId: 13n,
   ownerName: "Toko Kenanga",
@@ -32,7 +32,7 @@ const GULA: CrossLine = {
 // Team 11's OWN Teh, passed off as borrowed — the write refuses it, as the server does.
 const NOT_BORROWED: CrossLine = {
   productId: 72n,
-  sku: "SKU-TEH-100",
+  productCode: "SKU-TEH-100",
   name: "Teh Melati 100g",
   ownerTeamId: 12n,
   ownerName: "Toko Melati",
@@ -58,7 +58,7 @@ async function pickFirstProduct(canvasElement: HTMLElement) {
   await userEvent.click(input);
   await userEvent.type(input, "kopi");
 
-  const option = await screen.findByTestId(`product-select-option-${products[0]!.sku}`);
+  const option = await screen.findByTestId(`product-select-option-${products[0]!.productCode}`);
   await waitFor(() => expect(option).toBeVisible());
   await userEvent.click(option);
 }

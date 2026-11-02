@@ -3,20 +3,21 @@
 //
 // The catalogue plays the server's rules (backend/services/product_service/product_v1):
 //   a team lists its own       ProductList is scoped to the request's team; ACTIVE unless ARCHIVED is asked for.
-//   a SKU once among the live  create, edit and restore refuse a SKU an ACTIVE product of the team holds
-//                              (AlreadyExists); an archived product keeps its SKU, so a live one may reuse it.
-//   archive is soft            ProductDelete marks the row; ProductDetail still answers it (the page says
-//                              "archived" and offers Restore), ProductByIds resolves it.
-//   restore can collide        restoring under a SKU a live product took meanwhile is AlreadyExists, naming the
-//                              holder — the screen then asks for a new SKU and restores under that.
+//   the code is composed       create takes the team's PART and stores `<team_code>-<part>` (team 15, SL-03, types
+//                              ANG-001 → SL-03-ANG-001); one code per row over EVERY row, archived ones included —
+//                              a taken one is AlreadyExists (the-field-is-product-code-composed-on-write).
+//   a correction needs no use  an edit may correct the part only of a product with no history; any other is
+//                              FailedPrecondition. Sending the part it already has is no correction.
+//   archive keeps the code     ProductArchive marks the row; ProductDetail still answers it (the page says
+//                              "archived" and offers Unarchive), ProductByIds resolves it; Unarchive cannot collide.
 //
 // Seeded for the product stories, and ONLY for team 15 (Toko Anggrek, 44 products — no other story acts as it):
-//   - two ARCHIVED products, here and not in fixtures.ts so no picker ever sees them — 790 holds SKU-ANG-001,
-//     which the live 700 now uses (the restore collision), 791 restores cleanly;
+//   - two ARCHIVED products, here and not in fixtures.ts so no picker ever sees them — 790 the older pack of 700, under
+//     a code of its own, and 791, the edition nobody ever stocked (the one product with no history);
 //   - 700, the product the screens open, as a WHOLE record — two pictures, a description, a 12.5% markup, 4 held back;
 //   - the figures below, invented but CONSISTENT: a product's ready stock is the sum of its batches' ready, its
 //     cost range their unit costs, its layers one per batch still holding stock, its movements their receipts and
-//     picks. Every sixth product has nothing on a shelf, SKU-ANG-006, -012, -018 … came in ONE delivery (one price, not
+//     picks. Every sixth product has nothing on a shelf, SL-03-ANG-006, -012, -018 … came in ONE delivery (one price, not
 //     a range), every fourth has a restock on its way.
 //
 // WRITEABLE: preview.tsx calls `resetProductStub()` in its `beforeEach`.
@@ -26,7 +27,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import { BatchOrigin, MovementKind } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
-import { products as productFixtures } from "./fixtures";
+import { products as productFixtures, teams as teamFixtures } from "./fixtures";
 
 type Image = { url: string; thumbnailUrl: string };
 type ProductRow = (typeof productFixtures)[number] & { images: Image[] };
@@ -35,14 +36,14 @@ const FIGURED_TEAM = 15n;
 
 const ARCHIVED: ProductRow[] = [
   {
-    id: 790n, teamId: FIGURED_TEAM, sku: "SKU-ANG-001", name: "Minyak Goreng Sawit 2L — Kemasan Lama",
+    id: 790n, teamId: FIGURED_TEAM, productCode: "SL-03-ANG-001-L", name: "Minyak Goreng Sawit 2L — Kemasan Lama",
     description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
-    deleted: true, crossMarkupBps: 0, crossLocked: false, reservedStock: 0, images: [],
+    archived: true, crossMarkupBps: 0, crossLocked: false, reservedStock: 0, images: [],
   },
   {
-    id: 791n, teamId: FIGURED_TEAM, sku: "SKU-ANG-LAMA", name: "Kopi Sachet Isi 10 — Edisi Lama",
+    id: 791n, teamId: FIGURED_TEAM, productCode: "SL-03-ANG-LAMA", name: "Kopi Sachet Isi 10 — Edisi Lama",
     description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
-    deleted: true, crossMarkupBps: 0, crossLocked: false, reservedStock: 0, images: [],
+    archived: true, crossMarkupBps: 0, crossLocked: false, reservedStock: 0, images: [],
   },
 ];
 
@@ -81,8 +82,13 @@ const MINYAK: Partial<ProductRow> = {
 
 let rows: ProductRow[] = [];
 
+// The products with NO HISTORY — never stocked, ordered or restocked: 791, and whatever a story creates. Only these may
+// be deleted, or have their code's part corrected, as the server's history reader decides (product_history.go).
+let neverUsed = new Set<bigint>();
+
 export function resetProductStub() {
   rows = [...productFixtures.map((p) => ({ ...p, images: [] as Image[] })), ...ARCHIVED.map((p) => ({ ...p }))];
+  neverUsed = new Set([791n]);
 
   const minyak = rows.find((r) => r.id === 700n)!;
   Object.assign(minyak, MINYAK, { images: [...MINYAK.images!] });
@@ -100,7 +106,7 @@ export function patchProduct(productId: bigint, patch: Partial<ProductRow>) {
 }
 
 /** The live catalogue — what every other stub (and every picker) reads. */
-export const liveProducts = () => rows.filter((r) => !r.deleted);
+export const liveProducts = () => rows.filter((r) => !r.archived);
 
 /** Every row, archived included — what productScenario's `productsNow()` hands the bundle stub and the order form. */
 export const allProducts = () => rows;
@@ -133,9 +139,21 @@ function find(teamId: bigint, productId: bigint): ProductRow {
   return row;
 }
 
-function requireFreeSku(teamId: bigint, sku: string, self?: bigint) {
-  const holder = liveProducts().find((r) => r.teamId === teamId && r.sku === sku && r.id !== self);
-  if (holder) throw new ConnectError("a product with this SKU already exists in the team", Code.AlreadyExists);
+// The stored code: the team's code, a dash, the team's part — composed by the server, never typed whole.
+function composeCode(teamId: bigint, part: string): string {
+  const teamCode = teamFixtures.find((t) => t.id === teamId)?.teamCode ?? "";
+  if (teamCode === "") throw new ConnectError("the team has no team code to compose a product code with", Code.FailedPrecondition);
+  return `${teamCode}-${part.trim()}`;
+}
+
+// One code per row, over EVERY row — an archived product keeps its code.
+function requireFreeCode(productCode: string, self?: bigint) {
+  if (rows.some((r) => r.productCode === productCode && r.id !== self)) {
+    throw new ConnectError(
+      "a product with this product code already exists — an archived one keeps its code, so check the archive too",
+      Code.AlreadyExists,
+    );
+  }
 }
 
 // A declaration, not a const: the seed above calls it at module load, before this line runs.
@@ -158,12 +176,12 @@ export const productService = {
     const by = req.sort?.s?.case === "product" ? (req.sort.s.value as ProductRowSort) : ProductRowSort.UNSPECIFIED;
     const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
     const list = rows
-      .filter((p) => p.teamId === req.teamId && p.deleted === archived && matches(req.filter?.q, p.name, p.sku))
+      .filter((p) => p.teamId === req.teamId && p.archived === archived && matches(req.filter?.q, p.name, p.productCode))
       .sort((a, b) =>
         by === ProductRowSort.NAME
           ? a.name.localeCompare(b.name) * dir
-          : by === ProductRowSort.SKU
-            ? a.sku.localeCompare(b.sku) * dir
+          : by === ProductRowSort.PRODUCT_CODE
+            ? a.productCode.localeCompare(b.productCode) * dir
             : 0,
       );
     return paged("product", list, (p) => p.id, req.page);
@@ -198,13 +216,13 @@ export const productService = {
             (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
             (req.ownerTeamIds.length === 0 || req.ownerTeamIds.includes(p.teamId)) &&
             (req.excludeOwnerTeamIds.length === 0 || !req.excludeOwnerTeamIds.includes(p.teamId)) &&
-            matches(req.filter?.q, p.name, p.sku),
+            matches(req.filter?.q, p.name, p.productCode),
         )
         .sort((a, b) =>
           by === ProductRowSort.NAME
             ? a.name.localeCompare(b.name) * dir
-            : by === ProductRowSort.SKU
-              ? a.sku.localeCompare(b.sku) * dir
+            : by === ProductRowSort.PRODUCT_CODE
+              ? a.productCode.localeCompare(b.productCode) * dir
               : 0,
         ),
       (p) => p.id,
@@ -226,7 +244,7 @@ export const productService = {
 
   productCreate: (req: {
     teamId: bigint;
-    sku: string;
+    productCodePart: string;
     name: string;
     description: string;
     categoryId: bigint;
@@ -236,11 +254,13 @@ export const productService = {
     crossLocked: boolean;
     reservedStock: number;
   }) => {
-    requireFreeSku(req.teamId, req.sku);
+    const productCode = composeCode(req.teamId, req.productCodePart);
+    requireFreeCode(productCode);
     const id = rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
+    neverUsed.add(id);
     const row: ProductRow = {
-      id, teamId: req.teamId, sku: req.sku, name: req.name, description: req.description, categoryId: req.categoryId,
-      defaultImageUrl: "", defaultImageThumbnailUrl: "", deleted: false, crossMarkupBps: req.crossMarkupBps,
+      id, teamId: req.teamId, productCode, name: req.name, description: req.description, categoryId: req.categoryId,
+      defaultImageUrl: "", defaultImageThumbnailUrl: "", archived: false, crossMarkupBps: req.crossMarkupBps,
       crossLocked: req.crossLocked, reservedStock: req.reservedStock, images: (req.images ?? []).map((im) => ({ ...im })),
     };
     withCover(row);
@@ -252,7 +272,7 @@ export const productService = {
   productUpdate: (req: {
     teamId: bigint;
     productId: bigint;
-    sku?: string;
+    productCodePart?: string;
     name?: string;
     description?: string;
     categoryId?: bigint;
@@ -262,8 +282,18 @@ export const productService = {
     reservedStock?: number;
   }) => {
     const row = find(req.teamId, req.productId);
-    if (req.sku !== undefined && req.sku !== row.sku) requireFreeSku(req.teamId, req.sku, row.id);
-    if (req.sku !== undefined) row.sku = req.sku;
+    // A correction of the code: only while the product has no history, and refused before anything else lands.
+    const productCode = req.productCodePart !== undefined ? composeCode(req.teamId, req.productCodePart) : row.productCode;
+    if (productCode !== row.productCode) {
+      if (!neverUsed.has(row.id)) {
+        throw new ConnectError(
+          "this product has a history — a stock movement, an order line or a restock line — so its code is fixed",
+          Code.FailedPrecondition,
+        );
+      }
+      requireFreeCode(productCode, row.id);
+      row.productCode = productCode;
+    }
     if (req.name !== undefined) row.name = req.name;
     if (req.description !== undefined) row.description = req.description;
     if (req.categoryId !== undefined) row.categoryId = req.categoryId;
@@ -277,18 +307,29 @@ export const productService = {
     return { product: row };
   },
 
-  productDelete: (req: { teamId: bigint; productId: bigint }) => {
-    find(req.teamId, req.productId).deleted = true;
+  productArchive: (req: { teamId: bigint; productId: bigint }) => {
+    find(req.teamId, req.productId).archived = true;
     return {};
   },
 
-  productRestore: (req: { teamId: bigint; productId: bigint; sku?: string }) => {
+  // DELETE (a-used-product-is-archived-never-deleted): a product WITH HISTORY is refused, as the server refuses it. In the
+  // samples every product has one but SL-03-ANG-LAMA, the edition nobody ever stocked — and whatever a story created.
+  productDelete: (req: { teamId: bigint; productId: bigint }) => {
     const row = find(req.teamId, req.productId);
-    const sku = req.sku || row.sku;
-    const holder = liveProducts().find((r) => r.teamId === req.teamId && r.sku === sku && r.id !== row.id);
-    if (holder) throw new ConnectError(`sku taken: "${sku}" is held by "${holder.name}"`, Code.AlreadyExists);
-    row.deleted = false;
-    row.sku = sku;
+    if (!neverUsed.has(row.id)) {
+      throw new ConnectError(
+        "this product has a history — a stock movement, an order line or a restock line — so it cannot be deleted: archive it instead",
+        Code.FailedPrecondition,
+      );
+    }
+    rows = rows.filter((r) => r !== row);
+    return {};
+  },
+
+  // Same id, same code: an archived product kept its code, so the way back cannot collide.
+  productUnarchive: (req: { teamId: bigint; productId: bigint }) => {
+    const row = find(req.teamId, req.productId);
+    row.archived = false;
     return { product: row };
   },
 };
@@ -322,7 +363,7 @@ function batchesOf(productId: bigint): SampleBatch[] {
   if (n % 6 === 0) return [];
   const cost = BigInt(8_000 + ((n * 911) % 40_000));
   const first: SampleBatch = { id: productId * 10n + 1n, warehouseId: GUDANG_PUSAT, arrived: 60n, ready: BigInt(10 + ((n * 7) % 40)), unitCost: cost, acceptedAt: NOW - BigInt(20 + (n % 30)) * DAY };
-  // ONE DELIVERY, so ONE PRICE — ids 705, 711, 717 … (SKU-ANG-006, -012, -018 …), so the list shows a single cost beside
+  // ONE DELIVERY, so ONE PRICE — ids 705, 711, 717 … (SL-03-ANG-006, -012, -018 …), so the list shows a single cost beside
   // the ranges rather than a range on every row.
   if (n % 6 === 3) return [first];
   const out: SampleBatch[] = [
@@ -424,7 +465,7 @@ export function ownerBatchList(req: { teamId: bigint; filter?: { productId?: big
           deliveryId: b.id,
           receiptNo: `RST-${b.id}`,
           productId: product.id,
-          sku: product.sku,
+          productCode: product.productCode,
           name: product.name,
           supplierId: 0n,
           unitCost: b.unitCost,

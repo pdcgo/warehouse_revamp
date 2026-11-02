@@ -464,8 +464,17 @@ flowchart LR
 | [context.md](./context.md) line 26 — *"the code is updated to `[code]_deleted_ts`"* | stale — reported in the clarify's [the-doc-renames-the-code-of-a-product-it-only-archives](./context_clarify.md#the-doc-renames-the-code-of-a-product-it-only-archives) |
 
 **Built today, and what changes.** Today's **Delete** is already a soft delete (`deleted = true`) and the archive page
-already has **Restore** — that IS archive under another name. ⛔ **Not built:** the actions are renamed Archive /
-Unarchive, and a new Delete with the history check is added.
+already has **Restore** — that IS archive under another name. ✅ **Built 2026-11-02:**
+
+| | |
+| --- | --- |
+| the contract | `ProductArchive` / `ProductUnarchive` (yesterday's Delete / Restore) and a new `ProductDelete`; `Product.archived`, was `deleted`, same field numbers |
+| the column | `products.archived`, renamed from `deleted` (product migration `00007`) — a row that is merely archived no longer says "deleted" |
+| the history | asked at the delete, under the product row's lock: inventory's restock lines and problem units, batches, placements and their log, stock transactions, transfer lines and problem units, warehouse registrations; selling's order lines (any team's), draft lines, return maps. Each service answers for its own rows through a plain function; the composition root joins them (`product_history.go`) |
+| ⚠ my build detail — a bundle | a product a bundle still names is refused too: the line holds it by a foreign key, and taking it out of the bundle is the owner's choice, never a side effect |
+| ⚠ my build detail — where Delete is | the Archived view (beside Unarchive) and an archived product's own page — a typo is archived, then deleted. The active list keeps its two inline actions |
+| the code | unchanged by this build; [the-field-is-product-code-composed-on-write](#the-field-is-product-code-composed-on-write), built the same day, made it `product_code`, unique over every row |
+| tests | delete of a never-used product (active or archived) and its code freed; a used one, a bundled one and another team's refused; the real history adapter against inventory's and selling's tables; the `DeleteRemovesOnlyANeverUsedProduct` story |
 
 ## a-product-has-one-category
 
@@ -586,7 +595,25 @@ flowchart LR
 | ⚠ my spec — today's rows | dev data only: re-entered, or recomposed once by a `san` command that reads each team's code through team_service — no migration reads another service's table (HARD RULE 3) |
 | the screen | already says *Product code* ([the-screen-says-product-code](../../technical/frontend/products_decision.md#the-screen-says-product-code)) |
 
-⛔ **Not built.** The field is still `sku`, per team, and freed by archiving.
+✅ **Built 2026-11-02:**
+
+| | |
+| --- | --- |
+| the contract | `product_code` replaces `sku` on `Product`, `ProductRowItem`, the order, restock, transfer, batch and opname lines (same field numbers); `ProductCreateRequest.product_code_part` and `ProductUpdateRequest.product_code_part` carry the team's part; the sort is `PRODUCT_ROW_SORT_PRODUCT_CODE`; `ProductUnarchiveRequest` lost its code (field 3 reserved) |
+| the columns | `products.product_code` (product `00008`), `order_items.product_code` (selling `00032`), `restock_items.product_code` and `warehouse_transfer_items.product_code` (inventory `00033`) — each renamed in its own service |
+| unique | `products_product_code_unique`, over every row, replacing `(team_id, sku) WHERE archived = FALSE` |
+| composed | by ProductCreate: `<team_code>-<part>`, the team code read from team_service through `product_v1.TeamCodes` — TeamByIds asked as the caller ([product_team_codes.go](../../../backend/cmd/app_development/product_team_codes.go)) |
+| a correction | ProductUpdate re-composes the part under the row's lock, only when the history reader says there is none; FailedPrecondition otherwise |
+| Unarchive | takes no code and cannot collide — the restore-conflict dialog is gone |
+| the form | the team code an addon in front of the field, the box takes the part; an untouched part is not sent |
+| today's rows | [`san product recompose-codes`](../../tools/san.md#product-recompose-codes), the team codes read through team_service's TeamByIds handler; `dev setup` runs it |
+| ⚠ my build detail — the part is trimmed | `" SHOE-42 "` composes as `ABC-SHOE-42`; a part of only spaces is InvalidArgument |
+| ⚠ my build detail — the same part is no correction | ProductUpdate with the part the product already has changes nothing and is not refused, so a form that always sends it can still save a used product's name |
+| ⚠ my build detail — shared codes before the index | `00008` suffixes `-<id>` onto every row but the oldest of a code two rows shared (an active and an archived product of one team, or two teams), so the global index can be built on any dev database |
+| ⚠ my build detail — line limits | an order line's and a restock line's `product_code` take up to 75 characters — a team code (10), the dash, the part (64) |
+| ⚠ my build detail — dev setup | runs the recompose after the supplier steps; it changes nothing on a database already recomposed |
+| ⚠ my build detail — a team code with a dash | `AB` + `C-1` and `AB-C` + `1` compose alike; the index refuses the second as AlreadyExists, and the recompose refuses it with both named |
+| tests | create composes, trims, refuses a blank part, a team with no code and a missing reader; an archived product's code stays taken; the same part in two teams is two codes; a correction of a never-used product lands, of a used one is refused with nothing else landing, the same part is no correction, a taken one is AlreadyExists; Unarchive keeps the code; the recompose (once, idempotent, a collision writes nothing) in `product_v1` and through team_service in `tools/san`; the stories `TheTeamsCodeStandsInFront`, `AUsedProductsCodeIsFixed`, `ATakenCodeIsSaidUnderTheCode`, `UnarchiveComesBackUnderTheCodeItKept` |
 
 ## the-shared-lock-is-cross-locked
 

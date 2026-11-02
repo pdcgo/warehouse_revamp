@@ -24,11 +24,23 @@ service RestockRequestService {
   // (a-created-restock-tells-the-financial-account).
   rpc RestockRequestCreate(RestockRequestCreateRequest) returns (RestockRequestCreateResponse);
   // Both sides list: a team sees restocks it raised and restocks coming to it as a warehouse.
-  rpc RestockRequestList(RestockRequestListRequest) returns (RestockRequestListResponse);
+  rpc RestockRequestList(RestockRequestListRequest) returns (RestockRequestListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The people a "who" filter offers (a-who-filter-lists-the-people-on-its-rows).
-  rpc RestockActorList(RestockActorListRequest) returns (RestockActorListResponse);
+  rpc RestockActorList(RestockActorListRequest) returns (RestockActorListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // One restock in full, with its lines and its trail. Same two-sided scope as List.
-  rpc RestockRequestDetail(RestockRequestDetailRequest) returns (RestockRequestDetailResponse);
+  rpc RestockRequestDetail(RestockRequestDetailRequest) returns (RestockRequestDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The selling team edits — everything while ongoing, only the lines while arrived
   // (the-lines-stay-editable-until-accepted).
   rpc RestockRequestUpdate(RestockRequestUpdateRequest) returns (RestockRequestUpdateResponse);
@@ -42,9 +54,17 @@ service RestockRequestService {
   // The selling team calls it off: ongoing → cancelled (a-restock-is-cancelled-only-while-ongoing).
   rpc RestockRequestCancel(RestockRequestCancelRequest) returns (RestockRequestCancelResponse);
   // The printable shelf labels for an ACCEPTED restock — one per placement the good units went to.
-  rpc RestockRequestLabels(RestockRequestLabelsRequest) returns (RestockRequestLabelsResponse);
+  rpc RestockRequestLabels(RestockRequestLabelsRequest) returns (RestockRequestLabelsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The headline over the warehouse's inbound queue: what is still on its way or at the door.
-  rpc RestockInboundStat(RestockInboundStatRequest) returns (RestockInboundStatResponse);
+  rpc RestockInboundStat(RestockInboundStatRequest) returns (RestockInboundStatResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // Where a restock is. APPEND ONLY, like every enum here — the values were renamed in place
@@ -115,10 +135,11 @@ message RestockPlacement {
 message RestockRequestItem {
   uint64 id = 1;
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  // sku/name snapshot at raise time (the product may live in another team's catalogue).
-  string sku = 3 [(buf.validate.field).string = {
+  // product code/name snapshot at raise time (the product may live in another team's catalogue).
+  // At most 75: a team code (10) + "-" + the team's part (64) — the composed code (the-field-is-product-code-composed-on-write).
+  string product_code = 3 [(buf.validate.field).string = {
     min_len: 1
-    max_len: 64
+    max_len: 75
   }];
   string name = 4 [(buf.validate.field).string = {
     min_len: 1
@@ -318,7 +339,7 @@ message RestockRequestListFilter {
   RestockDateField date_field = 4 [(buf.validate.field).enum.defined_only = true];
   int64 from_unix = 5;
   int64 to_unix = 6;
-  // Free text over its number (a whole id only), the tracking number, the invoice reference, and a line's SKU or
+  // Free text over its number (a whole id only), the tracking number, the invoice reference, and a line's product code or
   // name.
   string q = 7 [(buf.validate.field).string.max_len = 100];
   // Only restocks raised BY THIS TEAM; 0 = every team. Warehouse side only.
@@ -724,7 +745,7 @@ message RestockRequestLabelsRequest {
 // batch — one batch per line (one-batch-per-line). Broken and missing units never became stock, so never appear.
 message RestockLabel {
   uint64 product_id = 1;
-  string sku = 2;
+  string product_code = 2;
   string name = 3;
   // The batch the line minted.
   uint64 batch_id = 4;

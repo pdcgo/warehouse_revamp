@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanWrite } from "../team/TeamContext";
 import { Button, Field, HStack, Icon, IconButton, Menu, Portal, Stack, Textarea } from "@chakra-ui/react";
 import { Ban, MoreHorizontal, PackageX, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -65,9 +66,11 @@ export interface SellingTransferActionsProps {
 export function SellingTransferActions({ transfer, teamId, variant, pending }: SellingTransferActionsProps) {
   const { t } = useTranslation();
   const [dialog, setDialog] = useState<"" | SellingTransferAction>("");
+  // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const writable = useCanWrite();
 
   const actions = sellingTransferActions(transfer.status);
-  if (actions.length === 0) return null;
+  if (actions.length === 0 || !writable) return null;
 
   const id = transfer.id.toString();
 

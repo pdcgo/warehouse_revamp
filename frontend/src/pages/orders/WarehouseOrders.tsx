@@ -16,7 +16,7 @@ import {
 import { Plus, SearchX, ShoppingCart } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { rpcError } from "../../api/clients";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useOrders, useOrderStat } from "../../features/orders/queries";
 import type { OrderFilters } from "../../features/orders/queries";
 import { summariseOrderStat } from "../../features/orders/stat";
@@ -173,7 +173,7 @@ export function WarehouseOrdersPage() {
         </Badge>
         <Spacer />
         {/* A phone's header action is its icon (a-phone-header-action-is-an-icon). */}
-        {isMobile ? (
+        {!canWrite(current) ? null : isMobile ? (
           <CompactActions
             menuLabel={t("orders.actions")}
             actions={[{ id: "create", label: t("orders.newOrder"), icon: Plus, primary: true, testId: "open-create-order", onClick: () => navigate("/orders/new") }]}

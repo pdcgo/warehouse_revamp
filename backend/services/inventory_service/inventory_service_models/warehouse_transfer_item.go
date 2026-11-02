@@ -9,12 +9,12 @@ type WarehouseTransferItem struct {
 	ID         uint64 `gorm:"primaryKey"`
 	TransferID uint64
 	ProductID  uint64
-	// The product's sku and name at create.
-	SKU       string `gorm:"column:sku"`
-	Name      string
-	Count     int64
-	PriceUnit float64
-	Total     float64
+	// The product's product code and name at create.
+	ProductCode string `gorm:"column:product_code"`
+	Name        string
+	Count       int64
+	PriceUnit   float64
+	Total       float64
 	// In the box at B, broken included; 0 until accepted.
 	ArrivedCount int64
 	CreatedAt    time.Time

@@ -12,6 +12,7 @@ import { useCreateOrderNote } from "../../../features/orders/queries";
 import { orderNotes, timelineFromKey } from "../../../features/orders/timelineLogs";
 import { formatUnixDateTime } from "../../../lib/datetime";
 import { SectionEmpty } from "../../../components/chrome/DetailSection";
+import { useCanWrite } from "../../../features/team/TeamContext";
 
 /** The contract's limit (`OrderNoteCreateRequest.note`): 1 to 500 characters, trimmed. */
 export const NOTE_MAX = 500;
@@ -57,6 +58,8 @@ export function NotesSection({
 }) {
   const { t } = useTranslation();
   const create = useCreateOrderNote();
+  // The notes are READ while the admin team monitors the team — no box to write one in.
+  const writable = useCanWrite();
 
   const [draft, setDraft] = useState("");
 
@@ -88,7 +91,7 @@ export function NotesSection({
 
   return (
     <Stack gap="card">
-      {teamId !== undefined && (
+      {teamId !== undefined && writable && (
         <Stack gap="2" data-testid="notes-composer">
           <Textarea
             value={draft}

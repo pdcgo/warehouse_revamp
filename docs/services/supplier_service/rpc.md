@@ -114,7 +114,7 @@ sequenceDiagram
   INV->>PS: RestockAccepted — after the accept commits, event_id restock-accepted N
   PS->>W: push to /event/supplier-fold/push
   Note over W,DB: ONE transaction — a failure rolls it all back and answers 500, so Pub/Sub retries
-  W->>DB: process_event_lock FOR SHARE — held by a replay? then 500
+  W->>DB: process_event_lock FOR SHARE — held by a replay under a minute ago? then 500 — past its lease it counts as released
   W->>DB: INSERT supplier_event_logs by event id — a duplicate stops here with 200
   loop each line that counted units
     W->>DB: upsert the day row — day, supplier, product, team — adding the six figures
@@ -185,11 +185,11 @@ flowchart TD
   W -->|"no"| X1["FailedPrecondition"]
   W -->|"yes"| L{"after the day of figures_live_since?"}
   L -->|"no, or no live fold yet"| X2["FailedPrecondition — the backfilled past cannot be redelivered"]
-  L -->|"yes"| K{"process_event_lock — compare-and-set false to true"}
-  K -->|"held"| X3["FailedPrecondition"]
+  L -->|"yes"| K{"process_event_lock FOR UPDATE — off, or on past its one-minute lease?"}
+  K -->|"held under a minute"| X3["FailedPrecondition"]
   K -->|"taken"| D["delete figure rows and dedup rows from the day — one transaction"]
   D --> S["seek the supplier-fold subscription to that Jakarta midnight"]
-  S --> U["release the lock — started, never done"]
+  S --> U["release the lock it took, by updated_at — started, never done"]
 ```
 
 `AnalyticMaintenanceRun` prunes `supplier_event_logs` received more than 45 days ago — longer than the broker's 31-day

@@ -49,7 +49,7 @@ func acceptWithCosts(
 		TeamId: clSellingTeam, WarehouseId: clWarehouse,
 		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU-CL", Name: "Widget", Count: 10, Total: 500000},
+			{ProductId: product, ProductCode: "SKU-CL", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {

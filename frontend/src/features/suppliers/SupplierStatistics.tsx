@@ -362,7 +362,7 @@ function ProductTable({
   const productOf = (row: SupplierProductRow) => ({
     id: row.productId,
     name: productLabel(row),
-    sku: row.sku,
+    productCode: row.productCode,
     defaultImageThumbnailUrl: row.thumbnailUrl,
   });
 

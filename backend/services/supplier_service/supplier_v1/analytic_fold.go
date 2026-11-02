@@ -2,11 +2,9 @@ package supplier_v1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -325,46 +323,4 @@ func (s *Service) metadataValue(tx *gorm.DB, key string) (string, error) {
 	}
 
 	return rows[0].Value, nil
-}
-
-// eventLockValue is the ONE encoding of `process_event_lock`.
-type eventLockValue struct {
-	Lock *bool `json:"lock"`
-}
-
-var (
-	lockOn  = `{"lock":true}`
-	lockOff = `{"lock":false}`
-)
-
-// readEventLock reads the maintenance switch.
-//
-// ⚠ A MISSING OR UNPARSEABLE VALUE IS AN ERROR, never "unlocked". For a lock, failing open is the wrong direction.
-func readEventLock(tx *gorm.DB) (bool, error) {
-	var meta supplier_service_models.SupplierServiceMetadata
-
-	err := tx.
-		Where("key = ?", supplier_service_models.MetadataProcessEventLock).
-		Take(&meta).
-		Error
-	if err != nil {
-		return false, fmt.Errorf("supplier: cannot read %s: %w", supplier_service_models.MetadataProcessEventLock, err)
-	}
-
-	return parseEventLock(meta.Value)
-}
-
-func parseEventLock(value string) (bool, error) {
-	decoded := eventLockValue{}
-
-	decoder := json.NewDecoder(strings.NewReader(value))
-	decoder.DisallowUnknownFields()
-
-	err := decoder.Decode(&decoded)
-	if err != nil || decoded.Lock == nil {
-		return false, fmt.Errorf("supplier: %s is %q, not {\"lock\":true|false}",
-			supplier_service_models.MetadataProcessEventLock, value)
-	}
-
-	return *decoded.Lock, nil
 }

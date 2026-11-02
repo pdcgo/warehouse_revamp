@@ -98,7 +98,7 @@ export type LineState = "own" | "borrowed" | "locked" | "archived" | "unknown";
 
 export function lineState(product: Product | undefined, bundleTeamId: bigint): LineState {
   if (!product) return "unknown";
-  if (product.deleted) return "archived";
+  if (product.archived) return "archived";
   if (product.teamId === bundleTeamId) return "own";
 
   return product.crossLocked ? "locked" : "borrowed";

@@ -42,7 +42,7 @@ export const BelowTwoCharactersItDoesNotSearch: Story = {
   },
 };
 
-export const SearchesByNameOrSku: Story = {
+export const SearchesByNameOrProductCode: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const input = canvas.getByRole("combobox");
@@ -50,11 +50,11 @@ export const SearchesByNameOrSku: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "kopi");
 
-    const option = await screen.findByTestId(`product-select-option-${products[0]!.sku}`);
+    const option = await screen.findByTestId(`product-select-option-${products[0]!.productCode}`);
     await waitFor(() => expect(option).toBeVisible());
 
     // Each option reads "sku" over "name", so two similarly-named variants stay distinguishable.
-    await expect(option).toHaveTextContent(products[0]!.sku);
+    await expect(option).toHaveTextContent(products[0]!.productCode);
     await expect(option).toHaveTextContent(products[0]!.name);
   },
 };
@@ -82,7 +82,7 @@ export const AllScopeFindsOtherTeamsProducts: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "gula");
 
-    const option = await screen.findByTestId(`product-select-option-${products[2]!.sku}`);
+    const option = await screen.findByTestId(`product-select-option-${products[2]!.productCode}`);
     await waitFor(() => expect(option).toBeVisible());
   },
 };
@@ -99,13 +99,13 @@ export const EmitsTheSnapshotNotJustAnId: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "teh");
 
-    const option = await screen.findByTestId(`product-select-option-${products[1]!.sku}`);
+    const option = await screen.findByTestId(`product-select-option-${products[1]!.productCode}`);
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
     await expect(args.onChange).toHaveBeenCalledWith({
       id: products[1]!.id,
-      sku: products[1]!.sku,
+      productCode: products[1]!.productCode,
       name: products[1]!.name,
     });
   },
@@ -119,7 +119,7 @@ export const Interactive: Story = {
       <>
         <ProductSelect {...args} value={picked?.id} onChange={setPicked} />
         <Text mt="3" fontSize="sm" data-testid="picked">
-          {picked ? `${picked.sku} — ${picked.name}` : "(nothing picked)"}
+          {picked ? `${picked.productCode} — ${picked.name}` : "(nothing picked)"}
         </Text>
       </>
     );
@@ -131,7 +131,7 @@ export const Interactive: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "kopi");
 
-    const option = await screen.findByTestId(`product-select-option-${products[0]!.sku}`);
+    const option = await screen.findByTestId(`product-select-option-${products[0]!.productCode}`);
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
@@ -141,7 +141,7 @@ export const Interactive: Story = {
     // SupplierSelect. This picker searches SERVER-side, so on selection the label is written back
     // into the input and searched for; the guard is that the field still shows it afterwards.
     await waitFor(() =>
-      expect(input).toHaveValue(`${products[0]!.sku} — ${products[0]!.name}`),
+      expect(input).toHaveValue(`${products[0]!.productCode} — ${products[0]!.name}`),
     );
   },
 };
@@ -172,7 +172,7 @@ export const InsideADialog: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "kopi", { delay: 20 });
     // The option is INSIDE the dialog, not portalled out of it.
-    const option = await within(dialog).findByTestId(`product-select-option-${products[0]!.sku}`);
+    const option = await within(dialog).findByTestId(`product-select-option-${products[0]!.productCode}`);
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
     await waitFor(() => expect(args.onChange).toHaveBeenCalled());

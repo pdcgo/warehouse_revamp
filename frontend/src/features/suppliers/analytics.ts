@@ -75,7 +75,7 @@ export interface SupplierProductRow {
   productId: bigint;
   /** "" when product_service could not name it — the screen reads "Product #<id>". */
   name: string;
-  sku: string;
+  productCode: string;
   /** The product's list-sized picture — "" when it has none, and the shared item draws its placeholder. */
   thumbnailUrl: string;
   /** The team whose product it is — the team that restocked it. */
@@ -148,8 +148,11 @@ function supplierData(datas: MetricData[]) {
   };
 }
 
-/** The headline — the same metric grouped by SUMMARY, over the same filters (the-headline-is-the-metric-grouped-by-summary). */
-async function headline(teamId: bigint, filters: Filter[]): Promise<SupplierFigures> {
+/**
+ * The headline — the same metric grouped by SUMMARY, over the same filters (the-headline-is-the-metric-grouped-by-summary) —
+ * with the service's AS OF (a-money-metric-says-as-of-when): when its fold last claimed an event.
+ */
+async function headline(teamId: bigint, filters: Filter[]): Promise<SupplierFigures & { asOfUnix: bigint }> {
   const res = await supplierAnalyticClient.metricData({
     teamId,
     groupBy: GroupType.SUMMARY,
@@ -157,7 +160,7 @@ async function headline(teamId: bigint, filters: Filter[]): Promise<SupplierFigu
     metricIds: [SUPPLIERS],
   });
 
-  return figuresOf(supplierData(res.metricDatas).summary);
+  return { ...figuresOf(supplierData(res.metricDatas).summary), asOfUnix: res.asOfUnix };
 }
 
 const groupOf: Record<PeriodGrain, GroupType> = {
@@ -313,7 +316,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
 
       // The names are product_service's — any team's product, by id — and so is the team: a product is ITS team's, the
       // team that restocked it. A label, so a failure leaves the ids standing.
-      const products = new Map<string, { name: string; sku: string; thumbnailUrl: string; teamId: bigint }>();
+      const products = new Map<string, { name: string; productCode: string; thumbnailUrl: string; teamId: bigint }>();
       try {
         const resolved = await productClient.productByIds({
           teamId: teamId!,
@@ -323,7 +326,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
         for (const p of productsFromByIds(resolved)) {
           // The picture rides the same read — the thumbnail, or the full image when there is no thumbnail.
           const thumbnailUrl = p.defaultImageThumbnailUrl || p.defaultImageUrl;
-          products.set(p.id.toString(), { name: p.name, sku: p.sku, thumbnailUrl, teamId: p.teamId });
+          products.set(p.id.toString(), { name: p.name, productCode: p.productCode, thumbnailUrl, teamId: p.teamId });
         }
       } catch {
         // Labels only.
@@ -339,7 +342,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
           key: `${owner}|${productId}`,
           productId,
           name: product?.name ?? "",
-          sku: product?.sku ?? "",
+          productCode: product?.productCode ?? "",
           thumbnailUrl: product?.thumbnailUrl ?? "",
           team: { teamId: owner, name: teams.get(owner.toString()) ?? "" },
           figures: figuresOf(byId[productId.toString()]),

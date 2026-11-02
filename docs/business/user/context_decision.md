@@ -1052,7 +1052,11 @@ flowchart LR
   A -.->|"never write"| S
 ```
 
-**The spec.** ⚠ **Not built.** Today an admin-type team reaches nothing outside itself.
+**The spec.** ✅ **Built 2026-11-02**, with its screen — [the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only)
+holds what was built. A read is the RPC's own `idempotency_level = NO_SIDE_EFFECTS`, not a request-message option. The
+access check asks the scoped team's type last (`TeamKinds`, a read of team_service's `teams.type` in the composition root,
+kept for the process — a type never changes): only a warehouse or a selling team is monitored; the root team and any
+admin-type team are refused.
 
 | | |
 | --- | --- |
@@ -1115,11 +1119,35 @@ flowchart LR
 > 🔄 *(2026-10-06)* The membership log stamps it too: Root or the Administrator adding, changing or removing a member of
 > a team they hold no role in.
 
-**The spec.** ⚠ **Not built, except in liability's terms log and user_service's membership log.** The access check already tells a handler that the
+**The spec.** ✅ **Built 2026-11-02** — see below the spec. The access check already tells a handler that the
 caller got in this way. Each service's write that records who acted also records that it was an override. One rule for
 every service, so it cannot exist in one and be forgotten in the next. Counts and losses:
 [inventory Q12d](../inventory/context_clarify.md#question).
 
+
+✅ **Built 2026-11-02.** One rule, `san_auth.IsOverride(ctx)`: a person is calling, the request is scoped, and the caller
+holds no role in that team (the interceptor's caller role) — and is not a monitor. Stamped on 18 tables in 9 services, each
+by its own migration: `team_agent_policies` (user `00012`); `liability_logs`, `liability_payments` (two flags, one per
+act), `liability_payment_requests` (liability `00013`); `expense_records` (`00003`); `financial_account_logs`
+(`00002`); `bundles` (product `00009`); `documents`, `document_shares` (document `00009`); `inventory_transactions`,
+`restock_logs`, `warehouse_transfer_logs` (inventory `00034`); `orders`, `order_timeline_logs`, `order_drafts`
+(selling `00033`); `settlement_logs` (settlement `00007`) — beside the two that already had it. A row an event
+consumer writes takes the flag of the act the event reports (`actor_is_override`), never its own. Every table and why it was or was not stamped: [database-schema.md](../../database-schema.md).
+⚠ my build detail: liability's terms log now reads the shared rule, so a call with no person is no longer an override.
+Server streams carry the scope and caller role too (`san_auth.StreamScope`), so an import is stamped: `uploaded_files`
+(settlement_importer `00002`) and the moves `ShopeeOrderImport` / `TiktokOrderImport` make.
+Events carry `actor_is_override` beside `actor_id` (`OrderPlaced`, `OrderCancelled`, `RestockAccepted`,
+`SettlementLogPosted`, `LiabilityPaymentAccepted`), set from the same source as the actor, so a row a consumer writes for
+the event's actor — settlement's order rows, liability's order fees, reversals and courier charge, the financial
+accounts' withdrawal and team-payment rows — carries the stamp of the act behind the event.
+
+⛔ **Not covered yet**, and why:
+
+| | |
+| --- | --- |
+| a stock release | covered at the act: the cancel that releases the stock is stamped on the order's timeline row; `RollbackTake`'s reversal rows record no actor of their own (they sit under the take's transaction) |
+| no actor at all | outside the rule's words — it stamps *a write that records who acted*, and `WarehouseTransferUpdate`, `LiabilityPaymentReject`, `BundleUpdate`, `OrderDraftUpdate` record nobody. Recording an actor on them is its own decision |
+| seeing it | only the membership log and the terms log show the flag; every other read needs a proto field and its screen |
 ## the-two-administrators-have-distinct-labels
 
 > Owner, in chat *(2026-10-02)*: *"for q12, q13, q14, q15, 1q6 i follow your recomendation"*. It answers [Q15](./context_clarify.md#question), as recommended.
@@ -1716,13 +1744,22 @@ flowchart LR
   A -.->|"refused"| W["a write"]
 ```
 
-**The spec.** ⚠ **Not built — its own pass** ([the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form)).
+**The spec.** ✅ **Built 2026-11-02**, as pass 2 of [the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form) —
+what was built is under the table.
 
 | | |
 | --- | --- |
 | the proto | each of the 142 team-scoped request messages is marked a read or not, by hand. About 59 look like reads by name; a name decides nothing |
 | the access check | a member of an admin-type team passes another team's scope for a marked read, and only for that. Roles 11 and 12 exist only in admin-type teams, since a role must be of its team's type |
 | the screens | a read-only flag on the current team hides every write control — the 21 screens that read the role, and any write offered to *any member* |
+
+Built with it:
+
+| build detail | what |
+| --- | --- |
+| the read marker | the RPC option `idempotency_level = NO_SIDE_EFFECTS` — the one an agent's credential is held to ([an-agent-only-reads-for-now](../mcp/context_decision.md#an-agent-only-reads-for-now)) — so ONE marker serves both rules. 93 of the 195 team-scoped RPCs carry it, each judged by its handler; an export, an import and the unbuilt stock count stay unmarked |
+| the access check | step 8b: a person holding role 11 or 12 in any team (one more resolver query, cached and invalidated with the rest), no role in the scoped team, and a marked read, passes as a **monitor** (`san_auth.IsMonitor`). Never the root team; never an AI agent's credential. A team they are in is read as that member |
+| the screens | *All teams* for the admin team, warehouse and selling teams only; a *Monitoring — read-only* strip; every write control behind one helper (`useCanWrite`); a write page reached by URL shows a read-only notice. The monitored team's screens are the Owner's, with no write |
 
 ## the-switcher-ships-with-the-create-team-form
 
@@ -1746,7 +1783,8 @@ flowchart LR
   S --> R
 ```
 
-**The spec.** Pass 1 needs only the screens and one contract change (`TeamCreateRequest` names the Owner); the
+**The spec.** ✅ **Built 2026-11-02** — both passes; pass 2's build details are in
+[the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only). Pass 1 needs only the screens and one contract change (`TeamCreateRequest` names the Owner); the
 server already lets Root and the Administrator into every team. Pass 2 is the proto marking, the access-check change
 and the read-only mode.
 

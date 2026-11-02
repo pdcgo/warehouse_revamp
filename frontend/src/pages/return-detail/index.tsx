@@ -18,7 +18,7 @@ import {
 import { ArrowLeft, PackageCheck } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { toaster } from "../../components/feedback/Toaster";
@@ -41,7 +41,7 @@ const STATUS_PALETTE: Record<ReturnStatus, string> = {
 // two need not sum to `expected`: a short return arrives with fewer pieces than the buyer promised.
 interface ReturnLine {
   productId: number;
-  sku: string;
+  productCode: string;
   name: string;
   // Absent SKU/name is a legitimate state (an unlabeled parcel with nothing identifying it).
   unknown?: boolean;
@@ -82,19 +82,19 @@ const SAMPLE: Record<string, ReturnRecord> = {
     shop: "Alpha Store", marketplace: Marketplace.SHOPEE, customer: "Rina Wijaya",
     address: "Jl. Kenanga 12, Bandung", note: "Wrong item — ordered blue, got black",
     valueRupiah: 145000n, status: "ongoing",
-    lines: [{ productId: 811, sku: "TS-BLK-M", name: "Kaos Polos Hitam M", expected: 1, unitRupiah: 145000n }],
+    lines: [{ productId: 811, productCode: "TS-BLK-M", name: "Kaos Polos Hitam M", expected: 1, unitRupiah: 145000n }],
   },
   "2": {
     id: "2", code: "RTN-0141", createdUnix: 1769212800, orderId: 4098, team: "Selling Beta",
     shop: "Beta Official", marketplace: Marketplace.TOKOPEDIA, customer: "Budi Santoso",
     address: "Jl. Melati 8, Surabaya", note: "Arrived damaged in transit", valueRupiah: 90000n,
     status: "ongoing",
-    lines: [{ productId: 622, sku: "MUG-CRM-01", name: "Mug Keramik 300ml", expected: 2, unitRupiah: 45000n }],
+    lines: [{ productId: 622, productCode: "MUG-CRM-01", name: "Mug Keramik 300ml", expected: 2, unitRupiah: 45000n }],
   },
   "3": {
     id: "3", code: "RTN-0140", createdUnix: 1769126400, team: "Selling Alpha",
     note: "Unlabeled parcel — no order found", status: "ongoing",
-    lines: [{ productId: 0, sku: "", name: "", unknown: true, expected: 1 }],
+    lines: [{ productId: 0, productCode: "", name: "", unknown: true, expected: 1 }],
   },
   "4": {
     id: "4", code: "RTN-0139", createdUnix: 1769126400, orderId: 4103, team: "Selling Alpha",
@@ -102,8 +102,8 @@ const SAMPLE: Record<string, ReturnRecord> = {
     address: "Jl. Anggrek 45, Jakarta Selatan", note: "Customer changed mind", valueRupiah: 375000n,
     status: "ongoing",
     lines: [
-      { productId: 903, sku: "SHOE-RUN-42", name: "Sepatu Lari 42", expected: 1, unitRupiah: 225000n },
-      { productId: 904, sku: "SOCK-3PK", name: "Kaos Kaki 3pcs", expected: 2, unitRupiah: 75000n },
+      { productId: 903, productCode: "SHOE-RUN-42", name: "Sepatu Lari 42", expected: 1, unitRupiah: 225000n },
+      { productId: 904, productCode: "SOCK-3PK", name: "Kaos Kaki 3pcs", expected: 2, unitRupiah: 75000n },
     ],
   },
   "5": {
@@ -112,8 +112,8 @@ const SAMPLE: Record<string, ReturnRecord> = {
     address: "Jl. Cendana 3, Semarang", note: "Courier could not deliver (RTS)", valueRupiah: 580000n,
     acceptedUnix: 1769126400, acceptedBy: "Rudi Hartono", status: "received",
     lines: [
-      { productId: 705, sku: "JKT-DNM-L", name: "Jaket Denim L", expected: 2, sellable: 2, writtenOff: 0, rack: "A-02-1", unitRupiah: 200000n },
-      { productId: 706, sku: "CAP-BLK", name: "Topi Hitam", expected: 2, sellable: 2, writtenOff: 0, rack: "B-01-3", unitRupiah: 90000n },
+      { productId: 705, productCode: "JKT-DNM-L", name: "Jaket Denim L", expected: 2, sellable: 2, writtenOff: 0, rack: "A-02-1", unitRupiah: 200000n },
+      { productId: 706, productCode: "CAP-BLK", name: "Topi Hitam", expected: 2, sellable: 2, writtenOff: 0, rack: "B-01-3", unitRupiah: 90000n },
     ],
   },
   "6": {
@@ -121,20 +121,20 @@ const SAMPLE: Record<string, ReturnRecord> = {
     shop: "Alpha Mart", marketplace: Marketplace.TOKOPEDIA, customer: "Maya Lestari",
     address: "Jl. Mawar 21, Bekasi", note: "Defective — 1 back to shelf, 1 written off",
     valueRupiah: 300000n, acceptedUnix: 1769040000, acceptedBy: "Siti Aminah", status: "received",
-    lines: [{ productId: 540, sku: "BAG-TOTE", name: "Tas Tote Kanvas", expected: 2, sellable: 1, writtenOff: 1, rack: "C-03-2", unitRupiah: 150000n }],
+    lines: [{ productId: 540, productCode: "BAG-TOTE", name: "Tas Tote Kanvas", expected: 2, sellable: 1, writtenOff: 1, rack: "C-03-2", unitRupiah: 150000n }],
   },
   "7": {
     id: "7", code: "RTN-0135", createdUnix: 1768780800, orderId: 4032, team: "Selling Alpha",
     shop: "Alpha Store", marketplace: Marketplace.LAZADA, customer: "Dewi Kartika",
     address: "Jl. Flamboyan 7, Depok", note: "Wrong size", valueRupiah: 170000n,
     acceptedUnix: 1768867200, acceptedBy: "Rudi Hartono", status: "received",
-    lines: [{ productId: 811, sku: "TS-WHT-S", name: "Kaos Putih S", expected: 2, sellable: 2, writtenOff: 0, rack: "A-01-4", unitRupiah: 85000n }],
+    lines: [{ productId: 811, productCode: "TS-WHT-S", name: "Kaos Putih S", expected: 2, sellable: 2, writtenOff: 0, rack: "A-01-4", unitRupiah: 85000n }],
   },
   "8": {
     id: "8", code: "RTN-0136", createdUnix: 1768867200, orderId: 4048, team: "Selling Beta",
     shop: "Beta Official", marketplace: Marketplace.TOKOPEDIA, customer: "Tono Hidayat",
     address: "Jl. Dahlia 19, Sidoarjo", note: "Said would return, never arrived", status: "cancelled",
-    lines: [{ productId: 470, sku: "WLT-LTHR", name: "Dompet Kulit", expected: 1 }],
+    lines: [{ productId: 470, productCode: "WLT-LTHR", name: "Dompet Kulit", expected: 1 }],
   },
 };
 
@@ -259,7 +259,7 @@ export function ReturnDetailPage() {
         {/* Receiving is COUNTING + INSPECTING (brainstorming §4.1, mirroring #157): count what came,
             place the sellable, write off the broken. That is a form with sections — a PAGE, not a
             dialog — which arrives with the return_service; until then the action is honest about it. */}
-        {isOngoing && (
+        {isOngoing && canWrite(current) && (
           <Button
             colorPalette="brand"
             data-testid="return-detail-receive"
@@ -411,7 +411,7 @@ export function ReturnDetailPage() {
                 {record.lines.map((line, idx) => (
                   <Table.Row key={line.productId || idx} data-testid={`return-detail-item-${idx}`}>
                     <Table.Cell>
-                      {line.unknown ? <Text as="span" color="fg.subtle">—</Text> : line.sku}
+                      {line.unknown ? <Text as="span" color="fg.subtle">—</Text> : line.productCode}
                     </Table.Cell>
                     <Table.Cell>
                       {line.unknown ? (

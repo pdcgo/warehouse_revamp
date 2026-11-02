@@ -5,6 +5,7 @@ import { type MetricDef, type TableGroup, isTimeGroup, metricById } from "../src
 import { type MetricBody, type ReportFilters, sampleService } from "../src/features/analytic/provider";
 import { type FilterItem, GroupType, SortType } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
 import type { OrderAnalyticService } from "../src/gen/warehouse/selling/v1/order_analytic_pb";
+import { FOLDED_AS_OF } from "./fixtures";
 
 // THE ORDER METRICS, as selling_service serves them — answered over the stub transport from the analytic samples, so a
 // story drives the screen's REAL wire path (provider → OrderAnalyticService → the answer) and still reads the numbers
@@ -100,6 +101,7 @@ export const orderAnalyticService: Partial<ServiceImpl<typeof OrderAnalyticServi
     const warehouse = req.teamId === WAREHOUSE_TEAM;
 
     return {
+      asOfUnix: FOLDED_AS_OF,
       metricDatas: req.metricIds.map((id) => {
         const def = served(id);
         const prefix = ONEOF[id]!;

@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
@@ -43,6 +44,7 @@ func (p *realPoster) PostStockDamage(
 		SourceID:       movementID,
 		Reversal:       kind == inventory_v1.StockDamageFound,
 		ActorID:        actorID,
+		IsOverride:     san_auth.IsOverride(ctx),
 	})
 
 	if errors.Is(err, liability_v1.ErrAlreadyPosted) {

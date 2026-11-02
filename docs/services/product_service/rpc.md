@@ -1,5 +1,54 @@
 # product_service — RPC flows
 
+## The product code — composed on write
+
+A product has ONE code, `product_code`, and product_service **composes** it: the team sends its own part, and what is
+stored is `<team_code>-<part>` — team ABC types `SHOE-42`, the product is `ABC-SHOE-42`
+([the-field-is-product-code-composed-on-write](../../business/product/context_decision.md#the-field-is-product-code-composed-on-write)).
+The team code is team_service's, so `ProductCreate` and a code correction in `ProductUpdate` depend on it — through
+`product_v1.TeamCodes`, which the composition root answers with `TeamByIds` asked as the caller
+([product_team_codes.go](../../../backend/cmd/app_development/product_team_codes.go)). It is immutable after the team is
+created, so a composed code never goes stale.
+
+| RPC | the code |
+| --- | --- |
+| `ProductCreate` | takes `product_code_part`; stores `<team_code>-<part>`, the part trimmed. A blank part is InvalidArgument, a team with no code FailedPrecondition, a code any row holds — an archived one included — AlreadyExists |
+| `ProductUpdate` | an optional `product_code_part` CORRECTS it — only while the product has NO HISTORY, the line `ProductDelete` uses; otherwise FailedPrecondition. The part it already has is no correction, so a form that always sends it still saves a used product |
+| `ProductArchive` / `ProductUnarchive` | the code is KEPT, so Unarchive cannot collide and takes no code |
+| `ProductDelete` | frees the code — of a never-used product only |
+
+```mermaid
+sequenceDiagram
+  participant UI as product form
+  participant P as product_service
+  participant T as team_service — TeamByIds, as the caller
+  participant H as history — inventory and selling
+  participant DB as products
+  UI->>P: ProductCreate — team_id, product_code_part SHOE-42
+  P->>T: the team's code
+  T-->>P: ABC — or nothing, then FailedPrecondition
+  P->>DB: INSERT product_code ABC-SHOE-42
+  DB-->>P: unique over every row — a taken code is AlreadyExists
+  UI->>P: ProductUpdate — product_code_part SHOE-43
+  P->>T: the team's code, before the transaction
+  P->>DB: lock the product row
+  alt the composed code is the one it has
+    P->>DB: no correction — the other fields only
+  else a real correction
+    P->>H: any stock movement, order line or restock line?
+    H-->>P: yes, then FailedPrecondition and nothing lands
+    P->>DB: UPDATE product_code ABC-SHOE-43
+  end
+```
+
+**Uniqueness is one index over every row** (`products_product_code_unique`, product `00008`). Composition makes it a
+namespace per team — no create is ever refused because of another team's row — and the refusal says nothing of another
+catalogue. ⚠ A team code may contain a dash, so `AB` + `C-1` and `AB-C` + `1` compose alike; the index refuses the second,
+as AlreadyExists.
+
+**Today's rows** — written before composition — are recomposed once by
+[`san product recompose-codes`](../../tools/san.md#product-recompose-codes), which `dev setup` runs.
+
 ## Bundles — `BundleService`
 
 A selling team's **picking recipes**: which products, and how many of each go into ONE bundle. A bundle has no stock and

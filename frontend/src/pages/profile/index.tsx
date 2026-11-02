@@ -17,6 +17,7 @@ import { useAuth } from "../../features/auth/AuthContext";
 import { toaster } from "../../components/feedback/Toaster";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import { ProfilePicture } from "./components/ProfilePicture";
+import { AgentConnectionsCard } from "./components/AgentConnectionsCard";
 
 // ProfilePage is the caller editing THEMSELVES.
 //
@@ -139,6 +140,9 @@ export function ProfilePage() {
           </Stack>
         </Card.Body>
       </Card.Root>
+
+      {/* The agents this person connected, and how to connect one (an-agent-gets-its-own-team-credential). */}
+      <AgentConnectionsCard />
     </Stack>
   );
 }

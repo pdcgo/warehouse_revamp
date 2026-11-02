@@ -41,6 +41,7 @@ func (s *Service) FinancialAccountIdentify(
 ) (*connect.Response[financial_accountv1.FinancialAccountIdentifyResponse], error) {
 	msg := req.Msg
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 	resultID := msg.GetAccountId()
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -116,7 +117,7 @@ func (s *Service) FinancialAccountIdentify(
 			}
 
 			if unknown.Balance != 0 {
-				_, err = transferLegs(tx, unknown, real, unknown.Balance, s.now(), "the bank was named", actor)
+				_, err = transferLegs(tx, unknown, real, unknown.Balance, s.now(), "the bank was named", actor, override)
 				if err != nil {
 					return err
 				}

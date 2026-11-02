@@ -19,8 +19,8 @@ type ProductFact struct {
 	// The markup another team pays over cost, in basis points (inventory-computes-the-markup).
 	CrossMarkupBps uint32
 	// What a transfer line snapshots at create.
-	SKU  string
-	Name string
+	ProductCode string
+	Name        string
 }
 
 // ProductReader answers ProductFacts by id — asked of product_service, which owns products. An id that exists nowhere is

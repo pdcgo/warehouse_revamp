@@ -68,6 +68,9 @@ func (s *Service) openSale(ctx context.Context, placed *eventsv1.OrderPlaced, pl
 		// VARIANT's actor, read from the stored order, never the envelope's identity.
 		ActorID:         placed.GetActorId(),
 		CreatedByUserID: placed.GetActorId(),
+		// ...and whether that placement was an override, as the event carries it — this push has no caller to read it
+		// from (an-override-is-stamped-in-every-service).
+		IsOverride: placed.GetActorIsOverride(),
 	})
 
 	return err
@@ -87,6 +90,8 @@ func (s *Service) cancelSale(ctx context.Context, cancelled *eventsv1.OrderCance
 		UniqueID:   saleCancelKey(cancelled.GetOrderId(), day),
 		OccurredOn: day,
 		ActorID:    cancelled.GetActorId(),
+		// The CANCEL's flag, beside the cancel's actor — never the placement's.
+		IsOverride: cancelled.GetActorIsOverride(),
 	})
 	if errors.Is(err, ErrNothingToCancel) {
 		return nil

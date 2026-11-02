@@ -73,6 +73,9 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				OrderID:     placed.GetOrderId(),
 				Lines:       lines,
 				ActorID:     placed.GetActorId(),
+				// ...and whether that placement was an override — carried by the event, because this push has no caller
+				// to read it from (an-override-is-stamped-in-every-service).
+				ActorIsOverride: placed.GetActorIsOverride(),
 				// The order's frozen fee, nil when the order predates it (the-event-carries-the-warehouse-fee).
 				WarehouseFee: placed.WarehouseFee,
 			})
@@ -82,8 +85,10 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 
 			// The cancel carries only ids, and needs no more: the ledger already knows what it
 			// charged, so reversing reads its own entries rather than recomputing fees from rates
-			// that may have changed since.
-			return svc.ReverseOrder(ctx, cancelled.GetTeamId(), cancelled.GetOrderId(), cancelled.GetActorId())
+			// that may have changed since. The reversal names the CANCEL's actor, so it carries the cancel's override
+			// flag — never the placement's (an-override-is-stamped-in-every-service).
+			return svc.ReverseOrder(ctx, cancelled.GetTeamId(), cancelled.GetOrderId(),
+				cancelled.GetActorId(), cancelled.GetActorIsOverride())
 
 		case *eventsv1.Event_RestockAccepted:
 			accepted := variant.RestockAccepted
@@ -98,6 +103,8 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				WarehouseID:   accepted.GetWarehouseId(),
 				Amount:        int64(math.Round(accepted.GetWarehouseAdditionalCost())),
 				ActorID:       accepted.GetActorId(),
+				// Whether the accept was an override, as inventory stored it beside the actor.
+				ActorIsOverride: accepted.GetActorIsOverride(),
 			})
 
 		default:

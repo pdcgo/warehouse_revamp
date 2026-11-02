@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, DataList, Flex, Grid, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useDeleteShop, useShop } from "../../features/shops/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
@@ -138,7 +138,7 @@ export function ShopDetailPage() {
               {shop.name}
             </Heading>
           </HStack>
-          {isMobile ? (
+          {!canWrite(current) ? null : isMobile ? (
             <CompactActions
               menuLabel={t("common.actions")}
               actions={[

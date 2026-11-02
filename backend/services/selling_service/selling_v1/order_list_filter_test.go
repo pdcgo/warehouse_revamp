@@ -40,7 +40,7 @@ func namedOrder(
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: name, CustomerPhone: phone,
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -192,7 +192,7 @@ func TestOrderList_SearchNeverLeaksAnotherTeamsOrders(t *testing.T) {
 		TeamId:                3, ShopId: theirs, WarehouseId: 901,
 		CustomerName: "Budi Santoso", CustomerPhone: "081200001111",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {

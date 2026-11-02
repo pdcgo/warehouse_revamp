@@ -46,6 +46,11 @@ type LiabilityLog struct {
 	// recorded anywhere to recover it from.
 	ActorID uint64
 
+	// The actor was Root or the Administrator, posting inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service). Both legs carry it, as both carry the actor. A leg an event posted takes
+	// it from the event's `actor_is_override`, beside the event's actor.
+	IsOverride bool
+
 	CreatedAt time.Time
 }
 

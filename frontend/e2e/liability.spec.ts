@@ -182,7 +182,7 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
 
   const product = await call(page, "product.v1.ProductService/ProductCreate", {
     teamId: String(WAREHOUSE_TEAM),
-    sku: SKU,
+    productCodePart: SKU,
     name: "Widget",
     categoryId: category.body.category.id,
   });
@@ -195,7 +195,7 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
     teamId: String(WAREHOUSE_TEAM),
     warehouseId,
     financeAccountId: paidFrom,
-    items: [{ productId: product.body.product.id, sku: SKU, name: "Widget", count: 10, total: 500000 }],
+    items: [{ productId: product.body.product.id, productCode: SKU, name: "Widget", count: 10, total: 500000 }],
   });
   expect(created.status).toBe(200);
 

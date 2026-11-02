@@ -27,6 +27,7 @@ type Move struct {
 	WarehouseID     uint64
 	FromPlacementID uint64
 	ActorID         uint64
+	IsOverride      bool
 	Description     string
 	Lines           []MoveLine
 }
@@ -110,7 +111,8 @@ func PostMove(tx *gorm.DB, m Move) ([]models.InventoryTransaction, error) {
 
 	for _, team := range teams {
 		t, createErr := inventory_ledgers.CreateTransaction(tx, inventory_ledgers.NewTransaction{
-			WarehouseID: m.WarehouseID, TeamID: team, TxType: models.TxMove, ActorID: m.ActorID, Description: m.Description,
+			WarehouseID: m.WarehouseID, TeamID: team, TxType: models.TxMove, ActorID: m.ActorID, IsOverride: m.IsOverride,
+			Description: m.Description,
 		})
 		if createErr != nil {
 			return nil, createErr

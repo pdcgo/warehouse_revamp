@@ -159,7 +159,7 @@ function rowWire(row: OpnameRowFixture, blind: boolean) {
     sessionId: row.sessionId,
     teamId: row.teamId,
     productId: row.productId,
-    productSku: row.sku,
+    productCode: row.productCode,
     productName: row.name,
     placementId: row.placementId,
     placementCode: row.placementCode,
@@ -249,7 +249,7 @@ function snapshotRow(sessionId: bigint, productId: bigint, placementId: bigint, 
     sessionId,
     teamId: product?.teamId ?? 0n,
     productId,
-    sku: product?.sku ?? "",
+    productCode: product?.productCode ?? "",
     name: product?.name ?? `#${productId}`,
     placementId,
     placementCode: rackCode(placementId),
@@ -345,7 +345,7 @@ function settle(s: OpnameSessionFixture) {
     out.push({
       teamId: first.teamId,
       productId: first.productId,
-      productSku: first.sku,
+      productCode: first.productCode,
       productName: first.name,
       bookCount: book,
       sellableCount: sellable,
@@ -455,7 +455,7 @@ export const opnameService: Partial<ServiceImpl<typeof OpnameService>> = {
       .filter((r) => !f.placementId || r.placementId === f.placementId)
       .filter((r) => !f.status || r.status === f.status)
       .filter((r) => !f.onlyDifferences || differs(r))
-      .filter((r) => !q || r.sku.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))
+      .filter((r) => !q || r.productCode.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))
       .sort((a, b) => (a.placementCode !== b.placementCode ? (a.placementCode < b.placementCode ? -1 : 1) : a.name < b.name ? -1 : 1));
 
     const { rows: window, pageInfo } = pageOf(matched, req.page);

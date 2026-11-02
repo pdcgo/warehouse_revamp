@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/product/v1/product.proto.
  */
 export const file_warehouse_product_v1_product: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvcHJvZHVjdC92MS9wcm9kdWN0LnByb3RvEhR3YXJlaG91c2UucHJvZHVjdC52MSK4AgoHUHJvZHVjdBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgsKA3NrdRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgSEwoLY2F0ZWdvcnlfaWQYByABKAQSGQoRZGVmYXVsdF9pbWFnZV91cmwYCCABKAkSIwobZGVmYXVsdF9pbWFnZV90aHVtYm5haWxfdXJsGAkgASgJEjIKBmltYWdlcxgKIAMoCzIiLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RJbWFnZRIYChBjcm9zc19tYXJrdXBfYnBzGAsgASgNEhQKDGNyb3NzX2xvY2tlZBgMIAEoCBIWCg5yZXNlcnZlZF9zdG9jaxgNIAEoDSJICgxQcm9kdWN0SW1hZ2USFwoDdXJsGAEgASgJQgq6SAdyBRABGIAQEh8KDXRodW1ibmFpbF91cmwYAiABKAlCCLpIBXIDGIAQIkwKDVByb2R1Y3RJbWFnZXMSOwoFaXRlbXMYASADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFIssCChRQcm9kdWN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIWCgNza3UYAiABKAlCCbpIBnIEEAEYQBIYCgRuYW1lGAMgASgJQgq6SAdyBRABGMgBEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxjoBxIcCgtjYXRlZ29yeV9pZBgFIAEoBEIHukgEMgIgABI8CgZpbWFnZXMYBiADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFEiMKEGNyb3NzX21hcmt1cF9icHMYByABKA1CCbpIBioEGKCNBhIUCgxjcm9zc19sb2NrZWQYCCABKAgSIQoOcmVzZXJ2ZWRfc3RvY2sYCSABKA1CCbpIBioEGMCEPToKkrUYBgoEAQIDBCJHChVQcm9kdWN0Q3JlYXRlUmVzcG9uc2USLgoHcHJvZHVjdBgBIAEoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QiZgoRUHJvZHVjdExpc3RGaWx0ZXISEgoBcRgBIAEoCUIHukgEcgIYZBI9CgZzdGF0dXMYAiABKA4yIy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0U3RhdHVzQgi6SAWCAQIQASLCAQoVUHJvZHVjdExpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABI3Cgdwcm9kdWN0GAMgASgOMiQud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFJvd1NvcnRIAEIDCgFzIosCCg5Qcm9kdWN0Um93SXRlbRIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgsKA3NrdRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEhMKC2NhdGVnb3J5X2lkGAYgASgEEhkKEWRlZmF1bHRfaW1hZ2VfdXJsGAcgASgJEiMKG2RlZmF1bHRfaW1hZ2VfdGh1bWJuYWlsX3VybBgIIAEoCRIPCgdkZWxldGVkGAkgASgIEhgKEGNyb3NzX21hcmt1cF9icHMYCiABKA0SFAoMY3Jvc3NfbG9ja2VkGAsgASgIEhYKDnJlc2VydmVkX3N0b2NrGAwgASgNIrEBChFQcm9kdWN0Um93TWFwSXRlbRJGCghtYXBfZGF0YRgBIAMoCzI0LndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpUCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjMKBXZhbHVlGAIgASgLMiQud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFJvd0l0ZW06AjgBIpIBChdQcm9kdWN0TGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB3Byb2R1Y3QYAiABKAsyJy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Um93TWFwSXRlbUgAQgMKAWQitAIKElByb2R1Y3RMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOg6StRgKCggBAgMEBQYJCCKSAQoTUHJvZHVjdExpc3RSZXNwb25zZRI8CgVpdGVtcxgBIAMoCzItLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvItwDChZQcm9kdWN0RGlzY292ZXJSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjcKBmZpbHRlchgCIAEoCzInLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0RmlsdGVyEjkKBHNvcnQYAyABKAsyKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdEZpbHRlclNvcnQSPwoMZGF0YV9yZXF1ZXN0GAQgAygOMikud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3REYXRhVHlwZRI7CgRwYWdlGAUgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQESGAoQZXhjbHVkZV9vd25fdGVhbRgGIAEoCBIVCg1vd25lcl90ZWFtX2lkGAcgASgEEikKDm93bmVyX3RlYW1faWRzGAggAygEQhG6SA6SAQsQyAEYASIEMgIgABIxChZleGNsdWRlX293bmVyX3RlYW1faWRzGAkgAygEQhG6SA6SAQsQyAEYASIEMgIgABIWCg5pbmNsdWRlX2xvY2tlZBgKIAEoCDoLkrUYBwoFAQIDBAUilgEKF1Byb2R1Y3REaXNjb3ZlclJlc3BvbnNlEjwKBWl0ZW1zGAEgAygLMi0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8ixwEKE1Byb2R1Y3RCeUlkc1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQAoGZmlsdGVyGAIgASgLMigud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEJ5SWRzRmlsdGVyQga6SAPIAQESQAoMZGF0YV9yZXF1ZXN0GAMgAygOMioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEJ5SWRzRGF0YVR5cGU6DpK1GAoKCAECAwQFBgkIIjYKElByb2R1Y3RCeUlkc0ZpbHRlchIgCgNpZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAikwEKGFByb2R1Y3RCeUlkc1Jlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB3Byb2R1Y3QYAiABKAsyJy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Um93TWFwSXRlbUgAQgMKAWQiWQoYUHJvZHVjdEJ5SWRzUmVzcG9uc2VMaXN0Ej0KBWl0ZW1zGAEgAygLMi4ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEJ5SWRzUmVzcG9uc2VJdGVtIroBChRQcm9kdWN0QnlJZHNSZXNwb25zZRJECgVpdGVtcxgBIAMoCzI1LndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RCeUlkc1Jlc3BvbnNlLkl0ZW1zRW50cnkaXAoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSPQoFdmFsdWUYAiABKAsyLi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNSZXNwb25zZUxpc3Q6AjgBIuwDChRQcm9kdWN0VXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhsKA3NrdRgDIAEoCUIJukgGcgQQARhASACIAQESHQoEbmFtZRgEIAEoCUIKukgHcgUQARjIAUgBiAEBEiIKC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxjoB0gCiAEBEiEKC2NhdGVnb3J5X2lkGAYgASgEQge6SAQyAiAASAOIAQESMwoGaW1hZ2VzGAcgASgLMiMud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEltYWdlcxIoChBjcm9zc19tYXJrdXBfYnBzGAggASgNQgm6SAYqBBigjQZIBIgBARIZCgxjcm9zc19sb2NrZWQYCSABKAhIBYgBARImCg5yZXNlcnZlZF9zdG9jaxgKIAEoDUIJukgGKgQYwIQ9SAaIAQE6CpK1GAYKBAECAwRCBgoEX3NrdUIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb25CDgoMX2NhdGVnb3J5X2lkQhMKEV9jcm9zc19tYXJrdXBfYnBzQg8KDV9jcm9zc19sb2NrZWRCEQoPX3Jlc2VydmVkX3N0b2NrIkcKFVByb2R1Y3RVcGRhdGVSZXNwb25zZRIuCgdwcm9kdWN0GAEgASgLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCJhChRQcm9kdWN0RGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAOg6StRgKCggBAgMEBQYJCCJHChVQcm9kdWN0RGV0YWlsUmVzcG9uc2USLgoHcHJvZHVjdBgBIAEoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QiXQoUUHJvZHVjdERlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCIXChVQcm9kdWN0RGVsZXRlUmVzcG9uc2UigwEKFVByb2R1Y3RSZXN0b3JlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhsKA3NrdRgDIAEoCUIJukgGcgQQARhASACIAQE6CpK1GAYKBAECAwRCBgoEX3NrdSJIChZQcm9kdWN0UmVzdG9yZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0KoUBChNQcm9kdWN0TGlzdERhdGFUeXBlEiYKIlBST0RVQ1RfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIiCh5QUk9EVUNUX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIiCh5QUk9EVUNUX0xJU1RfREFUQV9UWVBFX1BST0RVQ1QQAiqAAQoOUHJvZHVjdFJvd1NvcnQSIAocUFJPRFVDVF9ST1dfU09SVF9VTlNQRUNJRklFRBAAEhkKFVBST0RVQ1RfUk9XX1NPUlRfTkFNRRABEhgKFFBST0RVQ1RfUk9XX1NPUlRfU0tVEAISFwoTUFJPRFVDVF9ST1dfU09SVF9JRBADKmcKDVByb2R1Y3RTdGF0dXMSHgoaUFJPRFVDVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIZChVQUk9EVUNUX1NUQVRVU19BQ1RJVkUQARIbChdQUk9EVUNUX1NUQVRVU19BUkNISVZFRBACKowBChRQcm9kdWN0QnlJZHNEYXRhVHlwZRIoCiRQUk9EVUNUX0JZX0lEU19EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIkCiBQUk9EVUNUX0JZX0lEU19EQVRBX1RZUEVfR0VORVJBTBABEiQKIFBST0RVQ1RfQllfSURTX0RBVEFfVFlQRV9QUk9EVUNUEAIy4AYKDlByb2R1Y3RTZXJ2aWNlEmgKDVByb2R1Y3RDcmVhdGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Q3JlYXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RDcmVhdGVSZXNwb25zZRJiCgtQcm9kdWN0TGlzdBIoLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0UmVxdWVzdBopLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0UmVzcG9uc2USbgoPUHJvZHVjdERpc2NvdmVyEiwud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERpc2NvdmVyUmVxdWVzdBotLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REaXNjb3ZlclJlc3BvbnNlEmUKDFByb2R1Y3RCeUlkcxIpLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RCeUlkc1JlcXVlc3QaKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNSZXNwb25zZRJoCg1Qcm9kdWN0RGV0YWlsEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERldGFpbFJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGV0YWlsUmVzcG9uc2USaAoNUHJvZHVjdFVwZGF0ZRIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RVcGRhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFVwZGF0ZVJlc3BvbnNlEmgKDVByb2R1Y3REZWxldGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGVsZXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZWxldGVSZXNwb25zZRJrCg5Qcm9kdWN0UmVzdG9yZRIrLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RSZXN0b3JlUmVxdWVzdBosLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RSZXN0b3JlUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9wcm9kdWN0L3YxO3Byb2R1Y3R2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvcHJvZHVjdC92MS9wcm9kdWN0LnByb3RvEhR3YXJlaG91c2UucHJvZHVjdC52MSLCAgoHUHJvZHVjdBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhQKDHByb2R1Y3RfY29kZRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEhAKCGFyY2hpdmVkGAYgASgIEhMKC2NhdGVnb3J5X2lkGAcgASgEEhkKEWRlZmF1bHRfaW1hZ2VfdXJsGAggASgJEiMKG2RlZmF1bHRfaW1hZ2VfdGh1bWJuYWlsX3VybBgJIAEoCRIyCgZpbWFnZXMYCiADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2USGAoQY3Jvc3NfbWFya3VwX2JwcxgLIAEoDRIUCgxjcm9zc19sb2NrZWQYDCABKAgSFgoOcmVzZXJ2ZWRfc3RvY2sYDSABKA0iSAoMUHJvZHVjdEltYWdlEhcKA3VybBgBIAEoCUIKukgHcgUQARiAEBIfCg10aHVtYm5haWxfdXJsGAIgASgJQgi6SAVyAxiAECJMCg1Qcm9kdWN0SW1hZ2VzEjsKBWl0ZW1zGAEgAygLMiIud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEltYWdlQgi6SAWSAQIQBSLZAgoUUHJvZHVjdENyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESJAoRcHJvZHVjdF9jb2RlX3BhcnQYAiABKAlCCbpIBnIEEAEYQBIYCgRuYW1lGAMgASgJQgq6SAdyBRABGMgBEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxjoBxIcCgtjYXRlZ29yeV9pZBgFIAEoBEIHukgEMgIgABI8CgZpbWFnZXMYBiADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFEiMKEGNyb3NzX21hcmt1cF9icHMYByABKA1CCbpIBioEGKCNBhIUCgxjcm9zc19sb2NrZWQYCCABKAgSIQoOcmVzZXJ2ZWRfc3RvY2sYCSABKA1CCbpIBioEGMCEPToKkrUYBgoEAQIDBCJHChVQcm9kdWN0Q3JlYXRlUmVzcG9uc2USLgoHcHJvZHVjdBgBIAEoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QiZgoRUHJvZHVjdExpc3RGaWx0ZXISEgoBcRgBIAEoCUIHukgEcgIYZBI9CgZzdGF0dXMYAiABKA4yIy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0U3RhdHVzQgi6SAWCAQIQASLCAQoVUHJvZHVjdExpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABI3Cgdwcm9kdWN0GAMgASgOMiQud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFJvd1NvcnRIAEIDCgFzIpUCCg5Qcm9kdWN0Um93SXRlbRIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhQKDHByb2R1Y3RfY29kZRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEhMKC2NhdGVnb3J5X2lkGAYgASgEEhkKEWRlZmF1bHRfaW1hZ2VfdXJsGAcgASgJEiMKG2RlZmF1bHRfaW1hZ2VfdGh1bWJuYWlsX3VybBgIIAEoCRIQCghhcmNoaXZlZBgJIAEoCBIYChBjcm9zc19tYXJrdXBfYnBzGAogASgNEhQKDGNyb3NzX2xvY2tlZBgLIAEoCBIWCg5yZXNlcnZlZF9zdG9jaxgMIAEoDSKxAQoRUHJvZHVjdFJvd01hcEl0ZW0SRgoIbWFwX2RhdGEYASADKAsyNC53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Um93TWFwSXRlbS5NYXBEYXRhRW50cnkaVAoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RSb3dJdGVtOgI4ASKSAQoXUHJvZHVjdExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI6Cgdwcm9kdWN0GAIgASgLMicud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFJvd01hcEl0ZW1IAEIDCgFkIrQCChJQcm9kdWN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNwoGZmlsdGVyGAIgASgLMicud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RGaWx0ZXISOQoEc29ydBgDIAEoCzIrLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0RmlsdGVyU29ydBI/CgxkYXRhX3JlcXVlc3QYBCADKA4yKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgikgEKE1Byb2R1Y3RMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyLcAwoWUHJvZHVjdERpc2NvdmVyUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBEhgKEGV4Y2x1ZGVfb3duX3RlYW0YBiABKAgSFQoNb3duZXJfdGVhbV9pZBgHIAEoBBIpCg5vd25lcl90ZWFtX2lkcxgIIAMoBEIRukgOkgELEMgBGAEiBDICIAASMQoWZXhjbHVkZV9vd25lcl90ZWFtX2lkcxgJIAMoBEIRukgOkgELEMgBGAEiBDICIAASFgoOaW5jbHVkZV9sb2NrZWQYCiABKAg6C5K1GAcKBQECAwQFIpYBChdQcm9kdWN0RGlzY292ZXJSZXNwb25zZRI8CgVpdGVtcxgBIAMoCzItLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIscBChNQcm9kdWN0QnlJZHNSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkAKBmZpbHRlchgCIAEoCzIoLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RCeUlkc0ZpbHRlckIGukgDyAEBEkAKDGRhdGFfcmVxdWVzdBgDIAMoDjIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RCeUlkc0RhdGFUeXBlOg6StRgKCggBAgMEBQYJCCI2ChJQcm9kdWN0QnlJZHNGaWx0ZXISIAoDaWRzGAEgAygEQhO6SBCSAQ0IARDIARgBIgQyAiAAIpMBChhQcm9kdWN0QnlJZHNSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI6Cgdwcm9kdWN0GAIgASgLMicud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFJvd01hcEl0ZW1IAEIDCgFkIlkKGFByb2R1Y3RCeUlkc1Jlc3BvbnNlTGlzdBI9CgVpdGVtcxgBIAMoCzIuLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RCeUlkc1Jlc3BvbnNlSXRlbSK6AQoUUHJvZHVjdEJ5SWRzUmVzcG9uc2USRAoFaXRlbXMYASADKAsyNS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNSZXNwb25zZS5JdGVtc0VudHJ5GlwKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEj0KBXZhbHVlGAIgASgLMi4ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEJ5SWRzUmVzcG9uc2VMaXN0OgI4ASKIBAoUUHJvZHVjdFVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIpChFwcm9kdWN0X2NvZGVfcGFydBgDIAEoCUIJukgGcgQQARhASACIAQESHQoEbmFtZRgEIAEoCUIKukgHcgUQARjIAUgBiAEBEiIKC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxjoB0gCiAEBEiEKC2NhdGVnb3J5X2lkGAYgASgEQge6SAQyAiAASAOIAQESMwoGaW1hZ2VzGAcgASgLMiMud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEltYWdlcxIoChBjcm9zc19tYXJrdXBfYnBzGAggASgNQgm6SAYqBBigjQZIBIgBARIZCgxjcm9zc19sb2NrZWQYCSABKAhIBYgBARImCg5yZXNlcnZlZF9zdG9jaxgKIAEoDUIJukgGKgQYwIQ9SAaIAQE6CpK1GAYKBAECAwRCFAoSX3Byb2R1Y3RfY29kZV9wYXJ0QgcKBV9uYW1lQg4KDF9kZXNjcmlwdGlvbkIOCgxfY2F0ZWdvcnlfaWRCEwoRX2Nyb3NzX21hcmt1cF9icHNCDwoNX2Nyb3NzX2xvY2tlZEIRCg9fcmVzZXJ2ZWRfc3RvY2siRwoVUHJvZHVjdFVwZGF0ZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0ImEKFFByb2R1Y3REZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIkcKFVByb2R1Y3REZXRhaWxSZXNwb25zZRIuCgdwcm9kdWN0GAEgASgLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCJeChVQcm9kdWN0QXJjaGl2ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCIYChZQcm9kdWN0QXJjaGl2ZVJlc3BvbnNlIl0KFFByb2R1Y3REZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiFwoVUHJvZHVjdERlbGV0ZVJlc3BvbnNlImsKF1Byb2R1Y3RVbmFyY2hpdmVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwRKBAgDEARSA3NrdSJKChhQcm9kdWN0VW5hcmNoaXZlUmVzcG9uc2USLgoHcHJvZHVjdBgBIAEoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QqhQEKE1Byb2R1Y3RMaXN0RGF0YVR5cGUSJgoiUFJPRFVDVF9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiIKHlBST0RVQ1RfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEiIKHlBST0RVQ1RfTElTVF9EQVRBX1RZUEVfUFJPRFVDVBACKokBCg5Qcm9kdWN0Um93U29ydBIgChxQUk9EVUNUX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASGQoVUFJPRFVDVF9ST1dfU09SVF9OQU1FEAESIQodUFJPRFVDVF9ST1dfU09SVF9QUk9EVUNUX0NPREUQAhIXChNQUk9EVUNUX1JPV19TT1JUX0lEEAMqZwoNUHJvZHVjdFN0YXR1cxIeChpQUk9EVUNUX1NUQVRVU19VTlNQRUNJRklFRBAAEhkKFVBST0RVQ1RfU1RBVFVTX0FDVElWRRABEhsKF1BST0RVQ1RfU1RBVFVTX0FSQ0hJVkVEEAIqjAEKFFByb2R1Y3RCeUlkc0RhdGFUeXBlEigKJFBST0RVQ1RfQllfSURTX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiQKIFBST0RVQ1RfQllfSURTX0RBVEFfVFlQRV9HRU5FUkFMEAESJAogUFJPRFVDVF9CWV9JRFNfREFUQV9UWVBFX1BST0RVQ1QQAjLnBwoOUHJvZHVjdFNlcnZpY2USaAoNUHJvZHVjdENyZWF0ZRIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdENyZWF0ZVJlc3BvbnNlEmcKC1Byb2R1Y3RMaXN0Eigud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RSZXNwb25zZSIDkAIBEnMKD1Byb2R1Y3REaXNjb3ZlchIsLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REaXNjb3ZlclJlcXVlc3QaLS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGlzY292ZXJSZXNwb25zZSIDkAIBEmoKDFByb2R1Y3RCeUlkcxIpLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RCeUlkc1JlcXVlc3QaKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNSZXNwb25zZSIDkAIBEm0KDVByb2R1Y3REZXRhaWwSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGV0YWlsUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZXRhaWxSZXNwb25zZSIDkAIBEmgKDVByb2R1Y3RVcGRhdGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0VXBkYXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RVcGRhdGVSZXNwb25zZRJrCg5Qcm9kdWN0QXJjaGl2ZRIrLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RBcmNoaXZlUmVxdWVzdBosLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RBcmNoaXZlUmVzcG9uc2UScQoQUHJvZHVjdFVuYXJjaGl2ZRItLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RVbmFyY2hpdmVSZXF1ZXN0Gi4ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFVuYXJjaGl2ZVJlc3BvbnNlEmgKDVByb2R1Y3REZWxldGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGVsZXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZWxldGVSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3Byb2R1Y3QvdjE7cHJvZHVjdHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.product.v1.Product
@@ -33,9 +33,13 @@ export type Product = Message<"warehouse.product.v1.Product"> & {
   teamId: bigint;
 
   /**
-   * @generated from field: string sku = 3;
+   * The product's ONE code, as stored — `<team_code>-<the team's part>`, composed by product_service on write and globally
+   * unique over every row, archived ones included (the-field-is-product-code-composed-on-write). What the sticker and the
+   * scan carry. Read-only: a write sends the team's part (ProductCreateRequest.product_code_part).
+   *
+   * @generated from field: string product_code = 3;
    */
-  sku: string;
+  productCode: string;
 
   /**
    * @generated from field: string name = 4;
@@ -48,9 +52,11 @@ export type Product = Message<"warehouse.product.v1.Product"> & {
   description: string;
 
   /**
-   * @generated from field: bool deleted = 6;
+   * Out of the list and the pickers (ProductArchive), still resolvable by id — a shelf, an old order and a report name it.
+   *
+   * @generated from field: bool archived = 6;
    */
-  deleted: boolean;
+  archived: boolean;
 
   /**
    * The product's category (a node in the global category taxonomy). Required on create/update —
@@ -167,9 +173,14 @@ export type ProductCreateRequest = Message<"warehouse.product.v1.ProductCreateRe
   teamId: bigint;
 
   /**
-   * @generated from field: string sku = 2;
+   * The TEAM'S OWN PART of the code — what the form's field takes beside the fixed team prefix. product_service stores
+   * `<team_code>-<this>` as Product.product_code (team ABC sends SHOE-42, the product is ABC-SHOE-42); the prefix is
+   * never typed, so no team can type its way into another's namespace. AlreadyExists when the composed code is held by
+   * any product, archived or not.
+   *
+   * @generated from field: string product_code_part = 2;
    */
-  sku: string;
+  productCodePart: string;
 
   /**
    * @generated from field: string name = 3;
@@ -357,9 +368,11 @@ export type ProductRowItem = Message<"warehouse.product.v1.ProductRowItem"> & {
   teamId: bigint;
 
   /**
-   * @generated from field: string sku = 3;
+   * As on Product: the composed `<team_code>-<part>`.
+   *
+   * @generated from field: string product_code = 3;
    */
-  sku: string;
+  productCode: string;
 
   /**
    * @generated from field: string name = 4;
@@ -387,9 +400,9 @@ export type ProductRowItem = Message<"warehouse.product.v1.ProductRowItem"> & {
   defaultImageThumbnailUrl: string;
 
   /**
-   * @generated from field: bool deleted = 9;
+   * @generated from field: bool archived = 9;
    */
-  deleted: boolean;
+  archived: boolean;
 
   /**
    * The CROSS markup another team pays over our cost when it sells this product (basis points,
@@ -804,7 +817,7 @@ export type ProductByIdsResponse = Message<"warehouse.product.v1.ProductByIdsRes
    * Keyed by product id. An id that resolves to nothing is simply ABSENT rather than an error: a
    * caller holding a stock row for a since-deleted product is asking a reasonable question, and
    * failing the whole lookup would blank a rack over one dead id. Soft-deleted products ARE returned
-   * (stock outlives a catalogue entry); Product.deleted is on the wire so a caller that cares can tell.
+   * (stock outlives a catalogue entry); Product.archived is on the wire so a caller that cares can tell.
    *
    * @generated from field: map<uint64, warehouse.product.v1.ProductByIdsResponseList> items = 1;
    */
@@ -833,11 +846,14 @@ export type ProductUpdateRequest = Message<"warehouse.product.v1.ProductUpdateRe
   productId: bigint;
 
   /**
-   * Absent = leave alone. Present = write it.
+   * A correction of the team's part of the code — the product becomes `<team_code>-<this>`. Absent = leave alone.
+   * Accepted ONLY while the product has no history (the line ProductDelete uses): once it has been in a stock movement,
+   * an order line or a restock line a sticker can exist, and the code is fixed — FailedPrecondition
+   * (the-field-is-product-code-composed-on-write).
    *
-   * @generated from field: optional string sku = 3;
+   * @generated from field: optional string product_code_part = 3;
    */
-  sku?: string | undefined;
+  productCodePart?: string | undefined;
 
   /**
    * @generated from field: optional string name = 4;
@@ -955,6 +971,50 @@ export const ProductDetailResponseSchema: GenMessage<ProductDetailResponse> = /*
   messageDesc(file_warehouse_product_v1_product, 22);
 
 /**
+ * ProductArchive takes a product out of the catalogue (`archived = true`) — any time, even with stock on a shelf. It needs
+ * no guard because it can be undone: it stops anything NEW from using the product, while an open order still ships, a
+ * restock is still accepted and a return still comes back, on the archived product.
+ *
+ * @generated from message warehouse.product.v1.ProductArchiveRequest
+ */
+export type ProductArchiveRequest = Message<"warehouse.product.v1.ProductArchiveRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 product_id = 2;
+   */
+  productId: bigint;
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductArchiveRequest.
+ * Use `create(ProductArchiveRequestSchema)` to create a new message.
+ */
+export const ProductArchiveRequestSchema: GenMessage<ProductArchiveRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 23);
+
+/**
+ * @generated from message warehouse.product.v1.ProductArchiveResponse
+ */
+export type ProductArchiveResponse = Message<"warehouse.product.v1.ProductArchiveResponse"> & {
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductArchiveResponse.
+ * Use `create(ProductArchiveResponseSchema)` to create a new message.
+ */
+export const ProductArchiveResponseSchema: GenMessage<ProductArchiveResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 24);
+
+/**
+ * ProductDelete removes a product with NO HISTORY — a typo, a duplicate — and its own data (its images). Its code is free
+ * again. A product ever in a stock movement, an order line (a borrowed line names the owner's product) or a restock line
+ * is refused with FailedPrecondition: archive it instead (a-used-product-is-archived-never-deleted). Inventory and the
+ * order side are asked at the moment of the delete.
+ *
  * @generated from message warehouse.product.v1.ProductDeleteRequest
  */
 export type ProductDeleteRequest = Message<"warehouse.product.v1.ProductDeleteRequest"> & {
@@ -974,7 +1034,7 @@ export type ProductDeleteRequest = Message<"warehouse.product.v1.ProductDeleteRe
  * Use `create(ProductDeleteRequestSchema)` to create a new message.
  */
 export const ProductDeleteRequestSchema: GenMessage<ProductDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 23);
+  messageDesc(file_warehouse_product_v1_product, 25);
 
 /**
  * @generated from message warehouse.product.v1.ProductDeleteResponse
@@ -987,21 +1047,18 @@ export type ProductDeleteResponse = Message<"warehouse.product.v1.ProductDeleteR
  * Use `create(ProductDeleteResponseSchema)` to create a new message.
  */
 export const ProductDeleteResponseSchema: GenMessage<ProductDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 24);
+  messageDesc(file_warehouse_product_v1_product, 26);
 
 /**
- * ProductRestore puts an archived product back into the catalogue (`deleted = false`).
+ * ProductUnarchive puts an archived product back into the catalogue (`archived = false`) — same id, same code.
  *
- * It is a separate RPC rather than an `archived` flag on ProductUpdate because it can FAIL for a
- * reason no other update can: archiving frees the SKU (the uniqueness index is partial —
- * `(team_id, sku) WHERE deleted = FALSE`), so by the time somebody restores, another active product
- * may be holding it. The restore is then REFUSED with the conflicting product named, rather than
- * succeeding under a silently renamed SKU: a SKU is how a human finds a box on a shelf, and renaming
- * one behind their back is worse than making them choose.
+ * It needs nothing else: an archived product KEEPS its code (the uniqueness index is over every row,
+ * archived ones included), so no other product can have taken it in the meantime and the way back cannot
+ * collide (a-used-product-is-archived-never-deleted, the-field-is-product-code-composed-on-write).
  *
- * @generated from message warehouse.product.v1.ProductRestoreRequest
+ * @generated from message warehouse.product.v1.ProductUnarchiveRequest
  */
-export type ProductRestoreRequest = Message<"warehouse.product.v1.ProductRestoreRequest"> & {
+export type ProductUnarchiveRequest = Message<"warehouse.product.v1.ProductUnarchiveRequest"> & {
   /**
    * @generated from field: uint64 team_id = 1;
    */
@@ -1011,27 +1068,19 @@ export type ProductRestoreRequest = Message<"warehouse.product.v1.ProductRestore
    * @generated from field: uint64 product_id = 2;
    */
   productId: bigint;
-
-  /**
-   * Optional NEW sku, which is how a caller resolves the collision above in one step: restore under
-   * a free SKU instead of the taken one. Absent = restore with the SKU it was archived under.
-   *
-   * @generated from field: optional string sku = 3;
-   */
-  sku?: string | undefined;
 };
 
 /**
- * Describes the message warehouse.product.v1.ProductRestoreRequest.
- * Use `create(ProductRestoreRequestSchema)` to create a new message.
+ * Describes the message warehouse.product.v1.ProductUnarchiveRequest.
+ * Use `create(ProductUnarchiveRequestSchema)` to create a new message.
  */
-export const ProductRestoreRequestSchema: GenMessage<ProductRestoreRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 25);
+export const ProductUnarchiveRequestSchema: GenMessage<ProductUnarchiveRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 27);
 
 /**
- * @generated from message warehouse.product.v1.ProductRestoreResponse
+ * @generated from message warehouse.product.v1.ProductUnarchiveResponse
  */
-export type ProductRestoreResponse = Message<"warehouse.product.v1.ProductRestoreResponse"> & {
+export type ProductUnarchiveResponse = Message<"warehouse.product.v1.ProductUnarchiveResponse"> & {
   /**
    * @generated from field: warehouse.product.v1.Product product = 1;
    */
@@ -1039,11 +1088,11 @@ export type ProductRestoreResponse = Message<"warehouse.product.v1.ProductRestor
 };
 
 /**
- * Describes the message warehouse.product.v1.ProductRestoreResponse.
- * Use `create(ProductRestoreResponseSchema)` to create a new message.
+ * Describes the message warehouse.product.v1.ProductUnarchiveResponse.
+ * Use `create(ProductUnarchiveResponseSchema)` to create a new message.
  */
-export const ProductRestoreResponseSchema: GenMessage<ProductRestoreResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 26);
+export const ProductUnarchiveResponseSchema: GenMessage<ProductUnarchiveResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 28);
 
 /**
  * ProductListDataType selects which slices the response carries per product.
@@ -1094,9 +1143,9 @@ export enum ProductRowSort {
   NAME = 1,
 
   /**
-   * @generated from enum value: PRODUCT_ROW_SORT_SKU = 2;
+   * @generated from enum value: PRODUCT_ROW_SORT_PRODUCT_CODE = 2;
    */
-  SKU = 2,
+  PRODUCT_CODE = 2,
 
   /**
    * ID: newest-first is DESC on id (the legacy default).
@@ -1247,8 +1296,29 @@ export const ProductService: GenService<{
     output: typeof ProductUpdateResponseSchema;
   },
   /**
-   * ProductDelete ARCHIVES a product (`deleted = true`) — the row survives, and the UI calls it
-   * Archive for that reason. ProductRestore is the way back.
+   * Two actions, split by whether the product has a HISTORY (a-used-product-is-archived-never-deleted):
+   *
+   * ProductArchive takes a product out of the list and every picker — any time, even with stock on a shelf — so nothing
+   * NEW uses it; what is already on its way still lands. The row survives. ProductUnarchive is the way back.
+   *
+   * @generated from rpc warehouse.product.v1.ProductService.ProductArchive
+   */
+  productArchive: {
+    methodKind: "unary";
+    input: typeof ProductArchiveRequestSchema;
+    output: typeof ProductArchiveResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.product.v1.ProductService.ProductUnarchive
+   */
+  productUnarchive: {
+    methodKind: "unary";
+    input: typeof ProductUnarchiveRequestSchema;
+    output: typeof ProductUnarchiveResponseSchema;
+  },
+  /**
+   * ProductDelete removes a product for good — ONLY one with no history: never in a stock movement, an order line or a
+   * restock line. It strands nothing, because nothing ever pointed at it. Refused otherwise: archive it instead.
    *
    * @generated from rpc warehouse.product.v1.ProductService.ProductDelete
    */
@@ -1256,17 +1326,6 @@ export const ProductService: GenService<{
     methodKind: "unary";
     input: typeof ProductDeleteRequestSchema;
     output: typeof ProductDeleteResponseSchema;
-  },
-  /**
-   * ProductRestore brings an archived product back into the catalogue. It can legitimately FAIL:
-   * archiving frees the SKU, so a re-used one blocks the return (see ProductRestoreRequest).
-   *
-   * @generated from rpc warehouse.product.v1.ProductService.ProductRestore
-   */
-  productRestore: {
-    methodKind: "unary";
-    input: typeof ProductRestoreRequestSchema;
-    output: typeof ProductRestoreResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_product_v1_product, 0);

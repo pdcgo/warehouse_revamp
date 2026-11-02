@@ -137,8 +137,8 @@ message OpnameRow {
   // The owning (selling) team.
   uint64 team_id = 3;
   uint64 product_id = 4;
-  // sku/name snapshot at the snapshot step.
-  string product_sku = 5;
+  // product code/name snapshot at the snapshot step.
+  string product_code = 5;
   string product_name = 6;
   uint64 placement_id = 7;
   string placement_code = 8;
@@ -324,7 +324,7 @@ message OpnameRowListFilter {
   OpnameRowStatus status = 3 [(buf.validate.field).enum.defined_only = true];
   // Only rows whose count stands apart from the book.
   bool only_differences = 4;
-  // Free text over the product's SKU or name.
+  // Free text over the product's code or name.
   string q = 5 [(buf.validate.field).string.max_len = 100];
 }
 
@@ -425,7 +425,7 @@ message OpnamePostLine {
 message OpnameFinalizeProduct {
   uint64 team_id = 1;
   uint64 product_id = 2;
-  string product_sku = 3;
+  string product_code = 3;
   string product_name = 4;
   // The book, summed over its rows.
   int64 book_count = 5;

@@ -27,7 +27,7 @@ func TestPerf_RestockRequestAccept(t *testing.T) {
 	for _, size := range []int{1, 20} {
 		items := make([]*inventoryv1.RestockRequestItem, 0, size)
 		for _, product := range perfProducts(size) {
-			items = append(items, &inventoryv1.RestockRequestItem{ProductId: product, Sku: "PERF", Name: "Perf", Count: 10, Total: 100000})
+			items = append(items, &inventoryv1.RestockRequestItem{ProductId: product, ProductCode: "PERF", Name: "Perf", Count: 10, Total: 100000})
 		}
 
 		raised := make([]*inventoryv1.RestockRequest, 0, 6)

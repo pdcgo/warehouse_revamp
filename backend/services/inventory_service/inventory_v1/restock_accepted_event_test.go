@@ -47,8 +47,8 @@ func createTwoLines(t *testing.T, svc *inventory_v1.Service) *inventoryv1.Restoc
 	created, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: acceptSellingTeam, WarehouseId: acceptWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000, SupplierId: acceptSupplier},
-			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Count: 5, Total: 25000, SupplierId: acceptSupplier},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 100000, SupplierId: acceptSupplier},
+			{ProductId: 200, ProductCode: "SKU2", Name: "Gadget", Count: 5, Total: 25000, SupplierId: acceptSupplier},
 		},
 	}))
 	if err != nil {

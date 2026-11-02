@@ -10,7 +10,7 @@ export interface ProductCardProps {
   product: {
     id?: bigint;
     teamId?: bigint;
-    sku?: string;
+    productCode?: string;
     name?: string;
     defaultImageUrl?: string;
     defaultImageThumbnailUrl?: string;
@@ -52,10 +52,10 @@ export function ProductCard({ product, stock, teamName, details, coverBadges, ac
 
   const title =
     product.name ||
-    product.sku ||
+    product.productCode ||
     (product.id !== undefined ? t("productListItem.productFallback", { id: product.id.toString() }) : "");
   // Don't repeat the SKU underneath when it IS the title (a product with no name).
-  const sku = product.sku && product.sku !== title ? product.sku : undefined;
+  const productCode = product.productCode && product.productCode !== title ? product.productCode : undefined;
 
   // These strings are the shared product-item vocabulary, so they are READ from productListItem.*
   // rather than duplicated under a productCard.* namespace — two keys holding the same sentence is
@@ -101,9 +101,9 @@ export function ProductCard({ product, stock, teamName, details, coverBadges, ac
           <Text fontWeight="medium" lineClamp={2}>
             {title}
           </Text>
-          {sku && (
+          {productCode && (
             <Text fontSize="xs" color="fg.muted" lineClamp={1}>
-              {sku}
+              {productCode}
             </Text>
           )}
         </Stack>

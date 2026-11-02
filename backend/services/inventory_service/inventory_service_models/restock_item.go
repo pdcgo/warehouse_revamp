@@ -5,15 +5,15 @@ import "time"
 // RestockItem is a row of `restock_items` (00030) — one product on a restock, how many were ordered, and what the line
 // cost. A product appears once per restock (a-product-appears-once-per-restock), which the database enforces.
 //
-// sku/name are SNAPSHOTS taken at raise time: the product may be renamed or deleted later, and the restock must keep
+// product code/name are SNAPSHOTS taken at raise time: the product may be renamed or deleted later, and the restock must keep
 // reading as it was raised.
 type RestockItem struct {
 	ID        uint64 `gorm:"primaryKey"`
 	RestockID uint64
 	// Opaque product_service id — no FK.
-	ProductID uint64
-	SKU       string
-	Name      string
+	ProductID   uint64
+	ProductCode string
+	Name        string
 
 	// Count is what was ORDERED. Total is THE LINE TOTAL, as the invoice prints it (a-line-is-typed-as-its-total) —
 	// the truth. PriceUnit is total ÷ count, for display, written whenever either changes and never typed.

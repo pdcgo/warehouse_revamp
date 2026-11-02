@@ -91,7 +91,13 @@ func (s *Service) AnalyticReplayCompute(
 		return nil, err
 	}
 
-	acquired, err := s.swapEventLock(ctx, lockOff, lockOn)
+	// A lock on for longer than its lease is a dead replay's, and is taken over
+	// (a-dead-replays-lock-expires-after-a-minute).
+	takenAt, acquired, err := s.takeEventLock(ctx)
+	if errors.Is(err, errEventLockUnreadable) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
 	if err != nil {
 		return nil, internal(err)
 	}
@@ -103,7 +109,12 @@ func (s *Service) AnalyticReplayCompute(
 	// Released whatever happens below, on a context the caller's cancellation cannot abandon — a lock left held stops
 	// every figure from updating.
 	defer func() {
-		_, releaseErr := s.swapEventLock(context.WithoutCancel(ctx), lockOn, lockOff)
+		released, releaseErr := s.releaseEventLock(context.WithoutCancel(ctx), takenAt)
+		if releaseErr == nil && !released {
+			slog.WarnContext(ctx, "replay finished after its lock's lease — another replay holds it now, so it was left to that one",
+				"taken_at", takenAt)
+		}
+
 		if releaseErr != nil {
 			slog.ErrorContext(ctx, "replay finished but process_event_lock was NOT released — "+
 				"the fold is stopped until it is set back to {\"lock\":false}",
@@ -189,21 +200,4 @@ func earliestReplayDay(now time.Time, window time.Duration) time.Time {
 	}
 
 	return time.Date(midnight.Year(), midnight.Month(), midnight.Day(), 0, 0, 0, 0, time.UTC)
-}
-
-// swapEventLock moves `process_event_lock` from one value to another, and reports whether it did. A compare-and-set,
-// so two replays cannot both believe they took the lock.
-func (s *Service) swapEventLock(ctx context.Context, from, to string) (bool, error) {
-	result := s.db.WithContext(ctx).
-		Model(&supplier_service_models.SupplierServiceMetadata{}).
-		Where("key = ? AND value = ?", supplier_service_models.MetadataProcessEventLock, from).
-		Updates(map[string]any{
-			"value":      to,
-			"updated_at": gorm.Expr("NOW()"),
-		})
-	if result.Error != nil {
-		return false, result.Error
-	}
-
-	return result.RowsAffected == 1, nil
 }

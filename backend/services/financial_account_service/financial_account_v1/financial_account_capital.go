@@ -51,6 +51,7 @@ func (s *Service) FinancialAccountCapital(
 	}
 
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 
 	var row m.FinancialAccountLog
 
@@ -84,6 +85,7 @@ func (s *Service) FinancialAccountCapital(
 			description: description,
 			occurredAt:  occurredAt,
 			actorID:     actor,
+			isOverride:  override,
 		})
 
 		return err

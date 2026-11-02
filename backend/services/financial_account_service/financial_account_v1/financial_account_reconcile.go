@@ -51,6 +51,7 @@ func (s *Service) FinancialAccountReconcile(
 	}
 
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 	note := strings.TrimSpace(msg.GetNote())
 
 	var (
@@ -91,6 +92,7 @@ func (s *Service) FinancialAccountReconcile(
 				description: "Reconcile — " + read + " " + formatRupiah(actual) + " · " + note,
 				occurredAt:  occurredAt,
 				actorID:     actor,
+				isOverride:  override,
 			})
 			if err != nil {
 				return err

@@ -95,7 +95,7 @@ function checkLines(teamId: bigint, lines: LineIn[], kept: bigint[] = []) {
     if (kept.includes(l.productId)) continue;
 
     const product = catalogue.find((p) => p.id === l.productId);
-    if (!product || product.deleted) {
+    if (!product || product.archived) {
       throw new ConnectError(`product ${l.productId} does not exist`, Code.InvalidArgument);
     }
     if (product.teamId !== teamId && product.crossLocked) {
@@ -132,7 +132,7 @@ export const bundleService: Partial<ServiceImpl<typeof BundleService>> = {
       b.name.toLowerCase().includes(q) ||
       b.lines.some((l) => {
         const p = catalogue.find((x) => x.id === l.productId);
-        return !!p && (p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+        return !!p && (p.name.toLowerCase().includes(q) || p.productCode.toLowerCase().includes(q));
       });
 
     const rows = sorted(

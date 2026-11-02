@@ -204,3 +204,14 @@ cd frontend && npm run dev                     # :5174
 
 `/liability` — the tiles, the badges, the Default Terms dialog. Click a row for the pair detail — the
 five tabs, the proof links, Confirm and Reject.
+
+**2026-11-02:** ✅ **the payment request is built** — [a-creditor-may-request-payment](../../business/balance/context_decision.md#a-creditor-may-request-payment).
+
+| | |
+| --- | --- |
+| contract | `LiabilityPaymentService.LiabilityPaymentRequestSend` (creditor's owner and admin, `team_id` = the creditor); `LiabilityPaymentRequest`; `LiabilityPosition.payment_request` (5) |
+| schema | liability `00012_payment_requests.sql` — one per pair, `amount > 0`, indexed by debtor |
+| handlers | `payment_request_send.go` (upsert, FailedPrecondition when nothing is owed); `position_list.go` attaches the open request either way; `payment_record.go` deletes it in the payment's transaction |
+| screens | pair detail: **Request Payment** (confirm, toast, then a muted line) and the debtor's warning (`PaymentRequestNotice`); list: a badge on the row. `useLiabilityPosition` reads one pair, `useRequestPayment` sends |
+| tests | `payment_request_send_test.go`; stories `TheCreditorAsksADebtorToPay`, `TheDebtorSeesTheRequest`, `TheWarehouseAdminMayAskToPay`, `ARequestedPairIsMarked`. The stub now reads positions from the asking team's side (a debtor sees its pair with Gudang Pusat, mirrored) |
+| dev DB | ⚠ **not migrated by this pass** — `go run ./tools/san migrate up --service liability_service` |

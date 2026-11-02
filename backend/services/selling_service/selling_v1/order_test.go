@@ -32,7 +32,7 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 		},
 		ShippingCode: "jne",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
 		},
 	}))
 	if err != nil {
@@ -65,7 +65,7 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 	if got.GetCustomerName() != "Budi" || got.GetPlatformTotal() != testPlatformTotal || got.GetShopId() != shopID {
 		t.Fatalf("unexpected order: %+v", got)
 	}
-	if len(got.GetItems()) != 1 || got.GetItems()[0].GetSku() != "SKU1" || got.GetItems()[0].GetQuantity() != 2 {
+	if len(got.GetItems()) != 1 || got.GetItems()[0].GetProductCode() != "SKU1" || got.GetItems()[0].GetQuantity() != 2 {
 		t.Fatalf("unexpected items: %+v", got.GetItems())
 	}
 }
@@ -87,7 +87,7 @@ func TestOrder_CreateWithoutAddress(t *testing.T) {
 		CustomerName: "Tanpa Alamat", ShippingCode: "jne",
 
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -125,7 +125,7 @@ func TestOrder_CreateWithNote(t *testing.T) {
 			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 			CustomerName: customer, Note: note,
 			Items: []*sellingv1.OrderItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 			},
 		}))
 		if err != nil {
@@ -194,7 +194,7 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 		CustomerName: "Budi", OrderExternalRefId: ref,
 
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -224,7 +224,7 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Lewat Telepon",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -281,7 +281,7 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 		CustomerName: "Budi", Receipt: receipt,
 
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -309,7 +309,7 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Tanpa Resi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -336,7 +336,7 @@ func TestOrder_CreateShopNotInTeam(t *testing.T) {
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                3, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: "X",
-		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1}},
+		Items: []*sellingv1.OrderItem{{ProductId: 1, ProductCode: "S", Name: "N", Quantity: 1}},
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-team create code = %v, want NotFound", connect.CodeOf(err))
@@ -355,7 +355,7 @@ func TestOrder_ListScopedAndCrossTeamDetail(t *testing.T) {
 			PlatformCreatedAtUnix: testPlatformDate,
 			PlatformTotal:         testPlatformTotal,
 			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: name,
-			Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1}},
+			Items: []*sellingv1.OrderItem{{ProductId: 1, ProductCode: "S", Name: "N", Quantity: 1}},
 		}))
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
@@ -401,7 +401,7 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -432,7 +432,7 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 		TeamId:                2, ShopId: shop,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {

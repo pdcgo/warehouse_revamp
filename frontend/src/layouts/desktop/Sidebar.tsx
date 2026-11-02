@@ -22,10 +22,9 @@ import { useTranslation } from "react-i18next";
 import { Logo } from "../../components/chrome/Logo";
 import { useAuth } from "../../features/auth/AuthContext";
 import { useLiabilityAwaiting } from "../../features/liability/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { useCurrentRoleLabel, useTeam } from "../../features/team/TeamContext";
 import { useLanguage } from "../../i18n/language";
 import { setColorMode, useColorMode } from "../../lib/colorMode";
-import { roleLabel } from "../../lib/roles";
 import { LanguageSwitch, ThemeSwitch } from "../PreferenceSwitches";
 import { TeamSwitcher } from "../TeamSwitcher";
 import { PROFILE, activeRoute, flattenMenu, isMenuGroup, menuFor, menuSectionsFor, owningGroupLabel } from "../nav";
@@ -63,6 +62,7 @@ import type { MenuGroup, MenuItem, MenuSection } from "../nav";
 export function Sidebar() {
   const { identity, logout } = useAuth();
   const { current } = useTeam();
+  const roleText = useCurrentRoleLabel();
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
   const colorMode = useColorMode();
@@ -459,7 +459,7 @@ export function Sidebar() {
                     {identity?.username}
                   </Text>
                   <Text fontSize="xs" color="fg.subtle" truncate>
-                    {roleLabel(current?.role)}
+                    {roleText}
                   </Text>
                 </Box>
 

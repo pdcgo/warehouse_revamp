@@ -85,7 +85,7 @@ func otRestock(t *testing.T, svc *inventory_v1.Service, team, product uint64, co
 
 	created, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: team, WarehouseId: otWarehouse,
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, Sku: "SKU", Name: "Kaos", Count: count, Total: float64(total)}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, ProductCode: "SKU", Name: "Kaos", Count: count, Total: float64(total)}},
 	}))
 	if err != nil {
 		t.Fatalf("restock create: %v", err)

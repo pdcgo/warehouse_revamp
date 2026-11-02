@@ -21,7 +21,8 @@ func TestProductWrites_AreTheSellingTeamsAlone(t *testing.T) {
 		"warehouse.product.v1.ProductCreateRequest",
 		"warehouse.product.v1.ProductUpdateRequest",
 		"warehouse.product.v1.ProductDeleteRequest",
-		"warehouse.product.v1.ProductRestoreRequest",
+		"warehouse.product.v1.ProductArchiveRequest",
+		"warehouse.product.v1.ProductUnarchiveRequest",
 	}
 
 	reads := []string{

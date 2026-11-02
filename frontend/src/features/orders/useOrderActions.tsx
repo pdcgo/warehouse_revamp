@@ -11,6 +11,7 @@ import { useCancelOrder, useOrderStatusChange } from "./queries";
 import type { RowAction } from "./rowActions";
 import { rowActionsFor } from "./rowActions";
 import type { OrderStageId } from "./stages";
+import { useCanWrite } from "../team/TeamContext";
 
 // WHAT AN ORDER OFFERS, AND WHAT PRESSING ONE DOES — the runner, shared by every place that draws the
 // actions.
@@ -47,8 +48,11 @@ export function useOrderActions({
   const [confirming, setConfirming] = useState<RowAction | null>(null);
   const [editingReceipt, setEditingReceipt] = useState(false);
 
+  // While the admin team monitors the team, an order offers nothing (the-admin-team-monitors-read-only) — absent,
+  // like every action the order cannot take.
+  const writable = useCanWrite();
   const side = teamId !== undefined && teamId === warehouseId ? "warehouse" : "selling";
-  const actions = stage ? rowActionsFor(stage, side) : [];
+  const actions = stage && writable ? rowActionsFor(stage, side) : [];
 
   async function run(action: RowAction) {
     if (teamId === undefined) {

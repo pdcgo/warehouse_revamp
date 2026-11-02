@@ -65,7 +65,7 @@ func (s *Service) RestockRequestMarkLost(
 			description = restockLogLost + " — " + why
 		}
 
-		logErr := recordRestockLog(tx, rr.ID, restockStatusOngoing, restockStatusLost, actor, description, now)
+		logErr := recordRestockLog(tx, rr.ID, restockStatusOngoing, restockStatusLost, actor, overrideFrom(ctx), description, now)
 		if logErr != nil {
 			return logErr
 		}

@@ -392,3 +392,27 @@ export const Empty: Story = {
     await expect(await canvas.findByTestId("analytic-empty")).toHaveTextContent("Add a metric to start");
   },
 };
+
+const MoreThanAYear = at(`?g=shop&m=${CREATED}&r=2024-01-01..2025-01-01`);
+
+// A YEAR AT MOST (a-metric-reads-at-most-a-year): a range of 367 days is never sent — the server would refuse it — and
+// the line under the filters says how long it is and what the most is, rather than showing a refusal.
+export const ARangeOverAYearIsNotSent: Story = {
+  render: () => <MoreThanAYear />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTestId("analytic-range-invalid")).toHaveTextContent("That range covers 367 days");
+    await expect(canvas.getByTestId("analytic-range-invalid")).toHaveTextContent("at most 366");
+  },
+};
+
+// AS OF WHEN (a-money-metric-says-as-of-when): orders and settlement are two folds, so the table says the OLDER of their
+// two times — everything up to it is in every figure.
+export const SaysAsOfWhen: Story = {
+  render: () => <ByShop />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(await canvas.findByTestId("analytic-as-of")).toHaveTextContent("14:04 WIB");
+  },
+};

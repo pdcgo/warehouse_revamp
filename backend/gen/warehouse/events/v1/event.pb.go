@@ -529,6 +529,10 @@ type SettlementLogPosted struct {
 	TeamId  uint64 `protobuf:"varint,5,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// Who is answerable for the row (#actor-id-is-the-pic).
 	ActorId uint64 `protobuf:"varint,6,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// Whether that actor was Root or the Administrator writing inside a team they hold no role in — the row's own
+	// `is_override`, carried as stored (an-override-is-stamped-in-every-service). A consumer that writes a row naming
+	// `actor_id` stamps this beside it; it never re-derives it, because it has no caller to read one from.
+	ActorIsOverride bool `protobuf:"varint,17,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
 	// WHO CREATED THE ORDER — `order_settlements.created_by_user_id`, 0 on a shop-addressed row or an
 	// account opened without one. The per-user report attributes an order row to this person and a shop
 	// row to `actor_id` (#a-shop-addressed-row-is-attributed-to-its-actor).
@@ -624,6 +628,13 @@ func (x *SettlementLogPosted) GetActorId() uint64 {
 		return x.ActorId
 	}
 	return 0
+}
+
+func (x *SettlementLogPosted) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
 }
 
 func (x *SettlementLogPosted) GetOrderCreatedByUserId() uint64 {
@@ -739,6 +750,10 @@ type OrderPlaced struct {
 	// envelope's identity says who caused THAT PUBLISH — the operator running the backfill. A consumer
 	// folding the fact reads this one.
 	ActorId uint64 `protobuf:"varint,9,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// Whether that person placed it as Root or the Administrator from outside the selling team — the placement's own
+	// stamp, as `orders.is_override` holds it (an-override-is-stamped-in-every-service). The fee and the opening row a
+	// consumer posts for `actor_id` carry it beside the actor.
+	ActorIsOverride bool `protobuf:"varint,13,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
 	// The shop it was sold on, and what the PLATFORM says the buyer paid, whole rupiah — 0 = not recorded.
 	// settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
 	// its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
@@ -837,6 +852,13 @@ func (x *OrderPlaced) GetActorId() uint64 {
 	return 0
 }
 
+func (x *OrderPlaced) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
+}
+
 func (x *OrderPlaced) GetShopId() uint64 {
 	if x != nil {
 		return x.ShopId
@@ -860,7 +882,7 @@ func (x *OrderPlaced) GetWarehouseFee() float64 {
 
 // One line of a placed order, as liability_service needs it (#186).
 //
-// Deliberately not the whole OrderItem: an event carries what its consumers need, and sku, name and
+// Deliberately not the whole OrderItem: an event carries what its consumers need, and product code, name and
 // the buyer-paid price are none of liability_service's business. What it needs is who owns the goods
 // and what the line came to.
 type OrderPlacedLine struct {
@@ -972,6 +994,10 @@ type OrderCancelled struct {
 	// ledger movement, and it is a different person's act from the placement it undoes — so it carries
 	// its own actor rather than reusing the one on the entries being reversed.
 	ActorId uint64 `protobuf:"varint,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// Whether the CANCEL was Root or the Administrator from outside the selling team — the cancel's own stamp, as its
+	// timeline row holds it (an-override-is-stamped-in-every-service). The reversal names its own actor, so it carries
+	// this flag, never the placement's.
+	ActorIsOverride bool `protobuf:"varint,5,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
 	// The shop it was sold on — settlement cancels the sale on that shop's account
 	// (settlement-opens-the-sale-from-the-order-event).
 	ShopId        uint64 `protobuf:"varint,4,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
@@ -1028,6 +1054,13 @@ func (x *OrderCancelled) GetActorId() uint64 {
 		return x.ActorId
 	}
 	return 0
+}
+
+func (x *OrderCancelled) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
 }
 
 func (x *OrderCancelled) GetShopId() uint64 {
@@ -1170,9 +1203,12 @@ type RestockAccepted struct {
 	WarehouseAdditionalCostNote string  `protobuf:"bytes,9,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
 	// Who counted the box in — the debt's actor (every-entry-names-who-posted-it). Read from the stored restock, never
 	// from the envelope's identity.
-	ActorId       uint64 `protobuf:"varint,10,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ActorId uint64 `protobuf:"varint,10,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// Whether that person counted it in as Root or the Administrator from outside the warehouse — read, like the actor,
+	// from what the accept stored: its `restock_logs` row (an-override-is-stamped-in-every-service).
+	ActorIsOverride bool `protobuf:"varint,11,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RestockAccepted) Reset() {
@@ -1273,6 +1309,13 @@ func (x *RestockAccepted) GetActorId() uint64 {
 		return x.ActorId
 	}
 	return 0
+}
+
+func (x *RestockAccepted) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
 }
 
 // One line as the accept counted it. Lost and broken sit BESIDE accepted, never inside it, so
@@ -2139,9 +2182,12 @@ type LiabilityPaymentAccepted struct {
 	// The creditor's account, named on accept. Never 0.
 	ToAccountId uint64 `protobuf:"varint,6,opt,name=to_account_id,json=toAccountId,proto3" json:"to_account_id,omitempty"`
 	// Who accepted — the creditor's person, read from the payment row. The person who decided the money landed.
-	ActorId       uint64 `protobuf:"varint,7,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ActorId uint64 `protobuf:"varint,7,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// Whether they accepted as Root or the Administrator from outside the creditor team — the payment row's
+	// `confirmed_is_override`, read beside `confirmed_by` (an-override-is-stamped-in-every-service).
+	ActorIsOverride bool `protobuf:"varint,8,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *LiabilityPaymentAccepted) Reset() {
@@ -2223,6 +2269,13 @@ func (x *LiabilityPaymentAccepted) GetActorId() uint64 {
 	return 0
 }
 
+func (x *LiabilityPaymentAccepted) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
+}
+
 var file_warehouse_events_v1_event_proto_extTypes = []protoimpl.ExtensionInfo{
 	{
 		ExtendedType:  (*descriptorpb.MessageOptions)(nil),
@@ -2280,14 +2333,15 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\x04R\x06userId\x12\x19\n" +
 	"\bactor_id\x18\x03 \x01(\x04R\aactorId:\x14\x8a\xb5\x18\x10\n" +
-	"\x0emember-removed\"\xdc\x04\n" +
+	"\x0emember-removed\"\x88\x05\n" +
 	"\x13SettlementLogPosted\x12\x15\n" +
 	"\x06log_id\x18\x01 \x01(\x04R\x05logId\x12\x1b\n" +
 	"\tunique_id\x18\x02 \x01(\tR\buniqueId\x12\x19\n" +
 	"\border_id\x18\x03 \x01(\x04R\aorderId\x12\x17\n" +
 	"\ashop_id\x18\x04 \x01(\x04R\x06shopId\x12\x17\n" +
 	"\ateam_id\x18\x05 \x01(\x04R\x06teamId\x12\x19\n" +
-	"\bactor_id\x18\x06 \x01(\x04R\aactorId\x126\n" +
+	"\bactor_id\x18\x06 \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\x11 \x01(\bR\x0factorIsOverride\x126\n" +
 	"\x18order_created_by_user_id\x18\a \x01(\x04R\x14orderCreatedByUserId\x12P\n" +
 	"\x0fsettlement_type\x18\b \x01(\x0e2'.warehouse.settlement.v1.SettlementTypeR\x0esettlementType\x12D\n" +
 	"\vsource_type\x18\t \x01(\x0e2#.warehouse.settlement.v1.SourceTypeR\n" +
@@ -2302,7 +2356,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"reversesId\x12\x12\n" +
 	"\x04note\x18\x0f \x01(\tR\x04note\x12\x17\n" +
 	"\auser_id\x18\x10 \x01(\x04R\x06userId:\x1b\x8a\xb5\x18\x17\n" +
-	"\x15settlement-log-posted\"\xad\x03\n" +
+	"\x15settlement-log-posted\"\xd9\x03\n" +
 	"\vOrderPlaced\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x1d\n" +
@@ -2312,7 +2366,8 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown\x12!\n" +
 	"\fwarehouse_id\x18\a \x01(\x04R\vwarehouseId\x12:\n" +
 	"\x05lines\x18\b \x03(\v2$.warehouse.events.v1.OrderPlacedLineR\x05lines\x12\x19\n" +
-	"\bactor_id\x18\t \x01(\x04R\aactorId\x12\x17\n" +
+	"\bactor_id\x18\t \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\r \x01(\bR\x0factorIsOverride\x12\x17\n" +
 	"\ashop_id\x18\n" +
 	" \x01(\x04R\x06shopId\x12%\n" +
 	"\x0eplatform_total\x18\v \x01(\x03R\rplatformTotal\x12(\n" +
@@ -2325,11 +2380,12 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\x0eowning_team_id\x18\x02 \x01(\x04R\fowningTeamId\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\rR\bquantity\x12\x1b\n" +
 	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\x12\x14\n" +
-	"\x05total\x18\x05 \x01(\x01R\x05total\"\x8f\x01\n" +
+	"\x05total\x18\x05 \x01(\x01R\x05total\"\xbb\x01\n" +
 	"\x0eOrderCancelled\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x19\n" +
-	"\bactor_id\x18\x03 \x01(\x04R\aactorId\x12\x17\n" +
+	"\bactor_id\x18\x03 \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\x05 \x01(\bR\x0factorIsOverride\x12\x17\n" +
 	"\ashop_id\x18\x04 \x01(\x04R\x06shopId:\x15\x8a\xb5\x18\x11\n" +
 	"\x0forder-cancelled\"\xe5\x01\n" +
 	"\x12OrderStatusChanged\x12\x17\n" +
@@ -2340,7 +2396,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\tto_status\x18\x04 \x01(\tR\btoStatus\x12\x19\n" +
 	"\bactor_id\x18\x05 \x01(\x04R\aactorId\x12&\n" +
 	"\x0ftimeline_log_id\x18\x06 \x01(\x04R\rtimelineLogId:\x1a\x8a\xb5\x18\x16\n" +
-	"\x14order-status-changed\"\xcc\x03\n" +
+	"\x14order-status-changed\"\xf8\x03\n" +
 	"\x0fRestockAccepted\x12\x1d\n" +
 	"\n" +
 	"restock_id\x18\x01 \x01(\x04R\trestockId\x12\x17\n" +
@@ -2355,7 +2411,8 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\x19warehouse_additional_cost\x18\b \x01(\x01R\x17warehouseAdditionalCost\x12C\n" +
 	"\x1ewarehouse_additional_cost_note\x18\t \x01(\tR\x1bwarehouseAdditionalCostNote\x12\x19\n" +
 	"\bactor_id\x18\n" +
-	" \x01(\x04R\aactorId:\x16\x8a\xb5\x18\x12\n" +
+	" \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\v \x01(\bR\x0factorIsOverride:\x16\x8a\xb5\x18\x12\n" +
 	"\x10restock-accepted\"\xd3\x02\n" +
 	"\x13RestockAcceptedLine\x12\x17\n" +
 	"\aitem_id\x18\x01 \x01(\x04R\x06itemId\x12\x1d\n" +
@@ -2446,7 +2503,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\x1ewarehouse_additional_cost_note\x18\x06 \x01(\tR\x1bwarehouseAdditionalCostNote\x12\x19\n" +
 	"\bactor_id\x18\a \x01(\x04R\aactorId\x12(\n" +
 	"\x10accepted_at_unix\x18\b \x01(\x03R\x0eacceptedAtUnix:!\x8a\xb5\x18\x1d\n" +
-	"\x1bwarehouse-transfer-accepted\"\xa8\x02\n" +
+	"\x1bwarehouse-transfer-accepted\"\xd4\x02\n" +
 	"\x18LiabilityPaymentAccepted\x12\x1d\n" +
 	"\n" +
 	"payment_id\x18\x01 \x01(\x04R\tpaymentId\x12\"\n" +
@@ -2455,7 +2512,8 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12&\n" +
 	"\x0ffrom_account_id\x18\x05 \x01(\x04R\rfromAccountId\x12\"\n" +
 	"\rto_account_id\x18\x06 \x01(\x04R\vtoAccountId\x12\x19\n" +
-	"\bactor_id\x18\a \x01(\x04R\aactorId: \x8a\xb5\x18\x1c\n" +
+	"\bactor_id\x18\a \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\b \x01(\bR\x0factorIsOverride: \x8a\xb5\x18\x1c\n" +
 	"\x1aliability-payment-accepted:f\n" +
 	"\fevent_config\x12\x1f.google.protobuf.MessageOptions\x18ц\x03 \x01(\v2 .warehouse.events.v1.EventConfigR\veventConfigBLZJgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1;eventsv1b\x06proto3"
 

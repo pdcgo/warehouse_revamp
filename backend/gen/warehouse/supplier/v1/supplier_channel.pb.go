@@ -1230,13 +1230,13 @@ const file_warehouse_supplier_v1_supplier_channel_proto_rawDesc = "" +
 	"%SUPPLIER_CHANNEL_ROW_SORT_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cSUPPLIER_CHANNEL_ROW_SORT_ID\x10\x01\x12\"\n" +
 	"\x1eSUPPLIER_CHANNEL_ROW_SORT_NAME\x10\x02\x12*\n" +
-	"&SUPPLIER_CHANNEL_ROW_SORT_CHANNEL_TYPE\x10\x032\xa6\x05\n" +
-	"\x16SupplierChannelService\x12|\n" +
-	"\x13SupplierChannelList\x121.warehouse.supplier.v1.SupplierChannelListRequest\x1a2.warehouse.supplier.v1.SupplierChannelListResponse\x12\x82\x01\n" +
+	"&SUPPLIER_CHANNEL_ROW_SORT_CHANNEL_TYPE\x10\x032\xb2\x05\n" +
+	"\x16SupplierChannelService\x12\x81\x01\n" +
+	"\x13SupplierChannelList\x121.warehouse.supplier.v1.SupplierChannelListRequest\x1a2.warehouse.supplier.v1.SupplierChannelListResponse\"\x03\x90\x02\x01\x12\x82\x01\n" +
 	"\x15SupplierChannelCreate\x123.warehouse.supplier.v1.SupplierChannelCreateRequest\x1a4.warehouse.supplier.v1.SupplierChannelCreateResponse\x12\x82\x01\n" +
 	"\x15SupplierChannelUpdate\x123.warehouse.supplier.v1.SupplierChannelUpdateRequest\x1a4.warehouse.supplier.v1.SupplierChannelUpdateResponse\x12\x82\x01\n" +
-	"\x15SupplierChannelDelete\x123.warehouse.supplier.v1.SupplierChannelDeleteRequest\x1a4.warehouse.supplier.v1.SupplierChannelDeleteResponse\x12\x7f\n" +
-	"\x14SupplierChannelByIds\x122.warehouse.supplier.v1.SupplierChannelByIdsRequest\x1a3.warehouse.supplier.v1.SupplierChannelByIdsResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1b\x06proto3"
+	"\x15SupplierChannelDelete\x123.warehouse.supplier.v1.SupplierChannelDeleteRequest\x1a4.warehouse.supplier.v1.SupplierChannelDeleteResponse\x12\x84\x01\n" +
+	"\x14SupplierChannelByIds\x122.warehouse.supplier.v1.SupplierChannelByIdsRequest\x1a3.warehouse.supplier.v1.SupplierChannelByIdsResponse\"\x03\x90\x02\x01BPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1b\x06proto3"
 
 var (
 	file_warehouse_supplier_v1_supplier_channel_proto_rawDescOnce sync.Once

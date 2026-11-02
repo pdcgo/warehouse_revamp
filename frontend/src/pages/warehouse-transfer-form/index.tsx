@@ -37,7 +37,7 @@ import { TRANSFER_FORM_PENDING } from "./pending";
 
 interface LineDraft {
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   count: string;
 }
@@ -96,7 +96,7 @@ export function WarehouseTransferFormPage() {
       products.map((p) => {
         const kept = before.find((l) => l.productId === p.id);
 
-        return kept ?? { productId: p.id, sku: p.sku, name: p.name, count: "1" };
+        return kept ?? { productId: p.id, productCode: p.productCode, name: p.name, count: "1" };
       }),
     );
   }
@@ -242,7 +242,7 @@ export function WarehouseTransferFormPage() {
                     <Stack gap="0" flex="1" minW="48">
                       <Span fontWeight="medium">{line.name}</Span>
                       <Span fontSize="xs" color="fg.muted">
-                        {line.sku}
+                        {line.productCode}
                       </Span>
                     </Stack>
                     <Stack gap="0" align="end">

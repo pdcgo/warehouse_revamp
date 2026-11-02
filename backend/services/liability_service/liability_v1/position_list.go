@@ -88,6 +88,11 @@ func (s *Service) LiabilityPositionList(
 	// SUMMARIZE ALL BALANCE — over the whole filtered set, never over `balances`, which is one page.
 	// It reuses the same filters the rows came from, so the tiles and the rows cannot disagree about
 	// which pairs are being talked about.
+	requests, err := s.openPaymentRequests(ctx, teamID)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
 	summary, err := summarizePositions(scope)
 	if err != nil {
 		return nil, dbError(err)
@@ -102,6 +107,7 @@ func (s *Service) LiabilityPositionList(
 			CounterpartyId:       balances[i].CounterpartyID,
 			Balance:              balances[i].Balance,
 			AwaitingConfirmation: waiting[balances[i].CounterpartyID],
+			PaymentRequest:       requests[balances[i].CounterpartyID],
 		}
 
 		if balances[i].OldestUnsettledAt != nil {

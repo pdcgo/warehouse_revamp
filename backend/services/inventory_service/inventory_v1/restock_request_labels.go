@@ -51,14 +51,14 @@ func (s *Service) RestockRequestLabels(
 	// One row per rack the accept put units on. The HPP is the batch's own landed price
 	// (unit-price-is-line-price-plus-costs-per-unit) — freight included, the figure the ledger values the units at.
 	type labelRow struct {
-		BatchID   uint64
-		ProductID uint64
-		SKU       string
-		Name      string
-		Quantity  int64
-		RackID    uint64
-		RackCode  string
-		HPP       float64
+		BatchID     uint64
+		ProductID   uint64
+		ProductCode string
+		Name        string
+		Quantity    int64
+		RackID      uint64
+		RackCode    string
+		HPP         float64
 	}
 
 	var rows []labelRow
@@ -69,7 +69,7 @@ func (s *Service) RestockRequestLabels(
 			SELECT
 			    b.id                         AS batch_id,
 			    b.product_id                 AS product_id,
-			    i.sku                        AS sku,
+			    i.product_code                        AS product_code,
 			    i.name                       AS name,
 			    l.stock_change               AS quantity,
 			    l.placement_id               AS rack_id,
@@ -115,12 +115,12 @@ func (s *Service) RestockRequestLabels(
 	labels := make([]*inventoryv1.RestockLabel, 0, len(rows))
 	for i := range rows {
 		label := &inventoryv1.RestockLabel{
-			ProductId: rows[i].ProductID,
-			Sku:       rows[i].SKU,
-			Name:      rows[i].Name,
-			BatchId:   rows[i].BatchID,
-			Quantity:  rows[i].Quantity,
-			Hpp:       rows[i].HPP,
+			ProductId:   rows[i].ProductID,
+			ProductCode: rows[i].ProductCode,
+			Name:        rows[i].Name,
+			BatchId:     rows[i].BatchID,
+			Quantity:    rows[i].Quantity,
+			Hpp:         rows[i].HPP,
 		}
 
 		label.PlacementCode = rows[i].RackCode

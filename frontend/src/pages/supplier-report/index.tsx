@@ -45,6 +45,8 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SUPPLIER_REPORT_PENDING } from "./pending";
 import { CompactActions } from "../../components/chrome/CompactActions";
+import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 
 // Penjualan beside Direstok carries THIS page's mark (`sales-sit-beside-restocked`).
 const SALES_MARK = <NotImplemented list={SUPPLIER_REPORT_PENDING} id="sales" />;
@@ -122,7 +124,11 @@ export function SupplierReportPage() {
   };
 
   const { from, to } = windowOf(range);
-  const valid = from !== "" && to !== "" && from <= to;
+  // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
+  // under the picker says why rather than showing a refusal.
+  const span = spanDays(from, to);
+  const tooLong = span > MAX_PERIOD_DAYS;
+  const valid = from !== "" && to !== "" && from <= to && !tooLong;
 
   const ranking = useSupplierRanking({
     teamId: current?.teamId,
@@ -362,7 +368,9 @@ export function SupplierReportPage() {
 
       {!valid && (
         <Text fontSize="sm" color="error.fg" data-testid="supplier-report-range-invalid">
-          {t("supplierFigures.rangeInvalid")}
+          {tooLong
+            ? t("supplierFigures.rangeTooLong", { days: span, max: MAX_PERIOD_DAYS })
+            : t("supplierFigures.rangeInvalid")}
         </Text>
       )}
 
@@ -375,6 +383,13 @@ export function SupplierReportPage() {
       <RefreshOverlay busy={headline.isFetching && !headline.isPending}>
         <FiguresSummary figures={headline.data} salesMark={SALES_MARK} testId="supplier-report-summary" />
       </RefreshOverlay>
+
+      {/* AS OF WHEN the figures are (a-money-metric-says-as-of-when) — a fold is a projection, never live. */}
+      {headline.data?.asOfUnix !== undefined && headline.data?.asOfUnix > 0n && (
+        <Text fontSize="xs" color="fg.muted" data-testid="supplier-report-as-of">
+          {t("common.asOf", { time: formatUnixDateTimeShort(headline.data?.asOfUnix) })}
+        </Text>
+      )}
 
       <Stack gap="field">
         <Flex align="center" gap="card" wrap="wrap">

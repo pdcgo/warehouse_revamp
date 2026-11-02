@@ -76,7 +76,7 @@ func acceptAndReadAsSellingTeam(
 		TeamId: tlSellingTeam, WarehouseId: tlWarehouse,
 		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: tlProduct, Sku: "SKU-TL", Name: "Widget", Count: 10, Total: 500000},
+			{ProductId: tlProduct, ProductCode: "SKU-TL", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {

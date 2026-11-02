@@ -119,12 +119,14 @@ func NewWarehouseTransferServiceClient(httpClient connect.HTTPClient, baseURL st
 			httpClient,
 			baseURL+WarehouseTransferServiceWarehouseTransferListProcedure,
 			connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		warehouseTransferDetail: connect.NewClient[v1.WarehouseTransferDetailRequest, v1.WarehouseTransferDetailResponse](
 			httpClient,
 			baseURL+WarehouseTransferServiceWarehouseTransferDetailProcedure,
 			connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		warehouseTransferUpdate: connect.NewClient[v1.WarehouseTransferUpdateRequest, v1.WarehouseTransferUpdateResponse](
@@ -295,12 +297,14 @@ func NewWarehouseTransferServiceHandler(svc WarehouseTransferServiceHandler, opt
 		WarehouseTransferServiceWarehouseTransferListProcedure,
 		svc.WarehouseTransferList,
 		connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	warehouseTransferServiceWarehouseTransferDetailHandler := connect.NewUnaryHandler(
 		WarehouseTransferServiceWarehouseTransferDetailProcedure,
 		svc.WarehouseTransferDetail,
 		connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	warehouseTransferServiceWarehouseTransferUpdateHandler := connect.NewUnaryHandler(

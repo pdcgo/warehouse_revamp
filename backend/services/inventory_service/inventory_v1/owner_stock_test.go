@@ -26,7 +26,7 @@ func acceptOwnedBy(
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: owner, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Count: qty, Total: float64(total)},
+			{ProductId: product, ProductCode: "SKU", Name: "P", Count: qty, Total: float64(total)},
 		},
 	}))
 	if err != nil {
@@ -115,7 +115,7 @@ func TestOwnerStockByIds_ReadyOngoingSpread(t *testing.T) {
 	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: owner, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Count: 30, Total: 900_000},
+			{ProductId: product, ProductCode: "SKU", Name: "P", Count: 30, Total: 900_000},
 		},
 	}))
 	if err != nil {
@@ -217,7 +217,7 @@ func TestOwnerStockStat_TotalsAndLens(t *testing.T) {
 	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: owner, WarehouseId: jakarta,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU", Name: "P", Count: 25, Total: 1_000_000},
+			{ProductId: 100, ProductCode: "SKU", Name: "P", Count: 25, Total: 1_000_000},
 		},
 	}))
 	if err != nil {

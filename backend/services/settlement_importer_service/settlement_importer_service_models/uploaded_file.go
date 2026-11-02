@@ -36,6 +36,8 @@ type UploadedFile struct {
 	CreatedByUserID uint64
 	// The shop's primary CS when the file was checked.
 	PrimaryUserID uint64
+	// The uploader was Root or the Administrator, outside the team (an-override-is-stamped-in-every-service).
+	IsOverride bool
 
 	CreatedAt time.Time
 	// Moves with the tallies — a running row that stops moving reads interrupted.

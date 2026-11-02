@@ -35,8 +35,8 @@ func seedTwoBatches(t *testing.T, svc *inventory_v1.Service, warehouse uint64) *
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouse, ShipmentCost: 80000, Receipt: "GRN-0721",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "KPH-001", Name: "Kaos", Count: 100, Total: 4000000},
-			{ProductId: 200, Sku: "TTM-207", Name: "Topi", Count: 30, Total: 840000},
+			{ProductId: 100, ProductCode: "KPH-001", Name: "Kaos", Count: 100, Total: 4000000},
+			{ProductId: 200, ProductCode: "TTM-207", Name: "Topi", Count: 30, Total: 840000},
 		},
 	}))
 	if err != nil {
@@ -103,7 +103,7 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 	}
 
 	// Identity + snapshots come off the delivery and the line.
-	if shirt.GetDeliveryId() != req.GetId() || shirt.GetReceiptNo() != "GRN-0721" || shirt.GetSku() != "KPH-001" {
+	if shirt.GetDeliveryId() != req.GetId() || shirt.GetReceiptNo() != "GRN-0721" || shirt.GetProductCode() != "KPH-001" {
 		t.Fatalf("shirt identity wrong: %+v", shirt)
 	}
 

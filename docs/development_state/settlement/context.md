@@ -149,3 +149,10 @@ card, the Manual badge. The owner declined a column to carry them (*"ga perlu"*)
   the name the team's shop list.
 - Open with the owner: whether *Terjual* and the entry types *Estimasi* / *Pembayaran* are renamed, and a label for
   `system_adjustment` (it has none).
+
+## 2026-11-02 — the replay lock has a lease
+
+[a-dead-replays-lock-expires-after-a-minute](../../business/settlement/meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute) — the fold's lock is taken with a one-minute lease (`eventLockLease`, `event_lock.go`):
+`takeEventLock` / `releaseEventLock(ctx, takenAt)`, a lock older than its lease is taken over and logged once
+(`logExpiredEventLock`), and a release only frees the lock it took. Both services, the same file; the fold and the replay
+use it. Tests beside each. Also this pass: the year cap and *as of* on its metrics ([analytic](../analytic/rpc_provide.md)).

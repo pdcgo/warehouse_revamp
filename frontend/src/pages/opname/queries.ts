@@ -19,7 +19,7 @@ const SHELF_PAGE = { page: 1, limit: 200 } as const;
 // ONE LINE OF THE COUNT: what the system believes, and what the person typed.
 export interface CountRow {
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   /** What the system believes is on this shelf. */
   expected: bigint;
@@ -87,7 +87,7 @@ export function useShelfContents(args: { warehouseId: bigint | undefined; rackId
             productId: l.productId,
             // A product whose catalogue row could not be resolved still gets a line. Leaving it out
             // would hide stock that is physically on the shelf, and the id is enough to count against.
-            sku: p?.sku ?? "",
+            productCode: p?.productCode ?? "",
             name: p?.name ?? "",
             expected: l.onHand,
             unitCost: l.unitCost,

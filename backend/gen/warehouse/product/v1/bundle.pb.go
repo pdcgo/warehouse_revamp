@@ -1440,11 +1440,11 @@ const file_warehouse_product_v1_bundle_proto_rawDesc = "" +
 	"\x13BundleByIdsDataType\x12'\n" +
 	"#BUNDLE_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fBUNDLE_BY_IDS_DATA_TYPE_GENERAL\x10\x01\x12\"\n" +
-	"\x1eBUNDLE_BY_IDS_DATA_TYPE_BUNDLE\x10\x022\x89\x04\n" +
-	"\rBundleService\x12_\n" +
+	"\x1eBUNDLE_BY_IDS_DATA_TYPE_BUNDLE\x10\x022\x93\x04\n" +
+	"\rBundleService\x12d\n" +
 	"\n" +
-	"BundleList\x12'.warehouse.product.v1.BundleListRequest\x1a(.warehouse.product.v1.BundleListResponse\x12b\n" +
-	"\vBundleByIds\x12(.warehouse.product.v1.BundleByIdsRequest\x1a).warehouse.product.v1.BundleByIdsResponse\x12e\n" +
+	"BundleList\x12'.warehouse.product.v1.BundleListRequest\x1a(.warehouse.product.v1.BundleListResponse\"\x03\x90\x02\x01\x12g\n" +
+	"\vBundleByIds\x12(.warehouse.product.v1.BundleByIdsRequest\x1a).warehouse.product.v1.BundleByIdsResponse\"\x03\x90\x02\x01\x12e\n" +
 	"\fBundleCreate\x12).warehouse.product.v1.BundleCreateRequest\x1a*.warehouse.product.v1.BundleCreateResponse\x12e\n" +
 	"\fBundleUpdate\x12).warehouse.product.v1.BundleUpdateRequest\x1a*.warehouse.product.v1.BundleUpdateResponse\x12e\n" +
 	"\fBundleDelete\x12).warehouse.product.v1.BundleDeleteRequest\x1a*.warehouse.product.v1.BundleDeleteResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1b\x06proto3"

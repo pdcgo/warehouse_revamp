@@ -3,7 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { teams } from "../../.storybook/fixtures";
 import { asTeam } from "../../.storybook/pageStory";
-import { asPlatformOnly } from "../../.storybook/sessionScenario";
+import { ADMIN_TEAM, asAdminTeam, asPlatformOnly } from "../../.storybook/sessionScenario";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamSwitcher } from "./TeamSwitcher";
 
@@ -12,6 +12,9 @@ import { TeamSwitcher } from "./TeamSwitcher";
 // Everyone sees their own teams. Root and the System Administrator also get *All teams*, searched on the
 // server, because they reach every team without being in it (the-switcher-offers-every-team); picking one acts
 // there under a strip (a-non-member-root-acts-under-a-strip — pinned in the shell stories, Layouts/*/AppShell).
+// The admin team gets All teams too, every warehouse and selling team, and picking one only READS it
+// (the-admin-team-monitors-read-only — its strip is pinned in the same shell stories). An ordinary member never does
+// (AMemberSeesOnlyTheirTeams).
 //
 // Each section is searched on its own, from the search icon at the right of its heading
 // (the-workspace-searches-one-section).
@@ -134,6 +137,31 @@ export const MyTeamsIsSearchedOnItsOwn: Story = {
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByTestId("team-search")).toBeNull());
     await expect(screen.getByTestId(`team-option-${WAREHOUSE.id}`)).toBeVisible();
+  },
+};
+
+// the-switcher-offers-every-team — the admin team's two roles get All teams too: every warehouse and selling team, to
+// READ (the-admin-team-monitors-read-only). Their own admin team stays under My teams.
+export const TheAdminTeamSeesEveryTeam: Story = {
+  beforeEach: asAdminTeam(),
+  play: async ({ canvasElement }) => {
+    await openSwitcher(canvasElement);
+
+    await waitFor(() => expect(screen.getByTestId("team-section-all")).toBeVisible(), { timeout: 4000 });
+    await expect(screen.getByTestId(`team-option-${ADMIN_TEAM.id}`)).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId(`team-option-${WAREHOUSE.id}`)).toBeVisible(), { timeout: 4000 });
+    await expect(screen.getByTestId(`team-option-${SELLING.id}`)).toBeVisible();
+  },
+};
+
+// …the admin team's Admin as much as its Owner — reading is the whole team's.
+export const TheAdminTeamsAdminSeesEveryTeam: Story = {
+  beforeEach: asAdminTeam(Role.ADMIN_ADMINISTRATOR),
+  play: async ({ canvasElement }) => {
+    await openSwitcher(canvasElement);
+
+    await waitFor(() => expect(screen.getByTestId("team-section-all")).toBeVisible(), { timeout: 4000 });
+    await waitFor(() => expect(screen.getByTestId(`team-option-${KENANGA.id}`)).toBeVisible(), { timeout: 4000 });
   },
 };
 

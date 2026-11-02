@@ -4,7 +4,7 @@ import { Avatar, Box, CloseButton, Drawer, Flex, Icon, IconButton, Input, InputG
 import { Check, ChevronUp, ChevronsUpDown, Search } from "lucide-react";
 import { teamTypeAvatar, teamTypeLabel } from "../components/badges/TeamTypeBadge";
 import { TeamItem } from "../components/entity/TeamItem";
-import { useTeam } from "../features/team/TeamContext";
+import { isMonitorable, useTeam } from "../features/team/TeamContext";
 import { useTeamSearch } from "../features/teams/queries";
 import { useDebounced } from "../lib/useDebounced";
 
@@ -23,7 +23,9 @@ import { useDebounced } from "../lib/useDebounced";
 //
 // Root and the Administrator get a second section, *All teams*, searched on the server: every team they are not in
 // (the-switcher-offers-every-team). Picking one acts there with their platform role under a strip on every page
-// (a-non-member-root-acts-under-a-strip). Everyone else sees their own teams only.
+// (a-non-member-root-acts-under-a-strip). The admin team gets it too, holding every warehouse and selling team, and
+// picking one READS it under a *Monitoring — read-only* strip (the-admin-team-monitors-read-only). Everyone else sees
+// their own teams only.
 //
 // EVERY SECTION SEARCHES ITSELF, UNDER ITS HEADING (owner, `the-workspace-search-opens-under-its-heading`, after a
 // sidebar's *Top repositories*): the heading stays, a search icon at its right; a click opens the field UNDER the
@@ -49,13 +51,16 @@ export function TeamSwitcher({
   bubble?: boolean;
 }) {
   const { t } = useTranslation();
-  const { teams, current, platformRole, selectTeam } = useTeam();
+  const { teams, current, platformRole, monitorRole, selectTeam } = useTeam();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   // Which section is being searched — none, My teams, or All teams.
   const [searching, setSearching] = useState<Section | null>(null);
 
-  const reachesEveryTeam = platformRole !== undefined;
+  // Root and the Administrator reach every team; the admin team reads every warehouse and selling team
+  // (the-switcher-offers-every-team). Root's reach wins when somebody holds both.
+  const reachesEveryTeam = platformRole !== undefined || monitorRole !== undefined;
+  const monitorsOnly = platformRole === undefined && monitorRole !== undefined;
   // All teams searches the SERVER, and only while it is the section being searched.
   const term = useDebounced(searching === "all" ? query.trim() : "");
   const everyTeam = useTeamSearch({ q: term, enabled: open && reachesEveryTeam });
@@ -72,9 +77,13 @@ export function TeamSwitcher({
     (team.teamName || `Team #${team.teamId}`).toLowerCase().includes(q),
   );
 
-  // A team you are in stays under My teams, with your own role — All teams never shadows a membership.
+  // A team you are in stays under My teams, with your own role — All teams never shadows a membership. The admin
+  // team's All teams is the warehouse and selling teams only, narrowed HERE: TeamList filters by one type, and this is
+  // two — so a page of 20 may show a few fewer, and typing narrows it.
   const memberIds = new Set(teams.map((team) => team.teamId.toString()));
-  const others = (everyTeam.data ?? []).filter((team) => !memberIds.has(team.id.toString()));
+  const others = (everyTeam.data ?? []).filter(
+    (team) => !memberIds.has(team.id.toString()) && (!monitorsOnly || isMonitorable(team.type)),
+  );
 
   function pick(teamId: bigint) {
     selectTeam(teamId);

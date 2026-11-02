@@ -236,6 +236,9 @@ func TestMetricSearch_Refuses(t *testing.T) {
 		"by shop, for a person": {analytic_basev1.GroupType_GROUP_TYPE_SHOP,
 			[]*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-04"), userFilter(creator)}, "sales"},
 		"no window": {analytic_basev1.GroupType_GROUP_TYPE_SHOP, nil, "sales"},
+		// a-metric-reads-at-most-a-year: 2024 is 366 days, a day more is refused.
+		"367 days": {analytic_basev1.GroupType_GROUP_TYPE_SHOP,
+			[]*analytic_basev1.FilterItem{window("2024-01-01", "2025-01-01")}, "sales"},
 	}
 
 	for name, c := range cases {

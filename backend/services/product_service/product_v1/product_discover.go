@@ -12,7 +12,7 @@ import (
 )
 
 // ProductDiscover lists active, UNLOCKED products across ALL teams (cross-team discovery, #106),
-// newest first, paginated, searchable by name/SKU. Unlike ProductList it does NOT filter by team —
+// newest first, paginated, searchable by name/product code. Unlike ProductList it does NOT filter by team —
 // the request's team_id only authorizes the caller (use_scope). Each returned Product still carries
 // its owning team_id.
 //
@@ -29,7 +29,7 @@ func (s *Service) ProductDiscover(
 	query := s.db.
 		WithContext(ctx).
 		Model(&product_service_models.Product{}).
-		Where("deleted = ?", false)
+		Where("archived = ?", false)
 
 	if !req.Msg.GetIncludeLocked() {
 		query = query.Where("cross_locked = ?", false)
@@ -69,7 +69,7 @@ func (s *Service) ProductDiscover(
 
 	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
-		query = query.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
+		query = query.Where("name ILIKE ? OR product_code ILIKE ?", pattern, pattern)
 	}
 
 	var total int64

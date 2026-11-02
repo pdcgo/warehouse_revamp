@@ -204,7 +204,7 @@ func TestFold_RefusesWhileTheEventLockIsHeld(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := settlement_v1.NewService(db, nil, nil, nil)
 
-	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}' WHERE key = 'process_event_lock'`).Error
+	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() WHERE key = 'process_event_lock'`).Error
 	if err != nil {
 		t.Fatalf("take the lock: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.
 		t.Fatalf("unreadable window: got %v, want FailedPrecondition", err)
 	}
 
-	err = db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}' WHERE key = 'process_event_lock'`).Error
+	err = db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() WHERE key = 'process_event_lock'`).Error
 	if err != nil {
 		t.Fatalf("take the lock: %v", err)
 	}
@@ -407,5 +407,52 @@ INSERT INTO settlement_event_logs (id, raw, day, created_at) VALUES
 	if res.Msg.GetDeletedEventLogs() != 1 {
 		t.Fatalf("deleted %d claims, want 1 — a late event for an old DAY received today keeps its guard",
 			res.Msg.GetDeletedEventLogs())
+	}
+}
+
+// A DEAD REPLAY'S LOCK EXPIRES (a-dead-replays-lock-expires-after-a-minute): a lock taken over a minute ago counts as
+// released, so the fold claims and folds the event instead of refusing it until somebody resets the row by hand.
+func TestFold_FoldsPastADeadReplaysLock(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
+
+	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() - interval '2 minutes' WHERE key = 'process_event_lock'`).Error
+	if err != nil {
+		t.Fatalf("leave a dead replay's lock: %v", err)
+	}
+
+	err = svc.FoldHandler()(context.Background(), workedExample()[0])
+	if err != nil {
+		t.Fatalf("fold past an expired lock: %v — a dead replay would stop the reports for good", err)
+	}
+
+	var claimed int64
+
+	err = db.Raw(`SELECT COUNT(*) FROM settlement_event_logs`).Scan(&claimed).Error
+	if err != nil || claimed != 1 {
+		t.Fatalf("claims = %d (%v), want the event folded", claimed, err)
+	}
+}
+
+// …and the NEXT replay takes it over, rather than being refused by a lock nobody will ever release — then releases it.
+func TestAnalyticReplayCompute_TakesOverADeadReplaysLock(t *testing.T) {
+	db := san_testdb.DB(t)
+	broker := &fakeBroker{window: 7 * 24 * time.Hour}
+	svc := settlement_v1.NewService(db, nil, broker, nil)
+
+	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() - interval '2 minutes' WHERE key = 'process_event_lock'`).Error
+	if err != nil {
+		t.Fatalf("leave a dead replay's lock: %v", err)
+	}
+
+	_, err = svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
+		StartDate: jakartaDay(0),
+	}))
+	if err != nil || len(broker.seeks) != 1 {
+		t.Fatalf("replay over an expired lock: %v with %d seeks, want it to run", err, len(broker.seeks))
+	}
+
+	if value := lockValue(t, db); value != `{"lock":false}` {
+		t.Fatalf("the lock is %s after the replay — it must release what it took", value)
 	}
 }

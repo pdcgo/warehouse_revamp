@@ -30,13 +30,17 @@ type stubResolver struct {
 	roles     map[uint64]role_basev1.Role // teamID -> the user's role in it
 	suspended bool
 	err       error
+
+	// adminTeam is the admin-team role the person holds in some team (the-admin-team-monitors-read-only).
+	adminTeam role_basev1.Role
 }
 
 func (s stubResolver) Resolve(_ context.Context, _ uint64, teamID uint64) (Access, error) {
 	return Access{
-		Role:      s.roles[teamID],
-		RootRole:  s.roles[san_auth.RootTeamID],
-		Suspended: s.suspended,
+		Role:          s.roles[teamID],
+		RootRole:      s.roles[san_auth.RootTeamID],
+		Suspended:     s.suspended,
+		AdminTeamRole: s.adminTeam,
 	}, s.err
 }
 
@@ -462,6 +466,9 @@ type streamingImporter struct {
 	reached  bool
 	identity uint64
 	bearer   string
+	scope    uint64
+	role     role_basev1.Role
+	override bool
 }
 
 func (s *streamingImporter) TiktokSettlementImport(
@@ -477,6 +484,9 @@ func (s *streamingImporter) TiktokSettlementImport(
 	}
 
 	s.bearer = san_auth.GetBearer(ctx)
+	s.scope = san_auth.GetScope(ctx)
+	s.role = san_auth.GetCallerRole(ctx)
+	s.override = san_auth.IsOverride(ctx)
 
 	for step := uint32(1); step <= 2; step++ {
 		err = stream.Send(&settlement_importerv1.TiktokSettlementImportResponse{Message: "row", Step: step, Count: 2})
@@ -548,6 +558,26 @@ func TestServerStreamIsAuthorizedOnItsRequest(t *testing.T) {
 
 	if importer.bearer != token {
 		t.Error("the handler's ctx does not carry the caller's bearer — it could not forward it")
+	}
+
+	// …and, like a unary call's, its scope and the caller's role in it — resolved when the request was read.
+	if importer.scope != 5 || importer.role != role_basev1.Role_ROLE_SELLING_CS || importer.override {
+		t.Errorf("the handler heard scope %d, role %v, override %v — want 5, SELLING_CS, false", importer.scope, importer.role, importer.override)
+	}
+}
+
+// ROOT RUNNING AN IMPORT in a team it is not in is an OVERRIDE (an-override-is-stamped-in-every-service) — which a
+// stream's handler can tell only because the scope and the role reach its ctx.
+func TestServerStreamCarriesRootsOverride(t *testing.T) {
+	root := stubResolver{roles: map[uint64]role_basev1.Role{san_auth.RootTeamID: role_basev1.Role_ROLE_ROOT}}
+
+	importer, _, err := streamImport(t, root, 5, tokenFor(t, 1))
+	if err != nil {
+		t.Fatalf("root streaming team 5's import: %v", err)
+	}
+
+	if importer.scope != 5 || importer.role != role_basev1.Role_ROLE_UNSPECIFIED || !importer.override {
+		t.Errorf("the handler heard scope %d, role %v, override %v — want 5, UNSPECIFIED, true", importer.scope, importer.role, importer.override)
 	}
 }
 

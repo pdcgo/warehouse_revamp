@@ -12,6 +12,8 @@ type Bundle struct {
 
 	// Who made it — the one CS who may change it besides an Admin (the-creator-or-an-admin-edits-a-bundle).
 	CreatedByUserID uint64 `gorm:"column:created_by_user_id"`
+	// The creator was Root or the Administrator, outside the team (an-override-is-stamped-in-every-service). Set once.
+	IsOverride bool
 
 	// The lines, in the order they were saved (by id). Loaded on demand.
 	Lines []BundleProduct `gorm:"foreignKey:BundleID"`

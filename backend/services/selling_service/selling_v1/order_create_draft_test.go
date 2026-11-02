@@ -75,10 +75,10 @@ func promote(
 	items := make([]*sellingv1.OrderItem, 0, len(draft.GetItems()))
 	for _, line := range draft.GetItems() {
 		items = append(items, &sellingv1.OrderItem{
-			ProductId: line.GetProductId(),
-			Sku:       fmt.Sprintf("SKU%d", line.GetProductId()),
-			Name:      fmt.Sprintf("Catalogue SKU%d", line.GetProductId()),
-			Quantity:  line.GetQuantity(),
+			ProductId:   line.GetProductId(),
+			ProductCode: fmt.Sprintf("SKU%d", line.GetProductId()),
+			Name:        fmt.Sprintf("Catalogue SKU%d", line.GetProductId()),
+			Quantity:    line.GetQuantity(),
 		})
 	}
 
@@ -176,7 +176,7 @@ func TestOrderCreateFromDraft_TheSameDraftCannotBecomeTwoOrders(t *testing.T) {
 	items := make([]*sellingv1.OrderItem, 0, len(draft.GetItems()))
 	for _, line := range draft.GetItems() {
 		items = append(items, &sellingv1.OrderItem{
-			ProductId: line.GetProductId(), Sku: "SKU", Name: "Name", Quantity: line.GetQuantity(),
+			ProductId: line.GetProductId(), ProductCode: "SKU", Name: "Name", Quantity: line.GetQuantity(),
 		})
 	}
 

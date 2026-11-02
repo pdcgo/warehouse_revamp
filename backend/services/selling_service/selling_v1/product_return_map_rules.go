@@ -128,11 +128,11 @@ func (s *Service) requireReturnMaps(
 	return nil
 }
 
-// productLabel is how a refusal names a product to the person who has to act on it: its SKU, else its name, else its
+// productLabel is how a refusal names a product to the person who has to act on it: its product code, else its name, else its
 // id — never a blank.
 func productLabel(id uint64, snapshot ProductSnapshot) string {
-	if snapshot.SKU != "" {
-		return snapshot.SKU
+	if snapshot.ProductCode != "" {
+		return snapshot.ProductCode
 	}
 
 	if snapshot.Name != "" {

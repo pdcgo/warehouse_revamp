@@ -29,7 +29,7 @@ What I read out of [meta_context.md](./meta_context.md). **That doc is yours —
 
 2. ✅ **Answered 2026-10-31 — a one-minute lease**, for the fold and for the next replay:
    [a-dead-replays-lock-expires-after-a-minute](./meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute).
-   ⛔ Not built. Kept as a line so the numbers hold.
+   ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 
 ## Awaiting
 

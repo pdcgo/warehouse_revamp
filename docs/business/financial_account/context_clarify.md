@@ -474,6 +474,9 @@ reach change: a negative adjustment gives money back, and a **positive** one, wh
 **→ Recommend:** when the expense event is built, this service posts an adjustment by its sign to **the account of the
 expense it names** — one rule, no reversal case of its own.
 
+🔄 *(2026-11-02)* **The adjustment is built** — `ExpenseAdjust`, with no void left anywhere. The expense **event** is not,
+so nothing reaches this service yet in either form; this stays open until it is.
+
 ```mermaid
 flowchart LR
   E["expense 77 - paid from BCA - +5.000.000"] --> A["BCA - minus 5.000.000"]

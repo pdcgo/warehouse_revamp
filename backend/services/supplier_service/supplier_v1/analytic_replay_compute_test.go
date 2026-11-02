@@ -144,3 +144,27 @@ func TestAnalyticReplayCompute_RefusesWhatItCannotRebuild(t *testing.T) {
 	}
 
 }
+
+// The NEXT replay takes a dead replay's lock over, rather than being refused by a lock nobody will release — and then
+// releases it (a-dead-replays-lock-expires-after-a-minute).
+func TestAnalyticReplayCompute_TakesOverADeadReplaysLock(t *testing.T) {
+	db := san_testdb.DB(t)
+	broker := &fakeBroker{window: 31 * 24 * time.Hour}
+	svc := supplier_v1.NewService(db, nil, broker)
+
+	// A replay rebuilds only what live accepts folded, and starts after the first of them — so one was folded earlier.
+	fold(t, svc, accept(1, sellingA, 31, jakartaDay(10), line{product: 100, ordered: 1, total: 1000, accepted: 1}))
+
+	leaveDeadLock(t, db)
+
+	_, err := svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&supplierv1.AnalyticReplayComputeRequest{
+		StartDate: jakartaDay(5),
+	}))
+	if err != nil || len(broker.seeked) != 1 {
+		t.Fatalf("replay over an expired lock: %v with %d seeks, want it to run", err, len(broker.seeked))
+	}
+
+	if lock := metadata(t, db, supplier_service_models.MetadataProcessEventLock); lock != `{"lock":false}` {
+		t.Fatalf("the lock is %s after the replay — it must release what it took", lock)
+	}
+}

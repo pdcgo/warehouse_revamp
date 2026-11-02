@@ -112,6 +112,11 @@ type Order struct {
 	// recorded.
 	CreatedByUserID uint64
 
+	// WHETHER THAT CREATOR WAS OUTSIDE THE TEAM (00033) — Root or the Administrator placing it through the root-team
+	// bypass, not a membership (an-override-is-stamped-in-every-service). Read from the access interceptor's resolved
+	// role at placement (san_auth.IsOverride), never from the request, and never updated.
+	IsOverride bool
+
 	// HOW MANY UNITS — the sum of the lines' quantities (the-warehouse-row-fills-from-shop-and-user-by-ids). Not a
 	// column: OrderList selects it with a subquery, and OrderDetail sums the lines it loads. Read-only to GORM.
 	ItemQuantity int64 `gorm:"->;-:migration"`

@@ -344,7 +344,7 @@ function CountTable({
                   <Stack gap="0">
                     <Text fontWeight="medium">{row.name || t("opname.unknownProduct")}</Text>
                     <Text fontSize="xs" color="fg.muted">
-                      {row.sku || id}
+                      {row.productCode || id}
                     </Text>
                   </Stack>
                 </Table.Cell>

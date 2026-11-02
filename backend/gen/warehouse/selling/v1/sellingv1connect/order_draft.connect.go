@@ -87,12 +87,14 @@ func NewOrderDraftServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+OrderDraftServiceOrderDraftListProcedure,
 			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderDraftDetail: connect.NewClient[v1.OrderDraftDetailRequest, v1.OrderDraftDetailResponse](
 			httpClient,
 			baseURL+OrderDraftServiceOrderDraftDetailProcedure,
 			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderDraftUpdate: connect.NewClient[v1.OrderDraftUpdateRequest, v1.OrderDraftUpdateResponse](
@@ -178,12 +180,14 @@ func NewOrderDraftServiceHandler(svc OrderDraftServiceHandler, opts ...connect.H
 		OrderDraftServiceOrderDraftListProcedure,
 		svc.OrderDraftList,
 		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderDraftServiceOrderDraftDetailHandler := connect.NewUnaryHandler(
 		OrderDraftServiceOrderDraftDetailProcedure,
 		svc.OrderDraftDetail,
 		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderDraftServiceOrderDraftUpdateHandler := connect.NewUnaryHandler(

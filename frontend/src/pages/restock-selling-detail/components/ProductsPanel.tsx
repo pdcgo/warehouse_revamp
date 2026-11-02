@@ -109,7 +109,7 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
                           <ProductListItem
                             product={{
                               id: item.productId,
-                              sku: item.sku,
+                              productCode: item.productCode,
                               name: item.name,
                               defaultImageUrl: cover?.defaultImageUrl,
                               defaultImageThumbnailUrl: cover?.defaultImageThumbnailUrl,

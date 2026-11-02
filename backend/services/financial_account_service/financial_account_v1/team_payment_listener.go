@@ -82,6 +82,7 @@ func (s *Service) postTeamPayment(ctx context.Context, event *eventsv1.Event, ac
 				description:      fmt.Sprintf("%s to team #%d", ref, accepted.GetCreditorTeamId()),
 				occurredAt:       occurredAt,
 				actorID:          accepted.GetActorId(),
+				isOverride:       accepted.GetActorIsOverride(),
 				groupID:          group,
 				counterAccountID: to.ID,
 			})
@@ -96,6 +97,7 @@ func (s *Service) postTeamPayment(ctx context.Context, event *eventsv1.Event, ac
 			description:      fmt.Sprintf("%s from team #%d", ref, accepted.GetPayerTeamId()),
 			occurredAt:       occurredAt,
 			actorID:          accepted.GetActorId(),
+			isOverride:       accepted.GetActorIsOverride(),
 			groupID:          group,
 			counterAccountID: accepted.GetFromAccountId(),
 		})

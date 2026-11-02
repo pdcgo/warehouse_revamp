@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, CloseButton, Dialog, Field, Icon, Portal, Stack, Textarea } from "@chakra-ui/react";
@@ -6,7 +6,6 @@ import { Plus } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
 import { useSaveExpense } from "../queries";
-import type { ExpenseRecord } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKindSelect } from "../../../components/pickers/ExpenseKindSelect";
 import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
@@ -20,31 +19,19 @@ function today(): string {
 
 interface RecordCostDialogProps {
   teamId: bigint;
-  /** When set, the dialog edits this cost instead of recording a new one. */
-  editing?: ExpenseRecord;
-  /**
-   * The dialog has CLOSED — after a save or a cancel alike.
-   *
-   * Lifecycle only. It used to be joined by an `onDone` that existed purely so the page could refetch
-   * (#177); the write now invalidates the cache itself, so the parent is told the dialog is gone and
-   * nothing more. In edit mode that is what clears `editing`.
-   */
-  onClose?: () => void;
 }
 
-// RecordExpenseDialog enters or corrects a cost (#170).
+// RecordExpenseDialog enters a cost (#170).
 //
 // A DIALOG rather than a page, and that is the repo's own distinction: a dialog is for a focused
 // ACTION, a page is for reading an entity. Entering a cost is five fields and a button.
 //
-// The same dialog serves create and EDIT, because the edit form IS the record re-opened — a second
-// component would be the same five fields drifting apart. `editing` decides which RPC it calls.
-export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDialogProps) {
+// It only ever RECORDS: an expense is never edited after it is saved (an-expense-is-never-edited). A mistake is
+// corrected by AdjustExpenseDialog, which writes a row of its own.
+export function RecordExpenseDialog({ teamId }: RecordCostDialogProps) {
   const { t } = useTranslation();
 
-  const isEdit = editing !== undefined;
-
-  const [open, setOpen] = useState(isEdit);
+  const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<ExpenseKind>(ExpenseKind.UNSPECIFIED);
   const [amount, setAmount] = useState("");
   const [occurredAt, setOccurredAt] = useState(today);
@@ -57,20 +44,6 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
   // the same question that can disagree with the first.
   const save = useSaveExpense();
   const busy = save.isPending;
-
-  // In edit mode the dialog opens already holding the record. Keyed on the cost's id so opening a
-  // DIFFERENT row re-fills rather than showing the previous one's figures.
-  useEffect(() => {
-    if (!editing) return;
-
-    setKind(editing.kind);
-    setAmount(editing.amount.toString());
-    setOccurredAt(editing.occurredAt);
-    setShopId(editing.shopId);
-    setNote(editing.note);
-    setError("");
-    setOpen(true);
-  }, [editing]);
 
   function reset() {
     setKind(ExpenseKind.UNSPECIFIED);
@@ -96,7 +69,6 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
     save.mutate(
       {
         teamId,
-        expenseId: editing?.id,
         kind,
         amount: BigInt(amount),
         occurredAt,
@@ -105,16 +77,10 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
       },
       {
         onSuccess: () => {
-          toaster.create({
-            type: "success",
-            title: isEdit ? t("expenses.toast.updated") : t("expenses.toast.recorded"),
-          });
+          toaster.create({ type: "success", title: t("expenses.toast.recorded") });
 
           setOpen(false);
           reset();
-          // The dialog is gone — in edit mode this is what clears the parent's `editing`. It is NOT a
-          // refetch signal: the hook already invalidated before this ran.
-          onClose?.();
         },
         onError: (err) => setError(rpcError(err)),
       },
@@ -126,21 +92,17 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
 
     if (!next) {
       reset();
-      onClose?.();
     }
   }
 
   return (
     <Dialog.Root open={open} onOpenChange={(e) => change(e.open)} placement="center">
-      {/* In edit mode the caller opens it, so there is no trigger to render. */}
-      {!isEdit && (
-        <Dialog.Trigger asChild>
-          <Button colorPalette="brand" size="xs" data-testid="open-record-cost">
-            <Icon as={Plus} boxSize="4" />
-            {t("expenses.record")}
-          </Button>
-        </Dialog.Trigger>
-      )}
+      <Dialog.Trigger asChild>
+        <Button colorPalette="brand" size="xs" data-testid="open-record-cost">
+          <Icon as={Plus} boxSize="4" />
+          {t("expenses.record")}
+        </Button>
+      </Dialog.Trigger>
 
       <Portal>
         <Dialog.Backdrop />
@@ -148,7 +110,7 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>{isEdit ? t("expenses.editTitle") : t("expenses.recordTitle")}</Dialog.Title>
+                <Dialog.Title>{t("expenses.recordTitle")}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>

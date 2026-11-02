@@ -125,8 +125,8 @@ export function InfoPanel({
                 </Table.Header>
                 <Table.Body>
                   {order.items.map((it) => (
-                    <Table.Row key={it.id.toString()} data-testid={`order-item-${it.sku}`}>
-                      <Table.Cell>{it.sku}</Table.Cell>
+                    <Table.Row key={it.id.toString()} data-testid={`order-item-${it.productCode}`}>
+                      <Table.Cell>{it.productCode}</Table.Cell>
                       <Table.Cell>{it.name}</Table.Cell>
                       <Table.Cell textAlign="end">{it.quantity}</Table.Cell>
                       <Table.Cell textAlign="end">{it.unitCost > 0n ? formatRupiah(lineUnitBeli(it)) : "—"}</Table.Cell>

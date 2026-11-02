@@ -77,6 +77,7 @@ func NewTeamReturnConfigurationServiceClient(httpClient connect.HTTPClient, base
 			httpClient,
 			baseURL+TeamReturnConfigurationServiceTeamReturnConfigurationDetailProcedure,
 			connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("TeamReturnConfigurationDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		teamReturnConfigurationSet: connect.NewClient[v1.TeamReturnConfigurationSetRequest, v1.TeamReturnConfigurationSetResponse](
@@ -101,6 +102,7 @@ func NewTeamReturnConfigurationServiceClient(httpClient connect.HTTPClient, base
 			httpClient,
 			baseURL+TeamReturnConfigurationServiceProductReturnMapByIdsProcedure,
 			connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("ProductReturnMapByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -166,6 +168,7 @@ func NewTeamReturnConfigurationServiceHandler(svc TeamReturnConfigurationService
 		TeamReturnConfigurationServiceTeamReturnConfigurationDetailProcedure,
 		svc.TeamReturnConfigurationDetail,
 		connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("TeamReturnConfigurationDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	teamReturnConfigurationServiceTeamReturnConfigurationSetHandler := connect.NewUnaryHandler(
@@ -190,6 +193,7 @@ func NewTeamReturnConfigurationServiceHandler(svc TeamReturnConfigurationService
 		TeamReturnConfigurationServiceProductReturnMapByIdsProcedure,
 		svc.ProductReturnMapByIds,
 		connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("ProductReturnMapByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.selling.v1.TeamReturnConfigurationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

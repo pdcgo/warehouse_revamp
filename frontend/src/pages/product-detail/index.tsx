@@ -20,8 +20,7 @@ import {
   Text,
   useBreakpointValue,
 } from "@chakra-ui/react";
-import { Archive, ArrowLeft, Pencil, RotateCcw } from "lucide-react";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Archive, ArrowLeft, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { CopyText } from "../../components/chrome/CopyText";
@@ -31,17 +30,17 @@ import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { toaster } from "../../components/feedback/Toaster";
 import { useIsMobile } from "../../layouts/shell";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
   useArchiveProduct,
   useProductActivity,
   useProductDetail,
-  useRestoreProduct,
+  useDeleteProduct,
+  useUnarchiveProduct,
   useSetProductLock,
 } from "../../features/products/queries";
-import { RestoreProductDialog } from "../../features/products/RestoreProductDialog";
 import { ProductLockControl } from "../../features/products/ProductLock";
 import { pathToRoot } from "../../features/categories/categoryTree";
 import { STALE_STOCK_DAYS, daysAgo } from "../../features/products/stockAge";
@@ -293,13 +292,12 @@ export function ProductDetailPage() {
   // while the lens is "every warehouse", so it is one read until a warehouse is chosen.
   const totalsQuery = useProductActivity({ teamId, productId: id, warehouseId: 0n });
   const archiveProduct = useArchiveProduct();
-  const restoreProduct = useRestoreProduct();
+  const restoreProduct = useUnarchiveProduct();
+  const deleteProduct = useDeleteProduct();
   const setLock = useSetProductLock();
 
-  // The one restore failure the user has to act on: archiving frees the SKU, so another product may
-  // hold it by now. Null while there is no conflict to resolve.
-  const [conflict, setConflict] = useState<{ product: Product; reason: string } | null>(null);
   const [archiving, setArchiving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const product = query.data?.product ?? null;
   const categories = query.data?.categories ?? [];
@@ -317,7 +315,7 @@ export function ProductDetailPage() {
 
     try {
       await archiveProduct.mutateAsync({ teamId, productId: target.id });
-      toaster.create({ type: "success", title: t("products.toast.archived", { sku: target.sku }) });
+      toaster.create({ type: "success", title: t("products.toast.archived", { productCode: target.productCode }) });
     } catch (err) {
       toaster.create({
         type: "error",
@@ -327,27 +325,36 @@ export function ProductDetailPage() {
     }
   }
 
-  // `sku` empty = restore under the SKU it was archived with; that is the call that can come back
-  // AlreadyExists, and the only sane answer to that is to let the user pick a free one.
-  async function restore(target: Product, sku?: string) {
+  // DELETE, for good — offered once the product is archived. Only a product with no history is deleted; the server
+  // refuses any other, and its reason (archive it instead) is the toast. Gone, so the page goes back to the archive.
+  async function remove(target: Product) {
     if (teamId === undefined) {
       return;
     }
 
     try {
-      await restoreProduct.mutateAsync({ teamId, productId: target.id, sku });
-      setConflict(null);
+      await deleteProduct.mutateAsync({ teamId, productId: target.id });
+      toaster.create({ type: "success", title: t("products.toast.deleted", { productCode: target.productCode }) });
+      navigate("/products/archived");
+    } catch (err) {
+      toaster.create({ type: "error", title: t("products.toast.deleteFailed"), description: rpcError(err) });
+    }
+  }
+
+  // UNARCHIVE — under the code it kept: an archived product holds its code, so nothing can collide on the way back
+  // (the-field-is-product-code-composed-on-write).
+  async function restore(target: Product) {
+    if (teamId === undefined) {
+      return;
+    }
+
+    try {
+      await restoreProduct.mutateAsync({ teamId, productId: target.id });
       toaster.create({
         type: "success",
-        title: t("products.toast.restored", { sku: sku || target.sku }),
+        title: t("products.toast.restored", { productCode: target.productCode }),
       });
     } catch (err) {
-      if (ConnectError.from(err).code === Code.AlreadyExists) {
-        setConflict({ product: target, reason: rpcError(err) });
-
-        return;
-      }
-
       toaster.create({
         type: "error",
         title: t("products.toast.restoreFailed"),
@@ -517,7 +524,7 @@ export function ProductDetailPage() {
   // An archived product is reachable by URL, so the page has to say so — and offer the way back.
   // Editing is not the way back: ProductUpdate only touches live rows, so Edit is withdrawn here and
   // Restore takes its place.
-  const archived = product.deleted;
+  const archived = product.archived;
   const totalStock = totalsQuery.data?.stock;
   const lensStock = activityQuery.data?.stock;
   const openEdit = () => navigate(`/products/${product.id}/edit`, { state: fromHere(location) });
@@ -543,7 +550,7 @@ export function ProductDetailPage() {
   const derivedSection = section(
     "derived",
     <DerivedSection
-      derived={sampleDerived(product.id, product.name, product.sku, product.defaultImageThumbnailUrl || product.defaultImageUrl)}
+      derived={sampleDerived(product.id, product.name, product.productCode, product.defaultImageThumbnailUrl || product.defaultImageUrl)}
     />,
     <NotImplemented list={PRODUCT_DETAIL_PENDING} id="derived" />,
   );
@@ -685,17 +692,21 @@ export function ProductDetailPage() {
           </HStack>
           {/* The SKU to copy, UNDER the name (owner: *"skunya di bawah nama produk"*, *"sku di sticky taruh bawahnya"*). */}
           <Box fontSize="sm" color="fg.muted" data-testid={stuck ? "product-detail-sticky-sku" : undefined}>
-            <CopyText value={product.sku} testId={stuck ? undefined : "product-detail-sku"} />
+            <CopyText value={product.productCode} testId={stuck ? undefined : "product-detail-sku"} />
           </Box>
         </Stack>
 
-        {/* THE ACTIONS, held to the right. On a phone they fold into ⋯ (a-phone-header-action-is-an-icon). */}
-        {isMobile ? (
+        {/* THE ACTIONS, held to the right. On a phone they fold into ⋯ (a-phone-header-action-is-an-icon). None while the
+            admin team monitors the team (the-admin-team-monitors-read-only). */}
+        {!canWrite(current) ? null : isMobile ? (
           <CompactActions
             menuLabel={t("products.table.actions")}
             actions={
               archived
-                ? [{ id: "restore", label: t("products.restore"), icon: RotateCcw, testId: id("product-detail-restore"), onClick: () => restore(product) }]
+                ? [
+                    { id: "restore", label: t("products.restore"), icon: RotateCcw, testId: id("product-detail-restore"), onClick: () => restore(product) },
+                    { id: "delete", label: t("products.delete"), icon: Trash2, danger: true, testId: id("product-detail-delete"), onClick: () => setDeleting(true) },
+                  ]
                 : [
                     { id: "edit", label: t("products.edit"), icon: Pencil, testId: id("product-detail-edit"), onClick: openEdit },
                     { id: "archive", label: t("products.archive"), icon: Archive, danger: true, testId: id("product-detail-archive"), onClick: () => setArchiving(true) },
@@ -705,10 +716,17 @@ export function ProductDetailPage() {
         ) : archived ? (
           /* UNARCHIVE. No confirmation: putting a product back is the reversible direction, and the only thing that can
              go wrong — the SKU being taken — is caught by the server and answered with a dialog. */
-          <Button size="xs" variant="outline" flexShrink={0} loading={restoreProduct.isPending} data-testid={id("product-detail-restore")} onClick={() => restore(product)}>
-            <Icon as={RotateCcw} boxSize="4" />
-            {t("products.restore")}
-          </Button>
+          <HStack gap="2" flexShrink={0}>
+            <Button size="xs" variant="outline" loading={restoreProduct.isPending} data-testid={id("product-detail-restore")} onClick={() => restore(product)}>
+              <Icon as={RotateCcw} boxSize="4" />
+              {t("products.restore")}
+            </Button>
+            {/* DELETE confirms: it cannot be undone, and only a product with no history is deleted. */}
+            <Button size="xs" variant="outline" colorPalette="error" data-testid={id("product-detail-delete")} onClick={() => setDeleting(true)}>
+              <Icon as={Trash2} boxSize="4" />
+              {t("products.delete")}
+            </Button>
+          </HStack>
         ) : (
           <HStack gap="2" flexShrink={0}>
             <Button size="xs" variant="outline" data-testid={id("product-detail-edit")} onClick={openEdit}>
@@ -748,7 +766,7 @@ export function ProductDetailPage() {
           <ProductLockControl
             product={product}
             totalReady={totalStock?.readyQty}
-            editable={!archived}
+            editable={!archived && canWrite(current)}
             onSave={(fields) => saveLock(product, fields)}
             testId="product-detail-lock-control"
           />
@@ -864,16 +882,18 @@ export function ProductDetailPage() {
         open={archiving}
         onOpenChange={setArchiving}
         title={t("products.archiveDialog.title")}
-        message={t("products.archiveDialog.message", { sku: product.sku })}
+        message={t("products.archiveDialog.message", { productCode: product.productCode })}
         confirmLabel={t("products.archiveDialog.confirmLabel")}
         onConfirm={() => archive(product)}
       />
 
-      <RestoreProductDialog
-        product={conflict?.product ?? null}
-        reason={conflict?.reason ?? ""}
-        onClose={() => setConflict(null)}
-        onRestore={(sku) => restore(product, sku)}
+      <ConfirmDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        title={t("products.deleteDialog.title")}
+        message={t("products.deleteDialog.message", { productCode: product.productCode })}
+        confirmLabel={t("products.deleteDialog.confirmLabel")}
+        onConfirm={() => remove(product)}
       />
 
       {/* THE NAVIGATION, THEN THE SECTIONS — the order detail's shape. ⚠ \`minmax(0, 1fr)\` so a wide table scrolls in its

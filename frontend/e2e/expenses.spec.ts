@@ -44,8 +44,9 @@ test("Expenses: the screen opens on this month and starts empty", async ({ page 
   await expect(page.getByTestId("expenses-total")).toHaveText("Rp 0");
 });
 
-// #170 — record a cost, correct it, then void it: the whole life of a number somebody typed.
-test("Expenses: record, correct, and void — the totals follow each step (#170)", async ({ page }) => {
+// #170 — record a cost, correct it, then cancel it: the whole life of a number somebody typed. The expense itself
+// never changes — every correction is a row of its own (every-correction-is-a-signed-adjustment).
+test("Expenses: record, adjust, and cancel — the totals follow each step, every row stays (#170)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await page.goto("/expenses");
 
@@ -76,25 +77,30 @@ test("Expenses: record, correct, and void — the totals follow each step (#170)
   const id = (await row.getAttribute("data-testid"))?.replace("expense-row-", "");
   expect(id).toBeTruthy();
 
-  // CORRECT it — because a person typed it, and people mistype (#169).
+  // ADJUST it — because a person typed it, and people mistype (#169). The correction is typed, not the new total: 50.000
+  // more. The expense keeps its 800.000 and says what it counts for now.
   await page.getByTestId(`expense-actions-${id}`).click();
-  await page.getByTestId(`expense-edit-${id}`).click();
-  await page.getByTestId("expense-amount").fill("850000");
-  await page.getByTestId("submit-cost").click();
+  await page.getByTestId(`expense-adjust-${id}`).click();
+  await page.getByTestId("adjust-direction-add").click();
+  await page.getByTestId("adjust-amount").fill("50000");
+  await expect(page.getByTestId("adjust-after")).toContainText("Rp 850.000");
+  await page.getByTestId("submit-adjust").click();
 
   await expect(page.getByTestId("expenses-total")).toHaveText("Rp 850.000");
+  await expect(page.getByTestId(`expense-amount-${id}`)).toHaveText("Rp 800.000");
+  await expect(page.getByTestId(`expense-net-${id}`)).toContainText("Rp 850.000");
 
-  // VOID it. The row STAYS — voiding is not deleting, and an entry that was made and retracted is
-  // exactly what somebody looking at a changed total wants to see.
+  // CANCEL it — Batalkan, an adjustment of minus the whole of what it counts for. Every row STAYS: an entry that was
+  // made and taken back is exactly what somebody looking at a changed total wants to see.
   await page.getByTestId(`expense-actions-${id}`).click();
-  await page.getByTestId(`expense-void-${id}`).click();
+  await page.getByTestId(`expense-cancel-${id}`).click();
   await page.getByTestId("confirm-action").click();
 
-  await expect(page.getByTestId(`expense-voided-${id}`)).toBeVisible();
-  await expect(page.getByTestId(`expense-row-${id}`)).toContainText(NOTE);
-
-  // …but it no longer counts.
   await expect(page.getByTestId("expenses-total")).toHaveText("Rp 0");
+  await expect(page.getByTestId(`expense-row-${id}`)).toContainText(NOTE);
+  await expect(page.getByTestId(`expense-net-${id}`)).toContainText("Rp 0");
+  // The expense and its two corrections, on the expense's day.
+  await expect(page.locator('[data-testid^="expense-adjustment-"]')).toHaveCount(2);
 });
 
 // #170 — a month with nothing in it is empty, which is what makes the period filter real rather than

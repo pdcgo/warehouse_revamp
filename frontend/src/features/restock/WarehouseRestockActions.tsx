@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanWrite } from "../team/TeamContext";
 import { useNavigate } from "react-router-dom";
 import { Button, HStack, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
 import { MoreHorizontal, PackageCheck, PackageOpen, Printer, Receipt } from "lucide-react";
@@ -63,9 +64,11 @@ export function WarehouseRestockActions({ request, teamId, variant }: WarehouseR
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [signing, setSigning] = useState(false);
+  // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const writable = useCanWrite();
 
   const actions = warehouseActions(request.status);
-  if (actions.length === 0) return null;
+  if (actions.length === 0 || !writable) return null;
 
   const id = request.id.toString();
 

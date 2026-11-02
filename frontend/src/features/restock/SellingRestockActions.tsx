@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanWrite } from "../team/TeamContext";
 import { useNavigate } from "react-router-dom";
 import {
   Button,
@@ -74,9 +75,11 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<"" | "cancel" | "markLost">("");
+  // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const writable = useCanWrite();
 
   const actions = sellingActions(request.status);
-  if (actions.length === 0) return null;
+  if (actions.length === 0 || !writable) return null;
 
   const id = request.id.toString();
 

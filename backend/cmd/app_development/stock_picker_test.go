@@ -94,7 +94,7 @@ func stockForPicker(t *testing.T, inventory *inventory_v1.Service, team, warehou
 
 	created, err := inventory.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: team, WarehouseId: warehouse,
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, Sku: "SKU", Name: "Kaos", Count: count, Total: float64(count * 10000)}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, ProductCode: "SKU", Name: "Kaos", Count: count, Total: float64(count * 10000)}},
 	}))
 	if err != nil {
 		t.Fatalf("restock create: %v", err)

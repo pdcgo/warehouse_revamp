@@ -49,7 +49,7 @@ export const ProductsNameTheirChannel: Story = {
   },
 };
 
-export const SearchesProductSkuOrChannel: Story = {
+export const SearchesProductCodeOrChannel: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

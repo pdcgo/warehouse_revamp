@@ -34,8 +34,8 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 	}
 
 	merged, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
@@ -60,7 +60,7 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	singleReq := orderReq(shop)
 	singleReq.Items = []*sellingv1.OrderItem{
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 3},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 3},
 	}
 
 	typed, err := single.OrderCreate(context.Background(), connect.NewRequest(singleReq))
@@ -94,7 +94,7 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	other := want.Items[0]
 	if line.Quantity != other.Quantity || line.UnitCost != other.UnitCost ||
-		*line.Total != *other.Total || line.SKU != other.SKU || line.Name != other.Name {
+		*line.Total != *other.Total || line.ProductCode != other.ProductCode || line.Name != other.Name {
 		t.Fatalf("merged line %+v — the single line stored %+v", line, other)
 	}
 
@@ -115,8 +115,8 @@ func TestOrderCreate_OneProductOnTwoLinesIsOneLineAtTheTakesCost(t *testing.T) {
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 	}
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
@@ -145,8 +145,8 @@ func TestOrderCreate_OneProductUnderTwoNamesIsRefused(t *testing.T) {
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
-		{ProductId: 100, Sku: "SKU1", Name: "Widget Merah", Quantity: 1},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget Merah", Quantity: 1},
 	}
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))

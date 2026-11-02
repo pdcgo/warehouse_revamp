@@ -30,8 +30,9 @@ in them with it. `go run ./tools/san dev setup` on a fresh database, then restoc
 **The next inventory pass (owner, 2026-10-31):** the FINISHED stock count, not a refined port —
 [the-finished-count-comes-next-not-a-refined-port](../../business/inventory/adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port).
 First the owner's design accept of the count prototype, then the stock-problem register, the session count and the
-claim rule. Also decided and not built: a recount shortfall is written off and owed
-([a-recount-shortfall-is-written-off-and-owed](../../business/inventory/adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed)).
+claim rule. ✅ Built 2026-11-02: a recount shortfall is written off and owed
+([a-recount-shortfall-is-written-off-and-owed](../../business/inventory/adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed)) — the recount branch of `stock_adjust.go`, three new
+tests in `stock_adjust_damage_test.go`, the expense test extended.
 
 **What is left, for the next pass:**
 

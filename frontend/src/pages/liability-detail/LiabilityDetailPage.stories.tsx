@@ -400,3 +400,72 @@ export const TheDebtorSeesTheLimitSetOnIt: Story = {
     await expect(block).toHaveTextContent("Set by Gudang Pusat");
   },
 };
+
+// ─── the payment request (a-creditor-may-request-payment) ───────────────────────────────────────
+
+// Toko Kenanga (13) owes Gudang Pusat Rp 1.000.000 and has not been asked.
+const AtKenanga = routedPage(
+  [
+    { path: "/liability/:counterpartyId", element: <LiabilityDetailPage /> },
+    marker("/liability", "at-liability-list"),
+  ],
+  "/liability/13",
+);
+
+// THE CREDITOR ASKS. Request Payment is confirmed — it is sent to another team — and then the pair says what was asked:
+// the amount owed at that moment. Nothing is posted, so the position does not move.
+export const TheCreditorAsksADebtorToPay: Story = {
+  render: () => <AtKenanga />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.queryByTestId("liability-detail-payment-requested")).toBeNull();
+
+    await userEvent.click(await canvas.findByTestId("liability-detail-request-payment"));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await userEvent.click(confirm);
+
+    const said = await canvas.findByTestId("liability-detail-payment-requested", {}, { timeout: 3000 });
+    await expect(said).toHaveTextContent("Rp 1.000.000");
+    await expect(canvas.getByTestId("liability-detail-balance")).toHaveTextContent("1.000.000");
+  },
+};
+
+// THE DEBTOR SEES IT on the pair detail — who asks, how much, and that it pays through Make Payment. It is owed nothing,
+// so it is offered no Request Payment of its own.
+const AtGudangPusat = routedPage(
+  [
+    { path: "/liability/:counterpartyId", element: <LiabilityDetailPage /> },
+    marker("/liability", "at-liability-list"),
+  ],
+  "/liability/11",
+);
+
+export const TheDebtorSeesTheRequest: Story = {
+  render: () => <AtGudangPusat />,
+  beforeEach: () => {
+    asTeam(COUNTERPARTY)();
+    asRole(Role.SELLING_OWNER)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const notice = await canvas.findByTestId("liability-detail-payment-request", {}, { timeout: 3000 });
+    await expect(notice).toHaveTextContent("Gudang Pusat asks you to pay Rp 8.700.000");
+    await expect(canvas.getByTestId("liability-detail-make-payment")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("liability-detail-request-payment")).toBeNull();
+  },
+};
+
+// The request posts nothing, so the warehouse ADMIN may send it too — unlike the terms, which are the Owner's
+// (the-warehouse-admin-equals-the-owner-except-money).
+export const TheWarehouseAdminMayAskToPay: Story = {
+  beforeEach: asRole(Role.WAREHOUSE_ADMIN),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(await canvas.findByTestId("liability-detail-request-payment")).toBeInTheDocument();
+    // Melati was already asked — the creditor reads what it asked.
+    await expect(await canvas.findByTestId("liability-detail-payment-requested")).toHaveTextContent("Rp 8.700.000");
+  },
+};

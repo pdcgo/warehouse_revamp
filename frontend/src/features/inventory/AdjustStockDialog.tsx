@@ -132,7 +132,7 @@ export function AdjustStockDialog({
         onSuccess: () => {
           toaster.create({
             type: "success",
-            title: t("inventory.adjustedToast", { sku: product.sku, counted: amountNum }),
+            title: t("inventory.adjustedToast", { productCode: product.productCode, counted: amountNum }),
           });
           onOpenChange(false);
         },
@@ -163,7 +163,7 @@ export function AdjustStockDialog({
                   <Text fontSize="sm" color="fg.muted">
                     {t("inventory.adjustProductSummary", {
                       name: product.name,
-                      sku: product.sku,
+                      productCode: product.productCode,
                       onHand: currentOnHand.toString(),
                     })}
                   </Text>

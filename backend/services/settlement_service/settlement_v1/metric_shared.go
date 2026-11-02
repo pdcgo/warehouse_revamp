@@ -266,6 +266,12 @@ func parseMetricFilters(items []*analytic_basev1.FilterItem, metrics []*settleme
 				return filters, errMetricRangeBackwards
 			}
 
+			// A YEAR AT MOST, both days counted (a-metric-reads-at-most-a-year) — a ranking reads every daily row in its window.
+			err = san_metric.CheckRange(start, end)
+			if err != nil {
+				return filters, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
 			filters.start, filters.end = start, end
 		case analytic_basev1.FilterType_FILTER_TYPE_TEAM:
 			filters.teamID = item.GetTeamFilter().GetTeamId()

@@ -10,8 +10,8 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
 
-// A DAMAGED/LOST adjust writes off the frozen cost of the lost units to expense (#211, Q4); a FOUND or
-// a RECOUNT posts nothing.
+// A DAMAGED/LOST adjust writes off the frozen cost of the lost units to expense (#211, Q4), and so does a RECOUNT
+// shortfall (a-recount-shortfall-is-written-off-and-owed); a FOUND or a recount surplus posts nothing.
 func TestStockAdjust_WritesOffLossValue(t *testing.T) {
 	db := san_testdb.DB(t)
 	expense := &recordingExpense{}
@@ -55,17 +55,37 @@ func TestStockAdjust_WritesOffLossValue(t *testing.T) {
 		t.Fatalf("loss = team %d amount %d, want %d/200000", expense.posted[0].warehouseID, expense.posted[0].amount, warehouse)
 	}
 
-	// FOUND writes off nothing (it is a gain), and a RECOUNT is batch-agnostic value-wise.
+	// FOUND writes off nothing (it is a gain).
 	adjust(inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND, 2, 0)
-	if _, e := svc.StockAdjust(context.Background(), connect.NewRequest(&inventoryv1.StockAdjustRequest{
-		WarehouseId: warehouse, ProductId: product,
-		Place:      &inventoryv1.StockAdjustRequest_RackId{RackId: rackID},
-		ReasonType: inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_RECOUNT, OnHand: 90,
-	})); e != nil {
-		t.Fatalf("recount: %v", e)
+	if len(expense.posted) != 1 {
+		t.Fatalf("found posted a loss: %d total, want still 1", len(expense.posted))
 	}
 
-	if len(expense.posted) != 1 {
-		t.Fatalf("found/recount posted a loss: %d total, want still 1", len(expense.posted))
+	recountTo := func(onHand int64) {
+		t.Helper()
+		if _, e := svc.StockAdjust(context.Background(), connect.NewRequest(&inventoryv1.StockAdjustRequest{
+			WarehouseId: warehouse, ProductId: product,
+			Place:      &inventoryv1.StockAdjustRequest_RackId{RackId: rackID},
+			ReasonType: inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_RECOUNT, OnHand: onHand,
+			Reason: "shelf recount",
+		})); e != nil {
+			t.Fatalf("recount: %v", e)
+		}
+	}
+
+	// A RECOUNT SHORTFALL is written off like a lost unit (a-recount-shortfall-is-written-off-and-owed): the rack holds
+	// 97 and the count says 90, so 7 × 40.000 = 280.000, under the recount's own note.
+	recountTo(90)
+	if len(expense.posted) != 2 {
+		t.Fatalf("after a recount shortfall: %d expense posts, want 2", len(expense.posted))
+	}
+	if got := expense.posted[1]; got.warehouseID != warehouse || got.amount != 280000 || got.note != "shelf recount" {
+		t.Fatalf("recount loss = %+v, want team %d, 280000, \"shelf recount\"", got, warehouse)
+	}
+
+	// A surplus writes off nothing.
+	recountTo(95)
+	if len(expense.posted) != 2 {
+		t.Fatalf("a recount surplus posted a loss: %d total, want still 2", len(expense.posted))
 	}
 }

@@ -16,13 +16,25 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sel
 // orders too (the #23 decomposition); shops are the first piece.
 service ShopService {
   rpc ShopCreate(ShopCreateRequest) returns (ShopCreateResponse);
-  rpc ShopList(ShopListRequest) returns (ShopListResponse);
-  rpc ShopDetail(ShopDetailRequest) returns (ShopDetailResponse);
+  rpc ShopList(ShopListRequest) returns (ShopListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ShopDetail(ShopDetailRequest) returns (ShopDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ShopUpdate(ShopUpdateRequest) returns (ShopUpdateResponse);
   rpc ShopDelete(ShopDeleteRequest) returns (ShopDeleteResponse);
 
   // Shop access — which users may work on a shop (#86). Scoped to the shop's team.
-  rpc ShopUserList(ShopUserListRequest) returns (ShopUserListResponse);
+  rpc ShopUserList(ShopUserListRequest) returns (ShopUserListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ShopUserAdd(ShopUserAddRequest) returns (ShopUserAddResponse);
   rpc ShopUserRemove(ShopUserRemoveRequest) returns (ShopUserRemoveResponse);
 
@@ -33,7 +45,11 @@ service ShopService {
   // For other services — the shop, its primary CS, and whether a user may WRITE on it, in one answer
   // (one-call-answers-the-shop-and-the-access). The settlement importer asks it before storing a file;
   // settlement asks it for an imported shop row's primary CS.
-  rpc ShopAccessCheck(ShopAccessCheckRequest) returns (ShopAccessCheckResponse);
+  rpc ShopAccessCheck(ShopAccessCheckRequest) returns (ShopAccessCheckResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Shops by id, across teams — the warehouse's order row names each order's shop
   // (the-warehouse-row-fills-from-shop-and-user-by-ids).
   rpc ShopByIds(ShopByIdsRequest) returns (ShopByIdsResponse);

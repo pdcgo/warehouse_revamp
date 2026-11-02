@@ -20,7 +20,7 @@ const NONE = RestockRequestStatus.UNSPECIFIED;
 export interface LineFixture {
   id: bigint;
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   count: bigint;
   total: number;
@@ -74,7 +74,7 @@ export interface RestockFixture {
 function line(
   id: number,
   productId: bigint,
-  sku: string,
+  productCode: string,
   name: string,
   count: number,
   total: number,
@@ -83,7 +83,7 @@ function line(
   return {
     id: BigInt(id),
     productId,
-    sku,
+    productCode,
     name,
     count: BigInt(count),
     total,

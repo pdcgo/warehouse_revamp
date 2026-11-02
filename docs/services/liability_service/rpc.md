@@ -339,7 +339,7 @@ How it is built:
 | --- | --- |
 | `liability_terms_logs` | ⚠ **both limit columns NULLABLE.** `NULL`, `0` and a number are three different acts, and an integer column flattens the first into the second — turning *"they removed the limit"* into *"they froze the team"* |
 | the actor, stamped at write time | `LiabilityTermsSet` / `LiabilityTermsDelete` read it from the TOKEN, never the request |
-| `override`, derived by the server | `san_auth.GetCallerRole` returns the role the access interceptor resolved **for the scoped team**. `ROLE_UNSPECIFIED` means the caller holds none there — so the request was authorized by the root-team bypass, which is exactly what an override is. ⚠ It is not an authorization check and must never be used as one: the interceptor has already decided *whether*, this answers *on whose behalf* |
+| `override`, derived by the server | `san_auth.IsOverride` — the one rule every service stamps by ([an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)): a person, a scoped request, and `san_auth.GetCallerRole` = `ROLE_UNSPECIFIED`, the role the access interceptor resolved **for the scoped team**. Holding none there means the request was authorized by the root-team bypass, which is exactly what an override is. A call with no person or no scope reads false. ⚠ It is not an authorization check and must never be used as one: the interceptor has already decided *whether*, this answers *on whose behalf*. The same answer stamps a payment's record and confirm, a payment request, and the legs of a posting a person made (`00013`). A leg posted from an event — an order's fees, their reversal, a restock's courier charge — has no caller and takes the event's `actor_is_override` instead |
 | the write and its log are ONE TRANSACTION | a limit that changed with no record of who changed it is the back door this exists to close — worse than either half failing, because nobody would know to look |
 | a DELETE logs a REMOVAL | `new_credit_limit` NULL, not 0. Deleting a pair's terms lifts the ceiling, so 0 would say the act froze the team it freed |
 | a no-op delete logs NOTHING | the RPC still succeeds, but nothing changed — and a history full of no-ops is one nobody reads |
@@ -621,6 +621,32 @@ the count inside the query it already makes, so the badge and the rows cannot di
 It means `recorded` payments where **this team is the creditor** — never the ones it recorded itself,
 which are waiting on somebody else. Counting both sides would show every payer a permanent
 notification for work that is not theirs.
+
+### Asking to be paid — `LiabilityPaymentRequestSend`
+
+A creditor may ask its debtor to pay ([a-creditor-may-request-payment](../../business/balance/context_decision.md#a-creditor-may-request-payment)). It is a notice: it posts
+nothing, blocks nothing, and payment still starts with the debtor through Record.
+
+```mermaid
+sequenceDiagram
+  participant C as the creditor's owner or admin
+  participant L as liability_service
+  participant D as the debtor
+  C->>L: LiabilityPaymentRequestSend — debtor_team_id
+  L->>L: read the creditor's balance on the pair — nothing owed is FailedPrecondition
+  L->>L: upsert the one request per pair, with the amount owed now
+  D->>L: LiabilityPositionList — the request rides the pair's position, either way
+  D->>L: LiabilityPaymentRecord to that creditor
+  L->>L: the payment row is inserted and the request deleted, one transaction
+```
+
+| | |
+| --- | --- |
+| who | the creditor team's owner and admin, warehouse or selling — the request's `team_id` is the creditor |
+| amount | the creditor's balance on the pair at that moment; a live figure is the position itself |
+| again | replaces the request — amount, sender and time |
+| cleared | by the debtor recording a payment to that creditor, whatever its amount; rejecting it later does not bring the request back |
+| shown | `LiabilityPosition.payment_request`, on both teams' rows of the pair |
 
 ## The fifth obligation — stock the warehouse broke or lost (`STOCK_DAMAGE`)
 

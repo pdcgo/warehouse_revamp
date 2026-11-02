@@ -23,6 +23,8 @@ import { productClient, rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useSaveProduct } from "../../features/products/queries";
+import { useTeamsByIds } from "../../features/teams/queries";
+import { productCodePart, productCodePrefix } from "./productCode";
 import { CategorySelect } from "../../components/pickers/CategorySelect";
 import { CharCount } from "../../components/inputs/CharCount";
 import { PRODUCT_LIMITS } from "../../features/products/limits";
@@ -71,11 +73,23 @@ export function ProductEditPage() {
   const [loading, setLoading] = useState(editing);
   const saving = saveProduct.isPending;
   const [error, setError] = useState("");
-  // THE SKU THE SERVER REFUSED as already held by another live product of this team — kept as the value refused, so
-  // the error stands under the SKU field until that value is changed, and returns if it is typed back.
-  const [takenSku, setTakenSku] = useState<string | null>(null);
+  // THE PART THE SERVER REFUSED because the code it composes is already held — by any product, archived ones included —
+  // kept as the value refused, so the error stands under the field until that value is changed, and returns if it is
+  // typed back.
+  const [takenPart, setTakenPart] = useState<string | null>(null);
 
-  const [sku, setSku] = useState("");
+  // THE CODE IS COMPOSED ON WRITE (the-field-is-product-code-composed-on-write): the form types the TEAM'S PART, and the
+  // team's code stands fixed in front of it. `codePart` is null until it is typed on an edit, so the part is read off the
+  // stored code once the team's code has arrived — and a part nobody touched is never sent as a correction, which a
+  // product with history would refuse.
+  const [codePart, setCodePart] = useState<string | null>(null);
+  const [storedCode, setStoredCode] = useState("");
+  // The team's code, from team_service — a label for the field, never sent: product_service reads it itself.
+  const teams = useTeamsByIds({ ids: teamId !== undefined ? [teamId] : [] });
+  const teamCode = teamId !== undefined ? (teams.data?.[teamId.toString()]?.teamCode ?? "") : "";
+  const prefix = productCodePrefix(teamCode);
+  const storedPart = productCodePart(storedCode, teamCode);
+  const part = codePart ?? (editing ? storedPart : "");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<bigint>(0n);
@@ -105,7 +119,7 @@ export function ProductEditPage() {
         const p = res.product;
 
         if (!cancelled && p) {
-          setSku(p.sku);
+          setStoredCode(p.productCode);
           setName(p.name);
           setDescription(p.description);
           setCategoryId(p.categoryId);
@@ -149,9 +163,9 @@ export function ProductEditPage() {
     // The two fields the lock writes; Always with no minimum typed leaves the stored one as it is on an edit.
     const lock = lockFieldsOf(lockMode, parseQuantity(minimum) ?? 0);
 
-    // TRIMMED, because the server stores what it is sent: "KOPI-01 " would be a second SKU beside "KOPI-01", one that
-    // nobody can tell apart on a screen.
-    const record = { sku: sku.trim(), name: name.trim(), description: description.trim() };
+    // TRIMMED, because a trailing space would be a second code beside "KOPI-01" that nobody can tell apart on a screen.
+    const typedPart = part.trim();
+    const record = { name: name.trim(), description: description.trim() };
 
     setError("");
 
@@ -161,13 +175,16 @@ export function ProductEditPage() {
       // callback to hand a refetch to. Arriving there is a cache hit, not a fetch — and without the
       // invalidation the product just created is simply missing from the list that opens a moment
       // later. That failure does not announce itself: the save succeeded and the toast appeared.
-      await saveProduct.mutateAsync(
+      const saved = await saveProduct.mutateAsync(
         editing
           ? {
               productId: BigInt(productId),
               fields: {
                 teamId,
                 ...record,
+                // A CORRECTION of the code only when the part CHANGED: the server takes one only while the product has
+                // no history, so sending an untouched part would refuse every save of a product that was ever used.
+                ...(typedPart !== storedPart ? { productCodePart: typedPart } : {}),
                 categoryId,
                 // Always sent from this form, because the form always shows it — "absent = leave
                 // alone" is for callers that do not have the field on screen.
@@ -181,6 +198,7 @@ export function ProductEditPage() {
           : {
               fields: {
                 teamId,
+                productCodePart: typedPart,
                 ...record,
                 categoryId,
                 crossMarkupBps: markupBps,
@@ -193,7 +211,9 @@ export function ProductEditPage() {
 
       toaster.create({
         type: "success",
-        title: editing ? t("products.toast.saved") : t("products.toast.created", { sku: record.sku }),
+        title: editing
+          ? t("products.toast.saved")
+          : t("products.toast.created", { productCode: saved.product?.productCode ?? `${prefix}${typedPart}` }),
       });
 
       // SAVE GOES WHERE BACK GOES (owner: *"kembali di button edit samakan dengan yang atas routenya"*,
@@ -201,11 +221,11 @@ export function ProductEditPage() {
       // list as it was. One destination per form, whichever button leaves it.
       void navigate(backTo);
     } catch (err) {
-      // A TAKEN SKU IS SAID UNDER THE SKU (owner). The server answers it with its own code — AlreadyExists, the only
+      // A TAKEN CODE IS SAID UNDER THE CODE (owner). The server answers it with its own code — AlreadyExists, the only
       // one a product write gives for a duplicate (`dbError`) — so it is told apart from every other failure, which
-      // stays a sentence at the top of the page.
+      // stays a sentence at the top of the page: a correction of a used product's code (FailedPrecondition) among them.
       if (err instanceof ConnectError && err.code === Code.AlreadyExists) {
-        setTakenSku(record.sku);
+        setTakenPart(typedPart);
         return;
       }
       setError(rpcError(err));
@@ -236,17 +256,17 @@ export function ProductEditPage() {
   // decimal is not a count. Same treatment as the markup: block it rather than coerce it.
   const lockUsable = lockMode !== "min" || minimumIsUsable(minimum);
 
-  // The SKU the server refused, while it is still the one typed.
-  const skuTaken = takenSku !== null && sku.trim() === takenSku;
+  // The part the server refused, while it is still the one typed.
+  const partTaken = takenPart !== null && part.trim() === takenPart;
 
-  // Category is required; SKU and name too. The backend enforces all three regardless.
+  // Category is required; the code's part and the name too. The backend enforces all three regardless.
   const canSave =
-    sku.trim() !== "" &&
+    part.trim() !== "" &&
     name.trim() !== "" &&
     categoryId > 0n &&
     crossMarkupBps !== null &&
     lockUsable &&
-    !skuTaken;
+    !partTaken;
 
   return (
     // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared). At the canvas's LEFT edge, not
@@ -318,22 +338,35 @@ export function ProductEditPage() {
                       soon as something is typed; the two figures keep their 0, the category says what to pick. */}
                   {/* EVERY LIMIT IS SHOWN, as "5/64" under its field (a-limited-field-shows-its-count) — the box stops at
                       the server's `max_len`, so the limit is met while typing, never as a refusal after Save. */}
-                  <Field.Root required invalid={skuTaken}>
+                  {/* THE TEAM'S CODE STANDS FIXED IN FRONT (the-field-is-product-code-composed-on-write) — an addon, not
+                      text in the box, so it cannot be typed over; the box takes the team's own part, and its count is the
+                      part's limit. */}
+                  <Field.Root required invalid={partTaken}>
                     <Field.Label>{t("products.field.sku")}</Field.Label>
-                    <Input
-                      value={sku}
-                      maxLength={PRODUCT_LIMITS.sku}
-                      placeholder={t("products.form.skuPlaceholder")}
-                      data-testid="product-edit-sku"
-                      onChange={(e) => setSku(e.target.value)}
-                    />
+                    <InputGroup
+                      startAddon={
+                        prefix ? (
+                          <Text as="span" data-testid="product-edit-sku-prefix">
+                            {prefix}
+                          </Text>
+                        ) : undefined
+                      }
+                    >
+                      <Input
+                        value={part}
+                        maxLength={PRODUCT_LIMITS.productCodePart}
+                        placeholder={t("products.form.skuPlaceholder")}
+                        data-testid="product-edit-sku"
+                        onChange={(e) => setCodePart(e.target.value)}
+                      />
+                    </InputGroup>
                     <Flex justify="space-between" align="start" gap="2" w="full">
-                      {skuTaken ? (
+                      {partTaken ? (
                         <Field.ErrorText data-testid="product-edit-sku-taken">{t("products.form.skuTaken")}</Field.ErrorText>
                       ) : (
-                        <span />
+                        <Field.HelperText data-testid="product-edit-sku-help">{t("products.form.skuFixedHelp")}</Field.HelperText>
                       )}
-                      <CharCount value={sku} max={PRODUCT_LIMITS.sku} testId="product-edit-sku-count" />
+                      <CharCount value={part} max={PRODUCT_LIMITS.productCodePart} testId="product-edit-sku-count" />
                     </Flex>
                   </Field.Root>
 

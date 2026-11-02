@@ -54,7 +54,7 @@ func TestRestockActorList_ThePeopleOnTheRows(t *testing.T) {
 			TeamId: team, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
 				// Each team its own product: a restock carries only the team's own (a-restock-carries-only-the-teams-own-products).
-				{ProductId: 100 + team, Sku: "SKU1", Name: "Widget", Count: 2, Total: 200},
+				{ProductId: 100 + team, ProductCode: "SKU1", Name: "Widget", Count: 2, Total: 200},
 			},
 		}))
 		if err != nil {
@@ -152,7 +152,7 @@ func TestRestockActorList_ZeroIsNobody(t *testing.T) {
 
 	resp, err := svc.RestockRequestCreate(ctxUser(7), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: 5,
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100}},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)

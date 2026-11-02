@@ -297,7 +297,7 @@ sequenceDiagram
 
     UI->>SELL: lines - Kopi x 2 by hand, Kopi x 1 from a bundle
     SELL->>SELL: validate each line, then merge by product - Kopi x 3, the price never compared
-    alt two lines of one product disagree on sku or name
+    alt two lines of one product disagree on product code or name
         SELL-->>UI: InvalidArgument naming the product - nothing checked, nothing taken
     else merged
         SELL->>SELL: owners, return maps, credit - on the merged lines
@@ -316,9 +316,9 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| merged on | the product id. The merged line keeps the first line's sku and name, and the request is not modified |
+| merged on | the product id. The merged line keeps the first line's product code and name, and the request is not modified |
 | the price | **not compared, and not read** ([an-order-line-carries-no-marketplace-price](../../business/order/context_decision.md#an-order-line-carries-no-marketplace-price)). Every money field of a line is stamped from the take after the merge, and a line has no price of its own (`unit_price` was dropped by `00028`). So two draft rows of one product at two marketplace prices promote as ONE line and lose nothing: the prices stay on the draft's rows |
-| refused instead | two lines of one product under a different `sku` or `name` — merging would keep one label and drop the other. The form never sends that (the catalogue's label, per product) and Promote reads one catalogue snapshot per product, so only a client sending one product under two labels to `OrderCreate` meets it |
+| refused instead | two lines of one product under a different `product_code` or `name` — merging would keep one label and drop the other. The form never sends that (the catalogue's label, per product) and Promote reads one catalogue snapshot per product, so only a client sending one product under two labels to `OrderCreate` meets it |
 | the form's totals | the order form and the draft page sum their money **per product** (`byProduct`), so a product on two lines is costed as one draw — the figures on screen are the ones the order stores. The rows themselves still show where each came from |
 | passed through | any Connect error the take answers with — its code, message and details. A take that never answered in its own terms (not a Connect error) is still `Internal` |
 | the release | unchanged: a refused take is still released by its key, as every failed placement is |
@@ -628,7 +628,7 @@ what the buyer paid (`00022`, `platform_total`), the buyer's username — seed t
 Promote sends them. The marketplace REF is the draft's `external_id`, seeded the same way; a `manual` draft's
 `external_id` is a minted `form-…` id, so its ref is typed
 ([an-order-ref-is-required-by-the-rpc](../../business/order/context_decision.md#an-order-ref-is-required-by-the-rpc)).
-The catalogue label (`sku`, `name`) is the page's, from the products it mapped.
+The catalogue label (`product_code`, `name`) is the page's, from the products it mapped.
 
 **One transaction, and one order per draft.** `orders` and `order_drafts` are the same service in the same database,
 so the order is written and the draft deleted together (`placeOrder`'s `inTx`). A refused order — no stock, no fee
@@ -686,7 +686,7 @@ sequenceDiagram
     alt the lookup failed
         SELL-->>UI: Unavailable — not placed, try again
     else a borrowed line has no pair
-        SELL-->>UI: FailedPrecondition, naming every unmapped product by SKU
+        SELL-->>UI: FailedPrecondition, naming every unmapped product by its product code
     else every borrowed line is mapped
         SELL->>SELL: the cost read, the credit check, the fee, then the transaction
     end

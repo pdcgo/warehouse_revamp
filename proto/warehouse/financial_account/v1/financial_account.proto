@@ -34,13 +34,29 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/fin
 // as it posts — so a balance compares exactly against zero and against the bank's figure.
 service FinancialAccountService {
   // The team's accounts — name, provider, number, holder, status. NO balance.
-  rpc FinancialAccountList(FinancialAccountListRequest) returns (FinancialAccountListResponse);
+  rpc FinancialAccountList(FinancialAccountListRequest) returns (FinancialAccountListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Accounts a caller already holds the id of — a restock names which account paid. NO balance.
-  rpc FinancialAccountByIds(FinancialAccountByIdsRequest) returns (FinancialAccountByIdsResponse);
+  rpc FinancialAccountByIds(FinancialAccountByIdsRequest) returns (FinancialAccountByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The balances — per account, and a total per type.
-  rpc FinancialAccountOverview(FinancialAccountOverviewRequest) returns (FinancialAccountOverviewResponse);
+  rpc FinancialAccountOverview(FinancialAccountOverviewRequest) returns (FinancialAccountOverviewResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // One account's rows, newest first.
-  rpc FinancialAccountLogList(FinancialAccountLogListRequest) returns (FinancialAccountLogListResponse);
+  rpc FinancialAccountLogList(FinancialAccountLogListRequest) returns (FinancialAccountLogListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   rpc FinancialAccountCreate(FinancialAccountCreateRequest) returns (FinancialAccountCreateResponse);
   rpc FinancialAccountUpdate(FinancialAccountUpdateRequest) returns (FinancialAccountUpdateResponse);
@@ -67,11 +83,23 @@ service FinancialAccountService {
 // balance, and there is no replay and no maintenance service.
 service FinancialAccountAnalyticService {
   // A metric series — daily, monthly or yearly — for the team, or one account.
-  rpc AnalyticTimeSearch(AnalyticTimeSearchRequest) returns (AnalyticTimeSearchResponse);
+  rpc AnalyticTimeSearch(AnalyticTimeSearchRequest) returns (AnalyticTimeSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The RANKING of groups — accounts, providers or change types — over a window. Keys only, sorted.
-  rpc AnalyticGroupSearch(AnalyticGroupSearchRequest) returns (AnalyticGroupSearchResponse);
+  rpc AnalyticGroupSearch(AnalyticGroupSearchRequest) returns (AnalyticGroupSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The metrics for the keys the caller already ranked.
-  rpc AnalyticGroupMetric(AnalyticGroupMetricRequest) returns (AnalyticGroupMetricResponse);
+  rpc AnalyticGroupMetric(AnalyticGroupMetricRequest) returns (AnalyticGroupMetricResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // ---------------------------------------------------------------------------- the vocabulary

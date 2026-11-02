@@ -26,6 +26,7 @@ func (s *Service) WarehouseTransferCreate(
 	msg := req.Msg
 	teamID := msg.GetTeamId()
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 
 	// The rules that span fields, which protovalidate cannot express — checked before anything else.
 	if msg.GetFromWarehouseId() == msg.GetToWarehouseId() {
@@ -100,6 +101,7 @@ func (s *Service) WarehouseTransferCreate(
 			WarehouseID: t.FromWarehouseID,
 			TeamID:      teamID,
 			ActorID:     actor,
+			IsOverride:  override,
 			Description: transferLegDescription(t.ID),
 		}
 
@@ -123,13 +125,13 @@ func (s *Service) WarehouseTransferCreate(
 			total := value[line.GetProductId()]
 
 			items = append(items, models.WarehouseTransferItem{
-				TransferID: t.ID,
-				ProductID:  line.GetProductId(),
-				SKU:        facts[line.GetProductId()].SKU,
-				Name:       facts[line.GetProductId()].Name,
-				Count:      line.GetCount(),
-				PriceUnit:  total / float64(line.GetCount()),
-				Total:      total,
+				TransferID:  t.ID,
+				ProductID:   line.GetProductId(),
+				ProductCode: facts[line.GetProductId()].ProductCode,
+				Name:        facts[line.GetProductId()].Name,
+				Count:       line.GetCount(),
+				PriceUnit:   total / float64(line.GetCount()),
+				Total:       total,
 			})
 		}
 
@@ -148,7 +150,7 @@ func (s *Service) WarehouseTransferCreate(
 			return updateErr
 		}
 
-		return appendTransferLog(tx, t.ID, "", models.TransferCreated, actor, "")
+		return appendTransferLog(tx, t.ID, "", models.TransferCreated, actor, override, "")
 	})
 	if err != nil {
 		return nil, transferErr(err)

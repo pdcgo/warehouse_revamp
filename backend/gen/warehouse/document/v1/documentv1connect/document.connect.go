@@ -89,6 +89,7 @@ func NewDocumentServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+DocumentServiceGetDownloadUrlProcedure,
 			connect.WithSchema(documentServiceMethods.ByName("GetDownloadUrl")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shareDocument: connect.NewClient[v1.ShareDocumentRequest, v1.ShareDocumentResponse](
@@ -175,6 +176,7 @@ func NewDocumentServiceHandler(svc DocumentServiceHandler, opts ...connect.Handl
 		DocumentServiceGetDownloadUrlProcedure,
 		svc.GetDownloadUrl,
 		connect.WithSchema(documentServiceMethods.ByName("GetDownloadUrl")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	documentServiceShareDocumentHandler := connect.NewUnaryHandler(

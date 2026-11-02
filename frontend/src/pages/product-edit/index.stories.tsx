@@ -8,11 +8,13 @@ import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { ProductEditPage } from "./index";
 
 // THE PRODUCT FORM — one page for New (/products/new) and Edit (/products/:id/edit), AS THE SCREEN STANDS TODAY: the
-// gallery beside the record, the SKU, name, description and a LEAF category, the hold-back, the markup another team
-// pays, and the lock. The stub is productStub.ts, writeable, with the server's rule that a SKU is held once among the
-// live — so a story can save and then read back what was sent.
+// gallery beside the record, the product code (the team's code fixed in front, its own part typed), name, description and
+// a LEAF category, the hold-back, the markup another team pays, and the lock. The stub is productStub.ts, writeable, with
+// the server's rules — the code composed as `<team_code>-<part>` and held once over every row, a correction of the part
+// taken only from a product with no history — so a story can save and then read back what was sent.
 //
-//   700  SKU-ANG-001  Minyak Goreng Sawit 2L — Satuan   two pictures, a description, 12.5% markup, 4 held back
+//   team 15  Toko Anggrek, team code SL-03
+//   700  SL-03-ANG-001  Minyak Goreng Sawit 2L — Satuan   two pictures, a description, 12.5% markup, 4 held back; USED
 //   categories        Elektronik › Audio › Headphone, Rumah Tangga › Dapur — only Headphone and Dapur are leaves
 
 function asAnggrekOwner() {
@@ -62,7 +64,7 @@ async function loaded(canvasElement: HTMLElement) {
 
 async function loadedMinyak(canvasElement: HTMLElement) {
   const canvas = await loaded(canvasElement);
-  await waitFor(() => expect(canvas.getByTestId("product-edit-sku")).toHaveValue("SKU-ANG-001"));
+  await waitFor(() => expect(canvas.getByTestId("product-edit-sku")).toHaveValue("ANG-001"));
   return canvas;
 }
 
@@ -224,14 +226,45 @@ export const TheLockSaysWhatEachWayMeans: Story = {
   },
 };
 
-/** Save stays shut until the SKU, the name AND a category are given — the category is the one people forget. */
+/** THE TEAM'S CODE STANDS FIXED IN FRONT (the-field-is-product-code-composed-on-write) — "SL-03-" beside the box, not in
+ * it, so it cannot be typed over; the box takes the team's own part, and what is stored is the two together. On an edit
+ * the part arrives with the prefix taken off. */
+export const TheTeamsCodeStandsInFront: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("product-edit-sku-prefix")).toHaveTextContent("SL-03-"));
+    await expect(canvas.getByTestId("product-edit-sku")).toHaveValue("");
+    await expect(canvas.getByTestId("product-edit-sku-help")).toHaveTextContent("Your team's code is put in front");
+  },
+};
+
+/** A USED product's code is fixed — a sticker can exist — so a correction of its part is refused by the server and said
+ * at the top of the page; the form stays as typed. Its other fields still save, because an untouched part is not sent
+ * (SavingAnEditReturnsToTheProduct). */
+export const AUsedProductsCodeIsFixed: Story = {
+  render: () => <AtEditMinyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loadedMinyak(canvasElement);
+    await expect(canvas.getByTestId("product-edit-sku-prefix")).toHaveTextContent("SL-03-");
+
+    await retype(canvas.getByTestId("product-edit-sku"), "ANG-001-B");
+    await userEvent.click(canvas.getByTestId("product-edit-save"));
+
+    await waitFor(() => expect(canvas.getByTestId("product-edit-error")).toHaveTextContent("its code is fixed"));
+    await expect(canvas.queryByTestId("at-products")).toBeNull();
+    await expect(liveProducts().find((p) => p.id === 700n)!.productCode).toBe("SL-03-ANG-001");
+  },
+};
+
+/** Save stays shut until the code, the name AND a category are given — the category is the one people forget. */
 export const SaveWaitsForTheRequired: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const save = canvas.getByTestId("product-edit-save");
 
     await expect(save).toBeDisabled();
-    await userEvent.type(canvas.getByTestId("product-edit-sku"), "SKU-ANG-045", { delay: 30 });
+    await userEvent.type(canvas.getByTestId("product-edit-sku"), "ANG-045", { delay: 30 });
     await userEvent.type(canvas.getByTestId("product-edit-name"), "Minyak Goreng Sawit 5L — Jeriken", { delay: 30 });
     await expect(save).toBeDisabled();
 
@@ -271,7 +304,7 @@ export const CreatingLandsOnTheList: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.type(canvas.getByTestId("product-edit-sku"), "SKU-ANG-045", { delay: 30 });
+    await userEvent.type(canvas.getByTestId("product-edit-sku"), "ANG-045", { delay: 30 });
     await userEvent.type(canvas.getByTestId("product-edit-name"), "Minyak Goreng Sawit 5L — Jeriken", { delay: 30 });
     await pickDapur(canvas);
     await userEvent.type(canvas.getByTestId("product-edit-cross-markup"), "7.5", { delay: 30 });
@@ -285,7 +318,8 @@ export const CreatingLandsOnTheList: Story = {
     await userEvent.click(canvas.getByTestId("product-edit-save"));
     await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
 
-    const created = liveProducts().find((p) => p.sku === "SKU-ANG-045");
+    // Stored under the team's code — the part typed was ANG-045.
+    const created = liveProducts().find((p) => p.productCode === "SL-03-ANG-045");
     await expect(created).toMatchObject({
       teamId: 15n,
       name: "Minyak Goreng Sawit 5L — Jeriken",
@@ -299,18 +333,20 @@ export const CreatingLandsOnTheList: Story = {
   },
 };
 
-/** A SKU a live product already holds is refused by the server — and said UNDER THE SKU, not at the top of the page: the
- * field turns red, Save stays shut while that SKU stands, and changing it clears both. The form stays as typed. */
-export const ATakenSkuIsSaidUnderTheSku: Story = {
+/** A code another product already holds — an archived one too, which keeps its code — is refused by the server, and said
+ * UNDER THE CODE, not at the top of the page: the field turns red, Save stays shut while that part stands, and changing
+ * it clears both. The form stays as typed. */
+export const ATakenCodeIsSaidUnderTheCode: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.type(canvas.getByTestId("product-edit-sku"), "SKU-ANG-002", { delay: 30 });
+    // ANG-001-L is 790's, the ARCHIVED older pack: archiving does not free a code.
+    await userEvent.type(canvas.getByTestId("product-edit-sku"), "ANG-001-L", { delay: 30 });
     await userEvent.type(canvas.getByTestId("product-edit-name"), "Minyak Goreng Sawit 2L — Karton Baru", { delay: 30 });
     await pickDapur(canvas);
     await userEvent.click(canvas.getByTestId("product-edit-save"));
 
-    await waitFor(() => expect(canvas.getByTestId("product-edit-sku-taken")).toHaveTextContent("already uses this product code"));
+    await waitFor(() => expect(canvas.getByTestId("product-edit-sku-taken")).toHaveTextContent("already taken"));
     await expect(canvas.queryByTestId("product-edit-error")).toBeNull();
     await expect(canvas.queryByTestId("at-products")).toBeNull();
     await expect(canvas.getByTestId("product-edit-name")).toHaveValue("Minyak Goreng Sawit 2L — Karton Baru");
@@ -322,14 +358,14 @@ export const ATakenSkuIsSaidUnderTheSku: Story = {
   },
 };
 
-/** EVERY LIMIT IS SHOWN (a-limited-field-shows-its-count) — "5/64" under the SKU, the name and the description, the box
- * stopping at the server's limit; an edit counts what it arrived with. */
+/** EVERY LIMIT IS SHOWN (a-limited-field-shows-its-count) — "5/64" under the code's part, the name and the description,
+ * the box stopping at the server's limit; an edit counts what it arrived with — the part, the team's code not counted. */
 export const EveryLimitIsShown: Story = {
   render: () => <AtEditMinyak />,
   play: async ({ canvasElement }) => {
     const canvas = await loadedMinyak(canvasElement);
 
-    await expect(canvas.getByTestId("product-edit-sku-count")).toHaveTextContent("11/64");
+    await expect(canvas.getByTestId("product-edit-sku-count")).toHaveTextContent("7/64");
     await expect(canvas.getByTestId("product-edit-name-count")).toHaveTextContent(
       `${"Minyak Goreng Sawit 2L — Satuan".length}/200`,
     );
@@ -344,18 +380,18 @@ export const EveryLimitIsShown: Story = {
   },
 };
 
-/** What is sent is TRIMMED — a space typed before or after a SKU would otherwise store a second SKU nobody can see. */
+/** What is sent is TRIMMED — a space typed before or after the part would otherwise store a second code nobody can see. */
 export const WhatIsSentIsTrimmed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.type(canvas.getByTestId("product-edit-sku"), "  SKU-ANG-046 ", { delay: 30 });
+    await userEvent.type(canvas.getByTestId("product-edit-sku"), "  ANG-046 ", { delay: 30 });
     await userEvent.type(canvas.getByTestId("product-edit-name"), " Gula Aren Cair 500ml ", { delay: 30 });
     await pickDapur(canvas);
     await userEvent.click(canvas.getByTestId("product-edit-save"));
     await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
 
-    await expect(liveProducts().find((p) => p.sku === "SKU-ANG-046")).toMatchObject({ name: "Gula Aren Cair 500ml" });
+    await expect(liveProducts().find((p) => p.productCode === "SL-03-ANG-046")).toMatchObject({ name: "Gula Aren Cair 500ml" });
   },
 };
 

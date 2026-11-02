@@ -18,14 +18,14 @@ func toProto(p *product_service_models.Product) *productv1.Product {
 	return &productv1.Product{
 		Id:                       p.ID,
 		TeamId:                   p.TeamID,
-		Sku:                      p.SKU,
+		ProductCode:              p.ProductCode,
 		Name:                     p.Name,
 		Description:              p.Description,
 		CategoryId:               p.CategoryID,
 		DefaultImageUrl:          p.DefaultImageURL,
 		DefaultImageThumbnailUrl: p.DefaultImageThumbnailURL,
 		Images:                   images,
-		Deleted:                  p.Deleted,
+		Archived:                 p.Archived,
 		CrossMarkupBps:           p.CrossMarkupBps,
 		CrossLocked:              p.CrossLocked,
 		ReservedStock:            p.ReservedStock,
@@ -64,13 +64,13 @@ func productRowItem(p *product_service_models.Product) *productv1.ProductRowItem
 	return &productv1.ProductRowItem{
 		Id:                       p.ID,
 		TeamId:                   p.TeamID,
-		Sku:                      p.SKU,
+		ProductCode:              p.ProductCode,
 		Name:                     p.Name,
 		Description:              p.Description,
 		CategoryId:               p.CategoryID,
 		DefaultImageUrl:          p.DefaultImageURL,
 		DefaultImageThumbnailUrl: p.DefaultImageThumbnailURL,
-		Deleted:                  p.Deleted,
+		Archived:                 p.Archived,
 		CrossMarkupBps:           p.CrossMarkupBps,
 		CrossLocked:              p.CrossLocked,
 		ReservedStock:            p.ReservedStock,
@@ -97,8 +97,8 @@ func productOrderClause(sort *productv1.ProductListFilterSort) string {
 			switch s.Product {
 			case productv1.ProductRowSort_PRODUCT_ROW_SORT_NAME:
 				col = "name"
-			case productv1.ProductRowSort_PRODUCT_ROW_SORT_SKU:
-				col = "sku"
+			case productv1.ProductRowSort_PRODUCT_ROW_SORT_PRODUCT_CODE:
+				col = "product_code"
 			case productv1.ProductRowSort_PRODUCT_ROW_SORT_ID:
 				col = "id"
 			}

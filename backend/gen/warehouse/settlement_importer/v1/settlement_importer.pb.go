@@ -2502,13 +2502,13 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"\x17UploadedFileLineRowSort\x12+\n" +
 	"'UPLOADED_FILE_LINE_ROW_SORT_UNSPECIFIED\x10\x00\x12+\n" +
 	"'UPLOADED_FILE_LINE_ROW_SORT_OCCURRED_ON\x10\x01\x12&\n" +
-	"\"UPLOADED_FILE_LINE_ROW_SORT_CHANGE\x10\x022\x8e\x06\n" +
+	"\"UPLOADED_FILE_LINE_ROW_SORT_CHANGE\x10\x022\x9d\x06\n" +
 	"\x19SettlementImporterService\x12\x9d\x01\n" +
 	"\x16TiktokSettlementImport\x12?.warehouse.settlement_importer.v1.TiktokSettlementImportRequest\x1a@.warehouse.settlement_importer.v1.TiktokSettlementImportResponse0\x01\x12\x9d\x01\n" +
-	"\x16ShopeeSettlementImport\x12?.warehouse.settlement_importer.v1.ShopeeSettlementImportRequest\x1a@.warehouse.settlement_importer.v1.ShopeeSettlementImportResponse0\x01\x12\x89\x01\n" +
-	"\x10UploadedFileList\x129.warehouse.settlement_importer.v1.UploadedFileListRequest\x1a:.warehouse.settlement_importer.v1.UploadedFileListResponse\x12\x8c\x01\n" +
-	"\x11UploadedFileByIds\x12:.warehouse.settlement_importer.v1.UploadedFileByIdsRequest\x1a;.warehouse.settlement_importer.v1.UploadedFileByIdsResponse\x12\x95\x01\n" +
-	"\x14UploadedFileLineList\x12=.warehouse.settlement_importer.v1.UploadedFileLineListRequest\x1a>.warehouse.settlement_importer.v1.UploadedFileLineListResponseBfZdgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement_importer/v1;settlement_importerv1b\x06proto3"
+	"\x16ShopeeSettlementImport\x12?.warehouse.settlement_importer.v1.ShopeeSettlementImportRequest\x1a@.warehouse.settlement_importer.v1.ShopeeSettlementImportResponse0\x01\x12\x8e\x01\n" +
+	"\x10UploadedFileList\x129.warehouse.settlement_importer.v1.UploadedFileListRequest\x1a:.warehouse.settlement_importer.v1.UploadedFileListResponse\"\x03\x90\x02\x01\x12\x91\x01\n" +
+	"\x11UploadedFileByIds\x12:.warehouse.settlement_importer.v1.UploadedFileByIdsRequest\x1a;.warehouse.settlement_importer.v1.UploadedFileByIdsResponse\"\x03\x90\x02\x01\x12\x9a\x01\n" +
+	"\x14UploadedFileLineList\x12=.warehouse.settlement_importer.v1.UploadedFileLineListRequest\x1a>.warehouse.settlement_importer.v1.UploadedFileLineListResponse\"\x03\x90\x02\x01BfZdgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement_importer/v1;settlement_importerv1b\x06proto3"
 
 var (
 	file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDescOnce sync.Once

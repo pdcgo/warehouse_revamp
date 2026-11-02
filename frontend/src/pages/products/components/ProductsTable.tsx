@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fromHere } from "../../../lib/cameFrom";
 import { Badge, Box, Button, Flex, HStack, Icon, Portal, SimpleGrid, Stack, Table, Text, Tooltip } from "@chakra-ui/react";
-import { Archive, Package, Pencil, Plus, RotateCcw, SearchX } from "lucide-react";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Archive, Package, Pencil, Plus, RotateCcw, SearchX, Trash2 } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
 import { ProductStatus } from "../../../gen/warehouse/product/v1/product_pb";
@@ -21,7 +20,8 @@ import {
   type ProductSortKey,
   useArchiveProduct,
   useProducts,
-  useRestoreProduct,
+  useDeleteProduct,
+  useUnarchiveProduct,
   useSetProductLock,
 } from "../../../features/products/queries";
 import { useIsMobile } from "../../../layouts/shell";
@@ -29,9 +29,9 @@ import { formatUnixDate } from "../../../lib/datetime";
 import { formatMarkup, withMarkup } from "../../../lib/markup";
 import { formatRupiah, formatRupiahRange } from "../../../lib/money";
 import { PRESSABLE } from "../../../lib/motion";
-import { RestoreProductDialog } from "../../../features/products/RestoreProductDialog";
 import { ProductLockControl } from "../../../features/products/ProductLock";
 import { QUIET_SALE_DAYS, STALE_STOCK_DAYS, daysAgo } from "../../../features/products/stockAge";
+import { useCanWrite } from "../../../features/team/TeamContext";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -83,13 +83,13 @@ function ReadyCell({
   qty,
   value,
   lastOrderUnix,
-  sku,
+  productCode,
   phone = false,
 }: {
   qty?: bigint;
   value?: bigint;
   lastOrderUnix?: bigint;
-  sku: string;
+  productCode: string;
   /** A phone block's fact: start-aligned, the worth beside the units rather than on a title nobody can hover. */
   phone?: boolean;
 }) {
@@ -112,7 +112,7 @@ function ReadyCell({
         never={t("products.table.noOrderYet")}
         quietAfterDays={QUIET_SALE_DAYS}
         quietHint={t("products.table.quietHint", { days: QUIET_SALE_DAYS })}
-        testId={`last-order-${sku}`}
+        testId={`last-order-${productCode}`}
       />
     </Stack>
   );
@@ -171,12 +171,12 @@ function SecondLine({
 function CostCell({
   stock,
   markupBps,
-  sku,
+  productCode,
   phone = false,
 }: {
   stock?: { costKnown: boolean; costMin: bigint; costMax: bigint };
   markupBps: number;
-  sku: string;
+  productCode: string;
   /** A phone block's fact: start-aligned. */
   phone?: boolean;
 }) {
@@ -196,7 +196,7 @@ function CostCell({
       <SecondLine
         hint={t("products.table.crossPriceHint")}
         value={formatRupiahRange(withMarkup(stock.costMin, markupBps), withMarkup(stock.costMax, markupBps))}
-        testId={`cross-price-${sku}`}
+        testId={`cross-price-${productCode}`}
       />
     </Stack>
   );
@@ -294,13 +294,13 @@ function OngoingCell({
   qty,
   value,
   lastRestockUnix,
-  sku,
+  productCode,
   align = "end",
 }: {
   qty?: bigint;
   value?: bigint;
   lastRestockUnix?: bigint;
-  sku: string;
+  productCode: string;
   align?: "start" | "end";
 }) {
   const { t } = useTranslation();
@@ -318,7 +318,7 @@ function OngoingCell({
         unix={lastRestockUnix}
         hint={t("products.table.lastRestock")}
         never={t("products.table.neverRestocked")}
-        testId={`last-restock-${sku}`}
+        testId={`last-restock-${productCode}`}
       />
     </Stack>
   );
@@ -379,12 +379,11 @@ export function ProductsTable({
   const page = paging.question === question ? paging.page : 1;
   const setPage = (next: number) => setPaging({ question, page: next });
   const [pageSize, setPageSize] = useState(20);
-  // The archived product whose restore was refused because its SKU is taken, plus what the server said. Held here rather
-  // than inside the row so the dialog survives the list refetching under it.
-  const [conflict, setConflict] = useState<{ product: Product; reason: string } | null>(null);
 
   const isWarehouse = mode === "warehouse";
   const isArchived = mode === "archived";
+  // While the admin team monitors the team, a row offers nothing and the lock only reads.
+  const writable = useCanWrite();
 
   const query = useProducts({
     teamId,
@@ -398,7 +397,8 @@ export function ProductsTable({
     sort: isWarehouse ? null : sort,
   });
   const archiveProduct = useArchiveProduct();
-  const restoreProduct = useRestoreProduct();
+  const restoreProduct = useUnarchiveProduct();
+  const deleteProduct = useDeleteProduct();
   const setLock = useSetProductLock();
 
   const products = query.data?.products ?? [];
@@ -421,7 +421,7 @@ export function ProductsTable({
 
     try {
       await archiveProduct.mutateAsync({ teamId, productId: product.id });
-      toaster.create({ type: "success", title: t("products.toast.archived", { sku: product.sku }) });
+      toaster.create({ type: "success", title: t("products.toast.archived", { productCode: product.productCode }) });
     } catch (err) {
       toaster.create({
         type: "error",
@@ -431,24 +431,32 @@ export function ProductsTable({
     }
   }
 
-  // `sku` empty = restore under the SKU it was archived with; that is the call that can come back AlreadyExists, and the
-  // only sane answer to that is to let the user pick a free one.
-  async function restore(product: Product, sku?: string) {
+  // DELETE, for good — offered on the Archived view, where a typo or a duplicate goes first. Only a product with no
+  // history is deleted; any other is refused, and the server's reason (archive it instead) is the toast.
+  async function remove(product: Product) {
     if (teamId === undefined) {
       return;
     }
 
     try {
-      await restoreProduct.mutateAsync({ teamId, productId: product.id, sku });
-      setConflict(null);
-      toaster.create({ type: "success", title: t("products.toast.restored", { sku: sku || product.sku }) });
+      await deleteProduct.mutateAsync({ teamId, productId: product.id });
+      toaster.create({ type: "success", title: t("products.toast.deleted", { productCode: product.productCode }) });
     } catch (err) {
-      if (ConnectError.from(err).code === Code.AlreadyExists) {
-        setConflict({ product, reason: rpcError(err) });
+      toaster.create({ type: "error", title: t("products.toast.deleteFailed"), description: rpcError(err) });
+    }
+  }
 
-        return;
-      }
+  // UNARCHIVE — under the code it kept: an archived product holds its code, so nothing can collide on the way back
+  // (the-field-is-product-code-composed-on-write).
+  async function restore(product: Product) {
+    if (teamId === undefined) {
+      return;
+    }
 
+    try {
+      await restoreProduct.mutateAsync({ teamId, productId: product.id });
+      toaster.create({ type: "success", title: t("products.toast.restored", { productCode: product.productCode }) });
+    } catch (err) {
       toaster.create({
         type: "error",
         title: t("products.toast.restoreFailed"),
@@ -499,14 +507,14 @@ export function ProductsTable({
   // catalogue it would be your own name on every row.
   function productItem(product: Product) {
     return (
-      <Box data-testid={`open-product-${product.sku}`} minW={isMobile ? "0" : "15rem"}>
+      <Box data-testid={`open-product-${product.productCode}`} minW={isMobile ? "0" : "15rem"}>
         <ProductListItem
           product={
             isWarehouse
               ? product
               : {
                   id: product.id,
-                  sku: product.sku,
+                  productCode: product.productCode,
                   name: product.name,
                   defaultImageUrl: product.defaultImageUrl,
                   defaultImageThumbnailUrl: product.defaultImageThumbnailUrl,
@@ -514,7 +522,7 @@ export function ProductsTable({
           }
           // THE SKU COPIES on a click (owner: *"sku copyable"*) — it is carried into marketplace listings and suppliers'
           // sheets; the click does not open the row.
-          skuCopyable
+          productCodeCopyable
         />
       </Box>
     );
@@ -529,9 +537,9 @@ export function ProductsTable({
       <ProductLockControl
         product={product}
         totalReady={warehouseId === 0n ? stockOf(product)?.readyQty : undefined}
-        editable={mode === "active"}
+        editable={mode === "active" && writable}
         onSave={(fields) => saveLock(product, fields)}
-        testId={`lock-${product.sku}`}
+        testId={`lock-${product.productCode}`}
       />
     );
   }
@@ -540,6 +548,8 @@ export function ProductsTable({
   // block's foot. A warehouse HANDLES these products; it does not own them (#142): editing or archiving somebody else's
   // catalogue entry is not its call, and the writes are scoped to the OWNING team, so they would only ever be refused.
   function actions(product: Product) {
+    if (!writable) return null;
+
     return (
       <HStack justify="end" gap="1.5">
         {mode === "active" && (
@@ -547,7 +557,7 @@ export function ProductsTable({
             <Button
               size="xs"
               variant="outline"
-              data-testid={`edit-${product.sku}`}
+              data-testid={`edit-${product.productCode}`}
               onClick={() => navigate(`/products/${product.id}/edit`, { state: fromHere(location) })}
             >
               <Icon as={Pencil} boxSize="4" />
@@ -556,11 +566,11 @@ export function ProductsTable({
 
             <ConfirmDialog
               title={t("products.archiveDialog.title")}
-              message={t("products.archiveDialog.message", { sku: product.sku })}
+              message={t("products.archiveDialog.message", { productCode: product.productCode })}
               confirmLabel={t("products.archiveDialog.confirmLabel")}
               onConfirm={() => archive(product)}
               trigger={
-                <Button size="xs" variant="outline" colorPalette="error" data-testid={`delete-${product.sku}`}>
+                <Button size="xs" variant="outline" colorPalette="error" data-testid={`archive-${product.productCode}`}>
                   <Icon as={Archive} boxSize="4" />
                   {t("products.archive")}
                 </Button>
@@ -570,10 +580,26 @@ export function ProductsTable({
         )}
 
         {isArchived && (
-          <Button size="xs" variant="outline" data-testid={`restore-${product.sku}`} onClick={() => restore(product)}>
-            <Icon as={RotateCcw} boxSize="4" />
-            {t("products.restore")}
-          </Button>
+          <>
+            <Button size="xs" variant="outline" data-testid={`restore-${product.productCode}`} onClick={() => restore(product)}>
+              <Icon as={RotateCcw} boxSize="4" />
+              {t("products.restore")}
+            </Button>
+
+            {/* DELETE confirms: it cannot be undone. Refused for a product with any history. */}
+            <ConfirmDialog
+              title={t("products.deleteDialog.title")}
+              message={t("products.deleteDialog.message", { productCode: product.productCode })}
+              confirmLabel={t("products.deleteDialog.confirmLabel")}
+              onConfirm={() => remove(product)}
+              trigger={
+                <Button size="xs" variant="outline" colorPalette="error" data-testid={`delete-${product.productCode}`}>
+                  <Icon as={Trash2} boxSize="4" />
+                  {t("products.delete")}
+                </Button>
+              }
+            />
+          </>
         )}
       </HStack>
     );
@@ -637,7 +663,7 @@ export function ProductsTable({
           {products.map((product) => (
             <Stack
               key={product.id.toString()}
-              data-testid={`product-row-${product.sku}`}
+              data-testid={`product-row-${product.productCode}`}
               borderWidth="1px"
               borderRadius="md"
               p="3"
@@ -653,7 +679,7 @@ export function ProductsTable({
                     qty={stockOf(product)?.readyQty}
                     value={stockOf(product)?.readyValue}
                     lastOrderUnix={activityOf(product)?.lastOrderUnix}
-                    sku={product.sku}
+                    productCode={product.productCode}
                     phone
                   />
                 </Fact>
@@ -662,7 +688,7 @@ export function ProductsTable({
                     qty={stockOf(product)?.ongoingQty}
                     value={stockOf(product)?.ongoingValueEst}
                     lastRestockUnix={stockOf(product)?.lastRestockUnix}
-                    sku={product.sku}
+                    productCode={product.productCode}
                     align="start"
                   />
                 </Fact>
@@ -671,7 +697,7 @@ export function ProductsTable({
                   <CrossCell markupBps={product.crossMarkupBps} />
                 </Fact>
                 <Fact label={scoped(t("products.table.priceRange"))}>
-                  <CostCell stock={stockOf(product)} markupBps={product.crossMarkupBps} sku={product.sku} phone />
+                  <CostCell stock={stockOf(product)} markupBps={product.crossMarkupBps} productCode={product.productCode} phone />
                 </Fact>
                 <Fact label={scoped(t("products.table.stockAge"))}>
                   <StockAgeCell unix={stockOf(product)?.oldestBatchUnix} />
@@ -733,18 +759,18 @@ export function ProductsTable({
             {products.map((product) => (
               <Table.Row
                 key={product.id.toString()}
-                data-testid={`product-row-${product.sku}`}
+                data-testid={`product-row-${product.productCode}`}
                 cursor={opens ? "pointer" : undefined}
                 css={LIGHTS_UP}
                 onClick={() => openRow(product)}
               >
                 <Table.Cell>{productItem(product)}</Table.Cell>
 
-                <Table.Cell textAlign="end" data-testid={`cross-${product.sku}`}>
+                <Table.Cell textAlign="end" data-testid={`cross-${product.productCode}`}>
                   <CrossCell markupBps={product.crossMarkupBps} />
                 </Table.Cell>
                 <Table.Cell textAlign="end">
-                  <CostCell stock={stockOf(product)} markupBps={product.crossMarkupBps} sku={product.sku} />
+                  <CostCell stock={stockOf(product)} markupBps={product.crossMarkupBps} productCode={product.productCode} />
                 </Table.Cell>
                 {/* The lock's popover must not also open the row. */}
                 <Table.Cell onClick={(e) => e.stopPropagation()}>{lockControl(product)}</Table.Cell>
@@ -753,7 +779,7 @@ export function ProductsTable({
                     qty={stockOf(product)?.readyQty}
                     value={stockOf(product)?.readyValue}
                     lastOrderUnix={activityOf(product)?.lastOrderUnix}
-                    sku={product.sku}
+                    productCode={product.productCode}
                   />
                 </Table.Cell>
                 <Table.Cell textAlign="end">
@@ -761,10 +787,10 @@ export function ProductsTable({
                     qty={stockOf(product)?.ongoingQty}
                     value={stockOf(product)?.ongoingValueEst}
                     lastRestockUnix={stockOf(product)?.lastRestockUnix}
-                    sku={product.sku}
+                    productCode={product.productCode}
                   />
                 </Table.Cell>
-                <Table.Cell data-testid={`stock-age-${product.sku}`}>
+                <Table.Cell data-testid={`stock-age-${product.productCode}`}>
                   <StockAgeCell unix={stockOf(product)?.oldestBatchUnix} />
                 </Table.Cell>
 
@@ -811,13 +837,6 @@ export function ProductsTable({
           setPage(1);
         }}
         testId="products-pager"
-      />
-
-      <RestoreProductDialog
-        product={conflict?.product ?? null}
-        reason={conflict?.reason ?? ""}
-        onClose={() => setConflict(null)}
-        onRestore={(sku) => restore(conflict!.product, sku)}
       />
     </Stack>
   );

@@ -68,8 +68,10 @@ func (s *Service) postWithdrawal(ctx context.Context, event *eventsv1.Event, pos
 			change:      -float64(posted.GetChange()),
 			description: description,
 			occurredAt:  occurredAt,
-			// A row a listener posted names the person settlement says is answerable for it.
-			actorID: posted.GetActorId(),
+			// A row a listener posted names the person settlement says is answerable for it — and whether settlement
+			// stamped that person's row an override (an-override-is-stamped-in-every-service).
+			actorID:    posted.GetActorId(),
+			isOverride: posted.GetActorIsOverride(),
 		})
 
 		return err

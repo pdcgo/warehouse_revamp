@@ -120,7 +120,7 @@ export function RestockLabelsPage() {
   }, [labels, mode]);
 
   const productCount = useMemo(
-    () => new Set(labels.map((l) => l.sku)).size,
+    () => new Set(labels.map((l) => l.productCode)).size,
     [labels],
   );
 
@@ -431,7 +431,7 @@ function LabelCard({
   receivedOn: string;
 }) {
   const { label } = entry;
-  const payload = `${label.sku}/${label.batchId.toString()}`;
+  const payload = `${label.productCode}/${label.batchId.toString()}`;
 
   const meta: string[] = [];
   if (entry.copyTotal > 1) meta.push(`${entry.copyIndex}/${entry.copyTotal}`);

@@ -25,9 +25,17 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/pro
 //            SELLING_CS must be the bundle's creator. The proto cannot say "only your own" — see BundleUpdateRequest.
 service BundleService {
   // A page of the team's bundles, each with its lines. Feeds the Bundles page and the order form's bundle search.
-  rpc BundleList(BundleListRequest) returns (BundleListResponse);
+  rpc BundleList(BundleListRequest) returns (BundleListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The team's bundles by id. Feeds the bundle page.
-  rpc BundleByIds(BundleByIdsRequest) returns (BundleByIdsResponse);
+  rpc BundleByIds(BundleByIdsRequest) returns (BundleByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc BundleCreate(BundleCreateRequest) returns (BundleCreateResponse);
   // Replaces the name, the description and ALL the lines at once.
   rpc BundleUpdate(BundleUpdateRequest) returns (BundleUpdateResponse);

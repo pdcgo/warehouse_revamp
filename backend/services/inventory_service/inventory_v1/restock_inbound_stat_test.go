@@ -14,7 +14,7 @@ import (
 //
 // Four numbers, and each one has a way of being wrong that the others do not catch:
 //
-//   - product_count counts DISTINCT products, so the same SKU on two deliveries is one thing to shelve.
+//   - product_count counts DISTINCT products, so the same product on two deliveries is one thing to shelve.
 //     Counting lines instead reports two, and the tile then always agrees with unit_count's shape and
 //     never with reality.
 //   - unit_count and amount are Σ over the lines of PENDING restocks only. A fulfilled delivery has
@@ -59,12 +59,12 @@ func TestRestockInboundStat(t *testing.T) {
 
 	widget := func(qty, total int64) *inventoryv1.RestockRequestItem {
 		return &inventoryv1.RestockRequestItem{
-			ProductId: 100, Sku: "SKU-W", Name: "Widget", Count: qty, Total: float64(total),
+			ProductId: 100, ProductCode: "SKU-W", Name: "Widget", Count: qty, Total: float64(total),
 		}
 	}
 	gadget := func(qty, total int64) *inventoryv1.RestockRequestItem {
 		return &inventoryv1.RestockRequestItem{
-			ProductId: 200, Sku: "SKU-G", Name: "Gadget", Count: qty, Total: float64(total),
+			ProductId: 200, ProductCode: "SKU-G", Name: "Gadget", Count: qty, Total: float64(total),
 		}
 	}
 
@@ -170,7 +170,7 @@ func TestRestockInboundStat_ScopedToTheReceivingWarehouse(t *testing.T) {
 	_, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: seller, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU-W", Name: "Widget", Count: 10, Total: 100_000},
+			{ProductId: 100, ProductCode: "SKU-W", Name: "Widget", Count: 10, Total: 100_000},
 		},
 	}))
 	if err != nil {

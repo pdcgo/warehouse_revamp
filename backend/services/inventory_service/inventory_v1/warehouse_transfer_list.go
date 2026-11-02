@@ -101,7 +101,7 @@ func (s *Service) WarehouseTransferList(
 }
 
 // applyTransferSearch narrows by free text over its number (a whole id only, with or without its #), the tracking
-// number, and a line's SKU or name. The lines match with EXISTS, so a transfer is never counted once per matching line.
+// number, and a line's product code or name. The lines match with EXISTS, so a transfer is never counted once per matching line.
 func applyTransferSearch(query *gorm.DB, q string) *gorm.DB {
 	q = strings.TrimSpace(q)
 	if q == "" {
@@ -113,7 +113,7 @@ func applyTransferSearch(query *gorm.DB, q string) *gorm.DB {
 	conditions := []string{
 		"LOWER(receipt) LIKE ?",
 		"EXISTS (SELECT 1 FROM warehouse_transfer_items i " +
-			"WHERE i.transfer_id = warehouse_transfers.id AND (LOWER(i.sku) LIKE ? OR LOWER(i.name) LIKE ?))",
+			"WHERE i.transfer_id = warehouse_transfers.id AND (LOWER(i.product_code) LIKE ? OR LOWER(i.name) LIKE ?))",
 	}
 	args := []any{like, like, like}
 

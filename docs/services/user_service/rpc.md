@@ -182,3 +182,39 @@ with no phone, so it can't be used to enumerate accounts. `ResetPasswordWithOtp`
 — the user logs in fresh.
 
 Code: `backend/services/user_service/user_v1/{team_access_list,user_teams,request_password_reset_otp,reset_password_with_otp}.go`.
+
+## Connecting an AI agent — OAuth, then its own credential
+
+An agent (ChatGPT, Claude) connects to the MCP by URL ([our-server-hosts-the-mcp](../../business/mcp/context_decision.md#our-server-hosts-the-mcp)). Its OAuth is ours: the endpoints
+are plain HTTP in `user_service/agent_oauth`, the rules in `agent_credentials`, the person's half is `AgentService`.
+
+```mermaid
+sequenceDiagram
+  participant A as the agent
+  participant O as agent_oauth - /oauth, /.well-known
+  participant P as the app - /connect-agent
+  participant S as AgentService
+  participant DB as agent_* tables
+  A->>O: POST /mcp with no bearer — 401 names the resource metadata
+  A->>O: GET the metadata, POST /oauth/register
+  O->>DB: a public client — its exact redirects
+  A->>O: the browser opens /oauth/authorize — PKCE S256
+  O->>P: 302 — an unknown client or redirect gets a page, never a redirect
+  P->>S: AgentClientDetail — who asks, and is the redirect its own
+  P->>S: AgentConnect — the person names it and picks the team
+  S->>S: may this person connect this team — owner and admin, CS and staff once allowed, every team for root alone
+  S->>DB: a one-time code, 5 minutes
+  S-->>P: the agent's redirect with the code and its state
+  A->>O: POST /oauth/token — the code and the PKCE verifier
+  O->>DB: spend the code and mint the credential, one transaction
+  O-->>A: its own bearer, wha_…, 90 days
+```
+
+| | |
+| --- | --- |
+| the bearer | `wha_` + 32 random bytes; only its SHA-256 is kept. A JWT never starts with it, so the interceptor knows which check to run |
+| read-only | the access interceptor refuses any RPC not declared `idempotency_level = NO_SIDE_EFFECTS` for an agent's bearer — before the handler ([an-agent-only-reads-for-now](../../business/mcp/context_decision.md#an-agent-only-reads-for-now)) |
+| one team | a credential's calls must scope its team; root's every-team credential reads while its person still holds the bypass ([a-roots-agent-reads-every-team](../../business/mcp/context_decision.md#a-roots-agent-reads-every-team)) |
+| a code | spent once, by the statement that reads it; a wrong verifier spends it too |
+| revoke | `AgentConnectionRevoke` (mine) or `AgentConnectionTeamRevoke` (the owner's) stamp `revoked_at`; the next call is a 401 — no cache in between |
+| no refresh | 90 days, then the person connects again |

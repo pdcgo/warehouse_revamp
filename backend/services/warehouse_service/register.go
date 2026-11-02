@@ -19,9 +19,12 @@ func NewRegister(
 ) san_grpc.RegisterHandler {
 	return func() san_grpc.ServiceReflectNames {
 		mux.Handle(warehousev1connect.NewWarehouseFeeServiceHandler(warehouse, opts))
+		// The warehouse PROFILE — hours, location, closures (the-warehouse-profile-lives-in-warehouse-service).
+		mux.Handle(warehousev1connect.NewWarehouseInfoServiceHandler(warehouse, opts))
 
 		return san_grpc.ServiceReflectNames{
 			warehousev1connect.WarehouseFeeServiceName,
+			warehousev1connect.WarehouseInfoServiceName,
 		}
 	}
 }

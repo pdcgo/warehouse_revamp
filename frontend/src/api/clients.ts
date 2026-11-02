@@ -1,5 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import { AuthService, UserService } from "../gen/warehouse/user/v1/user_pb";
+import { AgentService } from "../gen/warehouse/user/v1/agent_pb";
 import { TeamService } from "../gen/warehouse/team/v1/team_pb";
 import { ProductService } from "../gen/warehouse/product/v1/product_pb";
 import { BundleService } from "../gen/warehouse/product/v1/bundle_pb";
@@ -9,6 +10,7 @@ import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
 import { OrderAnalyticService } from "../gen/warehouse/selling/v1/order_analytic_pb";
 import { TeamReturnConfigurationService } from "../gen/warehouse/selling/v1/return_configuration_pb";
 import { WarehouseFeeService } from "../gen/warehouse/warehouse/v1/warehouse_fee_pb";
+import { WarehouseInfoService } from "../gen/warehouse/warehouse/v1/warehouse_info_pb";
 import { ShipmentChannelService } from "../gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptService } from "../gen/warehouse/shipment/v1/receipt_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
@@ -41,6 +43,9 @@ import { transport } from "../transport";
 // TEAM is never attached automatically — it is a message field, so each caller passes it.
 export const authClient = createClient(AuthService, transport);
 export const userClient = createClient(UserService, transport);
+// The AI agents a person connects to read a team through our MCP endpoint (docs/business/mcp) — the connect page, the
+// person's own connections on /profile, and the team owner's view on Settings. The OAuth endpoints are plain HTTP.
+export const agentClient = createClient(AgentService, transport);
 export const teamClient = createClient(TeamService, transport);
 export const productClient = createClient(ProductService, transport);
 // A selling team's picking recipes (docs/business/product/product_bundle.md).
@@ -55,6 +60,9 @@ export const orderDraftClient = createClient(OrderDraftService, transport);
 export const teamReturnConfigurationClient = createClient(TeamReturnConfigurationService, transport);
 // What a warehouse charges per order (warehouse-prices-balance-records).
 export const warehouseFeeClient = createClient(WarehouseFeeService, transport);
+// The warehouse PROFILE — hours, location, closures, and whether it receives orders now
+// (the-warehouse-profile-lives-in-warehouse-service).
+export const warehouseInfoClient = createClient(WarehouseInfoService, transport);
 // The ONE courier catalogue (docs/business/shipment) — public reads, root writes.
 export const shipmentChannelClient = createClient(ShipmentChannelService, transport);
 // Reads an uploaded shipping label (receipt-check-is-shipments) — signed in, stores nothing.

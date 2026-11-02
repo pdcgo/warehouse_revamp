@@ -44,7 +44,7 @@ export function BundleStockCard({
         product={{
           id: line.productId,
           teamId: borrowed(line) ? line.product?.teamId : undefined,
-          sku: line.product?.sku,
+          productCode: line.product?.productCode,
           name: line.product
             ? `${line.product.name}${line.state === "archived" ? ` ${t("bundles.archivedSuffix")}` : ""}`
             : undefined,

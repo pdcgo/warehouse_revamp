@@ -62,7 +62,29 @@ func (a *Analytic) MetricData(
 		return nil, err
 	}
 
-	return connect.NewResponse(&sellingv1.MetricDataResponse{MetricDatas: datas}), nil
+	asOf, err := a.asOf(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&sellingv1.MetricDataResponse{MetricDatas: datas, AsOfUnix: asOf}), nil
+}
+
+// asOf is when this service last folded an event — the newest claim in `order_event_logs`, unix seconds; 0 before the first
+// (a-money-metric-says-as-of-when). One time for the service: every metric it serves is folded by the same fold.
+// Indexed on created_at (migration 00031), so it is one index read.
+func (a *Analytic) asOf(ctx context.Context) (int64, error) {
+	var unix int64
+
+	err := a.db.WithContext(ctx).
+		Raw(`SELECT COALESCE(EXTRACT(EPOCH FROM MAX(created_at))::bigint, 0) FROM order_event_logs`).
+		Scan(&unix).
+		Error
+	if err != nil {
+		return 0, dbError(err)
+	}
+
+	return unix, nil
 }
 
 // reportSumsRow is one grouped row of a summary: which metric, and its sums.

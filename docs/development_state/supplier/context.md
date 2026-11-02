@@ -80,3 +80,10 @@ for real (Q17, Q18 answered) · the menu's **Suppliers** group.
   `product_service`; analytic/context.md still draws a *Daily Supplier Report Table*; the owner's table and metric lists
   trail three chat decisions ([chat-decisions-outran-your-doc](../../business/supplier/context_clarify.md#chat-decisions-outran-your-doc)) — theirs to edit.
 - **A terse "yes" to a two-way question is ambiguous** — confirm before recording (Q8, Q6, Q10c, Q11).
+
+## 2026-11-02 — the replay lock has a lease
+
+[a-dead-replays-lock-expires-after-a-minute](../../business/settlement/meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute) — the fold's lock is taken with a one-minute lease (`eventLockLease`, `event_lock.go`):
+`takeEventLock` / `releaseEventLock(ctx, takenAt)`, a lock older than its lease is taken over and logged once
+(`logExpiredEventLock`), and a release only frees the lock it took. Both services, the same file; the fold and the replay
+use it. Tests beside each. Also this pass: the year cap and *as of* on its metrics ([analytic](../analytic/rpc_provide.md)).

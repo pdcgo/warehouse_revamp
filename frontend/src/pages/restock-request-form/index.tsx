@@ -285,7 +285,7 @@ export function RestockRequestFormPage() {
       items: lines.map((l) => ({
         id: l.itemId,
         productId: l.productId,
-        sku: l.sku,
+        productCode: l.productCode,
         name: l.name,
         count: BigInt(toQty(l.count)),
         total: toRupiah(l.total),

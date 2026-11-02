@@ -76,7 +76,7 @@ export function DiscoverProductDetailPage() {
   const warehouseList = warehouses.data?.teams ?? [];
 
   // Only worth asking while the product is on offer — an archived or locked one has nothing to take.
-  const offered = product !== null && !product.deleted && !product.crossLocked;
+  const offered = product !== null && !product.archived && !product.crossLocked;
   const availability = useAvailabilityByWarehouse({
     teamId,
     productId: offered ? id : 0n,
@@ -146,15 +146,15 @@ export function DiscoverProductDetailPage() {
           <Heading size="md" data-testid="discover-detail-name">
             {product.name}
           </Heading>
-          {product.deleted && <Badge colorPalette="gray">{t("products.tab.archived")}</Badge>}
-          {!product.deleted && product.crossLocked && (
+          {product.archived && <Badge colorPalette="gray">{t("products.tab.archived")}</Badge>}
+          {!product.archived && product.crossLocked && (
             <Badge colorPalette="gray" variant="outline">
               {t("products.table.locked")}
             </Badge>
           )}
         </HStack>
         <Text fontSize="sm" color="fg.muted">
-          {product.sku}
+          {product.productCode}
           {categoryLabel && ` · ${categoryLabel}`}
         </Text>
       </Stack>
@@ -183,7 +183,7 @@ export function DiscoverProductDetailPage() {
 
       {/* Reachable only by URL — discovery hides both — so a link kept from last week must say why the
           product is no longer on offer instead of pretending it still is. */}
-      {product.deleted ? (
+      {product.archived ? (
         <Alert.Root status="warning" data-testid="discover-detail-archived">
           <Alert.Indicator />
           <Alert.Title>{t("discoverDetail.archived")}</Alert.Title>

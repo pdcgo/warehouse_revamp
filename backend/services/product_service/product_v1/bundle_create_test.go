@@ -76,7 +76,7 @@ func TestBundleCreate_RefusesBadLines(t *testing.T) {
 
 	beras := insertProduct(t, db, melati, "BRS", "Beras")
 	archived := insertProduct(t, db, melati, "OLD", "Archived")
-	setProduct(t, db, archived, "deleted", true)
+	setProduct(t, db, archived, "archived", true)
 	theirsLocked := insertProduct(t, db, kenanga, "LCK", "Kenanga Locked")
 	setProduct(t, db, theirsLocked, "cross_locked", true)
 

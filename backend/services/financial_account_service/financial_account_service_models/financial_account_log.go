@@ -30,6 +30,10 @@ type FinancialAccountLog struct {
 	GroupID          uint64
 	CounterAccountID uint64
 	CreatedAt        time.Time
+
+	// Root or the Administrator posted it inside a team they hold no role in (an-override-is-stamped-in-every-service).
+	// A listener's row carries the flag its event names beside the actor (`actor_is_override`).
+	IsOverride bool
 }
 
 func (FinancialAccountLog) TableName() string {

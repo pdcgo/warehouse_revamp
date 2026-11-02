@@ -37,6 +37,11 @@ type PlacedOrder struct {
 	// redelivery hours later must still name the person who placed the order, not whoever happens to
 	// be around when it is retried.
 	ActorID uint64
+
+	// Whether that person placed it as Root or the Administrator from outside the selling team
+	// (an-override-is-stamped-in-every-service). Carried by the event for the same reason as ActorID — there is no
+	// caller here to ask — and stamped on both legs of every fee the order posts.
+	ActorIsOverride bool
 }
 
 // ChargeOrder posts an order's fees (#186): the WAREHOUSE FEE to the fulfilling warehouse, and a PRODUCT
@@ -90,7 +95,7 @@ func (s *Service) chargeWarehouseFee(ctx context.Context, order PlacedOrder) err
 	}
 
 	return s.postOrderFee(ctx, order.TeamID, order.WarehouseID, fee,
-		SourceTypeOrderFee, order.ActorID, order.OrderID)
+		SourceTypeOrderFee, order.ActorID, order.ActorIsOverride, order.OrderID)
 }
 
 // chargeProductFees bills each OWNING TEAM for its goods that this order sold.
@@ -154,7 +159,7 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 		}
 
 		err := s.postOrderFee(ctx, order.TeamID, owner, fee, SourceTypeProductFee, order.ActorID,
-			order.OrderID)
+			order.ActorIsOverride, order.OrderID)
 		if err != nil {
 			return err
 		}
@@ -170,6 +175,7 @@ func (s *Service) postOrderFee(
 	amount int64,
 	sourceType SourceType,
 	actorID uint64,
+	actorIsOverride bool,
 	orderID uint64,
 ) error {
 	_, err := s.PostEntry(ctx, nil, Posting{
@@ -179,6 +185,7 @@ func (s *Service) postOrderFee(
 		SourceType:     sourceType,
 		SourceID:       orderID,
 		ActorID:        actorID,
+		IsOverride:     actorIsOverride,
 	})
 	if errors.Is(err, ErrAlreadyPosted) {
 		return nil
@@ -199,8 +206,9 @@ func (s *Service) postOrderFee(
 // what an audit needs to see.
 // ⚠ `actorID` IS WHOEVER CANCELLED, not whoever placed. The reversal is a second act and often a
 // second person, and the ledger records who caused each movement rather than who caused the
-// original (every-entry-names-who-posted-it).
-func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID, actorID uint64) error {
+// original (every-entry-names-who-posted-it). `actorIsOverride` is that same canceller's flag, for the same reason: the
+// reversal is stamped by the act that caused it, never by the placement it undoes (an-override-is-stamped-in-every-service).
+func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID, actorID uint64, actorIsOverride bool) error {
 	var charged []liability_service_models.LiabilityLog
 
 	// The DEBTOR'S legs only. Both sides of a movement are stored, so reading every row for this
@@ -234,6 +242,7 @@ func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID, actorID uin
 			SourceID:       entry.SourceID,
 			Reversal:       true,
 			ActorID:        actorID,
+			IsOverride:     actorIsOverride,
 		})
 		if err != nil && !errors.Is(err, ErrAlreadyPosted) {
 			return err

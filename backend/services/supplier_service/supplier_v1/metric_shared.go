@@ -88,6 +88,12 @@ func parseFilters(items []*analytic_basev1.FilterItem) (metricScope, error) {
 				return scope, errRangeBackwards
 			}
 
+			// A YEAR AT MOST, both days counted (a-metric-reads-at-most-a-year) — a ranking reads every daily row in its window.
+			err = san_metric.CheckRange(start, end)
+			if err != nil {
+				return scope, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
 			scope.start, scope.end = start, end
 		case analytic_basev1.FilterType_FILTER_TYPE_TEAM:
 			scope.restockTeamID = item.GetTeamFilter().GetTeamId()

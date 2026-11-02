@@ -25,7 +25,7 @@ func TestOrderCreateRequest_RefIsRequired(t *testing.T) {
 			WarehouseId:        11,
 			CustomerName:       "Bu Lestari",
 			OrderExternalRefId: ref,
-			Items:              []*sellingv1.OrderItem{{ProductId: 77, Sku: "TS-01", Name: "Kaos Polos", Quantity: 1}},
+			Items:              []*sellingv1.OrderItem{{ProductId: 77, ProductCode: "TS-01", Name: "Kaos Polos", Quantity: 1}},
 		}
 	}
 

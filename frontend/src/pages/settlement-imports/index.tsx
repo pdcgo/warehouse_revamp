@@ -22,7 +22,7 @@ import { ShopSelect } from "../../components/pickers/ShopSelect";
 import { useShopOptions } from "../../features/shops/queries";
 import { UploadedFileStatusBadge } from "../../features/settlementImport/UploadedFileStatusBadge";
 import { useUploadedFiles } from "../../features/settlementImport/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import { UploadedFileStatus } from "../../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 import { idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
@@ -85,7 +85,7 @@ export function SettlementImportsPage() {
           </Text>
         </Stack>
         <Spacer />
-        <ImportFileDialog teamId={teamId} />
+        {canWrite(current) && <ImportFileDialog teamId={teamId} />}
       </Flex>
 
       <Flex gap="card" wrap="wrap" align="center">

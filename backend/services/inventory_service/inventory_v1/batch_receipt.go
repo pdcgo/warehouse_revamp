@@ -79,17 +79,17 @@ func (s *Service) BatchReceipt(
 		totalValue += lineCost
 
 		lines = append(lines, &inventoryv1.BatchReceiptLine{
-			BatchId:   r.ID,
-			ProductId: r.ProductID,
-			Sku:       r.SKU,
-			Name:      r.Name,
-			Arrived:   arrived,
-			Damaged:   damaged,
-			Accepted:  r.InitStockCount,
-			UnitCost:  int64(math.Round(r.PriceUnit)),
-			CostKnown: true,
-			LineCost:  lineCost,
-			RackIds:   racksByProduct[r.ProductID],
+			BatchId:     r.ID,
+			ProductId:   r.ProductID,
+			ProductCode: r.ProductCode,
+			Name:        r.Name,
+			Arrived:     arrived,
+			Damaged:     damaged,
+			Accepted:    r.InitStockCount,
+			UnitCost:    int64(math.Round(r.PriceUnit)),
+			CostKnown:   true,
+			LineCost:    lineCost,
+			RackIds:     racksByProduct[r.ProductID],
 		})
 	}
 

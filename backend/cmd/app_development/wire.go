@@ -45,9 +45,19 @@ func InitializeApp() (*App, error) {
 
 		user_v1.NewAuthService,
 		user_v1.NewService,
+		// AI agents (our-server-hosts-the-mcp) — the credential store, its RPCs, the OAuth and /mcp; see agent_deps.go.
+		NewAgentStore,
+		user_v1.NewAgentService,
+		NewAgentEndpoints,
+		// Which teams the admin team monitors — see team_kinds.go.
+		NewTeamKinds,
 		team_v1.NewService,
 		shipment_v1.NewService,
 		product_v1.NewService,
+		// What product_service's Delete asks first — see product_history.go.
+		NewProductHistory,
+		// The team code every product code is composed from, asked of team_service — see product_team_codes.go.
+		NewProductTeamCodes,
 		selling_v1.NewService,
 		// Whether a user runs a team, for ShopAccessCheck — see role_reader.go.
 		NewRoleReader,

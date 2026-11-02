@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useSupplier, useSupplierChannels } from "../../features/suppliers/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
@@ -97,7 +97,10 @@ export function SupplierDetailPage() {
   // only a selling team keeps suppliers (only-a-selling-team-has-suppliers). The server is the real boundary
   // either way; this keeps the page from offering what it would refuse.
   const canManage =
-    current?.teamType === TeamType.SELLING && supplier !== null && supplier.teamId === current.teamId;
+    canWrite(current) &&
+    current?.teamType === TeamType.SELLING &&
+    supplier !== null &&
+    supplier.teamId === current.teamId;
 
   const back = (
     <Button

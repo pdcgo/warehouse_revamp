@@ -64,9 +64,9 @@ func (s *Service) ExpenseDaily(
 	var rows []expenseDayRow
 
 	err = query.
-		// LIVE rows only — the same predicate `totals` applies, because the days have to add up to the
-		// footer beside them. A cost entered by mistake and voided never counts.
-		Where("voided_at IS NULL").
+		// Every row, as `totals` sums them, so the days add up to the footer beside them — an adjustment counts on its
+		// expense's day, with its sign (an-adjustment-counts-on-the-day-it-fixes).
+		//
 		// `occurred_at` is a DATE column, so there is no cast and no timezone to get wrong here — unlike
 		// the revenue side, which buckets a TIMESTAMPTZ and has to name a zone to do it.
 		Select("occurred_at AS day, kind, COUNT(*) AS entries, COALESCE(SUM(amount), 0) AS total").

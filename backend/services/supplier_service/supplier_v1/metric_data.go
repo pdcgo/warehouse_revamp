@@ -47,7 +47,28 @@ func (s *Service) MetricData(
 		datas = append(datas, data)
 	}
 
-	return connect.NewResponse(&supplierv1.MetricDataResponse{MetricDatas: datas}), nil
+	asOf, err := s.asOf(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&supplierv1.MetricDataResponse{MetricDatas: datas, AsOfUnix: asOf}), nil
+}
+
+// asOf is when this service last folded an event — the newest claim in `supplier_event_logs`, unix seconds; 0 before the first
+// (a-money-metric-says-as-of-when). One time for the service: every metric it serves is folded by the same fold.
+func (s *Service) asOf(ctx context.Context) (int64, error) {
+	var unix int64
+
+	err := s.db.WithContext(ctx).
+		Raw(`SELECT COALESCE(EXTRACT(EPOCH FROM MAX(created_at))::bigint, 0) FROM supplier_event_logs`).
+		Scan(&unix).
+		Error
+	if err != nil {
+		return 0, internal(err)
+	}
+
+	return unix, nil
 }
 
 func (s *Service) supplierMetricData(

@@ -76,6 +76,7 @@ func (s *Service) OrderTransactionCreate(
 		WarehouseID: msg.GetWarehouseId(),
 		TeamID:      teamID,
 		ActorID:     actorFrom(ctx),
+		IsOverride:  overrideFrom(ctx),
 	}
 
 	for _, line := range msg.GetLines() {

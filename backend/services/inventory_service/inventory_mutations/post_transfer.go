@@ -29,6 +29,7 @@ type TransferOut struct {
 	// The selling team that owns every unit sent.
 	TeamID      uint64
 	ActorID     uint64
+	IsOverride  bool
 	Description string
 	Lines       []TransferLine
 }
@@ -59,6 +60,7 @@ func PostTransferOut(tx *gorm.DB, o TransferOut) (models.InventoryTransaction, [
 		TeamID:      o.TeamID,
 		TxType:      models.TxTransferOut,
 		ActorID:     o.ActorID,
+		IsOverride:  o.IsOverride,
 		Description: o.Description,
 	})
 	if err != nil {
@@ -93,6 +95,7 @@ type TransferIn struct {
 	// The out-leg — its batch rows are the layers B mints from.
 	OutboundTransactionID uint64
 	ActorID               uint64
+	IsOverride            bool
 	Description           string
 	Lines                 []TransferInLine
 }
@@ -153,6 +156,7 @@ func PostTransferIn(tx *gorm.DB, in TransferIn) (models.InventoryTransaction, []
 		TeamID:      in.TeamID,
 		TxType:      models.TxTransferIn,
 		ActorID:     in.ActorID,
+		IsOverride:  in.IsOverride,
 		Description: in.Description,
 	})
 	if err != nil {

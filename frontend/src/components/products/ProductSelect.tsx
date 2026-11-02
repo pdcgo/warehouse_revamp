@@ -8,7 +8,7 @@ import { useDebounced } from "../../lib/useDebounced";
 // person types the buyer-paid unit price on the line itself.
 export interface PickedProduct {
   id: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   /** The COVER, carried so a picked product still looks like itself once it is on the line — the
    * picker shows a photo and the list it feeds showed a grey placeholder, which reads as having
@@ -23,7 +23,7 @@ export interface PickedProduct {
 
 interface SelectableProduct {
   id: bigint;
-  sku: string;
+  productCode: string;
   name: string;
 }
 
@@ -66,7 +66,7 @@ export function ProductSelect({
 
   const { collection, set } = useListCollection<SelectableProduct>({
     initialItems: [],
-    itemToString: (p) => `${p.sku} — ${p.name}`,
+    itemToString: (p) => `${p.productCode} — ${p.name}`,
     itemToValue: (p) => p.id.toString(),
   });
 
@@ -89,7 +89,7 @@ export function ProductSelect({
         if (picked === undefined) return;
         const product = collection.items.find((p) => p.id.toString() === picked);
         if (product) {
-          onChange?.({ id: product.id, sku: product.sku, name: product.name });
+          onChange?.({ id: product.id, productCode: product.productCode, name: product.name });
         }
       }}
       onInputValueChange={(e) => setInput(e.inputValue)}
@@ -110,9 +110,9 @@ export function ProductSelect({
               {input.trim().length < 2 ? "Type at least 2 characters" : "No products found"}
             </Combobox.Empty>
             {collection.items.map((p) => (
-              <Combobox.Item item={p} key={p.id.toString()} data-testid={`product-select-option-${p.sku}`}>
+              <Combobox.Item item={p} key={p.id.toString()} data-testid={`product-select-option-${p.productCode}`}>
                 <Stack gap="0">
-                  <Span fontWeight="medium">{p.sku}</Span>
+                  <Span fontWeight="medium">{p.productCode}</Span>
                   <Span fontSize="xs" color="fg.muted">
                     {p.name}
                   </Span>

@@ -62,6 +62,7 @@ import {
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
 import {
+  ADMIN_TEAM,
   orderExportScenario,
   orderImportScenario,
   orderStatScenario,
@@ -104,7 +105,11 @@ import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
 import { warehouseFeeService } from "./warehouseFeeStub";
+import { warehouseInfoService } from "./warehouseInfoStub";
+import { agentService } from "./agentStub";
+import { AgentService } from "../src/gen/warehouse/user/v1/agent_pb";
 import { WarehouseFeeService } from "../src/gen/warehouse/warehouse/v1/warehouse_fee_pb";
+import { WarehouseInfoService } from "../src/gen/warehouse/warehouse/v1/warehouse_info_pb";
 import { TeamReturnConfigurationService } from "../src/gen/warehouse/selling/v1/return_configuration_pb";
 import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
@@ -158,6 +163,7 @@ import {
   liabilityEntries,
   liabilityPayments,
   liabilityPositions,
+  liabilityPaymentRequests,
   liabilityTerms,
   liabilityTermsChanges,
   receiptLabel,
@@ -262,6 +268,30 @@ let nextPaymentId = 700n;
 // The positions — WRITEABLE too, because ACCEPTING a payment moves one. Signed from team 11's side,
 // like the fixture. Reset with the payments, since only a payment's acceptance writes it.
 let positionsTable = liabilityPositions.map((p) => ({ ...p }));
+
+// The open payment requests — WRITEABLE: Request Payment adds or replaces one, and a payment recorded by the debtor
+// clears it, as the server does. Reset with the payments.
+let paymentRequestsTable = liabilityPaymentRequests.map((r) => ({ ...r }));
+
+// The positions as TEAM `teamId` sees them. The table is signed from team 11's side; any other team sees its one pair
+// with 11, mirrored — so a debtor's story reads what it owes Gudang Pusat. Each row carries the pair's open request.
+function positionsFor(teamId: bigint) {
+  const rows =
+    teamId === 11n
+      ? positionsTable
+      : positionsTable
+          .filter((p) => p.counterpartyId === teamId)
+          .map((p) => ({ ...p, counterpartyId: 11n, balance: -p.balance, awaitingConfirmation: 0 }));
+
+  return rows.map((p) => ({
+    ...p,
+    paymentRequest: paymentRequestsTable.find(
+      (r) =>
+        (r.creditorTeamId === teamId && r.debtorTeamId === p.counterpartyId) ||
+        (r.debtorTeamId === teamId && r.creditorTeamId === p.counterpartyId),
+    ),
+  }));
+}
 
 // The shipment channel table — WRITEABLE, because create, edit, delete and restore are the screen. The
 // rows carry real timestamps so the Updated column moves when a write lands. Reset per story.
@@ -373,6 +403,7 @@ export function resetLiabilityPayments() {
   paymentsTable = liabilityPayments.map((p) => ({ ...p }));
   nextPaymentId = 700n;
   positionsTable = liabilityPositions.map((p) => ({ ...p }));
+  paymentRequestsTable = liabilityPaymentRequests.map((r) => ({ ...r }));
 }
 
 // ── The settlement importer — a statement in, rows posted, the import streamed ─────────────────────
@@ -900,6 +931,12 @@ export const transport = createRouterTransport(({ service }) => {
       identity: { identityId: users[0]!.id, username: users[0]!.username, agent: "storybook" },
       token: "",
     }),
+    // The login page's Sign in: any username and password is the signed-in fixture user — a story pins where signing in
+    // GOES (back to `state.from`), not which passwords are right; that is the server's.
+    login: () => ({
+      token: "storybook-token",
+      identity: { identityId: users[0]!.id, username: users[0]!.username, agent: "storybook" },
+    }),
     logout: () => ({}),
   });
 
@@ -920,6 +957,13 @@ export const transport = createRouterTransport(({ service }) => {
 
       if (sessionScenario.memberOf !== null && platform) {
         rows.unshift({ teamId: 1n, teamName: "Root", teamType: TeamType.ROOT });
+      }
+
+      // …and the admin team, for its two roles — they exist only there (asAdminTeam).
+      const adminTeam = sessionScenario.role === Role.ADMIN_OWNER || sessionScenario.role === Role.ADMIN_ADMINISTRATOR;
+
+      if (sessionScenario.memberOf !== null && adminTeam) {
+        rows.unshift({ teamId: ADMIN_TEAM.id, teamName: ADMIN_TEAM.name, teamType: TeamType.ADMIN });
       }
 
       return {
@@ -979,6 +1023,9 @@ export const transport = createRouterTransport(({ service }) => {
   service(RackService, rackService);
   service(TeamReturnConfigurationService, returnConfigurationService);
   service(WarehouseFeeService, warehouseFeeService);
+  service(WarehouseInfoService, warehouseInfoService);
+  // The AI agents — agentStub.ts plays the decided connect rules (docs/business/mcp/context_decision.md), writeable.
+  service(AgentService, agentService);
 
   // The global taxonomy — categoryStub.ts plays its rules, writeable: a parent must exist, a name once per parent, a
   // delete is soft and refused while the category has sub-categories.
@@ -1605,7 +1652,11 @@ export const transport = createRouterTransport(({ service }) => {
     // read against. `unsettledOnly` is honoured because the terms screen deliberately asks for
     // EVERY pair, including the square ones: a team at zero still has a limit worth seeing.
     liabilityPositionList: (req) => {
-      const set = positionsTable.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n);
+      const set = positionsFor(req.teamId).filter(
+        (p) =>
+          (!req.filter?.unsettledOnly || p.balance !== 0n) &&
+          (!req.filter?.counterpartyId || p.counterpartyId === req.filter.counterpartyId),
+      );
 
       // ⚠ THE SUMMARY IS COMPUTED OVER `set`, NEVER OVER THE PAGE — the stub models the server, and
       // the whole point of these fields is that the tiles cannot be a reduce of what loaded. A stub
@@ -1637,8 +1688,9 @@ export const transport = createRouterTransport(({ service }) => {
         liabilityEntries.filter((e) => e.counterpartyId === req.filter?.counterpartyId),
         req.page,
       ),
+      // From the asking team's side — a debtor's story reads its pair with Gudang Pusat as owed.
       balance:
-        positionsTable.find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
+        positionsFor(req.teamId).find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
     }),
 
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
@@ -1734,6 +1786,10 @@ export const transport = createRouterTransport(({ service }) => {
         toAccountId: 0n,
       };
       paymentsTable.unshift(row);
+      // Paying answers the request — the server clears it in the same transaction.
+      paymentRequestsTable = paymentRequestsTable.filter(
+        (r) => !(r.creditorTeamId === req.creditorTeamId && r.debtorTeamId === req.teamId),
+      );
 
       return { payment: row };
     },
@@ -1773,6 +1829,30 @@ export const transport = createRouterTransport(({ service }) => {
       }
 
       return { payment: row };
+    },
+
+    // REQUEST — the creditor's notice (a-creditor-may-request-payment). It moves nothing; a pair that owes nothing is
+    // refused, as the server refuses it, and a second request replaces the first with the moment's figure.
+    liabilityPaymentRequestSend: (req) => {
+      const owed = positionsFor(req.teamId).find((p) => p.counterpartyId === req.debtorTeamId)?.balance ?? 0n;
+
+      if (owed <= 0n) {
+        throw new ConnectError("the debtor owes this team nothing now, so there is nothing to ask for", Code.FailedPrecondition);
+      }
+
+      const request = {
+        creditorTeamId: req.teamId,
+        debtorTeamId: req.debtorTeamId,
+        amount: owed,
+        requestedByUserId: 1n,
+        requestedAtUnix: BigInt(Math.floor(Date.now() / 1000)),
+      };
+      paymentRequestsTable = [
+        ...paymentRequestsTable.filter((r) => !(r.creditorTeamId === req.teamId && r.debtorTeamId === req.debtorTeamId)),
+        request,
+      ];
+
+      return { request };
     },
 
     // REJECT — the `no` arm of §Payment Flow. ⚠ IT POSTS NOTHING, so unlike confirm the stub mutates

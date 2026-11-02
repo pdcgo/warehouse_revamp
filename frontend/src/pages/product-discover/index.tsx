@@ -246,7 +246,7 @@ export function DiscoverProductsPage() {
           return (
             // The card carries its own testid keyed by id; this cell keys the SAME card by SKU, which is what a test
             // naming a product actually knows. It is also the grid cell, so `h="full"` on the Card has a box to fill.
-            <Box key={product.id.toString()} data-testid={`discover-card-${product.sku}`}>
+            <Box key={product.id.toString()} data-testid={`discover-card-${product.productCode}`}>
               {/* The whole card is the link to the discover detail — a real anchor, so it opens in a new tab like any
                   link. `h="full"` passes the stretched cell on to the card. */}
               <Link
@@ -257,7 +257,7 @@ export function DiscoverProductsPage() {
                 focusRing="outside"
                 _hover={{ textDecoration: "none", "& > *": { borderColor: "border.emphasized" } }}
               >
-                <RouterLink to={`/products/discover/${product.id}`} data-testid={`discover-open-${product.sku}`}>
+                <RouterLink to={`/products/discover/${product.id}`} data-testid={`discover-open-${product.productCode}`}>
                   <DiscoverCard product={product} teamName={teamName(product.teamId)} own={own} ownStock={ownStock} />
                 </RouterLink>
               </Link>

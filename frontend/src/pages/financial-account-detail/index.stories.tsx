@@ -115,9 +115,10 @@ export const MobileStatementRowOpensItsDetail: Story = {
     await expect(row).not.toHaveTextContent("Reconcile");
     const [left, right] = within(row).getAllByRole("cell");
 
-    // The type sits right under the date, on the same left edge.
+    // The type sits right under the date, on the same left edge. The stub dates its rows from TODAY, so the date is read
+    // as a date — a year in it — never as a month that stops being true when the calendar turns.
     const [date, type] = Array.from(left!.firstElementChild!.children);
-    await expect(date).toHaveTextContent("Oct");
+    await expect(date).toHaveTextContent(/\b20\d\d\b/);
     await expect(type).toHaveTextContent("Adjustment");
     const d = date!.getBoundingClientRect();
     const ty = type!.getBoundingClientRect();

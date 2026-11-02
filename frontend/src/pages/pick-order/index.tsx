@@ -24,7 +24,7 @@ import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { AddressField, Field } from "../../features/orders/components/OrderFields";
 import { toaster } from "../../components/feedback/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { usePickOrder } from "../../features/picking/queries";
 import { useOrderStatusChange } from "../../features/orders/queries";
 import { orderNotes, timelineFromKey } from "../../features/orders/timelineLogs";
@@ -185,7 +185,7 @@ export function PickOrderPage() {
         <Heading size="md">{t("picking.detail.title", { id: String(order.id) })}</Heading>
         <OrderStatusBadge status={order.status} />
         <Spacer />
-        {step && (
+        {step && canWrite(current) && (
           <Button
             colorPalette="brand"
             loading={moveMutation.isPending}
@@ -290,7 +290,7 @@ export function PickOrderPage() {
                         <Stack gap="0">
                           <Text>{item.name}</Text>
                           <Text fontSize="xs" color="fg.muted">
-                            {item.sku}
+                            {item.productCode}
                           </Text>
                         </Stack>
                       </Table.Cell>

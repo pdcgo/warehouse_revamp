@@ -239,7 +239,7 @@ export function SellerOrderDetailPage() {
 
     return {
       id: item.productId,
-      sku: item.sku,
+      productCode: item.productCode,
       name: item.name,
       defaultImageUrl: product?.defaultImageUrl,
       defaultImageThumbnailUrl: product?.defaultImageThumbnailUrl,

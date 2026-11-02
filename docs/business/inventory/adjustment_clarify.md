@@ -63,7 +63,7 @@ Confirm the port as drawn, with the surplus minted at the newest price and the r
 ## Question
 
 1. ✅ *(2026-10-31)* **Withdrawn** — the port is not refined further: [the-finished-count-comes-next-not-a-refined-port](./adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port).
-2. ✅ *(2026-10-31)* **Answered: yes** — [a-recount-shortfall-is-written-off-and-owed](./adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed). ⛔ Not built. Kept as a line so the numbers hold.
+2. ✅ *(2026-10-31)* **Answered: yes** — [a-recount-shortfall-is-written-off-and-owed](./adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed). ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 3. ✅ *(2026-10-31)* **Withdrawn** — the same: [the-finished-count-comes-next-not-a-refined-port](./adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port).
 4. ✅ *(2026-10-31)* **Withdrawn** — the same: [the-finished-count-comes-next-not-a-refined-port](./adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port).
 
@@ -72,5 +72,5 @@ Confirm the port as drawn, with the surplus minted at the newest price and the r
 ## a-recount-books-money-on-one-screen-only
 
 ✅ **Resolved 2026-10-31** by [a-recount-shortfall-is-written-off-and-owed](./adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed):
-a recount shortfall is written off and owed, as a stock count is. ⛔ Not built. Kept as a heading so the links into it
-hold.
+a recount shortfall is written off and owed, as a stock count is. ✅ Built 2026-11-02. Kept as a heading so the links
+into it hold.

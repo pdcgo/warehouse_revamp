@@ -48,7 +48,7 @@ const AtBeras = routedAt(BERAS.id);
 const AtNothing = routedAt(999n);
 
 /** A `beforeEach` that flips one flag on Teh for the story — in the product stub, whose reset puts it back. */
-function tehIs(flag: "crossLocked" | "deleted") {
+function tehIs(flag: "crossLocked" | "archived") {
   return () => patchProduct(TEH.id, { [flag]: true });
 }
 
@@ -87,7 +87,7 @@ export const YourOwnProduct: Story = { render: () => <AtBeras /> };
 
 export const Locked: Story = { beforeEach: tehIs("crossLocked"), render: () => <AtTeh /> };
 
-export const Archived: Story = { beforeEach: tehIs("deleted"), render: () => <AtTeh /> };
+export const Archived: Story = { beforeEach: tehIs("archived"), render: () => <AtTeh /> };
 
 // ⚠ NO `play()`: the `viewport` global resizes the workbench canvas only, and the story runner has one
 // fixed viewport (MobileLayout.stories). For looking — the cover stacks above the record.
@@ -170,7 +170,7 @@ export const LockedSaysSoAndOffersNoStock: Story = {
 };
 
 export const ArchivedSaysSoAndOffersNoStock: Story = {
-  beforeEach: tehIs("deleted"),
+  beforeEach: tehIs("archived"),
   render: () => <AtTeh />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);

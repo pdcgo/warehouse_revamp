@@ -21,7 +21,7 @@ import { ChevronRight, Handshake } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useLiabilityPositions, useLiabilityTerms } from "../../features/liability/queries";
 import { directionCopy, daysSince } from "../../features/liability/direction";
 import { WARN_AT, limitStateOf } from "../../features/liability/CreditMeter";
@@ -271,7 +271,7 @@ export function LiabilityListPage() {
 
             ⚠ IT IS NOT A ROW EITHER, which is why it sits in the toolbar. The rows are
             counterparties; the default is a rule about the ones with nothing set. */}
-        {canSetLiabilityTerms(current?.role) && (
+        {canWrite(current) && canSetLiabilityTerms(current?.role) && (
           <Button
             variant="outline"
             data-testid="liability-default-terms"
@@ -365,6 +365,18 @@ export function LiabilityListPage() {
                         {p.awaitingConfirmation > 0 && (
                           <Badge colorPalette="purple">
                             {t("liability.toConfirm", { count: p.awaitingConfirmation })}
+                          </Badge>
+                        )}
+                        {/* THE OPEN PAYMENT REQUEST (a-creditor-may-request-payment): the counterparty asking this team
+                            to pay, or this team having asked it. A notice — it moves nothing. */}
+                        {p.paymentRequest && (
+                          <Badge
+                            colorPalette={p.paymentRequest.debtorTeamId === p.counterpartyId ? "info" : "warning"}
+                            data-testid={`liability-request-${p.counterpartyId}`}
+                          >
+                            {p.paymentRequest.debtorTeamId === p.counterpartyId
+                              ? t("liability.requestSent")
+                              : t("liability.requestAsked")}
                           </Badge>
                         )}
                         {nearLimit >= WARN_AT && (

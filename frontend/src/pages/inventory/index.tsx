@@ -19,7 +19,7 @@ import { ArrowRightLeft, MoreHorizontal, Pencil } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useWarehouseStock } from "../../features/inventory/queries";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { Pagination } from "../../components/chrome/Pagination";
@@ -136,15 +136,16 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                   const stock = onHand.get(product.id.toString()) ?? 0n;
 
                   return (
-                    <Table.Row key={product.id.toString()} data-testid={`stock-row-${product.sku}`}>
-                      <Table.Cell>{product.sku}</Table.Cell>
+                    <Table.Row key={product.id.toString()} data-testid={`stock-row-${product.productCode}`}>
+                      <Table.Cell>{product.productCode}</Table.Cell>
                       <Table.Cell>{product.name}</Table.Cell>
-                      <Table.Cell textAlign="end" data-testid={`stock-onhand-${product.sku}`}>
+                      <Table.Cell textAlign="end" data-testid={`stock-onhand-${product.productCode}`}>
                         {stock.toString()}
                       </Table.Cell>
                       {/* Adjust and Move sit in the overflow — goods come in by a restock, so the row has no
                           receive of its own. */}
                       <Table.Cell textAlign="end">
+                        {canWrite(current) && (
                         <HStack justify="end" gap="1">
                           <Menu.Root>
                             <Menu.Trigger asChild>
@@ -152,7 +153,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                                 size="xs"
                                 variant="ghost"
                                 aria-label={t("inventory.rowActions")}
-                                data-testid={`row-actions-${product.sku}`}
+                                data-testid={`row-actions-${product.productCode}`}
                               >
                                 <Icon as={MoreHorizontal} boxSize="4" />
                               </IconButton>
@@ -163,7 +164,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                                 <Menu.Content>
                                   <Menu.Item
                                     value="adjust"
-                                    data-testid={`adjust-${product.sku}`}
+                                    data-testid={`adjust-${product.productCode}`}
                                     onClick={() => setDialog({ kind: "adjust", product })}
                                   >
                                     <Icon as={Pencil} boxSize="4" />
@@ -172,7 +173,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
 
                                   <Menu.Item
                                     value="move"
-                                    data-testid={`move-${product.sku}`}
+                                    data-testid={`move-${product.productCode}`}
                                     onClick={() => setDialog({ kind: "move", product })}
                                   >
                                     <Icon as={ArrowRightLeft} boxSize="4" />
@@ -183,6 +184,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                             </Portal>
                           </Menu.Root>
                         </HStack>
+                        )}
                       </Table.Cell>
                     </Table.Row>
                   );

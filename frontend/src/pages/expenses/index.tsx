@@ -17,7 +17,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Ban, MoreHorizontal, Pencil } from "lucide-react";
+import { Ban, MoreHorizontal, SlidersHorizontal } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import type { ExpenseRecord } from "../../gen/warehouse/expense/v1/expense_pb";
@@ -26,12 +26,13 @@ import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { COST_FILTER_KINDS, ExpenseKindSelect, expenseKindLabel } from "../../components/pickers/ExpenseKindSelect";
 import { Pagination } from "../../components/chrome/Pagination";
 import { toaster } from "../../components/feedback/Toaster";
-import { formatRupiah } from "../../lib/money";
-import { useTeam } from "../../features/team/TeamContext";
+import { formatRupiah, formatSignedRupiah } from "../../lib/money";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { thisMonth } from "../../lib/period";
 import { type UrlCodec, enumCodec, useUrlState } from "../../lib/urlState";
+import { AdjustExpenseDialog } from "./components/AdjustExpenseDialog";
 import { RecordExpenseDialog } from "./components/RecordExpenseDialog";
-import { useExpenses, useVoidExpense } from "./queries";
+import { useAdjustExpense, useExpenses } from "./queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -61,12 +62,12 @@ export function ExpensesPage() {
   const [kind, setKind] = useUrlState<ExpenseKind>("kind", ExpenseKind.UNSPECIFIED, KIND_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [editing, setEditing] = useState<ExpenseRecord | null>(null);
+  const [adjusting, setAdjusting] = useState<ExpenseRecord | null>(null);
 
   const teamId = current?.teamId;
 
   const query = useExpenses({ teamId, month, kind, page, pageSize });
-  const voidExpense = useVoidExpense();
+  const adjustExpense = useAdjustExpense();
 
   const expenses = query.data?.expenses ?? [];
   const totals = query.data?.totals;
@@ -78,16 +79,25 @@ export function ExpensesPage() {
   // loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would close
   // while the write was still in flight. mutateAsync REJECTS on failure, so the catch is not optional
   // here the way it would be with mutate's onError.
-  async function voidCost(cost: ExpenseRecord) {
+  //
+  // BATALKAN is an adjustment of minus what the expense still counts for (every-correction-is-a-signed-adjustment) —
+  // the whole of it, so nobody types it. Its net, not its original amount: an expense already corrected down is
+  // cancelled by what is left.
+  async function cancelCost(cost: ExpenseRecord) {
     if (teamId === undefined) return;
 
     try {
-      await voidExpense.mutateAsync({ teamId, expenseId: cost.id });
-      toaster.create({ type: "success", title: t("expenses.toast.voided") });
+      await adjustExpense.mutateAsync({
+        teamId,
+        expenseId: cost.id,
+        amount: -cost.netAmount,
+        note: t("expenses.cancelNote"),
+      });
+      toaster.create({ type: "success", title: t("expenses.toast.cancelled") });
     } catch (err) {
       toaster.create({
         type: "error",
-        title: t("expenses.toast.voidFailed"),
+        title: t("expenses.toast.cancelFailed"),
         description: rpcError(err),
       });
     }
@@ -123,7 +133,7 @@ export function ExpensesPage() {
           }}
         />
 
-        <RecordExpenseDialog teamId={current.teamId} />
+        {canWrite(current) && <RecordExpenseDialog teamId={current.teamId} />}
       </Flex>
 
       {/* The summary — per kind and in total, for the WHOLE month rather than the page below. The
@@ -191,83 +201,102 @@ export function ExpensesPage() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {expenses.map((cost) => (
-              <Table.Row
-                key={String(cost.id)}
-                data-testid={`expense-row-${cost.id}`}
-                // A VOIDED cost is shown, muted and struck through (#169). It was entered and then
-                // retracted, and that is worth seeing — hidden is indistinguishable from deleted.
-                color={cost.voided ? "fg.muted" : undefined}
-                textDecoration={cost.voided ? "line-through" : undefined}
-              >
-                <Table.Cell>{cost.occurredAt}</Table.Cell>
-                <Table.Cell>
-                  {expenseKindLabel(t, cost.kind)}
-                  {cost.voided && (
-                    <Badge ml="2" colorPalette="gray" data-testid={`expense-voided-${cost.id}`}>
-                      {t("expenses.voided")}
-                    </Badge>
-                  )}
-                </Table.Cell>
-                <Table.Cell>{cost.note}</Table.Cell>
-                <Table.Cell textAlign="end">{formatRupiah(cost.amount)}</Table.Cell>
+            {expenses.map((cost) => {
+              // An ADJUSTMENT is a row of its own, on its expense's day (an-adjustment-counts-on-the-day-it-fixes) — the
+              // correction, signed, muted, with no actions: a mistaken one is fixed by correcting the expense again.
+              const isAdjustment = cost.adjustsExpenseId !== 0n;
 
-                <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                  {/* Two actions behind an overflow menu, each with a leading icon — and a voided cost
-                      offers neither, because it can no longer be edited (#169) and voiding it again
-                      would do nothing. */}
-                  {!cost.voided && (
-                    <Menu.Root>
-                      <Menu.Trigger asChild>
-                        <IconButton
-                          size="xs"
-                          variant="ghost"
-                          aria-label={t("expenses.table.actions")}
-                          data-testid={`expense-actions-${cost.id}`}
-                        >
-                          <Icon as={MoreHorizontal} boxSize="4" />
-                        </IconButton>
-                      </Menu.Trigger>
-                      <Portal>
-                        <Menu.Positioner>
-                          <Menu.Content>
-                            <Menu.Item
-                              value="edit"
-                              data-testid={`expense-edit-${cost.id}`}
-                              onClick={() => setEditing(cost)}
-                            >
-                              <Icon as={Pencil} boxSize="4" />
-                              {t("expenses.edit")}
-                            </Menu.Item>
+              return (
+                <Table.Row
+                  key={String(cost.id)}
+                  data-testid={`expense-row-${cost.id}`}
+                  color={isAdjustment ? "fg.muted" : undefined}
+                >
+                  <Table.Cell>{cost.occurredAt}</Table.Cell>
+                  <Table.Cell>
+                    {expenseKindLabel(t, cost.kind)}
+                    {isAdjustment && (
+                      <Badge ml="2" colorPalette="gray" data-testid={`expense-adjustment-${cost.id}`}>
+                        {t("expenses.adjustment")}
+                      </Badge>
+                    )}
+                  </Table.Cell>
+                  <Table.Cell>{cost.note}</Table.Cell>
+                  <Table.Cell textAlign="end">
+                    {isAdjustment ? (
+                      <Text data-testid={`expense-amount-${cost.id}`}>{formatSignedRupiah(cost.amount)}</Text>
+                    ) : (
+                      <Stack gap="0" align="end">
+                        <Text data-testid={`expense-amount-${cost.id}`}>{formatRupiah(cost.amount)}</Text>
+                        {/* What it counts for after its corrections — the figure the totals hold. Only shown when a
+                            correction moved it, so an untouched expense stays one line. */}
+                        {cost.netAmount !== cost.amount && (
+                          <Text fontSize="xs" color="fg.muted" data-testid={`expense-net-${cost.id}`}>
+                            {t("expenses.netNow", { net: formatRupiah(cost.netAmount) })}
+                          </Text>
+                        )}
+                      </Stack>
+                    )}
+                  </Table.Cell>
 
-                            {/* Voiding changes a profit figure, so it confirms first. */}
-                            <ConfirmDialog
-                              title={t("expenses.voidDialog.title")}
-                              message={t("expenses.voidDialog.message")}
-                              confirmLabel={t("expenses.voidDialog.confirm")}
-                              onConfirm={() => voidCost(cost)}
-                              trigger={
-                                <Menu.Item
-                                  value="void"
-                                  color="error.fg"
-                                  data-testid={`expense-void-${cost.id}`}
-                                  // The menu must NOT close on this one: it opens a confirm dialog,
-                                  // and a menu that closes takes the dialog's trigger with it.
-                                  closeOnSelect={false}
-                                >
-                                  <Icon as={Ban} boxSize="4" />
-                                  {t("expenses.void")}
-                                </Menu.Item>
-                              }
-                            />
-                          </Menu.Content>
-                        </Menu.Positioner>
-                      </Portal>
-                    </Menu.Root>
-                  )}
-                </Table.Cell>
-              </Table.Row>
-            ))}
+                  <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                    {/* Two actions behind an overflow menu, each with a leading icon. Batalkan is not offered once
+                        the expense counts for nothing — there is nothing left to cancel. */}
+                    {!isAdjustment && canWrite(current) && (
+                      <Menu.Root>
+                        <Menu.Trigger asChild>
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            aria-label={t("expenses.table.actions")}
+                            data-testid={`expense-actions-${cost.id}`}
+                          >
+                            <Icon as={MoreHorizontal} boxSize="4" />
+                          </IconButton>
+                        </Menu.Trigger>
+                        <Portal>
+                          <Menu.Positioner>
+                            <Menu.Content>
+                              <Menu.Item
+                                value="adjust"
+                                data-testid={`expense-adjust-${cost.id}`}
+                                onClick={() => setAdjusting(cost)}
+                              >
+                                <Icon as={SlidersHorizontal} boxSize="4" />
+                                {t("expenses.adjust")}
+                              </Menu.Item>
+
+                              {/* Cancelling moves a profit figure, so it confirms first. */}
+                              {cost.netAmount > 0n && (
+                                <ConfirmDialog
+                                  title={t("expenses.cancelDialog.title")}
+                                  message={t("expenses.cancelDialog.message", { net: formatRupiah(cost.netAmount) })}
+                                  confirmLabel={t("expenses.cancelDialog.confirm")}
+                                  onConfirm={() => cancelCost(cost)}
+                                  trigger={
+                                    <Menu.Item
+                                      value="cancel"
+                                      color="error.fg"
+                                      data-testid={`expense-cancel-${cost.id}`}
+                                      // The menu must NOT close on this one: it opens a confirm dialog,
+                                      // and a menu that closes takes the dialog's trigger with it.
+                                      closeOnSelect={false}
+                                    >
+                                      <Icon as={Ban} boxSize="4" />
+                                      {t("expenses.cancel")}
+                                    </Menu.Item>
+                                  }
+                                />
+                              )}
+                            </Menu.Content>
+                          </Menu.Positioner>
+                        </Portal>
+                      </Menu.Root>
+                    )}
+                  </Table.Cell>
+                </Table.Row>
+              );
+            })}
           </Table.Body>
         </Table.Root>
       )}
@@ -292,13 +321,9 @@ export function ExpensesPage() {
         />
       )}
 
-      {/* The edit form is the record re-opened — the same dialog, given a cost to start from. */}
-      {editing && (
-        <RecordExpenseDialog
-          teamId={current.teamId}
-          editing={editing}
-          onClose={() => setEditing(null)}
-        />
+      {/* A correction is a new row, written by its own dialog — the expense itself never changes. */}
+      {adjusting && (
+        <AdjustExpenseDialog teamId={current.teamId} expense={adjusting} onClose={() => setAdjusting(null)} />
       )}
     </Stack>
   );

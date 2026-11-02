@@ -163,8 +163,9 @@ func readDevSeeds() (devSeeds, error) {
 
 // setupDatabase is every data step of `dev setup`: the schema first, then the rows that need it.
 //
-// Each step is the SAME function its own command runs — `migrate up-all`, `supplier move`, `supplier backfill-figures`, `seed dev`,
-// `seed categories`, `region load-seed` — so setup cannot drift from doing them one at a time.
+// Each step is the SAME function its own command runs — `migrate up-all`, `supplier move`, `supplier backfill-figures`,
+// `product recompose-codes`, `seed dev`, `seed categories`, `region load-seed` — so setup cannot drift from doing them
+// one at a time.
 func setupDatabase(ctx context.Context, db *sql.DB, target, password string, seeds devSeeds) error {
 	fmt.Println("→ migrate up-all")
 
@@ -187,6 +188,16 @@ func setupDatabase(ctx context.Context, db *sql.DB, target, password string, see
 	fmt.Println("→ supplier backfill-figures")
 
 	err = backfillFiguresOn(ctx, db, target)
+	if err != nil {
+		return err
+	}
+
+	// The product codes written before a code was composed on write take their team's code in front
+	// (the-field-is-product-code-composed-on-write). After the schema, which renamed the column; a second setup changes
+	// nothing.
+	fmt.Println("→ product recompose-codes")
+
+	err = recomposeCodesOn(ctx, db, target)
 	if err != nil {
 		return err
 	}

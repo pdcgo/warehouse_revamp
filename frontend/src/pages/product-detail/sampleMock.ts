@@ -44,7 +44,7 @@ export function sampleSuppliers(productId: bigint): SampleSupplier[] {
 export interface SampleDerived {
   /** The derived product's name — the owner's product as the receiving team now carries it. */
   name: string;
-  sku: string;
+  productCode: string;
   /** The team the return went to, which now owns the derived product. */
   teamName: string;
   /** Its stock ready on a shelf, in that team — not how many came back. */
@@ -61,7 +61,7 @@ export interface SampleDerived {
 export function sampleDerived(
   productId: bigint,
   name: string,
-  sku: string,
+  productCode: string,
   imageUrl: string,
 ): { from?: SampleDerived; to: SampleDerived[] } {
   const n = Number(productId % 97n);
@@ -70,13 +70,13 @@ export function sampleDerived(
     // Every third product is itself derived — the case the owner raised.
     from:
       n % 3 === 0
-        ? { name, sku: `${sku}-ASAL`, teamName: "Toko Kenanga", readyQty: 18, imageUrl }
+        ? { name, productCode: `${productCode}-ASAL`, teamName: "Toko Kenanga", readyQty: 18, imageUrl }
         : undefined,
     // MANY, on purpose — a product sold through several teams comes back to several (owner: *"dia bisa banyak"*), so the
     // section is judged at the length that made it confusing.
     to: Array.from({ length: 5 + (n % 4) }, (_, i) => ({
       name: `${name} (Retur)`,
-      sku: `${sku}-R${i + 1}`,
+      productCode: `${productCode}-R${i + 1}`,
       teamName: TEAMS[(n + i) % TEAMS.length]!,
       readyQty: (n + i * 3) % 7,
       imageUrl,

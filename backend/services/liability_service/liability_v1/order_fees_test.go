@@ -410,7 +410,7 @@ func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 		t.Fatalf("charge: %v", err)
 	}
 
-	err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
+	err = svc.ReverseOrder(context.Background(), selling, 412, canceller, false)
 	if err != nil {
 		t.Fatalf("reverse: %v", err)
 	}
@@ -452,7 +452,7 @@ func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 	}
 
 	for i := 0; i < 3; i++ {
-		err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
+		err = svc.ReverseOrder(context.Background(), selling, 412, canceller, false)
 		if err != nil {
 			t.Fatalf("cancel %d: %v", i, err)
 		}
@@ -479,7 +479,7 @@ func TestReverseOrder_LeavesTheCODObligationAlone(t *testing.T) {
 		t.Fatalf("charge: %v", err)
 	}
 
-	err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
+	err = svc.ReverseOrder(context.Background(), selling, 412, canceller, false)
 	if err != nil {
 		t.Fatalf("reverse: %v", err)
 	}

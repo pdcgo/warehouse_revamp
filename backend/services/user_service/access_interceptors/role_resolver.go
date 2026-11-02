@@ -39,6 +39,20 @@ type Access struct {
 	// as the source did — means a suspended user's existing token keeps working until it
 	// expires. A suspension that does not cut off live sessions is not a suspension.
 	Suspended bool `json:"suspended"`
+
+	// AdminTeamRole is ROLE_ADMIN_OWNER or ROLE_ADMIN_ADMINISTRATOR when the caller holds either in ANY team, else
+	// ROLE_UNSPECIFIED. Both exist only in admin-type teams (a role must be of its team's type), so holding one is being
+	// in the admin team. It lets them MONITOR a team they are not in — a marked read passes, nothing else does
+	// (the-admin-team-monitors-read-only).
+	//
+	// It is a fact about the PERSON, not the scoped team, so it rides in every team's cached answer; a membership change
+	// invalidates the user's whole namespace, which drops it with the rest.
+	AdminTeamRole role_basev1.Role `json:"admin_team_role"`
+}
+
+// IsAdminTeamRole is whether a role is one of the admin team's two — the roles that monitor.
+func IsAdminTeamRole(role role_basev1.Role) bool {
+	return role == role_basev1.Role_ROLE_ADMIN_OWNER || role == role_basev1.Role_ROLE_ADMIN_ADMINISTRATOR
 }
 
 // RoleResolver answers "may this user act, and as what, in this team?".
@@ -116,11 +130,42 @@ func (r *dbRoleResolver) Resolve(ctx context.Context, userID, teamID uint64) (Ac
 		}
 	}
 
-	access := Access{Role: role, RootRole: rootRole, Suspended: suspended}
+	adminTeamRole, err := r.adminTeamRole(ctx, userID)
+	if err != nil {
+		return Access{}, err
+	}
+
+	access := Access{Role: role, RootRole: rootRole, Suspended: suspended, AdminTeamRole: adminTeamRole}
 
 	_ = r.cache.Set(ctx, key, access, RoleCacheTTL)
 
 	return access, nil
+}
+
+// adminTeamRole is the caller's admin-team role in ANY team — the one more query monitoring costs, cached with the
+// rest. Owner before Admin when both are somehow held (ORDER BY role: 11 before 12).
+//
+// Find, NOT First, for roleIn's reason: almost nobody is in the admin team, and no row is the ordinary answer.
+func (r *dbRoleResolver) adminTeamRole(ctx context.Context, userID uint64) (role_basev1.Role, error) {
+	var row roleRow
+
+	err := r.db.
+		WithContext(ctx).
+		Table("user_team_roles").
+		Select("role").
+		Where("user_id = ? AND role IN ?", userID, []int32{
+			int32(role_basev1.Role_ROLE_ADMIN_OWNER),
+			int32(role_basev1.Role_ROLE_ADMIN_ADMINISTRATOR),
+		}).
+		Order("role ASC").
+		Limit(1).
+		Find(&row).
+		Error
+	if err != nil {
+		return 0, err
+	}
+
+	return role_basev1.Role(row.Role), nil
 }
 
 type roleRow struct {
@@ -225,9 +270,10 @@ func (r *rpcRoleResolver) Resolve(ctx context.Context, userID, teamID uint64) (A
 	}
 
 	access := Access{
-		Role:      res.Msg.GetRole(),
-		RootRole:  res.Msg.GetRootRole(),
-		Suspended: res.Msg.GetSuspended(),
+		Role:          res.Msg.GetRole(),
+		RootRole:      res.Msg.GetRootRole(),
+		Suspended:     res.Msg.GetSuspended(),
+		AdminTeamRole: res.Msg.GetAdminTeamRole(),
 	}
 
 	_ = r.cache.Set(ctx, key, access, RoleCacheTTL)

@@ -338,7 +338,7 @@ export function OrderCreatePage() {
       if (item.productId <= 0n || seededLines.some((l) => l.productId === item.productId)) continue;
       seededLines.push({
         productId: item.productId,
-        sku: item.externalSku,
+        productCode: item.externalSku,
         name: item.externalName,
         imageUrl: "",
         thumbnailUrl: "",
@@ -604,7 +604,7 @@ export function OrderCreatePage() {
 
       seen.set(line.productId.toString(), {
         productId: line.productId,
-        sku: line.sku,
+        productCode: line.productCode,
         name: line.name,
         ownerTeamId,
         ownerName: teamName(ownerTeamId),
@@ -830,7 +830,7 @@ export function OrderCreatePage() {
         items: allLines.map((l) => ({
           id: 0n,
           productId: l.productId,
-          sku: l.sku,
+          productCode: l.productCode,
           name: l.name,
           quantity: toQty(l.quantity),
           // NO PRICE: a line carries none (an-order-line-carries-no-marketplace-price). The server freezes every money
@@ -870,7 +870,7 @@ export function OrderCreatePage() {
   // What a refused line is called on THIS form — the name the person picked it by, else its id.
   function productLabel(productId: bigint): string {
     const line = allLines.find((l) => l.productId === productId);
-    return line?.name || line?.sku || `#${productId.toString()}`;
+    return line?.name || line?.productCode || `#${productId.toString()}`;
   }
 
   // DELETE THE DRAFT — the app's work dropped, from its own page. Confirmed first: it is not undone.

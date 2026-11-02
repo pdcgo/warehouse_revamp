@@ -7,7 +7,7 @@ import { ArrowRight } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { WarehouseTransferStatus } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeamsByIds } from "../../features/teams/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { useWarehouseTransfers } from "../../features/warehouseTransfer/queries";
@@ -108,17 +108,19 @@ export function WarehouseTransferSellingPage() {
     <Stack gap="section">
       <NotImplementedSummary list={TRANSFER_SELLING_PENDING} />
 
-      <Flex align="center" gap="card">
-        <Spacer />
-        <Button
-          size="xs"
-          colorPalette="brand"
-          data-testid="open-create-transfer"
-          onClick={() => navigate("/inventories/transfer/new")}
-        >
-          {t("warehouseTransfer.newTransfer")}
-        </Button>
-      </Flex>
+      {canWrite(current) && (
+        <Flex align="center" gap="card">
+          <Spacer />
+          <Button
+            size="xs"
+            colorPalette="brand"
+            data-testid="open-create-transfer"
+            onClick={() => navigate("/inventories/transfer/new")}
+          >
+            {t("warehouseTransfer.newTransfer")}
+          </Button>
+        </Flex>
+      )}
 
       <FilterBar
         active={filtered}

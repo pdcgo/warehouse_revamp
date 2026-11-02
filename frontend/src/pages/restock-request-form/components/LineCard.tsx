@@ -109,7 +109,7 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
         <ProductListItem
           product={{
             id: line.productId,
-            sku: line.sku,
+            productCode: line.productCode,
             name: line.name,
             defaultImageUrl: line.imageUrl,
             defaultImageThumbnailUrl: line.thumbnailUrl,

@@ -162,11 +162,11 @@ func eventsOf(events ...*eventsv1.Event) supplier_v1.BackfillSource {
 	}
 }
 
-// setEventLock flips the maintenance switch directly — what a developer does by hand.
+// setEventLock sets the lock directly, stamped NOW() — a LIVE lock, inside its lease.
 func setEventLock(t *testing.T, db *gorm.DB, value string) {
 	t.Helper()
 
-	err := db.Exec(`UPDATE supplier_service_metadata SET value = ? WHERE key = 'process_event_lock'`, value).Error
+	err := db.Exec(`UPDATE supplier_service_metadata SET value = ?, updated_at = NOW() WHERE key = 'process_event_lock'`, value).Error
 	if err != nil {
 		t.Fatalf("set lock: %v", err)
 	}
@@ -187,4 +187,14 @@ func metadata(t *testing.T, db *gorm.DB, key string) string {
 	}
 
 	return rows[0].Value
+}
+
+// leaveDeadLock is a replay that died holding the lock two minutes ago — past its one-minute lease.
+func leaveDeadLock(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	err := db.Exec(`UPDATE supplier_service_metadata SET value = '{"lock":true}', updated_at = NOW() - interval '2 minutes' WHERE key = 'process_event_lock'`).Error
+	if err != nil {
+		t.Fatalf("leave a dead replay's lock: %v", err)
+	}
 }

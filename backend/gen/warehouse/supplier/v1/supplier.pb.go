@@ -1659,14 +1659,14 @@ const file_warehouse_supplier_v1_supplier_proto_rawDesc = "" +
 	"\x15SupplierByIdsDataType\x12)\n" +
 	"%SUPPLIER_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12%\n" +
 	"!SUPPLIER_BY_IDS_DATA_TYPE_GENERAL\x10\x01\x12&\n" +
-	"\"SUPPLIER_BY_IDS_DATA_TYPE_SUPPLIER\x10\x022\xa2\x05\n" +
+	"\"SUPPLIER_BY_IDS_DATA_TYPE_SUPPLIER\x10\x022\xb1\x05\n" +
 	"\x0fSupplierService\x12m\n" +
 	"\x0eSupplierCreate\x12,.warehouse.supplier.v1.SupplierCreateRequest\x1a-.warehouse.supplier.v1.SupplierCreateResponse\x12m\n" +
 	"\x0eSupplierUpdate\x12,.warehouse.supplier.v1.SupplierUpdateRequest\x1a-.warehouse.supplier.v1.SupplierUpdateResponse\x12m\n" +
-	"\x0eSupplierDelete\x12,.warehouse.supplier.v1.SupplierDeleteRequest\x1a-.warehouse.supplier.v1.SupplierDeleteResponse\x12g\n" +
-	"\fSupplierList\x12*.warehouse.supplier.v1.SupplierListRequest\x1a+.warehouse.supplier.v1.SupplierListResponse\x12m\n" +
-	"\x0eSupplierDetail\x12,.warehouse.supplier.v1.SupplierDetailRequest\x1a-.warehouse.supplier.v1.SupplierDetailResponse\x12j\n" +
-	"\rSupplierByIds\x12+.warehouse.supplier.v1.SupplierByIdsRequest\x1a,.warehouse.supplier.v1.SupplierByIdsResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1b\x06proto3"
+	"\x0eSupplierDelete\x12,.warehouse.supplier.v1.SupplierDeleteRequest\x1a-.warehouse.supplier.v1.SupplierDeleteResponse\x12l\n" +
+	"\fSupplierList\x12*.warehouse.supplier.v1.SupplierListRequest\x1a+.warehouse.supplier.v1.SupplierListResponse\"\x03\x90\x02\x01\x12r\n" +
+	"\x0eSupplierDetail\x12,.warehouse.supplier.v1.SupplierDetailRequest\x1a-.warehouse.supplier.v1.SupplierDetailResponse\"\x03\x90\x02\x01\x12o\n" +
+	"\rSupplierByIds\x12+.warehouse.supplier.v1.SupplierByIdsRequest\x1a,.warehouse.supplier.v1.SupplierByIdsResponse\"\x03\x90\x02\x01BPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1b\x06proto3"
 
 var (
 	file_warehouse_supplier_v1_supplier_proto_rawDescOnce sync.Once

@@ -177,7 +177,7 @@ function orderFor(settlement: OrderSettlement): Order {
       {
         id: 1n,
         productId: 301n,
-        sku: "SKU-301",
+        productCode: "SKU-301",
         name: "Kaos Polos Hitam",
         quantity: 2,
         unitCost: settlement.goodsCost / 2n,

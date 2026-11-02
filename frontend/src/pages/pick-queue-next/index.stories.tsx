@@ -434,14 +434,14 @@ export const ValidationNeedsEveryLineExact: Story = {
 
     for (const line of lines) {
       for (let n = 0; n < line.quantity; n += 1) {
-        await userEvent.type(scan, `${line.sku}{Enter}`, { delay: 10 });
+        await userEvent.type(scan, `${line.productCode}{Enter}`, { delay: 10 });
       }
     }
     await waitFor(() => expect(within(dialog).getByTestId("validate-complete")).toBeInTheDocument());
     await expect(next).toBeEnabled();
 
     // One more of the first line is too many.
-    await userEvent.type(scan, `${lines[0]!.sku}{Enter}`, { delay: 10 });
+    await userEvent.type(scan, `${lines[0]!.productCode}{Enter}`, { delay: 10 });
     await expect(within(dialog).getByTestId("validate-problem")).toBeInTheDocument();
   },
 };

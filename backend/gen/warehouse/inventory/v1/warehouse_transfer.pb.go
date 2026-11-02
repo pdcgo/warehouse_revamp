@@ -390,9 +390,9 @@ type WarehouseTransferItem struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Id        uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	ProductId uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// sku/name snapshot at create.
-	Sku  string `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// product code/name snapshot at create.
+	ProductCode string `protobuf:"bytes,3,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
+	Name        string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// How many were sent.
 	Count int64 `protobuf:"varint,5,opt,name=count,proto3" json:"count,omitempty"`
 	// The value the out-leg took for this product — the sum of its batch rows, each at its own price. Exact, and filled
@@ -456,9 +456,9 @@ func (x *WarehouseTransferItem) GetProductId() uint64 {
 	return 0
 }
 
-func (x *WarehouseTransferItem) GetSku() string {
+func (x *WarehouseTransferItem) GetProductCode() string {
 	if x != nil {
-		return x.Sku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -1188,7 +1188,7 @@ type WarehouseTransferListFilter struct {
 	// Created within the period. Both 0 = any time.
 	FromUnix int64 `protobuf:"varint,5,opt,name=from_unix,json=fromUnix,proto3" json:"from_unix,omitempty"`
 	ToUnix   int64 `protobuf:"varint,6,opt,name=to_unix,json=toUnix,proto3" json:"to_unix,omitempty"`
-	// Free text over its number (a whole id only), the tracking number, and a line's SKU or name.
+	// Free text over its number (a whole id only), the tracking number, and a line's product code or name.
 	Q             string `protobuf:"bytes,7,opt,name=q,proto3" json:"q,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2430,12 +2430,12 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\n" +
 	"price_unit\x18\x03 \x01(\x01R\tpriceUnit\x12\x14\n" +
 	"\x05total\x18\x04 \x01(\x01R\x05total\x12\x1c\n" +
-	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\"\xda\x03\n" +
+	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\"\xeb\x03\n" +
 	"\x15WarehouseTransferItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12\x10\n" +
-	"\x03sku\x18\x03 \x01(\tR\x03sku\x12\x12\n" +
+	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12!\n" +
+	"\fproduct_code\x18\x03 \x01(\tR\vproductCode\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1d\n" +
 	"\x05count\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x05count\x12\x14\n" +
 	"\x05total\x18\x06 \x01(\x01R\x05total\x12\x1d\n" +
@@ -2634,11 +2634,11 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x1dWarehouseTransferListDataType\x121\n" +
 	"-WAREHOUSE_TRANSFER_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")WAREHOUSE_TRANSFER_LIST_DATA_TYPE_GENERAL\x10\x01\x128\n" +
-	"4WAREHOUSE_TRANSFER_LIST_DATA_TYPE_WAREHOUSE_TRANSFER\x10\x022\x99\v\n" +
+	"4WAREHOUSE_TRANSFER_LIST_DATA_TYPE_WAREHOUSE_TRANSFER\x10\x022\xa3\v\n" +
 	"\x18WarehouseTransferService\x12\x8a\x01\n" +
-	"\x17WarehouseTransferCreate\x126.warehouse.inventory.v1.WarehouseTransferCreateRequest\x1a7.warehouse.inventory.v1.WarehouseTransferCreateResponse\x12\x84\x01\n" +
-	"\x15WarehouseTransferList\x124.warehouse.inventory.v1.WarehouseTransferListRequest\x1a5.warehouse.inventory.v1.WarehouseTransferListResponse\x12\x8a\x01\n" +
-	"\x17WarehouseTransferDetail\x126.warehouse.inventory.v1.WarehouseTransferDetailRequest\x1a7.warehouse.inventory.v1.WarehouseTransferDetailResponse\x12\x8a\x01\n" +
+	"\x17WarehouseTransferCreate\x126.warehouse.inventory.v1.WarehouseTransferCreateRequest\x1a7.warehouse.inventory.v1.WarehouseTransferCreateResponse\x12\x89\x01\n" +
+	"\x15WarehouseTransferList\x124.warehouse.inventory.v1.WarehouseTransferListRequest\x1a5.warehouse.inventory.v1.WarehouseTransferListResponse\"\x03\x90\x02\x01\x12\x8f\x01\n" +
+	"\x17WarehouseTransferDetail\x126.warehouse.inventory.v1.WarehouseTransferDetailRequest\x1a7.warehouse.inventory.v1.WarehouseTransferDetailResponse\"\x03\x90\x02\x01\x12\x8a\x01\n" +
 	"\x17WarehouseTransferUpdate\x126.warehouse.inventory.v1.WarehouseTransferUpdateRequest\x1a7.warehouse.inventory.v1.WarehouseTransferUpdateResponse\x12\x8a\x01\n" +
 	"\x17WarehouseTransferCancel\x126.warehouse.inventory.v1.WarehouseTransferCancelRequest\x1a7.warehouse.inventory.v1.WarehouseTransferCancelResponse\x12\x90\x01\n" +
 	"\x19WarehouseTransferMarkLost\x128.warehouse.inventory.v1.WarehouseTransferMarkLostRequest\x1a9.warehouse.inventory.v1.WarehouseTransferMarkLostResponse\x12\x8d\x01\n" +

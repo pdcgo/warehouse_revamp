@@ -16,7 +16,7 @@ func TestProductDetail_ReturnsOrderedGallery(t *testing.T) {
 	svc := newService(t, db)
 
 	created, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
-		TeamId: 2, Sku: "D-1", Name: "Detailed", CategoryId: 4,
+		TeamId: 2, ProductCodePart: "D-1", Name: "Detailed", CategoryId: 4,
 		Images: []*productv1.ProductImage{
 			{Url: "https://cdn/1.jpg", ThumbnailUrl: "https://cdn/1_t.jpg"},
 			{Url: "https://cdn/2.jpg", ThumbnailUrl: "https://cdn/2_t.jpg"},
@@ -115,11 +115,11 @@ func TestProductDetail_ReturnsArchived(t *testing.T) {
 
 	id := insertProduct(t, db, 2, "SKU-ARCH", "Archived product")
 
-	_, err := svc.ProductDelete(context.Background(), connect.NewRequest(&productv1.ProductDeleteRequest{
+	_, err := svc.ProductArchive(context.Background(), connect.NewRequest(&productv1.ProductArchiveRequest{
 		TeamId: 2, ProductId: id,
 	}))
 	if err != nil {
-		t.Fatalf("ProductDelete: %v", err)
+		t.Fatalf("ProductArchive: %v", err)
 	}
 
 	resp, err := svc.ProductDetail(context.Background(), connect.NewRequest(&productv1.ProductDetailRequest{
@@ -131,7 +131,7 @@ func TestProductDetail_ReturnsArchived(t *testing.T) {
 
 	// `deleted` is how the caller tells the two apart — the screen withdraws Edit and offers Restore
 	// off exactly this flag, so it has to survive the round trip rather than merely not error.
-	if !resp.Msg.GetProduct().GetDeleted() {
+	if !resp.Msg.GetProduct().GetArchived() {
 		t.Fatalf("archived product came back with deleted = false")
 	}
 

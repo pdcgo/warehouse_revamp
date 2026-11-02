@@ -725,7 +725,7 @@ func (x *OrderTimelineLog) GetCreatedAtUnix() int64 {
 	return 0
 }
 
-// OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name are a SNAPSHOT
+// OrderItem is one order line. product_id is an OPAQUE product_service id; product code/name are a SNAPSHOT
 // taken at order time, so later catalogue edits never rewrite an order's history. Used for both input
 // (create; `id` and every money field ignored) and output.
 //
@@ -736,9 +736,10 @@ type OrderItem struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Id        uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	ProductId uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Sku       string                 `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
-	Name      string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Quantity  uint32                 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	// At most 75: a team code (10) + "-" + the team's part (64) — the composed code (the-field-is-product-code-composed-on-write).
+	ProductCode string `protobuf:"bytes,3,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
+	Name        string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Quantity    uint32 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	// What this product COST us, per unit, frozen when the order was placed (#74) — the owner's
 	// `unit_cost`: the units the take drew ÷ the quantity (an-order-is-costed-at-what-leaves-the-shelf),
 	// whole rupiah.
@@ -812,9 +813,9 @@ func (x *OrderItem) GetProductId() uint64 {
 	return 0
 }
 
-func (x *OrderItem) GetSku() string {
+func (x *OrderItem) GetProductCode() string {
 	if x != nil {
-		return x.Sku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -5040,12 +5041,12 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x04note\x18\x03 \x01(\tR\x04note\x12;\n" +
 	"\x04from\x18\x04 \x01(\x0e2'.warehouse.selling.v1.OrderTimelineFromR\x04from\x12\x19\n" +
 	"\bactor_id\x18\x05 \x01(\x04R\aactorId\x12&\n" +
-	"\x0fcreated_at_unix\x18\x06 \x01(\x03R\rcreatedAtUnix\"\x84\x03\n" +
+	"\x0fcreated_at_unix\x18\x06 \x01(\x03R\rcreatedAtUnix\"\x95\x03\n" +
 	"\tOrderItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12\x1b\n" +
-	"\x03sku\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x03sku\x12\x1e\n" +
+	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12,\n" +
+	"\fproduct_code\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18KR\vproductCode\x12\x1e\n" +
 	"\x04name\x18\x04 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12#\n" +
 	"\bquantity\x18\x05 \x01(\rB\a\xbaH\x04*\x02(\x01R\bquantity\x12\x1b\n" +
@@ -5449,23 +5450,23 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"$ORDER_CREATOR_LIST_DATA_TYPE_CREATOR\x10\x01*V\n" +
 	"\x10OrderCreatorSort\x12\"\n" +
 	"\x1eORDER_CREATOR_SORT_UNSPECIFIED\x10\x00\x12\x1e\n" +
-	"\x1aORDER_CREATOR_SORT_LAST_AT\x10\x012\x9f\r\n" +
+	"\x1aORDER_CREATOR_SORT_LAST_AT\x10\x012\xc2\r\n" +
 	"\fOrderService\x12b\n" +
-	"\vOrderCreate\x12(.warehouse.selling.v1.OrderCreateRequest\x1a).warehouse.selling.v1.OrderCreateResponse\x12\\\n" +
-	"\tOrderList\x12&.warehouse.selling.v1.OrderListRequest\x1a'.warehouse.selling.v1.OrderListResponse\x12b\n" +
-	"\vOrderDetail\x12(.warehouse.selling.v1.OrderDetailRequest\x1a).warehouse.selling.v1.OrderDetailResponse\x12b\n" +
+	"\vOrderCreate\x12(.warehouse.selling.v1.OrderCreateRequest\x1a).warehouse.selling.v1.OrderCreateResponse\x12a\n" +
+	"\tOrderList\x12&.warehouse.selling.v1.OrderListRequest\x1a'.warehouse.selling.v1.OrderListResponse\"\x03\x90\x02\x01\x12g\n" +
+	"\vOrderDetail\x12(.warehouse.selling.v1.OrderDetailRequest\x1a).warehouse.selling.v1.OrderDetailResponse\"\x03\x90\x02\x01\x12b\n" +
 	"\vOrderCancel\x12(.warehouse.selling.v1.OrderCancelRequest\x1a).warehouse.selling.v1.OrderCancelResponse\x12d\n" +
 	"\vOrderExport\x12(.warehouse.selling.v1.OrderExportRequest\x1a).warehouse.selling.v1.OrderExportResponse0\x01\x12t\n" +
 	"\x11OrderStatusChange\x12..warehouse.selling.v1.OrderStatusChangeRequest\x1a/.warehouse.selling.v1.OrderStatusChangeResponse\x12n\n" +
 	"\x0fOrderNoteCreate\x12,.warehouse.selling.v1.OrderNoteCreateRequest\x1a-.warehouse.selling.v1.OrderNoteCreateResponse\x12w\n" +
 	"\x12OrderReceiptUpdate\x12/.warehouse.selling.v1.OrderReceiptUpdateRequest\x1a0.warehouse.selling.v1.OrderReceiptUpdateResponse\x12v\n" +
 	"\x11ShopeeOrderImport\x12..warehouse.selling.v1.ShopeeOrderImportRequest\x1a/.warehouse.selling.v1.ShopeeOrderImportResponse0\x01\x12v\n" +
-	"\x11TiktokOrderImport\x12..warehouse.selling.v1.TiktokOrderImportRequest\x1a/.warehouse.selling.v1.TiktokOrderImportResponse0\x01\x12\x8c\x01\n" +
-	"\x19OrderProductActivityByIds\x126.warehouse.selling.v1.OrderProductActivityByIdsRequest\x1a7.warehouse.selling.v1.OrderProductActivityByIdsResponse\x12t\n" +
-	"\x11OrderActivityStat\x12..warehouse.selling.v1.OrderActivityStatRequest\x1a/.warehouse.selling.v1.OrderActivityStatResponse\x12\\\n" +
-	"\tOrderStat\x12&.warehouse.selling.v1.OrderStatRequest\x1a'.warehouse.selling.v1.OrderStatResponse\x12z\n" +
-	"\x13OrderByExternalRefs\x120.warehouse.selling.v1.OrderByExternalRefsRequest\x1a1.warehouse.selling.v1.OrderByExternalRefsResponse\x12q\n" +
-	"\x10OrderCreatorList\x12-.warehouse.selling.v1.OrderCreatorListRequest\x1a..warehouse.selling.v1.OrderCreatorListResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"\x11TiktokOrderImport\x12..warehouse.selling.v1.TiktokOrderImportRequest\x1a/.warehouse.selling.v1.TiktokOrderImportResponse0\x01\x12\x91\x01\n" +
+	"\x19OrderProductActivityByIds\x126.warehouse.selling.v1.OrderProductActivityByIdsRequest\x1a7.warehouse.selling.v1.OrderProductActivityByIdsResponse\"\x03\x90\x02\x01\x12y\n" +
+	"\x11OrderActivityStat\x12..warehouse.selling.v1.OrderActivityStatRequest\x1a/.warehouse.selling.v1.OrderActivityStatResponse\"\x03\x90\x02\x01\x12a\n" +
+	"\tOrderStat\x12&.warehouse.selling.v1.OrderStatRequest\x1a'.warehouse.selling.v1.OrderStatResponse\"\x03\x90\x02\x01\x12\x7f\n" +
+	"\x13OrderByExternalRefs\x120.warehouse.selling.v1.OrderByExternalRefsRequest\x1a1.warehouse.selling.v1.OrderByExternalRefsResponse\"\x03\x90\x02\x01\x12v\n" +
+	"\x10OrderCreatorList\x12-.warehouse.selling.v1.OrderCreatorListRequest\x1a..warehouse.selling.v1.OrderCreatorListResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_order_proto_rawDescOnce sync.Once

@@ -35,7 +35,7 @@ func TestProductStockSummary_ReadyOngoingLast(t *testing.T) {
 	// A second restock, LEFT PENDING — this is the ongoing (inbound) stock.
 	_, err = svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouse,
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, Sku: "S", Name: "P", Count: 50, Total: 2000000}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, ProductCode: "S", Name: "P", Count: 50, Total: 2000000}},
 	}))
 	if err != nil {
 		t.Fatalf("pending restock: %v", err)

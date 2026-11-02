@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
@@ -56,10 +57,22 @@ func (s *Service) LiabilityPaymentRecord(
 		// which is a state the flow already has.
 		Documents: proofDocuments(req.Msg.GetDocumentIds()),
 		// WHO claimed it, not just which team. This is the record that says a person moved money.
-		RecordedBy: actorUserID(ctx),
+		RecordedBy:         actorUserID(ctx),
+		RecordedIsOverride: isOverride(ctx),
 	}
 
-	err = s.db.WithContext(ctx).Create(&payment).Error
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Create(&payment).Error
+		if err != nil {
+			return err
+		}
+
+		// The debtor has paid — an asking creditor's request is answered, and leaves the balance (a-creditor-may-request-payment).
+		return tx.
+			Where("creditor_team_id = ? AND debtor_team_id = ?", creditorTeamID, payerTeamID).
+			Delete(&liability_service_models.LiabilityPaymentRequest{}).
+			Error
+	})
 	if err != nil {
 		return nil, dbError(err)
 	}

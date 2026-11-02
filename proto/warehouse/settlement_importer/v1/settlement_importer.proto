@@ -32,13 +32,25 @@ service SettlementImporterService {
   rpc ShopeeSettlementImport(ShopeeSettlementImportRequest) returns (stream ShopeeSettlementImportResponse);
 
   // The team's imported files, newest first — the import screen.
-  rpc UploadedFileList(UploadedFileListRequest) returns (UploadedFileListResponse);
+  rpc UploadedFileList(UploadedFileListRequest) returns (UploadedFileListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Files by id — one file's page reads its own row through this.
-  rpc UploadedFileByIds(UploadedFileByIdsRequest) returns (UploadedFileByIdsResponse);
+  rpc UploadedFileByIds(UploadedFileByIdsRequest) returns (UploadedFileByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // One file's rows, by outcome — what was held, what was skipped, what went to the shop.
-  rpc UploadedFileLineList(UploadedFileLineListRequest) returns (UploadedFileLineListResponse);
+  rpc UploadedFileLineList(UploadedFileLineListRequest) returns (UploadedFileLineListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // ── The file ─────────────────────────────────────────────────────────────────────────────────────

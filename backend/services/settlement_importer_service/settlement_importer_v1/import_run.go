@@ -15,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 
 	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_marketplace"
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service/settlement_importer_service_models"
 )
@@ -80,6 +81,8 @@ func (s *Service) importStatement(ctx context.Context, in importRequest, sink *s
 		Status:          statusRunning,
 		CreatedByUserID: uploader,
 		PrimaryUserID:   shop.PrimaryUserID,
+		// A stream's ctx carries its scope and caller role once its request is authorized (san_auth.StreamScope).
+		IsOverride: san_auth.IsOverride(ctx),
 	}
 
 	err = s.db.WithContext(ctx).Create(&file).Error

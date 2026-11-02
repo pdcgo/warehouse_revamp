@@ -96,7 +96,7 @@ export function BundleLineCard({
             id: productId,
             // The owner is named only for another team's product — your own needs no label.
             teamId: borrowed ? product?.teamId : undefined,
-            sku: product?.sku,
+            productCode: product?.productCode,
             name: product ? `${product.name}${state === "archived" ? ` ${t("bundles.archivedSuffix")}` : ""}` : undefined,
             defaultImageUrl: product?.defaultImageUrl,
             defaultImageThumbnailUrl: product?.defaultImageThumbnailUrl,

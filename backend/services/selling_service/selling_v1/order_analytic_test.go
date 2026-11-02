@@ -315,6 +315,17 @@ func TestOrderMetricData_RefusesABadAsk(t *testing.T) {
 		Page: &analytic_basev1.PaginationFilter{Limit: 10},
 	}))
 	wantCode(t, err, connect.CodeInvalidArgument)
+
+	// A YEAR AT MOST (a-metric-reads-at-most-a-year): 2024 is 366 days, a day more is refused.
+	_, err = analytic.MetricSearch(context.Background(), connect.NewRequest(&sellingv1.MetricSearchRequest{
+		TeamId: 2, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP,
+		Filters: []*analytic_basev1.FilterItem{{F: &analytic_basev1.FilterItem_DateRangeFilter{
+			DateRangeFilter: &analytic_basev1.DateRangeFilter{DateMin: "2024-01-01", DateMax: "2025-01-01"},
+		}}},
+		Sort: &analytic_basev1.MetricSort{MetricId: metricCreated, Field: "created_count"},
+		Page: &analytic_basev1.PaginationFilter{Limit: 10},
+	}))
+	wantCode(t, err, connect.CodeInvalidArgument)
 }
 
 // The five pass the same startup check every metric does (san_metric.ValidateDescriptors).

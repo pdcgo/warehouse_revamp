@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Button, Flex, Heading, Icon, SimpleGrid, Spacer, Stack, Table, Text } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { teamClient } from "../../../api/clients";
-import { Weekday } from "../../../gen/warehouse/team/v1/team_pb";
-import type { DayHours, WarehouseInfo } from "../../../gen/warehouse/team/v1/team_pb";
+import { warehouseInfoClient } from "../../../api/clients";
+import { Weekday } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
+import type { DayHours, WarehouseInfo } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
 import { useTeam } from "../../../features/team/TeamContext";
 import { isGlobalAdmin } from "../../../lib/roles";
 import { DetailField } from "./TeamDetailCommon";
@@ -65,7 +65,7 @@ export function WarehouseInfoSection({ teamId }: { teamId: bigint }) {
   useEffect(() => {
     let alive = true;
 
-    teamClient
+    warehouseInfoClient
       .warehouseInfoDetail({ teamId })
       .then((res) => {
         if (alive) setInfo(res.info);

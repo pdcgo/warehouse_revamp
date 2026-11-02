@@ -25,9 +25,21 @@ service SupplierService {
   rpc SupplierCreate(SupplierCreateRequest) returns (SupplierCreateResponse);
   rpc SupplierUpdate(SupplierUpdateRequest) returns (SupplierUpdateResponse);
   rpc SupplierDelete(SupplierDeleteRequest) returns (SupplierDeleteResponse);
-  rpc SupplierList(SupplierListRequest) returns (SupplierListResponse);
-  rpc SupplierDetail(SupplierDetailRequest) returns (SupplierDetailResponse);
-  rpc SupplierByIds(SupplierByIdsRequest) returns (SupplierByIdsResponse);
+  rpc SupplierList(SupplierListRequest) returns (SupplierListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SupplierDetail(SupplierDetailRequest) returns (SupplierDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SupplierByIds(SupplierByIdsRequest) returns (SupplierByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message Supplier {

@@ -18,7 +18,6 @@ the database.
 ```mermaid
 erDiagram
     teams ||--o| team_infos : "has 1 to 1"
-    teams ||--o| warehouse_infos : "1 to 1 (warehouse teams)"
 
     teams {
         bigserial   id          PK
@@ -42,15 +41,6 @@ erDiagram
         timestamptz updated_at
     }
 
-    warehouse_infos {
-        bigserial   id              PK
-        bigint      team_id         FK "unique, the warehouse team"
-        jsonb       operating_hours "weekly open/close grid"
-        jsonb       receiving_hours "weekly order-receiving grid"
-        text        location        "physical address, free text"
-        timestamptz created_at
-        timestamptz updated_at
-    }
 ```
 
 - **`teams`** — one row per team (a warehouse *is* a team). Root-ness is
@@ -89,10 +79,8 @@ erDiagram
     may still choose another, and the server keeps refusing an order that names none. A server-side
     fallback would quietly undo that refusal — which exists so a warehouse-less order cannot reach the
     database at all.
-- **`warehouse_infos`** — 1:1 with a WAREHOUSE `teams` row (`UNIQUE (team_id)`, so `WarehouseInfoUpdate`
-  is an `ON CONFLICT` upsert). The two schedules are stored as JSONB (a per-day open/close grid; the
-  handler validates and marshals). `location` is the warehouse's physical address (#39). A warehouse
-  with no row yet reads as "every day closed, no location".
+- **`warehouse_infos`** — ⛔ **dropped** (`00010`): the warehouse profile moved to warehouse_service
+  ([the-warehouse-profile-lives-in-warehouse-service](business/teams/warehouse/context_decision.md#the-warehouse-profile-lives-in-warehouse-service)).
 
 ---
 
@@ -105,6 +93,10 @@ erDiagram
     users ||--o{ user_team_roles : "member of"
     users ||--o{ team_member_logs : "whose membership changed"
     users |o--o{ team_member_logs : "who changed it"
+    users ||--o{ agent_credentials : "connected an AI agent"
+    users ||--o{ agent_oauth_codes : "allowed an agent"
+    agent_oauth_clients ||--o{ agent_oauth_codes : "client_id, no FK"
+    agent_oauth_clients ||--o{ agent_credentials : "client_id, no FK"
 
     users {
         bigserial   id                  PK
@@ -142,6 +134,50 @@ erDiagram
         boolean     is_override   "Root or the Administrator, not a member"
         timestamptz created_at
     }
+
+    agent_oauth_clients {
+        bigserial   id            PK
+        text        client_id     UK "agent_ + random"
+        text        client_name   "what the agent calls itself"
+        jsonb       redirect_uris "exact match only"
+        timestamptz created_at
+    }
+
+    agent_oauth_codes {
+        bigserial   id             PK
+        text        code_hash      UK "SHA-256, the code is never stored"
+        text        client_id
+        bigint      user_id        FK
+        bigint      team_id        "opaque, 0 = every team"
+        text        name
+        text        redirect_uri
+        text        code_challenge "PKCE S256"
+        timestamptz expires_at     "5 minutes"
+        timestamptz used_at        "spent once"
+        timestamptz created_at
+    }
+
+    agent_credentials {
+        bigserial   id           PK
+        text        token_hash   UK "SHA-256, the bearer is never stored"
+        bigint      user_id      FK
+        bigint      team_id      "opaque, 0 = every team"
+        text        name         "named by the person"
+        text        client_id
+        text        client_name
+        timestamptz created_at
+        timestamptz expires_at   "90 days"
+        timestamptz last_used_at "stamped at most once a minute"
+        timestamptz revoked_at
+    }
+
+    team_agent_policies {
+        bigint      team_id             PK "opaque"
+        boolean     members_may_connect "CS and staff, off by default"
+        bigint      updated_by_user_id  FK
+        timestamptz updated_at
+        boolean     is_override         "the last setter was Root or the Administrator, not a member (00012)"
+    }
 ```
 
 - **`users`** — the identity table. An empty `password` is a deliberate "cannot log in" marker
@@ -168,6 +204,22 @@ erDiagram
   change (an add has no role before it, a removal none after, a role change two different roles); nothing
   changing writes nothing. Read newest first per team, and per person within a team — indexes
   `(team_id, id DESC)` and `(team_id, user_id, id DESC)`.
+- **`agent_oauth_clients`, `agent_oauth_codes`, `agent_credentials`, `team_agent_policies`** (`00011`) — the AI
+  agents a person connects to read through the MCP ([our-server-hosts-the-mcp](business/mcp/context_decision.md#our-server-hosts-the-mcp)).
+  A **client** is an agent that registered itself (RFC 7591) — public, no secret, PKCE instead; its redirects match
+  **exactly**. A **code** is the connect page's one-time grant — 5 minutes, spent by the `UPDATE … WHERE used_at IS NULL`
+  that reads it, so a code mints one credential. A **credential** is the agent's own
+  ([an-agent-gets-its-own-team-credential](business/mcp/context_decision.md#an-agent-gets-its-own-team-credential)) — named, one team or every team
+  (`team_id = 0`, root's, [a-roots-agent-reads-every-team](business/mcp/context_decision.md#a-roots-agent-reads-every-team)), 90 days, revoked one by
+  one; codes and bearers are kept as SHA-256 only. Indexed `(user_id, id DESC)` for /profile and `(team_id, id DESC)` for
+  the owner's list. **`team_agent_policies`** is the owner's switch for CS and staff
+  ([the-owner-decides-who-connects-an-agent](business/mcp/context_decision.md#the-owner-decides-who-connects-an-agent)) — no row reads as off.
+- **`is_override`** — Root or the Administrator wrote it inside a team they hold no role in
+  ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
+  `team_member_logs` has it from `00005`; `team_agent_policies` from `00012`, where it follows the last setter as
+  `updated_by_user_id` does. Every service stamps the same answer, `san_auth.IsOverride`: a person, a scoped request, and
+  no role in that team. Rows from before the column read false. `agent_credentials` is not stamped — `AgentConnect` is
+  unscoped (team `0` is "every team"), so there is no team for the rule to read.
 
 ---
 
@@ -221,7 +273,7 @@ erDiagram
     products {
         bigserial   id                          PK
         bigint      team_id                     "owning team, opaque cross-service id, no FK"
-        text        sku                         "required, unique per team among active"
+        text        product_code                "composed on write, team_code-part, UNIQUE over every row (00008)"
         text        name                        "required"
         text        description
         bigint      category_id                 "required on write, opaque cross-service id, no FK"
@@ -230,7 +282,7 @@ erDiagram
         int         cross_markup_bps            "CROSS: markup another team pays over our cost, basis points (1250 = 12.50%), 0 = none"
         boolean     cross_locked                "CROSS: true = ours only, absent from ProductDiscover so no other team can order it"
         int         reserved_stock              "hold-back buffer in units, available = on_hand - reserved_stock, 0 = none"
-        boolean     deleted                     "soft delete, ARCHIVED in the UI"
+        boolean     archived                     "out of the list and the pickers, still read by id (00007, was deleted)"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -251,6 +303,7 @@ erDiagram
         text        name               "required, MAY REPEAT within a team"
         text        description
         bigint      created_by_user_id "who made it, user_service id, no FK"
+        boolean     is_override        "the maker was Root or the Administrator, not a member (00009)"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -264,9 +317,15 @@ erDiagram
 ```
 
 - **`products`** — a team's catalogue items. Every RPC is team-scoped (`team_id` carries
-  `use_scope`), so a product is only ever reachable within its owning team. `sku` is unique per team
-  **among active products only** (`UNIQUE (team_id, sku) WHERE deleted = FALSE`), so a soft-deleted
-  product frees its SKU for reuse and two teams may share a SKU. `team_id` is opaque — no FK to
+  `use_scope`), so a product is only ever reachable within its owning team. **`product_code`** (00008, renamed from
+  `sku`) is the product's one code, **composed on write**: the team sends its part and product_service stores
+  `<team_code>-<part>`, the team code read from team_service ([the-field-is-product-code-composed-on-write](business/product/context_decision.md#the-field-is-product-code-composed-on-write)).
+  It is **unique over every row** (`products_product_code_unique`) — an archived product keeps its code, so Unarchive
+  cannot collide; only a Delete, of a never-used product, frees one. 00008 replaced the partial per-team index
+  `(team_id, sku) WHERE archived = FALSE`, suffixing `-<id>` onto every row but the oldest of a code two rows shared,
+  and `san product recompose-codes` puts each team's code in front of the rows written before. **`archived`** (00007, renamed from `deleted`): a product
+  with any HISTORY — a stock movement, an order line, a restock line — is archived, never deleted; one with none is
+  removed for good by `ProductDelete` ([a-used-product-is-archived-never-deleted](business/product/context_decision.md#a-used-product-is-archived-never-deleted)). `team_id` is opaque — no FK to
   `team_service.teams`. `category_id` is likewise an **opaque cross-service id** (a `category_service`
   node, no FK); it is **required on write** (the handler rejects 0), `DEFAULT 0` only so pre-existing
   rows survive the migration. `default_image_url` / `default_image_thumbnail_url` are the
@@ -276,11 +335,13 @@ erDiagram
   DB), ordered by `position` (0 = cover). `url`/`thumbnail_url` are produced by the two-phase
   `document_service` upload (resource type `PRODUCT_IMAGE`, served at a stable public URL) and stored
   verbatim. `ProductUpdate` replaces the whole set when its `images` wrapper is present. `ON DELETE
-  CASCADE` covers a hard delete; products are normally soft-deleted, so images stay with them.
+  CASCADE` covers `ProductDelete`, which removes only a never-used product; an archived one keeps its images.
 - **`bundles`** (`00006`) — a selling team's **picking recipes** ([product_bundle.md](business/product/product_bundle.md)):
   no stock, no price. The name **may repeat** within a team, so there is no unique index on it. A bundle is
   **hard-deleted**, because no order refers to one — the order form expands it into product lines and keeps no link
   back. `bundles_team_updated_idx (team_id, updated_at DESC, id DESC)` serves BundleList's default order.
+  **`is_override`** (`00009`) is set once at create, beside the creator: Root or the Administrator made it inside a team
+  they hold no role in ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
 - **`bundle_products`** — one product per bundle and how many go into one bundle: `UNIQUE (bundle_id, product_id)`,
   `CHECK (quantity BETWEEN 1 AND 9999)`. Whose product it is comes from `products.team_id` — **no copy** on the line.
   `product_id` is a real FK (same service); a product is only ever archived, so the FK never blocks, and an archived
@@ -346,6 +407,7 @@ erDiagram
         bigint      platform_total     "the owner's platform_total - what the buyer paid on the platform (marketplace_total until 00026). Required at placement since 00022, checked in code; 0 only before that"
         text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — its rule is checked in code, not built yet"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
+        boolean     is_override         "the creator was Root or the Administrator, not a member - set at placement, never updated (00033)"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
         text        receipt_filename    "snapshot of what the receipt was called when attached"
         text        receipt_mime_type   "image/* or application/pdf — how to render it without fetching it"
@@ -361,7 +423,7 @@ erDiagram
         bigserial   id         PK
         bigint      order_id   FK "-> orders(id), ON DELETE CASCADE"
         bigint      product_id "opaque product_service id, no FK"
-        text        sku        "snapshot at order time"
+        text        product_code "snapshot at order time, sku until 00032"
         text        name       "snapshot"
         int         quantity   ">= 1"
         bigint      unit_cost     "the owner's unit_cost - the take's drawn cost per unit, whole rupiah (#74); server-set, 0 = unknown"
@@ -378,6 +440,7 @@ erDiagram
         text        note       "why a move needed a reason, or the note itself - the order's only notes since 00029 dropped orders.note"
         text        from       "warehouse or selling — the side that wrote it; quoted, an SQL keyword"
         bigint      actor_id   "who wrote it — opaque user_service id, no FK; 0 = not recorded"
+        boolean     is_override "the actor was Root or the Administrator, not a member of the scoped team (00033)"
         timestamptz created_at "when it happened — the row is written at that moment"
     }
 
@@ -385,6 +448,7 @@ erDiagram
         bigserial   id             PK
         bigint      team_id        "the scope, carries use_scope"
         bigint      author_user_id "personal — only the author lists it; opaque, no FK"
+        boolean     is_override    "the author pushed it as Root or the Administrator, not a member - follows the push (00033)"
         text        source         "which app pushed it"
         text        external_id    "the marketplace's own id — UNIQUE with team_id and source"
         jsonb       touched_fields "field names a human has edited; the push writes only what is absent here"
@@ -632,13 +696,21 @@ erDiagram
   `receipt` is the file. Written at create; the seller's *Edit Resi* (pending, processed, picked —
   the-seller-edits-the-resi-until-handover) is decided and not built.
   The list's search reaches it with ILIKE, which no b-tree serves (see audits/…/OrderList.md).
+- **`is_override`** (`00033`) on `orders`, `order_timeline_logs` and `order_drafts` — the actor beside it was Root or the
+  Administrator, writing inside a team they hold no role in
+  ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+  read from `san_auth.IsOverride`, never sent. Each row carries its OWN actor's answer: a timeline row says whether THAT
+  move or note was an override, an order whether its placement was, a draft whether its last push was. Rows from before
+  the column read false. The placement's answer rides `OrderPlaced.actor_is_override` and the cancel's own rides
+  `OrderCancelled.actor_is_override`, so the rows liability and settlement write from them say so too. ⚠ Moves made by the order-import STREAMS (`ShopeeOrderImport`, `TiktokOrderImport`) read
+  false even for Root: a server stream's ctx carries no scope or role, so the rule has nothing to read.
 - **`orders`** / **`order_items`** — the SELLING side of an order (#67): who ordered, from which
   shop, and the frozen money (whole rupiah). Team-scoped (`team_id` opaque); `shop_id` is a real FK
   (same service). `status` is the `OrderStatus` enum as text — the eleven of the status diagram
   (`pending`, `processed`, `picked`, `shipping`, `shipped`, `completed`, `problem`, `lost`, `return`,
   `return_completed`, `cancel`), default `pending` since 00015, which moved every old row:
   `placed → pending`, `confirmed`/`picking → processed`, `packed → picked`, `shipped → shipping` (the old
-  `shipped` was the handover), `cancelled → cancel`. No `CHECK` (mapper + proto guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name` frozen
+  `shipped` was the handover), `cancelled → cancel`. No `CHECK` (mapper + proto guard it). `order_items` snapshots each line (`product_id` opaque; `product_code` — `sku` until 00032 — and `name` frozen
   at order time, and the take's money — no marketplace price), `ON DELETE CASCADE`. `OrderCreate` does **not** touch inventory (that is #69), and
   COGS/margin are the revenue side (#74). The UI is #68.
 - **The order's delivery address is a SNAPSHOT** (#118) — the ten `provinsi_*` … `address_line`
@@ -722,6 +794,8 @@ erDiagram
     The day is the move's own instant as a Jakarta date
     ([a-fact-counts-on-the-day-it-happened](business/order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened));
     everything else is read off the order, which does not change after it is placed.
+  - **`created_at` is indexed** (00031): every order metric answers *as of* the newest claim, `MAX(created_at)`
+    ([a-money-metric-says-as-of-when](business/analytic/rpc_provide_decision.md#a-money-metric-says-as-of-when)).
   - **The claim is the dedup**: `order_event_logs`' `INSERT … ON CONFLICT (id) DO NOTHING` in the fold's own transaction,
     on the EVENT id, so a redelivery counts nothing. Raced: 40/40, no increment lost, no event counted twice.
   - **Two scope indexes**, `(team_id, metric, day)` and `(warehouse_id, metric, day)` — a seller's and a warehouse's reads
@@ -773,6 +847,7 @@ erDiagram
         bigint      size_bytes
         text        filename
         bigint      created_by_id "uploader, best-effort audit"
+        boolean     is_override   "the uploader was Root or the Administrator, not a member (00009)"
         text        status        "pending or active"
         text        public_url    "public resource types only"
         text        thumbnail_key "generated thumbnail path for images"
@@ -786,6 +861,7 @@ erDiagram
         text        document_id FK "-> documents(id) ON DELETE RESTRICT — a shared file cannot be deleted by accident"
         bigint      team_id     "the team that may now read it, opaque, no FK"
         bigint      granted_by  "who granted it, opaque user id"
+        boolean     is_override "the granter was Root or the Administrator, not a member of the OWNER team (00009)"
         timestamptz created_at
     }
 ```
@@ -821,6 +897,11 @@ erDiagram
     withdrawn by the party who supplied it. **There is no unshare** for the same reason.
   - Unique on `(document_id, team_id)`: granting twice is the same fact, so a retry is a no-op rather
     than a second row or an error.
+- **`is_override`** (`00009`) on `documents` and `document_shares` — the uploader, or the granter, was Root or the
+  Administrator inside a team they hold no role in
+  ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
+  A share is judged in the OWNER's scope, never the reader's. A repeated grant is a no-op, so the first granter's answer
+  stays. Rows from before the column read false.
 
 ---
 
@@ -912,6 +993,7 @@ erDiagram
         text        from_status        "status words as restocks stores them; '' = the create"
         text        to_status          "the same as from_status for an edit"
         bigint      actor_user_id      "who did it, opaque user_service id, no FK; 0 = not recorded"
+        boolean     is_override        "the actor was Root or the Administrator, not a member of the scoped team (00034)"
         text        description        "what moved it, or what an edit changed"
         timestamptz created_at         "WHEN IT HAPPENED, set by the writer; 00030 folded the backfill's at into it"
     }
@@ -920,7 +1002,7 @@ erDiagram
         bigserial   id                 PK
         bigint      restock_id         FK "-> restocks(id), ON DELETE CASCADE; UNIQUE with product_id"
         bigint      product_id         "opaque product_service id, no FK; once per restock"
-        text        sku                "snapshot at raise time"
+        text        product_code       "snapshot at raise time, sku until 00033"
         text        name               "snapshot"
         bigint      count              "how many were ORDERED, CHECK > 0 (quantity until 00030)"
         float8      total              "THE LINE TOTAL, the truth, CHECK >= 0 (total_price until 00030)"
@@ -1021,6 +1103,13 @@ erDiagram
   same instant. It replaced `restock_request_events` in `00024`; `00030` keyed it by `restock_id` and folded its `at`
   into `created_at` (the backfilled rows keep their moment). The columns on `restocks` stay too: the list filters and
   sorts on them, and a filter cannot reach into a child table cheaply.
+- **`restock_logs.is_override`** (`00034`) — the row's actor was Root or the Administrator, inside the team the call was
+  scoped to (the seller's for a create or an edit, the warehouse's for an arrive or an accept) with no role there
+  ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
+  ⚠ It is on the TRAIL, not on `restocks`: that row carries one actor column per act, so one flag could not say which
+  act it meant, and every act that stamps a `*_by_user_id` writes its own trail row. The ACCEPT's row is what
+  `RestockAccepted.actor_is_override` is read from, beside `accepted_by_user_id` — the live publish and the supplier
+  backfill alike — so liability's courier charge says so too.
 - **Who handled it, and when**: the `*_by_user_id` columns are stamped from the caller's identity, never the request
   body; opaque user_service ids with no FK, names resolved at read time. Nothing is backfilled — a restock raised
   before `00018` keeps `0` / `NULL`. The timestamps are what the list's date-range filter ranges on
@@ -1029,7 +1118,7 @@ erDiagram
   optional, the store one of the supplier's (a-line-may-name-a-supplier-without-a-channel). The handler asks
   supplier_service that a newly named one is live; one a line already holds is not re-checked, so deleting a supplier
   never bricks the restocks that name it.
-- **`sku` / `name`** are snapshots at raise time — the product may be renamed later, and the restock must keep reading
+- **`product_code` / `name`** (`product_code` was `sku` until `00033`) are snapshots at raise time — the product may be renamed later, and the restock must keep reading
   as it was raised.
 - `payment_type` is read-only history from before paying accounts (a-restock-must-name-the-account-that-paid).
   `shipping_code` (a free-text courier code from `00003`) was never on the contract's restock, and `00030` dropped it.
@@ -1049,6 +1138,7 @@ erDiagram
         bigint      team_id           "the ORDERING team for an order, the owner otherwise"
         text        tx_type           "order restock return sample transfer_in transfer_out adjustment revaluation problem found move"
         bigint      create_by_user_id
+        boolean     is_override       "the creator was Root or the Administrator, not a member of the scoped team (00034)"
         boolean     is_rollback       "set once by a rollback; only a take is rolled back"
         text        description
         text        recipient         "a sample's only"
@@ -1158,6 +1248,13 @@ erDiagram
 - **Written set-based** — a write locks each ledger's rows in one statement, works the rows out in memory, and stores
   each table with one `UPDATE … FROM unnest(…)` or one multi-row `INSERT`, however many lines
   ([ledger-writes-are-set-based](technical/stock/design_decision.md#ledger-writes-are-set-based)).
+- **An override is stamped on the transaction** — `inventory_transactions.is_override` (`00034`): its creator was Root
+  or the Administrator inside the team the call was scoped to, with no role there
+  ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
+  `batch_logs`, `product_placement_logs` and `batch_price_logs` are the transaction's lines and read it through
+  `transaction_id`. ⚠ Except a ROLLBACK's rows: they are written under the original transaction with the releaser in
+  `actor_id`, so whether the RELEASE was an override is recorded nowhere in inventory (a transfer's cancel is still
+  stamped, on its `warehouse_transfer_logs` row; an order's release is not).
 
 ### Warehouse transfers (`00027`)
 
@@ -1196,7 +1293,7 @@ erDiagram
         bigserial   id            PK
         bigint      transfer_id   FK
         bigint      product_id    "UNIQUE with transfer_id"
-        text        sku           "snapshot at create"
+        text        product_code  "snapshot at create, sku until 00033"
         text        name          "snapshot at create"
         bigint      count         "sent - CHECK above 0"
         float8      price_unit    "total over count, display only"
@@ -1221,6 +1318,7 @@ erDiagram
         text        from_status   "empty on the first row"
         text        to_status
         bigint      actor_user_id
+        boolean     is_override   "the actor was Root or the Administrator, not a member of the scoped team (00034)"
         text        description
         timestamptz created_at
     }
@@ -1235,6 +1333,11 @@ erDiagram
   `double`.
 - **Indexed for each side's list**, newest first: `(team_id, id DESC)`, `(from_warehouse_id, id DESC)`,
   `(to_warehouse_id, id DESC)`.
+- **`warehouse_transfer_logs.is_override`** (`00034`) — that act's actor was Root or the Administrator with no role in
+  the team the call was scoped to
+  ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
+  On the TRAIL, not on `warehouse_transfers`, for the reason `restock_logs` carries it: one actor column per act there.
+  ⚠ `WarehouseTransferUpdate` writes no trail row and no actor at all, so an edit has neither.
 
 ---
 
@@ -1332,11 +1435,12 @@ erDiagram
         bigint      team_id     "the scope, opaque cross-service id; ONE team per row"
         bigint      shop_id     "optional on ANY kind, opaque; 0 = not attributed to one shop"
         int         kind        "ExpenseKind enum number — mapped in the handler, no DB CHECK"
-        bigint      amount      "whole rupiah, CHECK > 0 — the kind carries the direction"
+        bigint      amount      "whole rupiah — > 0 on an expense, signed and never 0 on an adjustment"
         date        occurred_at "the date the cost BELONGS TO, chosen by the person"
         text        note        "what it actually was"
         bigint      created_by  "who typed it, opaque user_service id"
-        timestamptz voided_at   "NULL while it still counts (#164's pattern)"
+        boolean     is_override "the typist was Root or the Administrator, not a member (00003)"
+        bigint      adjusts_expense_id "0 on an expense; on an adjustment, the expense it corrects — never another adjustment"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -1346,10 +1450,18 @@ erDiagram
   payroll, rent. `revenue_service` already knows what an order earned; this is everything else.
   - **A PERSON TYPES IT**, and every decision here follows from that. A revenue row is written by the
     system from an order and frozen (#153); a cost row is entered by hand about a period, so it can be
-    wrong — hence correctable, hence `created_by`, hence `voided_at` rather than a delete.
-  - **`amount` is CHECK > 0.** The `kind` already says the money is going out, so a signed amount would
-    let a negative cost silently become revenue. It is a database constraint rather than a handler rule
-    because that is the one arithmetic mistake this table must not permit.
+    wrong — hence correctable, hence `created_by`. It is corrected by a **new row**, never an edit
+    ([every-correction-is-a-signed-adjustment](business/analytic/context_decision.md#every-correction-is-a-signed-adjustment)): a row never changes after it is saved, and void is not a concept.
+  - **An ADJUSTMENT is a row of this table** with `adjusts_expense_id` set. It copies its expense's team, shop, kind and
+    day, so every total, the per-kind split and the daily statement just sum rows, and the correction lands in the month
+    that holds the mistake. Its `created_by` and `created_at` say who corrected it and when.
+  - **`is_override`** (`00003`) — the row's own typist was Root or the Administrator, inside a team they hold no role in
+    ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
+    An expense and each of its adjustments carry their own answer. Rows from before the column read false.
+  - **`amount` is CHECK'd per kind of row** (`expense_records_amount_sign`): `> 0` on an expense — the `kind` already
+    says the money is going out, so a signed amount would let a negative cost silently become revenue — and `<> 0` on
+    an adjustment. That an expense and its adjustments never sum below 0 is `ExpenseAdjust`'s, under the expense row's
+    lock: a CHECK cannot see the other rows.
   - **`occurred_at` is a DATE the person picks**, not the insert timestamp. Payroll is paid on the 5th
     for the month before, and filing it under the 5th puts it in the wrong month for every report that
     matters. A date, not a timestamp — nobody records the hour the rent was paid.
@@ -1361,8 +1473,9 @@ erDiagram
     its packing wages or a subscription between them.
   - **`kind` has no DB `CHECK`** (cf. #80). Proto enums are open and append-only, so a check
     constraint would reject a kind the contract already allows on the day one is added.
-  - Indexed on `(team_id, occurred_at DESC, id DESC) WHERE voided_at IS NULL` — every screen and every
-    total asks for one team's live costs over a period.
+  - Indexed on `(team_id, occurred_at DESC, id DESC)` — every screen and every total asks for one team's rows over a
+    period — and on `adjusts_expense_id` where it is set, for an expense's net and the floor. Migration `00002` turned
+    every row voided until then into its expense plus an adjustment of minus its amount.
 
 ---
 
@@ -1383,6 +1496,7 @@ erDiagram
 erDiagram
     liability_logs }o--|| liability_balances : "projected into"
     liability_payments ||--o{ liability_logs : "a CONFIRMED one posts"
+    liability_payment_requests |o--o| liability_balances : "asks about one ordered pair"
     liability_terms ||--o{ liability_terms_logs : "every change to it is recorded"
     liability_terms {
         bigserial   id                PK
@@ -1404,6 +1518,7 @@ erDiagram
         bigint      group_id        "both legs of one movement share it"
         bigint      balance_after   "derived; the log rows stay the truth"
         bigint      actor_id        "WHO caused it — 0 is unattended, or a row older than the column"
+        boolean     is_override     "the actor was Root or the Administrator, not a member (00013) - an event's leg takes the event's actor_is_override"
         timestamptz created_at
     }
 
@@ -1417,6 +1532,16 @@ erDiagram
         timestamptz updated_at
     }
 
+    liability_payment_requests {
+        bigserial   id                   PK
+        bigint      creditor_team_id     "who asks - UNIQUE with the debtor"
+        bigint      debtor_team_id       "who is asked"
+        bigint      amount               "what the debtor owed when asked, whole rupiah, CHECK > 0"
+        bigint      requested_by_user_id "opaque user id"
+        boolean     is_override          "the asker was Root or the Administrator, not a member - follows a re-send (00013)"
+        timestamptz created_at           "when asked - replaced by a second request"
+    }
+
     liability_payments {
         bigserial   id               PK
         bigint      payer_team_id    "who paid — NOT interchangeable with the creditor"
@@ -1426,7 +1551,9 @@ erDiagram
         text        note             "the payers hint for the human confirming"
         text        reason           "why it was REJECTED or REVERSED — the status says which"
         bigint      recorded_by      "who claimed it — opaque user id"
+        boolean     recorded_is_override  "the claimer was Root or the Administrator, not a member of the payer (00013)"
         bigint      confirmed_by     "who agreed — opaque user id"
+        boolean     confirmed_is_override "the agreer was Root or the Administrator, not a member of the creditor (00013)"
         bigint      from_account_id  "the payers account the transfer left, financial_account id, 0 before 00009"
         bigint      to_account_id    "the creditors account it landed in, named on accept, 0 until then"
         timestamptz created_at
@@ -1472,6 +1599,22 @@ erDiagram
     entry shares the other four values with the entry it undoes.
   - `CHECK (team_id <> counterparty_id)` — a team owing itself could only come from a bug upstream,
     and a ledger is the wrong place to discover one quietly.
+- **The override stamps** (`00013`, beside `liability_terms_logs.override` from `00008`) — each actor column says
+  whether that actor was Root or the Administrator inside a team they hold no role in
+  ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
+  All of them read `san_auth.IsOverride`, the terms log included. Rows from before the column read false.
+  - **`liability_logs.is_override`** — on both legs of every posting, beside its actor. A posting a PERSON made (a
+    payment's confirm, a stock damage the warehouse recorded) reads `san_auth.IsOverride`. A leg posted from an EVENT has
+    no caller, so it takes the event's **`actor_is_override`**, beside the event's `actor_id`: an order's fees the
+    placement's (`OrderPlaced`, from `orders.is_override`), their reversal the CANCEL's own (`OrderCancelled` — never the
+    placement's), a restock's courier charge the accept's (`RestockAccepted`, from the accept's `restock_logs` row). A leg
+    posted from an event published before the field existed reads false.
+  - **`liability_payments`** carries **one flag per actor column** — `recorded_is_override` beside `recorded_by`,
+    `confirmed_is_override` beside `confirmed_by` — because the row records two acts by two people. The confirm's
+    flag is also on the legs it posts, and rides `LiabilityPaymentAccepted` as `actor_is_override` to the financial
+    accounts' `team_payment` rows.
+  - **`liability_payment_requests.is_override`** follows the sender, as `requested_by_user_id` does: a re-send replaces
+    both.
 - **`liability_balances`** — a **projection** of the entries, kept because "what do we owe each
   other" is asked far more often than it changes. Every balance must stay recomputable by summing the
   entries alone, or the ledger cannot be audited; there is a test that does exactly that.
@@ -1524,7 +1667,8 @@ erDiagram
   - **`override` is DERIVED BY THE SERVER** from the role the access interceptor resolved: it is true
     when the actor held **no role in the creditor team**, i.e. they were let in by the root-team
     bypass. Never sent by the caller — whether a write was an override is a fact about who made it,
-    and the caller is the one party with a reason to misreport it.
+    and the caller is the one party with a reason to misreport it. It reads `san_auth.IsOverride`, the rule every
+    service's stamp shares, so a call with no person or no scope (a test, a direct domain call) reads false.
   - **A DELETE is logged as a removal**, with `new_credit_limit` NULL rather than 0. Deleting a pair's
     terms lifts the ceiling entirely, so recording 0 would say the act froze the team it freed.
   - **A no-op delete logs nothing.** The RPC still succeeds — the caller asked for a state and it
@@ -1533,6 +1677,11 @@ erDiagram
     ([two-logs-two-names](technical/balance/team_balance_design_decision.md#two-logs-two-names)). This
     is a RULE that changed; that one is MONEY that moved. They appear on the same page because
     somebody asking *"why is this team blocked"* needs both, and only one of them is a ledger.
+- **`liability_payment_requests`** (`00012`) — a creditor asking its debtor to pay
+  ([a-creditor-may-request-payment](business/balance/context_decision.md#a-creditor-may-request-payment)). A NOTICE, never an entry: it posts nothing, blocks nothing and
+  has no due date. **One per pair** (`UNIQUE (creditor_team_id, debtor_team_id)`) — sending again replaces it with the
+  moment's figure, and the debtor RECORDING a payment to that creditor deletes it in the same transaction. Indexed on
+  `debtor_team_id` for the debtor's side of `LiabilityPositionList`.
 - **`liability_payments`** — one team's claim that it paid another, and the creditor's agreement that
   the money arrived (#188). **Liability is two-phase**: the payer RECORDS, the creditor CONFIRMS, and
   only the confirm posts to the ledger.
@@ -1598,6 +1747,7 @@ erDiagram
     bigint shop_id "denormalised, frozen"
     bigint team_id "denormalised, frozen"
     bigint actor_id "the human accountable, even on machine rows"
+    boolean is_override "posted by Root or the Administrator, not a member (00007). An order event's row takes the event's actor_is_override"
     bigint user_id "who the per-user report counts it for, when not the actor — an imported shop row's primary CS (00006). 0 otherwise"
     text source_type "importer, manual or order"
     text settlement_type "one of thirteen"
@@ -1772,6 +1922,19 @@ erDiagram
 | `*_daily_reports_day_idx` / `settlement_event_logs_day_idx` | the replay's delete — three tables, one predicate |
 | `settlement_event_logs_created_idx` | the retention prune |
 
+### The override stamp (`00007`)
+
+- **`settlement_logs.is_override`** — a `SettlementPost` row whose actor was Root or the Administrator inside a team
+  they hold no role in ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+  read from `san_auth.IsOverride`. The importer's posts reach `SettlementPost` through a Connect client that forwards
+  the bearer, so settlement's own interceptor resolves their scope and they are stamped too. A row opened or cancelled
+  from an order's EVENT has no caller, so it takes the event's **`actor_is_override`** beside the event's actor: the
+  opening row the placement's (`OrderPlaced`), the `initial_total_cancel` row the cancel's own (`OrderCancelled`).
+  Every row publishes its stamp on as `SettlementLogPosted.actor_is_override`, which the financial accounts' withdrawal
+  listener reads. Rows from before the column, or opened from an event published before the field, read false.
+- **`order_settlements` is not stamped.** Its `created_by_user_id` is the ORDER's creator copied from selling, not who
+  acted here — that act's stamp is selling's `orders.is_override`.
+
 ### Two things the schema deliberately does NOT hold
 
 - **A non-null `order_id`.** It WAS `NOT NULL` until
@@ -1818,6 +1981,7 @@ erDiagram
     int rows_skipped
     int rows_posted_to_shop "of rows_posted, whose ref found no order"
     bigint created_by_user_id "the uploader — the actor on every row it posts"
+    boolean is_override "Root or the Administrator, outside the team - 00002"
     bigint primary_user_id "the shop's primary CS when the file was checked"
     timestamptz created_at
     timestamptz updated_at "moves after every line — a running row that stops moving reads interrupted"
@@ -1850,9 +2014,11 @@ erDiagram
 | **INTERRUPTED is derived** | a `running` row whose `updated_at` is over two minutes old — the server stopped mid-file ([an-import-finishes-whether-anyone-watches](business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). The list filters it in SQL on the same line; nothing sweeps it |
 | **every line is kept** | not only the ones worth a look — the file page's three views (held · skipped · posted to the shop) are filters over all of them |
 | **no FK across services** | `team_id`, `shop_id`, `order_id`, `document_id`, `settlement_log_id` are other services' ids, kept as given |
+| **no override stamp yet** | the import RPCs are server STREAMS, whose ctx carries no scope or role, so [an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service) has nothing to read here. The rows it posts are stamped by `SettlementPost` (`settlement_logs.is_override`) |
 
 | index | answers |
 | --- | --- |
+| `uploaded_files.is_override` (`00002`) | the upload was Root's or the Administrator's, in a team they hold no role in ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)) — read off the stream's `san_auth.StreamScope` |
 | `uploaded_files_team_created_idx` (team_id, created_at DESC, id DESC) | the import screen — a team's uploads, newest first |
 | `uploaded_files_team_shop_created_idx` (team_id, shop_id, created_at DESC, id DESC) | the same, one shop's |
 | `uploaded_file_lines_file_outcome_idx` (uploaded_file_id, outcome, line_no) | one file's page — its lines by outcome, in the file's order |
@@ -1900,6 +2066,7 @@ erDiagram
     numeric balance_after "the previous row's plus this change, in ENTRY order"
     text description "the cause in words — no source id"
     bigint actor_id "who — 0 for a listener with no person behind it"
+    boolean is_override "the actor was Root or the Administrator, not a member (00002). A listener's row takes the event's actor_is_override"
     timestamptz occurred_at "when the money MOVED — the analytics day, in Jakarta"
     bigint group_id "both legs of one transfer — 0 for a single-leg row"
     bigint counter_account_id "a transfer's other account — 0 otherwise"
@@ -1953,6 +2120,14 @@ the balance and the day's report row in one transaction — the report row is up
 the account shifted, so a row dated last week moves every day since and the report is never behind the
 balance ([the-daily-row-is-written-with-the-log-row](business/financial_account/context_decision.md#the-daily-row-is-written-with-the-log-row)).
 A transfer locks both accounts in id order. The lock order is `audits/services/financial_account_service/concurrency/lock-order.md`.
+
+**`is_override`** (`00002`) rides into `post` beside `actor_id`: a hand row (opening balance, capital, reconcile,
+transfer — both legs — and identify's move) whose actor was Root or the Administrator inside a team they hold no role in
+([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+read from `san_auth.IsOverride`. A listener's row has no caller, so it takes its event's **`actor_is_override`**, beside
+the event's `actor_id`: a `withdrawal` the settlement row's stamp (`SettlementLogPosted`), both `team_payment` legs the
+confirmer's (`LiabilityPaymentAccepted`, from `liability_payments.confirmed_is_override`). Rows from before the column,
+or from an event published before the field, read false.
 
 | index | answers |
 | --- | --- |
@@ -2086,6 +2261,25 @@ record yet.
 
 ```mermaid
 erDiagram
+    warehouse_infos {
+        bigserial   id              PK
+        bigint      warehouse_id    "UNIQUE, the warehouse team - opaque, no FK"
+        jsonb       operating_hours "weekly open-close grid"
+        jsonb       receiving_hours "weekly order-receiving grid"
+        text        location        "physical address, free text"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    warehouse_closures {
+        bigserial   id           PK
+        bigint      warehouse_id "the warehouse team - opaque, no FK"
+        date        first_day    "Asia/Jakarta, inclusive"
+        date        last_day     "inclusive, CHECK first_day <= last_day"
+        text        reason       "named by the warning - CHECK not empty"
+        timestamptz created_at
+    }
+
     warehouse_fees {
         bigserial        id           PK
         bigint           warehouse_id "the warehouse team - UNIQUE, opaque, no FK"
@@ -2097,6 +2291,11 @@ erDiagram
     }
 ```
 
+- **`warehouse_infos`** (`00002`) — the warehouse PROFILE, moved whole from team_service ([the-warehouse-profile-lives-in-warehouse-service](business/teams/warehouse/context_decision.md#the-warehouse-profile-lives-in-warehouse-service)): both weekly grids
+  as JSONB (validated by the handler) and the location. One row per warehouse; none reads as closed every day.
+- **`warehouse_closures`** (`00002`) — one-off closures, whole days in Asia/Jakarta with a reason ([a-warehouse-records-its-holidays](business/teams/warehouse/context_decision.md#a-warehouse-records-its-holidays)). Indexed on
+  `(warehouse_id, last_day)` — the profile and the receiving status read the ones still to come. They refuse nothing:
+  `WarehouseReceivingStatus` only says a warehouse is closed, why and from when ([a-closed-day-warns-and-never-refuses](business/teams/warehouse/context_decision.md#a-closed-day-warns-and-never-refuses)).
 - **`warehouse_fees`** (`00001`) — what a warehouse charges per order
   ([warehouse-prices-balance-records](business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)): the
   owner's §Property 3 plus the decided floor. **One row per warehouse**, the same rate for every seller

@@ -131,6 +131,14 @@ func actorFrom(ctx context.Context) uint64 {
 	return identity.GetIdentityId()
 }
 
+// overrideFrom is whether actorFrom is Root or the Administrator moving money inside a team they hold no role in —
+// through the root-team bypass, not a membership (an-override-is-stamped-in-every-service). Stamped beside actor_id. A
+// listener has no person in ctx, so its row takes the flag from the event instead — `actor_is_override`, beside the
+// event's `actor_id`.
+func overrideFrom(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
+}
+
 // today is the Jakarta date now.
 func (s *Service) today() string {
 	return s.now().In(jakarta).Format(dateLayout)

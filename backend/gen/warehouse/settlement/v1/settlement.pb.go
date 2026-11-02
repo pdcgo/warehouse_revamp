@@ -1706,10 +1706,10 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x1bOrderSettlementListDataType\x12/\n" +
 	"+ORDER_SETTLEMENT_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12+\n" +
 	"'ORDER_SETTLEMENT_LIST_DATA_TYPE_GENERAL\x10\x01\x12.\n" +
-	"*ORDER_SETTLEMENT_LIST_DATA_TYPE_SETTLEMENT\x10\x022\x9f\x02\n" +
-	"\x11SettlementService\x12\x80\x01\n" +
-	"\x13OrderSettlementList\x123.warehouse.settlement.v1.OrderSettlementListRequest\x1a4.warehouse.settlement.v1.OrderSettlementListResponse\x12\x86\x01\n" +
-	"\x15OrderSettlementDetail\x125.warehouse.settlement.v1.OrderSettlementDetailRequest\x1a6.warehouse.settlement.v1.OrderSettlementDetailResponse2\x8b\x01\n" +
+	"*ORDER_SETTLEMENT_LIST_DATA_TYPE_SETTLEMENT\x10\x022\xa9\x02\n" +
+	"\x11SettlementService\x12\x85\x01\n" +
+	"\x13OrderSettlementList\x123.warehouse.settlement.v1.OrderSettlementListRequest\x1a4.warehouse.settlement.v1.OrderSettlementListResponse\"\x03\x90\x02\x01\x12\x8b\x01\n" +
+	"\x15OrderSettlementDetail\x125.warehouse.settlement.v1.OrderSettlementDetailRequest\x1a6.warehouse.settlement.v1.OrderSettlementDetailResponse\"\x03\x90\x02\x012\x8b\x01\n" +
 	"\x16SettlementWriteService\x12q\n" +
 	"\x0eSettlementPost\x12..warehouse.settlement.v1.SettlementPostRequest\x1a/.warehouse.settlement.v1.SettlementPostResponse2\xbb\x02\n" +
 	"$SettlementAnalyticMaintenanceService\x12\x86\x01\n" +

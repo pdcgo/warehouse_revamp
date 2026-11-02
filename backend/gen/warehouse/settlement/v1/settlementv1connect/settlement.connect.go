@@ -78,12 +78,14 @@ func NewSettlementServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+SettlementServiceOrderSettlementListProcedure,
 			connect.WithSchema(settlementServiceMethods.ByName("OrderSettlementList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderSettlementDetail: connect.NewClient[v1.OrderSettlementDetailRequest, v1.OrderSettlementDetailResponse](
 			httpClient,
 			baseURL+SettlementServiceOrderSettlementDetailProcedure,
 			connect.WithSchema(settlementServiceMethods.ByName("OrderSettlementDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -125,12 +127,14 @@ func NewSettlementServiceHandler(svc SettlementServiceHandler, opts ...connect.H
 		SettlementServiceOrderSettlementListProcedure,
 		svc.OrderSettlementList,
 		connect.WithSchema(settlementServiceMethods.ByName("OrderSettlementList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	settlementServiceOrderSettlementDetailHandler := connect.NewUnaryHandler(
 		SettlementServiceOrderSettlementDetailProcedure,
 		svc.OrderSettlementDetail,
 		connect.WithSchema(settlementServiceMethods.ByName("OrderSettlementDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.settlement.v1.SettlementService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

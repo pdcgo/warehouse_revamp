@@ -120,18 +120,21 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			httpClient,
 			baseURL+RestockRequestServiceRestockRequestListProcedure,
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		restockActorList: connect.NewClient[v1.RestockActorListRequest, v1.RestockActorListResponse](
 			httpClient,
 			baseURL+RestockRequestServiceRestockActorListProcedure,
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockActorList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		restockRequestDetail: connect.NewClient[v1.RestockRequestDetailRequest, v1.RestockRequestDetailResponse](
 			httpClient,
 			baseURL+RestockRequestServiceRestockRequestDetailProcedure,
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		restockRequestUpdate: connect.NewClient[v1.RestockRequestUpdateRequest, v1.RestockRequestUpdateResponse](
@@ -168,12 +171,14 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			httpClient,
 			baseURL+RestockRequestServiceRestockRequestLabelsProcedure,
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestLabels")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		restockInboundStat: connect.NewClient[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse](
 			httpClient,
 			baseURL+RestockRequestServiceRestockInboundStatProcedure,
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockInboundStat")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -296,18 +301,21 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		RestockRequestServiceRestockRequestListProcedure,
 		svc.RestockRequestList,
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	restockRequestServiceRestockActorListHandler := connect.NewUnaryHandler(
 		RestockRequestServiceRestockActorListProcedure,
 		svc.RestockActorList,
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockActorList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	restockRequestServiceRestockRequestDetailHandler := connect.NewUnaryHandler(
 		RestockRequestServiceRestockRequestDetailProcedure,
 		svc.RestockRequestDetail,
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	restockRequestServiceRestockRequestUpdateHandler := connect.NewUnaryHandler(
@@ -344,12 +352,14 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		RestockRequestServiceRestockRequestLabelsProcedure,
 		svc.RestockRequestLabels,
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestLabels")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	restockRequestServiceRestockInboundStatHandler := connect.NewUnaryHandler(
 		RestockRequestServiceRestockInboundStatProcedure,
 		svc.RestockInboundStat,
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockInboundStat")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.inventory.v1.RestockRequestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

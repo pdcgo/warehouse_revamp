@@ -106,7 +106,7 @@ func phoneOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64, ph
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", CustomerPhone: phone, ShippingCode: "jne", BuyerUsername: " budi.melati ",
 		OrderExternalRefId: "5780000000000000001", ReceiptCode: "JP0012345678",
-		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 3}},
+		Items: []*sellingv1.OrderItem{{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 3}},
 	}))
 	if err != nil {
 		t.Fatalf("place order: %v", err)

@@ -4,9 +4,9 @@ import { expect, screen, userEvent, within } from "storybook/test";
 import { ProductLinesPopover, description, type ProductLine } from "./ProductLinesPopover";
 
 const lines: ProductLine[] = [
-  { id: "1", sku: "SKU-KOPI-250", name: "Kopi Arabika 250g", quantity: 3n, totalPrice: 10_000 },
-  { id: "2", sku: "SKU-TEH-100", name: "Teh Melati 100g", quantity: 10n, totalPrice: 55_000 },
-  { id: "3", sku: "SKU-GULA-1K", name: "Gula Pasir 1kg", quantity: 2n, totalPrice: 24_000 },
+  { id: "1", productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g", quantity: 3n, totalPrice: 10_000 },
+  { id: "2", productCode: "SKU-TEH-100", name: "Teh Melati 100g", quantity: 10n, totalPrice: 55_000 },
+  { id: "3", productCode: "SKU-GULA-1K", name: "Gula Pasir 1kg", quantity: 2n, totalPrice: 24_000 },
 ];
 
 const meta = {
@@ -17,7 +17,7 @@ const meta = {
   },
   args: {
     lines,
-    label: `${lines[0]!.sku} +${lines.length - 1} more`,
+    label: `${lines[0]!.productCode} +${lines.length - 1} more`,
   },
 } satisfies Meta<typeof ProductLinesPopover>;
 
@@ -49,7 +49,7 @@ export const ListsEveryLineIncludingTheNamedOne: Story = {
     // Portalled — a table cell clips its overflow, so the popover renders on document.body.
     const table = await screen.findByTestId("product-lines");
     for (const line of lines) {
-      await expect(within(table).getByText(line.sku)).toBeInTheDocument();
+      await expect(within(table).getByText(line.productCode)).toBeInTheDocument();
     }
   },
 };

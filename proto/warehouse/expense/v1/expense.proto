@@ -26,14 +26,21 @@ service ExpenseService {
   // Record money that went out (#168).
   rpc ExpenseCreate(ExpenseCreateRequest) returns (ExpenseCreateResponse);
   // A team's expenses for a PERIOD, with per-kind totals (#168).
-  rpc ExpenseList(ExpenseListRequest) returns (ExpenseListResponse);
+  rpc ExpenseList(ExpenseListRequest) returns (ExpenseListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The same costs, summed PER DAY — the expense half of the daily statement.
-  rpc ExpenseDaily(ExpenseDailyRequest) returns (ExpenseDailyResponse);
+  rpc ExpenseDaily(ExpenseDailyRequest) returns (ExpenseDailyResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
-  // An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169).
-  rpc ExpenseUpdate(ExpenseUpdateRequest) returns (ExpenseUpdateResponse);
-  // Stop an expense counting. Kept and visible, never deleted.
-  rpc ExpenseVoid(ExpenseVoidRequest) returns (ExpenseVoidResponse);
+  // An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169). It is corrected by a
+  // NEW ROW, never by an edit (every-correction-is-a-signed-adjustment): ExpenseUpdate and ExpenseVoid are gone.
+  rpc ExpenseAdjust(ExpenseAdjustRequest) returns (ExpenseAdjustResponse);
 }
 
 // What KIND of spending. A proto enum rather than a team-managed category table (owner, §2.3): every
@@ -101,30 +108,40 @@ message ExpenseRecord {
   // somebody would hit and ask to have relaxed.
   uint64 shop_id = 3;
 
+  // On an adjustment, the expense's kind, copied — so a kind's total and the daily split take the correction where the
+  // mistake is.
   ExpenseKind kind = 4;
 
-  // Whole rupiah, ALWAYS POSITIVE. The kind already says the money is going out, so a signed amount
-  // would let a negative expense silently become revenue.
+  // Whole rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
+  // let a negative expense silently become revenue. On an ADJUSTMENT signed and never 0 — the correction itself, not a
+  // new total; the expense and its adjustments never sum below 0.
   int64 amount = 5;
 
   // The date the expense BELONGS TO, as chosen by the person — not the moment the row was inserted.
   // Payroll is paid on the 5th for the month before, and filing it under the 5th would put it in the
-  // wrong month for every report that matters. RFC3339 date (YYYY-MM-DD).
+  // wrong month for every report that matters. RFC3339 date (YYYY-MM-DD). On an adjustment, the expense's day, copied
+  // and never typed (an-adjustment-counts-on-the-day-it-fixes): the month that holds the mistake becomes correct.
   string occurred_at = 6;
 
   // What it actually was. The enum says which bucket; this says which electricity bill.
   string note = 7;
 
   // WHO TYPED IT. A person entered this number by hand and it moves profit directly, so the row says
-  // whose number it is. Opaque user_service id.
+  // whose number it is. Opaque user_service id. On an adjustment, who made the correction — and created_at_unix when.
   uint64 created_by = 8;
 
-  // Whether this row still counts (#164's pattern). An expense entered by mistake is VOIDED, not deleted:
-  // a deleted row cannot tell you an expense was entered and then retracted, and somebody looking at a
-  // profit figure that changed wants to see why.
-  bool voided = 9;
+  // `voided` is gone: nothing marks a row voided, because a row never changes (every-correction-is-a-signed-adjustment).
+  reserved 9;
+  reserved "voided";
 
   int64 created_at_unix = 10;
+
+  // 0 on an EXPENSE. On an ADJUSTMENT, the expense it corrects — always an expense, never another adjustment: a mistaken
+  // adjustment is fixed by a second one on the same expense.
+  uint64 adjusts_expense_id = 11;
+
+  // On an EXPENSE, what it counts for after every adjustment of it: its amount plus theirs. 0 on an adjustment.
+  int64 net_amount = 12;
 }
 
 message ExpenseCreateRequest {
@@ -256,8 +273,13 @@ message ExpenseRowItem {
   string occurred_at = 6;
   string note = 7;
   uint64 created_by = 8;
-  bool voided = 9;
+  reserved 9;
+  reserved "voided";
   int64 created_at_unix = 10;
+  // As on ExpenseRecord: 0 on an expense, the corrected expense on an adjustment.
+  uint64 adjusts_expense_id = 11;
+  // As on ExpenseRecord: an expense's amount after every adjustment of it; 0 on an adjustment.
+  int64 net_amount = 12;
 }
 
 message ExpenseRowMapItem {
@@ -347,8 +369,8 @@ message ExpenseDayItem {
   // There is no instant to convert and therefore no zone to get wrong.
   string date = 1;
 
-  // How many LIVE expense rows the day holds. Voided rows are excluded from `total` and `by_kind`, so
-  // this counts what the number is actually made of.
+  // How many rows the day's number is made of — its expenses AND the adjustments that correct them, each counting on
+  // the corrected expense's day.
   uint64 entries = 2;
 
   // The day's spending, whole rupiah.
@@ -370,17 +392,17 @@ message ExpenseDailyResponse {
   ExpenseTotals totals = 2;
 }
 
-// ExpenseUpdate corrects an expense (#169).
+// ExpenseAdjust corrects an expense with a NEW ROW — the one way to correct one
+// (every-correction-is-a-signed-adjustment). An expense never changes after it is saved
+// (an-expense-is-never-edited), so a mistake and its fix are both on the list, each saying who wrote it and when.
 //
-// It exists because of the one fact that separated this service from revenue_service (since removed): a revenue row was
-// written by the system from an order and frozen, while an expense row is TYPED BY A PERSON. A person
-// mistypes. Refusing to let them fix it would leave a wrong number moving profit forever, and the
-// workaround — void it and enter another — loses who entered the original and when.
+// The adjustment copies the expense's team, shop, kind and DAY — never typed — so it counts in the month that holds the
+// mistake (an-adjustment-counts-on-the-day-it-fixes). The screen's Batalkan is this call with `amount` = −(what the
+// expense still counts for).
 //
-// A FULL REPLACE, not a patch. The edit form is the record re-opened, so it submits every field back
-// and an empty one means cleared — the same shape RestockRequestUpdate settled on (#131). A patch
-// would need a way to say "leave this alone" that the form has no way to express.
-message ExpenseUpdateRequest {
+// ⚠ A MISSING ROW, or another team's, is NotFound: a person clicked a button, and the honest answer is that it is not
+// there. Correcting an ADJUSTMENT, or a correction that would sum the expense below 0, is FailedPrecondition.
+message ExpenseAdjustRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -394,49 +416,21 @@ message ExpenseUpdateRequest {
     (warehouse.role_base.v1.use_scope) = true,
     (buf.validate.field).uint64.gt = 0
   ];
+  // The EXPENSE corrected — never an adjustment.
   uint64 expense_id = 2 [(buf.validate.field).uint64.gt = 0];
 
-  ExpenseKind kind = 3 [(buf.validate.field).enum = {
-    defined_only: true
+  // The correction, signed, whole rupiah — not the new total. Never 0: a correction of nothing is not one.
+  int64 amount = 3 [(buf.validate.field).int64 = {
     not_in: [0]
   }];
-  int64 amount = 4 [(buf.validate.field).int64.gt = 0];
-  string occurred_at = 5 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
-  uint64 shop_id = 6;
-  string note = 7 [(buf.validate.field).string.max_len = 500];
+
+  // Why — what was wrong with the expense.
+  string note = 4 [(buf.validate.field).string.max_len = 500];
 }
 
-message ExpenseUpdateResponse {
-  ExpenseRecord expense = 1;
-}
-
-// ExpenseVoid stops an expense counting (#169) — it was entered by mistake.
-//
-// VOIDED, NOT DELETED, following #164 exactly: a deleted row cannot tell you an expense was entered and
-// then retracted, and somebody looking at a profit figure that changed wants to see why. The row stays
-// on the list, struck through; every total excludes it.
-//
-// ⚠ A MISSING ROW IS NotFound HERE, unlike RevenueVoid where it is success — and the difference is who
-// calls it. RevenueVoid is driven by a Pub/Sub event, so a missing row must ACK or the message is
-// redelivered forever. This is a person clicking a button: if the expense is not there, or belongs to
-// another team, saying so is the honest answer rather than a silent success.
-message ExpenseVoidRequest {
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN
-    ]
-  };
-
-  uint64 team_id = 1 [
-    (warehouse.role_base.v1.use_scope) = true,
-    (buf.validate.field).uint64.gt = 0
-  ];
-  uint64 expense_id = 2 [(buf.validate.field).uint64.gt = 0];
-}
-
-message ExpenseVoidResponse {
-  ExpenseRecord expense = 1;
+message ExpenseAdjustResponse {
+  // The new row.
+  ExpenseRecord adjustment = 1;
+  // The expense it corrects, its net_amount after this adjustment.
+  ExpenseRecord expense = 2;
 }

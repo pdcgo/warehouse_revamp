@@ -67,12 +67,14 @@ func NewSettlementAnalyticServiceClient(httpClient connect.HTTPClient, baseURL s
 			httpClient,
 			baseURL+SettlementAnalyticServiceMetricSearchProcedure,
 			connect.WithSchema(settlementAnalyticServiceMethods.ByName("MetricSearch")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		metricData: connect.NewClient[v1.MetricDataRequest, v1.MetricDataResponse](
 			httpClient,
 			baseURL+SettlementAnalyticServiceMetricDataProcedure,
 			connect.WithSchema(settlementAnalyticServiceMethods.ByName("MetricData")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -114,12 +116,14 @@ func NewSettlementAnalyticServiceHandler(svc SettlementAnalyticServiceHandler, o
 		SettlementAnalyticServiceMetricSearchProcedure,
 		svc.MetricSearch,
 		connect.WithSchema(settlementAnalyticServiceMethods.ByName("MetricSearch")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	settlementAnalyticServiceMetricDataHandler := connect.NewUnaryHandler(
 		SettlementAnalyticServiceMetricDataProcedure,
 		svc.MetricData,
 		connect.WithSchema(settlementAnalyticServiceMethods.ByName("MetricData")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.settlement.v1.SettlementAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

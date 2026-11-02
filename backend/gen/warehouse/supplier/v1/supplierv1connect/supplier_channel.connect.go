@@ -78,6 +78,7 @@ func NewSupplierChannelServiceClient(httpClient connect.HTTPClient, baseURL stri
 			httpClient,
 			baseURL+SupplierChannelServiceSupplierChannelListProcedure,
 			connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		supplierChannelCreate: connect.NewClient[v1.SupplierChannelCreateRequest, v1.SupplierChannelCreateResponse](
@@ -102,6 +103,7 @@ func NewSupplierChannelServiceClient(httpClient connect.HTTPClient, baseURL stri
 			httpClient,
 			baseURL+SupplierChannelServiceSupplierChannelByIdsProcedure,
 			connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -164,6 +166,7 @@ func NewSupplierChannelServiceHandler(svc SupplierChannelServiceHandler, opts ..
 		SupplierChannelServiceSupplierChannelListProcedure,
 		svc.SupplierChannelList,
 		connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	supplierChannelServiceSupplierChannelCreateHandler := connect.NewUnaryHandler(
@@ -188,6 +191,7 @@ func NewSupplierChannelServiceHandler(svc SupplierChannelServiceHandler, opts ..
 		SupplierChannelServiceSupplierChannelByIdsProcedure,
 		svc.SupplierChannelByIds,
 		connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.supplier.v1.SupplierChannelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

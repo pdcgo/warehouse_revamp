@@ -64,12 +64,14 @@ func NewOrderAnalyticServiceClient(httpClient connect.HTTPClient, baseURL string
 			httpClient,
 			baseURL+OrderAnalyticServiceMetricSearchProcedure,
 			connect.WithSchema(orderAnalyticServiceMethods.ByName("MetricSearch")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		metricData: connect.NewClient[v1.MetricDataRequest, v1.MetricDataResponse](
 			httpClient,
 			baseURL+OrderAnalyticServiceMetricDataProcedure,
 			connect.WithSchema(orderAnalyticServiceMethods.ByName("MetricData")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -111,12 +113,14 @@ func NewOrderAnalyticServiceHandler(svc OrderAnalyticServiceHandler, opts ...con
 		OrderAnalyticServiceMetricSearchProcedure,
 		svc.MetricSearch,
 		connect.WithSchema(orderAnalyticServiceMethods.ByName("MetricSearch")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderAnalyticServiceMetricDataHandler := connect.NewUnaryHandler(
 		OrderAnalyticServiceMetricDataProcedure,
 		svc.MetricData,
 		connect.WithSchema(orderAnalyticServiceMethods.ByName("MetricData")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.selling.v1.OrderAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

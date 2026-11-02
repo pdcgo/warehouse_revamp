@@ -27,7 +27,7 @@ import {
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { useRestockOngoing, useRestockPeople, useRestockRequests } from "../../features/restock/queries";
@@ -208,17 +208,19 @@ export function RestockSellingPage() {
   return (
     <Stack gap="section">
 
-      <Flex align="center" gap="card">
-        <Spacer />
-        <Button
-          size="xs"
-          colorPalette="brand"
-          data-testid="open-create-restock"
-          onClick={() => navigate("/inventories/restock/new")}
-        >
-          {t("restock.newRequest")}
-        </Button>
-      </Flex>
+      {canWrite(current) && (
+        <Flex align="center" gap="card">
+          <Spacer />
+          <Button
+            size="xs"
+            colorPalette="brand"
+            data-testid="open-create-restock"
+            onClick={() => navigate("/inventories/restock/new")}
+          >
+            {t("restock.newRequest")}
+          </Button>
+        </Flex>
+      )}
 
       {/* WHAT IS IN FLIGHT — the two numbers a buyer opens this screen for. Server-side totals over
           every restock still in flight, so they describe the team rather than the visible page. */}

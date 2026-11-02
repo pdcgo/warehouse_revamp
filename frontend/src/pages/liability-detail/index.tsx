@@ -24,7 +24,7 @@ import {
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { ArrowLeft, Paperclip, Plus, X } from "lucide-react";
+import { ArrowLeft, BellRing, Paperclip, Plus, X } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
 import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
@@ -35,6 +35,10 @@ import { fmtDate } from "./format";
 import { PaymentProof } from "./components/PaymentProof";
 import { RejectPaymentDialog } from "./components/RejectPaymentDialog";
 import { AcceptPaymentDialog } from "./components/AcceptPaymentDialog";
+import { PaymentRequestNotice } from "./components/PaymentRequestNotice";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { toaster } from "../../components/feedback/Toaster";
+import { canRequestPayment } from "../../lib/roles";
 import { FinancialAccountSelect } from "../../components/pickers/FinancialAccountSelect";
 import { useProofUpload, type UploadedProof } from "../../features/documents/useProofUpload";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
@@ -48,9 +52,15 @@ import {
   resolveRange,
 } from "../../components/datetime/DateRangePicker";
 import { dateRangeCodec, useUrlState } from "../../lib/urlState";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { directionCopy, directionPalette } from "../../features/liability/direction";
-import { useRecordPayment, useLiabilityLogs, useLiabilityPayments } from "../../features/liability/queries";
+import {
+  useLiabilityLogs,
+  useLiabilityPayments,
+  useLiabilityPosition,
+  useRecordPayment,
+  useRequestPayment,
+} from "../../features/liability/queries";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { Pagination } from "../../components/chrome/Pagination";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
@@ -134,6 +144,7 @@ export function LiabilityDetailPage() {
   // reject refuses a claim and posts nothing, confirm posts money — and one piece of state holding
   // both is how a mis-click becomes a settlement.
   const [rejectTarget, setRejectTarget] = useState<LiabilityPayment | null>(null);
+  const [requestOpen, setRequestOpen] = useState(false);
 
   const teamId = current?.teamId;
 
@@ -153,6 +164,10 @@ export function LiabilityDetailPage() {
     page: paymentPage,
     pageSize: PAYMENT_PAGE_SIZE,
   });
+
+  // THE OPEN PAYMENT REQUEST, either way (a-creditor-may-request-payment) — read off the pair's position row.
+  const positionQuery = useLiabilityPosition(teamId, counterpartyId);
+  const requestPayment = useRequestPayment();
 
   // The counterparty is another team — resolve its name and kind (#142).
   const teamQuery = useQuery({
@@ -225,6 +240,20 @@ export function LiabilityDetailPage() {
   // GetDownloadUrl for team 0 rather than fail loudly.
   const readerTeamId = current.teamId;
 
+  // REQUEST PAYMENT — the creditor's owner and admin, while the counterparty owes (a-creditor-may-request-payment).
+  // Pay, request, confirm and reject are all writes — none while the admin team monitors the team.
+  const writable = canWrite(current);
+  const mayRequest = writable && balance > 0n && canRequestPayment(current.role);
+
+  async function sendRequest() {
+    try {
+      await requestPayment.mutateAsync({ teamId: readerTeamId, debtorTeamId: counterpartyId });
+      toaster.create({ type: "success", title: t("liabilityDetail.requestDone", { name }) });
+    } catch (err) {
+      toaster.create({ type: "error", title: t("liabilityDetail.requestFailed"), description: rpcError(err) });
+    }
+  }
+
   function renderPaymentTable(rows: LiabilityPayment[], emptyKey: string, withConfirm: boolean) {
     if (rows.length === 0) {
       return (
@@ -272,7 +301,7 @@ export function LiabilityDetailPage() {
                 <Flex align="center" gap="2">
                   <Badge colorPalette={statusPalette(p.status)}>{t(statusKey(p.status))}</Badge>
                   {/* TWO actions, so they stay inline — an overflow menu is for three or more. */}
-                  {withConfirm && p.status === LiabilityPaymentStatus.RECORDED && (
+                  {withConfirm && writable && p.status === LiabilityPaymentStatus.RECORDED && (
                     <>
                       <Button
                         size="xs"
@@ -325,22 +354,35 @@ export function LiabilityDetailPage() {
         </Stack>
         <Spacer />
         {/* A phone's header action is its icon (a-phone-header-action-is-an-icon). */}
-        {isMobile ? (
+        {!writable ? null : isMobile ? (
           <CompactActions
             menuLabel={t("common.actions")}
-            actions={[{ id: "pay", label: t("liabilityDetail.makePayment"), icon: Plus, primary: true, testId: "liability-detail-make-payment", onClick: () => setRecordOpen(true) }]}
+            actions={[
+              mayRequest && { id: "request", label: t("liabilityDetail.requestPayment"), icon: BellRing, testId: "liability-detail-request-payment", onClick: () => setRequestOpen(true) },
+              { id: "pay", label: t("liabilityDetail.makePayment"), icon: Plus, primary: true, testId: "liability-detail-make-payment", onClick: () => setRecordOpen(true) },
+            ]}
           />
         ) : (
-          <Button
-            colorPalette="brand"
-            data-testid="liability-detail-make-payment"
-            onClick={() => setRecordOpen(true)}
-          >
-            <Icon as={Plus} boxSize="4" />
-            {t("liabilityDetail.makePayment")}
-          </Button>
+          <Flex gap="field">
+            {mayRequest && (
+              <Button variant="outline" data-testid="liability-detail-request-payment" onClick={() => setRequestOpen(true)}>
+                <Icon as={BellRing} boxSize="4" />
+                {t("liabilityDetail.requestPayment")}
+              </Button>
+            )}
+            <Button
+              colorPalette="brand"
+              data-testid="liability-detail-make-payment"
+              onClick={() => setRecordOpen(true)}
+            >
+              <Icon as={Plus} boxSize="4" />
+              {t("liabilityDetail.makePayment")}
+            </Button>
+          </Flex>
         )}
       </Flex>
+
+      <PaymentRequestNotice request={positionQuery.data?.paymentRequest} teamId={current.teamId} counterpartyName={name} />
 
       {/* The position, in words, and the two gross sides of it. */}
       <SimpleGrid columns={{ base: 1, md: 3 }} gap="card">
@@ -508,6 +550,16 @@ export function LiabilityDetailPage() {
         target={rejectTarget}
         onClose={() => setRejectTarget(null)}
         teamId={current.teamId}
+      />
+
+      {/* It posts nothing and blocks nothing, but it is SENT to another team — so it is confirmed, with what it says. */}
+      <ConfirmDialog
+        open={requestOpen}
+        onOpenChange={setRequestOpen}
+        title={t("liabilityDetail.requestTitle")}
+        message={t("liabilityDetail.requestMessage", { name, amount: formatRupiah(balance > 0n ? balance : 0n) })}
+        confirmLabel={t("liabilityDetail.requestConfirm")}
+        onConfirm={sendRequest}
       />
 
       <MakePaymentDialog

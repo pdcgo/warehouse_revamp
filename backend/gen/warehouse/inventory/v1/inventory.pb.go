@@ -2378,7 +2378,7 @@ type StockedProductListFilter struct {
 	WarehouseId uint64 `protobuf:"varint,1,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	// Narrow to these products, if given. 0 entries = no narrowing.
 	//
-	// This is how SEARCH survives an inventory-owned list: product names and SKUs live in the
+	// This is how SEARCH survives an inventory-owned list: product names and codes live in the
 	// catalogue, which this service cannot see and must not join to (HARD RULE 3). So a caller with a
 	// search term resolves it against product_service first and passes the matching ids here — the
 	// paging still happens HERE, over the intersection, so the count stays true.
@@ -4280,17 +4280,17 @@ func (x *ProductPlacesResponse) GetItems() map[uint64]*ProductPlacesResponseList
 }
 
 // A batch as the batch screens read it (#209) — one product's units from one delivery, a cost layer.
-// The identity/receipt/supplier come from the delivery it was accepted on; sku/name are the line's
+// The identity/receipt/supplier come from the delivery it was accepted on; product code/name are the line's
 // snapshot; Ready/Used are derived from the shelf_batch rows.
 type StockBatch struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The delivery's display number (the restock request id) and receipt (GRN), searchable together.
-	DeliveryId uint64 `protobuf:"varint,2,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
-	ReceiptNo  string `protobuf:"bytes,3,opt,name=receipt_no,json=receiptNo,proto3" json:"receipt_no,omitempty"`
-	ProductId  uint64 `protobuf:"varint,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Sku        string `protobuf:"bytes,5,opt,name=sku,proto3" json:"sku,omitempty"`
-	Name       string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	DeliveryId  uint64 `protobuf:"varint,2,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
+	ReceiptNo   string `protobuf:"bytes,3,opt,name=receipt_no,json=receiptNo,proto3" json:"receipt_no,omitempty"`
+	ProductId   uint64 `protobuf:"varint,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	ProductCode string `protobuf:"bytes,5,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
+	Name        string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// The delivery's supplier — opaque id; 0 when none was recorded. Name resolved client-side.
 	SupplierId uint64 `protobuf:"varint,7,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
 	// ⚠ Frozen HPP. `cost_known = false` means UNKNOWN, not free (#74) — `unit_cost` is then 0 and every
@@ -4382,9 +4382,9 @@ func (x *StockBatch) GetProductId() uint64 {
 	return 0
 }
 
-func (x *StockBatch) GetSku() string {
+func (x *StockBatch) GetProductCode() string {
 	if x != nil {
-		return x.Sku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -6321,17 +6321,17 @@ func (x *BatchReceiptRequest) GetDeliveryId() uint64 {
 // One product line on the receipt. Accepted = arrived − damaged: only accepted units entered stock and
 // froze their cost; damaged units never became stock. Line cost is what the supplier invoiced.
 type BatchReceiptLine struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	BatchId   uint64                 `protobuf:"varint,1,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
-	ProductId uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Sku       string                 `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
-	Name      string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Arrived   int64                  `protobuf:"varint,5,opt,name=arrived,proto3" json:"arrived,omitempty"`
-	Damaged   int64                  `protobuf:"varint,6,opt,name=damaged,proto3" json:"damaged,omitempty"`
-	Accepted  int64                  `protobuf:"varint,7,opt,name=accepted,proto3" json:"accepted,omitempty"` // arrived − damaged
-	UnitCost  int64                  `protobuf:"varint,8,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
-	CostKnown bool                   `protobuf:"varint,9,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"` // false → cost UNKNOWN, render "Unknown" not Rp 0 (#74)
-	LineCost  int64                  `protobuf:"varint,10,opt,name=line_cost,json=lineCost,proto3" json:"line_cost,omitempty"`   // arrived × unit_cost
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	BatchId     uint64                 `protobuf:"varint,1,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
+	ProductId   uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	ProductCode string                 `protobuf:"bytes,3,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
+	Name        string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Arrived     int64                  `protobuf:"varint,5,opt,name=arrived,proto3" json:"arrived,omitempty"`
+	Damaged     int64                  `protobuf:"varint,6,opt,name=damaged,proto3" json:"damaged,omitempty"`
+	Accepted    int64                  `protobuf:"varint,7,opt,name=accepted,proto3" json:"accepted,omitempty"` // arrived − damaged
+	UnitCost    int64                  `protobuf:"varint,8,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	CostKnown   bool                   `protobuf:"varint,9,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"` // false → cost UNKNOWN, render "Unknown" not Rp 0 (#74)
+	LineCost    int64                  `protobuf:"varint,10,opt,name=line_cost,json=lineCost,proto3" json:"line_cost,omitempty"`   // arrived × unit_cost
 	// Where this batch's units were put away — 0 = the unplaced pile. A line can span shelves.
 	RackIds       []uint64 `protobuf:"varint,11,rep,packed,name=rack_ids,json=rackIds,proto3" json:"rack_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -6382,9 +6382,9 @@ func (x *BatchReceiptLine) GetProductId() uint64 {
 	return 0
 }
 
-func (x *BatchReceiptLine) GetSku() string {
+func (x *BatchReceiptLine) GetProductCode() string {
 	if x != nil {
-		return x.Sku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -8359,7 +8359,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12G\n" +
-	"\x05value\x18\x02 \x01(\v21.warehouse.inventory.v1.ProductPlacesResponseListR\x05value:\x028\x01\"\xc6\x05\n" +
+	"\x05value\x18\x02 \x01(\v21.warehouse.inventory.v1.ProductPlacesResponseListR\x05value:\x028\x01\"\xd7\x05\n" +
 	"\n" +
 	"StockBatch\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1f\n" +
@@ -8368,8 +8368,8 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"receipt_no\x18\x03 \x01(\tR\treceiptNo\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x04 \x01(\x04R\tproductId\x12\x10\n" +
-	"\x03sku\x18\x05 \x01(\tR\x03sku\x12\x12\n" +
+	"product_id\x18\x04 \x01(\x04R\tproductId\x12!\n" +
+	"\fproduct_code\x18\x05 \x01(\tR\vproductCode\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12\x1f\n" +
 	"\vsupplier_id\x18\a \x01(\x04R\n" +
 	"supplierId\x12\x1b\n" +
@@ -8537,12 +8537,12 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
 	"\vdelivery_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
 	"deliveryId:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"\xb6\x02\n" +
+	"\x05\x01\x02\x06\t\b\"\xc7\x02\n" +
 	"\x10BatchReceiptLine\x12\x19\n" +
 	"\bbatch_id\x18\x01 \x01(\x04R\abatchId\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\x04R\tproductId\x12\x10\n" +
-	"\x03sku\x18\x03 \x01(\tR\x03sku\x12\x12\n" +
+	"product_id\x18\x02 \x01(\x04R\tproductId\x12!\n" +
+	"\fproduct_code\x18\x03 \x01(\tR\vproductCode\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x18\n" +
 	"\aarrived\x18\x05 \x01(\x03R\aarrived\x12\x18\n" +
 	"\adamaged\x18\x06 \x01(\x03R\adamaged\x12\x1a\n" +
@@ -8775,31 +8775,31 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x19OwnerStockHistoryDataType\x12-\n" +
 	")OWNER_STOCK_HISTORY_DATA_TYPE_UNSPECIFIED\x10\x00\x12)\n" +
 	"%OWNER_STOCK_HISTORY_DATA_TYPE_GENERAL\x10\x01\x12*\n" +
-	"&OWNER_STOCK_HISTORY_DATA_TYPE_MOVEMENT\x10\x022\xc3\x14\n" +
-	"\x10InventoryService\x12`\n" +
-	"\tStockList\x12(.warehouse.inventory.v1.StockListRequest\x1a).warehouse.inventory.v1.StockListResponse\x12i\n" +
-	"\fStockHistory\x12+.warehouse.inventory.v1.StockHistoryRequest\x1a,.warehouse.inventory.v1.StockHistoryResponse\x12f\n" +
+	"&OWNER_STOCK_HISTORY_DATA_TYPE_MOVEMENT\x10\x022\xb1\x15\n" +
+	"\x10InventoryService\x12e\n" +
+	"\tStockList\x12(.warehouse.inventory.v1.StockListRequest\x1a).warehouse.inventory.v1.StockListResponse\"\x03\x90\x02\x01\x12n\n" +
+	"\fStockHistory\x12+.warehouse.inventory.v1.StockHistoryRequest\x1a,.warehouse.inventory.v1.StockHistoryResponse\"\x03\x90\x02\x01\x12f\n" +
 	"\vStockAdjust\x12*.warehouse.inventory.v1.StockAdjustRequest\x1a+.warehouse.inventory.v1.StockAdjustResponse\x12f\n" +
-	"\vStockOpname\x12*.warehouse.inventory.v1.StockOpnameRequest\x1a+.warehouse.inventory.v1.StockOpnameResponse\x12x\n" +
-	"\x11StockAvailability\x120.warehouse.inventory.v1.StockAvailabilityRequest\x1a1.warehouse.inventory.v1.StockAvailabilityResponse\x12{\n" +
-	"\x12StockedProductList\x121.warehouse.inventory.v1.StockedProductListRequest\x1a2.warehouse.inventory.v1.StockedProductListResponse\x12`\n" +
-	"\tStockCost\x12(.warehouse.inventory.v1.StockCostRequest\x1a).warehouse.inventory.v1.StockCostResponse\x12o\n" +
-	"\x0eStockTakeQuote\x12-.warehouse.inventory.v1.StockTakeQuoteRequest\x1a..warehouse.inventory.v1.StockTakeQuoteResponse\x12\x81\x01\n" +
-	"\x14WarehouseProductList\x123.warehouse.inventory.v1.WarehouseProductListRequest\x1a4.warehouse.inventory.v1.WarehouseProductListResponse\x12l\n" +
-	"\rProductPlaces\x12,.warehouse.inventory.v1.ProductPlacesRequest\x1a-.warehouse.inventory.v1.ProductPlacesResponse\x12{\n" +
-	"\x12StockPickLocations\x121.warehouse.inventory.v1.StockPickLocationsRequest\x1a2.warehouse.inventory.v1.StockPickLocationsResponse\x12`\n" +
-	"\tBatchList\x12(.warehouse.inventory.v1.BatchListRequest\x1a).warehouse.inventory.v1.BatchListResponse\x12l\n" +
-	"\rCostLayerList\x12,.warehouse.inventory.v1.CostLayerListRequest\x1a-.warehouse.inventory.v1.CostLayerListResponse\x12l\n" +
-	"\rPlacementList\x12,.warehouse.inventory.v1.PlacementListRequest\x1a-.warehouse.inventory.v1.PlacementListResponse\x12~\n" +
-	"\x13ProductStockSummary\x122.warehouse.inventory.v1.ProductStockSummaryRequest\x1a3.warehouse.inventory.v1.ProductStockSummaryResponse\x12f\n" +
-	"\vBatchDetail\x12*.warehouse.inventory.v1.BatchDetailRequest\x1a+.warehouse.inventory.v1.BatchDetailResponse\x12{\n" +
-	"\x12BatchPlacementList\x121.warehouse.inventory.v1.BatchPlacementListRequest\x1a2.warehouse.inventory.v1.BatchPlacementListResponse\x12i\n" +
-	"\fBatchReceipt\x12+.warehouse.inventory.v1.BatchReceiptRequest\x1a,.warehouse.inventory.v1.BatchReceiptResponse\x12r\n" +
-	"\x0fOwnerStockByIds\x12..warehouse.inventory.v1.OwnerStockByIdsRequest\x1a/.warehouse.inventory.v1.OwnerStockByIdsResponse\x12o\n" +
-	"\x0eOwnerStockStat\x12-.warehouse.inventory.v1.OwnerStockStatRequest\x1a..warehouse.inventory.v1.OwnerStockStatResponse\x12{\n" +
-	"\x12OwnerCostLayerList\x121.warehouse.inventory.v1.OwnerCostLayerListRequest\x1a2.warehouse.inventory.v1.OwnerCostLayerListResponse\x12o\n" +
-	"\x0eOwnerBatchList\x12-.warehouse.inventory.v1.OwnerBatchListRequest\x1a..warehouse.inventory.v1.OwnerBatchListResponse\x12x\n" +
-	"\x11OwnerStockHistory\x120.warehouse.inventory.v1.OwnerStockHistoryRequest\x1a1.warehouse.inventory.v1.OwnerStockHistoryResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
+	"\vStockOpname\x12*.warehouse.inventory.v1.StockOpnameRequest\x1a+.warehouse.inventory.v1.StockOpnameResponse\x12}\n" +
+	"\x11StockAvailability\x120.warehouse.inventory.v1.StockAvailabilityRequest\x1a1.warehouse.inventory.v1.StockAvailabilityResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
+	"\x12StockedProductList\x121.warehouse.inventory.v1.StockedProductListRequest\x1a2.warehouse.inventory.v1.StockedProductListResponse\"\x03\x90\x02\x01\x12e\n" +
+	"\tStockCost\x12(.warehouse.inventory.v1.StockCostRequest\x1a).warehouse.inventory.v1.StockCostResponse\"\x03\x90\x02\x01\x12t\n" +
+	"\x0eStockTakeQuote\x12-.warehouse.inventory.v1.StockTakeQuoteRequest\x1a..warehouse.inventory.v1.StockTakeQuoteResponse\"\x03\x90\x02\x01\x12\x86\x01\n" +
+	"\x14WarehouseProductList\x123.warehouse.inventory.v1.WarehouseProductListRequest\x1a4.warehouse.inventory.v1.WarehouseProductListResponse\"\x03\x90\x02\x01\x12q\n" +
+	"\rProductPlaces\x12,.warehouse.inventory.v1.ProductPlacesRequest\x1a-.warehouse.inventory.v1.ProductPlacesResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
+	"\x12StockPickLocations\x121.warehouse.inventory.v1.StockPickLocationsRequest\x1a2.warehouse.inventory.v1.StockPickLocationsResponse\"\x03\x90\x02\x01\x12e\n" +
+	"\tBatchList\x12(.warehouse.inventory.v1.BatchListRequest\x1a).warehouse.inventory.v1.BatchListResponse\"\x03\x90\x02\x01\x12q\n" +
+	"\rCostLayerList\x12,.warehouse.inventory.v1.CostLayerListRequest\x1a-.warehouse.inventory.v1.CostLayerListResponse\"\x03\x90\x02\x01\x12q\n" +
+	"\rPlacementList\x12,.warehouse.inventory.v1.PlacementListRequest\x1a-.warehouse.inventory.v1.PlacementListResponse\"\x03\x90\x02\x01\x12\x83\x01\n" +
+	"\x13ProductStockSummary\x122.warehouse.inventory.v1.ProductStockSummaryRequest\x1a3.warehouse.inventory.v1.ProductStockSummaryResponse\"\x03\x90\x02\x01\x12k\n" +
+	"\vBatchDetail\x12*.warehouse.inventory.v1.BatchDetailRequest\x1a+.warehouse.inventory.v1.BatchDetailResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
+	"\x12BatchPlacementList\x121.warehouse.inventory.v1.BatchPlacementListRequest\x1a2.warehouse.inventory.v1.BatchPlacementListResponse\"\x03\x90\x02\x01\x12n\n" +
+	"\fBatchReceipt\x12+.warehouse.inventory.v1.BatchReceiptRequest\x1a,.warehouse.inventory.v1.BatchReceiptResponse\"\x03\x90\x02\x01\x12w\n" +
+	"\x0fOwnerStockByIds\x12..warehouse.inventory.v1.OwnerStockByIdsRequest\x1a/.warehouse.inventory.v1.OwnerStockByIdsResponse\"\x03\x90\x02\x01\x12t\n" +
+	"\x0eOwnerStockStat\x12-.warehouse.inventory.v1.OwnerStockStatRequest\x1a..warehouse.inventory.v1.OwnerStockStatResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
+	"\x12OwnerCostLayerList\x121.warehouse.inventory.v1.OwnerCostLayerListRequest\x1a2.warehouse.inventory.v1.OwnerCostLayerListResponse\"\x03\x90\x02\x01\x12t\n" +
+	"\x0eOwnerBatchList\x12-.warehouse.inventory.v1.OwnerBatchListRequest\x1a..warehouse.inventory.v1.OwnerBatchListResponse\"\x03\x90\x02\x01\x12}\n" +
+	"\x11OwnerStockHistory\x120.warehouse.inventory.v1.OwnerStockHistoryRequest\x1a1.warehouse.inventory.v1.OwnerStockHistoryResponse\"\x03\x90\x02\x01BRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
 
 var (
 	file_warehouse_inventory_v1_inventory_proto_rawDescOnce sync.Once

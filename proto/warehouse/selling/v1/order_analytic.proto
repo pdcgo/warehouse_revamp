@@ -22,9 +22,17 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sel
 // one is refused. The service decides from the scope's team type; the screen only drops a column that came back unset.
 service OrderAnalyticService {
   // The keys of a page of the table, ranked by one field of one order metric.
-  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse);
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
-  rpc MetricData(MetricDataRequest) returns (MetricDataResponse);
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // Every metric here has the same shape (the-four-group-by-team-shop-warehouse-user-and-time):
@@ -403,4 +411,12 @@ message MetricData {
 
 message MetricDataResponse {
   repeated MetricData metric_datas = 1;
+  // AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+  // `order_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+  // behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+  // every metric it serves shares it. 0 = nothing folded yet.
+  //
+  // ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+  // dead-letter topic and the lease's log.
+  int64 as_of_unix = 2;
 }

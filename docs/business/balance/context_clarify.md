@@ -551,7 +551,7 @@ flowchart LR
    [an-entry-stays-disputable-forever](./context_decision.md#an-entry-stays-disputable-forever), against my window; a
    false `found` is bounded by the claim rule once stock problems are built. Kept as a line so the numbers hold.
 6. ✅ *(2026-10-31)* **Answered: a payment request that posts nothing** — [a-creditor-may-request-payment](./context_decision.md#a-creditor-may-request-payment).
-   ⛔ Not built. Kept as a line so the numbers hold.
+   ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 7. ✅ *(2026-11-02)* **Answered: no outsider is ever owed** — [no-outsider-is-owed-in-the-system](./context_decision.md#no-outsider-is-owed-in-the-system):
    a supplier is paid at the restock, a courier at the door; a monthly courier bill does not happen. Kept as a line so
    the numbers hold.

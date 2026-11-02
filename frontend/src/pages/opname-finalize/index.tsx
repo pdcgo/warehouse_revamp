@@ -205,7 +205,7 @@ function ProductSettlement({ product, teamName, compact }: { product: OpnameFina
           <Stack gap="0" minW="0">
             <Span fontWeight="bold">{p.productName}</Span>
             <Span fontSize="xs" color="fg.muted">
-              {p.productSku} · {teamName}
+              {p.productCode} · {teamName}
             </Span>
           </Stack>
           <Badge variant="outline" data-testid={`opname-finalize-outcome-${p.productId}`}>

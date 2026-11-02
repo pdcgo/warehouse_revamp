@@ -21,13 +21,29 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 // teams have racks at all — a selling team has nowhere to put a shelf.
 service RackService {
   rpc RackCreate(RackCreateRequest) returns (RackCreateResponse);
-  rpc RackList(RackListRequest) returns (RackListResponse);
+  rpc RackList(RackListRequest) returns (RackListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // One rack in full, for the detail page (#138).
-  rpc RackDetail(RackDetailRequest) returns (RackDetailResponse);
+  rpc RackDetail(RackDetailRequest) returns (RackDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // What is physically ON one rack, and how much of it (#138), with what it cost (#197).
-  rpc RackStock(RackStockRequest) returns (RackStockResponse);
+  rpc RackStock(RackStockRequest) returns (RackStockResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // WHAT HAS HAPPENED TO THIS SHELF (#197) — the movement ledger, narrowed to one rack.
-  rpc RackHistory(RackHistoryRequest) returns (RackHistoryResponse);
+  rpc RackHistory(RackHistoryRequest) returns (RackHistoryResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc RackUpdate(RackUpdateRequest) returns (RackUpdateResponse);
   rpc RackDelete(RackDeleteRequest) returns (RackDeleteResponse);
 
@@ -220,7 +236,7 @@ message RackSummary {
 // One product sitting on a rack, and how many (#138).
 message RackStockLine {
   // Opaque product_service id. The product may belong to ANOTHER team's catalogue — a warehouse holds
-  // other teams' goods — so its sku/name are resolved separately (ProductByIds), never assumed to be
+  // other teams' goods — so its product code/name are resolved separately (ProductByIds), never assumed to be
   // in this warehouse's own catalogue.
   uint64 product_id = 1;
   // How many of it are on THIS rack. Not the warehouse's total for the product, which is a SUM across

@@ -1,0 +1,248 @@
+syntax = "proto3";
+
+package warehouse.user.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1;userv1";
+
+// AgentService — the AI AGENTS a person connects to read a team's data through our MCP endpoint
+// (docs/business/mcp/context_decision.md#our-server-hosts-the-mcp).
+//
+// An agent connects by URL and OAuth: the agent's first call sends the person to our login in the browser, the
+// connect page names the connection and picks the team, and AgentConnect hands back the code the agent trades for
+// its OWN credential (an-agent-gets-its-own-team-credential) — named, one team (or every team for root,
+// a-roots-agent-reads-every-team), 90 days, read-only (an-agent-only-reads-for-now), revoked on its own.
+//
+// The OAuth endpoints themselves — discovery, client registration, the authorize redirect, the token exchange — are
+// plain HTTP, not RPCs (user_service/agent_oauth): an agent speaks OAuth, never Connect.
+service AgentService {
+  // Which agent is asking — the connect page's "ChatGPT wants to read …", and its check that the redirect is one the
+  // agent registered, before anything is sent there.
+  rpc AgentClientDetail(AgentClientDetailRequest) returns (AgentClientDetailResponse);
+  // The person allows the agent: mints the one-time code and answers where to send the browser.
+  rpc AgentConnect(AgentConnectRequest) returns (AgentConnectResponse);
+
+  // MY connections — /profile's AI agents.
+  rpc AgentConnectionList(AgentConnectionListRequest) returns (AgentConnectionListResponse);
+  // Revoke one of MY connections. It signs the person out of nothing else.
+  rpc AgentConnectionRevoke(AgentConnectionRevokeRequest) returns (AgentConnectionRevokeResponse);
+
+  // Every connection reading a team — its owner's view (the-owner-decides-who-connects-an-agent).
+  rpc AgentConnectionTeamList(AgentConnectionTeamListRequest) returns (AgentConnectionTeamListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The owner revokes any connection reading the team — a member's too.
+  rpc AgentConnectionTeamRevoke(AgentConnectionTeamRevokeRequest) returns (AgentConnectionTeamRevokeResponse);
+
+  // Whether the team's CS and staff may connect an agent — off until the owner turns it on.
+  rpc TeamAgentPolicyDetail(TeamAgentPolicyDetailRequest) returns (TeamAgentPolicyDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc TeamAgentPolicySet(TeamAgentPolicySetRequest) returns (TeamAgentPolicySetResponse);
+}
+
+// AgentConnection — one agent's credential, as its person and its team's owner read it. The secret itself is never
+// read back: it is shown to nobody, only handed to the agent once, at the token exchange.
+message AgentConnection {
+  uint64 id = 1;
+  // Who connected it.
+  uint64 user_id = 2;
+  // The team it reads. 0 = EVERY team — root's bypass (a-roots-agent-reads-every-team).
+  uint64 team_id = 3;
+  // Named by the person at the connect page — "ChatGPT, Heri's laptop".
+  string name = 4;
+  // What the agent registered itself as — "ChatGPT", "Claude".
+  string client_name = 5;
+  int64 created_at_unix = 6;
+  // 90 days after it was made; the person connects again after.
+  int64 expires_at_unix = 7;
+  // When the agent last read anything, or 0 when it never has.
+  int64 last_used_at_unix = 8;
+}
+
+message AgentClientDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  string client_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  // Must be one the agent registered, exactly — or nothing is sent there.
+  string redirect_uri = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 2000
+  }];
+}
+
+message AgentClientDetailResponse {
+  string client_name = 1;
+}
+
+message AgentConnectRequest {
+  // Any signed-in person — WHO may connect WHICH team is the handler's: the owner and admin, CS and staff once the
+  // owner allows it, root for every team (the-owner-decides-who-connects-an-agent). A team-level role here would be a
+  // dead letter: team 0 is "every team", which no scope can name.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  string client_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string redirect_uri = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 2000
+  }];
+  // PKCE (RFC 7636): the agent proves at the token exchange that it is the one that asked.
+  string code_challenge = 3 [(buf.validate.field).string = {
+    min_len: 43
+    max_len: 128
+  }];
+  string code_challenge_method = 4 [(buf.validate.field).string = {
+    in: ["S256"]
+  }];
+  // The agent's own, echoed back on the redirect.
+  string state = 5 [(buf.validate.field).string.max_len = 500];
+  // The team the agent reads. 0 = every team — root and the root team's administrator only.
+  uint64 team_id = 6;
+  string name = 7 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
+message AgentConnectResponse {
+  // The registered redirect, carrying the one-time code and the agent's state.
+  string redirect_url = 1;
+}
+
+// The two connection lists share their slices.
+enum AgentConnectionListDataType {
+  AGENT_CONNECTION_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  AGENT_CONNECTION_LIST_DATA_TYPE_GENERAL = 1;
+  AGENT_CONNECTION_LIST_DATA_TYPE_CONNECTION = 2;
+}
+
+message AgentConnectionMapItem {
+  map<uint64, AgentConnection> map_data = 1;
+}
+
+message AgentConnectionListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    AgentConnectionMapItem connection = 2;
+  }
+}
+
+message AgentConnectionListRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  repeated AgentConnectionListDataType data_request = 1;
+  warehouse.common.v1.CommonPagination page = 2 [(buf.validate.field).required = true];
+}
+
+// The live connections only — revoked and expired ones read nothing and are not listed. Newest first.
+message AgentConnectionListResponse {
+  repeated AgentConnectionListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+message AgentConnectionRevokeRequest {
+  // Your own — the handler refuses anyone else's.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  uint64 connection_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message AgentConnectionRevokeResponse {}
+
+message AgentConnectionTeamListRequest {
+  // The team's OWNER (the-owner-decides-who-connects-an-agent).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_WAREHOUSE_OWNER
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  repeated AgentConnectionListDataType data_request = 2;
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+// The live connections reading THIS team, whoever made them. Root's every-team connections are not listed: they
+// read every team, and no team's owner may revoke them.
+message AgentConnectionTeamListResponse {
+  repeated AgentConnectionListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+message AgentConnectionTeamRevokeRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_WAREHOUSE_OWNER
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // A connection reading this team — any other is NotFound.
+  uint64 connection_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message AgentConnectionTeamRevokeResponse {}
+
+message TeamAgentPolicyDetailRequest {
+  // Any member: the connect page tells a CS why it may not connect.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+}
+
+message TeamAgentPolicyDetailResponse {
+  // Whether CS and staff may connect an agent to this team. False until the owner turns it on.
+  bool members_may_connect = 1;
+}
+
+message TeamAgentPolicySetRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_WAREHOUSE_OWNER
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  bool members_may_connect = 2;
+}
+
+message TeamAgentPolicySetResponse {
+  bool members_may_connect = 1;
+}

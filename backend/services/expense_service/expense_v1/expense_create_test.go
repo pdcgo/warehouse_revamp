@@ -29,9 +29,10 @@ func TestCostCreate_RecordsTheChosenDate(t *testing.T) {
 	if got.GetKind() != expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL {
 		t.Fatalf("kind = %v, want PAYROLL", got.GetKind())
 	}
-	// A new cost counts until somebody voids it (#169).
-	if got.GetVoided() {
-		t.Fatal("a newly recorded cost is already voided")
+	// A new cost is an expense, not an adjustment, and counts for its own amount until somebody corrects it.
+	if got.GetAdjustsExpenseId() != 0 || got.GetNetAmount() != got.GetAmount() {
+		t.Fatalf("adjusts %d, net %d — want an expense counting for its own %d",
+			got.GetAdjustsExpenseId(), got.GetNetAmount(), got.GetAmount())
 	}
 }
 

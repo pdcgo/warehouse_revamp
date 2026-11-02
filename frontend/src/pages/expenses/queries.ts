@@ -37,8 +37,9 @@ function expensesFromList(items: ExpenseListResponseItem[], ids: bigint[]): Expe
           occurredAt: r.occurredAt,
           note: r.note,
           createdBy: r.createdBy,
-          voided: r.voided,
           createdAtUnix: r.createdAtUnix,
+          adjustsExpenseId: r.adjustsExpenseId,
+          netAmount: r.netAmount,
         }),
       );
     }
@@ -91,10 +92,9 @@ export function useExpenses({ teamId, month, kind, page, pageSize }: ExpenseList
 // Every write on this screen invalidates the same way: the whole `expenses` domain, across every
 // team and filter.
 //
-// Deliberately BROAD. A void changes the row, the per-kind totals, and the page counts, and an edit
-// can move a row into or out of the visible month — so "invalidate exactly the affected key" is a
-// calculation that would be wrong the first time a filter is added. The domain has a handful of
-// cached pages, not thousands, so refetching them costs nothing worth optimising for.
+// Deliberately BROAD. An adjustment adds a row, changes its expense's net, the per-kind totals and the page counts —
+// so "invalidate exactly the affected key" is a calculation that would be wrong the first time a filter is added. The
+// domain has a handful of cached pages, not thousands, so refetching them costs nothing worth optimising for.
 export function useInvalidateExpenses() {
   const client = useQueryClient();
 
@@ -121,8 +121,6 @@ export function useInvalidateExpenses() {
 
 interface SaveExpenseVars {
   teamId: bigint;
-  /** Set to correct an existing record; omitted to record a new one. */
-  expenseId?: bigint;
   kind: ExpenseKind;
   amount: bigint;
   occurredAt: string;
@@ -130,25 +128,32 @@ interface SaveExpenseVars {
   note: string;
 }
 
-// Record or correct a cost. One hook for both, because the edit form IS the record re-opened — the
-// same reason RecordExpenseDialog serves both.
+// Record a cost. Recording is the only write that makes an expense — it is never edited afterwards
+// (an-expense-is-never-edited).
 export function useSaveExpense() {
   const invalidate = useInvalidateExpenses();
 
   return useMutation({
-    mutationFn: async ({ expenseId, ...vars }: SaveExpenseVars) =>
-      expenseId === undefined
-        ? await expenseClient.expenseCreate(vars)
-        : await expenseClient.expenseUpdate({ ...vars, expenseId }),
+    mutationFn: (vars: SaveExpenseVars) => expenseClient.expenseCreate(vars),
     onSuccess: () => invalidate(),
   });
 }
 
-export function useVoidExpense() {
+interface AdjustExpenseVars {
+  teamId: bigint;
+  expenseId: bigint;
+  /** The correction, SIGNED — not the new total. Never 0. */
+  amount: bigint;
+  note: string;
+}
+
+// Correct a cost with a new row (every-correction-is-a-signed-adjustment) — Adjust, and Batalkan, which is an
+// adjustment of minus what the expense still counts for.
+export function useAdjustExpense() {
   const invalidate = useInvalidateExpenses();
 
   return useMutation({
-    mutationFn: (vars: { teamId: bigint; expenseId: bigint }) => expenseClient.expenseVoid(vars),
+    mutationFn: (vars: AdjustExpenseVars) => expenseClient.expenseAdjust(vars),
     onSuccess: () => invalidate(),
   });
 }

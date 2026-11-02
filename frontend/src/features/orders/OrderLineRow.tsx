@@ -91,7 +91,7 @@ export function OrderLineRow(props: OrderLineRowProps) {
             <Stack gap="0">
               <Text fontSize="sm">{line.name}</Text>
               <Text fontSize="xs" color="fg.muted">
-                {line.sku}
+                {line.productCode}
               </Text>
             </Stack>
           )}

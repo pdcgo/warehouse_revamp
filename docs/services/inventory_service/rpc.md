@@ -595,7 +595,7 @@ the table it sits above.
 | Figure | What it is | Why not the obvious thing |
 | --- | --- | --- |
 | `restock_count` | `COUNT(*)` over the pending REQUESTS | Over requests, not the item join — a two-line delivery is **one** delivery. 3 deliveries of 400 pieces and 30 of 400 are the same stock and completely different amounts of door-opening. |
-| `product_count` | **DISTINCT** `product_id` across the queue | Counting LINES reports 4 for one SKU on four deliveries. It is one thing to find a shelf for, and put-away is the job this number sizes. |
+| `product_count` | **DISTINCT** `product_id` across the queue | Counting LINES reports 4 for one product on four deliveries. It is one thing to find a shelf for, and put-away is the job this number sizes. |
 | `unit_count` | Σ ordered `count` | The **asked** quantity — nobody has counted these yet, which is exactly why they are in the queue. |
 | `amount` | Σ line `total`, a double | **Goods only.** Shipping is what the buying team paid to get them moving and the courier's charge is 0 until someone accepts, so either would answer a question about somebody else's spending. |
 | `oldest_pending_unix` | `MIN(created_at)` over the REQUESTS | Over requests, not their lines — a line-less request still waits at the door, and a MIN over the item join would skip it. A count of 7 hides the box that has sat since Monday. |
@@ -751,7 +751,7 @@ sequenceDiagram
     UI->>R: RackStock — what the system believes is on this shelf
     R-->>UI: product ids + on-hand + unit cost
     UI->>PS: ProductByIds — the labels, since a shelf holds OTHER teams' goods
-    PS-->>UI: sku + name
+    PS-->>UI: product code + name
     UI-->>P: the count sheet — expected beside an empty box
 
     P->>UI: types what is actually there (blank = not counted)
@@ -943,8 +943,11 @@ it**, which is the worst kind of inconsistency: invisible, and only in the accou
 The obligation joins the count's **transaction**; the expense stays best-effort after it — the same
 split the single-adjust path draws, and for the same reason.
 
-⚠ **`StockAdjust` with reason `RECOUNT` still does neither** — no write-off and no reimbursement — the one path out of
-step, kept by the provisional port and open as [adjustment Q2](../../business/inventory/adjustment_clarify.md#question).
+**`StockAdjust` with reason `RECOUNT` now does both** ([a-recount-shortfall-is-written-off-and-owed](../../business/inventory/adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed),
+2026-11-02): a shortfall's units leave the owner's batches oldest first, the warehouse owes the owner their value as
+*lost* inside the transaction — keyed on the owner's adjustment transaction, none for the warehouse's own goods — and
+one stock-loss expense follows the commit, under the recount's note. A surplus or an exact count moves no money. The
+same loss now costs the same whichever screen records it.
 
 ## RestockRequestAccept — announces the accept
 

@@ -16,6 +16,13 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 
 **0 open questions across 41 files.** The per-file counts are at the bottom.
 
+▼ *(2026-11-02, a build pass — no question opened or closed)* Built since the lines below were written, so their
+*⛔ Not built* is history: the expense correction, the replay lock lease, the one-year cap, *as of*, product archive and
+delete, the product code, the warehouse profile move, closures and the closed-day warning, the recount write-off, the
+payment request, the MCP, the override stamp and the admin team's read-only monitoring. Still decided and not built: the return courier fee (blocked — there is no return accept
+yet, [a-return-may-carry-the-couriers-ask](business/balance/context_decision.md#a-return-may-carry-the-couriers-ask)) and the finished
+stock count (waits on your design accept). Each decision's own note is the current state. Net 0.
+
 ▼ *(2026-11-02)* **0**: the overtaken list, closed in one answer — all 16 confirmed and recorded as 13 decisions
 (two pairs were one question asked twice): [each-developer-works-on-their-own-branch](business/project/member_decision.md#each-developer-works-on-their-own-branch) ·
 [the-workflow-lives-in-the-development-lifecycle](technical/development/workflow_decision.md#the-workflow-lives-in-the-development-lifecycle) · [an-operating-cost-never-moves-a-team-balance](business/balance/context_decision.md#an-operating-cost-never-moves-a-team-balance) ·

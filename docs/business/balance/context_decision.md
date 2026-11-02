@@ -1275,7 +1275,11 @@ flowchart LR
 | empty | posts nothing — the common case |
 | `inventory/return.md` | still unplanned: this is the money at the door, not the stock side of a return |
 
-⛔ **Not built.** The return accept has no courier field, and liability posts no return charge.
+⛔ **Not built — blocked (2026-11-02).** There is no return accept to put the field on: `return → return_completed` is
+still decided-not-built ([development_state/order](../../development_state/order/context.md)), the Returns screens run on
+preview data, and the accept's stock half waits on [inventory/return.md](../inventory/return.md), which is unplanned. Your own
+[return-is-unplanned](../inventory/context_decision.md#return-is-unplanned) parks it: *what depends on one is parked, not
+answered*. The charge is built with the accept, as its money half.
 
 ## a-creditor-may-request-payment
 
@@ -1307,7 +1311,14 @@ flowchart LR
 | what it says | who asks, the amount owed at that moment, when |
 | what it moves | nothing — no entry, no block, no due date |
 | what the debtor sees | the request on its balance and on the pair detail, until it pays or the request is replaced |
-| built | ⛔ not built |
+| built | ✅ 2026-11-02 — see below |
+
+✅ **Built 2026-11-02.** `LiabilityPaymentRequestSend` (liability migration `00012`, one request per pair, replaced by a
+second) for the creditor's owner and admin; the request rides `LiabilityPosition.payment_request` on both sides of the
+pair, and the debtor recording a payment to that creditor clears it. The pair detail carries **Request Payment** (a
+confirm, then *"You asked Toko A to pay …"*) and, for the debtor, a warning — *"Gudang Bekasi asks you to pay Rp
+700.000"*; the liability list badges the row. ⚠ my build detail: a request is cleared by RECORDING a payment, not by
+its acceptance — the debtor has answered, and a rejected payment does not bring the request back.
 
 ## no-outsider-is-owed-in-the-system
 

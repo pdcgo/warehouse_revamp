@@ -186,12 +186,14 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+InventoryServiceStockListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		stockHistory: connect.NewClient[v1.StockHistoryRequest, v1.StockHistoryResponse](
 			httpClient,
 			baseURL+InventoryServiceStockHistoryProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockHistory")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		stockAdjust: connect.NewClient[v1.StockAdjustRequest, v1.StockAdjustResponse](
@@ -210,114 +212,133 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+InventoryServiceStockAvailabilityProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockAvailability")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		stockedProductList: connect.NewClient[v1.StockedProductListRequest, v1.StockedProductListResponse](
 			httpClient,
 			baseURL+InventoryServiceStockedProductListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockedProductList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		stockCost: connect.NewClient[v1.StockCostRequest, v1.StockCostResponse](
 			httpClient,
 			baseURL+InventoryServiceStockCostProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockCost")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		stockTakeQuote: connect.NewClient[v1.StockTakeQuoteRequest, v1.StockTakeQuoteResponse](
 			httpClient,
 			baseURL+InventoryServiceStockTakeQuoteProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockTakeQuote")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		warehouseProductList: connect.NewClient[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse](
 			httpClient,
 			baseURL+InventoryServiceWarehouseProductListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		productPlaces: connect.NewClient[v1.ProductPlacesRequest, v1.ProductPlacesResponse](
 			httpClient,
 			baseURL+InventoryServiceProductPlacesProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("ProductPlaces")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		stockPickLocations: connect.NewClient[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse](
 			httpClient,
 			baseURL+InventoryServiceStockPickLocationsProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockPickLocations")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		batchList: connect.NewClient[v1.BatchListRequest, v1.BatchListResponse](
 			httpClient,
 			baseURL+InventoryServiceBatchListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("BatchList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		costLayerList: connect.NewClient[v1.CostLayerListRequest, v1.CostLayerListResponse](
 			httpClient,
 			baseURL+InventoryServiceCostLayerListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("CostLayerList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		placementList: connect.NewClient[v1.PlacementListRequest, v1.PlacementListResponse](
 			httpClient,
 			baseURL+InventoryServicePlacementListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("PlacementList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		productStockSummary: connect.NewClient[v1.ProductStockSummaryRequest, v1.ProductStockSummaryResponse](
 			httpClient,
 			baseURL+InventoryServiceProductStockSummaryProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("ProductStockSummary")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		batchDetail: connect.NewClient[v1.BatchDetailRequest, v1.BatchDetailResponse](
 			httpClient,
 			baseURL+InventoryServiceBatchDetailProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("BatchDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		batchPlacementList: connect.NewClient[v1.BatchPlacementListRequest, v1.BatchPlacementListResponse](
 			httpClient,
 			baseURL+InventoryServiceBatchPlacementListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("BatchPlacementList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		batchReceipt: connect.NewClient[v1.BatchReceiptRequest, v1.BatchReceiptResponse](
 			httpClient,
 			baseURL+InventoryServiceBatchReceiptProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("BatchReceipt")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		ownerStockByIds: connect.NewClient[v1.OwnerStockByIdsRequest, v1.OwnerStockByIdsResponse](
 			httpClient,
 			baseURL+InventoryServiceOwnerStockByIdsProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		ownerStockStat: connect.NewClient[v1.OwnerStockStatRequest, v1.OwnerStockStatResponse](
 			httpClient,
 			baseURL+InventoryServiceOwnerStockStatProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockStat")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		ownerCostLayerList: connect.NewClient[v1.OwnerCostLayerListRequest, v1.OwnerCostLayerListResponse](
 			httpClient,
 			baseURL+InventoryServiceOwnerCostLayerListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("OwnerCostLayerList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		ownerBatchList: connect.NewClient[v1.OwnerBatchListRequest, v1.OwnerBatchListResponse](
 			httpClient,
 			baseURL+InventoryServiceOwnerBatchListProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("OwnerBatchList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		ownerStockHistory: connect.NewClient[v1.OwnerStockHistoryRequest, v1.OwnerStockHistoryResponse](
 			httpClient,
 			baseURL+InventoryServiceOwnerStockHistoryProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockHistory")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -544,12 +565,14 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		InventoryServiceStockListProcedure,
 		svc.StockList,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceStockHistoryHandler := connect.NewUnaryHandler(
 		InventoryServiceStockHistoryProcedure,
 		svc.StockHistory,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockHistory")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceStockAdjustHandler := connect.NewUnaryHandler(
@@ -568,114 +591,133 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		InventoryServiceStockAvailabilityProcedure,
 		svc.StockAvailability,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockAvailability")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceStockedProductListHandler := connect.NewUnaryHandler(
 		InventoryServiceStockedProductListProcedure,
 		svc.StockedProductList,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockedProductList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceStockCostHandler := connect.NewUnaryHandler(
 		InventoryServiceStockCostProcedure,
 		svc.StockCost,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockCost")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceStockTakeQuoteHandler := connect.NewUnaryHandler(
 		InventoryServiceStockTakeQuoteProcedure,
 		svc.StockTakeQuote,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockTakeQuote")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceWarehouseProductListHandler := connect.NewUnaryHandler(
 		InventoryServiceWarehouseProductListProcedure,
 		svc.WarehouseProductList,
 		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceProductPlacesHandler := connect.NewUnaryHandler(
 		InventoryServiceProductPlacesProcedure,
 		svc.ProductPlaces,
 		connect.WithSchema(inventoryServiceMethods.ByName("ProductPlaces")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceStockPickLocationsHandler := connect.NewUnaryHandler(
 		InventoryServiceStockPickLocationsProcedure,
 		svc.StockPickLocations,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockPickLocations")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceBatchListHandler := connect.NewUnaryHandler(
 		InventoryServiceBatchListProcedure,
 		svc.BatchList,
 		connect.WithSchema(inventoryServiceMethods.ByName("BatchList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceCostLayerListHandler := connect.NewUnaryHandler(
 		InventoryServiceCostLayerListProcedure,
 		svc.CostLayerList,
 		connect.WithSchema(inventoryServiceMethods.ByName("CostLayerList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServicePlacementListHandler := connect.NewUnaryHandler(
 		InventoryServicePlacementListProcedure,
 		svc.PlacementList,
 		connect.WithSchema(inventoryServiceMethods.ByName("PlacementList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceProductStockSummaryHandler := connect.NewUnaryHandler(
 		InventoryServiceProductStockSummaryProcedure,
 		svc.ProductStockSummary,
 		connect.WithSchema(inventoryServiceMethods.ByName("ProductStockSummary")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceBatchDetailHandler := connect.NewUnaryHandler(
 		InventoryServiceBatchDetailProcedure,
 		svc.BatchDetail,
 		connect.WithSchema(inventoryServiceMethods.ByName("BatchDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceBatchPlacementListHandler := connect.NewUnaryHandler(
 		InventoryServiceBatchPlacementListProcedure,
 		svc.BatchPlacementList,
 		connect.WithSchema(inventoryServiceMethods.ByName("BatchPlacementList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceBatchReceiptHandler := connect.NewUnaryHandler(
 		InventoryServiceBatchReceiptProcedure,
 		svc.BatchReceipt,
 		connect.WithSchema(inventoryServiceMethods.ByName("BatchReceipt")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceOwnerStockByIdsHandler := connect.NewUnaryHandler(
 		InventoryServiceOwnerStockByIdsProcedure,
 		svc.OwnerStockByIds,
 		connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceOwnerStockStatHandler := connect.NewUnaryHandler(
 		InventoryServiceOwnerStockStatProcedure,
 		svc.OwnerStockStat,
 		connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockStat")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceOwnerCostLayerListHandler := connect.NewUnaryHandler(
 		InventoryServiceOwnerCostLayerListProcedure,
 		svc.OwnerCostLayerList,
 		connect.WithSchema(inventoryServiceMethods.ByName("OwnerCostLayerList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceOwnerBatchListHandler := connect.NewUnaryHandler(
 		InventoryServiceOwnerBatchListProcedure,
 		svc.OwnerBatchList,
 		connect.WithSchema(inventoryServiceMethods.ByName("OwnerBatchList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceOwnerStockHistoryHandler := connect.NewUnaryHandler(
 		InventoryServiceOwnerStockHistoryProcedure,
 		svc.OwnerStockHistory,
 		connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockHistory")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

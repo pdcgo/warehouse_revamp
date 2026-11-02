@@ -202,8 +202,8 @@ flowchart TD
   v -->|"no"| ack[/"200 — nothing here handles it"/]
   v -->|"yes"| tx["BEGIN"]
   tx --> lock{"process_event_lock, FOR SHARE"}
-  lock -->|"locked or unparseable"| e5[/"500 — redelivered later"/]
-  lock -->|"unlocked"| claim{"INSERT settlement_event_logs ON CONFLICT DO NOTHING"}
+  lock -->|"on, under a minute old — or unparseable"| e5[/"500 — redelivered later"/]
+  lock -->|"off, or on past its one-minute lease — a dead replay, logged once"| claim{"INSERT settlement_event_logs ON CONFLICT DO NOTHING"}
   claim -->|"0 rows — already folded"| c1["COMMIT"] --> ok[/"200"/]
   claim -->|"1 row"| adv["advisory lock — shop THEN user"]
   adv --> sd["shop day upsert, later days shifted, state rewritten"]
@@ -234,13 +234,13 @@ sequenceDiagram
   S->>+G: read the subscription's replay window
   G-->>-S: topic retention, or subscription retention if it retains acked
   S->>S: start_date before the window's first whole Jakarta day? REFUSE, naming the window
-  S->>+DB: process_event_lock false to true — compare and set
-  DB-->>-S: taken, or refuse
+  S->>+DB: process_event_lock FOR UPDATE — take it if off, or on past its one-minute lease
+  DB-->>-S: taken with its updated_at, or refuse
   S->>+DB: one transaction — DELETE day at or after start from the two daily tables and settlement_event_logs
   DB-->>-S: counts
   S->>+G: seek settlement-fold to start_date 00:00 WIB
   G-->>-S: accepted
-  S->>DB: process_event_lock back to false
+  S->>DB: process_event_lock back to false — only if it is still the one taken, by updated_at
   S-->>-D: status started, with the counts
   G-)S: redelivered events arrive at the fold over the following minutes
 ```
@@ -250,7 +250,7 @@ sequenceDiagram
 | the window cannot be read | a guard that guesses deletes days nothing can rebuild — [the-replay-is-bounded-by-the-subscription-retention](../../business/settlement/context_decision.md#the-replay-is-bounded-by-the-subscription-retention) |
 | the window is zero | a seek would deliver nothing, and the replay would only delete |
 | `start_date` is older than the window | older damage is repaired with a `system_adjustment` |
-| the lock is already held | another replay, or a developer's maintenance |
+| the lock is already held | another replay, under a minute old — past that it is a dead replay's and is taken over ([a-dead-replays-lock-expires-after-a-minute](../../business/settlement/meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute)) |
 
 ⚠ **"started", never "done"** — the seek is asynchronous. ⚠ The state tables are not in the delete: they
 are derived from the newest daily row on every fold, so each redelivered event re-derives them.
@@ -300,7 +300,7 @@ sequenceDiagram
   A-->>S: the keys, has_next
   S->>A: MetricData — the same filters, those keys, the metric ids
   A->>D: one statement — every field of both metrics
-  A-->>S: one answer per asked metric, every asked key
+  A-->>S: one answer per asked metric, every asked key — and as_of_unix, the newest claim in settlement_event_logs
 ```
 
 | | an id — `SHOP`, `TEAM`, `USER` | a period — `DAILY` … `YEARLY` | `SUMMARY` |
@@ -310,7 +310,7 @@ sequenceDiagram
 | movement | Σ over the window | Σ over the period clipped to the window | Σ over the window |
 | `position_to_date` | −Σ over the key's positions of each one's latest close, at the window's end | the same, at the clipped period's end — a period outside the window is zero | at the window's end |
 | `take_rate` | gap ÷ sales of the key's own sums; unset with no sale. Sorts, ranking only the keys that sold at least Rp 1.000.000 in the window; the rest follow in key order ([a-take-rate-ranks-above-one-million-of-sales](../../business/settlement/context_decision.md#a-take-rate-ranks-above-one-million-of-sales)) | the same, each period its own sales | the same |
-| search span | — | 366 days · 260 weeks · 60 months · 20 years | never searched |
+| the range | at most 366 days on every group, both ends counted ([a-metric-reads-at-most-a-year](../../business/analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year)) | the same — so the 260 weeks · 60 months · 20 years span caps below it no longer bind | the same |
 | scope | the team, or every team from the ROOT team — so `TEAM` crosses teams only for ROOT and ADMIN | the same | the same |
 
 `measureSQL` (`metric_shared.go`) is THE definition of every field: the fill selects it and the search orders by it,

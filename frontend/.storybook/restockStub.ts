@@ -135,7 +135,7 @@ function toWire(r: RestockFixture, withLogs: boolean) {
 
 type LineIn = {
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   count: bigint;
   total: number;
@@ -157,7 +157,7 @@ function newLines(r: { id: bigint }, items: LineIn[], startAt: number): LineFixt
   return items.map((it, i) => ({
     id: r.id * 10n + BigInt(startAt + i + 1),
     productId: it.productId,
-    sku: it.sku,
+    productCode: it.productCode,
     name: it.name,
     count: it.count,
     total: it.total,
@@ -264,7 +264,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
           r.id.toString() === idQuery ||
           r.receipt.toLowerCase().includes(q) ||
           r.invoiceRefId.toLowerCase().includes(q) ||
-          r.items.some((l) => l.sku.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)),
+          r.items.some((l) => l.productCode.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)),
       )
       .sort((a, b) => (a.id > b.id ? -1 : 1));
 
@@ -483,7 +483,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
 
       return l.placements.map((p) => ({
         productId: l.productId,
-        sku: l.sku,
+        productCode: l.productCode,
         name: l.name,
         batchId: l.id,
         quantity: p.quantity,

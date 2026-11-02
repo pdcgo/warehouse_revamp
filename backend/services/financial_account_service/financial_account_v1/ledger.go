@@ -30,6 +30,7 @@ type entry struct {
 	description      string
 	occurredAt       time.Time
 	actorID          uint64
+	isOverride       bool
 	groupID          uint64
 	counterAccountID uint64
 }
@@ -96,6 +97,7 @@ func post(tx *gorm.DB, account *m.FinancialAccount, e entry) (m.FinancialAccount
 		BalanceAfter:     after,
 		Description:      e.description,
 		ActorID:          e.actorID,
+		IsOverride:       e.isOverride,
 		OccurredAt:       e.occurredAt,
 		GroupID:          e.groupID,
 		CounterAccountID: e.counterAccountID,
@@ -198,6 +200,7 @@ func transferLegs(
 	occurredAt time.Time,
 	note string,
 	actorID uint64,
+	override bool,
 ) ([]m.FinancialAccountLog, error) {
 	group, err := nextGroup(tx)
 	if err != nil {
@@ -215,6 +218,7 @@ func transferLegs(
 		description:      "To " + to.Name + suffix,
 		occurredAt:       occurredAt,
 		actorID:          actorID,
+		isOverride:       override,
 		groupID:          group,
 		counterAccountID: to.ID,
 	})
@@ -228,6 +232,7 @@ func transferLegs(
 		description:      "From " + from.Name + suffix,
 		occurredAt:       occurredAt,
 		actorID:          actorID,
+		isOverride:       override,
 		groupID:          group,
 		counterAccountID: from.ID,
 	})

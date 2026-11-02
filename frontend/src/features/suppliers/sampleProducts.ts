@@ -13,7 +13,7 @@ export interface SampleProduct {
   key: string;
   id: bigint;
   name: string;
-  sku: string;
+  productCode: string;
   /** The list-sized picture — "" when the product has none, and the shared item draws its placeholder. */
   thumbnailUrl: string;
   /** The team that restocked it — whose product it is. Two teams buying one item are two rows. */
@@ -35,7 +35,7 @@ function swatch(base: string, stripe: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-const CATALOGUE: [name: string, sku: string, thumbnailUrl: string][] = [
+const CATALOGUE: [name: string, productCode: string, thumbnailUrl: string][] = [
   ["Kain Katun Jepang 1 rol", "KTN-JP-01", swatch("#bfdbfe", "#93c5fd")],
   ["Benang Polyester 40/2", "BNG-PL-40", swatch("#fde68a", "#fbbf24")],
   ["Kain Rayon Twill 1 rol", "RYN-TW-01", swatch("#fecdd3", "#fda4af")],
@@ -61,7 +61,7 @@ export function sampleProductsFor(channels: SupplierChannelRecord[]): SampleProd
   const rows = channels.flatMap((channel, i) =>
     [0, 1].map((j) => {
       const k = i * 2 + j;
-      const [name, sku, thumbnailUrl] = CATALOGUE[k % CATALOGUE.length]!;
+      const [name, productCode, thumbnailUrl] = CATALOGUE[k % CATALOGUE.length]!;
       const lastBoughtAt = LATEST - BigInt(k * 9) * DAY;
       // Every third one was bought once, so its first restock is its last.
       const firstBoughtAt = k % 3 === 2 ? lastBoughtAt : lastBoughtAt - BigInt(30 + k * 17) * DAY;
@@ -70,7 +70,7 @@ export function sampleProductsFor(channels: SupplierChannelRecord[]): SampleProd
         key: `${channel.id}-${j}`,
         id: BigInt(k + 1),
         name,
-        sku,
+        productCode,
         thumbnailUrl,
         teamId: TEAMS[k % 3 === 1 ? 1 : 0]![0],
         teamName: TEAMS[k % 3 === 1 ? 1 : 0]![1],

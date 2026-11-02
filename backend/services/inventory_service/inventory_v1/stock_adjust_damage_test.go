@@ -197,10 +197,29 @@ func TestStockAdjust_DamageIsKeyedOnItsMovement(t *testing.T) {
 	}
 }
 
-// A RECOUNT REIMBURSES NOBODY. It names no batch, so it can point at no cost layer and no owner — the
-// same reason it writes off no expense. (That this differs from StockOpname is a known, recorded
-// contradiction, not something this change decides.)
-func TestStockAdjust_RecountReimbursesNobody(t *testing.T) {
+// recount corrects the fixture's rack TO a counted figure — the RECOUNT reason, no batch named.
+func recount(t *testing.T, svc *inventory_v1.Service, warehouse, product, rackID uint64, onHand int64) *inventoryv1.StockAdjustResponse {
+	t.Helper()
+
+	res, err := svc.StockAdjust(context.Background(), connect.NewRequest(&inventoryv1.StockAdjustRequest{
+		WarehouseId: warehouse,
+		ProductId:   product,
+		Place:       &inventoryv1.StockAdjustRequest_RackId{RackId: rackID},
+		ReasonType:  inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_RECOUNT,
+		OnHand:      onHand,
+		Reason:      "shelf recount",
+	}))
+	if err != nil {
+		t.Fatalf("recount: %v", err)
+	}
+
+	return res.Msg
+}
+
+// A RECOUNT SHORTFALL IS OWED (a-recount-shortfall-is-written-off-and-owed). The rack held 100 and the count says 95:
+// the 5 missing units left the owner's batch at its 40.000, so the warehouse owes the owner 200.000 — as a LOST unit,
+// keyed by the adjustment. Recording the loss as a recount no longer avoids the charge.
+func TestStockAdjust_ARecountShortfallIsOwed(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
 	svc := newServiceWithLiability(t, db, poster)
@@ -209,19 +228,60 @@ func TestStockAdjust_RecountReimbursesNobody(t *testing.T) {
 
 	rackID, _, product := damageFixture(t, db, svc, warehouse)
 
-	_, err := svc.StockAdjust(context.Background(), connect.NewRequest(&inventoryv1.StockAdjustRequest{
-		WarehouseId: warehouse,
-		ProductId:   product,
-		Place:       &inventoryv1.StockAdjustRequest_RackId{RackId: rackID},
-		ReasonType:  inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_RECOUNT,
-		OnHand:      95,
-	}))
-	if err != nil {
-		t.Fatalf("recount: %v", err)
+	res := recount(t, svc, warehouse, product, rackID, 95)
+
+	if len(poster.damaged) != 1 {
+		t.Fatalf("a recount shortfall posted %d debts, want 1", len(poster.damaged))
 	}
 
+	got := poster.damaged[0]
+
+	if got.warehouseID != warehouse || got.ownerTeamID != damageOwnerTeam || got.amount != 200000 {
+		t.Fatalf("posted %+v, want warehouse %d owing owner %d 200000", got, warehouse, damageOwnerTeam)
+	}
+
+	if got.kind != inventory_v1.StockDamageLost {
+		t.Fatalf("kind = %v, want lost — a recount shortfall is shrinkage", got.kind)
+	}
+
+	if got.movementID != res.GetMovement().GetId() {
+		t.Fatalf("source id = %d, want the adjustment %d", got.movementID, res.GetMovement().GetId())
+	}
+}
+
+// A SURPLUS AND AN EXACT COUNT MOVE NO MONEY — only a shortfall is a loss.
+func TestStockAdjust_ARecountSurplusOwesNothing(t *testing.T) {
+	db := san_testdb.DB(t)
+	poster := &recordingPoster{}
+	svc := newServiceWithLiability(t, db, poster)
+
+	const warehouse uint64 = 5
+
+	rackID, _, product := damageFixture(t, db, svc, warehouse)
+
+	recount(t, svc, warehouse, product, rackID, 100)
+	recount(t, svc, warehouse, product, rackID, 104)
+
 	if len(poster.damaged) != 0 {
-		t.Fatalf("a recount posted %d debts, want 0", len(poster.damaged))
+		t.Fatalf("an exact count and a surplus posted %+v, want no debt", poster.damaged)
+	}
+}
+
+// A WAREHOUSE RECOUNTING ITS OWN GOODS owes nobody — its shortfall is its own loss, written off, never a debt to itself.
+func TestStockAdjust_ARecountOfTheWarehousesOwnGoodsOwesNobody(t *testing.T) {
+	db := san_testdb.DB(t)
+	poster := &recordingPoster{}
+	svc := newServiceWithLiability(t, db, poster)
+
+	// acceptOne raises the restock as team 2, so making the warehouse team 2 makes it its own owner.
+	const warehouse uint64 = damageOwnerTeam
+
+	rackID, _, product := damageFixture(t, db, svc, warehouse)
+
+	recount(t, svc, warehouse, product, rackID, 90)
+
+	if len(poster.damaged) != 0 {
+		t.Fatalf("a warehouse recounting its OWN goods posted %+v, want no debt", poster.damaged)
 	}
 }
 

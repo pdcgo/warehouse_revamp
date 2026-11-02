@@ -1713,8 +1713,15 @@ flowchart LR
 | the cost, accepted | *which supplier was best over two years?* is two one-year rankings |
 | when it comes back | someone asks for a multi-year ranking — then a monthly summary table, written by the same fold |
 
-⛔ **Not built.** None of the three services limits the range today
-([supplier metric_shared.go](../../../backend/services/supplier_service/supplier_v1/metric_shared.go)).
+✅ **Built 2026-11-02.**
+
+| | |
+| --- | --- |
+| the rule, once | [san_metric.CheckRange](../../../backend/pkgs/san_metric/range.go) — 366 days, both ends counted; each service answers it as `InvalidArgument` beside its *range backwards* check (`selling`, `settlement`, `supplier`) |
+| no range at all | already refused: every metric lists `FILTER_TYPE_DATE_RANGE` as required |
+| the screens | Analytic, the Settlement Report and the Supplier Report do not send a range over a year, and say so — *That range covers 367 days. A report reads at most 366* — the daily statement's pattern |
+| ⚠ my build detail — the picker | the date picker itself still lets a person pick a longer range by hand; its quick ranges stop at *Last 1 year* (365 or 366 days), and a longer hand-picked one is answered by the line above, never sent |
+| tests | `range_test.go` (a leap year fits, 367 does not), one 367-day refusal per service, the `ARangeOverAYearIsNotSent` story |
 
 ## a-money-metric-says-as-of-when
 
@@ -1750,4 +1757,13 @@ flowchart LR
 | what it tells | everything up to that time is in the figure |
 | ⚠ what it cannot tell | a quiet day from a stuck fold — both stop the time moving; that is the operator's, through the dead-letter topic and the lease's loud log ([a-dead-replays-lock-expires-after-a-minute](../settlement/meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute)) |
 
-⛔ **Not built.**
+✅ **Built 2026-11-02.**
+
+| | |
+| --- | --- |
+| the contract | `int64 as_of_unix = 2` on the `MetricDataResponse` of `selling`, `settlement` and `supplier` — added, not breaking; 0 = nothing folded yet |
+| the read | `MAX(created_at)` of the service's event log, one index read — `order_event_logs` gained the `created_at` index its two peers already had (selling migration `00031`) |
+| the screens | the Settlement Report and the Supplier Report under their headline, and the Analytic composer under its table — *As of 7 Oct 14:04 WIB* (`formatUnixDateTimeShort`, so the day is said when it is not today) |
+| ⚠ my build detail — two services | the composer reads several services; it shows the **oldest** of their times, the one every figure on the table is complete up to |
+| ⚠ not on | a supplier's own page (`SupplierStatistics`) and the daily statement — neither is a metric-pattern report screen; each is a one-line addition if wanted |
+| tests | one per service (0 before any claim, then the newest claim's time whatever order they landed in) and a `SaysAsOfWhen` story on each of the three screens |

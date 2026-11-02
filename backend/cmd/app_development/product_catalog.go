@@ -11,7 +11,7 @@ import (
 )
 
 // productCatalog joins selling_service to product_service (#194): promoting a draft into an order
-// needs each mapped product's sku and name, because a draft line stores only an id and an order line
+// needs each mapped product's product code and name, because a draft line stores only an id and an order line
 // freezes the label.
 //
 // Same shape and same reasoning as stockPicker beside it — the composition root is the one place
@@ -66,9 +66,9 @@ func (c *productCatalog) Snapshots(
 			}
 
 			snapshots[id] = selling_v1.ProductSnapshot{
-				SKU:    row.GetSku(),
-				Name:   row.GetName(),
-				TeamID: row.GetTeamId(),
+				ProductCode: row.GetProductCode(),
+				Name:        row.GetName(),
+				TeamID:      row.GetTeamId(),
 			}
 		}
 	}

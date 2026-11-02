@@ -25,7 +25,7 @@ import { ArrowLeft, ClipboardList, Flag, MoreHorizontal, Undo2, XCircle } from "
 import { rpcError } from "../../api/clients";
 import { type OpnameRow, OpnameRowStatus, OpnameSessionStatus } from "../../gen/warehouse/inventory/v1/opname_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeamsByIds } from "../../features/teams/queries";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { differenceOf } from "../../features/opname/adapt";
@@ -125,6 +125,9 @@ export function OpnameSessionDetailPage() {
   }
 
   const active = session.status === OpnameSessionStatus.ACTIVE;
+  // Counting, cancelling, finalizing and sending a row back are writes — the watch page only READS while the admin
+  // team monitors the team.
+  const writable = canWrite(current);
   const allCounted = session.rowCount > 0n && session.countedRowCount === session.rowCount;
   const filtering = (q !== "" ? 1 : 0) + (placementId > 0n ? 1 : 0) + (onlyDifferences ? 1 : 0);
   const list = rows.data?.rows ?? [];
@@ -148,7 +151,7 @@ export function OpnameSessionDetailPage() {
     }
   }
 
-  const actionButtons = active && (
+  const actionButtons = active && writable && (
     <>
       <Button size="xs" variant="outline" onClick={() => navigate(`/inventories/opname/sessions/${sessionId}/count`)} data-testid="opname-detail-count">
         <Icon as={ClipboardList} boxSize="4" />
@@ -190,7 +193,7 @@ export function OpnameSessionDetailPage() {
             </Heading>
             <OpnameSessionStatusBadge status={session.status} />
             <OpnamePlanBadge plan={session.plan} />
-            {isMobile && active && (
+            {isMobile && active && writable && (
               <Box ms="auto">
                 <Menu.Root>
                   <Menu.Trigger asChild>
@@ -345,7 +348,7 @@ export function OpnameSessionDetailPage() {
                           <Stack gap="0" minW="0">
                             <Span fontWeight="bold">{row.productName}</Span>
                             <Span fontSize="xs" color="fg.muted">
-                              {row.placementCode} · {row.productSku} · {teamName(row.teamId)}
+                              {row.placementCode} · {row.productCode} · {teamName(row.teamId)}
                             </Span>
                           </Stack>
                           <OpnameRowStateBadge row={row} />
@@ -365,7 +368,7 @@ export function OpnameSessionDetailPage() {
                             {t("opnameSession.detail.countedBy", { who: nameOf(rowActors, row.countedById) })}
                           </Span>
                         )}
-                        {active && row.status === OpnameRowStatus.COUNTED && (
+                        {active && writable && row.status === OpnameRowStatus.COUNTED && (
                           <Button size="xs" variant="outline" alignSelf="flex-start" onClick={() => setSendingBack(row)} data-testid={`opname-row-send-back-${row.id}`}>
                             <Icon as={Undo2} boxSize="4" />
                             {t("opnameSession.detail.sendBack")}
@@ -400,7 +403,7 @@ export function OpnameSessionDetailPage() {
                             <Stack gap="0">
                               <Span>{row.productName}</Span>
                               <Span fontSize="xs" color="fg.muted">
-                                {row.productSku} · {teamName(row.teamId)}
+                                {row.productCode} · {teamName(row.teamId)}
                               </Span>
                             </Stack>
                           </Table.Cell>
@@ -427,7 +430,7 @@ export function OpnameSessionDetailPage() {
                             <OpnameDrafts drafts={row.drafts} testId={`opname-row-drafts-${row.id}`} />
                           </Table.Cell>
                           <Table.Cell textAlign="end">
-                            {active && row.status === OpnameRowStatus.COUNTED && (
+                            {active && writable && row.status === OpnameRowStatus.COUNTED && (
                               <Button size="xs" variant="outline" onClick={() => setSendingBack(row)} data-testid={`opname-row-send-back-${row.id}`}>
                                 <Icon as={Undo2} boxSize="4" />
                                 {t("opnameSession.detail.sendBack")}

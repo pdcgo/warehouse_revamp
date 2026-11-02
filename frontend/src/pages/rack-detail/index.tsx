@@ -27,7 +27,7 @@ import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 import { rackHistoryFromList, rackHistoryRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { Pagination } from "../../components/chrome/Pagination";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
@@ -320,7 +320,7 @@ export function RackDetailPage() {
   );
 
   // Two actions, so they stay inline on a desktop; on a phone they fold into `⋯`, as every phone header does.
-  const actions = isMobile ? (
+  const actions = !canWrite(current) ? null : isMobile ? (
     <Menu.Root>
       <Menu.Trigger asChild>
         <IconButton size="sm" variant="ghost" aria-label={t("racks.detail.actions")} data-testid="rack-actions">

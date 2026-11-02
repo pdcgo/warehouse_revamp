@@ -1,7 +1,7 @@
 import { Box, HStack, Input, Stack, Switch, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { Weekday } from "../../../gen/warehouse/team/v1/team_pb";
-import type { DayHours } from "../../../gen/warehouse/team/v1/team_pb";
+import { Weekday } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
+import type { DayHours } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
 
 // The seven weekdays in display order (Mon..Sun), matching the backend's Weekday 1..7.
 const WEEKDAYS: { day: Weekday; labelKey: string }[] = [

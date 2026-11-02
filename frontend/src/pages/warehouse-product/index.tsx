@@ -24,7 +24,7 @@ import { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import {
   useCostLayers,
@@ -236,7 +236,7 @@ export function WarehouseProductPage() {
         <Stack gap="0">
           <Heading size="md">{product.name}</Heading>
           <Text fontSize="sm" color="fg.muted">
-            {product.sku}
+            {product.productCode}
           </Text>
         </Stack>
         <Spacer />
@@ -246,22 +246,26 @@ export function WarehouseProductPage() {
             receive would create batch-less, cost-unknown stock and undo the whole cost-layer model.
             Both are the dialogs the stock list already uses — a second set scoped to one product would
             be a second place for "adjust to a counted figure" to mean something slightly different. */}
-        <Button
-          size="xs"
-          variant="outline"
-          data-testid="wp-action-move"
-          onClick={() => setMoving(true)}
-        >
-          {t("inventory.move")}
-        </Button>
-        <Button
-          size="xs"
-          variant="outline"
-          data-testid="wp-action-adjust"
-          onClick={() => setAdjusting(true)}
-        >
-          {t("inventory.adjust")}
-        </Button>
+        {canWrite(current) && (
+          <>
+            <Button
+              size="xs"
+              variant="outline"
+              data-testid="wp-action-move"
+              onClick={() => setMoving(true)}
+            >
+              {t("inventory.move")}
+            </Button>
+            <Button
+              size="xs"
+              variant="outline"
+              data-testid="wp-action-adjust"
+              onClick={() => setAdjusting(true)}
+            >
+              {t("inventory.adjust")}
+            </Button>
+          </>
+        )}
       </Flex>
 
       {warehouseId !== undefined && (

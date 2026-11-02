@@ -15,6 +15,9 @@ type OrderDraft struct {
 	// Whoever's login the pushing app runs under — there is no machine identity here, so every draft
 	// has a human accountable on it. The list handler narrows to this in addition to the team scope.
 	AuthorUserID uint64
+	// Whether that author pushed it from OUTSIDE the team (00033) — Root or the Administrator in by the root-team bypass
+	// (an-override-is-stamped-in-every-service). It follows the push exactly as the author does.
+	IsOverride bool
 
 	// The external reference: which app pushed this, and the marketplace's own id for it. UNIQUE
 	// together with TeamID, which is what makes OrderDraftPush idempotent — a retry updates the draft

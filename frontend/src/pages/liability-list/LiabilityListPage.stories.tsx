@@ -155,3 +155,14 @@ export const TheDefaultTermsRowIsEditableFromTheList: Story = {
     await expect(screen.queryByTestId("terms-counterparty")).not.toBeInTheDocument();
   },
 };
+
+// THE OPEN PAYMENT REQUEST IS ON THE ROW (a-creditor-may-request-payment) — Gudang Pusat asked Toko Melati (12); Toko
+// Kenanga (13) owes too and was not asked, so its row carries nothing.
+export const ARequestedPairIsMarked: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(await canvas.findByTestId("liability-request-12")).toHaveTextContent("Payment requested");
+    await expect(canvas.queryByTestId("liability-request-13")).toBeNull();
+  },
+};

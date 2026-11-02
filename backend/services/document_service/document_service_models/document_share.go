@@ -29,6 +29,8 @@ type DocumentShare struct {
 	// Opaque user id. A share is somebody's act, and the file it opens is evidence in an argument
 	// about money — "who let them see this" has to be answerable.
 	GrantedBy uint64
+	// The granter was Root or the Administrator, outside the OWNER team (an-override-is-stamped-in-every-service).
+	IsOverride bool
 
 	CreatedAt time.Time
 }

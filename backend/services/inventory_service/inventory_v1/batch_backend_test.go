@@ -30,7 +30,7 @@ func acceptLine(
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouse, Receipt: "GRN-BK",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "KPH-001", Name: "Kaos", Count: good + broken + missing, Total: float64(total)},
+			{ProductId: product, ProductCode: "KPH-001", Name: "Kaos", Count: good + broken + missing, Total: float64(total)},
 		},
 	}))
 	if err != nil {

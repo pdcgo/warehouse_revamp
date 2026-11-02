@@ -33,7 +33,7 @@ func TestBatchDetailAndPlacements(t *testing.T) {
 	// One delivery of 100, split 60/40 across two shelves.
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouse, Receipt: "GRN-0721",
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, Sku: "KPH-001", Name: "Kaos", Count: 100, Total: 4000000}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, ProductCode: "KPH-001", Name: "Kaos", Count: 100, Total: 4000000}},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)

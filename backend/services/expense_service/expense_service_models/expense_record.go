@@ -6,7 +6,8 @@ import "time"
 //
 // The defining fact is that A PERSON TYPED IT. A revenue row is written by the system from an order
 // and frozen; this is entered by hand about a period, so it can be wrong — hence correctable, hence
-// CreatedBy, hence VoidedAt rather than a delete.
+// CreatedBy. It is corrected by a NEW ROW, an adjustment, never by an edit
+// (every-correction-is-a-signed-adjustment): a row never changes after it is saved.
 type ExpenseRecord struct {
 	ID uint64 `gorm:"primaryKey"`
 
@@ -20,8 +21,8 @@ type ExpenseRecord struct {
 	// get to decide which values are legal (cf. #80).
 	Kind int32
 
-	// Whole rupiah, always positive (DB CHECK). The kind carries the direction; a signed amount would
-	// let a negative cost silently become revenue.
+	// Whole rupiah (DB CHECK). Positive on an expense — the kind carries the direction, and a signed amount would let a
+	// negative cost silently become revenue. Signed and never 0 on an adjustment: the correction, not a new total.
 	Amount int64
 
 	// The date the cost BELONGS TO, as chosen — not the insert time. Payroll paid on the 5th is last
@@ -32,10 +33,13 @@ type ExpenseRecord struct {
 
 	// Who typed it. Opaque user_service id.
 	CreatedBy uint64
+	// Root or the Administrator typed it inside a team they hold no role in (an-override-is-stamped-in-every-service).
+	// Server-derived from the interceptor's resolved role, never sent by the caller.
+	IsOverride bool
 
-	// nil while the row still counts. Voided rather than deleted (#164): a deleted row cannot tell you
-	// a cost was entered and then retracted.
-	VoidedAt *time.Time
+	// 0 on an expense. On an adjustment, the expense it corrects — whose team, shop, kind and day it copies, so it counts
+	// where the mistake is (an-adjustment-counts-on-the-day-it-fixes). Never another adjustment.
+	AdjustsExpenseID uint64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

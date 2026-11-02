@@ -530,8 +530,16 @@ func (*MetricData_SupplierByDay) isMetricData_M() {}
 func (*MetricData_SupplierSummary) isMetricData_M() {}
 
 type MetricDataResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MetricDatas   []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	MetricDatas []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	// AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+	// `supplier_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+	// behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+	// every metric it serves shares it. 0 = nothing folded yet.
+	//
+	// ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+	// dead-letter topic and the lease's log.
+	AsOfUnix      int64 `protobuf:"varint,2,opt,name=as_of_unix,json=asOfUnix,proto3" json:"as_of_unix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -571,6 +579,13 @@ func (x *MetricDataResponse) GetMetricDatas() []*MetricData {
 		return x.MetricDatas
 	}
 	return nil
+}
+
+func (x *MetricDataResponse) GetAsOfUnix() int64 {
+	if x != nil {
+		return x.AsOfUnix
+	}
+	return 0
 }
 
 type AnalyticReplayComputeRequest struct {
@@ -837,9 +852,11 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\x0esupplier_by_id\x18\x01 \x01(\v2).warehouse.supplier.v1.SupplierMetricByIDH\x00R\fsupplierById\x12T\n" +
 	"\x0fsupplier_by_day\x18\x02 \x01(\v2*.warehouse.supplier.v1.SupplierMetricByDayH\x00R\rsupplierByDay\x12R\n" +
 	"\x10supplier_summary\x18\x03 \x01(\v2%.warehouse.supplier.v1.SupplierMetricH\x00R\x0fsupplierSummaryB\x03\n" +
-	"\x01m\"Z\n" +
+	"\x01m\"x\n" +
 	"\x12MetricDataResponse\x12D\n" +
-	"\fmetric_datas\x18\x01 \x03(\v2!.warehouse.supplier.v1.MetricDataR\vmetricDatas\"l\n" +
+	"\fmetric_datas\x18\x01 \x03(\v2!.warehouse.supplier.v1.MetricDataR\vmetricDatas\x12\x1c\n" +
+	"\n" +
+	"as_of_unix\x18\x02 \x01(\x03R\basOfUnix\"l\n" +
 	"\x1cAnalyticReplayComputeRequest\x12B\n" +
 	"\n" +
 	"start_date\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\tstartDate:\b\x92\xb5\x18\x04\n" +
@@ -853,11 +870,11 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\x02\x01\x02\"f\n" +
 	"\x1eAnalyticMaintenanceRunResponse\x12,\n" +
 	"\x12deleted_event_logs\x18\x01 \x01(\x03R\x10deletedEventLogs\x12\x16\n" +
-	"\x06cutoff\x18\x02 \x01(\tR\x06cutoff2\xe5\x01\n" +
-	"\x17SupplierAnalyticService\x12g\n" +
-	"\fMetricSearch\x12*.warehouse.supplier.v1.MetricSearchRequest\x1a+.warehouse.supplier.v1.MetricSearchResponse\x12a\n" +
+	"\x06cutoff\x18\x02 \x01(\tR\x06cutoff2\xef\x01\n" +
+	"\x17SupplierAnalyticService\x12l\n" +
+	"\fMetricSearch\x12*.warehouse.supplier.v1.MetricSearchRequest\x1a+.warehouse.supplier.v1.MetricSearchResponse\"\x03\x90\x02\x01\x12f\n" +
 	"\n" +
-	"MetricData\x12(.warehouse.supplier.v1.MetricDataRequest\x1a).warehouse.supplier.v1.MetricDataResponse2\xb1\x02\n" +
+	"MetricData\x12(.warehouse.supplier.v1.MetricDataRequest\x1a).warehouse.supplier.v1.MetricDataResponse\"\x03\x90\x02\x012\xb1\x02\n" +
 	"\"SupplierAnalyticMaintenanceService\x12\x82\x01\n" +
 	"\x15AnalyticReplayCompute\x123.warehouse.supplier.v1.AnalyticReplayComputeRequest\x1a4.warehouse.supplier.v1.AnalyticReplayComputeResponse\x12\x85\x01\n" +
 	"\x16AnalyticMaintenanceRun\x124.warehouse.supplier.v1.AnalyticMaintenanceRunRequest\x1a5.warehouse.supplier.v1.AnalyticMaintenanceRunResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1b\x06proto3"

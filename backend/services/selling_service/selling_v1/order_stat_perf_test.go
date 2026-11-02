@@ -127,13 +127,13 @@ func perfStatItemRows(orders []selling_service_models.Order) []selling_service_m
 
 		for j := range lines {
 			items = append(items, selling_service_models.OrderItem{
-				OrderID:   o.ID,
-				ProductID: uint64(1_000 + (i+j)%500),
-				SKU:       "SKU-" + strconv.Itoa((i+j)%500),
-				Name:      "Barang " + strconv.Itoa((i+j)%500),
-				Quantity:  uint32(1 + (i+j)%4),
-				UnitCost:  2_500,
-				CreatedAt: o.CreatedAt,
+				OrderID:     o.ID,
+				ProductID:   uint64(1_000 + (i+j)%500),
+				ProductCode: "SKU-" + strconv.Itoa((i+j)%500),
+				Name:        "Barang " + strconv.Itoa((i+j)%500),
+				Quantity:    uint32(1 + (i+j)%4),
+				UnitCost:    2_500,
+				CreatedAt:   o.CreatedAt,
 			})
 		}
 	}

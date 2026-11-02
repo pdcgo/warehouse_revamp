@@ -17,9 +17,10 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { rpcError, teamClient } from "../../api/clients";
+import { rpcError, teamClient, warehouseInfoClient } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
 import { useSaveWarehouse } from "./queries";
+import { ClosuresEditor } from "./components/ClosuresEditor";
 import { WeeklyHoursEditor, dayHoursFromWeek, weekFromDayHours } from "./components/WeeklyHoursEditor";
 import type { WeekHours } from "./components/WeeklyHoursEditor";
 
@@ -57,7 +58,7 @@ export function WarehouseEditPage() {
         // Team basics and warehouse hours come from two RPCs; load them together.
         const [detail, hours] = await Promise.all([
           teamClient.teamDetail({ teamId: id }),
-          teamClient.warehouseInfoDetail({ teamId: id }),
+          warehouseInfoClient.warehouseInfoDetail({ teamId: id }),
         ]);
 
         if (cancelled) {
@@ -197,6 +198,9 @@ export function WarehouseEditPage() {
           </Flex>
         </Stack>
       </form>
+
+      {/* One-off closures, saved one at a time — outside the hours form (a-warehouse-records-its-holidays). */}
+      {id !== 0n && <ClosuresEditor warehouseId={id} />}
     </Stack>
   );
 }

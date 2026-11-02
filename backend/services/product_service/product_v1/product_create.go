@@ -11,16 +11,25 @@ import (
 
 // ProductCreate adds a product to the scoped team's catalogue, together with its (up to 5) images
 // in one insert. The cover (first image) is denormalised onto the product row.
+//
+// The code is COMPOSED here (the-field-is-product-code-composed-on-write): the team sends its own part, and what is
+// stored is `<team_code>-<part>`, the team's code read from team_service. One unique index over every row refuses a
+// code already held — by an archived product too, which keeps its code.
 func (s *Service) ProductCreate(
 	ctx context.Context,
 	req *connect.Request[productv1.ProductCreateRequest],
 ) (*connect.Response[productv1.ProductCreateResponse], error) {
+	productCode, err := s.productCodeFor(ctx, req.Msg.GetTeamId(), req.Msg.GetProductCodePart())
+	if err != nil {
+		return nil, err
+	}
+
 	images := req.Msg.GetImages()
 	coverURL, coverThumb := coverOf(images)
 
 	product := &product_service_models.Product{
 		TeamID:                   req.Msg.GetTeamId(),
-		SKU:                      req.Msg.GetSku(),
+		ProductCode:              productCode,
 		Name:                     req.Msg.GetName(),
 		Description:              req.Msg.GetDescription(),
 		CategoryID:               req.Msg.GetCategoryId(),
@@ -37,7 +46,7 @@ func (s *Service) ProductCreate(
 		Images: modelImages(images),
 	}
 
-	err := s.db.WithContext(ctx).Create(product).Error
+	err = s.db.WithContext(ctx).Create(product).Error
 	if err != nil {
 		return nil, dbError(err)
 	}

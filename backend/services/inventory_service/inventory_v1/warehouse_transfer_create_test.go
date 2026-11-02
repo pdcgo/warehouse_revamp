@@ -34,7 +34,7 @@ func TestWarehouseTransferCreate_TakesFromAAtCreate(t *testing.T) {
 	}
 
 	hitam := itemOf(t, tr, wtKaosHitam)
-	if hitam.GetSku() != "KH-001" || hitam.GetName() != "Kaos Hitam" || hitam.GetTotal() != 32000 || !san_money.Equal(hitam.GetPriceUnit(), 32000.0/3) {
+	if hitam.GetProductCode() != "KH-001" || hitam.GetName() != "Kaos Hitam" || hitam.GetTotal() != 32000 || !san_money.Equal(hitam.GetPriceUnit(), 32000.0/3) {
 		t.Fatalf("Kaos Hitam line = %+v, want KH-001 at 32000, 10666.67 a unit", hitam)
 	}
 

@@ -723,8 +723,8 @@ type OpnameRow struct {
 	// The owning (selling) team.
 	TeamId    uint64 `protobuf:"varint,3,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	ProductId uint64 `protobuf:"varint,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// sku/name snapshot at the snapshot step.
-	ProductSku    string          `protobuf:"bytes,5,opt,name=product_sku,json=productSku,proto3" json:"product_sku,omitempty"`
+	// product code/name snapshot at the snapshot step.
+	ProductCode   string          `protobuf:"bytes,5,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
 	ProductName   string          `protobuf:"bytes,6,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
 	PlacementId   uint64          `protobuf:"varint,7,opt,name=placement_id,json=placementId,proto3" json:"placement_id,omitempty"`
 	PlacementCode string          `protobuf:"bytes,8,opt,name=placement_code,json=placementCode,proto3" json:"placement_code,omitempty"`
@@ -804,9 +804,9 @@ func (x *OpnameRow) GetProductId() uint64 {
 	return 0
 }
 
-func (x *OpnameRow) GetProductSku() string {
+func (x *OpnameRow) GetProductCode() string {
 	if x != nil {
-		return x.ProductSku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -1583,7 +1583,7 @@ type OpnameRowListFilter struct {
 	Status OpnameRowStatus `protobuf:"varint,3,opt,name=status,proto3,enum=warehouse.inventory.v1.OpnameRowStatus" json:"status,omitempty"`
 	// Only rows whose count stands apart from the book.
 	OnlyDifferences bool `protobuf:"varint,4,opt,name=only_differences,json=onlyDifferences,proto3" json:"only_differences,omitempty"`
-	// Free text over the product's SKU or name.
+	// Free text over the product's code or name.
 	Q             string `protobuf:"bytes,5,opt,name=q,proto3" json:"q,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2083,7 +2083,7 @@ type OpnameFinalizeProduct struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	TeamId      uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	ProductId   uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	ProductSku  string                 `protobuf:"bytes,3,opt,name=product_sku,json=productSku,proto3" json:"product_sku,omitempty"`
+	ProductCode string                 `protobuf:"bytes,3,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
 	ProductName string                 `protobuf:"bytes,4,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
 	// The book, summed over its rows.
 	BookCount int64 `protobuf:"varint,5,opt,name=book_count,json=bookCount,proto3" json:"book_count,omitempty"`
@@ -2144,9 +2144,9 @@ func (x *OpnameFinalizeProduct) GetProductId() uint64 {
 	return 0
 }
 
-func (x *OpnameFinalizeProduct) GetProductSku() string {
+func (x *OpnameFinalizeProduct) GetProductCode() string {
 	if x != nil {
-		return x.ProductSku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -3309,16 +3309,15 @@ const file_warehouse_inventory_v1_opname_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\x0e2'.warehouse.inventory.v1.OpnameDraftTypeR\x04type\x12\x1f\n" +
 	"\vstock_count\x18\x02 \x01(\x03R\n" +
 	"stockCount\x12\x12\n" +
-	"\x04note\x18\x03 \x01(\tR\x04note\"\xdd\x04\n" +
+	"\x04note\x18\x03 \x01(\tR\x04note\"\xdf\x04\n" +
 	"\tOpnameRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\x04R\tsessionId\x12\x17\n" +
 	"\ateam_id\x18\x03 \x01(\x04R\x06teamId\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x04 \x01(\x04R\tproductId\x12\x1f\n" +
-	"\vproduct_sku\x18\x05 \x01(\tR\n" +
-	"productSku\x12!\n" +
+	"product_id\x18\x04 \x01(\x04R\tproductId\x12!\n" +
+	"\fproduct_code\x18\x05 \x01(\tR\vproductCode\x12!\n" +
 	"\fproduct_name\x18\x06 \x01(\tR\vproductName\x12!\n" +
 	"\fplacement_id\x18\a \x01(\x04R\vplacementId\x12%\n" +
 	"\x0eplacement_code\x18\b \x01(\tR\rplacementCode\x12?\n" +
@@ -3428,13 +3427,12 @@ const file_warehouse_inventory_v1_opname_proto_rawDesc = "" +
 	"price_unit\x18\x04 \x01(\x03R\tpriceUnit\x12\x16\n" +
 	"\x06amount\x18\x05 \x01(\x03R\x06amount\x12\x1d\n" +
 	"\n" +
-	"problem_id\x18\x06 \x01(\x04R\tproblemId\"\x85\x03\n" +
+	"problem_id\x18\x06 \x01(\x04R\tproblemId\"\x87\x03\n" +
 	"\x15OpnameFinalizeProduct\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\x04R\tproductId\x12\x1f\n" +
-	"\vproduct_sku\x18\x03 \x01(\tR\n" +
-	"productSku\x12!\n" +
+	"product_id\x18\x02 \x01(\x04R\tproductId\x12!\n" +
+	"\fproduct_code\x18\x03 \x01(\tR\vproductCode\x12!\n" +
 	"\fproduct_name\x18\x04 \x01(\tR\vproductName\x12\x1d\n" +
 	"\n" +
 	"book_count\x18\x05 \x01(\x03R\tbookCount\x12%\n" +

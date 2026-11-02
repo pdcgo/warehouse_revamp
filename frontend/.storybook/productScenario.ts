@@ -11,13 +11,13 @@ import { allProducts, patchProduct } from "./productStub";
 // ⚠ ITS OWN MODULE, for the reason sessionScenario.ts gives: a story imports it, and importing from stubTransport.ts
 // would pull the whole stub into `npm run typecheck`.
 
-type ProductState = { crossLocked?: boolean; deleted?: boolean; reservedStock?: number };
+type ProductState = { crossLocked?: boolean; archived?: boolean; reservedStock?: number };
 
 /** Kept for preview.tsx's `beforeEach`: the overrides live in productStub's rows, which `resetProductStub` restores. */
 export function resetProductScenario() {}
 
 /**
- * A `beforeEach`: product `id` is now in this state — `{ crossLocked: true }` (its owner locked it), `{ deleted: true }`,
+ * A `beforeEach`: product `id` is now in this state — `{ crossLocked: true }` (its owner locked it), `{ archived: true }`,
  * or `{ reservedStock: 20 }` (its owner holds the last 20 back from other teams).
  */
 export function withProductState(id: bigint, state: ProductState) {

@@ -236,25 +236,30 @@ type ExpenseRecord struct {
 	// Optional on EVERY kind (owner, 2026-07-21), not just ads: a team running two shops may want to
 	// split its packing wages or a subscription between them, and "only ads may name a shop" is a rule
 	// somebody would hit and ask to have relaxed.
-	ShopId uint64      `protobuf:"varint,3,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	Kind   ExpenseKind `protobuf:"varint,4,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
-	// Whole rupiah, ALWAYS POSITIVE. The kind already says the money is going out, so a signed amount
-	// would let a negative expense silently become revenue.
+	ShopId uint64 `protobuf:"varint,3,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// On an adjustment, the expense's kind, copied — so a kind's total and the daily split take the correction where the
+	// mistake is.
+	Kind ExpenseKind `protobuf:"varint,4,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
+	// Whole rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
+	// let a negative expense silently become revenue. On an ADJUSTMENT signed and never 0 — the correction itself, not a
+	// new total; the expense and its adjustments never sum below 0.
 	Amount int64 `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The date the expense BELONGS TO, as chosen by the person — not the moment the row was inserted.
 	// Payroll is paid on the 5th for the month before, and filing it under the 5th would put it in the
-	// wrong month for every report that matters. RFC3339 date (YYYY-MM-DD).
+	// wrong month for every report that matters. RFC3339 date (YYYY-MM-DD). On an adjustment, the expense's day, copied
+	// and never typed (an-adjustment-counts-on-the-day-it-fixes): the month that holds the mistake becomes correct.
 	OccurredAt string `protobuf:"bytes,6,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
 	// What it actually was. The enum says which bucket; this says which electricity bill.
 	Note string `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
 	// WHO TYPED IT. A person entered this number by hand and it moves profit directly, so the row says
-	// whose number it is. Opaque user_service id.
-	CreatedBy uint64 `protobuf:"varint,8,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
-	// Whether this row still counts (#164's pattern). An expense entered by mistake is VOIDED, not deleted:
-	// a deleted row cannot tell you an expense was entered and then retracted, and somebody looking at a
-	// profit figure that changed wants to see why.
-	Voided        bool  `protobuf:"varint,9,opt,name=voided,proto3" json:"voided,omitempty"`
-	CreatedAtUnix int64 `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	// whose number it is. Opaque user_service id. On an adjustment, who made the correction — and created_at_unix when.
+	CreatedBy     uint64 `protobuf:"varint,8,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
+	CreatedAtUnix int64  `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	// 0 on an EXPENSE. On an ADJUSTMENT, the expense it corrects — always an expense, never another adjustment: a mistaken
+	// adjustment is fixed by a second one on the same expense.
+	AdjustsExpenseId uint64 `protobuf:"varint,11,opt,name=adjusts_expense_id,json=adjustsExpenseId,proto3" json:"adjusts_expense_id,omitempty"`
+	// On an EXPENSE, what it counts for after every adjustment of it: its amount plus theirs. 0 on an adjustment.
+	NetAmount     int64 `protobuf:"varint,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -345,16 +350,23 @@ func (x *ExpenseRecord) GetCreatedBy() uint64 {
 	return 0
 }
 
-func (x *ExpenseRecord) GetVoided() bool {
-	if x != nil {
-		return x.Voided
-	}
-	return false
-}
-
 func (x *ExpenseRecord) GetCreatedAtUnix() int64 {
 	if x != nil {
 		return x.CreatedAtUnix
+	}
+	return 0
+}
+
+func (x *ExpenseRecord) GetAdjustsExpenseId() uint64 {
+	if x != nil {
+		return x.AdjustsExpenseId
+	}
+	return 0
+}
+
+func (x *ExpenseRecord) GetNetAmount() int64 {
+	if x != nil {
+		return x.NetAmount
 	}
 	return 0
 }
@@ -800,8 +812,11 @@ type ExpenseRowItem struct {
 	OccurredAt    string                 `protobuf:"bytes,6,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
 	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
 	CreatedBy     uint64                 `protobuf:"varint,8,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
-	Voided        bool                   `protobuf:"varint,9,opt,name=voided,proto3" json:"voided,omitempty"`
 	CreatedAtUnix int64                  `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	// As on ExpenseRecord: 0 on an expense, the corrected expense on an adjustment.
+	AdjustsExpenseId uint64 `protobuf:"varint,11,opt,name=adjusts_expense_id,json=adjustsExpenseId,proto3" json:"adjusts_expense_id,omitempty"`
+	// As on ExpenseRecord: an expense's amount after every adjustment of it; 0 on an adjustment.
+	NetAmount     int64 `protobuf:"varint,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -892,16 +907,23 @@ func (x *ExpenseRowItem) GetCreatedBy() uint64 {
 	return 0
 }
 
-func (x *ExpenseRowItem) GetVoided() bool {
-	if x != nil {
-		return x.Voided
-	}
-	return false
-}
-
 func (x *ExpenseRowItem) GetCreatedAtUnix() int64 {
 	if x != nil {
 		return x.CreatedAtUnix
+	}
+	return 0
+}
+
+func (x *ExpenseRowItem) GetAdjustsExpenseId() uint64 {
+	if x != nil {
+		return x.AdjustsExpenseId
+	}
+	return 0
+}
+
+func (x *ExpenseRowItem) GetNetAmount() int64 {
+	if x != nil {
+		return x.NetAmount
 	}
 	return 0
 }
@@ -1250,8 +1272,8 @@ type ExpenseDayItem struct {
 	// No timezone caveat here, unlike RevenueDayItem: `occurred_at` is a DATE column, chosen by a person.
 	// There is no instant to convert and therefore no zone to get wrong.
 	Date string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
-	// How many LIVE expense rows the day holds. Voided rows are excluded from `total` and `by_kind`, so
-	// this counts what the number is actually made of.
+	// How many rows the day's number is made of — its expenses AND the adjustments that correct them, each counting on
+	// the corrected expense's day.
 	Entries uint64 `protobuf:"varint,2,opt,name=entries,proto3" json:"entries,omitempty"`
 	// The day's spending, whole rupiah.
 	Total int64 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
@@ -1377,43 +1399,43 @@ func (x *ExpenseDailyResponse) GetTotals() *ExpenseTotals {
 	return nil
 }
 
-// ExpenseUpdate corrects an expense (#169).
+// ExpenseAdjust corrects an expense with a NEW ROW — the one way to correct one
+// (every-correction-is-a-signed-adjustment). An expense never changes after it is saved
+// (an-expense-is-never-edited), so a mistake and its fix are both on the list, each saying who wrote it and when.
 //
-// It exists because of the one fact that separated this service from revenue_service (since removed): a revenue row was
-// written by the system from an order and frozen, while an expense row is TYPED BY A PERSON. A person
-// mistypes. Refusing to let them fix it would leave a wrong number moving profit forever, and the
-// workaround — void it and enter another — loses who entered the original and when.
+// The adjustment copies the expense's team, shop, kind and DAY — never typed — so it counts in the month that holds the
+// mistake (an-adjustment-counts-on-the-day-it-fixes). The screen's Batalkan is this call with `amount` = −(what the
+// expense still counts for).
 //
-// A FULL REPLACE, not a patch. The edit form is the record re-opened, so it submits every field back
-// and an empty one means cleared — the same shape RestockRequestUpdate settled on (#131). A patch
-// would need a way to say "leave this alone" that the form has no way to express.
-type ExpenseUpdateRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	ExpenseId     uint64                 `protobuf:"varint,2,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
-	Kind          ExpenseKind            `protobuf:"varint,3,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
-	Amount        int64                  `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
-	OccurredAt    string                 `protobuf:"bytes,5,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
-	ShopId        uint64                 `protobuf:"varint,6,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
+// ⚠ A MISSING ROW, or another team's, is NotFound: a person clicked a button, and the honest answer is that it is not
+// there. Correcting an ADJUSTMENT, or a correction that would sum the expense below 0, is FailedPrecondition.
+type ExpenseAdjustRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The EXPENSE corrected — never an adjustment.
+	ExpenseId uint64 `protobuf:"varint,2,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
+	// The correction, signed, whole rupiah — not the new total. Never 0: a correction of nothing is not one.
+	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	// Why — what was wrong with the expense.
+	Note          string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ExpenseUpdateRequest) Reset() {
-	*x = ExpenseUpdateRequest{}
+func (x *ExpenseAdjustRequest) Reset() {
+	*x = ExpenseAdjustRequest{}
 	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ExpenseUpdateRequest) String() string {
+func (x *ExpenseAdjustRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ExpenseUpdateRequest) ProtoMessage() {}
+func (*ExpenseAdjustRequest) ProtoMessage() {}
 
-func (x *ExpenseUpdateRequest) ProtoReflect() protoreflect.Message {
+func (x *ExpenseAdjustRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1425,81 +1447,63 @@ func (x *ExpenseUpdateRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ExpenseUpdateRequest.ProtoReflect.Descriptor instead.
-func (*ExpenseUpdateRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ExpenseAdjustRequest.ProtoReflect.Descriptor instead.
+func (*ExpenseAdjustRequest) Descriptor() ([]byte, []int) {
 	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *ExpenseUpdateRequest) GetTeamId() uint64 {
+func (x *ExpenseAdjustRequest) GetTeamId() uint64 {
 	if x != nil {
 		return x.TeamId
 	}
 	return 0
 }
 
-func (x *ExpenseUpdateRequest) GetExpenseId() uint64 {
+func (x *ExpenseAdjustRequest) GetExpenseId() uint64 {
 	if x != nil {
 		return x.ExpenseId
 	}
 	return 0
 }
 
-func (x *ExpenseUpdateRequest) GetKind() ExpenseKind {
-	if x != nil {
-		return x.Kind
-	}
-	return ExpenseKind_EXPENSE_KIND_UNSPECIFIED
-}
-
-func (x *ExpenseUpdateRequest) GetAmount() int64 {
+func (x *ExpenseAdjustRequest) GetAmount() int64 {
 	if x != nil {
 		return x.Amount
 	}
 	return 0
 }
 
-func (x *ExpenseUpdateRequest) GetOccurredAt() string {
-	if x != nil {
-		return x.OccurredAt
-	}
-	return ""
-}
-
-func (x *ExpenseUpdateRequest) GetShopId() uint64 {
-	if x != nil {
-		return x.ShopId
-	}
-	return 0
-}
-
-func (x *ExpenseUpdateRequest) GetNote() string {
+func (x *ExpenseAdjustRequest) GetNote() string {
 	if x != nil {
 		return x.Note
 	}
 	return ""
 }
 
-type ExpenseUpdateResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Expense       *ExpenseRecord         `protobuf:"bytes,1,opt,name=expense,proto3" json:"expense,omitempty"`
+type ExpenseAdjustResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The new row.
+	Adjustment *ExpenseRecord `protobuf:"bytes,1,opt,name=adjustment,proto3" json:"adjustment,omitempty"`
+	// The expense it corrects, its net_amount after this adjustment.
+	Expense       *ExpenseRecord `protobuf:"bytes,2,opt,name=expense,proto3" json:"expense,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ExpenseUpdateResponse) Reset() {
-	*x = ExpenseUpdateResponse{}
+func (x *ExpenseAdjustResponse) Reset() {
+	*x = ExpenseAdjustResponse{}
 	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ExpenseUpdateResponse) String() string {
+func (x *ExpenseAdjustResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ExpenseUpdateResponse) ProtoMessage() {}
+func (*ExpenseAdjustResponse) ProtoMessage() {}
 
-func (x *ExpenseUpdateResponse) ProtoReflect() protoreflect.Message {
+func (x *ExpenseAdjustResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1511,118 +1515,19 @@ func (x *ExpenseUpdateResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ExpenseUpdateResponse.ProtoReflect.Descriptor instead.
-func (*ExpenseUpdateResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ExpenseAdjustResponse.ProtoReflect.Descriptor instead.
+func (*ExpenseAdjustResponse) Descriptor() ([]byte, []int) {
 	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{16}
 }
 
-func (x *ExpenseUpdateResponse) GetExpense() *ExpenseRecord {
+func (x *ExpenseAdjustResponse) GetAdjustment() *ExpenseRecord {
 	if x != nil {
-		return x.Expense
+		return x.Adjustment
 	}
 	return nil
 }
 
-// ExpenseVoid stops an expense counting (#169) — it was entered by mistake.
-//
-// VOIDED, NOT DELETED, following #164 exactly: a deleted row cannot tell you an expense was entered and
-// then retracted, and somebody looking at a profit figure that changed wants to see why. The row stays
-// on the list, struck through; every total excludes it.
-//
-// ⚠ A MISSING ROW IS NotFound HERE, unlike RevenueVoid where it is success — and the difference is who
-// calls it. RevenueVoid is driven by a Pub/Sub event, so a missing row must ACK or the message is
-// redelivered forever. This is a person clicking a button: if the expense is not there, or belongs to
-// another team, saying so is the honest answer rather than a silent success.
-type ExpenseVoidRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	ExpenseId     uint64                 `protobuf:"varint,2,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ExpenseVoidRequest) Reset() {
-	*x = ExpenseVoidRequest{}
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ExpenseVoidRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ExpenseVoidRequest) ProtoMessage() {}
-
-func (x *ExpenseVoidRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ExpenseVoidRequest.ProtoReflect.Descriptor instead.
-func (*ExpenseVoidRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *ExpenseVoidRequest) GetTeamId() uint64 {
-	if x != nil {
-		return x.TeamId
-	}
-	return 0
-}
-
-func (x *ExpenseVoidRequest) GetExpenseId() uint64 {
-	if x != nil {
-		return x.ExpenseId
-	}
-	return 0
-}
-
-type ExpenseVoidResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Expense       *ExpenseRecord         `protobuf:"bytes,1,opt,name=expense,proto3" json:"expense,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ExpenseVoidResponse) Reset() {
-	*x = ExpenseVoidResponse{}
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[18]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ExpenseVoidResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ExpenseVoidResponse) ProtoMessage() {}
-
-func (x *ExpenseVoidResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[18]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ExpenseVoidResponse.ProtoReflect.Descriptor instead.
-func (*ExpenseVoidResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *ExpenseVoidResponse) GetExpense() *ExpenseRecord {
+func (x *ExpenseAdjustResponse) GetExpense() *ExpenseRecord {
 	if x != nil {
 		return x.Expense
 	}
@@ -1633,7 +1538,7 @@ var File_warehouse_expense_v1_expense_proto protoreflect.FileDescriptor
 
 const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xb4\x02\n" +
+	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xf7\x02\n" +
 	"\rExpenseRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1644,10 +1549,13 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"occurredAt\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x12\x1d\n" +
 	"\n" +
-	"created_by\x18\b \x01(\x04R\tcreatedBy\x12\x16\n" +
-	"\x06voided\x18\t \x01(\bR\x06voided\x12&\n" +
+	"created_by\x18\b \x01(\x04R\tcreatedBy\x12&\n" +
 	"\x0fcreated_at_unix\x18\n" +
-	" \x01(\x03R\rcreatedAtUnix\"\xa9\x02\n" +
+	" \x01(\x03R\rcreatedAtUnix\x12,\n" +
+	"\x12adjusts_expense_id\x18\v \x01(\x04R\x10adjustsExpenseId\x12\x1d\n" +
+	"\n" +
+	"net_amount\x18\f \x01(\x03R\tnetAmountJ\x04\b\t\x10\n" +
+	"R\x06voided\"\xa9\x02\n" +
 	"\x14ExpenseCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12A\n" +
 	"\x04kind\x18\x02 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindB\n" +
@@ -1686,7 +1594,7 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\aby_kind\x18\x02 \x03(\v2/.warehouse.expense.v1.ExpenseTotals.ByKindEntryR\x06byKind\x1a9\n" +
 	"\vByKindEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xb5\x02\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xf8\x02\n" +
 	"\x0eExpenseRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1697,10 +1605,13 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"occurredAt\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x12\x1d\n" +
 	"\n" +
-	"created_by\x18\b \x01(\x04R\tcreatedBy\x12\x16\n" +
-	"\x06voided\x18\t \x01(\bR\x06voided\x12&\n" +
+	"created_by\x18\b \x01(\x04R\tcreatedBy\x12&\n" +
 	"\x0fcreated_at_unix\x18\n" +
-	" \x01(\x03R\rcreatedAtUnix\"\xc6\x01\n" +
+	" \x01(\x03R\rcreatedAtUnix\x12,\n" +
+	"\x12adjusts_expense_id\x18\v \x01(\x04R\x10adjustsExpenseId\x12\x1d\n" +
+	"\n" +
+	"net_amount\x18\f \x01(\x03R\tnetAmountJ\x04\b\t\x10\n" +
+	"R\x06voided\"\xc6\x01\n" +
 	"\x11ExpenseRowMapItem\x12O\n" +
 	"\bmap_data\x18\x01 \x03(\v24.warehouse.expense.v1.ExpenseRowMapItem.MapDataEntryR\amapData\x1a`\n" +
 	"\fMapDataEntry\x12\x10\n" +
@@ -1734,30 +1645,20 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\x8d\x01\n" +
 	"\x14ExpenseDailyResponse\x128\n" +
 	"\x04days\x18\x01 \x03(\v2$.warehouse.expense.v1.ExpenseDayItemR\x04days\x12;\n" +
-	"\x06totals\x18\x02 \x01(\v2#.warehouse.expense.v1.ExpenseTotalsR\x06totals\"\xd1\x02\n" +
-	"\x14ExpenseUpdateRequest\x12$\n" +
+	"\x06totals\x18\x02 \x01(\v2#.warehouse.expense.v1.ExpenseTotalsR\x06totals\"\xaf\x01\n" +
+	"\x14ExpenseAdjustRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
-	"expense_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\texpenseId\x12A\n" +
-	"\x04kind\x18\x03 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04kind\x12\x1f\n" +
-	"\x06amount\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12D\n" +
-	"\voccurred_at\x18\x05 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
-	"occurredAt\x12\x17\n" +
-	"\ashop_id\x18\x06 \x01(\x04R\x06shopId\x12\x1c\n" +
-	"\x04note\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\n" +
+	"expense_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\texpenseId\x12\x1f\n" +
+	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x028\x00R\x06amount\x12\x1c\n" +
+	"\x04note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\n" +
 	"\x92\xb5\x18\x06\n" +
-	"\x04\x01\x02\x03\x04\"V\n" +
-	"\x15ExpenseUpdateResponse\x12=\n" +
-	"\aexpense\x18\x01 \x01(\v2#.warehouse.expense.v1.ExpenseRecordR\aexpense\"n\n" +
-	"\x12ExpenseVoidRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
+	"\x04\x01\x02\x03\x04\"\x9b\x01\n" +
+	"\x15ExpenseAdjustResponse\x12C\n" +
 	"\n" +
-	"expense_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\texpenseId:\n" +
-	"\x92\xb5\x18\x06\n" +
-	"\x04\x01\x02\x03\x04\"T\n" +
-	"\x13ExpenseVoidResponse\x12=\n" +
-	"\aexpense\x18\x01 \x01(\v2#.warehouse.expense.v1.ExpenseRecordR\aexpense*\xae\x01\n" +
+	"adjustment\x18\x01 \x01(\v2#.warehouse.expense.v1.ExpenseRecordR\n" +
+	"adjustment\x12=\n" +
+	"\aexpense\x18\x02 \x01(\v2#.warehouse.expense.v1.ExpenseRecordR\aexpense*\xae\x01\n" +
 	"\vExpenseKind\x12\x1c\n" +
 	"\x18EXPENSE_KIND_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10EXPENSE_KIND_ADS\x10\x01\x12\x18\n" +
@@ -1773,13 +1674,12 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x1cEXPENSE_ROW_SORT_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cEXPENSE_ROW_SORT_OCCURRED_AT\x10\x01\x12\x1b\n" +
 	"\x17EXPENSE_ROW_SORT_AMOUNT\x10\x02\x12\x1f\n" +
-	"\x1bEXPENSE_ROW_SORT_CREATED_AT\x10\x032\x93\x04\n" +
+	"\x1bEXPENSE_ROW_SORT_CREATED_AT\x10\x032\xb9\x03\n" +
 	"\x0eExpenseService\x12h\n" +
-	"\rExpenseCreate\x12*.warehouse.expense.v1.ExpenseCreateRequest\x1a+.warehouse.expense.v1.ExpenseCreateResponse\x12b\n" +
-	"\vExpenseList\x12(.warehouse.expense.v1.ExpenseListRequest\x1a).warehouse.expense.v1.ExpenseListResponse\x12e\n" +
-	"\fExpenseDaily\x12).warehouse.expense.v1.ExpenseDailyRequest\x1a*.warehouse.expense.v1.ExpenseDailyResponse\x12h\n" +
-	"\rExpenseUpdate\x12*.warehouse.expense.v1.ExpenseUpdateRequest\x1a+.warehouse.expense.v1.ExpenseUpdateResponse\x12b\n" +
-	"\vExpenseVoid\x12(.warehouse.expense.v1.ExpenseVoidRequest\x1a).warehouse.expense.v1.ExpenseVoidResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1;expensev1b\x06proto3"
+	"\rExpenseCreate\x12*.warehouse.expense.v1.ExpenseCreateRequest\x1a+.warehouse.expense.v1.ExpenseCreateResponse\x12g\n" +
+	"\vExpenseList\x12(.warehouse.expense.v1.ExpenseListRequest\x1a).warehouse.expense.v1.ExpenseListResponse\"\x03\x90\x02\x01\x12j\n" +
+	"\fExpenseDaily\x12).warehouse.expense.v1.ExpenseDailyRequest\x1a*.warehouse.expense.v1.ExpenseDailyResponse\"\x03\x90\x02\x01\x12h\n" +
+	"\rExpenseAdjust\x12*.warehouse.expense.v1.ExpenseAdjustRequest\x1a+.warehouse.expense.v1.ExpenseAdjustResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1;expensev1b\x06proto3"
 
 var (
 	file_warehouse_expense_v1_expense_proto_rawDescOnce sync.Once
@@ -1794,7 +1694,7 @@ func file_warehouse_expense_v1_expense_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_expense_v1_expense_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_warehouse_expense_v1_expense_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_warehouse_expense_v1_expense_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_warehouse_expense_v1_expense_proto_goTypes = []any{
 	(ExpenseKind)(0),                // 0: warehouse.expense.v1.ExpenseKind
 	(ExpenseListDataType)(0),        // 1: warehouse.expense.v1.ExpenseListDataType
@@ -1814,63 +1714,58 @@ var file_warehouse_expense_v1_expense_proto_goTypes = []any{
 	(*ExpenseDailyRequest)(nil),     // 15: warehouse.expense.v1.ExpenseDailyRequest
 	(*ExpenseDayItem)(nil),          // 16: warehouse.expense.v1.ExpenseDayItem
 	(*ExpenseDailyResponse)(nil),    // 17: warehouse.expense.v1.ExpenseDailyResponse
-	(*ExpenseUpdateRequest)(nil),    // 18: warehouse.expense.v1.ExpenseUpdateRequest
-	(*ExpenseUpdateResponse)(nil),   // 19: warehouse.expense.v1.ExpenseUpdateResponse
-	(*ExpenseVoidRequest)(nil),      // 20: warehouse.expense.v1.ExpenseVoidRequest
-	(*ExpenseVoidResponse)(nil),     // 21: warehouse.expense.v1.ExpenseVoidResponse
-	nil,                             // 22: warehouse.expense.v1.ExpenseTotals.ByKindEntry
-	nil,                             // 23: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
-	nil,                             // 24: warehouse.expense.v1.ExpenseDayItem.ByKindEntry
-	(v1.CommonSortType)(0),          // 25: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),             // 26: warehouse.common.v1.GeneralSort
-	(*v1.CommonPagination)(nil),     // 27: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),       // 28: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),             // 29: warehouse.common.v1.PageInfo
+	(*ExpenseAdjustRequest)(nil),    // 18: warehouse.expense.v1.ExpenseAdjustRequest
+	(*ExpenseAdjustResponse)(nil),   // 19: warehouse.expense.v1.ExpenseAdjustResponse
+	nil,                             // 20: warehouse.expense.v1.ExpenseTotals.ByKindEntry
+	nil,                             // 21: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
+	nil,                             // 22: warehouse.expense.v1.ExpenseDayItem.ByKindEntry
+	(v1.CommonSortType)(0),          // 23: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),             // 24: warehouse.common.v1.GeneralSort
+	(*v1.CommonPagination)(nil),     // 25: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),       // 26: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),             // 27: warehouse.common.v1.PageInfo
 }
 var file_warehouse_expense_v1_expense_proto_depIdxs = []int32{
 	0,  // 0: warehouse.expense.v1.ExpenseRecord.kind:type_name -> warehouse.expense.v1.ExpenseKind
 	0,  // 1: warehouse.expense.v1.ExpenseCreateRequest.kind:type_name -> warehouse.expense.v1.ExpenseKind
 	3,  // 2: warehouse.expense.v1.ExpenseCreateResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
 	0,  // 3: warehouse.expense.v1.ExpenseListFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	25, // 4: warehouse.expense.v1.ExpenseListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	26, // 5: warehouse.expense.v1.ExpenseListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	23, // 4: warehouse.expense.v1.ExpenseListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	24, // 5: warehouse.expense.v1.ExpenseListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	2,  // 6: warehouse.expense.v1.ExpenseListFilterSort.expense:type_name -> warehouse.expense.v1.ExpenseRowSort
 	6,  // 7: warehouse.expense.v1.ExpenseListRequest.filter:type_name -> warehouse.expense.v1.ExpenseListFilter
 	7,  // 8: warehouse.expense.v1.ExpenseListRequest.sort:type_name -> warehouse.expense.v1.ExpenseListFilterSort
 	1,  // 9: warehouse.expense.v1.ExpenseListRequest.data_request:type_name -> warehouse.expense.v1.ExpenseListDataType
-	27, // 10: warehouse.expense.v1.ExpenseListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	22, // 11: warehouse.expense.v1.ExpenseTotals.by_kind:type_name -> warehouse.expense.v1.ExpenseTotals.ByKindEntry
+	25, // 10: warehouse.expense.v1.ExpenseListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	20, // 11: warehouse.expense.v1.ExpenseTotals.by_kind:type_name -> warehouse.expense.v1.ExpenseTotals.ByKindEntry
 	0,  // 12: warehouse.expense.v1.ExpenseRowItem.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	23, // 13: warehouse.expense.v1.ExpenseRowMapItem.map_data:type_name -> warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
-	28, // 14: warehouse.expense.v1.ExpenseListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	21, // 13: warehouse.expense.v1.ExpenseRowMapItem.map_data:type_name -> warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
+	26, // 14: warehouse.expense.v1.ExpenseListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	11, // 15: warehouse.expense.v1.ExpenseListResponseItem.expense:type_name -> warehouse.expense.v1.ExpenseRowMapItem
 	12, // 16: warehouse.expense.v1.ExpenseListResponse.items:type_name -> warehouse.expense.v1.ExpenseListResponseItem
-	29, // 17: warehouse.expense.v1.ExpenseListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	27, // 17: warehouse.expense.v1.ExpenseListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	9,  // 18: warehouse.expense.v1.ExpenseListResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
 	0,  // 19: warehouse.expense.v1.ExpenseDailyFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
 	14, // 20: warehouse.expense.v1.ExpenseDailyRequest.filter:type_name -> warehouse.expense.v1.ExpenseDailyFilter
-	24, // 21: warehouse.expense.v1.ExpenseDayItem.by_kind:type_name -> warehouse.expense.v1.ExpenseDayItem.ByKindEntry
+	22, // 21: warehouse.expense.v1.ExpenseDayItem.by_kind:type_name -> warehouse.expense.v1.ExpenseDayItem.ByKindEntry
 	16, // 22: warehouse.expense.v1.ExpenseDailyResponse.days:type_name -> warehouse.expense.v1.ExpenseDayItem
 	9,  // 23: warehouse.expense.v1.ExpenseDailyResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
-	0,  // 24: warehouse.expense.v1.ExpenseUpdateRequest.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	3,  // 25: warehouse.expense.v1.ExpenseUpdateResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
-	3,  // 26: warehouse.expense.v1.ExpenseVoidResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
-	10, // 27: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry.value:type_name -> warehouse.expense.v1.ExpenseRowItem
-	4,  // 28: warehouse.expense.v1.ExpenseService.ExpenseCreate:input_type -> warehouse.expense.v1.ExpenseCreateRequest
-	8,  // 29: warehouse.expense.v1.ExpenseService.ExpenseList:input_type -> warehouse.expense.v1.ExpenseListRequest
-	15, // 30: warehouse.expense.v1.ExpenseService.ExpenseDaily:input_type -> warehouse.expense.v1.ExpenseDailyRequest
-	18, // 31: warehouse.expense.v1.ExpenseService.ExpenseUpdate:input_type -> warehouse.expense.v1.ExpenseUpdateRequest
-	20, // 32: warehouse.expense.v1.ExpenseService.ExpenseVoid:input_type -> warehouse.expense.v1.ExpenseVoidRequest
-	5,  // 33: warehouse.expense.v1.ExpenseService.ExpenseCreate:output_type -> warehouse.expense.v1.ExpenseCreateResponse
-	13, // 34: warehouse.expense.v1.ExpenseService.ExpenseList:output_type -> warehouse.expense.v1.ExpenseListResponse
-	17, // 35: warehouse.expense.v1.ExpenseService.ExpenseDaily:output_type -> warehouse.expense.v1.ExpenseDailyResponse
-	19, // 36: warehouse.expense.v1.ExpenseService.ExpenseUpdate:output_type -> warehouse.expense.v1.ExpenseUpdateResponse
-	21, // 37: warehouse.expense.v1.ExpenseService.ExpenseVoid:output_type -> warehouse.expense.v1.ExpenseVoidResponse
-	33, // [33:38] is the sub-list for method output_type
-	28, // [28:33] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	3,  // 24: warehouse.expense.v1.ExpenseAdjustResponse.adjustment:type_name -> warehouse.expense.v1.ExpenseRecord
+	3,  // 25: warehouse.expense.v1.ExpenseAdjustResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
+	10, // 26: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry.value:type_name -> warehouse.expense.v1.ExpenseRowItem
+	4,  // 27: warehouse.expense.v1.ExpenseService.ExpenseCreate:input_type -> warehouse.expense.v1.ExpenseCreateRequest
+	8,  // 28: warehouse.expense.v1.ExpenseService.ExpenseList:input_type -> warehouse.expense.v1.ExpenseListRequest
+	15, // 29: warehouse.expense.v1.ExpenseService.ExpenseDaily:input_type -> warehouse.expense.v1.ExpenseDailyRequest
+	18, // 30: warehouse.expense.v1.ExpenseService.ExpenseAdjust:input_type -> warehouse.expense.v1.ExpenseAdjustRequest
+	5,  // 31: warehouse.expense.v1.ExpenseService.ExpenseCreate:output_type -> warehouse.expense.v1.ExpenseCreateResponse
+	13, // 32: warehouse.expense.v1.ExpenseService.ExpenseList:output_type -> warehouse.expense.v1.ExpenseListResponse
+	17, // 33: warehouse.expense.v1.ExpenseService.ExpenseDaily:output_type -> warehouse.expense.v1.ExpenseDailyResponse
+	19, // 34: warehouse.expense.v1.ExpenseService.ExpenseAdjust:output_type -> warehouse.expense.v1.ExpenseAdjustResponse
+	31, // [31:35] is the sub-list for method output_type
+	27, // [27:31] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_expense_v1_expense_proto_init() }
@@ -1892,7 +1787,7 @@ func file_warehouse_expense_v1_expense_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_expense_v1_expense_proto_rawDesc), len(file_warehouse_expense_v1_expense_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   22,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -255,13 +255,13 @@ export function SlotBox({
               key={fill.productId.toString()}
               product={{
                 id: fill.productId,
-                sku: fill.sku,
+                productCode: fill.productCode,
                 name: fill.name,
                 defaultImageThumbnailUrl: cover,
               }}
               stock={stock?.get(fill.productId.toString())}
               onImageClick={() =>
-                onPreview({ src: cover, title: fill.name, caption: fill.sku })
+                onPreview({ src: cover, title: fill.name, caption: fill.productCode })
               }
               action={
                 <Flex align="center" gap="2">

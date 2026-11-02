@@ -847,11 +847,11 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"$DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT\x10\x04\x12(\n" +
 	"$DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF\x10\x05\x12/\n" +
 	"+DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT\x10\x06\x12'\n" +
-	"#DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT\x10\a2\xc2\x04\n" +
+	"#DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT\x10\a2\xc7\x04\n" +
 	"\x0fDocumentService\x12j\n" +
 	"\rRequestUpload\x12+.warehouse.document.v1.RequestUploadRequest\x1a,.warehouse.document.v1.RequestUploadResponse\x12j\n" +
-	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12m\n" +
-	"\x0eGetDownloadUrl\x12,.warehouse.document.v1.GetDownloadUrlRequest\x1a-.warehouse.document.v1.GetDownloadUrlResponse\x12j\n" +
+	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12r\n" +
+	"\x0eGetDownloadUrl\x12,.warehouse.document.v1.GetDownloadUrlRequest\x1a-.warehouse.document.v1.GetDownloadUrlResponse\"\x03\x90\x02\x01\x12j\n" +
 	"\rShareDocument\x12+.warehouse.document.v1.ShareDocumentRequest\x1a,.warehouse.document.v1.ShareDocumentResponse\x12|\n" +
 	"\x13ProfilePictureErase\x121.warehouse.document.v1.ProfilePictureEraseRequest\x1a2.warehouse.document.v1.ProfilePictureEraseResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1;documentv1b\x06proto3"
 

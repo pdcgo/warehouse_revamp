@@ -56,6 +56,7 @@ func (s *Service) RequestUpload(
 		SizeBytes:    msg.GetSizeBytes(),
 		Filename:     msg.GetFilename(),
 		CreatedByID:  createdBy,
+		IsOverride:   san_auth.IsOverride(ctx),
 		Status:       statusPending,
 	}
 

@@ -19,7 +19,7 @@ import (
 // Newest batch first: the list is read top-down as "what came in recently", while the oldest-first draw is a property
 // of the take, not of how the list is ordered.
 //
-// The delivery and receipt come from the restock whose accept minted the batch, sku and name from its line (or the
+// The delivery and receipt come from the restock whose accept minted the batch, product code and name from its line (or the
 // transfer line, for a batch a transfer minted) — see batchQuery.
 func (s *Service) BatchList(
 	ctx context.Context,

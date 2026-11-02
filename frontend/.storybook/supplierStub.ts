@@ -28,7 +28,7 @@ import { SupplierAnalyticService, SupplierMetricSchema } from "../src/gen/wareho
 import { type FilterItem, GroupType, SortType, metric_sort } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
 import { CommonSortType, GeneralSort } from "../src/gen/warehouse/common/v1/list_pb";
 import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
-import { teams } from "./fixtures";
+import { teams, FOLDED_AS_OF } from "./fixtures";
 import { type ChannelFixture, type SupplierFixture, channelFixtures, supplierFixtures } from "./supplierFixtures";
 import { type FigureFixture, dayAgo, figureFixtures } from "./supplierFigureFixtures";
 
@@ -493,7 +493,7 @@ export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyti
       let total = zeroMetric();
       for (const r of figureRowsFor(req.filters)) total = addRow(total, r);
 
-      return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierSummary" as const, value: total } })) };
+      return { asOfUnix: FOLDED_AS_OF, metricDatas: req.metricIds.map(() => ({ m: { case: "supplierSummary" as const, value: total } })) };
     }
 
     const byKey = grouped(req.filters, req.groupBy);
@@ -502,7 +502,7 @@ export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyti
       const items: Record<string, Metric> = {};
       for (const day of req.keys.k.value.days) items[day] = byKey.get(day) ?? zeroMetric();
 
-      return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierByDay" as const, value: { items } } })) };
+      return { asOfUnix: FOLDED_AS_OF, metricDatas: req.metricIds.map(() => ({ m: { case: "supplierByDay" as const, value: { items } } })) };
     }
 
     const items: Record<string, Metric> = {};
@@ -510,6 +510,6 @@ export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyti
       items[id.toString()] = byKey.get(id.toString()) ?? zeroMetric();
     }
 
-    return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierById" as const, value: { items } } })) };
+    return { asOfUnix: FOLDED_AS_OF, metricDatas: req.metricIds.map(() => ({ m: { case: "supplierById" as const, value: { items } } })) };
   },
 };

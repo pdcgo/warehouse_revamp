@@ -178,7 +178,15 @@ func WithIdentity(ctx context.Context, identity *role_basev1.Identity) context.C
 
 // GetScope returns the team id the request was scoped to, or 0.
 func GetScope(ctx context.Context) uint64 {
-	scope, _ := ctx.Value(scopeCtxKey{}).(uint64)
+	scope, ok := ctx.Value(scopeCtxKey{}).(uint64)
+	if ok {
+		return scope
+	}
+
+	// A server stream's handler: the scope arrives in the holder once its request is authorized (StreamScope).
+	if holder := streamScopeOf(ctx); holder != nil {
+		scope, _, _ = holder.values()
+	}
 
 	return scope
 }
@@ -236,7 +244,14 @@ type callerRoleCtxKey struct{}
 // It is derived by the server, never sent by the caller: whether a write was an override is a fact
 // about who made it, and the caller is the one party that cannot be trusted to report it.
 func GetCallerRole(ctx context.Context) role_basev1.Role {
-	role, _ := ctx.Value(callerRoleCtxKey{}).(role_basev1.Role)
+	role, ok := ctx.Value(callerRoleCtxKey{}).(role_basev1.Role)
+	if ok {
+		return role
+	}
+
+	if holder := streamScopeOf(ctx); holder != nil {
+		_, role, _ = holder.values()
+	}
 
 	return role
 }
@@ -248,4 +263,35 @@ func GetCallerRole(ctx context.Context) role_basev1.Role {
 // would compile fine and silently disagree.
 func WithCallerRole(ctx context.Context, role role_basev1.Role) context.Context {
 	return context.WithValue(ctx, callerRoleCtxKey{}, role)
+}
+
+// IsOverride answers whether this request is Root or the Administrator writing inside a team they hold no role in —
+// in through the root-team bypass, not a membership (docs/business/user/context_decision.md
+// #an-override-is-stamped-in-every-service). A service stamps its answer on the row that records who acted.
+//
+// It is TRUE only when all three hold:
+//
+//   - a PERSON is calling (an identity the interceptor put there). An event consumer, a worker or a backfill has none,
+//     so this answers false for it. A consumer writing a row that names the event's actor stamps the event's
+//     `actor_is_override` instead — the publisher's answer to this question, carried;
+//   - the request was SCOPED to a team (GetScope != 0). An unscoped call reaches into no team, so there is nothing to
+//     override;
+//   - the caller holds NO ROLE in that team (GetCallerRole == ROLE_UNSPECIFIED). The request got in, so it was
+//     authorized, and holding no role in the scoped team means the root-team bypass authorized it. A Root who IS a
+//     member of the team acts as that member, and is not an override.
+//
+// ⚠ It answers one fact about the caller and decides nothing — whether to stamp, and where, is the service's.
+func IsOverride(ctx context.Context) bool {
+	_, err := GetIdentity(ctx)
+	if err != nil {
+		return false
+	}
+
+	if GetScope(ctx) == 0 {
+		return false
+	}
+
+	// A MONITOR (the admin team reading a team it is not in) holds no role there either — but it reaches reads only, and
+	// reading is not acting.
+	return GetCallerRole(ctx) == role_basev1.Role_ROLE_UNSPECIFIED && !IsMonitor(ctx)
 }

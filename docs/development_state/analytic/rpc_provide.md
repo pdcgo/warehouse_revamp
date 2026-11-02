@@ -151,3 +151,11 @@ Frontend reads them through `features/{suppliers,settlement,financialAccount}/an
 4. ✅ the route and menu entry — with the order metrics, 2026-10-29.
 
 The chart is its own later pass ([the-chart-waits-for-a-chart-component](../../business/analytic/rpc_provide_decision.md#the-chart-waits-for-a-chart-component)).
+
+## 2026-11-02 — the year cap and *as of*, built
+
+| | |
+| --- | --- |
+| [a-metric-reads-at-most-a-year](../../business/analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year) | `san_metric.CheckRange` (`MaxRangeDays = 366`, `ErrRangeTooLong`) in every service's metric read — order, settlement, supplier — refused as InvalidArgument; the Analytic, settlement-report and supplier-report screens refuse a longer range before asking (`rangeTooLong`). A refusal test per service |
+| [a-money-metric-says-as-of-when](../../business/analytic/rpc_provide_decision.md#a-money-metric-says-as-of-when) | `MetricDataResponse.as_of_unix` (2) in each service; selling's `00031` indexes the event log's `created_at` for it. The screens say *"As of {{time}} WIB"* — the OLDEST of the services read. Stories `SaysAsOfWhen` ×3 |
+| the AI agents | the metric pair is what the MCP's `list_metrics` / `read_metric` read ([mcp state](../mcp/context.md)); both RPCs are marked `NO_SIDE_EFFECTS` |

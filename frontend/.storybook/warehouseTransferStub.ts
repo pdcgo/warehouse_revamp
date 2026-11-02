@@ -162,7 +162,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
       return {
         id: id * 10n + BigInt(i + 1),
         productId: l.productId,
-        sku: product?.sku ?? "",
+        productCode: product?.productCode ?? "",
         name: product?.name ?? "",
         count: l.count,
         total: (STUB_PRICE[l.productId.toString()] ?? 0) * Number(l.count),
@@ -232,7 +232,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
           !q ||
           r.id.toString() === idQuery ||
           r.receipt.toLowerCase().includes(q) ||
-          r.items.some((l) => l.sku.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)),
+          r.items.some((l) => l.productCode.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)),
       )
       .sort((a, b) => (a.id > b.id ? -1 : 1));
 
@@ -345,12 +345,12 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
 
     for (const item of r.items) {
       const counted = byItem.get(item.id.toString())!;
-      if (counted.arrivedCount > item.count) throw invalid(`${item.sku}: more arrived than was sent`);
-      if (counted.brokenCount > counted.arrivedCount) throw invalid(`${item.sku}: more broken than arrived`);
+      if (counted.arrivedCount > item.count) throw invalid(`${item.productCode}: more arrived than was sent`);
+      if (counted.brokenCount > counted.arrivedCount) throw invalid(`${item.productCode}: more broken than arrived`);
 
       const good = counted.arrivedCount - counted.brokenCount;
       const placed = counted.placements.reduce((sum, p) => sum + p.quantity, 0n);
-      if (placed !== good) throw invalid(`${item.sku}: the good units must all be put away, exactly`);
+      if (placed !== good) throw invalid(`${item.productCode}: the good units must all be put away, exactly`);
       if (counted.placements.some((p) => !ownRacks.has(p.placementId))) throw notFound();
     }
 

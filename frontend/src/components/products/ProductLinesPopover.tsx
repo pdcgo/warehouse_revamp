@@ -11,7 +11,7 @@ import { formatRupiahNumber } from "../../lib/money";
 export interface ProductLine {
   /** Stable key for the row — an id, a SKU, anything unique within the list. */
   id: string;
-  sku: string;
+  productCode: string;
   name: string;
   quantity: bigint;
   /**
@@ -139,7 +139,7 @@ export function ProductLinesPopover({
                     <Table.Body>
                       {lines.map((line) => (
                         <Table.Row key={line.id}>
-                          <Table.Cell whiteSpace="nowrap">{line.sku}</Table.Cell>
+                          <Table.Cell whiteSpace="nowrap">{line.productCode}</Table.Cell>
                           {/* The one column allowed to be long, so it is the one that wraps. */}
                           <Table.Cell minW="40">{line.name}</Table.Cell>
                           <Table.Cell textAlign="end">{line.quantity.toString()}</Table.Cell>

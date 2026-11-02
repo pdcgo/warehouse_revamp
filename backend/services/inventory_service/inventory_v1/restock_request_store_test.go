@@ -38,7 +38,7 @@ func stCreate(svc *inventory_v1.Service, supplier, store uint64) (*inventoryv1.R
 	resp, err := svc.RestockRequestCreate(ctxUser(arrBuyer), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: arrSellingTeam, WarehouseId: arrWarehouse, FinanceAccountId: arrAccount,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU-KAOS", Name: "Kaos", Count: 10, Total: 100000, SupplierId: supplier, SupplierChannelId: store},
+			{ProductId: 100, ProductCode: "SKU-KAOS", Name: "Kaos", Count: 10, Total: 100000, SupplierId: supplier, SupplierChannelId: store},
 		},
 	}))
 	if err != nil {
@@ -101,7 +101,7 @@ func TestRestockRequestUpdate_KeepsAStoreDeletedSince(t *testing.T) {
 		_, updErr := svc.RestockRequestUpdate(ctxUser(arrBuyer), connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
 			TeamId: arrSellingTeam, RequestId: raised.GetId(), WarehouseId: arrWarehouse, FinanceAccountId: arrAccount,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU-KAOS", Name: "Kaos", Count: 12, Total: 120000, SupplierId: arrMelati, SupplierChannelId: store},
+				{ProductId: 100, ProductCode: "SKU-KAOS", Name: "Kaos", Count: 12, Total: 120000, SupplierId: arrMelati, SupplierChannelId: store},
 			},
 		}))
 

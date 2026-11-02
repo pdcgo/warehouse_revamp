@@ -165,7 +165,7 @@ export const ALockedBorrowedLine: Story = {
 export const AnArchivedLine: Story = {
   beforeEach: () => {
     standingAs(Role.SELLING_OWNER)();
-    withProductState(TEH, { deleted: true })();
+    withProductState(TEH, { archived: true })();
   },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);

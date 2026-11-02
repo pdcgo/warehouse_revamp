@@ -39,7 +39,7 @@ func createMarketplaceOrder(
 		CustomerName:  "Budi",
 		PlatformTotal: marketplaceTotal,
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {

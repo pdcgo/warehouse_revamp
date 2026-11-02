@@ -149,6 +149,9 @@ export const key = {
   // The accounts, their logs, their balances AND their reports under ONE prefix: every write moves a
   // balance, and a balance is in all four — so one write refreshes the lot.
   financialAccounts: (teamId: bigint | undefined, params?: Params) => scope("financialAccounts", teamId, params),
+  // The AI agents connected to read a team (docs/business/mcp) — a person's own (no team: `undefined`, they are the
+  // caller's across every team) and a team's, for its owner, under ONE prefix: a revoke from either list is in both.
+  agents: (teamId: bigint | undefined, params?: Params) => scope("agents", teamId, params),
 
   // No team: global reference data (see `global` above).
   regions: (params?: Params) => global("regions", params),

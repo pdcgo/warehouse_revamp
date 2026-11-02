@@ -16,6 +16,9 @@ const CATEGORY = `E2E OrdCat ${SUFFIX}`;
 const SHOP_CODE = `OSH${SUFFIX}`;
 const SHOP_NAME = `E2E Order Shop ${SUFFIX}`;
 const SKU = `OP${SUFFIX}`;
+// What the product is STORED as — its team's code in front of the part typed (the-field-is-product-code-composed-on-write);
+// root files it under team 1, whose code is ROOT.
+const CODE = `ROOT-${SKU}`;
 const PRODUCT_NAME = `E2E Order Product ${SUFFIX}`;
 const CUSTOMER = `E2E Customer ${SUFFIX}`;
 // The marketplace's own id for the order — shaped like one a storefront actually issues, and made
@@ -78,13 +81,13 @@ async function login(page: Page, username: string, password: string) {
 // ⚠ The row is matched on the SKU it DISPLAYS, never as "the only row": the search is debounced, so
 // for a moment after typing the list still holds the previous product's row, which satisfies "exactly
 // one row" just as well and un-ticks what was ticked a moment ago.
-async function tickProduct(page: Page, sku: string) {
-  await page.getByTestId("product-picker-search").fill(sku);
+async function tickProduct(page: Page, productCode: string) {
+  await page.getByTestId("product-picker-search").fill(productCode);
 
   const row = page
     .getByTestId("product-picker-list")
     .locator('[data-testid^="product-picker-option-"]')
-    .filter({ hasText: sku });
+    .filter({ hasText: productCode });
   await expect(row).toHaveCount(1);
 
   // The click goes to the CONTROL, never the row's centre. In the table layout the centre lands on the
@@ -113,8 +116,8 @@ async function pickOrderDate(page: Page) {
 async function addProducts(page: Page, skus: string[]) {
   await page.getByTestId("order-create-add-line").click();
 
-  for (const sku of skus) {
-    await tickProduct(page, sku);
+  for (const productCode of skus) {
+    await tickProduct(page, productCode);
   }
 
   await page.getByTestId("product-picker-confirm").click();
@@ -213,7 +216,7 @@ test("setup: a category, a shop, and a product for the order to reference", asyn
   await page.getByTestId("category-select").click();
   await page.getByTestId(`category-node-${CATEGORY}`).click();
   await page.getByTestId("product-edit-save").click();
-  await expect(page.getByTestId(`product-row-${SKU}`)).toBeVisible();
+  await expect(page.getByTestId(`product-row-${CODE}`)).toBeVisible();
 });
 
 // Stock for the order to take (#149). Placing an order now DEDUCTS from its warehouse, and a warehouse
@@ -229,7 +232,7 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   // The ids the API needs are not on screen, so read them back the same way the app would.
-  const ids = await page.evaluate(async ([whCode, sku]) => {
+  const ids = await page.evaluate(async ([whCode, productCode]) => {
     const token =
       window.sessionStorage.getItem("warehouse_revamp.token") ??
       window.localStorage.getItem("warehouse_revamp.token");
@@ -257,9 +260,9 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       page: { page: 1, limit: 200 },
     });
     const discovered = rowMap(products, "product");
-    const product = discovered.find((p) => p.sku === sku);
+    const product = discovered.find((p) => p.productCode === productCode);
     if (!product) {
-      throw new Error(`product ${sku} not found among ${discovered.length} discovered`);
+      throw new Error(`product ${productCode} not found among ${discovered.length} discovered`);
     }
 
     // Stock comes in the way it really does — a restock raised by the product's OWN team and accepted onto a rack
@@ -286,7 +289,7 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       teamId: product.teamId,
       warehouseId: warehouse.id,
       financeAccountId: account.account.id,
-      items: [{ productId: product.id, sku: product.sku, name: product.name, count: "50", total: "0" }],
+      items: [{ productId: product.id, productCode: product.productCode, name: product.name, count: "50", total: "0" }],
     });
 
     await call("inventory.v1.RestockRequestService/RestockRequestAccept", {
@@ -311,7 +314,7 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
     });
 
     return { warehouse: warehouse.id, product: product.id };
-  }, [WH_CODE, SKU]);
+  }, [WH_CODE, CODE]);
 
   expect(ids.warehouse).toBeTruthy();
   expect(ids.product).toBeTruthy();
@@ -929,7 +932,7 @@ test("Products: a warehouse sees the products it was asked to stock (#142)", asy
   // Ask this warehouse to stock the product — the API, because the restock create form is a different
   // issue's surface and what is under test here is the warehouse's product list.
   await page.evaluate(
-    async ([whCode, sku]) => {
+    async ([whCode, productCode]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
@@ -951,13 +954,13 @@ test("Products: a warehouse sees the products it was asked to stock (#142)", asy
       // relying on the wanted product being inside an arbitrary first page is a fuse waiting to blow.
       const products = await call("product.v1.ProductService/ProductDiscover", {
         teamId: "1",
-        filter: { q: sku },
+        filter: { q: productCode },
         page: { page: 1, limit: 50 },
       });
-      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.sku === sku);
+      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.productCode === productCode);
       if (!product) {
         throw new Error(
-          `product ${sku} not found among ${(Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).length} results for q=${sku}`,
+          `product ${productCode} not found among ${(Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).length} results for q=${productCode}`,
         );
       }
 
@@ -979,10 +982,10 @@ test("Products: a warehouse sees the products it was asked to stock (#142)", asy
         teamId: "1",
         warehouseId: warehouse.id,
         financeAccountId: account.account.id,
-        items: [{ productId: product.id, sku, name: "e2e", count: "1", total: 1000 }],
+        items: [{ productId: product.id, productCode, name: "e2e", count: "1", total: 1000 }],
       });
     },
-    [WH_CODE, SKU],
+    [WH_CODE, CODE],
   );
 
   await switchToWarehouse(page);
@@ -993,8 +996,8 @@ test("Products: a warehouse sees the products it was asked to stock (#142)", asy
 
   // And the actions that belong to the OWNER are not offered: a warehouse handles these products, it
   // does not own them, so edit/delete would only ever be refused by the server.
-  await expect(page.getByTestId(`edit-${SKU}`)).toBeHidden();
-  await expect(page.getByTestId(`delete-${SKU}`)).toBeHidden();
+  await expect(page.getByTestId(`edit-${CODE}`)).toBeHidden();
+  await expect(page.getByTestId(`archive-${CODE}`)).toBeHidden();
   await expect(page.getByTestId("open-create-product")).toBeHidden();
   await expect(page.getByTestId("product-search")).toBeHidden();
 });
@@ -1053,7 +1056,7 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
 
   // A restock for 10 on its way, plus two shelves to put them on.
   const seeded = await page.evaluate(
-    async ([whCode, sku]) => {
+    async ([whCode, productCode]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
@@ -1073,11 +1076,11 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
 
       const products = await call("product.v1.ProductService/ProductDiscover", {
         teamId: "1",
-        filter: { q: sku },
+        filter: { q: productCode },
         page: { page: 1, limit: 50 },
       });
-      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.sku === sku);
-      if (!product) throw new Error(`product ${sku} not found`);
+      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.productCode === productCode);
+      if (!product) throw new Error(`product ${productCode} not found`);
 
       // Saved lowercase (rack-codes-are-saved-lowercase).
       const shelves: string[] = [];
@@ -1121,13 +1124,13 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
         financeAccountId: account.account.id,
         shipmentCost: 20000,
         items: [
-          { productId: product.id, sku, name: "e2e accept", count: "10", total: 100000, supplierId: supplier.supplier.id },
+          { productId: product.id, productCode, name: "e2e accept", count: "10", total: 100000, supplierId: supplier.supplier.id },
         ],
       });
 
       return { requestId: created.request.id, productId: product.id, supplierName, shelves };
     },
-    [WH_CODE, SKU],
+    [WH_CODE, CODE],
   );
 
   const pid = seeded.productId;
@@ -1274,7 +1277,7 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   // Reached by clicking the product in the warehouse's own list (#142) — which must NOT open the
   // selling team's catalogue page.
   await page.goto("/products");
-  await page.getByTestId(`product-row-${SKU}`).click();
+  await page.getByTestId(`product-row-${CODE}`).click();
 
   await expect(page.getByTestId("warehouse-product-page")).toBeVisible();
 

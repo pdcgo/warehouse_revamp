@@ -31,7 +31,8 @@ var (
 //
 //   - RECOUNT (or unspecified) corrects one product on one rack TO a counted figure: a shortfall leaves the owner's
 //     batches oldest first, a surplus is minted at the owner's newest price here, an exact count writes a 0 rack row.
-//     It moves no money, as before (adjustment Q2 asks whether it should).
+//     A shortfall is written off and owed like a lost unit (a-recount-shortfall-is-written-off-and-owed); a surplus
+//     moves no money.
 //   - DAMAGED / LOST take a NAMED batch's units off a rack; FOUND puts them back. A damaged or lost unit is written off
 //     to expense after commit and owed to its owner inside the transaction; a found one gives that debt back.
 //
@@ -44,6 +45,7 @@ func (s *Service) StockAdjust(
 	warehouseID := msg.GetWarehouseId()
 	productID := msg.GetProductId()
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 
 	if msg.GetPlace() == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errAdjustNoPlace)
@@ -89,6 +91,7 @@ func (s *Service) StockAdjust(
 				Count:       msg.GetQuantity(),
 				Found:       found,
 				ActorID:     actor,
+				IsOverride:  override,
 				Description: msg.GetReason(),
 			})
 			if adjustErr != nil {
@@ -120,6 +123,7 @@ func (s *Service) StockAdjust(
 				WarehouseID: warehouseID,
 				PlacementID: rackID,
 				ActorID:     actor,
+				IsOverride:  override,
 				Description: msg.GetReason(),
 				Lines:       []inventory_mutations.RecountLine{{ProductID: productID, Counted: msg.GetOnHand()}},
 			})
@@ -135,6 +139,22 @@ func (s *Service) StockAdjust(
 			line := lines[0]
 			movement = adjustMovement(txID, warehouseID, productID, rackID, 0, line.Counted-line.Expected,
 				line.Counted, msg.GetReason(), actor)
+
+			// A SHORTFALL COSTS THE SAME WHICHEVER SCREEN RECORDS IT (a-recount-shortfall-is-written-off-and-owed): the
+			// missing units left the owner's batches oldest first, at each batch's price, so their value is written off
+			// after commit and owed to the owner here — as a stock count and a lost adjust do. A surplus moves no money.
+			if line.Counted < line.Expected {
+				loss = line.Value
+
+				amount := int64(math.Round(line.Value))
+				if amount > 0 && line.OwnerTeamID != warehouseID {
+					damageErr := s.liability.PostStockDamage(ctx, tx, line.OwnerTeamID, warehouseID,
+						line.TransactionID, actor, amount, StockDamageLost)
+					if damageErr != nil {
+						return damageErr
+					}
+				}
+			}
 		}
 
 		return tx.Raw(`SELECT COALESCE(SUM(stock_count), 0) FROM product_placements WHERE warehouse_id = ? AND product_id = ?`,

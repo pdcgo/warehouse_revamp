@@ -131,24 +131,28 @@ func NewFinancialAccountServiceClient(httpClient connect.HTTPClient, baseURL str
 			httpClient,
 			baseURL+FinancialAccountServiceFinancialAccountListProcedure,
 			connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		financialAccountByIds: connect.NewClient[v1.FinancialAccountByIdsRequest, v1.FinancialAccountByIdsResponse](
 			httpClient,
 			baseURL+FinancialAccountServiceFinancialAccountByIdsProcedure,
 			connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		financialAccountOverview: connect.NewClient[v1.FinancialAccountOverviewRequest, v1.FinancialAccountOverviewResponse](
 			httpClient,
 			baseURL+FinancialAccountServiceFinancialAccountOverviewProcedure,
 			connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountOverview")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		financialAccountLogList: connect.NewClient[v1.FinancialAccountLogListRequest, v1.FinancialAccountLogListResponse](
 			httpClient,
 			baseURL+FinancialAccountServiceFinancialAccountLogListProcedure,
 			connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountLogList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		financialAccountCreate: connect.NewClient[v1.FinancialAccountCreateRequest, v1.FinancialAccountCreateResponse](
@@ -353,24 +357,28 @@ func NewFinancialAccountServiceHandler(svc FinancialAccountServiceHandler, opts 
 		FinancialAccountServiceFinancialAccountListProcedure,
 		svc.FinancialAccountList,
 		connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountServiceFinancialAccountByIdsHandler := connect.NewUnaryHandler(
 		FinancialAccountServiceFinancialAccountByIdsProcedure,
 		svc.FinancialAccountByIds,
 		connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountServiceFinancialAccountOverviewHandler := connect.NewUnaryHandler(
 		FinancialAccountServiceFinancialAccountOverviewProcedure,
 		svc.FinancialAccountOverview,
 		connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountOverview")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountServiceFinancialAccountLogListHandler := connect.NewUnaryHandler(
 		FinancialAccountServiceFinancialAccountLogListProcedure,
 		svc.FinancialAccountLogList,
 		connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountLogList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountServiceFinancialAccountCreateHandler := connect.NewUnaryHandler(
@@ -555,18 +563,21 @@ func NewFinancialAccountAnalyticServiceClient(httpClient connect.HTTPClient, bas
 			httpClient,
 			baseURL+FinancialAccountAnalyticServiceAnalyticTimeSearchProcedure,
 			connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticTimeSearch")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		analyticGroupSearch: connect.NewClient[v1.AnalyticGroupSearchRequest, v1.AnalyticGroupSearchResponse](
 			httpClient,
 			baseURL+FinancialAccountAnalyticServiceAnalyticGroupSearchProcedure,
 			connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticGroupSearch")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		analyticGroupMetric: connect.NewClient[v1.AnalyticGroupMetricRequest, v1.AnalyticGroupMetricResponse](
 			httpClient,
 			baseURL+FinancialAccountAnalyticServiceAnalyticGroupMetricProcedure,
 			connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticGroupMetric")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -619,18 +630,21 @@ func NewFinancialAccountAnalyticServiceHandler(svc FinancialAccountAnalyticServi
 		FinancialAccountAnalyticServiceAnalyticTimeSearchProcedure,
 		svc.AnalyticTimeSearch,
 		connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticTimeSearch")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountAnalyticServiceAnalyticGroupSearchHandler := connect.NewUnaryHandler(
 		FinancialAccountAnalyticServiceAnalyticGroupSearchProcedure,
 		svc.AnalyticGroupSearch,
 		connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticGroupSearch")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountAnalyticServiceAnalyticGroupMetricHandler := connect.NewUnaryHandler(
 		FinancialAccountAnalyticServiceAnalyticGroupMetricProcedure,
 		svc.AnalyticGroupMetric,
 		connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticGroupMetric")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.financial_account.v1.FinancialAccountAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

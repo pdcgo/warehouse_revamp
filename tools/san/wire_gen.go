@@ -41,6 +41,7 @@ func InitializeSan(dsn DatabaseDSN) (*San, error) {
 	eventSender := NewEventSender()
 	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, documentServiceClient, cacheManager, eventSender)
 	supplier_v1Service := NewSupplierFigures(db)
-	san := NewSan(db, service, supplier_v1Service)
+	team_v1Service := NewTeamCodes(db)
+	san := NewSan(db, service, supplier_v1Service, team_v1Service)
 	return san, nil
 }

@@ -37,7 +37,7 @@ export interface OpnameRowFixture {
   sessionId: bigint;
   teamId: bigint;
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   placementId: bigint;
   placementCode: string;
@@ -91,11 +91,11 @@ export const opnameSessionFixtures: OpnameSessionFixture[] = [
   { id: 21n, warehouseId: 14n, status: OpnameSessionStatus.ACTIVE, plan: OpnamePlan.PLACEMENT, createdById: DEWI, createdAtUnix: ago(3 * HOUR), finalizedById: 0n, finalizedAtUnix: 0n },
 ];
 
-const BERAS = { productId: 74n, teamId: 12n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg" };
-const GULA = { productId: 73n, teamId: 13n, sku: "SKU-GULA-1K", name: "Gula Pasir 1kg" };
-const MINYAK = { productId: 700n, teamId: 15n, sku: "SKU-ANG-001", name: "Minyak Goreng Sawit 2L — Satuan" };
-const MINYAK_KARTON = { productId: 701n, teamId: 15n, sku: "SKU-ANG-002", name: "Minyak Goreng Sawit 2L — Karton" };
-const TEPUNG = { productId: 702n, teamId: 15n, sku: "SKU-ANG-003", name: "Tepung Terigu Serbaguna 1kg — Satuan" };
+const BERAS = { productId: 74n, teamId: 12n, productCode: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg" };
+const GULA = { productId: 73n, teamId: 13n, productCode: "SKU-GULA-1K", name: "Gula Pasir 1kg" };
+const MINYAK = { productId: 700n, teamId: 15n, productCode: "SL-03-ANG-001", name: "Minyak Goreng Sawit 2L — Satuan" };
+const MINYAK_KARTON = { productId: 701n, teamId: 15n, productCode: "SL-03-ANG-002", name: "Minyak Goreng Sawit 2L — Karton" };
+const TEPUNG = { productId: 702n, teamId: 15n, productCode: "SL-03-ANG-003", name: "Tepung Terigu Serbaguna 1kg — Satuan" };
 
 const A1 = { placementId: 41n, placementCode: "A-01-1" };
 const A2 = { placementId: 42n, placementCode: "A-01-2" };

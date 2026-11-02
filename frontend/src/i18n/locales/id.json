@@ -65,6 +65,11 @@
   "shell": {
     "menu": "Menu",
     "notMember": "Bukan anggota tim ini — bertindak sebagai {{role}}.",
+    "monitoring": "Memantau — hanya baca. Anda bukan anggota tim ini, jadi tidak ada yang bisa diubah di sini.",
+    "monitoringRole": "Memantau",
+    "readOnlyTitle": "Hanya baca",
+    "readOnlyBody": "Anda sedang memantau tim ini. Layar ini mengubah datanya, jadi tidak ditawarkan di sini.",
+    "readOnlyBack": "Kembali",
     "switchTeam": "Ganti Tim",
     "noTeams": "Tidak ada tim.",
     "myTeams": "Tim saya",
@@ -105,7 +110,9 @@
     "theyOweYou": "Mereka berhutang {{amount}} kepada Anda",
     "youOweThem": "Anda berhutang {{amount}} kepada mereka",
     "square": "Lunas",
-    "emptyHint": "Utang dan piutang dengan tim lain muncul di sini setelah tercatat."
+    "emptyHint": "Utang dan piutang dengan tim lain muncul di sini setelah tercatat.",
+    "requestSent": "Pembayaran diminta",
+    "requestAsked": "Meminta Anda membayar"
   },
   "liabilityDetail": {
     "title": "Kewajiban",
@@ -187,7 +194,16 @@
     "recordFromAccountHelp": "Rekening tempat transfer keluar. Saat mereka menerima, jumlahnya dikeluarkan dari rekening ini.",
     "confirmToAccount": "Diterima di",
     "confirmToAccountPlaceholder": "Pilih rekening tempat uang masuk",
-    "confirmToAccountHelp": "Rekening tempat Anda melihat uang ini masuk. Menerima bersifat final, jadi cocokkan dulu dengan bank Anda."
+    "confirmToAccountHelp": "Rekening tempat Anda melihat uang ini masuk. Menerima bersifat final, jadi cocokkan dulu dengan bank Anda.",
+    "requestPayment": "Minta Pembayaran",
+    "requestTitle": "Minta Pembayaran",
+    "requestMessage": "{{name}} akan melihat bahwa Anda memintanya membayar {{amount}}. Tidak ada yang dicatat dan tidak ada yang diblokir — pembayaran tetap lewat Buat Pembayaran.",
+    "requestConfirm": "Kirim Permintaan",
+    "requestDone": "{{name}} sudah diminta membayar",
+    "requestFailed": "Permintaan tidak dapat dikirim",
+    "requestAskedTitle": "{{name}} meminta Anda membayar {{amount}}",
+    "requestAskedHelp": "Diminta pada {{date}}. Bayar lewat Buat Pembayaran — tidak ada yang bergerak sendiri.",
+    "requestSent": "Anda meminta {{name}} membayar {{amount}} pada {{date}}."
   },
   "common": {
     "perPage": "Per halaman",
@@ -209,7 +225,8 @@
     "deleted": "Dihapus",
     "loading": "Memuat",
     "clearSearch": "Hapus pencarian",
-    "actions": "Aksi"
+    "actions": "Aksi",
+    "asOf": "Data per {{time}} WIB"
   },
   "dateRange": {
     "all": "Semua tanggal",
@@ -516,17 +533,17 @@
   },
   "products": {
     "toast": {
-      "deleted": "Produk \"{{sku}}\" dihapus",
+      "deleted": "Produk \"{{productCode}}\" dihapus",
       "deleteFailed": "Gagal menghapus",
       "saved": "Produk disimpan",
-      "created": "Produk \"{{sku}}\" dibuat",
+      "created": "Produk \"{{productCode}}\" dibuat",
       "uploadFailed": "Gagal mengunggah",
       "tooManyImages": "Hanya {{max}} gambar yang diizinkan",
       "keptFirst": "Menyimpan {{room}} yang pertama.",
-      "archived": "Produk \"{{sku}}\" diarsipkan",
+      "archived": "Produk \"{{productCode}}\" diarsipkan",
       "archiveFailed": "Gagal mengarsipkan",
-      "restored": "Produk \"{{sku}}\" dipulihkan",
-      "restoreFailed": "Gagal memulihkan",
+      "restored": "Produk \"{{productCode}}\" dikeluarkan dari arsip",
+      "restoreFailed": "Gagal mengeluarkan dari arsip",
       "lockFailed": "Gagal mengubah kunci"
     },
     "heading": "Produk",
@@ -753,7 +770,8 @@
       "crossTitle": "Penjualan Tim Lain",
       "crossDescription": "Apakah tim lain boleh menjual produk ini di pesanan mereka, dan berapa yang mereka bayar di atas modal Anda.",
       "skuPlaceholder": "Contoh: KOPI-250",
-      "skuTaken": "Kode produk ini sudah dipakai produk lain di tim ini — ubah dulu untuk menyimpan.",
+      "skuTaken": "Kode produk ini sudah dipakai produk lain, aktif maupun diarsipkan — ubah dulu untuk menyimpan.",
+      "skuFixedHelp": "Kode tim Anda dipasang di depan. Sisanya bisa dikoreksi selama produk belum pernah distok, dipesan, atau di-restock.",
       "back": "Kembali",
       "namePlaceholder": "Contoh: Kopi Arabika 250g",
       "descriptionPlaceholder": "Contoh: kopi arabika bubuk kemasan 250 g, sangrai medium, tahan 12 bulan",
@@ -770,7 +788,7 @@
       "active": "Aktif",
       "archived": "Arsip"
     },
-    "restore": "Pulihkan",
+    "restore": "Keluarkan dari Arsip",
     "emptyArchived": "Tidak ada produk yang diarsipkan.",
     "stat": {
       "ready": "Siap",
@@ -787,17 +805,17 @@
     },
     "archiveDialog": {
       "title": "Arsipkan Produk",
-      "message": "Arsipkan \"{{sku}}\"? Produk keluar dari katalog, pemilih produk, dan pesanan baru, lalu pindah ke tab Arsip. Bisa dipulihkan nanti.",
+      "message": "Arsipkan \"{{productCode}}\"? Produk keluar dari katalog, pemilih produk, dan pesanan baru, lalu pindah ke tab Arsip. Bisa dipulihkan nanti.",
       "confirmLabel": "Arsipkan"
     },
-    "restoreDialog": {
-      "title": "Pulihkan Produk",
-      "newSku": "Kode produk baru",
-      "newSkuHelp": "Pengarsipan membebaskan kode produk lama dan produk lain sudah memakainya. Beri kode produk yang belum dipakai untuk memulihkannya.",
-      "confirmLabel": "Pulihkan"
-    },
     "allWarehouses": "Semua gudang",
-    "archive": "Arsipkan"
+    "archive": "Arsipkan",
+    "delete": "Hapus",
+    "deleteDialog": {
+      "title": "Hapus Produk",
+      "message": "Hapus \"{{productCode}}\" selamanya? Hanya produk yang belum pernah distok, dipesan, atau di-restock yang bisa dihapus, dan kode produknya bebas lagi. Produk yang punya riwayat tetap diarsipkan.",
+      "confirmLabel": "Hapus"
+    }
   },
   "bundles": {
     "title": "Bundel",
@@ -1481,7 +1499,7 @@
       "actions": "Aksi",
       "itemsSummary_one": "{{count}} produk · {{pieces}} pcs",
       "itemsSummary_other": "{{count}} produk · {{pieces}} pcs",
-      "firstAndMore": "{{sku}} +{{count}} lainnya",
+      "firstAndMore": "{{productCode}} +{{count}} lainnya",
       "noProducts": "Tidak ada produk",
       "invoiceValue": "Faktur {{value}}",
       "missingBadge_one": "kurang {{count}}",
@@ -2309,6 +2327,7 @@
     "everyTeam": "Semua tim",
     "teamNumber": "Tim #{{id}}",
     "rangeInvalid": "Pilih tanggal awal dan akhir — angka ini butuh keduanya.",
+    "rangeTooLong": "Rentang itu mencakup {{days}} hari. Laporan membaca maksimal {{max}} hari — pilih paling lama setahun.",
     "productNumber": "Produk #{{id}}"
   },
   "supplierStats": {
@@ -2613,9 +2632,9 @@
     "cancel": "Batal",
     "countedOnHandError": "Stok terhitung harus nol atau bilangan bulat positif.",
     "placeRequiredError": "Pilih tempat yang Anda hitung — sebuah rak, atau tumpukan yang belum ditempatkan.",
-    "adjustedToast": "Menyesuaikan {{sku}} menjadi {{counted}} di tempat ini",
+    "adjustedToast": "Menyesuaikan {{productCode}} menjadi {{counted}} di tempat ini",
     "adjustStockTitle": "Sesuaikan Stok",
-    "adjustProductSummary": "{{name}} ({{sku}}) — {{onHand}} tersedia di seluruh tempat di gudang ini",
+    "adjustProductSummary": "{{name}} ({{productCode}}) — {{onHand}} tersedia di seluruh tempat di gudang ini",
     "placeCounted": "Tempat yang dihitung",
     "placeCountedHelper": "Rak yang Anda hitung, atau tumpukan yang belum ditempatkan.",
     "countedOnHand": "Stok terhitung",
@@ -2637,7 +2656,7 @@
     "move": "Pindahkan",
     "rowActions": "Aksi",
     "moveStockTitle": "Pindahkan Stok",
-    "moveProductSummary": "{{name}} ({{sku}}) — {{onHand}} tersedia di seluruh tempat di gudang ini",
+    "moveProductSummary": "{{name}} ({{productCode}}) — {{onHand}} tersedia di seluruh tempat di gudang ini",
     "moveFrom": "Dari",
     "moveFromHelper": "Tempat stok berada sekarang — sebuah rak, atau tumpukan yang belum ditempatkan.",
     "moveTo": "Ke",
@@ -2647,7 +2666,7 @@
     "moveReasonPlaceholder": "mis. penempatan barang, penataan ulang rak",
     "movePlacesRequiredError": "Pilih kedua tempat — lokasi stok sekarang, dan tujuannya.",
     "moveSamePlaceError": "Pilih dua tempat yang berbeda — pemindahan harus menuju tempat lain.",
-    "movedToast": "Memindahkan {{qty}} × {{sku}}",
+    "movedToast": "Memindahkan {{qty}} × {{productCode}}",
     "movement": {
       "when": "Waktu",
       "what": "Kegiatan",
@@ -3144,11 +3163,7 @@
     "total": "Total",
     "record": "Catat Biaya",
     "recordTitle": "Catat Biaya",
-    "editTitle": "Ubah Biaya",
     "save": "Simpan",
-    "edit": "Ubah",
-    "void": "Batalkan",
-    "voided": "Dibatalkan",
     "dateHelp": "Tanggal biaya ini termasuk — gaji dibayar tanggal 5 adalah biaya bulan lalu.",
     "table": {
       "date": "Tanggal",
@@ -3167,16 +3182,31 @@
       "any": "Semua jenis",
       "choose": "Pilih jenis"
     },
-    "voidDialog": {
-      "title": "Batalkan Catatan Biaya",
-      "message": "Biaya ini tidak lagi dihitung dalam total. Barisnya tetap terlihat agar pembatalannya jelas.",
-      "confirm": "Batalkan"
-    },
     "toast": {
       "recorded": "Biaya dicatat",
-      "updated": "Biaya diperbarui",
-      "voided": "Biaya dibatalkan",
-      "voidFailed": "Tidak dapat membatalkan biaya"
+      "adjusted": "Penyesuaian dicatat",
+      "cancelled": "Biaya dibatalkan",
+      "cancelFailed": "Tidak dapat membatalkan biaya"
+    },
+    "adjust": "Sesuaikan",
+    "adjustTitle": "Sesuaikan Biaya",
+    "adjustFor": "{{kind}} · {{date}} · kini terhitung {{now}}",
+    "adjustDirection": "Koreksi",
+    "adjustReduce": "Kurangi",
+    "adjustAdd": "Tambah",
+    "adjustAmount": "Sebesar",
+    "adjustAfter": "Setelah koreksi ini terhitung {{after}}.",
+    "adjustBelowZero": "Kini terhitung {{now}} — koreksi tidak boleh membuatnya di bawah 0.",
+    "adjustNotePlaceholder": "mis. tertulis 5.000.000, di tagihan 500.000",
+    "adjustSave": "Simpan Penyesuaian",
+    "adjustment": "Penyesuaian",
+    "netNow": "kini {{net}}",
+    "cancel": "Batalkan",
+    "cancelNote": "Dibatalkan",
+    "cancelDialog": {
+      "title": "Batalkan Biaya",
+      "message": "Penyesuaian minus {{net}} dicatat pada tanggal yang sama, sehingga biaya ini tidak lagi terhitung. Kedua baris tetap terlihat.",
+      "confirm": "Batalkan"
     }
   },
   "opname": {
@@ -3226,6 +3256,7 @@
     "openReport": "Laporan",
     "selectTeam": "Pilih tim untuk melihat laporan penyelesaiannya.",
     "rangeInvalid": "Pilih tanggal awal dan akhir — laporan membutuhkan keduanya.",
+    "rangeTooLong": "Rentang itu mencakup {{days}} hari. Laporan membaca maksimal {{max}} hari — pilih paling lama setahun.",
     "sales": "Harga jual",
     "salesHint": "Yang dibayar pembeli, setelah pembatalan",
     "received": "Diterima",
@@ -4276,7 +4307,7 @@
       "noProducts": "Tidak ada produk",
       "itemsSummary_one": "{{count}} produk · {{pieces}} pcs",
       "itemsSummary_other": "{{count}} produk · {{pieces}} pcs",
-      "firstAndMore": "{{sku}} +{{count}} lainnya",
+      "firstAndMore": "{{productCode}} +{{count}} lainnya",
       "problemUnits_one": "{{count}} unit rusak atau kurang",
       "problemUnits_other": "{{count}} unit rusak atau kurang",
       "perPiece": "{{amount}} / pcs",
@@ -4870,6 +4901,7 @@
       "graph": "Grafik"
     },
     "rangeInvalid": "Tanggal mulai melewati tanggal akhir.",
+    "rangeTooLong": "Rentang itu mencakup {{days}} hari. Laporan membaca maksimal {{max}} hari — pilih paling lama setahun.",
     "empty": {
       "noMetric": "Tambahkan metrik untuk mulai — tiap metrik jadi kolom, dan tiap {{group}} jadi baris.",
       "noRows": "Tidak ada kejadian di periode ini."
@@ -4895,6 +4927,88 @@
         "label": "Filter produk dan supplier",
         "reason": "Isinya data contoh; filter aslinya mencari milik tim sendiri."
       }
+    }
+  },
+  "warehouseHours": {
+    "closedBadge": "Tutup",
+    "closed": "Sedang tutup — pesanan tetap dicatat, dan diproses saat gudang buka.",
+    "closedUntil": "Sedang tutup — pesanan tetap dicatat, dan diproses mulai {{next}} WIB.",
+    "closedFor": "Tutup karena {{reason}} — pesanan tetap dicatat, dan diproses saat gudang buka.",
+    "closedForUntil": "Tutup karena {{reason}} — pesanan tetap dicatat, dan diproses mulai {{next}} WIB.",
+    "closuresTitle": "Hari Tutup",
+    "closuresHelp": "Hari gudang tutup di luar jam mingguannya — hari raya, stock opname. Pesanan pada hari itu tetap dicatat; formulir memberi tahu kapan diproses.",
+    "closuresEmpty": "Tidak ada hari tutup ke depan.",
+    "firstDay": "Hari pertama",
+    "lastDay": "Hari terakhir",
+    "reason": "Alasan",
+    "reasonPlaceholder": "mis. Idul Fitri",
+    "addClosure": "Tambah Hari Tutup",
+    "closureAdded": "Hari tutup ditambahkan",
+    "closureAddFailed": "Gagal menambah hari tutup",
+    "closureDeleted": "Hari tutup dihapus",
+    "closureDeleteFailed": "Gagal menghapus hari tutup",
+    "closureDeleteTitle": "Hapus Hari Tutup",
+    "closureDeleteMessage": "Hapus hari tutup \"{{reason}}\"? Pesanan pada hari itu tidak lagi diberi peringatan.",
+    "closureDeleteConfirm": "Hapus"
+  },
+  "agents": {
+    "title": "Agen AI",
+    "row": {
+      "span": "Terhubung {{connected}} · Berakhir {{expires}}",
+      "lastUsed": "Terakhir dipakai {{lastUsed}}",
+      "never": "belum pernah",
+      "revoke": "Cabut",
+      "revokeTitle": "Cabut {{name}}?",
+      "revokeMessage": "{{client}} langsung berhenti membaca data Anda. Untuk memakainya lagi, hubungkan ulang dari {{client}}.",
+      "revoked": "{{name}} dicabut",
+      "revokeFailed": "Koneksi gagal dicabut",
+      "teamNumber": "Tim #{{id}}"
+    },
+    "connect": {
+      "titleGeneric": "Hubungkan Agen AI",
+      "title": "Hubungkan {{client}}",
+      "lead": "{{client}} ingin membaca data Anda.",
+      "factReadOnly": "Hanya bisa membaca — tidak bisa menambah, mengubah, atau menghapus apa pun.",
+      "factBuyer": "Pesanan sampai ke {{client}} utuh — termasuk nama, telepon, dan alamat pembeli.",
+      "factDays": "Koneksi berlaku 90 hari; setelah itu hubungkan lagi.",
+      "factRevoke": "Bisa dicabut kapan saja dari Profil Anda.",
+      "team": "Tim",
+      "teamPlaceholder": "Pilih tim yang dibaca",
+      "noTeamFound": "Tim tidak ditemukan",
+      "everyTeam": "Semua tim",
+      "everyTeamHint": "Jangkauan Root — membaca semua tim",
+      "everyTeamHelper": "Membaca semua tim di bisnis ini, seperti Root. Tetap hanya membaca.",
+      "notAllowedTitle": "Pemilik belum mengizinkan anggota menghubungkan agen",
+      "notAllowedHint": "Minta pemilik {{team}} menyalakannya di Pengaturan tim.",
+      "name": "Nama koneksi",
+      "namePlaceholder": "Contoh: ChatGPT, laptop Heri",
+      "nameHelper": "Nama ini tampil di Profil Anda.",
+      "failed": "Gagal menghubungkan",
+      "deny": "Tolak",
+      "allow": "Izinkan",
+      "teamsFailed": "Tim Anda gagal dimuat",
+      "invalidTitle": "Tautan koneksi ini tidak valid",
+      "invalidHint": "Tidak ada yang terhubung. Mulai lagi dari agennya — tambahkan atau hubungkan ulang konektornya di ChatGPT atau Claude.",
+      "goToApp": "Buka Aplikasi"
+    },
+    "profile": {
+      "hint": "Agen yang Anda hubungkan membaca data dengan kredensialnya sendiri — hanya membaca, selama 90 hari. Mencabut satu agen tidak mengeluarkan Anda dari sesi lain.",
+      "emptyTitle": "Belum ada agen yang terhubung",
+      "emptyHint": "Hubungkan ChatGPT atau Claude dengan URL di bawah.",
+      "howTitle": "Hubungkan Agen",
+      "howHint": "Di ChatGPT atau Claude, tambahkan custom connector dengan URL ini:"
+    },
+    "team": {
+      "hint": "Agen mengirim yang dibacanya — termasuk nama, telepon, dan alamat pembeli — ke penyedianya. Pemilik dan admin boleh menghubungkan agen; CS dan staf hanya bila ini menyala.",
+      "membersMayConnect": "CS dan staf boleh menghubungkan agen",
+      "membersOn": "CS dan staf kini boleh menghubungkan agen",
+      "membersOff": "Kini hanya pemilik dan admin yang boleh menghubungkan agen",
+      "policyFailed": "Pengaturan gagal disimpan",
+      "listTitle": "Koneksi yang Membaca Tim Ini",
+      "listHint": "Siapa pun yang menghubungkannya. Koneksi Root untuk semua tim tidak tercantum di sini.",
+      "connectedBy": "Dihubungkan oleh {{name}}",
+      "emptyTitle": "Belum ada agen yang membaca tim ini",
+      "emptyHint": "Anggota menghubungkannya dari ChatGPT atau Claude, lalu koneksinya tampil di sini."
     }
   }
 }

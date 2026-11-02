@@ -61,6 +61,9 @@ const (
 	// LiabilityPaymentServiceLiabilityPaymentListProcedure is the fully-qualified name of the
 	// LiabilityPaymentService's LiabilityPaymentList RPC.
 	LiabilityPaymentServiceLiabilityPaymentListProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentList"
+	// LiabilityPaymentServiceLiabilityPaymentRequestSendProcedure is the fully-qualified name of the
+	// LiabilityPaymentService's LiabilityPaymentRequestSend RPC.
+	LiabilityPaymentServiceLiabilityPaymentRequestSendProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentRequestSend"
 	// LiabilityTermsServiceLiabilityTermsListProcedure is the fully-qualified name of the
 	// LiabilityTermsService's LiabilityTermsList RPC.
 	LiabilityTermsServiceLiabilityTermsListProcedure = "/warehouse.liability.v1.LiabilityTermsService/LiabilityTermsList"
@@ -103,24 +106,28 @@ func NewLiabilityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+LiabilityServiceLiabilityPositionListProcedure,
 			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityPositionList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		liabilityLogList: connect.NewClient[v1.LiabilityLogListRequest, v1.LiabilityLogListResponse](
 			httpClient,
 			baseURL+LiabilityServiceLiabilityLogListProcedure,
 			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityLogList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		liabilityDaily: connect.NewClient[v1.LiabilityDailyRequest, v1.LiabilityDailyResponse](
 			httpClient,
 			baseURL+LiabilityServiceLiabilityDailyProcedure,
 			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityDaily")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		liabilityCreditByIds: connect.NewClient[v1.LiabilityCreditByIdsRequest, v1.LiabilityCreditByIdsResponse](
 			httpClient,
 			baseURL+LiabilityServiceLiabilityCreditByIdsProcedure,
 			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityCreditByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -179,24 +186,28 @@ func NewLiabilityServiceHandler(svc LiabilityServiceHandler, opts ...connect.Han
 		LiabilityServiceLiabilityPositionListProcedure,
 		svc.LiabilityPositionList,
 		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityPositionList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	liabilityServiceLiabilityLogListHandler := connect.NewUnaryHandler(
 		LiabilityServiceLiabilityLogListProcedure,
 		svc.LiabilityLogList,
 		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityLogList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	liabilityServiceLiabilityDailyHandler := connect.NewUnaryHandler(
 		LiabilityServiceLiabilityDailyProcedure,
 		svc.LiabilityDaily,
 		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityDaily")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	liabilityServiceLiabilityCreditByIdsHandler := connect.NewUnaryHandler(
 		LiabilityServiceLiabilityCreditByIdsProcedure,
 		svc.LiabilityCreditByIds,
 		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityCreditByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.liability.v1.LiabilityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -241,6 +252,10 @@ type LiabilityPaymentServiceClient interface {
 	LiabilityPaymentConfirm(context.Context, *connect.Request[v1.LiabilityPaymentConfirmRequest]) (*connect.Response[v1.LiabilityPaymentConfirmResponse], error)
 	LiabilityPaymentReject(context.Context, *connect.Request[v1.LiabilityPaymentRejectRequest]) (*connect.Response[v1.LiabilityPaymentRejectResponse], error)
 	LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error)
+	// A CREDITOR asks its debtor to pay (a-creditor-may-request-payment): a notice that POSTS NOTHING and BLOCKS NOTHING. Payment still starts
+	// with the debtor, through LiabilityPaymentRecord. Sending again replaces the request; the debtor recording a
+	// payment to that creditor clears it.
+	LiabilityPaymentRequestSend(context.Context, *connect.Request[v1.LiabilityPaymentRequestSendRequest]) (*connect.Response[v1.LiabilityPaymentRequestSendResponse], error)
 }
 
 // NewLiabilityPaymentServiceClient constructs a client for the
@@ -277,6 +292,13 @@ func NewLiabilityPaymentServiceClient(httpClient connect.HTTPClient, baseURL str
 			httpClient,
 			baseURL+LiabilityPaymentServiceLiabilityPaymentListProcedure,
 			connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		liabilityPaymentRequestSend: connect.NewClient[v1.LiabilityPaymentRequestSendRequest, v1.LiabilityPaymentRequestSendResponse](
+			httpClient,
+			baseURL+LiabilityPaymentServiceLiabilityPaymentRequestSendProcedure,
+			connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentRequestSend")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -284,10 +306,11 @@ func NewLiabilityPaymentServiceClient(httpClient connect.HTTPClient, baseURL str
 
 // liabilityPaymentServiceClient implements LiabilityPaymentServiceClient.
 type liabilityPaymentServiceClient struct {
-	liabilityPaymentRecord  *connect.Client[v1.LiabilityPaymentRecordRequest, v1.LiabilityPaymentRecordResponse]
-	liabilityPaymentConfirm *connect.Client[v1.LiabilityPaymentConfirmRequest, v1.LiabilityPaymentConfirmResponse]
-	liabilityPaymentReject  *connect.Client[v1.LiabilityPaymentRejectRequest, v1.LiabilityPaymentRejectResponse]
-	liabilityPaymentList    *connect.Client[v1.LiabilityPaymentListRequest, v1.LiabilityPaymentListResponse]
+	liabilityPaymentRecord      *connect.Client[v1.LiabilityPaymentRecordRequest, v1.LiabilityPaymentRecordResponse]
+	liabilityPaymentConfirm     *connect.Client[v1.LiabilityPaymentConfirmRequest, v1.LiabilityPaymentConfirmResponse]
+	liabilityPaymentReject      *connect.Client[v1.LiabilityPaymentRejectRequest, v1.LiabilityPaymentRejectResponse]
+	liabilityPaymentList        *connect.Client[v1.LiabilityPaymentListRequest, v1.LiabilityPaymentListResponse]
+	liabilityPaymentRequestSend *connect.Client[v1.LiabilityPaymentRequestSendRequest, v1.LiabilityPaymentRequestSendResponse]
 }
 
 // LiabilityPaymentRecord calls
@@ -313,6 +336,12 @@ func (c *liabilityPaymentServiceClient) LiabilityPaymentList(ctx context.Context
 	return c.liabilityPaymentList.CallUnary(ctx, req)
 }
 
+// LiabilityPaymentRequestSend calls
+// warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend.
+func (c *liabilityPaymentServiceClient) LiabilityPaymentRequestSend(ctx context.Context, req *connect.Request[v1.LiabilityPaymentRequestSendRequest]) (*connect.Response[v1.LiabilityPaymentRequestSendResponse], error) {
+	return c.liabilityPaymentRequestSend.CallUnary(ctx, req)
+}
+
 // LiabilityPaymentServiceHandler is an implementation of the
 // warehouse.liability.v1.LiabilityPaymentService service.
 type LiabilityPaymentServiceHandler interface {
@@ -320,6 +349,10 @@ type LiabilityPaymentServiceHandler interface {
 	LiabilityPaymentConfirm(context.Context, *connect.Request[v1.LiabilityPaymentConfirmRequest]) (*connect.Response[v1.LiabilityPaymentConfirmResponse], error)
 	LiabilityPaymentReject(context.Context, *connect.Request[v1.LiabilityPaymentRejectRequest]) (*connect.Response[v1.LiabilityPaymentRejectResponse], error)
 	LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error)
+	// A CREDITOR asks its debtor to pay (a-creditor-may-request-payment): a notice that POSTS NOTHING and BLOCKS NOTHING. Payment still starts
+	// with the debtor, through LiabilityPaymentRecord. Sending again replaces the request; the debtor recording a
+	// payment to that creditor clears it.
+	LiabilityPaymentRequestSend(context.Context, *connect.Request[v1.LiabilityPaymentRequestSendRequest]) (*connect.Response[v1.LiabilityPaymentRequestSendResponse], error)
 }
 
 // NewLiabilityPaymentServiceHandler builds an HTTP handler from the service implementation. It
@@ -351,6 +384,13 @@ func NewLiabilityPaymentServiceHandler(svc LiabilityPaymentServiceHandler, opts 
 		LiabilityPaymentServiceLiabilityPaymentListProcedure,
 		svc.LiabilityPaymentList,
 		connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	liabilityPaymentServiceLiabilityPaymentRequestSendHandler := connect.NewUnaryHandler(
+		LiabilityPaymentServiceLiabilityPaymentRequestSendProcedure,
+		svc.LiabilityPaymentRequestSend,
+		connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentRequestSend")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.liability.v1.LiabilityPaymentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -363,6 +403,8 @@ func NewLiabilityPaymentServiceHandler(svc LiabilityPaymentServiceHandler, opts 
 			liabilityPaymentServiceLiabilityPaymentRejectHandler.ServeHTTP(w, r)
 		case LiabilityPaymentServiceLiabilityPaymentListProcedure:
 			liabilityPaymentServiceLiabilityPaymentListHandler.ServeHTTP(w, r)
+		case LiabilityPaymentServiceLiabilityPaymentRequestSendProcedure:
+			liabilityPaymentServiceLiabilityPaymentRequestSendHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -386,6 +428,10 @@ func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentReject(contex
 
 func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList is not implemented"))
+}
+
+func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentRequestSend(context.Context, *connect.Request[v1.LiabilityPaymentRequestSendRequest]) (*connect.Response[v1.LiabilityPaymentRequestSendResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend is not implemented"))
 }
 
 // LiabilityTermsServiceClient is a client for the warehouse.liability.v1.LiabilityTermsService
@@ -416,6 +462,7 @@ func NewLiabilityTermsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			httpClient,
 			baseURL+LiabilityTermsServiceLiabilityTermsListProcedure,
 			connect.WithSchema(liabilityTermsServiceMethods.ByName("LiabilityTermsList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		liabilityTermsSet: connect.NewClient[v1.LiabilityTermsSetRequest, v1.LiabilityTermsSetResponse](
@@ -434,6 +481,7 @@ func NewLiabilityTermsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			httpClient,
 			baseURL+LiabilityTermsServiceLiabilityTermsHistoryListProcedure,
 			connect.WithSchema(liabilityTermsServiceMethods.ByName("LiabilityTermsHistoryList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -491,6 +539,7 @@ func NewLiabilityTermsServiceHandler(svc LiabilityTermsServiceHandler, opts ...c
 		LiabilityTermsServiceLiabilityTermsListProcedure,
 		svc.LiabilityTermsList,
 		connect.WithSchema(liabilityTermsServiceMethods.ByName("LiabilityTermsList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	liabilityTermsServiceLiabilityTermsSetHandler := connect.NewUnaryHandler(
@@ -509,6 +558,7 @@ func NewLiabilityTermsServiceHandler(svc LiabilityTermsServiceHandler, opts ...c
 		LiabilityTermsServiceLiabilityTermsHistoryListProcedure,
 		svc.LiabilityTermsHistoryList,
 		connect.WithSchema(liabilityTermsServiceMethods.ByName("LiabilityTermsHistoryList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.liability.v1.LiabilityTermsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

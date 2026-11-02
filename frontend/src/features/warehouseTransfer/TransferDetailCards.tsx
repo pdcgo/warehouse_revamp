@@ -268,7 +268,7 @@ function LineRow({
         <Stack gap="0">
           <Span fontWeight="medium">{item.name}</Span>
           <Span fontSize="xs" color="fg.muted">
-            {item.sku}
+            {item.productCode}
           </Span>
           {note && (
             <Span fontSize="xs" color="warning.fg">

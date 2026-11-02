@@ -74,16 +74,28 @@ service UserService {
   // who did it, and when (every-role-change-is-logged). Newest first.
   //
   // ⚠ CONTRACT ONLY — the handler answers Unimplemented until the log table exists.
-  rpc TeamMemberLogList(TeamMemberLogListRequest) returns (TeamMemberLogListResponse);
+  rpc TeamMemberLogList(TeamMemberLogListRequest) returns (TeamMemberLogListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // UserList — paginated, team-scoped.
-  rpc UserList(UserListRequest) returns (UserListResponse);
+  rpc UserList(UserListRequest) returns (UserListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // UserByIDs bulk-resolves users by id, for turning an id into a name.
   rpc UserByIDs(UserByIDsRequest) returns (UserByIDsResponse);
 
   // SearchUser finds users ACROSS teams — needed to add someone who is not in your team yet.
-  rpc SearchUser(SearchUserRequest) returns (SearchUserResponse);
+  rpc SearchUser(SearchUserRequest) returns (SearchUserResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // PublicUser is the shape shown to any authenticated caller: NO email, NO phone.
@@ -864,4 +876,9 @@ message RoleResolveResponse {
   // for up to the token's whole lifetime. A suspension that does not cut off live sessions is
   // not a suspension.
   bool suspended = 3;
+
+  // The caller's ADMIN-TEAM role — ROLE_ADMIN_OWNER or ROLE_ADMIN_ADMINISTRATOR, held in any team (both exist only in
+  // admin-type teams), or ROLE_UNSPECIFIED. It is what lets the admin team monitor a team it is not in: a marked read
+  // passes, and nothing else does (the-admin-team-monitors-read-only).
+  warehouse.role_base.v1.Role admin_team_role = 4;
 }

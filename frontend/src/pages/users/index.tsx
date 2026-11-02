@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { isGlobalAdmin, managesMembers } from "../../lib/roles";
 import { AddMemberDialog } from "../../features/users/AddMemberDialog";
 import { MemberLog } from "./components/MemberLog";
@@ -45,7 +45,7 @@ export function UsersPage() {
           <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         )}
         <Spacer />
-        {manager && teamScoped && <AddMemberDialog />}
+        {manager && teamScoped && canWrite(current) && <AddMemberDialog />}
       </Flex>
 
       {/* lazyMount + unmountOnExit: only the visible tab is mounted, so exactly one list is fetched and

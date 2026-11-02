@@ -28,8 +28,16 @@ service OrderDraftService {
 
   // Reading drafts (#192) — used by our UI and by the app that pushed them (§6.6). Both narrow to
   // the AUTHOR, in addition to the team scope.
-  rpc OrderDraftList(OrderDraftListRequest) returns (OrderDraftListResponse);
-  rpc OrderDraftDetail(OrderDraftDetailRequest) returns (OrderDraftDetailResponse);
+  rpc OrderDraftList(OrderDraftListRequest) returns (OrderDraftListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc OrderDraftDetail(OrderDraftDetailRequest) returns (OrderDraftDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The human edit path (#193). ALWAYS WINS, and marks every field it writes as touched — which is
   // what OrderDraftPush then refuses to overwrite.

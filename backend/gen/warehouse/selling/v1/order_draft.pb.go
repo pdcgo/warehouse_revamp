@@ -1779,11 +1779,11 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"&ORDER_DRAFT_LIST_DATA_TYPE_ORDER_DRAFT\x10\x02*V\n" +
 	"\x11OrderDraftRowSort\x12$\n" +
 	" ORDER_DRAFT_ROW_SORT_UNSPECIFIED\x10\x00\x12\x1b\n" +
-	"\x17ORDER_DRAFT_ROW_SORT_ID\x10\x012\xc6\x04\n" +
+	"\x17ORDER_DRAFT_ROW_SORT_ID\x10\x012\xd0\x04\n" +
 	"\x11OrderDraftService\x12k\n" +
-	"\x0eOrderDraftPush\x12+.warehouse.selling.v1.OrderDraftPushRequest\x1a,.warehouse.selling.v1.OrderDraftPushResponse\x12k\n" +
-	"\x0eOrderDraftList\x12+.warehouse.selling.v1.OrderDraftListRequest\x1a,.warehouse.selling.v1.OrderDraftListResponse\x12q\n" +
-	"\x10OrderDraftDetail\x12-.warehouse.selling.v1.OrderDraftDetailRequest\x1a..warehouse.selling.v1.OrderDraftDetailResponse\x12q\n" +
+	"\x0eOrderDraftPush\x12+.warehouse.selling.v1.OrderDraftPushRequest\x1a,.warehouse.selling.v1.OrderDraftPushResponse\x12p\n" +
+	"\x0eOrderDraftList\x12+.warehouse.selling.v1.OrderDraftListRequest\x1a,.warehouse.selling.v1.OrderDraftListResponse\"\x03\x90\x02\x01\x12v\n" +
+	"\x10OrderDraftDetail\x12-.warehouse.selling.v1.OrderDraftDetailRequest\x1a..warehouse.selling.v1.OrderDraftDetailResponse\"\x03\x90\x02\x01\x12q\n" +
 	"\x10OrderDraftUpdate\x12-.warehouse.selling.v1.OrderDraftUpdateRequest\x1a..warehouse.selling.v1.OrderDraftUpdateResponse\x12q\n" +
 	"\x10OrderDraftDelete\x12-.warehouse.selling.v1.OrderDraftDeleteRequest\x1a..warehouse.selling.v1.OrderDraftDeleteResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 

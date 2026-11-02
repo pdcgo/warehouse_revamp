@@ -33,6 +33,7 @@ func (s *Service) ExpenseCreate(
 		OccurredAt: occurred,
 		Note:       req.Msg.GetNote(),
 		CreatedBy:  actorFrom(ctx),
+		IsOverride: overrideFrom(ctx),
 	}
 
 	err = s.db.WithContext(ctx).Create(&row).Error
@@ -40,5 +41,6 @@ func (s *Service) ExpenseCreate(
 		return nil, costErr(err)
 	}
 
-	return connect.NewResponse(&expensev1.ExpenseCreateResponse{Expense: costToProto(&row)}), nil
+	// A new expense has no adjustments yet: it counts for its own amount.
+	return connect.NewResponse(&expensev1.ExpenseCreateResponse{Expense: costToProto(&row, row.Amount)}), nil
 }

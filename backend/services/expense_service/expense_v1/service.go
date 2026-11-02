@@ -36,18 +36,27 @@ func NewService(db *gorm.DB) *Service {
 // hour the rent was paid, and a timestamp would invite a timezone question that has no answer here.
 const dateLayout = "2006-01-02"
 
-var errBadDate = errors.New("a date must be YYYY-MM-DD")
+var (
+	errBadDate     = errors.New("a date must be YYYY-MM-DD")
+	errCostMissing = errors.New("cost not found")
+	// An adjustment corrects an EXPENSE. A mistaken adjustment is fixed by a second one on the same expense, so the
+	// corrections never form a chain somebody has to walk to find the number.
+	errAdjustsAnAdjustment = errors.New("an adjustment corrects an expense, never another adjustment")
+	// A correction cannot turn a cost into income: an expense and its adjustments never sum below 0.
+	errBelowZero      = errors.New("the correction would take the expense below 0")
+	errZeroCorrection = errors.New("a correction of 0 corrects nothing")
+)
 
 func costErr(err error) error {
 	switch {
-	case errors.Is(err, errBadDate):
-		return connect.NewError(connect.CodeInvalidArgument, errBadDate)
+	case errors.Is(err, errBadDate), errors.Is(err, errZeroCorrection):
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		// NotFound, never PermissionDenied: another team's cost must be indistinguishable from one that
 		// does not exist, or the error itself confirms the id.
 		return connect.NewError(connect.CodeNotFound, errCostMissing)
-	case errors.Is(err, errCostVoided):
-		return connect.NewError(connect.CodeFailedPrecondition, errCostVoided)
+	case errors.Is(err, errAdjustsAnAdjustment), errors.Is(err, errBelowZero):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
 	}
@@ -80,17 +89,61 @@ func actorFrom(ctx context.Context) uint64 {
 	return identity.GetIdentityId()
 }
 
-func costToProto(c *expense_service_models.ExpenseRecord) *expensev1.ExpenseRecord {
-	return &expensev1.ExpenseRecord{
-		Id:            c.ID,
-		TeamId:        c.TeamID,
-		ShopId:        c.ShopID,
-		Kind:          expensev1.ExpenseKind(c.Kind),
-		Amount:        c.Amount,
-		OccurredAt:    c.OccurredAt.Format(dateLayout),
-		Note:          c.Note,
-		CreatedBy:     c.CreatedBy,
-		Voided:        c.VoidedAt != nil,
-		CreatedAtUnix: c.CreatedAt.Unix(),
+// overrideFrom is whether actorFrom is Root or the Administrator typing inside a team they hold no role in — through
+// the root-team bypass, not a membership (an-override-is-stamped-in-every-service). Stamped beside created_by.
+func overrideFrom(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
+}
+
+// costToProto is one row on the wire. `net` is what an EXPENSE counts for after its adjustments; an adjustment
+// carries none.
+func costToProto(c *expense_service_models.ExpenseRecord, net int64) *expensev1.ExpenseRecord {
+	if c.AdjustsExpenseID != 0 {
+		net = 0
 	}
+
+	return &expensev1.ExpenseRecord{
+		Id:               c.ID,
+		TeamId:           c.TeamID,
+		ShopId:           c.ShopID,
+		Kind:             expensev1.ExpenseKind(c.Kind),
+		Amount:           c.Amount,
+		OccurredAt:       c.OccurredAt.Format(dateLayout),
+		Note:             c.Note,
+		CreatedBy:        c.CreatedBy,
+		CreatedAtUnix:    c.CreatedAt.Unix(),
+		AdjustsExpenseId: c.AdjustsExpenseID,
+		NetAmount:        net,
+	}
+}
+
+// adjustedSums is Σ the adjustments of each given expense — what to add to its amount for its net. An expense with none
+// is absent, which reads as 0.
+func adjustedSums(db *gorm.DB, expenseIDs []uint64) (map[uint64]int64, error) {
+	out := make(map[uint64]int64, len(expenseIDs))
+	if len(expenseIDs) == 0 {
+		return out, nil
+	}
+
+	var rows []struct {
+		AdjustsExpenseID uint64
+		Sum              int64
+	}
+
+	err := db.
+		Model(&expense_service_models.ExpenseRecord{}).
+		Select("adjusts_expense_id, COALESCE(SUM(amount), 0) AS sum").
+		Where("adjusts_expense_id IN ?", expenseIDs).
+		Group("adjusts_expense_id").
+		Scan(&rows).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range rows {
+		out[r.AdjustsExpenseID] = r.Sum
+	}
+
+	return out, nil
 }

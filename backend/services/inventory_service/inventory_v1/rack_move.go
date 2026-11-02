@@ -35,6 +35,7 @@ func (s *Service) RackMove(
 		WarehouseID:     warehouseID,
 		FromPlacementID: msg.GetFromRackId(),
 		ActorID:         actorFrom(ctx),
+		IsOverride:      overrideFrom(ctx),
 		Description:     msg.GetDescription(),
 	}
 

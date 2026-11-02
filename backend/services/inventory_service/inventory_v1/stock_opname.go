@@ -75,6 +75,7 @@ func (s *Service) StockOpname(
 			WarehouseID: warehouseID,
 			PlacementID: rackID,
 			ActorID:     actor,
+			IsOverride:  overrideFrom(ctx),
 			Description: req.Msg.GetNote(),
 		}
 

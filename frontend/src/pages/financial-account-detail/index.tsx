@@ -17,7 +17,7 @@ import { ProviderBadge } from "../../features/financialAccount/badges";
 import { useAccountBalances, useAccountLogs, useFinancialAccount } from "../../features/financialAccount/queries";
 import { CHANGE_TYPES, TYPE_KEY, accountName, isUnknown, withShopNames } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { toDateInputValue } from "../../lib/datetime";
@@ -110,7 +110,7 @@ export function FinancialAccountDetailPage() {
   const b = balances.data?.get(id);
   const archived = account.status === FinancialAccountStatus.ARCHIVED;
   const unknown = isUnknown(account);
-  const canMove = canMoveAccountMoney(current.role);
+  const canMove = canWrite(current) && canMoveAccountMoney(current.role);
   const nameOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId)?.name;
   const shopName = (shopId: bigint) => nameOf(shopId) ?? `#${shopId}`;
   const shopOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId);

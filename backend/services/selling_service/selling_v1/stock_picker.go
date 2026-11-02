@@ -103,7 +103,7 @@ func stockRef(orderID uint64) string {
 }
 
 // pickLines turns an order's lines into the picker's terms. Deliberately a translation rather than a
-// shared type: selling_service's idea of a line carries money and a sku snapshot, and inventory has no
+// shared type: selling_service's idea of a line carries money and a product code snapshot, and inventory has no
 // business with either — it needs to know what to take and how much.
 func pickLines(items []*sellingv1.OrderItem) []PickLine {
 	out := make([]PickLine, 0, len(items))

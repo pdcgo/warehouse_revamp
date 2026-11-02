@@ -22,8 +22,8 @@ func courierOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64, 
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", ShippingCode: courier,
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: qty},
-			{ProductId: 2, Sku: "SKU2", Name: "Gadget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: qty},
+			{ProductId: 2, ProductCode: "SKU2", Name: "Gadget", Quantity: 1},
 		},
 	}))
 	if err != nil {

@@ -44,7 +44,7 @@ export function RestockItemsCell({
   // exactly what ProductLine wants — the per-piece figure is derived there.
   const lines: ProductLine[] = items.map((item) => ({
     id: item.id.toString(),
-    sku: item.sku,
+    productCode: item.productCode,
     name: item.name,
     quantity: item.count,
     // Restock money is still whole rupiah on the wire until it turns `double` (money-is-double-in-the-api-too).
@@ -65,13 +65,13 @@ export function RestockItemsCell({
 
       {rest.length === 0 ? (
         <Span fontSize="xs" color="fg.muted" lineClamp={1}>
-          {first.sku}
+          {first.productCode}
         </Span>
       ) : (
         <ProductLinesPopover
           lines={lines}
           showPrices={showPrices}
-          label={t("restock.table.firstAndMore", { sku: first.sku, count: rest.length })}
+          label={t("restock.table.firstAndMore", { productCode: first.productCode, count: rest.length })}
           testId="restock-items"
         />
       )}

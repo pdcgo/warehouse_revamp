@@ -398,8 +398,12 @@ flowchart LR
 | the proto | the two RPCs move to `warehouse.warehouse.v1`, their policies unchanged |
 | what it unblocks | [what-does-a-closed-day-actually-do](./context_clarify.md#question) — the hours then have one owner to read them from |
 
-⛔ **Not built.** `warehouse_infos` and its two RPCs are still `team_service`'s
-([warehouse_info_update.go](../../../../backend/services/team_service/team_v1/warehouse_info_update.go)).
+✅ **Built 2026-11-02.** `WarehouseInfoService` in [warehouse_info.proto](../../../../proto/warehouse/warehouse/v1/warehouse_info.proto)
+serves `WarehouseInfoDetail` / `WarehouseInfoUpdate`, policies unchanged; warehouse migration `00002` creates
+`warehouse_infos` (keyed `warehouse_id`), team migration `00010` drops team's; the warehouse edit page and the team
+detail read the new client. ⚠ my build detail: it no longer asks whether a team IS a warehouse — that would read
+team_service's table — so the update is gated by a warehouse role alone, which exists only on a warehouse team, and a
+team with no profile reads as closed every day.
 
 ## a-closed-day-warns-and-never-refuses
 
@@ -437,7 +441,12 @@ flowchart LR
 | who reads the hours | `warehouse_service`, once the profile has moved there ([the-warehouse-profile-lives-in-warehouse-service](#the-warehouse-profile-lives-in-warehouse-service)) |
 | one-off closures | still open — [are-there-one-off-closures](./context_clarify.md#question): a holiday list would only add a reason to the warning |
 
-⛔ **Not built.** Nothing reads either grid today; the order form shows no closure.
+✅ **Built 2026-11-02.** `WarehouseReceivingStatus` answers per warehouse — receiving now, or the next opening and a
+closure's reason, in Asia/Jakarta, looking 60 days ahead ([receiving.go](../../../../backend/services/warehouse_service/warehouse_v1/receiving.go)).
+The order form's warehouse band says it under the picker — *"Closed for Idul Fitri — the order is still recorded, and
+handled from 7 Apr 08:00 WIB"* — and the picker badges a closed warehouse, still selectable; Save is never held for it.
+Tests: the grid and the closure cases as pure functions, the handler against Postgres, the `Features/Orders/WarehouseBand`
+stories.
 
 ## a-warehouse-records-its-holidays
 
@@ -472,7 +481,9 @@ flowchart LR
 | the next opening | the first slot of the weekly grid after the closure's last day |
 | refuses | nothing — it only changes the warning |
 
-⛔ **Not built.**
+✅ **Built 2026-11-02.** `warehouse_closures` (warehouse migration `00002`), `WarehouseClosureAdd` / `WarehouseClosureDelete`,
+the closures still to come on `WarehouseInfoDetail`, and a *Closures* card on the warehouse edit page — each added or
+deleted on its own, outside the hours form.
 
 ## one-warehouse-team-is-one-building
 

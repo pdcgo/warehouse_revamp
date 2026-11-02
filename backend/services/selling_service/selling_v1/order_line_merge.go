@@ -31,7 +31,7 @@ var errOrderLineTooMany = errors.New("a product's lines add up to more units tha
 // the take's, stamped by placeOrder after the merge — so two draft rows of one product at two marketplace prices merge
 // into one line and lose nothing. The prices stay on the draft's rows.
 //
-// ⚠ THE LABEL IS. Two lines of one product must agree on its sku and its name, which are stored as given on
+// ⚠ THE LABEL IS. Two lines of one product must agree on its product code and its name, which are stored as given on
 // OrderCreate. The form always sends them equal (the catalogue's label, per product) and Promote reads one snapshot per
 // product, so only a client sending one product under two labels meets this — and folding them would keep one label
 // and drop the other. That is refused, naming the product.
@@ -76,8 +76,8 @@ func mergeOrderLines(items []*sellingv1.OrderItem) ([]*sellingv1.OrderItem, erro
 // never the request's (#74, an-order-line-carries-no-marketplace-price).
 func lineDisagreement(a, b *sellingv1.OrderItem) string {
 	switch {
-	case a.GetSku() != b.GetSku():
-		return fmt.Sprintf("sku %q on one line, %q on the other", a.GetSku(), b.GetSku())
+	case a.GetProductCode() != b.GetProductCode():
+		return fmt.Sprintf("product code %q on one line, %q on the other", a.GetProductCode(), b.GetProductCode())
 	case a.GetName() != b.GetName():
 		return fmt.Sprintf("name %q on one line, %q on the other", a.GetName(), b.GetName())
 	}

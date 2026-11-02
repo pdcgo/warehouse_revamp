@@ -105,12 +105,14 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+ShopServiceShopListProcedure,
 			connect.WithSchema(shopServiceMethods.ByName("ShopList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shopDetail: connect.NewClient[v1.ShopDetailRequest, v1.ShopDetailResponse](
 			httpClient,
 			baseURL+ShopServiceShopDetailProcedure,
 			connect.WithSchema(shopServiceMethods.ByName("ShopDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shopUpdate: connect.NewClient[v1.ShopUpdateRequest, v1.ShopUpdateResponse](
@@ -129,6 +131,7 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+ShopServiceShopUserListProcedure,
 			connect.WithSchema(shopServiceMethods.ByName("ShopUserList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shopUserAdd: connect.NewClient[v1.ShopUserAddRequest, v1.ShopUserAddResponse](
@@ -153,6 +156,7 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+ShopServiceShopAccessCheckProcedure,
 			connect.WithSchema(shopServiceMethods.ByName("ShopAccessCheck")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shopByIds: connect.NewClient[v1.ShopByIdsRequest, v1.ShopByIdsResponse](
@@ -274,12 +278,14 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		ShopServiceShopListProcedure,
 		svc.ShopList,
 		connect.WithSchema(shopServiceMethods.ByName("ShopList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopDetailHandler := connect.NewUnaryHandler(
 		ShopServiceShopDetailProcedure,
 		svc.ShopDetail,
 		connect.WithSchema(shopServiceMethods.ByName("ShopDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopUpdateHandler := connect.NewUnaryHandler(
@@ -298,6 +304,7 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		ShopServiceShopUserListProcedure,
 		svc.ShopUserList,
 		connect.WithSchema(shopServiceMethods.ByName("ShopUserList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopUserAddHandler := connect.NewUnaryHandler(
@@ -322,6 +329,7 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		ShopServiceShopAccessCheckProcedure,
 		svc.ShopAccessCheck,
 		connect.WithSchema(shopServiceMethods.ByName("ShopAccessCheck")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopByIdsHandler := connect.NewUnaryHandler(

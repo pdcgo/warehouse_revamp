@@ -6,8 +6,9 @@ Money the business spent that **no order caused** (#161): ads budget, payroll, r
 
 The defining fact is that **a person typed it**. A revenue row is written by the system from an order
 and frozen; an expense row is entered by hand about a period. Everything else follows: the form has to
-be quick, the mistake has to be fixable (`ExpenseUpdate`), the row records **who** entered it, and a
-retraction is a **void**, never a delete.
+be quick, the mistake has to be fixable, and the row records **who** entered it. A mistake is fixed by a **new row**,
+an adjustment, never by an edit or a void ([every-correction-is-a-signed-adjustment](../../business/analytic/context_decision.md#every-correction-is-a-signed-adjustment)) — see
+[ExpenseAdjust](#expenseadjust--a-correction-is-a-row).
 
 Deliberately not here: per-order costs (COGS and shipping are frozen onto the order, #74), and any
 ledger — no balances, no double entry, the same call revenue made.
@@ -79,7 +80,7 @@ sequenceDiagram
     par one period, two services
         UI->>E: ExpenseDaily(team, from, to, kind, shop)
         E->>E: filtered() — the SAME WHERE ExpenseList builds
-        E->>E: GROUP BY occurred_at, kind — voided rows excluded
+        E->>E: GROUP BY occurred_at, kind — every row, adjustments with their sign
         E->>E: fold (day,kind) pairs into one item per day
         E-->>UI: SPARSE days + the period's ExpenseTotals
     and the income half, by team type
@@ -154,12 +155,43 @@ from "that day did not load".
 to get wrong. The revenue half buckets a `TIMESTAMPTZ` and has to name one; see
 `revenue_service/rpc.md` (removed with the service on 2026-08-29 — `git show 0d4cbc49^:docs/services/revenue_service/rpc.md`) for the UTC-vs-UTC+7 caveat that carries.
 
-### Voided rows
+### Adjustments count on their expense's day
 
-Excluded from every daily figure, exactly as they are from `ExpenseTotals`. The interesting case is a
-day whose **only** entry was voided: that day vanishes from the series rather than reading as a zero. A
-zero would assert somebody looked at the day and found nothing, which is a different claim from the day
-having no live entries at all.
+An adjustment copies its expense's day, so a day's total and the period's `ExpenseTotals` are the corrected figures
+with no special case ([an-adjustment-counts-on-the-day-it-fixes](../../business/analytic/context_decision.md#an-adjustment-counts-on-the-day-it-fixes)).
+A day whose only expense was cancelled reads **0, made of two entries** — something was entered and taken back, and the
+day says so. The list shows both rows, the expense with what it counts for now.
 
-The expense **list** still shows a voided row, struck through — an entry made and then withdrawn is
-exactly what somebody looking at a changed total wants to see. Only the money views drop it.
+## ExpenseAdjust — a correction is a row
+
+The one way to correct an expense ([every-correction-is-a-signed-adjustment](../../business/analytic/context_decision.md#every-correction-is-a-signed-adjustment)). The screen's
+**Adjust** sends the typed correction with its direction; **Batalkan** sends minus what the expense still counts for.
+
+```mermaid
+sequenceDiagram
+  participant UI as Expenses screen
+  participant E as expense_service
+  participant DB as expense_records
+  UI->>E: ExpenseAdjust(team, expense, signed amount, note)
+  E->>DB: SELECT the expense FOR UPDATE — scoped to the team
+  alt missing, or another team's
+    E-->>UI: NotFound
+  else it is itself an adjustment
+    E-->>UI: FailedPrecondition — correct the expense, not the correction
+  else
+    E->>DB: sum its adjustments
+    alt amount plus adjustments plus this one is below 0
+      E-->>UI: FailedPrecondition — a correction cannot make a cost income
+    else
+      E->>DB: INSERT the adjustment — the expense's team, shop, kind and day
+      E-->>UI: the adjustment, and the expense with its new net
+    end
+  end
+```
+
+| | |
+| --- | --- |
+| the lock | the expense row, for the check and the write — two people pressing Batalkan at once cannot both pass the floor |
+| `amount` | signed, never 0 (validated, and re-checked in the handler) |
+| `net_amount` | on an expense row in `ExpenseList` and in this response: its amount plus every adjustment of it |
+| events | none — expense_service publishes nothing yet; when it does, an adjustment publishes like any new row |

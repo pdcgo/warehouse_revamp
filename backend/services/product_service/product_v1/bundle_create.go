@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	productv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_service_models"
 )
 
@@ -34,6 +35,7 @@ func (s *Service) BundleCreate(
 		Name:            name,
 		Description:     strings.TrimSpace(req.Msg.GetDescription()),
 		CreatedByUserID: creator,
+		IsOverride:      san_auth.IsOverride(ctx),
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

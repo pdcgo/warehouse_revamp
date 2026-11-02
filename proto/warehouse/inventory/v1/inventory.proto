@@ -17,15 +17,27 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 // the thing a worker has a role in. `product_id` is an OPAQUE id owned by product_service — there
 // is no cross-service FK; it is resolved over RPC when a name is needed.
 service InventoryService {
-  rpc StockList(StockListRequest) returns (StockListResponse);
-  rpc StockHistory(StockHistoryRequest) returns (StockHistoryResponse);
+  rpc StockList(StockListRequest) returns (StockListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc StockHistory(StockHistoryRequest) returns (StockHistoryResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc StockAdjust(StockAdjustRequest) returns (StockAdjustResponse);
   // A STOCK OPNAME — count a whole shelf in one act, and correct every line of it together.
   rpc StockOpname(StockOpnameRequest) returns (StockOpnameResponse);
 
   // What an order's take WOULD find — the read half of OrderTransactionCreate, so the order form can show what it is
   // about to take before it takes it (#90): the product's batches in the warehouse, summed.
-  rpc StockAvailability(StockAvailabilityRequest) returns (StockAvailabilityResponse);
+  rpc StockAvailability(StockAvailabilityRequest) returns (StockAvailabilityResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // WHAT THIS WAREHOUSE CAN SELL — the paginated list behind the order form's product picker.
   //
@@ -33,46 +45,98 @@ service InventoryService {
   // stock in this building" — is a fact this service owns, and a filter has to be applied where the
   // paging happens. Filtering a catalogue page after it loads would show two rows out of ten while
   // the pager went on counting all ten.
-  rpc StockedProductList(StockedProductListRequest) returns (StockedProductListResponse);
+  rpc StockedProductList(StockedProductListRequest) returns (StockedProductListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // What products are WORTH on this warehouse's shelf — the average value of the units held. The rack valuation reads
   // it; no order does any more (an-order-is-costed-at-what-leaves-the-shelf — an order's cost is StockTakeQuote's).
-  rpc StockCost(StockCostRequest) returns (StockCostResponse);
+  rpc StockCost(StockCostRequest) returns (StockCostResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // What an order's take WOULD DRAW, before it draws it (an-order-is-costed-at-what-leaves-the-shelf): per line the
   // owner's batches oldest first, their cost, and whether there are enough — the take's own selection, read-only, so
   // the order form's preview and the cost the order freezes cannot be two rules.
-  rpc StockTakeQuote(StockTakeQuoteRequest) returns (StockTakeQuoteResponse);
+  rpc StockTakeQuote(StockTakeQuoteRequest) returns (StockTakeQuoteResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
-  rpc WarehouseProductList(WarehouseProductListRequest) returns (WarehouseProductListResponse);
+  rpc WarehouseProductList(WarehouseProductListRequest) returns (WarehouseProductListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Which shelves already hold a product (#156) — the put-away recommendation.
-  rpc ProductPlaces(ProductPlacesRequest) returns (ProductPlacesResponse);
+  rpc ProductPlaces(ProductPlacesRequest) returns (ProductPlacesResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
-  rpc StockPickLocations(StockPickLocationsRequest) returns (StockPickLocationsResponse);
+  rpc StockPickLocations(StockPickLocationsRequest) returns (StockPickLocationsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
   // detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
-  rpc BatchList(BatchListRequest) returns (BatchListResponse);
+  rpc BatchList(BatchListRequest) returns (BatchListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The product detail's PRICES tab (#209): on-hand grouped by frozen cost, one row per cost layer.
-  rpc CostLayerList(CostLayerListRequest) returns (CostLayerListResponse);
+  rpc CostLayerList(CostLayerListRequest) returns (CostLayerListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The product detail's PLACEMENT tab (#209): where a product sits, per shelf, with the last movement
   // dates that flag a shelf overdue for a count.
-  rpc PlacementList(PlacementListRequest) returns (PlacementListResponse);
+  rpc PlacementList(PlacementListRequest) returns (PlacementListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The product detail's INFO tab tiles (#209) in ONE aggregate read — ready & ongoing stock, when it
   // was last counted, the last delivery. One call keeps the header cheap.
-  rpc ProductStockSummary(ProductStockSummaryRequest) returns (ProductStockSummaryResponse);
+  rpc ProductStockSummary(ProductStockSummaryRequest) returns (ProductStockSummaryResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // One batch in full, and where it sits (#209) — the batch-detail screen. Its history is StockHistory
   // filtered by batch, so there is no separate event RPC.
-  rpc BatchDetail(BatchDetailRequest) returns (BatchDetailResponse);
-  rpc BatchPlacementList(BatchPlacementListRequest) returns (BatchPlacementListResponse);
+  rpc BatchDetail(BatchDetailRequest) returns (BatchDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc BatchPlacementList(BatchPlacementListRequest) returns (BatchPlacementListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The goods-received receipt for ONE delivery (#219) — every product line that arrived on it.
-  rpc BatchReceipt(BatchReceiptRequest) returns (BatchReceiptResponse);
+  rpc BatchReceipt(BatchReceiptRequest) returns (BatchReceiptResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // ── The CATALOGUE OWNER's view of its own stock ────────────────────────────────────────────────
   //
@@ -84,15 +148,35 @@ service InventoryService {
   // line, so every batch traces batch → restock_request_item → restock_request.requesting_team_id.
   // Both reads join through that chain, which means a caller passing another team's product id gets
   // zeros rather than their numbers.
-  rpc OwnerStockByIds(OwnerStockByIdsRequest) returns (OwnerStockByIdsResponse);
-  rpc OwnerStockStat(OwnerStockStatRequest) returns (OwnerStockStatResponse);
+  rpc OwnerStockByIds(OwnerStockByIdsRequest) returns (OwnerStockByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc OwnerStockStat(OwnerStockStatRequest) returns (OwnerStockStatResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The owner's three ROW-level reads (#232), behind the product detail's Price, Batch and Stock
   // history tabs. OwnerStockByIds above answers per-product aggregates; these answer what those
   // aggregates are made of, under the same ownership join and the same warehouse lens.
-  rpc OwnerCostLayerList(OwnerCostLayerListRequest) returns (OwnerCostLayerListResponse);
-  rpc OwnerBatchList(OwnerBatchListRequest) returns (OwnerBatchListResponse);
-  rpc OwnerStockHistory(OwnerStockHistoryRequest) returns (OwnerStockHistoryResponse);
+  rpc OwnerCostLayerList(OwnerCostLayerListRequest) returns (OwnerCostLayerListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc OwnerBatchList(OwnerBatchListRequest) returns (OwnerBatchListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc OwnerStockHistory(OwnerStockHistoryRequest) returns (OwnerStockHistoryResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -470,7 +554,7 @@ message StockedProductListFilter {
 
   // Narrow to these products, if given. 0 entries = no narrowing.
   //
-  // This is how SEARCH survives an inventory-owned list: product names and SKUs live in the
+  // This is how SEARCH survives an inventory-owned list: product names and codes live in the
   // catalogue, which this service cannot see and must not join to (HARD RULE 3). So a caller with a
   // search term resolves it against product_service first and passes the matching ids here — the
   // paging still happens HERE, over the intersection, so the count stays true.
@@ -896,7 +980,7 @@ message ProductPlacesResponse {
 }
 
 // A batch as the batch screens read it (#209) — one product's units from one delivery, a cost layer.
-// The identity/receipt/supplier come from the delivery it was accepted on; sku/name are the line's
+// The identity/receipt/supplier come from the delivery it was accepted on; product code/name are the line's
 // snapshot; Ready/Used are derived from the shelf_batch rows.
 message StockBatch {
   uint64 id = 1;
@@ -905,7 +989,7 @@ message StockBatch {
   string receipt_no = 3;
 
   uint64 product_id = 4;
-  string sku = 5;
+  string product_code = 5;
   string name = 6;
   // The delivery's supplier — opaque id; 0 when none was recorded. Name resolved client-side.
   uint64 supplier_id = 7;
@@ -1294,7 +1378,7 @@ message BatchReceiptRequest {
 message BatchReceiptLine {
   uint64 batch_id = 1;
   uint64 product_id = 2;
-  string sku = 3;
+  string product_code = 3;
   string name = 4;
   int64 arrived = 5;
   int64 damaged = 6;

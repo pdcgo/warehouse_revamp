@@ -149,13 +149,13 @@ const anggrek = ANGGREK_NAMES.flatMap((name, i) =>
   (["Satuan", "Karton"] as const).map((pack, j) => ({
     id: BigInt(700 + i * 2 + j),
     teamId: 15n,
-    sku: `SKU-ANG-${String(i * 2 + j + 1).padStart(3, "0")}`,
+    productCode: `SL-03-ANG-${String(i * 2 + j + 1).padStart(3, "0")}`,
     name: `${name} — ${pack}`,
     description: "",
     categoryId: 54n,
     defaultImageUrl: "",
     defaultImageThumbnailUrl: "",
-    deleted: false,
+    archived: false,
     crossMarkupBps: 0,
     crossLocked: false,
     reservedStock: 0,
@@ -185,19 +185,19 @@ export const products = [
   // over its HPP, and the order form's invoice can be pinned to the PRODUCT's rate. Teh beside it carries none, which
   // makes a draft holding both (202) one owner at two rates.
   {
-    id: 71n, teamId: 11n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g",
+    id: 71n, teamId: 11n, productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g",
     description: "", categoryId: 51n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
-    deleted: false, crossMarkupBps: 1000, crossLocked: false, reservedStock: 2,
+    archived: false, crossMarkupBps: 1000, crossLocked: false, reservedStock: 2,
   },
   {
-    id: 72n, teamId: 11n, sku: "SKU-TEH-100", name: "Teh Melati 100g",
+    id: 72n, teamId: 11n, productCode: "SKU-TEH-100", name: "Teh Melati 100g",
     description: "", categoryId: 51n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
-    deleted: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
+    archived: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
   },
   {
-    id: 73n, teamId: 13n, sku: "SKU-GULA-1K", name: "Gula Pasir 1kg",
+    id: 73n, teamId: 13n, productCode: "SKU-GULA-1K", name: "Gula Pasir 1kg",
     description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
-    deleted: false, crossMarkupBps: 150, crossLocked: false, reservedStock: 0,
+    archived: false, crossMarkupBps: 150, crossLocked: false, reservedStock: 0,
   },
   // ⚠ APPENDED, like the teams above — several stories index this list positionally.
   //
@@ -205,9 +205,9 @@ export const products = [
   // makes the picker's three tabs provable as a PARTITION: without a non-priority other-team product,
   // "Other" and "Priority" would be indistinguishable from "everyone else" and "everyone else".
   {
-    id: 74n, teamId: 12n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg",
+    id: 74n, teamId: 12n, productCode: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg",
     description: "", categoryId: 54n, defaultImageUrl: RICE_PICTURE, defaultImageThumbnailUrl: RICE_PICTURE,
-    deleted: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
+    archived: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
   },
   // ⚠ LAST, and that is load-bearing rather than tidiness. The stub filters this array in order, so
   // the four named products above keep the first rows of every page-1 they appear on — a story that
@@ -517,7 +517,7 @@ export const orderDetailExtras: Record<
     items?: {
       id: bigint;
       productId: bigint;
-      sku: string;
+      productCode: string;
       name: string;
       quantity: number;
       unitCost: bigint;
@@ -547,9 +547,9 @@ export const orderDetailExtras: Record<
   // same number ("the lines it was computed from are frozen too").
   "101": {
     items: [
-      { id: 1n, productId: 301n, sku: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitCost: 48_000n },
-      { id: 2n, productId: 302n, sku: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitCost: 46_000n },
-      { id: 3n, productId: 303n, sku: "TOP-01", name: "Topi Rajut", quantity: 1, unitCost: 6_000n },
+      { id: 1n, productId: 301n, productCode: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitCost: 48_000n },
+      { id: 2n, productId: 302n, productCode: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitCost: 46_000n },
+      { id: 3n, productId: 303n, productCode: "TOP-01", name: "Topi Rajut", quantity: 1, unitCost: 6_000n },
     ],
     // TWO NOTES, ONE PER SIDE (a-note-is-a-timeline-row). The seller's is the one typed on the create form — the
     // order's first note row, written with the order — and the warehouse's came later, so it is listed FIRST.
@@ -591,7 +591,7 @@ export const orderDetailExtras: Record<
       {
         id: 1n,
         productId: 401n,
-        sku: "SEP-KNS-42",
+        productCode: "SEP-KNS-42",
         name: "Sepatu Kanvas — 42",
         quantity: 1,
         unitCost: 157_867n,
@@ -608,7 +608,7 @@ export const orderDetailExtras: Record<
   // row's own `goodsCost`, exactly as the default line would be, so the list and the detail still agree about it.
   "106": {
     items: [
-      { id: 1n, productId: 74n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg", quantity: 1, unitCost: 82_560n },
+      { id: 1n, productId: 74n, productCode: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg", quantity: 1, unitCost: 82_560n },
     ],
   },
 
@@ -665,7 +665,7 @@ export function orderDetailFor(id: bigint) {
       {
         id: 1n,
         productId: 301n,
-        sku: "KPH-M",
+        productCode: "KPH-M",
         name: "Kaos Polos Hitam — M",
         quantity: 1,
         // ⚠ THE ROW'S OWN `goods_cost`, not an invented 60%. The detail page SUMS its lines while the list
@@ -872,6 +872,18 @@ export const liabilityPositions = [
   { counterpartyId: 13n, balance: 1_000_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
   { counterpartyId: 14n, balance: 6_200_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
   { counterpartyId: 15n, balance: 250_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+];
+
+// THE OPEN PAYMENT REQUESTS (a-creditor-may-request-payment) — Gudang Pusat (11) asked Toko Melati (12) to pay what it
+// owed that day. Toko Kenanga (13) owes too and has not been asked, so the creditor's story has a pair to ask.
+export const liabilityPaymentRequests = [
+  {
+    creditorTeamId: 11n,
+    debtorTeamId: 12n,
+    amount: 8_700_000n,
+    requestedByUserId: 1n,
+    requestedAtUnix: BigInt(Date.UTC(2026, 9, 20, 3, 0) / 1000),
+  },
 ];
 
 // THE LIMITS SET ON A TEAM, from the DEBTOR's side — what LiabilityCreditByIds answers
@@ -1153,3 +1165,9 @@ export const settlementImportLines: ImportLine[] = [
   { id: 9024n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "GMV Pay Deduction", description: "GMV Pay Deduction", settlementType: SettlementType.UNSPECIFIED, change: -412_500n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
   { id: 9025n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577009876543", platformType: "Order", description: "Order", settlementType: SettlementType.FUND, change: 156_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7003n },
 ];
+
+/**
+ * When the stubbed analytic services last folded an event — 7 Oct 2026, 14:04 WIB — answered on every MetricData as
+ * `as_of_unix` (a-money-metric-says-as-of-when), so a report story can read its "As of" line.
+ */
+export const FOLDED_AS_OF = BigInt(Date.UTC(2026, 9, 7, 7, 4) / 1000);

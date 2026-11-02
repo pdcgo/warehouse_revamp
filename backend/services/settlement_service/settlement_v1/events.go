@@ -64,6 +64,7 @@ func postedEvent(result PostResult) *eventsv1.Event {
 				ShopId:               entry.ShopID,
 				TeamId:               entry.TeamID,
 				ActorId:              entry.ActorID,
+				ActorIsOverride:      entry.IsOverride,
 				OrderCreatedByUserId: creator,
 				SettlementType:       settlementTypeEnum[entry.SettlementType],
 				SourceType:           sourceTypeEnum[entry.SourceType],

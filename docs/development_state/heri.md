@@ -7,7 +7,25 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
-## 2026-10-29 · order — drafts, tracking number, warehouse fee
+## 2026-11-02 · every decided item built, but two
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **An expense can be corrected** | a wrong expense gets an adjustment beside it instead of being edited away; the day's total shows the net |
+| **Reports refuse more than a year, and say how fresh they are** | the Analytic, settlement and supplier reports stop a range over a year, and read *"As of 14:05 WIB"* |
+| **A product is archived, or deleted only if nothing used it** | a used product moves to the Archived tab; one that was never sold or stocked can be deleted |
+| **Product codes come from the team's code** | every code reads `<team code>-<part>` |
+| **A warehouse records its holidays** | the warehouse page takes closures; the order form warns *"Closed for Idul Fitri — handled from 7 Apr"*, and the order is still created |
+| **A recount that finds fewer units charges like a lost unit** | the warehouse's loss is booked and it owes the seller the cost — recording it as a recount no longer avoids that |
+| **A creditor can ask to be paid** | *Request Payment* on the pair detail; the debtor sees *"Gudang Bekasi asks you to pay Rp 700.000"*. Nothing moves until they pay |
+| **ChatGPT and Claude can read the business** | a person connects an AI agent by URL, picks one team and names it; the agent only reads, for 90 days, and is revoked from Profile. The owner decides whether CS and staff may connect, and sees every connection |
+| **The platform's writes inside a team are marked** | when Root or the Administrator acts in a team they are not in, the record says so — orders, stock, expenses, balances, documents |
+| **The admin team can watch any team, read-only** | it picks a team under *All teams*, sees its screens under a *Monitoring — read-only* strip, and every write is hidden and refused |
+
+**Not built:** the courier's fee at a return (there is no return accept yet) and the finished stock count (it waits on the
+design accept).
+
+ · order — drafts, tracking number, warehouse fee
 
 **The order context has no open question left**, apart from the product barcode you parked.
 

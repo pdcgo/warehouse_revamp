@@ -24,13 +24,13 @@ func borrowedOrderReq(shopID uint64, borrowed ...uint64) *sellingv1.OrderCreateR
 		TeamId:                mapTeam, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: ourProduct, Sku: "OWN", Name: "Our own", Quantity: 1},
+			{ProductId: ourProduct, ProductCode: "OWN", Name: "Our own", Quantity: 1},
 		},
 	}
 
 	for _, id := range borrowed {
 		req.Items = append(req.Items, &sellingv1.OrderItem{
-			ProductId: id, Sku: "TYPED", Name: "Borrowed", Quantity: 1,
+			ProductId: id, ProductCode: "TYPED", Name: "Borrowed", Quantity: 1,
 		})
 	}
 

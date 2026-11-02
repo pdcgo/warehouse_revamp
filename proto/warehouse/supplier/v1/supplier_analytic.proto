@@ -24,9 +24,17 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sup
 // CALLER's scope, as on every read; a TeamFilter narrows to whose restocks are counted.
 service SupplierAnalyticService {
   // The keys of a page of the table, ranked by one field of `metrics/suppliers` — suppliers, products or periods.
-  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse);
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
-  rpc MetricData(MetricDataRequest) returns (MetricDataResponse);
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // The two operations a DEVELOPER runs on the fold — settlement's, read for the supplier
@@ -200,6 +208,14 @@ message MetricData {
 
 message MetricDataResponse {
   repeated MetricData metric_datas = 1;
+  // AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+  // `supplier_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+  // behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+  // every metric it serves shares it. 0 = nothing folded yet.
+  //
+  // ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+  // dead-letter topic and the lease's log.
+  int64 as_of_unix = 2;
 }
 
 // ── maintenance ─────────────────────────────────────────────────────────────────────────────────

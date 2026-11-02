@@ -173,7 +173,7 @@ None open.
 
 - ✅ *(2026-10-31)* **what-a-void-and-a-reducing-adjustment-write — answered:** one kind of correction, a signed
   adjustment naming its expense; Void is dropped, Batalkan writes minus the whole amount —
-  [every-correction-is-a-signed-adjustment](./context_decision.md#every-correction-is-a-signed-adjustment). ⛔ Not built.
+  [every-correction-is-a-signed-adjustment](./context_decision.md#every-correction-is-a-signed-adjustment). ✅ Built 2026-11-02.
 
 ---
 

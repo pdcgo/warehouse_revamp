@@ -21,7 +21,7 @@ import { MoreHorizontal, Pencil, SearchX, Store, Trash2, UserCog } from "lucide-
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
@@ -100,6 +100,7 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // reads each shop as a block; the first load is the list's shape; an empty list says what next; the pages grow.
 export function ShopsPage() {
   const { current } = useTeam();
+  const writable = canWrite(current);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -185,6 +186,8 @@ export function ShopsPage() {
   // the ⋯ after them (owner: *"pilih cs di ellipsis"*), a menu item with its icon. The same on a row and on a phone
   // block.
   function actions(shop: Shop) {
+    if (!writable) return null;
+
     const none = shop.primaryUserId === 0n;
 
     return (
@@ -284,7 +287,7 @@ export function ShopsPage() {
           icon={Store}
           title={t("shops.empty")}
           description={t("shops.emptyHint")}
-          action={<ShopFormDialog triggerTestId="shops-empty-create" />}
+          action={writable ? <ShopFormDialog triggerTestId="shops-empty-create" /> : undefined}
           testId="shops-empty"
         />
       );
@@ -394,7 +397,7 @@ export function ShopsPage() {
             {t("shops.lead")}
           </Text>
         </Stack>
-        <ShopFormDialog compact={isMobile} />
+        {writable && <ShopFormDialog compact={isMobile} />}
       </Flex>
 
       {/* What this list cannot do yet — the three filters it holds and throws away. */}

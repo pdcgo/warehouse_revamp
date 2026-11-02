@@ -118,6 +118,21 @@ export function asPlatformOnly(role: Role, memberOf: bigint[] = []) {
   };
 }
 
+/** The admin team a story's admin-team member belongs to — not a fixture team, so no list that counts teams moves. */
+export const ADMIN_TEAM = { id: 9n, name: "Tim Admin Pusat" };
+
+/**
+ * A `beforeEach`: a member of the ADMIN team — `ROLE_ADMIN_OWNER` unless said otherwise — and of `memberOf` only. They
+ * reach every warehouse and selling team to READ it (the-admin-team-monitors-read-only): plant one of those with
+ * `asTeam` and the screens draw it read-only, under the Monitoring strip.
+ */
+export function asAdminTeam(role: Role = Role.ADMIN_OWNER, memberOf: bigint[] = []) {
+  return () => {
+    sessionScenario.role = role;
+    sessionScenario.memberOf = memberOf;
+  };
+}
+
 /** A `beforeEach` that makes the signed-in person hold `role` in every team. */
 export function asRole(role: Role) {
   return () => {

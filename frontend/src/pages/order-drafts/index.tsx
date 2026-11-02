@@ -24,7 +24,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
 import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { draftGaps } from "../../features/orderDrafts/draftReadiness";
 import {
   useDeleteOrderDrafts,
@@ -60,6 +60,9 @@ export function OrderDraftsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { current } = useTeam();
+  // A draft opens in the order FORM (a write route), so while the admin team monitors the team the list is read in
+  // place: no ticks, no delete, no row that opens a form it cannot submit.
+  const writable = canWrite(current);
   const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
@@ -185,7 +188,7 @@ export function OrderDraftsPage() {
 
         {/* ON A PHONE THE ACTIONS ARE ICONS, AND PAST TWO THEY FOLD INTO ⋯ (a-phone-header-action-is-an-icon) — labelled
             buttons wrapped onto rows of their own. The desktop keeps its labelled buttons. */}
-        {isMobile ? (
+        {!writable ? null : isMobile ? (
           <CompactActions
             menuLabel={t("orders.actions")}
             actions={[
@@ -238,6 +241,7 @@ export function OrderDraftsPage() {
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader width="1">
+                    {writable && (
                     <Checkbox.Root
                       size="sm"
                       checked={allOnPageSelected}
@@ -248,6 +252,7 @@ export function OrderDraftsPage() {
                       <Checkbox.HiddenInput />
                       <Checkbox.Control />
                     </Checkbox.Root>
+                    )}
                   </Table.ColumnHeader>
                   <Table.ColumnHeader>{t("orderDrafts.reference")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("orders.shop")}</Table.ColumnHeader>
@@ -267,13 +272,14 @@ export function OrderDraftsPage() {
                   return (
                     <Table.Row
                       key={d.id.toString()}
-                      cursor="pointer"
+                      cursor={writable ? "pointer" : undefined}
                       _hover={{ bg: "bg.muted" }}
                       data-testid={`draft-row-${d.id}`}
-                      onClick={() => navigate(`/orders/new?draft=${d.id}`)}
+                      onClick={writable ? () => navigate(`/orders/new?draft=${d.id}`) : undefined}
                     >
                       {/* ⚠ STOPS THE ROW'S NAVIGATE — ticking a box must not open the draft. */}
                       <Table.Cell onClick={(e) => e.stopPropagation()}>
+                        {writable && (
                         <Checkbox.Root
                           size="sm"
                           checked={selected.has(d.id.toString())}
@@ -284,6 +290,7 @@ export function OrderDraftsPage() {
                           <Checkbox.HiddenInput />
                           <Checkbox.Control />
                         </Checkbox.Root>
+                        )}
                       </Table.Cell>
 
                       {/* THE REFERENCE, and under it WHAT IS LEFT — where the order list puts the
@@ -345,6 +352,7 @@ export function OrderDraftsPage() {
                       </Table.Cell>
 
                       <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                        {writable && (
                         <Menu.Root>
                           <Menu.Trigger asChild>
                             <IconButton
@@ -381,6 +389,7 @@ export function OrderDraftsPage() {
                             </Menu.Positioner>
                           </Portal>
                         </Menu.Root>
+                        )}
                       </Table.Cell>
                     </Table.Row>
                   );

@@ -3,7 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, shops, teams, users } from "../../../.storybook/fixtures";
-import { orderExportScenario, orderStatScenario } from "../../../.storybook/sessionScenario";
+import { asAdminTeam, orderExportScenario, orderStatScenario } from "../../../.storybook/sessionScenario";
 import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
 
@@ -583,5 +583,20 @@ export const TheDateSwitchReadsTheMarketplaceDate: Story = {
 
     await waitFor(() => expect(canvas.queryByTestId(`order-row-${noPlatformDate.id}`)).toBeNull());
     await expect(canvas.getByTestId(`order-row-${recent.id}`)).toBeInTheDocument();
+  },
+};
+
+// the-admin-team-monitors-read-only — the admin team READING Toko Melati's orders: every row, and none of the three
+// header actions — New Order (the form entry), Import, and Export, which stores a file. The rows still open.
+export const MonitoringOffersNoWrite: Story = {
+  beforeEach: asAdminTeam(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${OWN[0]!.id}`)).toBeInTheDocument(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("open-create-order")).toBeNull();
+    await expect(canvas.queryByTestId("orders-import")).toBeNull();
+    await expect(canvas.queryByTestId("orders-export")).toBeNull();
+    await expect(canvas.queryByTestId("orders-actions")).toBeNull();
   },
 };

@@ -15,7 +15,7 @@ import (
 )
 
 // THE BATCH, READ FROM THE BATCH LEDGER. A batch knows its own price, units and value; what it came in on — the
-// delivery, its receipt, the line's broken and missing units, a sku and name — is the transaction that minted it: a
+// delivery, its receipt, the line's broken and missing units, a product code and name — is the transaction that minted it: a
 // restock's accept (`restocks.transaction_id`) or a transfer's in-leg (`warehouse_transfers.inbound_transaction_id`).
 // A product appears once per restock (a-product-appears-once-per-restock), so a batch finds its restock line by product.
 
@@ -27,7 +27,7 @@ type batchRow struct {
 	WarehouseID    uint64
 	ReceiptNo      string
 	ProductID      uint64
-	SKU            string
+	ProductCode    string
 	Name           string
 	SupplierID     uint64
 	PriceUnit      float64
@@ -53,7 +53,7 @@ const (
 // batchSelect is the projection over batchQuery. The caller adds the WHERE and the paging.
 const batchSelect = `
 	b.id, COALESCE(r.id, 0) AS delivery_id, b.warehouse_id, COALESCE(r.receipt, '') AS receipt_no,
-	b.product_id, COALESCE(i.sku, wti.sku, '') AS sku, COALESCE(i.name, wti.name, '') AS name, b.supplier_id,
+	b.product_id, COALESCE(i.product_code, wti.product_code, '') AS product_code, COALESCE(i.name, wti.name, '') AS name, b.supplier_id,
 	b.price_unit, b.init_stock_count, b.stock_count AS ready, b.stock_valuation,
 	` + brokenExpr + ` AS broken,
 	` + lostExpr + ` AS lost,
@@ -83,7 +83,7 @@ func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 		WarehouseId:    r.WarehouseID,
 		ReceiptNo:      r.ReceiptNo,
 		ProductId:      r.ProductID,
-		Sku:            r.SKU,
+		ProductCode:    r.ProductCode,
 		Name:           r.Name,
 		SupplierId:     r.SupplierID,
 		UnitCost:       int64(math.Round(r.PriceUnit)),

@@ -7,7 +7,7 @@ import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
 import { manySuppliers } from "../../../.storybook/supplierFixtures";
 import { addSupplierRows } from "../../../.storybook/supplierStub";
-import { asPlatformOnly, asRole } from "../../../.storybook/sessionScenario";
+import { asAdminTeam, asPlatformOnly, asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { DesktopLayout } from "./DesktopLayout";
 import { SUPPLIER_ROUTES } from "../../../.storybook/supplierRoutes";
@@ -201,6 +201,28 @@ export const RootInATeamTheyAreNotIn: Story = {
 
     const strip = await canvas.findByTestId("not-member-strip", {}, { timeout: 4000 });
     await expect(strip).toHaveTextContent("acting as Root");
+  },
+};
+
+// the-admin-team-monitors-read-only — a member of the admin team picked Gudang Pusat from All teams. It is restored BY
+// ID and only READ: the strip says so, calm rather than the override's warning; the user card says *Monitoring*, never
+// the Owner role the screens are drawn for (the screen role); and the menu is the warehouse type's own, Settings
+// included.
+export const TheAdminTeamMonitorsReadOnly: Story = {
+  beforeEach: () => {
+    asAdminTeam()();
+    asTeam(WAREHOUSE.id)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const strip = await canvas.findByTestId("monitoring-strip", {}, { timeout: 4000 });
+    await expect(strip).toHaveTextContent("Monitoring — read-only");
+    await expect(canvas.queryByTestId("not-member-strip")).toBeNull();
+
+    await expect(canvas.getByText("Monitoring")).toBeVisible();
+    await expect(canvas.queryByText("Warehouse Owner")).toBeNull();
+    await expect(canvasElement.querySelector('a[href="/settings"]')).not.toBeNull();
   },
 };
 

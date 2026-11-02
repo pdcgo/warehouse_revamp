@@ -166,12 +166,14 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+OrderServiceOrderListProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderDetail: connect.NewClient[v1.OrderDetailRequest, v1.OrderDetailResponse](
 			httpClient,
 			baseURL+OrderServiceOrderDetailProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderCancel: connect.NewClient[v1.OrderCancelRequest, v1.OrderCancelResponse](
@@ -220,30 +222,35 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+OrderServiceOrderProductActivityByIdsProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderProductActivityByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderActivityStat: connect.NewClient[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse](
 			httpClient,
 			baseURL+OrderServiceOrderActivityStatProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderActivityStat")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderStat: connect.NewClient[v1.OrderStatRequest, v1.OrderStatResponse](
 			httpClient,
 			baseURL+OrderServiceOrderStatProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderStat")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderByExternalRefs: connect.NewClient[v1.OrderByExternalRefsRequest, v1.OrderByExternalRefsResponse](
 			httpClient,
 			baseURL+OrderServiceOrderByExternalRefsProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderByExternalRefs")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderCreatorList: connect.NewClient[v1.OrderCreatorListRequest, v1.OrderCreatorListResponse](
 			httpClient,
 			baseURL+OrderServiceOrderCreatorListProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderCreatorList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -427,12 +434,14 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		OrderServiceOrderListProcedure,
 		svc.OrderList,
 		connect.WithSchema(orderServiceMethods.ByName("OrderList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderDetailHandler := connect.NewUnaryHandler(
 		OrderServiceOrderDetailProcedure,
 		svc.OrderDetail,
 		connect.WithSchema(orderServiceMethods.ByName("OrderDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderCancelHandler := connect.NewUnaryHandler(
@@ -481,30 +490,35 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		OrderServiceOrderProductActivityByIdsProcedure,
 		svc.OrderProductActivityByIds,
 		connect.WithSchema(orderServiceMethods.ByName("OrderProductActivityByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderActivityStatHandler := connect.NewUnaryHandler(
 		OrderServiceOrderActivityStatProcedure,
 		svc.OrderActivityStat,
 		connect.WithSchema(orderServiceMethods.ByName("OrderActivityStat")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderStatHandler := connect.NewUnaryHandler(
 		OrderServiceOrderStatProcedure,
 		svc.OrderStat,
 		connect.WithSchema(orderServiceMethods.ByName("OrderStat")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderByExternalRefsHandler := connect.NewUnaryHandler(
 		OrderServiceOrderByExternalRefsProcedure,
 		svc.OrderByExternalRefs,
 		connect.WithSchema(orderServiceMethods.ByName("OrderByExternalRefs")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderCreatorListHandler := connect.NewUnaryHandler(
 		OrderServiceOrderCreatorListProcedure,
 		svc.OrderCreatorList,
 		connect.WithSchema(orderServiceMethods.ByName("OrderCreatorList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

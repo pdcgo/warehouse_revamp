@@ -190,7 +190,7 @@ func TestOrderCreate_ThePlatformTotalIsWhatTheBuyerPaid(t *testing.T) {
 		// What the storefront actually took.
 		PlatformTotal: 58_000,
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -271,7 +271,7 @@ func TestOrderStat_SumsTheUnitsAndTheMeasurableOrdersMoney(t *testing.T) {
 	// No known cost — product 3 is unknown to the picker, so goods_cost is 0. 1 unit.
 	unknownCost := feeOrderReq(shop)
 	unknownCost.PlatformTotal = 20000
-	unknownCost.Items = []*sellingv1.OrderItem{{ProductId: 3, Sku: "SKU3", Name: "Mystery", Quantity: 1}}
+	unknownCost.Items = []*sellingv1.OrderItem{{ProductId: 3, ProductCode: "SKU3", Name: "Mystery", Quantity: 1}}
 	place(priced, unknownCost)
 
 	// Never priced: cost and platform figure both known, but no fee was frozen. 3 units.

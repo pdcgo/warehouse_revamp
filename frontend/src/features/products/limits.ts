@@ -3,8 +3,8 @@
 // count under it, a-limited-field-shows-its-count), so a value the server would refuse cannot be typed in the first place.
 // Change one here only together with the proto.
 export const PRODUCT_LIMITS = {
-  /** `sku` — string max_len 64. */
-  sku: 64,
+  /** `product_code_part` — string max_len 64. The TEAM'S part only; the stored code is `<team_code>-<part>`. */
+  productCodePart: 64,
   /** `name` — string max_len 200. */
   name: 200,
   /** `description` — string max_len 1000. */

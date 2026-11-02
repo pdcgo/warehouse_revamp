@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Box, Combobox, Portal, Spinner, Text, useListCollection } from "@chakra-ui/react";
 import { useTeams } from "../../features/teams/queries";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
@@ -37,6 +37,11 @@ export interface TeamSelectProps {
    * tree (the reason RackSelect and ShopSelect never portal). Kept on by default so every page-level use is unchanged.
    */
   portalled?: boolean;
+  /**
+   * A short note beside an OPTION — the order form marks a warehouse that is closed now, still selectable
+   * (a-closed-day-warns-and-never-refuses). Nothing by default.
+   */
+  optionNote?: (teamId: bigint) => ReactNode;
 }
 
 // TeamSelect is the shared team picker (#49): a Chakra Combobox so the list is searchable, matching
@@ -66,6 +71,7 @@ export function TeamSelect({
   excludeTeamIds,
   showType = true,
   portalled = true,
+  optionNote,
 }: TeamSelectProps) {
 
 
@@ -267,6 +273,7 @@ export function TeamSelect({
                     data-testid={`team-select-option-${team.teamCode}`}
                   >
                     <TeamItem team={teamItemProps(team)} />
+                    {optionNote?.(team.id)}
                     <Combobox.ItemIndicator />
                   </Combobox.Item>
                 ))}

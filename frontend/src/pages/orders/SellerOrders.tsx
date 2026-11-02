@@ -22,7 +22,7 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { OrderDateField, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { rpcError } from "../../api/clients";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useOrderCreators, useOrders, useOrderStat } from "../../features/orders/queries";
 import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
@@ -136,6 +136,8 @@ export function SellerOrdersPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { current } = useTeam();
+  // Export, Import and New Order are all three writes — the export stores a file (the-admin-team-monitors-read-only).
+  const writable = canWrite(current);
   const navigate = useNavigate();
 
   // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an
@@ -380,7 +382,7 @@ export function SellerOrdersPage() {
             three are the thing to do. */}
         {/* ON A PHONE THE ACTIONS ARE ICONS, AND PAST TWO THEY FOLD INTO ⋯ (a-phone-header-action-is-an-icon) — labelled
             buttons wrapped onto rows of their own. The desktop keeps its labelled buttons. */}
-        {isMobile ? (
+        {!writable ? null : isMobile ? (
           <CompactActions
             menuLabel={t("orders.actions")}
             menuTestId="orders-actions"

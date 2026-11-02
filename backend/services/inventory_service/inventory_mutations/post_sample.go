@@ -22,6 +22,7 @@ type Sample struct {
 	WarehouseID uint64
 	PlacementID uint64
 	ActorID     uint64
+	IsOverride  bool
 	Recipient   string
 	Description string
 	Lines       []SampleLine
@@ -69,7 +70,7 @@ func PostSample(tx *gorm.DB, s Sample) ([]models.InventoryTransaction, error) {
 
 		t, createErr := inventory_ledgers.CreateTransaction(tx, inventory_ledgers.NewTransaction{
 			WarehouseID: s.WarehouseID, TeamID: owner[id], TxType: models.TxSample, ActorID: s.ActorID,
-			Description: s.Description, Recipient: s.Recipient,
+			IsOverride: s.IsOverride, Description: s.Description, Recipient: s.Recipient,
 		})
 		if createErr != nil {
 			return nil, createErr

@@ -9,7 +9,7 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useAuth } from "../../features/auth/AuthContext";
 import type { BundleRecord } from "../../features/bundles/adapt";
 import { type BundleSortKey, useBundleProducts, useBundles, useDeleteBundle } from "../../features/bundles/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixRelative } from "../../lib/datetime";
@@ -53,7 +53,7 @@ export function BundlesPage() {
 
   const isSelling = current?.teamType === TeamType.SELLING;
   const me = identity?.identityId;
-  const mayCreate = isSelling && canCreateBundle(current?.role);
+  const mayCreate = isSelling && canWrite(current) && canCreateBundle(current?.role);
 
   const [q, setQ] = useState("");
   // `null` = the list's own order, the last change first.
@@ -107,7 +107,8 @@ export function BundlesPage() {
   const creatorName = (bundle: BundleRecord) =>
     actors.data?.get(bundle.createdByUserId.toString())?.name ?? `#${bundle.createdByUserId}`;
 
-  const mayChange = (bundle: BundleRecord) => canChangeBundle({ role: current.role, createdByUserId: bundle.createdByUserId, me });
+  const mayChange = (bundle: BundleRecord) =>
+    canWrite(current) && canChangeBundle({ role: current.role, createdByUserId: bundle.createdByUserId, me });
 
   // Edit and Delete — two actions, so they stay inline and labelled, as the supplier list's do.
   function actions(bundle: BundleRecord) {

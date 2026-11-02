@@ -140,7 +140,7 @@ func (s *Service) moveOrders(
 			moving = append(moving, timelineMove{order: order, from: from})
 		}
 
-		logs, err := setOrdersStatus(tx, moving, to, eventActor(ctx), note)
+		logs, err := setOrdersStatus(tx, moving, to, eventActor(ctx), eventOverride(ctx), note)
 		if err != nil {
 			return err
 		}

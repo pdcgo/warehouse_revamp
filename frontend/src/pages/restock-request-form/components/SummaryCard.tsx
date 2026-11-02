@@ -37,7 +37,7 @@ export function SummaryCard({ lines, shippingCost }: { lines: LineDraft[]; shipp
                 <Flex key={line.productId.toString()} gap="card" justify="space-between" align="start">
                   <Stack gap="0" flex="1" minW="0">
                     <Text fontSize="sm" lineClamp={1}>
-                      {line.name || line.sku}
+                      {line.name || line.productCode}
                     </Text>
                     <Text fontSize="xs" color="fg.muted">
                       {toQty(line.count)} × {t("restock.form.perPiece", { price: formatRupiahNumber(perPiece(line)) })}

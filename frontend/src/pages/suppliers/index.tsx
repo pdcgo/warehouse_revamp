@@ -6,7 +6,7 @@ import { Factory, Pencil, SearchX, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { ChannelTypes } from "../../features/suppliers/ChannelTypes";
 import {
   type ManagedSupplier,
@@ -83,6 +83,8 @@ export function SuppliersPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const canManage = current?.teamType === TeamType.SELLING;
+  // canManage also decides what the list READS (the filters, the figures); the writes need canWrite as well.
+  const mayWrite = canManage && canWrite(current);
 
   // THE FILTERS AND THE SORT LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a supplier,
   // opens the same narrowed list.
@@ -215,8 +217,8 @@ export function SuppliersPage() {
         <EmptyHint
           icon={Factory}
           title={t("suppliers.empty")}
-          description={canManage ? t("suppliers.emptyHint") : undefined}
-          action={canManage ? <SupplierFormDialog testId="open-create-supplier-empty" /> : undefined}
+          description={mayWrite ? t("suppliers.emptyHint") : undefined}
+          action={mayWrite ? <SupplierFormDialog testId="open-create-supplier-empty" /> : undefined}
           testId="suppliers-empty"
         />
       );
@@ -256,7 +258,7 @@ export function SuppliersPage() {
                   carrying its ⚠ number. A store-less supplier has no product, so no lines. */}
               <SupplierFigureLines figures={sampleFiguresFor(supplier)} marks={LIST_FIGURE_MARKS} testId={`supplier-row-${supplier.id}-figures`} />
               {/* The labelled buttons at the block's FOOT — beside the name they squeezed it into a narrow column. */}
-              {canManage && (
+              {mayWrite && (
                 <Box pt="1" onClick={(e) => e.stopPropagation()}>
                   {actions(supplier)}
                 </Box>
@@ -288,7 +290,7 @@ export function SuppliersPage() {
             {/* SALES AND READY STOCK, SAMPLE FIGURES (owner: *"tampilkan saja dulu, tulis unimplemented karena memang belum
                 ada"*, `the-supplier-list-shows-sales-and-ready-stock`) — each heading carries its ⚠ number. */}
             <SupplierFigureHeaders marks={LIST_FIGURE_MARKS} />
-            {canManage && <Table.ColumnHeader textAlign="end">{t("suppliers.table.actions")}</Table.ColumnHeader>}
+            {mayWrite && <Table.ColumnHeader textAlign="end">{t("suppliers.table.actions")}</Table.ColumnHeader>}
           </Table.Row>
         </Table.Header>
 
@@ -318,7 +320,7 @@ export function SuppliersPage() {
               </Table.Cell>
               <SupplierFigureCells figures={sampleFiguresFor(supplier)} id={supplier.id} testIdPrefix="supplier" />
 
-              {canManage && (
+              {mayWrite && (
                 // Stop the row's navigate from firing when a row action is used.
                 <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                   {actions(supplier)}
@@ -346,7 +348,7 @@ export function SuppliersPage() {
             {t("suppliers.lead")}
           </Text>
         </Stack>
-        {canManage && <SupplierFormDialog compact={isMobile} />}
+        {mayWrite && <SupplierFormDialog compact={isMobile} />}
       </Flex>
 
       {/* What is not real yet — only where the list is: a warehouse team has no suppliers to show figures for. */}

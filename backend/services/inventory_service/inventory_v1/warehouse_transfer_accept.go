@@ -29,6 +29,7 @@ func (s *Service) WarehouseTransferAccept(
 	msg := req.Msg
 	warehouseID := msg.GetTeamId()
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 
 	charge := msg.GetWarehouseAdditionalCost()
 	if charge > 0 && msg.GetWarehouseAdditionalCostNote() == "" {
@@ -80,6 +81,7 @@ func (s *Service) WarehouseTransferAccept(
 
 		in.OutboundTransactionID = *t.OutboundTransactionID
 		in.ActorID = actor
+		in.IsOverride = override
 		in.Description = transferLegDescription(t.ID)
 
 		leg, problems, postErr := inventory_mutations.PostTransferIn(tx, in)
@@ -132,7 +134,7 @@ func (s *Service) WarehouseTransferAccept(
 		t.WarehouseAdditionalCost = charge
 		t.WarehouseAdditionalCostNote = msg.GetWarehouseAdditionalCostNote()
 
-		return moveTransfer(tx, t, models.TransferAccepted, actor, "", map[string]any{
+		return moveTransfer(tx, t, models.TransferAccepted, actor, override, "", map[string]any{
 			"inbound_transaction_id":         leg.ID,
 			"warehouse_additional_cost":      t.WarehouseAdditionalCost,
 			"warehouse_additional_cost_note": t.WarehouseAdditionalCostNote,
@@ -185,11 +187,11 @@ func countedLines(
 		arrived, broken := line.GetArrivedCount(), line.GetBrokenCount()
 
 		if arrived > item.Count {
-			return in, nil, fmt.Errorf("%w: %s — %d in the box, %d sent", errTransferCountInvalid, item.SKU, arrived, item.Count)
+			return in, nil, fmt.Errorf("%w: %s — %d in the box, %d sent", errTransferCountInvalid, item.ProductCode, arrived, item.Count)
 		}
 
 		if broken > arrived {
-			return in, nil, fmt.Errorf("%w: %s — %d broken, %d in the box", errTransferCountInvalid, item.SKU, broken, arrived)
+			return in, nil, fmt.Errorf("%w: %s — %d broken, %d in the box", errTransferCountInvalid, item.ProductCode, broken, arrived)
 		}
 
 		good := arrived - broken
@@ -212,7 +214,7 @@ func countedLines(
 		}
 
 		if placed != good {
-			return in, nil, fmt.Errorf("%w: %s — %d good units, %d put away", errTransferCountInvalid, item.SKU, good, placed)
+			return in, nil, fmt.Errorf("%w: %s — %d good units, %d put away", errTransferCountInvalid, item.ProductCode, good, placed)
 		}
 
 		notes[problemKey{item.ProductID, models.TransferProblemBroken}] = line.GetBrokenNote()

@@ -7,7 +7,9 @@ import "time"
 type Product struct {
 	ID          uint64 `gorm:"primaryKey"`
 	TeamID      uint64
-	SKU         string `gorm:"column:sku"`
+	// The ONE code, as stored: `<team_code>-<the team's part>`, composed on write and unique over every row, archived
+	// ones included (the-field-is-product-code-composed-on-write).
+	ProductCode string `gorm:"column:product_code"`
 	Name        string
 	Description string
 
@@ -40,7 +42,9 @@ type Product struct {
 	// nothing back.
 	ReservedStock uint32 `gorm:"column:reserved_stock"`
 
-	Deleted   bool
+	// Out of the list and every picker (ProductArchive), still resolvable by id. A product with no history is DELETED
+	// instead — its row removed (a-used-product-is-archived-never-deleted).
+	Archived  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

@@ -391,12 +391,14 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceTeamMemberLogListProcedure,
 			connect.WithSchema(userServiceMethods.ByName("TeamMemberLogList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		userList: connect.NewClient[v1.UserListRequest, v1.UserListResponse](
 			httpClient,
 			baseURL+UserServiceUserListProcedure,
 			connect.WithSchema(userServiceMethods.ByName("UserList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		userByIDs: connect.NewClient[v1.UserByIDsRequest, v1.UserByIDsResponse](
@@ -409,6 +411,7 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceSearchUserProcedure,
 			connect.WithSchema(userServiceMethods.ByName("SearchUser")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -632,12 +635,14 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceTeamMemberLogListProcedure,
 		svc.TeamMemberLogList,
 		connect.WithSchema(userServiceMethods.ByName("TeamMemberLogList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceUserListHandler := connect.NewUnaryHandler(
 		UserServiceUserListProcedure,
 		svc.UserList,
 		connect.WithSchema(userServiceMethods.ByName("UserList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceUserByIDsHandler := connect.NewUnaryHandler(
@@ -650,6 +655,7 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceSearchUserProcedure,
 		svc.SearchUser,
 		connect.WithSchema(userServiceMethods.ByName("SearchUser")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.user.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

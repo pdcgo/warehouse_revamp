@@ -58,6 +58,11 @@ func (s *Service) MetricData(
 	scope := scopeOf(msg.GetTeamId(), filters)
 	keys := msg.GetKeys()
 
+	asOf, err := s.asOf(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	switch {
 	case group == analytic_basev1.GroupType_GROUP_TYPE_SUMMARY:
 		if keys.GetK() != nil {
@@ -74,7 +79,7 @@ func (s *Service) MetricData(
 			row = rows[0]
 		}
 
-		return answer(metrics, func(metric *settlementMetric) *settlementv1.MetricData {
+		return answer(asOf, metrics, func(metric *settlementMetric) *settlementv1.MetricData {
 			if metric == metricSettlement {
 				return &settlementv1.MetricData{M: &settlementv1.MetricData_SettlementSummary{SettlementSummary: row.settlement()}}
 			}
@@ -116,7 +121,7 @@ func (s *Service) MetricData(
 
 		asked := keys.GetDays().GetDays()
 
-		return answer(metrics, func(metric *settlementMetric) *settlementv1.MetricData {
+		return answer(asOf, metrics, func(metric *settlementMetric) *settlementv1.MetricData {
 			if metric == metricSettlement {
 				items := make(map[string]*settlementv1.SettlementMetric, len(asked))
 				for _, key := range asked {
@@ -161,7 +166,7 @@ func (s *Service) MetricData(
 			}
 		}
 
-		return answer(metrics, func(metric *settlementMetric) *settlementv1.MetricData {
+		return answer(asOf, metrics, func(metric *settlementMetric) *settlementv1.MetricData {
 			if metric == metricSettlement {
 				items := make(map[uint64]*settlementv1.SettlementMetric, len(asked))
 				for _, id := range asked {
@@ -197,8 +202,9 @@ func (s *Service) figures(ctx context.Context, base string) ([]figureRow, error)
 	return rows, nil
 }
 
-// answer is one MetricData per asked metric, in the asked order.
+// answer is one MetricData per asked metric, in the asked order, and the service's as-of time.
 func answer(
+	asOf int64,
 	metrics []*settlementMetric,
 	dataOf func(*settlementMetric) *settlementv1.MetricData,
 ) *connect.Response[settlementv1.MetricDataResponse] {
@@ -207,5 +213,21 @@ func answer(
 		datas = append(datas, dataOf(metric))
 	}
 
-	return connect.NewResponse(&settlementv1.MetricDataResponse{MetricDatas: datas})
+	return connect.NewResponse(&settlementv1.MetricDataResponse{MetricDatas: datas, AsOfUnix: asOf})
+}
+
+// asOf is when this service last folded an event — the newest claim in `settlement_event_logs`, unix seconds; 0 before the first
+// (a-money-metric-says-as-of-when). One time for the service: every metric it serves is folded by the same fold.
+func (s *Service) asOf(ctx context.Context) (int64, error) {
+	var unix int64
+
+	err := s.db.WithContext(ctx).
+		Raw(`SELECT COALESCE(EXTRACT(EPOCH FROM MAX(created_at))::bigint, 0) FROM settlement_event_logs`).
+		Scan(&unix).
+		Error
+	if err != nil {
+		return 0, dbError(err)
+	}
+
+	return unix, nil
 }

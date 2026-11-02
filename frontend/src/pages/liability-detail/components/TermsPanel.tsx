@@ -24,6 +24,7 @@ import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { CreditMeter } from "../../../features/liability/CreditMeter";
 import { TermsEditDialog } from "../../../features/liability/TermsEditDialog";
 import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
+import { useCanWrite } from "../../../features/team/TeamContext";
 
 // Big enough to hold every counterparty this creditor has terms for. There is no counterparty filter
 // on `LiabilityTermsList` yet, so the pair's row and the DEFAULT row are both picked out of one read
@@ -74,6 +75,8 @@ export function TermsPanel({
   debt,
 }: TermsPanelProps) {
   const { t } = useTranslation();
+  // Terms are READ while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const mayEdit = useCanWrite() && canSetLiabilityTerms(role);
 
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -118,7 +121,7 @@ export function TermsPanel({
 
           {/* Only those who may set terms are offered to — the warehouse Admin is not
               (the-warehouse-admin-equals-the-owner-except-money). */}
-          {canSetLiabilityTerms(role) && (
+          {mayEdit && (
             <Button
               size="xs"
               variant="outline"
@@ -134,7 +137,7 @@ export function TermsPanel({
               every other pair at once, which is not what "remove this pair's terms" means — and
               removing a limit is deleting the row, never zeroing it
               (the-threshold-defaults-to-unlimited). */}
-          {own && canSetLiabilityTerms(role) && (
+          {own && mayEdit && (
             <Button
               size="xs"
               variant="ghost"

@@ -27,7 +27,7 @@ import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { BatchOrigin } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRupiah } from "../../lib/money";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import { useBatchDetail, useBatchHistory, useBatchPlacements } from "../../features/inventory/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
@@ -197,6 +197,7 @@ export function BatchDetailPage() {
   return (
     <Stack gap="section" data-testid="batch-detail-page">
       {/* Adjust sits ABOVE the box, top-right — it acts on THIS batch via the shared stock dialog (#218). */}
+      {canWrite(current) && (
       <Flex justify="end">
         <Button
           variant="outline"
@@ -209,6 +210,7 @@ export function BatchDetailPage() {
           {t("batchDetail.adjust")}
         </Button>
       </Flex>
+      )}
 
       {/* Header — a TWO-COLUMN grid: PRODUCT | BATCH, both left-aligned. */}
       <SimpleGrid columns={{ base: 1, md: 2 }} gap="section">
@@ -228,7 +230,7 @@ export function BatchDetailPage() {
               {batch.name}
             </Heading>
             <Text color="fg.subtle" fontSize="sm" data-testid="batch-detail-product-code">
-              {batch.sku}
+              {batch.productCode}
             </Text>
             {/* The owning team — whose goods these are (#142). */}
             {data?.ownerName && (

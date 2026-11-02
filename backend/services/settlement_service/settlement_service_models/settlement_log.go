@@ -27,6 +27,11 @@ type SettlementLog struct {
 	// machine rows.
 	ActorID uint64
 
+	// Whether that actor posted it from OUTSIDE the team (00007) — Root or the Administrator in by the root-team bypass
+	// (an-override-is-stamped-in-every-service). A person's SettlementPost reads it off the request; a row from an order's
+	// event takes it from the event's `actor_is_override`, beside the order's actor.
+	IsOverride bool
+
 	// WHO THE PER-USER REPORT COUNTS THE ROW FOR, when that is not the actor — the shop's primary CS on
 	// an IMPORTED SHOP ROW, asked of the shop before the write and kept on the row
 	// (#settlement-asks-the-shop-for-its-primary-cs). 0 on every other row: an order row counts for its

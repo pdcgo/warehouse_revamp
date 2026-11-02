@@ -87,11 +87,11 @@ async function seedShelf(page: Page): Promise<{ rack: string; productA: string; 
     name: `E2E Opname ${code}`,
   })) as { category: { id: string } };
 
-  const product = async (sku: string, name: string) =>
+  const product = async (productCode: string, name: string) =>
     (
       (await rpc(page, "warehouse.product.v1.ProductService/ProductCreate", {
         teamId: "1",
-        sku,
+        productCodePart: productCode,
         name,
         categoryId: category.category.id,
       })) as { product: { id: string } }
@@ -117,8 +117,8 @@ async function seedShelf(page: Page): Promise<{ rack: string; productA: string; 
     warehouseId: "1",
     financeAccountId: account.account.id,
     items: [
-      { productId: productA, sku: `A${code}`, name: "Opname A", count: ARRIVED_A, total: TOTAL_A },
-      { productId: productB, sku: `B${code}`, name: "Opname B", count: ARRIVED_B, total: TOTAL_B },
+      { productId: productA, productCode: `A${code}`, name: "Opname A", count: ARRIVED_A, total: TOTAL_A },
+      { productId: productB, productCode: `B${code}`, name: "Opname B", count: ARRIVED_B, total: TOTAL_B },
     ],
   })) as { request: { id: string; items: { id: string }[] } };
 

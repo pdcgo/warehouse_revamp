@@ -57,7 +57,7 @@ export type Costs = Map<string, ProductDraw>;
 //
 export interface LineDraft {
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   imageUrl: string;
   thumbnailUrl: string;
@@ -69,7 +69,7 @@ export interface LineDraft {
 export function lineFor(p: PickedProduct): LineDraft {
   return {
     productId: p.id,
-    sku: p.sku,
+    productCode: p.productCode,
     name: p.name,
     imageUrl: p.defaultImageUrl ?? "",
     thumbnailUrl: p.defaultImageThumbnailUrl ?? "",

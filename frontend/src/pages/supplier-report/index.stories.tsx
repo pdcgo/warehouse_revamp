@@ -314,3 +314,13 @@ export const APhoneFoldsTheExport: Story = {
     await expect(within(exportIcon.parentElement!).getByTestId("not-implemented-export")).toHaveTextContent("1");
   },
 };
+
+// AS OF WHEN (a-money-metric-says-as-of-when): the figures are a fold, never live, so the report says when its service
+// last claimed an event — in Jakarta time, under the headline.
+export const SaysAsOfWhen: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(await canvas.findByTestId("supplier-report-as-of")).toHaveTextContent("14:04 WIB");
+  },
+};
