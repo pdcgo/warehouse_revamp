@@ -19,7 +19,7 @@ The open set is [context_clarify.md](./context_clarify.md).
 | ~~[a-lazada-receipt-is-its-order-number](#a-lazada-receipt-is-its-order-number)~~ | ⛔ superseded by [a-lazada-receipt-is-its-tracking-number](#a-lazada-receipt-is-its-tracking-number): the owner withdrew the value it rested on |
 | [a-shopee-resi-is-confirmed-by-its-barcode](#a-shopee-resi-is-confirmed-by-its-barcode) | A Shopee label no courier layout knows is read from its Resi box when a barcode says the same |
 | [a-lazada-receipt-is-its-tracking-number](#a-lazada-receipt-is-its-tracking-number) | A Lazada label's `Receipt` is the courier's tracking number, its `OrderID` the 16-digit order number |
-| [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module) | The package is the public repo `pdcgo/san_receipt_readers`, a submodule at `backend/packages/`, with its own `go.mod` |
+| [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module) | The package is the public repo `pdcgo/san_receipt_readers`, a submodule at `backend/packages/`, with its own `go.mod`. 🔄 *Folder moved to `backend/pkgs/` by [the-reader-lives-in-backend-pkgs](#the-reader-lives-in-backend-pkgs)* |
 | [the-label-samples-may-be-committed](#the-label-samples-may-be-committed) | The label PDFs in `examples/receipt_file_samples/` are not sensitive: they stay committed, the repo stays public |
 | [a-receipt-mismatch-is-only-a-warning](#a-receipt-mismatch-is-only-a-warning) | a label that disagrees with the typed resi only warns at submit; the five mismatched samples are not investigated, for now |
 | [jnttest-is-a-tiktok-jnt-express-label](#jnttest-is-a-tiktok-jnt-express-label) | `jnttest.pdf` is a TikTok J&T Express label — same generator and fonts as a TikTok label, a TikTok order id |
@@ -30,6 +30,7 @@ The open set is [context_clarify.md](./context_clarify.md).
 | [a-picture-label-is-read-from-its-barcodes-only](#a-picture-label-is-read-from-its-barcodes-only) | a label printed as a picture gives its tracking number, and its order id when a barcode carries it — no OCR |
 | [a-reservation-number-is-read-as-the-order-id](#a-reservation-number-is-read-as-the-order-id) | a Shopee reservation label's `No.Reservasi:` number is its `OrderID`, whatever the label is for — the reader reads, the caller decides |
 | [a-label-is-read-from-a-pdf-only](#a-label-is-read-from-a-pdf-only) | a label is read only from a PDF — a photo is never sent to the reader |
+| [the-reader-lives-in-backend-pkgs](#the-reader-lives-in-backend-pkgs) | the submodule's folder moves to `backend/pkgs/san_receipt_readers` — still its own repo and its own module |
 
 ---
 
@@ -416,9 +417,9 @@ flowchart LR
 | | spec |
 | --- | --- |
 | module | `github.com/pdcgo/san_receipt_readers`, its own `go.mod` and `go.sum` |
-| folder | `backend/packages/`, meaning "another repo, checked out here", beside `backend/pkgs/` (this repo's own packages) |
-| wiring | the root `go.mod` requires it and `replace`s it with `./backend/packages/san_receipt_readers`, so an edit there is seen here at once |
-| CI | both checkouts take `submodules: true` (every `go` command reads the replaced folder's `go.mod`), and a step runs `go vet` and `go test` inside each `backend/packages/*`, which the root's `./...` never enters |
+| folder | `backend/packages/`, meaning "another repo, checked out here", beside `backend/pkgs/` (this repo's own packages). 🔄 *Moved 2026-11-03 by [the-reader-lives-in-backend-pkgs](#the-reader-lives-in-backend-pkgs): the folder is `backend/pkgs/san_receipt_readers`* |
+| wiring | the root `go.mod` requires it and `replace`s it with `./backend/packages/san_receipt_readers`, so an edit there is seen here at once. 🔄 *Now `./backend/pkgs/san_receipt_readers`* |
+| CI | both checkouts take `submodules: true` (every `go` command reads the replaced folder's `go.mod`), and a step runs `go vet` and `go test` inside each `backend/packages/*`, which the root's `./...` never enters. 🔄 *Now inside every path `.gitmodules` lists* |
 | privacy | `*.pdf` is gitignored in the submodule. The real samples stay untracked in this repo's `examples/` ([Q5](./context_clarify.md#question)), and the tests build their labels in code. 🔄 *Reversed 2026-10-19 by [the-label-samples-may-be-committed](#the-label-samples-may-be-committed): the samples are committed here, and the diagram's "never pushed" is stale* |
 | docs | stay here, in `docs/technical/packages/receipt_readers/`. The submodule's README links to them by URL |
 | a change | is two commits: one in the submodule (pushed to its repo), then one here moving the submodule pointer |
@@ -654,3 +655,32 @@ a JPEG, a phone photo      → not sent to the reader — the person types the n
 | --- | --- |
 | the upload | still accepts both ([document.proto:34](../../../../proto/warehouse/document/v1/document.proto#L34)) — only the READ is PDF-only |
 | ✅ built | the order form sends only `application/pdf` to `ReceiptCheck` |
+
+---
+
+## the-reader-lives-in-backend-pkgs
+
+> Owner, in chat (2026-11-03): *"can you move it to pkgs"* — then, of the options put to them: *"Only move the folder:
+> still a submodule with its own module, at backend/pkgs/san_receipt_readers"*, and *"Keep the GitHub repo"*.
+
+**The verdict.** Only the FOLDER moves: `backend/packages/san_receipt_readers` → `backend/pkgs/san_receipt_readers`.
+Everything else in [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module)
+stands — the public repo `pdcgo/san_receipt_readers`, a git submodule, its own Go module, built through a `replace`,
+a change being two commits. The module path does not change, so no import does (`shipment_v1`, `tools/receipt_iterate`).
+
+```mermaid
+flowchart LR
+  W["warehouse_revamp go.mod"] -->|"replace with ./backend/pkgs/san_receipt_readers"| S["backend/pkgs/san_receipt_readers, own go.mod"]
+  S -->|"git submodule, path moved"| G["github.com/pdcgo/san_receipt_readers, unchanged"]
+  P["backend/pkgs, this repo's packages"] -.->|"now also holds"| S
+```
+
+| | |
+| --- | --- |
+| the move | `git mv` — `.gitmodules`' `path` follows; the submodule's NAME stays `backend/packages/san_receipt_readers` (a name is an id, not a folder). Pinned commit unchanged |
+| `backend/pkgs/` | now mixes this repo's own packages with one nested module. ⚠ Root `go build / vet / test ./...` skips it, as before — test it from inside |
+| CI | the submodule step loops over every `path` in `.gitmodules` instead of `backend/packages/*`, so the next move needs no CI edit |
+| also updated | root `go.mod` `replace`, `.gcloudignore`, CLAUDE.md's command table, receipt.proto's comment (and its generated `receipt_pb.ts`), the state and clarify docs' links |
+| owner's spec | [context.md](./context.md) §General now says `backend/pkgs/san_receipt_readers` — edited by the agent with the owner's permission, given for that session only (2026-11-03) |
+| ⚠ left to the owner | the submodule's own README line 21 (a commit in the other repo) |
+| ✅ built | 2026-11-03 |

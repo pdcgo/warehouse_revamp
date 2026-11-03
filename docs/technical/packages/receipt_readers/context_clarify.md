@@ -343,14 +343,14 @@ What it took:
 # Proposed Design
 
 > **✅ Built to your contract, including its 2026-10-02 edit** (no `Courier`; `Phone`, `CustomerName`,
-> `Address` added), in [`backend/packages/san_receipt_readers/`](../../../../backend/packages/san_receipt_readers/).
-> `cd backend/packages/san_receipt_readers && go test -run TestSamples -v` reads every PDF in
+> `Address` added), in [`backend/pkgs/san_receipt_readers/`](../../../../backend/pkgs/san_receipt_readers/).
+> `cd backend/pkgs/san_receipt_readers && go test -run TestSamples -v` reads every PDF in
 > `examples/receipt_file_samples/` and logs all five fields. Critiques 2 and 4–8 are built **as the safe default,
 > not decided**: the name stays `OrderID`, and the errors are unexported. The code below is the proposal that
 > remains: your contract with those critiques applied.
 
 ```
-backend/packages/san_receipt_readers/
+backend/pkgs/san_receipt_readers/
   receipt.go       Extract: buffer + cap, recover, open, rows, pick the layout
   lines.go         glyphs → positioned words → rows (replaces the library's GetTextByRow)
   widths.go        Type0 glyph widths, which the library ignores

@@ -621,7 +621,7 @@ it once a real domain service replaces it.
 | Run the whole dev stack (docker + API + UI) | `go run ./tools/san dev run` — one terminal, output prefixed per server, Ctrl-C stops all of it. Starts the Pub/Sub emulator too, and makes its topics and its PUSH subscriptions to the API (:8080) on every start, so every event consumer runs locally |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
-| Fetch / test a submodule package | `git submodule update --init` after a clone (the build needs it), then `cd backend/packages/<name> && go test ./...` — root `./...` never enters a nested module. A change there is committed and pushed **in the submodule first**, then committed here as a pointer move |
+| Fetch / test a submodule package | `git submodule update --init` after a clone (the build needs it), then `cd backend/pkgs/san_receipt_readers && go test ./...` — root `./...` never enters a nested module. A change there is committed and pushed **in the submodule first**, then committed here as a pointer move |
 | Migrations | `go run ./tools/san migrate <cmd> --service <svc>` |
 | Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
 | Create the event topics + subscriptions | `go run ./tools/san pubsub ensure --project warehouse-dev --emulator` — **nothing else creates them** |

@@ -130,6 +130,6 @@ tool (
 )
 
 // san_receipt_readers is its own repo, checked out here as a git submodule
-// (backend/packages/san_receipt_readers). The replace builds against that checkout, so an edit there is
-// seen here at once, without a tag.
-replace github.com/pdcgo/san_receipt_readers => ./backend/packages/san_receipt_readers
+// (backend/pkgs/san_receipt_readers — its own module, so root `./...` never enters it). The replace builds
+// against that checkout, so an edit there is seen here at once, without a tag.
+replace github.com/pdcgo/san_receipt_readers => ./backend/pkgs/san_receipt_readers
