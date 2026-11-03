@@ -56,7 +56,7 @@ follow the right column, pinned by the `ProblemUnitsCarryTheLandedPrice` story. 
 the backend step rebuilds the accept on the ledgers; until then it counts the door's problems twice.
 ⚠ **The accept must wait for the ledgers** ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)),
 like the transfer, opname and placement. ⚠ **The accept prototype ignores opname's rack lock**: put-away onto a rack
-being counted must be refused ([a-lock-stops-units-moving-not-sales](../../business/inventory/opname_decision.md#a-lock-stops-units-moving-not-sales)).
+being counted must be refused ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
 RackSelect in the accept offers every rack today. **Planned:** `RackListRequest.product_id`, and on each row
 a `counting` flag for that product (the same meaning as `RackStock`'s `counting`, false until opname is built); RackSelect
 takes a `productId` and shows those racks disabled, *being counted*. Deferred on 2026-10-15 only because another session

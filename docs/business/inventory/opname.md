@@ -130,6 +130,7 @@
     - `id` as primary key
     - `opname_session_id`
     - `transaction_id`, unique
+    - `created_at`
 
 
 ## Opname Session Structure.
@@ -138,9 +139,9 @@ stateDiagram-v2
 state "Opname Session" as sess
 state "opname_session_final_transactions" as stx
 state "inventory_transactions" as tx
-state "Lost tx" as lost
-state "Broken tx" as broken
-state "Surplus" as surplus
+state "problem tx - rows broken or lost" as problem
+state "found tx" as found
+state "move tx" as move
 state "Problem Draft" as prob
 state "Surplus Draft" as surdraft
 state "Snapshot" as snap
@@ -158,9 +159,9 @@ snap-->join_fin
 join_fin-->tx: finalize
 
 stx-->tx: many
-tx-->lost
-tx-->broken
-tx-->surplus
+tx-->problem
+tx-->found
+tx-->move
 
 ```
 
@@ -275,7 +276,7 @@ state "Batch Ledger" as bledger
 [*]-->finalize: from How Staff Work On Session
 [*]-->adjust: a unit broken, lost or found at the shelf
 
-finalize-->net: one opname transaction per team
+finalize-->net: up to three transactions per team - problem, found, move
 net-->broken: broken drafts
 net-->lost: the rest is short
 net-->surplus: the rest is over

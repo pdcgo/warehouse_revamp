@@ -75,7 +75,7 @@ stateDiagram-v2
 3. **The in-transit figure** on the team's stock screen (`the-transfer-is-where-goods-in-transit-are`): Σ of its
    transfers' lines in `created`…`lost`, not built anywhere yet.
 4. **The count lock**: a rack being counted must refuse B's put-away once opname is built
-   ([a-lock-stops-units-moving-not-sales](../../business/inventory/opname_decision.md#a-lock-stops-units-moving-not-sales)).
+   ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
 5. ✅ `audit-rpc-performance` on create and accept — fixed 2026-10-17, 19 and 23 statements whatever the lines (stage 5).
 
 ## Elsewhere

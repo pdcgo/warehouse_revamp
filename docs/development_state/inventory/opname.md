@@ -49,7 +49,7 @@ flowchart LR
 | rack writes in finalize | increases first, so a rack losing a torn unit and gaining a found one never passes below 0 |
 | a claim's value | count × the lost row's `price_unit` into its batch; the batch's own `price_unit` is not changed (ledgers open point 17) |
 | lock order in finalize | session → the register's open losses → batches (claimed ones in the same statement) → racks (ledgers open point 21) |
-| a transfer's out-leg on a counted rack (ledgers open point 22) | as an order's take: allowed, counted racks last — it shares the take |
+| a transfer's out-leg on a counted rack (ledgers open point 22) | as an order's take: allowed, counted racks last — it shares the take. ⛔ Decided 2026-11-03: refused like an order, its cancel too ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)), not built |
 | the finalize review before every row is counted | an uncounted row reads as matching its book |
 | a counter's read | caller role `WAREHOUSE_STAFF`: no difference count on an active session; `OpnameRackCount` is blind for everyone |
 | AddFound's book | the shelf row's stock now (0 unless a put-away since), and the shelf row is created at 0 |
@@ -60,8 +60,8 @@ flowchart LR
 
 | | |
 | --- | --- |
-| a shelf FOUND | still the provisional `adjustment` into the named batch, outside the register — a later count can claim a loss the found already returned, crediting the warehouse twice. Its finished shape (claim the oldest loss, a second person) waits on adjustment.md |
-| a no-money count | [a-money-difference-needs-a-second-person](../../business/inventory/opname_decision.md#a-money-difference-needs-a-second-person) says it "finalizes at once"; built stricter, as the accepted prototype is — never a counter, whatever moves |
-| sold during the count past what was counted | the finalize is refused (the rack or the batches would go below 0); cancel, or send the row back |
-| an order cancelled during a count | its rollback puts units back on a counted rack; when the order was taken before the snapshot the count then over-reads by the units |
+| a shelf FOUND | still the provisional `adjustment` into the named batch, outside the register — a later count can claim a loss the found already returned, crediting the warehouse twice. Its finished shape (claim the oldest loss, a second person) waits on adjustment.md — ⛔ decided 2026-11-03: a claim the Owner or Admin approves ([an-adjust-found-waits-for-the-owner-or-admin](../../business/inventory/opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin)), not built |
+| a no-money count | [a-money-difference-needs-a-second-person](../../business/inventory/opname_decision.md#a-money-difference-needs-a-second-person) says it "finalizes at once"; built stricter, as the accepted prototype is — never a counter, whatever moves. ✅ Decided 2026-11-03: as built ([a-quiet-count-is-finalized-by-a-non-counter](../../business/inventory/opname_decision.md#a-quiet-count-is-finalized-by-a-non-counter)) |
+| sold during the count past what was counted | the finalize is refused (the rack or the batches would go below 0); cancel, or send the row back — ⛔ decided 2026-11-03: the sale is refused instead ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)), not built |
+| an order cancelled during a count | its rollback puts units back on a counted rack; when the order was taken before the snapshot the count then over-reads by the units — ⛔ decided 2026-11-03: the cancel is refused instead ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)), not built |
 | `is_override` on the session | not stamped (finalizing-is-the-agreement withdrew the flag); the transactions are |

@@ -14,17 +14,27 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**4 open questions across 41 files.** The per-file counts are at the bottom.
+**0 open questions across 41 files.** The per-file counts are at the bottom.
+
+▼ *(2026-11-03)* **0**: the last, opname Q25, closed — a rack a count holds cannot be deleted
+([a-rack-a-count-holds-cannot-be-deleted](business/inventory/opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)), as recommended. ⛔ Not built. **Every question is
+answered.** Decided today and not built: [a-lock-stops-sales-and-cancels-too](business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too) ·
+[an-adjust-found-waits-for-the-owner-or-admin](business/inventory/opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin) · [a-rack-a-count-holds-cannot-be-deleted](business/inventory/opname_decision.md#a-rack-a-count-holds-cannot-be-deleted). Net −1.
+
+▼ *(2026-11-03)* **1**: the old #1, opname Q23, closed — a count that moves no money is still finalized by a non-counter
+([a-quiet-count-is-finalized-by-a-non-counter](business/inventory/opname_decision.md#a-quiet-count-is-finalized-by-a-non-counter)), as recommended, after *"Explain more q23"*. Already built. Net −1.
+
+▼ *(2026-11-03)* **2**: the old #1, opname Q22, closed — an Adjust found is a claim the Owner or Admin approves
+([an-adjust-found-waits-for-the-owner-or-admin](business/inventory/opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin)), as recommended; it confirms
+[an-adjustment-writes-the-same-problem-row](business/inventory/opname_decision.md#an-adjustment-writes-the-same-problem-row). ⛔ Not built. Net −1.
+
+▼ *(2026-11-03)* **3**: the old #1, opname Q24, closed — a count stops the sale and the cancel too
+([a-lock-stops-sales-and-cancels-too](business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)), **against my recommendation** to correct each count by the
+movements since it. It reverses the sales half of [superseded-a-lock-stops-units-moving-not-sales](business/inventory/opname_decision.md#superseded-a-lock-stops-units-moving-not-sales). ⛔ Not built.
+The rest move up one. Net −1.
 
 ▲ *(2026-11-02)* **+4**, all in [the stock count](business/inventory/opname_clarify.md#question), raised by building it after your design accept. None blocks the
-count — each was built the safe way — but each changes what it does:
-
-| # | the question | blocks | → recommend |
-| --- | --- | --- | --- |
-| 1 | [opname Q24](business/inventory/opname_clarify.md#question) — a sale or a cancel during a count skews it: finalize refuses below zero, or the count over-reads | every count run while orders flow | finalize corrects each counted figure by the rack's ledger movements since it was counted |
-| 2 | [opname Q22](business/inventory/opname_clarify.md#question) — an Adjust *found* stays outside the register, so a later count can credit the same loss again | the money of a found unit | the Adjust *found* becomes a claim the Owner or Admin approves |
-| 3 | [opname Q23](business/inventory/opname_clarify.md#question) — does a no-money count still need a non-counter to finalize? | who finalizes a quiet count | keep it: *at once* means no approval step |
-| 4 | [opname Q25](business/inventory/opname_clarify.md#question) — a rack a count holds can be deleted | rack deletion during a count | refuse it, naming the session |
+count — each was built the safe way — but each changes what it does.
 
 ▼ *(2026-11-02, a build pass — no question opened or closed)* Built since the lines below were written, so their
 *⛔ Not built* is history: the expense correction, the replay lock lease, the one-year cap, *as of*, product archive and
@@ -348,7 +358,7 @@ the column sums to **0**, the whole set. *Overtaken* is how many of a file's ope
 | [business/order/order_statistic_metric_clarify.md](business/order/order_statistic_metric_clarify.md#question) | 0 |  |  |
 | [business/product/product_bundle_clarify.md](business/product/product_bundle_clarify.md#question) | 0 |  |  |
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 0 |  |  |
-| [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 4 | Q22–Q25 |  |
+| [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 0 |  |  |
 | [business/inventory/order_clarify.md](business/inventory/order_clarify.md#question) | 0 |  |  |
 | [business/inventory/placement_clarify.md](business/inventory/placement_clarify.md#question) | 0 |  |  |
 | [business/inventory/restock_clarify.md](business/inventory/restock_clarify.md#question) | 0 |  |  |
@@ -364,7 +374,7 @@ the column sums to **0**, the whole set. *Overtaken* is how many of a file's ope
 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡), withdrawn or ⏸ parked is not open, and **a question whose parts are all answered or moved
-> counts as closed** even when its own line carries no ✅. Rows sum to **4** across **41** files.
+> counts as closed** even when its own line carries no ✅. Rows sum to **0** across **41** files.
 >
 > ⚠ **Stale at source, found on this pass and not fixed** — each is a clarify's own text:
 > [product](business/product/context_clarify.md)'s preamble and its decision file cite drifted question numbers (Q9

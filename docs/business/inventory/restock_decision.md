@@ -1436,7 +1436,7 @@ flowchart LR
 | | |
 | --- | --- |
 | accepted | `frontend/src/pages/restock-*` (accept, labels, request-form, selling, selling-detail, warehouse, warehouse-detail), `features/restock/`, and `proto/warehouse/inventory/v1/restock_request.proto` |
-| already known, accepted as planned | the rack lock: the accept's rack picker refuses a rack whose product is being counted ([a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)) — one contract field, planned in the state report |
+| already known, accepted as planned | the rack lock: the accept's rack picker refuses a rack whose product is being counted ([a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)) — one contract field, planned in the state report |
 | the pending marks | each one is removed by the backend step that stores its field |
 | a contract change after this | a new pass through the screens, not a quiet edit |
 | next | backend analysis; the accept is ordered by [the-decided-ledgers-come-before-the-restock-accept](#the-decided-ledgers-come-before-the-restock-accept) |

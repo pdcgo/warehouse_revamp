@@ -693,6 +693,9 @@ team — [opname-md-still-draws-one-opname-transaction](./opname_clarify.md#opna
 `problem` appears only as a `tx_type`, and the rest of each list is the transaction's type. Broken versus lost is then on
 the log row **and** on the stock-problem row — your choice over my *drop them from batch.md*.
 
+🔄 *(2026-11-03)* **opname.md now follows it** — the finalize arrow, the session diagram and Table 7's `created_at`, written
+with your one-time permission ([opname-md-still-draws-one-opname-transaction](./opname_clarify.md#opname-md-still-draws-one-opname-transaction)).
+
 ## items-are-what-history-and-reports-read
 
 > Owner, in chat (2026-10-16): *"yes, intend to report"* — answering 2d of [transaction_clarify Q2](./transaction_clarify.md#question),

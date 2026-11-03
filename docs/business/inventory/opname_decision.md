@@ -47,7 +47,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [nobody-finalizes-their-own-count](#nobody-finalizes-their-own-count) | staff or a manager count, the warehouse Owner or Admin finalizes, and never a person who counted in the session | chat, 2026-10-13 — answers Q8b and Q8c, as recommended |
 | [root-finalizes-only-as-an-override](#root-finalizes-only-as-an-override) | Root and the root Administrator may finalize, recorded as an override, never their own count | chat, 2026-10-13 — answers Q8d, as recommended |
 | [a-count-starts-when-order-processing-is-done](#a-count-starts-when-order-processing-is-done) | no system check for units in a basket: the admin starts a count after order processing, and a stray basket is caught at the reveal | chat, 2026-10-13 — answers Q5, **against** my *the lock waits for printed lines* |
-| [a-lock-stops-units-moving-not-sales](#a-lock-stops-units-moving-not-sales) | a counted product on a rack takes no put-away, move, sample or adjustment; an order is still taken, unlocked racks first, and its pick on a locked rack waits for the count | chat, 2026-10-13 — answers Q4, as recommended |
+| [superseded-a-lock-stops-units-moving-not-sales](#superseded-a-lock-stops-units-moving-not-sales) | ⛔ reversed in its sales half — a count stops the order's take and its cancel too ([a-lock-stops-sales-and-cancels-too](#a-lock-stops-sales-and-cancels-too)) | chat, 2026-10-13 — answers Q4, as recommended |
 | [the-lock-is-the-open-snapshot-row](#the-lock-is-the-open-snapshot-row) | a count's lock is its open snapshot row; finalize or cancel releases it; one open count per product per rack, by the database; `placements.locked` dropped | chat, 2026-10-13 — answers Q3, as recommended |
 | [an-abandoned-count-waits-for-the-admin](#an-abandoned-count-waits-for-the-admin) | an open count never releases on its own; a blocked action names the session, and the admin cancels it | chat, 2026-10-13 — answers Q3b, as recommended |
 | [a-count-has-no-tolerance](#a-count-has-no-tolerance) | every net difference posts, however small; the recount and the second person stop noise, not a threshold | chat, 2026-10-13 — answers Q7, as recommended |
@@ -60,6 +60,10 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [last-price-is-the-teams-newest-batch-here](#last-price-is-the-teams-newest-batch-here) | a surplus with nothing to claim is minted at the team's newest batch price for the product in this warehouse; with none, it does not post | chat, 2026-10-13 — answers Q11f, as recommended |
 | [a-claim-names-its-transaction](#a-claim-names-its-transaction) | every claim on a stock problem is a `problem_claimed_transactions` row naming the problem and the transaction that claimed it | your opname.md edit, 2026-10-13 — answers the trace of Q11d, as recommended |
 | [a-surplus-claims-a-lost-unit-first](#a-surplus-claims-a-lost-unit-first) | a unit a count finds extra first claims an open lost problem; with none to claim, it is minted as a new batch at the product's last price | your opname.md edit, 2026-10-13 — answers context Q14b in substance |
+| [a-lock-stops-sales-and-cancels-too](#a-lock-stops-sales-and-cancels-too) | a counted product on a rack takes no put-away, move, sample or adjustment — and no order's or transfer's take and no cancel of either; what the unlocked racks cannot fill refuses it, naming the count | chat, 2026-11-03 — answers Q24, **against my recommendation** |
+| [an-adjust-found-waits-for-the-owner-or-admin](#an-adjust-found-waits-for-the-owner-or-admin) | a found on the Adjust screen is a `found` claim on the oldest open loss, posted only when the warehouse Owner or Admin — never the reporter — approves it | chat, 2026-11-03 — answers Q22, as recommended; confirms [an-adjustment-writes-the-same-problem-row](#an-adjustment-writes-the-same-problem-row) |
+| [a-quiet-count-is-finalized-by-a-non-counter](#a-quiet-count-is-finalized-by-a-non-counter) | a count that moves no money still waits for the warehouse Owner or Admin — never a counter — to finalize; *at once* means no approval step | chat, 2026-11-03 — answers Q23, as recommended; already built |
+| [a-rack-a-count-holds-cannot-be-deleted](#a-rack-a-count-holds-cannot-be-deleted) | a rack delete is refused while an open count row names it, naming the count, its starter and start time | chat, 2026-11-03 — answers Q25, as recommended |
 
 ---
 
@@ -659,7 +663,11 @@ flowchart LR
 | a blocked action | names the session, who started it and when |
 | who cancels | the warehouse admin — whoever may open a session ([an-opname-is-a-locked-session](#an-opname-is-a-locked-session)) |
 
-## a-lock-stops-units-moving-not-sales
+## superseded-a-lock-stops-units-moving-not-sales
+
+> ⛔ **SUPERSEDED in its sales half (2026-11-03)** by [a-lock-stops-sales-and-cancels-too](#a-lock-stops-sales-and-cancels-too): an order's take and its
+> cancel are refused on a counted rack too, so the book stands still for the count. Put-away, move, sample and adjustment
+> stay refused, carried there. Kept below as it was decided.
 
 > Owner, in chat *(2026-10-13)*: *"for q4 follow your recomendation"*. It answers [opname Q4](./opname_clarify.md#question) —
 > *what does a lock block?* — as recommended.
@@ -753,6 +761,9 @@ flowchart LR
 | needs a second person | a session with any net `lost`, `broken` or `found` line |
 | finalizes at once | a session where every product matches, or whose only differences mint a surplus — no money moves |
 | sent back | the session stays `counting`; staff recount, and the reveal shows the new figures |
+
+🔄 *(2026-11-03)* ***At once* means no approval step, not by a counter** — the finalize is still pressed by a non-counter Owner or
+Admin ([a-quiet-count-is-finalized-by-a-non-counter](#a-quiet-count-is-finalized-by-a-non-counter)).
 
 ## nobody-finalizes-their-own-count
 
@@ -964,7 +975,7 @@ flowchart LR
 | a waiting unit counted | a +1 at the reveal, handled there ([a-count-is-blind-then-revealed](#a-count-is-blind-then-revealed)) and by the second person ([a-money-difference-needs-a-second-person](#a-money-difference-needs-a-second-person)) |
 | withdrawn | my `waiting_count` |
 
-🔄 **What it touches.** [a-lock-stops-units-moving-not-sales](#a-lock-stops-units-moving-not-sales) gave `waiting_count` as
+🔄 **What it touches.** [superseded-a-lock-stops-units-moving-not-sales](#superseded-a-lock-stops-units-moving-not-sales) gave `waiting_count` as
 its reason for holding a pick on a locked rack. The rule still holds for a different reason: an order **after** the
 snapshot lowers the book, but the snapshot already counted the unit — lifted mid-count, it reads as −1. Held, the count
 matches.
@@ -998,7 +1009,7 @@ flowchart LR
 | rows written | `broken` (claimable 0) and `lost` (claimable), oldest batch first, per [a-shortage-writes-a-row-per-batch](#a-shortage-writes-a-row-per-batch) |
 | money | the warehouse owes for both — `broken_good` and `lost_good` |
 
-🔄 **What it corrects.** [a-lock-stops-units-moving-not-sales](#a-lock-stops-units-moving-not-sales) said *"a breakage seen
+🔄 **What it corrects.** [superseded-a-lock-stops-units-moving-not-sales](#superseded-a-lock-stops-units-moving-not-sales) said *"a breakage seen
 during the count goes in its note"*. A note writes no `broken` row, so the warehouse would never pay and the unit would stay
 in stock. It goes in `broken_stock_count`.
 
@@ -1737,6 +1748,9 @@ the session diagram's boxes are `problem`, `found` and `move` transactions, and 
 `transaction_id`. The unique key is written; the rest waits in
 [opname-md-still-draws-one-opname-transaction](./opname_clarify.md#opname-md-still-draws-one-opname-transaction).
 
+🔄 *(2026-11-03)* **Written** — `created_at` on Table 7, and the three transactions in the session diagram, with your one-time
+permission ([opname-md-still-draws-one-opname-transaction](./opname_clarify.md#opname-md-still-draws-one-opname-transaction)).
+
 ---
 
 ## the-count-prototype-is-accepted
@@ -1767,3 +1781,164 @@ first, broken before lost, and its claims; the debt to each team in the transact
 lock refuses put-away, move, sample and adjustment naming the count; an order's take uses counted racks last and its pick
 shows it waits. `StockOpname` and its page are retired; the menu opens the counts. Races, audit, e2e and the details:
 [the state](../../development_state/inventory/opname.md).
+
+---
+
+## a-lock-stops-sales-and-cancels-too
+
+> Owner, in chat *(2026-11-03)*: *"Yes, sales and cancel blocked"* — to [opname Q24](./opname_clarify.md#question), *a sale
+> or a cancel during a count skews it*, after *"in oldest seem I decided that rack that still opname is blocked sale and
+> cancel"*. **Against my recommendation** (finalize corrects each count by the movements since it). It reverses the sales
+> half of [superseded-a-lock-stops-units-moving-not-sales](#superseded-a-lock-stops-units-moving-not-sales) and goes back to the direction of
+> [a-count-locks-its-rack](./order_decision.md#a-count-locks-its-rack): *no unit leaves or arrives while it is counted*.
+
+**The verdict.** While a product on a rack is being counted, **nothing moves it there — not on the shelf, not in the
+book.** Put-away, move, sample and adjustment stay refused; an order's take and an order's cancel are refused too. An
+order still takes from the product's unlocked racks; only what they cannot fill is refused. The book stands still for
+the whole count, so finalize compares the count with a figure nobody changed.
+
+```mermaid
+flowchart TB
+  L["Kaos Hitam on Rak A - being counted"] --> P["put-away, move, sample, adjustment - refused"]
+  L --> O["a new order"]
+  O -->|"Rak C holds enough"| T["taken from Rak C"]
+  O -->|"only Rak A holds it"| R["refused - names the count, who started it, when"]
+  L --> X["cancel of an order taken from Rak A"]
+  X --> R2["refused - names the count"]
+  R --> F["the count is finalized or cancelled - try again"]
+  R2 --> F
+```
+
+**The spec.**
+
+| act on a locked product on a rack | |
+| --- | --- |
+| put-away, move, sample, adjustment | refused — unchanged |
+| an order's take | **never from a locked rack**: unlocked racks only, fewest first; what they cannot fill refuses the whole order, naming the count, its starter and start time ([an-abandoned-count-waits-for-the-admin](#an-abandoned-count-waits-for-the-admin)) |
+| an order's cancel | refused while a rack its take came from is locked for that product — the same error; the cancel is made again after the count |
+| the pick page's *waiting* line | gone — no order is taken from a locked rack any more |
+| finalize | unchanged — the count against `system_stock_count`; the book cannot move under it |
+| what is given up | an order for a product only a counted rack holds waits for the count; a marketplace cancel happens on the platform anyway, and ours is redone after the count |
+
+**What it amends:** [an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first)
+and [an-order-line-may-be-taken-from-several-racks](./placement_decision.md#an-order-line-may-be-taken-from-several-racks) —
+a counted rack is skipped, not taken last.
+
+**What it does NOT settle:** a warehouse transfer's out-leg and its cancel, which share the order's take (ledgers open
+point 22) — asked in chat · `OrderTransactionRelease` is also the undo of an order create that failed after its take; a
+count started in the seconds between would refuse that undo.
+
+⛔ **Not built.** Today a counted rack is taken from last and its pick waits; the release does not read the lock. The code
+comments, the proto comment on `counting_session_id` and the pick page still cite the superseded name — they change with
+the build.
+
+🔄 *(2026-11-03)* **The transfer settled in chat** — *"For transfer, yes"*, as recommended: a warehouse transfer's out-leg
+and its cancel are refused on a counted rack exactly like an order's, since they share the take. It closes ledgers open
+point 22. ⛔ Not built. Left of *does NOT settle*: the undo of a failed order create.
+
+---
+
+## an-adjust-found-waits-for-the-owner-or-admin
+
+> Owner, in chat *(2026-11-03)*: *"Sorry, before it seems I decided A"* — to [opname Q22](./opname_clarify.md#question), *an
+> Adjust found can be credited twice*, as recommended. It confirms
+> [an-adjustment-writes-the-same-problem-row](#an-adjustment-writes-the-same-problem-row) (2026-10-13), which the 2026-11-02
+> build left unbuilt for the Adjust screen.
+
+**The verdict.** A unit found at the shelf, outside a count, goes through **the same claim as a count's surplus**: it claims
+the oldest open loss of that product, and it posts nothing until the warehouse Owner or Admin approves it. A loss can be
+claimed back once, whichever door the found came through.
+
+```mermaid
+flowchart LR
+  S["staff - Adjust - found 1 Kaos Hitam on Rak A"] --> W["waiting for approval - posts nothing"]
+  W -->|"Owner or Admin approves"| C{"an open loss of Kaos Hitam?"}
+  C -->|"yes"| K["found tx - claims the oldest loss, back into its batch at its price"]
+  C -->|"no"| M["found tx - minted at the team's newest batch price here"]
+  W -->|"rejected"| X["nothing posts"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| what the Adjust *found* writes | a request waiting for approval — no stock, no batch, no money yet |
+| who approves | the warehouse Owner or Admin, never the person who reported it ([nobody-finalizes-their-own-count](#nobody-finalizes-their-own-count) by the same rule) |
+| on approve | a `found` transaction ([problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname)) that claims per [a-surplus-claims-the-oldest-loss-first](#a-surplus-claims-the-oldest-loss-first) and [a-claim-records-its-units](#a-claim-records-its-units), and mints the rest per [last-price-is-the-teams-newest-batch-here](#last-price-is-the-teams-newest-batch-here) |
+| on reject | nothing posts |
+| a counted product | the request is refused while a count holds it ([a-lock-stops-sales-and-cancels-too](#a-lock-stops-sales-and-cancels-too)) |
+| retired | the provisional `adjustment` found into a named batch |
+
+**What it does NOT settle:** the Adjust screen's own design — [adjustment.md](./adjustment.md) is still empty; the request
+and the approval list are drawn in Storybook first, at the build.
+
+⛔ **Not built.** Today the Adjust *found* is still the provisional `adjustment` into the named batch, outside the register.
+
+---
+
+## a-quiet-count-is-finalized-by-a-non-counter
+
+> Owner, in chat *(2026-11-03)*: *"Yes, A"* — to [opname Q23](./opname_clarify.md#question), *does a count that moves no money
+> need the second person?*, after *"Explain more q23"*. As recommended. It reconciles
+> [a-money-difference-needs-a-second-person](#a-money-difference-needs-a-second-person) (*finalizes at once*) with
+> [nobody-finalizes-their-own-count](#nobody-finalizes-their-own-count) (*never a counter*).
+
+**The verdict.** One rule for every count: the warehouse Owner or Admin who counted nothing in the session finalizes it.
+For a count that moves no money, *at once* means there is **no approval step** — no review, no confirm or send back — not
+that a counter may close it. A match never earns the counter anything, so nothing rewards turning a shortage into a
+match by recounting to the revealed figure.
+
+```mermaid
+flowchart LR
+  C["every row counted"] --> Q{"any line moving money"}
+  Q -->|"yes"| R["Owner or Admin reviews - confirms or sends back"]
+  Q -->|"no"| F["Owner or Admin presses Finalize - no review"]
+  R --> P["posted, lock released"]
+  F --> P
+  X["a counter of this session"] -.->|"never"| F
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who finalizes a no-money count | the warehouse Owner or Admin, not a counter of the session; Root as an override ([root-finalizes-only-as-an-override](#root-finalizes-only-as-an-override)) |
+| *at once* | no review step — one press of Finalize |
+| auto-finalize | none |
+| what is given up | a warehouse whose only Owner or Admin counted needs another Owner, Admin or Root to close it — and while it waits, orders on its racks are refused ([a-lock-stops-sales-and-cancels-too](#a-lock-stops-sales-and-cancels-too)) |
+| why | a counter who could close a matching count alone would gain from recounting a shortage to the revealed figure; the second person cannot see that recount ([a-row-keeps-only-its-latest-count](#a-row-keeps-only-its-latest-count)), so the rule removes the reward instead |
+
+✅ **Already built** — `OpnameSessionFinalize` refuses any counter of the session, whatever moves. Nothing changes.
+
+---
+
+## a-rack-a-count-holds-cannot-be-deleted
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to [opname Q25](./opname_clarify.md#question), *a rack a count holds can be deleted*,
+> as recommended.
+
+**The verdict.** A rack whose product a count is holding cannot be deleted — at 0 or not. The delete is refused like every
+other act on a locked rack ([the-lock-is-the-open-snapshot-row](#the-lock-is-the-open-snapshot-row)), naming the count, who
+started it and when. The admin deletes it after the count is finalized or cancelled. Unlike a sold unit waiting for its
+pick, left to the staff's own talk ([a-placement-deletes-at-zero-stock](./placement_decision.md#a-placement-deletes-at-zero-stock)),
+a count is a lock the system already holds, so the system refuses.
+
+```mermaid
+flowchart LR
+  D["delete Rak D"] --> L{"an open count row on Rak D?"}
+  L -->|"yes"| X["refused - count 12, started by Ani at 09:00"]
+  L -->|"no"| Z{"every product at 0?"}
+  Z -->|"no"| X2["refused"]
+  Z -->|"yes"| OK["soft-deleted"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| refused when | any `opname_session_snapshots` row on the rack is open — `released_at` empty — including rows at 0 and an `all` count's empty rack ([a-snapshot-includes-rows-at-zero](#a-snapshot-includes-rows-at-zero), [an-all-count-visits-every-rack](#an-all-count-visits-every-rack)) |
+| the error | the same as every lock refusal — the count, its starter, its start time ([an-abandoned-count-waits-for-the-admin](#an-abandoned-count-waits-for-the-admin)) |
+| read | under the rack's lock, as the other writers read it, so a count planned at the same second queues behind the delete or refuses it |
+| unchanged | the zero-stock rule of [a-placement-deletes-at-zero-stock](./placement_decision.md#a-placement-deletes-at-zero-stock) |
+
+⛔ **Not built.** Today the rack delete checks only that every row is at 0.

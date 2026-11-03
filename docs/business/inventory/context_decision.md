@@ -185,8 +185,11 @@ flowchart LR
 shelf, and two shelves holding the same count (11d) · whether the pick list prints the shelf, and a pick from another
 shelf (11b) · a count before the pick (11c). The lock order is [Q15b](./context_clarify.md#question).
 
-🔄 *(2026-10-13)* **Amended by [a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)**: the lowest shelf first, among the **unlocked**
+🔄 *(2026-10-13)* **Amended by [superseded-a-lock-stops-units-moving-not-sales](./opname_decision.md#superseded-a-lock-stops-units-moving-not-sales)**: the lowest shelf first, among the **unlocked**
 shelves; a shelf being counted comes last.
+
+🔄 *(2026-11-03)* **Amended again by [a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)**: a shelf being counted is never
+taken from; what the unlocked shelves cannot fill refuses the order. ⛔ Not built.
 
 ---
 

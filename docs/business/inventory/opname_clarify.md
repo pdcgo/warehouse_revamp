@@ -3,6 +3,23 @@
 [opname.md](./opname.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [opname_decision.md](./opname_decision.md).
 
+> ✅ **Resolved 2026-11-03:** [opname-md-still-draws-one-opname-transaction](#opname-md-still-draws-one-opname-transaction) — written into opname.md with your
+> one-time permission. **Opname: no open question, no open contradiction.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q25 — a rack a count holds cannot be deleted
+> ([a-rack-a-count-holds-cannot-be-deleted](./opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)), as recommended. ⛔ Not built. **Opname has no open question.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q23 — a count that moves no money is still finalized by a non-counter
+> ([a-quiet-count-is-finalized-by-a-non-counter](./opname_decision.md#a-quiet-count-is-finalized-by-a-non-counter)), as recommended; already built. **Open: Q25.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q22 — an Adjust found is a claim the Owner or Admin approves
+> ([an-adjust-found-waits-for-the-owner-or-admin](./opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin)), as recommended; it confirms the 2026-10-13 rule.
+> ⛔ Not built. **Open: Q23, Q25.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q24 — a count stops the sale and the cancel too
+> ([a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)), against my *correct each count by the movements since*; it
+> reverses Q4's sales half. ⛔ Not built. **Open: Q22, Q23, Q25.**
+
 > 🔄 **Re-examined after your transaction, placement, batch and opname edits (2026-10-16).** ✅ Recorded:
 > [problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname) and
 > [a-session-lists-its-final-transactions](./opname_decision.md#a-session-lists-its-final-transactions), which supersedes
@@ -104,7 +121,7 @@
 > my *the lock waits*.
 >
 > ✅ **Answered 2026-10-13, in chat:** Q4 — a lock stops units moving, never a sale; a pick on a locked rack waits
-> ([a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)). ✅ **Resolved by your
+> ([superseded-a-lock-stops-units-moving-not-sales](./opname_decision.md#superseded-a-lock-stops-units-moving-not-sales)). ✅ **Resolved by your
 > placement.md edit:** the [lock contradiction](#the-lock-is-drawn-on-the-product-and-stored-on-the-rack) — `locked` is gone.
 >
 > ✅ **Answered 2026-10-13, in chat:** Q3 and 3b — the lock is the open snapshot row, finalize or cancel releases it, the
@@ -281,7 +298,7 @@ The register is your §How We Manage Stock Problem In Warehouses
 | **2** | ✅ **Answered** — `opname_session_snapshots` ([a-snapshot-row-per-product-on-a-rack](./opname_decision.md#a-snapshot-row-per-product-on-a-rack)). What the row still lacks is [Q10](#question) | — |
 | **3** | ✅ *(2026-10-13)* **Answered** — [the-lock-is-the-open-snapshot-row](./opname_decision.md#the-lock-is-the-open-snapshot-row). As first raised: **The lock has no holder.** As a yes-or-no on a row: two sessions over one product on a rack, and the first to finish unlocks it under the second. A session abandoned halfway leaves it locked for ever | the lock **is** the counting session's snapshot row; a session has a status, and **cancel releases it** like finalize does |
 | **4** | ✅ **Answered** — the product on the rack is locked, not the rack ([a-count-locks-the-product-on-the-rack](./opname_decision.md#a-count-locks-the-product-on-the-rack)) | — |
-| **5** | ✅ *(2026-10-13)* **Answered** — [a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales). As first raised: **What a lock blocks is not written.** Orders keep coming; refusing one because a rack is being counted refuses a real sale | **a lock stops units moving, not the book** — no receipt prints from it, no move, no put-away into it. `PostOrder` prefers unlocked racks and takes from a locked one only when nothing else holds the product; that receipt waits for the unlock |
+| **5** | ✅ *(2026-10-13)* **Answered** — [superseded-a-lock-stops-units-moving-not-sales](./opname_decision.md#superseded-a-lock-stops-units-moving-not-sales). As first raised: **What a lock blocks is not written.** Orders keep coming; refusing one because a rack is being counted refuses a real sale | **a lock stops units moving, not the book** — no receipt prints from it, no move, no put-away into it. `PostOrder` prefers unlocked racks and takes from a locked one only when nothing else holds the product; that receipt waits for the unlock |
 | **6** | ✅ *(2026-10-13)* **Answered** — [a-count-starts-when-order-processing-is-done](./opname_decision.md#a-count-starts-when-order-processing-is-done). As first raised: **Units already in a basket when the lock starts** — printed, lifted, not yet scanned. The count finds the rack short | wait for them before locking — [Q5](#question) |
 | **7** | ✅ *(2026-10-13)* **Answered** — [a-count-nets-each-product-across-the-session](./opname_decision.md#a-count-nets-each-product-across-the-session). As first raised: **One rack cannot net a wrong-rack pick.** It sees Rak B's −1 and not Rak A's +1, and charges the warehouse | money only for a product counted on all its racks — [Q6](#question) |
 
@@ -296,7 +313,7 @@ The register is your §How We Manage Stock Problem In Warehouses
 3. ✅ *(2026-10-13)* **Answered, as recommended** — the lock is the open snapshot row, released by finalize or cancel
    ([the-lock-is-the-open-snapshot-row](./opname_decision.md#the-lock-is-the-open-snapshot-row)); an abandoned count waits for the
    admin ([an-abandoned-count-waits-for-the-admin](./opname_decision.md#an-abandoned-count-waits-for-the-admin)).
-4. ✅ *(2026-10-13)* **Answered, as recommended** — [a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales).
+4. ✅ *(2026-10-13)* **Answered, as recommended** — [superseded-a-lock-stops-units-moving-not-sales](./opname_decision.md#superseded-a-lock-stops-units-moving-not-sales).
 5. ✅ *(2026-10-13)* **Answered: no system rule** — the admin starts a count after order processing, and a stray basket
    is caught at the reveal ([a-count-starts-when-order-processing-is-done](./opname_decision.md#a-count-starts-when-order-processing-is-done)),
    against my *the lock waits*.
@@ -340,30 +357,12 @@ The register is your §How We Manage Stock Problem In Warehouses
 *(2026-11-02 — raised by the build of [the-count-prototype-is-accepted](./opname_decision.md#the-count-prototype-is-accepted).
 Each was built the safe way and works today; the answer may change it.)*
 
-22. ⬜ **An Adjust *found* can be credited twice.** [an-adjustment-writes-the-same-problem-row](./opname_decision.md#an-adjustment-writes-the-same-problem-row)
-    makes a found by either door a claim with a second person; the Adjust screen's *found* is still the provisional one, outside
-    the register — so a later count can claim back a loss the found already returned. **→ Recommend:** an Adjust *found*
-    becomes a claim on the batch's oldest open loss, waiting for the warehouse Owner or Admin to approve it in the app, as a
-    count's surplus does.
-23. ⬜ **Does a count that moves no money need the second person?** [a-money-difference-needs-a-second-person](./opname_decision.md#a-money-difference-needs-a-second-person)
-    says it *finalizes at once*; [nobody-finalizes-their-own-count](./opname_decision.md#nobody-finalizes-their-own-count) says
-    never a counter. Built: never a counter, always. **→ Recommend:** keep it — read *at once* as *no approval step*, not *by
-    the counter*.
-24. ⬜ **A sale or a cancel during a count skews it.** A unit taken from a counted rack after its count makes finalize go
-    below zero and refuse; an order cancelled mid-count puts units back and the count over-reads. **→ Recommend:** finalize
-    corrects each counted figure by the rack's ledger movements since the row was counted, both ways — the count stays true to
-    the moment it was made.
-25. ⬜ **A rack a count holds can be deleted.** Deleting a rack whose row is open at zero is not refused. **→ Recommend:**
-    refuse it, naming the session — an open row is a lock ([the-lock-is-the-open-snapshot-row](./opname_decision.md#the-lock-is-the-open-snapshot-row)).
+22. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [an-adjust-found-waits-for-the-owner-or-admin](./opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin).
+23. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [a-quiet-count-is-finalized-by-a-non-counter](./opname_decision.md#a-quiet-count-is-finalized-by-a-non-counter).
+24. ✅ *(2026-11-03)* **Answered in chat: blocked** — a counted rack takes no order and no cancel
+    ([a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)), against my *correct by the movements since*.
+25. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [a-rack-a-count-holds-cannot-be-deleted](./opname_decision.md#a-rack-a-count-holds-cannot-be-deleted).
 
-```mermaid
-flowchart LR
-  C["a row counted"] --> S["a sale takes a unit from the rack"]
-  S --> F["finalize - counted minus taken since"]
-  C --> X["an order cancelled - a unit put back"]
-  X --> F
-  F --> OK["the count is true to its moment"]
-```
 
 ---
 
@@ -371,29 +370,10 @@ flowchart LR
 
 ## opname-md-still-draws-one-opname-transaction
 
-*(2026-10-16)* One cause — `opname` left `tx_type` for `problem`, `found` and `move`
-([problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname)), and the session lists its
-transactions ([a-session-lists-its-final-transactions](./opname_decision.md#a-session-lists-its-final-transactions)).
-🔄 *(2026-10-16, later)* **Your edits settled three of five**: the snapshot's `transaction_id` is gone, Table 7 is written, and
-batch.md keeps `broken` and `lost` on purpose (the ledgers carry the reason). Two are left, and Table 7 needs `created_at`:
-
-| site | says | decided |
-| --- | --- | --- |
-| [opname.md](./opname.md) §How We Manage Stock Problem | *"finalize → net: one opname transaction per team"* | up to three per team: `problem`, `found`, `move` |
-| opname.md §Opname Session Structure | *"Lost tx"* · *"Broken tx"* · *"Surplus"* — reads as one transaction per kind | `problem tx` (its rows broken or lost) · `found tx` · `move tx` |
-| opname.md Table 7 | `id` · `opname_session_id` · `transaction_id`, unique ✅ | `created_at`, as every table has |
-
-**Which is wrong:** these three lines — ✅ all three confirmed in chat (2026-10-16), waiting for your edit. **→ Recommend:** the finalize arrow reads *"up to three transactions per team"*;
-the diagram's boxes read `problem tx`, `found tx`, `move tx`; Table 7 gains
-`created_at`.
-
-```mermaid
-flowchart LR
-  F["finalize"] --> J["opname_session_final_transactions"]
-  J --> P["problem tx - rows broken or lost"]
-  J --> N["found tx - rows found"]
-  J --> M["move tx - rack corrected"]
-```
+✅ *(2026-11-03)* **Resolved** — your three answers in chat (A, A, A), written into [opname.md](./opname.md) **by me, with your
+permission for this edit only** (*"Apply, but I allow just for now"*): the finalize arrow reads *"up to three transactions per
+team - problem, found, move"*; the session diagram draws `problem tx - rows broken or lost` · `found tx` · `move tx`; Table 7
+gains `created_at`. One cause, three sites — the [problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname) rename.
 
 ## the-lock-is-drawn-on-the-product-and-stored-on-the-rack
 

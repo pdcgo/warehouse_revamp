@@ -279,8 +279,11 @@ flowchart LR
 ([opname Q4](./opname_clarify.md#question)) · what Rak A's screen shows while its unit waits for the picker
 ([placement Q4](./placement_clarify.md#question)).
 
-🔄 *(2026-10-13)* **Amended by [a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)**: fewest first holds among the **unlocked** racks;
+🔄 *(2026-10-13)* **Amended by [superseded-a-lock-stops-units-moving-not-sales](./opname_decision.md#superseded-a-lock-stops-units-moving-not-sales)**: fewest first holds among the **unlocked** racks;
 a rack whose product is being counted comes last, and its pick-list line waits for the count.
+
+🔄 *(2026-11-03)* **Amended again by [a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)**: a rack whose product is being
+counted is never taken from; what the unlocked racks cannot fill refuses the order. ⛔ Not built.
 
 ## any-warehouse-member-may-move-goods
 
@@ -721,3 +724,6 @@ flowchart LR
 | the delete | soft, as §Placements says |
 | the human check | staff and the admin talk it over before a placement is deleted — outside the system |
 | the accepted case | an order taken from Rak 3 and not yet picked when Rak 3 is deleted: the pick page still shows Rak 3's code (the delete is soft), and the unit is still on it |
+
+🔄 *(2026-11-03)* **Amended by [a-rack-a-count-holds-cannot-be-deleted](./opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)**: a rack an open count row names is refused too,
+at 0 or not, naming the count. ⛔ Not built.
