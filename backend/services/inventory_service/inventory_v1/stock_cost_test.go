@@ -1,11 +1,16 @@
 package inventory_v1_test
 
 import (
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
 
@@ -335,5 +340,80 @@ func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
 
 	if len(stockCostLines(res.Msg)) != 2 {
 		t.Fatalf("costs = %+v, want both products", stockCostLines(res.Msg))
+	}
+}
+
+// THE WAREHOUSE PRODUCT PAGE READS IT (/inventories/products/:id): its one caller is a warehouse screen, so the policy
+// admits the warehouse roles — it once admitted only the selling roles, from when it was an order's cost, and the page
+// answered permission_denied to a warehouse Owner or Admin. RackDetail and RackStock already give every warehouse role
+// the same average for a shelf.
+func TestStockCost_PolicyAdmitsTheWarehouse(t *testing.T) {
+	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName("warehouse.inventory.v1.StockCostRequest"))
+	if err != nil {
+		t.Fatalf("descriptor: %v", err)
+	}
+
+	policy := san_auth.PolicyOf(desc.(protoreflect.MessageDescriptor))
+	if policy == nil {
+		t.Fatalf("StockCostRequest has no policy")
+	}
+
+	for _, role := range []role_basev1.Role{
+		role_basev1.Role_ROLE_WAREHOUSE_OWNER,
+		role_basev1.Role_ROLE_WAREHOUSE_ADMIN,
+		role_basev1.Role_ROLE_WAREHOUSE_STAFF,
+	} {
+		if !slices.Contains(policy.GetRoles(), role) {
+			t.Errorf("StockCost is closed to %s — the warehouse product page reads it", role)
+		}
+	}
+}
+
+// A WAREHOUSE READS ITS OWN BUILDING ONLY: scoped to its team, it gets its own shelf's average, and a filter naming
+// another warehouse is refused rather than answered.
+func TestStockCost_AWarehouseReadsItsOwnBuildingOnly(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, mine, theirs uint64 = 2, 5, 6
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: mine,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 5, Total: 50000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: mine, RequestId: created.Msg.GetRequest().GetId(),
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
+	}))
+	if err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+
+	asAdmin := san_auth.WithCallerRole(ctx, role_basev1.Role_ROLE_WAREHOUSE_ADMIN)
+
+	res, err := svc.StockCost(asAdmin, connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: mine, Filter: &inventoryv1.StockCostFilter{WarehouseId: mine, Ids: []uint64{productX}},
+	}))
+	if err != nil {
+		t.Fatalf("its own building: %v", err)
+	}
+
+	lines := stockCostLines(res.Msg)
+	if len(lines) != 1 || lines[0].GetUnitCost() != 10000 {
+		t.Fatalf("its own building = %+v, want Widget at 10.000", lines)
+	}
+
+	_, err = svc.StockCost(asAdmin, connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: mine, Filter: &inventoryv1.StockCostFilter{WarehouseId: theirs, Ids: []uint64{productX}},
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("another warehouse = %v, want PermissionDenied", err)
 	}
 }

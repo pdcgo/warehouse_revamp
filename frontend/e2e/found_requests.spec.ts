@@ -8,10 +8,9 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 // transaction posts, and the product's stock goes up on the rack it was found on. The menu carries the waiting count
 // to the deciders (found-stock-sits-after-stock-opname-with-its-count).
 //
-// The Adjust dialog is opened from the batch page — the one place a warehouse Admin reaches it today. ⚠ Not from the
-// warehouse product page (/inventories/products/:id): that page reads StockCost, whose policy is the selling roles'
-// only, so it answers permission_denied to a warehouse Owner or Admin; and the Stock screen lists only the warehouse's
-// own catalogue. Both are gaps of their own, outside the found.
+// The Adjust dialog is opened from the batch page. The warehouse product page (/inventories/products/:id) once answered
+// permission_denied to every warehouse role — it reads StockCost, whose policy was the selling roles' only; the last
+// test here opens it as the warehouse's Admin and Staff.
 //
 // A warehouse of its own: Kaos Temuan, 10 units on Rak A at Rp 10.000 — nothing lost, so the found mints 2 at the
 // team's newest price here.
@@ -276,4 +275,24 @@ test("Found: staff report from the rack page, and the picker finds the product",
     page: { page: 1, limit: 5 },
   });
   expect(mine.ids).toHaveLength(1);
+});
+
+// THE WAREHOUSE PRODUCT PAGE OPENS FOR THE WAREHOUSE: it reads StockCost, whose policy now admits the warehouse roles
+// (their own building only). The Admin sees the page and its Adjust; staff see the page.
+test("Found: the warehouse product page opens for the warehouse's Admin and Staff", async ({ page }) => {
+  for (const [username, adjusts] of [
+    [ADMIN, true],
+    [STAFF, false],
+  ] as const) {
+    await login(page, username, PASSWORD);
+    await useTeam(page, state.warehouse);
+
+    await page.goto(`/inventories/products/${state.kaos}`);
+    await expect(page.getByTestId("warehouse-product-page")).toBeVisible();
+    await expect(page.getByTestId("warehouse-product-error")).toHaveCount(0);
+
+    if (adjusts) {
+      await expect(page.getByTestId("wp-action-adjust")).toBeVisible();
+    }
+  }
 });

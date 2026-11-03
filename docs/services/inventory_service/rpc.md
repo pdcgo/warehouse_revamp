@@ -256,13 +256,13 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| policy | `StockCost`'s: Root, Administrator, Selling Owner, Selling Admin, Selling CS — scoped to the ordering team |
+| policy | Root, Administrator, Selling Owner, Selling Admin, Selling CS — scoped to the ordering team (what `StockCost`'s was before it admitted the warehouse roles) |
 | a short line | reported, not refused: `enough` false, `available` the owner's units, and NO cost — the take would draw nothing |
 | a line the take would refuse | a product that exists nowhere, another team's private one, or one below its reserve: `available` 0, no cost |
 | cost, not markup | the form applies a borrowed product's own `cross_markup_bps` for its invoice, as the take does |
 | the racks | not read — where a unit sits never changes what it cost |
 | a preview that moved | another order may take the same units first; the order freezes the draw its take really made |
-| `StockCost` | unchanged — the shelf's AVERAGE, read by the rack valuation; no order reads it |
+| `StockCost` | the shelf's AVERAGE, as the rack valuation computes it; no order reads it. Its caller is the warehouse product page, so since 2026-11-03 its policy admits the warehouse Owner, Admin and Staff too — a warehouse caller for its own building only (`filter.warehouse_id` = `team_id`, else PermissionDenied) |
 
 Tests: `stock_take_quote_test.go` — a two-batch product quoted for 1, 2 and 3 units matches the batches and cost a
 real take then draws. Performance: [StockTakeQuote.md](../../../audits/services/inventory_service/performances/StockTakeQuote.md)

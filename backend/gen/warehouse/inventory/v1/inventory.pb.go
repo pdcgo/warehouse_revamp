@@ -2547,6 +2547,9 @@ func (x *StockCostLine) GetUnitCost() int64 {
 	return 0
 }
 
+// The warehouse roles read it too: its one caller is the warehouse product page (/inventories/products/:id), and
+// RackDetail and RackStock already answer every warehouse role the same average for a shelf. A warehouse caller reads
+// ITS OWN building only — filter.warehouse_id must be its team_id (the handler refuses another).
 type StockCostRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -8335,12 +8338,13 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\rStockCostLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x1b\n" +
-	"\tunit_cost\x18\x02 \x01(\x03R\bunitCost\"\xdc\x01\n" +
+	"\tunit_cost\x18\x02 \x01(\x03R\bunitCost\"\xdf\x01\n" +
 	"\x10StockCostRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12G\n" +
 	"\x06filter\x18\x02 \x01(\v2'.warehouse.inventory.v1.StockCostFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12L\n" +
-	"\fdata_request\x18\x03 \x03(\x0e2).warehouse.inventory.v1.StockCostDataTypeR\vdataRequest:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"d\n" +
+	"\fdata_request\x18\x03 \x03(\x0e2).warehouse.inventory.v1.StockCostDataTypeR\vdataRequest:\x0e\x92\xb5\x18\n" +
+	"\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"d\n" +
 	"\x0fStockCostFilter\x12*\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\vwarehouseId\x12%\n" +
 	"\x03ids\x18\x02 \x03(\x04B\x13\xbaH\x10\x92\x01\r\b\x01\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\x03ids\"\xcf\x01\n" +

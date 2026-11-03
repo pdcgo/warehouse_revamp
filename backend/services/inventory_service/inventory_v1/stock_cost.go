@@ -2,12 +2,28 @@ package inventory_v1
 
 import (
 	"context"
+	"errors"
 	"math"
 
 	"connectrpc.com/connect"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 )
+
+// errStockCostOtherWarehouse is a warehouse asking what another warehouse's stock is worth.
+var errStockCostOtherWarehouse = errors.New("a warehouse reads the value of its own stock only")
+
+// isWarehouseRole is a caller acting for a warehouse team.
+func isWarehouseRole(role role_basev1.Role) bool {
+	switch role {
+	case role_basev1.Role_ROLE_WAREHOUSE_OWNER, role_basev1.Role_ROLE_WAREHOUSE_ADMIN, role_basev1.Role_ROLE_WAREHOUSE_STAFF:
+		return true
+	default:
+		return false
+	}
+}
 
 // StockCost reports what products are WORTH on this warehouse's shelf — the average value of the units held, read from
 // the batch ledger (see unitCosts).
@@ -22,10 +38,17 @@ import (
 // A product with no batch here is ABSENT from the response rather than reported as 0. "We do not
 // know what this cost" and "this cost nothing" are different facts, and a zero row would let a caller
 // compute a margin as if the goods were free.
+//
+// A WAREHOUSE caller reads its own building only: its policy scope is team_id, so a filter naming another warehouse is
+// refused rather than answered — the same average RackDetail and RackStock give it for its own shelves, and no more.
 func (s *Service) StockCost(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockCostRequest],
 ) (*connect.Response[inventoryv1.StockCostResponse], error) {
+	if isWarehouseRole(san_auth.GetCallerRole(ctx)) && req.Msg.GetFilter().GetWarehouseId() != req.Msg.GetTeamId() {
+		return nil, connect.NewError(connect.CodePermissionDenied, errStockCostOtherWarehouse)
+	}
+
 	costs, err := s.unitCosts(ctx, req.Msg.GetFilter().GetWarehouseId(), req.Msg.GetFilter().GetIds())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

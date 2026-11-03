@@ -134,7 +134,8 @@ flowchart LR
 | --- | --- |
 | **staff's views — awaiting design accept** | the staff list view (`pages/found-requests/pending.ts` *staffView*) and the rack page's **Report Found** door (`pages/rack-detail/pending.ts` *reportFound*) — the rules are decided and built; their placement is not yet design-accepted |
 | two identical reports | two requests — `FoundRequestCreate` has no idempotency key (none was decided); the approver rejects the duplicate |
-| the warehouse product page | ⚠ found by the e2e, outside the found: `/inventories/products/:id` reads `StockCost`, whose policy is the selling roles' only, so it answers permission_denied to a warehouse Owner or Admin; and the Stock screen lists only the warehouse's own catalogue. A warehouse Admin reaches the Adjust dialog from the batch page today |
+| the warehouse product page | ✅ fixed 2026-11-03: `/inventories/products/:id` reads `StockCost`, whose policy was the selling roles' only (from when it was an order's cost), so it answered permission_denied to every warehouse role. The policy now admits warehouse Owner, Admin and Staff — RackDetail and RackStock already give them the same average — and a warehouse caller reads its own building only (`filter.warehouse_id` must be its `team_id`, else PermissionDenied). Tests: `TestStockCost_PolicyAdmitsTheWarehouse`, `TestStockCost_AWarehouseReadsItsOwnBuildingOnly`; e2e *the warehouse product page opens for the warehouse's Admin and Staff* |
+| the Stock screen | ⚠ reported by the found-stock build, not verified: it lists only the warehouse's own catalogue |
 | the Adjust screen itself | still undesigned ([adjustment.md](../../business/inventory/adjustment.md) is empty) |
 
 ## The warehouse picks only what it has held — built

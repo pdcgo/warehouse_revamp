@@ -560,6 +560,9 @@ message StockCostLine {
   int64 unit_cost = 2;
 }
 
+// The warehouse roles read it too: its one caller is the warehouse product page (/inventories/products/:id), and
+// RackDetail and RackStock already answer every warehouse role the same average for a shelf. A warehouse caller reads
+// ITS OWN building only — filter.warehouse_id must be its team_id (the handler refuses another).
 message StockCostRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
@@ -567,7 +570,10 @@ message StockCostRequest {
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
       ROLE_SELLING_ADMIN,
-      ROLE_SELLING_CS
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
     ]
   };
   uint64 team_id = 1 [
