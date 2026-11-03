@@ -352,3 +352,96 @@ func TestOpnameSessionFinalize_MarksTheRacksCounted(t *testing.T) {
 		t.Fatalf("Rak A reads as never counted after a finished count")
 	}
 }
+
+// A COUNT SETTLES THE FOUND IT COUNTED (a-count-settles-the-found-it-counted). Ani reported 2 Kaos Hitam found on Rak B
+// and 1 on Rak C; the request on Rak B still waits when a count of Kaos Hitam counts Rak B at 7 against its book of 5.
+// The count posts those 2 itself, so its finalize closes the Rak B request as settled by it — posting nothing, naming
+// the count, decided by whoever finalized. Rak C has no Kaos Hitam row, so the count never held it, and its request
+// still waits. The books end exactly where the same count with no request at all leaves them.
+func TestOpnameSessionFinalize_SettlesTheFoundItCounted(t *testing.T) {
+	f := opnameStocked(t)
+
+	type books struct {
+		rackA, rackB, rackC int64
+		batches             []int64
+		foundQty            int64
+		foundTotal          float64
+	}
+
+	countAndFinalize := func() (books, *inventoryv1.OpnameSessionFinalizeResponse) {
+		s := f.create(t, inventoryv1.OpnamePlan_OPNAME_PLAN_PRODUCT, 0, otKaosHitam, 0)
+		f.countRow(t, opDodi, s.GetId(), otKaosHitam, f.rakA, 5, 0)
+		f.countRow(t, opDodi, s.GetId(), otKaosHitam, f.rakB, 7, 0)
+
+		res, err := f.finalize(opAdmin(opBudi), s.GetId())
+		if err != nil {
+			t.Fatalf("finalize: %v", err)
+		}
+
+		var b books
+		b.rackA, b.rackB, b.rackC = rackCount(t, f.db, otKaosHitam, f.rakA), rackCount(t, f.db, otKaosHitam, f.rakB),
+			rackCount(t, f.db, otKaosHitam, f.rakC)
+
+		for _, batch := range batchesOf(t, f, otKaosHitam) {
+			b.batches = append(b.batches, batch.StockCount)
+		}
+
+		for _, tx := range res.GetTransactions() {
+			f.db.Raw(`SELECT COALESCE(SUM(quantity), 0) FROM inventory_transaction_items WHERE transaction_id = ?`,
+				tx.GetTransactionId()).Scan(&b.foundQty)
+			f.db.Raw(`SELECT COALESCE(SUM(total), 0) FROM inventory_transaction_items WHERE transaction_id = ?`,
+				tx.GetTransactionId()).Scan(&b.foundTotal)
+		}
+
+		return b, res
+	}
+
+	var without, with books
+
+	inSavepoint(t, f.db, "no_request", func() {
+		without, _ = countAndFinalize()
+	})
+
+	onB := f.mustReport(t, opStaff(opAni), otKaosHitam, f.rakB, 2)
+	onC := f.mustReport(t, opStaff(opAni), otKaosHitam, f.rakC, 1)
+
+	with, res := countAndFinalize()
+
+	if with.rackA != without.rackA || with.rackB != without.rackB || with.rackC != without.rackC ||
+		with.foundQty != without.foundQty || !san_money.Equal(with.foundTotal, without.foundTotal) ||
+		len(with.batches) != len(without.batches) {
+		t.Fatalf("with requests %+v, without %+v — want the same books", with, without)
+	}
+
+	for i := range with.batches {
+		if with.batches[i] != without.batches[i] {
+			t.Fatalf("batches %v with requests, %v without", with.batches, without.batches)
+		}
+	}
+
+	if with.rackB != 7 || with.foundQty != 2 {
+		t.Fatalf("Rak B %d, found %d — want 7, the 2 found posted once", with.rackB, with.foundQty)
+	}
+
+	settled := foundRow(t, f.db, onB.GetId())
+	if settled.Status != models.FoundSettled || settled.SettledByCountingSessionID == nil ||
+		*settled.SettledByCountingSessionID != res.GetSession().GetId() || settled.DecidedByID == nil ||
+		*settled.DecidedByID != opBudi || settled.DecidedAt == nil || settled.TransactionID != nil {
+		t.Fatalf("Rak B request %+v, want settled by count #%d, decided by Budi, posting nothing", settled, res.GetSession().GetId())
+	}
+
+	if still := foundRow(t, f.db, onC.GetId()); still.Status != models.FoundWaiting {
+		t.Fatalf("Rak C request %q, want still waiting — the count never held Rak C", still.Status)
+	}
+
+	// Settled is decided: neither approved nor rejected after.
+	_, err := f.approve(opOwner(opDewi), onB.GetId())
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("approving a settled request: err = %v, want FailedPrecondition", err)
+	}
+
+	_, err = f.reject(opOwner(opDewi), onB.GetId(), "late")
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("rejecting a settled request: err = %v, want FailedPrecondition", err)
+	}
+}

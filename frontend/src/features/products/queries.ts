@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { categoryClient, inventoryClient, orderClient, productClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
+import {
+  WarehouseProductSearchDataType,
+  type WarehouseProductSearchItem,
+  type WarehouseProductSearchResponse,
+} from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { ProductListDataType, ProductRowSort, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
 import type { SortState } from "../../components/chrome/SortableHeader";
+import { teamsByIdsQuery } from "../teams/queries";
 import {
   activityFromByIds,
   batchesFromList,
@@ -632,9 +639,9 @@ export function useUnarchiveProduct() {
 
 // The product PICKER's search (ProductSelect).
 //
-// `scope` chooses the RPC — the team's own catalogue, or every team's (#106) — and is in the key for
-// the same reason `isWarehouse` is above: it decides which question was asked, and one answer must
-// not be served under the other.
+// `scope` chooses the RPC — the team's own catalogue, every team's (#106), or what a WAREHOUSE has held
+// (a-warehouse-picks-only-what-it-has-held) — and is in the key for the same reason `isWarehouse` is above: it decides
+// which question was asked, and one answer must not be served under the other.
 //
 // A catalogue is too large to load whole, which is why this searches rather than listing. Through
 // the cache a transient failure retries instead of turning into "no products found", and backing up
@@ -642,15 +649,37 @@ export function useUnarchiveProduct() {
 export function useProductSearch(args: {
   teamId: bigint;
   q: string;
-  scope: "team" | "all";
+  scope: ProductSearchScope;
 }) {
   const { teamId, q, scope } = args;
+  const client = useQueryClient();
 
   return useQuery({
     queryKey: key.products(teamId, { search: q, scope }),
     ...referenceQuery,
     enabled: q.length >= 2 && teamId > 0n,
-    queryFn: async () => {
+    queryFn: async (): Promise<SearchedProduct[]> => {
+      // A warehouse picks only what has had a batch in it — inventory's read, named by product_service on the server. A
+      // warehouse role may not call ProductDiscover, and a warehouse never browses every team's catalogue.
+      if (scope === "warehouse") {
+        const res = await inventoryClient.warehouseProductSearch({
+          warehouseId: teamId,
+          filter: { q },
+          dataRequest: [WarehouseProductSearchDataType.PRODUCT],
+          page: { page: 1, limit: 10 },
+        });
+        const found = productsFromWarehouseSearch(res);
+        const owners = await ownerNames(client, found.map((p) => p.teamId));
+
+        return found.map((p) => ({
+          id: p.id,
+          productCode: p.productCode,
+          name: p.name,
+          ownerName: owners[p.teamId.toString()] ?? "",
+          archived: p.archived,
+        }));
+      }
+
       const req = {
         teamId,
         filter: { q },
@@ -662,9 +691,49 @@ export function useProductSearch(args: {
           ? await productClient.productDiscover(req)
           : await productClient.productList(req);
 
-      return productsFromList(res.items, res.ids);
+      return productsFromList(res.items, res.ids).map((p) => ({ id: p.id, productCode: p.productCode, name: p.name }));
     },
   });
+}
+
+/** Which catalogue a picker searches: the team's own, every team's, or what this warehouse has held. */
+export type ProductSearchScope = "team" | "all" | "warehouse";
+
+/**
+ * A product a picker search found. `ownerName` — the selling team that owns it — and `archived` only in the warehouse
+ * scope: a warehouse is offered an archived product it holds, labelled (an-archived-product-held-here-can-be-picked).
+ */
+export interface SearchedProduct {
+  id: bigint;
+  productCode: string;
+  name: string;
+  ownerName?: string;
+  archived?: boolean;
+}
+
+// The PRODUCT slice of a warehouse search, in the server's order (by name, then code).
+function productsFromWarehouseSearch(res: WarehouseProductSearchResponse): WarehouseProductSearchItem[] {
+  let map: { [id: string]: WarehouseProductSearchItem } = {};
+  for (const item of res.items) {
+    if (item.d.case === "product") map = item.d.value.mapData;
+  }
+
+  return res.ids.map((id) => map[id.toString()]).filter((p): p is WarehouseProductSearchItem => p !== undefined);
+}
+
+// Owner team id → name, best-effort: a name is a label, so a failed lookup leaves the option with its code alone rather
+// than failing the search. Through teamsByIdsQuery, so it shares the team-name cache.
+async function ownerNames(client: QueryClient, teamIds: bigint[]): Promise<{ [id: string]: string }> {
+  if (!teamIds.some((id) => id > 0n)) return {};
+
+  try {
+    const teams = await client.fetchQuery(teamsByIdsQuery(teamIds));
+    const out: { [id: string]: string } = {};
+    for (const [id, team] of Object.entries(teams)) out[id] = team.name;
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 // Broad on purpose, for the same reason as expenses: a delete changes the page it was on and every

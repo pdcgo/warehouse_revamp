@@ -5,6 +5,9 @@ import { Dialog, Portal, Text } from "@chakra-ui/react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { products } from "../../../.storybook/fixtures";
+import { asRole } from "../../../.storybook/sessionScenario";
+import { warehouseProductSearchScenario } from "../../../.storybook/warehouseProductSearchStub";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { ProductSelect, type PickedProduct, description } from "./ProductSelect";
 
 const meta = {
@@ -176,5 +179,130 @@ export const InsideADialog: Story = {
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
     await waitFor(() => expect(args.onChange).toHaveBeenCalled());
+  },
+};
+
+// ── The WAREHOUSE scope (a-warehouse-picks-only-what-it-has-held) ──────────────────────────────────────────────────────
+//
+// What a warehouse screen picks from — Report Found, a count's product plan and its found: ONLY the products with a batch
+// in THIS warehouse, any team's, at 0 or not (WarehouseProductSearch). teamId is the warehouse, Gudang Pusat (11). Its
+// batch registers (foundRequestFixtures, opnameFixtures) hold Beras (74, Toko Melati), Gula Pasir (73, Toko Kenanga) and
+// four of Toko Anggrek's (700–703, two of them at 0) — and no Kopi Arabika, which is in the catalogue all the same.
+
+export const WarehouseScope: Story = {
+  args: { scope: "warehouse" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await userEvent.type(input, "gula", { delay: 20 });
+
+    // Each option names its OWNER — a warehouse holds several teams' goods, and two teams' same-named products are two.
+    const option = await screen.findByTestId(`product-select-option-${products[2]!.productCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(option).toHaveTextContent("Gula Pasir 1kg · Toko Kenanga");
+  },
+};
+
+// A product this warehouse NEVER had is not offered, however well it matches: "gula" matches Gula Pasir, held here, and
+// two of Toko Anggrek's — Gula Merah's carton and the Paket Sembako that names Gula — which never were. A found or a count
+// of those would be refused anyway (a-found-never-stocked-here-is-refused-at-the-report).
+export const WarehouseScopeNeverOffersWhatWasNeverHere: Story = {
+  args: { scope: "warehouse" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await userEvent.type(input, "gula", { delay: 20 });
+
+    // The held one arrives — so the answer is in — and it is the only one.
+    const option = await screen.findByTestId(`product-select-option-${products[2]!.productCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(1));
+    await expect(screen.queryByTestId("product-select-option-SL-03-ANG-005")).toBeNull();
+    await expect(screen.queryByTestId("product-select-option-SL-03-ANG-006")).toBeNull();
+  },
+};
+
+// Held at 0 is still held: "karton" matches 22 of Toko Anggrek's products, and the two with a batch here — both emptied
+// since — are the two offered.
+export const WarehouseScopeFindsWhatIsHeldAtZero: Story = {
+  args: { scope: "warehouse" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await userEvent.type(input, "karton", { delay: 20 });
+
+    const minyak = await screen.findByTestId("product-select-option-SL-03-ANG-002");
+    await waitFor(() => expect(minyak).toBeVisible());
+    await expect(screen.getByTestId("product-select-option-SL-03-ANG-004")).toBeVisible();
+    await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
+    // Gula Merah's carton is in the catalogue, never here.
+    await expect(screen.queryByTestId("product-select-option-SL-03-ANG-006")).toBeNull();
+  },
+};
+
+// An ARCHIVED product this warehouse holds is still offered, labelled (an-archived-product-held-here-can-be-picked): Toko
+// Anggrek archived the old 2L pack, but its batch is here, so a unit found of it can be reported and a count planned on it.
+// The live 2L beside it carries no label.
+export const WarehouseScopeOffersAnArchivedProductHeldHere: Story = {
+  args: { scope: "warehouse" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await userEvent.type(input, "minyak goreng sawit 2l", { delay: 20 });
+
+    const old = await screen.findByTestId("product-select-option-SL-03-ANG-001-L");
+    await waitFor(() => expect(old).toBeVisible());
+    await expect(screen.getByTestId("product-select-archived-SL-03-ANG-001-L")).toHaveTextContent("Archived");
+    await expect(screen.queryByTestId("product-select-archived-SL-03-ANG-001")).toBeNull();
+  },
+};
+
+// It emits the same snapshot as the other scopes — the owner is shown, not frozen onto the line.
+export const WarehouseScopeEmitsTheSnapshot: Story = {
+  args: { scope: "warehouse" },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await userEvent.type(input, "beras", { delay: 20 });
+
+    const option = await screen.findByTestId(`product-select-option-${products[3]!.productCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await expect(args.onChange).toHaveBeenCalledWith({
+      id: products[3]!.id,
+      productCode: products[3]!.productCode,
+      name: products[3]!.name,
+    });
+  },
+};
+
+// The policy is the warehouse's: a selling role is refused (the stub checks it, as the server does), and the picker
+// shows nothing rather than another team's catalogue. A seller picks through the "all" scope.
+export const WarehouseScopeRefusesASellingRole: Story = {
+  args: { scope: "warehouse" },
+  beforeEach: asRole(Role.SELLING_OWNER),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+    const refusedBefore = warehouseProductSearchScenario.refused;
+
+    await userEvent.click(input);
+    await userEvent.type(input, "gula", { delay: 20 });
+
+    // The stub turned the search away — the picker asked, and shows nothing.
+    await waitFor(() => expect(warehouseProductSearchScenario.refused).toBeGreaterThan(refusedBefore));
+    await expect(await screen.findByText("No products found")).toBeInTheDocument();
+    await expect(screen.queryByTestId(`product-select-option-${products[2]!.productCode}`)).toBeNull();
   },
 };

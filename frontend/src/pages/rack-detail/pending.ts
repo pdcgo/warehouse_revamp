@@ -7,7 +7,7 @@ export type RackDetailPendingId = "countLock";
 
 const PARTS: PendingPart<RackDetailPendingId>[] = [
   // A product being counted shows locked at 0 (a-move-is-all-or-nothing). What a count's lock blocks is decided
-  // (a-lock-stops-units-moving-not-sales), but the stock count itself is not built, so only the stub ever sets it.
+  // (a-lock-stops-sales-and-cancels-too), but the stock count itself is not built, so only the stub ever sets it.
   { id: "countLock", kind: "derived" },
 ];
 

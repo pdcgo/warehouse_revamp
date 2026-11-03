@@ -23,7 +23,9 @@ var errOrderTransactionMissing = errors.New("order transaction not found")
 //   - K claimed with none → nothing;
 //   - K not claimed yet → claimed with none, so a take that arrives late meets the unique index and is refused.
 //
-// Another team's transaction reads NotFound: the key alone never lets one team release another's order.
+// Another team's transaction reads NotFound: the key alone never lets one team release another's order. A take whose rack
+// a stock count now holds is refused, FailedPrecondition naming the count (a-lock-stops-sales-and-cancels-too) — nothing
+// is released, and the caller's cancel rolls back with it.
 func (s *Service) OrderTransactionRelease(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.OrderTransactionReleaseRequest],
@@ -85,6 +87,12 @@ func (s *Service) OrderTransactionRelease(
 	if err != nil {
 		if errors.Is(err, errOrderTransactionMissing) {
 			return nil, connect.NewError(connect.CodeNotFound, errOrderTransactionMissing)
+		}
+
+		// A rack the take came from is being counted: the cancel waits for the count
+		// (a-lock-stops-sales-and-cancels-too) and is made again after it.
+		if refused := countedRefusal(err); refused != nil {
+			return nil, refused
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("release order transaction: %w", err))

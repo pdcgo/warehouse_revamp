@@ -426,7 +426,8 @@ and nothing reads the dropped `stock_*` tables. One idea explains most of the su
 
 ### A stock-take counts a RACK (#139) — provisionally, as an `adjustment`
 
-`StockAdjust`'s recount and found survive the cut-over as provisional `adjustment` transactions (the one-rack
+`StockAdjust`'s recount survives the cut-over as a provisional `adjustment` transaction — its found is a found request
+now, § Found stock waiting for approval (the one-rack
 `StockOpname` is retired; damaged and lost are a shelf report on the register — § Broken, lost, and found)
 ([old-shelf-corrections-move-onto-the-ledgers-provisionally](../../technical/stock/design_decision.md#old-shelf-corrections-move-onto-the-ledgers-provisionally));
 every choice the port made is open in [adjustment_clarify.md](../../business/inventory/adjustment_clarify.md). The
@@ -486,7 +487,11 @@ A move is `RackMove` (below) — `StockMove`, `StockReceive`, `StockTransfer`, `
 goods come in by a restock, move between racks by `RackMove`, leave for an order by `OrderTransactionCreate`, and go to
 another warehouse by a warehouse transfer. **A rack that still holds stock cannot be deleted** (#138) —
 `FailedPrecondition`, empty it first; the check sums its `product_placements` rows, because `RackDelete` is a soft delete
-and the FK never fires.
+and the FK never fires. **Nor can a rack a stock count holds** ([a-rack-a-count-holds-cannot-be-deleted](../../business/inventory/opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)): the rack row is
+locked `FOR UPDATE` first, then `RefuseRackCounted` reads, in a statement of its own, an open snapshot row on it or an
+active `all` count. A count's plan locks its rack rows `FOR SHARE OF pp, p`, so the two queue: the delete is refused, or
+the count re-checks `deleted_at` and leaves the rack out (`TestRace_RackDelete_RacingACountPlan`,
+`TestInterleave_RackDelete_ThePlanLeavesTheDeletedRackOut`).
 
 ### `RackMove` and `RackSample` — on the decided ledgers
 
@@ -765,12 +770,18 @@ as a draft with its reason, and finalize into the stock-problem register. The de
 | `OpnameFinalizePreview` | Owner, Admin — a read | the finalize's own settlement over a plain read, per product and batch; why this person may not finalize |
 | `OpnameSessionFinalize` | Owner, Admin, Root — never a counter | posts it: up to three transactions per owning team, the register, the debt; releases every row |
 
-**The lock** is every open snapshot row. `inventory_ledgers.RefuseCounted` reads it after the shelf rows are locked, in a
+**The lock** is every open snapshot row, and nothing moves a counted product on its rack — on the shelf or in the book
+([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)). `inventory_ledgers.RefuseCounted` reads it after the shelf rows are locked, in a
 statement of its own, in every writer that moves units: the restock and transfer accept's put-away
-(`PutOnPlacements`), `RackMove`, `RackSample`, `StockAdjust` (recount, damaged, lost, found). Each refusal is
-FailedPrecondition naming the count, who started it and when. An order's take (and a transfer's out-leg, which shares it)
-is never refused: `TakeFewestFirst` uses the counted racks last, and `StockPickLocations.counting_session_id` tells the
-pick page the shelf waits for the count. `RackStockLine.counting` locks the product in the Move and Sample dialogs.
+(`PutOnPlacements`), `RackMove`, `RackSample`, `StockAdjust` (recount, damaged, lost), a found's report and approval
+(`FoundRequestCreate`, `FoundRequestApprove`), and the ROLLBACK of a take
+(`ReversePlacementLogs` — `OrderTransactionRelease`, `WarehouseTransferCancel`). Each refusal is FailedPrecondition naming
+the count, who started it and when. A TAKE (an order's, and a transfer's out-leg, which shares it) runs only over the
+racks no count holds (`LockedRacks.Free`); every line they cannot fill is named at once — `OrderTransactionCreate`
+answers `ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED` with each line's free units and `counting_session_id`. No pick
+waits any more (`StockPickLocation` field 5 is reserved). `RackStockLine.counting` locks the product in the Move and
+Sample dialogs. `RackDelete` is refused while an open row names the rack or an `all` count runs
+([a-rack-a-count-holds-cannot-be-deleted](../../business/inventory/opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)).
 
 ### A row's life
 
@@ -850,6 +861,128 @@ the broken come off the racks their drafts name; lost comes off the racks still 
 onto the racks still over, each in rack id order; what is left nets to 0 and is the `move`. So each transaction moves the
 same units on both ledgers (both-ledgers-count-the-same-units).
 
+## Found stock waiting for approval — `FoundRequestService`
+
+A unit found on a rack outside a count waits for the warehouse Owner or Admin and posts nothing until approved
+([an-adjust-found-waits-for-the-owner-or-admin](../../business/inventory/opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin),
+accepted with its screens in [the-found-stock-prototype-is-accepted](../../business/inventory/opname_decision.md#the-found-stock-prototype-is-accepted)).
+**Built 2026-11-03**: [found_request.proto](../../../proto/warehouse/inventory/v1/found_request.proto),
+`inventory_v1/found_request_{create,list,approve,reject}.go`, the table `found_requests` (`00036`,
+[schema](../../database-schema.md#found-stock-waiting-for-approval-00036)). State:
+[opname.md](../../development_state/inventory/opname.md#found-stock-waits-for-approval--built).
+
+| RPC | Who | What it does |
+| --- | --- | --- |
+| `FoundRequestCreate` | Owner, Admin, **Staff** (+ Root, Administrator) — the one door ([staff-may-report-a-found](../../business/inventory/opname_decision.md#staff-may-report-a-found)) | writes a WAITING request on the rack — product, owner team, units, note, reporter — and posts NOTHING. Refused: a rack another warehouse's or deleted (NotFound); a count holding the product on the rack (FailedPrecondition naming the count); a product its team never had a batch of here, emptied ones included (FailedPrecondition "… was never stocked here … — bring it in by restock", [a-found-never-stocked-here-is-refused-at-the-report](../../business/inventory/opname_decision.md#a-found-never-stocked-here-is-refused-at-the-report)) |
+| `StockAdjust` FOUND | — | **refused** (InvalidArgument naming `FoundRequestCreate`); its policy is unchanged. The provisional found into a named batch (`PostBatchFound`) is retired |
+| `FoundRequestList` | Owner, Admin, Staff (+ Root, Administrator), the monitor — a read (`NO_SIDE_EFFECTS`) | the warehouse's requests, newest first, one status or all, paged (RULE 9). **Staff get only their own**, filtered here. A waiting request says what approving NOW would post (the count's own settlement over one plain read) and why THIS caller may not (`block`: `OWN_REPORT`, `BEING_COUNTED` + `counting_session_id`, `NOT_WAITING`); an approved one what it posted; a settled one the count (`settled_by_counting_session_id`) |
+| `FoundRequestApprove` | Owner, Admin (+ Root, stamped as an override) — **never the reporter**, checked against the person | one `found` transaction, below. Not waiting → FailedPrecondition; the reporter → FailedPrecondition; a count holding the rack → FailedPrecondition naming it; no price (the report's refusal makes this a backstop only) → FailedPrecondition, nothing written |
+| `FoundRequestReject` | Owner, Admin (+ Root, Administrator) any; **the reporter their own — staff included** ([the-reporter-may-withdraw-their-found](../../business/inventory/opname_decision.md#the-reporter-may-withdraw-their-found)) | WAITING → REJECTED with a required reason (InvalidArgument without); nothing posts. Staff rejecting another's → PermissionDenied. A withdrawal is a rejection whose decider is the reporter — the screen says *Withdrawn by …* |
+| `OpnameSessionFinalize` | — | **settles** every WAITING request on a (product, rack) the session holds a row for: status `settled`, the session, the finalizer and the time; nothing more posts — the count posted the units it found ([a-count-settles-the-found-it-counted](../../business/inventory/opname_decision.md#a-count-settles-the-found-it-counted)). A cancelled count settles nothing |
+
+**The approval is the count's own found, not a second implementation.** `inventory_mutations.PostFoundApproval` runs
+`PostCountFinalize` over ONE product with ONE row — the rack counted at the units over a book of 0 — so the claim of the
+oldest open losses back into their batches at their price, the register's `claimed_stock_count` (never above what is
+claimable, under the register's lock), the mint of the rest at the team's newest batch price here, both ledgers and the
+money are exactly a count's surplus of the same units (proved: `TestFoundRequestApprove_PostsWhatACountsFoundPosts`).
+`CountFinalize.Guard` is the one hook it adds: `inventory_ledgers.RefuseCounted` under the rack row's lock, in a statement
+of its own. Each claim gives the owner's reimbursement back through `LiabilityPoster.PostStockDamage` (`found`, keyed by
+the found transaction), inside the transaction.
+
+```mermaid
+sequenceDiagram
+    participant A as Dewi — warehouse Owner
+    participant F as FoundRequestApprove
+    participant DB as Postgres — one tx
+    participant L as liability_service
+    A->>F: approve found request 301
+    F->>DB: 1. the request row FOR UPDATE, then re-read
+    alt not waiting, or Dewi reported it, or a count holds the rack
+        F-->>A: FailedPrecondition — nothing written
+    else
+        F->>DB: 2. the open losses of the product FOR UPDATE, oldest first
+        F->>DB: 3. the batches it claims into FOR UPDATE, by id
+        F->>DB: 4. the rack row FOR UPDATE — then the count lock re-read (Guard)
+        F->>DB: the found transaction — claims with their units, then a minted batch
+        F->>DB: batch rows, the rack row, the register's claimed counts
+        F->>L: each claim gives the reimbursement back, in the tx
+        F->>DB: the request approved — who, when, the transaction, the minted batch
+        F-->>A: the request and its transaction
+    end
+```
+
+**Lock order** — the request row, then the count's own order (register → batches → racks). A finalize takes the session,
+then the WAITING requests it settles (`FOR UPDATE`, by id), then the same register → batches → racks; an order's take and
+a count's plan never touch `found_requests`. So nothing waits in a circle, and an approval and a finalize over the same
+request serialise on its row: whichever is second finds it decided. Proved in `found_request_race_test.go` (below).
+
+| Race | Outcome | Test |
+| --- | --- | --- |
+| eight approvals of one request | one posts, seven FailedPrecondition | `TestRace_FoundRequestApprove_PostsOnce` |
+| an approval and the reporter's withdrawal | exactly one decides, ten rounds | `TestRace_FoundRequestApprove_RacingAWithdraw` |
+| an approval and eight order takes of the product | no deadlock, both ledgers equal | `TestRace_FoundRequestApprove_RacingTakes` |
+| an approval and a count's plan, then its finalize | the units post ONCE: approved first, the count finds the rack exact; planned first, the approval is refused and the finalize settles it | `TestRace_FoundRequestApprove_RacingACountPlanAndFinalize` |
+| the settle against an approval in flight | the settle waits on the row and re-checks `waiting` | `TestInterleave_FoundRequest_TheSettleWaitsForAnApproval` |
+
+> ⚠ **Two identical reports are two requests** — `FoundRequestCreate` has no idempotency key, on purpose (none was
+> decided). A double click writes two WAITING rows; the approver sees both and rejects one
+> ([concurrency audit](../../../audits/services/inventory_service/concurrency/FoundRequest.md)).
+
+## The warehouse's product picker — `WarehouseProductSearch`
+
+A warehouse picks a product from **what it holds or has held**
+([a-warehouse-picks-only-what-it-has-held](../../business/inventory/opname_decision.md#a-warehouse-picks-only-what-it-has-held)):
+every product with a batch in this warehouse — any team's, emptied ones included — searched by name or product code on the
+server. It backs Report Found (the rack page), a count's product plan (New Count) and a count's found (Add a Product Found
+Here) — `ProductSelect scope="warehouse"`. `ProductDiscover` is **not** widened: its policy stays the selling roles' and
+Root/Administrator's, and a warehouse never browses every team's catalogue. **Built 2026-11-04**:
+[inventory.proto](../../../proto/warehouse/inventory/v1/inventory.proto), `inventory_v1/warehouse_product_search.go`,
+product_service's `product_v1/product_search_among.go`, the composition root's reader
+(`backend/cmd/app_development/product_reader.go`). State:
+[opname.md](../../development_state/inventory/opname.md#the-warehouse-picks-only-what-it-has-held--built).
+
+| | |
+| --- | --- |
+| who | Root, Administrator, warehouse Owner, Admin, Staff; the admin team's monitor and an agent (`NO_SIDE_EFFECTS`) — no selling role |
+| scope | `warehouse_id` (`use_scope`) |
+| term | `filter.q`, 2–100 characters, at least 2 after trimming (else InvalidArgument), anywhere in the name or the product code, case-insensitive |
+| set | products with a row in `batches` for this warehouse, at 0 or not; an ARCHIVED one too, flagged `archived` and labelled by the picker ([an-archived-product-held-here-can-be-picked](../../business/inventory/opname_decision.md#an-archived-product-held-here-can-be-picked)); a LOCKED one is in |
+| order | by name, then product code, then id — paged (`CommonPagination`, limit ≤ 200; the picker asks for 10) |
+| each | `id`, `team_id` (the owner), `product_code`, `name` — the picker names the owner through `TeamByIds`, so two teams' same-named products are told apart |
+
+**Two halves, each over its own rows** (HARD RULE 3). Inventory reads which products have been here; product_service
+searches its names and codes among them. The held ids go from inventory to product_service **in-process**, through the
+`ProductReader` inventory already holds (`Search`, beside `Facts`), to a plain method — `product_v1.SearchAmong` — not an
+RPC: as an RPC it would take its id list from a caller, which is the very browse ProductDiscover keeps from warehouse roles.
+No id list ever travels from the browser, and no product name is mirrored into inventory. product_service sends the
+window and the count of every match back from ONE statement (`COUNT(*) OVER ()`), so the list goes to Postgres once.
+
+```mermaid
+sequenceDiagram
+    participant S as Ani — warehouse Staff
+    participant I as WarehouseProductSearch — inventory
+    participant DB as Postgres
+    participant P as SearchAmong — product_service
+    participant T as TeamByIds — team_service
+    S->>I: q = kaos tem, warehouse 11, page 1 of 10
+    I->>I: policy — warehouse roles, scope warehouse 11
+    I->>DB: DISTINCT product_id FROM batches WHERE warehouse_id = 11
+    alt nothing ever held here
+        I-->>S: no products, total 0 — product_service not asked
+    else
+        I->>P: Search — the held ids, the term, the window
+        P->>DB: products WHERE id = ANY(held) AND name or code ILIKE, COUNT(*) OVER (), ORDER BY name LIMIT 10
+        P-->>I: the page and the total
+        I-->>S: id, owner team, code, name — by name
+        S->>T: the owners' names, best-effort
+    end
+```
+
+The owner team on a batch is the product's owner, written at mint (a-batch-carries-its-owner), so "held here" and "its
+team had a batch here" are one set: what the picker offers is exactly what `FoundRequestCreate` and `OpnameRowAddFound`
+accept, and their never-stocked refusals stay as the backstop. Measured: 2 statements, ≈ 19 ms at 10 000 products held
+([performance audit](../../../audits/services/inventory_service/performances/WarehouseProductSearch.md)).
+
 ## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
 
 A `DAMAGED` / `LOST` adjust already wrote the units off the shelf and their frozen cost to expense.
@@ -860,9 +993,9 @@ belonged to a **selling team**, and until now they were simply gone.
 > ([an-adjustment-writes-the-same-problem-row](../../business/inventory/opname_decision.md#an-adjustment-writes-the-same-problem-row)):
 > `inventory_mutations.PostShelfProblem` writes a `problem` transaction of the batch's owner — its batch and rack rows
 > say `broken` or `lost` — and one `warehouse_stock_problems` row for the named batch, at its price, on the reported
-> rack; lost is claimable, broken never. No session lists it. `FOUND` is unchanged — still the provisional
-> `adjustment` back into the named batch; the finished found claims the oldest open loss and wants a second person,
-> undesigned at the shelf. The money below is as it was.
+> rack; lost is claimable, broken never. No session lists it. *(2026-11-03)* `FOUND` is no longer an adjust: it is a
+> found request that waits for a second person and, approved, claims the oldest open loss — § Found stock waiting for
+> approval. The money below is as it was.
 
 ```mermaid
 sequenceDiagram
@@ -880,8 +1013,8 @@ sequenceDiagram
     I->>E: PostStockLoss — the warehouse's own P&L, best-effort
 
     opt the goods turn up
-        W->>I: StockAdjust{FOUND, batch, qty}
-        I->>S: PostStockDamage with reversal = true
+        W->>I: FoundRequestCreate, then another person's FoundRequestApprove
+        I->>S: PostStockDamage found — the claim gives it back
         Note over S: the reimbursement is given back —<br/>both entries stay in the history
     end
 ```
@@ -912,7 +1045,7 @@ team's goods gone with nothing recorded — the situation the ledger exists to p
 
 | | |
 | --- | --- |
-| **`FOUND`** | posts the same source type as a **reversal**, against its own adjustment — never by deleting the entry that charged it |
+| **`FOUND`** | not an adjust any more — an approved found request's claims post `found` against the found transaction, never by deleting the entry that charged it (§ Found stock waiting for approval) |
 | **`RECOUNT`** | books nothing, as before the cut-over — the open contradiction with `StockOpname` is [adjustment Q2](../../business/inventory/adjustment_clarify.md#question) |
 | **the warehouse's own goods** | a team cannot owe itself |
 | **damage at RECEIVING, and on returned orders** | **§Warehouse 6** — neither enters the warehouse's custody, and neither travels this RPC |

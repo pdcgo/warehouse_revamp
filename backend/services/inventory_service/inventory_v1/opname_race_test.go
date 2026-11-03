@@ -2,14 +2,18 @@
 
 // Concurrency audit for the stock count's writes (the audit-sql skill): OpnameSessionCreate, OpnameRowCount,
 // OpnameRowMarkCounted, OpnameRowSendBack, OpnameSessionCancel, OpnameSessionFinalize — two at once must never open two
-// counts, take a third count, post a finalize twice, or deadlock against an order's take. Build-tagged: san_race COMMITS.
+// counts, take a third count, post a finalize twice, or deadlock against an order's take — and the writes the count's
+// lock refuses (a-lock-stops-sales-and-cancels-too, a-rack-a-count-holds-cannot-be-deleted): a release racing a plan
+// never moves the book under it, a rack delete racing a plan never leaves the count holding a deleted rack.
+// Build-tagged: san_race COMMITS.
 //
-//	go test -tags raceaudit -run "TestRace_Opname|TestInterleave_Opname" -v ./backend/services/inventory_service/inventory_v1/
+//	go test -tags raceaudit -run "TestRace_Opname|TestInterleave_Opname|TestRace_OrderTransactionRelease_Racing|TestRace_RackDelete|TestInterleave_RackDelete" -v ./backend/services/inventory_service/inventory_v1/
 package inventory_v1_test
 
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -206,7 +210,9 @@ func TestRace_OpnameSessionFinalize_PostsOnce(t *testing.T) {
 }
 
 // A FINALIZE RACING ORDER TAKES on the same product: the finalize locks the register, the batches, then the racks — the
-// order the take keeps — so nothing deadlocks, the shortage is posted once, and both ledgers still agree.
+// order the take keeps — so nothing deadlocks and the shortage is posted once. A take that reaches the racks while the
+// count still holds them is refused naming it (a-lock-stops-sales-and-cancels-too); one that comes after the finalize
+// committed is taken. Either way both ledgers still agree.
 func TestRace_OpnameSessionFinalize_RacingTakes(t *testing.T) {
 	h := san_race.New(t, ledgerTables...)
 	seedLedgers(t, h.DB(), 10, raceProductA)
@@ -229,12 +235,223 @@ func TestRace_OpnameSessionFinalize_RacingTakes(t *testing.T) {
 	})
 	res.Report(t)
 
-	if res.Count(san_race.Deadlock) != 0 || res.Failed() != 0 {
-		t.Fatalf("%d callers failed (%d deadlocked)", res.Failed(), res.Count(san_race.Deadlock))
+	if res.Count(san_race.Deadlock) != 0 {
+		t.Fatalf("%d callers deadlocked", res.Count(san_race.Deadlock))
 	}
 
-	if b, r := stockOf(t, h.DB(), raceProductA); b != 20-1-8 || r != b {
-		t.Fatalf("batches %d, racks %d — want 11 each: 20, one lost, eight sold", b, r)
+	if err := res.Outcomes[0].Err; err != nil {
+		t.Fatalf("the finalize failed: %v", err)
+	}
+
+	taken := int64(0)
+	for _, o := range res.Outcomes[1:] {
+		if o.Err == nil {
+			taken++
+
+			continue
+		}
+
+		if connect.CodeOf(o.Err) != connect.CodeFailedPrecondition || !strings.Contains(o.Err.Error(), "count #") {
+			t.Fatalf("take %d: %v, want taken or refused naming the count", o.I, o.Err)
+		}
+	}
+
+	if b, r := stockOf(t, h.DB(), raceProductA); b != 20-1-taken || r != b {
+		t.Fatalf("batches %d, racks %d — want %d each: 20, one lost, %d sold", b, r, 20-1-taken, taken)
+	}
+}
+
+// A COUNT PLANNED WHILE CANCELS RUN (a-lock-stops-sales-and-cancels-too): eight orders were taken; then a count of the
+// product is planned while their eight releases race it. A release that locked the shelf rows first finishes, and the
+// count waits for it and copies the book it left; one that comes after the count's snapshot reads the count and is
+// refused. So the count's book is exactly the racks' — no release slipped in under it — and nothing deadlocks.
+func TestRace_OrderTransactionRelease_RacingACountPlan(t *testing.T) {
+	h := san_race.New(t, ledgerTables...)
+	seedLedgers(t, h.DB(), 10, raceProductA)
+	svc := raceService(h.DB())
+
+	for i := 1; i <= 8; i++ {
+		err := raceTake(svc, fmt.Sprintf("K-%d", i), &inventoryv1.OrderTransactionLine{ProductId: raceProductA, Quantity: 1})
+		if err != nil {
+			t.Fatalf("take %d: %v", i, err)
+		}
+	}
+
+	res := h.Race(t, 9, func(i int) error {
+		if i == 0 {
+			_, err := svc.OpnameSessionCreate(raceAdmin(43), connect.NewRequest(&inventoryv1.OpnameSessionCreateRequest{
+				TeamId: raceWarehouse, Plan: inventoryv1.OpnamePlan_OPNAME_PLAN_PRODUCT, FilterProductId: raceProductA,
+			}))
+
+			return err
+		}
+
+		_, err := svc.OrderTransactionRelease(context.Background(), connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{
+			TeamId: raceOwner, IdempotencyKey: fmt.Sprintf("K-%d", i),
+		}))
+
+		return err
+	})
+	res.Report(t)
+
+	if res.Count(san_race.Deadlock) != 0 {
+		t.Fatalf("%d callers deadlocked", res.Count(san_race.Deadlock))
+	}
+
+	if err := res.Outcomes[0].Err; err != nil {
+		t.Fatalf("the count was not planned: %v", err)
+	}
+
+	released := int64(0)
+	for _, o := range res.Outcomes[1:] {
+		if o.Err == nil {
+			released++
+
+			continue
+		}
+
+		if connect.CodeOf(o.Err) != connect.CodeFailedPrecondition || !strings.Contains(o.Err.Error(), "count #") {
+			t.Fatalf("release %d: %v, want released or refused naming the count", o.I, o.Err)
+		}
+	}
+
+	b, r := stockOf(t, h.DB(), raceProductA)
+	if r != 12+released || b != r {
+		t.Fatalf("batches %d, racks %d — want %d each: 12 left, %d put back", b, r, 12+released, released)
+	}
+
+	var book int64
+	h.DB().Raw(`SELECT COALESCE(SUM(system_stock_count), 0) FROM opname_session_snapshots WHERE product_id = ?`, raceProductA).Scan(&book)
+
+	if book != r {
+		t.Fatalf("the count copied a book of %d, the racks hold %d — a release moved the book under the count", book, r)
+	}
+}
+
+// A RACK DELETE RACING A COUNT'S PLAN (a-rack-a-count-holds-cannot-be-deleted): an empty rack whose Kaos row is at 0, and a
+// count of that product planned at the same second. Whichever locks the rack row first, the other waits: the delete goes
+// and the count leaves the deleted rack out, or the count goes and the delete is refused naming it. Never a count holding
+// a deleted rack. Ten rounds, so both orders are likely to be seen.
+func TestRace_RackDelete_RacingACountPlan(t *testing.T) {
+	h := san_race.New(t, ledgerTables...)
+	seedLedgers(t, h.DB(), 10, raceProductA)
+	svc := raceService(h.DB())
+
+	deleted, refused := 0, 0
+
+	for round := range 10 {
+		var rack uint64
+
+		err := h.DB().Raw(`INSERT INTO placements (warehouse_id, code, name) VALUES (?, ?, ?) RETURNING id`,
+			raceWarehouse, fmt.Sprintf("rak-z%d", round), "z").Scan(&rack).Error
+		if err != nil {
+			t.Fatalf("seed rack: %v", err)
+		}
+
+		err = h.DB().Exec(`INSERT INTO product_placements (team_id, warehouse_id, product_id, placement_id, stock_count)
+			VALUES (?, ?, ?, ?, 0)`, raceOwner, raceWarehouse, raceProductA, rack).Error
+		if err != nil {
+			t.Fatalf("seed rack row: %v", err)
+		}
+
+		var session uint64
+
+		res := h.Race(t, 2, func(i int) error {
+			if i == 0 {
+				planned, planErr := svc.OpnameSessionCreate(raceAdmin(43), connect.NewRequest(&inventoryv1.OpnameSessionCreateRequest{
+					TeamId: raceWarehouse, Plan: inventoryv1.OpnamePlan_OPNAME_PLAN_PRODUCT, FilterProductId: raceProductA,
+				}))
+				if planErr == nil {
+					session = planned.Msg.GetSession().GetId()
+				}
+
+				return planErr
+			}
+
+			_, delErr := svc.RackDelete(raceAdmin(43), connect.NewRequest(&inventoryv1.RackDeleteRequest{
+				TeamId: raceWarehouse, RackId: rack,
+			}))
+
+			return delErr
+		})
+
+		if res.Count(san_race.Deadlock) != 0 || res.Outcomes[0].Err != nil {
+			res.Report(t)
+			t.Fatalf("round %d: the plan failed or deadlocked: %v", round, res.Outcomes[0].Err)
+		}
+
+		var held int64
+		h.DB().Raw(`SELECT COUNT(*) FROM opname_session_snapshots WHERE placement_id = ? AND released_at IS NULL`, rack).Scan(&held)
+
+		switch delErr := res.Outcomes[1].Err; {
+		case delErr == nil:
+			deleted++
+
+			if held != 0 {
+				t.Fatalf("round %d: the rack was deleted and the count still holds it", round)
+			}
+		case connect.CodeOf(delErr) == connect.CodeFailedPrecondition && strings.Contains(delErr.Error(), "count #"):
+			refused++
+
+			if held != 1 {
+				t.Fatalf("round %d: the delete was refused, but the count holds %d rows on the rack", round, held)
+			}
+		default:
+			t.Fatalf("round %d: delete: %v", round, delErr)
+		}
+
+		_, err = svc.OpnameSessionCancel(raceAdmin(43), connect.NewRequest(&inventoryv1.OpnameSessionCancelRequest{
+			TeamId: raceWarehouse, SessionId: session,
+		}))
+		if err != nil {
+			t.Fatalf("round %d: cancel: %v", round, err)
+		}
+	}
+
+	t.Logf("10 rounds: %d deleted first, %d refused by the count", deleted, refused)
+}
+
+// THE PLAN RE-CHECKS A RACK DELETED UNDER IT — the Postgres behaviour the rule above leans on: the delete holds the rack
+// row; the plan's `FOR SHARE OF pp, p` waits for it, and once the delete commits it re-reads that row and leaves the
+// deleted rack out. Locking only `pp` would have returned the rack as its statement first saw it, live.
+func TestInterleave_RackDelete_ThePlanLeavesTheDeletedRackOut(t *testing.T) {
+	h := san_race.New(t, ledgerTables...)
+	seedLedgers(t, h.DB(), 10, raceProductA)
+
+	var rack uint64
+	h.DB().Raw(`SELECT placement_id FROM product_placements WHERE product_id = ? ORDER BY id LIMIT 1`, raceProductA).Scan(&rack)
+
+	var planned []uint64
+
+	sched := h.Interleave(t,
+		san_race.Do("A", "the delete locks the rack row", func(tx *gorm.DB) error {
+			return tx.Exec(`SELECT id FROM placements WHERE id = ? FOR UPDATE`, rack).Error
+		}),
+		san_race.Do("A", "the delete stamps it", func(tx *gorm.DB) error {
+			return tx.Exec(`UPDATE placements SET deleted_at = NOW() WHERE id = ?`, rack).Error
+		}),
+		san_race.Block("B", "the plan reads its shelf rows", func(tx *gorm.DB) error {
+			return tx.Raw(`SELECT pp.placement_id FROM product_placements pp JOIN placements p ON p.id = pp.placement_id
+				WHERE pp.warehouse_id = ? AND p.deleted_at IS NULL AND pp.product_id = ? ORDER BY pp.id FOR SHARE OF pp, p`,
+				raceWarehouse, raceProductA).Scan(&planned).Error
+		}),
+		san_race.Commit("A"),
+		san_race.Commit("B"),
+	)
+	sched.Report(t)
+
+	if r := sched.Get("the plan reads its shelf rows"); !r.Blocked || r.Err != nil {
+		t.Fatalf("the plan did not wait for the delete: %+v", r)
+	}
+
+	for _, id := range planned {
+		if id == rack {
+			t.Fatalf("the plan returned rack %d, deleted under it — it would snapshot a deleted rack", rack)
+		}
+	}
+
+	if len(planned) != 1 {
+		t.Fatalf("the plan read %d racks, want the 1 left", len(planned))
 	}
 }
 

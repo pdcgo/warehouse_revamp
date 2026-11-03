@@ -426,6 +426,11 @@ type CountFinalize struct {
 	IsOverride  bool
 	Description string
 	Products    []CountProduct
+	// Guard runs once the rack rows are locked and before anything is written, in a statement of its own (THE COUNT
+	// LOCK, inventory_ledgers/count_lock.go). A door OUTSIDE a count — a found request's approval (post_found.go) —
+	// refuses there a rack a count holds (a-lock-stops-sales-and-cancels-too). nil for a count's own finalize: the count
+	// IS the lock.
+	Guard func(tx *gorm.DB, keys []inventory_ledgers.RackKey) error
 }
 
 // CountTransaction is one transaction a finalize wrote, and the money its lines carry.
@@ -438,6 +443,8 @@ type CountTransaction struct {
 	// found: what the claims give back to the warehouse, and what the minted batch is worth (no money moves for it).
 	ClaimedValue float64
 	MintedValue  float64
+	// found: the batches it minted, in product order.
+	MintedBatchIDs []uint64
 }
 
 // CountPosted is what a finalize posted.
@@ -722,6 +729,18 @@ func PostCountFinalize(tx *gorm.DB, f CountFinalize) (CountPosted, error) {
 		return CountPosted{}, err
 	}
 
+	if f.Guard != nil {
+		keys := make([]inventory_ledgers.RackKey, 0, len(ensure))
+		for _, e := range ensure {
+			keys = append(keys, e.RackKey)
+		}
+
+		err = f.Guard(tx, keys)
+		if err != nil {
+			return CountPosted{}, err
+		}
+	}
+
 	sort.SliceStable(changes, func(i, j int) bool {
 		if (changes[i].delta > 0) != (changes[j].delta > 0) {
 			return changes[i].delta > 0
@@ -768,7 +787,9 @@ func PostCountFinalize(tx *gorm.DB, f CountFinalize) (CountPosted, error) {
 	}
 
 	for i, b := range minted {
-		txOf[txKey{mintOf[i].TeamID, models.TxFound}].MintedValue += b.StockValuation
+		ct := txOf[txKey{mintOf[i].TeamID, models.TxFound}]
+		ct.MintedValue += b.StockValuation
+		ct.MintedBatchIDs = append(ct.MintedBatchIDs, b.ID)
 	}
 
 	err = rackWrites.Flush(tx)

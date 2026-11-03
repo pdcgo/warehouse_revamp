@@ -131,3 +131,35 @@ export const PlanOneTeam: Story = {
     await canvas.findByTestId("at-session-detail");
   },
 };
+
+// A product plan: the product is picked from what THIS warehouse holds or has held (a-warehouse-picks-only-what-it-has-held)
+// — the warehouse Admin may not discover every team's catalogue, and a count counts what is here. "beras" finds Toko
+// Melati's Beras, with its owner, and not Toko Anggrek's Beras Premium, which was never here; the count starts on it.
+export const PlanOneProduct: Story = {
+  beforeEach: opnameNoActiveSession,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("opname-session-row-15", {}, { timeout: 4000 });
+
+    await userEvent.click(canvas.getByTestId("opname-new-session"));
+    const dialog = await screen.findByTestId("opname-new-session-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await userEvent.click(within(dialog).getByTestId("opname-plan-product"));
+    await waitFor(() => expect(within(dialog).getByTestId("opname-new-session-submit")).toBeDisabled());
+    await expect(dialog).toHaveTextContent("Only products this warehouse holds or has held");
+
+    const input = await within(dialog).findByRole("combobox");
+    await userEvent.click(input);
+    await userEvent.type(input, "beras", { delay: 20 });
+    const option = await within(dialog).findByTestId("product-select-option-SKU-BERAS-5K");
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(option).toHaveTextContent("Toko Melati");
+    await waitFor(() => expect(within(dialog).getAllByRole("option")).toHaveLength(1));
+    await expect(within(dialog).queryByTestId("product-select-option-SL-03-ANG-039")).toBeNull();
+    await userEvent.click(option);
+
+    await waitFor(() => expect(within(dialog).getByTestId("opname-new-session-submit")).toBeEnabled());
+    await userEvent.click(within(dialog).getByTestId("opname-new-session-submit"));
+    await canvas.findByTestId("at-session-detail");
+  },
+};

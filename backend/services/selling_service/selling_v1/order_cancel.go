@@ -2,6 +2,7 @@ package selling_v1
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 
@@ -78,6 +79,14 @@ func (s *Service) OrderCancel(
 		return nil
 	})
 	if err != nil {
+		// THE WAREHOUSE SAID WHY, in words the person can act on — a stock count holds a rack the take came from
+		// (a-lock-stops-sales-and-cancels-too), naming the count, who started it and when. Handed on as it came, so the
+		// screen shows that instead of an internal error; the order stays pending and is cancelled again after the count.
+		var refused *connect.Error
+		if errors.As(err, &refused) && refused.Code() == connect.CodeFailedPrecondition {
+			return nil, refused
+		}
+
 		return nil, mapOrderErr(err)
 	}
 

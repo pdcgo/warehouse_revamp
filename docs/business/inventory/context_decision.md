@@ -189,7 +189,7 @@ shelf (11b) · a count before the pick (11c). The lock order is [Q15b](./context
 shelves; a shelf being counted comes last.
 
 🔄 *(2026-11-03)* **Amended again by [a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)**: a shelf being counted is never
-taken from; what the unlocked shelves cannot fill refuses the order. ⛔ Not built.
+taken from; what the unlocked shelves cannot fill refuses the order. ✅ Built 2026-11-03.
 
 ---
 

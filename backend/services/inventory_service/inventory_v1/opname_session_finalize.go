@@ -20,7 +20,9 @@ import (
 // (nobody-finalizes-their-own-count). Every row must be counted.
 //
 // ONE database transaction (the-lock-is-the-open-snapshot-row): the session locked FOR UPDATE, so no row write passes it;
-// then the settlement posted per product (inventory_mutations.PostCountFinalize) — up to three transactions per owning
+// every found request still waiting for a product on a rack the count held, locked and closed as settled by the count —
+// it counted those units and posts them itself (a-count-settles-the-found-it-counted, settleFoundByCount); then the
+// settlement posted per product (inventory_mutations.PostCountFinalize) — up to three transactions per owning
 // team, `problem`, `found`, `move` (problem-and-found-replace-opname); what the warehouse owes each team for the broken
 // and the lost units, and what a claim gives back, posted to liability inside the transaction; the transactions listed
 // (a-session-lists-its-final-transactions); every row released; the session `finish`. The stock-loss expense follows the
@@ -44,6 +46,8 @@ func (s *Service) OpnameSessionFinalize(
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var lockErr error
 
+		now := time.Now()
+
 		session, lockErr = opnameSessionOf(tx, warehouseID, req.Msg.GetSessionId(), "UPDATE")
 		if lockErr != nil {
 			return lockErr
@@ -63,6 +67,15 @@ func (s *Service) OpnameSessionFinalize(
 			return errOpnameOwnCount
 		}
 
+		// THE FOUNDS IT COUNTED (a-count-settles-the-found-it-counted): every request still waiting for a product on a
+		// rack this count held is closed as settled by it — the count counted those units on the shelf and posts them
+		// below, so they post once. Locked here, after the session and before the register, the batches and the racks:
+		// the order an approval takes them in (its request row first).
+		_, settleErr := settleFoundByCount(tx, warehouseID, session.ID, actor, now)
+		if settleErr != nil {
+			return settleErr
+		}
+
 		var postErr error
 
 		posted, postErr = inventory_mutations.PostCountFinalize(tx, inventory_mutations.CountFinalize{
@@ -76,29 +89,9 @@ func (s *Service) OpnameSessionFinalize(
 			return postErr
 		}
 
-		// THE WAREHOUSE OWES THE OWNER for what it threw away and lost, and is owed back what a claim returns
-		// (a-loss-in-custody-is-a-stock-problem) — keyed by the transaction, so the broken and the lost of one problem
-		// transaction are two entries and a retry is refused by the ledger. A team cannot owe itself.
-		for _, ct := range posted.Transactions {
-			if ct.Transaction.TeamID == warehouseID {
-				continue
-			}
-
-			for _, money := range []struct {
-				amount float64
-				kind   StockDamageKind
-			}{{ct.BrokenValue, StockDamageBroken}, {ct.LostValue, StockDamageLost}, {ct.ClaimedValue, StockDamageFound}} {
-				amount := int64(math.Round(money.amount))
-				if amount <= 0 {
-					continue
-				}
-
-				damageErr := s.liability.PostStockDamage(ctx, tx, ct.Transaction.TeamID, warehouseID, ct.Transaction.ID,
-					actor, amount, money.kind)
-				if damageErr != nil {
-					return damageErr
-				}
-			}
+		debtErr := s.postCountDebts(ctx, tx, warehouseID, actor, posted.Transactions)
+		if debtErr != nil {
+			return debtErr
 		}
 
 		listed := make([]models.OpnameSessionFinalTransaction, 0, len(posted.Transactions))
@@ -113,7 +106,6 @@ func (s *Service) OpnameSessionFinalize(
 			}
 		}
 
-		now := time.Now()
 		session.Status = models.OpnameFinish
 		session.FinalizedByID = &actor
 		session.FinalizedAt = &now
@@ -177,4 +169,40 @@ func opnameTransactionTypeProto(t models.TxType) inventoryv1.OpnameTransactionTy
 	default:
 		return inventoryv1.OpnameTransactionType_OPNAME_TRANSACTION_TYPE_UNSPECIFIED
 	}
+}
+
+// postCountDebts posts what the warehouse owes each owning team for the units it threw away and lost, and what a claim
+// gives back (a-loss-in-custody-is-a-stock-problem), inside the caller's transaction — keyed by the transaction, so the
+// broken and the lost of one problem transaction are two entries and a retry is refused by the ledger. A team cannot owe
+// itself. A count's finalize and a found request's approval both call it, so a found posts the same money whichever
+// door it came through.
+func (s *Service) postCountDebts(
+	ctx context.Context,
+	tx *gorm.DB,
+	warehouseID, actor uint64,
+	posted []inventory_mutations.CountTransaction,
+) error {
+	for _, ct := range posted {
+		if ct.Transaction.TeamID == warehouseID {
+			continue
+		}
+
+		for _, money := range []struct {
+			amount float64
+			kind   StockDamageKind
+		}{{ct.BrokenValue, StockDamageBroken}, {ct.LostValue, StockDamageLost}, {ct.ClaimedValue, StockDamageFound}} {
+			amount := int64(math.Round(money.amount))
+			if amount <= 0 {
+				continue
+			}
+
+			err := s.liability.PostStockDamage(ctx, tx, ct.Transaction.TeamID, warehouseID, ct.Transaction.ID,
+				actor, amount, money.kind)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

@@ -115,6 +115,11 @@ const OpnameCountPage = lazy(() =>
 const OpnameFinalizePage = lazy(() =>
   import("./pages/opname-finalize").then((m) => ({ default: m.OpnameFinalizePage })),
 );
+// Found stock waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin) — in the menu as
+// Inventories ▸ Found Stock (found-stock-sits-after-stock-opname-with-its-count).
+const FoundRequestsPage = lazy(() =>
+  import("./pages/found-requests").then((m) => ({ default: m.FoundRequestsPage })),
+);
 const SuppliersPage = lazy(() =>
   import("./pages/suppliers").then((m) => ({ default: m.SuppliersPage })),
 );
@@ -471,6 +476,9 @@ export const router = createBrowserRouter([
       { path: "inventories/opname/sessions/:sessionId", element: <OpnameSessionDetailPage /> },
       { path: "inventories/opname/sessions/:sessionId/count", element: write(<OpnameCountPage />) },
       { path: "inventories/opname/sessions/:sessionId/finalize", element: write(<OpnameFinalizePage />) },
+      // A prototype until design_accept: the server answers Unimplemented. Its menu entry — Inventories, beside the
+      // stock counts — comes with the backend step.
+      { path: "inventories/found-stock", element: <FoundRequestsPage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Every team's suppliers, searched across teams — independent of the team's own list above

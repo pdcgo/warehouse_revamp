@@ -105,14 +105,20 @@ enum OrderTransactionRefusalReason {
   ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED = 2;
   // The warehouse holds fewer units than a line wants.
   ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK = 3;
+  // The warehouse holds enough, but a stock count holds some of them, and the racks no count holds cannot fill the line
+  // (a-lock-stops-sales-and-cancels-too). The error's message names each count, who started it and when.
+  ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED = 4;
 }
 
 // OrderTransactionRefusedLine is one line a refusal names.
 message OrderTransactionRefusedLine {
   uint64 product_id = 1;
   int64 wanted = 2;
-  // For NOT_ENOUGH_STOCK, the units the owner holds in this warehouse; 0 otherwise.
+  // For NOT_ENOUGH_STOCK, the units the owner holds in this warehouse; for BEING_COUNTED, the units on racks no count
+  // holds; 0 otherwise.
   int64 available = 3;
+  // For BEING_COUNTED, the count holding the rest of the line; 0 otherwise.
+  uint64 counting_session_id = 4;
 }
 
 // OrderTransactionRefusal rides on the Connect error of a refused take.

@@ -46,7 +46,8 @@
     "sectionTeam": "Team",
     "bundles": "Bundles",
     "ordersList": "List",
-    "orderDraftsShort": "Drafts"
+    "orderDraftsShort": "Drafts",
+    "foundStock": "Found Stock"
   },
   "menu": {
     "theme": "Theme",
@@ -824,6 +825,9 @@
       "title": "Delete Product",
       "message": "Delete \"{{productCode}}\" for good? Only a product that was never stocked, ordered or restocked can be deleted, and its product code becomes free. A product with a history stays archived.",
       "confirmLabel": "Delete"
+    },
+    "picker": {
+      "archived": "Archived"
     }
   },
   "bundles": {
@@ -2045,6 +2049,12 @@
       "refused": "Nothing was recorded",
       "submit": "Record Sample",
       "done": "Recorded a sample of {{count}} units from {{code}}"
+    },
+    "reportFound": {
+      "action": "Report Found",
+      "title": "Report Found on {{code}}",
+      "product": "Product found",
+      "productPlaceholder": "Search the product you found"
     }
   },
   "suppliers": {
@@ -2690,7 +2700,17 @@
       "place": "Place",
       "product": "Product",
       "warehouse": "Warehouse"
-    }
+    },
+    "adjustFoundWaitsTitle": "Waits for the warehouse Owner or Admin",
+    "adjustFoundWaitsNothing": "Nothing changes until one of them approves it — no stock, no batch, no money.",
+    "adjustFoundWaitsApproval": "Once approved, the units first claim back this product's oldest open loss, at the price it was lost at; the rest come in as new stock at the latest price here.",
+    "adjustFoundWaitsNotYou": "Another Owner or Admin approves it — never the person who reports it.",
+    "adjustFoundHelper": "How many units you found on this rack.",
+    "adjustFoundNotePlaceholder": "e.g. behind the cartons on the bottom shelf, still sealed",
+    "adjustFoundSend": "Send for Approval",
+    "adjustFoundSentToast": "{{count}} × {{productCode}} sent for approval",
+    "adjustFoundSentToastDetail": "Nothing changes until the warehouse Owner or Admin approves it.",
+    "pickHeldHelp": "Only products this warehouse holds or has held. One never stocked here comes in by its team's restock."
   },
   "address": {
     "loading": "Loading…",
@@ -2931,8 +2951,7 @@
       "labelCount_one": "{{count}} label",
       "labelCount_other": "{{count}} labels",
       "done": "Done"
-    },
-    "waitingForCount": "Waiting — {{rack}} is being counted (count #{{id}})"
+    }
   },
   "batches": {
     "title": "Batches",
@@ -4194,6 +4213,10 @@
         "title": "The warehouse does not hold enough for this order",
         "help": "Nothing was taken and no order was made. Lower the quantity of the products below, or ship from a warehouse that has the stock."
       },
+      "beingCounted": {
+        "title": "A stock count holds some of this stock",
+        "help": "The warehouse is counting the racks these products sit on. Nothing was taken and no order was made — lower the quantity to what is free, or place the order again once the count is finished."
+      },
       "notAllowed": {
         "title": "Another team’s product cannot be ordered right now",
         "help": "Its owner has made it private, or holds less of it than they keep in reserve. Nothing was taken and no order was made — remove it or pick another product."
@@ -4207,6 +4230,7 @@
         "help": "Nothing was taken and no order was made."
       },
       "lineShort": "{{name}}: wants {{wanted}}, the warehouse holds {{available}}",
+      "lineCounted": "{{name}}: wants {{wanted}}, {{available}} free — the rest is held by stock count #{{count}}",
       "lineWanted": "{{name}}: wants {{wanted}}"
     },
     "draftHints": {
@@ -5028,5 +5052,84 @@
       "emptyTitle": "No agent reads this team",
       "emptyHint": "A member connects one from ChatGPT or Claude, and it appears here."
     }
+  },
+  "foundRequest": {
+    "title": "Found Stock",
+    "subtitle": "Units found on a rack outside a stock count wait here. Nothing is posted — no stock, no batch, no money — until the warehouse Owner or Admin approves.",
+    "selectTeam": "Pick a warehouse to see its found stock.",
+    "notForYou": "Found stock is the warehouse's — its Owner, Admin and Staff read it.",
+    "tabs": {
+      "waiting": "Waiting",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "all": "All"
+    },
+    "status": {
+      "unspecified": "—",
+      "waiting": "Waiting",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "settled": "Settled by count",
+      "withdrawn": "Withdrawn"
+    },
+    "empty": {
+      "waitingTitle": "Nothing is waiting",
+      "waitingLine": "A found reported on the Adjust screen or a rack page waits here until an Owner or Admin approves or rejects it.",
+      "historyTitle": "No found stock here yet",
+      "historyLine": "Approved, rejected, withdrawn and count-settled found stock is kept here."
+    },
+    "card": {
+      "units_one": "{{count}} unit on {{rack}}",
+      "units_other": "{{count}} units on {{rack}}",
+      "reported": "Reported by {{name}} · {{when}}",
+      "approved": "Approved by {{name}} · {{when}}",
+      "rejected": "Rejected by {{name}} · {{when}}",
+      "noNote": "No note",
+      "wouldTitle": "If approved",
+      "postedTitle": "Posted in transaction #{{id}}",
+      "claimed": "Claimed back {{amount}}",
+      "minted": "New stock {{amount}}",
+      "rejectReason": "Why: {{reason}}",
+      "withdrawn": "Withdrawn by {{name}} · {{when}}",
+      "settledBy": "Closed by {{name}}'s finalize · {{when}}",
+      "settledByCount": "Settled by count #{{id}}",
+      "settledLine": "The count counted these units on the rack and posted them itself — nothing more posts."
+    },
+    "lines": {
+      "type": "Posts",
+      "batch": "Batch",
+      "units": "Units",
+      "price": "Price",
+      "amount": "Amount",
+      "newBatch": "New batch",
+      "newBatchId": "New batch #{{id}}",
+      "claims": "loss #{{id}} of {{date}}"
+    },
+    "post": {
+      "unspecified": "—",
+      "claim": "Claimed back",
+      "mint": "New stock"
+    },
+    "block": {
+      "ownReport": "You reported it — another Owner or Admin approves it.",
+      "beingCounted": "Stock count #{{id}} is counting this product on {{rack}} — approve it once the count is finalized or cancelled."
+    },
+    "approve": "Approve",
+    "reject": "Reject",
+    "approveTitle": "Approve Found Stock #{{id}}",
+    "approveMessage": "{{count}} × {{product}} on {{rack}} posts now: claimed back {{claimed}}, new stock {{minted}}. This cannot be undone here.",
+    "approvedToast": "Found stock #{{id}} approved — transaction #{{tx}}",
+    "rejectTitle": "Reject Found Stock #{{id}}",
+    "rejectMessage": "Nothing is posted. {{name}}, who reported it, reads your reason.",
+    "rejectReason": "Reason",
+    "rejectReasonPlaceholder": "e.g. order #900's parcel waiting for its pick — not extra stock",
+    "rejectedToast": "Found stock #{{id}} rejected",
+    "dismiss": "Cancel",
+    "waitingNav": "{{count}} found waiting for approval",
+    "staffSubtitle": "The founds you reported. Each waits for the warehouse Owner or Admin; you may withdraw yours while it waits.",
+    "withdraw": "Withdraw",
+    "withdrawTitle": "Withdraw Found Stock #{{id}}",
+    "withdrawMessage": "You reported it. Nothing is posted; say why you take it back.",
+    "withdrawnToast": "Found stock #{{id}} withdrawn"
   }
 }

@@ -3,6 +3,27 @@
 [opname.md](./opname.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [opname_decision.md](./opname_decision.md).
 
+> ✅ **Answered 2026-11-03, in chat:** Q31 — an archived product held here can be picked
+> ([an-archived-product-held-here-can-be-picked](./opname_decision.md#an-archived-product-held-here-can-be-picked)), as recommended. **Opname has no open question.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q30 — Found Stock sits after Stock Opname with its count
+> ([found-stock-sits-after-stock-opname-with-its-count](./opname_decision.md#found-stock-sits-after-stock-opname-with-its-count)), as recommended. ⛔ Not built. **Opname has no open question.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q28 — the reporter may withdraw their found
+> ([the-reporter-may-withdraw-their-found](./opname_decision.md#the-reporter-may-withdraw-their-found)), as recommended. ⛔ Not built. **One open: Q30.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q29 — a found never stocked here is refused at the report
+> ([a-found-never-stocked-here-is-refused-at-the-report](./opname_decision.md#a-found-never-stocked-here-is-refused-at-the-report)), as recommended. ⛔ Not built. **Two open: Q28, Q30.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q27 — staff may report a found
+> ([staff-may-report-a-found](./opname_decision.md#staff-may-report-a-found)), as recommended. ⛔ Not built. **Three open: Q28–Q30.**
+>
+> ✅ **Answered 2026-11-03, in chat:** Q26 — a count settles the found it counted
+> ([a-count-settles-the-found-it-counted](./opname_decision.md#a-count-settles-the-found-it-counted)), as recommended. ⛔ Not built. **Four open: Q27–Q30.**
+>
+> 🆕 **2026-11-03, the found-request prototype:** [Q26–Q30](#question) were opened, raised by building it. Its design is
+> accepted ([the-found-stock-prototype-is-accepted](./opname_decision.md#the-found-stock-prototype-is-accepted)); the backend step builds each the safe way.
+>
 > ✅ **Resolved 2026-11-03:** [opname-md-still-draws-one-opname-transaction](#opname-md-still-draws-one-opname-transaction) — written into opname.md with your
 > one-time permission. **Opname: no open question, no open contradiction.**
 >
@@ -362,6 +383,21 @@ Each was built the safe way and works today; the answer may change it.)*
 24. ✅ *(2026-11-03)* **Answered in chat: blocked** — a counted rack takes no order and no cancel
     ([a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)), against my *correct by the movements since*.
 25. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [a-rack-a-count-holds-cannot-be-deleted](./opname_decision.md#a-rack-a-count-holds-cannot-be-deleted).
+
+*(2026-11-03 — raised by the Storybook prototype of [an-adjust-found-waits-for-the-owner-or-admin](./opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin):
+`Pages/Inventory/FoundStock`, `Features/Inventory/AdjustStockDialog`. The design is accepted
+([the-found-stock-prototype-is-accepted](./opname_decision.md#the-found-stock-prototype-is-accepted)); each is built the safe way and the answer may change it.)*
+
+26. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [a-count-settles-the-found-it-counted](./opname_decision.md#a-count-settles-the-found-it-counted).
+27. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [staff-may-report-a-found](./opname_decision.md#staff-may-report-a-found).
+28. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [the-reporter-may-withdraw-their-found](./opname_decision.md#the-reporter-may-withdraw-their-found).
+29. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [a-found-never-stocked-here-is-refused-at-the-report](./opname_decision.md#a-found-never-stocked-here-is-refused-at-the-report).
+30. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [found-stock-sits-after-stock-opname-with-its-count](./opname_decision.md#found-stock-sits-after-stock-opname-with-its-count).
+
+*(2026-11-03 — raised by the build of [a-warehouse-picks-only-what-it-has-held](./opname_decision.md#a-warehouse-picks-only-what-it-has-held).
+Built the safe way; the answer may change it.)*
+
+31. ✅ *(2026-11-03)* **Answered in chat, as recommended** — [an-archived-product-held-here-can-be-picked](./opname_decision.md#an-archived-product-held-here-can-be-picked).
 
 
 ---

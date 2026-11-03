@@ -102,6 +102,9 @@ import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock
 import { warehouseTransferService } from "./warehouseTransferStub";
 import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
+import { batchList, foundRequestService, stockAdjust } from "./foundRequestStub";
+import { warehouseProductSearch } from "./warehouseProductSearchStub";
+import { FoundRequestService } from "../src/gen/warehouse/inventory/v1/found_request_pb";
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
 import { orderReturnAccept, readsOrder, scenarioStatus } from "./returnAcceptStub";
@@ -1011,6 +1014,9 @@ export const transport = createRouterTransport(({ service }) => {
   service(WarehouseTransferService, warehouseTransferService);
   // The stock count — a prototype: opnameStub.ts plays the decided opname rules (opname_decision.md).
   service(OpnameService, opnameService);
+  // A found at the shelf waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin):
+  // foundRequestStub.ts plays the server's rules.
+  service(FoundRequestService, foundRequestService);
   // Bundles — a prototype: bundleStub.ts plays the decided bundle rules (product_bundle_decision.md).
   service(BundleService, bundleService);
 
@@ -1348,6 +1354,16 @@ export const transport = createRouterTransport(({ service }) => {
       const match = /^order:(\d+)$/.exec(req.ref);
       return { locations: match ? pickLocationsFor(BigInt(match[1]!)) : [] };
     },
+
+    // The Adjust dialog (features/inventory/AdjustStockDialog): its write, and the batches Damaged and Lost pick from.
+    // FOUND is refused here, as on the server — the dialog reports it through FoundRequestCreate (foundRequestStub.ts).
+    stockAdjust: (req) => stockAdjust(req),
+    batchList: (req) => batchList(req),
+
+    // THE WAREHOUSE'S PRODUCT PICKER (a-warehouse-picks-only-what-it-has-held) — Report Found, a count's product plan and
+    // its found. ONLY what has had a batch in this warehouse comes back, read off the found and count stubs' registers, and
+    // a selling role is refused as the policy refuses it (warehouseProductSearchStub.ts).
+    warehouseProductSearch: (req) => warehouseProductSearch(req),
   });
 
   service(OrderService, {

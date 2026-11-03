@@ -1460,8 +1460,9 @@ erDiagram
   product per rack** is `opname_session_snapshots_open_lock` on `(product_id, placement_id) WHERE released_at IS NULL`.
 - **Every mutation that moves units reads the lock after locking its shelf rows, in a statement of its own**
   (`inventory_ledgers.RefuseCounted`): a put-away (restock and transfer accept), a move, a sample and an adjustment are
-  refused, naming the count; an order's take uses the counted racks last. A count is planned under `FOR SHARE` on the
-  same shelf rows, so the two queue — proved both ways in `opname_race_test.go`.
+  refused, naming the count — and so are a take's rollback (a cancel) and a rack delete; a take (an order's, a transfer's
+  out-leg) runs only over the racks no count holds. A count is planned under `FOR SHARE OF pp, p` on the same shelf rows
+  and their racks, so the two queue — proved both ways in `opname_race_test.go`.
 - **A draft is keyed by its row** — `(opname_session_id, product_id, placement_id)`, the snapshot row's own grain; there
   is no snapshot id on it, as opname.md draws it.
 - **The register's open losses** are indexed for the claim, oldest first: `(warehouse_id, team_id, product_id,
@@ -1473,6 +1474,52 @@ erDiagram
   a finalize by Root is stamped on every transaction it writes (`inventory_transactions.is_override`).
 - **"Last counted"** on the rack, placement and batch screens is the later of a recount's `adjustment` rack row and the
   `finalized_at` of a finished count holding a row there (index `(placement_id, product_id)`).
+
+### Found stock waiting for approval (`00036`)
+
+A unit found on a rack outside a count waits as a request
+([an-adjust-found-waits-for-the-owner-or-admin](business/inventory/opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin),
+built 2026-11-03). `FoundRequestCreate` writes one row and posts nothing; the approval — the warehouse Owner or Admin,
+never the reporter — posts one `found` transaction through the count's own claim and mint; a rejection, or the
+reporter's withdrawal, posts nothing; a count that finalizes over the product on the rack **settles** it, posting
+nothing more ([a-count-settles-the-found-it-counted](business/inventory/opname_decision.md#a-count-settles-the-found-it-counted)).
+
+```mermaid
+erDiagram
+    found_requests {
+        bigserial   id                             PK
+        bigint      warehouse_id
+        bigint      team_id                        "the product's owner - whose loss is claimed, whose batch is minted"
+        bigint      product_id
+        text        product_code                   "snapshot at the report"
+        text        product_name                   "snapshot at the report"
+        bigint      placement_id                   FK "the rack it was found on"
+        bigint      stock_count                    "CHECK above 0"
+        text        note                           "the reporter's - at most 200"
+        bigint      reported_by_id                 "a person, never the approver"
+        timestamptz reported_at
+        text        status                         "waiting approved rejected settled"
+        bigint      decided_by_id                  "approver, rejecter, the reporter withdrawing, or the finalizer"
+        timestamptz decided_at                     "CHECK set exactly when not waiting"
+        text        reject_reason                  "CHECK required when rejected"
+        bigint      transaction_id                 FK "the found transaction - CHECK set exactly when approved"
+        bigint      minted_batch_id                FK "the batch the approval minted, if any"
+        bigint      settled_by_counting_session_id FK "CHECK set exactly when settled"
+    }
+    placements ||--o{ found_requests : "found on"
+    inventory_transactions |o--o| found_requests : "approved as"
+    batches |o--o{ found_requests : "minted by"
+    opname_sessions |o--o{ found_requests : "settled by"
+```
+
+- **The list** reads `(warehouse_id, id DESC)` for every status and `(warehouse_id, status, id DESC)` for one; the
+  menu's count is the second on a one-row page.
+- **What a finalize settles** is read by `found_requests_waiting_idx` on `(product_id, placement_id) WHERE status =
+  'waiting'`, locked `FOR UPDATE` in id order after the session and before the register, the batches and the racks —
+  the order an approval takes them in.
+- **The request row is the approval's first lock**: two approvals, or an approval and a rejection, queue on it and the
+  second finds it no longer waiting.
+- `team_id`, `product_id`, `warehouse_id` and the people are other services' ids — no FK, as everywhere in this service.
 
 ---
 

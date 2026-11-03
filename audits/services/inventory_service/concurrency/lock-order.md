@@ -115,3 +115,17 @@ Named rather than left to be assumed safe:
   ⚠ except `StockMove`, whose `moveShelfBatch` runs before its `applyDelta` takes the level's row lock.
   That ordering was not exercised here and is the first thing to race if shelf-batch quantities are
   ever seen drifting from on-hand.
+
+## Found requests (2026-11-03)
+
+`found_requests` sits **above** the count's ledgers: every writer that locks a request row locks it before the register,
+the batches and the racks, and a finalize locks the requests it settles right after its session.
+
+| Handler | Locks, in order |
+| --- | --- |
+| `FoundRequestApprove` | `found_requests` (one row) → `warehouse_stock_problems` (open losses, oldest first) → `batches` (by id) → `product_placements` (the rack row) → **liability** |
+| `FoundRequestReject` | `found_requests` (one row) |
+| `OpnameSessionFinalize` | `opname_sessions` → `found_requests` (the WAITING ones it settles, by id) → `warehouse_stock_problems` → `batches` → `product_placements` → **liability** |
+
+Proved, with the races and the one accepted behaviour (two identical reports are two requests), in
+[FoundRequest.md](FoundRequest.md).

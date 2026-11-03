@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
@@ -22,6 +23,11 @@ import (
 // RESTRICT, but this is a SOFT delete — the row is never removed, so the constraint never fires. Left
 // unguarded, the goods would be STRANDED: still on the rack rows, at a location that had vanished from
 // every list, where nobody could find them or fix them (a-placement-deletes-at-zero-stock).
+//
+// A rack a STOCK COUNT HOLDS is refused too, at 0 or not (a-rack-a-count-holds-cannot-be-deleted): an open snapshot row
+// names it, or an `all` count is visiting every rack. The rack row is locked first and the count read after it, in a
+// statement of its own — a count planned at the same second locks the rack row FOR SHARE while it snapshots, so one of
+// the two waits for the other, and either the delete is refused or the count leaves the deleted rack out.
 func (s *Service) RackDelete(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RackDeleteRequest],
@@ -37,6 +43,16 @@ func (s *Service) RackDelete(
 
 		if !exists {
 			return errRackMissing
+		}
+
+		lockErr := tx.Exec(`SELECT id FROM placements WHERE id = ? AND warehouse_id = ? FOR UPDATE`, rackID, warehouseID).Error
+		if lockErr != nil {
+			return lockErr
+		}
+
+		countedErr := inventory_ledgers.RefuseRackCounted(tx, warehouseID, rackID)
+		if countedErr != nil {
+			return countedErr
 		}
 
 		// Anything left on the shelf, inside the same transaction as the flip, so a receipt landing
@@ -68,6 +84,10 @@ func (s *Service) RackDelete(
 
 		if errors.Is(err, errRackHoldsStock) {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errRackHoldsStock)
+		}
+
+		if refused := countedRefusal(err); refused != nil {
+			return nil, refused
 		}
 
 		return nil, rackDBError(err)

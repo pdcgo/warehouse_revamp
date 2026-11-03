@@ -198,13 +198,16 @@ func opnamePlanProducts(db *gorm.DB, warehouseID uint64, f opnamePlanSelect) ([]
 }
 
 // opnamePlanRows is the shelf rows a plan selects, rows at 0 included, in id order — FOR SHARE when lock, which is the
-// order every writer locks them in, so the snapshot queues behind a write already holding them.
+// order every writer locks them in, so the snapshot queues behind a write already holding them. Their RACK rows are
+// locked FOR SHARE too: a rack delete locks its row first (a-rack-a-count-holds-cannot-be-deleted), so a count waits for
+// a delete in flight and then re-checks `p.deleted_at` — leaving the deleted rack out — and a delete waits for a count in
+// flight and then reads its rows and refuses.
 func opnamePlanRows(tx *gorm.DB, warehouseID uint64, f opnamePlanSelect, lock bool) ([]models.ProductPlacement, error) {
 	where, args := opnamePlanWhere(warehouseID, f)
 
 	locking := ""
 	if lock {
-		locking = " FOR SHARE OF pp"
+		locking = " FOR SHARE OF pp, p"
 	}
 
 	var rows []models.ProductPlacement

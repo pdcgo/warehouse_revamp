@@ -71,6 +71,15 @@ service InventoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
+  // The WAREHOUSE'S PRODUCT PICKER (a-warehouse-picks-only-what-it-has-held) — Report Found, a count's product plan and
+  // a count's found: the products with a batch in this warehouse, any team's, at 0 today or not, searched by name or
+  // product code. Inventory knows what has been here; product_service names and searches it.
+  rpc WarehouseProductSearch(WarehouseProductSearchRequest) returns (WarehouseProductSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
   // Which shelves already hold a product (#156) — the put-away recommendation.
   rpc ProductPlaces(ProductPlacesRequest) returns (ProductPlacesResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
@@ -353,6 +362,10 @@ enum StockAdjustReason {
   // Units of a SPECIFIC batch went bad, went missing, or turned up — a signed `quantity` on that batch.
   STOCK_ADJUST_REASON_DAMAGED = 2;
   STOCK_ADJUST_REASON_LOST = 3;
+  // Units turned up on the rack. REFUSED here (InvalidArgument): a found is reported through
+  // FoundRequestService.FoundRequestCreate, the one door (staff-may-report-a-found), and waits for the warehouse Owner
+  // or Admin (an-adjust-found-waits-for-the-owner-or-admin). The provisional `adjustment` into a named batch is retired.
+  // Kept so the value is never reused.
   STOCK_ADJUST_REASON_FOUND = 4;
 }
 
@@ -377,13 +390,14 @@ message StockAdjustRequest {
   int64 on_hand = 3 [(buf.validate.field).int64.gte = 0];
   string reason = 4 [(buf.validate.field).string.max_len = 200];
 
-  // WHY (#211). UNSPECIFIED and RECOUNT both mean "correct the shelf to `on_hand`". DAMAGED/LOST/FOUND
-  // mean "change this batch's units by `quantity`" and REQUIRE `batch_id`.
+  // WHY (#211). UNSPECIFIED and RECOUNT both mean "correct the shelf to `on_hand`". DAMAGED/LOST
+  // mean "change this batch's units by `quantity`" and REQUIRE `batch_id`. FOUND is refused — it is
+  // FoundRequestService.FoundRequestCreate (staff-may-report-a-found).
   StockAdjustReason reason_type = 7 [(buf.validate.field).enum.defined_only = true];
-  // The batch affected — required for DAMAGED/LOST/FOUND, ignored for a recount (its delta is FIFO'd
+  // The batch affected — required for DAMAGED/LOST, ignored for a recount (its delta is FIFO'd
   // onto the oldest batch). 0 for a recount.
   uint64 batch_id = 8;
-  // The magnitude for DAMAGED/LOST/FOUND (always positive; the reason gives the sign). Ignored for a
+  // The magnitude for DAMAGED/LOST (always positive; the reason gives the sign). Ignored for a
   // recount.
   int64 quantity = 9 [(buf.validate.field).int64.gte = 0];
 
@@ -734,10 +748,11 @@ message StockPickLocation {
   // How much to take from THIS shelf. Positive.
   int64 quantity = 4;
 
-  // A STOCK COUNT HOLDS THIS PRODUCT ON THIS SHELF: the session counting it, 0 when none. The order was still taken
-  // (a sale is never refused), but the picker WAITS until the count releases the shelf — lifted mid-count, the unit
-  // reads as a false shortage, and a shortage is a debt (a-lock-stops-units-moving-not-sales).
-  uint64 counting_session_id = 5;
+  // 5 was `counting_session_id`: the pick on a shelf a count held WAITED for it. No order is taken from a counted shelf
+  // any more (a-lock-stops-sales-and-cancels-too), so there is nothing to wait for — an order taken before the count
+  // began is picked as usual, which the count then reads as a match, not a false surplus.
+  reserved 5;
+  reserved "counting_session_id";
 }
 
 message StockPickLocationsResponse {
@@ -790,6 +805,84 @@ message WarehouseProductListResponseItem {
 
 message WarehouseProductListResponse {
   repeated WarehouseProductListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// WarehouseProductSearch — a warehouse picks ONLY what it has held (a-warehouse-picks-only-what-it-has-held).
+//
+// The set searched is every product with a BATCH in this warehouse — any team's, emptied ones included, since a batch is
+// never deleted — which is exactly what a found or a count can take (a-found-never-stocked-here-is-refused-at-the-report,
+// a-unit-never-stocked-here-comes-in-by-restock), and nothing the warehouse does not already see on its own shelves.
+// ProductDiscover is NOT widened: a warehouse never browses every team's catalogue.
+//
+// Owned HERE, not by the catalogue, because the filter that defines the set — "has had a batch in this building" — is
+// inventory's fact, and the filter has to be applied where the paging happens. The names and codes stay product_service's:
+// inventory hands it the held ids in-process and it searches among them, so no id list ever travels from the browser and
+// no product name is mirrored here (HARD RULE 3). An archived product is out, as it is out of every picker.
+message WarehouseProductSearchRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  WarehouseProductSearchFilter filter = 2 [(buf.validate.field).required = true];
+  // Which slices to load per product. Empty defaults to the PRODUCT (row) slice.
+  repeated WarehouseProductSearchDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message WarehouseProductSearchFilter {
+  // A name or a product code, or part of one — matched anywhere, case-insensitive. At least 2 characters after the server
+  // trims it: a picker searches only what is typed, and one letter matches most of a warehouse.
+  string q = 1 [(buf.validate.field).string = {
+    min_len: 2
+    max_len: 100
+  }];
+}
+
+enum WarehouseProductSearchDataType {
+  WAREHOUSE_PRODUCT_SEARCH_DATA_TYPE_UNSPECIFIED = 0;
+  WAREHOUSE_PRODUCT_SEARCH_DATA_TYPE_GENERAL = 1;
+  WAREHOUSE_PRODUCT_SEARCH_DATA_TYPE_PRODUCT = 2;
+}
+
+// WarehouseProductSearchItem is the PRODUCT slice — what a picked product snapshots, and its OWNER, so two teams'
+// same-named products are told apart (the code carries the team's code too).
+message WarehouseProductSearchItem {
+  uint64 id = 1;
+  // The selling team that owns it — a warehouse holds other teams' goods. The picker names it through TeamByIds.
+  uint64 team_id = 2;
+  // As on Product: the composed `<team_code>-<part>`.
+  string product_code = 3;
+  string name = 4;
+  // Its seller archived it. Still offered here (an-archived-product-held-here-can-be-picked): archiving retires it from
+  // the catalogue, not its units from the shelf. The picker labels it.
+  bool archived = 5;
+}
+
+message WarehouseProductSearchMapItem {
+  map<uint64, WarehouseProductSearchItem> map_data = 1;
+}
+
+message WarehouseProductSearchResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    WarehouseProductSearchMapItem product = 2;
+  }
+}
+
+message WarehouseProductSearchResponse {
+  repeated WarehouseProductSearchResponseItem items = 1;
+  // The product ids in order — by name, then product code — the authoritative ordering of the page.
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
 }

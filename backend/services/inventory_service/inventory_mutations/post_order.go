@@ -3,6 +3,8 @@ package inventory_mutations
 import (
 	"fmt"
 	"sort"
+	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -44,6 +46,66 @@ type ShortLinesError struct {
 
 func (e *ShortLinesError) Error() string {
 	return fmt.Sprintf("not enough stock for %d line(s)", len(e.Lines))
+}
+
+// CountedLine is one line of a take the racks NO count holds cannot fill: what it wanted, what those racks hold, and the
+// count holding the rest.
+type CountedLine struct {
+	ProductID uint64
+	Wanted    int64
+	Free      int64
+	Lock      inventory_ledgers.CountLock
+}
+
+// CountedLinesError refuses a take — an order's or a transfer's out-leg — because a stock count holds units it would need
+// (a-lock-stops-sales-and-cancels-too). It names every such line, and each line's count, so the person knows whom to ask
+// (an-abandoned-count-waits-for-the-admin).
+type CountedLinesError struct {
+	Lines []CountedLine
+}
+
+func (e *CountedLinesError) Error() string {
+	parts := make([]string, 0, len(e.Lines))
+	for _, l := range e.Lines {
+		parts = append(parts, fmt.Sprintf("product %d wants %d, %d on racks no count holds — the rest is held on rack %s by count #%d, started by user #%d at %s",
+			l.ProductID, l.Wanted, l.Free, l.Lock.PlacementCode, l.Lock.SessionID, l.Lock.StartedByID,
+			l.Lock.StartedAt.In(wib).Format("2006-01-02 15:04 MST")))
+	}
+
+	return fmt.Sprintf("%d line(s) need units a stock count holds: %s; they are released when the count is finalized or cancelled",
+		len(e.Lines), strings.Join(parts, "; "))
+}
+
+// Unwrap is the first line's lock, so a caller that only asks "was this a count?" (errors.As a *CountedError) is answered.
+func (e *CountedLinesError) Unwrap() error {
+	if len(e.Lines) == 0 {
+		return nil
+	}
+
+	return &inventory_ledgers.CountedError{CountLock: e.Lines[0].Lock}
+}
+
+// wib is the warehouse's clock, for a refusal a person reads.
+var wib = time.FixedZone("WIB", 7*60*60)
+
+// refuseCountedLines checks every line against the racks no count holds, from the locked rack rows, BEFORE any rack is
+// written — so the refusal names every line a count blocks, not only the first.
+func refuseCountedLines(racks *inventory_ledgers.LockedRacks, lines []OrderLine) error {
+	var counted []CountedLine
+
+	for _, line := range lines {
+		free, held := racks.Free(line.OwnerTeamID, line.ProductID)
+
+		if free < line.Quantity && held != nil {
+			counted = append(counted, CountedLine{ProductID: line.ProductID, Wanted: line.Quantity, Free: free, Lock: *held})
+		}
+	}
+
+	if len(counted) > 0 {
+		return &CountedLinesError{Lines: counted}
+	}
+
+	return nil
 }
 
 // PostOrder writes an order's take: ONE `order` transaction of the ordering team, even across owners
@@ -169,6 +231,13 @@ func takeLines(
 
 	// ...then RACKS, every line.
 	racks, err := inventory_ledgers.LockRacks(tx, t.WarehouseID, ownersOf(lines))
+	if err != nil {
+		return nil, err
+	}
+
+	// A rack a stock count holds is never taken from (a-lock-stops-sales-and-cancels-too): every line is checked against
+	// the other racks first, and the refusal names each line and its count.
+	err = refuseCountedLines(racks, lines)
 	if err != nil {
 		return nil, err
 	}

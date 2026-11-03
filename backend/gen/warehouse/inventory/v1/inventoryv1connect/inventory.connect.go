@@ -57,6 +57,9 @@ const (
 	// InventoryServiceWarehouseProductListProcedure is the fully-qualified name of the
 	// InventoryService's WarehouseProductList RPC.
 	InventoryServiceWarehouseProductListProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseProductList"
+	// InventoryServiceWarehouseProductSearchProcedure is the fully-qualified name of the
+	// InventoryService's WarehouseProductSearch RPC.
+	InventoryServiceWarehouseProductSearchProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseProductSearch"
 	// InventoryServiceProductPlacesProcedure is the fully-qualified name of the InventoryService's
 	// ProductPlaces RPC.
 	InventoryServiceProductPlacesProcedure = "/warehouse.inventory.v1.InventoryService/ProductPlaces"
@@ -125,6 +128,10 @@ type InventoryServiceClient interface {
 	StockTakeQuote(context.Context, *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error)
 	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
 	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
+	// The WAREHOUSE'S PRODUCT PICKER (a-warehouse-picks-only-what-it-has-held) — Report Found, a count's product plan and
+	// a count's found: the products with a batch in this warehouse, any team's, at 0 today or not, searched by name or
+	// product code. Inventory knows what has been here; product_service names and searches it.
+	WarehouseProductSearch(context.Context, *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
@@ -232,6 +239,13 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		warehouseProductSearch: connect.NewClient[v1.WarehouseProductSearchRequest, v1.WarehouseProductSearchResponse](
+			httpClient,
+			baseURL+InventoryServiceWarehouseProductSearchProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductSearch")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		productPlaces: connect.NewClient[v1.ProductPlacesRequest, v1.ProductPlacesResponse](
 			httpClient,
 			baseURL+InventoryServiceProductPlacesProcedure,
@@ -335,28 +349,29 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // inventoryServiceClient implements InventoryServiceClient.
 type inventoryServiceClient struct {
-	stockList            *connect.Client[v1.StockListRequest, v1.StockListResponse]
-	stockHistory         *connect.Client[v1.StockHistoryRequest, v1.StockHistoryResponse]
-	stockAdjust          *connect.Client[v1.StockAdjustRequest, v1.StockAdjustResponse]
-	stockAvailability    *connect.Client[v1.StockAvailabilityRequest, v1.StockAvailabilityResponse]
-	stockedProductList   *connect.Client[v1.StockedProductListRequest, v1.StockedProductListResponse]
-	stockCost            *connect.Client[v1.StockCostRequest, v1.StockCostResponse]
-	stockTakeQuote       *connect.Client[v1.StockTakeQuoteRequest, v1.StockTakeQuoteResponse]
-	warehouseProductList *connect.Client[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse]
-	productPlaces        *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
-	stockPickLocations   *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
-	batchList            *connect.Client[v1.BatchListRequest, v1.BatchListResponse]
-	costLayerList        *connect.Client[v1.CostLayerListRequest, v1.CostLayerListResponse]
-	placementList        *connect.Client[v1.PlacementListRequest, v1.PlacementListResponse]
-	productStockSummary  *connect.Client[v1.ProductStockSummaryRequest, v1.ProductStockSummaryResponse]
-	batchDetail          *connect.Client[v1.BatchDetailRequest, v1.BatchDetailResponse]
-	batchPlacementList   *connect.Client[v1.BatchPlacementListRequest, v1.BatchPlacementListResponse]
-	batchReceipt         *connect.Client[v1.BatchReceiptRequest, v1.BatchReceiptResponse]
-	ownerStockByIds      *connect.Client[v1.OwnerStockByIdsRequest, v1.OwnerStockByIdsResponse]
-	ownerStockStat       *connect.Client[v1.OwnerStockStatRequest, v1.OwnerStockStatResponse]
-	ownerCostLayerList   *connect.Client[v1.OwnerCostLayerListRequest, v1.OwnerCostLayerListResponse]
-	ownerBatchList       *connect.Client[v1.OwnerBatchListRequest, v1.OwnerBatchListResponse]
-	ownerStockHistory    *connect.Client[v1.OwnerStockHistoryRequest, v1.OwnerStockHistoryResponse]
+	stockList              *connect.Client[v1.StockListRequest, v1.StockListResponse]
+	stockHistory           *connect.Client[v1.StockHistoryRequest, v1.StockHistoryResponse]
+	stockAdjust            *connect.Client[v1.StockAdjustRequest, v1.StockAdjustResponse]
+	stockAvailability      *connect.Client[v1.StockAvailabilityRequest, v1.StockAvailabilityResponse]
+	stockedProductList     *connect.Client[v1.StockedProductListRequest, v1.StockedProductListResponse]
+	stockCost              *connect.Client[v1.StockCostRequest, v1.StockCostResponse]
+	stockTakeQuote         *connect.Client[v1.StockTakeQuoteRequest, v1.StockTakeQuoteResponse]
+	warehouseProductList   *connect.Client[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse]
+	warehouseProductSearch *connect.Client[v1.WarehouseProductSearchRequest, v1.WarehouseProductSearchResponse]
+	productPlaces          *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
+	stockPickLocations     *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
+	batchList              *connect.Client[v1.BatchListRequest, v1.BatchListResponse]
+	costLayerList          *connect.Client[v1.CostLayerListRequest, v1.CostLayerListResponse]
+	placementList          *connect.Client[v1.PlacementListRequest, v1.PlacementListResponse]
+	productStockSummary    *connect.Client[v1.ProductStockSummaryRequest, v1.ProductStockSummaryResponse]
+	batchDetail            *connect.Client[v1.BatchDetailRequest, v1.BatchDetailResponse]
+	batchPlacementList     *connect.Client[v1.BatchPlacementListRequest, v1.BatchPlacementListResponse]
+	batchReceipt           *connect.Client[v1.BatchReceiptRequest, v1.BatchReceiptResponse]
+	ownerStockByIds        *connect.Client[v1.OwnerStockByIdsRequest, v1.OwnerStockByIdsResponse]
+	ownerStockStat         *connect.Client[v1.OwnerStockStatRequest, v1.OwnerStockStatResponse]
+	ownerCostLayerList     *connect.Client[v1.OwnerCostLayerListRequest, v1.OwnerCostLayerListResponse]
+	ownerBatchList         *connect.Client[v1.OwnerBatchListRequest, v1.OwnerBatchListResponse]
+	ownerStockHistory      *connect.Client[v1.OwnerStockHistoryRequest, v1.OwnerStockHistoryResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -397,6 +412,11 @@ func (c *inventoryServiceClient) StockTakeQuote(ctx context.Context, req *connec
 // WarehouseProductList calls warehouse.inventory.v1.InventoryService.WarehouseProductList.
 func (c *inventoryServiceClient) WarehouseProductList(ctx context.Context, req *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error) {
 	return c.warehouseProductList.CallUnary(ctx, req)
+}
+
+// WarehouseProductSearch calls warehouse.inventory.v1.InventoryService.WarehouseProductSearch.
+func (c *inventoryServiceClient) WarehouseProductSearch(ctx context.Context, req *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error) {
+	return c.warehouseProductSearch.CallUnary(ctx, req)
 }
 
 // ProductPlaces calls warehouse.inventory.v1.InventoryService.ProductPlaces.
@@ -494,6 +514,10 @@ type InventoryServiceHandler interface {
 	StockTakeQuote(context.Context, *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error)
 	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
 	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
+	// The WAREHOUSE'S PRODUCT PICKER (a-warehouse-picks-only-what-it-has-held) — Report Found, a count's product plan and
+	// a count's found: the products with a batch in this warehouse, any team's, at 0 today or not, searched by name or
+	// product code. Inventory knows what has been here; product_service names and searches it.
+	WarehouseProductSearch(context.Context, *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
@@ -594,6 +618,13 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		InventoryServiceWarehouseProductListProcedure,
 		svc.WarehouseProductList,
 		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceWarehouseProductSearchHandler := connect.NewUnaryHandler(
+		InventoryServiceWarehouseProductSearchProcedure,
+		svc.WarehouseProductSearch,
+		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductSearch")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -713,6 +744,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceStockTakeQuoteHandler.ServeHTTP(w, r)
 		case InventoryServiceWarehouseProductListProcedure:
 			inventoryServiceWarehouseProductListHandler.ServeHTTP(w, r)
+		case InventoryServiceWarehouseProductSearchProcedure:
+			inventoryServiceWarehouseProductSearchHandler.ServeHTTP(w, r)
 		case InventoryServiceProductPlacesProcedure:
 			inventoryServiceProductPlacesHandler.ServeHTTP(w, r)
 		case InventoryServiceStockPickLocationsProcedure:
@@ -780,6 +813,10 @@ func (UnimplementedInventoryServiceHandler) StockTakeQuote(context.Context, *con
 
 func (UnimplementedInventoryServiceHandler) WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.WarehouseProductList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) WarehouseProductSearch(context.Context, *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.WarehouseProductSearch is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error) {

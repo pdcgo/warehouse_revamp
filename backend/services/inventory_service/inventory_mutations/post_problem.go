@@ -45,7 +45,7 @@ type ShelfProblemPosted struct {
 }
 
 // PostShelfProblem writes the report: the batch locked and taken from first, then the rack — refused when either holds
-// too few, or when a count holds the product on that rack (a-lock-stops-units-moving-not-sales).
+// too few, or when a count holds the product on that rack (a-lock-stops-sales-and-cancels-too).
 func PostShelfProblem(tx *gorm.DB, p ShelfProblem) (ShelfProblemPosted, error) {
 	if p.Type != models.ProblemBroken && p.Type != models.ProblemLost {
 		return ShelfProblemPosted{}, fmt.Errorf("a shelf problem is broken or lost, not %q", p.Type)

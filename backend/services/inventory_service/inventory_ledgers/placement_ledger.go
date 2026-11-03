@@ -78,7 +78,7 @@ func PutOnPlacements(
 	sortRackKeys(keys)
 
 	// A put-away onto a product being counted on that rack is refused — the accept offers another rack
-	// (a-lock-stops-units-moving-not-sales). Read under the rows' lock, before anything is written.
+	// (a-lock-stops-sales-and-cancels-too). Read under the rows' lock, before anything is written.
 	err = RefuseCounted(tx, keys)
 	if err != nil {
 		return nil, err
@@ -118,18 +118,19 @@ func PutOnPlacements(
 type LockedRacks struct {
 	locked  map[ProductOwner]bool
 	byOwner map[ProductOwner][]*inventory_service_models.ProductPlacement
-	// The rows a stock count holds (the-lock-is-the-open-snapshot-row), read after the lock — a take uses them last.
-	counting map[RackKey]bool
+	// The rows a stock count holds (the-lock-is-the-open-snapshot-row), read after the lock — a take never uses them
+	// (a-lock-stops-sales-and-cancels-too).
+	counting map[RackKey]CountLock
 }
 
 // LockRacks locks every rack row of the given owners' products in the warehouse, in ONE statement in id order
 // (batches-lock-before-shelves-by-id) — taken AFTER the batches. Then, in a statement of its own, it reads which of them
-// a stock count holds (CountLocks), so a take can use those last.
+// a stock count holds (CountLocks), so a take can leave those alone.
 func LockRacks(tx *gorm.DB, warehouseID uint64, owners []ProductOwner) (*LockedRacks, error) {
 	out := &LockedRacks{
 		locked:   map[ProductOwner]bool{},
 		byOwner:  map[ProductOwner][]*inventory_service_models.ProductPlacement{},
-		counting: map[RackKey]bool{},
+		counting: map[RackKey]CountLock{},
 	}
 
 	pairs := make([][]any, 0, len(owners))
@@ -173,8 +174,8 @@ func LockRacks(tx *gorm.DB, warehouseID uint64, owners []ProductOwner) (*LockedR
 		return nil, err
 	}
 
-	for k := range locks {
-		out.counting[k] = true
+	for k, lock := range locks {
+		out.counting[k] = lock
 	}
 
 	return out, nil
@@ -182,7 +183,42 @@ func LockRacks(tx *gorm.DB, warehouseID uint64, owners []ProductOwner) (*LockedR
 
 // Counting is whether a stock count holds the product on the rack.
 func (l *LockedRacks) Counting(productID, placementID uint64) bool {
-	return l.counting[RackKey{ProductID: productID, PlacementID: placementID}]
+	_, held := l.counting[RackKey{ProductID: productID, PlacementID: placementID}]
+
+	return held
+}
+
+// Free is the owner's units of a product on the racks NO count holds, and the first count holding the rest — nil when
+// none does (a-lock-stops-sales-and-cancels-too). The first is in (product, rack) order, so the same refusal always names
+// the same count.
+func (l *LockedRacks) Free(teamID, productID uint64) (int64, *CountLock) {
+	var (
+		free int64
+		held []RackKey
+	)
+
+	for _, r := range l.byOwner[ProductOwner{TeamID: teamID, ProductID: productID}] {
+		k := RackKey{ProductID: r.ProductID, PlacementID: r.PlacementID}
+
+		if _, counted := l.counting[k]; counted {
+			if r.StockCount > 0 {
+				held = append(held, k)
+			}
+
+			continue
+		}
+
+		free += r.StockCount
+	}
+
+	if len(held) == 0 {
+		return free, nil
+	}
+
+	sortRackKeys(held)
+	lock := l.counting[held[0]]
+
+	return free, &lock
 }
 
 // PlacementTake is units leaving the owner's racks of one product in the transaction's warehouse, chosen by the system.
@@ -199,9 +235,9 @@ type PlacementTake struct {
 // TakeFewestFirst takes units from the owner's LOCKED racks holding the FEWEST first, a tie going to the smaller rack id
 // (an-order-takes-from-the-lowest-shelf-first); a line may split across racks
 // (an-order-line-may-be-taken-from-several-racks). Too few units across all racks is refused before anything is recorded
-// (a-shelf-never-goes-below-zero). A rack being COUNTED goes last: a sale is never refused for a count, so it takes from
-// the unlocked racks first, fewest first among them, and from a counted rack only what they cannot fill — its pick then
-// waits for the count (a-lock-stops-units-moving-not-sales).
+// (a-shelf-never-goes-below-zero). A rack being COUNTED is never taken from (a-lock-stops-sales-and-cancels-too): the
+// take runs over the racks no count holds, fewest first among them, and when they cannot fill it the take is refused
+// with a *CountedError naming the count — the callers check every line first (PostOrder), so this is the backstop.
 func TakeFewestFirst(
 	locked *LockedRacks,
 	w *RackWrites,
@@ -228,20 +264,19 @@ func TakeFewestFirst(
 		return nil, &NotEnoughStockError{ProductID: take.ProductID, Wanted: take.Count, Available: available, Ledger: "placements"}
 	}
 
+	free, held := locked.Free(take.TeamID, take.ProductID)
+	if free < take.Count && held != nil {
+		return nil, &CountedError{CountLock: *held}
+	}
+
 	order := make([]*inventory_service_models.ProductPlacement, 0, len(rows))
 	for _, r := range rows {
-		if r.StockCount > 0 {
+		if r.StockCount > 0 && !locked.Counting(r.ProductID, r.PlacementID) {
 			order = append(order, r)
 		}
 	}
 
 	sort.SliceStable(order, func(a, b int) bool {
-		ca := locked.counting[RackKey{ProductID: order[a].ProductID, PlacementID: order[a].PlacementID}]
-		cb := locked.counting[RackKey{ProductID: order[b].ProductID, PlacementID: order[b].PlacementID}]
-		if ca != cb {
-			return !ca
-		}
-
 		if order[a].StockCount != order[b].StockCount {
 			return order[a].StockCount < order[b].StockCount
 		}

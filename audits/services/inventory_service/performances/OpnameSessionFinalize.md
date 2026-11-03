@@ -41,6 +41,7 @@ pie showData
 | 6 | `INSERT INTO warehouse_stock_problems` (30 rows) · claims (none here) | 1–3 | 2.7 ms | ok |
 | 7 | `INSERT INTO inventory_transaction_items` | **3** | 2.4 ms | 🟡 one per transaction |
 | 8 | the listing · the session `finish` · release every row | 3 | 3.5 ms | ok |
+| 9 | *(2026-11-03)* the WAITING found requests it settles `FOR UPDATE` · their update when any | 1–2 | 1.0 ms | ok — `found_requests_status_idx` + the snapshot `EXISTS` ([a-count-settles-the-found-it-counted](../../../../docs/business/inventory/opname_decision.md#a-count-settles-the-found-it-counted)) |
 
 ---
 
@@ -90,3 +91,4 @@ come from liability_service; inventory only calls it.
 | Date | Median @20 products | Statements @1 / @20 | Change |
 | --- | --- | --- | --- |
 | 2026-11-02 | 27.4 ms | 26 / 28 | first audit, at the build |
+| 2026-11-03 | 27.1 ms | 27 / 29 | the settle of the found requests it counted — one read (and an update when any wait); the found requests table was empty in this probe |

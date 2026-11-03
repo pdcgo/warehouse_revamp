@@ -283,7 +283,7 @@ flowchart LR
 a rack whose product is being counted comes last, and its pick-list line waits for the count.
 
 🔄 *(2026-11-03)* **Amended again by [a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)**: a rack whose product is being
-counted is never taken from; what the unlocked racks cannot fill refuses the order. ⛔ Not built.
+counted is never taken from; what the unlocked racks cannot fill refuses the order. ✅ Built 2026-11-03.
 
 ## any-warehouse-member-may-move-goods
 
@@ -726,4 +726,4 @@ flowchart LR
 | the accepted case | an order taken from Rak 3 and not yet picked when Rak 3 is deleted: the pick page still shows Rak 3's code (the delete is soft), and the unit is still on it |
 
 🔄 *(2026-11-03)* **Amended by [a-rack-a-count-holds-cannot-be-deleted](./opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)**: a rack an open count row names is refused too,
-at 0 or not, naming the count. ⛔ Not built.
+at 0 or not, naming the count. ✅ Built 2026-11-03.

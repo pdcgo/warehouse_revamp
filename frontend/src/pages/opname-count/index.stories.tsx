@@ -157,9 +157,10 @@ export const EmptyRack: Story = {
   },
 };
 
-// A product its team never had here is not counted: take it off the rack, tell the team
-// (a-unit-never-stocked-here-comes-in-by-restock).
-export const FoundButNeverStockedHere: Story = {
+// A found is picked from what this warehouse holds or has held (a-warehouse-picks-only-what-it-has-held): "karton" finds
+// the two cartons held here, both at 0 now, and not Gula Merah's, whose team never had it here — it is not stock here yet
+// (a-unit-never-stocked-here-comes-in-by-restock). Tepung's carton joins the count on this rack.
+export const FoundPicksOnlyWhatWasHeldHere: Story = {
   render: () => <RackA1 />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -171,13 +172,18 @@ export const FoundButNeverStockedHere: Story = {
     await waitFor(() => expect(dialog).toBeVisible());
     const input = within(dialog).getByRole("combobox");
     await userEvent.click(input);
-    await userEvent.type(input, "gula merah", { delay: 20 });
-    await waitFor(() => expect(input).toHaveValue("gula merah"));
-    const option = await screen.findByTestId("product-select-option-SL-03-ANG-006", {}, { timeout: 4000 });
+    await userEvent.type(input, "karton", { delay: 20 });
+    await waitFor(() => expect(input).toHaveValue("karton"));
+    const option = await within(dialog).findByTestId("product-select-option-SL-03-ANG-004", {}, { timeout: 4000 });
     await waitFor(() => expect(option).toBeVisible());
+    await expect(option).toHaveTextContent("Toko Anggrek");
+    await expect(within(dialog).getByTestId("product-select-option-SL-03-ANG-002")).toBeVisible();
+    await waitFor(() => expect(within(dialog).getAllByRole("option")).toHaveLength(2));
+    await expect(within(dialog).queryByTestId("product-select-option-SL-03-ANG-006")).toBeNull();
     await userEvent.click(option);
 
     await userEvent.click(within(dialog).getByTestId("opname-found-submit"));
-    await within(dialog).findByTestId("opname-found-never-here");
+    await expect(await screen.findByText("Tepung Terigu Serbaguna 1kg — Karton added to A-01-1")).toBeInTheDocument();
+    await expect(within(dialog).queryByTestId("opname-found-never-here")).toBeNull();
   },
 };

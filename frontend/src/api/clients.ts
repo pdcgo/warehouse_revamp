@@ -20,6 +20,7 @@ import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { WarehouseTransferService } from "../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { OpnameService } from "../gen/warehouse/inventory/v1/opname_pb";
+import { FoundRequestService } from "../gen/warehouse/inventory/v1/found_request_pb";
 import { SupplierService } from "../gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../gen/warehouse/supplier/v1/supplier_channel_pb";
 import { SupplierAnalyticService } from "../gen/warehouse/supplier/v1/supplier_analytic_pb";
@@ -84,6 +85,9 @@ export const restockClient = createClient(RestockRequestService, transport);
 export const warehouseTransferClient = createClient(WarehouseTransferService, transport);
 // The stock count — a prototype until design_accept: the server answers Unimplemented, Storybook's stub plays it.
 export const opnameClient = createClient(OpnameService, transport);
+// A found at the shelf waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin) — a
+// PROTOTYPE until design_accept: the server answers Unimplemented, Storybook's stub (foundRequestStub.ts) plays it.
+export const foundRequestClient = createClient(FoundRequestService, transport);
 // Global reference data — regions are the same for everyone, so no team travels with these calls.
 export const regionClient = createClient(RegionService, transport);
 export const expenseClient = createClient(ExpenseService, transport);

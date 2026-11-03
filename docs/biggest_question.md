@@ -16,10 +16,41 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 
 **0 open questions across 41 files.** The per-file counts are at the bottom.
 
+▼ *(2026-11-03)* **0**: opname Q31 closed — an archived product held here can be picked
+([an-archived-product-held-here-can-be-picked](business/inventory/opname_decision.md#an-archived-product-held-here-can-be-picked)), as recommended. **Every question is answered.** Net −1.
+
+▲ *(2026-11-03)* **+1**: [opname Q31](business/inventory/opname_clarify.md#question) — an archived product this warehouse
+holds, raised by building [a-warehouse-picks-only-what-it-has-held](business/inventory/opname_decision.md#a-warehouse-picks-only-what-it-has-held).
+
+*(Answered in chat, as recommended — the row above.)*
+
+▼ *(2026-11-03)* **0**: the last, opname Q30, closed — Found Stock sits after Stock Opname with its count
+([found-stock-sits-after-stock-opname-with-its-count](business/inventory/opname_decision.md#found-stock-sits-after-stock-opname-with-its-count)), as recommended. ⛔ Not built. **Every question is answered.** Net −1.
+
+▼ *(2026-11-03)* **1**: the old #1, opname Q28, closed — the reporter may withdraw their found
+([the-reporter-may-withdraw-their-found](business/inventory/opname_decision.md#the-reporter-may-withdraw-their-found)), as recommended. ⛔ Not built. Net −1.
+
+▼ *(2026-11-03)* **2**: the old #1, opname Q29, closed — a found never stocked here is refused at the report
+([a-found-never-stocked-here-is-refused-at-the-report](business/inventory/opname_decision.md#a-found-never-stocked-here-is-refused-at-the-report)), as recommended. ⛔ Not built. Net −1.
+
+▼ *(2026-11-03)* **3**: the old #1, opname Q27, closed — staff may report a found
+([staff-may-report-a-found](business/inventory/opname_decision.md#staff-may-report-a-found)), as recommended. ⛔ Not built. Net −1.
+
+▼ *(2026-11-03)* **4**: the old #1, opname Q26, closed — a count settles the found it counted
+([a-count-settles-the-found-it-counted](business/inventory/opname_decision.md#a-count-settles-the-found-it-counted)), as recommended. ⛔ Not built. Net −1.
+
+▲ *(2026-11-03)* **+5** *(0 left — all answered, above)*, all in [the stock count](business/inventory/opname_clarify.md#question), raised by the Storybook
+prototype of [an-adjust-found-waits-for-the-owner-or-admin](business/inventory/opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin). Its design is accepted ([the-found-stock-prototype-is-accepted](business/inventory/opname_decision.md#the-found-stock-prototype-is-accepted)); they block
+only how parts of its backend step behave — each is built the safe way meanwhile.
+
+*(The five were answered in chat, Q26 to Q30, each as recommended — the rows above.)*
+
 ▼ *(2026-11-03)* **0**: the last, opname Q25, closed — a rack a count holds cannot be deleted
 ([a-rack-a-count-holds-cannot-be-deleted](business/inventory/opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)), as recommended. ⛔ Not built. **Every question is
 answered.** Decided today and not built: [a-lock-stops-sales-and-cancels-too](business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too) ·
 [an-adjust-found-waits-for-the-owner-or-admin](business/inventory/opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin) · [a-rack-a-count-holds-cannot-be-deleted](business/inventory/opname_decision.md#a-rack-a-count-holds-cannot-be-deleted). Net −1.
+🔄 *(2026-11-03, later)* Built: a-lock-stops-sales-and-cancels-too and a-rack-a-count-holds-cannot-be-deleted. Left: an-adjust-found-waits-for-the-owner-or-admin, which needs its Storybook prototype and your design
+accept first ([design-accept-blocks](development_lifecycle_decision.md#design-accept-blocks)).
 
 ▼ *(2026-11-03)* **1**: the old #1, opname Q23, closed — a count that moves no money is still finalized by a non-counter
 ([a-quiet-count-is-finalized-by-a-non-counter](business/inventory/opname_decision.md#a-quiet-count-is-finalized-by-a-non-counter)), as recommended, after *"Explain more q23"*. Already built. Net −1.

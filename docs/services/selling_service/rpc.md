@@ -45,6 +45,12 @@ The two that keep their own RPC do more than move a status: `OrderCancel` return
 the sale, and the return accept (`OrderReturnAccept`, [below](#the-warehouse-accepts-a-return--orderreturnaccept)) notes the
 missing units, answers the labels for borrowed lines and announces the courier's charge.
 
+`OrderCancel` returns the stock inside its own transaction, so a return the warehouse refuses rolls the cancel back and
+the order stays pending. When the refusal is a stock count holding a rack the take came from
+([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)),
+the warehouse's FailedPrecondition — naming the count, who started it and when — is handed on as it came, so the person
+reads why and cancels again after the count; any other failure is still an internal error.
+
 ```mermaid
 sequenceDiagram
     autonumber

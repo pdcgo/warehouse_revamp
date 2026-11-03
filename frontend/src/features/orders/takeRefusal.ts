@@ -13,11 +13,15 @@ import {
 // its detail. Decoding it here is what lets the form say "Kopi: wants 3, the warehouse holds 1" instead of a status
 // code. Shared by the two screens that place orders, so they cannot read it two ways.
 
-/** One line the take refused. `available` is only meaningful for not-enough-stock; 0 otherwise. */
+/**
+ * One line the take refused. `available` is what the warehouse holds for not-enough-stock, and what the racks no stock
+ * count holds for being-counted; 0 otherwise. `countingSessionId` is the count holding the rest — being-counted only.
+ */
 export interface RefusedLine {
   productId: bigint;
   wanted: bigint;
   available: bigint;
+  countingSessionId?: bigint;
 }
 
 export interface TakeRefusal {
@@ -36,17 +40,21 @@ export function takeRefusalOf(err: unknown): TakeRefusal | undefined {
       productId: line.productId,
       wanted: line.wanted,
       available: line.available,
+      countingSessionId: line.countingSessionId,
     })),
   };
 }
 
 /** The reason as the i18n catalogue names it — `orderForm.refusal.<kind>`. */
-export type RefusalKind = "notEnoughStock" | "notAllowed" | "keyUsed" | "other";
+export type RefusalKind = "notEnoughStock" | "beingCounted" | "notAllowed" | "keyUsed" | "other";
 
 export function refusalKind(reason: OrderTransactionRefusalReason): RefusalKind {
   switch (reason) {
     case OrderTransactionRefusalReason.NOT_ENOUGH_STOCK:
       return "notEnoughStock";
+    // A stock count holds some of the units (a-lock-stops-sales-and-cancels-too) — the warehouse has them, but not free.
+    case OrderTransactionRefusalReason.BEING_COUNTED:
+      return "beingCounted";
     case OrderTransactionRefusalReason.NOT_ALLOWED:
       return "notAllowed";
     case OrderTransactionRefusalReason.KEY_USED:

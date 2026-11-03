@@ -6,7 +6,6 @@ import (
 	"connectrpc.com/connect"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 )
 
 // pickLocationRow is the query's shape: one product, one rack, the quantity taken from it.
@@ -54,18 +53,8 @@ func (s *Service) StockPickLocations(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// A shelf a stock count holds: the pick there WAITS for the count (a-lock-stops-units-moving-not-sales) — the order
-	// was taken, the picker is told to come back.
-	keys := make([]inventory_ledgers.RackKey, 0, len(rows))
-	for i := range rows {
-		keys = append(keys, inventory_ledgers.RackKey{ProductID: rows[i].ProductID, PlacementID: rows[i].RackID})
-	}
-
-	counting, err := inventory_ledgers.CountLocks(s.db.WithContext(ctx), keys)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
+	// No pick waits for a stock count: no order is taken from a shelf a count holds (a-lock-stops-sales-and-cancels-too),
+	// and one taken before the count began is picked as usual.
 	out := make([]*inventoryv1.StockPickLocation, 0, len(rows))
 
 	for i := range rows {
@@ -73,10 +62,6 @@ func (s *Service) StockPickLocations(
 			ProductId: rows[i].ProductID,
 			RackId:    rows[i].RackID,
 			Quantity:  rows[i].Quantity,
-		}
-
-		if lock, held := counting[inventory_ledgers.RackKey{ProductID: rows[i].ProductID, PlacementID: rows[i].RackID}]; held {
-			loc.CountingSessionId = lock.SessionID
 		}
 
 		if rows[i].RackCode != nil {

@@ -73,6 +73,8 @@ var (
 	_ inventoryv1connect.OrderTransactionServiceHandler  = (*Service)(nil)
 	_ inventoryv1connect.WarehouseTransferServiceHandler = (*Service)(nil)
 	_ inventoryv1connect.OpnameServiceHandler            = (*Service)(nil)
+	// A found at the shelf waiting for the warehouse Owner or Admin (found_request_*.go).
+	_ inventoryv1connect.FoundRequestServiceHandler = (*Service)(nil)
 )
 
 func NewService(

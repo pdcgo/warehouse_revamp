@@ -64,6 +64,15 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [an-adjust-found-waits-for-the-owner-or-admin](#an-adjust-found-waits-for-the-owner-or-admin) | a found on the Adjust screen is a `found` claim on the oldest open loss, posted only when the warehouse Owner or Admin — never the reporter — approves it | chat, 2026-11-03 — answers Q22, as recommended; confirms [an-adjustment-writes-the-same-problem-row](#an-adjustment-writes-the-same-problem-row) |
 | [a-quiet-count-is-finalized-by-a-non-counter](#a-quiet-count-is-finalized-by-a-non-counter) | a count that moves no money still waits for the warehouse Owner or Admin — never a counter — to finalize; *at once* means no approval step | chat, 2026-11-03 — answers Q23, as recommended; already built |
 | [a-rack-a-count-holds-cannot-be-deleted](#a-rack-a-count-holds-cannot-be-deleted) | a rack delete is refused while an open count row names it, naming the count, its starter and start time | chat, 2026-11-03 — answers Q25, as recommended |
+| [the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted) | design_accept for the found request: the Found Stock page, the Adjust dialog's found path and the `FoundRequestService` contract are the design to build | chat, 2026-11-03 — *"This design"*, replying to the Found Stock screenshot |
+| [a-count-settles-the-found-it-counted](#a-count-settles-the-found-it-counted) | a count's finalize closes every waiting found request on a product and rack it counted, as *settled by count #N*, posting nothing — the count already posted those units | chat, 2026-11-03 — answers Q26, as recommended |
+| [staff-may-report-a-found](#staff-may-report-a-found) | warehouse staff may report a found, through its own `FoundRequestCreate`; Adjust stays Owner and Admin, and the approver is still the Owner or Admin who did not report it | chat, 2026-11-03 — answers Q27, as recommended |
+| [a-found-never-stocked-here-is-refused-at-the-report](#a-found-never-stocked-here-is-refused-at-the-report) | a found of a product its team never had in this warehouse is refused at the report — it comes in by restock, as in a count | chat, 2026-11-03 — answers Q29, as recommended; the found-request side of [a-unit-never-stocked-here-comes-in-by-restock](#a-unit-never-stocked-here-comes-in-by-restock) |
+| [the-reporter-may-withdraw-their-found](#the-reporter-may-withdraw-their-found) | the reporter — staff too — may withdraw their own waiting found request, with a reason; it is a reject they decided, and posts nothing | chat, 2026-11-03 — answers Q28, as recommended |
+| [found-stock-sits-after-stock-opname-with-its-count](#found-stock-sits-after-stock-opname-with-its-count) | **Inventories ▸ Found Stock**, right after Stock Opname, for the warehouse Owner and Admin — and staff, for their own reports; it carries the number waiting, never a 0 | chat, 2026-11-03 — answers Q30, as recommended |
+| [the-staff-found-screens-are-accepted](#the-staff-found-screens-are-accepted) | design_accept for the two staff parts: *Report Found* on the rack page, and staff seeing and withdrawing their own reports on Found Stock | chat, 2026-11-03 — *"Yes, I accept it"*, to their screenshots |
+| [a-warehouse-picks-only-what-it-has-held](#a-warehouse-picks-only-what-it-has-held) | a warehouse's product picker — Report Found, a count's product plan, a count's found — searches only the products this warehouse holds or has held, never every team's catalogue | chat, 2026-11-03 — answers the picker found refused live, as recommended |
+| [an-archived-product-held-here-can-be-picked](#an-archived-product-held-here-can-be-picked) | the warehouse picker offers an archived product this warehouse holds, labelled *Archived* — its units are on the shelf | chat, 2026-11-03 — answers Q31, as recommended |
 
 ---
 
@@ -1832,6 +1841,19 @@ count started in the seconds between would refuse that undo.
 comments, the proto comment on `counting_session_id` and the pick page still cite the superseded name — they change with
 the build.
 
+✅ **Built 2026-11-03.** `LockedRacks.Free` and `refuseCountedLines` (`inventory_mutations/post_order.go`): a take — an
+order's or a transfer's out-leg — uses only the racks no count holds, and every line they cannot fill is refused at once,
+`CountedLinesError`; `OrderTransactionCreate` answers it as `ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED`, each line with
+its free units and `counting_session_id`, and the order form says *"wants 3, 1 free — the rest is held by stock count
+#12"*. `ReversePlacementLogs` reads the lock after locking its rows, so `OrderTransactionRelease` and
+`WarehouseTransferCancel` are refused naming the count; selling's `OrderCancel` hands that on in words and the order stays
+pending. The pick page's *waiting* badge is gone with `StockPickLocation.counting_session_id` (field 5 reserved). The
+undo of a failed create is refused like any cancel — the safe default, still open. Tests: `count_lock_test.go`
+(`TestCountLock_*`), `TestOrderCancel_ACountedRackRefusesItInWords`; races: `TestRace_OpnameSessionFinalize_RacingTakes`
+(now: taken after the finalize or refused, never a deadlock), `TestRace_OrderTransactionRelease_RacingACountPlan` (the
+count's book equals the racks'). Perf: `OrderTransactionCreate` 12 statements and `OrderTransactionRelease` 14, whatever
+the lines — fast, no audit file.
+
 🔄 *(2026-11-03)* **The transfer settled in chat** — *"For transfer, yes"*, as recommended: a warehouse transfer's out-leg
 and its cancel are refused on a counted rack exactly like an order's, since they share the take. It closes ledgers open
 point 22. ⛔ Not built. Left of *does NOT settle*: the undo of a failed order create.
@@ -1873,6 +1895,20 @@ flowchart LR
 and the approval list are drawn in Storybook first, at the build.
 
 ⛔ **Not built.** Today the Adjust *found* is still the provisional `adjustment` into the named batch, outside the register.
+
+✅ *(2026-11-03)* **Design accepted** — [the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted). 🔄 *(2026-11-03)* **Prototype built**
+([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)): `Pages/Inventory/FoundStock` and
+`Features/Inventory/AdjustStockDialog` in Storybook, on stubs. The contract is `FoundRequestService`
+(`found_request.proto`); its three handlers answer Unimplemented, and there is no migration. The live Adjust dialog is
+unchanged. It raised five questions, [opname Q26–Q30](./opname_clarify.md#question).
+
+✅ **Built 2026-11-03** — the backend step of [the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted): migration `00036_found_requests`; `FoundRequestCreate`
+(the only door — `StockAdjust` refuses FOUND naming it; `PostBatchFound` retired), `FoundRequestList`, `FoundRequestApprove`,
+`FoundRequestReject`, one file and one test each. Approve reuses the count's own posting (`PostCountFinalize`, one product
+on one rack), so the claims, the mint and the money are a count's surplus exactly; it locks the request row first, then the
+register, batches and racks in the count's order. Races: two approves post once; approve vs withdraw — one wins; approve
+vs a count plan and finalize — never twice. Perf: create 9 queries, list 6 at any page size, approve 26, reject 4. e2e
+`found_requests.spec.ts`. State: [the state](../../development_state/inventory/opname.md).
 
 ---
 
@@ -1942,3 +1978,310 @@ flowchart LR
 | unchanged | the zero-stock rule of [a-placement-deletes-at-zero-stock](./placement_decision.md#a-placement-deletes-at-zero-stock) |
 
 ⛔ **Not built.** Today the rack delete checks only that every row is at 0.
+
+✅ **Built 2026-11-03.** `RackDelete` locks the rack row `FOR UPDATE`, then `inventory_ledgers.RefuseRackCounted` reads, in a
+statement of its own, an open snapshot row on the rack or an active `all` count — FailedPrecondition naming the count. The
+plan now locks `FOR SHARE OF pp, p`, so a count waits for a delete in flight and leaves the deleted rack out
+(`TestInterleave_RackDelete_ThePlanLeavesTheDeletedRackOut`); ten raced rounds saw both orders, never a count holding a
+deleted rack (`TestRace_RackDelete_RacingACountPlan`). Unit: `TestCountLock_ARackACountHoldsIsNotDeleted`.
+
+---
+
+## the-found-stock-prototype-is-accepted
+
+> Owner, in chat (2026-11-03): *"Okay, I approve it"*, then *"This design"* — replying to the screenshot of
+> `Pages/Inventory/FoundStock` (sent with the Adjust dialog's found path and the phone layout,
+> [the state](../../development_state/inventory/opname.md)).
+
+**The verdict.** design_accept is given ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)):
+the Found Stock page, the Adjust dialog's found path and the `FoundRequestService` contract are the design to build, with
+[an-adjust-found-waits-for-the-owner-or-admin](#an-adjust-found-waits-for-the-owner-or-admin). The backend step follows: the request table, the three RPCs, `StockAdjust` FOUND writing a request
+(`PostBatchFound` retired), then the menu entry.
+
+Not settled by this accept — [opname Q26–Q30](./opname_clarify.md#question) stay open. The backend step builds each the
+safe way and marks it; an answer may change it, and Q26 or Q27 may add to the contract.
+
+```mermaid
+flowchart LR
+  P["the prototype - Storybook"] -->|"accepted 2026-11-03"| B["the backend step"]
+  B --> M["the menu opens Found Stock"]
+  Q["Q26 to Q30 - open"] -.->|"may change"| B
+```
+
+⛔ **Not built.** The three handlers answer Unimplemented; the live Adjust found is still the provisional `adjustment`.
+
+✅ **Built 2026-11-03** — the backend step: see [an-adjust-found-waits-for-the-owner-or-admin](#an-adjust-found-waits-for-the-owner-or-admin); the answers to Q26–Q30 are built as decided.
+
+---
+
+## a-count-settles-the-found-it-counted
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to [opname Q26](./opname_clarify.md#question), *a count runs while a found request
+> waits*, as recommended.
+
+**The verdict.** A found request waits with its units on the shelf but not in the book. A count of that rack sees them as
+a surplus, and its finalize posts them — claimed back or minted, like any surplus
+([a-surplus-claims-the-oldest-loss-first](#a-surplus-claims-the-oldest-loss-first)). So the same finalize closes every
+WAITING found request for a product on a rack it counted, as **settled by count #N**: no transaction, no money, nothing
+left to approve. The units are posted once, by the count.
+
+```mermaid
+flowchart LR
+  F["Ani reports 2 Beras found on B-02-1"] --> W["request waits - nothing posted"]
+  W --> C["count 12 counts B-02-1 - sees 2 extra"]
+  C --> Z["finalize posts the 2 as found"]
+  Z --> S["the request - settled by count 12, posts nothing"]
+  W -.->|"no count"| A["Owner or Admin approves - the request posts"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| settled | every request still waiting whose product and rack the session held snapshot rows for — in the finalize's own transaction |
+| it posts | nothing — the finalize's `found` and claims already carry the units |
+| it records | status *settled by count*, the count's id, the finalizer, the time |
+| a cancelled count | settles nothing — it posts nothing either, so the request still waits |
+| while the count runs | the request cannot be approved — the rack is locked ([a-lock-stops-sales-and-cancels-too](#a-lock-stops-sales-and-cancels-too)) |
+| after | a settled request is decided: it can be neither approved nor rejected |
+
+⛔ **Not built.** Building now, with the backend step of [the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted).
+
+✅ **Built 2026-11-03.** `OpnameSessionFinalize` settles, in its own transaction, every waiting request on a product and rack
+the session held — `SETTLED_BY_COUNT`, `settled_by_counting_session_id`, the finalizer, the time; a cancelled count settles
+none (`TestRace_FoundRequestApprove_RacingACountPlanAndFinalize`, `TestInterleave_FoundRequest_TheSettleWaitsForAnApproval`).
+
+---
+
+## staff-may-report-a-found
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to [opname Q27](./opname_clarify.md#question), *who reports a found*, as
+> recommended.
+
+**The verdict.** Warehouse staff may report units found at a shelf — they are the ones at the racks, and the drawing in
+[an-adjust-found-waits-for-the-owner-or-admin](#an-adjust-found-waits-for-the-owner-or-admin) has them reporting. A report posts nothing and waits for the warehouse Owner or Admin who did not report
+it, so letting staff report moves no stock and no money on their word alone. The report is its own act,
+`FoundRequestCreate`, open to staff; the Adjust screen is not widened, because its recount, damaged and lost post at once
+and stay with the Owner and Admin.
+
+```mermaid
+flowchart LR
+  S["staff at B-02-1 - Report Found"] --> R["FoundRequestCreate - request waits"]
+  O["Owner or Admin - Adjust, Found"] --> R
+  R --> A["another Owner or Admin approves"]
+  X["staff - Adjust recount, damaged, lost"] -.->|"not allowed"| N["refused"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who may report | warehouse Staff, Admin, Owner; Root |
+| who may approve or reject | unchanged — the warehouse Owner or Admin, never the reporter ([an-adjust-found-waits-for-the-owner-or-admin](#an-adjust-found-waits-for-the-owner-or-admin)) |
+| the door | `FoundRequestCreate` — the only one; Adjust's *found* uses it too |
+| unchanged | Adjust's recount, damaged and lost — Owner and Admin only |
+
+⛔ **Not built.** Building now, with the backend step of [the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted). Where staff press *Report Found* is a new
+screen part — it is shown to you before it ships.
+
+✅ **Built 2026-11-03.** `FoundRequestCreate` admits warehouse Staff, Admin, Owner and Root; `StockAdjust` is unchanged in
+its policy and refuses FOUND. Two identical reports are two requests (the concurrency audit says so).
+
+---
+
+## a-found-never-stocked-here-is-refused-at-the-report
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to [opname Q29](./opname_clarify.md#question), *a found product its team never had
+> in this warehouse*, as recommended.
+
+**The verdict.** A found unit is priced at the team's newest batch here ([last-price-is-the-teams-newest-batch-here](#last-price-is-the-teams-newest-batch-here)); a product the team never had in
+this warehouse has no such price, so a request for it could never be approved. It is refused at the report instead —
+*"never stocked here for this team — bring it in by restock"* — the same answer a count gives
+([a-unit-never-stocked-here-comes-in-by-restock](#a-unit-never-stocked-here-comes-in-by-restock)). Nothing waits that nobody can approve.
+
+```mermaid
+flowchart LR
+  R["report 2 Kopi found on B-02-1"] --> H{"the team ever had Kopi here?"}
+  H -->|"yes - even at 0 now"| W["request waits for the Owner or Admin"]
+  H -->|"never"| X["refused - bring it in by restock"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| refused | a report whose product its owner team never had a batch of in this warehouse — the test [last-price-is-the-teams-newest-batch-here](#last-price-is-the-teams-newest-batch-here) uses |
+| accepted | a product the team had here before, even at 0 today |
+| the words | the product, the team, and *bring it in by restock* |
+| approve | still checks the price, defensively — if none, it is refused and posts nothing |
+
+⛔ **Not built.** Building now, with the backend step of [the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted).
+
+✅ **Built 2026-11-03.** `FoundRequestCreate` refuses, inside its transaction, a product its team never had a batch of here —
+the same test the mint's price uses, so a batch emptied to 0 still counts as stocked. Approve keeps a defensive refusal.
+
+---
+
+## the-reporter-may-withdraw-their-found
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to [opname Q28](./opname_clarify.md#question), *may the reporter withdraw their own
+> request*, as recommended.
+
+**The verdict.** The reporter may not approve their own found ([an-adjust-found-waits-for-the-owner-or-admin](#an-adjust-found-waits-for-the-owner-or-admin)) — but they may withdraw it while it waits:
+a wrong rack, too many units, a box that was someone else's. Withdrawing posts nothing, so it needs no second person. It
+is a reject with its reason, decided by the reporter, and the history says *withdrawn by* them. Staff may report
+([staff-may-report-a-found](#staff-may-report-a-found)), so staff may withdraw what they reported — only that.
+
+```mermaid
+flowchart LR
+  R["Ani reports 3 Beras on B-02-1"] --> W["request waits"]
+  W -->|"Ani - wrong rack"| X["withdrawn by Ani - posts nothing"]
+  W -->|"Budi, Owner"| A["approved or rejected"]
+  W -.->|"Ani approves"| N["refused - you reported it"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who may withdraw | the reporter, while the request waits — staff, Admin or Owner |
+| it needs | a reason, as every reject |
+| it records | rejected, decided by the reporter — shown as *withdrawn by* |
+| staff | see the requests they reported, and withdraw them; they reject no one else's |
+| unchanged | approving — the Owner or Admin who did not report it |
+
+⛔ **Not built.** Building now, with the backend step of [the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted). The staff view of their own requests is a new
+screen part — it is shown to you before it ships.
+
+✅ **Built 2026-11-03.** `FoundRequestReject` admits staff for a request they reported only (PermissionDenied otherwise);
+`FoundRequestList` gives staff only their own. The card says *Withdrawn by* when the decider is the reporter.
+
+---
+
+## found-stock-sits-after-stock-opname-with-its-count
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to [opname Q30](./opname_clarify.md#question), *where the approval list lives*, as
+> recommended.
+
+**The verdict.** The list is **Inventories ▸ Found Stock**, right after **Stock Opname**: the same people finalize a count
+and approve a found, and both feed the same stock-problem register. The warehouse Owner and Admin see it to decide;
+staff see it for the reports they made ([the-reporter-may-withdraw-their-found](#the-reporter-may-withdraw-their-found)). The item carries the number of requests waiting, as Kewajiban
+carries the payments awaiting confirmation
+([the-sidebar-is-in-sections](../../technical/frontend/context_decision.md#the-sidebar-is-in-sections)) — never a 0 —
+so a new report is noticed without anyone telling the approver.
+
+```mermaid
+flowchart TB
+  I["Inventories"] --> O["Stock Opname"]
+  I --> F["Found Stock (2)"]
+  F -->|"Owner or Admin"| D["every request - approve or reject"]
+  F -->|"staff"| S["their own reports - withdraw"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | Inventories ▸ Found Stock, after Stock Opname |
+| who sees it | the warehouse Owner and Admin; staff, for their own reports |
+| the number | the requests waiting in this warehouse, for the Owner and Admin; none at 0 |
+| it refreshes | on every navigation, and when a found is reported, approved, rejected, withdrawn or settled by a count |
+
+⛔ **Not built.** Building now, with the backend step of [the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted).
+
+✅ **Built 2026-11-03.** `layouts/nav.ts`: Found Stock right after Stock Opname, for the warehouse Owner, Admin and Staff; the
+number waiting for the Owner and Admin, read and refreshed as Kewajiban's, carried by a shut Inventories group; staff get
+no number. ⚠ The phone menu sheet does not show the number yet.
+
+---
+
+## the-staff-found-screens-are-accepted
+
+> Owner, in chat (2026-11-03): *"Yes, I accept it"* — to the screenshots of `Pages/Inventory/Racks/RackDetail: Staff Report
+> Found Here` and `Pages/Inventory/FoundStock: Staff See And Withdraw Their Own`.
+
+**The verdict.** design_accept is given ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks))
+for the two parts [staff-may-report-a-found](#staff-may-report-a-found) and [the-reporter-may-withdraw-their-found](#the-reporter-may-withdraw-their-found) added to the accepted Found Stock design
+([the-found-stock-prototype-is-accepted](#the-found-stock-prototype-is-accepted)): **Report Found** sits on the rack page beside Record Sample and Move Goods — on a phone in its `⋯` —
+and opens the found form with the rack set; staff see on Found Stock only the requests they reported, withdraw a waiting
+one with its reason, and approve nothing. Their pending marks are removed.
+
+```mermaid
+flowchart LR
+  R["rack page - Report Found"] --> W["request waits"]
+  W --> L["Found Stock - staff see their own"]
+  L -->|"Withdraw, with a reason"| X["withdrawn by them"]
+```
+
+✅ **Built 2026-11-03**, with the backend step below.
+
+---
+
+## a-warehouse-picks-only-what-it-has-held
+
+> Owner, in chat (2026-11-03): *"A"* — to *how should a warehouse pick a product?*, asked when the live e2e of
+> [staff-may-report-a-found](#staff-may-report-a-found) found the Report Found picker empty: it searched with `ProductDiscover`, whose policy is the selling
+> roles' only, so the server refused warehouse Staff, Admin and Owner alike (*permission_denied — insufficient role*). The
+> stock count's product plan and its found use the same picker.
+
+**The verdict.** A warehouse picks a product from **what it holds or has held** — every product with a batch in this
+warehouse, even one at 0 today — searched by name or SKU on the server. That is every product a found or a count can take
+([a-found-never-stocked-here-is-refused-at-the-report](#a-found-never-stocked-here-is-refused-at-the-report), [a-unit-never-stocked-here-comes-in-by-restock](#a-unit-never-stocked-here-comes-in-by-restock)), and
+nothing a warehouse does not already see on its own Stock screen. `ProductDiscover` is not widened: a warehouse never
+browses every team's catalogue.
+
+```mermaid
+flowchart LR
+  T["staff type Kaos"] --> S["search - the products this warehouse has held"]
+  S --> K["Kaos Temuan - Toko Melati"]
+  S -.->|"never"| X["every team's catalogue"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who | warehouse Owner, Admin, Staff; Root |
+| what it lists | products with a batch in this warehouse — at 0 or not — named as product_service names them |
+| where | Report Found (rack page), the Adjust dialog where it picks, the count's product plan and its found |
+| unchanged | `ProductDiscover` — the selling roles' |
+
+⛔ **Not built.** Building now.
+
+✅ **Built 2026-11-03.** `InventoryService.WarehouseProductSearch` (NO_SIDE_EFFECTS; Root, Administrator, warehouse Owner,
+Admin, Staff; `q` 2–100): inventory reads the products with a batch in the warehouse, and product_service searches their
+names and SKUs among those ids in-process (`SearchAmong`, as `ProductHasHistory`) — no id list from the browser, no
+catalogue copied into inventory. `ProductSelect scope="warehouse"` in Report Found, New Count's product plan and a count's
+found; each option reads *name · owner*. Perf: 2 statements, ~19 ms at 10,000 products held. e2e: staff report from the
+rack page; a warehouse Admin plans a one-product count through the picker. Archived products are offered, labelled —
+[an-archived-product-held-here-can-be-picked](#an-archived-product-held-here-can-be-picked).
+
+---
+
+## an-archived-product-held-here-can-be-picked
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to [opname Q31](./opname_clarify.md#question), *an archived product this
+> warehouse holds*, as recommended.
+
+**The verdict.** Archiving retires a product from its seller's catalogue and from other teams' pickers
+([a-used-product-is-archived-never-deleted](../product/context_decision.md#a-used-product-is-archived-never-deleted)); it does
+not take its units off a shelf. So the warehouse picker ([a-warehouse-picks-only-what-it-has-held](#a-warehouse-picks-only-what-it-has-held)) offers an archived product the warehouse holds or
+has held, labelled **Archived**, so a unit found of it can be reported and a one-product count planned on it — as an all,
+team or rack count already counts it.
+
+```mermaid
+flowchart LR
+  T["staff type Minyak"] --> S["what this warehouse has held"]
+  S --> L["Minyak Goreng 2L"]
+  S --> A["Minyak Goreng 2L Kemasan Lama - Archived"]
+```
+
+| | |
+| --- | --- |
+| offered | an archived product with a batch in this warehouse, labelled *Archived* |
+| unchanged | every other picker leaves archived products out |
+
+✅ **Built 2026-11-03.** `SearchAmong` no longer drops archived products among the held ids; `WarehouseProductSearchItem.archived`
+(field 5) carries the flag, and `ProductSelect` labels the option *Archived*. Every other picker is unchanged. Tests:
+`TestSearchAmong_SearchesOnlyTheGivenProducts`, `TestInventoryProductReader_SearchesWhatTheWarehouseHasHeld`, story
+`WarehouseScopeOffersAnArchivedProductHeldHere`.

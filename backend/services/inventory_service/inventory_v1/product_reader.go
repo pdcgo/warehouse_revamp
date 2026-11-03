@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
@@ -28,7 +29,38 @@ type ProductFact struct {
 // root.
 type ProductReader interface {
 	Facts(ctx context.Context, callerTeamID uint64, productIDs []uint64) (map[uint64]ProductFact, error)
+	// Search finds, AMONG the given products only, those — archived ones too, flagged — whose name or product code contains the term — one
+	// window by name, and how many match in all (a-warehouse-picks-only-what-it-has-held). Inventory knows which products
+	// have been in a warehouse; product_service names and searches them, so no name is mirrored here (HARD RULE 3).
+	Search(ctx context.Context, callerTeamID uint64, search ProductSearch) (ProductSearchPage, error)
 }
+
+// ProductSearch is one search among a known set of products.
+type ProductSearch struct {
+	ProductIDs []uint64
+	Q          string
+	Offset     int
+	Limit      int
+}
+
+// ProductSearchPage is one window of a ProductSearch, in its order, and the count of every match.
+type ProductSearchPage struct {
+	Products []ProductMatch
+	Total    int64
+}
+
+// ProductMatch is a product a search found: what a picker snapshots, its owner, and whether its seller archived it
+// (an-archived-product-held-here-can-be-picked).
+type ProductMatch struct {
+	ID          uint64
+	TeamID      uint64
+	ProductCode string
+	Name        string
+	Archived    bool
+}
+
+// errNoProductSearch is a nil ProductReader's answer to a search: it knows no names to search.
+var errNoProductSearch = errors.New("no product service to search")
 
 // factsUnchecked is a nil ProductReader's stand-in: every product is the asking team's own, with no lock, reserve or
 // markup. Right for a test that stocks its own team's products and has no product_service; the composition root always
@@ -42,6 +74,12 @@ func (factsUnchecked) Facts(_ context.Context, callerTeamID uint64, productIDs [
 	}
 
 	return facts, nil
+}
+
+// Search refuses: with no product_service there are no names or codes to match, and answering nothing would read as
+// "this warehouse has held none of it".
+func (factsUnchecked) Search(context.Context, uint64, ProductSearch) (ProductSearchPage, error) {
+	return ProductSearchPage{}, errNoProductSearch
 }
 
 // ownProductsOnly refuses a restock line on a product the team does not own: a restock carries only the team's own

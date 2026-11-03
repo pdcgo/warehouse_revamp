@@ -138,6 +138,9 @@ export const key = {
   warehouseTransfer: (teamId: bigint | undefined, params?: Params) => scope("warehouseTransfer", teamId, params),
   // The stock count's sessions, rows and racks. Its own prefix: a finalize moves stock, so it refreshes `inventory` too.
   opname: (teamId: bigint | undefined, params?: Params) => scope("opname", teamId, params),
+  // The found requests waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin). Its own
+  // prefix: an approval moves stock, so it refreshes `inventory` too.
+  foundRequests: (teamId: bigint | undefined, params?: Params) => scope("foundRequests", teamId, params),
   suppliers: (teamId: bigint | undefined, params?: Params) => scope("suppliers", teamId, params),
   users: (teamId: bigint | undefined, params?: Params) => scope("users", teamId, params),
   teams: (teamId: bigint | undefined, params?: Params) => scope("teams", teamId, params),

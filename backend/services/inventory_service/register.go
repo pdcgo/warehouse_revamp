@@ -30,6 +30,9 @@ func NewRegister(
 		// The stock count — a session that snapshots and locks the shelf book, counts blind and finalizes into the
 		// stock-problem register (opname_*.go).
 		mux.Handle(inventoryv1connect.NewOpnameServiceHandler(inventory, opts))
+		// A found at the shelf waiting for the warehouse Owner or Admin — reported, listed, approved, rejected, settled by
+		// a count (found_request_*.go, an-adjust-found-waits-for-the-owner-or-admin).
+		mux.Handle(inventoryv1connect.NewFoundRequestServiceHandler(inventory, opts))
 
 		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
 		// directly rather than through san_grpc. Push auth (OIDC/token) is a deployment concern.
@@ -42,6 +45,7 @@ func NewRegister(
 			inventoryv1connect.OrderTransactionServiceName,
 			inventoryv1connect.WarehouseTransferServiceName,
 			inventoryv1connect.OpnameServiceName,
+			inventoryv1connect.FoundRequestServiceName,
 		}
 	}
 }

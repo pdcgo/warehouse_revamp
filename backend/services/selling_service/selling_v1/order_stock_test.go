@@ -3,6 +3,7 @@ package selling_v1_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -162,6 +163,44 @@ func TestOrderCancel_FailedReturnLeavesTheOrderLive(t *testing.T) {
 	if got := detail.Msg.GetOrder().GetStatus(); got != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
 		t.Fatalf("order status = %v, want still PLACED — a cancel whose stock did not come back "+
 			"must not stand", got)
+	}
+}
+
+// A STOCK COUNT HOLDS A RACK THE TAKE CAME FROM (a-lock-stops-sales-and-cancels-too): the warehouse refuses the return
+// with FailedPrecondition naming the count, and the cancel hands that on as it came — the person reads why, not an
+// internal error — and the order stays pending, to be cancelled after the count.
+func TestOrderCancel_ACountedRackRefusesItInWords(t *testing.T) {
+	db := san_testdb.DB(t)
+	picker := &fakePicker{}
+	svc := newServiceWithPicker(t, db, picker)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	id := created.Msg.GetOrder().GetId()
+
+	picker.returnErr = connect.NewError(connect.CodeFailedPrecondition,
+		errors.New("product 7 on rack rak-a is being counted — count #12, started by user #3 at 2026-11-03 09:00 WIB"))
+
+	_, err = svc.OrderCancel(context.Background(), connect.NewRequest(&sellingv1.OrderCancelRequest{
+		TeamId: 2, OrderId: id,
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "count #12") {
+		t.Fatalf("cancel under a count: err = %v, want FailedPrecondition naming count #12", err)
+	}
+
+	detail, err := svc.OrderDetail(context.Background(), connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: 2, OrderId: id,
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	if got := detail.Msg.GetOrder().GetStatus(); got != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
+		t.Fatalf("order status = %v, want still pending", got)
 	}
 }
 

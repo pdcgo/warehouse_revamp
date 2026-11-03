@@ -11,10 +11,12 @@ import (
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// PROVISIONAL ADJUSTMENTS (old-shelf-corrections-move-onto-the-ledgers-provisionally): `StockAdjust`'s recount and its
-// found, kept through the cut-over as `adjustment` transactions. The one-rack `StockOpname` that shared PostRecount is
-// retired — the stock count (post_count.go) replaced it — and a broken or lost unit reported at the shelf writes the
-// register's row (post_problem.go). What is left waits on the owner's adjustment.md.
+// PROVISIONAL ADJUSTMENTS (old-shelf-corrections-move-onto-the-ledgers-provisionally): `StockAdjust`'s recount, kept
+// through the cut-over as an `adjustment` transaction. The one-rack `StockOpname` that shared PostRecount is retired —
+// the stock count (post_count.go) replaced it; a broken or lost unit reported at the shelf writes the register's row
+// (post_problem.go); and the provisional found into a named batch (`PostBatchFound`) is retired — a found waits for the
+// Owner or Admin as a request and its approval posts the count's own found (post_found.go,
+// an-adjust-found-waits-for-the-owner-or-admin). What is left waits on the owner's adjustment.md.
 
 var (
 	// ErrNeverStockedHere refuses a surplus of a product this warehouse never held: it has no owner to give it to, and
@@ -110,7 +112,7 @@ func PostRecount(tx *gorm.DB, r Recount) ([]models.InventoryTransaction, []Recou
 		return nil, nil, err
 	}
 
-	// No adjustment of a product a count holds (a-lock-stops-units-moving-not-sales).
+	// No adjustment of a product a count holds (a-lock-stops-sales-and-cancels-too).
 	keys := make([]inventory_ledgers.RackKey, 0, len(rows))
 	for _, row := range rows {
 		keys = append(keys, row.RackKey)
@@ -257,103 +259,6 @@ func PostRecount(tx *gorm.DB, r Recount) ([]models.InventoryTransaction, []Recou
 	}
 
 	return posted, out, nil
-}
-
-// BatchFound is units of ONE named batch found again on one rack — still the provisional `adjustment`. The finished
-// design claims the oldest open loss instead and wants a second person (an-adjustment-writes-the-same-problem-row);
-// who that is at the shelf is undesigned, so the port is kept as it was.
-type BatchFound struct {
-	WarehouseID uint64
-	ProductID   uint64
-	PlacementID uint64
-	BatchID     uint64
-	Count       int64
-	ActorID     uint64
-	IsOverride  bool
-	Description string
-}
-
-// BatchAdjusted is what a found adjust moved.
-type BatchAdjusted struct {
-	Transaction models.InventoryTransaction
-	OwnerTeamID uint64
-	// The value taken or returned, at the batch's own value.
-	Value float64
-	// The rack's count after.
-	RackAfter int64
-}
-
-// PostBatchFound writes one `adjustment` of the batch's owner: the named batch first, then the rack — refused when a
-// count holds the product on the rack (a-lock-stops-units-moving-not-sales).
-func PostBatchFound(tx *gorm.DB, a BatchFound) (BatchAdjusted, error) {
-	var batch models.Batch
-
-	err := tx.Where("id = ? AND warehouse_id = ? AND product_id = ?", a.BatchID, a.WarehouseID, a.ProductID).
-		Take(&batch).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return BatchAdjusted{}, ErrBatchNotHere
-	}
-
-	if err != nil {
-		return BatchAdjusted{}, fmt.Errorf("read batch %d: %w", a.BatchID, err)
-	}
-
-	t, err := inventory_ledgers.CreateTransaction(tx, inventory_ledgers.NewTransaction{
-		WarehouseID: a.WarehouseID,
-		TeamID:      batch.TeamID,
-		TxType:      models.TxAdjustment,
-		ActorID:     a.ActorID,
-		IsOverride:  a.IsOverride,
-		Description: a.Description,
-	})
-	if err != nil {
-		return BatchAdjusted{}, err
-	}
-
-	change := inventory_ledgers.BatchChange{
-		Transaction: t, BatchID: a.BatchID, Count: a.Count,
-		ChangeType: string(models.TxAdjustment), ActorID: a.ActorID, Description: a.Description,
-	}
-
-	moved, err := inventory_ledgers.AddToBatch(tx, change)
-	if err != nil {
-		return BatchAdjusted{}, err
-	}
-
-	key := inventory_ledgers.RackKey{ProductID: a.ProductID, PlacementID: a.PlacementID}
-
-	racks, err := inventory_ledgers.EnsureAndLockRacks(tx, a.WarehouseID, []inventory_ledgers.RackRowToEnsure{{
-		RackKey: key, TeamID: batch.TeamID,
-	}})
-	if err != nil {
-		return BatchAdjusted{}, err
-	}
-
-	err = inventory_ledgers.RefuseCounted(tx, []inventory_ledgers.RackKey{key})
-	if err != nil {
-		return BatchAdjusted{}, err
-	}
-
-	var w inventory_ledgers.RackWrites
-
-	rack, err := w.Apply(t, racks[key], a.Count, string(models.TxAdjustment), a.ActorID, a.Description)
-	if err != nil {
-		return BatchAdjusted{}, err
-	}
-
-	err = w.Flush(tx)
-	if err != nil {
-		return BatchAdjusted{}, err
-	}
-
-	err = inventory_ledgers.AddItems(tx, t, []inventory_ledgers.ItemLine{{
-		ProductID: a.ProductID, ProductTeamID: batch.TeamID, Quantity: a.Count, Total: moved.Valuation,
-	}})
-	if err != nil {
-		return BatchAdjusted{}, err
-	}
-
-	return BatchAdjusted{Transaction: t, OwnerTeamID: batch.TeamID, Value: moved.Valuation, RackAfter: rack.After}, nil
 }
 
 // ownersHere is who owns each product's stock in this warehouse: the team of its newest batch. A product has one owner;

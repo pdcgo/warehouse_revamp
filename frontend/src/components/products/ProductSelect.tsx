@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Combobox, Portal, Span, Stack, useListCollection } from "@chakra-ui/react";
-import { useProductSearch } from "../../features/products/queries";
+import { Badge, Combobox, HStack, Portal, Span, Stack, useListCollection } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
+import { type ProductSearchScope, type SearchedProduct, useProductSearch } from "../../features/products/queries";
 import { useDebounced } from "../../lib/useDebounced";
 
 // What a picked product contributes to an order line — a SNAPSHOT (#67): the opaque product id plus
@@ -21,19 +22,16 @@ export interface PickedProduct {
   defaultImageThumbnailUrl?: string;
 }
 
-interface SelectableProduct {
-  id: bigint;
-  productCode: string;
-  name: string;
-}
-
 export interface ProductSelectProps {
   /** The caller's team. In "team" scope it's the catalogue searched; in "all" scope it only
-   * authorizes the request (results are cross-team). */
+   * authorizes the request (results are cross-team); in "warehouse" scope it is the WAREHOUSE whose held products are
+   * searched. */
   teamId: bigint;
   /** "team" (default) searches this team's catalogue (ProductList); "all" discovers products across
-   * ALL teams (ProductDiscover, #110). */
-  scope?: "team" | "all";
+   * ALL teams (ProductDiscover, #110) — the selling roles' only; "warehouse" searches only what THIS warehouse holds or
+   * has held, any team's, at 0 or not (WarehouseProductSearch, a-warehouse-picks-only-what-it-has-held) — the picker for
+   * every warehouse screen, since a warehouse role may not discover. */
+  scope?: ProductSearchScope;
   /** Selected product id (for the checkmark); 0n = none. */
   value?: bigint;
   onChange?: (product: PickedProduct) => void;
@@ -51,7 +49,7 @@ export interface ProductSelectProps {
 // a catalogue grows without limit, so this searches SERVER-side (ProductList's `q`, min 2 chars) the
 // way UserSelect does, and renders each option as "sku — name". It emits the whole PickedProduct so
 // the caller can snapshot sku/name onto the line; the buyer-paid unit price is entered separately.
-export const description = "Searchable product picker (Chakra Combobox, server-side). Emits the picked product's id + sku + name snapshot. `scope`: \"team\" (default, this team's catalogue) or \"all\" (cross-team discovery, #110).";
+export const description = "Searchable product picker (Chakra Combobox, server-side). Emits the picked product's id + sku + name snapshot. `scope`: \"team\" (default, this team's catalogue), \"all\" (cross-team discovery, #110 — selling roles only) or \"warehouse\" (only what this warehouse holds or has held, each with its owner — a-warehouse-picks-only-what-it-has-held).";
 
 export function ProductSelect({
   teamId,
@@ -62,9 +60,10 @@ export function ProductSelect({
   disabled,
   portalled = true,
 }: ProductSelectProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState("");
 
-  const { collection, set } = useListCollection<SelectableProduct>({
+  const { collection, set } = useListCollection<SearchedProduct>({
     initialItems: [],
     itemToString: (p) => `${p.productCode} — ${p.name}`,
     itemToValue: (p) => p.id.toString(),
@@ -112,9 +111,19 @@ export function ProductSelect({
             {collection.items.map((p) => (
               <Combobox.Item item={p} key={p.id.toString()} data-testid={`product-select-option-${p.productCode}`}>
                 <Stack gap="0">
-                  <Span fontWeight="medium">{p.productCode}</Span>
+                  <HStack gap="2">
+                    <Span fontWeight="medium">{p.productCode}</Span>
+                    {/* Archived by its seller, still on this warehouse's shelf (an-archived-product-held-here-can-be-picked). */}
+                    {p.archived && (
+                      <Badge size="sm" variant="subtle" data-testid={`product-select-archived-${p.productCode}`}>
+                        {t("products.picker.archived")}
+                      </Badge>
+                    )}
+                  </HStack>
                   <Span fontSize="xs" color="fg.muted">
-                    {p.name}
+                    {/* The warehouse scope names the OWNER beside the product: a warehouse holds several teams'
+                        goods, and two teams' "Kaos Polos" are two products. */}
+                    {p.ownerName ? `${p.name} · ${p.ownerName}` : p.name}
                   </Span>
                 </Stack>
                 <Combobox.ItemIndicator />

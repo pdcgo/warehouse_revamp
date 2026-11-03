@@ -80,7 +80,7 @@ func (s *Service) RackStock(
 	}
 
 	// Which of them a stock count holds on this rack — the Move and Sample dialogs lock those at 0
-	// (a-lock-stops-units-moving-not-sales). One read for the page.
+	// (a-lock-stops-sales-and-cancels-too). One read for the page.
 	keys := make([]inventory_ledgers.RackKey, 0, len(levels))
 	for i := range levels {
 		keys = append(keys, inventory_ledgers.RackKey{ProductID: levels[i].ProductID, PlacementID: rackID})

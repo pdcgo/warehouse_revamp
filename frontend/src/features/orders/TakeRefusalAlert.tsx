@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { type TakeRefusal, refusalKind } from "./takeRefusal";
 
 export const description =
-  "Why the warehouse refused an order — its one reason, and every line it named with what that line wanted (and, when stock was short, what the warehouse holds) — so the person fixes exactly those lines. Shown by the order form and the draft page when Create or Promote is refused at the take.";
+  "Why the warehouse refused an order — its one reason, and every line it named with what that line wanted (and, when stock was short, what the warehouse holds; when a stock count holds some, what is free and which count holds the rest) — so the person fixes exactly those lines. Shown by the order form and the draft page when Create or Promote is refused at the take.";
 
 // WHAT THE WAREHOUSE SAID, on the screen that placed the order (a-refusal-names-its-reason-and-every-line).
 //
@@ -24,6 +24,15 @@ export function TakeRefusalAlert({
   const { t } = useTranslation();
   const kind = refusalKind(refusal.reason);
 
+  // A short line says what is there; a counted line says what is free and which count holds the rest; any other says
+  // only what it wanted — "holds 0" would be a lie when it is the owner's rule that stops it.
+  const lineText = (k: typeof kind, values: Record<string, string>) => {
+    if (k === "notEnoughStock") return t("orderForm.refusal.lineShort", values);
+    if (k === "beingCounted") return t("orderForm.refusal.lineCounted", values);
+
+    return t("orderForm.refusal.lineWanted", values);
+  };
+
   return (
     <Alert.Root status="error" data-testid={testId} data-reason={kind}>
       <Alert.Indicator />
@@ -37,13 +46,12 @@ export function TakeRefusalAlert({
                 name: labelOf(line.productId),
                 wanted: line.wanted.toString(),
                 available: line.available.toString(),
+                count: (line.countingSessionId ?? 0n).toString(),
               };
 
               return (
                 <Text key={line.productId.toString()} fontWeight="bold" data-testid={`${testId}-line-${line.productId}`}>
-                  {kind === "notEnoughStock"
-                    ? t("orderForm.refusal.lineShort", values)
-                    : t("orderForm.refusal.lineWanted", values)}
+                  {lineText(kind, values)}
                 </Text>
               );
             })}

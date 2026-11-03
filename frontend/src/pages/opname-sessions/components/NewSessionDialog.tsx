@@ -138,14 +138,17 @@ export function NewSessionDialog({
                         {t("opnameSession.create.product")}
                         <Field.RequiredIndicator />
                       </Field.Label>
+                      {/* A count counts what is here: the products this warehouse holds or has held
+                          (a-warehouse-picks-only-what-it-has-held). An Admin may not discover every team's catalogue. */}
                       <ProductSelect
                         teamId={warehouseId}
-                        scope="all"
+                        scope="warehouse"
                         portalled={false}
                         value={productId}
                         placeholder={t("opnameSession.create.productPlaceholder")}
                         onChange={(p) => setProductId(p.id)}
                       />
+                      <Field.HelperText>{t("inventory.pickHeldHelp")}</Field.HelperText>
                     </Field.Root>
                   )}
 

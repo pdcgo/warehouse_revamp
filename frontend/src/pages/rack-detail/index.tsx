@@ -17,7 +17,7 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, ArrowRightLeft, Gift, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Gift, MoreHorizontal, PackageSearch } from "lucide-react";
 import { productClient, rackClient, rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
@@ -36,6 +36,8 @@ import { formatRupiah } from "../../lib/money";
 import { useIsMobile } from "../../layouts/shell";
 import { fetchActors } from "../../features/users/queries";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { ReportFoundDialog } from "../../features/inventory/ReportFoundDialog";
+import { canReportFound } from "../../lib/roles";
 import { MoveGoodsDialog } from "./components/MoveGoodsDialog";
 import { RecordSampleDialog } from "./components/RecordSampleDialog";
 import { RACK_DETAIL_PENDING } from "./pending";
@@ -103,7 +105,7 @@ export function RackDetailPage() {
   // The two writes off this rack (placement_decision.md): Move Goods, and Record Sample
   // (a-sample-is-recorded-on-rack-detail). The reads below are hand-rolled effects rather than query hooks, so a
   // write bumps `reloadKey` and every read on the page — header, contents, both histories — asks again.
-  const [dialog, setDialog] = useState<"move" | "sample" | null>(null);
+  const [dialog, setDialog] = useState<"move" | "sample" | "found" | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
   const isMobile = useIsMobile();
@@ -319,7 +321,11 @@ export function RackDetailPage() {
     />
   );
 
-  // Two actions, so they stay inline on a desktop; on a phone they fold into `⋯`, as every phone header does.
+  // REPORT FOUND (staff-may-report-a-found): units found on this shelf, sent for the Owner's or Admin's approval. Its
+  // place here was accepted 2026-11-03 (the-staff-found-screens-are-accepted).
+  const reportsFound = canReportFound(current?.role);
+
+  // The actions stay inline on a desktop; on a phone they fold into `⋯`, as every phone header does.
   const actions = !canWrite(current) ? null : isMobile ? (
     <Menu.Root>
       <Menu.Trigger asChild>
@@ -338,12 +344,24 @@ export function RackDetailPage() {
               <Icon as={Gift} boxSize="4" />
               {t("racks.sample.action")}
             </Menu.Item>
+            {reportsFound && (
+              <Menu.Item value="found" data-testid="rack-action-report-found" onClick={() => setDialog("found")}>
+                <Icon as={PackageSearch} boxSize="4" />
+                {t("racks.reportFound.action")}
+              </Menu.Item>
+            )}
           </Menu.Content>
         </Menu.Positioner>
       </Portal>
     </Menu.Root>
   ) : (
     <HStack gap="2">
+      {reportsFound && (
+        <Button size="sm" variant="outline" data-testid="rack-action-report-found" onClick={() => setDialog("found")}>
+          <Icon as={PackageSearch} boxSize="4" />
+          {t("racks.reportFound.action")}
+        </Button>
+      )}
       <Button size="sm" variant="outline" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
         <Icon as={Gift} boxSize="4" />
         {t("racks.sample.action")}
@@ -546,6 +564,15 @@ export function RackDetailPage() {
             onOpenChange={(open) => setDialog(open ? "sample" : null)}
             onRecorded={reload}
           />
+          {reportsFound && (
+            <ReportFoundDialog
+              warehouseId={teamId}
+              rackId={rack.id}
+              rackCode={rack.code}
+              open={dialog === "found"}
+              onOpenChange={(open) => setDialog(open ? "found" : null)}
+            />
+          )}
         </>
       )}
     </Stack>

@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
@@ -130,12 +131,39 @@ func TestStockAdjust_LostReimbursesToo(t *testing.T) {
 	}
 }
 
-// ⚠ FOUND GIVES THE REIMBURSEMENT BACK (balance_context 5) — as a REVERSAL, never by deleting the
-// entry that charged it. The history has to read as one story: reimbursed, then given back.
-func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
+// damageFacts says product 100 is team 2's — the team acceptOne restocks as — so a found's request names the owner whose
+// loss it claims back.
+func damageFacts() fakeFacts {
+	return fakeFacts{100: {TeamID: damageOwnerTeam, ProductCode: "KH-01", Name: "Kaos"}}
+}
+
+// approveFound reports n units found on the rack — the one door, FoundRequestCreate — and has another person approve
+// them (an-adjust-found-waits-for-the-owner-or-admin).
+func approveFound(t *testing.T, svc *inventory_v1.Service, warehouse, product, rackID uint64, n int64) uint64 {
+	t.Helper()
+
+	reported, err := svc.FoundRequestCreate(ctxAs(41, warehouse, role_basev1.Role_ROLE_WAREHOUSE_STAFF),
+		connect.NewRequest(&inventoryv1.FoundRequestCreateRequest{TeamId: warehouse, ProductId: product, RackId: rackID, Quantity: n}))
+	if err != nil {
+		t.Fatalf("report a found: %v", err)
+	}
+
+	approved, err := svc.FoundRequestApprove(ctxAs(43, warehouse, role_basev1.Role_ROLE_WAREHOUSE_ADMIN),
+		connect.NewRequest(&inventoryv1.FoundRequestApproveRequest{TeamId: warehouse, FoundRequestId: reported.Msg.GetFoundRequest().GetId()}))
+	if err != nil {
+		t.Fatalf("approve the found: %v", err)
+	}
+
+	return approved.Msg.GetTransactionId()
+}
+
+// ⚠ A FOUND GIVES THE REIMBURSEMENT BACK (balance_context 5) — as a REVERSAL, never by deleting the entry that charged
+// it. The history has to read as one story: reimbursed, then given back. The found waits for approval and its approval
+// claims the loss (an-adjust-found-waits-for-the-owner-or-admin).
+func TestStockAdjust_AFoundGivesTheReimbursementBack(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithLiability(t, db, poster)
+	svc := inventory_v1.NewService(db, poster, nil, nil, nil, damageFacts())
 
 	const warehouse uint64 = 5
 
@@ -143,8 +171,7 @@ func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
 
 	adjustBatch(t, svc, warehouse, product, rackID, batchID,
 		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_LOST, 5)
-	adjustBatch(t, svc, warehouse, product, rackID, batchID,
-		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND, 5)
+	approveFound(t, svc, warehouse, product, rackID, 5)
 
 	if len(poster.damaged) != 2 {
 		t.Fatalf("%d postings, want 2 — the find did not give the reimbursement back", len(poster.damaged))
@@ -161,10 +188,10 @@ func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
 			found.amount, poster.damaged[0].amount)
 	}
 
-	// ⚠ Different movements, so the ledger's idempotency key differs and BOTH can post. Keying the
-	// reversal on the damage's own movement would collide with it.
+	// ⚠ Different transactions, so the ledger's idempotency key differs and BOTH can post. Keying the
+	// reversal on the loss's own transaction would collide with it.
 	if found.movementID == poster.damaged[0].movementID {
-		t.Fatal("the find reused the damage's movement id — one of the two entries cannot exist")
+		t.Fatal("the find reused the loss's transaction id — one of the two entries cannot exist")
 	}
 }
 
@@ -314,7 +341,8 @@ func TestStockAdjust_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 // thing a fake can agree with while production has it backwards.
 func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db, nil, nil, nil)})
+	svc := inventory_v1.NewService(db, &realPoster{liability: liability_v1.NewService(db, nil, nil, nil)}, nil, nil, nil,
+		damageFacts())
 
 	const warehouse uint64 = 5
 
@@ -357,9 +385,11 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 		t.Fatalf("entry source = %q, want broken_good", entry.SourceType)
 	}
 
-	// FINDING THE GOODS SQUARES IT — the debt nets back to zero, and both entries remain.
+	// A BROKEN UNIT IS THROWN AWAY (a-broken-unit-is-thrown-away) — only a LOST one comes back. Five more go missing,
+	// then turn up: the found's approval claims the loss and squares THAT debt; the broken one stays owed.
 	adjustBatch(t, svc, warehouse, product, rackID, batchID,
-		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND, 5)
+		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_LOST, 5)
+	approveFound(t, svc, warehouse, product, rackID, 5)
 
 	err = db.
 		Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).
@@ -369,18 +399,19 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 		t.Fatalf("re-read the owner's balance: %v", err)
 	}
 
-	if ownerBalance.Balance != 0 {
-		t.Fatalf("balance = %d after the goods turned up, want 0", ownerBalance.Balance)
+	if ownerBalance.Balance != 200000 {
+		t.Fatalf("balance = %d after the lost goods turned up, want 200000 — the broken ones are still owed", ownerBalance.Balance)
 	}
 
-	// BOTH ENTRIES REMAIN, and since the vocabulary split they no longer share a source type: the loss
-	// is `broken_good` and the find is `found`. Counting them separately is a STRONGER check than the
-	// old `stock_damage = 2` — that count could have been satisfied by two losses and no find at all.
+	// EVERY ENTRY REMAINS, each under its own source type: the breakage `broken_good`, the loss `lost_good`, the find
+	// `found`. Counting them separately is a STRONGER check than the old `stock_damage = 2` — that count could have been
+	// satisfied by two losses and no find at all.
 	for _, want := range []struct {
 		sourceType string
 		count      int64
 	}{
 		{"broken_good", 1},
+		{"lost_good", 1},
 		{"found", 1},
 	} {
 		var entries int64

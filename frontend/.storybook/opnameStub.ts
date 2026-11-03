@@ -70,6 +70,14 @@ export function resetOpnameStub() {
 
 resetOpnameStub();
 
+/**
+ * The products with a batch in this warehouse, at 0 or not — the register a count's found refusal reads
+ * (a-unit-never-stocked-here-comes-in-by-restock), and so what the warehouse picker may offer (warehouseProductSearchStub.ts).
+ */
+export function opnameHeldHere(warehouseId: bigint): bigint[] {
+  return batches.filter((b) => b.warehouseId === warehouseId).map((b) => b.productId);
+}
+
 /** A `beforeEach`: the signed-in person counted one of Gudang Cabang's rows — so they may not finalize session 21. */
 export function opnameSelfCounted() {
   const row = rows.find((r) => r.id === 2105n);

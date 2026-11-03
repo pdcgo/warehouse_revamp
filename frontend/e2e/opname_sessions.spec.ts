@@ -19,6 +19,8 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 const SUFFIX = Date.now().toString().slice(-6);
 const STAFF = `e2ecounter${SUFFIX}`;
 const STAFF_PASSWORD = "e2epassword1";
+// The warehouse's Admin — not Root — plans the last count through the picker (a-warehouse-picks-only-what-it-has-held).
+const ADMIN = `e2ecountadmin${SUFFIX}`;
 
 async function login(page: Page, username: string, password: string) {
   await page.goto("/");
@@ -77,6 +79,9 @@ const state = {
   rakB: "",
   kaosA: "",
   kaosB: "",
+  // In the catalogue, matching "Kaos", and never stocked here — the picker must not offer it.
+  kaosC: "",
+  codes: new Map<string, string>(),
   session: "",
   // (product, rack) → row id
   rows: new Map<string, string>(),
@@ -106,17 +111,21 @@ test("Count: the warehouse plans a count of every rack, and the shelves are lock
   const category = await rpc<{ category: { id: string } }>(page, "category.v1.CategoryService/CategoryCreate", {
     name: `E2E Count ${SUFFIX}`,
   });
-  const product = async (code: string, name: string) =>
-    (
-      await rpc<{ product: { id: string } }>(page, "product.v1.ProductService/ProductCreate", {
+  const product = async (code: string, name: string) => {
+    const created = (
+      await rpc<{ product: { id: string; productCode: string } }>(page, "product.v1.ProductService/ProductCreate", {
         teamId: "1",
         productCodePart: code,
         name,
         categoryId: category.category.id,
       })
-    ).product.id;
+    ).product;
+    state.codes.set(created.id, created.productCode);
+    return created.id;
+  };
   state.kaosA = await product(`CA${SUFFIX}`, "Kaos A");
   state.kaosB = await product(`CB${SUFFIX}`, "Kaos B");
+  state.kaosC = await product(`CC${SUFFIX}`, "Kaos C");
 
   const account = await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
     teamId: "1",
@@ -166,6 +175,13 @@ test("Count: the warehouse plans a count of every rack, and the shelves are lock
     password: STAFF_PASSWORD,
     name: "E2E Counter",
     role: "ROLE_WAREHOUSE_STAFF",
+  });
+  await rpc(page, "user.v1.UserService/CreateUser", {
+    teamId: state.warehouse,
+    username: ADMIN,
+    password: STAFF_PASSWORD,
+    name: "E2E Count Admin",
+    role: "ROLE_WAREHOUSE_ADMIN",
   });
 
   await useTeam(page, state.warehouse);
@@ -297,4 +313,57 @@ test("Count: a second person finalizes — the problem and the move post, the ra
     fromRackId: state.rakB,
     lines: [{ productId: state.kaosA, quantity: 1, toRackId: state.rakA }],
   });
+});
+
+// A PRODUCT PLAN, planned by the warehouse ADMIN — not Root — through the New Count dialog's picker, on the real server
+// (a-warehouse-picks-only-what-it-has-held). The picker's own read must admit the warehouse roles: it searches only what
+// this warehouse holds or has held, so Kaos A and Kaos B are offered and Kaos C — in the catalogue, never stocked here —
+// is not. The count is cancelled after, so nothing is left active.
+test("Count: the warehouse Admin plans a one-product count, picking from what the warehouse has held", async ({ page }) => {
+  await login(page, ADMIN, STAFF_PASSWORD);
+  await useTeam(page, state.warehouse);
+
+  await page.goto("/inventories/opname/sessions");
+  await expect(page.getByTestId("opname-sessions-page")).toBeVisible();
+  await page.getByTestId("opname-new-session").click();
+  const dialog = page.getByTestId("opname-new-session-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId("opname-plan-product").click();
+  await expect(dialog.getByTestId("opname-new-session-submit")).toBeDisabled();
+
+  await dialog.getByRole("combobox").click();
+  await dialog.getByRole("combobox").pressSequentially("Kaos", { delay: 30 });
+  await expect(dialog.getByTestId(`product-select-option-${state.codes.get(state.kaosA)}`)).toBeVisible();
+  await expect(dialog.getByTestId(`product-select-option-${state.codes.get(state.kaosB)}`)).toBeVisible();
+  await expect(dialog.getByTestId(`product-select-option-${state.codes.get(state.kaosC)}`)).toHaveCount(0);
+  await expect(dialog.getByRole("option")).toHaveCount(2);
+
+  await dialog.getByTestId(`product-select-option-${state.codes.get(state.kaosB)}`).click();
+  await expect(dialog.getByTestId("opname-new-session-submit")).toBeEnabled();
+  await dialog.getByTestId("opname-new-session-submit").click();
+  await expect(dialog).toBeHidden();
+
+  const list = await rpc<{ ids: string[] }>(page, "inventory.v1.OpnameService/OpnameSessionList", {
+    teamId: state.warehouse,
+    filter: { status: "OPNAME_SESSION_STATUS_ACTIVE" },
+    page: { page: 1, limit: 5 },
+  });
+  expect(list.ids).toHaveLength(1);
+
+  const detail = await rpc<{ session: { plan: string } }>(page, "inventory.v1.OpnameService/OpnameSessionDetail", {
+    teamId: state.warehouse,
+    sessionId: list.ids[0],
+  });
+  expect(detail.session.plan).toBe("OPNAME_PLAN_PRODUCT");
+
+  // Only Kaos B's shelf rows were snapshotted.
+  const rows = await rpc<{ items: { row?: { mapData: Record<string, { productId: string }> } }[] }>(
+    page,
+    "inventory.v1.OpnameService/OpnameRowList",
+    { teamId: state.warehouse, filter: { sessionId: list.ids[0] }, page: { page: 1, limit: 50 } },
+  );
+  const products = new Set(rows.items.flatMap((i) => Object.values(i.row?.mapData ?? {}).map((r) => r.productId)));
+  expect([...products]).toEqual([state.kaosB]);
+
+  await rpc(page, "inventory.v1.OpnameService/OpnameSessionCancel", { teamId: state.warehouse, sessionId: list.ids[0] });
 });

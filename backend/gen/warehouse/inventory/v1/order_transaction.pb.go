@@ -35,6 +35,9 @@ const (
 	OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED OrderTransactionRefusalReason = 2
 	// The warehouse holds fewer units than a line wants.
 	OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK OrderTransactionRefusalReason = 3
+	// The warehouse holds enough, but a stock count holds some of them, and the racks no count holds cannot fill the line
+	// (a-lock-stops-sales-and-cancels-too). The error's message names each count, who started it and when.
+	OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED OrderTransactionRefusalReason = 4
 )
 
 // Enum value maps for OrderTransactionRefusalReason.
@@ -44,12 +47,14 @@ var (
 		1: "ORDER_TRANSACTION_REFUSAL_REASON_KEY_USED",
 		2: "ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED",
 		3: "ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK",
+		4: "ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED",
 	}
 	OrderTransactionRefusalReason_value = map[string]int32{
 		"ORDER_TRANSACTION_REFUSAL_REASON_UNSPECIFIED":      0,
 		"ORDER_TRANSACTION_REFUSAL_REASON_KEY_USED":         1,
 		"ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED":      2,
 		"ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK": 3,
+		"ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED":    4,
 	}
 )
 
@@ -377,10 +382,13 @@ type OrderTransactionRefusedLine struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	ProductId uint64                 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	Wanted    int64                  `protobuf:"varint,2,opt,name=wanted,proto3" json:"wanted,omitempty"`
-	// For NOT_ENOUGH_STOCK, the units the owner holds in this warehouse; 0 otherwise.
-	Available     int64 `protobuf:"varint,3,opt,name=available,proto3" json:"available,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// For NOT_ENOUGH_STOCK, the units the owner holds in this warehouse; for BEING_COUNTED, the units on racks no count
+	// holds; 0 otherwise.
+	Available int64 `protobuf:"varint,3,opt,name=available,proto3" json:"available,omitempty"`
+	// For BEING_COUNTED, the count holding the rest of the line; 0 otherwise.
+	CountingSessionId uint64 `protobuf:"varint,4,opt,name=counting_session_id,json=countingSessionId,proto3" json:"counting_session_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *OrderTransactionRefusedLine) Reset() {
@@ -430,6 +438,13 @@ func (x *OrderTransactionRefusedLine) GetWanted() int64 {
 func (x *OrderTransactionRefusedLine) GetAvailable() int64 {
 	if x != nil {
 		return x.Available
+	}
+	return 0
+}
+
+func (x *OrderTransactionRefusedLine) GetCountingSessionId() uint64 {
+	if x != nil {
+		return x.CountingSessionId
 	}
 	return 0
 }
@@ -623,12 +638,13 @@ const file_warehouse_inventory_v1_order_transaction_proto_rawDesc = "" +
 	"\x0etransaction_id\x18\x01 \x01(\x04R\rtransactionId\x12!\n" +
 	"\fwarehouse_id\x18\x02 \x01(\x04R\vwarehouseId\x12\x14\n" +
 	"\x05total\x18\x03 \x01(\x01R\x05total\x12B\n" +
-	"\x05items\x18\x04 \x03(\v2,.warehouse.inventory.v1.OrderTransactionItemR\x05items\"r\n" +
+	"\x05items\x18\x04 \x03(\v2,.warehouse.inventory.v1.OrderTransactionItemR\x05items\"\xa2\x01\n" +
 	"\x1bOrderTransactionRefusedLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x16\n" +
 	"\x06wanted\x18\x02 \x01(\x03R\x06wanted\x12\x1c\n" +
-	"\tavailable\x18\x03 \x01(\x03R\tavailable\"\xb3\x01\n" +
+	"\tavailable\x18\x03 \x01(\x03R\tavailable\x12.\n" +
+	"\x13counting_session_id\x18\x04 \x01(\x04R\x11countingSessionId\"\xb3\x01\n" +
 	"\x17OrderTransactionRefusal\x12M\n" +
 	"\x06reason\x18\x01 \x01(\x0e25.warehouse.inventory.v1.OrderTransactionRefusalReasonR\x06reason\x12I\n" +
 	"\x05lines\x18\x02 \x03(\v23.warehouse.inventory.v1.OrderTransactionRefusedLineR\x05lines\"\x88\x01\n" +
@@ -639,12 +655,13 @@ const file_warehouse_inventory_v1_order_transaction_proto_rawDesc = "" +
 	"\x05\x01\x02\x03\x04\x05\"d\n" +
 	"\x1fOrderTransactionReleaseResponse\x12%\n" +
 	"\x0etransaction_id\x18\x01 \x01(\x04R\rtransactionId\x12\x1a\n" +
-	"\breleased\x18\x02 \x01(\bR\breleased*\xe9\x01\n" +
+	"\breleased\x18\x02 \x01(\bR\breleased*\x9d\x02\n" +
 	"\x1dOrderTransactionRefusalReason\x120\n" +
 	",ORDER_TRANSACTION_REFUSAL_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")ORDER_TRANSACTION_REFUSAL_REASON_KEY_USED\x10\x01\x120\n" +
 	",ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED\x10\x02\x125\n" +
-	"1ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK\x10\x032\xb0\x02\n" +
+	"1ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK\x10\x03\x122\n" +
+	".ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED\x10\x042\xb0\x02\n" +
 	"\x17OrderTransactionService\x12\x87\x01\n" +
 	"\x16OrderTransactionCreate\x125.warehouse.inventory.v1.OrderTransactionCreateRequest\x1a6.warehouse.inventory.v1.OrderTransactionCreateResponse\x12\x8a\x01\n" +
 	"\x17OrderTransactionRelease\x126.warehouse.inventory.v1.OrderTransactionReleaseRequest\x1a7.warehouse.inventory.v1.OrderTransactionReleaseResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"

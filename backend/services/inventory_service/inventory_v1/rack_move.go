@@ -23,7 +23,7 @@ var (
 // on the decided ledgers: one `move` transaction per owning team, a row per rack touched, nothing in the batch ledger,
 // all in one database transaction — all or nothing (a-move-writes-two-rack-rows-and-no-batch-row, a-move-is-all-or-nothing).
 // Any warehouse member may move goods (any-warehouse-member-may-move-goods). ⚠ A rack being counted will refuse a move
-// once opname is built (a-lock-stops-units-moving-not-sales).
+// once opname is built (a-lock-stops-sales-and-cancels-too).
 func (s *Service) RackMove(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RackMoveRequest],

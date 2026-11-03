@@ -85,9 +85,11 @@ export function AddFoundDialog({
                     {t("opnameSession.found.product")}
                     <Field.RequiredIndicator />
                   </Field.Label>
+                  {/* What this warehouse holds or has held (a-warehouse-picks-only-what-it-has-held) — a product its team
+                      never had here is not stock here yet, so it is not offered; the refusal below stays as the backstop. */}
                   <ProductSelect
                     teamId={warehouseId}
-                    scope="all"
+                    scope="warehouse"
                     portalled={false}
                     value={product?.id ?? 0n}
                     placeholder={t("opnameSession.found.productPlaceholder")}
@@ -96,6 +98,7 @@ export function AddFoundDialog({
                       setNeverHere(false);
                     }}
                   />
+                  <Field.HelperText>{t("inventory.pickHeldHelp")}</Field.HelperText>
                 </Field.Root>
                 {neverHere && (
                   <Alert.Root status="warning" data-testid="opname-found-never-here">

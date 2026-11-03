@@ -46,7 +46,7 @@ const (
 func transferErr(err error) error {
 	var short *inventory_mutations.ShortLinesError
 
-	// A put-away onto a product a count holds on that rack (a-lock-stops-units-moving-not-sales).
+	// A put-away onto a product a count holds on that rack (a-lock-stops-sales-and-cancels-too).
 	if refused := countedRefusal(err); refused != nil {
 		return refused
 	}

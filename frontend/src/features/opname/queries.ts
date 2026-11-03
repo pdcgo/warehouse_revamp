@@ -199,12 +199,16 @@ export function useSendBackOpnameRow() {
 }
 
 export function useFinalizeOpnameSession() {
+  const client = useQueryClient();
   const invalidate = useInvalidateOpname();
   const invalidateStock = useInvalidateStock();
 
   return useMutation({
     mutationFn: (vars: Parameters<typeof opnameClient.opnameSessionFinalize>[0]) => opnameClient.opnameSessionFinalize(vars),
-    onSuccess: () => Promise.all([invalidate(), invalidateStock()]),
+    // A finalize settles the found requests it counted (a-count-settles-the-found-it-counted) — the found list and the
+    // menu's count of the waiting ones change with the stock.
+    onSuccess: () =>
+      Promise.all([invalidate(), invalidateStock(), client.invalidateQueries({ queryKey: ["foundRequests"] })]),
   });
 }
 

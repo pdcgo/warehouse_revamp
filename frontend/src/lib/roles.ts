@@ -256,6 +256,24 @@ export function canManageOpname(role: Role | undefined): boolean {
   );
 }
 
+// canDecideFound mirrors FoundRequestApprove: the warehouse's Owner and Admin, Root and the Administrator
+// (an-adjust-found-waits-for-the-owner-or-admin) — who read every request and reject any. Never the person who REPORTED
+// it — that is the server's answer per request (`block` OWN_REPORT), checked against the person, not the role.
+//
+// ⚠ THIS IS UX ONLY, like every helper here. The access interceptor is the only real boundary.
+export function canDecideFound(role: Role | undefined): boolean {
+  return canManageOpname(role);
+}
+
+// canReportFound mirrors FoundRequestCreate, FoundRequestList and FoundRequestReject: the deciders and the warehouse's
+// Staff (staff-may-report-a-found) — staff report, read only their own and withdraw them
+// (the-reporter-may-withdraw-their-found); the server filters their list.
+//
+// ⚠ THIS IS UX ONLY, like every helper here. The access interceptor is the only real boundary.
+export function canReportFound(role: Role | undefined): boolean {
+  return canDecideFound(role) || role === Role.WAREHOUSE_STAFF;
+}
+
 // canTransferMoney mirrors FinancialAccountTransfer and FinancialAccountCapital: canMoveAccountMoney minus the
 // warehouse Admin — moving money between accounts and capital stay the warehouse Owner's
 // (the-warehouse-admin-equals-the-owner-except-money). The warehouse Admin still reconciles and keeps the accounts.

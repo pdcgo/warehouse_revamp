@@ -46,7 +46,8 @@
     "sectionTeam": "Tim",
     "bundles": "Bundel",
     "ordersList": "Daftar",
-    "orderDraftsShort": "Draf"
+    "orderDraftsShort": "Draf",
+    "foundStock": "Stok Ditemukan"
   },
   "menu": {
     "theme": "Tema",
@@ -816,6 +817,9 @@
       "title": "Hapus Produk",
       "message": "Hapus \"{{productCode}}\" selamanya? Hanya produk yang belum pernah distok, dipesan, atau di-restock yang bisa dihapus, dan kode produknya bebas lagi. Produk yang punya riwayat tetap diarsipkan.",
       "confirmLabel": "Hapus"
+    },
+    "picker": {
+      "archived": "Arsip"
     }
   },
   "bundles": {
@@ -2032,6 +2036,12 @@
       "refused": "Tidak ada yang dicatat",
       "submit": "Catat Sampel",
       "done": "Sampel {{count}} unit dari {{code}} dicatat"
+    },
+    "reportFound": {
+      "action": "Laporkan Temuan",
+      "title": "Laporkan Temuan di {{code}}",
+      "product": "Produk yang ditemukan",
+      "productPlaceholder": "Cari produk yang Anda temukan"
     }
   },
   "suppliers": {
@@ -2677,7 +2687,17 @@
       "place": "Tempat",
       "product": "Produk",
       "warehouse": "Gudang"
-    }
+    },
+    "adjustFoundWaitsTitle": "Menunggu Owner atau Admin gudang",
+    "adjustFoundWaitsNothing": "Tidak ada yang berubah sampai salah satu dari mereka menyetujuinya — tidak ada stok, batch, atau uang.",
+    "adjustFoundWaitsApproval": "Setelah disetujui, unitnya lebih dulu mengklaim kembali kehilangan terlama produk ini yang masih terbuka, dengan harga saat hilang; sisanya masuk sebagai stok baru dengan harga terakhir di gudang ini.",
+    "adjustFoundWaitsNotYou": "Owner atau Admin lain yang menyetujuinya — bukan orang yang melaporkannya.",
+    "adjustFoundHelper": "Berapa unit yang Anda temukan di rak ini.",
+    "adjustFoundNotePlaceholder": "Contoh: di belakang karton di rak paling bawah, masih tersegel",
+    "adjustFoundSend": "Kirim untuk Disetujui",
+    "adjustFoundSentToast": "{{count}} × {{productCode}} dikirim untuk disetujui",
+    "adjustFoundSentToastDetail": "Tidak ada yang berubah sampai Owner atau Admin gudang menyetujuinya.",
+    "pickHeldHelp": "Hanya produk yang ada atau pernah ada di gudang ini. Produk yang belum pernah masuk ke sini datang lewat restock timnya."
   },
   "address": {
     "loading": "Memuat…",
@@ -2916,8 +2936,7 @@
       "labelOver": "Di atas label lama {{code}}",
       "labelCount_other": "{{count}} label",
       "done": "Selesai"
-    },
-    "waitingForCount": "Menunggu — {{rack}} sedang dihitung (opname #{{id}})"
+    }
   },
   "batches": {
     "title": "Batch",
@@ -4173,6 +4192,10 @@
         "title": "Stok gudang tidak cukup untuk pesanan ini",
         "help": "Tidak ada barang yang diambil dan pesanan tidak dibuat. Kurangi jumlah produk di bawah ini, atau kirim dari gudang yang stoknya cukup."
       },
+      "beingCounted": {
+        "title": "Sebagian stok ini sedang diopname",
+        "help": "Gudang sedang menghitung rak tempat produk ini berada. Tidak ada barang yang diambil dan pesanan tidak dibuat — kurangi jumlahnya sampai yang tersedia, atau buat pesanan lagi setelah opname selesai."
+      },
       "notAllowed": {
         "title": "Produk milik tim lain tidak dapat dipesan saat ini",
         "help": "Pemiliknya menjadikannya privat, atau stoknya di bawah jumlah cadangan. Tidak ada barang yang diambil dan pesanan tidak dibuat — hapus produk ini atau pilih produk lain."
@@ -4186,6 +4209,7 @@
         "help": "Tidak ada barang yang diambil dan pesanan tidak dibuat."
       },
       "lineShort": "{{name}}: diminta {{wanted}}, gudang memiliki {{available}}",
+      "lineCounted": "{{name}}: diminta {{wanted}}, tersedia {{available}} — sisanya ditahan opname #{{count}}",
       "lineWanted": "{{name}}: diminta {{wanted}}"
     },
     "draftHints": {
@@ -5007,5 +5031,84 @@
       "emptyTitle": "Belum ada agen yang membaca tim ini",
       "emptyHint": "Anggota menghubungkannya dari ChatGPT atau Claude, lalu koneksinya tampil di sini."
     }
+  },
+  "foundRequest": {
+    "title": "Stok Ditemukan",
+    "subtitle": "Unit yang ditemukan di rak di luar stok opname menunggu di sini. Tidak ada yang diposting — tidak ada stok, batch, atau uang — sampai Owner atau Admin gudang menyetujuinya.",
+    "selectTeam": "Pilih gudang untuk melihat stok yang ditemukan.",
+    "notForYou": "Stok ditemukan milik gudang — Owner, Admin, dan Staff-nya yang membacanya.",
+    "tabs": {
+      "waiting": "Menunggu",
+      "approved": "Disetujui",
+      "rejected": "Ditolak",
+      "all": "Semua"
+    },
+    "status": {
+      "unspecified": "—",
+      "waiting": "Menunggu",
+      "approved": "Disetujui",
+      "rejected": "Ditolak",
+      "settled": "Diselesaikan opname",
+      "withdrawn": "Ditarik"
+    },
+    "empty": {
+      "waitingTitle": "Tidak ada yang menunggu",
+      "waitingLine": "Temuan yang dilaporkan di layar Sesuaikan atau halaman rak menunggu di sini sampai Owner atau Admin menyetujui atau menolaknya.",
+      "historyTitle": "Belum ada stok ditemukan di sini",
+      "historyLine": "Stok ditemukan yang disetujui, ditolak, ditarik, dan diselesaikan opname disimpan di sini."
+    },
+    "card": {
+      "units_one": "{{count}} unit di {{rack}}",
+      "units_other": "{{count}} unit di {{rack}}",
+      "reported": "Dilaporkan oleh {{name}} · {{when}}",
+      "approved": "Disetujui oleh {{name}} · {{when}}",
+      "rejected": "Ditolak oleh {{name}} · {{when}}",
+      "noNote": "Tanpa catatan",
+      "wouldTitle": "Jika disetujui",
+      "postedTitle": "Diposting di transaksi #{{id}}",
+      "claimed": "Diklaim kembali {{amount}}",
+      "minted": "Stok baru {{amount}}",
+      "rejectReason": "Alasan: {{reason}}",
+      "withdrawn": "Ditarik oleh {{name}} · {{when}}",
+      "settledBy": "Ditutup oleh finalisasi {{name}} · {{when}}",
+      "settledByCount": "Diselesaikan opname #{{id}}",
+      "settledLine": "Opname menghitung unit ini di rak dan mempostingnya sendiri — tidak ada lagi yang diposting."
+    },
+    "lines": {
+      "type": "Diposting",
+      "batch": "Batch",
+      "units": "Unit",
+      "price": "Harga",
+      "amount": "Jumlah",
+      "newBatch": "Batch baru",
+      "newBatchId": "Batch baru #{{id}}",
+      "claims": "kehilangan #{{id}} tanggal {{date}}"
+    },
+    "post": {
+      "unspecified": "—",
+      "claim": "Diklaim kembali",
+      "mint": "Stok baru"
+    },
+    "block": {
+      "ownReport": "Anda yang melaporkannya — Owner atau Admin lain yang menyetujuinya.",
+      "beingCounted": "Stok opname #{{id}} sedang menghitung produk ini di {{rack}} — setujui setelah opname difinalisasi atau dibatalkan."
+    },
+    "approve": "Setujui",
+    "reject": "Tolak",
+    "approveTitle": "Setujui Stok Ditemukan #{{id}}",
+    "approveMessage": "{{count}} × {{product}} di {{rack}} langsung diposting: diklaim kembali {{claimed}}, stok baru {{minted}}. Ini tidak bisa dibatalkan di sini.",
+    "approvedToast": "Stok ditemukan #{{id}} disetujui — transaksi #{{tx}}",
+    "rejectTitle": "Tolak Stok Ditemukan #{{id}}",
+    "rejectMessage": "Tidak ada yang diposting. {{name}}, yang melaporkannya, membaca alasan Anda.",
+    "rejectReason": "Alasan",
+    "rejectReasonPlaceholder": "Contoh: paket pesanan #900 yang menunggu diambil — bukan stok lebih",
+    "rejectedToast": "Stok ditemukan #{{id}} ditolak",
+    "dismiss": "Batal",
+    "waitingNav": "{{count}} temuan menunggu persetujuan",
+    "staffSubtitle": "Temuan yang Anda laporkan. Masing-masing menunggu Owner atau Admin gudang; Anda boleh menarik laporan Anda selama masih menunggu.",
+    "withdraw": "Tarik",
+    "withdrawTitle": "Tarik Stok Ditemukan #{{id}}",
+    "withdrawMessage": "Anda yang melaporkannya. Tidak ada yang diposting; tulis alasan Anda menariknya.",
+    "withdrawnToast": "Stok ditemukan #{{id}} ditarik"
   }
 }

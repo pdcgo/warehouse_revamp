@@ -118,6 +118,22 @@ func (s *Service) OrderTransactionCreate(
 				inventoryv1.OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK, lines)
 		}
 
+		// A stock count holds units a line needs, and the racks it does not hold cannot fill it
+		// (a-lock-stops-sales-and-cancels-too): every such line, with its count — and the message names who started it and
+		// when, so the person knows whom to ask.
+		var counted *inventory_mutations.CountedLinesError
+		if errors.As(err, &counted) {
+			lines := make([]*inventoryv1.OrderTransactionRefusedLine, 0, len(counted.Lines))
+			for _, l := range counted.Lines {
+				lines = append(lines, &inventoryv1.OrderTransactionRefusedLine{
+					ProductId: l.ProductID, Wanted: l.Wanted, Available: l.Free, CountingSessionId: l.Lock.SessionID,
+				})
+			}
+
+			return nil, refusalBecause(connect.CodeFailedPrecondition,
+				inventoryv1.OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED, lines, counted)
+		}
+
 		if isUniqueViolation(err) {
 			return nil, refusal(connect.CodeAlreadyExists, inventoryv1.OrderTransactionRefusalReason_ORDER_TRANSACTION_REFUSAL_REASON_KEY_USED, nil)
 		}
@@ -274,7 +290,22 @@ func refusal(
 	reason inventoryv1.OrderTransactionRefusalReason,
 	lines []*inventoryv1.OrderTransactionRefusedLine,
 ) error {
-	err := connect.NewError(code, fmt.Errorf("order transaction refused: %s", reason.String()))
+	return refusalBecause(code, reason, lines, nil)
+}
+
+// refusalBecause is refusal whose message also carries why, in words — the count holding a line, who started it and when.
+func refusalBecause(
+	code connect.Code,
+	reason inventoryv1.OrderTransactionRefusalReason,
+	lines []*inventoryv1.OrderTransactionRefusedLine,
+	why error,
+) error {
+	msg := fmt.Errorf("order transaction refused: %s", reason.String())
+	if why != nil {
+		msg = fmt.Errorf("order transaction refused: %s — %w", reason.String(), why)
+	}
+
+	err := connect.NewError(code, msg)
 
 	detail, detailErr := connect.NewErrorDetail(&inventoryv1.OrderTransactionRefusal{Reason: reason, Lines: lines})
 	if detailErr == nil {

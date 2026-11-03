@@ -48,3 +48,29 @@ func TestOpnameSessionCancel_ReleasesAndPostsNothing(t *testing.T) {
 		t.Fatalf("cancel twice: err = %v, want FailedPrecondition", err)
 	}
 }
+
+// A CANCELLED COUNT SETTLES NOTHING (a-count-settles-the-found-it-counted): it posts nothing, so a found request waiting
+// on a rack it held still waits — and is approved once the count is gone.
+func TestOpnameSessionCancel_SettlesNoFound(t *testing.T) {
+	f := opnameStocked(t)
+	r := f.mustReport(t, opStaff(opAni), otKaosHitam, f.rakB, 2)
+	s := f.create(t, inventoryv1.OpnamePlan_OPNAME_PLAN_PRODUCT, 0, otKaosHitam, 0)
+
+	f.countRow(t, opDodi, s.GetId(), otKaosHitam, f.rakB, 7, 0)
+
+	_, err := f.svc.OpnameSessionCancel(opAdmin(opBudi), connect.NewRequest(&inventoryv1.OpnameSessionCancelRequest{
+		TeamId: otWarehouse, SessionId: s.GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	if row := foundRow(t, f.db, r.GetId()); row.Status != models.FoundWaiting || row.SettledByCountingSessionID != nil {
+		t.Fatalf("request %+v after a cancelled count, want still waiting", row)
+	}
+
+	_, err = f.approve(opAdmin(opBudi), r.GetId())
+	if err != nil {
+		t.Fatalf("approve after the cancel: %v", err)
+	}
+}

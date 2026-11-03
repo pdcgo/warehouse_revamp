@@ -1,0 +1,305 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// FoundRequestService — a unit FOUND at the shelf, outside a stock count, WAITS for the warehouse Owner or Admin
+// (an-adjust-found-waits-for-the-owner-or-admin, docs/business/inventory/opname_decision.md).
+//
+// A found is reported through FoundRequestCreate — the ONE door: the Adjust dialog's *found* and the rack page's
+// *Report Found*, by the warehouse's staff too (staff-may-report-a-found) — and posts NOTHING: no stock, no batch, no
+// money. StockAdjust refuses FOUND. Approving it writes one `found` transaction (problem-and-found-replace-opname) that claims the oldest open loss
+// of the product first, back into that loss's batch at its price (a-surplus-claims-the-oldest-loss-first,
+// a-claim-records-its-units), and mints the rest at the team's newest batch price in this warehouse
+// (last-price-is-the-teams-newest-batch-here) — the stock count's own found, run for one product on one rack
+// (inventory_mutations.PostFoundApproval). Rejecting posts nothing. The person who reported it never approves it
+// (nobody-finalizes-their-own-count, by the same rule), and a request is not approved while a stock count holds its
+// product on its rack (a-lock-stops-sales-and-cancels-too). A count that finalizes over the product on the rack while a
+// request waits counted the found units itself, so it closes the request as SETTLED_BY_COUNT and the units post once
+// (a-count-settles-the-found-it-counted).
+//
+// Built 2026-11-03 (the-found-stock-prototype-is-accepted): table `found_requests` (inventory 00036),
+// inventory_v1/found_request_*.go.
+service FoundRequestService {
+  // Report units found on a rack: a WAITING request, nothing posted (an-adjust-found-waits-for-the-owner-or-admin).
+  // Staff report too (staff-may-report-a-found); refused while a stock count holds the product on the rack.
+  rpc FoundRequestCreate(FoundRequestCreateRequest) returns (FoundRequestCreateResponse);
+  // The warehouse's found requests, newest first — the Owner's and Admin's approval list, its history filtered by
+  // status; a staff caller's own reports only. Each one says what approving it would post now, or what it posted.
+  rpc FoundRequestList(FoundRequestListRequest) returns (FoundRequestListResponse) {
+    // A READ — no row, no event (the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Approve a waiting request: the `found` transaction — claims, then a mint.
+  rpc FoundRequestApprove(FoundRequestApproveRequest) returns (FoundRequestApproveResponse);
+  // Reject a waiting request, with a reason: nothing posts. The reporter may reject — withdraw — their own
+  // (the-reporter-may-withdraw-their-found).
+  rpc FoundRequestReject(FoundRequestRejectRequest) returns (FoundRequestRejectResponse);
+}
+
+// A found request's status. APPEND ONLY.
+enum FoundRequestStatus {
+  FOUND_REQUEST_STATUS_UNSPECIFIED = 0;
+  // Reported at the shelf; nothing posted yet.
+  FOUND_REQUEST_STATUS_WAITING = 1;
+  // Approved: its `found` transaction is posted.
+  FOUND_REQUEST_STATUS_APPROVED = 2;
+  // Rejected, with a reason: nothing posted. Rejected by the person who reported it, it was WITHDRAWN
+  // (the-reporter-may-withdraw-their-found) — `decided_by_id` = `reported_by_id`.
+  FOUND_REQUEST_STATUS_REJECTED = 3;
+  // Closed by a stock count that finalized over the product on the request's rack while it waited: the count counted the
+  // found units on the shelf and posted them itself, so the request posts nothing (a-count-settles-the-found-it-counted).
+  // `settled_by_counting_session_id` names the count; the decider is whoever finalized it.
+  FOUND_REQUEST_STATUS_SETTLED_BY_COUNT = 4;
+}
+
+// What one line of the `found` transaction does. APPEND ONLY.
+enum FoundRequestPostType {
+  FOUND_REQUEST_POST_TYPE_UNSPECIFIED = 0;
+  // Claims an open lost problem back into its batch, at its price — the warehouse's money returns
+  // (a-surplus-claims-the-oldest-loss-first).
+  FOUND_REQUEST_POST_TYPE_CLAIM = 1;
+  // Nothing (more) to claim: minted as a new batch at the team's newest batch price here — no money moves
+  // (last-price-is-the-teams-newest-batch-here).
+  FOUND_REQUEST_POST_TYPE_MINT = 2;
+}
+
+// One posting line. On a WAITING request it is what approving NOW would post — read without locks, so another approval
+// or a count's finalize may claim the same loss first, and the approval re-reads it under lock. On an APPROVED one it
+// is what was posted.
+message FoundRequestPostLine {
+  FoundRequestPostType type = 1;
+  // A claim: the lost problem's batch, which the units go back into. A mint: 0 until approved, then the minted batch.
+  uint64 batch_id = 2;
+  int64 stock_count = 3;
+  // Rupiah, double (money-is-double-in-the-api-too). A claim: the lost problem's `price_unit`. A mint: the team's
+  // newest batch price of the product in this warehouse, emptied batches included.
+  double price_unit = 4;
+  // Rupiah: stock_count × price_unit.
+  double amount = 5;
+  // A claim: the warehouse_stock_problems row it claims; 0 for a mint.
+  uint64 problem_id = 6;
+  // A claim: when the loss was recorded — the oldest is claimed first.
+  int64 problem_created_at_unix = 7;
+}
+
+// Why approving is refused for THIS caller, now. APPEND ONLY.
+enum FoundRequestApproveBlock {
+  // Nothing: the caller may approve.
+  FOUND_REQUEST_APPROVE_BLOCK_UNSPECIFIED = 0;
+  // Already approved, rejected or settled by a count.
+  FOUND_REQUEST_APPROVE_BLOCK_NOT_WAITING = 1;
+  // The caller reported it — checked against the person, never the role (nobody-finalizes-their-own-count).
+  FOUND_REQUEST_APPROVE_BLOCK_OWN_REPORT = 2;
+  // A stock count holds the product on the request's rack; it may be approved once the count is finalized or
+  // cancelled (a-lock-stops-sales-and-cancels-too) — a count that finalizes over it settles it instead
+  // (a-count-settles-the-found-it-counted). `counting_session_id` names the count.
+  FOUND_REQUEST_APPROVE_BLOCK_BEING_COUNTED = 3;
+}
+
+// One found request — a unit found on a rack, waiting for, or decided by, the warehouse Owner or Admin.
+message FoundRequest {
+  uint64 id = 1;
+  uint64 warehouse_id = 2;
+  // The owning (selling) team — the product's owner, whose loss is claimed and whose batch is minted.
+  uint64 team_id = 3;
+  uint64 product_id = 4;
+  // product code/name snapshot at the report.
+  string product_code = 5;
+  string product_name = 6;
+  // The rack the units were found on — every unit is on a rack (there-is-no-unplaced-pile).
+  uint64 rack_id = 7;
+  string rack_code = 8;
+  // The units found. Positive.
+  int64 stock_count = 9;
+  // The reporter's note — what the approver reads to decide.
+  string note = 10;
+  // user_service ids; resolved to names at read time.
+  uint64 reported_by_id = 11;
+  int64 reported_at_unix = 12;
+  FoundRequestStatus status = 13;
+  // 0 while waiting. SETTLED_BY_COUNT: whoever finalized the count.
+  uint64 decided_by_id = 14;
+  int64 decided_at_unix = 15;
+  // REJECTED: why. Empty otherwise.
+  string reject_reason = 16;
+  // WAITING: what approving now would post — claims oldest loss first, then the mint. APPROVED: what was posted.
+  // REJECTED: empty.
+  repeated FoundRequestPostLine lines = 17;
+  // Rupiah: the claim lines summed — what the team pays the warehouse back.
+  double claimed_amount = 18;
+  // Rupiah: the mint line — what the new batch is worth; no money moves.
+  double minted_amount = 19;
+  // APPROVED: the `found` transaction it posted. 0 otherwise.
+  uint64 transaction_id = 20;
+  // Why THIS caller cannot approve it now — UNSPECIFIED when they can.
+  FoundRequestApproveBlock block = 21;
+  // BEING_COUNTED: the stock count holding the product on the rack. 0 otherwise.
+  uint64 counting_session_id = 22;
+  // SETTLED_BY_COUNT: the stock count whose finalize closed it (a-count-settles-the-found-it-counted). 0 otherwise.
+  uint64 settled_by_counting_session_id = 23;
+}
+
+// ── FoundRequestCreate ───────────────────────────────────────────────────────────────────────────────────────────
+
+message FoundRequestCreateRequest {
+  // Whoever stands at the shelf reports — the warehouse's staff as well as its Owner and Admin (staff-may-report-a-found);
+  // Root and the Administrator act in every team. It posts nothing, and somebody else approves it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The rack the units were found on — a rack of this warehouse; another's reads as NotFound. Every unit is on a rack
+  // (there-is-no-unplaced-pile).
+  uint64 rack_id = 3 [(buf.validate.field).uint64.gt = 0];
+  // The units found. Positive.
+  int64 quantity = 4 [(buf.validate.field).int64.gt = 0];
+  // What the approver reads to decide.
+  string note = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+message FoundRequestCreateResponse {
+  // WAITING. FailedPrecondition while a stock count holds the product on the rack, naming the count
+  // (a-lock-stops-sales-and-cancels-too), and for a product its owner team never had a batch of in this warehouse —
+  // there is no price to mint it at, so it comes in by the team's restock
+  // (a-found-never-stocked-here-is-refused-at-the-report, last-price-is-the-teams-newest-batch-here). NotFound for a
+  // rack not in this warehouse or a product that exists nowhere.
+  FoundRequest found_request = 1;
+}
+
+// ── FoundRequestList ─────────────────────────────────────────────────────────────────────────────────────────────
+
+message FoundRequestListRequest {
+  // The warehouse's Owner and Admin decide; Root and the Administrator act in every team
+  // (root-finalizes-only-as-an-override, by the same rule). The admin team's monitor reads it through NO_SIDE_EFFECTS.
+  // Staff read ONLY the requests they reported — filtered on the server — to see what became of them and withdraw a
+  // waiting one (staff-may-report-a-found, the-reporter-may-withdraw-their-found).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  FoundRequestListFilter filter = 2;
+  repeated FoundRequestListDataType data_request = 3;
+  // A GROWING list (HARD RULE 9) — the guideline's page cursor, the bounds of common.v1.PageFilter.
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message FoundRequestListFilter {
+  // ONE status; UNSPECIFIED = all of them, SETTLED_BY_COUNT included.
+  FoundRequestStatus status = 1 [(buf.validate.field).enum.defined_only = true];
+}
+
+enum FoundRequestListDataType {
+  FOUND_REQUEST_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  FOUND_REQUEST_LIST_DATA_TYPE_GENERAL = 1;
+  FOUND_REQUEST_LIST_DATA_TYPE_REQUEST = 2;
+}
+
+message FoundRequestMapItem {
+  map<uint64, FoundRequest> map_data = 1;
+}
+
+message FoundRequestListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    FoundRequestMapItem request = 2;
+  }
+}
+
+message FoundRequestListResponse {
+  repeated FoundRequestListResponseItem items = 1;
+  // Newest report first.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── FoundRequestApprove ──────────────────────────────────────────────────────────────────────────────────────────
+
+message FoundRequestApproveRequest {
+  // The warehouse's Owner or Admin — or Root — and never the person who reported it (nobody-finalizes-their-own-count).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 found_request_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message FoundRequestApproveResponse {
+  // APPROVED, its lines what was posted. FailedPrecondition for any FoundRequestApproveBlock (a request settled by a
+  // count is NOT_WAITING); NotFound for another warehouse's request.
+  FoundRequest found_request = 1;
+  // The `found` transaction.
+  uint64 transaction_id = 2;
+}
+
+// ── FoundRequestReject ───────────────────────────────────────────────────────────────────────────────────────────
+
+message FoundRequestRejectRequest {
+  // The warehouse's Owner and Admin reject any waiting request, Root and the Administrator as an override. The person
+  // who reported one may reject — withdraw — their own, staff included; a staff caller rejecting another's is
+  // PermissionDenied (the-reporter-may-withdraw-their-found). A withdrawal is a rejection whose decider is the reporter.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 found_request_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Why — the reporter reads it. Required.
+  string reason = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+}
+
+message FoundRequestRejectResponse {
+  // REJECTED. FailedPrecondition unless WAITING (a request settled by a count is not); NotFound for another warehouse's
+  // request.
+  FoundRequest found_request = 1;
+}

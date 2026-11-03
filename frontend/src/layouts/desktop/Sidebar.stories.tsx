@@ -3,6 +3,7 @@ import type { RouteObject } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
+import { foundRequestsNoneWaiting } from "../../../.storybook/foundRequestStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { teams } from "../../../.storybook/fixtures";
@@ -103,6 +104,8 @@ export const AWarehouseGetsTheWarehousesMenu: Story = {
     for (const label of ["Racks", "Batches", "Stock Opname", "Returns"]) {
       await waitFor(() => expect(canvas.getByRole("link", { name: label })).toBeVisible());
     }
+    // Found Stock's name may carry its count (found-stock-sits-after-stock-opname-with-its-count).
+    await expect(canvas.getByRole("link", { name: /^Found Stock/ })).toBeVisible();
 
     // …and none of the selling side's.
     await expect(canvas.queryByRole("link", { name: "Shops" })).toBeNull();
@@ -331,8 +334,12 @@ export const AWarehousesInventoriesIsInItsOperations: Story = {
 };
 
 // THE COUNT ON KEWAJIBAN — payments waiting for this team to confirm. Gudang Pusat has one: Toko Melati's transfer
-// of 2.000.000, recorded and not yet confirmed (fixtures, liabilityPayments 602).
+// of 2.000.000, recorded and not yet confirmed (fixtures, liabilityPayments 602). No found stock waits here, so
+// Kewajiban's is the only count.
 export const LiabilityCountsWhatAwaitsConfirmation: Story = {
+  beforeEach: () => {
+    foundRequestsNoneWaiting();
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -348,6 +355,89 @@ export const LiabilityCountsWhatAwaitsConfirmation: Story = {
     await expect(canvas.queryByTestId("nav-group-count-nav.financialAccounts")).toBeNull();
     // Nothing else counts — a 0 is never drawn.
     await expect(canvasElement.querySelectorAll("[data-testid^='nav-count-']")).toHaveLength(1);
+  },
+};
+
+// THE COUNT ON FOUND STOCK (owner, `found-stock-sits-after-stock-opname-with-its-count`) — the warehouse's found requests
+// waiting for approval. Gudang Pusat has three (foundRequestFixtures.ts: #301, #302, #303). Found Stock sits right after
+// Stock Opname; shut, the Inventories group carries the count, as the accounts group carries Kewajiban's.
+export const FoundStockCountsWhatWaits: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const groupCount = await canvas.findByTestId("nav-group-count-nav.inventories", {}, { timeout: 4000 });
+    await expect(groupCount).toHaveTextContent("3");
+
+    await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.inventories"));
+    await waitFor(() => expect(canvas.getByTestId("nav-count-/inventories/found-stock")).toBeVisible());
+    await expect(canvas.getByTestId("nav-count-/inventories/found-stock")).toHaveTextContent("3");
+    await expect(canvas.queryByTestId("nav-group-count-nav.inventories")).toBeNull();
+
+    // Right after Stock Opname.
+    const links = [...canvas.getByTestId("nav-group-nav.inventories").querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    await expect(links.indexOf("/inventories/found-stock")).toBe(links.indexOf("/inventories/opname/sessions") + 1);
+    await expect(linkTo(canvasElement, "/inventories/found-stock")).toHaveTextContent("Found Stock");
+  },
+};
+
+// Asked again on every navigation — the sidebar never remounts. The three are decided elsewhere; the next screen's
+// sidebar says so, and a 0 is never drawn.
+export const TheFoundCountIsAskedAgainOnNavigation: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("nav-group-count-nav.inventories", {}, { timeout: 4000 })).toHaveTextContent("3");
+
+    foundRequestsNoneWaiting();
+    await userEvent.click(canvas.getByRole("link", { name: "Products" }));
+
+    await waitFor(() => expect(canvas.queryByTestId("nav-group-count-nav.inventories")).toBeNull());
+  },
+};
+
+// Nothing waiting: Found Stock is offered with no number — never a 0.
+export const NothingWaitingCarriesNoFoundCount: Story = {
+  beforeEach: () => {
+    foundRequestsNoneWaiting();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("nav-group-toggle-nav.inventories"));
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Found Stock" })).toBeVisible());
+    // Kewajiban's count still arrives — so the reads have answered — and Found Stock's never does.
+    await canvas.findByTestId("nav-group-count-nav.financialAccounts", {}, { timeout: 4000 });
+    await expect(canvas.queryByTestId("nav-count-/inventories/found-stock")).toBeNull();
+    await expect(canvas.queryByTestId("nav-group-count-nav.inventories")).toBeNull();
+  },
+};
+
+// STAFF see Found Stock — their own reports — with NO number: the warehouse-wide figure is the deciders', and staff
+// approve nothing (the-reporter-may-withdraw-their-found).
+export const StaffSeeFoundStockWithoutACount: Story = {
+  beforeEach: () => {
+    asTeam(WAREHOUSE.id)();
+    asRole(Role.WAREHOUSE_STAFF)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("nav-group-toggle-nav.inventories"));
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Found Stock" })).toBeVisible());
+    await new Promise((r) => setTimeout(r, 300));
+    await expect(canvas.queryByTestId("nav-count-/inventories/found-stock")).toBeNull();
+    await expect(canvas.queryByTestId("nav-group-count-nav.inventories")).toBeNull();
+  },
+};
+
+// A selling team has no Found Stock — a found at the shelf is the warehouse's.
+export const ASellingTeamHasNoFoundStock: Story = {
+  beforeEach: asTeam(SELLING.id),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Shops" })).toBeInTheDocument());
+    await expect(linkTo(canvasElement, "/inventories/found-stock")).toBeNull();
   },
 };
 

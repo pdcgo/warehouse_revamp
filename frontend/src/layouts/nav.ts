@@ -21,6 +21,7 @@ import {
   Layers,
   Package,
   PackageOpen,
+  PackageSearch,
   Receipt,
   Scale,
   Settings,
@@ -33,7 +34,7 @@ import {
 } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
-import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
+import { canImportSettlement, canManageUsers, canReportFound, isTeamManager } from "../lib/roles";
 
 export interface MenuItem {
   to: string;
@@ -301,7 +302,11 @@ const SUPPLIERS_GROUP: MenuGroup = {
 // ⚠ The warehouse's ORDER QUEUE is NOT in here. It was briefly, as "Picking", and that was wrong on
 // both counts (owner): the screen is a list of ORDERS, so it says Orders, and orders are not a kind
 // of inventory — they are the work that consumes it. It is a TOP-LEVEL item, see menuFor below.
-function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
+// Found Stock — the found requests a found at the shelf waits in (an-adjust-found-waits-for-the-owner-or-admin). Exported
+// for the sidebar, whose count rides this item.
+export const FOUND_STOCK: MenuItem = { to: "/inventories/found-stock", label: "nav.foundStock", icon: PackageSearch };
+
+function inventoriesFor(teamType: TeamType | undefined, role: Role | undefined): MenuGroup {
   const children: MenuItem[] = [
     { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
     // Both sides: the selling team opens a transfer, the warehouses send and receive it
@@ -329,6 +334,14 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   // Opname — a physical stock count reconciled against the system (stock-take). A warehouse's own job.
   if (teamType === TeamType.WAREHOUSE) {
     children.push({ to: "/inventories/opname/sessions", label: "nav.opname", icon: ClipboardCheck });
+  }
+
+  // FOUND STOCK sits right after the stock count (owner, `found-stock-sits-after-stock-opname-with-its-count`): the
+  // Owner and Admin decide there, Staff read and withdraw their own reports (the-reporter-may-withdraw-their-found). The
+  // admin team's monitor reads it as it reads Stock Opname — its screen role is the warehouse Owner. Its count of the
+  // waiting requests is the sidebar's (Sidebar.tsx), for the deciders only.
+  if (teamType === TeamType.WAREHOUSE && canReportFound(role)) {
+    children.push(FOUND_STOCK);
   }
 
   return { label: "nav.inventories", icon: Boxes, children };
@@ -379,7 +392,7 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     // Inventories — restock, racks, batches, opname (#95) — closes the warehouse's operations. It sat below the
     // money section while the menu was one column; in sections it is where a warehouse's work is, beside its
     // orders (`the-sidebar-is-in-sections`).
-    operations.push(inventoriesFor(teamType));
+    operations.push(inventoriesFor(teamType, role));
   }
   if (teamType === TeamType.SELLING) {
     operations.push(PRODUCTS_GROUP);
@@ -387,7 +400,7 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     // one subject read in one sitting: the product list now shows the stock behind each row (ready,
     // ongoing, oldest batch), and every answer to "why is this empty" — the restock, the placement,
     // the supplier — is in this menu.
-    operations.push(inventoriesFor(teamType));
+    operations.push(inventoriesFor(teamType, role));
     // Suppliers right under it — who the restocks in Inventories come from. A selling team's alone: a warehouse
     // does not own the suppliers a selling team orders from (#212).
     operations.push(SUPPLIERS_GROUP);

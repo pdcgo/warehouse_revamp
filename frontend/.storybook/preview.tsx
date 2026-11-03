@@ -30,6 +30,7 @@ import { resetProductStub } from "./productStub";
 import { resetRestockStub } from "./restockStub";
 import { resetWarehouseTransferStub } from "./warehouseTransferStub";
 import { resetOpnameStub } from "./opnameStub";
+import { resetFoundRequestStub } from "./foundRequestStub";
 import { resetBundleStub } from "./bundleStub";
 import { resetProductScenario } from "./productScenario";
 import { resetRackStub } from "./rackStub";
@@ -410,6 +411,8 @@ const preview: Preview = {
     resetWarehouseTransferStub();
     // …and the stock count, which every count, send-back and finalize writes to.
     resetOpnameStub();
+    // …and the found requests, which an Adjust found, an approval or a rejection writes to.
+    resetFoundRequestStub();
     // …and the bundles, which a create, an edit or a delete writes to — and any product a story locked or archived.
     resetBundleStub();
     resetProductScenario();

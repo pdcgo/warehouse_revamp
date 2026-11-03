@@ -3,6 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { lastRackWrite, rackShelf, rackStubScenario } from "../../../.storybook/rackStub";
+import { reportScenario } from "../../../.storybook/foundRequestStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { RackDetailPage } from "./index";
@@ -277,5 +278,76 @@ export const PlacementHistoryNamesWhoMovedIt: Story = {
     await expect(table).toHaveTextContent("Kopi Arabika 250g");
     await expect(table).toHaveTextContent("Ani Rahayu");
     await expect(table).toHaveTextContent("-4");
+  },
+};
+
+async function pickProduct(query: string, productCode: string) {
+  const dialog = await screen.findByTestId("report-found-dialog");
+  const input = within(dialog).getByRole("combobox");
+  await userEvent.click(input);
+  await userEvent.type(input, query, { delay: 20 });
+  const option = await within(dialog).findByTestId(`product-select-option-${productCode}`);
+  await waitFor(() => expect(option).toBeVisible());
+  await userEvent.click(option);
+}
+
+// REPORT FOUND (staff-may-report-a-found): staff report units found on THIS shelf — the rack is set, they pick the
+// product — and it waits for the Owner or Admin, posting nothing. Its place here was accepted 2026-11-03.
+export const StaffReportFoundHere: Story = {
+  render: () => <At41 />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("rack-action-report-found"));
+    const dialog = await screen.findByTestId("report-found-dialog");
+    await expect(dialog).toHaveTextContent("Report Found on A-01-1");
+    await expect(within(dialog).getByTestId("report-found-waits")).toHaveTextContent("Nothing changes until one of them approves it");
+    await expect(within(dialog).getByTestId("report-found-submit")).toBeDisabled();
+
+    await pickProduct("beras", "SKU-BERAS-5K");
+    await type(within(dialog).getByTestId("report-found-amount"), "2");
+    await userEvent.type(within(dialog).getByTestId("report-found-note"), "Behind the scale", { delay: 20 });
+    await userEvent.click(within(dialog).getByTestId("report-found-submit"));
+
+    await expect(await screen.findByText("2 × SKU-BERAS-5K sent for approval")).toBeInTheDocument();
+    await expect(reportScenario.last).toEqual({ productId: 74n, rackId: 41n, quantity: 2n, note: "Behind the scale" });
+  },
+};
+
+// The picker offers only what this warehouse holds or has held (a-warehouse-picks-only-what-it-has-held): "gula" finds
+// Gula Pasir, with its owner beside it — and not Gula Merah's carton, whose team never had it in Gudang Pusat, so a found
+// of it would be refused at the report (a-found-never-stocked-here-is-refused-at-the-report).
+export const ReportFoundOffersOnlyWhatWasHeldHere: Story = {
+  render: () => <At41 />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("rack-action-report-found"));
+    const dialog = await screen.findByTestId("report-found-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog).toHaveTextContent("Only products this warehouse holds or has held");
+
+    const input = within(dialog).getByRole("combobox");
+    await userEvent.click(input);
+    await userEvent.type(input, "gula", { delay: 20 });
+    const option = await within(dialog).findByTestId("product-select-option-SKU-GULA-1K");
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(option).toHaveTextContent("Gula Pasir 1kg · Toko Kenanga");
+    await waitFor(() => expect(within(dialog).getAllByRole("option")).toHaveLength(1));
+    await expect(within(dialog).queryByTestId("product-select-option-SL-03-ANG-006")).toBeNull();
+  },
+};
+
+// The Owner and Admin report from the shelf too — the same request, approved by somebody else.
+export const TheOwnerReportsFoundToo: Story = {
+  render: () => <At41 />,
+  beforeEach: () => {
+    asTeam(11n)();
+    asRole(Role.WAREHOUSE_OWNER)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("rack-action-report-found")).toBeInTheDocument();
   },
 };

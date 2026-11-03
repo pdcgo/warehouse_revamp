@@ -341,13 +341,6 @@ export function PickOrderPage() {
                                   {loc.rackId === 0n ? t("picking.table.unplaced") : loc.rackCode}
                                 </Badge>
                                 <Text fontSize="sm">×{String(loc.quantity)}</Text>
-                                {loc.countingSessionId > 0n && (
-                                  // A count holds this shelf: the order was taken, the pick WAITS until the count
-                                  // releases it (a-lock-stops-units-moving-not-sales).
-                                  <Badge colorPalette="warning" data-testid={`pick-shelf-counting-${item.productId}-${loc.rackId}`}>
-                                    {t("picking.waitingForCount", { rack: loc.rackCode, id: loc.countingSessionId.toString() })}
-                                  </Badge>
-                                )}
                               </Flex>
                             ))}
                           </Stack>
