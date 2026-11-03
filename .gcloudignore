@@ -1,0 +1,21 @@
+# What `san deploy` uploads to Cloud Build (`gcloud run deploy --source .`, from the repository root).
+#
+# A WHITELIST: the module files and backend/ — all `go build` needs for a backend/cmd/<service> — and nothing
+# else: not examples/ (the label PDFs the build never reads), not the frontend, docs, audits or the local
+# binaries. Check the list with:
+#
+#   gcloud meta list-files-for-upload
+#
+# Whenever this file exists gcloud ignores .gitignore, so everything to keep out is said here.
+
+/*
+!/go.mod
+!/go.sum
+!/backend/
+
+/backend/bin/
+/backend/**/*.exe
+/backend/**/node_modules/
+/backend/**/*.pdf
+/backend/**/*_test.go
+/backend/pkgs/san_receipt_readers/.git

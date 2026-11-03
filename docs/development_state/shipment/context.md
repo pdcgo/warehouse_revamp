@@ -10,6 +10,21 @@ backends built, wired, tested, audited. Deferred by decision, not missing: track
 - Decisions: [context_decision.md](../../business/shipment/context_decision.md) — 25
 - Clarify: [context_clarify.md](../../business/shipment/context_clarify.md) — **1 open** (2026-10-05): Q1 the eight couriers live receipts ship by. `ReceiptCheck`'s Q2–Q4 were answered the same day
 
+## Deployable on its own — `san deploy` (2026-11-03)
+
+shipment_service is the first service with an entry point of its own, [backend/cmd/shipment_service](../../../backend/cmd/shipment_service/),
+and the first `san deploy` ships to Cloud Run ([san-deploy-ships-one-service-to-cloud-run](../../technical/development/workflow_decision.md#san-deploy-ships-one-service-to-cloud-run),
+[docs/tools/san.md#deploy](../../tools/san.md#deploy)). The dev server still mounts it too, unchanged.
+
+| | |
+| --- | --- |
+| entry point | its own Wire: config, db, cache, signer, the DB role resolver, `shipment_v1.NewService`, the mux, the server. Same `register.go`, same chain (protovalidate → access interceptor), `/healthz`, `PORT` wins over `ADDR` |
+| guard | on Cloud Run (`K_SERVICE` set) it refuses to start with the dev `JWT_SECRET` or `DATABASE_URL` |
+| left out | the agent verifier and team kinds (an agent bearer is Unauthenticated here), Redis unless `REDIS_ADDR` |
+| ⚠ not yet usable signed in | no user_service is deployed, so nothing mints a token: the channel reads work, the label check and the channel writes answer Unauthenticated until one is |
+| tests | `config_test.go` (the guard, PORT) · `service_api_test.go` (healthz, both services mounted behind the login, no other service mounted) — no database. Smoke-run against the local database: `ShipmentChannelList` answered |
+| not yet done | a real deploy: the secrets, the `warehouse_revamp` database and its migrations are the owner's to create |
+
 ## `ReceiptCheck` — BUILT (2026-10-23)
 
 The owner accepted the screen and the contract on 2026-10-23, and the backend landed the same day. Flow, gates and

@@ -11,6 +11,7 @@
 //	san product    product_service one-shots — the product-code recompose
 //	san remote     serve this checkout to a coding agent (Connect RPC + MCP)
 //	san dev        set up and run the local stack — docker, the API and the UI, in one terminal
+//	san deploy     ship one service to Cloud Run — Cloud Build compiles it, nothing is migrated
 //
 // # Why one binary and not two
 //
@@ -82,6 +83,9 @@ func main() {
 			productCommand(),
 			pubsubCommand(),
 			remoteCommand(),
+
+			// Shipping a service to Cloud Run. It touches no database, so it never asks Local/Production.
+			deployCommand(),
 
 			// The local stack.
 			devCommand(),

@@ -14,7 +14,7 @@ go run ./tools/san user reset-password --username ani
 
 ---
 
-## One CLI, five jobs
+## One CLI, six jobs
 
 `san` covers the whole life of the project's data and the environment around it.
 
@@ -25,6 +25,7 @@ go run ./tools/san user reset-password --username ani
 | **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) · [`product recompose-codes`](#product-recompose-codes) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
 | **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
+| **the deployment** | [`deploy`](#deploy) | ship one service to Cloud Run — built by Cloud Build, never migrated |
 
 ```mermaid
 flowchart LR
@@ -34,6 +35,7 @@ flowchart LR
         U["user reset-password · user root"]
         R["remote · remote mcp · refresh-token"]
         V["dev setup · dev run"]
+        D["deploy"]
     end
     M -->|"shapes the schema"| DB[(Postgres)]
     S -->|"puts rows in it"| DB
@@ -41,6 +43,8 @@ flowchart LR
     R -->|"runs shell commands in the checkout"| WS[/"the working tree"/]
     V -->|"starts the API and the UI from"| WS
     V -->|"setup migrates and seeds the LOCAL one"| DB
+    D -->|"uploads backend/ from"| WS
+    D -->|"Cloud Build, then a new revision"| CR["Cloud Run"]
 ```
 
 > **This used to be two binaries.** `migrate`, `seed`, `db` and `region` lived in
@@ -92,12 +96,14 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`remote refresh-token`](#remote-refresh-token) | Push the stored token's deadline out — same token, so nothing has to be re-pasted |
 | [`remote exec`](#remote-exec) | The client: run one command on a `remote` server and stream its output |
 | [`remote get` · `remote put`](#remote-get--remote-put) | The client: move a file to or from the server, byte for byte |
+| [`deploy`](#deploy) | Build one service with Cloud Build and deploy it to Cloud Run — today `shipment_service`. Never migrates |
 
 *(Every new one is added to this table — see [Adding a command](#adding-a-command).)*
 
-**`remote`, `pubsub` and `dev run` touch no database**, so they never ask Local/Production and need
+**`remote`, `pubsub`, `dev run` and `deploy` touch no database**, so they never ask Local/Production and need
 no Postgres running (`dev run` starts the containers, and that is all). `--dsn` is meaningless to all
-three. `pubsub` has its own target flags instead — `--project`, and `--emulator` for the local broker.
+four. `pubsub` has its own target flags instead — `--project`, and `--emulator` for the local broker;
+`deploy` has `--project` and `--region`.
 
 **`dev setup` touches only the local one, and never asks.** It refuses to run at all when `--dsn` or
 `DATABASE_URL` is set — see [local only](#dev-setup).
@@ -1476,6 +1482,118 @@ echo "package main" | go run ./tools/san remote put src/main.go
 
 ---
 
+## `deploy`
+
+Ship **one service** to Cloud Run: Cloud Build compiles its own entry point from source, and Cloud Run serves it
+([san-deploy-ships-one-service-to-cloud-run](../technical/development/workflow_decision.md#san-deploy-ships-one-service-to-cloud-run)).
+
+```sh
+go run ./tools/san deploy                                   # pick the service, check, confirm, deploy
+go run ./tools/san deploy --service shipment_service
+go run ./tools/san deploy --service shipment_service --dry-run   # the plan and the gcloud commands; runs nothing
+```
+
+> ⚠ **This acts on production.** It shows the whole plan, checks it, and makes you type `production` before
+> anything is built.
+
+**Deployable today: `shipment_service` only** — the one service with an entry point of its own
+([backend/cmd/shipment_service](../../backend/cmd/shipment_service/)). Every other service still runs only inside
+the dev server, which mounts them all.
+
+| service | entry point | Cloud Run service | secrets (env ← Secret Manager, `:latest`) |
+| --- | --- | --- | --- |
+| `shipment_service` | `./backend/cmd/shipment_service` | `revamp-shipment-service` | `DATABASE_URL` ← `revamp-database-url` · `JWT_SECRET` ← `revamp-jwt-secret` |
+
+```mermaid
+flowchart TD
+    P["pick the service"] --> T["project and region: flags, else the active gcloud config"]
+    T --> G{"uncommitted changes?"}
+    G -->|"yes, no --allow-dirty"| X["refuse"]
+    G -->|"no, or --allow-dirty"| S["print the plan"]
+    S --> D{"--dry-run?"}
+    D -->|"yes"| C["print the gcloud commands, stop"]
+    D -->|"no"| F["preflight: every secret exists, and the Cloud Run service is ours"]
+    F --> Y["type production"]
+    Y --> B["gcloud run deploy --source . — Cloud Build compiles backend/cmd/service"]
+    B --> H["GET the new URL /healthz"]
+```
+
+### What it does
+
+1. **Picks the service** — `--service`, or a picker. A service with no entry point of its own is refused by name.
+2. **Reads the target** — `--project` / `SAN_DEPLOY_PROJECT` and `--region` / `SAN_DEPLOY_REGION`, else the active
+   gcloud config (`gcloud config get-value project`, `run/region`). Nothing about the target is written in this
+   repository: it is public.
+3. **Refuses a dirty tree** unless `--allow-dirty`. `--source .` uploads the **working tree**, so a dirty deploy runs
+   code no commit holds; with the flag the revision is labelled `<commit>-dirty`.
+4. **Prints the plan**, then with `--dry-run` the exact gcloud commands, and stops there.
+5. **Preflight**, before the confirmation:
+   - every secret in the service's row exists (`gcloud secrets describe`) — all missing ones named at once;
+   - the Cloud Run service is **ours**: it does not exist yet, or carries the label `app=warehouse-revamp`. The
+     project is **shared with other systems**, a deploy replaces the service it names, so a same-named service
+     without our label is refused.
+6. **Confirms** — type `production` (the same guard `san_dbtarget` puts on every database command).
+7. **Deploys** — `gcloud run deploy <name> --source=.` with buildpacks: `GOOGLE_BUILDABLE` is the service's entry
+   point, `GOOGLE_GO_VERSION` is go.mod's `go` line (not the buildpack's "latest"). The secrets are mapped to env
+   by `--set-secrets`, the revision labelled `app`, `service`, `commit`. gcloud runs on san's console, so it may
+   ask to create the `cloud-run-source-deploy` repository or enable an API on a first run.
+8. **Checks** `GET <url>/healthz` and prints the URL. A deploy that already succeeded is not failed by this.
+
+**What goes up** is decided by [.gcloudignore](../../.gcloudignore) — a whitelist of `go.mod`, `go.sum` and
+`backend/` (no binaries, no test files, no PDFs, no `examples/` — nothing the build does not read). Check the list
+with `gcloud meta list-files-for-upload` (≈ 830 files, ≈ 10 MB).
+
+### Flags
+
+| Flag | Env | |
+| --- | --- | --- |
+| `--service` | | the service; omitted = a picker |
+| `--project` | `SAN_DEPLOY_PROJECT` | default: the gcloud config's `project` |
+| `--region` | `SAN_DEPLOY_REGION` | default: the gcloud config's `run/region` |
+| `--cloudsql-instance` | `SAN_DEPLOY_CLOUDSQL_INSTANCE` | `project:region:instance`, mounted at `/cloudsql/<it>` — the DSN in the secret then uses `host=/cloudsql/<it>` |
+| `--allowed-origins` | `SAN_DEPLOY_ALLOWED_ORIGINS` | comma-separated CORS origins (`ALLOWED_ORIGINS`). Omitted = left as deployed |
+| `--allow-dirty` | | deploy uncommitted changes, labelled `<commit>-dirty` |
+| `--dry-run` | | the plan and the commands; nothing runs, nothing is asked |
+
+### What it does NOT do
+
+- **Migrate.** Migrations stay their own manual step (owner, 2026-11-03): run
+  `go run ./tools/san migrate up --service shipment_service` against that database first — and **user_service**'s,
+  because the access interceptor reads `user_team_roles` from the same database.
+- **Create secrets or grant IAM.** Once, per project:
+  `gcloud secrets create revamp-database-url --data-file=-` (and `revamp-jwt-secret`), and the Cloud Run runtime
+  service account needs *Secret Manager Secret Accessor* and, for the socket, *Cloud SQL Client*.
+- **Touch a database.** It never asks Local/Production, and `--dsn` means nothing to it.
+
+### The deployed service
+
+`backend/cmd/shipment_service` is shipment_service **alone** — `ShipmentChannelService` and `ReceiptService` behind
+the dev server's own chain (protovalidate, then the access interceptor), on `PORT` (Cloud Run's), `/healthz` for
+the probe. Run it locally with `go run ./backend/cmd/shipment_service` (`:8090`, the docker-compose database).
+
+- **It refuses to start on Cloud Run with a dev default** for `JWT_SECRET` or `DATABASE_URL` (`K_SERVICE` set): a
+  missing secret would otherwise make every signed-in call Unauthenticated. Cloud Run keeps the old revision.
+- **`JWT_SECRET` must be user_service's**: this service verifies tokens it does not mint.
+- ⚠ **No sign-in is deployed yet.** The channel reads are public and work; the label check and the channel writes
+  need a token from user_service, which still runs only in the dev server.
+- ⚠ **No agent verifier, no team kinds**: an AI-agent bearer (`wha_…`) answers Unauthenticated here.
+- ⚠ **Cache is in-process** unless `REDIS_ADDR` is set: with more than one instance, a revoked role stays cached on
+  the others until its TTL lapses. `ReceiptCheck`'s two-at-once limit is per instance too.
+
+### Errors you should expect
+
+| Message | Meaning |
+| --- | --- |
+| `the working tree has uncommitted changes` | commit, or `--allow-dirty` |
+| `"x" cannot be deployed — deployable: …` | that service has no entry point of its own yet |
+| `gcloud is not on PATH` | install the Google Cloud CLI, `gcloud auth login` |
+| `no project` / `no region` | pass the flag, or set it in the gcloud config |
+| `secrets missing (or not readable) in <project>: …` | create them — or the account lacks access |
+| `the Cloud Run service … is NOT labelled app=warehouse-revamp` | a same-named service belongs to something else; refused |
+| `deployed with a dev default for JWT_SECRET` (in Cloud Run's log) | the revision would not start; check the secret mapping |
+
+---
+
 ## Adding a command
 
 ```mermaid
@@ -1549,6 +1667,9 @@ this document in the same commit.
 | [`dev_setup.go`](../../tools/san/dev_setup.go) | `dev setup`: the local-only guard, the submodule check, the data steps in order |
 | [`dev_run.go`](../../tools/san/dev_run.go) | `dev run`: the stack, the supervisor, the line prefixer |
 | [`proctree/`](../../tools/san/proctree/) | start a child in its own group, kill its whole tree. Shared by `remote` and `dev run` |
+| [`deploy.go`](../../tools/san/deploy.go) | `deploy`: the deployable services, the plan, the preflight, the gcloud calls |
+| [`backend/cmd/shipment_service`](../../backend/cmd/shipment_service/) | the entry point `deploy` builds for shipment_service — its own Wire, config and chain |
+| [`.gcloudignore`](../../.gcloudignore) | what `deploy` uploads: `go.mod`, `go.sum`, `backend/` |
 | [`pkgs/san_dbtarget`](../../backend/pkgs/san_dbtarget/) | the Local/Production choice, shared with `cmd/tool` |
 
 **`remote/` is a Connect service that deliberately does NOT live in `backend/services/`.** Every
