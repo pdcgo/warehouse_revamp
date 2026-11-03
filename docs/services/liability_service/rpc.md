@@ -38,6 +38,41 @@ re-computable figure. Restrict `/event/liability-restock-accepted/push` at the i
 ⚠ **This does not change costing.** The charge still flows into the batch's landed price — the same rupiah answers what
 the goods cost and who is owed for them.
 
+## The courier at a return — `ChargeReturnCourier`
+
+The restock's twin, at the other door ([a-return-may-carry-the-couriers-ask](../../business/balance/context_decision.md#a-return-may-carry-the-couriers-ask)):
+when the warehouse accepts a returned parcel, the courier may ask for something, the warehouse pays it from its cash
+box, and the selling team owes it back. Rarely — so it is optional, and 0 posts nothing.
+
+```mermaid
+sequenceDiagram
+    participant W as warehouse crew
+    participant O as selling_service
+    participant PS as Pub/Sub
+    participant S as liability_service
+
+    W->>O: OrderReturnAccept — the missing units, the courier charge and its note
+    O->>O: ONE transaction - return_completed, the accept row with the charge as its note
+    O-->>W: the order, the labels to print
+    O->>PS: Order Return Accepted - the charge, its note, who accepted and their override stamp
+    PS->>S: push to /event/liability-order-return-accepted/push
+    S->>S: ChargeReturnCourier - return_incidental_fee keyed by the order, two legs
+```
+
+| | |
+| --- | --- |
+| who owes whom | the order's selling team (`team_id`) owes the warehouse that **accepted** it (`warehouse_id`) — the door the courier was paid at. Not always the one the order shipped from: the configured return warehouse, or one an old label named ([the-accept-records-where-it-was-accepted](../../business/order/context_decision.md#the-accept-records-where-it-was-accepted)) |
+| to oneself | nothing — a team that is its own warehouse paid its own courier. Skipped before `PostEntry`, which refuses one team on both sides and would make the push NACK forever |
+| the source | ⚠ **`return_incidental_fee`**, `source_id` = the order — not the restock's `incidental_fee`, though it is the same kind of money. `incidental_fee`'s `source_id` is a restock, and an order id from selling_service can be the same number as a restock id from inventory_service: under the key `(team, counterparty, source_type, source_id, reversal)` the second charge for the pair would be swallowed as a redelivery of the first, and the history would read *"restock #&lt;order&gt;"*. Proved by `TestChargeReturnCourier_DoesNotCollideWithARestockOfTheSameNumber` |
+| a redelivery | posts nothing new — `ErrAlreadyPosted` is the normal answer |
+| 0 | posts nothing — the common case |
+| actor and stamp | the event's `actor_id` and `actor_is_override`, read from the accept's timeline row — never the envelope |
+| the screens | the counterparty history labels it *"Courier at a return · order #N"*; the daily statement's courier column sums both courier types |
+| a lost event | the debt is unposted; the charge survives as the text of the accept's timeline row (*"Courier charge Rp 15.000: …"*) — not a structured field to re-post from, unlike the restock's ([no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)) |
+
+⚠ **The route is an open webhook**, as the restock's is: restrict `/event/liability-order-return-accepted/push` at the
+ingress to Pub/Sub's push.
+
 ## How the two services are joined
 
 `inventory_service` declares `LiabilityPoster` in its own terms and imports nothing from liability; the adapter lives in
@@ -50,6 +85,7 @@ called inside the adjust's or count's transaction:
 | selling → inventory (`StockPicker`) | ❌ another service's commit | takes the stock, **compensates** if the order then fails |
 | inventory → liability, stock damage (`LiabilityPoster`) | ✅ same database | one transaction, **nothing to compensate** |
 | inventory → liability, courier charge (*Restock Accepted*) | ❌ after commit | the event; a lost one is found on the restock |
+| selling → liability, courier at a return (*Order Return Accepted*) | ❌ after commit | the event; a lost one is read off the accept's timeline note |
 
 ## The write path has no wire surface
 

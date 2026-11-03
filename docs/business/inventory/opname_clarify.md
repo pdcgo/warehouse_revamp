@@ -336,6 +336,35 @@ The register is your §How We Manage Stock Problem In Warehouses
 19. ✅ *(2026-10-14)* **Answered in chat, as recommended** — [a-snapshot-includes-rows-at-zero](./opname_decision.md#a-snapshot-includes-rows-at-zero), [an-all-count-visits-every-rack](./opname_decision.md#an-all-count-visits-every-rack).
 20. ✅ *(2026-10-14)* **Answered in chat, as recommended** — [a-surplus-draft-is-counted-by-the-system](./opname_decision.md#a-surplus-draft-is-counted-by-the-system), [a-difference-needs-its-reason-on-the-draft](./opname_decision.md#a-difference-needs-its-reason-on-the-draft).
 21. ✅ *(2026-10-14)* **Answered in chat, as recommended** — [a-short-rack-gets-a-lost-draft-from-the-system](./opname_decision.md#a-short-rack-gets-a-lost-draft-from-the-system).
+
+*(2026-11-02 — raised by the build of [the-count-prototype-is-accepted](./opname_decision.md#the-count-prototype-is-accepted).
+Each was built the safe way and works today; the answer may change it.)*
+
+22. ⬜ **An Adjust *found* can be credited twice.** [an-adjustment-writes-the-same-problem-row](./opname_decision.md#an-adjustment-writes-the-same-problem-row)
+    makes a found by either door a claim with a second person; the Adjust screen's *found* is still the provisional one, outside
+    the register — so a later count can claim back a loss the found already returned. **→ Recommend:** an Adjust *found*
+    becomes a claim on the batch's oldest open loss, waiting for the warehouse Owner or Admin to approve it in the app, as a
+    count's surplus does.
+23. ⬜ **Does a count that moves no money need the second person?** [a-money-difference-needs-a-second-person](./opname_decision.md#a-money-difference-needs-a-second-person)
+    says it *finalizes at once*; [nobody-finalizes-their-own-count](./opname_decision.md#nobody-finalizes-their-own-count) says
+    never a counter. Built: never a counter, always. **→ Recommend:** keep it — read *at once* as *no approval step*, not *by
+    the counter*.
+24. ⬜ **A sale or a cancel during a count skews it.** A unit taken from a counted rack after its count makes finalize go
+    below zero and refuse; an order cancelled mid-count puts units back and the count over-reads. **→ Recommend:** finalize
+    corrects each counted figure by the rack's ledger movements since the row was counted, both ways — the count stays true to
+    the moment it was made.
+25. ⬜ **A rack a count holds can be deleted.** Deleting a rack whose row is open at zero is not refused. **→ Recommend:**
+    refuse it, naming the session — an open row is a lock ([the-lock-is-the-open-snapshot-row](./opname_decision.md#the-lock-is-the-open-snapshot-row)).
+
+```mermaid
+flowchart LR
+  C["a row counted"] --> S["a sale takes a unit from the rack"]
+  S --> F["finalize - counted minus taken since"]
+  C --> X["an order cancelled - a unit put back"]
+  X --> F
+  F --> OK["the count is true to its moment"]
+```
+
 ---
 
 # Contradiction

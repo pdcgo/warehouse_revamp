@@ -19,7 +19,7 @@ import { useFinalizeOpnameSession, useOpnameFinalizePreview, useOpnameSession } 
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { useIsMobile } from "../../layouts/shell";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 import { canManageOpname } from "../../lib/roles";
 
 const POST: Record<OpnamePostType, { key: string; color: string }> = {
@@ -37,15 +37,30 @@ const BLOCK_KEY: Record<OpnameFinalizeBlock, string> = {
   [OpnameFinalizeBlock.OWN_COUNT]: "opnameSession.finalize.block.ownCount",
 };
 
+// The transactions a team's share posts in (problem-and-found-replace-opname), in their order, each in its one colour:
+// PROBLEM — broken and lost, what the warehouse owes; FOUND — claims back and new stock; MOVE — units only on the wrong
+// rack, no money.
+type Tx = "problem" | "found" | "move";
+
+const TX_COLOR: Record<Tx, string> = { problem: "error", found: "success", move: "gray" };
+
+function transactionsOf(p: OpnameFinalizeProduct): Tx[] {
+  const out: Tx[] = [];
+  if (p.lines.some((l) => l.type === OpnamePostType.BROKEN || l.type === OpnamePostType.LOST)) out.push("problem");
+  if (p.lines.some((l) => l.type === OpnamePostType.CLAIM || l.type === OpnamePostType.MINT)) out.push("found");
+  if (p.movedCount > 0n) out.push("move");
+
+  return out;
+}
+
 // OpnameFinalizePage — WHAT FINALIZE WILL POST, before it does (opname.md §How We Manage Stock Problem In Warehouses).
 // Each product is settled over all its racks: broken is posted as written, and only the rest is netted — short is lost,
 // over claims an old loss back and then mints, 0 is a move (broken-posts-as-written-the-rest-nets). Each line is a batch,
-// oldest first, broken before lost (broken-takes-its-batch-before-lost).
+// oldest first, broken before lost (broken-takes-its-batch-before-lost). The summary reads in the three transactions a
+// team's share posts in, and each product names the ones it posts in.
 //
 // Finalizing IS the agreement (finalizing-is-the-agreement), so the second person reads this and confirms — and is never
 // one of the session's counters (nobody-finalizes-their-own-count).
-//
-// ⚠ PROTOTYPE until design_accept — Storybook's stub plays it.
 export function OpnameFinalizePage() {
   const { current } = useTeam();
   const navigate = useNavigate();
@@ -83,7 +98,9 @@ export function OpnameFinalizePage() {
 
   const teamName = (id: bigint) => teams.data?.[id.toString()]?.name ?? `#${id}`;
   const blocked = data.block !== OpnameFinalizeBlock.UNSPECIFIED;
+  const active = session.status === OpnameSessionStatus.ACTIVE;
   const finished = session.status === OpnameSessionStatus.FINISH;
+  const moved = data.products.reduce((sum, p) => sum + p.movedCount, 0n);
 
   async function confirmFinalize() {
     try {
@@ -118,7 +135,7 @@ export function OpnameFinalizePage() {
             {t("opnameSession.finalize.subtitle")}
           </Text>
         </Stack>
-        {!finished && (
+        {active && (
           <Button size="xs" colorPalette="brand" disabled={blocked} onClick={() => setConfirming(true)} data-testid="opname-finalize-submit">
             <Icon as={Flag} boxSize="4" />
             {t("opnameSession.detail.finalize")}
@@ -126,55 +143,69 @@ export function OpnameFinalizePage() {
         )}
       </Flex>
 
-      {blocked && (
-        <Alert.Root status="warning" data-testid={`opname-finalize-block-${data.block}`}>
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Description>
-              {t(BLOCK_KEY[data.block], { left: (session.rowCount - session.countedRowCount).toString() })}
-            </Alert.Description>
-          </Alert.Content>
-        </Alert.Root>
-      )}
-
-      <SummaryStrip testId="opname-finalize-summary">
-        <SummaryCard
-          label={t("opnameSession.finalize.summary.owed")}
-          value={formatRupiah(data.owedAmount)}
-          line={t("opnameSession.finalize.summary.owedLine")}
-          emphasis
-          testId="opname-finalize-owed"
-        />
-        <SummaryCard
-          label={t("opnameSession.finalize.summary.claimed")}
-          value={formatRupiah(data.claimedAmount)}
-          line={t("opnameSession.finalize.summary.claimedLine")}
-          testId="opname-finalize-claimed"
-        />
-        <SummaryCard
-          label={t("opnameSession.finalize.summary.minted")}
-          value={formatRupiah(data.mintedAmount)}
-          line={t("opnameSession.finalize.summary.mintedLine")}
-          testId="opname-finalize-minted"
-        />
-        <SummaryCard
-          label={t("opnameSession.finalize.summary.products")}
-          value={data.products.length.toString()}
-          line={t("opnameSession.finalize.summary.productsLine")}
-          testId="opname-finalize-products"
-        />
-      </SummaryStrip>
-
-      {data.products.length === 0 ? (
-        <Text color="fg.muted" data-testid="opname-finalize-nothing">
-          {t("opnameSession.finalize.nothing")}
+      {!active ? (
+        <Text color="fg.muted" data-testid="opname-finalize-finished">
+          {finished ? t("opnameSession.finalize.finished") : t("opnameSession.finalize.block.notActive")}
         </Text>
       ) : (
-        <Stack gap="card">
-          {data.products.map((p) => (
-            <ProductSettlement key={`${p.teamId}:${p.productId}`} product={p} teamName={teamName(p.teamId)} compact={isMobile} />
-          ))}
-        </Stack>
+        <>
+          {blocked && (
+            <Alert.Root status="warning" data-testid={`opname-finalize-block-${data.block}`}>
+              <Alert.Indicator />
+              <Alert.Content>
+                <Alert.Description>
+                  {t(BLOCK_KEY[data.block], { left: (session.rowCount - session.countedRowCount).toString() })}
+                </Alert.Description>
+              </Alert.Content>
+            </Alert.Root>
+          )}
+
+          <SummaryStrip testId="opname-finalize-summary">
+            <SummaryCard
+              label={t("opnameSession.finalize.summary.owed")}
+              value={formatRupiahNumber(data.owedAmount)}
+              line={t("opnameSession.finalize.summary.owedLine")}
+              emphasis
+              testId="opname-finalize-owed"
+            />
+            <SummaryCard
+              label={t("opnameSession.finalize.summary.claimed")}
+              value={formatRupiahNumber(data.claimedAmount)}
+              line={t("opnameSession.finalize.summary.claimedLine")}
+              testId="opname-finalize-claimed"
+            />
+            <SummaryCard
+              label={t("opnameSession.finalize.summary.minted")}
+              value={formatRupiahNumber(data.mintedAmount)}
+              line={t("opnameSession.finalize.summary.mintedLine")}
+              testId="opname-finalize-minted"
+            />
+            <SummaryCard
+              label={t("opnameSession.finalize.summary.moved")}
+              value={t("opnameSession.finalize.summary.movedValue", { count: Number(moved) })}
+              line={t("opnameSession.finalize.summary.movedLine")}
+              testId="opname-finalize-moved"
+            />
+            <SummaryCard
+              label={t("opnameSession.finalize.summary.products")}
+              value={data.products.length.toString()}
+              line={t("opnameSession.finalize.summary.productsLine")}
+              testId="opname-finalize-products"
+            />
+          </SummaryStrip>
+
+          {data.products.length === 0 ? (
+            <Text color="fg.muted" data-testid="opname-finalize-nothing">
+              {t("opnameSession.finalize.nothing")}
+            </Text>
+          ) : (
+            <Stack gap="card">
+              {data.products.map((p) => (
+                <ProductSettlement key={`${p.teamId}:${p.productId}`} product={p} teamName={teamName(p.teamId)} compact={isMobile} />
+              ))}
+            </Stack>
+          )}
+        </>
       )}
 
       <ConfirmDialog
@@ -182,7 +213,7 @@ export function OpnameFinalizePage() {
         onOpenChange={setConfirming}
         destructive={false}
         title={t("opnameSession.finalize.confirmTitle", { id: sessionId.toString() })}
-        message={t("opnameSession.finalize.confirmMessage", { owed: formatRupiah(data.owedAmount) })}
+        message={t("opnameSession.finalize.confirmMessage", { owed: formatRupiahNumber(data.owedAmount) })}
         confirmLabel={t("opnameSession.detail.finalize")}
         dismissLabel={t("opnameSession.create.dismiss")}
         onConfirm={confirmFinalize}
@@ -191,12 +222,11 @@ export function OpnameFinalizePage() {
   );
 }
 
-// One product, settled over all its racks: the arithmetic in one line, then what posts, per batch.
+// One product, settled over all its racks: the transactions it posts in, the arithmetic in one line, what posts per
+// batch, and what only moves.
 function ProductSettlement({ product, teamName, compact }: { product: OpnameFinalizeProduct; teamName: string; compact: boolean }) {
   const { t } = useTranslation();
   const p = product;
-  const outcome =
-    p.restCount < 0n ? "short" : p.restCount > 0n ? "over" : p.brokenCount > 0n ? "brokenOnly" : "move";
 
   return (
     <Card.Root variant="outline" size="sm" data-testid={`opname-finalize-product-${p.productId}`}>
@@ -208,9 +238,13 @@ function ProductSettlement({ product, teamName, compact }: { product: OpnameFina
               {p.productCode} · {teamName}
             </Span>
           </Stack>
-          <Badge variant="outline" data-testid={`opname-finalize-outcome-${p.productId}`}>
-            {t(`opnameSession.finalize.outcome.${outcome}`)}
-          </Badge>
+          <HStack gap="1" data-testid={`opname-finalize-tx-${p.productId}`}>
+            {transactionsOf(p).map((tx) => (
+              <Badge key={tx} variant="subtle" colorPalette={TX_COLOR[tx]}>
+                {t(`opnameSession.finalize.tx.${tx}`)}
+              </Badge>
+            ))}
+          </HStack>
         </HStack>
 
         <Text fontSize="sm" data-testid={`opname-finalize-arithmetic-${p.productId}`}>
@@ -232,9 +266,9 @@ function ProductSettlement({ product, teamName, compact }: { product: OpnameFina
                 <HStack key={i} gap="2" fontSize="sm" wrap="wrap">
                   <Badge colorPalette={POST[l.type].color}>{t(POST[l.type].key)}</Badge>
                   <Span>
-                    {l.stockCount.toString()} × {formatRupiah(l.priceUnit)}
+                    {l.stockCount.toString()} × {formatRupiahNumber(l.priceUnit)}
                   </Span>
-                  <Span fontWeight="bold">{formatRupiah(l.amount)}</Span>
+                  <Span fontWeight="bold">{formatRupiahNumber(l.amount)}</Span>
                 </HStack>
               ))}
             </Stack>
@@ -266,10 +300,10 @@ function ProductSettlement({ product, teamName, compact }: { product: OpnameFina
                         {l.stockCount.toString()}
                       </Table.Cell>
                       <Table.Cell textAlign="end" fontVariantNumeric="tabular-nums">
-                        {formatRupiah(l.priceUnit)}
+                        {formatRupiahNumber(l.priceUnit)}
                       </Table.Cell>
                       <Table.Cell textAlign="end" fontWeight="bold" fontVariantNumeric="tabular-nums">
-                        {formatRupiah(l.amount)}
+                        {formatRupiahNumber(l.amount)}
                       </Table.Cell>
                     </Table.Row>
                   ))}
@@ -277,6 +311,12 @@ function ProductSettlement({ product, teamName, compact }: { product: OpnameFina
               </Table.Root>
             </Box>
           ))}
+
+        {p.movedCount > 0n && (
+          <Text fontSize="sm" color="fg.muted" data-testid={`opname-finalize-move-${p.productId}`}>
+            {t("opnameSession.finalize.move", { count: Number(p.movedCount) })}
+          </Text>
+        )}
       </Card.Body>
     </Card.Root>
   );

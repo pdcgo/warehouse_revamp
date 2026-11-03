@@ -13,6 +13,7 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
 var (
@@ -33,10 +34,14 @@ var (
 //     batches oldest first, a surplus is minted at the owner's newest price here, an exact count writes a 0 rack row.
 //     A shortfall is written off and owed like a lost unit (a-recount-shortfall-is-written-off-and-owed); a surplus
 //     moves no money.
-//   - DAMAGED / LOST take a NAMED batch's units off a rack; FOUND puts them back. A damaged or lost unit is written off
-//     to expense after commit and owed to its owner inside the transaction; a found one gives that debt back.
+//   - DAMAGED / LOST are a REPORT AT THE SHELF — the stock-problem register's second door
+//     (an-adjustment-writes-the-same-problem-row): a `problem` transaction of the batch's owner, its rows saying broken
+//     or lost, and one warehouse_stock_problems row for the named batch at its price (post_problem.go). Written off to
+//     expense after commit and owed to its owner inside the transaction, as before.
+//   - FOUND puts a named batch's units back, still the provisional `adjustment`, and gives that debt back. The finished
+//     found claims the oldest open loss and wants a second person — undesigned at the shelf (adjustment.md is empty).
 //
-// Each call is one `adjustment` transaction of the product's owner.
+// Every write is refused on a product a stock count holds on that rack (a-lock-stops-units-moving-not-sales).
 func (s *Service) StockAdjust(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockAdjustRequest],
@@ -83,37 +88,67 @@ func (s *Service) StockAdjust(
 		if batchReason {
 			found := reason == inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND
 
-			adjusted, adjustErr := inventory_mutations.PostBatchAdjust(tx, inventory_mutations.BatchAdjust{
-				WarehouseID: warehouseID,
-				ProductID:   productID,
-				PlacementID: rackID,
-				BatchID:     msg.GetBatchId(),
-				Count:       msg.GetQuantity(),
-				Found:       found,
-				ActorID:     actor,
-				IsOverride:  override,
-				Description: msg.GetReason(),
-			})
-			if adjustErr != nil {
-				return adjustErr
+			var (
+				txID      uint64
+				owner     uint64
+				value     float64
+				rackAfter int64
+			)
+
+			if found {
+				adjusted, adjustErr := inventory_mutations.PostBatchFound(tx, inventory_mutations.BatchFound{
+					WarehouseID: warehouseID,
+					ProductID:   productID,
+					PlacementID: rackID,
+					BatchID:     msg.GetBatchId(),
+					Count:       msg.GetQuantity(),
+					ActorID:     actor,
+					IsOverride:  override,
+					Description: msg.GetReason(),
+				})
+				if adjustErr != nil {
+					return adjustErr
+				}
+
+				txID, owner, value, rackAfter = adjusted.Transaction.ID, adjusted.OwnerTeamID, adjusted.Value, adjusted.RackAfter
+			} else {
+				problemType := inventory_service_models.ProblemBroken
+				if reason == inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_LOST {
+					problemType = inventory_service_models.ProblemLost
+				}
+
+				reported, reportErr := inventory_mutations.PostShelfProblem(tx, inventory_mutations.ShelfProblem{
+					WarehouseID: warehouseID,
+					ProductID:   productID,
+					PlacementID: rackID,
+					BatchID:     msg.GetBatchId(),
+					Count:       msg.GetQuantity(),
+					Type:        problemType,
+					ActorID:     actor,
+					IsOverride:  override,
+					Description: msg.GetReason(),
+				})
+				if reportErr != nil {
+					return reportErr
+				}
+
+				txID, owner, value, rackAfter = reported.Transaction.ID, reported.OwnerTeamID, reported.Value, reported.RackAfter
+				loss = value
 			}
 
 			delta := -msg.GetQuantity()
 			if found {
 				delta = msg.GetQuantity()
-			} else {
-				loss = adjusted.Value
 			}
 
-			movement = adjustMovement(adjusted.Transaction.ID, warehouseID, productID, rackID, msg.GetBatchId(),
-				delta, adjusted.RackAfter, msg.GetReason(), actor)
+			movement = adjustMovement(txID, warehouseID, productID, rackID, msg.GetBatchId(),
+				delta, rackAfter, msg.GetReason(), actor)
 
 			// THE WAREHOUSE OWES THE OWNER for what it broke or lost, and is owed it back when the goods turn up
-			// (business_level §Warehouse 5) — inside the transaction, keyed by the adjustment.
-			amount := int64(math.Round(adjusted.Value))
-			if amount > 0 && adjusted.OwnerTeamID != warehouseID {
-				damageErr := s.liability.PostStockDamage(ctx, tx, adjusted.OwnerTeamID, warehouseID,
-					adjusted.Transaction.ID, actor, amount, damageKindOf(reason))
+			// (business_level §Warehouse 5) — inside the transaction, keyed by the problem or the adjustment.
+			amount := int64(math.Round(value))
+			if amount > 0 && owner != warehouseID {
+				damageErr := s.liability.PostStockDamage(ctx, tx, owner, warehouseID, txID, actor, amount, damageKindOf(reason))
 				if damageErr != nil {
 					return damageErr
 				}
@@ -223,6 +258,10 @@ func adjustMovement(
 // adjustErr maps a provisional adjustment's refusal to Connect.
 func adjustErr(err error) error {
 	var short *inventory_ledgers.NotEnoughStockError
+
+	if refused := countedRefusal(err); refused != nil {
+		return refused
+	}
 
 	switch {
 	case errors.Is(err, errRackMissing):

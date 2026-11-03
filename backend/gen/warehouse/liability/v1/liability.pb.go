@@ -87,6 +87,15 @@ const (
 	// ⚠ The TYPE carries the cause and the FLAG carries the direction — they are not redundant, and
 	// both stay in the idempotency key.
 	LiabilitySourceType_LIABILITY_SOURCE_TYPE_FOUND LiabilitySourceType = 8
+	// What the courier asked at the warehouse's door for a RETURNED parcel (a-return-may-carry-the-couriers-ask) — the
+	// selling team owes the warehouse. `source_id` is the ORDER, posted once from OrderReturnAccepted.
+	//
+	// ⚠ NOT INCIDENTAL_FEE, though it is the same kind of money: INCIDENTAL_FEE's `source_id` is a RESTOCK, and an order id
+	// from selling_service can equal a restock id from inventory_service. The idempotency key is (team, counterparty,
+	// source_type, source_id, reversal), so a return's charge and a restock's for the same pair and the same number
+	// would collide — the second swallowed as a redelivery of the first — and the history would read "restock #<order>".
+	// Its own type keeps both the key and the label honest; a reader summing the courier's asks reads both.
+	LiabilitySourceType_LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE LiabilitySourceType = 9
 )
 
 // Enum value maps for LiabilitySourceType.
@@ -100,16 +109,18 @@ var (
 		6: "LIABILITY_SOURCE_TYPE_BROKEN_GOOD",
 		7: "LIABILITY_SOURCE_TYPE_LOST_GOOD",
 		8: "LIABILITY_SOURCE_TYPE_FOUND",
+		9: "LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE",
 	}
 	LiabilitySourceType_value = map[string]int32{
-		"LIABILITY_SOURCE_TYPE_UNSPECIFIED":    0,
-		"LIABILITY_SOURCE_TYPE_ORDER_FEE":      2,
-		"LIABILITY_SOURCE_TYPE_PRODUCT_FEE":    3,
-		"LIABILITY_SOURCE_TYPE_PAYMENT":        4,
-		"LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE": 5,
-		"LIABILITY_SOURCE_TYPE_BROKEN_GOOD":    6,
-		"LIABILITY_SOURCE_TYPE_LOST_GOOD":      7,
-		"LIABILITY_SOURCE_TYPE_FOUND":          8,
+		"LIABILITY_SOURCE_TYPE_UNSPECIFIED":           0,
+		"LIABILITY_SOURCE_TYPE_ORDER_FEE":             2,
+		"LIABILITY_SOURCE_TYPE_PRODUCT_FEE":           3,
+		"LIABILITY_SOURCE_TYPE_PAYMENT":               4,
+		"LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE":        5,
+		"LIABILITY_SOURCE_TYPE_BROKEN_GOOD":           6,
+		"LIABILITY_SOURCE_TYPE_LOST_GOOD":             7,
+		"LIABILITY_SOURCE_TYPE_FOUND":                 8,
+		"LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE": 9,
 	}
 )
 
@@ -4656,7 +4667,7 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"!LiabilityTermsHistoryListResponse\x12S\n" +
 	"\x05items\x18\x01 \x03(\v2=.warehouse.liability.v1.LiabilityTermsHistoryListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\xe7\x02\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\x98\x03\n" +
 	"\x13LiabilitySourceType\x12%\n" +
 	"!LIABILITY_SOURCE_TYPE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fLIABILITY_SOURCE_TYPE_ORDER_FEE\x10\x02\x12%\n" +
@@ -4665,7 +4676,8 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"$LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE\x10\x05\x12%\n" +
 	"!LIABILITY_SOURCE_TYPE_BROKEN_GOOD\x10\x06\x12#\n" +
 	"\x1fLIABILITY_SOURCE_TYPE_LOST_GOOD\x10\a\x12\x1f\n" +
-	"\x1bLIABILITY_SOURCE_TYPE_FOUND\x10\b\"\x04\b\x01\x10\x01*\x1dLIABILITY_SOURCE_TYPE_COD_FEE*\xb1\x01\n" +
+	"\x1bLIABILITY_SOURCE_TYPE_FOUND\x10\b\x12/\n" +
+	"+LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE\x10\t\"\x04\b\x01\x10\x01*\x1dLIABILITY_SOURCE_TYPE_COD_FEE*\xb1\x01\n" +
 	"\x1dLiabilityPositionListDataType\x121\n" +
 	"-LIABILITY_POSITION_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")LIABILITY_POSITION_LIST_DATA_TYPE_GENERAL\x10\x01\x12.\n" +

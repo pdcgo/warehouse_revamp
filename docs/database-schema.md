@@ -441,6 +441,7 @@ erDiagram
         text        from       "warehouse or selling — the side that wrote it; quoted, an SQL keyword"
         bigint      actor_id   "who wrote it — opaque user_service id, no FK; 0 = not recorded"
         boolean     is_override "the actor was Root or the Administrator, not a member of the scoped team (00033)"
+        bigint      accepting_warehouse_id "the warehouse that accepted the return - on the return_completed row only, 0 elsewhere; opaque, no FK (00034)"
         timestamptz created_at "when it happened — the row is written at that moment"
     }
 
@@ -569,6 +570,12 @@ erDiagram
     keyword, so a hand-written query quotes it.
   - **`CHECK (status <> '' OR note <> '')`** — a row is a move, a note, or both; never nothing.
   - **`actor_id = 0` means "not recorded"**, never "nobody".
+  - **`accepting_warehouse_id`** (`00034`) — on the `return_completed` row, the warehouse whose staff accepted the return:
+    the scope of `OrderReturnAccept`, asked of nobody
+    ([the-accept-records-where-it-was-accepted](business/order/context_decision.md#the-accept-records-where-it-was-accepted)).
+    Not always `orders.warehouse_id` — the parcel comes back to the configured return warehouse, or to whichever an old
+    label names — so a mismatch with `team_return_configurations` is visible here. 0 on every other row, and on none
+    written before the column.
   - **Statuses repeat**: a warehouse hands an order back to `pending` and confirms it again, so `pending` and
     `processed` can each appear twice. No unique key on `(order_id, status)`.
   - **A NOTE IS A ROW WITH NO STATUS** ([a-note-is-a-timeline-row](technical/frontend/order_detail_decision.md#a-note-is-a-timeline-row)):
@@ -583,6 +590,11 @@ erDiagram
       The Down puts each order's earliest note row back into a re-added column and deletes no row.
     - **A note row moves nothing**: the list's `status_at` subquery matches `status = orders.status`, which a note row
       never does.
+- **`orders_return_team_idx`** (`00034`) — `(team_id) WHERE status IN ('return', 'return_completed')`, partial: the index of
+  the third reader every order read now has, the selling team's configured return warehouse, which reads that team's
+  returns only (`orderReaders`, [a-return-may-land-in-another-warehouse](business/order/context_decision.md#a-return-may-land-in-another-warehouse)).
+  Without it that arm read every order of the configured teams and the planner fell back to a sequential scan of
+  `orders` on every warehouse's list; with it the scope is one BitmapOr of three index scans.
 - **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.goods_cost` (`cogs`
   until `00027`) as what the goods cost the SELLER: Σ the lines' frozen `total`, so a borrowed line counts WITH its
   owner's markup ([the-cross-charge-lives-on-the-line](business/order/context_decision.md#the-cross-charge-lives-on-the-line)).
@@ -1339,6 +1351,129 @@ erDiagram
   On the TRAIL, not on `warehouse_transfers`, for the reason `restock_logs` carries it: one actor column per act there.
   ⚠ `WarehouseTransferUpdate` writes no trail row and no actor at all, so an edit has neither.
 
+### The stock count (`00035`)
+
+A count of one warehouse as a session ([opname.md](business/inventory/opname.md), accepted 2026-11-02 —
+[the-count-prototype-is-accepted](business/inventory/opname_decision.md#the-count-prototype-is-accepted)). The snapshot
+copies `product_placements`; an **open** snapshot row (`released_at` NULL) **is** the lock on that product on that rack
+([the-lock-is-the-open-snapshot-row](business/inventory/opname_decision.md#the-lock-is-the-open-snapshot-row)). Staff
+count blind and write each difference as a draft with its reason; finalize turns the drafts into the stock-problem
+register and the ledgers, in up to three transactions per owning team — `problem`, `found`, `move` — which the session
+lists. The register has a second door: a broken or lost unit reported on the Adjust screen.
+
+```mermaid
+erDiagram
+    opname_sessions {
+        bigserial   id              PK
+        bigint      warehouse_id    "UNIQUE where status is active - one-active-count-per-warehouse"
+        text        status          "active finish cancel"
+        text        plan            "all team product placement - the target is only a filter, not kept"
+        bigint      created_by_id
+        bigint      finalized_by_id "NULL until finish - CHECK set exactly when finished"
+        timestamptz finalized_at
+        timestamptz created_at
+    }
+    opname_session_snapshots {
+        bigserial   id                    PK
+        bigint      warehouse_id
+        bigint      team_id               "the product's owner"
+        bigint      product_id            "UNIQUE with placement_id while released_at is NULL - THE LOCK"
+        bigint      placement_id          FK
+        bigint      opname_session_id     FK
+        text        status                "created counted"
+        bigint      system_stock_count    "the book at the snapshot"
+        bigint      recounted_stock_count "the count that stands - NULL until counted, which is revealed"
+        boolean     recounted             "the one recount is used - not in opname.md"
+        boolean     found_here            "added by a counter - not in opname.md"
+        bigint      counted_by_id         "whoever entered the count that stands"
+        text        product_code          "snapshot - not in opname.md"
+        text        product_name          "snapshot - not in opname.md"
+        timestamptz released_at           "set at finalize or cancel"
+        timestamptz created_at
+    }
+    opname_problems_drafts {
+        bigserial   id                  PK
+        bigint      opname_session_id   FK "UNIQUE with product, placement, problem_type"
+        bigint      warehouse_id
+        bigint      team_id
+        bigint      product_id
+        bigint      placement_id        FK
+        text        problem_type        "broken lost"
+        bigint      problem_stock_count "broken - the counter's; lost - the shortage less the broken, the system's"
+        text        note                "the reason - required before the row is counted"
+        timestamptz created_at
+    }
+    opname_surplus_drafts {
+        bigserial   id                  PK
+        bigint      opname_session_id   FK "UNIQUE with product, placement"
+        bigint      warehouse_id
+        bigint      team_id
+        bigint      product_id
+        bigint      placement_id        FK
+        bigint      surplus_stock_count "count less book - the system's"
+        text        note                "the reason"
+        timestamptz created_at
+    }
+    warehouse_stock_problems {
+        bigserial   id                    PK
+        bigint      warehouse_id
+        bigint      team_id
+        bigint      product_id
+        bigint      transaction_id        FK "the problem transaction"
+        bigint      batch_id              FK "one row per type per batch"
+        bigint      placement_id          FK "NULL when netted over several racks"
+        text        note                  "rack code and note, joined"
+        text        problem_type          "broken lost"
+        bigint      problem_stock_count
+        float8      price_unit            "the batch's"
+        bigint      claimable_stock_count "lost - every unit, broken - 0 - CHECK"
+        bigint      claimed_stock_count   "CHECK not above claimable"
+        timestamptz created_at
+    }
+    problem_claimed_transactions {
+        bigserial   id                  PK
+        bigint      warehouse_id
+        bigint      problem_id          FK "UNIQUE with transaction_id"
+        bigint      transaction_id      FK "the found transaction"
+        bigint      claimed_stock_count
+        timestamptz created_at
+    }
+    opname_session_final_transactions {
+        bigserial   id                PK
+        bigint      opname_session_id FK
+        bigint      transaction_id    FK "UNIQUE"
+        timestamptz created_at
+    }
+    opname_sessions ||--|{ opname_session_snapshots : "counts"
+    opname_sessions ||--o{ opname_problems_drafts : "broken and lost"
+    opname_sessions ||--o{ opname_surplus_drafts : "over"
+    opname_sessions ||--o{ opname_session_final_transactions : "lists"
+    opname_session_final_transactions |o--|| inventory_transactions : "problem, found, move"
+    placements ||--o{ opname_session_snapshots : "on"
+    inventory_transactions ||--o{ warehouse_stock_problems : "writes"
+    batches ||--o{ warehouse_stock_problems : "lost or broken from"
+    warehouse_stock_problems ||--o{ problem_claimed_transactions : "claimed by"
+    inventory_transactions ||--o{ problem_claimed_transactions : "claims"
+```
+
+- **One active count per warehouse** is the partial unique index `opname_sessions_one_active`; **one open count per
+  product per rack** is `opname_session_snapshots_open_lock` on `(product_id, placement_id) WHERE released_at IS NULL`.
+- **Every mutation that moves units reads the lock after locking its shelf rows, in a statement of its own**
+  (`inventory_ledgers.RefuseCounted`): a put-away (restock and transfer accept), a move, a sample and an adjustment are
+  refused, naming the count; an order's take uses the counted racks last. A count is planned under `FOR SHARE` on the
+  same shelf rows, so the two queue — proved both ways in `opname_race_test.go`.
+- **A draft is keyed by its row** — `(opname_session_id, product_id, placement_id)`, the snapshot row's own grain; there
+  is no snapshot id on it, as opname.md draws it.
+- **The register's open losses** are indexed for the claim, oldest first: `(warehouse_id, team_id, product_id,
+  created_at, id) WHERE problem_type = 'lost' AND claimed_stock_count < claimable_stock_count`.
+- **Which door a problem came through** is whether `opname_session_final_transactions` lists its transaction: listed, a
+  count's finalize; not listed, a report at the shelf
+  ([a-session-lists-its-final-transactions](business/inventory/opname_decision.md#a-session-lists-its-final-transactions)).
+- **No override flag on the session** ([finalizing-is-the-agreement](business/inventory/opname_decision.md#finalizing-is-the-agreement)):
+  a finalize by Root is stamped on every transaction it writes (`inventory_transactions.is_override`).
+- **"Last counted"** on the rack, placement and batch screens is the later of a recount's `adjustment` rack row and the
+  `finalized_at` of a finished count holding a row there (index `(placement_id, product_id)`).
+
 ---
 
 ## region_service
@@ -1512,7 +1647,7 @@ erDiagram
         bigint      team_id         "whose books this leg is in, opaque, no FK"
         bigint      counterparty_id "the other side"
         bigint      amount          "signed — receivable positive, payable negative; whole rupiah"
-        text        source_type     "order_fee / product_fee / payment / incidental_fee / broken_good / lost_good / found; no CHECK"
+        text        source_type     "order_fee / product_fee / payment / incidental_fee / broken_good / lost_good / found / return_incidental_fee; no CHECK"
         bigint      source_id       "opaque id in the service that owns the cause, no FK"
         boolean     reversal        "undoes an earlier leg — part of the idempotency key"
         bigint      group_id        "both legs of one movement share it"

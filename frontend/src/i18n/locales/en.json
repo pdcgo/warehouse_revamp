@@ -203,7 +203,8 @@
     "requestFailed": "Could not send the request",
     "requestAskedTitle": "{{name}} asks you to pay {{amount}}",
     "requestAskedHelp": "Asked on {{date}}. Pay through Make Payment — nothing moves by itself.",
-    "requestSent": "You asked {{name}} to pay {{amount}} on {{date}}."
+    "requestSent": "You asked {{name}} to pay {{amount}} on {{date}}.",
+    "causeReturnIncidentalFee": "Courier at a return · order #{{id}}"
   },
   "common": {
     "perPage": "Per page",
@@ -1181,7 +1182,7 @@
     "rowActionConfirm": {
       "cancel": "Cancel order #{{id}}? This cannot be undone.",
       "ship": "Mark order #{{id}} as shipped? The parcel has left the warehouse.",
-      "returnGoods": "Return the goods on order #{{id}}? The stock comes back to the shelf.",
+      "returnGoods": "Return the goods on order #{{id}}? The parcel is on its way back — the warehouse accepts it when it arrives.",
       "markLost": "Mark order #{{id}} as lost? It is written off and the goods do not come back."
     },
     "editReceipt": {
@@ -2875,7 +2876,8 @@
       "toPick": "To Pick",
       "picked": "Picked",
       "handover": "Handed Over",
-      "all": "All"
+      "all": "All",
+      "return": "Returns"
     },
     "table": {
       "order": "Order",
@@ -2890,7 +2892,8 @@
     "action": {
       "confirm": "Confirm Order",
       "markPicked": "Mark Picked",
-      "markHandedOver": "Mark Handed Over"
+      "markHandedOver": "Mark Handed Over",
+      "acceptReturn": "Accept Return"
     },
     "detail": {
       "title": "Order #{{id}}",
@@ -2904,7 +2907,32 @@
       "picked": "Marked picked",
       "handedOver": "Marked handed over",
       "stepFailed": "Could not record that step"
-    }
+    },
+    "acceptReturn": {
+      "title": "Accept Return #{{id}}",
+      "intro": "The parcel is in your hands. The whole order comes back — name only what is missing from the box.",
+      "linesTitle": "What came back",
+      "linesHint": "Leave a line empty when every unit is in the box.",
+      "ordered_one": "{{count}} ordered",
+      "ordered_other": "{{count}} ordered",
+      "missing": "Missing",
+      "missingOf": "Missing units of {{name}}",
+      "shortHint": "The missing units are written on the order, for customer service to claim from the platform.",
+      "courierTitle": "Courier's charge at the door",
+      "courierHint": "Only if the courier asked for something when handing the parcel over. The warehouse pays it and the selling team owes it back.",
+      "courierAmount": "Amount",
+      "courierNote": "What it was for",
+      "courierNotePlaceholder": "e.g. return postage asked by J&T",
+      "courierNoteRequired": "Say what the courier's charge was for.",
+      "accepted": "Return accepted",
+      "labelsTitle": "Print the Labels",
+      "labelsIntro": "These units are another team's products, coming back as the selling team's own. Print each code and stick it over the old label, so the next pick scan matches.",
+      "labelOver": "Over the old label {{code}}",
+      "labelCount_one": "{{count}} label",
+      "labelCount_other": "{{count}} labels",
+      "done": "Done"
+    },
+    "waitingForCount": "Waiting — {{rack}} is being counted (count #{{id}})"
   },
   "batches": {
     "title": "Batches",
@@ -3222,44 +3250,6 @@
       "title": "Cancel Expense",
       "message": "An adjustment of minus {{net}} is recorded on the same day, so this expense counts for nothing. Both rows stay on the list.",
       "confirm": "Cancel Expense"
-    }
-  },
-  "opname": {
-    "title": "Stock Opname",
-    "selectTeam": "Select a warehouse team to count its shelves.",
-    "pickShelf": "Pick a shelf",
-    "pickShelfTitle": "Pick the shelf you are standing at",
-    "pickShelfBody": "A stock opname counts one shelf at a time. Choose it above and the products on it appear, with what the system believes is there.",
-    "unplacedUnsupported": "The unplaced pile cannot be counted here yet — it has no shelf to read from. Count a rack instead.",
-    "truncated": "This shelf holds more products than fit on one screen, so this count cannot cover all of it. Anything you do not count is left untouched.",
-    "emptyShelf": "The system believes this shelf is empty. Nothing to count.",
-    "onShelf": "On this shelf",
-    "counted": "Counted",
-    "notCounted": "Not counted",
-    "variances": "Variances",
-    "notePlaceholder": "What is this count for? (monthly count, after the leak…)",
-    "post": "Post Count of {{count}} Product",
-    "post_other": "Post Count of {{count}} Products",
-    "posted": "Counted {{count}} product",
-    "posted_other": "Counted {{count}} products",
-    "costUnknown": "cost unknown",
-    "unknownProduct": "Unknown product",
-    "confirmTitle": "Post This Stock Count",
-    "confirmBody": "This corrects real stock and writes off the value of anything missing. {{counted}} counted, {{variances}} differ from the system, {{uncounted}} left uncounted and untouched.",
-    "confirmAction": "Post Count",
-    "resultTitle": "Counted {{count}} product — {{variances}} differed",
-    "resultTitle_other": "Counted {{count}} products — {{variances}} differed",
-    "resultClean": "Everything counted matched the system.",
-    "resultLoss": "{{amount}} of stock was written off.",
-    "resultLossPartial": "At least {{amount}} of stock was written off — some of it came off a batch whose cost was never recorded, so the real figure is higher.",
-    "dismiss": "Dismiss",
-    "table": {
-      "product": "Product",
-      "expected": "Expected",
-      "counted": "Counted",
-      "variance": "Variance",
-      "value": "Value at risk",
-      "writtenOff": "Written off"
     }
   },
   "periodGrain": {
@@ -4739,29 +4729,27 @@
     },
     "finalize": {
       "title": "Finalize Count #{{id}}",
-      "subtitle": "What finalizing posts, per product. Finalizing agrees the debt: the warehouse pays the teams for what is broken or lost.",
+      "subtitle": "What finalizing posts, per product, in each team's problem, found and move transactions. Finalizing agrees the debt: the warehouse pays the teams for what is broken or lost.",
       "block": {
         "notActive": "This count is not active.",
         "rowsNotCounted": "{{left}} rows are not counted yet.",
         "ownCount": "You counted rows in this count — another Owner or Admin finalizes it."
       },
       "summary": {
-        "owed": "The warehouse owes",
+        "owed": "Problem — the warehouse owes",
         "owedLine": "broken and lost, at their batch prices",
-        "claimed": "Claimed back",
-        "claimedLine": "old losses found again",
-        "minted": "New batches",
-        "mintedLine": "surplus with nothing to claim",
+        "claimed": "Found — claimed back",
+        "claimedLine": "old losses found again — the team pays back",
+        "minted": "Found — new stock",
+        "mintedLine": "a surplus with nothing to claim — no money moves",
         "products": "Products",
-        "productsLine": "with a difference or a rack change"
+        "productsLine": "with a difference or a rack change",
+        "moved": "Move",
+        "movedValue_one": "{{count}} unit",
+        "movedValue_other": "{{count}} units",
+        "movedLine": "only on the wrong rack — no money"
       },
       "nothing": "Every product matches its book — finalizing only releases the racks.",
-      "outcome": {
-        "short": "Short",
-        "over": "Over",
-        "brokenOnly": "Broken",
-        "move": "Moved between racks"
-      },
       "arithmetic": "Book {{book}} · sellable {{sellable}} · broken {{broken}} · the rest",
       "racksChanged_one": "{{count}} rack corrected",
       "racksChanged_other": "{{count}} racks corrected",
@@ -4783,7 +4771,15 @@
       },
       "confirmTitle": "Finalize Count #{{id}}?",
       "confirmMessage": "This posts every line above and releases the racks. The warehouse owes {{owed}}. It cannot be undone.",
-      "done": "Count #{{id}} finalized"
+      "done": "Count #{{id}} finalized",
+      "tx": {
+        "problem": "Problem",
+        "found": "Found",
+        "move": "Move"
+      },
+      "move_one": "Move: {{count}} unit between racks, no money",
+      "move_other": "Move: {{count}} units between racks, no money",
+      "finished": "This count is finalized — its problem, found and move transactions are posted."
     }
   },
   "analytic": {

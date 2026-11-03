@@ -5,9 +5,9 @@ import { Minus, TriangleAlert } from "lucide-react";
 import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
 import type { ExpenseTotals } from "../../../gen/warehouse/expense/v1/expense_pb";
 import type { LiabilityDailyTotals } from "../../../gen/warehouse/liability/v1/liability_pb";
-import { LiabilitySourceType } from "../../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../../lib/money";
 import type { PeriodGrain } from "../../../lib/period";
+import { courierAsks } from "../queries";
 import type { StatementMode } from "../queries";
 
 export interface StatementSummaryProps {
@@ -51,7 +51,7 @@ export function StatementSummary({
   const profit = income - spent;
 
   const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
-  const codFees = liability?.bySource[LiabilitySourceType.INCIDENTAL_FEE] ?? 0n;
+  const codFees = courierAsks(liability?.bySource);
 
   // AN AVERAGE PER ROW, because that is the number a statement is for: "we clear about 400.000 a day" is
   // a sentence somebody can act on, where a period total is only comparable against another period of

@@ -203,7 +203,8 @@
     "requestFailed": "Permintaan tidak dapat dikirim",
     "requestAskedTitle": "{{name}} meminta Anda membayar {{amount}}",
     "requestAskedHelp": "Diminta pada {{date}}. Bayar lewat Buat Pembayaran — tidak ada yang bergerak sendiri.",
-    "requestSent": "Anda meminta {{name}} membayar {{amount}} pada {{date}}."
+    "requestSent": "Anda meminta {{name}} membayar {{amount}} pada {{date}}.",
+    "causeReturnIncidentalFee": "Biaya kurir retur · pesanan #{{id}}"
   },
   "common": {
     "perPage": "Per halaman",
@@ -1169,7 +1170,7 @@
     "rowActionConfirm": {
       "cancel": "Batalkan pesanan #{{id}}? Tindakan ini tidak bisa dibatalkan.",
       "ship": "Jadikan pesanan #{{id}} dikirim? Paketnya sudah keluar dari gudang.",
-      "returnGoods": "Retur barang pesanan #{{id}}? Stoknya kembali ke rak.",
+      "returnGoods": "Retur barang pesanan #{{id}}? Paket sedang kembali — gudang menerimanya saat tiba.",
       "markLost": "Jadikan pesanan #{{id}} lost? Pesanan dihapusbukukan dan barangnya tidak kembali."
     },
     "editReceipt": {
@@ -2862,7 +2863,8 @@
       "toPick": "Perlu Diambil",
       "picked": "Sudah Diambil",
       "handover": "Sudah Diserahkan",
-      "all": "Semua"
+      "all": "Semua",
+      "return": "Retur"
     },
     "table": {
       "order": "Pesanan",
@@ -2877,7 +2879,8 @@
     "action": {
       "confirm": "Konfirmasi Pesanan",
       "markPicked": "Tandai Sudah Diambil",
-      "markHandedOver": "Tandai Diserahkan"
+      "markHandedOver": "Tandai Diserahkan",
+      "acceptReturn": "Terima Retur"
     },
     "detail": {
       "title": "Pesanan #{{id}}",
@@ -2891,7 +2894,30 @@
       "picked": "Ditandai sudah diambil",
       "handedOver": "Ditandai diserahkan",
       "stepFailed": "Tidak dapat mencatat langkah itu"
-    }
+    },
+    "acceptReturn": {
+      "title": "Terima Retur #{{id}}",
+      "intro": "Paketnya sudah di tangan Anda. Seluruh pesanan kembali — cukup tulis yang tidak ada di dalam paket.",
+      "linesTitle": "Yang kembali",
+      "linesHint": "Biarkan kosong jika semua unit baris itu ada di paket.",
+      "ordered_other": "{{count}} dipesan",
+      "missing": "Kurang",
+      "missingOf": "Unit {{name}} yang kurang",
+      "shortHint": "Unit yang kurang dicatat di pesanan, agar customer service bisa mengklaimnya ke platform.",
+      "courierTitle": "Biaya kurir di pintu",
+      "courierHint": "Hanya jika kurir meminta sesuatu saat menyerahkan paket. Gudang membayarnya dan tim penjual menggantinya.",
+      "courierAmount": "Jumlah",
+      "courierNote": "Untuk apa",
+      "courierNotePlaceholder": "Contoh: ongkir retur yang diminta J&T",
+      "courierNoteRequired": "Tulis untuk apa biaya kurir ini.",
+      "accepted": "Retur diterima",
+      "labelsTitle": "Cetak Label",
+      "labelsIntro": "Unit ini produk tim lain yang kembali sebagai produk milik tim penjual sendiri. Cetak setiap kode dan tempel di atas label lama, agar scan ambil berikutnya cocok.",
+      "labelOver": "Di atas label lama {{code}}",
+      "labelCount_other": "{{count}} label",
+      "done": "Selesai"
+    },
+    "waitingForCount": "Menunggu — {{rack}} sedang dihitung (opname #{{id}})"
   },
   "batches": {
     "title": "Batch",
@@ -3207,41 +3233,6 @@
       "title": "Batalkan Biaya",
       "message": "Penyesuaian minus {{net}} dicatat pada tanggal yang sama, sehingga biaya ini tidak lagi terhitung. Kedua baris tetap terlihat.",
       "confirm": "Batalkan"
-    }
-  },
-  "opname": {
-    "title": "Stok Opname",
-    "selectTeam": "Pilih tim gudang untuk menghitung raknya.",
-    "pickShelf": "Pilih rak",
-    "pickShelfTitle": "Pilih rak tempat Anda berdiri",
-    "pickShelfBody": "Stok opname menghitung satu rak setiap kali. Pilih di atas dan produk di rak itu akan muncul, beserta jumlah menurut sistem.",
-    "unplacedUnsupported": "Tumpukan belum ditempatkan belum bisa dihitung di sini — tidak ada rak untuk dibaca. Hitung sebuah rak saja.",
-    "truncated": "Rak ini memuat lebih banyak produk daripada yang muat di satu layar, jadi penghitungan ini tidak bisa mencakup semuanya. Yang tidak Anda hitung tidak akan diubah.",
-    "emptyShelf": "Menurut sistem rak ini kosong. Tidak ada yang dihitung.",
-    "onShelf": "Di rak ini",
-    "counted": "Dihitung",
-    "notCounted": "Belum dihitung",
-    "variances": "Selisih",
-    "notePlaceholder": "Untuk apa penghitungan ini? (hitung bulanan, setelah kebocoran…)",
-    "post": "Posting Hitungan {{count}} Produk",
-    "posted": "{{count}} produk dihitung",
-    "costUnknown": "biaya tidak diketahui",
-    "unknownProduct": "Produk tidak dikenal",
-    "confirmTitle": "Posting Penghitungan Stok Ini",
-    "confirmBody": "Ini mengoreksi stok nyata dan menghapusbukukan nilai yang hilang. {{counted}} dihitung, {{variances}} berbeda dari sistem, {{uncounted}} tidak dihitung dan tidak diubah.",
-    "confirmAction": "Posting Hitungan",
-    "resultTitle": "{{count}} produk dihitung — {{variances}} berselisih",
-    "resultClean": "Semua yang dihitung cocok dengan sistem.",
-    "resultLoss": "{{amount}} stok dihapusbukukan.",
-    "resultLossPartial": "Setidaknya {{amount}} stok dihapusbukukan — sebagian berasal dari batch yang biayanya tidak pernah dicatat, jadi angka sebenarnya lebih tinggi.",
-    "dismiss": "Tutup",
-    "table": {
-      "product": "Produk",
-      "expected": "Menurut sistem",
-      "counted": "Dihitung",
-      "variance": "Selisih",
-      "value": "Nilai berisiko",
-      "writtenOff": "Dihapusbukukan"
     }
   },
   "periodGrain": {
@@ -4717,29 +4708,27 @@
     },
     "finalize": {
       "title": "Finalisasi Opname #{{id}}",
-      "subtitle": "Yang diposting saat finalisasi, per produk. Finalisasi berarti menyetujui utang: gudang membayar tim untuk yang rusak atau hilang.",
+      "subtitle": "Yang diposting saat finalisasi, per produk, dalam transaksi masalah, ditemukan, dan pindah tiap tim. Finalisasi berarti menyetujui utang: gudang membayar tim untuk yang rusak atau hilang.",
       "block": {
         "notActive": "Opname ini tidak aktif.",
         "rowsNotCounted": "{{left}} baris belum dihitung.",
         "ownCount": "Anda ikut menghitung di opname ini — Owner atau Admin lain yang memfinalisasinya."
       },
       "summary": {
-        "owed": "Utang gudang",
+        "owed": "Masalah — utang gudang",
         "owedLine": "rusak dan hilang, dengan harga batch-nya",
-        "claimed": "Diklaim kembali",
-        "claimedLine": "kehilangan lama yang ditemukan lagi",
-        "minted": "Batch baru",
-        "mintedLine": "kelebihan tanpa kehilangan untuk diklaim",
+        "claimed": "Ditemukan — diklaim kembali",
+        "claimedLine": "kehilangan lama yang ditemukan lagi — tim membayar kembali",
+        "minted": "Ditemukan — stok baru",
+        "mintedLine": "kelebihan tanpa kehilangan untuk diklaim — tanpa uang",
         "products": "Produk",
-        "productsLine": "dengan selisih atau perubahan rak"
+        "productsLine": "dengan selisih atau perubahan rak",
+        "moved": "Pindah",
+        "movedValue_one": "{{count}} unit",
+        "movedValue_other": "{{count}} unit",
+        "movedLine": "hanya di rak yang salah — tanpa uang"
       },
       "nothing": "Semua produk cocok dengan sistem — finalisasi hanya melepas raknya.",
-      "outcome": {
-        "short": "Kurang",
-        "over": "Lebih",
-        "brokenOnly": "Rusak",
-        "move": "Pindah antar rak"
-      },
       "arithmetic": "Sistem {{book}} · layak jual {{sellable}} · rusak {{broken}} · sisanya",
       "racksChanged_one": "{{count}} rak dikoreksi",
       "racksChanged_other": "{{count}} rak dikoreksi",
@@ -4761,7 +4750,15 @@
       },
       "confirmTitle": "Finalisasi Opname #{{id}}?",
       "confirmMessage": "Ini memposting setiap baris di atas dan melepas raknya. Utang gudang {{owed}}. Tidak bisa dibatalkan.",
-      "done": "Opname #{{id}} difinalisasi"
+      "done": "Opname #{{id}} difinalisasi",
+      "tx": {
+        "problem": "Masalah",
+        "found": "Ditemukan",
+        "move": "Pindah"
+      },
+      "move_one": "Pindah: {{count}} unit antar rak, tanpa uang",
+      "move_other": "Pindah: {{count}} unit antar rak, tanpa uang",
+      "finished": "Opname ini sudah difinalisasi — transaksi masalah, ditemukan, dan pindahnya sudah diposting."
     }
   },
   "analytic": {

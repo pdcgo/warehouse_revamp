@@ -16,26 +16,36 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 // one active session (one-active-count-per-warehouse); a session's rows are one product on one rack
 // (a-snapshot-row-per-product-on-a-rack), and an open row is the lock (the-lock-is-the-open-snapshot-row).
 //
-// ⚠ PROTOTYPE until design_accept: the service is mounted answering Unimplemented, and the screens run against the
-// Storybook stub. It supersedes InventoryService.StockOpname, the one-rack count with no session — that RPC and its
-// page stay until the backend step replaces them.
+// Accepted 2026-11-02 (the-count-prototype-is-accepted) and built: inventory_v1/opname_*.go, one file per RPC. It
+// replaced InventoryService.StockOpname, the one-rack count with no session. A finalize writes up to three transactions
+// per owning team — problem, found, move (problem-and-found-replace-opname) — listed in opname_session_final_transactions.
 service OpnameService {
   // ── The session — the warehouse admin's ──────────────────────────────────────────────────────────────────────────
   // The warehouse's sessions, newest first. Staff read it too, to find the active one to count.
-  rpc OpnameSessionList(OpnameSessionListRequest) returns (OpnameSessionListResponse);
+  rpc OpnameSessionList(OpnameSessionListRequest) returns (OpnameSessionListResponse) {
+    // A READ — no row, no event (the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Plan a count: snapshot the plan's shelf rows and lock them. Refused while another session is active.
   rpc OpnameSessionCreate(OpnameSessionCreateRequest) returns (OpnameSessionCreateResponse);
   // One session's header and progress.
-  rpc OpnameSessionDetail(OpnameSessionDetailRequest) returns (OpnameSessionDetailResponse);
+  rpc OpnameSessionDetail(OpnameSessionDetailRequest) returns (OpnameSessionDetailResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Call an active session off: its rows are released, nothing is posted (an-abandoned-count-waits-for-the-admin).
   rpc OpnameSessionCancel(OpnameSessionCancelRequest) returns (OpnameSessionCancelResponse);
   // Every row of a session WITH the book figure — the admin's watch page. Never served to staff: it would undo the
   // blind count.
-  rpc OpnameRowList(OpnameRowListRequest) returns (OpnameRowListResponse);
+  rpc OpnameRowList(OpnameRowListRequest) returns (OpnameRowListResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Send one counted row back to counting: its counts and its drafts are cleared (a-counted-row-is-read-only-until-sent-back).
   rpc OpnameRowSendBack(OpnameRowSendBackRequest) returns (OpnameRowSendBackResponse);
-  // What finalize would post, per product, and whether this person may finalize.
-  rpc OpnameFinalizePreview(OpnameFinalizePreviewRequest) returns (OpnameFinalizePreviewResponse);
+  // What finalize would post, per product, and whether this person may finalize. The same settlement the finalize runs,
+  // read without its locks.
+  rpc OpnameFinalizePreview(OpnameFinalizePreviewRequest) returns (OpnameFinalizePreviewResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Post the session: broken as written, the rest netted per product (broken-posts-as-written-the-rest-nets). Finalizing
   // IS the agreement (finalizing-is-the-agreement).
   rpc OpnameSessionFinalize(OpnameSessionFinalizeRequest) returns (OpnameSessionFinalizeResponse);
@@ -43,10 +53,14 @@ service OpnameService {
   // ── Counting — any warehouse member at the shelf ─────────────────────────────────────────────────────────────────
   // The racks to visit, with how many of their rows are counted. An `all` session lists every rack of the warehouse,
   // empty ones too (an-all-count-visits-every-rack).
-  rpc OpnameRackList(OpnameRackListRequest) returns (OpnameRackListResponse);
+  rpc OpnameRackList(OpnameRackListRequest) returns (OpnameRackListResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // One rack as its counter sees it: the products expected there, BLIND until each is counted
   // (a-count-is-blind-then-revealed).
-  rpc OpnameRackCount(OpnameRackCountRequest) returns (OpnameRackCountResponse);
+  rpc OpnameRackCount(OpnameRackCountRequest) returns (OpnameRackCountResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Submit a row's count. The first is the blind count; the second is the one recount, which replaces it
   // (a-row-keeps-only-its-latest-count). Answers the row revealed, its system-written draft included.
   rpc OpnameRowCount(OpnameRowCountRequest) returns (OpnameRowCountResponse);
@@ -408,15 +422,19 @@ enum OpnamePostType {
   OPNAME_POST_TYPE_MINT = 4;
 }
 
-// One posting line, per batch (a-shortage-writes-a-row-per-batch, broken-takes-its-batch-before-lost).
+// One posting line, per batch (a-shortage-writes-a-row-per-batch, broken-takes-its-batch-before-lost). Broken and lost
+// post in the team's `problem` transaction, a claim and a mint in its `found` one.
 message OpnamePostLine {
   OpnamePostType type = 1;
   // The batch taken from, claimed back into, or 0 for a mint.
   uint64 batch_id = 2;
   int64 stock_count = 3;
-  // Rupiah: the batch's price; a mint's is the team's newest batch price here (last-price-is-the-teams-newest-batch-here).
-  int64 price_unit = 4;
-  int64 amount = 5;
+  // Rupiah, double (money-is-double-in-the-api-too): the batch's price; a claim's is the lost row's; a mint's is the
+  // team's newest batch price here (last-price-is-the-teams-newest-batch-here).
+  double price_unit = 4;
+  // Rupiah: broken and lost — the value the batch gives up (an-emptying-take-takes-all-the-value); a claim or a mint —
+  // units × price_unit.
+  double amount = 5;
   // A claim: the lost problem it claims.
   uint64 problem_id = 6;
 }
@@ -438,6 +456,9 @@ message OpnameFinalizeProduct {
   // How many of its racks change.
   int64 rack_change_count = 9;
   repeated OpnamePostLine lines = 10;
+  // Units only on the wrong rack: what the team's `move` transaction carries off the racks it corrects down — no batch,
+  // no money (a-count-nets-each-product-across-the-session). 0 when every rack change is the problem's or the found's.
+  int64 moved_count = 11;
 }
 
 // Why finalize is refused for this person now. APPEND ONLY.
@@ -453,12 +474,12 @@ enum OpnameFinalizeBlock {
 message OpnameFinalizePreviewResponse {
   // Every product with a difference or a rack change, by team then name. A product whose racks all match is left out.
   repeated OpnameFinalizeProduct products = 1;
-  // Rupiah: broken + lost — the warehouse owes the teams.
-  int64 owed_amount = 2;
-  // Rupiah: claims — the teams pay the warehouse back.
-  int64 claimed_amount = 3;
-  // Rupiah: what the minted batches are worth.
-  int64 minted_amount = 4;
+  // Rupiah: broken + lost — the `problem` transactions; the warehouse owes the teams.
+  double owed_amount = 2;
+  // Rupiah: claims — part of the `found` transactions; the teams pay the warehouse back.
+  double claimed_amount = 3;
+  // Rupiah: what the minted batches are worth — the rest of the `found` transactions; no money moves.
+  double minted_amount = 4;
   OpnameFinalizeBlock block = 5;
 }
 
@@ -480,15 +501,29 @@ message OpnameSessionFinalizeRequest {
   uint64 session_id = 2 [(buf.validate.field).uint64.gt = 0];
 }
 
-// One owning team's share of a finalize: one opname transaction per team (a-snapshot-row-names-its-transaction).
+// Which of a team's up to three finalize transactions (problem-and-found-replace-opname). APPEND ONLY.
+enum OpnameTransactionType {
+  OPNAME_TRANSACTION_TYPE_UNSPECIFIED = 0;
+  // Units out, broken or lost — with the stock-problem rows.
+  OPNAME_TRANSACTION_TYPE_PROBLEM = 1;
+  // Units in, a surplus — claims of old losses, then a minted batch.
+  OPNAME_TRANSACTION_TYPE_FOUND = 2;
+  // Units only on the wrong rack — rack rows, no batch row, no money.
+  OPNAME_TRANSACTION_TYPE_MOVE = 3;
+}
+
+// One transaction a finalize wrote — listed by the session (a-session-lists-its-final-transactions). An owning team has
+// up to three: problem, found, move.
 message OpnameTransaction {
   uint64 transaction_id = 1;
   uint64 team_id = 2;
+  OpnameTransactionType type = 3;
 }
 
 message OpnameSessionFinalizeResponse {
   // FailedPrecondition for any OpnameFinalizeBlock.
   OpnameSession session = 1;
+  // By team, then problem · found · move.
   repeated OpnameTransaction transactions = 2;
 }
 

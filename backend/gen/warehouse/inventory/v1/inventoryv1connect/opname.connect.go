@@ -90,7 +90,8 @@ type OpnameServiceClient interface {
 	OpnameRowList(context.Context, *connect.Request[v1.OpnameRowListRequest]) (*connect.Response[v1.OpnameRowListResponse], error)
 	// Send one counted row back to counting: its counts and its drafts are cleared (a-counted-row-is-read-only-until-sent-back).
 	OpnameRowSendBack(context.Context, *connect.Request[v1.OpnameRowSendBackRequest]) (*connect.Response[v1.OpnameRowSendBackResponse], error)
-	// What finalize would post, per product, and whether this person may finalize.
+	// What finalize would post, per product, and whether this person may finalize. The same settlement the finalize runs,
+	// read without its locks.
 	OpnameFinalizePreview(context.Context, *connect.Request[v1.OpnameFinalizePreviewRequest]) (*connect.Response[v1.OpnameFinalizePreviewResponse], error)
 	// Post the session: broken as written, the rest netted per product (broken-posts-as-written-the-rest-nets). Finalizing
 	// IS the agreement (finalizing-is-the-agreement).
@@ -129,6 +130,7 @@ func NewOpnameServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+OpnameServiceOpnameSessionListProcedure,
 			connect.WithSchema(opnameServiceMethods.ByName("OpnameSessionList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		opnameSessionCreate: connect.NewClient[v1.OpnameSessionCreateRequest, v1.OpnameSessionCreateResponse](
@@ -141,6 +143,7 @@ func NewOpnameServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+OpnameServiceOpnameSessionDetailProcedure,
 			connect.WithSchema(opnameServiceMethods.ByName("OpnameSessionDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		opnameSessionCancel: connect.NewClient[v1.OpnameSessionCancelRequest, v1.OpnameSessionCancelResponse](
@@ -153,6 +156,7 @@ func NewOpnameServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+OpnameServiceOpnameRowListProcedure,
 			connect.WithSchema(opnameServiceMethods.ByName("OpnameRowList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		opnameRowSendBack: connect.NewClient[v1.OpnameRowSendBackRequest, v1.OpnameRowSendBackResponse](
@@ -165,6 +169,7 @@ func NewOpnameServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+OpnameServiceOpnameFinalizePreviewProcedure,
 			connect.WithSchema(opnameServiceMethods.ByName("OpnameFinalizePreview")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		opnameSessionFinalize: connect.NewClient[v1.OpnameSessionFinalizeRequest, v1.OpnameSessionFinalizeResponse](
@@ -177,12 +182,14 @@ func NewOpnameServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+OpnameServiceOpnameRackListProcedure,
 			connect.WithSchema(opnameServiceMethods.ByName("OpnameRackList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		opnameRackCount: connect.NewClient[v1.OpnameRackCountRequest, v1.OpnameRackCountResponse](
 			httpClient,
 			baseURL+OpnameServiceOpnameRackCountProcedure,
 			connect.WithSchema(opnameServiceMethods.ByName("OpnameRackCount")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		opnameRowCount: connect.NewClient[v1.OpnameRowCountRequest, v1.OpnameRowCountResponse](
@@ -304,7 +311,8 @@ type OpnameServiceHandler interface {
 	OpnameRowList(context.Context, *connect.Request[v1.OpnameRowListRequest]) (*connect.Response[v1.OpnameRowListResponse], error)
 	// Send one counted row back to counting: its counts and its drafts are cleared (a-counted-row-is-read-only-until-sent-back).
 	OpnameRowSendBack(context.Context, *connect.Request[v1.OpnameRowSendBackRequest]) (*connect.Response[v1.OpnameRowSendBackResponse], error)
-	// What finalize would post, per product, and whether this person may finalize.
+	// What finalize would post, per product, and whether this person may finalize. The same settlement the finalize runs,
+	// read without its locks.
 	OpnameFinalizePreview(context.Context, *connect.Request[v1.OpnameFinalizePreviewRequest]) (*connect.Response[v1.OpnameFinalizePreviewResponse], error)
 	// Post the session: broken as written, the rest netted per product (broken-posts-as-written-the-rest-nets). Finalizing
 	// IS the agreement (finalizing-is-the-agreement).
@@ -339,6 +347,7 @@ func NewOpnameServiceHandler(svc OpnameServiceHandler, opts ...connect.HandlerOp
 		OpnameServiceOpnameSessionListProcedure,
 		svc.OpnameSessionList,
 		connect.WithSchema(opnameServiceMethods.ByName("OpnameSessionList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	opnameServiceOpnameSessionCreateHandler := connect.NewUnaryHandler(
@@ -351,6 +360,7 @@ func NewOpnameServiceHandler(svc OpnameServiceHandler, opts ...connect.HandlerOp
 		OpnameServiceOpnameSessionDetailProcedure,
 		svc.OpnameSessionDetail,
 		connect.WithSchema(opnameServiceMethods.ByName("OpnameSessionDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	opnameServiceOpnameSessionCancelHandler := connect.NewUnaryHandler(
@@ -363,6 +373,7 @@ func NewOpnameServiceHandler(svc OpnameServiceHandler, opts ...connect.HandlerOp
 		OpnameServiceOpnameRowListProcedure,
 		svc.OpnameRowList,
 		connect.WithSchema(opnameServiceMethods.ByName("OpnameRowList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	opnameServiceOpnameRowSendBackHandler := connect.NewUnaryHandler(
@@ -375,6 +386,7 @@ func NewOpnameServiceHandler(svc OpnameServiceHandler, opts ...connect.HandlerOp
 		OpnameServiceOpnameFinalizePreviewProcedure,
 		svc.OpnameFinalizePreview,
 		connect.WithSchema(opnameServiceMethods.ByName("OpnameFinalizePreview")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	opnameServiceOpnameSessionFinalizeHandler := connect.NewUnaryHandler(
@@ -387,12 +399,14 @@ func NewOpnameServiceHandler(svc OpnameServiceHandler, opts ...connect.HandlerOp
 		OpnameServiceOpnameRackListProcedure,
 		svc.OpnameRackList,
 		connect.WithSchema(opnameServiceMethods.ByName("OpnameRackList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	opnameServiceOpnameRackCountHandler := connect.NewUnaryHandler(
 		OpnameServiceOpnameRackCountProcedure,
 		svc.OpnameRackCount,
 		connect.WithSchema(opnameServiceMethods.ByName("OpnameRackCount")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	opnameServiceOpnameRowCountHandler := connect.NewUnaryHandler(

@@ -278,6 +278,19 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "order-status-changed",
 			Filter: `attributes.event_type = "warehouse.events.v1.OrderStatusChanged"`,
 		},
+		// Return Arrived — the return accept's own event (the-accept-is-the-status-return-completed).
+		{
+			ID:     "selling-order-fold-return-accepted",
+			Topic:  "order-return-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderReturnAccepted"`,
+		},
+		// liability_service's courier charge at a RETURN — mirrors liability_service.OrderReturnAcceptedSubscription. The
+		// SAME topic as selling's fold, its OWN subscription (a-return-may-carry-the-couriers-ask).
+		{
+			ID:     "liability-order-return-accepted",
+			Topic:  "order-return-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderReturnAccepted"`,
+		},
 		// financial_account_service's withdrawal listener — mirrors financial_account_service.WithdrawalSubscription.
 		// The SAME topic as settlement's fold, its OWN subscription: each consumer keeps its own delivery state.
 		{

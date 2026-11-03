@@ -490,9 +490,8 @@ export type RackStockLine = Message<"warehouse.inventory.v1.RackStockLine"> & {
 
   /**
    * A COUNT HOLDS THIS PRODUCT ON THIS RACK (a-count-locks-the-product-on-the-rack): a move or a sample cannot take
-   * it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing).
-   *
-   * ⚠ Always false until the stock count (opname) is built; only the Storybook stub sets it.
+   * it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing). True while an open
+   * opname_session_snapshots row holds it (the-lock-is-the-open-snapshot-row).
    *
    * @generated from field: bool counting = 6;
    */

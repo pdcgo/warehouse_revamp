@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,7 +15,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, StickyNote, TriangleAlert } from "lucide-react";
+import { ArrowLeft, PackageCheck, StickyNote, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -29,6 +30,7 @@ import { usePickOrder } from "../../features/picking/queries";
 import { useOrderStatusChange } from "../../features/orders/queries";
 import { orderNotes, timelineFromKey } from "../../features/orders/timelineLogs";
 import { formatUnixDateTime } from "../../lib/datetime";
+import { AcceptReturnDialog } from "./components/AcceptReturnDialog";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -80,6 +82,8 @@ export function PickOrderPage() {
   const query = usePickOrder({ warehouseId, orderId });
   // The move invalidates the orders and the stock screens together.
   const moveMutation = useOrderStatusChange();
+  // THE RETURN ACCEPT's dialog (the-accept-is-the-status-return-completed).
+  const [accepting, setAccepting] = useState(false);
 
   const order = query.data?.order ?? null;
   const locations = query.data?.locations ?? [];
@@ -195,7 +199,22 @@ export function PickOrderPage() {
             {t(step.labelKey)}
           </Button>
         )}
+        {/* A RETURN'S ONE STEP IS THE ACCEPT (the-accept-is-the-status-return-completed): the parcel is in the crew's
+            hands. It is not one of NEXT_STEP's plain moves — it asks what is missing and what the courier charged, and
+            answers the labels to print — so it opens its own dialog. */}
+        {order.status === OrderStatus.RETURN && canWrite(current) && (
+          <Button colorPalette="brand" onClick={() => setAccepting(true)} data-testid="pick-order-accept-return">
+            <Icon as={PackageCheck} boxSize="4" />
+            {t("picking.action.acceptReturn")}
+          </Button>
+        )}
       </Flex>
+
+      {/* Mounted whatever the status: the accept re-reads the order as return_completed, and a dialog under the button
+          would vanish with the labels it is about to show. */}
+      {warehouseId !== undefined && (
+        <AcceptReturnDialog open={accepting} onOpenChange={setAccepting} teamId={warehouseId} order={order} />
+      )}
 
       {/* WHERE IT IS GOING — the block this screen was missing entirely (owner).
           It used to show the customer's NAME and nothing else, while the order carried a phone, a frozen
@@ -322,6 +341,13 @@ export function PickOrderPage() {
                                   {loc.rackId === 0n ? t("picking.table.unplaced") : loc.rackCode}
                                 </Badge>
                                 <Text fontSize="sm">×{String(loc.quantity)}</Text>
+                                {loc.countingSessionId > 0n && (
+                                  // A count holds this shelf: the order was taken, the pick WAITS until the count
+                                  // releases it (a-lock-stops-units-moving-not-sales).
+                                  <Badge colorPalette="warning" data-testid={`pick-shelf-counting-${item.productId}-${loc.rackId}`}>
+                                    {t("picking.waitingForCount", { rack: loc.rackCode, id: loc.countingSessionId.toString() })}
+                                  </Badge>
+                                )}
                               </Flex>
                             ))}
                           </Stack>

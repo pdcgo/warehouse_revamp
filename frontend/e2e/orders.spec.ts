@@ -921,6 +921,84 @@ test("Picking: a selling team is told the queue is a warehouse screen (#151)", a
   await expect(page.getByTestId("pick-queue-table")).toBeHidden();
 });
 
+// THE RETURN ACCEPT (the-accept-is-the-status-return-completed), end to end: customer service claims a handed-over order
+// back, the parcel reaches the warehouse, the crew finds it on its Returns tab and accepts it — with the courier's
+// charge at the door, which liability posts from OrderReturnAccepted as the selling team's debt to the warehouse
+// (a-return-may-carry-the-couriers-ask). The event is the real one: the e2e broker pushes it to :8081.
+test("Return: the warehouse accepts a returned parcel and the courier's charge lands on the balance", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await placeOrderViaForm(page, `${CUSTOMER} return`);
+  const orderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
+
+  // The warehouse walks it to the courier — three moves on the crew's screen.
+  await switchToWarehouse(page);
+  await page.goto(`/warehouse-orders/${orderId}`);
+
+  for (const next of ["Mark Picked", "Mark Handed Over"]) {
+    await page.getByTestId("pick-order-advance").click();
+    await expect(page.getByTestId("pick-order-advance")).toContainText(next);
+  }
+
+  await page.getByTestId("pick-order-advance").click();
+  await expect(page.getByTestId("pick-order-advance")).toBeHidden();
+
+  // Customer service claims it back from the selling seat: `return` is a claim, the parcel may still be in transit.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto(`/orders/${orderId}`);
+  await page.getByTestId("order-action-returnGoods").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "return");
+
+  // The parcel arrives: the crew finds it on the Returns tab — the accept's queue.
+  await switchToWarehouse(page);
+  await page.goto("/warehouse-orders");
+  await page.getByTestId("pick-tab-return").click();
+  await page.getByTestId(`pick-queue-row-${orderId}`).click();
+
+  // Nothing missing; the courier asked for postage, and the charge needs what it was for before Accept presses.
+  await page.getByTestId("pick-order-accept-return").click();
+  await page.getByTestId("accept-return-charge").fill("12000");
+  await expect(page.getByTestId("accept-return-charge-note-error")).toBeVisible();
+  await expect(page.getByTestId("accept-return-submit")).toBeDisabled();
+
+  await page.getByTestId("accept-return-charge-note").fill("ongkir retur");
+  await page.getByTestId("accept-return-submit").click();
+
+  // An order of the team's own product has no label to print, so the dialog closes on the accept — and the return's
+  // one step is gone with it.
+  await expect(page.getByTestId("accept-return-dialog")).toBeHidden();
+  await expect(page.getByTestId("pick-order-accept-return")).toBeHidden();
+  await expect(page.getByText("Return received").first()).toBeVisible();
+
+  // THE CHARGE ON THE BALANCE — the selling seat owes the warehouse, named as a return's courier charge on this order.
+  // It arrives through the broker, after the accept answered, so it is waited for.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await expect
+    .poll(
+      async () => {
+        await page.goto("/liability");
+        await expect(page.getByTestId("liability-list-page")).toBeVisible();
+
+        const row = page.locator('[data-testid^="liability-row-"]').filter({ hasText: WH_NAME });
+        const found = await row
+          .first()
+          .waitFor({ timeout: 5_000 })
+          .then(() => true)
+          .catch(() => false);
+        if (!found) return "";
+
+        await row.first().click();
+        await page.getByTestId("liability-detail-tab-payable").click({ timeout: 5_000 });
+
+        return (await page.getByTestId("liability-detail-payable").textContent({ timeout: 5_000 })) ?? "";
+      },
+      { timeout: 30_000, intervals: [1_000, 2_000, 3_000] },
+    )
+    .toContain(`Courier at a return · order #${orderId}`);
+});
+
 // #142 — a WAREHOUSE's Products screen shows what it has been ASKED to handle.
 //
 // Before this, a warehouse team opened Products and saw nothing: ProductList is scoped to the team that

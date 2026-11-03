@@ -41,6 +41,9 @@ const STATUS_TABS = [
   { value: "topick", labelKey: "picking.tab.toPick", status: OrderStatus.PROCESSED },
   { value: "picked", labelKey: "picking.tab.picked", status: OrderStatus.PICKED },
   { value: "handover", labelKey: "picking.tab.handover", status: OrderStatus.SHIPPING },
+  // THE RETURNS COMING BACK (the-accept-is-the-status-return-completed) — claimed by customer service, not yet in the
+  // crew's hands. The warehouse's working queue for the accept: a parcel arrives, its order is here, the crew accepts it.
+  { value: "return", labelKey: "picking.tab.return", status: OrderStatus.RETURN },
   { value: "all", labelKey: "picking.tab.all", status: OrderStatus.UNSPECIFIED },
 ];
 

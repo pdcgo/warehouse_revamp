@@ -85,6 +85,15 @@ const HANDLING_FEE = LiabilitySourceType.ORDER_FEE;
 // the-ledger-speaks-the-business-words fixed for free.
 const COD_FEE = LiabilitySourceType.INCIDENTAL_FEE;
 
+// The courier's ask at a RETURN's door (a-return-may-carry-the-couriers-ask) — the same money as COD_FEE, the courier paid
+// from the warehouse's cash box and owed back, under its own type only because its source is an order, not a restock.
+const RETURN_COD_FEE = LiabilitySourceType.RETURN_INCIDENTAL_FEE;
+
+/** What the couriers asked at the door, a restock's and a return's together — the statement's one courier column. */
+export function courierAsks(bySource: { [source: number]: bigint } | undefined): bigint {
+  return (bySource?.[COD_FEE] ?? 0n) + (bySource?.[RETURN_COD_FEE] ?? 0n);
+}
+
 // The daily statement's read.
 //
 // ⚠ THE SUBTRACTION HAPPENS HERE, ON THE CLIENT, and that is not laziness — it is the same call the
@@ -233,7 +242,7 @@ function mergeBuckets(
       unknownCostOrders: 0,
 
       feeEntries: Number(sum(f, (d) => d.entries)),
-      codFees: sum(f, (d) => d.bySource[COD_FEE]),
+      codFees: sum(f, (d) => courierAsks(d.bySource)),
 
       expenses,
       stockLoss,

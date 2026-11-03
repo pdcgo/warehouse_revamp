@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
@@ -78,6 +79,18 @@ func (s *Service) RackStock(
 		return nil, rackDBError(err)
 	}
 
+	// Which of them a stock count holds on this rack — the Move and Sample dialogs lock those at 0
+	// (a-lock-stops-units-moving-not-sales). One read for the page.
+	keys := make([]inventory_ledgers.RackKey, 0, len(levels))
+	for i := range levels {
+		keys = append(keys, inventory_ledgers.RackKey{ProductID: levels[i].ProductID, PlacementID: rackID})
+	}
+
+	counting, err := inventory_ledgers.CountLocks(s.db.WithContext(ctx), keys)
+	if err != nil {
+		return nil, rackDBError(err)
+	}
+
 	lines := make([]*inventoryv1.RackStockLine, 0, len(levels))
 
 	for i := range levels {
@@ -90,6 +103,7 @@ func (s *Service) RackStock(
 			// to infer it from a zero would show a shelf of never-restocked goods as worthless.
 			UnitCost:  unitCost,
 			CostKnown: known,
+			Counting:  isCounting(counting, levels[i].ProductID, rackID),
 		}
 
 		if known {

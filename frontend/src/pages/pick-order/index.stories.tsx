@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { returnAcceptScenario, withOrdersInReturn } from "../../../.storybook/sessionScenario";
 import { orderDetailFor, orders, teams } from "../../../.storybook/fixtures";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { PickOrderPage } from "./index";
@@ -23,6 +24,9 @@ import { PickOrderPage } from "./index";
 //   | AShippedOrderHasNoStepLeft      | a handed-over order leaves nothing to press                  |
 //   | AnOrderShippingElsewhereIsNot…  | the scope is this building                                   |
 //   | ASellingTeamIsTurnedAway        | no shelves, no pick list                                     |
+//   | AReturnIsAcceptedHere           | RETURN → Accept Return, then return_completed — nothing left |
+//   | OnlyAReturnOffersTheAccept      | a pending order is confirmed, never accepted as a return     |
+//   | TheReturnWarehouseAccepts…      | the configured return warehouse opens and accepts a return   |
 
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const SELLER = teams[1]!; // Toko Melati (12)
@@ -188,5 +192,60 @@ export const ASellingTeamIsTurnedAway: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("pick-order-not-warehouse")).toBeInTheDocument());
     await expect(canvas.queryByTestId("pick-list-table")).toBeNull();
+  },
+};
+
+// ── The return accept (the-accept-is-the-status-return-completed) ─────────────────────────────────
+
+/**
+ * A RETURN'S ONE STEP IS THE ACCEPT. Order 101 read in `return`: the crew's screen offers Accept Return — not a plain move,
+ * so it opens its dialog — and the accept moves it to return_completed, after which nothing is left to press.
+ */
+export const AReturnIsAcceptedHere: Story = {
+  beforeEach: withOrdersInReturn(FULL.id),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("pick-order-accept-return"));
+    await expect(canvas.queryByTestId("pick-order-advance")).toBeNull();
+
+    await userEvent.click(await screen.findByTestId("accept-return-submit"));
+
+    // A toast from an earlier story may still be on screen — at least one says so.
+    await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(canvas.queryByTestId("pick-order-accept-return")).toBeNull());
+    await expect(returnAcceptScenario.last?.orderId).toBe(FULL.id);
+  },
+};
+
+/** ONLY A RETURN OFFERS THE ACCEPT — the same order, pending, offers Confirm Order and no Accept Return. */
+export const OnlyAReturnOffersTheAccept: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("pick-order-advance")).toHaveTextContent("Confirm Order");
+    await expect(canvas.queryByTestId("pick-order-accept-return")).toBeNull();
+  },
+};
+
+/**
+ * THE RETURN WAREHOUSE ACCEPTS AN ORDER IT DID NOT SHIP (the-accept-records-where-it-was-accepted). Order 109 shipped from
+ * Gudang Cabang; Toko Melati returns to Gudang Pusat, whose crew opens it, accepts it — and the accept is scoped on Gudang
+ * Pusat, the warehouse recorded as where it was accepted.
+ */
+const AtReturnedElsewhere = Routed("/warehouse-orders/109");
+
+export const TheReturnWarehouseAcceptsAnOrderItDidNotShip: Story = {
+  beforeEach: withOrdersInReturn(109n),
+  render: () => <AtReturnedElsewhere />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("pick-order-accept-return"));
+    await userEvent.click(await screen.findByTestId("accept-return-submit"));
+
+    // A toast from an earlier story may still be on screen — at least one says so.
+    await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
+    await expect(returnAcceptScenario.last?.orderId).toBe(109n);
   },
 };

@@ -298,6 +298,30 @@ was the one the owner made, adding the state that made both readings true at onc
 
 # Contradiction
 
+## the-accept-was-recorded-as-the-shipping-warehouses
+
+**The example.** [the-return-accept-is-built-before-its-stock-half](./context_decision.md#the-return-accept-is-built-before-its-stock-half)
+(2026-11-02, my record) said *"who — the order's warehouse"*, and the first build let only `orders.warehouse_id` accept.
+[a-return-may-land-in-another-warehouse](./context_decision.md#a-return-may-land-in-another-warehouse) and
+[the-accept-records-where-it-was-accepted](./context_decision.md#the-accept-records-where-it-was-accepted) say the parcel
+comes back to the **configured** return warehouse — or wherever a stale label sent it — and **those** staff accept it, the
+accepting warehouse recorded.
+
+**Which was wrong:** my 2026-11-02 row — the two older decisions are yours and specific. **→ Fixed** the same day: the row is
+corrected, and the accept is rebuilt to take the warehouse holding the parcel and record it.
+
+```mermaid
+flowchart LR
+  O["order - shipped from X"] --> R["return - configured to Y"]
+  R --> A1["first build - only X accepts"]
+  R --> A2["fixed - Y, or a stale-label warehouse, accepts and is recorded"]
+  A1 -.->|"contradicted"| A2
+```
+
+**What stops it recurring:** a decision I record that names *who* links the decision it takes that from — this one linked
+`both-cs-and-the-warehouse-can-return-an-order`, which is about who may MOVE an order to `return`, not who accepts it.
+
+
 ## the-return-warehouse-moved-out-of-team-infos
 
 ✅ *(2026-10-21)* **Resolved** — every site below is done; the build was the last. Kept as a heading so the links into it hold.

@@ -64,7 +64,7 @@ const ROW_TABS = [
 // sends a doubtful row back to counting (a-counted-row-is-read-only-until-sent-back), cancels an abandoned count
 // (an-abandoned-count-waits-for-the-admin), or goes on to Finalize once every row is counted.
 //
-// ⚠ PROTOTYPE until design_accept — Storybook's stub plays it.
+// Built on OpnameService (inventory_v1/opname_*.go, accepted 2026-11-02 — the-count-prototype-is-accepted).
 export function OpnameSessionDetailPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
@@ -211,7 +211,7 @@ export function OpnameSessionDetailPage() {
                         <Menu.Item
                           value="finalize"
                           disabled={!allCounted}
-                          onClick={() => navigate(`/inventories/opname/sessions/${sessionId}/finalize`)}
+                          onClick={allCounted ? () => navigate(`/inventories/opname/sessions/${sessionId}/finalize`) : undefined}
                         >
                           <Icon as={Flag} boxSize="4" />
                           {t("opnameSession.detail.finalize")}

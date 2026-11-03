@@ -46,6 +46,11 @@ const (
 func transferErr(err error) error {
 	var short *inventory_mutations.ShortLinesError
 
+	// A put-away onto a product a count holds on that rack (a-lock-stops-units-moving-not-sales).
+	if refused := countedRefusal(err); refused != nil {
+		return refused
+	}
+
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound), errors.Is(err, errTransferMissing):
 		return connect.NewError(connect.CodeNotFound, errTransferMissing)

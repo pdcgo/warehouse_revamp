@@ -23,8 +23,16 @@ import (
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
-// Children first, so the harness's DELETEs do not fight the foreign keys.
+// Children first, so the harness's DELETEs do not fight the foreign keys. The stock count's tables point at the
+// transactions, the batches and the racks, so they go first.
 var ledgerTables = []string{
+	"problem_claimed_transactions",
+	"opname_session_final_transactions",
+	"warehouse_stock_problems",
+	"opname_problems_drafts",
+	"opname_surplus_drafts",
+	"opname_session_snapshots",
+	"opname_sessions",
 	"idempotency_order_check",
 	"inventory_transaction_items",
 	"batch_price_logs",

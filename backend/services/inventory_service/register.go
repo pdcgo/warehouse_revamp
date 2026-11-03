@@ -27,8 +27,9 @@ func NewRegister(
 		mux.Handle(inventoryv1connect.NewOrderTransactionServiceHandler(inventory, opts))
 		// A selling team moving its own stock from one warehouse to another, on the decided ledgers (warehouse_transfer_*.go).
 		mux.Handle(inventoryv1connect.NewWarehouseTransferServiceHandler(inventory, opts))
-		// A prototype until design_accept: every RPC answers Unimplemented (opname_prototype.go).
-		mux.Handle(inventoryv1connect.NewOpnameServiceHandler(inventory_v1.OpnamePrototype{}, opts))
+		// The stock count — a session that snapshots and locks the shelf book, counts blind and finalizes into the
+		// stock-problem register (opname_*.go).
+		mux.Handle(inventoryv1connect.NewOpnameServiceHandler(inventory, opts))
 
 		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
 		// directly rather than through san_grpc. Push auth (OIDC/token) is a deployment concern.

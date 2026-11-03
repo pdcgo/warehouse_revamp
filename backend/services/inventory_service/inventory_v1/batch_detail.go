@@ -211,8 +211,12 @@ func (s *Service) BatchPlacementList(
 
 	err = base().
 		Select(`l.placement_id AS rack_id, l.stock_change AS qty,
-			(SELECT MAX(c.created_at) FROM product_placement_logs c
-			   WHERE c.product_id = l.product_id AND c.placement_id = l.placement_id AND c.change_type = ?) AS last_opname`,
+			GREATEST(
+			    (SELECT MAX(c.created_at) FROM product_placement_logs c
+			       WHERE c.product_id = l.product_id AND c.placement_id = l.placement_id AND c.change_type = ?),
+			    (SELECT MAX(o.finalized_at) FROM opname_session_snapshots ss JOIN opname_sessions o ON o.id = ss.opname_session_id
+			       WHERE ss.product_id = l.product_id AND ss.placement_id = l.placement_id AND o.status = 'finish')
+			) AS last_opname`,
 			string(inventory_service_models.TxAdjustment)).
 		Order("l.placement_id ASC").
 		Offset(offset).

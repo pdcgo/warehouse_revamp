@@ -94,6 +94,8 @@ func timelineLogToProto(log *selling_service_models.OrderTimelineLog) *sellingv1
 		From:          timelineFroms[log.From],
 		ActorId:       log.ActorID,
 		CreatedAtUnix: log.CreatedAt.Unix(),
+		// Where a return was accepted — 0 on every row but the accept's.
+		AcceptingWarehouseId: log.AcceptingWarehouseID,
 	}
 }
 

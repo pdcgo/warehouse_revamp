@@ -1161,9 +1161,8 @@ type RackStockLine struct {
 	// client so the line and the header tile cannot disagree about the same multiplication.
 	Value int64 `protobuf:"varint,5,opt,name=value,proto3" json:"value,omitempty"`
 	// A COUNT HOLDS THIS PRODUCT ON THIS RACK (a-count-locks-the-product-on-the-rack): a move or a sample cannot take
-	// it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing).
-	//
-	// ⚠ Always false until the stock count (opname) is built; only the Storybook stub sets it.
+	// it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing). True while an open
+	// opname_session_snapshots row holds it (the-lock-is-the-open-snapshot-row).
 	Counting      bool `protobuf:"varint,6,opt,name=counting,proto3" json:"counting,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

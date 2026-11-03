@@ -6,7 +6,7 @@ import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OpnameCountPage } from "./index";
 
-// ⚠ PROTOTYPE for implementation_analysis — counting at the shelf, on a phone (opname.md §How Staff Work On Session),
+// The stock count (accepted 2026-11-02) — counting at the shelf, on a phone (opname.md §How Staff Work On Session),
 // laid out like Accept Delivery: rack tiles, then one three-column card per product.
 //
 // Count #15 at Gudang Pusat, as STAFF. Rak A-01-1 holds Beras (counted by Budi), Minyak (not counted — book 6) and

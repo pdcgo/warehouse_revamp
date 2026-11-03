@@ -192,6 +192,16 @@ enum LiabilitySourceType {
   // ⚠ The TYPE carries the cause and the FLAG carries the direction — they are not redundant, and
   // both stay in the idempotency key.
   LIABILITY_SOURCE_TYPE_FOUND = 8;
+
+  // What the courier asked at the warehouse's door for a RETURNED parcel (a-return-may-carry-the-couriers-ask) — the
+  // selling team owes the warehouse. `source_id` is the ORDER, posted once from OrderReturnAccepted.
+  //
+  // ⚠ NOT INCIDENTAL_FEE, though it is the same kind of money: INCIDENTAL_FEE's `source_id` is a RESTOCK, and an order id
+  // from selling_service can equal a restock id from inventory_service. The idempotency key is (team, counterparty,
+  // source_type, source_id, reversal), so a return's charge and a restock's for the same pair and the same number
+  // would collide — the second swallowed as a redelivery of the first — and the history would read "restock #<order>".
+  // Its own type keeps both the key and the label honest; a reader summing the courier's asks reads both.
+  LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE = 9;
 }
 
 // One leg of one movement, immutable (§4.1). Entries are APPEND ONLY: a correction is a compensating

@@ -328,7 +328,7 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
 
   // Opname — a physical stock count reconciled against the system (stock-take). A warehouse's own job.
   if (teamType === TeamType.WAREHOUSE) {
-    children.push({ to: "/inventories/opname", label: "nav.opname", icon: ClipboardCheck });
+    children.push({ to: "/inventories/opname/sessions", label: "nav.opname", icon: ClipboardCheck });
   }
 
   return { label: "nav.inventories", icon: Boxes, children };

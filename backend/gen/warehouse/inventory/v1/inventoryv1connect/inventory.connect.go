@@ -42,9 +42,6 @@ const (
 	// InventoryServiceStockAdjustProcedure is the fully-qualified name of the InventoryService's
 	// StockAdjust RPC.
 	InventoryServiceStockAdjustProcedure = "/warehouse.inventory.v1.InventoryService/StockAdjust"
-	// InventoryServiceStockOpnameProcedure is the fully-qualified name of the InventoryService's
-	// StockOpname RPC.
-	InventoryServiceStockOpnameProcedure = "/warehouse.inventory.v1.InventoryService/StockOpname"
 	// InventoryServiceStockAvailabilityProcedure is the fully-qualified name of the InventoryService's
 	// StockAvailability RPC.
 	InventoryServiceStockAvailabilityProcedure = "/warehouse.inventory.v1.InventoryService/StockAvailability"
@@ -109,8 +106,6 @@ type InventoryServiceClient interface {
 	StockList(context.Context, *connect.Request[v1.StockListRequest]) (*connect.Response[v1.StockListResponse], error)
 	StockHistory(context.Context, *connect.Request[v1.StockHistoryRequest]) (*connect.Response[v1.StockHistoryResponse], error)
 	StockAdjust(context.Context, *connect.Request[v1.StockAdjustRequest]) (*connect.Response[v1.StockAdjustResponse], error)
-	// A STOCK OPNAME — count a whole shelf in one act, and correct every line of it together.
-	StockOpname(context.Context, *connect.Request[v1.StockOpnameRequest]) (*connect.Response[v1.StockOpnameResponse], error)
 	// What an order's take WOULD find — the read half of OrderTransactionCreate, so the order form can show what it is
 	// about to take before it takes it (#90): the product's batches in the warehouse, summed.
 	StockAvailability(context.Context, *connect.Request[v1.StockAvailabilityRequest]) (*connect.Response[v1.StockAvailabilityResponse], error)
@@ -200,12 +195,6 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+InventoryServiceStockAdjustProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockAdjust")),
-			connect.WithClientOptions(opts...),
-		),
-		stockOpname: connect.NewClient[v1.StockOpnameRequest, v1.StockOpnameResponse](
-			httpClient,
-			baseURL+InventoryServiceStockOpnameProcedure,
-			connect.WithSchema(inventoryServiceMethods.ByName("StockOpname")),
 			connect.WithClientOptions(opts...),
 		),
 		stockAvailability: connect.NewClient[v1.StockAvailabilityRequest, v1.StockAvailabilityResponse](
@@ -349,7 +338,6 @@ type inventoryServiceClient struct {
 	stockList            *connect.Client[v1.StockListRequest, v1.StockListResponse]
 	stockHistory         *connect.Client[v1.StockHistoryRequest, v1.StockHistoryResponse]
 	stockAdjust          *connect.Client[v1.StockAdjustRequest, v1.StockAdjustResponse]
-	stockOpname          *connect.Client[v1.StockOpnameRequest, v1.StockOpnameResponse]
 	stockAvailability    *connect.Client[v1.StockAvailabilityRequest, v1.StockAvailabilityResponse]
 	stockedProductList   *connect.Client[v1.StockedProductListRequest, v1.StockedProductListResponse]
 	stockCost            *connect.Client[v1.StockCostRequest, v1.StockCostResponse]
@@ -384,11 +372,6 @@ func (c *inventoryServiceClient) StockHistory(ctx context.Context, req *connect.
 // StockAdjust calls warehouse.inventory.v1.InventoryService.StockAdjust.
 func (c *inventoryServiceClient) StockAdjust(ctx context.Context, req *connect.Request[v1.StockAdjustRequest]) (*connect.Response[v1.StockAdjustResponse], error) {
 	return c.stockAdjust.CallUnary(ctx, req)
-}
-
-// StockOpname calls warehouse.inventory.v1.InventoryService.StockOpname.
-func (c *inventoryServiceClient) StockOpname(ctx context.Context, req *connect.Request[v1.StockOpnameRequest]) (*connect.Response[v1.StockOpnameResponse], error) {
-	return c.stockOpname.CallUnary(ctx, req)
 }
 
 // StockAvailability calls warehouse.inventory.v1.InventoryService.StockAvailability.
@@ -492,8 +475,6 @@ type InventoryServiceHandler interface {
 	StockList(context.Context, *connect.Request[v1.StockListRequest]) (*connect.Response[v1.StockListResponse], error)
 	StockHistory(context.Context, *connect.Request[v1.StockHistoryRequest]) (*connect.Response[v1.StockHistoryResponse], error)
 	StockAdjust(context.Context, *connect.Request[v1.StockAdjustRequest]) (*connect.Response[v1.StockAdjustResponse], error)
-	// A STOCK OPNAME — count a whole shelf in one act, and correct every line of it together.
-	StockOpname(context.Context, *connect.Request[v1.StockOpnameRequest]) (*connect.Response[v1.StockOpnameResponse], error)
 	// What an order's take WOULD find — the read half of OrderTransactionCreate, so the order form can show what it is
 	// about to take before it takes it (#90): the product's batches in the warehouse, summed.
 	StockAvailability(context.Context, *connect.Request[v1.StockAvailabilityRequest]) (*connect.Response[v1.StockAvailabilityResponse], error)
@@ -579,12 +560,6 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		InventoryServiceStockAdjustProcedure,
 		svc.StockAdjust,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockAdjust")),
-		connect.WithHandlerOptions(opts...),
-	)
-	inventoryServiceStockOpnameHandler := connect.NewUnaryHandler(
-		InventoryServiceStockOpnameProcedure,
-		svc.StockOpname,
-		connect.WithSchema(inventoryServiceMethods.ByName("StockOpname")),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceStockAvailabilityHandler := connect.NewUnaryHandler(
@@ -728,8 +703,6 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceStockHistoryHandler.ServeHTTP(w, r)
 		case InventoryServiceStockAdjustProcedure:
 			inventoryServiceStockAdjustHandler.ServeHTTP(w, r)
-		case InventoryServiceStockOpnameProcedure:
-			inventoryServiceStockOpnameHandler.ServeHTTP(w, r)
 		case InventoryServiceStockAvailabilityProcedure:
 			inventoryServiceStockAvailabilityHandler.ServeHTTP(w, r)
 		case InventoryServiceStockedProductListProcedure:
@@ -787,10 +760,6 @@ func (UnimplementedInventoryServiceHandler) StockHistory(context.Context, *conne
 
 func (UnimplementedInventoryServiceHandler) StockAdjust(context.Context, *connect.Request[v1.StockAdjustRequest]) (*connect.Response[v1.StockAdjustResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockAdjust is not implemented"))
-}
-
-func (UnimplementedInventoryServiceHandler) StockOpname(context.Context, *connect.Request[v1.StockOpnameRequest]) (*connect.Response[v1.StockOpnameResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockOpname is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) StockAvailability(context.Context, *connect.Request[v1.StockAvailabilityRequest]) (*connect.Response[v1.StockAvailabilityResponse], error) {

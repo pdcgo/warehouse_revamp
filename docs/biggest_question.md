@@ -14,14 +14,23 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**0 open questions across 41 files.** The per-file counts are at the bottom.
+**4 open questions across 41 files.** The per-file counts are at the bottom.
+
+▲ *(2026-11-02)* **+4**, all in [the stock count](business/inventory/opname_clarify.md#question), raised by building it after your design accept. None blocks the
+count — each was built the safe way — but each changes what it does:
+
+| # | the question | blocks | → recommend |
+| --- | --- | --- | --- |
+| 1 | [opname Q24](business/inventory/opname_clarify.md#question) — a sale or a cancel during a count skews it: finalize refuses below zero, or the count over-reads | every count run while orders flow | finalize corrects each counted figure by the rack's ledger movements since it was counted |
+| 2 | [opname Q22](business/inventory/opname_clarify.md#question) — an Adjust *found* stays outside the register, so a later count can credit the same loss again | the money of a found unit | the Adjust *found* becomes a claim the Owner or Admin approves |
+| 3 | [opname Q23](business/inventory/opname_clarify.md#question) — does a no-money count still need a non-counter to finalize? | who finalizes a quiet count | keep it: *at once* means no approval step |
+| 4 | [opname Q25](business/inventory/opname_clarify.md#question) — a rack a count holds can be deleted | rack deletion during a count | refuse it, naming the session |
 
 ▼ *(2026-11-02, a build pass — no question opened or closed)* Built since the lines below were written, so their
 *⛔ Not built* is history: the expense correction, the replay lock lease, the one-year cap, *as of*, product archive and
 delete, the product code, the warehouse profile move, closures and the closed-day warning, the recount write-off, the
-payment request, the MCP, the override stamp and the admin team's read-only monitoring. Still decided and not built: the return courier fee (blocked — there is no return accept
-yet, [a-return-may-carry-the-couriers-ask](business/balance/context_decision.md#a-return-may-carry-the-couriers-ask)) and the finished
-stock count (waits on your design accept). Each decision's own note is the current state. Net 0.
+payment request, the MCP, the override stamp and the admin team's read-only monitoring. Then, on your answers the same day, the return accept (before its stock half) and the finished stock count. Nothing
+decided is left unbuilt. Net 0.
 
 ▼ *(2026-11-02)* **0**: the overtaken list, closed in one answer — all 16 confirmed and recorded as 13 decisions
 (two pairs were one question asked twice): [each-developer-works-on-their-own-branch](business/project/member_decision.md#each-developer-works-on-their-own-branch) ·
@@ -339,7 +348,7 @@ the column sums to **0**, the whole set. *Overtaken* is how many of a file's ope
 | [business/order/order_statistic_metric_clarify.md](business/order/order_statistic_metric_clarify.md#question) | 0 |  |  |
 | [business/product/product_bundle_clarify.md](business/product/product_bundle_clarify.md#question) | 0 |  |  |
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 0 |  |  |
-| [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 0 |  |  |
+| [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 4 | Q22–Q25 |  |
 | [business/inventory/order_clarify.md](business/inventory/order_clarify.md#question) | 0 |  |  |
 | [business/inventory/placement_clarify.md](business/inventory/placement_clarify.md#question) | 0 |  |  |
 | [business/inventory/restock_clarify.md](business/inventory/restock_clarify.md#question) | 0 |  |  |
@@ -355,7 +364,7 @@ the column sums to **0**, the whole set. *Overtaken* is how many of a file's ope
 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡), withdrawn or ⏸ parked is not open, and **a question whose parts are all answered or moved
-> counts as closed** even when its own line carries no ✅. Rows sum to **0** across **41** files.
+> counts as closed** even when its own line carries no ✅. Rows sum to **4** across **41** files.
 >
 > ⚠ **Stale at source, found on this pass and not fixed** — each is a clarify's own text:
 > [product](business/product/context_clarify.md)'s preamble and its decision file cite drifted question numbers (Q9

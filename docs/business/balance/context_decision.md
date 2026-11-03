@@ -1275,11 +1275,14 @@ flowchart LR
 | empty | posts nothing — the common case |
 | `inventory/return.md` | still unplanned: this is the money at the door, not the stock side of a return |
 
-⛔ **Not built — blocked (2026-11-02).** There is no return accept to put the field on: `return → return_completed` is
-still decided-not-built ([development_state/order](../../development_state/order/context.md)), the Returns screens run on
-preview data, and the accept's stock half waits on [inventory/return.md](../inventory/return.md), which is unplanned. Your own
-[return-is-unplanned](../inventory/context_decision.md#return-is-unplanned) parks it: *what depends on one is parked, not
-answered*. The charge is built with the accept, as its money half.
+✅ **Built 2026-11-02**, with the accept ([the-return-accept-is-built-before-its-stock-half](../order/context_decision.md#the-return-accept-is-built-before-its-stock-half)).
+The crew's **Accept Return** dialog takes the amount and the note (required above 0 —
+[an-incidental-line-must-say-what-it-was-for](#an-incidental-line-must-say-what-it-was-for)); `OrderReturnAccepted` carries
+both, and liability posts the selling team's debt to the warehouse once per order, nothing for 0. ⚠ my build detail: the
+entry is **`return_incidental_fee`**, keyed by the order — not `INCIDENTAL_FEE` as the table says. `INCIDENTAL_FEE`'s
+source is a restock, and the ledger's key is (team, counterparty, source type, source id, reversal): an order and a restock
+with the same number would collide, the second charge swallowed as a redelivery and labelled *restock #…*. The history
+reads *"Courier at a return · order #N"*, and the daily statement's courier column sums both.
 
 ## a-creditor-may-request-payment
 

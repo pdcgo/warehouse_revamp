@@ -36,7 +36,7 @@ interface ShelfLine {
   productId: bigint;
   onHand: bigint;
   unitCost: bigint;
-  // A count holds it (a-count-locks-the-product-on-the-rack). The real server never sets this until opname exists.
+  // A count holds it (a-count-locks-the-product-on-the-rack) — the real server sets it from the open snapshot rows.
   counting: boolean;
 }
 

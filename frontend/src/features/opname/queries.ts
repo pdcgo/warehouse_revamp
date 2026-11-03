@@ -7,8 +7,8 @@ import { useInvalidateStock } from "../inventory/queries";
 import { fetchActors } from "../users/queries";
 import { racksFromList, rowsFromList, sessionsFromList } from "./adapt";
 
-// The stock count's reads and writes (docs/business/inventory/opname.md). ⚠ A PROTOTYPE until design_accept: the
-// server answers Unimplemented, and Storybook's stub (.storybook/opnameStub.ts) plays the decided rules.
+// The stock count's reads and writes (docs/business/inventory/opname.md), served by OpnameService
+// (inventory_v1/opname_*.go); in Storybook the stub (.storybook/opnameStub.ts) plays the same rules.
 
 const hasNextOf = (info: { currentPage: number; totalPage: number } | undefined) =>
   info ? info.currentPage < info.totalPage : false;

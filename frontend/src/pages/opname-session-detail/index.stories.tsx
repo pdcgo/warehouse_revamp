@@ -6,7 +6,7 @@ import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OpnameSessionDetailPage } from "./index";
 
-// ⚠ PROTOTYPE for implementation_analysis — the admin's watch page (opname.md §How Staff Work On Session).
+// The stock count (accepted 2026-11-02) — the admin's watch page (opname.md §How Staff Work On Session).
 //
 // Count #15 at Gudang Pusat, mid-count: Beras was counted by Budi on two racks — short 2 on A-01-1 (broken 1, lost 1)
 // and over 1 on A-01-2, each with its reason; Gula matches; Minyak is not counted; Tepung is revealed short, its reasons

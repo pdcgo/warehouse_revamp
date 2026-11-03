@@ -7,7 +7,7 @@ import { opnameSelfCounted } from "../../../.storybook/opnameStub";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OpnameFinalizePage } from "./index";
 
-// ⚠ PROTOTYPE for implementation_analysis — what finalize posts (broken-posts-as-written-the-rest-nets).
+// The stock count (accepted 2026-11-02) — what finalize posts (broken-posts-as-written-the-rest-nets).
 //
 // Count #21 at Gudang Cabang, every row counted by Budi and Eko — so Ani, signed in, may finalize it:
 //   Beras    book 8, sellable 7, broken 1 → the rest 0: broken 1 posts from batch #51 @ 62.000, the racks moved
@@ -51,15 +51,23 @@ export const Default: Story = {
     await expect(canvas.getByTestId("opname-finalize-claimed")).toHaveTextContent("Rp 14.000");
     await expect(canvas.getByTestId("opname-finalize-minted")).toHaveTextContent("Rp 15.000");
 
-    // A tear and a move: the rest nets to 0, the broken one still posts.
+    // Units only on the wrong rack: the move card, no money.
+    await expect(canvas.getByTestId("opname-finalize-moved")).toHaveTextContent("1 unit");
+
+    // A tear and a move: the rest nets to 0, the broken one still posts — in a problem and a move transaction.
     await expect(canvas.getByTestId("opname-finalize-rest-74")).toHaveTextContent("0");
     await expect(canvas.getByTestId("opname-finalize-lines-74")).toHaveTextContent("#51");
-    // Short 3, oldest batch first.
+    await expect(canvas.getByTestId("opname-finalize-tx-74")).toHaveTextContent("Problem");
+    await expect(canvas.getByTestId("opname-finalize-tx-74")).toHaveTextContent("Move");
+    await expect(canvas.getByTestId("opname-finalize-move-74")).toHaveTextContent("1 unit between racks");
+    // Short 3, oldest batch first — a problem only.
     const minyak = canvas.getByTestId("opname-finalize-lines-700");
     await expect(minyak).toHaveTextContent("Rp 30.000");
     await expect(minyak).toHaveTextContent("Rp 32.000");
-    // Over 2: the old loss is claimed back first, then a new batch.
+    await expect(canvas.getByTestId("opname-finalize-tx-700")).toHaveTextContent(/^Problem$/);
+    // Over 2: the old loss is claimed back first, then a new batch — a found.
     await expect(canvas.getByTestId("opname-finalize-lines-702")).toHaveTextContent("claims loss #88");
+    await expect(canvas.getByTestId("opname-finalize-tx-702")).toHaveTextContent(/^Found$/);
     // A matching product is left out.
     await expect(canvas.queryByTestId("opname-finalize-product-73")).toBeNull();
 

@@ -46,8 +46,9 @@ type orderMoveRule struct {
 // owner's §Status Move with who makes it.
 //
 // Two edges are NOT here, because they do more than move a status and keep their own RPCs:
-// pending → cancel (OrderCancel: stock back, the sale cancelled) and return → return_completed (the
-// return accept: the warehouse recorded, borrowed units relabelled, stock back).
+// pending → cancel (OrderCancel: stock back, the sale cancelled) and return → return_completed
+// (OrderReturnAccept: the missing units noted, borrowed units relabelled, the courier's charge announced — and, once
+// inventory's return is designed, the stock back).
 var orderMoves = map[orderMove]orderMoveRule{
 	// The warehouse.
 	{orderStatusPending, orderStatusProcessed}: {by: sideWarehouse},
@@ -118,6 +119,9 @@ func setOrderStatus(
 type timelineMove struct {
 	order *selling_service_models.Order
 	from  string
+	// The warehouse that accepted a return (the-accept-records-where-it-was-accepted) — set by the return accept alone,
+	// onto its return_completed row; 0 for every other move.
+	acceptingWarehouseID uint64
 }
 
 // setOrdersStatus is setOrderStatus for a batch that all moves INTO the same status: one UPDATE and one
@@ -156,7 +160,9 @@ func setOrdersStatus(
 			From:       move.from,
 			ActorID:    actor,
 			IsOverride: override,
-			CreatedAt:  now,
+			// 0 except on the return accept's row (00034).
+			AcceptingWarehouseID: move.acceptingWarehouseID,
+			CreatedAt:            now,
 		})
 	}
 

@@ -28,8 +28,7 @@ const TABS = [
 // come here to find the ONE active count and start counting (one-active-count-per-warehouse), so that count stands at the
 // top, above the history, with its own Count button.
 //
-// ⚠ PROTOTYPE until design_accept: it runs against Storybook's stub; in the app OpnameService answers Unimplemented. It
-// sits BESIDE the old one-rack opname page (/inventories/opname), which the backend step replaces.
+// Built on OpnameService (inventory_v1/opname_*.go, accepted 2026-11-02 — the-count-prototype-is-accepted). It replaced the one-rack count page; /inventories/opname redirects here.
 export function OpnameSessionsPage() {
   const { current } = useTeam();
   const navigate = useNavigate();

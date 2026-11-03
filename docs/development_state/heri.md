@@ -7,7 +7,7 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
-## 2026-11-02 · every decided item built, but two
+## 2026-11-02 · every decided item built
 
 | What shipped | What it means for a person |
 | --- | --- |
@@ -21,9 +21,10 @@ Users & Role System, Documents, region, shipping, expense.
 | **ChatGPT and Claude can read the business** | a person connects an AI agent by URL, picks one team and names it; the agent only reads, for 90 days, and is revoked from Profile. The owner decides whether CS and staff may connect, and sees every connection |
 | **The platform's writes inside a team are marked** | when Root or the Administrator acts in a team they are not in, the record says so — orders, stock, expenses, balances, documents |
 | **The admin team can watch any team, read-only** | it picks a team under *All teams*, sees its screens under a *Monitoring — read-only* strip, and every write is hidden and refused |
+| **A returned parcel is accepted** | the warehouse holding it accepts the return, enters what the courier asked at the door (owed back by the seller), notes missing units, and gets the labels to print for borrowed lines. ⚠ The units do not go back on the shelf until the return's stock design exists |
+| **The real stock count** | a count session over all racks, a team, a product or a rack: staff count blind, then see the difference and give reasons; a second person finalizes; losses go to a register the warehouse owes the seller for, and a later surplus claims them back. The old one-rack count is gone |
 
-**Not built:** the courier's fee at a return (there is no return accept yet) and the finished stock count (it waits on the
-design accept).
+**Open:** four stock-count questions the build raised ([biggest_question.md](../biggest_question.md)).
 
  · order — drafts, tracking number, warehouse fee
 

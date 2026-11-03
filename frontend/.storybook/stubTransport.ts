@@ -104,6 +104,7 @@ import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
+import { orderReturnAccept, readsOrder, scenarioStatus } from "./returnAcceptStub";
 import { warehouseFeeService } from "./warehouseFeeStub";
 import { warehouseInfoService } from "./warehouseInfoStub";
 import { agentService } from "./agentStub";
@@ -830,8 +831,11 @@ function unitsOf(id: bigint): bigint {
 
 function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
   return orders
+    // The return accept's scenario (returnAcceptStub.ts): a story reads some orders in `return`, then accepted.
+    .map(scenarioStatus)
     // EITHER SIDE — see OrderList below.
-    .filter((o) => o.teamId === teamId || o.warehouseId === teamId)
+    // Its two ends — and its team's configured return warehouse, for a return only (readsOrder, as orderReaders does).
+    .filter((o) => readsOrder(o, teamId))
     .filter((o) => matchOrder(filter?.search, o))
     .filter((o) => !filter?.shopId || o.shopId === filter.shopId)
     // 0 on a side is an OPEN end, so {0,0} means every date.
@@ -1402,12 +1406,18 @@ export const transport = createRouterTransport(({ service }) => {
       const order = orderDetailFor(req.orderId);
       if (!order) throw new ConnectError("order not found", Code.NotFound);
 
-      if (order.teamId !== req.teamId && order.warehouseId !== req.teamId) {
+      if (!readsOrder(scenarioStatus(order), req.teamId)) {
         throw new ConnectError("order not found", Code.NotFound);
       }
 
       // Every row, the notes a story wrote included — the server returns them in one `timeline_logs`.
-      return { order: { ...order, timelineLogs: [...order.timelineLogs, ...(writtenNotes.get(order.id.toString()) ?? [])] } };
+      return {
+        order: {
+          // The status a return-accept story reads the order in (returnAcceptStub.ts); the fixture's otherwise.
+          ...scenarioStatus(order),
+          timelineLogs: [...order.timelineLogs, ...(writtenNotes.get(order.id.toString()) ?? [])],
+        },
+      };
     },
 
     // ADD A NOTE (a-note-is-a-timeline-row): a row with NO status, from the side `team_id` is on — the order's team
@@ -1485,6 +1495,9 @@ export const transport = createRouterTransport(({ service }) => {
     // applied — so the dialog's step 3 runs its real hook. What was asked is kept for the story to read.
     shopeeOrderImport: (req) => orderImportLog("shopee", req),
     tiktokOrderImport: (req) => orderImportLog("tiktok", req),
+    // THE RETURN ACCEPT (the-accept-is-the-status-return-completed) — returnAcceptStub.ts: the order's warehouse only, from
+    // `return` only, a charge with its note; the labels are the story's.
+    orderReturnAccept: (req) => orderReturnAccept(req),
     orderStatusChange: (req) => ({
       results: req.orderIds.map((orderId) => {
         const order = orders.find(

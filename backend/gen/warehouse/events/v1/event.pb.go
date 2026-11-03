@@ -130,6 +130,7 @@ type Event struct {
 	//	*Event_OrderPlaced
 	//	*Event_OrderCancelled
 	//	*Event_OrderStatusChanged
+	//	*Event_OrderReturnAccepted
 	//	*Event_SettlementLogPosted
 	//	*Event_RestockAccepted
 	//	*Event_RestockCreated
@@ -253,6 +254,15 @@ func (x *Event) GetOrderStatusChanged() *OrderStatusChanged {
 	return nil
 }
 
+func (x *Event) GetOrderReturnAccepted() *OrderReturnAccepted {
+	if x != nil {
+		if x, ok := x.Message.(*Event_OrderReturnAccepted); ok {
+			return x.OrderReturnAccepted
+		}
+	}
+	return nil
+}
+
 func (x *Event) GetSettlementLogPosted() *SettlementLogPosted {
 	if x != nil {
 		if x, ok := x.Message.(*Event_SettlementLogPosted); ok {
@@ -365,6 +375,10 @@ type Event_OrderStatusChanged struct {
 	OrderStatusChanged *OrderStatusChanged `protobuf:"bytes,202,opt,name=order_status_changed,json=orderStatusChanged,proto3,oneof"`
 }
 
+type Event_OrderReturnAccepted struct {
+	OrderReturnAccepted *OrderReturnAccepted `protobuf:"bytes,203,opt,name=order_return_accepted,json=orderReturnAccepted,proto3,oneof"`
+}
+
 type Event_SettlementLogPosted struct {
 	SettlementLogPosted *SettlementLogPosted `protobuf:"bytes,300,opt,name=settlement_log_posted,json=settlementLogPosted,proto3,oneof"`
 }
@@ -412,6 +426,8 @@ func (*Event_OrderPlaced) isEvent_Message() {}
 func (*Event_OrderCancelled) isEvent_Message() {}
 
 func (*Event_OrderStatusChanged) isEvent_Message() {}
+
+func (*Event_OrderReturnAccepted) isEvent_Message() {}
 
 func (*Event_SettlementLogPosted) isEvent_Message() {}
 
@@ -1070,12 +1086,14 @@ func (x *OrderCancelled) GetShopId() uint64 {
 	return 0
 }
 
-// OrderStatusChanged announces one order's PLAIN status move — every move but the placement and the cancel, which have
-// their own events because they do more than move a status (docs/business/order/event_context.md §Order Status Change).
+// OrderStatusChanged announces one order's PLAIN status move — every move but the placement, the cancel and the return
+// accept, which have their own events because they do more than move a status (docs/business/order/event_context.md
+// §Order Status Change).
 //
 // Published by selling_service after OrderStatusChange commits, ONE PER ORDER moved: a handover scan of 30 parcels is
-// 30 events. selling_service's own fold reads it for the order metrics — Return Created, Return Arrived and Lost
-// Created count the moves into `return`, `return_completed` and `lost` (the-status-changes-publish-nothing).
+// 30 events. selling_service's own fold reads it for the order metrics — Return Created and Lost Created count the
+// moves into `return` and `lost` (the-status-changes-publish-nothing). Return Arrived counts OrderReturnAccepted: the
+// move into `return_completed` is the accept's own event, never this one.
 //
 // It carries the move, not the order: the fold runs in the service that owns the orders and reads the rest off the row.
 // The envelope's event_id is derived from the move's timeline row, so a redelivery and a replay collide, and its
@@ -1169,6 +1187,126 @@ func (x *OrderStatusChanged) GetTimelineLogId() uint64 {
 	return 0
 }
 
+// OrderReturnAccepted announces that a WAREHOUSE accepted an order's returned parcel — `return → return_completed`
+// (the-accept-is-the-status-return-completed) — and the accept COMMITTED.
+//
+// Published by selling_service after OrderReturnAccept's transaction commits, after the commit and non-fatal, as
+// OrderCancelled is. Two consumers, each its own subscription: selling_service's fold counts Return Arrived from it, and
+// liability_service posts the courier's charge, when there is one, as a debt of the selling team to the warehouse
+// (a-return-may-carry-the-couriers-ask) — the restock's courier charge is the model (RestockAccepted).
+//
+// ⚠ `event_id` is `order-return-accepted:<order_id>` — `return_completed` is terminal, so an order is accepted once, and a
+// redelivery and a replay collide in every consumer's dedup. `occurred_at` is the accept's timeline row's time.
+type OrderReturnAccepted struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The SELLING team that owns the order — the debtor of the courier's charge — and the order.
+	TeamId  uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	OrderId uint64 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	// The warehouse that ACCEPTED it — whichever held the parcel, recorded on the accept's row
+	// (the-accept-records-where-it-was-accepted): the configured return warehouse, or one an old label named, not always the
+	// one the order shipped from. The courier was paid at its door, so it is the creditor of the courier's charge.
+	WarehouseId uint64 `protobuf:"varint,3,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	// WHO ACCEPTED IT (every-entry-names-who-posted-it) — the charge's actor. 0 when unattended.
+	ActorId uint64 `protobuf:"varint,4,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// Whether that person accepted it as Root or the Administrator from outside the warehouse — as the accept's timeline
+	// row was stamped (an-override-is-stamped-in-every-service). Stamped on the charge's legs beside the actor.
+	ActorIsOverride bool `protobuf:"varint,5,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
+	// The `return_completed` row of order_timeline_logs the accept wrote.
+	TimelineLogId uint64 `protobuf:"varint,6,opt,name=timeline_log_id,json=timelineLogId,proto3" json:"timeline_log_id,omitempty"`
+	// What the courier asked at the door, whole rupiah; 0 = nothing, which posts nothing — the common case.
+	CourierCharge int64 `protobuf:"varint,7,opt,name=courier_charge,json=courierCharge,proto3" json:"courier_charge,omitempty"`
+	// What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
+	CourierChargeNote string `protobuf:"bytes,8,opt,name=courier_charge_note,json=courierChargeNote,proto3" json:"courier_charge_note,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *OrderReturnAccepted) Reset() {
+	*x = OrderReturnAccepted{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderReturnAccepted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderReturnAccepted) ProtoMessage() {}
+
+func (x *OrderReturnAccepted) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderReturnAccepted.ProtoReflect.Descriptor instead.
+func (*OrderReturnAccepted) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *OrderReturnAccepted) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *OrderReturnAccepted) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
+func (x *OrderReturnAccepted) GetWarehouseId() uint64 {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return 0
+}
+
+func (x *OrderReturnAccepted) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
+func (x *OrderReturnAccepted) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
+}
+
+func (x *OrderReturnAccepted) GetTimelineLogId() uint64 {
+	if x != nil {
+		return x.TimelineLogId
+	}
+	return 0
+}
+
+func (x *OrderReturnAccepted) GetCourierCharge() int64 {
+	if x != nil {
+		return x.CourierCharge
+	}
+	return 0
+}
+
+func (x *OrderReturnAccepted) GetCourierChargeNote() string {
+	if x != nil {
+		return x.CourierChargeNote
+	}
+	return ""
+}
+
 // RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.
 //
 // Published by inventory_service after RestockRequestFulfill's transaction commits. supplier_service folds it into a
@@ -1213,7 +1351,7 @@ type RestockAccepted struct {
 
 func (x *RestockAccepted) Reset() {
 	*x = RestockAccepted{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[8]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1225,7 +1363,7 @@ func (x *RestockAccepted) String() string {
 func (*RestockAccepted) ProtoMessage() {}
 
 func (x *RestockAccepted) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[8]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1376,7 @@ func (x *RestockAccepted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockAccepted.ProtoReflect.Descriptor instead.
 func (*RestockAccepted) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RestockAccepted) GetRestockId() uint64 {
@@ -1348,7 +1486,7 @@ type RestockAcceptedLine struct {
 
 func (x *RestockAcceptedLine) Reset() {
 	*x = RestockAcceptedLine{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[9]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1360,7 +1498,7 @@ func (x *RestockAcceptedLine) String() string {
 func (*RestockAcceptedLine) ProtoMessage() {}
 
 func (x *RestockAcceptedLine) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[9]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1373,7 +1511,7 @@ func (x *RestockAcceptedLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockAcceptedLine.ProtoReflect.Descriptor instead.
 func (*RestockAcceptedLine) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RestockAcceptedLine) GetItemId() uint64 {
@@ -1463,7 +1601,7 @@ type RestockCreated struct {
 
 func (x *RestockCreated) Reset() {
 	*x = RestockCreated{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[10]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1475,7 +1613,7 @@ func (x *RestockCreated) String() string {
 func (*RestockCreated) ProtoMessage() {}
 
 func (x *RestockCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[10]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1488,7 +1626,7 @@ func (x *RestockCreated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockCreated.ProtoReflect.Descriptor instead.
 func (*RestockCreated) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RestockCreated) GetRestockId() uint64 {
@@ -1560,7 +1698,7 @@ type RestockCancelled struct {
 
 func (x *RestockCancelled) Reset() {
 	*x = RestockCancelled{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[11]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1572,7 +1710,7 @@ func (x *RestockCancelled) String() string {
 func (*RestockCancelled) ProtoMessage() {}
 
 func (x *RestockCancelled) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[11]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1585,7 +1723,7 @@ func (x *RestockCancelled) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockCancelled.ProtoReflect.Descriptor instead.
 func (*RestockCancelled) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RestockCancelled) GetRestockId() uint64 {
@@ -1659,7 +1797,7 @@ type RestockUpdated struct {
 
 func (x *RestockUpdated) Reset() {
 	*x = RestockUpdated{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[12]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1671,7 +1809,7 @@ func (x *RestockUpdated) String() string {
 func (*RestockUpdated) ProtoMessage() {}
 
 func (x *RestockUpdated) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[12]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1684,7 +1822,7 @@ func (x *RestockUpdated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockUpdated.ProtoReflect.Descriptor instead.
 func (*RestockUpdated) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RestockUpdated) GetRestockId() uint64 {
@@ -1773,7 +1911,7 @@ type WarehouseTransferCreated struct {
 
 func (x *WarehouseTransferCreated) Reset() {
 	*x = WarehouseTransferCreated{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[13]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1785,7 +1923,7 @@ func (x *WarehouseTransferCreated) String() string {
 func (*WarehouseTransferCreated) ProtoMessage() {}
 
 func (x *WarehouseTransferCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[13]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1798,7 +1936,7 @@ func (x *WarehouseTransferCreated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferCreated.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferCreated) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *WarehouseTransferCreated) GetTransferId() uint64 {
@@ -1879,7 +2017,7 @@ type WarehouseTransferUpdated struct {
 
 func (x *WarehouseTransferUpdated) Reset() {
 	*x = WarehouseTransferUpdated{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[14]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1891,7 +2029,7 @@ func (x *WarehouseTransferUpdated) String() string {
 func (*WarehouseTransferUpdated) ProtoMessage() {}
 
 func (x *WarehouseTransferUpdated) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[14]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1904,7 +2042,7 @@ func (x *WarehouseTransferUpdated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferUpdated.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferUpdated) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *WarehouseTransferUpdated) GetTransferId() uint64 {
@@ -1981,7 +2119,7 @@ type WarehouseTransferCancelled struct {
 
 func (x *WarehouseTransferCancelled) Reset() {
 	*x = WarehouseTransferCancelled{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[15]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1993,7 +2131,7 @@ func (x *WarehouseTransferCancelled) String() string {
 func (*WarehouseTransferCancelled) ProtoMessage() {}
 
 func (x *WarehouseTransferCancelled) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[15]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2006,7 +2144,7 @@ func (x *WarehouseTransferCancelled) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferCancelled.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferCancelled) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *WarehouseTransferCancelled) GetTransferId() uint64 {
@@ -2078,7 +2216,7 @@ type WarehouseTransferAccepted struct {
 
 func (x *WarehouseTransferAccepted) Reset() {
 	*x = WarehouseTransferAccepted{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[16]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2090,7 +2228,7 @@ func (x *WarehouseTransferAccepted) String() string {
 func (*WarehouseTransferAccepted) ProtoMessage() {}
 
 func (x *WarehouseTransferAccepted) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[16]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2103,7 +2241,7 @@ func (x *WarehouseTransferAccepted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferAccepted.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferAccepted) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *WarehouseTransferAccepted) GetTransferId() uint64 {
@@ -2192,7 +2330,7 @@ type LiabilityPaymentAccepted struct {
 
 func (x *LiabilityPaymentAccepted) Reset() {
 	*x = LiabilityPaymentAccepted{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[17]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2204,7 +2342,7 @@ func (x *LiabilityPaymentAccepted) String() string {
 func (*LiabilityPaymentAccepted) ProtoMessage() {}
 
 func (x *LiabilityPaymentAccepted) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[17]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2217,7 +2355,7 @@ func (x *LiabilityPaymentAccepted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityPaymentAccepted.ProtoReflect.Descriptor instead.
 func (*LiabilityPaymentAccepted) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *LiabilityPaymentAccepted) GetPaymentId() uint64 {
@@ -2303,7 +2441,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\n" +
 	"\x1fwarehouse/events/v1/event.proto\x12\x13warehouse.events.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!warehouse/role_base/v1/role.proto\x1a(warehouse/settlement/v1/settlement.proto\"#\n" +
 	"\vEventConfig\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"\xb2\r\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\"\x93\x0e\n" +
 	"\x05Event\x12\"\n" +
 	"\bevent_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x12C\n" +
 	"\voccurred_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -2315,6 +2453,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\forder_placed\x18\xc8\x01 \x01(\v2 .warehouse.events.v1.OrderPlacedH\x00R\vorderPlaced\x12O\n" +
 	"\x0forder_cancelled\x18\xc9\x01 \x01(\v2#.warehouse.events.v1.OrderCancelledH\x00R\x0eorderCancelled\x12\\\n" +
 	"\x14order_status_changed\x18\xca\x01 \x01(\v2'.warehouse.events.v1.OrderStatusChangedH\x00R\x12orderStatusChanged\x12_\n" +
+	"\x15order_return_accepted\x18\xcb\x01 \x01(\v2(.warehouse.events.v1.OrderReturnAcceptedH\x00R\x13orderReturnAccepted\x12_\n" +
 	"\x15settlement_log_posted\x18\xac\x02 \x01(\v2(.warehouse.events.v1.SettlementLogPostedH\x00R\x13settlementLogPosted\x12R\n" +
 	"\x10restock_accepted\x18\x90\x03 \x01(\v2$.warehouse.events.v1.RestockAcceptedH\x00R\x0frestockAccepted\x12O\n" +
 	"\x0frestock_created\x18\x91\x03 \x01(\v2#.warehouse.events.v1.RestockCreatedH\x00R\x0erestockCreated\x12U\n" +
@@ -2396,7 +2535,17 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\tto_status\x18\x04 \x01(\tR\btoStatus\x12\x19\n" +
 	"\bactor_id\x18\x05 \x01(\x04R\aactorId\x12&\n" +
 	"\x0ftimeline_log_id\x18\x06 \x01(\x04R\rtimelineLogId:\x1a\x8a\xb5\x18\x16\n" +
-	"\x14order-status-changed\"\xf8\x03\n" +
+	"\x14order-status-changed\"\xcf\x02\n" +
+	"\x13OrderReturnAccepted\x12\x17\n" +
+	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
+	"\border_id\x18\x02 \x01(\x04R\aorderId\x12!\n" +
+	"\fwarehouse_id\x18\x03 \x01(\x04R\vwarehouseId\x12\x19\n" +
+	"\bactor_id\x18\x04 \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\x05 \x01(\bR\x0factorIsOverride\x12&\n" +
+	"\x0ftimeline_log_id\x18\x06 \x01(\x04R\rtimelineLogId\x12%\n" +
+	"\x0ecourier_charge\x18\a \x01(\x03R\rcourierCharge\x12.\n" +
+	"\x13courier_charge_note\x18\b \x01(\tR\x11courierChargeNote:\x1b\x8a\xb5\x18\x17\n" +
+	"\x15order-return-accepted\"\xf8\x03\n" +
 	"\x0fRestockAccepted\x12\x1d\n" +
 	"\n" +
 	"restock_id\x18\x01 \x01(\x04R\trestockId\x12\x17\n" +
@@ -2529,7 +2678,7 @@ func file_warehouse_events_v1_event_proto_rawDescGZIP() []byte {
 	return file_warehouse_events_v1_event_proto_rawDescData
 }
 
-var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_warehouse_events_v1_event_proto_goTypes = []any{
 	(*EventConfig)(nil),                 // 0: warehouse.events.v1.EventConfig
 	(*Event)(nil),                       // 1: warehouse.events.v1.Event
@@ -2539,52 +2688,54 @@ var file_warehouse_events_v1_event_proto_goTypes = []any{
 	(*OrderPlacedLine)(nil),             // 5: warehouse.events.v1.OrderPlacedLine
 	(*OrderCancelled)(nil),              // 6: warehouse.events.v1.OrderCancelled
 	(*OrderStatusChanged)(nil),          // 7: warehouse.events.v1.OrderStatusChanged
-	(*RestockAccepted)(nil),             // 8: warehouse.events.v1.RestockAccepted
-	(*RestockAcceptedLine)(nil),         // 9: warehouse.events.v1.RestockAcceptedLine
-	(*RestockCreated)(nil),              // 10: warehouse.events.v1.RestockCreated
-	(*RestockCancelled)(nil),            // 11: warehouse.events.v1.RestockCancelled
-	(*RestockUpdated)(nil),              // 12: warehouse.events.v1.RestockUpdated
-	(*WarehouseTransferCreated)(nil),    // 13: warehouse.events.v1.WarehouseTransferCreated
-	(*WarehouseTransferUpdated)(nil),    // 14: warehouse.events.v1.WarehouseTransferUpdated
-	(*WarehouseTransferCancelled)(nil),  // 15: warehouse.events.v1.WarehouseTransferCancelled
-	(*WarehouseTransferAccepted)(nil),   // 16: warehouse.events.v1.WarehouseTransferAccepted
-	(*LiabilityPaymentAccepted)(nil),    // 17: warehouse.events.v1.LiabilityPaymentAccepted
-	nil,                                 // 18: warehouse.events.v1.Event.MetadataEntry
-	(*timestamppb.Timestamp)(nil),       // 19: google.protobuf.Timestamp
-	(*v1.Identity)(nil),                 // 20: warehouse.role_base.v1.Identity
-	(v11.SettlementType)(0),             // 21: warehouse.settlement.v1.SettlementType
-	(v11.SourceType)(0),                 // 22: warehouse.settlement.v1.SourceType
-	(*descriptorpb.MessageOptions)(nil), // 23: google.protobuf.MessageOptions
+	(*OrderReturnAccepted)(nil),         // 8: warehouse.events.v1.OrderReturnAccepted
+	(*RestockAccepted)(nil),             // 9: warehouse.events.v1.RestockAccepted
+	(*RestockAcceptedLine)(nil),         // 10: warehouse.events.v1.RestockAcceptedLine
+	(*RestockCreated)(nil),              // 11: warehouse.events.v1.RestockCreated
+	(*RestockCancelled)(nil),            // 12: warehouse.events.v1.RestockCancelled
+	(*RestockUpdated)(nil),              // 13: warehouse.events.v1.RestockUpdated
+	(*WarehouseTransferCreated)(nil),    // 14: warehouse.events.v1.WarehouseTransferCreated
+	(*WarehouseTransferUpdated)(nil),    // 15: warehouse.events.v1.WarehouseTransferUpdated
+	(*WarehouseTransferCancelled)(nil),  // 16: warehouse.events.v1.WarehouseTransferCancelled
+	(*WarehouseTransferAccepted)(nil),   // 17: warehouse.events.v1.WarehouseTransferAccepted
+	(*LiabilityPaymentAccepted)(nil),    // 18: warehouse.events.v1.LiabilityPaymentAccepted
+	nil,                                 // 19: warehouse.events.v1.Event.MetadataEntry
+	(*timestamppb.Timestamp)(nil),       // 20: google.protobuf.Timestamp
+	(*v1.Identity)(nil),                 // 21: warehouse.role_base.v1.Identity
+	(v11.SettlementType)(0),             // 22: warehouse.settlement.v1.SettlementType
+	(v11.SourceType)(0),                 // 23: warehouse.settlement.v1.SourceType
+	(*descriptorpb.MessageOptions)(nil), // 24: google.protobuf.MessageOptions
 }
 var file_warehouse_events_v1_event_proto_depIdxs = []int32{
-	19, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	18, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
-	20, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
+	20, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	19, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
+	21, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
 	2,  // 3: warehouse.events.v1.Event.member_removed:type_name -> warehouse.events.v1.MemberRemoved
 	4,  // 4: warehouse.events.v1.Event.order_placed:type_name -> warehouse.events.v1.OrderPlaced
 	6,  // 5: warehouse.events.v1.Event.order_cancelled:type_name -> warehouse.events.v1.OrderCancelled
 	7,  // 6: warehouse.events.v1.Event.order_status_changed:type_name -> warehouse.events.v1.OrderStatusChanged
-	3,  // 7: warehouse.events.v1.Event.settlement_log_posted:type_name -> warehouse.events.v1.SettlementLogPosted
-	8,  // 8: warehouse.events.v1.Event.restock_accepted:type_name -> warehouse.events.v1.RestockAccepted
-	10, // 9: warehouse.events.v1.Event.restock_created:type_name -> warehouse.events.v1.RestockCreated
-	11, // 10: warehouse.events.v1.Event.restock_cancelled:type_name -> warehouse.events.v1.RestockCancelled
-	12, // 11: warehouse.events.v1.Event.restock_updated:type_name -> warehouse.events.v1.RestockUpdated
-	13, // 12: warehouse.events.v1.Event.warehouse_transfer_created:type_name -> warehouse.events.v1.WarehouseTransferCreated
-	14, // 13: warehouse.events.v1.Event.warehouse_transfer_updated:type_name -> warehouse.events.v1.WarehouseTransferUpdated
-	15, // 14: warehouse.events.v1.Event.warehouse_transfer_cancelled:type_name -> warehouse.events.v1.WarehouseTransferCancelled
-	16, // 15: warehouse.events.v1.Event.warehouse_transfer_accepted:type_name -> warehouse.events.v1.WarehouseTransferAccepted
-	17, // 16: warehouse.events.v1.Event.liability_payment_accepted:type_name -> warehouse.events.v1.LiabilityPaymentAccepted
-	21, // 17: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
-	22, // 18: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
-	5,  // 19: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
-	9,  // 20: warehouse.events.v1.RestockAccepted.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
-	23, // 21: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
-	0,  // 22: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	22, // [22:23] is the sub-list for extension type_name
-	21, // [21:22] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	8,  // 7: warehouse.events.v1.Event.order_return_accepted:type_name -> warehouse.events.v1.OrderReturnAccepted
+	3,  // 8: warehouse.events.v1.Event.settlement_log_posted:type_name -> warehouse.events.v1.SettlementLogPosted
+	9,  // 9: warehouse.events.v1.Event.restock_accepted:type_name -> warehouse.events.v1.RestockAccepted
+	11, // 10: warehouse.events.v1.Event.restock_created:type_name -> warehouse.events.v1.RestockCreated
+	12, // 11: warehouse.events.v1.Event.restock_cancelled:type_name -> warehouse.events.v1.RestockCancelled
+	13, // 12: warehouse.events.v1.Event.restock_updated:type_name -> warehouse.events.v1.RestockUpdated
+	14, // 13: warehouse.events.v1.Event.warehouse_transfer_created:type_name -> warehouse.events.v1.WarehouseTransferCreated
+	15, // 14: warehouse.events.v1.Event.warehouse_transfer_updated:type_name -> warehouse.events.v1.WarehouseTransferUpdated
+	16, // 15: warehouse.events.v1.Event.warehouse_transfer_cancelled:type_name -> warehouse.events.v1.WarehouseTransferCancelled
+	17, // 16: warehouse.events.v1.Event.warehouse_transfer_accepted:type_name -> warehouse.events.v1.WarehouseTransferAccepted
+	18, // 17: warehouse.events.v1.Event.liability_payment_accepted:type_name -> warehouse.events.v1.LiabilityPaymentAccepted
+	22, // 18: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
+	23, // 19: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
+	5,  // 20: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
+	10, // 21: warehouse.events.v1.RestockAccepted.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
+	24, // 22: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
+	0,  // 23: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	23, // [23:24] is the sub-list for extension type_name
+	22, // [22:23] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_events_v1_event_proto_init() }
@@ -2597,6 +2748,7 @@ func file_warehouse_events_v1_event_proto_init() {
 		(*Event_OrderPlaced)(nil),
 		(*Event_OrderCancelled)(nil),
 		(*Event_OrderStatusChanged)(nil),
+		(*Event_OrderReturnAccepted)(nil),
 		(*Event_SettlementLogPosted)(nil),
 		(*Event_RestockAccepted)(nil),
 		(*Event_RestockCreated)(nil),
@@ -2615,7 +2767,7 @@ func file_warehouse_events_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_events_v1_event_proto_rawDesc), len(file_warehouse_events_v1_event_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 1,
 			NumServices:   0,
 		},

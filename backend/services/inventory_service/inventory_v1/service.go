@@ -72,6 +72,7 @@ var (
 	_ inventoryv1connect.RackServiceHandler              = (*Service)(nil)
 	_ inventoryv1connect.OrderTransactionServiceHandler  = (*Service)(nil)
 	_ inventoryv1connect.WarehouseTransferServiceHandler = (*Service)(nil)
+	_ inventoryv1connect.OpnameServiceHandler            = (*Service)(nil)
 )
 
 func NewService(

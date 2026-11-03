@@ -421,11 +421,13 @@ and nothing reads the dropped `stock_*` tables. One idea explains most of the su
   ([a-batch-shows-the-racks-it-was-put-on](../../business/inventory/batch_decision.md#a-batch-shows-the-racks-it-was-put-on)).
 - **There is no unplaced pile** ([there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile)):
   every unit is on a rack, and a request naming "unplaced" is refused.
-- **"Last counted"** is the newest `adjustment` rack row — a count writes one even when it finds the rack exact.
+- **"Last counted"** is the later of the newest `adjustment` rack row (a recount writes one even when it finds the rack
+  exact) and the last FINISHED stock count that held a row there — a count writes nothing on a rack it found exact.
 
 ### A stock-take counts a RACK (#139) — provisionally, as an `adjustment`
 
-`StockAdjust` and the one-rack `StockOpname` survive the cut-over as provisional `adjustment` transactions
+`StockAdjust`'s recount and found survive the cut-over as provisional `adjustment` transactions (the one-rack
+`StockOpname` is retired; damaged and lost are a shelf report on the register — § Broken, lost, and found)
 ([old-shelf-corrections-move-onto-the-ledgers-provisionally](../../technical/stock/design_decision.md#old-shelf-corrections-move-onto-the-ledgers-provisionally));
 every choice the port made is open in [adjustment_clarify.md](../../business/inventory/adjustment_clarify.md). The
 request must say which rack it counted — a required `oneof`, re-checked by the handler — and "unplaced" is refused.
@@ -530,7 +532,7 @@ The rules, as the stub played them and the handlers now keep:
 | all or nothing | one database transaction for every team's transaction; any line that does not fit refuses the whole write, naming the product ([a-move-is-all-or-nothing](../../business/inventory/placement_decision.md#a-move-is-all-or-nothing)) |
 | one transaction per owning team | the response lists them in team id order ([a-move-writes-one-transaction-per-owning-team](../../business/inventory/placement_decision.md#a-move-writes-one-transaction-per-owning-team)) |
 | the ceiling | a line takes at most the rack's stock count, so sold units waiting for the picker stay ([a-move-leaves-sold-units-on-their-rack](../../business/inventory/placement_decision.md#a-move-leaves-sold-units-on-their-rack)) |
-| a product being counted | refused once opname is built; `RackStockLine.counting` tells the dialog to lock it at 0 — always false until then |
+| a product being counted | refused, naming the count (a-lock-stops-units-moving-not-sales); `RackStockLine.counting` tells the dialog to lock it at 0 — read from the open snapshot rows |
 | `RackList` STOCK slice | real today: each rack's stock count and product count for the Racks page, one grouped `SUM`/`COUNT` over the page's racks, only when asked — a picker never pays for it |
 | `RackSample.recipient` | required, who received it, kept on the transaction ([a-sample-keeps-its-recipient](../../business/inventory/transaction_decision.md#a-sample-keeps-its-recipient)). No member of the owning team is asked to agree, and the sample posts nothing to balance ([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)) |
 
@@ -726,110 +728,49 @@ a running `SUM(change_count) OVER (PARTITION BY warehouse_id ORDER BY id)` over 
 
 ---
 
-## A stock opname — counting a whole shelf (`StockOpname`)
+## A stock opname — counting a whole shelf (`StockOpname`) — RETIRED
 
-`StockAdjust` with reason `RECOUNT` has been able to correct **one product on one shelf** since #139.
-That is the posting, not the job. Nobody walks to A-01-3 to count one product: they stand at the shelf,
-count everything on it, and the useful fact afterwards is *"A-01-3 was counted, and here is what was
-wrong"* — not five unrelated corrections that happen to share a rack.
+⛔ **Retired 2026-11-02** with the stock count below
+([the-count-prototype-is-accepted](../../business/inventory/opname_decision.md#the-count-prototype-is-accepted)):
+`InventoryService.StockOpname`, its one-rack page (`/inventories/opname`, which now redirects to the counts) and its e2e
+spec are gone. It corrected one rack as provisional `adjustment` transactions; a count now nets a product over every rack
+it sits on, and writes `problem`, `found` and `move`. `StockAdjust`'s recount still corrects one product on one rack
+through the same `PostRecount`.
 
-`StockOpname` is that act. It reuses the recount mechanics per line and adds the two things a sweep
-needs: **all-or-nothing**, and **the whole picture of the variance**. ⚠ It runs on the ledgers **provisionally**, as `adjustment`
-transactions, until the stock count replaces it
-([old-shelf-corrections-move-onto-the-ledgers-provisionally](../../technical/stock/design_decision.md#old-shelf-corrections-move-onto-the-ledgers-provisionally)).
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant P as warehouse crew
-    participant UI as "/inventories/opname?rack=163"
-    participant R as RackService
-    participant PS as product_service
-    participant I as inventory_service
-    participant E as expense_service
-
-    UI->>R: RackStock — what the system believes is on this shelf
-    R-->>UI: product ids + on-hand + unit cost
-    UI->>PS: ProductByIds — the labels, since a shelf holds OTHER teams' goods
-    PS-->>UI: product code + name
-    UI-->>P: the count sheet — expected beside an empty box
-
-    P->>UI: types what is actually there (blank = not counted)
-    UI->>I: StockOpname(place, lines, note)
-
-    rect rgb(240, 240, 240)
-        Note over I: ONE transaction — lines sorted by product id
-        loop each counted line
-            I->>I: lock the owner's batches, then the rack row — the locks that make this safe
-            I->>I: short - off the rack and the oldest batches, priced at their value
-            I->>I: over - a batch minted at the owner's newest price here, onto the rack
-            I->>I: exact - a 0 rack row, so the rack reads as counted
-        end
-        I->>I: the shortfall owed to each owner, keyed by its adjustment
-    end
-
-    I->>E: PostStockLoss — ONE write-off for the whole shelf, AFTER commit
-    I-->>UI: every line's variance + what the shortfall was worth
-```
-
-### The two rules that matter most
-
-| | |
-| --- | --- |
-| **Only the lines sent are counted** | A product on the shelf and absent from `lines` is left completely alone — **never zeroed**. The tempting reading ("a sweep means everything else is gone") would turn one forgotten row or one lost page into a silent write-off of real stock, and a stock-take is BELIEVED. Emptying a shelf is `counted_qty = 0`, said out loud. |
-| **A zero-variance line still writes a rack row** | `last_opname_unix` is read from the newest `adjustment` rack row on that `(product, rack)`, so a correct count that wrote nothing would leave the rack looking permanently overdue for the count somebody just did. Counting and changing are different things. |
-
-### What a shortfall is worth
-
-A shortfall leaves the owner's batches **oldest first**, and the write-off is priced at **the value the draw actually
-took** from each (an-emptying-take-takes-all-the-value). Every batch carries its price, so `value_known` is always true.
-
-A **surplus is never valued**. Stock that turns up was not bought, and booking a negative expense for it
-would let a sloppy count read as income.
-
-### Concurrency
-
-Two people counting one shelf at the same second is the normal case here, not an edge case. Every line
-locks its batches and then its rack row (batches-lock-before-shelves-by-id), and **the lines are sorted by product id
-before locking** — a deadlock guard, not tidiness: two requests locking `7 then 3` and `3 then 7` would have
-Postgres kill one of them, and the person would see a stock-take fail for no reason they could explain.
-
-Proved rather than asserted — see
-[audits/services/inventory_service/concurrency/lock-order.md](../../../audits/services/inventory_service/concurrency/lock-order.md).
-
-### Not yet
-
-- **A shelf larger than one screen** is flagged (`truncated`) rather than silently counted in part. The
-  uncounted rows are safe — the server never touches a product it was not sent — but the person would
-  otherwise believe they had finished.
-
-## Stock count sessions — `OpnameService` (PROTOTYPE)
+## Stock count sessions — `OpnameService`
 
 A stock count of ONE warehouse, as a session: plan it, snapshot and lock the shelf book, count blind, write each difference
 as a draft with its reason, and finalize into the stock-problem register. The design is
 [opname.md](../../business/inventory/opname.md) and its decisions in
-[opname_decision.md](../../business/inventory/opname_decision.md).
+[opname_decision.md](../../business/inventory/opname_decision.md); the schema is
+[database-schema.md § The stock count](../../database-schema.md#the-stock-count-00035).
 
-> ⚠ **PROTOTYPE — no handler exists.** `OpnameService` ([opname.proto](../../../proto/warehouse/inventory/v1/opname.proto))
-> is mounted answering **Unimplemented** (`inventory_v1.OpnamePrototype`), and the screens
-> (`/inventories/opname/sessions…`) run against the Storybook stub (`.storybook/opnameStub.ts`) until design_accept. The
-> flows below are what the backend step builds. It supersedes `StockOpname` above — that RPC and its page keep working
-> until then.
+> ✅ **Built 2026-11-02** — `inventory_v1/opname_*.go`, one file per RPC with its test; the settlement and its post are
+> `inventory_mutations/post_count.go`; the lock is `inventory_ledgers/count_lock.go`. Races in `opname_race_test.go`
+> (`-tags raceaudit`), the audit in `opname_perf_test.go` (`-tags perfaudit`), the flow end to end in
+> `frontend/e2e/opname_sessions.spec.ts`.
 
 | RPC | Who | What it does |
 | --- | --- | --- |
-| `OpnameSessionList` / `Detail` | any warehouse member | the sessions, newest first; a counter's read of an unfinished one carries no difference count |
-| `OpnameSessionCreate` | Owner, Admin | snapshot the plan's `product_placements` rows — **rows at 0 included** — and lock them; refused while another session is active |
-| `OpnameSessionCancel` | Owner, Admin | active → cancel; rows released, nothing posted |
-| `OpnameRowList` | Owner, Admin — **never staff** | every row WITH the book figure: the watch page |
-| `OpnameRowSendBack` | Owner, Admin | a counted row back to counting; its count and drafts cleared |
-| `OpnameRackList` | any member | the racks to visit; an `all` session lists every rack, empty ones too |
-| `OpnameRackCount` | any member | one rack as its counter sees it — **no book figure before the row is counted** |
-| `OpnameRowCount` | any member | the blind count, then one recount that replaces it; answers the row revealed, with the system's draft |
-| `OpnameRowMarkCounted` | any member | closes a revealed row: the broken count and every draft's reason |
-| `OpnameRowAddFound` | any member | a product found on a rack: a row at 0, its other racks join; refused when its team never had it here |
-| `OpnameFinalizePreview` | Owner, Admin | what finalize posts, per product, and why it is refused |
-| `OpnameSessionFinalize` | Owner, Admin — never a counter | posts it: one `opname` transaction per owning team |
+| `OpnameSessionList` / `Detail` | any warehouse member — a read | the sessions, newest first, with progress; a counter's (staff) read of an active one carries no difference count |
+| `OpnameSessionCreate` | Owner, Admin (+ Root) | the plan's `product_placements` rows — **rows at 0 included**, a rack plan widened to its products' other racks — read `FOR SHARE` and snapshotted, which locks them; refused while another session is active, naming it |
+| `OpnameSessionCancel` | Owner, Admin | active → cancel under the session's lock; every row released, nothing posted, the counts kept |
+| `OpnameRowList` | Owner, Admin — **never staff** — a read | every row WITH the book figure, by rack code then name, paged: the watch page |
+| `OpnameRowSendBack` | Owner, Admin | a counted row back to created; its count, counter and drafts cleared; still locked |
+| `OpnameRackList` | any member — a read | the racks to visit, paged; an `all` session lists every live rack, empty ones too |
+| `OpnameRackCount` | any member — a read | one rack's rows, **blind** until each is counted, whoever asks |
+| `OpnameRowCount` | any member | the blind count, then one recount that replaces it, a third refused; writes the system's `lost` (short) or `surplus` (over) draft |
+| `OpnameRowMarkCounted` | any member | the broken count and every draft's reason; lost = shortage − broken, at least 0; refused while a draft has no reason |
+| `OpnameRowAddFound` | any member | a product found on a rack: its row there and on each of its other racks join, at the book the shelf rows show now; refused when its team never had a batch of it here |
+| `OpnameFinalizePreview` | Owner, Admin — a read | the finalize's own settlement over a plain read, per product and batch; why this person may not finalize |
+| `OpnameSessionFinalize` | Owner, Admin, Root — never a counter | posts it: up to three transactions per owning team, the register, the debt; releases every row |
+
+**The lock** is every open snapshot row. `inventory_ledgers.RefuseCounted` reads it after the shelf rows are locked, in a
+statement of its own, in every writer that moves units: the restock and transfer accept's put-away
+(`PutOnPlacements`), `RackMove`, `RackSample`, `StockAdjust` (recount, damaged, lost, found). Each refusal is
+FailedPrecondition naming the count, who started it and when. An order's take (and a transfer's out-leg, which shares it)
+is never refused: `TakeFewestFirst` uses the counted racks last, and `StockPickLocations.counting_session_id` tells the
+pick page the shelf waits for the count. `RackStockLine.counting` locks the product in the Move and Sample dialogs.
 
 ### A row's life
 
@@ -844,8 +785,9 @@ stateDiagram-v2
     created --> [*]: SessionCancel — released
 ```
 
-`revealed` is not a stored status: the row is still `created`, with its count in. A short row gets the system's `lost`
-draft (the shortage less the broken, at least 0); an over row the system's `surplus` draft.
+`revealed` is not a stored status: the row is still `created`, with `recounted_stock_count` set. Every row write takes the
+session `FOR SHARE` and then the row `FOR UPDATE`; finalize and cancel take the session `FOR UPDATE` — so a row write and
+a finalize never pass each other, and two phones on one row queue (the second count is the recount).
 
 ### What finalize posts
 
@@ -856,16 +798,71 @@ flowchart LR
   R -->|"short n"| L["lost n - per batch, oldest first, after broken"]
   R -->|"over n"| C["claims the oldest open loss, then mints at the newest price here"]
   R -->|"0"| M["a move - racks corrected only"]
+  B --> PT["problem transaction"]
+  L --> PT
+  C --> FT["found transaction"]
+  M --> MT["move transaction"]
 ```
 
-Finalizing **is** the agreement (`finalizing-is-the-agreement`): the broken and lost rows are what the warehouse owes the
-teams, a claim is what they pay back.
+```mermaid
+sequenceDiagram
+    participant A as Budi — warehouse Admin
+    participant F as OpnameSessionFinalize
+    participant M as PostCountFinalize
+    participant DB as Postgres — one tx
+    participant L as liability_service
+    participant E as expense_service
+    A->>F: finalize count 15
+    F->>DB: lock the session FOR UPDATE
+    F->>DB: read its rows and drafts
+    alt not active, a row not counted, or Budi counted one
+        F-->>A: FailedPrecondition — nothing written
+    else
+        F->>M: every product with its rows
+        M->>DB: lock the open losses it may claim, oldest first
+        M->>DB: lock the batches it takes from and claims into, one statement in id order
+        M->>M: settle each product — broken, the rest, the racks
+        M->>DB: per team — problem, found, move transactions
+        M->>DB: lock every rack row of the session, check every change
+        M->>DB: batch rows, mints, rack rows — increases first
+        M->>DB: register rows per batch, claims, items
+        F->>L: the warehouse owes each team — broken, lost — and a claim gives back, in the tx
+        F->>DB: list the transactions, release every row, the session finish
+        F-->>A: the session and its transactions
+        F->>E: one stock-loss expense for the count, after commit
+    end
+```
+
+**A worked example** (`TestOpnameSessionFinalize_ATearAndAnExtraClaimsThenMints`). Melati's Kaos Hitam: batch 1, 8 at
+Rp 10.000; batch 2, 2 at Rp 12.000; a shelf report lost one of batch 2 earlier — an open loss. The count finds Rak A book 5,
+counted 5 with one torn; Rak B book 4, counted 5.
+
+| | |
+| --- | --- |
+| the arithmetic | book 9 · sellable 10 · broken 1 · the rest 10 − (9 − 1) = **+2** |
+| `problem` | broken 1 off batch 1 (oldest) at Rp 10.000 — a register row, claimable 0, on Rak A (one rack's draft) |
+| `found` | +1 claims the old loss back into batch 2 at its Rp 12.000, the claim row written · +1 minted as a new batch at the team's newest price here, Rp 12.000 |
+| racks | Rak A −1 broken, +1 found → 5 · Rak B +1 found → 5 — each at its sellable count, no move |
+| money | the warehouse owes Melati Rp 10.000 (broken) · Melati pays back Rp 12.000 (the claim) · the mint moves none · stock-loss expense Rp 10.000 |
+
+How a team's rack corrections split across its three transactions — the ledgers' open point 15 — is decided in the build:
+the broken come off the racks their drafts name; lost comes off the racks still short once their broken is off, found goes
+onto the racks still over, each in rack id order; what is left nets to 0 and is the `move`. So each transaction moves the
+same units on both ledgers (both-ledgers-count-the-same-units).
 
 ## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
 
 A `DAMAGED` / `LOST` adjust already wrote the units off the shelf and their frozen cost to expense.
 That answered *"what did our losses cost us"* and left the other question unanswered: the goods
 belonged to a **selling team**, and until now they were simply gone.
+
+> ✅ *(2026-11-02)* **A damaged or lost report is the register's second door**
+> ([an-adjustment-writes-the-same-problem-row](../../business/inventory/opname_decision.md#an-adjustment-writes-the-same-problem-row)):
+> `inventory_mutations.PostShelfProblem` writes a `problem` transaction of the batch's owner — its batch and rack rows
+> say `broken` or `lost` — and one `warehouse_stock_problems` row for the named batch, at its price, on the reported
+> rack; lost is claimable, broken never. No session lists it. `FOUND` is unchanged — still the provisional
+> `adjustment` back into the named batch; the finished found claims the oldest open loss and wants a second person,
+> undesigned at the shelf. The money below is as it was.
 
 ```mermaid
 sequenceDiagram
@@ -876,7 +873,7 @@ sequenceDiagram
 
     W->>I: StockAdjust{DAMAGED, batch, qty}
     Note over I: one transaction
-    I->>I: an adjustment of the batch's owner - units off the batch, then off the rack
+    I->>I: a problem of the batch's owner - units off the batch, then off the rack, and its register row
     I->>I: the value the batch gave up, and its owner - batches.team_id
     I->>S: PostStockDamage — the WAREHOUSE owes the OWNER
     Note over I: commit
@@ -925,19 +922,21 @@ team's goods gone with nothing recorded — the situation the ledger exists to p
 `source_id` is the **adjustment transaction**. Every adjust writes exactly one, so a retried adjust is refused by the
 ledger's unique index, and a damage and its later find can never collide.
 
-### An opname shortfall reimburses too (owner, 2026-08-20)
+### A count's shortfall reimburses too (owner, 2026-08-20)
 
-`StockOpname` is a recount in bulk, and §Warehouse 7 makes counting the shelf the warehouse's own job.
-A shortfall it finds is stock lost in the warehouse exactly as one filed as a `LOST` adjust is — so it
-posts the same `STOCK_DAMAGE` obligation.
+A count is the warehouse checking its own custody, and §Warehouse 7 makes that its job. What a finalize finds broken or
+lost is stock lost in the warehouse exactly as one filed as a `LOST` adjust is — so it posts the same `STOCK_DAMAGE`
+obligation, keyed on the team's `problem` transaction (broken and lost are two entries of it, by their source types),
+and a claim gives back the money of the loss it claims, keyed on the team's `found` transaction. (It was the one-rack
+`StockOpname`'s rule until that was retired; § Stock count sessions.)
 
 Before this, the same physical loss reimbursed the owner or did not **depending on which RPC noticed
 it**, which is the worst kind of inconsistency: invisible, and only in the accounts.
 
 | | |
 | --- | --- |
-| **one debt per owner** | keyed on that owner's adjustment transaction — one per owning team per count — so `source_id` means the same thing it means for an adjust and a re-run is refused by the ledger rather than charging twice |
-| **a surplus reimburses nobody** | and is not a reversal either — stock that turns up on a count was never established as lost, so there is no debt of its own to give back. Only a `FOUND` adjust against a specific batch reverses a specific reimbursement |
+| **one debt per owner** | keyed on that owner's `problem` transaction — one per owning team per count — so `source_id` means the same thing it means for an adjust and a re-run is refused by the ledger rather than charging twice |
+| **a surplus claims first** | the count's surplus claims the oldest open loss back, and that claim reverses the loss's money (`found`); what is left is minted at the team's newest price here and moves no money |
 | **the warehouse's own goods** | a team cannot owe itself |
 
 The obligation joins the count's **transaction**; the expense stays best-effort after it — the same

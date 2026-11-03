@@ -102,6 +102,10 @@ func (s *Service) RackMove(
 func placementErr(err error) error {
 	var short *inventory_ledgers.NotEnoughStockError
 
+	if refused := countedRefusal(err); refused != nil {
+		return refused
+	}
+
 	switch {
 	case errors.Is(err, errRackMissing):
 		return connect.NewError(connect.CodeNotFound, errRackMissing)

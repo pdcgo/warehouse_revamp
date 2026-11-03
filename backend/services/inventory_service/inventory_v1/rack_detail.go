@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
@@ -99,25 +100,28 @@ func (s *Service) rackSummary(
 		summary.TotalValue += levels[i].StockCount * unitCost
 	}
 
-	// WHEN THIS SHELF WAS LAST COUNTED. A count writes an `adjustment` rack row on the rack it counted — 0 when it found
-	// the rack exact — so this is derived from the log rather than stored.
-	var counted inventory_service_models.ProductPlacementLog
+	// WHEN THIS SHELF WAS LAST COUNTED — the later of a recount's `adjustment` rack row (0 when it found the rack exact)
+	// and the last FINISHED stock count that held a row on it, which writes nothing on a rack it found exact. Derived,
+	// never stored.
+	var counted sql.NullTime
 
 	err = s.db.
 		WithContext(ctx).
-		Where("warehouse_id = ? AND placement_id = ? AND change_type = ?",
-			warehouseID, rackID, string(inventory_service_models.TxAdjustment)).
-		Order("id DESC").
-		Take(&counted).
+		Raw(`SELECT GREATEST(
+		    (SELECT MAX(created_at) FROM product_placement_logs WHERE warehouse_id = ? AND placement_id = ? AND change_type = ?),
+		    (SELECT MAX(o.finalized_at) FROM opname_session_snapshots ss JOIN opname_sessions o ON o.id = ss.opname_session_id
+		       WHERE ss.placement_id = ? AND o.status = 'finish'))`,
+			warehouseID, rackID, string(inventory_service_models.TxAdjustment), rackID).
+		Scan(&counted).
 		Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil {
 		return nil, err
 	}
 
 	// Never counted stays EMPTY rather than becoming a zero time. A new rack has genuinely never been
 	// counted, and rendering that as an epoch date would be the screen inventing a stock-take.
-	if err == nil {
-		summary.LastCountedAt = counted.CreatedAt.Format(time.RFC3339)
+	if counted.Valid {
+		summary.LastCountedAt = counted.Time.UTC().Format(time.RFC3339)
 	}
 
 	return &summary, nil

@@ -3848,3 +3848,48 @@ flowchart LR
 | `manual` drafts already stored | still listed and still promotable. Nothing makes new ones |
 | validation | `OrderCreate`'s own, request and placement, for both buttons. The draft page's reasons match the create form's |
 | ✅ built *(2026-10-29)* | `OrderCreateRequest.order_draft_id` (field 21) and `OrderCreate`'s draft lookup and in-transaction delete, which checks `RowsAffected` so one draft becomes one order. `OrderDraftPromote` removed from the proto and the service. The draft page's Promote builds the request from its screen; the create form's Save as Draft is gone, and Create finishes a `?draft=` it was opened beside. Tests: `TestOrderCreateFromDraft_*` (the draft disappears, one draft one order, a refused order leaves it, a colleague's is NotFound, the event fires), stories `AnUnsavedEditIsPromotedAsIs`, `AManualDraftAsksForItsRef`, `TheFormHasNoSaveAsDraft`. ⚠ The concurrent half of one-draft-one-order is not proved with `san_race` |
+
+---
+
+## the-return-accept-is-built-before-its-stock-half
+
+> Owner, in chat (2026-11-02): *"2. build now"* — to *"the courier's fee at a return: build the return accept without stock,
+> or keep it parked?"*, against my recommendation to keep it parked.
+
+**The verdict.** The warehouse's **return accept** — `return → return_completed`
+([the-accept-is-the-status-return-completed](#the-accept-is-the-status-return-completed)) — is built **now**, with
+everything the order side decides, and **without** inventory's return transaction: the returned units are not put back
+on a shelf until [inventory/return.md](../inventory/return.md) designs it
+([return-is-unplanned](../inventory/context_decision.md#return-is-unplanned) still holds for the stock half).
+
+```mermaid
+flowchart LR
+  P["a returned parcel"] --> A["the warehouse accepts - return_completed"]
+  A --> F["the courier's ask, if any - the selling team owes the warehouse"]
+  A --> N["a short parcel - a timeline note naming what is missing"]
+  A --> L["a borrowed line - the label to print, the mapped product's code"]
+  A -.->|"not yet - return.md"| S["the units back on a shelf"]
+```
+
+| | |
+| --- | --- |
+| who | the warehouse whose staff hold the parcel — the configured return warehouse, or any other a stale label sent it to — recorded automatically ([a-return-may-land-in-another-warehouse](#a-return-may-land-in-another-warehouse), [the-accept-records-where-it-was-accepted](#the-accept-records-where-it-was-accepted)); from `return` only — a forced return moves first ([a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move)). 🔄 *(2026-11-02)* this row first read *the order's warehouse* — corrected, see [the-accept-was-recorded-as-the-shipping-warehouses](./order_return_clarify.md#the-accept-was-recorded-as-the-shipping-warehouses) |
+| whole | every line at its ordered quantity ([a-return-is-never-partial](#a-return-is-never-partial)) |
+| short | each missing unit named on an `order_timeline_logs` row, `from = warehouse` ([a-short-return-is-accepted-and-the-gap-written-off](#a-short-return-is-accepted-and-the-gap-written-off)); its write-off is inventory's, not yet |
+| borrowed | the accept lists each borrowed line's mapped own product code to print ([a-returned-borrowed-unit-is-relabelled-at-the-accept](#a-returned-borrowed-unit-is-relabelled-at-the-accept)); an unmapped one is refused, as order_return.md draws |
+| the courier | an optional amount and note, carried by the accepted event and posted by liability as `INCIDENTAL_FEE`, the selling team owing the warehouse ([a-return-may-carry-the-couriers-ask](../balance/context_decision.md#a-return-may-carry-the-couriers-ask)) |
+| ⚠ accepted | until return.md, a completed return's units are not on the shelf: inventory under-reads by them |
+
+✅ **Built 2026-11-02.** `OrderReturnAccept` ([order.proto](../../../proto/warehouse/selling/v1/order.proto)) — scoped on the
+**accepting** warehouse: any warehouse may accept an order in `return`, and the order's own selling team is refused. In one
+transaction under the order's row lock: `return_completed` on a warehouse timeline row (the courier's charge as its note,
+and the accepting warehouse in `order_timeline_logs.accepting_warehouse_id`, selling `00034`), the missing units on one
+warehouse note row, the borrowed lines' labels in the answer (an unmapped one refuses the whole accept), and no inventory
+call. `OrderReturnAccepted` (`order-return-accepted`) carries the charge to liability, owed to the accepting warehouse, and
+the order metrics' Return Arrived counts it. The configured return warehouse reads the team's orders in `return` and
+`return_completed` — only those — so its crew finds them on a **Returns** tab and accepts from the order
+([rpc.md](../../services/selling_service/rpc.md#the-warehouse-accepts-a-return--orderreturnaccept)).
+⚠ my build details: the charge posts as its own source type, **`return_incidental_fee`**, not `INCIDENTAL_FEE` — that one is
+keyed by a restock id, and an order of the same number would collide on the ledger's idempotency key; a label is printed
+per unit **in hand** (ordered less missing). ⚠ A stale-label warehouse — neither end nor the configured one — has no way
+to find the order: the server accepts it by id, but no list or scan of its own matches it.

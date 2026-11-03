@@ -90,6 +90,38 @@ export const orderImportScenario = {
  */
 export const orderStatScenario = { calls: 0 };
 
+/**
+ * THE RETURN ACCEPT (the-accept-is-the-status-return-completed). No fixture order is in `return`, and adding one would move
+ * every count a list story pins — so a story names the orders the stub reads in `return` (`inReturn`), and an accept moves
+ * one to `return_completed` (`accepted`) for the rest of that story. `labels` is what the accept answers for borrowed lines
+ * (the server works them out from the return maps; a story says what it answered), `refusal` makes it refuse with that
+ * message, and `last` is what the last OrderReturnAccept carried.
+ */
+export const returnAcceptScenario = {
+  inReturn: [] as bigint[],
+  accepted: [] as bigint[],
+  labels: [] as {
+    orderItemId: bigint;
+    borrowedProductId: bigint;
+    borrowedProductCode: string;
+    ownProductId: bigint;
+    ownProductCode: string;
+    ownProductName: string;
+    quantity: number;
+  }[],
+  refusal: undefined as string | undefined,
+  last: undefined as
+    | undefined
+    | { orderId: bigint; missing: { orderItemId: bigint; quantity: number }[]; courierCharge: bigint; courierChargeNote: string },
+};
+
+/** A `beforeEach`: the stub reads these orders in `return` — claimed back, waiting for the warehouse's accept. */
+export function withOrdersInReturn(...orderIds: bigint[]) {
+  return () => {
+    returnAcceptScenario.inReturn = orderIds;
+  };
+}
+
 export function resetSessionScenario() {
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
   sessionScenario.memberOf = null;
@@ -101,6 +133,11 @@ export function resetSessionScenario() {
   receiptCheckScenario.refused = 0;
   takeRefusalScenario.refusal = undefined;
   orderStatScenario.calls = 0;
+  returnAcceptScenario.inReturn = [];
+  returnAcceptScenario.accepted = [];
+  returnAcceptScenario.labels = [];
+  returnAcceptScenario.refusal = undefined;
+  returnAcceptScenario.last = undefined;
 }
 
 /** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */

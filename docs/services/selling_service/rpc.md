@@ -28,7 +28,7 @@ stateDiagram-v2
     problem --> lost: customer service
     problem --> return: customer service, or the warehouse
     completed --> return: customer service, or the warehouse
-    return --> return_completed: the return accept - not built
+    return --> return_completed: warehouse - OrderReturnAccept, no stock yet
     return --> lost: customer service
     pending --> cancel: OrderCancel (selling) - returns the stock (#70)
     cancel --> [*]
@@ -42,7 +42,8 @@ Every edge above except two goes through **`OrderStatusChange(team_id, order_ids
 ([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)).
 It replaced `OrderConfirm`, `OrderPick`, `OrderPack` and `OrderShip`, which only ever changed the status.
 The two that keep their own RPC do more than move a status: `OrderCancel` returns the stock and cancels
-the sale, and the return accept (not built) records the warehouse and relabels borrowed units.
+the sale, and the return accept (`OrderReturnAccept`, [below](#the-warehouse-accepts-a-return--orderreturnaccept)) notes the
+missing units, answers the labels for borrowed lines and announces the courier's charge.
 
 ```mermaid
 sequenceDiagram
@@ -82,6 +83,7 @@ sequenceDiagram
 | Move | Scoped to | Because |
 | --- | --- | --- |
 | Create / Cancel | the **selling team** | the team that owns the order decides whether it stands |
+| the return accept | **the warehouse holding the parcel** — any, for an order in `return` | only the person holding the goods can say they are here, and the parcel may come back to a warehouse that did not ship it ([both-cs-and-the-warehouse-can-return-an-order](../../business/order/context_decision.md#both-cs-and-the-warehouse-can-return-an-order)) |
 | confirm, Set Picked, back to pending, the handover | the **order's warehouse** (#72) | the crew doing the work holds no role in the selling team |
 | shipped, completed, problem, lost | the **selling team** | customer service reads the platform |
 | a forced return | either | customer service claims it, or the warehouse forces it |
@@ -160,6 +162,87 @@ would hide that rather than record it.
 
 > The hand-back to `pending` is what keeps the shelf honest: the books return the goods only once a
 > person has put them back. Re-shelving onto a different rack is `RackMove`'s job (#136).
+
+## The warehouse accepts a return — `OrderReturnAccept`
+
+`return` is a **claim** that the goods are coming back; `return_completed` is the goods **in the warehouse's hands**
+([the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed)).
+The move between them is the accepting warehouse's own RPC — **whichever warehouse holds the parcel** — built before its
+stock half
+([the-return-accept-is-built-before-its-stock-half](../../business/order/context_decision.md#the-return-accept-is-built-before-its-stock-half)):
+**it calls no inventory**, so a completed return's units are not back on a shelf until
+[inventory/return.md](../../business/inventory/return.md) designs it.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as the crew - Accept Return on the pick screen
+    participant S as OrderReturnAccept
+    participant DB as orders, order_items, product_return_maps
+    participant P as product_service - ProductByIds
+    participant B as Pub/Sub - order-return-accepted
+    participant L as liability_service
+    participant F as the order metrics fold
+
+    W->>S: team_id = the ACCEPTING warehouse, order_id, missing lines, courier charge and its note
+    S->>S: the root team, or a charge above 0 with no note - InvalidArgument
+    S->>DB: the order and its lines WHERE id, and in return or read by the caller - not locked
+    S->>S: the selling team - PermissionDenied, not return - FailedPrecondition, the missing lines checked
+    S->>DB: the selling team's maps of the lines' products
+    S->>P: one call - each line's owner, and each mapped own product's code
+    alt a borrowed line with no map
+        S-->>W: FailedPrecondition naming every such product - nothing written
+    end
+    Note over S,DB: ONE transaction
+    S->>DB: the order FOR UPDATE, re-check return - a second accept waits here, then is refused
+    S->>DB: UPDATE status return_completed, INSERT the accept row from warehouse - the charge as its note, accepting_warehouse_id
+    opt a short parcel
+        S->>DB: INSERT one note row from warehouse - each missing product and how many, same moment
+    end
+    S-->>W: the order, and the labels to print for borrowed lines
+    S->>B: OrderReturnAccepted - after the commit, a failure only logged
+    B->>L: liability-order-return-accepted - a charge above 0 posts return_incidental_fee, keyed by the order
+    B->>F: selling-order-fold-return-accepted - Return Arrived
+```
+
+| | |
+| --- | --- |
+| who | **the warehouse holding the parcel** — `ROOT`, `ADMINISTRATOR`, `WAREHOUSE_OWNER`, `WAREHOUSE_ADMIN`, `WAREHOUSE_STAFF`, scoped on it. Usually the selling team's configured return warehouse, which may not be the one the order shipped from ([a-return-may-land-in-another-warehouse](../../business/order/context_decision.md#a-return-may-land-in-another-warehouse)), and an old label may bring it to a third ([a-stale-return-location-is-accepted](../../business/order/context_decision.md#a-stale-return-location-is-accepted)) — so **any** warehouse may accept an order in `return`. An order in any other status reads `NotFound` unless the caller reads it ([orderReaders](#a-return-reads-to-its-return-warehouse--orderreaders)); the order's own selling team is `PermissionDenied` (it claims, it does not accept — unless it is its own warehouse); the root team, which is no building, `InvalidArgument` |
+| where | the accepting warehouse — the call's scope, asked of nobody — is written on the `return_completed` row, `order_timeline_logs.accepting_warehouse_id` (selling `00034`), and travels as `OrderTimelineLog.accepting_warehouse_id` ([the-accept-records-where-it-was-accepted](../../business/order/context_decision.md#the-accept-records-where-it-was-accepted)). It is also `OrderReturnAccepted.warehouse_id`: the courier was paid at that door, so the charge is owed to it |
+| from | `return` only. A parcel whose order is not claimed is forced to `return` first ([a-forced-return-follows-the-status-move](../../business/order/context_decision.md#a-forced-return-follows-the-status-move)); an accepted one answers *"this return is already accepted"* |
+| whole | every line at its ordered quantity ([a-return-is-never-partial](../../business/order/context_decision.md#a-return-is-never-partial)) — there is no "how many came back", only `missing_lines`: one per line, 1 to the line's quantity, on this order's lines |
+| a short parcel | one **note row** (no status) from the warehouse, at the accept's moment: *"Missing from the returned parcel: 1 × KPH-M Kaos Polos Hitam — M · …"* ([a-short-return-is-accepted-and-the-gap-written-off](../../business/order/context_decision.md#a-short-return-is-accepted-and-the-gap-written-off)). Its write-off is inventory's, not built |
+| a borrowed line | a line whose owner is known and is not the selling team, as create decides it. It answers a label: the mapped own product's code and name, one per unit in hand — the quantity less the missing ([a-returned-borrowed-unit-is-relabelled-at-the-accept](../../business/order/context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept)). An unmapped one refuses the whole accept ([a-return-never-clones-a-product](../../business/order/context_decision.md#a-return-never-clones-a-product)); an own line never reads the map |
+| the courier | `courier_charge` (whole rupiah, 0 = none) and its note, required above 0 ([an-incidental-line-must-say-what-it-was-for](../../business/balance/context_decision.md#an-incidental-line-must-say-what-it-was-for)). Written as the accept row's note — *"Courier charge Rp 15.000: ongkir retur"* — and carried by `OrderReturnAccepted`; liability posts it ([liability_service](../liability_service/rpc.md#the-courier-at-a-return--chargereturncourier)). A note with no charge is dropped |
+| the override | `is_override` on both rows it writes, and `actor_is_override` on the event ([an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)). `orders.is_override` is the placement's and is not touched |
+| the catalogue | read **before** the lock — no network call holds the order's row. The lines and the maps cannot change under it (frozen at placement, written once); only the status can, and it is re-read under the lock. A failed lookup is `Unavailable` and nothing is accepted |
+| the event | `OrderReturnAccepted` on `order-return-accepted`, `event_id` = `order-return-accepted:<order_id>` — the status is terminal, so an order is accepted once. It also replaces `OrderStatusChanged` as Return Arrived's feed: the plain move refuses `return_completed`, so no `OrderStatusChanged` ever carries it |
+| two crew, one parcel | ✅ safe — the row lock serialises them: 8 accepts at once leave one `return_completed` row and one event, and the interleave shows the second waiting on the first's lock, then refused. Two **warehouses** at once — the order's own and the configured one, 4 + 4 — the same: one wins, and the row names the one that won (`order_return_accept_race_test.go`) |
+| cost | ✅ 7 queries, ~3.7 ms over 50 000 orders, every read an index scan (`order_return_accept_perf_test.go`) |
+| ⚠ not built | the stock half — the return transaction into the configured return warehouse and the missing units' write-off ([return-is-unplanned](../../business/inventory/context_decision.md#return-is-unplanned)); **a way for a stale-label warehouse to FIND the order** — it is neither end nor the configured warehouse, so no list or scan of its own matches, and a cross-team search by the label is not designed (the server accepts it by id); a screen showing where a return was accepted (it is on the wire); a reprint of the labels after the dialog closes |
+
+### A return reads to its return warehouse — `orderReaders`
+
+Every read of an order — `OrderList`, `OrderStat`, `OrderExport`, `OrderCreatorList`, `OrderDetail` — shares one
+condition, `orderReaders`: the order's selling team, its warehouse, and **narrowly** the selling team's configured return
+warehouse, for an order in `return` or `return_completed` only — read from `team_return_configurations` at that moment
+([the-return-warehouse-is-read-when-the-return-happens](../../business/order/context_decision.md#the-return-warehouse-is-read-when-the-return-happens)).
+It is how the pick queue's **Returns** tab lists the parcels coming back to a warehouse that never shipped them, and how
+the pick screen opens one to accept it. Nothing else of that team's is read, and nothing it may WRITE changes.
+
+```mermaid
+flowchart LR
+  O["an order of Toko Melati - ships from Gudang Cabang"] --> E["Melati and Gudang Cabang read it - always"]
+  O --> R{"in return or return_completed?"}
+  R -->|"yes"| C["Gudang Pusat reads it too - Melati's configured return warehouse"]
+  R -->|"no"| N["Gudang Pusat reads NotFound"]
+```
+
+| | |
+| --- | --- |
+| the SQL | `team_id = @team OR warehouse_id = @team OR (status IN ('return','return_completed') AND team_id = ANY(ARRAY(SELECT team_id FROM team_return_configurations WHERE warehouse_id = @team)))` — `ANY(ARRAY(…))`, an InitPlan computed once, so the arm is an index condition |
+| the index | `orders_return_team_idx` (selling `00034`) — `(team_id) WHERE status IN ('return','return_completed')`. Without it the third arm read every order of the configured teams and the planner chose a sequential scan of the table (9 ms over 50 000); with it the three arms are one BitmapOr, 2–4 ms — the two-arm scope's own figure (`TestPerf_OrderList_ReturnWarehouse`) |
+| the stale label | a third warehouse reads nothing of the order; it can accept it by id, and after the accept it still reads nothing — a gap, above |
 
 ---
 
@@ -439,9 +522,9 @@ sequenceDiagram
     participant A as MetricSearch and MetricData
     participant T as team_service
 
-    S->>B: OrderPlaced, OrderCancelled, OrderStatusChanged - after each commit
-    B->>F: three push subscriptions, one per topic, one handler
-    Note over F: created, cancelled, or a move to return, return_completed or lost - anything else is ACKED
+    S->>B: OrderPlaced, OrderCancelled, OrderStatusChanged, OrderReturnAccepted - after each commit
+    B->>F: four push subscriptions, one per topic, one handler
+    Note over F: created, cancelled, a move to return or lost, or a return accepted - anything else is ACKED
     F->>R: one transaction - claim the event id in order_event_logs, read the order, upsert its day row
     A->>T: is the reader a warehouse - TeamByIds
     A->>R: the reader rows - root all, a warehouse by warehouse_id, a seller by team_id
@@ -450,7 +533,7 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| the subscriptions | `selling-order-fold-placed` (order-placed), `selling-order-fold-cancelled` (order-cancelled), `selling-order-fold-moved` (order-status-changed) — each its OWN subscription on a topic liability and settlement also read |
+| the subscriptions | `selling-order-fold-placed` (order-placed), `selling-order-fold-cancelled` (order-cancelled), `selling-order-fold-moved` (order-status-changed), `selling-order-fold-return-accepted` (order-return-accepted — Return Arrived, since `return_completed` is the accept's own event) — each its OWN subscription on a topic liability and settlement also read |
 | the day | the event's `occurred_at` as a Jakarta date — the placement, the cancel, the move's timeline row ([a-fact-counts-on-the-day-it-happened](../../business/order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened)) |
 | the row | (day, metric, seller, shop, warehouse, creator) += 1 order, its `total_cost`, its `platform_total`, read off the order |
 | a redelivery | the claim is the write: a second claim finds the row and folds nothing. Raced 40/40 |

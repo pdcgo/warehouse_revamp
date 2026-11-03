@@ -12,7 +12,8 @@ import (
 )
 
 // OrderDetail returns one order with its ordered line items, to EITHER END of it (#151): the team that
-// placed it, or the warehouse shipping it. The warehouse needs it most — the pick list IS the order's
+// placed it, or the warehouse shipping it — and to its team's configured return warehouse while it is a return
+// (orderReaders), whose crew opens it to accept it. The warehouse needs it most — the pick list IS the order's
 // lines, and nothing else returns them.
 //
 // The scope check is the match itself: an order belonging to neither of the caller's ends reads as
@@ -37,7 +38,8 @@ func (s *Service) OrderDetail(
 		Where("id = ?", req.Msg.GetOrderId())
 
 	if !readsEveryTeam(req.Msg.GetTeamId()) {
-		query = query.Where("(team_id = ? OR warehouse_id = ?)", req.Msg.GetTeamId(), req.Msg.GetTeamId())
+		// The two ends, and the configured return warehouse for a return only (orderReaders).
+		query = query.Where(orderReaders, map[string]any{"team": req.Msg.GetTeamId()})
 	}
 
 	err := query.

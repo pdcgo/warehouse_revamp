@@ -5,10 +5,10 @@ import { TriangleAlert } from "lucide-react";
 import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
 import type { ExpenseTotals } from "../../../gen/warehouse/expense/v1/expense_pb";
 import type { LiabilityDailyTotals } from "../../../gen/warehouse/liability/v1/liability_pb";
-import { LiabilitySourceType } from "../../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../../lib/money";
 import { parseLocalDate } from "../../../lib/datetime";
 import type { PeriodGrain } from "../../../lib/period";
+import { courierAsks } from "../queries";
 import type { StatementMode, StatementRow } from "../queries";
 
 export interface StatementTableProps {
@@ -78,7 +78,7 @@ export function StatementTable({
 
   const spent = expenses?.total ?? 0n;
   const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
-  const codFees = liability?.bySource[LiabilitySourceType.INCIDENTAL_FEE] ?? 0n;
+  const codFees = courierAsks(liability?.bySource);
 
   if (rows.length === 0) {
     return (

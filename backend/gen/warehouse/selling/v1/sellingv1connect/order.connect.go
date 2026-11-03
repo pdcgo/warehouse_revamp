@@ -50,6 +50,9 @@ const (
 	// OrderServiceOrderStatusChangeProcedure is the fully-qualified name of the OrderService's
 	// OrderStatusChange RPC.
 	OrderServiceOrderStatusChangeProcedure = "/warehouse.selling.v1.OrderService/OrderStatusChange"
+	// OrderServiceOrderReturnAcceptProcedure is the fully-qualified name of the OrderService's
+	// OrderReturnAccept RPC.
+	OrderServiceOrderReturnAcceptProcedure = "/warehouse.selling.v1.OrderService/OrderReturnAccept"
 	// OrderServiceOrderNoteCreateProcedure is the fully-qualified name of the OrderService's
 	// OrderNoteCreate RPC.
 	OrderServiceOrderNoteCreateProcedure = "/warehouse.selling.v1.OrderService/OrderNoteCreate"
@@ -95,11 +98,25 @@ type OrderServiceClient interface {
 	//	pending → processed → picked → shipping → shipped → completed
 	//	shipping / shipped / problem / completed → return · shipped / problem / return → lost
 	//
-	// Cancel and the return accept do more than move a status, so they keep their own RPCs.
+	// Cancel and the return accept do more than move a status, so they keep their own RPCs (OrderCancel,
+	// OrderReturnAccept).
 	// THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
 	// .xlsx. A server stream — progress, then an expiring link.
 	OrderExport(context.Context, *connect.Request[v1.OrderExportRequest]) (*connect.ServerStreamForClient[v1.OrderExportResponse], error)
 	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
+	// THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
+	// `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
+	// not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
+	// and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
+	// than move a status, which is why OrderStatusChange refuses
+	// that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
+	// timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
+	// product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
+	// courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
+	//
+	// ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
+	// inventory's return transaction is designed, so a completed return under-reads stock by them.
+	OrderReturnAccept(context.Context, *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error)
 	// A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
 	// Never edited and never deleted — a correction is a new note.
 	OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error)
@@ -194,6 +211,12 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderStatusChange")),
 			connect.WithClientOptions(opts...),
 		),
+		orderReturnAccept: connect.NewClient[v1.OrderReturnAcceptRequest, v1.OrderReturnAcceptResponse](
+			httpClient,
+			baseURL+OrderServiceOrderReturnAcceptProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderReturnAccept")),
+			connect.WithClientOptions(opts...),
+		),
 		orderNoteCreate: connect.NewClient[v1.OrderNoteCreateRequest, v1.OrderNoteCreateResponse](
 			httpClient,
 			baseURL+OrderServiceOrderNoteCreateProcedure,
@@ -264,6 +287,7 @@ type orderServiceClient struct {
 	orderCancel               *connect.Client[v1.OrderCancelRequest, v1.OrderCancelResponse]
 	orderExport               *connect.Client[v1.OrderExportRequest, v1.OrderExportResponse]
 	orderStatusChange         *connect.Client[v1.OrderStatusChangeRequest, v1.OrderStatusChangeResponse]
+	orderReturnAccept         *connect.Client[v1.OrderReturnAcceptRequest, v1.OrderReturnAcceptResponse]
 	orderNoteCreate           *connect.Client[v1.OrderNoteCreateRequest, v1.OrderNoteCreateResponse]
 	orderReceiptUpdate        *connect.Client[v1.OrderReceiptUpdateRequest, v1.OrderReceiptUpdateResponse]
 	shopeeOrderImport         *connect.Client[v1.ShopeeOrderImportRequest, v1.ShopeeOrderImportResponse]
@@ -303,6 +327,11 @@ func (c *orderServiceClient) OrderExport(ctx context.Context, req *connect.Reque
 // OrderStatusChange calls warehouse.selling.v1.OrderService.OrderStatusChange.
 func (c *orderServiceClient) OrderStatusChange(ctx context.Context, req *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error) {
 	return c.orderStatusChange.CallUnary(ctx, req)
+}
+
+// OrderReturnAccept calls warehouse.selling.v1.OrderService.OrderReturnAccept.
+func (c *orderServiceClient) OrderReturnAccept(ctx context.Context, req *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error) {
+	return c.orderReturnAccept.CallUnary(ctx, req)
 }
 
 // OrderNoteCreate calls warehouse.selling.v1.OrderService.OrderNoteCreate.
@@ -367,11 +396,25 @@ type OrderServiceHandler interface {
 	//	pending → processed → picked → shipping → shipped → completed
 	//	shipping / shipped / problem / completed → return · shipped / problem / return → lost
 	//
-	// Cancel and the return accept do more than move a status, so they keep their own RPCs.
+	// Cancel and the return accept do more than move a status, so they keep their own RPCs (OrderCancel,
+	// OrderReturnAccept).
 	// THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
 	// .xlsx. A server stream — progress, then an expiring link.
 	OrderExport(context.Context, *connect.Request[v1.OrderExportRequest], *connect.ServerStream[v1.OrderExportResponse]) error
 	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
+	// THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
+	// `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
+	// not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
+	// and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
+	// than move a status, which is why OrderStatusChange refuses
+	// that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
+	// timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
+	// product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
+	// courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
+	//
+	// ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
+	// inventory's return transaction is designed, so a completed return under-reads stock by them.
+	OrderReturnAccept(context.Context, *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error)
 	// A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
 	// Never edited and never deleted — a correction is a new note.
 	OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error)
@@ -462,6 +505,12 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderStatusChange")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderReturnAcceptHandler := connect.NewUnaryHandler(
+		OrderServiceOrderReturnAcceptProcedure,
+		svc.OrderReturnAccept,
+		connect.WithSchema(orderServiceMethods.ByName("OrderReturnAccept")),
+		connect.WithHandlerOptions(opts...),
+	)
 	orderServiceOrderNoteCreateHandler := connect.NewUnaryHandler(
 		OrderServiceOrderNoteCreateProcedure,
 		svc.OrderNoteCreate,
@@ -535,6 +584,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderExportHandler.ServeHTTP(w, r)
 		case OrderServiceOrderStatusChangeProcedure:
 			orderServiceOrderStatusChangeHandler.ServeHTTP(w, r)
+		case OrderServiceOrderReturnAcceptProcedure:
+			orderServiceOrderReturnAcceptHandler.ServeHTTP(w, r)
 		case OrderServiceOrderNoteCreateProcedure:
 			orderServiceOrderNoteCreateHandler.ServeHTTP(w, r)
 		case OrderServiceOrderReceiptUpdateProcedure:
@@ -584,6 +635,10 @@ func (UnimplementedOrderServiceHandler) OrderExport(context.Context, *connect.Re
 
 func (UnimplementedOrderServiceHandler) OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderStatusChange is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderReturnAccept(context.Context, *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderReturnAccept is not implemented"))
 }
 
 func (UnimplementedOrderServiceHandler) OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error) {

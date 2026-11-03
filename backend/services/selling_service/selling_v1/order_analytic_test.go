@@ -70,6 +70,17 @@ func movedEvent(orderID, logID uint64, to string, at time.Time) *eventsv1.Event 
 	}
 }
 
+// returnAcceptedEvent is the return accept's own event — what Return Arrived counts, since the move into
+// return_completed is never an OrderStatusChanged.
+func returnAcceptedEvent(orderID uint64, at time.Time) *eventsv1.Event {
+	ref := strconv.FormatUint(orderID, 10)
+
+	return &eventsv1.Event{
+		EventId: "order-return-accepted:" + ref, OccurredAt: timestamppb.New(at), AggregateId: "order:" + ref,
+		Message: &eventsv1.Event_OrderReturnAccepted{OrderReturnAccepted: &eventsv1.OrderReturnAccepted{OrderId: orderID}},
+	}
+}
+
 func foldEvent(t *testing.T, analytic *selling_v1.Analytic, event *eventsv1.Event) {
 	t.Helper()
 
@@ -147,7 +158,8 @@ func TestOrderMetricFold_EachMoveCountsOnceForItsMetric(t *testing.T) {
 	foldEvent(t, analytic, movedEvent(orderID, 50, "processed", foldAt))
 	foldEvent(t, analytic, movedEvent(orderID, 51, "return", foldAt))
 	foldEvent(t, analytic, movedEvent(orderID, 52, "lost", foldAt))
-	foldEvent(t, analytic, movedEvent(orderID, 53, "return_completed", foldAt))
+	foldEvent(t, analytic, returnAcceptedEvent(orderID, foldAt))
+	foldEvent(t, analytic, returnAcceptedEvent(orderID, foldAt)) // the redelivery
 	foldEvent(t, analytic, cancelledEvent(orderID, foldAt))
 
 	datas, err := metricData(analytic, 2, analytic_basev1.GroupType_GROUP_TYPE_SUMMARY, nil,

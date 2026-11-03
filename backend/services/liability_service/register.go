@@ -36,7 +36,11 @@ func NewRegister(
 		// THE COURIER'S CHARGE WEBHOOK — /event/<sub_id>/push, a plain HTTP route like supplier's fold, so the roling
 		// ACL does not reach it (the-event-webhook-is-open). ⚠ Unlike a fold, what it writes is a DEBT, so a forged
 		// event here is worth more than a skewed figure: restrict this path at the ingress to Pub/Sub's push.
-		mux.Handle("/event/"+RestockAcceptedSubscription+"/push", event_source.NewMuxPushHandler(NewLiabilityPushHandler(liability)))
+		push := event_source.NewMuxPushHandler(NewLiabilityPushHandler(liability))
+		mux.Handle("/event/"+RestockAcceptedSubscription+"/push", push)
+		// …and the courier's charge at a RETURN's door — the same handler, its own subscription
+		// (a-return-may-carry-the-couriers-ask). The same ingress restriction applies.
+		mux.Handle("/event/"+OrderReturnAcceptedSubscription+"/push", push)
 
 		return san_grpc.ServiceReflectNames{
 			liabilityv1connect.LiabilityServiceName,

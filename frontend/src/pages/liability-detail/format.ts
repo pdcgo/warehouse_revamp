@@ -9,6 +9,10 @@ export function causeKey(type: LiabilitySourceType): string {
       return "liabilityDetail.causeOrderFee";
     case LiabilitySourceType.INCIDENTAL_FEE:
       return "liabilityDetail.causeIncidentalFee";
+    // The courier's ask at a RETURN's door (a-return-may-carry-the-couriers-ask) — its own type because its source is an
+    // ORDER, where the restock's names a restock: "restock #<order>" would send the reader to the wrong record.
+    case LiabilitySourceType.RETURN_INCIDENTAL_FEE:
+      return "liabilityDetail.causeReturnIncidentalFee";
     case LiabilitySourceType.PRODUCT_FEE:
       return "liabilityDetail.causeProductFee";
     case LiabilitySourceType.PAYMENT:

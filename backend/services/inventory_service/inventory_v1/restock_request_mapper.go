@@ -371,6 +371,11 @@ func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service
 // restockErr maps the internal errors to Connect codes: a missing/cross-scope restock is NotFound; one in the wrong
 // status is FailedPrecondition; a malformed count is InvalidArgument; everything else is Internal.
 func restockErr(err error) error {
+	// A put-away onto a product a count holds on that rack (a-lock-stops-units-moving-not-sales).
+	if refused := countedRefusal(err); refused != nil {
+		return refused
+	}
+
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return connect.NewError(connect.CodeNotFound, errRestockMissing)

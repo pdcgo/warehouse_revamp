@@ -129,6 +129,18 @@ func PostSample(tx *gorm.DB, s Sample) ([]models.InventoryTransaction, error) {
 		return nil, err
 	}
 
+	// No sample is taken from a product a count holds (a-lock-stops-units-moving-not-sales). The batch rows above roll
+	// back with the caller's transaction.
+	keys := make([]inventory_ledgers.RackKey, 0, len(ensure))
+	for _, e := range ensure {
+		keys = append(keys, e.RackKey)
+	}
+
+	err = inventory_ledgers.RefuseCounted(tx, keys)
+	if err != nil {
+		return nil, err
+	}
+
 	var rackWrites inventory_ledgers.RackWrites
 
 	for _, id := range ids {

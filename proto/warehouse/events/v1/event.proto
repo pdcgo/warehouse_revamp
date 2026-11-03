@@ -98,6 +98,7 @@ message Event {
     OrderPlaced order_placed = 200;
     OrderCancelled order_cancelled = 201;
     OrderStatusChanged order_status_changed = 202;
+    OrderReturnAccepted order_return_accepted = 203;
 
     SettlementLogPosted settlement_log_posted = 300;
 
@@ -333,12 +334,14 @@ message OrderCancelled {
   uint64 shop_id = 4;
 }
 
-// OrderStatusChanged announces one order's PLAIN status move — every move but the placement and the cancel, which have
-// their own events because they do more than move a status (docs/business/order/event_context.md §Order Status Change).
+// OrderStatusChanged announces one order's PLAIN status move — every move but the placement, the cancel and the return
+// accept, which have their own events because they do more than move a status (docs/business/order/event_context.md
+// §Order Status Change).
 //
 // Published by selling_service after OrderStatusChange commits, ONE PER ORDER moved: a handover scan of 30 parcels is
-// 30 events. selling_service's own fold reads it for the order metrics — Return Created, Return Arrived and Lost
-// Created count the moves into `return`, `return_completed` and `lost` (the-status-changes-publish-nothing).
+// 30 events. selling_service's own fold reads it for the order metrics — Return Created and Lost Created count the
+// moves into `return` and `lost` (the-status-changes-publish-nothing). Return Arrived counts OrderReturnAccepted: the
+// move into `return_completed` is the accept's own event, never this one.
 //
 // It carries the move, not the order: the fold runs in the service that owns the orders and reads the rest off the row.
 // The envelope's event_id is derived from the move's timeline row, so a redelivery and a replay collide, and its
@@ -360,6 +363,42 @@ message OrderStatusChanged {
 
   // The order_timeline_logs row the move wrote — what the event id is derived from.
   uint64 timeline_log_id = 6;
+}
+
+// OrderReturnAccepted announces that a WAREHOUSE accepted an order's returned parcel — `return → return_completed`
+// (the-accept-is-the-status-return-completed) — and the accept COMMITTED.
+//
+// Published by selling_service after OrderReturnAccept's transaction commits, after the commit and non-fatal, as
+// OrderCancelled is. Two consumers, each its own subscription: selling_service's fold counts Return Arrived from it, and
+// liability_service posts the courier's charge, when there is one, as a debt of the selling team to the warehouse
+// (a-return-may-carry-the-couriers-ask) — the restock's courier charge is the model (RestockAccepted).
+//
+// ⚠ `event_id` is `order-return-accepted:<order_id>` — `return_completed` is terminal, so an order is accepted once, and a
+// redelivery and a replay collide in every consumer's dedup. `occurred_at` is the accept's timeline row's time.
+message OrderReturnAccepted {
+  option (event_config).topic = "order-return-accepted";
+
+  // The SELLING team that owns the order — the debtor of the courier's charge — and the order.
+  uint64 team_id = 1;
+  uint64 order_id = 2;
+  // The warehouse that ACCEPTED it — whichever held the parcel, recorded on the accept's row
+  // (the-accept-records-where-it-was-accepted): the configured return warehouse, or one an old label named, not always the
+  // one the order shipped from. The courier was paid at its door, so it is the creditor of the courier's charge.
+  uint64 warehouse_id = 3;
+
+  // WHO ACCEPTED IT (every-entry-names-who-posted-it) — the charge's actor. 0 when unattended.
+  uint64 actor_id = 4;
+  // Whether that person accepted it as Root or the Administrator from outside the warehouse — as the accept's timeline
+  // row was stamped (an-override-is-stamped-in-every-service). Stamped on the charge's legs beside the actor.
+  bool actor_is_override = 5;
+
+  // The `return_completed` row of order_timeline_logs the accept wrote.
+  uint64 timeline_log_id = 6;
+
+  // What the courier asked at the door, whole rupiah; 0 = nothing, which posts nothing — the common case.
+  int64 courier_charge = 7;
+  // What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
+  string courier_charge_note = 8;
 }
 
 // RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.

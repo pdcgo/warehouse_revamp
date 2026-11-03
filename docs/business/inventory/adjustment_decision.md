@@ -85,3 +85,11 @@ flowchart LR
 | stands | [a-recount-shortfall-is-written-off-and-owed](#a-recount-shortfall-is-written-off-and-owed) — the one change to the port, already decided |
 | the next pass, in order | 1 · the owner reviews and accepts the stock-count prototype ([opname.md](./opname.md)) · 2 · the stock-problem register (`warehouse_stock_problems`), the session count and the claim rule ([a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first)) |
 | the Adjust screen | still needs its own design — [adjustment.md](./adjustment.md) is empty; the finished count does not replace it by itself |
+
+✅ **Built 2026-11-02 — the backend step.** The finished count is in (the-count-prototype-is-accepted in
+[opname_decision.md](./opname_decision.md#the-count-prototype-is-accepted)), and the Adjust screen's damaged and lost
+became the register's second door ([an-adjustment-writes-the-same-problem-row](./opname_decision.md#an-adjustment-writes-the-same-problem-row)):
+a `problem` transaction of the batch's owner and one `warehouse_stock_problems` row for the named batch, on the reported
+rack (`inventory_mutations/post_problem.go`, `stock_adjust_problem_test.go`). The recount and the found are unchanged —
+provisional `adjustment` transactions — and every adjust is refused on a product a count holds. The one-rack
+`StockOpname` is retired.

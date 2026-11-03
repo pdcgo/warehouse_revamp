@@ -265,6 +265,23 @@ export function useOrderStatusChange() {
   });
 }
 
+// THE RETURN ACCEPT (the-accept-is-the-status-return-completed) — the order's warehouse has the returned parcel in its
+// hands: `return → return_completed`, with the missing units noted and the courier's charge, if any, announced. It resolves
+// to the response, whose `labels` are what the crew prints for a borrowed line
+// (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+//
+// ⚠ IT INVALIDATES THE ORDERS ONLY. It moves no stock (the-return-accept-is-built-before-its-stock-half), and the
+// courier's charge reaches the balance through an event, after this resolves — re-reading the ledger here would read it
+// before the charge lands.
+export function useAcceptReturn() {
+  const invalidate = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof orderClient.orderReturnAccept>[0]) => orderClient.orderReturnAccept(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
 // ADD A NOTE TO AN ORDER (a-note-is-a-timeline-row) — a timeline row with no status, written by either end: the
 // selling team's `team_id` writes `from = selling`, its warehouse's writes `from = warehouse`. There is no edit and
 // no delete, so this is the only note write there is: a correction is a new note.

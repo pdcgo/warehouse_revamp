@@ -7,7 +7,7 @@ import { opnameNoActiveSession } from "../../../.storybook/opnameStub";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OpnameSessionsPage } from "./index";
 
-// ⚠ PROTOTYPE for implementation_analysis — the stock count's decisions (docs/business/inventory/opname_decision.md).
+// The stock count (accepted 2026-11-02) — the stock count's decisions (docs/business/inventory/opname_decision.md).
 //
 // Gudang Pusat (11) runs count #15 — `all`, mid-count — and has #13 cancelled, #12 and #9 finished. One active count per
 // warehouse (one-active-count-per-warehouse), so New Count waits until #15 ends.

@@ -59,6 +59,23 @@ func readsEveryTeam(teamID uint64) bool {
 	return teamID == san_auth.RootTeamID
 }
 
+// orderReaders is WHO READS AN ORDER, as one SQL condition on `orders` with the reader's team as @team — the scope every
+// read of an order shares (OrderList, OrderStat, OrderExport, OrderCreatorList, OrderDetail):
+//
+//   - its SELLING team, that placed it;
+//   - its WAREHOUSE, that ships it (#151);
+//   - and, NARROWLY, the selling team's CONFIGURED RETURN WAREHOUSE — for the order in `return` or `return_completed`
+//     only. The parcel comes back to the configured warehouse, not always the one it shipped from
+//     (a-return-may-land-in-another-warehouse), read from team_return_configurations at the moment
+//     (the-return-warehouse-is-read-when-the-return-happens), and that warehouse's crew has to find the order to accept
+//     it. Before a return is claimed, and for every other order, it reads nothing of that team's.
+//
+// ⚠ `= ANY(ARRAY(subquery))`, NOT `IN (subquery)`. The array is computed once, as an InitPlan, so `team_id = ANY(…)` is
+// an index condition and the three arms stay one BitmapOr over the team and warehouse indexes. `IN (subquery)` is a
+// hashed SubPlan the planner can only FILTER with — a sequential scan of every order on every warehouse's list.
+const orderReaders = `(team_id = @team OR warehouse_id = @team OR (status IN ('return', 'return_completed') AND ` +
+	`team_id = ANY(ARRAY(SELECT c.team_id FROM team_return_configurations c WHERE c.warehouse_id = @team))))`
+
 // scopedOrders builds the set of orders a team may see — the WHOLE set, before any status filter.
 //
 // It is shared by OrderList and OrderStat rather than written twice, and that is what makes the stat
@@ -66,7 +83,8 @@ func readsEveryTeam(teamID uint64) bool {
 // table describing a different set of orders, which is worse than no header at all.
 func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.DB {
 	// BOTH SIDES (#151): the team that placed the order, or the warehouse shipping it. The latter is
-	// the pick queue. The root team reads every team's orders and skips the clause.
+	// the pick queue. And the return warehouse, for a return only — orderReaders. The root team reads every team's orders
+	// and skips the clause.
 	//
 	// The parentheses are written explicitly even though GORM does not need them here — it wraps a
 	// chained Where containing an OR before AND-ing the next one, so the generated SQL is already
@@ -75,7 +93,7 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// from THIS line rather than resting on an ORM behaviour: precedence is what makes an OR-plus-
 	// filter go wrong, and hand-built SQL a refactor away would not be so forgiving.
 	if !readsEveryTeam(teamID) {
-		query = query.Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID)
+		query = query.Where(orderReaders, map[string]any{"team": teamID})
 	}
 
 	// Only orders carrying THIS product on a line (#159). An EXISTS subquery rather than a JOIN: a join

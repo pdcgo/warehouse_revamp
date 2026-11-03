@@ -23,9 +23,9 @@ const (
 	reportLostCreated   = "lost_created"
 )
 
-// FoldHandler is the order metrics' push handler: it folds OrderPlaced, OrderCancelled and OrderStatusChanged into
-// `order_daily_reports` (a-report-is-fed-by-events-only-for-now). One handler behind three subscriptions — one per
-// topic — because a subscription reads one topic.
+// FoldHandler is the order metrics' push handler: it folds OrderPlaced, OrderCancelled, OrderStatusChanged and
+// OrderReturnAccepted into `order_daily_reports` (a-report-is-fed-by-events-only-for-now). One handler behind four
+// subscriptions — one per topic — because a subscription reads one topic.
 //
 // A move no metric counts (a confirm, a handover, a completed) and any other variant are ACKED: redelivering a message
 // nothing here will ever count is a loop, not a retry.
@@ -47,14 +47,16 @@ func foldTarget(event *eventsv1.Event) (string, uint64) {
 		return reportCreated, event.GetOrderPlaced().GetOrderId()
 	case event.GetOrderCancelled() != nil:
 		return reportCancelled, event.GetOrderCancelled().GetOrderId()
+	case event.GetOrderReturnAccepted() != nil:
+		// The move into `return_completed` is the return accept's own event — OrderStatusChange refuses that move, so
+		// OrderStatusChanged never carries it.
+		return reportReturnArrived, event.GetOrderReturnAccepted().GetOrderId()
 	case event.GetOrderStatusChanged() != nil:
 		moved := event.GetOrderStatusChanged()
 
 		switch moved.GetToStatus() {
 		case orderStatusReturn:
 			return reportReturnCreated, moved.GetOrderId()
-		case orderStatusReturnCompleted:
-			return reportReturnArrived, moved.GetOrderId()
 		case orderStatusLost:
 			return reportLostCreated, moved.GetOrderId()
 		}

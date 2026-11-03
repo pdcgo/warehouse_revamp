@@ -134,6 +134,8 @@ type ProductOwner struct {
 type LockedBatches struct {
 	locked  map[ProductOwner]bool
 	byOwner map[ProductOwner][]*inventory_service_models.Batch
+	// Every batch read, by id — a named one included even at 0 units (LockBatchesWith).
+	byID map[uint64]*inventory_service_models.Batch
 	// Read for a quote, not locked for a take (ReadBatches). TakeOldestFirst refuses them.
 	readOnly bool
 }
@@ -143,7 +145,14 @@ type LockedBatches struct {
 // whatever their lines. A take that must name EVERY short line before it writes anything
 // (a-refusal-names-its-reason-and-every-line) counts each line from it with Available.
 func LockBatches(tx *gorm.DB, warehouseID uint64, owners []ProductOwner) (*LockedBatches, error) {
-	return loadBatches(tx, warehouseID, owners, true)
+	return loadBatches(tx, warehouseID, owners, nil, true)
+}
+
+// LockBatchesWith is LockBatches plus the named batches, whatever their units — the batches a found claim returns units
+// into, which an emptied loss may have left at 0 (a-surplus-claims-the-oldest-loss-first: a batch at 0 reopens). Still
+// ONE statement in id order, so it queues with every take on the same rows in the same order.
+func LockBatchesWith(tx *gorm.DB, warehouseID uint64, owners []ProductOwner, batchIDs []uint64) (*LockedBatches, error) {
+	return loadBatches(tx, warehouseID, owners, batchIDs, true)
 }
 
 // ReadBatches is LockBatches WITHOUT the lock — the same statement, the same rows, the same order — for a read that
@@ -151,13 +160,19 @@ func LockBatches(tx *gorm.DB, warehouseID uint64, owners []ProductOwner) (*Locke
 // a take in the next second may draw the same units first: the preview is never what is charged, the take's own answer
 // is.
 func ReadBatches(db *gorm.DB, warehouseID uint64, owners []ProductOwner) (*LockedBatches, error) {
-	return loadBatches(db, warehouseID, owners, false)
+	return loadBatches(db, warehouseID, owners, nil, false)
 }
 
-func loadBatches(db *gorm.DB, warehouseID uint64, owners []ProductOwner, lock bool) (*LockedBatches, error) {
+// ReadBatchesWith is LockBatchesWith without the lock — the stock count's preview of what its finalize would post.
+func ReadBatchesWith(db *gorm.DB, warehouseID uint64, owners []ProductOwner, batchIDs []uint64) (*LockedBatches, error) {
+	return loadBatches(db, warehouseID, owners, batchIDs, false)
+}
+
+func loadBatches(db *gorm.DB, warehouseID uint64, owners []ProductOwner, batchIDs []uint64, lock bool) (*LockedBatches, error) {
 	out := &LockedBatches{
 		locked:   map[ProductOwner]bool{},
 		byOwner:  map[ProductOwner][]*inventory_service_models.Batch{},
+		byID:     map[uint64]*inventory_service_models.Batch{},
 		readOnly: !lock,
 	}
 
@@ -172,7 +187,7 @@ func loadBatches(db *gorm.DB, warehouseID uint64, owners []ProductOwner, lock bo
 		pairs = append(pairs, []any{o.TeamID, o.ProductID})
 	}
 
-	if len(pairs) == 0 {
+	if len(pairs) == 0 && len(batchIDs) == 0 {
 		return out, nil
 	}
 
@@ -183,8 +198,17 @@ func loadBatches(db *gorm.DB, warehouseID uint64, owners []ProductOwner, lock bo
 		query = query.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
 
+	switch {
+	case len(batchIDs) == 0:
+		query = query.Where("warehouse_id = ? AND (team_id, product_id) IN ? AND stock_count > 0", warehouseID, pairs)
+	case len(pairs) == 0:
+		query = query.Where("warehouse_id = ? AND id IN ?", warehouseID, batchIDs)
+	default:
+		query = query.Where("warehouse_id = ? AND (((team_id, product_id) IN ? AND stock_count > 0) OR id IN ?)",
+			warehouseID, pairs, batchIDs)
+	}
+
 	err := query.
-		Where("warehouse_id = ? AND (team_id, product_id) IN ? AND stock_count > 0", warehouseID, pairs).
 		Order("id").
 		Find(&rows).Error
 	if err != nil {
@@ -200,9 +224,15 @@ func loadBatches(db *gorm.DB, warehouseID uint64, owners []ProductOwner, lock bo
 		b := &rows[i]
 		key := ProductOwner{TeamID: b.TeamID, ProductID: b.ProductID}
 		out.byOwner[key] = append(out.byOwner[key], b)
+		out.byID[b.ID] = b
 	}
 
 	return out, nil
+}
+
+// Batch is a batch the call read, by id; nil when it did not.
+func (l *LockedBatches) Batch(id uint64) *inventory_service_models.Batch {
+	return l.byID[id]
 }
 
 // Available is the units left in the owner's locked batches of the product.
@@ -439,4 +469,81 @@ func lockBatch(tx *gorm.DB, batchID uint64) (inventory_service_models.Batch, err
 	}
 
 	return b, nil
+}
+
+// DrawInTurn is DrawOldestFirst for several takes of ONE product made one after another — a count's broken, then its
+// lost (broken-takes-its-batch-before-lost) — each drawing from what the one before it left, oldest batch first. It
+// changes nothing: it is what the takes WOULD give up, so a preview and the takes it describes are one rule. A count of
+// 0 draws nothing.
+func DrawInTurn(batches *LockedBatches, teamID, productID uint64, counts ...int64) ([][]BatchTaken, error) {
+	key := ProductOwner{TeamID: teamID, ProductID: productID}
+
+	// A private copy of the product's batches, so the takes can run for real without touching the caller's rows.
+	scratch := &LockedBatches{
+		locked:  map[ProductOwner]bool{key: batches.locked[key]},
+		byOwner: map[ProductOwner][]*inventory_service_models.Batch{},
+	}
+
+	for _, b := range batches.byOwner[key] {
+		c := *b
+		scratch.byOwner[key] = append(scratch.byOwner[key], &c)
+	}
+
+	var discard BatchWrites
+
+	out := make([][]BatchTaken, 0, len(counts))
+
+	for _, n := range counts {
+		if n <= 0 {
+			out = append(out, nil)
+			continue
+		}
+
+		taken, err := TakeOldestFirst(scratch, &discard, Take{TeamID: teamID, ProductID: productID, Count: n})
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, taken)
+	}
+
+	return out, nil
+}
+
+// AddAtPrice returns units to one LOCKED batch at a price the caller names — a found unit claiming a loss back goes
+// into the loss's batch at the loss's price (a-surplus-claims-the-oldest-loss-first), which a revaluation since may have
+// moved away from the batch's own. The batch's price_unit is not changed, so its log row repeats it. A batch at 0
+// reopens. Returns the value added.
+func AddAtPrice(
+	locked *LockedBatches,
+	w *BatchWrites,
+	t inventory_service_models.InventoryTransaction,
+	batchID uint64,
+	count int64,
+	priceUnit float64,
+	changeType string,
+	actorID uint64,
+	description string,
+) (BatchTaken, error) {
+	if locked.readOnly {
+		return BatchTaken{}, fmt.Errorf("add to batch %d: it was read for a preview, not locked", batchID)
+	}
+
+	if count <= 0 {
+		return BatchTaken{}, fmt.Errorf("add to batch %d: count %d is not positive", batchID, count)
+	}
+
+	b := locked.byID[batchID]
+	if b == nil {
+		return BatchTaken{}, fmt.Errorf("add to batch %d: it was not locked", batchID)
+	}
+
+	value := float64(count) * priceUnit
+
+	b.StockCount += count
+	b.StockValuation += value
+
+	w.change(b, t.ID, changeType, count, value, actorID, description)
+
+	return BatchTaken{BatchID: b.ID, Count: count, Valuation: value}, nil
 }

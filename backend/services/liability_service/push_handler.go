@@ -29,6 +29,9 @@ const (
 	// The courier's charge at a restock's door, posted from *Restock Accepted*
 	// (balance-posts-the-couriers-debt-from-the-event). Its OWN subscription beside supplier's fold on the same topic.
 	RestockAcceptedSubscription = "liability-restock-accepted"
+	// The courier's charge at a RETURN's door, posted from *Order Return Accepted* (a-return-may-carry-the-couriers-ask). Its
+	// OWN subscription beside selling's fold on the same topic.
+	OrderReturnAcceptedSubscription = "liability-order-return-accepted"
 )
 
 // NewLiabilityPushHandler charges an order's fees on placement and reverses them on cancellation
@@ -104,6 +107,21 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				Amount:        int64(math.Round(accepted.GetWarehouseAdditionalCost())),
 				ActorID:       accepted.GetActorId(),
 				// Whether the accept was an override, as inventory stored it beside the actor.
+				ActorIsOverride: accepted.GetActorIsOverride(),
+			})
+
+		case *eventsv1.Event_OrderReturnAccepted:
+			accepted := variant.OrderReturnAccepted
+
+			// The selling team owes the warehouse what the courier asked at the return's door
+			// (a-return-may-carry-the-couriers-ask). Whole rupiah already — selling stores money as integers. ActorID is the
+			// VARIANT's, read from the accept's timeline row, never the envelope's.
+			return svc.ChargeReturnCourier(ctx, liability_v1.ReturnCourierCharge{
+				OrderID:         accepted.GetOrderId(),
+				SellingTeamID:   accepted.GetTeamId(),
+				WarehouseID:     accepted.GetWarehouseId(),
+				Amount:          accepted.GetCourierCharge(),
+				ActorID:         accepted.GetActorId(),
 				ActorIsOverride: accepted.GetActorIsOverride(),
 			})
 

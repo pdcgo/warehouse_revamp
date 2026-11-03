@@ -82,6 +82,17 @@ func PostMove(tx *gorm.DB, m Move) ([]models.InventoryTransaction, error) {
 		return nil, err
 	}
 
+	// Nothing moves onto or off a product a count holds (a-lock-stops-units-moving-not-sales) — read under the lock.
+	keys := make([]inventory_ledgers.RackKey, 0, len(ensure))
+	for _, e := range ensure {
+		keys = append(keys, e.RackKey)
+	}
+
+	err = inventory_ledgers.RefuseCounted(tx, keys)
+	if err != nil {
+		return nil, err
+	}
+
 	// Every product counted under the lock before anything is written.
 	for _, id := range ids {
 		src := rows[inventory_ledgers.RackKey{ProductID: id, PlacementID: m.FromPlacementID}]

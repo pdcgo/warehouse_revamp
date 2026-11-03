@@ -40,11 +40,25 @@ service OrderService {
   //   pending → processed → picked → shipping → shipped → completed
   //   shipping / shipped / problem / completed → return · shipped / problem / return → lost
   //
-  // Cancel and the return accept do more than move a status, so they keep their own RPCs.
+  // Cancel and the return accept do more than move a status, so they keep their own RPCs (OrderCancel,
+  // OrderReturnAccept).
   // THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
   // .xlsx. A server stream — progress, then an expiring link.
   rpc OrderExport(OrderExportRequest) returns (stream OrderExportResponse);
   rpc OrderStatusChange(OrderStatusChangeRequest) returns (OrderStatusChangeResponse);
+  // THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
+  // `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
+  // not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
+  // and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
+  // than move a status, which is why OrderStatusChange refuses
+  // that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
+  // timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
+  // product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
+  // courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
+  //
+  // ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
+  // inventory's return transaction is designed, so a completed return under-reads stock by them.
+  rpc OrderReturnAccept(OrderReturnAcceptRequest) returns (OrderReturnAcceptResponse);
   // A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
   // Never edited and never deleted — a correction is a new note.
   rpc OrderNoteCreate(OrderNoteCreateRequest) returns (OrderNoteCreateResponse);
@@ -170,6 +184,10 @@ message OrderTimelineLog {
   // snapshotted — a person's name is theirs to change.
   uint64 actor_id = 5;
   int64 created_at_unix = 6;
+  // WHERE A RETURN WAS ACCEPTED (the-accept-records-where-it-was-accepted) — the warehouse team whose staff accepted it,
+  // on the `return_completed` row only; 0 on every other row. When it is not the selling team's configured return
+  // warehouse, the parcel came to an old address — visible here, fixed by a warehouse transfer.
+  uint64 accepting_warehouse_id = 7;
 }
 
 // OrderItem is one order line. product_id is an OPAQUE product_service id; product code/name are a SNAPSHOT
@@ -581,6 +599,9 @@ message OrderListRequest {
   // One RPC rather than two, following RestockRequestList: it is the same order approached from
   // whichever end you stand at, and two RPCs would drift apart. So `team_id` means "the team you hold a
   // role in", and the handler matches it against EITHER side — not "the team whose orders you get".
+  //
+  // …and one narrow third reader: a selling team's CONFIGURED RETURN WAREHOUSE sees that team's orders in `return` and
+  // `return_completed` — the parcels coming back to it, which it accepts (a-return-may-land-in-another-warehouse).
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -948,7 +969,8 @@ message OrderStatusChangeRequest {
     unique: true,
     items: {uint64: {gt: 0}}
   }];
-  // The status to move INTO. Cancel and return_completed have their own actions and are refused here.
+  // The status to move INTO. Cancel and return_completed have their own actions (OrderCancel, OrderReturnAccept) and
+  // are refused here.
   OrderStatus to = 3 [(buf.validate.field).enum = {
     defined_only: true,
     not_in: [0]
@@ -971,6 +993,75 @@ message OrderStatusChangeResult {
   OrderStatus status = 3;
   // Why it did not move, for a person to read. Empty when moved.
   string refused_reason = 4;
+}
+
+// OrderReturnAccept — the warehouse has the returned parcel in its hands (the-accept-is-the-status-return-completed).
+message OrderReturnAcceptRequest {
+  // Write: a WAREHOUSE's crew — the people holding the goods (both-cs-and-the-warehouse-can-return-an-order). Customer
+  // service claims the return; it cannot say the goods are here.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The ACCEPTING warehouse — whichever holds the parcel: the order's own, the selling team's configured return
+  // warehouse, or one an old label still names (the-accept-records-where-it-was-accepted). Any warehouse may accept an
+  // order in `return`; it is recorded on the accept's row, and the courier's charge is owed to it. An order not in
+  // `return` reads NotFound unless this team may read it (its two ends, or its team's configured return warehouse), and
+  // the order's own selling team is refused — it claims a return, it does not accept one.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The units that did NOT come back (a-short-return-is-accepted-and-the-gap-written-off). Empty — the common case —
+  // when the parcel is whole. The return stays whole either way (a-return-is-never-partial): each named unit is written
+  // on one timeline note from the warehouse, for customer service to claim from the platform. One entry per line, never
+  // above the line's quantity.
+  repeated OrderReturnMissingLine missing_lines = 3 [(buf.validate.field).repeated.max_items = 200];
+  // What the courier asked at the door, whole rupiah; 0 = nothing, the common case (a-return-may-carry-the-couriers-ask).
+  // Above 0, the order's selling team owes the ACCEPTING warehouse that amount — it paid at its door — and liability
+  // posts it from OrderReturnAccepted.
+  int64 courier_charge = 4 [(buf.validate.field).int64.gte = 0];
+  // What it was for — required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for); the handler
+  // checks, since a rule across two fields is not written here. Ignored when there is no charge.
+  string courier_charge_note = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+// One line's units missing from the returned parcel.
+message OrderReturnMissingLine {
+  // The order line (OrderItem.id).
+  uint64 order_item_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // How many of its units did not come back — 1 to the line's quantity.
+  uint32 quantity = 2 [(buf.validate.field).uint32.gt = 0];
+}
+
+message OrderReturnAcceptResponse {
+  // The order as it now is — `return_completed`.
+  Order order = 1;
+  // The labels to print (a-returned-borrowed-unit-is-relabelled-at-the-accept): one per BORROWED line with units in
+  // hand, in line order. Empty for an order of the team's own products, whose units keep their label.
+  repeated OrderReturnLabel labels = 2;
+}
+
+// What to print and stick over a returned borrowed unit's label, so a later pick scan matches.
+message OrderReturnLabel {
+  // The order line it is for.
+  uint64 order_item_id = 1;
+  // The lender's product, as the line froze it — the label being covered.
+  uint64 borrowed_product_id = 2;
+  string borrowed_product_code = 3;
+  // The selling team's OWN product the unit comes back as (product_return_maps) — the label to print.
+  uint64 own_product_id = 4;
+  string own_product_code = 5;
+  string own_product_name = 6;
+  // How many to print: the line's units in hand — its quantity less the units named missing.
+  uint32 quantity = 7;
 }
 
 // Write: both ends of an order, as a status move (OrderStatusChangeRequest). The side the note is from follows from

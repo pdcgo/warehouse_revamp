@@ -63,12 +63,16 @@ func (s *Service) ProductStockSummary(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Last counted — the most recent count (an `adjustment` rack row) on any rack. NULL when never counted, so a
-	// nullable scan target: a plain *time.Time cannot hold the NULL a MAX over no rows returns.
+	// Last counted — the most recent count on any rack: a recount's `adjustment` rack row, or a finished stock count
+	// that held a row of it. NULL when never counted, so a nullable scan target: a plain *time.Time cannot hold the NULL
+	// a MAX over no rows returns.
 	var lastCounted sql.NullTime
 
-	err = db.Raw(`SELECT MAX(created_at) FROM product_placement_logs WHERE warehouse_id = ? AND product_id = ? AND change_type = ?`,
-		warehouseID, productID, string(inventory_service_models.TxAdjustment)).Scan(&lastCounted).Error
+	err = db.Raw(`SELECT GREATEST(
+		    (SELECT MAX(created_at) FROM product_placement_logs WHERE warehouse_id = ? AND product_id = ? AND change_type = ?),
+		    (SELECT MAX(o.finalized_at) FROM opname_session_snapshots ss JOIN opname_sessions o ON o.id = ss.opname_session_id
+		       WHERE ss.warehouse_id = ? AND ss.product_id = ? AND o.status = 'finish'))`,
+		warehouseID, productID, string(inventory_service_models.TxAdjustment), warehouseID, productID).Scan(&lastCounted).Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

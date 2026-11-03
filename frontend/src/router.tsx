@@ -102,11 +102,7 @@ const ReturnsPage = lazy(() =>
 const ReturnDetailPage = lazy(() =>
   import("./pages/return-detail").then((m) => ({ default: m.ReturnDetailPage })),
 );
-const OpnamePage = lazy(() =>
-  import("./pages/opname").then((m) => ({ default: m.OpnamePage })),
-);
-// The stock count's sessions — a PROTOTYPE until design_accept (docs/business/inventory/opname.md). They sit BESIDE the
-// one-rack page above, which keeps working on the real backend until the backend step replaces it.
+// The stock count's sessions (docs/business/inventory/opname.md) — they replaced the one-rack count page.
 const OpnameSessionsPage = lazy(() =>
   import("./pages/opname-sessions").then((m) => ({ default: m.OpnameSessionsPage })),
 );
@@ -467,8 +463,10 @@ export const router = createBrowserRouter([
       // One return's receive & inspect record (#163) — reached by clicking a row; a PAGE, not a
       // dialog (CLAUDE.md).
       { path: "inventories/returns/:returnId", element: <ReturnDetailPage /> },
-      { path: "inventories/opname", element: write(<OpnamePage />) },
-      // Under /inventories/opname, so the menu's Opname stays lit (nav.ts matches the longest prefix).
+      // Where the retired one-rack count lived: an old link or bookmark lands on the counts — a loader redirect, as above.
+      { path: "inventories/opname", loader: () => redirect("/inventories/opname/sessions") },
+      // Under /inventories/opname/sessions — where the menu's Opname points — so it stays lit on every count screen
+      // (nav.ts matches the longest prefix).
       { path: "inventories/opname/sessions", element: <OpnameSessionsPage /> },
       { path: "inventories/opname/sessions/:sessionId", element: <OpnameSessionDetailPage /> },
       { path: "inventories/opname/sessions/:sessionId/count", element: write(<OpnameCountPage />) },

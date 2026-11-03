@@ -23,11 +23,11 @@ in them with it. `go run ./tools/san dev setup` on a fresh database, then restoc
 | **4a — the order take** | `order_transaction.proto` (`OrderTransactionService`: Create, Release, `OrderTransactionRefusal`) · `00026` `idempotency_order_check` · `PostOrder`, `RollbackTake` mutations · `AvailableInBatches` (→ `LockBatches`, stage 5), `ReverseBatchLogs`, `ReversePlacementLogs` | ✅ 7 handler tests + 4 race tests (`-tags raceaudit`) |
 | **4b — move · 4c — sample** | `RackMove`, `RackSample` on the ledgers — no longer prototypes · `PostMove` (one tx per owning team, a row per rack touched, no batch row, all or nothing), `PostSample` (oldest batch first, the page's rack, the recipient on the tx) · ledger primitives `EnsureAndLockRacks`, `ApplyRackChange` (→ `RackWrites.Apply`, stage 5) | ✅ 4 + 2 tests, 2 race tests |
 | **4d — the warehouse transfer** | `00027` (4 tables) · `PostTransferOut` (shares the order's take), `PostTransferIn` (one batch per source layer, broken then missing off the newest) · 10 handlers, the prototype deleted · 4 events (`WarehouseTransferCreated` / `Updated` / `Cancelled` / `Accepted`, money `double`, nobody listens yet) · `ProductFact` gains sku and name — [warehouse_transfer.md](warehouse_transfer.md) | ✅ 17 tests, 5 race tests |
-| ⏸ problem / found / opname | the stock count awaits design_accept; adjustment.md is empty — meanwhile `StockAdjust` and the one-rack `StockOpname` run as PROVISIONAL `adjustment` transactions ([old-shelf-corrections-move-onto-the-ledgers-provisionally](../../technical/stock/design_decision.md#old-shelf-corrections-move-onto-the-ledgers-provisionally); open: [adjustment Q1–Q4](../../business/inventory/adjustment_clarify.md#question)) | parked (provisional port ✅) |
+| **6 — problem / found / move, the stock count** | ✅ 2026-11-02, after design_accept: `00035` (the count's 7 tables) · `PostCountFinalize` (a team's `problem`, `found`, `move`; the register per batch; claims) · `PostShelfProblem` (the Adjust screen's damaged/lost → `problem` + register row) · the count LOCK in every writer (`count_lock.go`; `TakeFewestFirst` takes counted racks last) · `StockOpname` retired — [opname.md](opname.md). `StockAdjust`'s recount and found stay PROVISIONAL `adjustment` (adjustment.md is empty) | ✅ 13 RPC test files, 5 race tests, 1 perf audit, e2e |
 | **3 — the cutover** | ✅ every reader on the ledgers (25 RPCs; `ledger_history.go` maps change types to the screens' kinds) · ✅ `racks` → `placements` (`00028`: `deleted_at`, lowercase codes + CHECK) · ✅ selling's take and cancel through `OrderTransactionService` with the key `order:<id>` ([the-order-take-bridges-its-key-per-order](../../technical/stock/design_decision.md#the-order-take-bridges-its-key-per-order)) · ✅ the accept's old writes removed · ✅ `StockReceive`, `StockMove`, `StockTransfer`, `StockPick`, `StockReturn` removed from the contract; the inventory page's Receive gone, the Move dialog on `RackMove` · ✅ the transfer's money `double` · ✅ **2c** `00030`: `restocks`, `restock_items`, `restock_problem_items` (keyed by restock + product, one row per kind), `received_count` is the box, `subtotal`/`total`/`price_unit` stored · ✅ **2b** restock money `double` in the tables, the contract, its four events and the screens; liability and supplier round at their own edge · ✅ e2e: `restock`, `liability`, `opname`, `orders`, `racks` and `inventory` specs on the current contract and green — liability's courier debt now arrives through its push route | ✅ Go suite, race and perf audits green; 1402 stories green; 2 new restock tests |
 | **5 — drop** | ✅ `00029` drops `stock_levels`, `stock_movements`, `stock_batches`, `stock_shelf_batches`, `stock_owner_movements`, `restock_received_placements` (down not reversible) and their models · ⬜ dev data reseeded (`san dev setup`) · ✅ `audit-rpc-performance` on the seven ledger writes — all 🔴 heavy by the N+1 rule ([audits/services/inventory_service/performances/](../../../audits/services/inventory_service/performances/)) · ✅ **both fixes in** (owner *"go ahead"*, 2026-10-17): `00031` indexes the placement log by `transaction_id` ([placement-logs-are-indexed-by-transaction](../../technical/stock/design_decision.md#placement-logs-are-indexed-by-transaction)) and the primitives are set-based ([ledger-writes-are-set-based](../../technical/stock/design_decision.md#ledger-writes-are-set-based)): `LockBatches`/`LockRacks`, in-memory `TakeOldestFirst`/`TakeFewestFirst`/`RackWrites.Apply`, `BatchWrites`/`RackWrites.Flush`, `MintBatches`; `AvailableInBatches` and `ApplyRackChange` gone. Every one of the seven now costs the same statements at 1 line and at 20 (9–23), 9–19 ms at 20 lines | 7 `*_perf_test.go` (`-tags perfaudit`) · 2 statement-count tests |
 
-**The next inventory pass (owner, 2026-10-31):** the FINISHED stock count, not a refined port —
+**The next inventory pass (owner, 2026-10-31) — ✅ built 2026-11-02 ([opname.md](opname.md)):** the FINISHED stock count, not a refined port —
 [the-finished-count-comes-next-not-a-refined-port](../../business/inventory/adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port).
 First the owner's design accept of the count prototype, then the stock-problem register, the session count and the
 claim rule. ✅ Built 2026-11-02: a recount shortfall is written off and owed
@@ -38,7 +38,7 @@ tests in `stock_adjust_damage_test.go`, the expense test extended.
 
 | | |
 | --- | --- |
-| performance | ✅ both audit fixes applied 2026-10-17 (stage 5). Left: `RestockRequestArrive`, `Cancel`, `MarkLost` and `Update` save through `tx.Model(&rr)` and may re-upsert preloaded lines the way the accept did — not audited ([RestockRequestAccept § the-accept-writes-its-own-rows-one-at-a-time](../../../audits/services/inventory_service/performances/RestockRequestAccept.md#the-accept-writes-its-own-rows-one-at-a-time)); the provisional `StockAdjust`/`StockOpname` were moved onto the new primitives but not audited |
+| performance | ✅ both audit fixes applied 2026-10-17 (stage 5). Left: `RestockRequestArrive`, `Cancel`, `MarkLost` and `Update` save through `tx.Model(&rr)` and may re-upsert preloaded lines the way the accept did — not audited ([RestockRequestAccept § the-accept-writes-its-own-rows-one-at-a-time](../../../audits/services/inventory_service/performances/RestockRequestAccept.md#the-accept-writes-its-own-rows-one-at-a-time)); the provisional `StockAdjust` was moved onto the new primitives but not audited (`StockOpname` is retired). ⚠ The lock read adds one statement to every put-away and every take (put 5, take 7 — `writes_test.go`) |
 | money still whole rupiah | the stock reads keep `int64` and round at the read — `StockCost`, the rack and batch values, owner stock, `ProductStockSummary` — until each turns `double` with its feature ([money-is-double-in-the-api-too](../../technical/stock/design_decision.md#money-is-double-in-the-api-too)); liability and supplier round the restock events' doubles at their own edge |
 | dev data | `00029` drops the old stock with its tables: rebuild the dev database, then restock to put stock back |
 | `buf generate` | ⚠ from the Bash tool on this machine it fails half-way (`Access is denied` removing a generated file) and leaves `gen/` partly deleted; it runs clean from PowerShell |
@@ -269,7 +269,7 @@ No `batch_id` — a rack never knows its batch ([expiry-is-a-report](../../busin
 
 `UNIQUE (warehouse_id, product_id)` — from [design.md](../../technical/stock/design.md) only (context.md silent). Written by an upsert **outside** the transaction (*"not critical ops"*): restock create (its warehouse), transfer create (the RECEIVING warehouse). Never removed ([a-transfer-links-its-products-to-the-receiver](../../business/inventory/context_decision.md#a-transfer-links-its-products-to-the-receiver)). ⚠ The build already has this table (inventory `00011`) with no team column.
 
-### opname tables the ledgers touch — *opname, later*
+### opname tables the ledgers touch — ✅ built (`00035`)
 
 | table | columns | constraints | fixed by |
 | --- | --- | --- | --- |
@@ -310,9 +310,9 @@ So `batch_logs.change_type` = {order, revaluation, return, restock, adjustment, 
 | `transfer_in` | `PostTransferIn` | mint 1 per source batch with good units | staff name racks at B | transfer's team | ❌ |
 | `adjustment` | `PostAdjustment` | ⚠ undesigned (adjustment.md empty) | staff | owner | ❌ |
 | `revaluation` | `PostRevaluation` | 1 row, `change_count` 0, + price log | none | owner | ❌ |
-| `problem` | *(one per type)* | take FIFO, broken before lost, + problem rows | reported rack / per-rack correction | owner | ❌ |
-| `found` | *(one per type)* | claim oldest lost into its batch, rest mint at last price | rack rows `found` | owner | ❌ |
-| `move` | *(one per type)* | none | 1 source −, ≥1 destination + | owner, 1 tx per team | ❌ → move again |
+| `problem` | `PostCountFinalize` · `PostShelfProblem` | take FIFO, broken before lost, + problem rows (a shelf report: its named batch) | reported rack / per-rack correction | owner | ❌ |
+| `found` | `PostCountFinalize` | claim oldest lost into its batch, rest mint at last price | rack rows `found` | owner | ❌ |
+| `move` | `PostMove` · `PostCountFinalize` | none | 1 source −, ≥1 destination + (a count: its racks' residuals) | owner, 1 tx per team | ❌ → move again |
 
 Mutation names: [one-mutation-per-operation](../../business/inventory/context_decision.md#one-mutation-per-operation) lists the first seven; `PostRevaluation` is [the-owning-team-revalues-with-a-reason](../../business/inventory/context_decision.md#the-owning-team-revalues-with-a-reason); the last three are unnamed (*"one per `tx_type`"*).
 
@@ -447,18 +447,18 @@ Mutation names: [one-mutation-per-operation](../../business/inventory/context_de
 
 **Undecided — blocks or bends a build step**
 
-15. Count finalize: how per-rack corrections are split across a team's `problem` / `found` / `move` tx so each balances per product (rule 14) is not designed.
+15. Count finalize: how per-rack corrections are split across a team's `problem` / `found` / `move` tx so each balances per product (rule 14) is not designed. → **built as**: broken off its drafts' racks; lost off the racks still short after their broken, found onto those still over, in rack id order; the rest nets 0 and is the move ([opname.md § Choices](opname.md#choices-made-in-the-build-where-the-decisions-are-silent)).
 16. Revaluation's item: items are *"always positive, one per product"*, but a revaluation moves 0 units and a markdown has negative value — whether it writes an item, and its sign, is undecided.
-17. A found claim into a batch revalued since the loss adds value at the old row price, so `stock_valuation ÷ stock_count` ≠ `price_unit`; what `price_unit_after` says on a reopened batch is undecided.
+17. A found claim into a batch revalued since the loss adds value at the old row price, so `stock_valuation ÷ stock_count` ≠ `price_unit`; what `price_unit_after` says on a reopened batch is undecided. → **built as**: the claim adds count × the row's price; `price_unit` and `price_unit_after` stay the batch's own.
 18. *Oldest batch* key: `created_at` or `id`? Is a transfer_in batch at B as old as its mint, or as its source batch?
 19. `batch_price_logs` has no `transaction_id`, so *"the two rows of one change"* join only by batch + time; and a mint's `delta_price_unit` is undefined (new − 0?).
 20. `idempotency_order_check` has no `created_at`; its `transaction_id` must be explicitly nullable.
-21. Lock position of `warehouse_stock_problems` (found), `idempotency_order_check` and the tx row (rollback) relative to batches → shelves is unstated. Recommend record rows first.
-22. `transfer_out` on a count-locked rack: only *"an order's take"* is allowed there — the transfer create is not stated (last, like an order, or refused?).
+21. Lock position of `warehouse_stock_problems` (found), `idempotency_order_check` and the tx row (rollback) relative to batches → shelves is unstated. Recommend record rows first. → **built as** (the count): session → open losses → batches → racks.
+22. `transfer_out` on a count-locked rack: only *"an order's take"* is allowed there — the transfer create is not stated (last, like an order, or refused?). → **built as**: like an order — it shares the take, counted racks last.
 23. Actor for an event-driven rollback (Order Cancel / `InventoryTxCancel` from Pub/Sub): no user for `actor_id` / the rollback's actor.
 24. `adjustment` is undesigned (adjustment.md is empty): its sign, mint vs existing batch, and how it names what it corrects (a returned sample, a wrong stock-in).
 25. `return` is in both enums but parked ([return-is-unplanned](../../business/inventory/context_decision.md#return-is-unplanned)).
-26. Who confirms a shelf `found` (rule 59): no column records the second person.
+26. Who confirms a shelf `found` (rule 59): no column records the second person. ⚠ Still open: the Adjust screen's FOUND stays a provisional `adjustment` outside the register, so a later count can claim a loss it already returned.
 27. A restock item's total: [an-item-equals-its-batch-rows](../../business/inventory/transaction_decision.md#an-item-equals-its-batch-rows) says *"what was paid"*, but with broken/missing the batch value is good × landed price < paid. Rule 15 makes it good × landed.
 28. `expired_at`: a date or a timestamp — not stated.
 29. Denormalised scopes with no CHECK: `product_placements.team_id`/`warehouse_id` (the placement fixes the warehouse, the product fixes the team); `batches.(warehouse_id, product_id)` repeats `warehouse_products`.

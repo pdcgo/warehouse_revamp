@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
+import { withOrdersInReturn } from "../../../.storybook/sessionScenario";
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, teams } from "../../../.storybook/fixtures";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -20,6 +21,9 @@ import { PickQueuePage } from "./index";
 //   | AnEmptyStepNamesTheStep            | "No new orders", not "no orders"                          |
 //   | ASellingTeamIsTurnedAway           | a seller has no shelves — says so, no empty table         |
 //   | ARowOpensThePickList               | the row's way in                                          |
+//   | TheReturnsTabListsWhatIsComingBack | the claimed returns — the accept's queue                  |
+//   | TheReturnWarehouseListsReturnsIt…  | the configured return warehouse lists its team's returns  |
+//   | AnotherWarehousesLiveOrderIsNot…   | …and only while they are returns                          |
 
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const OTHER_WAREHOUSE = teams[3]!; // Gudang Cabang (14)
@@ -150,5 +154,50 @@ export const ARowOpensThePickList: Story = {
 
     await userEvent.click(await canvas.findByTestId(`pick-queue-row-${KENANGAS.id}`));
     await waitFor(() => expect(canvas.getByTestId("at-pick-order")).toBeInTheDocument());
+  },
+};
+
+/**
+ * THE RETURNS TAB IS THE ACCEPT'S QUEUE (the-accept-is-the-status-return-completed) — the orders claimed back and not yet
+ * in the crew's hands. Order 110, read in `return`, is listed there; a pending order is not.
+ */
+export const TheReturnsTabListsWhatIsComingBack: Story = {
+  beforeEach: withOrdersInReturn(110n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("pick-tab-return"));
+
+    await waitFor(() => expect(canvas.getByTestId("pick-queue-row-110")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("pick-queue-row-101")).toBeNull();
+  },
+};
+
+/**
+ * THE CONFIGURED RETURN WAREHOUSE SEES WHAT IS COMING BACK TO IT (a-return-may-land-in-another-warehouse). Order 109 is
+ * Toko Melati's and ships from Gudang Cabang — but Melati returns to Gudang Pusat, so once it is a return it is on Gudang
+ * Pusat's Returns tab, beside its own. Before it is a return it is none of Gudang Pusat's business.
+ */
+export const TheReturnWarehouseListsReturnsItDidNotShip: Story = {
+  beforeEach: withOrdersInReturn(109n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("pick-tab-return"));
+    await waitFor(() => expect(canvas.getByTestId("pick-queue-row-109")).toBeInTheDocument());
+
+    await userEvent.click(canvas.getByTestId("pick-tab-all"));
+    await waitFor(() => expect(canvas.getByTestId("pick-queue-row-109")).toBeInTheDocument());
+  },
+};
+
+/** …and not before: the same order, still processed at Gudang Cabang, is on none of Gudang Pusat's tabs. */
+export const AnotherWarehousesLiveOrderIsNotListed: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("pick-tab-all"));
+    await waitFor(() => expect(canvas.getByTestId("pick-queue-table")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("pick-queue-row-109")).toBeNull();
   },
 };

@@ -1736,3 +1736,34 @@ unique key on `transaction_id` and `created_at` are not written; the snapshot's 
 the session diagram's boxes are `problem`, `found` and `move` transactions, and Table 7 carries `created_at` and a unique
 `transaction_id`. The unique key is written; the rest waits in
 [opname-md-still-draws-one-opname-transaction](./opname_clarify.md#opname-md-still-draws-one-opname-transaction).
+
+---
+
+## the-count-prototype-is-accepted
+
+> Owner, in chat (2026-11-02): *"for 3 i accept it"* — to *"the finished stock count: do you accept the count prototype?"*
+> (`Pages/Inventory/Opname/*` in Storybook, [the state](../../development_state/inventory/opname.md)).
+
+**The verdict.** design_accept is given ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)):
+the four screens and the `OpnameService` contract are the design to build, with every decision in this file — and the
+2026-10-16 change that a finalize writes `problem`, `found` and `move` transactions
+([problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname)). The backend step follows:
+the session tables, the 13 RPCs, the lock, the register and its claims, the second person; then the menu moves to the new
+screens and the provisional one-rack `StockOpname` and its page are retired
+([the-finished-count-comes-next-not-a-refined-port](./adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port)).
+
+```mermaid
+flowchart LR
+  P["the prototype - Storybook"] -->|"accepted 2026-11-02"| B["the backend step"]
+  B --> M["the menu opens the sessions"]
+  M --> R["StockOpname and the one-rack page retired"]
+```
+
+✅ **Built 2026-11-02 — the backend step.** Migration `00035` (the seven tables of opname.md, the one-active index, the
+lock as the partial unique index on open snapshot rows); the 13 RPCs on `inventory_v1.Service`, one file and one test
+each, `OpnamePrototype` deleted; the settlement in `inventory_mutations/post_count.go` — broken as written, the rest
+netted per product, up to three transactions per team, listed by the session; the register's rows per batch, oldest
+first, broken before lost, and its claims; the debt to each team in the transaction, one stock-loss expense after. The
+lock refuses put-away, move, sample and adjustment naming the count; an order's take uses counted racks last and its pick
+shows it waits. `StockOpname` and its page are retired; the menu opens the counts. Races, audit, e2e and the details:
+[the state](../../development_state/inventory/opname.md).
