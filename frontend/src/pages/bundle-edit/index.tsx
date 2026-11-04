@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { personName } from "../../lib/users";
 import type { FormEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -138,7 +139,7 @@ export function BundleEditPage() {
     : canCreateBundle(current?.role);
   const readOnly = !mayEdit;
 
-  const creator = loaded ? (actors.data?.get(loaded.createdByUserId.toString())?.name ?? `#${loaded.createdByUserId}`) : "";
+  const creator = loaded ? personName(actors.data?.get(loaded.createdByUserId.toString()), `#${loaded.createdByUserId}`) : "";
   // BACK undoes the step that got you here: an edit was opened from the bundle's page, a create from the list.
   const backTo = isEdit ? `/products/bundles/${rawId}` : "/products/bundles";
 

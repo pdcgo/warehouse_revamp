@@ -1,4 +1,5 @@
 import { create } from "@bufbuild/protobuf";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { expenseClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
@@ -40,6 +41,7 @@ function expensesFromList(items: ExpenseListResponseItem[], ids: bigint[]): Expe
           createdAtUnix: r.createdAtUnix,
           adjustsExpenseId: r.adjustsExpenseId,
           netAmount: r.netAmount,
+          financeAccountId: r.financeAccountId,
         }),
       );
     }
@@ -126,6 +128,8 @@ interface SaveExpenseVars {
   occurredAt: string;
   shopId: bigint;
   note: string;
+  /** The account that paid — required (an-expense-must-name-the-account-that-paid). */
+  financeAccountId: bigint;
 }
 
 // Record a cost. Recording is the only write that makes an expense — it is never edited afterwards
@@ -147,13 +151,26 @@ interface AdjustExpenseVars {
   note: string;
 }
 
+// A refusal that means THE SCREEN'S FIGURE IS STALE: the expense is gone (NotFound), or somebody corrected it first and
+// this correction would now take it below 0 (FailedPrecondition). Either way the list behind the dialog read something
+// the server no longer holds — and kept on screen, that stale net is the very figure that caused the refusal.
+function staleRefusal(err: unknown): boolean {
+  const code = ConnectError.from(err).code;
+
+  return code === Code.FailedPrecondition || code === Code.NotFound;
+}
+
 // Correct a cost with a new row (every-correction-is-a-signed-adjustment) — Adjust, and Batalkan, which is an
 // adjustment of minus what the expense still counts for.
+//
+// ⚠ SETTLED, NOT ONLY SUCCEEDED: a stale-figure refusal refetches too, so the person reads what the expense counts for
+// NOW beside the refusal instead of retrying against the number that was refused. Any other failure (a validation, a
+// role, the network) leaves the cache alone — nothing about the list changed.
 export function useAdjustExpense() {
   const invalidate = useInvalidateExpenses();
 
   return useMutation({
     mutationFn: (vars: AdjustExpenseVars) => expenseClient.expenseAdjust(vars),
-    onSuccess: () => invalidate(),
+    onSettled: (_data, err) => (err === null || staleRefusal(err) ? invalidate() : undefined),
   });
 }

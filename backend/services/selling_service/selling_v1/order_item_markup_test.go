@@ -27,7 +27,7 @@ func TestOrderCreate_ALineFreezesEveryFigureOfTheTake(t *testing.T) {
 			Cost: 34_000, UnitCost: 34_000.0 / 3, Total: 40_800, UnitCostWithMarkup: 13_600, MarkupTotal: 6_800,
 		}},
 	}
-	svc := selling_v1.NewService(db, picker, nil, returnMapCatalog(), &fakeCredit{}, nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, nil, returnMapCatalog(), &fakeCredit{}, nil, nil, nil, nil)
 	shop := insertShop(t, db, mapTeam, "Toko A", "TOKO-A", "shopee")
 
 	mapForReturns(t, svc, mapTeam, borrowedA, ourProduct)
@@ -105,7 +105,7 @@ func TestOrderCreate_ABorrowedLineRaisesTheGoodsCostByItsMarkupAndTheFeeFollows(
 		}},
 	}
 	fees := &fakeFees{percent: 10}
-	svc := selling_v1.NewService(db, picker, nil, returnMapCatalog(), &fakeCredit{}, nil, nil, fees)
+	svc := selling_v1.NewService(db, picker, nil, returnMapCatalog(), &fakeCredit{}, nil, nil, fees, nil)
 	shop := insertShop(t, db, mapTeam, "Toko A", "TOKO-A", "shopee")
 
 	mapForReturns(t, svc, mapTeam, borrowedA, ourProduct)

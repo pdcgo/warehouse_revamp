@@ -1,16 +1,18 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CloseButton, Dialog, Field, Icon, Portal, SegmentGroup, Stack, Text, Textarea } from "@chakra-ui/react";
-import { Minus, Plus } from "lucide-react";
+import { Button, CloseButton, Dialog, Field, HStack, Icon, Portal, SegmentGroup, Stack, Text, Textarea } from "@chakra-ui/react";
+import { Landmark, Minus, Plus } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
 import type { ExpenseRecord } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
 import { toaster } from "../../../components/feedback/Toaster";
 import { expenseKindLabel } from "../../../components/pickers/ExpenseKindSelect";
+import { formatDayShort } from "../../../lib/datetime";
 import { formatRupiah } from "../../../lib/money";
 import { useAdjustExpense } from "../queries";
+import { useExpenseAccountName } from "./accountName";
 
 type Direction = "reduce" | "add";
 
@@ -28,6 +30,9 @@ interface AdjustExpenseDialogProps {
 //
 // The correction counts on the expense's own day (an-adjustment-counts-on-the-day-it-fixes), so there is no date here.
 // What it leaves is shown before it is sent, and a correction past 0 is refused here as the server refuses it.
+//
+// THE ACCOUNT IS THE ORIGINAL'S, READ-ONLY (a-correction-follows-the-expenses-account): a correction is a change to that
+// payment, so it is never picked here. An expense made before Paid from names none, and its correction moves no balance.
 export function AdjustExpenseDialog({ teamId, expense, onClose }: AdjustExpenseDialogProps) {
   const { t } = useTranslation();
 
@@ -39,6 +44,7 @@ export function AdjustExpenseDialog({ teamId, expense, onClose }: AdjustExpenseD
 
   const adjust = useAdjustExpense();
   const busy = adjust.isPending;
+  const account = useExpenseAccountName(teamId, expense.financeAccountId);
 
   const typed = amount === "" ? 0n : BigInt(amount);
   const correction = direction === "reduce" ? -typed : typed;
@@ -87,10 +93,20 @@ export function AdjustExpenseDialog({ teamId, expense, onClose }: AdjustExpenseD
                   <Text fontSize="sm" color="fg.muted" data-testid="adjust-expense-now">
                     {t("expenses.adjustFor", {
                       kind: expenseKindLabel(t, expense.kind),
-                      date: expense.occurredAt,
+                      date: formatDayShort(expense.occurredAt),
                       now: formatRupiah(expense.netAmount),
                     })}
                   </Text>
+
+                  {/* Where the correction posts — the original's account, never a picker. */}
+                  <HStack gap="2" align="start" fontSize="sm" data-testid="adjust-paid-from">
+                    <Icon as={Landmark} boxSize="4" mt="0.5" color="fg.muted" />
+                    <Text flex="1">
+                      {expense.financeAccountId === 0n
+                        ? t("expenses.adjustNoAccount")
+                        : t("expenses.adjustPaidFrom", { account })}
+                    </Text>
+                  </HStack>
 
                   <Field.Root required>
                     <Field.Label>{t("expenses.adjustDirection")}</Field.Label>

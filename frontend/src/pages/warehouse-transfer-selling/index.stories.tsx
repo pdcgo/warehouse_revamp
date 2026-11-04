@@ -3,6 +3,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
+import { FORMER_USER_ID } from "../../../.storybook/fixtures";
+import { transferRaisedByForStory } from "../../../.storybook/warehouseTransferStub";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { WarehouseTransferSellingPage } from "./index";
 
@@ -42,6 +44,18 @@ async function loaded(canvasElement: HTMLElement) {
 }
 
 export const Default: Story = {};
+
+// A FORMER USER (erase-keeps-the-row): a transfer raised by somebody since erased still names them — "Former user #69",
+// never the synthetic username `erased69`.
+export const RaisedByAFormerUser: Story = {
+  beforeEach: () => transferRaisedByForStory(601n, FORMER_USER_ID),
+  play: async ({ canvasElement }) => {
+    const row = (await loaded(canvasElement)).getByTestId("transfer-row-601");
+
+    await waitFor(() => expect(row).toHaveTextContent("Former user #69"));
+    await expect(row).not.toHaveTextContent("erased69");
+  },
+};
 
 // The team's own transfers, newest first, and only its own — another team's leaving the same warehouse is not here.
 export const OnlyTheTeamsOwn: Story = {

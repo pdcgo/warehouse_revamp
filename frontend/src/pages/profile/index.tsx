@@ -12,7 +12,6 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../../api/clients";
-import { publicUsersByIds, userByIdsRowData } from "../../features/users/adapt";
 import { useAuth } from "../../features/auth/AuthContext";
 import { toaster } from "../../components/feedback/Toaster";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
@@ -21,7 +20,7 @@ import { AgentConnectionsCard } from "./components/AgentConnectionsCard";
 
 // ProfilePage is the caller editing THEMSELVES.
 //
-// Both RPCs it uses (UpdateProfile, ResetPassword) have NO user_id field at all — the subject is
+// Every RPC it uses (ProfileDetail, UpdateProfile, ResetPassword) has NO user_id field at all — the subject is
 // always the token holder. That is not a check that can be forgotten; it is a shape that cannot
 // express the wrong thing.
 export function ProfilePage() {
@@ -32,12 +31,14 @@ export function ProfilePage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  // What is STORED — the form's starting point, and what a save compares against. Only a field that differs from it
+  // is sent: UpdateProfile reads an absent field as "leave alone", so a name-only save cannot blank the email or the
+  // phone a password reset goes to.
+  const [saved, setSaved] = useState({ name: "", email: "", phone: "" });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  // There is no "get me" RPC — but UserByIDs resolves any id to a PublicUser, and we know ours.
-  // (PublicUser has no email/phone by design, so we start those blank and let the user fill
-  // them; a dedicated Me RPC would be the cleaner fix if this page grows.)
+  // ProfileDetail is the caller's OWN row, email and phone included — what UserByIDs' PublicUser never carries.
   useEffect(() => {
     if (!identity) {
       return;
@@ -45,18 +46,16 @@ export function ProfilePage() {
 
     void (async () => {
       try {
-        const users = publicUsersByIds(
-          await userClient.userByIDs({
-            filter: { ids: [identity.identityId] },
-            dataRequest: userByIdsRowData(),
-          }),
-        );
-        const me = users[identity.identityId.toString()];
+        const me = (await userClient.profileDetail({})).user;
+        const stored = { name: me?.name ?? "", email: me?.email ?? "", phone: me?.phoneNumber ?? "" };
 
-        setName(me?.name ?? "");
+        setSaved(stored);
+        setName(stored.name);
+        setEmail(stored.email);
+        setPhone(stored.phone);
         setAvatarUrl(me?.avatarUrl ?? "");
       } catch {
-        // Non-fatal: the form still works, it just starts empty.
+        // Non-fatal: the form starts empty, and a save still sends only what was typed.
       } finally {
         setLoading(false);
       }
@@ -69,7 +68,21 @@ export function ProfilePage() {
     setBusy(true);
 
     try {
-      await userClient.updateProfile({ name, email, phoneNumber: phone });
+      const res = await userClient.updateProfile({
+        name: name !== saved.name ? name : undefined,
+        email: email !== saved.email ? email : undefined,
+        phoneNumber: phone !== saved.phone ? phone : undefined,
+      });
+
+      // The server's answer is the new baseline — a phone comes back in its one stored form.
+      const user = res.user;
+      if (user) {
+        setSaved({ name: user.name, email: user.email, phone: user.phoneNumber });
+        setName(user.name);
+        setEmail(user.email);
+        setPhone(user.phoneNumber);
+      }
+
       toaster.create({ type: "success", title: t("account.profileUpdated") });
     } catch (err) {
       toaster.create({ type: "error", title: t("account.updateFailed"), description: rpcError(err) });

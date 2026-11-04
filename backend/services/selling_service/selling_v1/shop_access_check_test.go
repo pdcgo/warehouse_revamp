@@ -22,10 +22,14 @@ func (f fakeRoles) Roles(_ context.Context, userID, teamID uint64) (role_basev1.
 	return f[[2]uint64{userID, teamID}], f[[2]uint64{userID, san_auth.RootTeamID}], nil
 }
 
+func (f fakeRoles) Member(_ context.Context, userID, teamID uint64) (selling_v1.TeamMember, error) {
+	return selling_v1.TeamMember{Role: f[[2]uint64{userID, teamID}]}, nil
+}
+
 func newServiceWithRoles(t *testing.T, db *gorm.DB, roles selling_v1.RoleReader) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, roles, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, roles, nil, nil, nil)
 }
 
 func accessCheck(t *testing.T, svc *selling_v1.Service, teamID, shopID, userID uint64) *sellingv1.ShopAccessCheckResponse {

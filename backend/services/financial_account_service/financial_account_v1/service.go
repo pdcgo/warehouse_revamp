@@ -4,7 +4,7 @@
 //
 // A row arrives two ways and no other (a-row-comes-by-hand-or-from-the-broker): a manager on the account
 // screens — opening_balance, transfer, capital, adjustment — or a listener on another service's event —
-// withdrawal and team payment today, restock and expense when their events exist (one-way-in-per-type). There
+// withdrawal, team payment and restock today, expense when its event exists (one-way-in-per-type). There
 // is no write RPC for other services.
 //
 // Every write goes through ONE path, `post` in ledger.go: lock the account, append the log row, move the

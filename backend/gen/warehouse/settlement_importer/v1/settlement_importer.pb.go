@@ -364,6 +364,9 @@ const (
 	// SKIPPED: a withdrawal that did not succeed, and the refund that returned it
 	// (only-a-successful-withdrawal-is-recorded).
 	UploadedFileLineReason_UPLOADED_FILE_LINE_REASON_FAILED_WITHDRAWAL UploadedFileLineReason = 6
+	// POSTED to the shop: its ref found two or more LIVE orders in the shop, so no one order is credited with money
+	// that may be another's (two-live-orders-on-a-ref-post-to-the-shop). `found_order_ids` names them.
+	UploadedFileLineReason_UPLOADED_FILE_LINE_REASON_SEVERAL_ORDERS UploadedFileLineReason = 7
 )
 
 // Enum value maps for UploadedFileLineReason.
@@ -376,6 +379,7 @@ var (
 		4: "UPLOADED_FILE_LINE_REASON_REFUSED",
 		5: "UPLOADED_FILE_LINE_REASON_REPEATS_ORDER_DETAILS",
 		6: "UPLOADED_FILE_LINE_REASON_FAILED_WITHDRAWAL",
+		7: "UPLOADED_FILE_LINE_REASON_SEVERAL_ORDERS",
 	}
 	UploadedFileLineReason_value = map[string]int32{
 		"UPLOADED_FILE_LINE_REASON_UNSPECIFIED":           0,
@@ -385,6 +389,7 @@ var (
 		"UPLOADED_FILE_LINE_REASON_REFUSED":               4,
 		"UPLOADED_FILE_LINE_REASON_REPEATS_ORDER_DETAILS": 5,
 		"UPLOADED_FILE_LINE_REASON_FAILED_WITHDRAWAL":     6,
+		"UPLOADED_FILE_LINE_REASON_SEVERAL_ORDERS":        7,
 	}
 )
 
@@ -526,8 +531,8 @@ type UploadedFileTally struct {
 	Existing uint32 `protobuf:"varint,3,opt,name=existing,proto3" json:"existing,omitempty"`
 	Held     uint32 `protobuf:"varint,4,opt,name=held,proto3" json:"held,omitempty"`
 	Skipped  uint32 `protobuf:"varint,5,opt,name=skipped,proto3" json:"skipped,omitempty"`
-	// Of `posted`: rows whose order ref found no order, posted to the shop
-	// (an-unmatched-ref-posts-to-the-shop).
+	// Of `posted`: rows whose order ref found no order (an-unmatched-ref-posts-to-the-shop), or two or more live ones
+	// (two-live-orders-on-a-ref-post-to-the-shop), posted to the shop.
 	PostedToShop  uint32 `protobuf:"varint,6,opt,name=posted_to_shop,json=postedToShop,proto3" json:"posted_to_shop,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1761,8 +1766,11 @@ type UploadedFileLine struct {
 	Detail  string                  `protobuf:"bytes,13,opt,name=detail,proto3" json:"detail,omitempty"`
 	// The ledger row it posted or found. 0 when held or skipped.
 	SettlementLogId uint64 `protobuf:"varint,14,opt,name=settlement_log_id,json=settlementLogId,proto3" json:"settlement_log_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// SEVERAL_ORDERS: every live order the ref found in the shop, ascending — so a person can place the money
+	// (two-live-orders-on-a-ref-post-to-the-shop). Empty otherwise.
+	FoundOrderIds []uint64 `protobuf:"varint,15,rep,packed,name=found_order_ids,json=foundOrderIds,proto3" json:"found_order_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UploadedFileLine) Reset() {
@@ -1893,6 +1901,13 @@ func (x *UploadedFileLine) GetSettlementLogId() uint64 {
 	return 0
 }
 
+func (x *UploadedFileLine) GetFoundOrderIds() []uint64 {
+	if x != nil {
+		return x.FoundOrderIds
+	}
+	return nil
+}
+
 type UploadedFileLineListRequest struct {
 	state         protoimpl.MessageState          `protogen:"open.v1"`
 	TeamId        uint64                          `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -1969,7 +1984,7 @@ func (x *UploadedFileLineListRequest) GetPage() *v11.CommonPagination {
 	return nil
 }
 
-// The file page's three views are HELD · SKIPPED · POSTED with NO_ORDER.
+// The file page's three views are HELD · SKIPPED · POSTED to the shop (NO_ORDER, SEVERAL_ORDERS).
 type UploadedFileLineListFilter struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	UploadedFileId uint64                 `protobuf:"varint,1,opt,name=uploaded_file_id,json=uploadedFileId,proto3" json:"uploaded_file_id,omitempty"`
@@ -2411,7 +2426,7 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12U\n" +
-	"\x05value\x18\x02 \x01(\v2?.warehouse.settlement_importer.v1.UploadedFileByIdsResponseListR\x05value:\x028\x01\"\xd7\x04\n" +
+	"\x05value\x18\x02 \x01(\v2?.warehouse.settlement_importer.v1.UploadedFileByIdsResponseListR\x05value:\x028\x01\"\xff\x04\n" +
 	"\x10UploadedFileLine\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12(\n" +
 	"\x10uploaded_file_id\x18\x02 \x01(\x04R\x0euploadedFileId\x12\x14\n" +
@@ -2428,7 +2443,8 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"\aoutcome\x18\v \x01(\x0e29.warehouse.settlement_importer.v1.UploadedFileLineOutcomeR\aoutcome\x12P\n" +
 	"\x06reason\x18\f \x01(\x0e28.warehouse.settlement_importer.v1.UploadedFileLineReasonR\x06reason\x12\x16\n" +
 	"\x06detail\x18\r \x01(\tR\x06detail\x12*\n" +
-	"\x11settlement_log_id\x18\x0e \x01(\x04R\x0fsettlementLogId\"\xaa\x03\n" +
+	"\x11settlement_log_id\x18\x0e \x01(\x04R\x0fsettlementLogId\x12&\n" +
+	"\x0ffound_order_ids\x18\x0f \x03(\x04R\rfoundOrderIds\"\xaa\x03\n" +
 	"\x1bUploadedFileLineListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\\\n" +
 	"\x06filter\x18\x02 \x01(\v2<.warehouse.settlement_importer.v1.UploadedFileLineListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12T\n" +
@@ -2439,7 +2455,7 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"\x1aUploadedFileLineListFilter\x121\n" +
 	"\x10uploaded_file_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0euploadedFileId\x12_\n" +
 	"\boutcomes\x18\x02 \x03(\x0e29.warehouse.settlement_importer.v1.UploadedFileLineOutcomeB\b\xbaH\x05\x92\x01\x02\x10\x04R\boutcomes\x12\\\n" +
-	"\areasons\x18\x03 \x03(\x0e28.warehouse.settlement_importer.v1.UploadedFileLineReasonB\b\xbaH\x05\x92\x01\x02\x10\x06R\areasons\"\xf6\x01\n" +
+	"\areasons\x18\x03 \x03(\x0e28.warehouse.settlement_importer.v1.UploadedFileLineReasonB\b\xbaH\x05\x92\x01\x02\x10\aR\areasons\"\xf6\x01\n" +
 	"\x1eUploadedFileLineListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12O\n" +
@@ -2486,7 +2502,7 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"!UPLOADED_FILE_LINE_OUTCOME_POSTED\x10\x01\x12'\n" +
 	"#UPLOADED_FILE_LINE_OUTCOME_EXISTING\x10\x02\x12#\n" +
 	"\x1fUPLOADED_FILE_LINE_OUTCOME_HELD\x10\x03\x12&\n" +
-	"\"UPLOADED_FILE_LINE_OUTCOME_SKIPPED\x10\x04*\xd6\x02\n" +
+	"\"UPLOADED_FILE_LINE_OUTCOME_SKIPPED\x10\x04*\x84\x03\n" +
 	"\x16UploadedFileLineReason\x12)\n" +
 	"%UPLOADED_FILE_LINE_REASON_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"UPLOADED_FILE_LINE_REASON_NO_ORDER\x10\x01\x12+\n" +
@@ -2494,7 +2510,8 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"+UPLOADED_FILE_LINE_REASON_FRACTIONAL_AMOUNT\x10\x03\x12%\n" +
 	"!UPLOADED_FILE_LINE_REASON_REFUSED\x10\x04\x123\n" +
 	"/UPLOADED_FILE_LINE_REASON_REPEATS_ORDER_DETAILS\x10\x05\x12/\n" +
-	"+UPLOADED_FILE_LINE_REASON_FAILED_WITHDRAWAL\x10\x06*\xac\x01\n" +
+	"+UPLOADED_FILE_LINE_REASON_FAILED_WITHDRAWAL\x10\x06\x12,\n" +
+	"(UPLOADED_FILE_LINE_REASON_SEVERAL_ORDERS\x10\a*\xac\x01\n" +
 	"\x1cUploadedFileLineListDataType\x121\n" +
 	"-UPLOADED_FILE_LINE_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")UPLOADED_FILE_LINE_LIST_DATA_TYPE_GENERAL\x10\x01\x12*\n" +

@@ -96,30 +96,69 @@ function today(): string {
   ).padStart(2, "0")}`;
 }
 
-// Records one cost against root's own team, dated TODAY — the last day of the default window.
-async function recordCost(page: Page, amount: number, note: string) {
-  await page.evaluate(
-    async ([amt, text, on]) => {
+// rpc calls the API with the page's own token, so a seed runs as the person the UI is signed in as.
+async function rpc<T = Record<string, unknown>>(page: Page, method: string, body: unknown): Promise<T> {
+  return page.evaluate(
+    async ([m, b]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch("http://localhost:8081/warehouse.expense.v1.ExpenseService/ExpenseCreate", {
+      const res = await fetch(`http://localhost:8081/warehouse.${m}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          teamId: "1",
-          kind: 3, // EXPENSE_KIND_OPERATIONAL
-          amount: String(amt),
-          occurredAt: on,
-          note: text,
-        }),
+        body: JSON.stringify(b),
       });
 
-      if (!res.ok) throw new Error(`ExpenseCreate: ${res.status} ${await res.text()}`);
+      if (!res.ok) throw new Error(`${m}: ${res.status} ${await res.text()}`);
+
+      return res.json();
     },
-    [amount, note, today()] as const,
-  );
+    [method, body] as const,
+  ) as Promise<T>;
+}
+
+// Every expense names the account that paid it — one of the team's OPERATIONAL accounts
+// (an-expense-must-name-the-account-that-paid). Made once per run, opening at 0 — the costs take it below zero, which
+// is warned, never refused (below-zero-is-warned-never-refused).
+let payingAccountId: string | undefined;
+
+async function payingAccount(page: Page): Promise<string> {
+  if (payingAccountId) return payingAccountId;
+
+  const created = await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+    teamId: "1",
+    type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+    provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+    name: `E2E statement ${SUFFIX}`,
+    holderName: "E2E",
+    accountNumber: `E2E-STM-${SUFFIX}`,
+    openingBalance: 0,
+    openingOn: today(),
+  });
+  // A Paid from may name only an account marked operational (operational-accounts-pay-for-operations).
+  await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: "1",
+    accountId: created.account.id,
+    operational: true,
+  });
+
+  payingAccountId = created.account.id;
+
+  return payingAccountId;
+}
+
+// Records one cost against root's own team, dated TODAY — the last day of the default window. OPERATIONAL, so it names
+// no shop (an-expense-names-a-shop-only-for-ads); an ADS cost would have to name one.
+async function recordCost(page: Page, amount: number, note: string) {
+  await rpc(page, "expense.v1.ExpenseService/ExpenseCreate", {
+    teamId: "1",
+    kind: 3, // EXPENSE_KIND_OPERATIONAL
+    amount: String(amount),
+    occurredAt: today(),
+    note,
+    financeAccountId: await payingAccount(page),
+  });
 }
 
 test.describe.configure({ mode: "serial" });

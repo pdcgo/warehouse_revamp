@@ -185,12 +185,15 @@ export function useUserTeams(args: { userId: bigint; page: number; pageSize: num
 //
 // The caller still debounces. That is now about request VOLUME rather than correctness: the cache
 // decides which answer belongs on screen, so a late reply for an abandoned prefix cannot land.
-export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
-  const { teamId, q } = args;
+//
+// `excludeSuspended` is for a picker that GIVES something inside a team (a shop grant): suspended and erased members are
+// never offered (a-suspended-user-is-never-picked). The everyone-search leaves them out already.
+export function useUserSearch(args: { teamId: bigint | undefined; q: string; excludeSuspended?: boolean }) {
+  const { teamId, q, excludeSuspended = false } = args;
   const inTeam = teamId !== undefined && teamId > 0n;
 
   return useQuery({
-    queryKey: key.users(teamId, { search: q }),
+    queryKey: key.users(teamId, { search: q, excludeSuspended }),
     ...referenceQuery,
     // SearchUser rejects fewer than 2 characters, so the everyone-search does not ask below that. A TEAM's
     // members are a bounded set and answer with nothing typed (owner, on a shop's access panel: *"select user
@@ -200,7 +203,7 @@ export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
       if (inTeam) {
         const res = await userClient.userList({
           teamId,
-          filter: { q },
+          filter: { q, excludeSuspended },
           dataRequest: userListRowData(),
           page: { page: 1, limit: 20 },
         });

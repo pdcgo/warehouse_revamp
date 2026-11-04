@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
@@ -161,5 +162,43 @@ func TestShopList_CarriesThePrimary(t *testing.T) {
 
 	if shops[withNone].GetPrimaryUserId() != 0 {
 		t.Errorf("shop %d primary = %d, want 0", withNone, shops[withNone].GetPrimaryUserId())
+	}
+}
+
+// The primary CS is a grant, so the grant's rule holds for Make primary (a-grant-goes-only-to-a-team-member): a grant
+// made while the person was an active member does not let them be made primary once they are suspended, or once they
+// have left the team and the event that drops their grants has not landed yet. The primary stays where it was.
+func TestShopUserSetPrimary_OnlyAnActiveMemberOfTheShopsTeam(t *testing.T) {
+	db := san_testdb.DB(t)
+	ctx := context.Background()
+
+	cast := fakeMembers{
+		{10, 2}: {Role: role_basev1.Role_ROLE_SELLING_CS},
+		{11, 2}: {Role: role_basev1.Role_ROLE_SELLING_CS},
+		{12, 2}: {Role: role_basev1.Role_ROLE_SELLING_CS},
+	}
+	svc := newServiceWithRoles(t, db, cast)
+
+	shopID := insertShop(t, db, 2, "Melati", "PM9", "shopee")
+
+	grant(t, svc, 2, shopID, 10)
+	grant(t, svc, 2, shopID, 11)
+	grant(t, svc, 2, shopID, 12)
+
+	// 11 is suspended, 12 left the team — both still hold their grant.
+	cast[[2]uint64{11, 2}] = selling_v1.TeamMember{Role: role_basev1.Role_ROLE_SELLING_CS, Suspended: true}
+	delete(cast, [2]uint64{12, 2})
+
+	for _, user := range []uint64{11, 12} {
+		_, err := svc.ShopUserSetPrimary(ctx, connect.NewRequest(&sellingv1.ShopUserSetPrimaryRequest{
+			TeamId: 2, ShopId: shopID, UserId: user,
+		}))
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("Make primary %d: code = %v, want FailedPrecondition", user, connect.CodeOf(err))
+		}
+	}
+
+	if got := primaryOf(t, svc, 2, shopID); got != 10 {
+		t.Fatalf("primary = %d, want 10 unchanged", got)
 	}
 }

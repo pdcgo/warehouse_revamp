@@ -35,6 +35,8 @@ export function useOrderDrafts(args: {
       return {
         drafts: draftsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+        // The WHOLE filtered set's ready drafts, counted by the server (#16) — never this page's.
+        readyCount: Number(res.readyCount),
       };
     },
   });

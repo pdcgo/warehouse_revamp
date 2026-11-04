@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -23,8 +24,6 @@ import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
 import { PRESSABLE } from "../../lib/motion";
@@ -53,7 +52,6 @@ import { type ShopSortKey, useDeleteShop, useShopPrimaries, useShops } from "../
 import { ShopFormDialog } from "../../features/shops/ShopFormDialog";
 import { PrimaryCsDialog } from "./components/PrimaryCsDialog";
 import { ShopOptionsFilter } from "./components/ShopOptionsFilter";
-import { SHOPS_LIST_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -81,7 +79,7 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 //
 //   Toko [Toko Melati]                                                    [＋ Toko Baru]
 //   Etalase marketplace tempat tim ini berjualan …
-//   [⌕ Cari nama atau kode ×] [Semua marketplace ▾ ⚠1] [Semua CS utama ▾ ⚠2] [⚙ Filter ⌄ ⚠3 → ☐ Belum ada CS utama]
+//   [⌕ Cari nama atau kode ×] [Semua marketplace ▾] [Semua CS utama ▾] [⚙ Filter ⌄ → ☐ Belum ada CS utama]
 //   Nama ↕         │ Kode ↕  │ Marketplace │ CS utama            │             [✎ Ubah] [🗑 Hapus] [⋯]
 //   Melati Official │ MEL-SHP │ Shopee      │ Ani Rahayu          │                     ⋯ → ⚙ Ganti CS Utama
 //   Melati Store    │ MEL-TOK │ Tokopedia   │ Belum ada CS utama  │                     ⋯ → ⚙ Pilih CS Utama
@@ -91,10 +89,10 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // ellipsis"*) — it is who an imported statement's rows with no order are counted for, and a shop with none cannot
 // import. "None" is a line of text in the warning role, not a badge.
 //
-// THE MARKETPLACE, THE PRIMARY CS AND "NO PRIMARY CS", AHEAD OF THE CONTRACT (owner: *"oke tambahkan dengan warning,
-// filter mp, cs utama sama belum ada cs"*, then *"bedakan belum ada csnya"*) — each is held in the URL and marked ⚠, its
-// pick THROWN AWAY: ShopListFilter has only `q`. "No primary CS" is its own tick, apart from the person; the two
-// cannot both hold, so setting one clears the other.
+// THE MARKETPLACE, THE PRIMARY CS AND "NO PRIMARY CS" (owner: *"filter mp, cs utama sama belum ada cs"*, then *"bedakan
+// belum ada csnya"*) — each is held in the URL and SENT: ShopListFilter's `marketplace`, `primary_user_id` and
+// `no_primary` narrow the whole set on the server (#16), so the count and the pages agree. "No primary CS" is its own
+// tick, apart from the person; the two cannot both hold (the server refuses both), so setting one clears the other.
 //
 // The name and the code sort from their headings (the two the contract orders by); the whole row opens the shop; a phone
 // reads each shop as a block; the first load is the list's shape; an empty list says what next; the pages grow.
@@ -109,7 +107,7 @@ export function ShopsPage() {
   const [q, setQ] = useUrlState("q", "", textCodec);
   // `null` = the list's own order, newest first — no heading stands for it.
   const [sort, setSort] = useUrlState<SortState<ShopSortKey> | null>("sort", null, SORT_CODEC);
-  // ⚠ Held and marked, NOT SENT (SHOPS_LIST_PENDING) — ShopListFilter cannot carry them yet.
+  // Held in the URL and sent as ShopListFilter's marketplace / primary_user_id / no_primary.
   const [marketplace, setMarketplace] = useUrlState("market", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   const [primaryCsId, setPrimaryCsId] = useUrlState<bigint | undefined>("cs", undefined, PRIMARY_CODEC);
   const [noPrimaryOnly, setNoPrimaryOnly] = useUrlState("nocs", false, boolCodec);
@@ -122,7 +120,16 @@ export function ShopsPage() {
   const term = useDebounced(q.trim());
   const teamId = current?.teamId;
 
-  const query = useShops({ teamId, q: term, sort, page, pageSize });
+  const query = useShops({
+    teamId,
+    q: term,
+    marketplace,
+    primaryUserId: primaryCsId,
+    noPrimary: noPrimaryOnly,
+    sort,
+    page,
+    pageSize,
+  });
   const deleteShop = useDeleteShop();
 
   const shops = query.data?.shops ?? [];
@@ -261,7 +268,7 @@ export function ShopsPage() {
 
     const person = primaries.data?.get(shop.primaryUserId.toString());
     if (person) {
-      return <Text>{person.name || person.username}</Text>;
+      return <Text>{personName(person)}</Text>;
     }
 
     return primaries.isPending ? <Skeleton h="3" w="20" /> : <Text>#{shop.primaryUserId.toString()}</Text>;
@@ -400,9 +407,6 @@ export function ShopsPage() {
         {writable && <ShopFormDialog compact={isMobile} />}
       </Flex>
 
-      {/* What this list cannot do yet — the three filters it holds and throws away. */}
-      <NotImplementedSummary list={SHOPS_LIST_PENDING} />
-
       {/* THE SHARED FILTER STRIP (a-phone-filters-from-a-sheet) — the search, with its icon and its ×, then the
           marketplace and the primary CS, each with its own × (every-filter-clears-from-its-own-x); the sort is the
           headings'. */}
@@ -416,41 +420,31 @@ export function ShopsPage() {
 
         {/* A static, small set — a plain list, not a search. */}
         <FilterField w="15rem" testId="shops-marketplace-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <MarketplaceSelect
-                clearable
-                // Its own address — the New Shop form on this page picks a marketplace too.
-                testId="shops-marketplace-select"
-                value={marketplace}
-                placeholder={t("shops.filter.marketplaceAll")}
-                onChange={(m) => refilter(() => setMarketplace(m))}
-              />
-            </Box>
-            <NotImplemented list={SHOPS_LIST_PENDING} id="marketplaceFilter" />
-          </Flex>
+          <MarketplaceSelect
+            clearable
+            // Its own address — the New Shop form on this page picks a marketplace too.
+            testId="shops-marketplace-select"
+            value={marketplace}
+            placeholder={t("shops.filter.marketplaceAll")}
+            onChange={(m) => refilter(() => setMarketplace(m))}
+          />
         </FilterField>
 
         {/* WHO HOLDS THE SHOP — the people who are a primary CS on this team's shops
             (a-who-filter-lists-the-people-on-its-rows). Picking one lifts "No primary CS". */}
         <FilterField w="15rem" testId="shops-primary-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <PersonFilterSelect
-                people={primaryPeople.data}
-                error={primaryPeople.isError}
-                value={primaryCsId}
-                placeholder={t("shops.filter.primaryAll")}
-                onChange={(id) =>
-                  refilter(() => {
-                    setPrimaryCsId(id);
-                    if (id !== undefined) setNoPrimaryOnly(false);
-                  })
-                }
-              />
-            </Box>
-            <NotImplemented list={SHOPS_LIST_PENDING} id="primaryFilter" />
-          </Flex>
+          <PersonFilterSelect
+            people={primaryPeople.data}
+            error={primaryPeople.isError}
+            value={primaryCsId}
+            placeholder={t("shops.filter.primaryAll")}
+            onChange={(id) =>
+              refilter(() => {
+                setPrimaryCsId(id);
+                if (id !== undefined) setNoPrimaryOnly(false);
+              })
+            }
+          />
         </FilterField>
 
         {/* THE SHOPS WITH NO PRIMARY CS — its own tick (owner: *"bedakan belum ada csnya"*), in the Filter panel

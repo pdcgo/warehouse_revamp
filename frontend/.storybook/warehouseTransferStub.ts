@@ -41,6 +41,13 @@ export function resetWarehouseTransferStub() {
 
 resetWarehouseTransferStub();
 
+/** For a story: who raised transfer `id` — e.g. a former user, to show the list naming them (erase-keeps-the-row). */
+export function transferRaisedByForStory(id: bigint, userId: bigint) {
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no transfer ${id} in the stub`);
+  row.createdByUserId = userId;
+}
+
 const now = () => BigInt(Math.floor(Date.now() / 1000));
 
 // The one building the fixture stock is held in (stubTransport's stockAvailability answers the same).

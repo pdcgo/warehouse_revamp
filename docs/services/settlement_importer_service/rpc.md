@@ -99,6 +99,7 @@ flowchart TD
   P -->|"already there"| E["EXISTING, INFO"]
   P -->|"created, to its order"| P1["POSTED, INFO"]
   P -->|"created, its ref found no order"| P2["POSTED to the shop — no_order, WARN"]
+  P -->|"created, its ref is on two or more live orders"| P3["POSTED to the shop — several_orders, the ids kept, WARN"]
 ```
 
 | platform | the ref | key | the importer's policy |
@@ -111,7 +112,12 @@ Every posting line goes to settlement as source `importer`, with the order's cre
 the order — stamped on the account if the post opens it — and to the shop otherwise, where settlement
 itself asks the shop for the primary CS the row counts for
 ([settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)).
-The order a ref finds, among several in the shop: a live one before a cancelled one, then the newest.
+The order a ref finds, among several in the shop (`orderInShop`): **exactly one live order** is the line's, a cancelled
+one never beating it; **no live order** falls back to the newest cancelled one, as built; **two or more live orders** pick
+none — the line posts to the SHOP (order 0, no creator, so settlement counts it for the primary CS), reason
+`several_orders`, every live id kept in `found_order_ids` (ascending) and named on its WARN line, and it counts into
+`rows_posted_to_shop` ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)).
+The file page's *Posted to the shop* view lists both reasons, the found ids as links to the orders.
 
 ## The reads
 

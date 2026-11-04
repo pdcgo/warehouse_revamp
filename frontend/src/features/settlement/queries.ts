@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { settlementClient, settlementWriteClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { settlementAnalyticClient, settlementClient, settlementWriteClient } from "../../api/clients";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
+import { peopleFor, WHO_FILTER_SIZE } from "../users/queries";
 import type { OrderSettlement, SettlementType, SourceType } from "../../pages/order-settlement/model";
 import {
   entryFromWire,
@@ -164,6 +165,29 @@ export function usePostSettlementEntry(teamId: bigint | undefined) {
     onSuccess: () => {
       // Both the panel and the list move — the account's balance changed and its rank with it.
       queryClient.invalidateQueries({ queryKey: key.settlement(teamId) });
+    },
+  });
+}
+
+// WHO A USER FILTER OVER A SETTLEMENT METRIC OFFERS (a-who-filter-lists-the-people-on-its-rows): everyone a settlement
+// row of this team counts for — SettlementPersonList, read off the person report the metric's USER group reads — the
+// latest first, named with one UserByIDs. Never the team's member list or the system-wide user search.
+//
+// `referenceQuery`: it LABELS a picker, and is re-read whenever one mounts.
+export function useSettlementPeople(args: { teamId: bigint | undefined; enabled?: boolean }) {
+  const { teamId, enabled = true } = args;
+
+  return useQuery({
+    queryKey: key.settlement(teamId, { people: 1 }),
+    ...referenceQuery,
+    enabled: enabled && teamId !== undefined,
+    queryFn: async () => {
+      const res = await settlementAnalyticClient.settlementPersonList({
+        teamId: teamId!,
+        page: { page: 1, limit: WHO_FILTER_SIZE },
+      });
+
+      return peopleFor(res.ids);
     },
   });
 }

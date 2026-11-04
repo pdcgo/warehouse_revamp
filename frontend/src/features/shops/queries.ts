@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { personName } from "../../lib/users";
 import { shopClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
@@ -18,6 +19,12 @@ const SORT_COLUMN: Record<ShopSortKey, ShopRowSort> = { name: ShopRowSort.NAME, 
 export function useShops(args: {
   teamId: bigint | undefined;
   q: string;
+  /** Only this marketplace's shops; absent or UNSPECIFIED = every marketplace. */
+  marketplace?: Marketplace;
+  /** Only the shops whose primary CS is this person; absent = anybody. */
+  primaryUserId?: bigint;
+  /** Only the shops with NO primary CS. The server refuses it beside a `primaryUserId`. */
+  noPrimary?: boolean;
   /** `null` = the list's own order, newest first; otherwise by name or code, A to Z or back (the server sorts). */
   sort?: SortState<ShopSortKey> | null;
   page: number;
@@ -25,15 +32,26 @@ export function useShops(args: {
 }) {
   const { teamId, q, page, pageSize } = args;
   const sort = args.sort ?? null;
+  const marketplace = args.marketplace ?? 0;
+  const primaryUserId = args.primaryUserId ?? 0n;
+  const noPrimary = args.noPrimary ?? false;
 
   return useQuery({
-    queryKey: key.shops(teamId, { q, sort: sort ? `${sort.by}:${sort.dir}` : "", page, pageSize }),
+    queryKey: key.shops(teamId, {
+      q,
+      market: marketplace,
+      cs: primaryUserId.toString(),
+      nocs: noPrimary,
+      sort: sort ? `${sort.by}:${sort.dir}` : "",
+      page,
+      pageSize,
+    }),
     ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await shopClient.shopList({
         teamId: teamId!,
-        filter: { q },
+        filter: { q, marketplace, primaryUserId, noPrimary },
         sort: sort
           ? {
               sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
@@ -128,7 +146,7 @@ export function useShopPrimaries(args: { teamId: bigint | undefined }) {
       );
       const people = await peopleFor(ids);
 
-      return people.sort((a, b) => (a.name || a.username).localeCompare(b.name || b.username));
+      return people.sort((a, b) => personName(a).localeCompare(personName(b)));
     },
   });
 }

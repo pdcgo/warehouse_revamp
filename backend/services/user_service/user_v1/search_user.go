@@ -2,9 +2,12 @@ package user_v1
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"strings"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
@@ -34,6 +37,11 @@ func (s *Service) SearchUser(
 	scope := teamID
 	if scope == 0 {
 		scope = san_auth.RootTeamID
+	}
+
+	err := s.refuseMonitorOutsidePolicy(ctx, scope, req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
 	caller, err := s.callerIn(ctx, scope)
@@ -103,6 +111,41 @@ func (s *Service) SearchUser(
 	}
 
 	return connect.NewResponse(&userv1.SearchUserResponse{Users: out, RolesInTeam: roles}), nil
+}
+
+// errMonitorSearch is the admin team's Admin opening the search through a team it only monitors.
+var errMonitorSearch = errors.New("the search is only for those who manage members — your admin-team role does not (only-member-managers-open-the-search)")
+
+// refuseMonitorOutsidePolicy holds a MONITOR to the request's own role list.
+//
+// The interceptor lets the admin team read a team it is not in through any marked read (the-admin-team-monitors-read-only),
+// without reading that read's roles — right for a list, wrong for the search, whose policy leaves the admin team's
+// Admin out (the-admin-team-admin-alone-does-not-manage-members). Through monitoring that Admin would still probe any
+// account by exact username, email or phone and read its phone ending. So a monitor passes here only when its
+// admin-team role is one the policy names: the admin team's Owner does, its Admin does not.
+//
+// Every other caller was already judged against the policy by the interceptor and is not asked again.
+func (s *Service) refuseMonitorOutsidePolicy(ctx context.Context, scope uint64, message proto.Message) error {
+	if !san_auth.IsMonitor(ctx) {
+		return nil
+	}
+
+	identity, err := san_auth.GetIdentity(ctx)
+	if err != nil {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	access, err := s.resolver.Resolve(ctx, identity.GetIdentityId(), scope)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+
+	policy := san_auth.PolicyOf(message.ProtoReflect().Descriptor())
+	if slices.Contains(policy.GetRoles(), access.AdminTeamRole) {
+		return nil
+	}
+
+	return connect.NewError(connect.CodePermissionDenied, errMonitorSearch)
 }
 
 // rolesIn is each of `userIDs`' role in the team, for those who hold one. Nothing at team 0: the root team is

@@ -120,6 +120,28 @@ export const RowsPostedToTheShop: Story = {
   },
 };
 
+// two-live-orders-on-a-ref-post-to-the-shop: a ref on two live orders went to the shop too — the row says so, and
+// names every order it found, each a link to that order, so a person can place the money.
+export const ARefOnSeveralOrdersNamesThem: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("lines-tab-toShop"));
+
+    const [line] = linesOf(shopeeDone!.id, (l) => l.reason === UploadedFileLineReason.SEVERAL_ORDERS);
+    await expect(await canvas.findByTestId(`line-reason-${line!.id}`)).toHaveTextContent("several live orders");
+
+    for (const orderId of line!.foundOrderIds!) {
+      const link = canvas.getByTestId(`line-found-order-${line!.id}-${orderId}`);
+      await expect(link).toHaveTextContent(`#${orderId}`);
+      await expect(link).toHaveAttribute("href", `/orders/${orderId}`);
+    }
+
+    // The tab counts it among the rows posted to the shop.
+    await expect(canvas.getByTestId("lines-tab-toShop")).toHaveTextContent(String(shopeeDone!.tally.postedToShop));
+  },
+};
+
 // The original is one click away, through a signed URL minted when asked.
 export const TheOriginalDownloads: Story = {
   play: async ({ canvasElement }) => {

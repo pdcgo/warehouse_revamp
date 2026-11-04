@@ -44,6 +44,13 @@ export function resetRestockStub() {
 
 resetRestockStub();
 
+/** For a story: who raised restock `id` — e.g. a former user, to show the list naming them (erase-keeps-the-row). */
+export function restockRaisedByForStory(id: bigint, userId: bigint) {
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no restock ${id} in the stub`);
+  row.createdByUserId = userId;
+}
+
 const now = () => BigInt(Math.floor(Date.now() / 1000));
 
 type PageReq = { page?: number; limit?: number } | undefined;
@@ -494,6 +501,19 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     const excluded = r.items.reduce((s, l) => s + l.problems.reduce((t, p) => t + p.count, 0n), 0n);
 
     return { restockId: r.id, receivedAtUnix: r.acceptedAtUnix, labels, excludedCount: excluded };
+  },
+
+  // the-restocks-warehouse-opens-its-label-photo — the server's rules: the restock must be going to the calling warehouse
+  // (another's reads NotFound, as an unknown id), and one with no photo is FailedPrecondition. The URL names the route
+  // so a story can tell this link from the owner's GetDownloadUrl one.
+  restockReceiptPhoto(req) {
+    const r = comingTo(req.teamId, req.requestId);
+    if (!r.receiptFile) throw precondition("this restock has no label photo");
+
+    return {
+      url: `https://example.invalid/restock-photo/${r.receiptFile}`,
+      expiresAtUnix: BigInt(Math.floor(Date.now() / 1000) + 900),
+    };
   },
 
   restockInboundStat(req) {

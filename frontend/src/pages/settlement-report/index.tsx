@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, Flex, Group, Heading, Spacer, Stack, Text } from "@chakra-ui/react";
 
@@ -122,7 +123,7 @@ export function SettlementReportPage() {
       return shops.data?.find((shop) => shop.id === id)?.name ?? `#${id}`;
     }
 
-    return actors.data?.get(id.toString())?.name ?? `#${id}`;
+    return personName(actors.data?.get(id.toString()), `#${id}`);
   };
 
   if (!current) {

@@ -114,6 +114,8 @@ let movements: Movement[] = [];
 let nextMovementId = 9100n;
 let nextTransactionId = 7001n;
 let last: RackWrite | null = null;
+// Who the rack history says moved each unit — the signed-in person, unless a story names someone else.
+let historyActor = SELF_ID;
 
 /**
  * A RACE, armed for the next write only: just before RackMove or RackSample checks the shelf, somebody else has taken
@@ -131,7 +133,13 @@ export function resetRackStub() {
   nextMovementId = 9100n;
   nextTransactionId = 7001n;
   last = null;
+  historyActor = SELF_ID;
   rackStubScenario.raceBeforeNextWrite = null;
+}
+
+/** For a story: who the rack history names on every row — e.g. a former user (erase-keeps-the-row). */
+export function rackHistoryByForStory(userId: bigint) {
+  historyActor = userId;
 }
 
 resetRackStub();
@@ -404,7 +412,7 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
             case: "movement",
             value: {
               mapData: Object.fromEntries(
-                rows.map((m) => [m.id.toString(), { ...m, actorUserId: SELF_ID, batchId: 0n }]),
+                rows.map((m) => [m.id.toString(), { ...m, actorUserId: historyActor, batchId: 0n }]),
               ),
             },
           },

@@ -52,7 +52,7 @@ func opnameStocked(t *testing.T) *opnameFixture {
 
 	db := san_testdb.DB(t)
 	f := &opnameFixture{db: db, poster: &recordingPoster{}, expense: &recordingExpense{}}
-	f.svc = inventory_v1.NewService(db, f.poster, f.expense, nil, nil, opFacts())
+	f.svc = inventory_v1.NewService(db, f.poster, f.expense, nil, nil, opFacts(), nil)
 
 	f.rakA = newRack(t, f.svc, otWarehouse, "rak-a")
 	f.rakB = newRack(t, f.svc, otWarehouse, "rak-b")

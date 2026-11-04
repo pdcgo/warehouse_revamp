@@ -1615,7 +1615,7 @@ erDiagram
     expense_records {
         bigserial   id          PK
         bigint      team_id     "the scope, opaque cross-service id; ONE team per row"
-        bigint      shop_id     "optional on ANY kind, opaque; 0 = not attributed to one shop"
+        bigint      shop_id     "the shop an ADS expense ran for, opaque - required on ADS, refused on every other kind; 0 = none"
         int         kind        "ExpenseKind enum number — mapped in the handler, no DB CHECK"
         bigint      amount      "whole rupiah — > 0 on an expense, signed and never 0 on an adjustment"
         date        occurred_at "the date the cost BELONGS TO, chosen by the person"
@@ -1623,6 +1623,7 @@ erDiagram
         bigint      created_by  "who typed it, opaque user_service id"
         boolean     is_override "the typist was Root or the Administrator, not a member (00003)"
         bigint      adjusts_expense_id "0 on an expense; on an adjustment, the expense it corrects — never another adjustment"
+        bigint      finance_account_id "the account that paid, opaque financial_account id - an adjustment copies its expense's; 0 = before Paid from, or a STOCK_LOSS (00004)"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -1651,8 +1652,18 @@ erDiagram
     `team_id` — and it is **never recharged onward** to the selling teams it fulfils for (owner,
     2026-07-21). A recharge would have been a second team here, which is why it was settled before
     this table was written rather than migrated in later.
-  - **`shop_id` is optional on EVERY kind** (owner), not only ads: a team running two shops may split
-    its packing wages or a subscription between them.
+  - **`shop_id` is for ADS only, and ADS must name one**
+    ([an-expense-names-a-shop-only-for-ads](business/financial_account/context_decision.md#an-expense-names-a-shop-only-for-ads)),
+    checked by `ExpenseCreate` — it reverses the earlier *optional on every kind* (owner, 2026-07-21). Rows made before
+    keep whatever shop they carry; an adjustment copies its expense's.
+  - **`finance_account_id`** (`00004`) — the account that paid
+    ([an-expense-must-name-the-account-that-paid](business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid)):
+    one of the team's ACTIVE OPERATIONAL accounts, asked of financial_account_service in-process before the insert (no
+    FK across services). An adjustment copies its expense's
+    ([a-correction-follows-the-expenses-account](business/financial_account/context_decision.md#a-correction-follows-the-expenses-account)).
+    `0` on every row made before the column and on a `STOCK_LOSS` (inventory's internal call, no cash moved) — nothing
+    posts for 0. Each new row is published (`ExpenseCreated` / `ExpenseAdjusted`) and financial_account_service posts it
+    as `expense`, or `ads_expense` for ADS.
   - **`kind` has no DB `CHECK`** (cf. #80). Proto enums are open and append-only, so a check
     constraint would reject a kind the contract already allows on the day one is added.
   - Indexed on `(team_id, occurred_at DESC, id DESC)` — every screen and every total asks for one team's rows over a
@@ -1694,7 +1705,7 @@ erDiagram
         bigint      team_id         "whose books this leg is in, opaque, no FK"
         bigint      counterparty_id "the other side"
         bigint      amount          "signed — receivable positive, payable negative; whole rupiah"
-        text        source_type     "order_fee / product_fee / payment / incidental_fee / broken_good / lost_good / found / return_incidental_fee; no CHECK"
+        text        source_type     "order_fee / product_fee / payment / incidental_fee / broken_good / lost_good / found / return_incidental_fee / transfer_fee; no CHECK"
         bigint      source_id       "opaque id in the service that owns the cause, no FK"
         boolean     reversal        "undoes an earlier leg — part of the idempotency key"
         bigint      group_id        "both legs of one movement share it"
@@ -2070,6 +2081,7 @@ erDiagram
     bigint user_id "UNIQUE with team_id"
     bigint team_id
     bigint close_balance
+    date last_day "00008 - the newest day the person has a daily row on. NULL only mid-replay"
     timestamptz last_updated
   }
 
@@ -2103,6 +2115,16 @@ erDiagram
 | `*_daily_reports_team_day_idx` (team_id, day) | a team's series and its ranking over a window |
 | `*_daily_reports_day_idx` / `settlement_event_logs_day_idx` | the replay's delete — three tables, one predicate |
 | `settlement_event_logs_created_idx` | the retention prune |
+| `user_settlement_reports_team_last_day_idx` (team_id, last_day, user_id) | `SettlementPersonList`'s page, `ORDER BY last_day, user_id` either way (`00008` — replaced `user_settlement_reports_team_idx`) |
+
+### The person's last day (`00008`)
+
+- **`user_settlement_reports.last_day`** — the newest report day the person has a daily row on, so the *Created by*
+  picker reads one row per (user, team) instead of every day of the team
+  ([the-person-list-reads-the-last-day-from-the-user-report](business/settlement/context_decision.md#the-person-list-reads-the-last-day-from-the-user-report)).
+  The fold sets it from the same newest daily row it derives `close_balance` from and only RAISES it (`GREATEST`), so a
+  late event on an older day leaves it. `AnalyticReplayCompute` recomputes it as `MAX(day)` of the rows its cut left
+  (NULL when none are — the redelivery raises it again). The migration backfilled it from the daily table.
 
 ### The override stamp (`00007`)
 
@@ -2161,7 +2183,7 @@ erDiagram
     int rows_existing "already in the ledger — the row key's own dedupe"
     int rows_held
     int rows_skipped
-    int rows_posted_to_shop "of rows_posted, whose ref found no order"
+    int rows_posted_to_shop "of rows_posted, whose ref found no order or several live ones"
     bigint created_by_user_id "the uploader — the actor on every row it posts"
     boolean is_override "Root or the Administrator, outside the team - 00002"
     bigint primary_user_id "the shop's primary CS when the file was checked"
@@ -2183,9 +2205,10 @@ erDiagram
     date occurred_on
     bigint order_id "0 means the shop"
     text outcome "posted, existing, held or skipped"
-    text reason "no_order, unmapped_type, fractional_amount, refused, repeats_order_details, failed_withdrawal"
+    text reason "no_order, unmapped_type, fractional_amount, refused, repeats_order_details, failed_withdrawal, several_orders"
     text detail "a refusal's message, a fraction as written, a withdrawal's status"
     bigint settlement_log_id "the ledger row it posted or found — 0 when held or skipped"
+    text found_order_ids "several_orders - the live orders the ref found, comma-joined ascending, else empty - 00003"
     timestamptz created_at
   }
 ```
@@ -2196,6 +2219,7 @@ erDiagram
 | **INTERRUPTED is derived** | a `running` row whose `updated_at` is over two minutes old — the server stopped mid-file ([an-import-finishes-whether-anyone-watches](business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). The list filters it in SQL on the same line; nothing sweeps it |
 | **every line is kept** | not only the ones worth a look — the file page's three views (held · skipped · posted to the shop) are filters over all of them |
 | **no FK across services** | `team_id`, `shop_id`, `order_id`, `document_id`, `settlement_log_id` are other services' ids, kept as given |
+| **`found_order_ids` is a record, not a key** (`00003`) | a ref on two or more live orders posts to the shop and names them ([two-live-orders-on-a-ref-post-to-the-shop](business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)). TEXT, comma-joined ascending, `''` otherwise — selling's ids, never joined or filtered on; the file page filters by `reason` |
 | **no override stamp yet** | the import RPCs are server STREAMS, whose ctx carries no scope or role, so [an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service) has nothing to read here. The rows it posts are stamped by `SettlementPost` (`settlement_logs.is_override`) |
 
 | index | answers |

@@ -49,6 +49,12 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [another-bank-is-provider-lainnya](#another-bank-is-provider-lainnya) | a bank outside the provider list is registered by hand with provider **Lainnya** (`unknown`), its type still bank / wallet / cash — an ordinary account | owner | ⚠ the contract and the server still refuse it — marked unimplemented on screen |
 | [the-type-decides-the-provider](#the-type-decides-the-provider) | the type is picked first and decides the provider: bank → BCA · BNI · Jago, digital wallet → ShopeePay, cash → Kas by itself, **Lainnya** → provider Lainnya by itself, its number optional | owner | ⚠ type and provider Lainnya are refused by the server — demo only, marked unimplemented |
 | [lainnya-is-opened-by-the-server](#lainnya-is-opened-by-the-server) | the server now opens type Lainnya — type and provider `unknown` as a pair, number optional — and lists the archived alone for the archive view | owner | ✅ built 2026-10-14 · ⚠ the pair rule is my spec |
+| [a-correction-follows-the-expenses-account](#a-correction-follows-the-expenses-account) | an adjustment or cancel posts to the account the original expense named; the Adjust dialog shows it read-only | owner, as recommended | — |
+| [an-expense-names-a-shop-only-for-ads](#an-expense-names-a-shop-only-for-ads) | only an ADS expense names a shop, and must; other kinds name none — reverses "optional on every kind" (2026-07-21) | owner | — |
+| [the-paid-from-prototype-is-accepted](#the-paid-from-prototype-is-accepted) | the Storybook *Paid from* screens are the design; the backend step stores, checks, publishes and posts | owner | ✅ the phone list: [the-expenses-phone-layout-is-accepted](#the-expenses-phone-layout-is-accepted) |
+| [the-expenses-phone-layout-is-accepted](#the-expenses-phone-layout-is-accepted) | the phone Expenses page: one-row header with a + icon, compact totals, each expense a block with a ⋯ menu | owner | — |
+| [an-expense-posts-on-its-own-day](#an-expense-posts-on-its-own-day) | an expense's account row and its corrections count on the expense's own date | owner, as recommended | — |
+| [a-transfers-shipping-posts-as-an-expense](#a-transfers-shipping-posts-as-an-expense) | a warehouse transfer's shipping cost leaves the paying account as `expense` — amends one-way-in-per-type | owner, against my recommendation | ✅ not on the Expenses screen — posted straight from the transfer |
 
 ## the-accounts-are-one-ledger
 
@@ -1369,3 +1375,108 @@ flowchart LR
 
 **What it replaces** — the *⚠ not built* rows of [another-bank-is-provider-lainnya](#another-bank-is-provider-lainnya) and
 [the-type-decides-the-provider](#the-type-decides-the-provider), and the *still open* cell of both in the table above.
+
+---
+
+## a-correction-follows-the-expenses-account
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended, to: when an expense is corrected, which account does the correction use?
+
+**The verdict.** An adjustment or a cancel of an expense posts to the account the ORIGINAL expense named in *Paid from*. A correction is a change to that payment, so it never names an account of its own.
+
+| | |
+| --- | --- |
+| an adjustment up or down | the original's account, by the signed difference |
+| a cancel | the original's account gets the net back |
+| an expense made before *Paid from* existed | has no account, so its corrections post nothing — as [an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid) leaves the past to the opening balances |
+| the form | the Adjust dialog shows the account read-only, never a picker |
+
+Also confirmed the same day: *"When create expense it need financial account"* — [an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid) stands as decided.
+
+---
+
+## an-expense-names-a-shop-only-for-ads
+
+> In chat *(owner, 2026-11-04)* — *"And shop is just use for ads expense now"*, then, asked whether an ads expense must name one: *"Need shop id"*.
+> **It reverses** the earlier rule *"a shop is optional on every kind"* (owner, 2026-07-21), which was never given a decision entry — it lives only in the comment on `expense.proto` `ExpenseCreateRequest.shop_id`.
+
+**The verdict.** Only an `ADS` expense names a shop, and it **must**. `PAYROLL`, `OPERATIONAL` and `OTHER` name no shop.
+
+| | |
+| --- | --- |
+| `ADS` | shop **required** — the form cannot be sent without it; the server refuses `shop_id = 0` |
+| `PAYROLL` · `OPERATIONAL` · `OTHER` | no shop — the form hides the field; the server refuses a shop |
+| an expense made before this | keeps the shop it has and shows it; nothing is rewritten |
+| an adjustment | copies the expense's shop, as built |
+| the list's shop filter | stays — it now narrows the ads |
+| what is given up | splitting wages or a subscription between two shops (the 2026-07-21 reason) |
+
+⛔ **Not built.** The Storybook prototype of *Paid from* shows it (2026-11-04); the server still takes an optional shop on every kind. The backend step changes `ExpenseCreate`'s validation and the `expense.proto` comment.
+
+---
+
+## the-paid-from-prototype-is-accepted
+
+> In chat *(owner, 2026-11-04)* — *"I accept it"*, replying to the seven Storybook screenshots of *Paid from* (record with the picker open, no operational account, the list on desktop and phone, adjust with the account read-only, adjust of an old expense, the cancel confirm).
+
+**The verdict.** The Storybook prototype is the design to build — [an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid), [a-correction-follows-the-expenses-account](#a-correction-follows-the-expenses-account) and [an-expense-names-a-shop-only-for-ads](#an-expense-names-a-shop-only-for-ads) as drawn: *Paid from* required among the team's operational accounts (pre-picked when there is one); no operational account blocks the form with a link to Financial Accounts; the list names the account (*No account* on an old row) with the shop under the kind; Adjust shows the original's account read-only; Cancel names the account the money goes back to.
+
+**The backend step.** `expense_service` stores the account and refuses one that is not the team's active operational account; enforces the ads-shop rule; publishes an event when an expense is recorded and when it is adjusted or cancelled; `financial_account_service` posts it — `ads_expense` for `ADS`, `expense` for the rest — and an old expense with no account posts nothing. Then the `pages/expenses/pending.ts` marks go.
+
+**What it does NOT settle.** Whether the phone layout of the Expenses list (built earlier the same day) is accepted on its own — asked separately.
+
+🔄 *(2026-11-04)* **Settled in chat** — yes: [the-expenses-phone-layout-is-accepted](#the-expenses-phone-layout-is-accepted).
+
+⛔ Not built — the prototype only; the server ignores the account today.
+
+---
+
+## the-expenses-phone-layout-is-accepted
+
+> In chat *(owner, 2026-11-04)* — *"Yes"*, asked whether *"I accept it"* also covers the Expenses phone layout shown earlier the same day (screenshots `phone-this-month`, `phone-row-actions-open`, `phone-empty-month`).
+
+**The verdict.** On a phone the Expenses page is its own layout: a one-row header (title, shop, a **+** icon for *Record Expense*), a compact totals card (the month's total, then the kinds three to a row), the month and kind filters side by side, and each expense as a block — kind and badge, the amount on one line, *now Rp …* under a corrected amount, the short WIB date with the paying account, the note (two lines at most), and a ⋯ menu holding *Adjust* and *Cancel*. Correction rows are muted and carry no menu. The desktop table is unchanged.
+
+✅ **Built 2026-11-04** — `pages/expenses/index.tsx` (the `useIsMobile` shell), stories `Phone`, `PhoneRowActions`, `PhoneEmptyMonth`, `TheListNamesThePayingAccountOnAPhone`.
+
+---
+
+## an-expense-posts-on-its-own-day
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended, to: on which day does an expense's account row count? (payroll typed on 5 Dec for November)
+
+**The verdict.** An expense's row in the paying account counts on the **expense's own date** — the day the person says the cost belongs to — and every adjustment or cancel of it counts on that same date. Payroll typed on 5 Dec for November lands on 30 Nov in the account's daily report.
+
+| | |
+| --- | --- |
+| the expense | its `occurred_at` day |
+| an adjustment · a cancel | the expense's day, so a cancel nets that day to 0 |
+| what is given up | the account's day can differ from the bank statement's (the 5th) — a reconcile reads the expense's date |
+| what it amends | an exception for expenses to [the-log-keeps-the-day-the-money-moved](#the-log-keeps-the-day-the-money-moved)'s *"its event's own time"* |
+| not chosen | the day it was typed; a separate *paid on* date on the form (reopen if reconciles show gaps) |
+
+✅ **Built 2026-11-04** — as built by the *Paid from* backend step: `financial_account_v1/expense_payment_listener.go` posts on the event's expense day.
+
+---
+
+## a-transfers-shipping-posts-as-an-expense
+
+> In chat *(owner, 2026-11-04)* — *"B"*, **against my recommendation** (*A — post it as `restock`*), to: which change type does a warehouse transfer's shipping cost post as in the paying account?
+
+**The verdict.** A warehouse transfer's `shipment_cost` leaves the account that paid it as an **`expense`** row — *"Warehouse transfer #603 shipping"* — heard from inventory's warehouse-transfer events: created posts it, an update posts the difference (or moves it between accounts), a cancel with the money returned refunds it, as a restock's payment does.
+
+| | |
+| --- | --- |
+| the type | `expense` |
+| the source | the warehouse-transfer created · updated · cancelled events, keyed by the transfer and its cost revision |
+| what it amends | [one-way-in-per-type](#one-way-in-per-type): `expense` now has two ways in — expense_service's events and the transfer's shipping |
+| what is given up | the account's *Expense* figure no longer equals the Expenses screen's total: it also holds transfer trips |
+
+**What it does NOT settle.** Whether a transfer's shipping should also appear on the Expenses screen (as its own expense record) so the two figures match again — asked next.
+
+🔄 *(2026-11-04)* **Settled in chat** — *"A"*, as recommended: **no**. The account posts it straight from the transfer's events; the Expenses screen lists only what a person typed. The account's *Expense* figure may exceed the Expenses screen's total by the transfers' shipping, and each such row names its transfer.
+
+⛔ Not built — nothing posts a transfer's shipping today; the backend is the restock listener's shape.
+
+✅ **Built 2026-11-04.** `financial_account_v1/transfer_shipping_listener.go` (`TransferShippingHandler`) on the warehouse-transfer created · updated · cancelled subscriptions — `expense` rows *"Warehouse transfer #N shipping"*, the difference per cost revision, account moves, the refund on cancel; shares `postPaymentLegs` with the restock listener. Tests `transfer_shipping_listener_test.go`, race `transfer_shipping_race_test.go`, perf 7 statements ≈2.3 ms.
+

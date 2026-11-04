@@ -157,7 +157,8 @@ export const ChangeRoleIsLogged: Story = {
 };
 
 // The history is its own tab beside the members (the-history-is-a-tab-beside-the-members): sentences,
-// newest first — and a Root's change in a team they are not in is stamped.
+// newest first — and a Root's change in a team they are not in is stamped. The person fajar removed has since been
+// erased, so the line names them as a former user, never by the synthetic `erased69` (erase-keeps-the-row).
 export const TheHistoryReadsAsSentences: Story = {
   beforeEach: asRole(Role.WAREHOUSE_OWNER),
   play: async ({ canvasElement }) => {
@@ -171,7 +172,8 @@ export const TheHistoryReadsAsSentences: Story = {
 
     await waitFor(() => expect(log).toHaveTextContent("dewi changed budi from Warehouse Staff to Warehouse Admin"));
     await expect(log).toHaveTextContent("san added dewi as Warehouse Owner");
-    await expect(log).toHaveTextContent("fajar removed user #69 (Warehouse Staff)");
+    await expect(log).toHaveTextContent("fajar removed Former user #69 (Warehouse Staff)");
+    await expect(log).not.toHaveTextContent("erased69");
     await expect(within(log).getByText("override")).toBeInTheDocument();
   },
 };

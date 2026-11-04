@@ -66,6 +66,9 @@ const (
 	// RestockRequestServiceRestockInboundStatProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockInboundStat RPC.
 	RestockRequestServiceRestockInboundStatProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockInboundStat"
+	// RestockRequestServiceRestockReceiptPhotoProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockReceiptPhoto RPC.
+	RestockRequestServiceRestockReceiptPhotoProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockReceiptPhoto"
 )
 
 // RestockRequestServiceClient is a client for the warehouse.inventory.v1.RestockRequestService
@@ -96,6 +99,9 @@ type RestockRequestServiceClient interface {
 	RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error)
 	// The headline over the warehouse's inbound queue: what is still on its way or at the door.
 	RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error)
+	// The restock's own warehouse opens its label photo (`receipt_file`) to match the box at its door
+	// (the-restocks-warehouse-opens-its-label-photo): checked here, signed by document_service in-process, no share.
+	RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error)
 }
 
 // NewRestockRequestServiceClient constructs a client for the
@@ -181,6 +187,13 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		restockReceiptPhoto: connect.NewClient[v1.RestockReceiptPhotoRequest, v1.RestockReceiptPhotoResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockReceiptPhotoProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockReceiptPhoto")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -197,6 +210,7 @@ type restockRequestServiceClient struct {
 	restockRequestCancel   *connect.Client[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse]
 	restockRequestLabels   *connect.Client[v1.RestockRequestLabelsRequest, v1.RestockRequestLabelsResponse]
 	restockInboundStat     *connect.Client[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse]
+	restockReceiptPhoto    *connect.Client[v1.RestockReceiptPhotoRequest, v1.RestockReceiptPhotoResponse]
 }
 
 // RestockRequestCreate calls warehouse.inventory.v1.RestockRequestService.RestockRequestCreate.
@@ -254,6 +268,11 @@ func (c *restockRequestServiceClient) RestockInboundStat(ctx context.Context, re
 	return c.restockInboundStat.CallUnary(ctx, req)
 }
 
+// RestockReceiptPhoto calls warehouse.inventory.v1.RestockRequestService.RestockReceiptPhoto.
+func (c *restockRequestServiceClient) RestockReceiptPhoto(ctx context.Context, req *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error) {
+	return c.restockReceiptPhoto.CallUnary(ctx, req)
+}
+
 // RestockRequestServiceHandler is an implementation of the
 // warehouse.inventory.v1.RestockRequestService service.
 type RestockRequestServiceHandler interface {
@@ -282,6 +301,9 @@ type RestockRequestServiceHandler interface {
 	RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error)
 	// The headline over the warehouse's inbound queue: what is still on its way or at the door.
 	RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error)
+	// The restock's own warehouse opens its label photo (`receipt_file`) to match the box at its door
+	// (the-restocks-warehouse-opens-its-label-photo): checked here, signed by document_service in-process, no share.
+	RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error)
 }
 
 // NewRestockRequestServiceHandler builds an HTTP handler from the service implementation. It
@@ -362,6 +384,13 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	restockRequestServiceRestockReceiptPhotoHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockReceiptPhotoProcedure,
+		svc.RestockReceiptPhoto,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockReceiptPhoto")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.RestockRequestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RestockRequestServiceRestockRequestCreateProcedure:
@@ -386,6 +415,8 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 			restockRequestServiceRestockRequestLabelsHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockInboundStatProcedure:
 			restockRequestServiceRestockInboundStatHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockReceiptPhotoProcedure:
+			restockRequestServiceRestockReceiptPhotoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -437,4 +468,8 @@ func (UnimplementedRestockRequestServiceHandler) RestockRequestLabels(context.Co
 
 func (UnimplementedRestockRequestServiceHandler) RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockInboundStat is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockReceiptPhoto is not implemented"))
 }

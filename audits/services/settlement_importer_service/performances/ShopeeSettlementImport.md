@@ -133,3 +133,4 @@ err := s.db.WithContext(ctx).Exec(`
 | Date | Median | Queries | Change |
 | --- | --- | --- | --- |
 | 2026-09-29 | 1.27 s rolled back · 4.98 s committing (1,500 rows) | 3,003 | first audit |
+| 2026-11-04 | 1.27 s rolled back (1,500 rows) | 3,003 | re-measured after two-live-orders-on-a-ref-post-to-the-shop: one more column on the line's INSERT, no new query — unchanged |

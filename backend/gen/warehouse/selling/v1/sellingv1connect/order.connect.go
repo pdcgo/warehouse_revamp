@@ -79,6 +79,9 @@ const (
 	// OrderServiceOrderCreatorListProcedure is the fully-qualified name of the OrderService's
 	// OrderCreatorList RPC.
 	OrderServiceOrderCreatorListProcedure = "/warehouse.selling.v1.OrderService/OrderCreatorList"
+	// OrderServiceOrderLabelsProcedure is the fully-qualified name of the OrderService's OrderLabels
+	// RPC.
+	OrderServiceOrderLabelsProcedure = "/warehouse.selling.v1.OrderService/OrderLabels"
 )
 
 // OrderServiceClient is a client for the warehouse.selling.v1.OrderService service.
@@ -160,6 +163,12 @@ type OrderServiceClient interface {
 	// The people the list's "created by" filter offers: everyone who typed in an order this team may list
 	// (a-who-filter-lists-the-people-on-its-rows).
 	OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error)
+	// THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
+	// ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
+	// link is minted under its own identity, so a label is never shared document by document.
+	//
+	// ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+	OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the warehouse.selling.v1.OrderService service. By
@@ -276,6 +285,13 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		orderLabels: connect.NewClient[v1.OrderLabelsRequest, v1.OrderLabelsResponse](
+			httpClient,
+			baseURL+OrderServiceOrderLabelsProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderLabels")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -297,6 +313,7 @@ type orderServiceClient struct {
 	orderStat                 *connect.Client[v1.OrderStatRequest, v1.OrderStatResponse]
 	orderByExternalRefs       *connect.Client[v1.OrderByExternalRefsRequest, v1.OrderByExternalRefsResponse]
 	orderCreatorList          *connect.Client[v1.OrderCreatorListRequest, v1.OrderCreatorListResponse]
+	orderLabels               *connect.Client[v1.OrderLabelsRequest, v1.OrderLabelsResponse]
 }
 
 // OrderCreate calls warehouse.selling.v1.OrderService.OrderCreate.
@@ -379,6 +396,11 @@ func (c *orderServiceClient) OrderCreatorList(ctx context.Context, req *connect.
 	return c.orderCreatorList.CallUnary(ctx, req)
 }
 
+// OrderLabels calls warehouse.selling.v1.OrderService.OrderLabels.
+func (c *orderServiceClient) OrderLabels(ctx context.Context, req *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error) {
+	return c.orderLabels.CallUnary(ctx, req)
+}
+
 // OrderServiceHandler is an implementation of the warehouse.selling.v1.OrderService service.
 type OrderServiceHandler interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
@@ -458,6 +480,12 @@ type OrderServiceHandler interface {
 	// The people the list's "created by" filter offers: everyone who typed in an order this team may list
 	// (a-who-filter-lists-the-people-on-its-rows).
 	OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error)
+	// THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
+	// ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
+	// link is minted under its own identity, so a label is never shared document by document.
+	//
+	// ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+	OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -570,6 +598,13 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderLabelsHandler := connect.NewUnaryHandler(
+		OrderServiceOrderLabelsProcedure,
+		svc.OrderLabels,
+		connect.WithSchema(orderServiceMethods.ByName("OrderLabels")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderServiceOrderCreateProcedure:
@@ -604,6 +639,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderByExternalRefsHandler.ServeHTTP(w, r)
 		case OrderServiceOrderCreatorListProcedure:
 			orderServiceOrderCreatorListHandler.ServeHTTP(w, r)
+		case OrderServiceOrderLabelsProcedure:
+			orderServiceOrderLabelsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -675,4 +712,8 @@ func (UnimplementedOrderServiceHandler) OrderByExternalRefs(context.Context, *co
 
 func (UnimplementedOrderServiceHandler) OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderCreatorList is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderLabels is not implemented"))
 }

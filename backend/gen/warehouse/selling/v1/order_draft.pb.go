@@ -799,10 +799,15 @@ func (*OrderDraftListResponseItem_General) isOrderDraftListResponseItem_D() {}
 func (*OrderDraftListResponseItem_OrderDraft) isOrderDraftListResponseItem_D() {}
 
 type OrderDraftListResponse struct {
-	state         protoimpl.MessageState        `protogen:"open.v1"`
-	Items         []*OrderDraftListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	Ids           []uint64                      `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
-	PageInfo      *v1.PageInfo                  `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	state    protoimpl.MessageState        `protogen:"open.v1"`
+	Items    []*OrderDraftListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Ids      []uint64                      `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo *v1.PageInfo                  `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	// How many drafts of the WHOLE filtered set (every page, not this one) have nothing left before Promote — the
+	// list's own readiness rule (the frontend's draftGaps): a shop, a warehouse, a customer, at least one line and none
+	// unmapped, an order date, a sell price, and not a `manual` draft (its order ref is still to be typed). Stock is not
+	// in it: only the draft's page can read the warehouse's availability for its lines.
+	ReadyCount    uint64 `protobuf:"varint,4,opt,name=ready_count,json=readyCount,proto3" json:"ready_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -856,6 +861,13 @@ func (x *OrderDraftListResponse) GetPageInfo() *v1.PageInfo {
 		return x.PageInfo
 	}
 	return nil
+}
+
+func (x *OrderDraftListResponse) GetReadyCount() uint64 {
+	if x != nil {
+		return x.ReadyCount
+	}
+	return 0
 }
 
 type OrderDraftDetailRequest struct {
@@ -1695,11 +1707,13 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12M\n" +
 	"\vorder_draft\x18\x02 \x01(\v2*.warehouse.selling.v1.OrderDraftRowMapItemH\x00R\n" +
 	"orderDraftB\x03\n" +
-	"\x01d\"\xae\x01\n" +
+	"\x01d\"\xcf\x01\n" +
 	"\x16OrderDraftListResponse\x12F\n" +
 	"\x05items\x18\x01 \x03(\v20.warehouse.selling.v1.OrderDraftListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"p\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12\x1f\n" +
+	"\vready_count\x18\x04 \x01(\x04R\n" +
+	"readyCount\"p\n" +
 	"\x17OrderDraftDetailRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\bdraft_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\adraftId:\v\x92\xb5\x18\a\n" +

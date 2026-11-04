@@ -1,5 +1,15 @@
 # Development state — balance
 
+✅ **2026-11-04: a transfer's courier charge posts** — uncommitted. `LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10`
+(`transfer_fee`, `source_id` = the transfer) and `ChargeTransferCourier`
+([transfer_courier_charge.go](../../../backend/services/liability_service/liability_v1/transfer_courier_charge.go)), fed by the
+push handler's `WarehouseTransferAccepted` case on subscription `liability-warehouse-transfer-accepted`: the selling team owes
+the RECEIVING warehouse, once per transfer, nothing for 0 or to oneself
+([a-transfer-charge-is-a-transfer-fee](../../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee)).
+No migration (`source_type` has no CHECK). 4 unit + 2 push-handler tests, 2 race tests, perf 6 statements ~1.6 ms (FAST).
+⚠ Frontend follow-up (not this pass): the source-type label for `TRANSFER_FEE` in `liability-detail/format.ts`,
+`daily-statement/queries.ts` and en/id.json, beside `RETURN_INCIDENTAL_FEE`'s.
+
 **Pass:** implementation of `balance_context.md`, end to end (2026-08-31). Everything the owner's doc
 promises that has been DECIDED is now built, tested and documented.
 

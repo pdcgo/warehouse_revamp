@@ -3,21 +3,19 @@ import { Badge, Button, Checkbox, Group, HStack, Icon, IconButton, Popover, Port
 import { SlidersHorizontal, X } from "lucide-react";
 
 import { useIsMobile } from "../../../layouts/shell";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { SHOPS_LIST_PENDING } from "../pending";
 
 // THE SHOPS LIST'S FILTER PANEL (owner: *"bedakan belum ada csnya"*, then *"pakai panel untuk checkbox"*) — the ticks,
 // behind one Filter trigger that counts how many are on: today, Belum ada CS utama. The accounts list's panel is the
 // shape (`operational-and-archived-share-one-filter-panel`).
 //
-//   [⚙ Filter 1][×] ⚠3
+//   [⚙ Filter 1][×]
 //   ┌──────────────────────┐
 //   │ ☑ Belum ada CS utama │
 //   └──────────────────────┘
 //
 // While a tick is on, the trigger is in the main tone with its count, and an × ATTACHED to its end turns every tick off
-// without opening the panel (every-filter-clears-from-its-own-x) — a sibling, never a button inside the trigger. The ⚠
-// mark sits beside it, where it is seen without opening anything: nothing narrows the list by it yet.
+// without opening the panel (every-filter-clears-from-its-own-x) — a sibling, never a button inside the trigger. The tick
+// is sent as ShopListFilter.no_primary (#16).
 //
 // ON A PHONE the FilterBar has already put every control in its bottom sheet, so the tick stands there as it is — a
 // popover inside a sheet is a panel inside a panel. A JS breakpoint, never CSS.
@@ -31,7 +29,6 @@ export function ShopOptionsFilter({
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const on = [noPrimaryOnly].filter(Boolean).length;
-  const mark = <NotImplemented list={SHOPS_LIST_PENDING} id="noPrimaryFilter" />;
 
   const tick = (
     <Checkbox.Root
@@ -47,10 +44,7 @@ export function ShopOptionsFilter({
 
   if (isMobile) {
     return (
-      <HStack gap="1">
-        {tick}
-        {mark}
-      </HStack>
+      <HStack gap="1">{tick}</HStack>
     );
   }
 
@@ -101,7 +95,6 @@ export function ShopOptionsFilter({
           </Popover.Positioner>
         </Portal>
       </Popover.Root>
-      {mark}
     </HStack>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Card, Flex, Heading, HStack, Icon, Span, Spinner, Stack, Table, Tabs, Text } from "@chakra-ui/react";
@@ -60,7 +61,7 @@ export function OpnameSessionsPage() {
 
   const sessions = list.data?.sessions ?? [];
   const actors = list.data?.actors ?? new Map<string, PublicUser>();
-  const nameOf = (id: bigint) => (id > 0n ? (actors.get(id.toString())?.name ?? `#${id}`) : "");
+  const nameOf = (id: bigint) => (id > 0n ? personName(actors.get(id.toString()), `#${id}`) : "");
   const error = list.isError ? rpcError(list.error) : active.isError ? rpcError(active.error) : "";
   const activeSession = active.data ?? null;
 

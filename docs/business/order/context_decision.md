@@ -109,6 +109,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-order-line-carries-no-marketplace-price](#an-order-line-carries-no-marketplace-price) | an order line holds only the take's money — `unit_cost`, `unit_cost_with_markup`, `markup_total`, `total`; the marketplace price stays on the draft's platform row |
 | [an-order-ref-is-required-by-the-rpc](#an-order-ref-is-required-by-the-rpc) | `order_external_ref_id` cannot be empty, refused by the create request's validation; no database rule, and old orders keep their `''` |
 | [a-draft-becomes-an-order-through-order-create](#a-draft-becomes-an-order-through-order-create) | the draft page's Promote sends `OrderCreate` with `order_draft_id`; `OrderDraftPromote` and Save as Draft are removed |
+| [a-return-is-received-by-search-then-forced](#a-return-is-received-by-search-then-forced) | the warehouse receives a parcel by search on the pick queue, forces the order to return if needed, then accepts; also a Force Return on the order page | owner, as recommended | — |
+| [every-allowed-move-has-a-button](#every-allowed-move-has-a-button) | Mark as Lost on shipped and Return Goods on completed, each confirmed — every allowed move is on a screen | owner, as recommended | — |
+| [the-return-receiving-screens-are-accepted](#the-return-receiving-screens-are-accepted) | Receive a Return, Force Return and the seller's new moves are the design | owner | — |
 
 ---
 
@@ -3893,3 +3896,55 @@ the order metrics' Return Arrived counts it. The configured return warehouse rea
 keyed by a restock id, and an order of the same number would collide on the ledger's idempotency key; a label is printed
 per unit **in hand** (ordered less missing). ⚠ A stale-label warehouse — neither end nor the configured one — has no way
 to find the order: the server accepts it by id, but no list or scan of its own matches it.
+
+---
+
+## a-return-is-received-by-search-then-forced
+
+> In chat *(owner, 2026-11-04)* — *"Follow your recomendation"* (B + A), to: where does the warehouse's forced return sit on its own screens?
+
+**The verdict.** The warehouse receives a returned parcel the way [order_return.md](./order_return.md) §Who Change The Returns draws it — **search, force if needed, accept**:
+
+1. **B — *Receive a Return* on the pick queue.** The crew types or scans the order ref or the tracking number from the label; the order is found (OrderList's own `q`, which already matches both); if it is in `return`, the next step is **Accept Return**; if it is in a status the warehouse may force from (`shipping`, `shipped`, `problem`, `completed` — [a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move)), **Force Return** then **Accept Return**, one after the other.
+2. **A — *Force Return* on the order page** (pick-order, beside where *Accept Return* appears, and the warehouse order detail) for someone already looking at the order.
+
+| | |
+| --- | --- |
+| who | the shipping warehouse's Owner, Admin and Staff |
+| the move | the existing status move to `return` — no new server rule |
+| a parcel whose order is not this warehouse's | not found by the search |
+| not chosen | a row action in the pick queue (C) |
+
+⛔ Not built — a new screen part: a Storybook prototype comes first for the owner's design accept.
+
+✅ **Built 2026-11-04** — accepted the same day ([the-return-receiving-screens-are-accepted](#the-return-receiving-screens-are-accepted)). `pages/pick-queue/components/ReceiveReturnDialog.tsx`, `features/orders/useForceReturn.tsx`, `features/orders/AcceptReturnDialog.tsx` (moved, shared by three pages); Force Return on pick-order and the warehouse order detail, which also gained Accept Return. No server change.
+
+---
+
+## every-allowed-move-has-a-button
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended, to: should the two moves the server allows but no screen offers get buttons?
+
+**The verdict.** The seller's order actions offer every move the status rules allow. Added to what was built earlier the same day (*Mark as Problem* on shipped; *Mark as Lost* and *Return Goods* on problem):
+
+| status | new action | confirm |
+| --- | --- | --- |
+| `shipped` | **Mark as Lost** — the courier lost it before delivery, without passing through `problem` | yes |
+| `completed` | **Return Goods** — the buyer sends a delivered order back | yes |
+
+The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-is-received-by-search-then-forced). No server change: [a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move) and the order transition table already allow both moves.
+
+⛔ Not built — `features/orders/rowActions.ts` offers neither yet.
+
+✅ **Built 2026-11-04** — `features/orders/rowActions.ts`; stories `ShippedOffersLost`, `CompletedOffersReturn`; e2e *Moves: a shipped order is written off as lost directly*, *Moves: a completed order is returned*.
+
+---
+
+## the-return-receiving-screens-are-accepted
+
+> In chat *(owner, 2026-11-04)* — *"Yes, i accept"*, replying to the Storybook screenshots of *Receive a Return* (the pick queue's action, the search finding a shipped order, the force confirm, the accept straight after, not found, the warehouse order detail, the phone dialog) and the seller's shipped / completed menus.
+
+**The verdict.** The screens are the design: [a-return-is-received-by-search-then-forced](#a-return-is-received-by-search-then-forced) and [every-allowed-move-has-a-button](#every-allowed-move-has-a-button) as drawn, including *Accept Return* on the warehouse order detail so a *Force Return* there has its next step.
+
+**What it does NOT settle.** The receive search finds this warehouse's orders and returns addressed to it, never a parcel still shipped from another building under a stale label; the dialogs stretch to full height on desktop (shared with the older Accept Return dialog — a styling fix, not a decision).
+

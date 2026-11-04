@@ -125,6 +125,7 @@ func expenseRowItem(c *expense_service_models.ExpenseRecord, adjusted map[uint64
 		CreatedAtUnix:    c.CreatedAt.Unix(),
 		AdjustsExpenseId: c.AdjustsExpenseID,
 		NetAmount:        net,
+		FinanceAccountId: c.FinanceAccountID,
 	}
 }
 

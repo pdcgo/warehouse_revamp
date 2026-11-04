@@ -49,6 +49,9 @@ type Service struct {
 	// for a unit test about something else, and it is NOT the production default — the composition root wires the real
 	// one, which refuses a warehouse with no rate.
 	fees WarehouseFeePricer
+	// The link to an order's label file, for the warehouse that ships it (a-warehouse-prints-the-labels-of-orders-it-ships)
+	// — document_service, behind an interface this service owns. See order_labels.go. nil = OrderLabels is Unimplemented.
+	labels LabelLinker
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
@@ -68,6 +71,7 @@ func NewService(
 	roles RoleReader,
 	exports OrderExportStore,
 	fees WarehouseFeePricer,
+	labels LabelLinker,
 ) *Service {
 	// A nil sender would panic on the first order placed, which is a long way from where the mistake
 	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
@@ -98,6 +102,7 @@ func NewService(
 		roles:   roles,
 		exports: exports,
 		fees:    fees,
+		labels:  labels,
 	}
 }
 

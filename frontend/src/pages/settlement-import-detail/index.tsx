@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import {
   Box,
   Button,
@@ -9,6 +10,7 @@ import {
   HStack,
   Heading,
   Icon,
+  Link,
   Spinner,
   Stack,
   Table,
@@ -47,6 +49,7 @@ const REASON: Record<UploadedFileLineReason, string> = {
   [UploadedFileLineReason.REFUSED]: "settlementImports.reason.refused",
   [UploadedFileLineReason.REPEATS_ORDER_DETAILS]: "settlementImports.reason.repeatsOrderDetails",
   [UploadedFileLineReason.FAILED_WITHDRAWAL]: "settlementImports.reason.failedWithdrawal",
+  [UploadedFileLineReason.SEVERAL_ORDERS]: "settlementImports.reason.severalOrders",
 };
 
 // What each view tells the person to do about its rows.
@@ -64,7 +67,9 @@ const VIEW_NOTE: Record<LineView, string> = {
 //
 // The rules this screen carries:
 //  - three views of the rows worth a look — HELD (the same file again posts them once fixed), SKIPPED
-//    (by decision) and POSTED TO THE SHOP (their order was not found);
+//    (by decision) and POSTED TO THE SHOP (their order was not found, or their ref is on several live orders —
+//    each of those named, a link to the order, so a person can place the money:
+//    two-live-orders-on-a-ref-post-to-the-shop);
 //  - the original is downloadable, through a signed URL minted when asked;
 //  - there is NO Revert and NO Reprocess (an-upload-is-never-reverted, the-row-key-is-the-only-dedupe).
 export function SettlementImportDetailPage() {
@@ -127,7 +132,7 @@ function FileDetail({ teamId, file }: { teamId: bigint; file: UploadedFile }) {
   const shops = useShopOptions({ teamId });
   const shop = useMemo(() => (shops.data ?? []).find((s) => s.id === file.shopId), [shops.data, file.shopId]);
   const actors = useActors([file.createdByUserId]);
-  const uploader = actors.data?.get(file.createdByUserId.toString())?.name ?? `#${file.createdByUserId}`;
+  const uploader = personName(actors.data?.get(file.createdByUserId.toString()), `#${file.createdByUserId}`);
 
   const lines = useUploadedFileLines({ teamId, fileId: file.id, view, page, pageSize });
   const rows = lines.data?.lines ?? [];
@@ -279,6 +284,17 @@ function FileDetail({ teamId, file }: { teamId: bigint; file: UploadedFile }) {
                     </Table.Cell>
                     <Table.Cell>
                       <Text data-testid={`line-reason-${line.id}`}>{t(REASON[line.reason])}</Text>
+                      {line.foundOrderIds.length > 0 && (
+                        <HStack gap="2" wrap="wrap" fontSize="xs" data-testid={`line-found-orders-${line.id}`}>
+                          {line.foundOrderIds.map((orderId) => (
+                            <Link key={orderId.toString()} asChild colorPalette="primary" fontFamily="mono">
+                              <RouterLink to={`/orders/${orderId}`} data-testid={`line-found-order-${line.id}-${orderId}`}>
+                                #{orderId.toString()}
+                              </RouterLink>
+                            </Link>
+                          ))}
+                        </HStack>
+                      )}
                       {line.detail && (
                         <Text fontSize="xs" color="fg.muted">
                           {line.detail}

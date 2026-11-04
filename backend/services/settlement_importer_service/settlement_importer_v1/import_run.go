@@ -286,7 +286,9 @@ func (s *Service) importLine(
 
 // postLine is one SettlementPost, under the uploader's token. A ref that finds its order posts to that
 // order — counted for its creator; any other line posts to the shop — counted for the shop's primary CS,
-// which settlement asks for itself (user-id-is-the-orders-creator-else-the-shops-primary-cs).
+// which settlement asks for itself (user-id-is-the-orders-creator-else-the-shops-primary-cs). A ref on two
+// or more live orders is such a line: no one order is credited with money that may be another's
+// (two-live-orders-on-a-ref-post-to-the-shop).
 func (s *Service) postLine(
 	ctx context.Context,
 	file *settlement_importer_service_models.UploadedFile,
@@ -305,7 +307,9 @@ func (s *Service) postLine(
 		Note:           truncate(rec.description, noteMaxRunes),
 	}
 
-	order, hasOrder := orderInShop(found[rec.orderRef], shop.ID)
+	order, live, hasOrder := orderInShop(found[rec.orderRef], shop.ID)
+	several := rec.orderRef != "" && len(live) > 1
+
 	if rec.orderRef != "" && hasOrder {
 		post.OrderID = order.OrderID
 		post.CreatedByUserID = order.CreatedByUserID
@@ -333,6 +337,13 @@ func (s *Service) postLine(
 	line.Outcome = outcomePosted
 
 	switch {
+	case several:
+		// two-live-orders-on-a-ref-post-to-the-shop — posted, a WARN naming every order, so a person can place it.
+		line.Reason = reasonSeveralOrders
+		line.FoundOrderIDs = joinIDs(live)
+
+		return slog.LevelWarn, fmt.Sprintf("%s is on %d live orders (%s) — posted to the shop",
+			rec.orderRef, len(live), orderList(live))
 	case rec.orderRef != "" && !hasOrder:
 		// an-unmatched-ref-posts-to-the-shop — posted, and a WARN, so the closing summary names it.
 		line.Reason = reasonNoOrder
@@ -386,7 +397,7 @@ func tally(file *settlement_importer_service_models.UploadedFile, line *settleme
 	case outcomePosted:
 		file.RowsPosted++
 
-		if line.Reason == reasonNoOrder {
+		if line.Reason == reasonNoOrder || line.Reason == reasonSeveralOrders {
 			file.RowsPostedToShop++
 		}
 	case outcomeExisting:
@@ -534,13 +545,20 @@ func foreignShop(found map[string][]OrderRef, shopID uint64) (uint64, int) {
 	return shops[0], refs
 }
 
-// orderInShop picks the order a line posts to among those its ref finds in the shop: a live one before a
-// cancelled one — a cancelled order re-entered under the same ref is the re-entry's — and the newest of
-// equals.
-func orderInShop(orders []OrderRef, shopID uint64) (OrderRef, bool) {
+// orderInShop picks the order a line posts to among those its ref finds in the shop, and names the live ones:
+//
+//   - exactly one live order → that one; a cancelled order re-entered under the same ref is the re-entry's
+//   - no live order → the newest cancelled one, as built
+//   - two or more live orders → NONE (ok false): the line posts to the shop, and `live` names them, ascending
+//     (two-live-orders-on-a-ref-post-to-the-shop)
+//
+// `live` is every live order of the shop the ref found, ascending — one id or none when an order is picked.
+func orderInShop(orders []OrderRef, shopID uint64) (OrderRef, []uint64, bool) {
 	var (
-		best  OrderRef
-		found bool
+		liveOrder OrderRef
+		cancelled OrderRef
+		hasCancel bool
+		live      []uint64
 	)
 
 	for _, order := range orders {
@@ -548,16 +566,44 @@ func orderInShop(orders []OrderRef, shopID uint64) (OrderRef, bool) {
 			continue
 		}
 
-		switch {
-		case !found,
-			best.Cancelled && !order.Cancelled,
-			best.Cancelled == order.Cancelled && order.OrderID > best.OrderID:
-			best = order
-			found = true
+		if !order.Cancelled {
+			live = append(live, order.OrderID)
+			liveOrder = order
+
+			continue
+		}
+
+		if !hasCancel || order.OrderID > cancelled.OrderID {
+			cancelled = order
+			hasCancel = true
 		}
 	}
 
-	return best, found
+	sort.Slice(live, func(i, j int) bool { return live[i] < live[j] })
+
+	switch {
+	case len(live) == 1:
+		return liveOrder, live, true
+	case len(live) > 1:
+		return OrderRef{}, live, false
+	default:
+		return cancelled, nil, hasCancel
+	}
+}
+
+// orderList names order ids for a log line — "#9001, #9002".
+func orderList(ids []uint64) string {
+	text := ""
+
+	for i, id := range ids {
+		if i > 0 {
+			text += ", "
+		}
+
+		text += "#" + formatID(id)
+	}
+
+	return text
 }
 
 // shopName names another shop of the team for the refusal line — asked of the shop, and a plain id if

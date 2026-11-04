@@ -642,6 +642,23 @@ work is left on a draft, and computing them client-side would mean loading every
 render one page of a list. A non-zero `unmapped_item_count` is exactly what makes a draft still a
 draft.
 
+**The list carries the set's ready count** (#16, 2026-11-04) — `ready_count`, the drafts of the WHOLE filtered set (every
+page) with nothing left before Promote, so the drafts screen's *Ready* card reads the backlog and not the page on screen
+([the-draft-summary-is-three-cards](../../technical/frontend/order_draft_decision.md#the-draft-summary-is-three-cards)). It is
+`readyDrafts` (order_draft_list.go), the SQL twin of the frontend's `draftGaps`, rule for rule: a shop, a warehouse, a
+customer name, an order date, a sell price, at least one line and none unmapped, and not a `manual` draft. Stock is not in
+it — only the draft's page reads the warehouse's availability. One extra `COUNT(*)` on the same narrowed query, run
+before the page's own reads (a GORM `Session` copies the statement, so it must not see their ORDER/OFFSET). Perf: 4
+queries, ≈9 ms median at 5 000 drafts for one author (`TestPerf_OrderDraftListReadyCount`) — fast, no audit file.
+
+```mermaid
+flowchart LR
+  Q["team_id + author_user_id + source"] --> C["COUNT - total_items"]
+  Q --> R["readyDrafts - COUNT - ready_count"]
+  Q --> P["ORDER, OFFSET, LIMIT - the page"]
+  P --> G["GROUP BY draft_id - item and unmapped counts"]
+```
+
 ### The human edit path — `OrderDraftUpdate` (#193)
 
 The other half of the merge rule. `OrderDraftUpdate` **always wins** and **marks every field it
@@ -826,6 +843,20 @@ sequenceDiagram
 | the roles | `RoleReader`, an interface selling owns; the composition root answers it with the access interceptor's resolver, so it is the same cached lookup every request pays for |
 | a deleted shop | `NotFound`, like every shop read — its last statements cannot be imported ([shop Q3](../../business/shop/context_clarify.md#question)) |
 
+## The shop list's filters — `ShopList` (#16)
+
+`ShopListFilter` carries `q`, `marketplace`, `primary_user_id` and `no_primary` (2026-11-04); each narrows the whole set
+on the server, so the count and the pages agree with the rows. The primary is a flag on a grant
+([the-primary-cs-is-a-flag-on-a-grant](../../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)), never a
+column of `shops`, so the two CS filters ask `shop_users` (by `shop_users_one_primary_idx`). A person and *nobody* at once
+is refused, InvalidArgument. Perf: 3 queries, ≤ 4.3 ms median over 500 shops a team (`TestPerf_ShopListFilters`) — fast.
+
+| filter | WHERE |
+| --- | --- |
+| `marketplace` ≠ UNSPECIFIED | `marketplace = <text>` |
+| `primary_user_id` > 0 | `id IN (SELECT shop_id FROM shop_users WHERE is_primary AND user_id = ?)` |
+| `no_primary` | `NOT EXISTS (SELECT 1 FROM shop_users WHERE shop_id = shops.id AND is_primary)` |
+
 ## The primary CS — `ShopUserAdd` and `ShopUserSetPrimary`
 
 [the-primary-cs-is-a-flag-on-a-grant](../../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant):
@@ -835,8 +866,13 @@ a new grant on a shop with no primary becomes it; **Make primary** moves it; rem
 sequenceDiagram
     participant M as owner or admin
     participant S as ShopService
+    participant R as user_service's role resolver
     participant DB as shops, shop_users
     M->>S: ShopUserAdd, or ShopUserSetPrimary
+    S->>R: the person's role in the shop's team, and their suspension — cached, before the transaction
+    alt not a member, or suspended
+        S-->>M: FailedPrecondition, naming the user id — nothing written
+    end
     S->>DB: the shop's row FOR UPDATE — Add and Make primary run one at a time, a removal takes no such lock
     alt ShopUserAdd
         S->>DB: insert the grant, nothing if it exists
@@ -851,6 +887,17 @@ sequenceDiagram
         end
     end
 ```
+
+**Who may be given a shop** (built 2026-11-04): only a member of the shop's team, and never a suspended or erased
+account — for a new grant and for Make primary alike
+([a-grant-goes-only-to-a-team-member](../../business/shop/context_decision.md#a-grant-goes-only-to-a-team-member),
+[a-suspended-user-is-never-picked](../../business/user/context_decision.md#a-suspended-user-is-never-picked)). Membership
+is user_service's, so it is asked through `RoleReader.Member` (an interface selling owns; the composition root answers it
+with the access interceptor's resolver, the same cached lookup as `ShopAccessCheck`) — never a read of its tables. Make
+primary asks too: a grant outlives a suspension, and a leaver's grants go only when `MemberRemoved` lands. The grant
+picker (`UserSelect excludeSuspended` → `UserList` `filter.exclude_suspended`) offers no one else. The check runs before
+the shop lock — a residual cross-service window, see
+[ShopUserAdd](../../../audits/services/selling_service/concurrency/ShopUserAdd.md).
 
 ⚠ **Clear, then set.** The partial unique index is checked row by row, so one `UPDATE` flipping both flags
 could meet the new one before the old one is gone. And **the shop's row is locked first**: without it, two
@@ -884,6 +931,37 @@ cancelled orders and other shops' included. A ref nothing carries is absent. The
 counts: the order in its own shop — live first — and a ref found only in another shop fails the file
 ([a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)).
 It reads `orders_team_external_ref_idx` (`00014`); up to 2,000 refs a call.
+
+## The labels a warehouse prints — `OrderLabels` (step 1)
+
+A shipping label is the SELLER's document — uploaded under its team — so the warehouse that ships the order cannot read
+it with `GetDownloadUrl` (NotFound: owner or share only). It asks the ORDER
+([a-warehouse-prints-the-labels-of-orders-it-ships](../../technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)):
+
+```mermaid
+sequenceDiagram
+  participant W as warehouse screen
+  participant O as selling_service OrderLabels
+  participant L as LabelLinker - order_label_linker.go
+  participant D as document_v1 LabelURL
+  W->>O: team_id = the warehouse, order_ids = one
+  O->>O: orders WHERE id IN ids AND warehouse_id = team - root reads all
+  O-->>W: none found - NOT_SHIPPED_HERE, no label file - NO_LABEL
+  O->>L: LabelURL - the order's team as owner, its receipt document id
+  L->>D: in-process call, not an RPC
+  D->>D: active order_receipt of that owner? else NotFound
+  D-->>O: signed URL and its expiry
+  O-->>W: url, expires_at, a result per order
+```
+
+| | |
+| --- | --- |
+| policy | WAREHOUSE_OWNER / ADMIN / STAFF, ROOT, ADMINISTRATOR — `NO_SIDE_EFFECTS` (it writes nothing, it signs a link). The seller keeps `GetDownloadUrl` |
+| the check | the order's `warehouse_id` is the scoped team; another warehouse's order and a missing id both read `NOT_SHIPPED_HERE`, and document_service is never asked |
+| the seam | selling's `LabelLinker` interface → composition root `NewOrderLabelLinker` → `document_v1.Service.LabelURL`, a plain method reading document_service's own table (id, owner team, `order_receipt`, active). No `document_shares` row is ever written |
+| a gone file | document_service's NotFound becomes `NO_LABEL` (and a WARN log); any other error is the call's error |
+| ⚠ step 1 | `order_ids` max 1, no PDF merge — the link is the order's own file. Merging (step 2) is the pick queue's `printMerge` mark |
+| cost | one primary-key read, 0.5 ms at 50 000 orders — not heavy |
 
 ## The list as a file — `OrderExport`
 

@@ -80,7 +80,7 @@ flowchart LR
   P --> A["design_accept - 2026-11-03"]
   A --> Q["Q26-Q30 answered - 2026-11-03"]
   Q --> B["backend step - built 2026-11-03"]
-  B --> N["next - the two placements awaiting design accept"]
+  B --> N["the two staff placements - accepted and built 2026-11-03"]
 ```
 
 ### What exists
@@ -132,7 +132,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| **staff's views — awaiting design accept** | the staff list view (`pages/found-requests/pending.ts` *staffView*) and the rack page's **Report Found** door (`pages/rack-detail/pending.ts` *reportFound*) — the rules are decided and built; their placement is not yet design-accepted |
+| staff's views | ✅ design-accepted and built 2026-11-03 ([the-staff-found-screens-are-accepted](../../business/inventory/opname_decision.md#the-staff-found-screens-are-accepted)): the staff list view on Found Stock and the rack page's **Report Found** door. Their pending marks are gone — `pages/found-requests/pending.ts` no longer exists and `pages/rack-detail/pending.ts` is an empty list (16g, 2026-11-04) |
 | two identical reports | two requests — `FoundRequestCreate` has no idempotency key (none was decided); the approver rejects the duplicate |
 | the warehouse product page | ✅ fixed 2026-11-03: `/inventories/products/:id` reads `StockCost`, whose policy was the selling roles' only (from when it was an order's cost), so it answered permission_denied to every warehouse role. The policy now admits warehouse Owner, Admin and Staff — RackDetail and RackStock already give them the same average — and a warehouse caller reads its own building only (`filter.warehouse_id` must be its `team_id`, else PermissionDenied). Tests: `TestStockCost_PolicyAdmitsTheWarehouse`, `TestStockCost_AWarehouseReadsItsOwnBuildingOnly`; e2e *the warehouse product page opens for the warehouse's Admin and Staff* |
 | the Stock screen | ✅ verified live, then decided and built 2026-11-04: it listed the warehouse team's own catalogue (always empty) — it now lists what the warehouse has held, [below](#the-stock-screen-lists-what-the-warehouse-has-held--built) |

@@ -42,7 +42,7 @@ func borrowedOrderReq(shopID uint64, borrowed ...uint64) *sellingv1.OrderCreateR
 func TestOrderCreate_RefusesABorrowedLineWithNoReturnMap(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{}
-	svc := selling_v1.NewService(db, picker, nil, returnMapCatalog(), &fakeCredit{}, nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, nil, returnMapCatalog(), &fakeCredit{}, nil, nil, nil, nil)
 	shop := insertShop(t, db, mapTeam, "Toko A", "TOKO-A", "shopee")
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(borrowedOrderReq(shop, borrowedA)))
@@ -142,7 +142,7 @@ func TestOrderCreate_AFailedOwnersLookupRefuses(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{}
 	catalog := &fakeCatalog{err: errors.New("product_service is down")}
-	svc := selling_v1.NewService(db, picker, nil, catalog, &fakeCredit{}, nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, nil, catalog, &fakeCredit{}, nil, nil, nil, nil)
 	shop := insertShop(t, db, mapTeam, "Toko A", "TOKO-A", "shopee")
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(borrowedOrderReq(shop)))

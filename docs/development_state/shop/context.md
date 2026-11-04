@@ -23,6 +23,7 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 | tables | `shops` · `shop_users` (+ `is_primary`, migration 00014, backfilled from each shop's earliest grant) · `orders.shop_id` is a real FK to `shops` |
 | callers | settlement and the importer each own an interface for the shop, adapted at the composition root with a Connect client — so the move to `shop_service` changes those adapters only |
 | frontend | `pages/shops`, `pages/shop-detail` (+ `ShopUsersSection`), `features/shops/ShopFormDialog`, `components/pickers/ShopSelect` · from c9c1861 (2026-09-29): the **Primary CS** badge, **Make primary** on every other granted user, a *No primary CS* warning on the shop page and a badge on `/shops` — covered by `e2e/shops.spec.ts`, and accepted as built by the owner ([the-screens-as-built-are-accepted](../../business/settlement/settlement_importer_decision.md#the-screens-as-built-are-accepted)) |
+| the list's filters *(2026-11-04, #16)* | `ShopListFilter` gained `marketplace`, `primary_user_id`, `no_primary` (a person and nobody at once → InvalidArgument); `/shops` sends its marketplace / primary CS / *No primary CS* picks and their ⚠ marks, `pages/shops/pending.ts` and the `shops.pending` i18n keys are gone. Tests: `TestShopList_FiltersByMarketplacePrimaryAndNoPrimary`, `TestShopList_PrimaryAndNoPrimaryTogetherIsInvalid`, perf `TestPerf_ShopListFilters` (fast), stories `TheMarketplaceFilterNarrowsTheList` · `ThePrimaryFilterNarrowsTheList` · `NoPrimaryCsNarrowsTheList`, e2e *Filters: marketplace, primary CS and no primary CS narrow the list (#16)*. Uncommitted |
 
 ## Decided, not built
 
@@ -42,7 +43,7 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 | `lockShop` takes `FOR UPDATE`, which the orders FK's `KEY SHARE` conflicts with — a grant change waits for every order being placed on the shop, and they wait for it. `FOR NO KEY UPDATE` is proved to fix it ([the-lock-no-grep-finds](../../../audits/services/selling_service/concurrency/lock-order.md#the-lock-no-grep-finds)) | `selling_v1/service.go` `lockShop` |
 | `ShopUserRemove` takes no shop lock, so Make primary's grant check can go stale. The set-must-land check (a96a491) keeps the answer true; the lock-level fix is open ([ShopUserSetPrimary](../../../audits/services/selling_service/concurrency/ShopUserSetPrimary.md)) | `selling_v1/shop_user_remove.go` |
 | `expense_service` stores any `shop_id` unvalidated (critique 6) | `expense_v1/expense_create.go:30` |
-| a grant outlives its holder leaving the team, and `ShopUserAdd` accepts a user outside it (Q6) | `selling_v1/shop_user_add.go` |
+| ~~a grant outlives its holder leaving the team, and `ShopUserAdd` accepts a user outside it (Q6)~~ 🔄 fixed: the `MemberRemoved` listener drops a leaver's grants, and since 2026-11-04 `ShopUserAdd` and `ShopUserSetPrimary` refuse a non-member or a suspended account (FailedPrecondition, by user id) through `RoleReader.Member` — user_service's cached resolver, no join. A residual cross-service window is written up: [ShopUserAdd](../../../audits/services/selling_service/concurrency/ShopUserAdd.md) | `selling_v1/shop_user_add.go`, `shop_user_set_primary.go`, `role_reader.go` |
 
 ## Open
 
@@ -56,3 +57,6 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 **Next agent:** when the owner answers, record it in `shop/context_decision.md` (named, RULE 12), delete the answered
 question, rebuild `docs/biggest_question.md`. Another session (the importer's) builds shop code — check `git log`
 and message it before changing shop files it touches.
+
+### a-grant-goes-only-to-a-team-member
+🔄 Built 2026-11-04 — `ShopUserAdd` and Make primary (`ShopUserSetPrimary`) refuse a person outside the shop's team, and a suspended or erased one (`refuseUngrantable`, `selling_v1/role_reader.go`); the grant picker offers only active members (`UserList` `exclude_suspended`). Tests: `shop_user_add_test.go`, `shop_user_set_primary_test.go`, `cmd/app_development/role_reader_test.go`, `e2e/shops.spec.ts` "a person outside the shop's team is refused a grant".

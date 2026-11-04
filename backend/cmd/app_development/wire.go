@@ -65,6 +65,10 @@ func InitializeApp() (*App, error) {
 		NewStockPicker,
 		NewProductCatalog,
 		NewInventoryProductReader,
+		// The link to an order's label, for the warehouse that ships it — see order_label_linker.go.
+		NewOrderLabelLinker,
+		// The link to a restock's label photo, for the warehouse it is going to — see restock_photo_linker.go.
+		NewRestockPhotoLinker,
 		// Where the order events go (#153) — see event_sender.go. Dev publishes to the local
 		// EMULATOR, not an in-process loopback (dev-runs-the-emulator).
 		NewPubsubClient,
@@ -109,6 +113,9 @@ func InitializeApp() (*App, error) {
 		// Joins inventory to expense (#211) — writing off the value of damaged/lost stock. See
 		// expense_poster.go.
 		NewExpensePoster,
+		// Expense's one outside question, whether the account an expense names may pay it, is asked of
+		// financial_account in-process — see expense_accounts.go.
+		NewExpensePayingAccounts,
 		// The money a team holds — its accounts, their logs, the withdrawal listener. Its one outside question,
 		// whether a shop is the team's, is asked of the shop — see financial_account_deps.go.
 		financial_account_v1.NewService,

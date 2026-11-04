@@ -199,6 +199,7 @@ export const transferFixtures: TransferFixture[] = [
     createdAtUnix: daysAgo(4),
     shipmentId: 91n,
     receipt: "JNE7788990011",
+    receiptFile: "doc-transfer-603-label",
     shipmentCost: 18000,
     financeAccountId: 1301n,
     outboundTransactionId: 9603n,

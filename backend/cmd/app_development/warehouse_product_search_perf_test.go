@@ -103,7 +103,7 @@ func TestPerf_WarehouseProductSearch(t *testing.T) {
 	perfPickerVolume(t, raw)
 
 	db, probe := san_perf.Wrap(raw)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil)))
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil)), nil)
 	ctx := context.Background()
 
 	search := func(warehouse uint64, q string, limit uint32) *inventoryv1.WarehouseProductSearchResponse {

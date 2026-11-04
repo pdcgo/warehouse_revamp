@@ -10,7 +10,6 @@ import {
   Heading,
   Icon,
   IconButton,
-  Link,
   Separator,
   SimpleGrid,
   Spacer,
@@ -18,7 +17,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
@@ -27,6 +26,7 @@ import { useTeamDetail } from "../../features/teams/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { useRestockRequest } from "../../features/restock/queries";
 import { DetailField } from "../../features/restock/DetailField";
+import { ReceiptPhoto } from "../../features/restock/ReceiptPhoto";
 import { committedValue, courierCharge, goodsTotal, shortfall } from "../../features/restock/summary";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
@@ -201,24 +201,9 @@ export function RestockWarehouseDetailPage() {
                 value={
                   <Stack gap="0.5">
                     <Text as="span">{request.receipt || "—"}</Text>
-                    <HStack gap="1.5">
-                      {request.receiptFile ? (
-                        <Link
-                          href={request.receiptFile}
-                          target="_blank"
-                          rel="noreferrer"
-                          fontSize="xs"
-                          data-testid="restock-detail-receipt-photo"
-                        >
-                          <Icon as={ExternalLink} boxSize="3" />
-                          {t("restock.detail.receiptPhoto")}
-                        </Link>
-                      ) : (
-                        <Text as="span" fontSize="xs" color="fg.muted">
-                          {t("restock.detail.noReceiptPhoto")}
-                        </Text>
-                      )}
-                    </HStack>
+                    {/* The photo is the selling team's document: the warehouse is told it is attached, not offered a
+                        link the server would refuse (who else may open it is an owner question). */}
+                    <ReceiptPhoto documentId={request.receiptFile} teamId={teamId} requestId={request.id} opensAs="warehouse" />
                   </Stack>
                 }
               />

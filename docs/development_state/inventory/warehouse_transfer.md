@@ -1,5 +1,17 @@
 # Development state — inventory / warehouse_transfer
 
+🔨 **2026-11-04: both listeners are built** — uncommitted.
+✅ *Accepted* → liability: the courier's charge at B's door posts as **`transfer_fee`** (`LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10`),
+keyed by the transfer, the selling team owing B, nothing for 0 ([a-transfer-charge-is-a-transfer-fee](../../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee));
+subscription `liability-warehouse-transfer-accepted`, flow in [liability rpc.md](../../services/liability_service/rpc.md#the-courier-at-a-transfers-door--chargetransfercourier).
+The accept screen's `courierDebt` mark can go (the frontend pass's).
+✅ *Created / Updated / Cancelled* → financial account: the shipping cost posts out of the paying account as **`expense`**
+([a-transfers-shipping-posts-as-an-expense](../../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense)),
+*"Warehouse transfer #N shipping"* — the difference by cost revision, a move between accounts, the refund on cancel; no
+expense record. Subscriptions `financial-account-warehouse-transfer-{created,updated,cancelled}`, flow in
+[financial_account rpc.md](../../services/financial_account_service/rpc.md#the-transfer-shipping-listener). The screens'
+`costEvent` marks were already gone (the pages' `pending.ts` files are deleted); no copy says the cost is unposted.
+
 🔨 **2026-10-16: the backend is BUILT on the decided ledgers, uncommitted on purpose** — the owner reviews everything at
 the end (*"we commit until i say"*). It is stage 4d of [the ledger build](ledgers.md). All 32 decisions are in
 [warehouse_transfer_decision.md](../../business/inventory/warehouse_transfer_decision.md); the clarify has no open
@@ -29,7 +41,7 @@ stateDiagram-v2
 | | |
 | --- | --- |
 | contract | `proto/warehouse/inventory/v1/warehouse_transfer.proto` — unchanged by the build. Money is still `int64` on the wire: the handlers round the `double` columns |
-| events | 🆕 `events/v1`: `WarehouseTransferCreated` (404), `…Updated` (405), `…Cancelled` (406), `…Accepted` (407) — money `double` from day one. Topics come from the proto, so `san pubsub ensure` makes them; **no subscription exists**: the financial account's listener is not built, and balance waits on [balance Q13](../../business/balance/context_clarify.md#question) |
+| events | 🆕 `events/v1`: `WarehouseTransferCreated` (404), `…Updated` (405), `…Cancelled` (406), `…Accepted` (407) — money `double` from day one. Topics come from the proto, so `san pubsub ensure` makes them; subscriptions: `financial-account-warehouse-transfer-{created,updated,cancelled}` (the shipping, as `expense`) and `liability-warehouse-transfer-accepted` (the courier's charge, `transfer_fee`) |
 | schema | `00027_warehouse_transfers.sql` — `warehouse_transfers`, `_items`, `_problem_items`, `_logs` ([database-schema.md](../../database-schema.md) § Warehouse transfers). No pick or put-away table: they are the legs' rack rows |
 | models | `warehouse_transfer.go` (+ `TransferStatus`), `warehouse_transfer_item.go`, `warehouse_transfer_problem_item.go` (+ `TransferProblemType`), `warehouse_transfer_log.go` |
 | mutations | `inventory_mutations/post_transfer.go` — `PostTransferOut` (shares `refuseShortLines` + `takeLines` with `PostOrder`), `PostTransferIn` (layers from the out-leg's batch rows, `splitLayers`) |
@@ -60,15 +72,15 @@ stateDiagram-v2
 
 | page | marks |
 | --- | --- |
-| selling list, form, selling detail | `costEvent` — `missing`: the cost is stored and announced, the paying account does not post it yet (copy updated) |
+| selling list, form, selling detail | ✅ none — `costEvent` removed; the listener posts the cost (2026-11-04) |
 | warehouse list, warehouse detail | `labelPhoto` — `dropped`: the upload type is not designed |
 | accept | `courierDebt` — `missing`: the charge is saved and announced, balance does not post it yet — its source type is [balance Q13](../../business/balance/context_clarify.md#question) (copy updated) |
 
 ## What is left
 
-1. **The listeners**: `financial_account_service` posting *Created / Updated / Cancelled* (and restock's, which it does
-   not hear either); balance posting *Accepted* once Q13 names its source type. Never `INCIDENTAL_FEE` keyed by the
-   transfer id.
+1. **The listeners**: ✅ balance posting *Accepted* as `transfer_fee` (2026-11-04) · ✅ restock's three money events
+   (2026-11-04) · ✅ `financial_account_service` posting the transfer's *Created / Updated / Cancelled* as `expense`
+   (2026-11-04).
 2. ✅ **The cut-over** (ledgers stage 3): the stock screens read the ledgers, so a transfer shows in a product's and a
    rack's history (`transfer_in` / `transfer_out`); the contract's money is `double` with the frontend;
    `InventoryService.StockTransfer` is gone from the contract.

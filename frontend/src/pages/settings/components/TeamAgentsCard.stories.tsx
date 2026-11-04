@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { agentConnectionExists, membersMayConnect } from "../../../../.storybook/agentStub";
+import { agentConnectionByForStory, agentConnectionExists, membersMayConnect } from "../../../../.storybook/agentStub";
+import { FORMER_USER_ID } from "../../../../.storybook/fixtures";
 import { TeamAgentsCard } from "./TeamAgentsCard";
 
 // THE TEAM'S AI AGENTS on Settings, for its owner (the-owner-decides-who-connects-an-agent). In the stub Toko Melati (12)
@@ -38,6 +39,20 @@ export const Default: Story = {
     );
     // Root's every-team connection reads every team, and no team's owner revokes it.
     await expect(canvas.queryByTestId("agent-connection-702")).toBeNull();
+  },
+};
+
+// A FORMER USER (erase-keeps-the-row): a connection made by somebody since erased names them "Former user #69", never
+// the synthetic username `erased69`.
+export const ConnectedByAFormerUser: Story = {
+  beforeEach: () => agentConnectionByForStory(703n, FORMER_USER_ID),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() =>
+      expect(canvas.getByTestId("agent-connection-context-703")).toHaveTextContent("Connected by Former user #69"),
+    );
+    await expect(canvas.getByTestId("agent-connection-703")).not.toHaveTextContent("erased69");
   },
 };
 

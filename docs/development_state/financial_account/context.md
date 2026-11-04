@@ -23,6 +23,12 @@ queue, never filed elsewhere; an archived account still takes the row.
 serves both reads. `features/financialAccount/pending.ts` is deleted; the report's Export mark is the domain's
 only one left. Proven in `e2e/financial_accounts.spec.ts` — 12 steps, two of them new.
 
+**2026-11-04 — the warehouse transfer's shipping is wired** ([a-transfers-shipping-posts-as-an-expense](../../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense)):
+`TransferShippingHandler` on `warehouse-transfer-created|updated|cancelled` posts a transfer's `shipment_cost` out of the
+account it names as **`expense`** — *"Warehouse transfer #603 shipping"* — straight from inventory's events, with no
+expense record (settled in chat: not on the Expenses screen). It is the restock listener's shape and shares its
+`postPaymentLegs`. Uncommitted.
+
 ## Decided
 
 | decision | what it means for the build |
@@ -45,6 +51,7 @@ only one left. Proven in `e2e/financial_accounts.spec.ts` — 12 steps, two of t
 | [the-daily-row-is-written-with-the-log-row](../../business/financial_account/context_decision.md#the-daily-row-is-written-with-the-log-row) *(Q17)* | every log write upserts its day's row and shifts later days in the same transaction — no event table, lock or replay · ⚠ audit it with `audit-sql`: two writes on one account shift the same days |
 | [the-prototype-and-its-contract-are-accepted](../../business/financial_account/context_decision.md#the-prototype-and-its-contract-are-accepted) | ✅ design_accept — the three screens, the picker and the 14 + 3 RPC contract are what was built · my proposals in the prototype accepted with it |
 | [account-grouped-joins-the-metrics](../../business/financial_account/context_decision.md#account-grouped-joins-the-metrics) *(critique 9)* | `AnalyticGroupSearch` also groups by account — keys are account ids |
+| [a-transfers-shipping-posts-as-an-expense](../../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense) *(owner, against my recommendation)* | a warehouse transfer's shipping posts as `expense` — `expense` gets a second way in, the transfer's events · ✅ settled in chat: no expense record, so the account's *Expense* may exceed the Expenses screen's total by the trips, each row naming its transfer · ✅ built 2026-11-04 |
 | [a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker) | two ways in: the account screens, or a listener per topic. No RPC for other services to write with |
 | [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
 | [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(provider, account_number)` where a number exists, across all teams, archived included · a cash box exempt · the `team_infos` copy never happens — the columns were dropped ([the-team-record-holds-no-bank](../../business/financial_account/context_decision.md#the-team-record-holds-no-bank)) |
@@ -77,6 +84,9 @@ only one left. Proven in `e2e/financial_accounts.spec.ts` — 12 steps, two of t
 | the schema | [00001_create_financial_accounts.sql](../../../backend/services/financial_account_service/db_migrations/00001_create_financial_accounts.sql) — `financial_accounts`, `financial_account_logs`, `shop_accounts`, `operational_accounts`, `financial_account_daily_reports`, the listener's `financial_account_event_logs` · [database-schema.md](../../database-schema.md#financial_account_service) · flows: [rpc.md](../../services/financial_account_service/rpc.md) |
 | the withdrawal listener | push route `/event/financial-account-withdrawal/push` on `settlement-log-posted` — settlement's `withdrawal` rows into the shop's account, sign turned; an `unknown` account made for a shop with none · subscription declared in `san pubsub ensure` ([san.md](../../tools/san.md)) |
 | the team-payment listener *(2026-10-14)* | push route `/event/financial-account-team-payment/push` on `liability-payment-accepted` — [team_payment_listener.go](../../../backend/services/financial_account_service/financial_account_v1/team_payment_listener.go): claim, lock both teams' accounts in id order (`lockOwnedAccounts`), two `team_payment` legs · 5 unit tests, 3 race/interleave tests ([lock order](../../../audits/services/financial_account_service/concurrency/lock-order.md)) |
+| the restock-payment listener *(2026-11-04)* | push routes `/event/financial-account-restock-{created,updated,cancelled}/push` — [restock_payment_listener.go](../../../backend/services/financial_account_service/financial_account_v1/restock_payment_listener.go): claim, lock the one or two accounts in id order (`lockOwnedAccounts`, the restock team's), `restock` rows — the amount out, the difference, the move (one group), the refund · 10 unit tests, 3 race/interleave tests, perf probe 7 / 12 statements, ~5 / ~11 ms (FAST) · [rpc.md](../../services/financial_account_service/rpc.md#the-restock-payment-listener). `postRestockLegs` became `postPaymentLegs` (the change type a parameter) for the transfer's shipping |
+| the expense-payment listener *(2026-11-04)* | push routes `/event/financial-account-expense-{created,adjusted}/push` — [expense_payment_listener.go](../../../backend/services/financial_account_service/financial_account_v1/expense_payment_listener.go): claim, lock the one account (`lockOwnedAccounts`, the expense team's), one row — `ads_expense` for ADS, `expense` for the rest — the amount out on create, the signed correction's opposite on an adjustment (a cancel gives the net back), on the expense's own day; account 0 and STOCK_LOSS claim only · 7 unit tests, 3 race/interleave tests, perf probe 7 statements, ~2–3 ms (FAST) · [rpc.md](../../services/financial_account_service/rpc.md#the-expense-payment-listener). The publisher: expense_service's `ExpenseCreated` / `ExpenseAdjusted`, its account checked in-process against `FinancialAccountByIds` (active + operational) — [expense rpc.md](../../services/expense_service/rpc.md#expensecreate--paid-from-and-the-ads-only-shop) |
+| the transfer-shipping listener *(2026-11-04)* | push routes `/event/financial-account-warehouse-transfer-{created,updated,cancelled}/push` — [transfer_shipping_listener.go](../../../backend/services/financial_account_service/financial_account_v1/transfer_shipping_listener.go): the restock listener's `postPaymentLegs` posting `expense` — the cost out, the difference by cost revision, the move (one group), the refund on cancel; a cost of 0 claims only · 11 unit tests, 3 race/interleave tests, perf probe 7 / 12 statements, ~2 / ~4 ms (FAST) · [rpc.md](../../services/financial_account_service/rpc.md#the-transfer-shipping-listener) |
 | ShopSet's one outside question | [financial_account_deps.go](../../../backend/cmd/app_development/financial_account_deps.go) — `ShopAccessCheck` under the caller's token, before the transaction: another team's shop is refused |
 | the screens | `/financial-accounts`, `/financial-accounts/:id`, `/financial-accounts/report` — routed, **Accounts** in the menu for every member of a selling or warehouse team · the prototype's pages on the real client · the report is five cards and one table of periods ([the-report-is-five-cards-and-one-table](../../technical/frontend/financial_accounts_decision.md#the-report-is-five-cards-and-one-table)) — its **Ekspor** is a marked placeholder, no contract builds a file |
 | tests | 50 unit tests · 48 stories · [e2e/financial_accounts.spec.ts](../../../frontend/e2e/financial_accounts.spec.ts) — 10 steps against the real server, the withdrawal pushed to the listener's route |
@@ -118,8 +128,9 @@ flowchart LR
 
 | | needs first |
 | --- | --- |
-| *Paid from* on a restock → `restock` rows | inventory's restock event, naming the account ([a-restock-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#a-restock-must-name-the-account-that-paid)) · the restock form swaps `PaymentTypeSelect` for `FinancialAccountSelect` (operational only, pre-picked) |
-| *Paid from* on an expense → `expense` / `ads_expense` rows | expense's event ([an-expense-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid)) |
+| *(nothing queued here)* | ✅ the warehouse transfer's shipping cost is built (2026-11-04) |
+
+✅ *Paid from* on a restock (2026-11-04) and on an expense (2026-11-04) are built — see *What exists*.
 
 Until each is wired, a reconcile catches what it moved as an `adjustment` — honest: it was not recorded.
 
@@ -127,7 +138,7 @@ Until each is wired, a reconcile catches what it moved as an `adjustment` — ho
 
 | | |
 | --- | --- |
-| **The e2e broker has PULL subscriptions and the dev server no pull worker** | CI's `san pubsub ensure` passes no `--push-base-url`, so no event-driven path reaches a handler in e2e. The spec POSTs a Pub/Sub push envelope to the listener's route instead — the route, the decode, the claim and the post are real |
+| **The e2e broker has PULL subscriptions and the dev server no pull worker** | CI's `san pubsub ensure` passes no `--push-base-url`, so no event-driven path reaches a handler in e2e. The spec POSTs a Pub/Sub push envelope to the listener's route instead — the route, the decode, the claim and the post are real. ⚠ *(2026-11-04)* stale locally: `e2e/pubsub.ts` now ensures PUSH subscriptions to :8081 (`--push-base-url`), and `expenses.spec.ts` polls an account's balance that the real publish → emulator push → listener moved |
 | **A listener has no caller token**, so it cannot ask the shop's service for a name | the server writes `shop #<id>` into an unknown account's name and a withdrawal's description; `withShopNames` in [vocab.ts](../../../frontend/src/features/financialAccount/vocab.ts) puts the name in on screen |
 | **`gofmt -l` lists ~50 CRLF files in `tools/san`** | untouched files — format only the files you wrote |
 | **Docker Desktop was down** | every `san_testdb` test SKIPS without Postgres — start Docker and `docker compose up -d` before believing a green run |
@@ -138,7 +149,15 @@ Nothing in the business analysis. For the owner: whether to adopt the running-su
 settlement's), and the one-query answer for the writes — both open questions in their reports. Still empty in the
 owner's doc: §General.
 
-**Next agent:** the next pass is a restock event in inventory and its listener here — the build order above. A new
+**Next agent:** ✅ the restock, expense and transfer-shipping listeners are built (2026-11-04). A new
 listener follows [withdrawal_listener.go](../../../backend/services/financial_account_service/financial_account_v1/withdrawal_listener.go): claim, then lock the
 account, re-check what was read before the lock, then `post`. Its subscription goes in `tools/san/pubsub.go` and
 [san.md](../../tools/san.md) beside `financial-account-withdrawal`.
+
+⚠ **Raised by the expense build (2026-11-04), for the owner:** an expense's account row counts on the expense's own
+day (`occurred_at`, the day the person says the cost belongs to), not the day it was typed — the decisions say *the
+event's own time*, and for an expense that reads as its day. For payroll typed on the 5th for last month, the
+account's row then lands last month while the bank shows the 5th. Options and the recommendation are in the build's
+report. And inventory's restock does NOT check its `finance_account_id` against the operational accounts — only the
+form narrows it; expense_service now does (`PayingAccounts` seam in `backend/cmd/app_development/expense_accounts.go`),
+which the restock could reuse.

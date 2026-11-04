@@ -3,9 +3,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { create } from "@bufbuild/protobuf";
 
-import { orderDetailFor, teams } from "../../../../.storybook/fixtures";
-import { returnAcceptScenario, withOrdersInReturn } from "../../../../.storybook/sessionScenario";
-import { OrderSchema, OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
+import { orderDetailFor, teams } from "../../../.storybook/fixtures";
+import { returnAcceptScenario, withOrdersInReturn } from "../../../.storybook/sessionScenario";
+import { OrderSchema, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { AcceptReturnDialog, description } from "./AcceptReturnDialog";
 
 // THE RETURN ACCEPT (the-accept-is-the-status-return-completed) — the crew has the returned parcel in its hands. Opened
@@ -33,7 +33,7 @@ function Open() {
 }
 
 const meta = {
-  title: "Pages/Order/AcceptReturnDialog",
+  title: "Features/Orders/AcceptReturnDialog",
   component: AcceptReturnDialog,
   parameters: { docs: { description: { component: description } } },
   beforeEach: withOrdersInReturn(ORDER.id),

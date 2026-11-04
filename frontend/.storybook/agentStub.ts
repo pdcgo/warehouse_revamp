@@ -65,6 +65,13 @@ export function withNoAgentConnections() {
   table = table.filter((c) => c.userId !== me());
 }
 
+/** For a story: who made connection `id` — e.g. a former user, to show the card naming them (erase-keeps-the-row). */
+export function agentConnectionByForStory(id: bigint, userId: bigint) {
+  const row = table.find((c) => c.id === id);
+  if (!row) throw new Error(`no agent connection ${id} in the stub`);
+  row.userId = userId;
+}
+
 /** Whether the connection is still live — what a story asserts a revoke removed. */
 export function agentConnectionExists(id: bigint): boolean {
   return table.some((c) => c.id === id);

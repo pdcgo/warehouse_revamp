@@ -11,7 +11,8 @@ import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 // count ask this question, and answering it twice is how they start disagreeing about what "ready" means.
 // The detail page's Promote reasons are the fuller list — it holds the lines and the warehouse's fee — and
 // every rule here is one of them, in the same order. ⚠ A rule Promote gains that a summary row can read
-// belongs here too, or the list calls a draft ready that Promote refuses.
+// belongs here too, or the list calls a draft ready that Promote refuses — AND in the server's `readyDrafts`
+// (selling_v1/order_draft_list.go), the SQL twin that counts the summary's set-wide "ready" card (#16).
 export interface DraftGap {
   // An i18n key naming what is missing.
   key: string;

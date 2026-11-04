@@ -127,6 +127,13 @@ message ShopListRequest {
 
 message ShopListFilter {
   string q = 1 [(buf.validate.field).string.max_len = 100];
+  // Only the shops on this marketplace; UNSPECIFIED = every marketplace. A shop's marketplace never changes.
+  warehouse.marketplace.v1.Marketplace marketplace = 2 [(buf.validate.field).enum.defined_only = true];
+  // Only the shops whose PRIMARY CS is this person (the-primary-cs-is-a-flag-on-a-grant); 0 = anybody.
+  uint64 primary_user_id = 3;
+  // Only the shops with NO primary CS — the ones that cannot import a statement yet. Asking for a person and for
+  // nobody at once is refused (InvalidArgument): the two cannot both hold.
+  bool no_primary = 4;
 }
 
 enum ShopListDataType {

@@ -123,16 +123,19 @@ func (s *Service) fold(ctx context.Context, event *eventsv1.Event, posted *event
 		}
 
 		// 4 · THE TWO GRAINS.
-		err = foldScope(tx, shopDaily, "shop_settlement_reports", posted.GetShopId(), posted.GetTeamId(), day, column, posted.GetChange())
+		err = foldScope(tx, shopDaily, "shop_settlement_reports", false, posted.GetShopId(), posted.GetTeamId(), day, column, posted.GetChange())
 		if err != nil {
 			return err
 		}
 
-		return foldScope(tx, userDaily, "user_settlement_reports", user, posted.GetTeamId(), day, column, posted.GetChange())
+		return foldScope(tx, userDaily, "user_settlement_reports", true, user, posted.GetTeamId(), day, column, posted.GetChange())
 	})
 }
 
 // foldScope applies one movement to one scope: the day's row, every later day, and the scope's state row.
+//
+// keepsLastDay is the person grain's: its state row also carries `last_day`, the newest day the scope has a row on
+// (#the-person-list-reads-the-last-day-from-the-user-report).
 //
 // The statements are analytic_context.md §How we computed balance, verbatim in shape. ⚠ The day is bound
 // as a STRING cast to date everywhere — a Go time.Time is a timestamptz, and comparing a date against it
@@ -141,6 +144,7 @@ func foldScope(
 	tx *gorm.DB,
 	grain reportGrain,
 	stateTable string,
+	keepsLastDay bool,
 	keyID, teamID uint64,
 	day, column string,
 	change int64,
@@ -202,6 +206,22 @@ LIMIT 1
 ON CONFLICT (%[2]s, team_id) DO UPDATE
 SET close_balance = EXCLUDED.close_balance,
     last_updated  = NOW()`, grain.table, grain.key, stateTable)
+
+	if keepsLastDay {
+		// The same newest daily row's day, RAISED and never lowered: the fold only ever adds a day, so an older
+		// event leaves it where it is. GREATEST skips a NULL, which is what a replay leaves on a scope it cut to nothing.
+		state = fmt.Sprintf(`
+INSERT INTO %[3]s AS s (%[2]s, team_id, close_balance, last_day, last_updated)
+SELECT r.%[2]s, r.team_id, r.close_balance, r.day, NOW()
+FROM %[1]s r
+WHERE r.%[2]s = @key AND r.team_id = @team
+ORDER BY r.day DESC
+LIMIT 1
+ON CONFLICT (%[2]s, team_id) DO UPDATE
+SET close_balance = EXCLUDED.close_balance,
+    last_day      = GREATEST(s.last_day, EXCLUDED.last_day),
+    last_updated  = NOW()`, grain.table, grain.key, stateTable)
+	}
 
 	err = tx.Exec(state, args).Error
 	if err != nil {

@@ -89,9 +89,12 @@ const COD_FEE = LiabilitySourceType.INCIDENTAL_FEE;
 // from the warehouse's cash box and owed back, under its own type only because its source is an order, not a restock.
 const RETURN_COD_FEE = LiabilitySourceType.RETURN_INCIDENTAL_FEE;
 
-/** What the couriers asked at the door, a restock's and a return's together — the statement's one courier column. */
+// The same courier money on a warehouse transfer's accept (a-transfer-charge-is-a-transfer-fee), keyed by the transfer.
+const TRANSFER_COD_FEE = LiabilitySourceType.TRANSFER_FEE;
+
+/** What the couriers asked at the door, a restock's, a return's and a transfer's together — the statement's one courier column. */
 export function courierAsks(bySource: { [source: number]: bigint } | undefined): bigint {
-  return (bySource?.[COD_FEE] ?? 0n) + (bySource?.[RETURN_COD_FEE] ?? 0n);
+  return (bySource?.[COD_FEE] ?? 0n) + (bySource?.[RETURN_COD_FEE] ?? 0n) + (bySource?.[TRANSFER_COD_FEE] ?? 0n);
 }
 
 // The daily statement's read.

@@ -104,7 +104,7 @@ func raceService(db *gorm.DB) *inventory_v1.Service {
 	return inventory_v1.NewService(db, nil, nil, nil, nil, fakeFacts{
 		raceProductA: {TeamID: raceOwner},
 		raceProductB: {TeamID: raceOwner},
-	})
+	}, nil)
 }
 
 func raceTake(svc *inventory_v1.Service, key string, lines ...*inventoryv1.OrderTransactionLine) error {

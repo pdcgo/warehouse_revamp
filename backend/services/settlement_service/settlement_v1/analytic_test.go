@@ -259,6 +259,108 @@ func TestFold_AttributesAShopRowToItsActor(t *testing.T) {
 	}
 }
 
+// lastDay is the person state's last_day as text, empty when NULL.
+func lastDay(t *testing.T, db *gorm.DB, userID uint64) string {
+	t.Helper()
+
+	var day *string
+
+	err := db.Raw(`SELECT last_day::text FROM user_settlement_reports WHERE user_id = ? AND team_id = ?`, userID, team).
+		Scan(&day).
+		Error
+	if err != nil {
+		t.Fatalf("read last_day: %v", err)
+	}
+
+	if day == nil {
+		return ""
+	}
+
+	return *day
+}
+
+// the-person-list-reads-the-last-day-from-the-user-report: the fold RAISES the person's last_day to the newest day it
+// has a row on, and a late event on an older day leaves it where it is.
+func TestFold_RaisesTheUsersLastDayAndAnOlderDayDoesNotLowerIt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
+
+	fold(t, svc, logPosted(1, "2026-01-05", shop, order, creator, creator,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL, -sale))
+
+	if day := lastDay(t, db, creator); day != "2026-01-05" {
+		t.Fatalf("last_day after the first fold = %q, want 2026-01-05", day)
+	}
+
+	fold(t, svc, logPosted(2, "2026-01-09", shop, order, creator, 3,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, 100_000))
+
+	if day := lastDay(t, db, creator); day != "2026-01-09" {
+		t.Fatalf("last_day after a newer day = %q, want it raised to 2026-01-09", day)
+	}
+
+	fold(t, svc, logPosted(3, "2026-01-02", shop, order, creator, 3,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_EXTERNAL_ADS_FEE, -10_000))
+
+	if day := lastDay(t, db, creator); day != "2026-01-09" {
+		t.Fatalf("last_day after a late, older day = %q, want 2026-01-09 kept", day)
+	}
+}
+
+// A replay cuts the person's newest days, so it recomputes last_day from the daily rows left — MAX(day), or NULL when
+// none are — and the redelivery raises it again.
+func TestAnalyticReplayCompute_RecomputesTheUsersLastDay(t *testing.T) {
+	db := san_testdb.DB(t)
+	broker := &fakeBroker{window: 7 * 24 * time.Hour}
+	svc := settlement_v1.NewService(db, nil, broker, nil)
+
+	const alone uint64 = 77 // only on days the replay cuts
+
+	yesterday := logPosted(1, jakartaDay(-2), shop, order, creator, creator,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL, -sale)
+	today := logPosted(2, jakartaDay(0), shop, order, creator, 3,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, 100_000)
+	aloneToday := logPosted(3, jakartaDay(0), otherShop, otherOrder, alone, alone,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, 5_000)
+
+	fold(t, svc, yesterday, today, aloneToday)
+
+	if day := lastDay(t, db, creator); day != jakartaDay(0) {
+		t.Fatalf("last_day before the replay = %q, want %s", day, jakartaDay(0))
+	}
+
+	_, err := svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
+		StartDate: jakartaDay(-1),
+	}))
+	if err != nil {
+		t.Fatalf("AnalyticReplayCompute: %v", err)
+	}
+
+	var maxDay *string
+
+	err = db.Raw(`SELECT MAX(day)::text FROM user_settlement_daily_reports WHERE user_id = ? AND team_id = ?`, creator, team).
+		Scan(&maxDay).
+		Error
+	if err != nil {
+		t.Fatalf("read MAX(day): %v", err)
+	}
+
+	if maxDay == nil || lastDay(t, db, creator) != *maxDay || *maxDay != jakartaDay(-2) {
+		t.Fatalf("last_day after the replay = %q, MAX(day) = %v — want both %s", lastDay(t, db, creator), maxDay, jakartaDay(-2))
+	}
+
+	if day := lastDay(t, db, alone); day != "" {
+		t.Fatalf("last_day of a person cut to no day = %q, want NULL", day)
+	}
+
+	// The redelivery folds the cut days back, and raises it again.
+	fold(t, svc, today, aloneToday)
+
+	if lastDay(t, db, creator) != jakartaDay(0) || lastDay(t, db, alone) != jakartaDay(0) {
+		t.Fatalf("last_day after the redelivery = %q / %q, want %s", lastDay(t, db, creator), lastDay(t, db, alone), jakartaDay(0))
+	}
+}
+
 type fakeBroker struct {
 	window time.Duration
 	err    error

@@ -13,6 +13,7 @@ import { orderNotes, timelineFromKey } from "../../../features/orders/timelineLo
 import { formatUnixDateTime } from "../../../lib/datetime";
 import { SectionEmpty } from "../../../components/chrome/DetailSection";
 import { useCanWrite } from "../../../features/team/TeamContext";
+import { personName } from "../../../lib/users";
 
 /** The contract's limit (`OrderNoteCreateRequest.note`): 1 to 500 characters, trimmed. */
 export const NOTE_MAX = 500;
@@ -72,7 +73,7 @@ export function NotesSection({
   function writer(userId: bigint): string {
     if (userId === 0n) return "";
 
-    return actors?.get(userId.toString())?.name ?? t("orders.timeline.userRef", { id: userId.toString() });
+    return personName(actors?.get(userId.toString()), t("orders.timeline.userRef", { id: userId.toString() }));
   }
 
   async function add() {

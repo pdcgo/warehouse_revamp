@@ -4,6 +4,8 @@ package warehouse.settlement.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/analytic_base/v1/analytic.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1";
@@ -34,6 +36,14 @@ service SettlementAnalyticService {
   }
   // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
   rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The people the Analytic screen's "created by" filter offers for a settlement metric: everyone a settlement row of
+  // this team counts for (a-who-filter-lists-the-people-on-its-rows) — read off the person report, the rows the USER
+  // group and filter read.
+  rpc SettlementPersonList(SettlementPersonListRequest) returns (SettlementPersonListResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -311,4 +321,84 @@ message MetricDataResponse {
   // ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
   // dead-letter topic and the lease's log.
   int64 as_of_unix = 2;
+}
+
+// ── Who the settlement rows count for (a-who-filter-lists-the-people-on-its-rows) ─────────────────────────────────────
+//
+// What a USER filter over a settlement metric offers: the people the person report holds a row for in this team — an
+// order's creator, a shop row's actor, an imported shop row's primary CS — and nobody else. Not the team's members: a
+// person who has left still sold last year's orders. Former members and suspended accounts are kept
+// (a-filter-keeps-former-and-suspended-people). 0 is "not recorded", never a person.
+
+enum SettlementPersonListDataType {
+  SETTLEMENT_PERSON_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SETTLEMENT_PERSON_LIST_DATA_TYPE_PERSON = 1;
+}
+
+// SettlementPersonSort is the sort selection paired with the PERSON slice.
+enum SettlementPersonSort {
+  SETTLEMENT_PERSON_SORT_UNSPECIFIED = 0;
+  // The last day a row counted for them — the default, newest first, so the people working now lead.
+  SETTLEMENT_PERSON_SORT_LAST_DAY = 1;
+}
+
+// Nothing narrows it yet: the picker offers everyone on the team's settlement rows.
+message SettlementPersonListFilter {}
+
+message SettlementPersonListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    SettlementPersonSort person = 2;
+  }
+}
+
+message SettlementPersonListRequest {
+  // Whoever may read the metric may filter it (whoever-reads-a-list-may-filter-it): exactly MetricData's roles.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The caller's scope. A selling team lists its own people; the root team lists every team's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  SettlementPersonListFilter filter = 2;
+  SettlementPersonListFilterSort sort = 3;
+  repeated SettlementPersonListDataType data_request = 4;
+  // It grows with staff turnover, slowly but without a ceiling, so it pages; the picker asks for a large first page
+  // and filters in the field.
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// One person, and the last day a settlement row of this team counted for them. Their name is user_service's — the
+// picker resolves it with UserByIDs.
+message SettlementPersonItem {
+  uint64 user_id = 1;
+  // YYYY-MM-DD, the report's own day.
+  string last_day = 2;
+}
+
+message SettlementPersonMapItem {
+  // Keyed by user id.
+  map<uint64, SettlementPersonItem> map_data = 1;
+}
+
+message SettlementPersonListResponseItem {
+  oneof d {
+    SettlementPersonMapItem person = 1;
+  }
+}
+
+message SettlementPersonListResponse {
+  repeated SettlementPersonListResponseItem items = 1;
+  // User ids, in the sort's order.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }

@@ -70,7 +70,7 @@ Deduction). The details are in [rpc.md](../../services/settlement_importer_servi
 | | |
 | --- | --- |
 | a skipped Earnings / GMV Pay Deduction line is INFO, a failed withdrawal WARN | the accepted prototype showed routine skips outside the closing summary; the withdrawal decision says WARN |
-| the order a ref finds, among several in the shop | a live order before a cancelled one, then the newest — the uniqueness rule is not built, so duplicates can exist |
+| the order a ref finds, among several in the shop | ✅ *(2026-11-04)* one live order is the line's, a cancelled one never beats it; **two or more live → the shop**, `several_orders` ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)); none live → still the newest cancelled, as built (my reading, unasked) |
 | a new grant on a shop left with NO primary becomes it | the recorded reading of *first* — re-adding an existing grant changes nothing |
 | `ShopAccessCheck` keeps the owner's field name `is_have_access` | critique 10 had suggested `has_access` |
 | the handler's read cap is 15 MB | the browser sends JSON: 10 MB of file is ~13.4 MB of base64. The file itself is held to 10 MB |
@@ -80,7 +80,7 @@ Deduction). The details are in [rpc.md](../../services/settlement_importer_servi
 
 | | owner |
 | --- | --- |
-| **the order ref** — 🔄 *(2026-10-15)* required on every order, but **two live orders may share it** ([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)) | decided: two live orders post to the **shop**, naming both ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)) — ⚠ not built: `orderInShop` still pays the newest |
+| **the order ref** — 🔄 *(2026-10-15)* required on every order, but **two live orders may share it** ([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)) | decided: two live orders post to the **shop**, naming both ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)) — ✅ built 2026-11-04, see below |
 | **the write gate on the order RPCs** and the rollout grants — [a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager) | the shop context — only the imports are gated |
 | **the move to `shop_service`** — [the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service) | the shop context — only `NewShopClient` and the adapters in `cmd/app_development` change |
 | **a closed shop's statements** — a deleted shop answers `NotFound`, so it cannot import | [shop Q3](../../business/shop/context_clarify.md#question) |
@@ -139,3 +139,15 @@ Every RPC this pass wrote or widened, audited for performance and every write fo
 - ⚠ **Look a TikTok row up by `Related order ID`**, never `Order/adjustment ID`.
 - ⚠ **A re-import cannot correct anything** — a repeat key returns the stored row, a key on another account is refused.
 - ⚠ **The owner's `tools/report_withdrawal/` is theirs** — read it, never edit it.
+
+## 2026-11-04 — a ref on two live orders posts to the shop, built
+
+| | |
+| --- | --- |
+| decision | [two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop) — was: `orderInShop` credited the NEWEST of two live orders |
+| contract | `UploadedFileLineReason.SEVERAL_ORDERS = 7` (POSTED to the shop), `UploadedFileLine.found_order_ids = 15`, the line filter's `reasons` max 6 → 7 |
+| schema | settlement_importer `00003` — `uploaded_file_lines.found_order_ids TEXT NOT NULL DEFAULT ''`, comma-joined ascending (no array precedent in the repo); [database-schema.md](../../database-schema.md) |
+| the pick | `orderInShop(orders, shop) (order, live ids, ok)`: one live → it · none live → newest cancelled (as built) · ≥ 2 live → none; `postLine` posts to the shop (OrderID 0, CreatedByUserID 0 — settlement counts it for the primary CS), reason `several_orders`, the WARN *"SHP-1 is on 2 live orders (#9001, #9002) — posted to the shop"*; `tally` counts it into `rows_posted_to_shop` (and the race helper's re-count) |
+| screen | `pages/settlement-import-detail` — the *Posted to the shop* view asks for NO_ORDER **and** SEVERAL_ORDERS; the reason reads *"On several live orders — none was credited"* and the found ids are links to `/orders/:id`; the note and the tally help say *no single order found*. en + id |
+| tests | `TestOrderInShop` (9 cases) · `TestFoundOrderIDs` · `TestShopeeSettlementImport_TwoLiveOrdersOnARefPostToTheShop` (post to the shop, ids, WARN text, tally, list filter by SEVERAL_ORDERS) · `…_ALiveAndACancelledOrderPostToTheLiveOne` · `TestTiktokSettlementImport_TwoLiveOrdersOnARefPostToTheShop` (fund, commission and reimbursement all to the shop). Story `ARefOnSeveralOrdersNamesThem`; stub + fixture line 9017; e2e `settlement_imports.spec.ts` 4/4 |
+| audits | no new query, no new lock — one more column on the line's existing INSERT; the existing `ShopeeSettlementImport` / `TiktokSettlementImport` reports stand |

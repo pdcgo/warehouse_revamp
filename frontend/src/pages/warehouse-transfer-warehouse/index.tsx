@@ -16,7 +16,6 @@ import { useWarehouseTransfers } from "../../features/warehouseTransfer/queries"
 import { TRANSFER_STATUS_TABS, transferTab } from "../../features/warehouseTransfer/statusTabs";
 import { TransferItemsCell } from "../../features/warehouseTransfer/TransferItemsCell";
 import { WarehouseTransferActions } from "../../features/warehouseTransfer/WarehouseTransferActions";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -26,7 +25,6 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
-import { TRANSFER_WAREHOUSE_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -114,7 +112,6 @@ export function WarehouseTransferWarehousePage() {
 
   return (
     <Stack gap="section">
-      <NotImplementedSummary list={TRANSFER_WAREHOUSE_PENDING} />
 
       <Flex>
         <SegmentGroup.Root
@@ -262,7 +259,6 @@ export function WarehouseTransferWarehousePage() {
                                 transfer={transfer}
                                 teamId={teamId}
                                 variant="row"
-                                pending={TRANSFER_WAREHOUSE_PENDING}
                               />
                             </Table.Cell>
                           </Table.Row>

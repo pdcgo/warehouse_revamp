@@ -34,13 +34,12 @@ import {
 import { CreatedCell, DateCell, OrderRefCell, OwnerCell } from "../../features/orders/OrderRowCells";
 import { useShopOptions } from "../../features/shops/queries";
 import { useActors } from "../../features/users/queries";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { ORDER_DRAFTS_PENDING } from "./pending";
 import { DraftSummary } from "./components/DraftSummary";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
+import { personName } from "../../lib/users";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -167,8 +166,6 @@ export function OrderDraftsPage() {
   return (
     // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
     <Stack gap="section" animationStyle="enter">
-      {!warehouse && <NotImplementedSummary list={ORDER_DRAFTS_PENDING} />}
-
       {/* ITS OWN TITLE, the subtitle under it (the-drafts-are-a-list-of-their-own) — no longer the order list's heading over
           a Drafts tab. */}
       <Flex align="flex-start" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
@@ -220,7 +217,7 @@ export function OrderDraftsPage() {
 
       {/* Under the title, as the order list keeps its summary — and, like it, controlling nothing. */}
       {!warehouse && !loading && (
-        <DraftSummary total={totalItems} oldest={oldest.data} page={drafts} />
+        <DraftSummary total={totalItems} oldest={oldest.data} ready={query.data?.readyCount ?? 0} />
       )}
 
       {error && (
@@ -267,7 +264,7 @@ export function OrderDraftsPage() {
               <Table.Body>
                 {drafts.map((d) => {
                   const gaps = draftGaps(d);
-                  const author = actors.data?.get(d.authorUserId.toString())?.name ?? "";
+                  const author = personName(actors.data?.get(d.authorUserId.toString()));
 
                   return (
                     <Table.Row

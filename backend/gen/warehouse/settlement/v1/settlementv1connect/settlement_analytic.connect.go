@@ -40,6 +40,9 @@ const (
 	// SettlementAnalyticServiceMetricDataProcedure is the fully-qualified name of the
 	// SettlementAnalyticService's MetricData RPC.
 	SettlementAnalyticServiceMetricDataProcedure = "/warehouse.settlement.v1.SettlementAnalyticService/MetricData"
+	// SettlementAnalyticServiceSettlementPersonListProcedure is the fully-qualified name of the
+	// SettlementAnalyticService's SettlementPersonList RPC.
+	SettlementAnalyticServiceSettlementPersonListProcedure = "/warehouse.settlement.v1.SettlementAnalyticService/SettlementPersonList"
 )
 
 // SettlementAnalyticServiceClient is a client for the
@@ -49,6 +52,10 @@ type SettlementAnalyticServiceClient interface {
 	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
 	// The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
+	// The people the Analytic screen's "created by" filter offers for a settlement metric: everyone a settlement row of
+	// this team counts for (a-who-filter-lists-the-people-on-its-rows) — read off the person report, the rows the USER
+	// group and filter read.
+	SettlementPersonList(context.Context, *connect.Request[v1.SettlementPersonListRequest]) (*connect.Response[v1.SettlementPersonListResponse], error)
 }
 
 // NewSettlementAnalyticServiceClient constructs a client for the
@@ -77,13 +84,21 @@ func NewSettlementAnalyticServiceClient(httpClient connect.HTTPClient, baseURL s
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		settlementPersonList: connect.NewClient[v1.SettlementPersonListRequest, v1.SettlementPersonListResponse](
+			httpClient,
+			baseURL+SettlementAnalyticServiceSettlementPersonListProcedure,
+			connect.WithSchema(settlementAnalyticServiceMethods.ByName("SettlementPersonList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // settlementAnalyticServiceClient implements SettlementAnalyticServiceClient.
 type settlementAnalyticServiceClient struct {
-	metricSearch *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
-	metricData   *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
+	metricSearch         *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
+	metricData           *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
+	settlementPersonList *connect.Client[v1.SettlementPersonListRequest, v1.SettlementPersonListResponse]
 }
 
 // MetricSearch calls warehouse.settlement.v1.SettlementAnalyticService.MetricSearch.
@@ -96,6 +111,12 @@ func (c *settlementAnalyticServiceClient) MetricData(ctx context.Context, req *c
 	return c.metricData.CallUnary(ctx, req)
 }
 
+// SettlementPersonList calls
+// warehouse.settlement.v1.SettlementAnalyticService.SettlementPersonList.
+func (c *settlementAnalyticServiceClient) SettlementPersonList(ctx context.Context, req *connect.Request[v1.SettlementPersonListRequest]) (*connect.Response[v1.SettlementPersonListResponse], error) {
+	return c.settlementPersonList.CallUnary(ctx, req)
+}
+
 // SettlementAnalyticServiceHandler is an implementation of the
 // warehouse.settlement.v1.SettlementAnalyticService service.
 type SettlementAnalyticServiceHandler interface {
@@ -103,6 +124,10 @@ type SettlementAnalyticServiceHandler interface {
 	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
 	// The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
+	// The people the Analytic screen's "created by" filter offers for a settlement metric: everyone a settlement row of
+	// this team counts for (a-who-filter-lists-the-people-on-its-rows) — read off the person report, the rows the USER
+	// group and filter read.
+	SettlementPersonList(context.Context, *connect.Request[v1.SettlementPersonListRequest]) (*connect.Response[v1.SettlementPersonListResponse], error)
 }
 
 // NewSettlementAnalyticServiceHandler builds an HTTP handler from the service implementation. It
@@ -126,12 +151,21 @@ func NewSettlementAnalyticServiceHandler(svc SettlementAnalyticServiceHandler, o
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	settlementAnalyticServiceSettlementPersonListHandler := connect.NewUnaryHandler(
+		SettlementAnalyticServiceSettlementPersonListProcedure,
+		svc.SettlementPersonList,
+		connect.WithSchema(settlementAnalyticServiceMethods.ByName("SettlementPersonList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.settlement.v1.SettlementAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SettlementAnalyticServiceMetricSearchProcedure:
 			settlementAnalyticServiceMetricSearchHandler.ServeHTTP(w, r)
 		case SettlementAnalyticServiceMetricDataProcedure:
 			settlementAnalyticServiceMetricDataHandler.ServeHTTP(w, r)
+		case SettlementAnalyticServiceSettlementPersonListProcedure:
+			settlementAnalyticServiceSettlementPersonListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -147,4 +181,8 @@ func (UnimplementedSettlementAnalyticServiceHandler) MetricSearch(context.Contex
 
 func (UnimplementedSettlementAnalyticServiceHandler) MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementAnalyticService.MetricData is not implemented"))
+}
+
+func (UnimplementedSettlementAnalyticServiceHandler) SettlementPersonList(context.Context, *connect.Request[v1.SettlementPersonListRequest]) (*connect.Response[v1.SettlementPersonListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementAnalyticService.SettlementPersonList is not implemented"))
 }

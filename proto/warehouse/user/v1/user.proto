@@ -56,6 +56,14 @@ service UserService {
   // UpdateProfile edits the CALLER'S OWN details. No user_id — same rule as ResetPassword.
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
 
+  // ProfileDetail reads the CALLER'S OWN details — the full row, email and phone included, which no other read
+  // gives to anyone outside a role-gated list. No user_id — same rule as UpdateProfile: the profile form loads what
+  // it then edits, so a save never blanks a field it could not show.
+  rpc ProfileDetail(ProfileDetailRequest) returns (ProfileDetailResponse) {
+    // A READ — no row, no event, no file (the-admin-team-monitors-read-only, an-agent-only-reads-for-now).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
   // UpdateUser edits ANOTHER user's details. Root/admin only.
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
 
@@ -143,6 +151,16 @@ message UpdateProfileRequest {
 }
 
 message UpdateProfileResponse {
+  User user = 1;
+}
+
+message ProfileDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // NO user_id. The subject is the token holder — same rule as UpdateProfile.
+}
+
+message ProfileDetailResponse {
   User user = 1;
 }
 
@@ -236,6 +254,11 @@ enum UserRowSort {
 
 message UserListFilter {
   string q = 1 [(buf.validate.field).string.max_len = 100];
+
+  // Leave out suspended and erased accounts — for a picker that GIVES something (a shop grant): such a person is
+  // never offered (a-suspended-user-is-never-picked). Off by default, because the member list and a "who" filter keep
+  // them, badged (a-filter-keeps-former-and-suspended-people).
+  bool exclude_suspended = 2;
 }
 
 message UserListFilterSort {

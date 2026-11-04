@@ -82,8 +82,8 @@ export const Empty: Story = {
     // Products come from A's shelves, so A comes first.
     await expect(await canvas.findByTestId("transfer-form-pick-from-first")).toBeInTheDocument();
     await expect(canvas.getByTestId("transfer-form-submit")).toBeDisabled();
-    // The shipping cost is optional and reaches no account yet — the field says so.
-    await expect(canvas.getByTestId("not-implemented-costEvent")).toBeInTheDocument();
+    // The shipping cost is optional; it posts into the paying account (built), so no pending mark.
+    await expect(canvas.queryByTestId("not-implemented-costEvent")).toBeNull();
   },
 };
 

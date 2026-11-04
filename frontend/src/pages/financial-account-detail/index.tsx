@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { Alert, Badge, Box, Flex, Heading, HStack, Link, Stack, Text } from "@chakra-ui/react";
@@ -116,7 +117,7 @@ export function FinancialAccountDetailPage() {
   const shopOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId);
   // An unknown account is named after its shop by id — shown by the shop's name.
   const shown = { ...account, name: accountName(account, nameOf) };
-  const actorName = (actorId: bigint) => actors.data?.get(actorId.toString())?.name ?? `#${actorId}`;
+  const actorName = (actorId: bigint) => personName(actors.data?.get(actorId.toString()), `#${actorId}`);
   // A picked type and a bounded window — each is a filter Clear puts back.
   const filtering = [changeTypes.length > 0, !isAllDates(range)].filter(Boolean).length;
 

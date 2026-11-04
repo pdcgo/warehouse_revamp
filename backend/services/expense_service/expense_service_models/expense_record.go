@@ -14,7 +14,8 @@ type ExpenseRecord struct {
 	// The scope. ONE team per row: a warehouse IS a team, so warehouse payroll is a cost on that
 	// warehouse, never recharged onward to the selling teams it serves (owner, 2026-07-21).
 	TeamID uint64
-	// Optional, on any kind. 0 = not attributed to one shop. Opaque selling_service id.
+	// The shop an ADS expense ran for — required on ADS, refused on every other kind (an-expense-names-a-shop-only-for-ads).
+	// 0 = no shop. A row made before that rule keeps whatever shop it carries. Opaque selling_service id.
 	ShopID uint64
 
 	// ExpenseKind's enum number. Mapped in the handler — proto enums are open, so the database does not
@@ -40,6 +41,11 @@ type ExpenseRecord struct {
 	// 0 on an expense. On an adjustment, the expense it corrects — whose team, shop, kind and day it copies, so it counts
 	// where the mistake is (an-adjustment-counts-on-the-day-it-fixes). Never another adjustment.
 	AdjustsExpenseID uint64
+
+	// The account that paid — a financial_account_service id, one of the team's active operational accounts when the
+	// expense was recorded (an-expense-must-name-the-account-that-paid). On an adjustment, its expense's, copied
+	// (a-correction-follows-the-expenses-account). 0 = made before *Paid from*, or a STOCK_LOSS: nothing posts for it.
+	FinanceAccountID uint64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

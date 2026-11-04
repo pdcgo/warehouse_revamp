@@ -21,6 +21,9 @@ was found and fixed in this pass (below).
 | `FinancialAccountOperationalSet` | `financial_accounts` (1) → `operational_accounts` | insert `ON CONFLICT DO NOTHING` |
 | the withdrawal listener | `financial_account_event_logs` (claim) → `financial_accounts` (1) | the claim is an `INSERT … ON CONFLICT DO NOTHING`; a new shop's account + link are inserted, the unique `shop_id` deciding a race |
 | the team-payment listener | `financial_account_event_logs` (claim) → `financial_accounts` (2, **two teams**, **ORDER BY id**) | the one write across two teams' books — still one statement, id order, so it composes with every transfer and every other payment. Liability's account check is a network call made BEFORE its own transaction, never under a lock |
+| the restock-payment listener *(2026-11-04)* | `financial_account_event_logs` (claim) → `financial_accounts` (1, or 2 for a move, **ORDER BY id**, one team) | `lockOwnedAccounts` — one statement, id order, so a payment moved X → Y composes with a hand transfer Y → X. Every event carries its own delta, so out-of-order deliveries need no lock between them |
+| the expense-payment listener *(2026-11-04)* | `financial_account_event_logs` (claim) → `financial_accounts` (1, the expense team's) | `lockOwnedAccounts` with one account — an expense and each correction post on ONE account (the original's, a-correction-follows-the-expenses-account), so it composes with every transfer. Each event carries its own signed delta, so out-of-order deliveries need no lock between them. Expense's account check is an in-process read made BEFORE its insert, never under a lock |
+| the transfer-shipping listener *(2026-11-04)* | `financial_account_event_logs` (claim) → `financial_accounts` (1, or 2 for a move, **ORDER BY id**, the selling team's) | the restock listener's own `postPaymentLegs` (`lockOwnedAccounts`, one statement, id order), posting `expense` — so a shipping cost moved X → Y composes with hand transfers both ways. Each event carries its own delta, and each edit's event id is its cost revision, so out-of-order deliveries need no lock between them |
 | *(every post)* | under the account lock: `financial_account_logs` → `financial_accounts.balance` → `financial_account_daily_reports` (the day, then later days) | the day rows are per account, so the account lock serialises the upsert and the shift — no advisory lock |
 
 Evidence: [`financial_account_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/financial_account_race_test.go) (`raceaudit`), 20 runs clean.
@@ -37,6 +40,15 @@ Evidence: [`financial_account_race_test.go`](../../../../backend/services/financ
 | no deadlock between opposite team payments | 8 payments seller→warehouse and warehouse→seller at once → 0 deadlocks, both balances where they started ([`team_payment_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/team_payment_race_test.go)) |
 | a team payment redelivered posts once | the same acceptance 4× at once → out of the payer once, into the creditor once |
 | a team payment takes the account lock | **Interleave: the payment BLOCKS** behind a capital post on the creditor's account, then builds on its balance |
+| a restock payment redelivered posts once | the same `RestockCreated` 4× at once → paid once ([`restock_payment_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/restock_payment_race_test.go)) |
+| no deadlock between a restock move and an opposite transfer | 4 payments moved X → Y beside 4 transfers Y → X at once → 0 deadlocks, 0 failures, money conserved |
+| a restock payment takes the account lock | **Interleave: the restock post BLOCKS** behind a capital post on its account, then builds on its balance |
+| an expense redelivered posts once | the same `ExpenseCreated` 4× at once → paid once ([`expense_payment_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/expense_payment_race_test.go)) |
+| expenses and corrections beside hand transfers on the same account | 2 expenses, 2 corrections, 2 transfers out and 2 in, at once → 0 deadlocks, 0 failures, both balances exactly the sum |
+| an expense post takes the account lock | **Interleave: the expense post BLOCKS** behind a capital post on its account, then builds on its balance |
+| a transfer's shipping redelivered posts once | the same `WarehouseTransferCreated` 4× at once → paid once ([`transfer_shipping_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/transfer_shipping_race_test.go)) |
+| shipping, its edits, moves and refunds beside hand transfers on the same accounts | 2 trips, 2 edits, 2 moves X → Y, 2 refunds, 2 transfers each way, at once → 0 deadlocks, 0 failures, both balances exactly the sum |
+| a shipping post takes the account lock | **Interleave: the shipping post BLOCKS** behind a capital post on its account, then builds on its balance |
 
 ---
 

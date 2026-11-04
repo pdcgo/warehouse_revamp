@@ -59,6 +59,7 @@ import { StageStepper } from "./components/StageStepper";
 import { SummaryTiles } from "./components/SummaryTiles";
 import { CopyText } from "../../components/chrome/CopyText";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { personName } from "../../lib/users";
 
 // THE SELLER'S ORDER DETAIL — the owner's page of sections, approved as a preview and now routed at
 // `/orders/:orderId` for every team that is not a warehouse (the picker is `index.tsx`).
@@ -425,7 +426,7 @@ export function SellerOrderDetailPage() {
         <Rail
           testId="timeline-rail"
           items={[...steps].reverse().map((log) => {
-            const who = actors.data?.get(log.actorId.toString())?.name ?? "";
+            const who = personName(actors.data?.get(log.actorId.toString()));
             const fromKey = timelineFromKey(log.from);
 
             return {

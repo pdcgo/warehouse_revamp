@@ -3,6 +3,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
+import { FORMER_USER_ID } from "../../../.storybook/fixtures";
+import { restockRaisedByForStory } from "../../../.storybook/restockStub";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { RestockSellingPage } from "./index";
@@ -67,6 +69,18 @@ export const OngoingRowMenu: Story = {
 };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
+
+// A FORMER USER (erase-keeps-the-row): a restock raised by somebody since erased still names them — "by Former user
+// #69", never the synthetic username `erased69`.
+export const RaisedByAFormerUser: Story = {
+  beforeEach: () => restockRaisedByForStory(501n, FORMER_USER_ID),
+  play: async ({ canvasElement }) => {
+    const row = (await loaded(canvasElement)).getByTestId("restock-row-501");
+
+    await waitFor(() => expect(row).toHaveTextContent("Former user #69"));
+    await expect(row).not.toHaveTextContent("erased69");
+  },
+};
 
 // Five statuses, five tabs, plus All (statusTabs.ts).
 export const FiveStatusTabs: Story = {

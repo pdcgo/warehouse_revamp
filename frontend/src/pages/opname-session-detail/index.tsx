@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -111,7 +112,7 @@ export function OpnameSessionDetailPage() {
   const session = detail.data?.session ?? null;
   const sessionActors = detail.data?.actors ?? new Map<string, PublicUser>();
   const rowActors = rows.data?.actors ?? new Map<string, PublicUser>();
-  const nameOf = (actors: Map<string, PublicUser>, id: bigint) => (id > 0n ? (actors.get(id.toString())?.name ?? `#${id}`) : "");
+  const nameOf = (actors: Map<string, PublicUser>, id: bigint) => (id > 0n ? personName(actors.get(id.toString()), `#${id}`) : "");
   const teamName = (id: bigint) => teams.data?.[id.toString()]?.name ?? `#${id}`;
   const error = detail.isError ? rpcError(detail.error) : rows.isError ? rpcError(rows.error) : "";
 

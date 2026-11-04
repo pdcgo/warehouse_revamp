@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -192,7 +193,7 @@ export function RestockSellingPage() {
     // avatar the same read carries is what the detail page's timeline renders instead.
     const user = actors?.get(id.toString());
 
-    return user ? user.name || user.username : t("restock.table.userRef", { id: id.toString() });
+    return personName(user, t("restock.table.userRef", { id: id.toString() }));
   }
 
   if (!current) {

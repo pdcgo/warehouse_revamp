@@ -95,7 +95,7 @@ func restockAs(t *testing.T, svc *inventory_v1.Service, creator, accepter contex
 // counting it in, and the other way round.
 func TestOverride_RestockTrailAndTransaction(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts())
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil)
 	rack := newRack(t, svc, otWarehouse, "rak-a")
 
 	rootInSeller := ctxAs(ovRoot, otMelati, role_basev1.Role_ROLE_UNSPECIFIED)
@@ -133,7 +133,7 @@ func TestOverride_RestockTrailAndTransaction(t *testing.T) {
 // A ROOT WHO IS A MEMBER OF THE TEAM acts as that member — only the bypass is an override.
 func TestOverride_RootWhoIsAMemberIsNotAnOverride(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts())
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil)
 	rack := newRack(t, svc, otWarehouse, "rak-a")
 
 	rootMember := ctxAs(ovRoot, otMelati, role_basev1.Role_ROLE_ROOT)

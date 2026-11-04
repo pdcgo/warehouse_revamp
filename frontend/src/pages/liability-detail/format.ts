@@ -13,6 +13,9 @@ export function causeKey(type: LiabilitySourceType): string {
     // ORDER, where the restock's names a restock: "restock #<order>" would send the reader to the wrong record.
     case LiabilitySourceType.RETURN_INCIDENTAL_FEE:
       return "liabilityDetail.causeReturnIncidentalFee";
+    // The courier B paid at its door on a warehouse transfer (a-transfer-charge-is-a-transfer-fee) — keyed by the transfer.
+    case LiabilitySourceType.TRANSFER_FEE:
+      return "liabilityDetail.causeTransferFee";
     case LiabilitySourceType.PRODUCT_FEE:
       return "liabilityDetail.causeProductFee";
     case LiabilitySourceType.PAYMENT:

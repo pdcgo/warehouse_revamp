@@ -24,7 +24,7 @@ func TestStockPicker_TakesAndReleasesByTheOrdersRef(t *testing.T) {
 	)
 
 	db := san_testdb.DB(t)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	picker := NewStockPicker(inventory)
 	ctx := context.Background()
 

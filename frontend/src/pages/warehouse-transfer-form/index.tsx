@@ -7,7 +7,6 @@ import {
   Card,
   Field,
   Flex,
-  HStack,
   Icon,
   IconButton,
   SimpleGrid,
@@ -24,8 +23,6 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useStockAvailability } from "../../features/inventory/queries";
 import { useCreateWarehouseTransfer } from "../../features/warehouseTransfer/queries";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { OwnStockedProductPicker } from "../../components/products/OwnStockedProductPicker";
 import type { PickedProduct } from "../../components/products/ProductSelect";
@@ -33,7 +30,6 @@ import { QuantityInput } from "../../components/inputs/QuantityInput";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { FinancialAccountSelect } from "../../components/pickers/FinancialAccountSelect";
 import { toaster } from "../../components/feedback/Toaster";
-import { TRANSFER_FORM_PENDING } from "./pending";
 
 interface LineDraft {
   productId: bigint;
@@ -152,8 +148,6 @@ export function WarehouseTransferFormPage() {
         <Icon as={ArrowLeft} boxSize="4" />
         {t("warehouseTransfer.form.back")}
       </Button>
-
-      <NotImplementedSummary list={TRANSFER_FORM_PENDING} />
 
       {/* WHERE — A and B. B never equals A (a-transfer-never-goes-to-its-own-warehouse), so A is left out of B's list. */}
       <Card.Root>
@@ -290,10 +284,7 @@ export function WarehouseTransferFormPage() {
           <SimpleGrid columns={{ base: 1, md: 2 }} gap="card">
             <Field.Root>
               <Field.Label>
-                <HStack gap="1.5">
-                  {t("warehouseTransfer.cost.shippingCost")}
-                  <NotImplemented list={TRANSFER_FORM_PENDING} id="costEvent" />
-                </HStack>
+                {t("warehouseTransfer.cost.shippingCost")}
               </Field.Label>
               <CurrencyInput value={cost} onChange={setCost} data-testid="transfer-form-cost" />
             </Field.Root>

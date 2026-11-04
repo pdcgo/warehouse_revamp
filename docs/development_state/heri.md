@@ -7,6 +7,35 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-04 · table mirroring — finding what changed in the old system
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A package that finds every changed row in the old system's database** | the migration job can ask *"what is new, edited or deleted in `users` since last time?"* and copy only that into the new system, on a schedule. Nothing uses it yet — the job that copies is the next step |
+| **It refuses to wipe the copy by accident** | if a run finds more than 50 rows AND more than 10% of a table gone at once (a table caught half-empty during maintenance), it sends nothing and says so; an operator lets a real purge through by raising the limit once |
+| **Two jobs can't run over each other** | a run that starts while the previous one is still going skips that table and says *still running* |
+
+**Next:** the scheduled job that copies the old system's tables into the new one.
+
+## 2026-11-04 (afternoon) · the backlog's bugs, money into accounts, expenses, returns
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Saving your profile keeps your email and phone** | it used to blank them, which broke the phone password reset |
+| **Shop access goes only to active team members** | a non-member, a suspended or an erased person is refused, and the picker no longer offers them |
+| **The admin team's Admin can no longer look up any account** | the exact search stays with the people who manage members |
+| **A warehouse opens the labels it needs** | an order's label from the order page, and a restock's label photo at its door — checked against the warehouse, nothing shared |
+| **Statement money never lands on a guessed order** | two live orders on one marketplace ref post to the shop, marked "several orders" with both ids |
+| **Analytic's "Created by" works for everyone who reads it** | it lists the people on the figures, not a system-wide search |
+| **Money reaches the accounts** | restock payments, a transfer's shipping and every expense leave the account that paid; edits post the difference, cancels give it back; a transfer's courier fee is owed in the team balance |
+| **Expenses name the account that paid** | *Paid from* is required; only Ads names a shop, and must; corrections follow the original's account; a phone layout; dates in WIB |
+| **A warehouse receives a return by scanning** | *Receive a Return* finds the order by ref or tracking number, forces it to return if needed, then accepts it |
+| **Every allowed order move has a button** | Mark as Problem, Mark as Lost, Return Goods where the rules allow them |
+| **Smaller fixes** | shop filters work; the drafts Ready count covers every page; erased people read "Former user #57"; errors read as sentences; stale "not built" marks removed |
+| **One ranked backlog** | [backlog.md](backlog.md), re-ranked after each slice |
+
+**Next:** the backlog's Tier 3 — a duplicate-ref warning on the order form, then stock that stays taken when an order fails.
+
 ## 2026-11-04 · inventory — the count locks, found stock, a warehouse's Products; the backlog
 
 | What shipped | What it means for a person |

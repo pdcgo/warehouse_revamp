@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Card, Flex, HStack, Icon, SimpleGrid, Span, Stack, Table, Text } from "@chakra-ui/react";
-import { ArrowRight } from "lucide-react";
+import { Badge, Button, Card, Flex, HStack, Icon, SimpleGrid, Span, Stack, Table, Text } from "@chakra-ui/react";
+import { ArrowRight, ImageIcon } from "lucide-react";
+
+import { documentClient, rpcError } from "../../api/clients";
 
 import type { WarehouseTransfer, WarehouseTransferItem } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { WarehouseTransferStatus as S } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
@@ -13,6 +16,7 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
+import { toaster } from "../../components/feedback/Toaster";
 import { brokenOf, missingOf, problemValue, unitsSent } from "./summary";
 
 // The three cards both transfer detail pages show — the route, the parcel and the lines — in one place, so the selling
@@ -116,6 +120,13 @@ export function ParcelCard({
             value={transfer.receipt || <Span color="fg.muted">—</Span>}
             testId="transfer-detail-tracking"
           />
+          {shipped && (
+            <DetailField
+              label={t("warehouseTransfer.detail.labelPhoto")}
+              value={<LabelPhoto transfer={transfer} teamId={teamId} />}
+              testId="transfer-detail-label-photo"
+            />
+          )}
           {showMoney && (
             <>
               <DetailField
@@ -158,6 +169,47 @@ export function ParcelCard({
         </SimpleGrid>
       </Card.Body>
     </Card.Root>
+  );
+}
+
+/**
+ * The photo of the label A attached at ship (WarehouseTransferShip stores its document id as `receipt_file`).
+ *
+ * ⚠ ONLY A CAN OPEN IT. The document is A's upload and nothing shares it, and GetDownloadUrl reads only the owning team
+ * or a team it was shared with — so B and the selling team are told the photo exists rather than offered a button the
+ * server would answer NotFound. The URL is minted on click, never on render (a signed link would expire on an open page).
+ */
+function LabelPhoto({ transfer, teamId }: { transfer: WarehouseTransfer; teamId: bigint }) {
+  const { t } = useTranslation();
+  const [opening, setOpening] = useState(false);
+  const documentId = transfer.receiptFile;
+
+  if (!documentId) {
+    return <Span color="fg.muted">{t("warehouseTransfer.detail.noLabelPhoto")}</Span>;
+  }
+
+  if (teamId !== transfer.fromWarehouseId) {
+    return <Span color="fg.muted">{t("warehouseTransfer.detail.labelPhotoAtSender")}</Span>;
+  }
+
+  async function open() {
+    setOpening(true);
+
+    try {
+      const res = await documentClient.getDownloadUrl({ teamId, documentId });
+      window.open(res.url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toaster.create({ type: "error", title: rpcError(err) });
+    } finally {
+      setOpening(false);
+    }
+  }
+
+  return (
+    <Button size="xs" variant="ghost" loading={opening} data-testid="transfer-detail-label-photo-open" onClick={open}>
+      <Icon as={ImageIcon} boxSize="3" />
+      {t("warehouseTransfer.detail.openLabelPhoto")}
+    </Button>
   );
 }
 

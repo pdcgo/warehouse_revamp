@@ -11,6 +11,7 @@ package warehouse.events.v1;
 import "buf/validate/validate.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/timestamp.proto";
+import "warehouse/expense/v1/expense.proto";
 import "warehouse/role_base/v1/role.proto";
 import "warehouse/settlement/v1/settlement.proto";
 
@@ -92,7 +93,7 @@ message Event {
     option (buf.validate.oneof).required = true;
 
     // Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-    // inventory 400–499, liability 500–599.
+    // inventory 400–499, liability 500–599, expense 600–699.
     MemberRemoved member_removed = 100;
 
     OrderPlaced order_placed = 200;
@@ -112,6 +113,9 @@ message Event {
     WarehouseTransferAccepted warehouse_transfer_accepted = 407;
 
     LiabilityPaymentAccepted liability_payment_accepted = 500;
+
+    ExpenseCreated expense_created = 600;
+    ExpenseAdjusted expense_adjusted = 601;
   }
 }
 
@@ -597,9 +601,9 @@ message WarehouseTransferCancelled {
 // (balance-posts-the-transfers-on-site-debt-from-the-event). Published after EVERY accept, a charge of 0 included; the
 // selling team owes B the charge, and nothing for 0.
 //
-// `event_id` is `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once. ⚠ Balance does not listen
-// yet: the source type it posts under is open (balance context Q13) — never INCIDENTAL_FEE keyed by the transfer id,
-// which collides with a restock's of the same number.
+// `event_id` is `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once. Balance posts it as a
+// TRANSFER_FEE keyed by the transfer (a-transfer-charge-is-a-transfer-fee) — never INCIDENTAL_FEE, which is keyed by a
+// restock and would collide with a restock of the same number.
 message WarehouseTransferAccepted {
   option (event_config).topic = "warehouse-transfer-accepted";
 
@@ -642,4 +646,59 @@ message LiabilityPaymentAccepted {
   // Whether they accepted as Root or the Administrator from outside the creditor team — the payment row's
   // `confirmed_is_override`, read beside `confirmed_by` (an-override-is-stamped-in-every-service).
   bool actor_is_override = 8;
+}
+
+// ExpenseCreated announces an expense a person typed, and the account that paid it (an-expense-must-name-the-account-that-paid).
+//
+// Published by expense_service after ExpenseCreate commits; financial_account_service posts `amount` OUT of
+// `finance_account_id` — as `ads_expense` when the kind is ADS, `expense` for the rest (ads-expense-joins-the-types).
+// Never published for a STOCK_LOSS (inventory posts it, it moves no cash) and never for an account 0. `event_id` is
+// `expense-created:<expense_id>` — an expense is created once (a row never changes, an-expense-is-never-edited).
+message ExpenseCreated {
+  option (event_config).topic = "expense-created";
+
+  uint64 expense_id = 1;
+  uint64 team_id = 2;
+  warehouse.expense.v1.ExpenseKind kind = 3;
+  // The account that paid — one of the team's operational accounts when the expense was recorded.
+  uint64 finance_account_id = 4;
+  // Whole rupiah, always positive: the money that went out.
+  int64 amount = 5;
+  // The day the expense belongs to (YYYY-MM-DD), as the person chose it — the day the account's row counts on.
+  string occurred_on = 6;
+  // The shop an ADS expense ran for; 0 on every other kind.
+  uint64 shop_id = 7;
+  // Who typed it, and whether as Root or the Administrator from outside the team (an-override-is-stamped-in-every-service).
+  uint64 actor_id = 8;
+  bool actor_is_override = 9;
+  int64 created_at_unix = 10;
+}
+
+// ExpenseAdjusted announces a correction of an expense — an adjustment, or the screen's Batalkan, which is an adjustment
+// of minus what the expense still counts for (every-correction-is-a-signed-adjustment).
+//
+// It names the ORIGINAL expense's account, copied onto the adjustment, never typed (a-correction-follows-the-expenses-account):
+// financial_account_service posts the signed `amount` there with the opposite sign — a correction down gives money
+// back, a correction up takes more, a cancel gives the net back. Never published for an expense with no account (made
+// before *Paid from*) nor for a STOCK_LOSS. `event_id` is `expense-adjusted:<adjustment_id>` — one per adjustment row.
+message ExpenseAdjusted {
+  option (event_config).topic = "expense-adjusted";
+
+  // The adjustment row, and the expense it corrects.
+  uint64 adjustment_id = 1;
+  uint64 expense_id = 2;
+  uint64 team_id = 3;
+  // The expense's kind, copied — ADS posts as `ads_expense`.
+  warehouse.expense.v1.ExpenseKind kind = 4;
+  // The expense's account, copied.
+  uint64 finance_account_id = 5;
+  // Whole rupiah, SIGNED, never 0 — the correction itself, not a new total: minus is less was spent.
+  int64 amount = 6;
+  // The corrected expense's day, copied (an-adjustment-counts-on-the-day-it-fixes).
+  string occurred_on = 7;
+  uint64 shop_id = 8;
+  // Who corrected it, and whether as Root or the Administrator from outside the team.
+  uint64 actor_id = 9;
+  bool actor_is_override = 10;
+  int64 created_at_unix = 11;
 }

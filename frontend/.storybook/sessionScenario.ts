@@ -1,5 +1,6 @@
 import type { OrderTransactionRefusalReason } from "../src/gen/warehouse/inventory/v1/order_transaction_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
+import type { OrderLabelReason, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 
 // WHO is standing in front of the screen — set in a story's `beforeEach`, reset in preview.tsx.
 //
@@ -47,6 +48,15 @@ export const orderExportScenario = {
  * What the last OrderReceiptUpdate (Edit Resi) was asked — each field `undefined` when it was not sent, which is the
  * half a story pins: only what changed goes over the wire (the-seller-edits-the-resi-until-handover).
  */
+/**
+ * OrderLabels (a-warehouse-prints-the-labels-of-orders-it-ships): who asked for which order's label, and — when a story
+ * sets it — the refusal the stub answers every asked order with, so a story can show what the screen says.
+ */
+export const orderLabelScenario = {
+  last: undefined as undefined | { teamId: bigint; orderIds: bigint[] },
+  refusal: undefined as undefined | OrderLabelReason,
+};
+
 export const receiptUpdateScenario = {
   last: undefined as undefined | { orderId: bigint; receiptCode?: string; documentId?: string },
 };
@@ -113,7 +123,20 @@ export const returnAcceptScenario = {
   last: undefined as
     | undefined
     | { orderId: bigint; missing: { orderItemId: bigint; quantity: number }[]; courierCharge: bigint; courierChargeNote: string },
+  /**
+   * The status a story reads an order in, by id — no fixture is shipped, completed or in a problem, and a parcel the
+   * warehouse receives (a-return-is-received-by-search-then-forced) is one of those. `inReturn` and `accepted` win over
+   * it, so a forced return (OrderStatusChange to `return`) reads as one for the rest of the story.
+   */
+  statusOf: {} as Record<string, OrderStatus>,
 };
+
+/** A `beforeEach`: the stub reads this order in `status` (e.g. shipped) — what a parcel coming back may be in. */
+export function withOrderStatus(orderId: bigint, status: OrderStatus) {
+  return () => {
+    returnAcceptScenario.statusOf = { ...returnAcceptScenario.statusOf, [orderId.toString()]: status };
+  };
+}
 
 /** A `beforeEach`: the stub reads these orders in `return` — claimed back, waiting for the warehouse's accept. */
 export function withOrdersInReturn(...orderIds: bigint[]) {
@@ -130,6 +153,8 @@ export function resetSessionScenario() {
   orderExportScenario.last = undefined;
   orderImportScenario.last = undefined;
   receiptUpdateScenario.last = undefined;
+  orderLabelScenario.last = undefined;
+  orderLabelScenario.refusal = undefined;
   receiptCheckScenario.refused = 0;
   takeRefusalScenario.refusal = undefined;
   orderStatScenario.calls = 0;
@@ -138,6 +163,7 @@ export function resetSessionScenario() {
   returnAcceptScenario.labels = [];
   returnAcceptScenario.refusal = undefined;
   returnAcceptScenario.last = undefined;
+  returnAcceptScenario.statusOf = {};
 }
 
 /** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */

@@ -207,7 +207,7 @@ flowchart TD
   claim -->|"0 rows — already folded"| c1["COMMIT"] --> ok[/"200"/]
   claim -->|"1 row"| adv["advisory lock — shop THEN user"]
   adv --> sd["shop day upsert, later days shifted, state rewritten"]
-  sd --> ud["user day upsert, later days shifted, state rewritten"]
+  sd --> ud["user day upsert, later days shifted, state rewritten, last_day raised"]
   ud --> c2["COMMIT"] --> ok
   sd -.->|"any error"| rb["ROLLBACK — the claim goes with it"] --> e5
 ```
@@ -236,7 +236,7 @@ sequenceDiagram
   S->>S: start_date before the window's first whole Jakarta day? REFUSE, naming the window
   S->>+DB: process_event_lock FOR UPDATE — take it if off, or on past its one-minute lease
   DB-->>-S: taken with its updated_at, or refuse
-  S->>+DB: one transaction — DELETE day at or after start from the two daily tables and settlement_event_logs
+  S->>+DB: one transaction — DELETE day at or after start from the two daily tables and settlement_event_logs, then last_day of every person state the cut reached = MAX(day) left
   DB-->>-S: counts
   S->>+G: seek settlement-fold to start_date 00:00 WIB
   G-->>-S: accepted
@@ -253,7 +253,10 @@ sequenceDiagram
 | the lock is already held | another replay, under a minute old — past that it is a dead replay's and is taken over ([a-dead-replays-lock-expires-after-a-minute](../../business/settlement/meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute)) |
 
 ⚠ **"started", never "done"** — the seek is asynchronous. ⚠ The state tables are not in the delete: they
-are derived from the newest daily row on every fold, so each redelivered event re-derives them.
+are derived from the newest daily row on every fold, so each redelivered event re-derives them. The one exception is
+`user_settlement_reports.last_day`: the fold only RAISES it, so the replay's transaction recomputes it as `MAX(day)` of
+the daily rows it left, for every person state at or after `start_date` — NULL for a person cut to no day, until the
+redelivery raises it ([the-person-list-reads-the-last-day-from-the-user-report](../../business/settlement/context_decision.md#the-person-list-reads-the-last-day-from-the-user-report)).
 
 ## AnalyticMaintenanceRun — `[ROOT, ADMIN]`
 
@@ -281,6 +284,20 @@ page.
   counts it.
 - `order_id` breaks ties, so equal rows keep one order across pages. `OrderSettlementDetail` returns the log **oldest first and unpaginated** — it grows with one order's
 activity — and an order with no account is **`NotFound`**, never a zeroed row.
+
+### Who a USER filter offers — `SettlementPersonList`
+
+The Analytic screen's *created by* field over a settlement metric
+([a-who-filter-lists-the-people-on-its-rows](../../business/user/context_decision.md#a-who-filter-lists-the-people-on-its-rows)):
+one row per person of `user_settlement_reports` in the team (`user_id <> 0`, `last_day IS NOT NULL`), ordered by its
+`last_day` — the newest day the person has a daily row on, kept by the fold and the replay
+([the-person-list-reads-the-last-day-from-the-user-report](../../business/settlement/context_decision.md#the-person-list-reads-the-last-day-from-the-user-report))
+— newest first, the id breaking a tie, paged like `OrderCreatorList`. The root team reads every team's, as `scopeOf`:
+a person once, at `MAX(last_day)` over their teams.
+MetricData's roles exactly ([whoever-reads-a-list-may-filter-it](../../business/user/context_decision.md#whoever-reads-a-list-may-filter-it)).
+Former and suspended people stay. Two queries over one row per (person, team), never the daily rows —
+[audit](../../../audits/services/settlement_service/performances/SettlementPersonList.md). The screen unions it by id with
+selling's `OrderCreatorList` when order and settlement metrics share the table (`features/analytic/people.ts`).
 
 ### The reports — `MetricSearch` / `MetricData`
 

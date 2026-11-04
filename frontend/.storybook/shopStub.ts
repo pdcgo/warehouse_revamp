@@ -13,7 +13,7 @@
 //                                      the FIRST user granted a shop becomes its primary CS; removing the primary's
 //                                      grant leaves the shop with none (0); Make Primary needs a grant.
 //
-// And the list's shape: ShopList's `q` over the name and the code, its sort by name or code, its paging — newest first
+// And the list's shape: ShopList's `q` over the name and the code, its marketplace / primary CS / no-primary filters, its sort by name or code, its paging — newest first
 // (id DESC) when no sort is sent.
 //
 // WRITEABLE: a shop added in one step is on the list in the next. Module state survives between stories in one tab —
@@ -92,10 +92,15 @@ const matches = (q: string | undefined, ...fields: string[]) => {
 export const shopService = {
   shopList: (req: {
     teamId: bigint;
-    filter?: { q?: string };
+    filter?: { q?: string; marketplace?: Marketplace; primaryUserId?: bigint; noPrimary?: boolean };
     sort?: { sortType?: CommonSortType; s?: { case?: string; value?: unknown } };
     page?: PageReq;
   }) => {
+    const f = req.filter ?? {};
+    // A person and nobody at once cannot both hold — the server answers InvalidArgument.
+    if (f.noPrimary && (f.primaryUserId ?? 0n) > 0n) {
+      throw new ConnectError("a shop cannot both have this primary cs and have none", Code.InvalidArgument);
+    }
     const by = req.sort?.s?.case === "shop" ? (req.sort.s.value as ShopRowSort) : ShopRowSort.UNSPECIFIED;
     const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
     const field = (s: ShopRow) => (by === ShopRowSort.SHOP_CODE ? s.shopCode : s.name);
@@ -109,7 +114,11 @@ export const shopService = {
     return paged(
       "shop",
       (live(req.teamId).length > 0 ? live(req.teamId) : rows.filter((r) => !r.deleted))
-        .filter((s) => matches(req.filter?.q, s.name, s.shopCode))
+        .filter((s) => matches(f.q, s.name, s.shopCode))
+        // #16 — the marketplace, the primary CS and "no primary CS" narrow the whole set, as the server's WHERE does.
+        .filter((s) => !f.marketplace || s.marketplace === f.marketplace)
+        .filter((s) => !f.primaryUserId || s.primaryUserId === f.primaryUserId)
+        .filter((s) => !f.noPrimary || s.primaryUserId === 0n)
         .sort(order),
       req.page,
     );

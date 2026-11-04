@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
@@ -238,11 +238,37 @@ export const TheParcelAndThePayment: Story = {
     await waitFor(() => expect(canvas.getByTestId("restock-detail-paid-from")).toHaveTextContent("BCA Operasional"));
     await expect(canvas.getByTestId("restock-detail-invoice")).toHaveTextContent("INV/2026/09/0412");
     await expect(canvas.getByTestId("restock-detail-tracking")).toHaveTextContent("SCP5544332211");
-    await expect(canvas.getByTestId("restock-detail-receipt-photo")).toHaveAttribute(
-      "href",
-      "https://example.test/labels/scp5544332211.jpg",
-    );
     await waitFor(() => expect(canvas.getByTestId("restock-detail-courier")).toHaveTextContent("SiCepat"));
+  },
+};
+
+// #18 — receipt_file is a DOCUMENT ID, never a URL: the selling team (its owner) opens the photo through a link minted on
+// click by GetDownloadUrl, so the button carries no href and the signed URL never sits on an open page.
+export const TheLabelPhotoOpensASignedLink: Story = {
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    const button = canvas.getByTestId("restock-detail-receipt-photo-open");
+    await expect(button).toHaveTextContent("Open Label Photo");
+    await expect(button).not.toHaveAttribute("href");
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith("https://example.invalid/proof/doc-restock-503-label", "_blank", "noopener,noreferrer"),
+    );
+    open.mockRestore();
+  },
+};
+
+// Nothing attached reads as a stated absence, not an empty cell or a dead button.
+export const NoLabelPhoto: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("restock-detail-receipt-photo")).toHaveTextContent("No photo of the label");
+    await expect(canvas.queryByTestId("restock-detail-receipt-photo-open")).toBeNull();
   },
 };
 

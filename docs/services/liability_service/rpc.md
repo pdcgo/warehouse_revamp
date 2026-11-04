@@ -73,6 +73,43 @@ sequenceDiagram
 ⚠ **The route is an open webhook**, as the restock's is: restrict `/event/liability-order-return-accepted/push` at the
 ingress to Pub/Sub's push.
 
+## The courier at a transfer's door — `ChargeTransferCourier`
+
+The restock's twin at a **warehouse transfer**'s receiving door
+([balance-posts-the-transfers-on-site-debt-from-the-event](../../business/inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event),
+[a-transfer-charge-is-a-transfer-fee](../../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee)):
+B pays the courier on site, B's accept saves the charge and its note on the transfer, and liability posts the debt when
+*Warehouse Transfer Accepted* arrives. Built 2026-11-04.
+
+```mermaid
+sequenceDiagram
+    participant B as Warehouse B
+    participant I as inventory_service
+    participant PS as Pub/Sub
+    participant S as liability_service
+
+    B->>I: WarehouseTransferAccept — the count, the courier charge and its note
+    I->>I: ONE transaction - batches, problem rows, the charge on the transfer
+    I->>PS: Warehouse Transfer Accepted - after every accept, a charge of 0 included
+    PS->>S: push to /event/liability-warehouse-transfer-accepted/push
+    S->>S: ChargeTransferCourier - transfer_fee keyed by the transfer, two legs
+```
+
+| | |
+| --- | --- |
+| who owes whom | the transfer's selling team (`team_id`) owes the RECEIVING warehouse (`to_warehouse_id`, B) — never A |
+| the source | **`transfer_fee`** (`LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10`), `source_id` = the transfer — never `incidental_fee`, whose key is a restock: transfer 41 beside restock 41 for the same pair would be swallowed as a redelivery. Proved by `TestChargeTransferCourier_DoesNotCollideWithARestockOfTheSameNumber` |
+| the amount | `warehouse_additional_cost`, a double as inventory stores it, rounded to whole rupiah at this service's edge |
+| 0 | posts nothing, acked — the event is published after every accept |
+| to oneself | nothing — skipped before `PostEntry`, as the return's |
+| a redelivery | posts nothing new — `ErrAlreadyPosted` is the normal answer; 8 deliveries at once post once (`transfer_courier_charge_race_test.go`) |
+| actor | the event's `actor_id`, who counted it in. ⚠ The event carries no `actor_is_override`, so the legs are never stamped an override |
+| the note | not stored — `liability_logs` has no note column, as for the restock's and the return's charge; it stays on the transfer |
+| a lost event | the debt is unposted but not unrecorded — the charge is on the accepted transfer, and re-publishing posts it once |
+
+⚠ **The route is an open webhook**, as the restock's is: restrict `/event/liability-warehouse-transfer-accepted/push` at
+the ingress to Pub/Sub's push.
+
 ## How the two services are joined
 
 `inventory_service` declares `LiabilityPoster` in its own terms and imports nothing from liability; the adapter lives in

@@ -136,6 +136,21 @@ func (s *Service) AnalyticReplayCompute(
 			return logs.Error
 		}
 
+		// THE PERSON'S LAST DAY, recomputed for every scope the cut reached
+		// (#the-person-list-reads-the-last-day-from-the-user-report). The fold only raises it, so a day the replay
+		// removed and the redelivery never brings back would otherwise stay on the list. MAX of the rows left — NULL
+		// when none are, and the redelivery raises it again from there. Same transaction: never a list that orders
+		// by days the daily table no longer has.
+		lastDays := tx.Exec(`
+UPDATE user_settlement_reports u
+SET last_day     = (SELECT MAX(d.day) FROM user_settlement_daily_reports d
+                    WHERE d.user_id = u.user_id AND d.team_id = u.team_id),
+    last_updated = NOW()
+WHERE u.last_day >= CAST(? AS date)`, day)
+		if lastDays.Error != nil {
+			return lastDays.Error
+		}
+
 		shopDays = shop.RowsAffected
 		userDays = user.RowsAffected
 		eventLogs = logs.RowsAffected

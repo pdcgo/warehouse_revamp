@@ -18,7 +18,7 @@ func TestPerf_WarehouseTransferCreate(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLedgerBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20))
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil)
 	racks := []uint64{newRack(t, svc, wtA, "perf-a"), newRack(t, svc, wtA, "perf-b"), newRack(t, svc, wtA, "perf-c")}
 	perfStock(t, db, wtA, 20, 10, 100, racks)
 
@@ -48,7 +48,7 @@ func TestPerf_WarehouseTransferAccept(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLedgerBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20))
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil)
 	racks := []uint64{newRack(t, svc, wtA, "perf-a"), newRack(t, svc, wtA, "perf-b"), newRack(t, svc, wtA, "perf-c")}
 	perfStock(t, db, wtA, 20, 10, 100, racks)
 	atB := newRack(t, svc, wtB, "perf-b1")

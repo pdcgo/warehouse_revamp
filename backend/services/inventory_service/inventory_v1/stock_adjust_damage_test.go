@@ -163,7 +163,7 @@ func approveFound(t *testing.T, svc *inventory_v1.Service, warehouse, product, r
 func TestStockAdjust_AFoundGivesTheReimbursementBack(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := inventory_v1.NewService(db, poster, nil, nil, nil, damageFacts())
+	svc := inventory_v1.NewService(db, poster, nil, nil, nil, damageFacts(), nil)
 
 	const warehouse uint64 = 5
 
@@ -342,7 +342,7 @@ func TestStockAdjust_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := inventory_v1.NewService(db, &realPoster{liability: liability_v1.NewService(db, nil, nil, nil)}, nil, nil, nil,
-		damageFacts())
+		damageFacts(), nil)
 
 	const warehouse uint64 = 5
 

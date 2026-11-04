@@ -11,9 +11,9 @@
 
 import { Code, ConnectError } from "@connectrpc/connect";
 
-import type { OrderReturnAcceptRequest } from "../src/gen/warehouse/selling/v1/order_pb";
+import type { OrderReturnAcceptRequest, OrderStatusChangeRequest } from "../src/gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
-import { orderDetailFor } from "./fixtures";
+import { orderDetailFor, orders } from "./fixtures";
 import { returnWarehouseOf } from "./returnConfigurationStub";
 import { returnAcceptScenario } from "./sessionScenario";
 
@@ -27,7 +27,43 @@ export function scenarioStatus<T extends { id: bigint; status: OrderStatus }>(or
     return { ...order, status: OrderStatus.RETURN };
   }
 
+  const story = returnAcceptScenario.statusOf[order.id.toString()];
+  if (story !== undefined) {
+    return { ...order, status: story };
+  }
+
   return order;
+}
+
+// The statuses an order may be returned from (a-forced-return-follows-the-status-move) — the server's orderMoves edges into
+// `return`, by customer service or forced by the warehouse.
+const RETURNS_FROM = [OrderStatus.SHIPPING, OrderStatus.SHIPPED, OrderStatus.PROBLEM, OrderStatus.COMPLETED];
+
+/**
+ * OrderStatusChange as the stub answers it: either end of an order moves it (the server's per-edge side rule is the Go
+ * tests'). A move INTO `return` follows orderMoves — only from shipping, shipped, problem or completed, else refused per
+ * order — and is KEPT for the rest of the story (the order reads in `return`), so a forced return is then accepted. Every
+ * other move is answered and forgotten, as before.
+ */
+export function orderStatusChange(req: OrderStatusChangeRequest) {
+  return {
+    results: req.orderIds.map((orderId) => {
+      const found = orders.find((o) => o.id === orderId && (o.teamId === req.teamId || o.warehouseId === req.teamId));
+      if (!found) {
+        return { orderId, moved: false, refusedReason: "not one of this team's orders" };
+      }
+
+      if (req.to === OrderStatus.RETURN) {
+        if (!RETURNS_FROM.includes(scenarioStatus(found).status)) {
+          return { orderId, moved: false, refusedReason: "an order returns only once it has left the warehouse" };
+        }
+
+        returnAcceptScenario.inReturn = [...returnAcceptScenario.inReturn, orderId];
+      }
+
+      return { orderId, moved: true, status: req.to };
+    }),
+  };
 }
 
 /**

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { Field, HStack, Heading, Spinner, Stack, Tabs, Text, Textarea } from "@chakra-ui/react";
 import { History, Inbox } from "lucide-react";
@@ -89,7 +90,7 @@ export function FoundRequestsPage() {
   }
 
   const actors = list.data?.actors ?? new Map<string, PublicUser>();
-  const nameOf = (id: bigint) => (id > 0n ? (actors.get(id.toString())?.name ?? `#${id}`) : "—");
+  const nameOf = (id: bigint) => (id > 0n ? personName(actors.get(id.toString()), `#${id}`) : "—");
   const teamName = (id: bigint) => teams.data?.[id.toString()]?.name ?? `#${id}`;
   const error = list.isError ? rpcError(list.error) : "";
   const rejectingOwn = rejecting?.block === FoundRequestApproveBlock.OWN_REPORT;

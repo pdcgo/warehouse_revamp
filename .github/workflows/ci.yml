@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    # The per-developer long-lived branches (CLAUDE.md rule 12) get CI on every push too.
+    branches: [main, dev, "backup/**", thoni]
   pull_request:
 
 permissions:

@@ -4025,3 +4025,16 @@ row. It is the reading [cancel-zeroes-the-live-sale](#cancel-zeroes-the-live-sal
 | a cancel with nothing live | writes no row |
 | [a-cancel-is-an-opposite-row](#a-cancel-is-an-opposite-row)'s *"the exact opposite of `initial_total`"* | reads as the LIVE `initial_total` |
 | ✅ built | `CancelSale` |
+
+---
+
+## the-person-list-reads-the-last-day-from-the-user-report
+
+**2026-11-04** · owner chose A over "sort by when the report was last folded"
+
+**Decided: `user_settlement_reports` carries a `last_day` — the newest report day the person has a row on — kept by the fold, and `SettlementPersonList` reads that one row per (user, team) instead of scanning `user_settlement_daily_reports`.**
+
+- The Analytic *Created by* list stays ordered by the day the person last appears on the figures, as [a-who-filter-lists-the-people-on-its-rows](../user/context_decision.md#a-who-filter-lists-the-people-on-its-rows) wants — not by when a fold last ran, which a replay or a late import would reshuffle.
+- `last_day` is the MAX of the person's daily rows: the fold raises it, a replay recomputes it with the rows it rebuilds, and the migration backfills it from the daily table.
+- Raised by the perf audit `audits/services/settlement_service/performances/SettlementPersonList.md` (a full scan, 28–31 ms at 100 000 person-days).
+

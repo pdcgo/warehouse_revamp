@@ -12,7 +12,7 @@ import { DateRangePicker } from "../../components/datetime/DateRangePicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
-import { UserSelect } from "../../components/pickers/UserSelect";
+import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import {
   type FilterType,
@@ -24,6 +24,7 @@ import {
   metricSlug,
   sharedFilters,
 } from "../../features/analytic/catalogue";
+import { useAnalyticPeople } from "../../features/analytic/people";
 import { EMPTY_REPORT, type ReportSort, answeredFields, loadReport } from "../../features/analytic/provider";
 import { SAMPLE_PRODUCTS, SAMPLE_SUPPLIERS, type SampleEntity } from "../../features/analytic/sample";
 import {
@@ -93,6 +94,9 @@ export function AnalyticPage() {
 
   const defs = defsOf(state.metricIds);
   const shared: FilterType[] = defs.length > 0 ? sharedFilters(defs) : ["dateRange"];
+  // WHO THE "CREATED BY" FILTER OFFERS — the people on the chosen metrics' own rows, each service answering for its own
+  // (a-who-filter-lists-the-people-on-its-rows), never the system-wide user search. Asked only while the filter shows.
+  const people = useAnalyticPeople(teamId, shared.includes("user") ? [...new Set(defs.map((d) => d.service))] : []);
   const sort = state.sort ?? defaultSort(state.groupBy, state.metricIds);
   const { from, to } = windowOf(state.range);
   // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
@@ -225,7 +229,13 @@ export function AnalyticPage() {
           />
         )}
         {kind === "user" && (
-          <UserSelect value={asId(state.user) || undefined} onChange={(id) => commit({ user: fromId(id) })} placeholder={t("analytic.all.user")} />
+          <PersonFilterSelect
+            people={people.people}
+            error={people.error}
+            value={asId(state.user) || undefined}
+            onChange={(id) => commit({ user: fromId(id) })}
+            placeholder={t("analytic.all.user")}
+          />
         )}
       </FilterField>
     );

@@ -38,9 +38,12 @@ import {
   LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
+import type { OrderDraft } from "../src/gen/warehouse/selling/v1/order_draft_pb";
+import { draftGaps } from "../src/features/orderDrafts/draftReadiness";
 import {
   OrderDateField,
   OrderImportLogLevel,
+  OrderLabelReason,
   OrderService,
   OrderStatus,
   OrderTimelineFrom,
@@ -68,6 +71,7 @@ import {
   orderStatScenario,
   receiptCheckScenario,
   receiptUpdateScenario,
+  orderLabelScenario,
   sessionScenario,
   takeRefusalScenario,
   teamCreateScenario,
@@ -103,12 +107,13 @@ import { warehouseTransferService } from "./warehouseTransferStub";
 import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { batchList, foundRequestService, stockAdjust } from "./foundRequestStub";
+import { expenseService } from "./expenseStub";
 import { warehouseProductSearch } from "./warehouseProductSearchStub";
 import { warehouseStockList } from "./warehouseStockListStub";
 import { FoundRequestService } from "../src/gen/warehouse/inventory/v1/found_request_pb";
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
-import { orderReturnAccept, readsOrder, scenarioStatus } from "./returnAcceptStub";
+import { orderReturnAccept, orderStatusChange, readsOrder, scenarioStatus } from "./returnAcceptStub";
 import { warehouseFeeService } from "./warehouseFeeStub";
 import { warehouseInfoService } from "./warehouseInfoStub";
 import { agentService } from "./agentStub";
@@ -582,11 +587,11 @@ function stubImport(
       if (row.outcome === UploadedFileLineOutcome.POSTED) file.tally.posted += 1;
       if (row.outcome === UploadedFileLineOutcome.HELD) file.tally.held += 1;
       if (row.outcome === UploadedFileLineOutcome.SKIPPED) file.tally.skipped += 1;
-      if (row.reason === UploadedFileLineReason.NO_ORDER) file.tally.postedToShop += 1;
+      if (row.reason === UploadedFileLineReason.NO_ORDER || row.reason === UploadedFileLineReason.SEVERAL_ORDERS) file.tally.postedToShop += 1;
       file.updatedAt = timestampFromDate(new Date());
 
       // The file's page lists only the rows worth a look — held, skipped, posted to the shop.
-      if (row.outcome !== UploadedFileLineOutcome.POSTED || row.reason === UploadedFileLineReason.NO_ORDER) {
+      if (row.outcome !== UploadedFileLineOutcome.POSTED || row.reason === UploadedFileLineReason.NO_ORDER || row.reason === UploadedFileLineReason.SEVERAL_ORDERS) {
         importLinesTable.push({
           id: nextImportLineId++,
           uploadedFileId: id,
@@ -1442,6 +1447,32 @@ export const transport = createRouterTransport(({ service }) => {
       };
     },
 
+    // THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): an order shipping from the asking
+    // warehouse — or any order, for the root team — with a label gets the link; another warehouse's order, or no such
+    // order, is NOT_SHIPPED_HERE; one with no label is NO_LABEL. One order per call (step 1), as the contract caps it.
+    orderLabels: (req) => {
+      orderLabelScenario.last = { teamId: req.teamId, orderIds: [...req.orderIds] };
+      if (req.orderIds.length !== 1) throw new ConnectError("order_ids: one order for now", Code.InvalidArgument);
+
+      const results = req.orderIds.map((orderId) => {
+        const order = orderDetailFor(orderId);
+        const shipsHere = order !== undefined && (req.teamId === 1n || order.warehouseId === req.teamId);
+        const reason =
+          orderLabelScenario.refusal ??
+          (!shipsHere ? OrderLabelReason.NOT_SHIPPED_HERE : !order.receipt?.documentId ? OrderLabelReason.NO_LABEL : undefined);
+
+        return { orderId, included: reason === undefined, reason: reason ?? OrderLabelReason.UNSPECIFIED, document: order?.receipt?.documentId };
+      });
+
+      const included = results.find((r) => r.included);
+
+      return {
+        url: included ? `https://example.invalid/label/${included.document}` : "",
+        expiresAtUnix: included ? BigInt(Math.floor(Date.now() / 1000) + 900) : 0n,
+        results: results.map(({ orderId, included, reason }) => ({ orderId, included, reason })),
+      };
+    },
+
     // ADD A NOTE (a-note-is-a-timeline-row): a row with NO status, from the side `team_id` is on — the order's team
     // writes `selling`, its warehouse `warehouse`, anybody else reads NotFound, as the server answers. 1 to 500
     // characters after trimming. The writer is the signed-in user (`users[0]`, as AuthService's identity says).
@@ -1520,17 +1551,8 @@ export const transport = createRouterTransport(({ service }) => {
     // THE RETURN ACCEPT (the-accept-is-the-status-return-completed) — returnAcceptStub.ts: the order's warehouse only, from
     // `return` only, a charge with its note; the labels are the story's.
     orderReturnAccept: (req) => orderReturnAccept(req),
-    orderStatusChange: (req) => ({
-      results: req.orderIds.map((orderId) => {
-        const order = orders.find(
-          (o) => o.id === orderId && (o.teamId === req.teamId || o.warehouseId === req.teamId),
-        );
-
-        return order
-          ? { orderId, moved: true, status: req.to }
-          : { orderId, moved: false, refusedReason: "not one of this team's orders" };
-      }),
-    }),
+    // returnAcceptStub.ts: a move into `return` follows orderMoves and is kept, so a forced return is then accepted.
+    orderStatusChange: (req) => orderStatusChange(req),
 
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were
@@ -1629,19 +1651,24 @@ export const transport = createRouterTransport(({ service }) => {
     // because a warehouse never types one.
     // Newest first unless ASC is asked for — the server's `id DESC` default, which the drafts screen's
     // "oldest" card reverses to read the first draft ever written.
-    orderDraftList: (req) =>
-      pagedColumnar(
-        "orderDraft",
-        orderDrafts
-          .filter((d) => d.teamId === req.teamId)
-          .filter((d) => !req.filter?.source || d.source === req.filter.source)
-          .slice()
-          .sort((a, b) => {
-            const asc = req.sort?.sortType === CommonSortType.ASC;
-            return (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) * (asc ? 1 : -1);
-          }),
-        req.page,
-      ),
+    //
+    // `readyCount` is the WHOLE filtered set's (#16), by the list's own rule — draftGaps, which the server's
+    // readyDrafts mirrors in SQL — so a story with more drafts than a page still reads the backlog, not the page.
+    orderDraftList: (req) => {
+      const set = orderDrafts
+        .filter((d) => d.teamId === req.teamId)
+        .filter((d) => !req.filter?.source || d.source === req.filter.source)
+        .slice()
+        .sort((a, b) => {
+          const asc = req.sort?.sortType === CommonSortType.ASC;
+          return (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) * (asc ? 1 : -1);
+        });
+
+      return {
+        ...pagedColumnar("orderDraft", set, req.page),
+        readyCount: BigInt(set.filter((d) => draftGaps(d as unknown as OrderDraft).length === 0).length),
+      };
+    },
 
     // Save-as-draft is TWO calls, and the stub has to honour that or the second half is untested:
     // PUSH writes the draft but IGNORES product_id on every line, then UPDATE carries the mapping.
@@ -2018,6 +2045,8 @@ export const transport = createRouterTransport(({ service }) => {
   });
 
   service(ExpenseService, {
+    // The expenses screen: list, record and adjust, on a writeable store (expenseStub.ts).
+    ...expenseService,
     // The half BOTH modes subtract. One expense record per kind per day, so a day's total and its
     // entry count are both derived from the fixture's map and cannot disagree with each other.
     expenseDaily: (req) => {

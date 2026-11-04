@@ -37,6 +37,10 @@ type UploadedFileLine struct {
 
 	SettlementLogID uint64
 
+	// several_orders: every live order the ref found in the shop, comma-joined, ascending (00003,
+	// two-live-orders-on-a-ref-post-to-the-shop). '' otherwise.
+	FoundOrderIDs string `gorm:"column:found_order_ids"`
+
 	CreatedAt time.Time
 }
 

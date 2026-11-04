@@ -111,7 +111,6 @@ export const settlementImporterClient = createClient(SettlementImporterService, 
 export const financialAccountClient = createClient(FinancialAccountService, transport);
 export const financialAccountAnalyticClient = createClient(FinancialAccountAnalyticService, transport);
 
-// rpcError turns a Connect error into something a human can read.
-export function rpcError(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+// rpcError turns a Connect error into something a human can read — the code never, the server's sentence when it was
+// written for a person, else a translated one (api/rpcError.ts).
+export { rpcError } from "./rpcError";

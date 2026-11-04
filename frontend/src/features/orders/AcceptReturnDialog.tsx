@@ -17,14 +17,14 @@ import {
 } from "@chakra-ui/react";
 import { PackageCheck, Printer } from "lucide-react";
 
-import { rpcError } from "../../../api/clients";
-import type { Order, OrderReturnLabel } from "../../../gen/warehouse/selling/v1/order_pb";
-import { CopyText } from "../../../components/chrome/CopyText";
-import { CharCount } from "../../../components/inputs/CharCount";
-import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
-import { QuantityInput } from "../../../components/inputs/QuantityInput";
-import { toaster } from "../../../components/feedback/Toaster";
-import { useAcceptReturn } from "../../../features/orders/queries";
+import { rpcError } from "../../api/clients";
+import type { Order, OrderReturnLabel } from "../../gen/warehouse/selling/v1/order_pb";
+import { CopyText } from "../../components/chrome/CopyText";
+import { CharCount } from "../../components/inputs/CharCount";
+import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
+import { toaster } from "../../components/feedback/Toaster";
+import { useAcceptReturn } from "./queries";
 
 export const description =
   "Accept Return: the warehouse has the returned parcel in its hands. The whole order comes back — a unit missing from the box is named on its line, and noted on the order for customer service to claim. The courier's charge at the door is entered only if it asked one, with what it was for. Once accepted, a borrowed product's label to print is shown, one per unit in hand.";

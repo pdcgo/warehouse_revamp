@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { personName } from "../../../lib/users";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -70,7 +71,7 @@ export function ShopUsersSection({
   // A person as a sentence names them — the name, else the username, else the id.
   const nameOf = (id: bigint) => {
     const u = users[id.toString()];
-    return u?.name || u?.username || `#${id}`;
+    return personName(u, `#${id}`);
   };
 
   const load = useCallback(async () => {
@@ -170,8 +171,11 @@ export function ShopUsersSection({
           <Flex gap="card" align={isMobile ? "stretch" : "end"} direction={isMobile ? "column" : "row"}>
             <Field.Root flex="1">
               <Field.Label>{t("shops.users.addLabel")}</Field.Label>
+              {/* A grant GIVES a shop: suspended and erased members are never offered (a-suspended-user-is-never-picked),
+                  and the server refuses anyone who is not an active member (a-grant-goes-only-to-a-team-member). */}
               <UserSelect
                 teamId={teamId}
+                excludeSuspended
                 value={adding}
                 onChange={setAdding}
                 placeholder={t("shops.users.searchPlaceholder")}

@@ -317,22 +317,19 @@ export const FiltersLiveInTheUrl: Story = {
   },
 };
 
-// THE MARKETPLACE, THE PRIMARY CS AND "NO PRIMARY CS", AHEAD OF THE CONTRACT (owner: "oke tambahkan dengan warning,
-// filter mp, cs utama sama belum ada cs", then "bedakan belum ada csnya") — each held in the URL and marked ⚠, its pick
-// thrown away: ShopListFilter has only `q`.
+// THE MARKETPLACE, THE PRIMARY CS AND "NO PRIMARY CS" (owner: "filter mp, cs utama sama belum ada cs", then "bedakan
+// belum ada csnya") — each held in the URL and SENT as ShopListFilter's marketplace / primary_user_id / no_primary (#16):
+// the server narrows the whole set, so no mark stands on them any more.
 const AtShopsWithProbe = routedPage([{ path: "/shops", element: <><ShopsPage /><LocationProbe /></> }], "/shops");
 
-/** The three filters carry their ⚠ numbers and the summary names them; a pick is kept in the URL but the list is not
- * narrowed — every shop is still there. */
-export const TheNewFiltersAreHeldButNotSentYet: Story = {
+/** A marketplace pick narrows the list to that marketplace's shops — and no ⚠ mark or strip is left on the screen. */
+export const TheMarketplaceFilterNarrowsTheList: Story = {
   render: () => <AtShopsWithProbe />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
-    await expect(within(canvas.getByTestId("shops-marketplace-filter")).getByTestId("not-implemented-marketplaceFilter")).toHaveTextContent("1");
-    await expect(within(canvas.getByTestId("shops-primary-filter")).getByTestId("not-implemented-primaryFilter")).toHaveTextContent("2");
-    await expect(within(canvas.getByTestId("shops-no-primary-filter")).getByTestId("not-implemented-noPrimaryFilter")).toHaveTextContent("3");
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(canvas.queryByTestId(/^not-implemented-/)).toBeNull();
 
     await userEvent.click(canvas.getByTestId("shops-marketplace-select"));
     const lazada = await within(canvas.getByTestId("shops-marketplace-filter")).findByRole("option", { name: "Lazada" });
@@ -340,8 +337,37 @@ export const TheNewFiltersAreHeldButNotSentYet: Story = {
     await userEvent.click(lazada);
 
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent(`market=${Marketplace.LAZADA}`));
-    await expect(canvas.getByTestId("shop-row-MEL-SHP")).toBeVisible();
-    await expect(canvas.getByTestId("shop-row-MEL-TOK")).toBeVisible();
+    await waitFor(() => expect(canvas.queryByTestId("shop-row-MEL-SHP")).toBeNull());
+    await expect(canvas.getByTestId("shop-row-MEL-LAZ")).toBeVisible();
+    await expect(canvas.queryByTestId("shop-row-MEL-TOK")).toBeNull();
+  },
+};
+
+/** The primary CS filter narrows to that person's shops; "No primary CS" to the shops with none (those that cannot
+ * import a statement yet). */
+const AtEkosShops = routedPage([{ path: "/shops", element: <ShopsPage /> }], "/shops?cs=65");
+const AtNoPrimaryShops = routedPage([{ path: "/shops", element: <ShopsPage /> }], "/shops?nocs=1");
+
+export const ThePrimaryFilterNarrowsTheList: Story = {
+  render: () => <AtEkosShops />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("shop-row-MEL-LAZ")).toBeVisible(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("shop-row-MEL-SHP")).toBeNull();
+    await expect(canvas.queryByTestId("shop-row-MEL-TOK")).toBeNull();
+  },
+};
+
+export const NoPrimaryCsNarrowsTheList: Story = {
+  render: () => <AtNoPrimaryShops />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("shop-row-MEL-TOK")).toBeVisible(), { timeout: 4000 });
+    await expect(canvas.getByTestId("shop-row-MEL-TIK")).toBeVisible();
+    await expect(canvas.queryByTestId("shop-row-MEL-SHP")).toBeNull();
+    await expect(canvas.queryByTestId("shop-row-MEL-LAZ")).toBeNull();
   },
 };
 
@@ -413,21 +439,26 @@ export const NoPrimaryCsIsATickInThePanel: Story = {
 /** Opened at a URL holding them, the filters show them; Clear Filters empties every one — and the URL. */
 const AtFilteredUrl = routedPage(
   [{ path: "/shops", element: <><ShopsPage /><LocationProbe /></> }],
-  `/shops?market=${Marketplace.SHOPEE}&cs=65`,
+  // Eko's shop is Melati Grosir, on Lazada — the two together still match a row, so the page loads with one.
+  `/shops?market=${Marketplace.LAZADA}&cs=65`,
 );
 
 export const TheNewFiltersComeBackFromTheUrl: Story = {
   render: () => <AtFilteredUrl />,
   play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
+    const canvas = within(canvasElement);
+    // Not `loaded` — it waits for Melati Official, which this filtered list rightly leaves out.
+    await canvas.findByTestId("shop-row-MEL-LAZ", {}, { timeout: 4000 });
 
-    await expect(canvas.getByTestId("shops-marketplace-select")).toHaveTextContent("Shopee");
+    await expect(canvas.getByTestId("shops-marketplace-select")).toHaveTextContent("Lazada");
+    await expect(canvas.queryByTestId("shop-row-MEL-SHP")).toBeNull();
     const input = within(canvas.getByTestId("shops-primary-filter")).getByRole("combobox");
     await waitFor(() => expect(input).toHaveValue("Eko Prasetyo"));
 
     await userEvent.click(canvas.getByTestId("shops-filter-clear"));
     await waitFor(() => expect(input).toHaveValue(""));
-    await expect(canvas.getByTestId("shops-marketplace-select")).not.toHaveTextContent("Shopee");
+    await expect(canvas.getByTestId("shops-marketplace-select")).not.toHaveTextContent("Lazada");
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent(/^$/));
+    await waitFor(() => expect(canvas.getByTestId("shop-row-MEL-SHP")).toBeVisible(), { timeout: 4000 });
   },
 };

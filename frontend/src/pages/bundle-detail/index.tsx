@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Button, Flex, HStack, Heading, Icon, IconButton, Menu, Portal, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
@@ -119,7 +120,7 @@ export function BundleDetailPage() {
   const writable = canWrite(current);
   const mayChange =
     writable && canChangeBundle({ role: current.role, createdByUserId: bundle.createdByUserId, me: identity?.identityId });
-  const creator = actors.data?.get(bundle.createdByUserId.toString())?.name ?? `#${bundle.createdByUserId}`;
+  const creator = personName(actors.data?.get(bundle.createdByUserId.toString()), `#${bundle.createdByUserId}`);
   const blocked = bundle.lines.filter((l) => unavailable(lineState(products.data?.get(l.productId.toString()), bundle.teamId))).length;
   const makes = bundleMakes({ bundle, products: products.data, stock: stock.data, warehouseId });
 

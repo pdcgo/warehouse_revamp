@@ -13,6 +13,7 @@ inversion — which is invisible from inside any one handler.
 | `LiabilityPaymentReject` | `liability_payments` | a strict PREFIX of confirm's order, so it cannot invert it. Nothing posts |
 | `LiabilityPaymentRecord` | *(none)* | one INSERT, no read-modify-write |
 | `PostEntry` | `liability_balances` | reached from confirm, or standalone from another service |
+| `ChargeTransferCourier` *(2026-11-04)* | `liability_balances` | `PostEntry` on its own transaction, from Warehouse Transfer Accepted. Idempotent by the ledger's unique key (`transfer_fee`, the transfer): 8 deliveries at once → one posting, every one acked; beside a restock courier charge of the same number → both post, no deadlock ([`transfer_courier_charge_race_test.go`](../../../../backend/services/liability_service/liability_v1/transfer_courier_charge_race_test.go)) |
 
 > `LiabilityPaymentReverse` was a third locking path (same order as confirm) and was **removed** on
 > 2026-10-01 by [an-accepted-payment-is-final](../../../../docs/business/balance/context_decision.md#an-accepted-payment-is-final).

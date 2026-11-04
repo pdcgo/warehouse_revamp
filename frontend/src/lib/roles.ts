@@ -284,6 +284,25 @@ export function canTransferMoney(role: Role | undefined): boolean {
   return canMoveAccountMoney(role) && role !== Role.WAREHOUSE_ADMIN;
 }
 
+// canMoveExpenses mirrors ExpenseCreate and ExpenseAdjust (expense.proto): Root, the Administrator, the selling Owner and
+// Admin. Customer service is absent from every expense RPC — a person taking orders has no reason to see or move the
+// payroll number — so it is offered neither Record nor a row's Adjust / Cancel.
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canMoveExpenses(role: Role | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
 // canSetLiabilityTerms mirrors LiabilityTermsSet and LiabilityTermsDelete: Root, the Administrator, the selling Owner
 // and Admin, and the warehouse OWNER — what a selling team pays a warehouse is the Owner's to set
 // (the-warehouse-admin-equals-the-owner-except-money).

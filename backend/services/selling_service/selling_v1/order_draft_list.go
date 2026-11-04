@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
@@ -39,6 +40,18 @@ func (s *Service) OrderDraftList(
 	// loaded page in the client would narrow one page and report the unfiltered total beside it.
 	if source := req.Msg.GetFilter().GetSource(); source != "" {
 		query = query.Where("source = ?", source)
+	}
+
+	// THE READY COUNT IS THE SET'S, not the page's (#16, the-draft-summary-is-three-cards): the same narrowed
+	// query, held to the list's readiness rule. A Session, so these conditions never leak back into `query` —
+	// and run FIRST, before Count/Order/Offset write into the statement the Session would copy.
+	var ready int64
+
+	err = readyDrafts(query.Session(&gorm.Session{})).
+		Count(&ready).
+		Error
+	if err != nil {
+		return nil, dbError(err)
 	}
 
 	var total int64
@@ -87,7 +100,23 @@ func (s *Service) OrderDraftList(
 			TotalPage:   totalPages(total, page.GetLimit()),
 			TotalItems:  uint64(total),
 		},
+		ReadyCount: uint64(ready),
 	}), nil
+}
+
+// readyDrafts narrows a draft query to the drafts with nothing left before Promote — the SQL twin of the frontend's
+// draftGaps (features/orderDrafts/draftReadiness.ts), rule for rule, minus the stock check only the draft's page can
+// make. ⚠ A gap added there that a stored field can answer belongs here too, or the card and the rows disagree.
+func readyDrafts(query *gorm.DB) *gorm.DB {
+	return query.
+		Where("shop_id <> 0").
+		Where("warehouse_id <> 0").
+		Where("customer_name <> ''").
+		Where("platform_created_at IS NOT NULL AND platform_created_at > to_timestamp(0)").
+		Where("platform_total > 0").
+		Where("source <> ?", "manual").
+		Where("EXISTS (SELECT 1 FROM order_draft_items i WHERE i.draft_id = order_drafts.id)").
+		Where("NOT EXISTS (SELECT 1 FROM order_draft_items i WHERE i.draft_id = order_drafts.id AND i.product_id = 0)")
 }
 
 type draftCounts struct {

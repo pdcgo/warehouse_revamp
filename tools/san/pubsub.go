@@ -305,6 +305,64 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "liability-payment-accepted",
 			Filter: `attributes.event_type = "warehouse.events.v1.LiabilityPaymentAccepted"`,
 		},
+		// financial_account_service's restock-payment listener — mirrors financial_account_service.Restock*Subscription
+		// (a-created-restock-tells-the-financial-account, a-restock-names-its-paying-account). One per topic, all three
+		// to the one listener: the payment out at create, the difference or the move on an edit, the refund on cancel.
+		{
+			ID:     "financial-account-restock-created",
+			Topic:  "restock-created",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockCreated"`,
+		},
+		{
+			ID:     "financial-account-restock-updated",
+			Topic:  "restock-updated",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockUpdated"`,
+		},
+		{
+			ID:     "financial-account-restock-cancelled",
+			Topic:  "restock-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockCancelled"`,
+		},
+		// financial_account_service's expense-payment listener — mirrors financial_account_service.Expense*Subscription
+		// (an-expense-must-name-the-account-that-paid, a-correction-follows-the-expenses-account): the expense out of the
+		// account that paid, `ads_expense` or `expense`, and each correction's signed difference on that same account.
+		{
+			ID:     "financial-account-expense-created",
+			Topic:  "expense-created",
+			Filter: `attributes.event_type = "warehouse.events.v1.ExpenseCreated"`,
+		},
+		{
+			ID:     "financial-account-expense-adjusted",
+			Topic:  "expense-adjusted",
+			Filter: `attributes.event_type = "warehouse.events.v1.ExpenseAdjusted"`,
+		},
+		// liability_service's courier charge at a TRANSFER's door — mirrors
+		// liability_service.WarehouseTransferAcceptedSubscription (balance-posts-the-transfers-on-site-debt-from-the-event,
+		// a-transfer-charge-is-a-transfer-fee): the selling team owes the receiving warehouse, a `transfer_fee`.
+		{
+			ID:     "liability-warehouse-transfer-accepted",
+			Topic:  "warehouse-transfer-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferAccepted"`,
+		},
+		// financial_account_service's transfer-shipping listener — mirrors
+		// financial_account_service.WarehouseTransfer*Subscription (the-shipping-expense-reaches-the-account-by-event,
+		// a-transfers-shipping-posts-as-an-expense): the shipping cost out of the paying account as `expense`, the
+		// difference or the move on an edit, the refund on cancel.
+		{
+			ID:     "financial-account-warehouse-transfer-created",
+			Topic:  "warehouse-transfer-created",
+			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferCreated"`,
+		},
+		{
+			ID:     "financial-account-warehouse-transfer-updated",
+			Topic:  "warehouse-transfer-updated",
+			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferUpdated"`,
+		},
+		{
+			ID:     "financial-account-warehouse-transfer-cancelled",
+			Topic:  "warehouse-transfer-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferCancelled"`,
+		},
 	}
 }
 

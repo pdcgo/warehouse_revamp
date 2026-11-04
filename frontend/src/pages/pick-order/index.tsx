@@ -15,7 +15,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, PackageCheck, StickyNote, TriangleAlert } from "lucide-react";
+import { ArrowLeft, PackageCheck, StickyNote, TriangleAlert, Undo2 } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -30,7 +30,8 @@ import { usePickOrder } from "../../features/picking/queries";
 import { useOrderStatusChange } from "../../features/orders/queries";
 import { orderNotes, timelineFromKey } from "../../features/orders/timelineLogs";
 import { formatUnixDateTime } from "../../lib/datetime";
-import { AcceptReturnDialog } from "./components/AcceptReturnDialog";
+import { AcceptReturnDialog } from "../../features/orders/AcceptReturnDialog";
+import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -84,6 +85,9 @@ export function PickOrderPage() {
   const moveMutation = useOrderStatusChange();
   // THE RETURN ACCEPT's dialog (the-accept-is-the-status-return-completed).
   const [accepting, setAccepting] = useState(false);
+  // THE FORCED RETURN (a-return-is-received-by-search-then-forced, A): the parcel is in hand before customer service
+  // claimed it. Once moved, the order re-reads in `return` and Accept Return takes the button's place.
+  const forceReturn = useForceReturn({ teamId: warehouseId });
 
   const order = query.data?.order ?? null;
   const locations = query.data?.locations ?? [];
@@ -208,7 +212,21 @@ export function PickOrderPage() {
             {t("picking.action.acceptReturn")}
           </Button>
         )}
+        {/* …and an order that left the building but is not a return yet: Force Return, confirmed, then the accept above. */}
+        {canForceReturn(order.status) && canWrite(current) && (
+          <Button
+            variant="outline"
+            colorPalette="error"
+            loading={forceReturn.busy}
+            onClick={() => forceReturn.ask({ id: order.id, status: order.status })}
+            data-testid="pick-order-force-return"
+          >
+            <Icon as={Undo2} boxSize="4" />
+            {t("picking.action.forceReturn")}
+          </Button>
+        )}
       </Flex>
+      {forceReturn.dialog}
 
       {/* Mounted whatever the status: the accept re-reads the order as return_completed, and a dialog under the button
           would vanish with the labels it is about to show. */}

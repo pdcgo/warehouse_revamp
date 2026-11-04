@@ -20,7 +20,7 @@ import {
 import { ArrowRight, Download, PackageSearch, Printer, ScanLine, Truck, Undo2 } from "lucide-react";
 import { Menu, Portal } from "@chakra-ui/react";
 
-import { documentClient, rpcError } from "../../api/clients";
+import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
 import type { Order } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -38,6 +38,7 @@ import { CopyText } from "../../components/chrome/CopyText";
 import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { useTeam } from "../../features/team/TeamContext";
+import { useOrderLabels } from "../../features/orders/labels";
 import { useOrders, useOrderStat } from "../../features/orders/queries";
 import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
@@ -157,6 +158,7 @@ export function PickQueueNextPage() {
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const warehouseId = isWarehouse ? current?.teamId : undefined;
+  const { openLabel } = useOrderLabels();
 
   const debouncedSearch = useDebounced(search.trim());
   const filters: OrderFilters = useMemo(() => {
@@ -243,17 +245,13 @@ export function PickQueueNextPage() {
     setSelected(new Set());
   }
 
-  // ONE label, through a short-lived signed URL fetched on the click — the receipt is a private document.
+  // ONE label, through a short-lived signed URL fetched on the click — the receipt is the SELLER's private document, so
+  // the warehouse asks the order for it (OrderLabels, a-warehouse-prints-the-labels-of-orders-it-ships). Several merged
+  // into one PDF is step 2 — the printMerge mark below.
   async function printOne(order: Order) {
-    const documentId = order.receipt?.documentId;
-    if (!documentId || warehouseId === undefined) return;
+    if (warehouseId === undefined) return;
 
-    try {
-      const res = await documentClient.getDownloadUrl({ teamId: warehouseId, documentId });
-      window.open(res.url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      toaster.create({ type: "error", title: rpcError(err) });
-    }
+    await openLabel({ teamId: warehouseId, teamType: TeamType.WAREHOUSE, order });
   }
 
   function handOverSelected() {

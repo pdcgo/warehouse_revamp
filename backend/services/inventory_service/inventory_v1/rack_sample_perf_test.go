@@ -19,7 +19,7 @@ func TestPerf_RackSample(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLedgerBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20))
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil)
 	rack := newRack(t, svc, otWarehouse, "perf-shelf")
 	perfStock(t, db, otWarehouse, 20, 10, 100, []uint64{rack})
 

@@ -10,10 +10,8 @@ import { parseTransferId, problemUnits } from "../../features/warehouseTransfer/
 import { SellingTransferActions } from "../../features/warehouseTransfer/SellingTransferActions";
 import { TransferTimeline } from "../../features/warehouseTransfer/TransferTimeline";
 import { ParcelCard, RouteCard, TransferLinesCard } from "../../features/warehouseTransfer/TransferDetailCards";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseTransferStatusBadge";
 import { useIsMobile } from "../../layouts/shell";
-import { TRANSFER_SELLING_DETAIL_PENDING } from "./pending";
 
 // WarehouseTransferSellingDetailPage — one transfer as its OWNER reads it: where it goes, the trip and what it costs,
 // the lines with their values, and the trail. The team's acts sit in the header (SellingTransferActions); the
@@ -92,7 +90,6 @@ export function WarehouseTransferSellingDetailPage() {
               transfer={transfer}
               teamId={teamId}
               variant="menu"
-              pending={TRANSFER_SELLING_DETAIL_PENDING}
             />
           </Flex>
           {problemBadge && <Box>{problemBadge}</Box>}
@@ -114,13 +111,10 @@ export function WarehouseTransferSellingDetailPage() {
               transfer={transfer}
               teamId={teamId}
               variant="buttons"
-              pending={TRANSFER_SELLING_DETAIL_PENDING}
             />
           </Flex>
         </>
       )}
-
-      <NotImplementedSummary list={TRANSFER_SELLING_DETAIL_PENDING} />
 
       <RouteCard transfer={transfer} />
       <ParcelCard transfer={transfer} teamId={teamId} showMoney />

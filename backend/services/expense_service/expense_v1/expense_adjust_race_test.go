@@ -36,6 +36,7 @@ func TestRace_ExpenseAdjust_TheFloorHolds(t *testing.T) {
 	for round := 0; round < 20; round++ {
 		created, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
 			TeamId: team, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 1_000_000, OccurredAt: "2026-09-28",
+			ShopId: adsShop, FinanceAccountId: payingAccount,
 		}))
 		if err != nil {
 			t.Fatalf("round %d: create: %v", round, err)

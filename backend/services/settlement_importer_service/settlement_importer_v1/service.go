@@ -149,6 +149,8 @@ const (
 	reasonRefused             = "refused"
 	reasonRepeatsOrderDetails = "repeats_order_details"
 	reasonFailedWithdrawal    = "failed_withdrawal"
+	// POSTED to the shop: the ref found two or more live orders (two-live-orders-on-a-ref-post-to-the-shop).
+	reasonSeveralOrders = "several_orders"
 )
 
 var errFileMissing = errors.New("uploaded file not found")

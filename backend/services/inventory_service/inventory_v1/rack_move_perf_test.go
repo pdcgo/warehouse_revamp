@@ -18,7 +18,7 @@ func TestPerf_RackMove(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLedgerBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20))
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil)
 	from := newRack(t, svc, otWarehouse, "perf-from")
 	to := newRack(t, svc, otWarehouse, "perf-to")
 	perfStock(t, db, otWarehouse, 20, 3, 100, []uint64{from})

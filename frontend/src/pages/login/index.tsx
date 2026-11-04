@@ -18,6 +18,7 @@ import { PasswordInput } from "../../components/inputs/PasswordInput";
 import { ForgotPasswordDialog } from "./components/ForgotPasswordDialog";
 import { useAuth } from "../../features/auth/AuthContext";
 import { returnPath } from "../../features/auth/returnTo";
+import { rpcError } from "../../api/clients";
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -48,7 +49,7 @@ export function LoginPage() {
     } catch (err) {
       // The server returns the SAME message for an unknown user and a wrong password — do not
       // embellish it here, or the UI reintroduces the account-enumeration leak the API avoids.
-      setError(err instanceof Error ? err.message : t("account.loginFailed"));
+      setError(err instanceof Error ? rpcError(err) : t("account.loginFailed"));
     } finally {
       setBusy(false);
     }

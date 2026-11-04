@@ -26,9 +26,17 @@ func (s *Service) ShopUserSetPrimary(
 	shopID := req.Msg.GetShopId()
 	userID := req.Msg.GetUserId()
 
+	// The primary CS is a grant, so the grant's rule holds (a-grant-goes-only-to-a-team-member, *Make primary*): a member
+	// of the shop's team, not suspended. A grant outlives a suspension, and the removal that drops a leaver's grants
+	// arrives by event — so a grant alone does not prove either.
+	err := s.refuseUngrantable(ctx, teamID, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	var shop selling_service_models.Shop
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// The shop's row, FOR UPDATE: two Make primary clicks on one shop run one after the other,
 		// never both clearing the old flag and both setting a new one.
 		exists, err := lockShop(tx, teamID, shopID)

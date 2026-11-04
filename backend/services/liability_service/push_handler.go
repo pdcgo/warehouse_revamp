@@ -32,6 +32,9 @@ const (
 	// The courier's charge at a RETURN's door, posted from *Order Return Accepted* (a-return-may-carry-the-couriers-ask). Its
 	// OWN subscription beside selling's fold on the same topic.
 	OrderReturnAcceptedSubscription = "liability-order-return-accepted"
+	// The courier's charge at a TRANSFER's receiving door, posted from *Warehouse Transfer Accepted*
+	// (balance-posts-the-transfers-on-site-debt-from-the-event, a-transfer-charge-is-a-transfer-fee).
+	WarehouseTransferAcceptedSubscription = "liability-warehouse-transfer-accepted"
 )
 
 // NewLiabilityPushHandler charges an order's fees on placement and reverses them on cancellation
@@ -123,6 +126,21 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				Amount:          accepted.GetCourierCharge(),
 				ActorID:         accepted.GetActorId(),
 				ActorIsOverride: accepted.GetActorIsOverride(),
+			})
+
+		case *eventsv1.Event_WarehouseTransferAccepted:
+			accepted := variant.WarehouseTransferAccepted
+
+			// The selling team owes the RECEIVING warehouse (B) what the courier asked at its door
+			// (a-transfer-charge-is-a-transfer-fee). Inventory stores it as a double, so it is rounded here, at this
+			// service's edge, as the restock's is. ActorID is the VARIANT's — who counted it in, from the stored
+			// transfer — never the envelope's.
+			return svc.ChargeTransferCourier(ctx, liability_v1.TransferCourierCharge{
+				TransferID:    accepted.GetTransferId(),
+				SellingTeamID: accepted.GetTeamId(),
+				WarehouseID:   accepted.GetToWarehouseId(),
+				Amount:        int64(math.Round(accepted.GetWarehouseAdditionalCost())),
+				ActorID:       accepted.GetActorId(),
 			})
 
 		default:

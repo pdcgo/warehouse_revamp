@@ -31,6 +31,7 @@ import { resetRestockStub } from "./restockStub";
 import { resetWarehouseTransferStub } from "./warehouseTransferStub";
 import { resetOpnameStub } from "./opnameStub";
 import { resetFoundRequestStub } from "./foundRequestStub";
+import { resetExpenseStub } from "./expenseStub";
 import { resetWarehouseStockStub } from "./warehouseStockListStub";
 import { resetBundleStub } from "./bundleStub";
 import { resetProductScenario } from "./productScenario";
@@ -414,6 +415,8 @@ const preview: Preview = {
     resetOpnameStub();
     // …and the found requests, which an Adjust found, an approval or a rejection writes to.
     resetFoundRequestStub();
+    // …and the expenses, which a record, an adjust or a cancel writes to.
+    resetExpenseStub();
     // …and the Stock screen's one switch — a warehouse that has held nothing.
     resetWarehouseStockStub();
     // …and the bundles, which a create, an edit or a delete writes to — and any product a story locked or archived.

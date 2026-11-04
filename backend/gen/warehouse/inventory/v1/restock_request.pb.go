@@ -3319,6 +3319,115 @@ func (x *RestockRequestLabelsResponse) GetExcludedCount() int64 {
 	return 0
 }
 
+// The restock's label photo, for the warehouse it is going to (the-restocks-warehouse-opens-its-label-photo). The
+// selling team keeps opening its own upload with document_service's GetDownloadUrl, as the file's owner.
+type RestockReceiptPhotoRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The warehouse — the scope. The restock must be going to it; another warehouse's reads as NotFound.
+	TeamId        uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	RequestId     uint64 `protobuf:"varint,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestockReceiptPhotoRequest) Reset() {
+	*x = RestockReceiptPhotoRequest{}
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestockReceiptPhotoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestockReceiptPhotoRequest) ProtoMessage() {}
+
+func (x *RestockReceiptPhotoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestockReceiptPhotoRequest.ProtoReflect.Descriptor instead.
+func (*RestockReceiptPhotoRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *RestockReceiptPhotoRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *RestockReceiptPhotoRequest) GetRequestId() uint64 {
+	if x != nil {
+		return x.RequestId
+	}
+	return 0
+}
+
+// A short-lived signed link, minted per call — never stored, never rendered as an href. A restock with no photo (none
+// attached, or the file is gone) is FailedPrecondition instead.
+type RestockReceiptPhotoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	ExpiresAtUnix int64                  `protobuf:"varint,2,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestockReceiptPhotoResponse) Reset() {
+	*x = RestockReceiptPhotoResponse{}
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestockReceiptPhotoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestockReceiptPhotoResponse) ProtoMessage() {}
+
+func (x *RestockReceiptPhotoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestockReceiptPhotoResponse.ProtoReflect.Descriptor instead.
+func (*RestockReceiptPhotoResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *RestockReceiptPhotoResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *RestockReceiptPhotoResponse) GetExpiresAtUnix() int64 {
+	if x != nil {
+		return x.ExpiresAtUnix
+	}
+	return 0
+}
+
 var File_warehouse_inventory_v1_restock_request_proto protoreflect.FileDescriptor
 
 const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
@@ -3588,7 +3697,15 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"restock_id\x18\x01 \x01(\x04R\trestockId\x12(\n" +
 	"\x10received_at_unix\x18\x02 \x01(\x03R\x0ereceivedAtUnix\x12<\n" +
 	"\x06labels\x18\x03 \x03(\v2$.warehouse.inventory.v1.RestockLabelR\x06labels\x12%\n" +
-	"\x0eexcluded_count\x18\x04 \x01(\x03R\rexcludedCount*\xf2\x01\n" +
+	"\x0eexcluded_count\x18\x04 \x01(\x03R\rexcludedCount\"w\n" +
+	"\x1aRestockReceiptPhotoRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
+	"\n" +
+	"request_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\trequestId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"W\n" +
+	"\x1bRestockReceiptPhotoResponse\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12&\n" +
+	"\x0fexpires_at_unix\x18\x02 \x01(\x03R\rexpiresAtUnix*\xf2\x01\n" +
 	"\x14RestockRequestStatus\x12&\n" +
 	"\"RESTOCK_REQUEST_STATUS_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eRESTOCK_REQUEST_STATUS_ONGOING\x10\x01\x12#\n" +
@@ -3624,7 +3741,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\"RESTOCK_ACTOR_LIST_DATA_TYPE_ACTOR\x10\x01*V\n" +
 	"\x10RestockActorSort\x12\"\n" +
 	"\x1eRESTOCK_ACTOR_SORT_UNSPECIFIED\x10\x00\x12\x1e\n" +
-	"\x1aRESTOCK_ACTOR_SORT_LAST_AT\x10\x012\xc9\v\n" +
+	"\x1aRESTOCK_ACTOR_SORT_LAST_AT\x10\x012\xcf\f\n" +
 	"\x15RestockRequestService\x12\x81\x01\n" +
 	"\x14RestockRequestCreate\x123.warehouse.inventory.v1.RestockRequestCreateRequest\x1a4.warehouse.inventory.v1.RestockRequestCreateResponse\x12\x80\x01\n" +
 	"\x12RestockRequestList\x121.warehouse.inventory.v1.RestockRequestListRequest\x1a2.warehouse.inventory.v1.RestockRequestListResponse\"\x03\x90\x02\x01\x12z\n" +
@@ -3636,7 +3753,8 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x16RestockRequestMarkLost\x125.warehouse.inventory.v1.RestockRequestMarkLostRequest\x1a6.warehouse.inventory.v1.RestockRequestMarkLostResponse\x12\x81\x01\n" +
 	"\x14RestockRequestCancel\x123.warehouse.inventory.v1.RestockRequestCancelRequest\x1a4.warehouse.inventory.v1.RestockRequestCancelResponse\x12\x86\x01\n" +
 	"\x14RestockRequestLabels\x123.warehouse.inventory.v1.RestockRequestLabelsRequest\x1a4.warehouse.inventory.v1.RestockRequestLabelsResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
-	"\x12RestockInboundStat\x121.warehouse.inventory.v1.RestockInboundStatRequest\x1a2.warehouse.inventory.v1.RestockInboundStatResponse\"\x03\x90\x02\x01BRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
+	"\x12RestockInboundStat\x121.warehouse.inventory.v1.RestockInboundStatRequest\x1a2.warehouse.inventory.v1.RestockInboundStatResponse\"\x03\x90\x02\x01\x12\x83\x01\n" +
+	"\x13RestockReceiptPhoto\x122.warehouse.inventory.v1.RestockReceiptPhotoRequest\x1a3.warehouse.inventory.v1.RestockReceiptPhotoResponse\"\x03\x90\x02\x01BRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
 
 var (
 	file_warehouse_inventory_v1_restock_request_proto_rawDescOnce sync.Once
@@ -3651,7 +3769,7 @@ func file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_inventory_v1_restock_request_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_warehouse_inventory_v1_restock_request_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
+var file_warehouse_inventory_v1_restock_request_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_warehouse_inventory_v1_restock_request_proto_goTypes = []any{
 	(RestockRequestStatus)(0),              // 0: warehouse.inventory.v1.RestockRequestStatus
 	(RestockPaymentType)(0),                // 1: warehouse.inventory.v1.RestockPaymentType
@@ -3700,12 +3818,14 @@ var file_warehouse_inventory_v1_restock_request_proto_goTypes = []any{
 	(*RestockRequestLabelsRequest)(nil),    // 44: warehouse.inventory.v1.RestockRequestLabelsRequest
 	(*RestockLabel)(nil),                   // 45: warehouse.inventory.v1.RestockLabel
 	(*RestockRequestLabelsResponse)(nil),   // 46: warehouse.inventory.v1.RestockRequestLabelsResponse
-	nil,                                    // 47: warehouse.inventory.v1.RestockRequestMapItem.MapDataEntry
-	nil,                                    // 48: warehouse.inventory.v1.RestockActorMapItem.MapDataEntry
-	(*v1.CommonPagination)(nil),            // 49: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),              // 50: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),                    // 51: warehouse.common.v1.PageInfo
-	(v1.CommonSortType)(0),                 // 52: warehouse.common.v1.CommonSortType
+	(*RestockReceiptPhotoRequest)(nil),     // 47: warehouse.inventory.v1.RestockReceiptPhotoRequest
+	(*RestockReceiptPhotoResponse)(nil),    // 48: warehouse.inventory.v1.RestockReceiptPhotoResponse
+	nil,                                    // 49: warehouse.inventory.v1.RestockRequestMapItem.MapDataEntry
+	nil,                                    // 50: warehouse.inventory.v1.RestockActorMapItem.MapDataEntry
+	(*v1.CommonPagination)(nil),            // 51: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),              // 52: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),                    // 53: warehouse.common.v1.PageInfo
+	(v1.CommonSortType)(0),                 // 54: warehouse.common.v1.CommonSortType
 }
 var file_warehouse_inventory_v1_restock_request_proto_depIdxs = []int32{
 	2,  // 0: warehouse.inventory.v1.RestockProblemItem.type:type_name -> warehouse.inventory.v1.RestockProblemType
@@ -3721,26 +3841,26 @@ var file_warehouse_inventory_v1_restock_request_proto_depIdxs = []int32{
 	12, // 10: warehouse.inventory.v1.RestockRequestCreateResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
 	16, // 11: warehouse.inventory.v1.RestockRequestListRequest.filter:type_name -> warehouse.inventory.v1.RestockRequestListFilter
 	4,  // 12: warehouse.inventory.v1.RestockRequestListRequest.data_request:type_name -> warehouse.inventory.v1.RestockRequestListDataType
-	49, // 13: warehouse.inventory.v1.RestockRequestListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	51, // 13: warehouse.inventory.v1.RestockRequestListRequest.page:type_name -> warehouse.common.v1.CommonPagination
 	0,  // 14: warehouse.inventory.v1.RestockRequestListFilter.status:type_name -> warehouse.inventory.v1.RestockRequestStatus
 	3,  // 15: warehouse.inventory.v1.RestockRequestListFilter.date_field:type_name -> warehouse.inventory.v1.RestockDateField
-	47, // 16: warehouse.inventory.v1.RestockRequestMapItem.map_data:type_name -> warehouse.inventory.v1.RestockRequestMapItem.MapDataEntry
-	50, // 17: warehouse.inventory.v1.RestockRequestListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	49, // 16: warehouse.inventory.v1.RestockRequestMapItem.map_data:type_name -> warehouse.inventory.v1.RestockRequestMapItem.MapDataEntry
+	52, // 17: warehouse.inventory.v1.RestockRequestListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	17, // 18: warehouse.inventory.v1.RestockRequestListResponseItem.restock_request:type_name -> warehouse.inventory.v1.RestockRequestMapItem
 	18, // 19: warehouse.inventory.v1.RestockRequestListResponse.items:type_name -> warehouse.inventory.v1.RestockRequestListResponseItem
-	51, // 20: warehouse.inventory.v1.RestockRequestListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	53, // 20: warehouse.inventory.v1.RestockRequestListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	12, // 21: warehouse.inventory.v1.RestockRequestDetailResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
 	5,  // 22: warehouse.inventory.v1.RestockActorListFilter.role:type_name -> warehouse.inventory.v1.RestockActorRole
-	52, // 23: warehouse.inventory.v1.RestockActorListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	54, // 23: warehouse.inventory.v1.RestockActorListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
 	7,  // 24: warehouse.inventory.v1.RestockActorListFilterSort.actor:type_name -> warehouse.inventory.v1.RestockActorSort
 	22, // 25: warehouse.inventory.v1.RestockActorListRequest.filter:type_name -> warehouse.inventory.v1.RestockActorListFilter
 	23, // 26: warehouse.inventory.v1.RestockActorListRequest.sort:type_name -> warehouse.inventory.v1.RestockActorListFilterSort
 	6,  // 27: warehouse.inventory.v1.RestockActorListRequest.data_request:type_name -> warehouse.inventory.v1.RestockActorListDataType
-	49, // 28: warehouse.inventory.v1.RestockActorListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	48, // 29: warehouse.inventory.v1.RestockActorMapItem.map_data:type_name -> warehouse.inventory.v1.RestockActorMapItem.MapDataEntry
+	51, // 28: warehouse.inventory.v1.RestockActorListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	50, // 29: warehouse.inventory.v1.RestockActorMapItem.map_data:type_name -> warehouse.inventory.v1.RestockActorMapItem.MapDataEntry
 	26, // 30: warehouse.inventory.v1.RestockActorListResponseItem.actor:type_name -> warehouse.inventory.v1.RestockActorMapItem
 	27, // 31: warehouse.inventory.v1.RestockActorListResponse.items:type_name -> warehouse.inventory.v1.RestockActorListResponseItem
-	51, // 32: warehouse.inventory.v1.RestockActorListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	53, // 32: warehouse.inventory.v1.RestockActorListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	30, // 33: warehouse.inventory.v1.RestockInboundStatRequest.filter:type_name -> warehouse.inventory.v1.RestockInboundStatFilter
 	29, // 34: warehouse.inventory.v1.RestockInboundStatResponse.preview:type_name -> warehouse.inventory.v1.RestockInboundPreview
 	10, // 35: warehouse.inventory.v1.RestockRequestUpdateRequest.items:type_name -> warehouse.inventory.v1.RestockRequestItem
@@ -3765,19 +3885,21 @@ var file_warehouse_inventory_v1_restock_request_proto_depIdxs = []int32{
 	42, // 54: warehouse.inventory.v1.RestockRequestService.RestockRequestCancel:input_type -> warehouse.inventory.v1.RestockRequestCancelRequest
 	44, // 55: warehouse.inventory.v1.RestockRequestService.RestockRequestLabels:input_type -> warehouse.inventory.v1.RestockRequestLabelsRequest
 	31, // 56: warehouse.inventory.v1.RestockRequestService.RestockInboundStat:input_type -> warehouse.inventory.v1.RestockInboundStatRequest
-	14, // 57: warehouse.inventory.v1.RestockRequestService.RestockRequestCreate:output_type -> warehouse.inventory.v1.RestockRequestCreateResponse
-	19, // 58: warehouse.inventory.v1.RestockRequestService.RestockRequestList:output_type -> warehouse.inventory.v1.RestockRequestListResponse
-	28, // 59: warehouse.inventory.v1.RestockRequestService.RestockActorList:output_type -> warehouse.inventory.v1.RestockActorListResponse
-	21, // 60: warehouse.inventory.v1.RestockRequestService.RestockRequestDetail:output_type -> warehouse.inventory.v1.RestockRequestDetailResponse
-	34, // 61: warehouse.inventory.v1.RestockRequestService.RestockRequestUpdate:output_type -> warehouse.inventory.v1.RestockRequestUpdateResponse
-	36, // 62: warehouse.inventory.v1.RestockRequestService.RestockRequestArrive:output_type -> warehouse.inventory.v1.RestockRequestArriveResponse
-	39, // 63: warehouse.inventory.v1.RestockRequestService.RestockRequestAccept:output_type -> warehouse.inventory.v1.RestockRequestAcceptResponse
-	41, // 64: warehouse.inventory.v1.RestockRequestService.RestockRequestMarkLost:output_type -> warehouse.inventory.v1.RestockRequestMarkLostResponse
-	43, // 65: warehouse.inventory.v1.RestockRequestService.RestockRequestCancel:output_type -> warehouse.inventory.v1.RestockRequestCancelResponse
-	46, // 66: warehouse.inventory.v1.RestockRequestService.RestockRequestLabels:output_type -> warehouse.inventory.v1.RestockRequestLabelsResponse
-	32, // 67: warehouse.inventory.v1.RestockRequestService.RestockInboundStat:output_type -> warehouse.inventory.v1.RestockInboundStatResponse
-	57, // [57:68] is the sub-list for method output_type
-	46, // [46:57] is the sub-list for method input_type
+	47, // 57: warehouse.inventory.v1.RestockRequestService.RestockReceiptPhoto:input_type -> warehouse.inventory.v1.RestockReceiptPhotoRequest
+	14, // 58: warehouse.inventory.v1.RestockRequestService.RestockRequestCreate:output_type -> warehouse.inventory.v1.RestockRequestCreateResponse
+	19, // 59: warehouse.inventory.v1.RestockRequestService.RestockRequestList:output_type -> warehouse.inventory.v1.RestockRequestListResponse
+	28, // 60: warehouse.inventory.v1.RestockRequestService.RestockActorList:output_type -> warehouse.inventory.v1.RestockActorListResponse
+	21, // 61: warehouse.inventory.v1.RestockRequestService.RestockRequestDetail:output_type -> warehouse.inventory.v1.RestockRequestDetailResponse
+	34, // 62: warehouse.inventory.v1.RestockRequestService.RestockRequestUpdate:output_type -> warehouse.inventory.v1.RestockRequestUpdateResponse
+	36, // 63: warehouse.inventory.v1.RestockRequestService.RestockRequestArrive:output_type -> warehouse.inventory.v1.RestockRequestArriveResponse
+	39, // 64: warehouse.inventory.v1.RestockRequestService.RestockRequestAccept:output_type -> warehouse.inventory.v1.RestockRequestAcceptResponse
+	41, // 65: warehouse.inventory.v1.RestockRequestService.RestockRequestMarkLost:output_type -> warehouse.inventory.v1.RestockRequestMarkLostResponse
+	43, // 66: warehouse.inventory.v1.RestockRequestService.RestockRequestCancel:output_type -> warehouse.inventory.v1.RestockRequestCancelResponse
+	46, // 67: warehouse.inventory.v1.RestockRequestService.RestockRequestLabels:output_type -> warehouse.inventory.v1.RestockRequestLabelsResponse
+	32, // 68: warehouse.inventory.v1.RestockRequestService.RestockInboundStat:output_type -> warehouse.inventory.v1.RestockInboundStatResponse
+	48, // 69: warehouse.inventory.v1.RestockRequestService.RestockReceiptPhoto:output_type -> warehouse.inventory.v1.RestockReceiptPhotoResponse
+	58, // [58:70] is the sub-list for method output_type
+	46, // [46:58] is the sub-list for method input_type
 	46, // [46:46] is the sub-list for extension type_name
 	46, // [46:46] is the sub-list for extension extendee
 	0,  // [0:46] is the sub-list for field type_name
@@ -3804,7 +3926,7 @@ func file_warehouse_inventory_v1_restock_request_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_restock_request_proto_rawDesc), len(file_warehouse_inventory_v1_restock_request_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   41,
+			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

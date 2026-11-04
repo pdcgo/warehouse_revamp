@@ -99,6 +99,46 @@ export function todayDateInput(): string {
   return toDateInputValue(new Date());
 }
 
+/**
+ * TODAY as a `yyyy-mm-dd` string IN JAKARTA TIME (a-table-date-is-short-and-every-time-is-wib) — the day a form
+ * pre-fills when the day it asks for is the business's, not the viewer's.
+ *
+ * ⚠ Never `new Date().toISOString().slice(0, 10)`: that is the UTC day, which is YESTERDAY in Jakarta from 00:00 to
+ * 07:00 — and on the 1st of a month, last month's last day, so a cost recorded at 06:00 landed in a month the screen
+ * was not showing. `now` is a parameter so the boundary can be pinned without faking the clock.
+ */
+export function todayWibDateInput(now: Date = new Date()): string {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: APP_TIME_ZONE })
+      .formatToParts(now)
+      .map((part) => [part.type, part.value]),
+  );
+
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/**
+ * A CALENDAR DAY (`yyyy-mm-dd`, as an RPC carries a day with no clock) → the table cell's short date, “5 Nov”,
+ * with the year only when it is not this year in Jakarta (“3 Des 2025”) — {@link formatUnixDateTimeShort}'s date
+ * half (a-table-date-is-short-and-every-time-is-wib). The day is a LABEL, not an instant, so it is formatted as it
+ * stands — no timezone can move it. Anything malformed falls back to itself; `""` is the em dash.
+ */
+export function formatDayShort(day: string): string {
+  if (!day) return "—";
+
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return day;
+
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", timeZone: "UTC" })
+      .formatToParts(new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))))
+      .map((part) => [part.type, part.value]),
+  );
+  const year = m[1] !== todayWibDateInput().slice(0, 4) ? ` ${m[1]}` : "";
+
+  return `${p.day} ${p.month}${year}`;
+}
+
 export function unixToDateInput(unix: bigint): string {
   return unix === 0n ? "" : toDateInputValue(new Date(Number(unix) * 1000));
 }

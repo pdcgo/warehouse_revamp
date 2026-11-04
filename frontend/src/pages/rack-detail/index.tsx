@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -822,7 +823,7 @@ function RackHistory({ teamId, rackId, kinds, reloadKey, testId }: RackHistoryPr
 
         const people = new Map<string, string>();
         for (const [id, user] of actors) {
-          people.set(id, user.name || user.username);
+          people.set(id, personName(user));
         }
 
         setMovements(rows);

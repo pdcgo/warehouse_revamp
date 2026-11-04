@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { lastRackWrite, rackShelf, rackStubScenario } from "../../../.storybook/rackStub";
+import { lastRackWrite, rackHistoryByForStory, rackShelf, rackStubScenario } from "../../../.storybook/rackStub";
+import { FORMER_USER_ID } from "../../../.storybook/fixtures";
 import { reportScenario } from "../../../.storybook/foundRequestStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -73,7 +74,7 @@ async function openSample() {
 }
 
 // The rack as staff read it: the code, each product's team and stock count (a-rack-shows-its-stock-count-for-now), and
-// the two actions. The pending strip names what the prototype has not settled.
+// the two actions.
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -210,8 +211,8 @@ export const RefusedWholeWhenALineChanged: Story = {
   },
 };
 
-// A product being counted is LOCKED AT 0 — shown, not hidden, with the pending mark: what a count's lock blocks is
-// opname Q4.
+// A product being counted is LOCKED AT 0 — shown, not hidden, and the server refuses moving it too (RackMove answers
+// "being counted"; a-lock-stops-sales-and-cancels-too).
 export const ACountedProductIsLocked: Story = {
   render: () => <At42 />,
   play: async () => {
@@ -278,6 +279,20 @@ export const PlacementHistoryNamesWhoMovedIt: Story = {
     await expect(table).toHaveTextContent("Kopi Arabika 250g");
     await expect(table).toHaveTextContent("Ani Rahayu");
     await expect(table).toHaveTextContent("-4");
+  },
+};
+
+// A FORMER USER (erase-keeps-the-row): the history still names whoever moved the goods after their account was erased —
+// as "Former user #69", never the synthetic username `erased69`.
+export const HistoryNamesAFormerUser: Story = {
+  beforeEach: () => rackHistoryByForStory(FORMER_USER_ID),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByTestId("rack-tab-stock-history", {}, { timeout: 4000 }));
+    const table = await canvas.findByTestId("rack-stock-history-table");
+
+    await waitFor(() => expect(table).toHaveTextContent("Former user #69"));
+    await expect(table).not.toHaveTextContent("erased69");
   },
 };
 

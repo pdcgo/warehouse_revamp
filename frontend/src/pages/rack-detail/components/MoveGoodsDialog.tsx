@@ -24,10 +24,8 @@ import { toaster } from "../../../components/feedback/Toaster";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { RackSelect } from "../../../components/pickers/RackSelect";
 import { ProductListItem } from "../../../components/products/ProductListItem";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { useRackCodes, useRackContents, useRackMove } from "../../../features/racks/queries";
 import type { Rack, RackStockLine } from "../../../gen/warehouse/inventory/v1/rack_pb";
-import { RACK_DETAIL_PENDING } from "../pending";
 
 // ONE DESTINATION OF ONE PRODUCT. A product starts with one leg; "Split to Another Rack" adds more
 // (a-move-is-one-rack-to-one-or-more-racks). A leg that is not `custom` goes to the dialog's default rack.
@@ -301,7 +299,6 @@ export function MoveGoodsDialog({
                                   <Text fontSize="xs" color="fg.muted">
                                     {t("racks.move.countingHelp")}
                                   </Text>
-                                  <NotImplemented list={RACK_DETAIL_PENDING} id="countLock" />
                                 </HStack>
                               ) : (
                                 <>

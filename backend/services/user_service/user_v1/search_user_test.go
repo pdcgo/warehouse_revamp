@@ -5,10 +5,13 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"gorm.io/gorm"
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 )
@@ -235,5 +238,51 @@ func TestSearchUser_RootFindsByPhoneToo(t *testing.T) {
 	got := foundNames(search(t, asRoot(t, db), db, whTeam, "0812 3456 7890"))
 	if len(got) != 1 || got[0] != "anilestari" {
 		t.Fatalf("Root searching the phone found %v, want anilestari", got)
+	}
+}
+
+// only-member-managers-open-the-search, through MONITORING: the interceptor lets the admin team read a team it is not in
+// through any marked read, without reading that read's roles. The search's policy leaves the admin team's Admin out
+// (the-admin-team-admin-alone-does-not-manage-members), so that Admin, monitoring a selling team, is refused here — it
+// would otherwise probe any account by exact handle and read its phone ending. The admin team's Owner is in the policy.
+func TestSearchUser_AMonitorIsHeldToThePolicy(t *testing.T) {
+	db := san_testdb.DB(t)
+
+	target := insertUser(t, db, "probed", "pw12345678")
+	setPhone(t, db, target, "+6281299990000")
+
+	adminAdmin, _ := asMember(t, db, "admadmin", adminTeam, role_basev1.Role_ROLE_ADMIN_ADMINISTRATOR)
+	adminOwner, _ := asMember(t, db, "admowner", adminTeam, role_basev1.Role_ROLE_ADMIN_OWNER)
+
+	// The mark the interceptor's step 8b leaves on a monitor's call.
+	_, err := newService(t, db).SearchUser(san_auth.WithMonitor(adminAdmin), connect.NewRequest(&userv1.SearchUserRequest{
+		Q: "probed", Limit: 10, TeamId: sellTeam,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("the admin team's Admin monitoring: code = %v, want PermissionDenied", connect.CodeOf(err))
+	}
+
+	got := foundNames(search(t, san_auth.WithMonitor(adminOwner), db, sellTeam, "probed"))
+	if len(got) != 1 || got[0] != "probed" {
+		t.Fatalf("the admin team's Owner monitoring found %v, want probed — its role is in the policy", got)
+	}
+}
+
+// The guard reads the policy, so the policy is pinned: the admin team's Owner is in it, its Admin is not.
+func TestSearchUser_PolicyLeavesTheAdminTeamAdminOut(t *testing.T) {
+	descriptor, err := protoregistry.GlobalFiles.FindDescriptorByName("warehouse.user.v1.SearchUserRequest")
+	if err != nil {
+		t.Fatalf("find descriptor: %v", err)
+	}
+
+	policy := san_auth.PolicyOf(descriptor.(protoreflect.MessageDescriptor))
+
+	has := map[role_basev1.Role]bool{}
+	for _, role := range policy.GetRoles() {
+		has[role] = true
+	}
+
+	if !has[role_basev1.Role_ROLE_ADMIN_OWNER] || has[role_basev1.Role_ROLE_ADMIN_ADMINISTRATOR] {
+		t.Fatalf("SearchUser roles = %v, want ADMIN_OWNER in and ADMIN_ADMINISTRATOR out", policy.GetRoles())
 	}
 }

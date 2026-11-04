@@ -74,7 +74,12 @@ function seedAccounts(): StubAccount[] {
     shopIds: [...a.shopIds],
     createdAt: atTen(dayKey(60)),
     updatedAt: atTen(dayKey(reconciledAgo ?? 30)),
-    reconciledAt: reconciledAgo === undefined ? undefined : atTen(dayKey(reconciledAgo)),
+    // Exactly N×24h ago, not N days ago at 10:00: the relative label counts elapsed time, so a fixed
+    // clock hour read "17 hours ago" before 10:00 WIB and "2 days ago" after 22:00.
+    reconciledAt:
+      reconciledAgo === undefined
+        ? undefined
+        : timestampFromDate(new Date(Date.now() - reconciledAgo * 86_400_000)),
   }));
 }
 
@@ -116,6 +121,36 @@ export function resetFinancialAccounts() {
  */
 export function unlinkShopForStory(shopId: bigint) {
   for (const a of accounts) a.shopIds = a.shopIds.filter((id) => id !== shopId);
+}
+
+/**
+ * A STORY'S SETUP: a team with NO operational account — nothing a Paid from may pick (the expense and restock forms
+ * cannot be sent). `resetFinancialAccounts` (preview's beforeEach) marks them back.
+ */
+export function noOperationalAccountForStory(teamId: bigint) {
+  for (const a of accounts) if (a.teamId === teamId) a.operational = false;
+}
+
+/**
+ * A STORY'S SETUP: one account unmarked as operational — as an admin would, between a form loading its Paid from and
+ * the person pressing Save. `resetFinancialAccounts` (preview's beforeEach) marks it back.
+ */
+export function unmarkOperationalForStory(accountId: bigint) {
+  for (const a of accounts) if (a.id === accountId) a.operational = false;
+}
+
+/**
+ * Whether an account may pay a team's expense — what expense_service asks financial_account in-process
+ * (expense_v1/paying_accounts.go): the team's own, active, marked operational. `null` when it may; else the server's
+ * FailedPrecondition sentence, naming it. Another team's account reads as one that never existed.
+ */
+export function payingAccountRefusal(teamId: bigint, accountId: bigint): string | null {
+  const a = accounts.find((x) => x.id === accountId && x.teamId === teamId);
+  const why = "not one of the team's active operational accounts";
+  if (!a) return `account #${accountId} is ${why}`;
+  if (a.status === FinancialAccountStatus.ARCHIVED) return `${a.name} is archived — it is ${why}`;
+  if (!a.operational) return `${a.name} is ${why} — pick another, or ask an admin to mark it operational`;
+  return null;
 }
 
 // ── The arithmetic ──────────────────────────────────────────────────────────────────────────────

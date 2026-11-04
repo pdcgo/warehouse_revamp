@@ -4,7 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { WarehouseTransferStatus } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { transferWire } from "../../../.storybook/warehouseTransferStub";
 import { WarehouseTransferActions } from "./WarehouseTransferActions";
-import { STORY_PENDING, storyTransfer } from "./storyTransfer";
+import { storyTransfer } from "./storyTransfer";
 
 // WHAT A WAREHOUSE MAY DO, by status AND by which end it is (the-team-opens-the-sender-ships-the-receiver-accepts):
 // A processes and ships; B signs and accepts. The same transfer offers different acts to its two warehouses.
@@ -12,7 +12,7 @@ const meta = {
   title: "Features/WarehouseTransfer/WarehouseTransferActions",
   component: WarehouseTransferActions,
   parameters: { signedIn: true },
-  args: { teamId: 11n, variant: "buttons", pending: STORY_PENDING, transfer: storyTransfer(601n) },
+  args: { teamId: 11n, variant: "buttons", transfer: storyTransfer(601n) },
 } satisfies Meta<typeof WarehouseTransferActions>;
 
 export default meta;
@@ -73,8 +73,9 @@ export const ShipRecordsTheLabel: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByTestId("transfer-action-ship-602"));
     await userEvent.type(await screen.findByTestId("transfer-ship-tracking"), "JNE5566", { delay: 20 });
-    // The label photo is uploaded nowhere until its type is designed — the field says so.
-    await expect(screen.getByTestId("not-implemented-labelPhoto")).toBeInTheDocument();
+    // The label photo uploads (ReceiptUpload) and is saved as the transfer's receipt_file — no pending mark.
+    await expect(screen.getByTestId("transfer-ship-label")).toBeInTheDocument();
+    await expect(screen.queryByTestId("not-implemented-labelPhoto")).toBeNull();
     await userEvent.click(screen.getByTestId("confirm-action"));
 
     await waitFor(() => expect(transferWire(602n).status).toBe(WarehouseTransferStatus.SHIPPED));

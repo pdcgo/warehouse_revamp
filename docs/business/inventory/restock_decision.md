@@ -57,6 +57,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-restock-prototype-is-accepted](#the-restock-prototype-is-accepted) | design_accept: the seven restock screens and the restock contract are the design to build; a contract change from here is a new pass | chat, 2026-10-15 |
 | [restocks-non-stock-parts-come-before-the-switch-over](#restocks-non-stock-parts-come-before-the-switch-over) | everything in restock that writes no stock is built now, on today's backend; only the accept waits for the ledgers | chat, 2026-10-15 — as recommended |
 | [a-restock-carries-only-the-teams-own-products](#a-restock-carries-only-the-teams-own-products) | a selling team restocks only the products it owns; create and update refuse another team's product, so every unit in stock has one owner | chat, 2026-10-16 — option a, as recommended |
+| [the-restocks-warehouse-opens-its-label-photo](#the-restocks-warehouse-opens-its-label-photo) | the restock's own warehouse opens its label photo through a checked signed link, no share | owner, as recommended | — |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -1497,3 +1498,22 @@ flowchart LR
 | the ledgers | `batches.team_id` = `product_placements.team_id` = the product's owner, always |
 | selling another team's product | an order's borrowed line, at the markup — never a restock |
 | what it retires | the old opname test *"a shortfall splits across owners"*: two owners of one product on one shelf cannot happen |
+
+---
+
+## the-restocks-warehouse-opens-its-label-photo
+
+> In chat *(owner, 2026-11-04)* — *"B"*, as recommended, to: may the warehouse open a restock's label photo?
+
+**The verdict.** The warehouse a restock is going to may open its label photo (`receipt_file`), to match the box at its door. The server checks the restock is the caller warehouse's and hands back a signed link minted from document_service's own table — the shape of [a-warehouse-prints-the-labels-of-orders-it-ships](../../technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)'s `OrderLabels`. No file is shared; any other warehouse still cannot open it. The selling team keeps opening it as the file's owner.
+
+| | |
+| --- | --- |
+| who | the restock's own warehouse — its Owner, Admin and Staff |
+| how | an inventory read checks `warehouse_id = caller`, then an in-process document seam signs the link |
+| not chosen | a `document_shares` row at upload (C); seller-only (A) |
+
+⛔ Not built — the warehouse's restock detail reads *"Attached — only the selling team can open it"* today.
+
+✅ **Built 2026-11-04.** `RestockRequestService.RestockReceiptPhoto` (`inventory_v1/restock_receipt_photo.go`) checks `warehouse_id = team_id`, then `NewRestockPhotoLinker` → `document_v1.LabelURL` signs the link (the photo is an `order_receipt` upload, owner = the restock's selling team). Tests `restock_receipt_photo_test.go`, `restock_photo_linker_test.go`; story `TheWarehouseOpensTheLabelPhoto`; e2e *Restock detail: the warehouse's staff opens the seller's label photo*.
+

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { personName } from "../../lib/users";
 import {
   inventoryClient,
   orderClient,
@@ -230,7 +231,7 @@ export function useWarehouseProduct(args: {
         try {
           const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: actorIds }, dataRequest: userByIdsRowData() }));
           for (const [id, u] of Object.entries(users)) {
-            actorNames.set(id, u.name || u.username);
+            actorNames.set(id, personName(u));
           }
         } catch {
           // leave the map empty — the By column falls back to "#id".
@@ -728,7 +729,7 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
           const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: [actorId] }, dataRequest: userByIdsRowData() }));
           const u = users[actorId.toString()];
           // "Name (username)"; fall back to the username alone when no display name is set.
-          acceptedByName = u ? (u.name ? `${u.name} (${u.username})` : u.username) : "";
+          acceptedByName = u ? (u.name ? `${u.name} (${u.username})` : personName(u)) : "";
         } catch {
           acceptedByName = "";
         }
@@ -865,7 +866,7 @@ export function useBatchReceipt(args: { warehouseId: bigint | undefined; deliver
         try {
           const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: actorIds }, dataRequest: userByIdsRowData() }));
           for (const [id, u] of Object.entries(users)) {
-            actorNames.set(id, u.name || u.username);
+            actorNames.set(id, personName(u));
           }
         } catch {
           // leave empty — the page falls back to "#id".

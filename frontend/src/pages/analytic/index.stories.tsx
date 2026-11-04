@@ -36,6 +36,8 @@ const OrdersBySeller = at(`?g=team&m=${CREATED}`);
 const StockLostByDay = at("?g=daily&m=metrics/inventory/lost&r=2026-10-01..2026-10-07");
 const ByShopAsGraph = at(`?g=shop&m=${CREATED},metrics/settlement&s=${CREATED}:created_count:desc&v=graph`);
 const Nothing = at("?g=shop");
+const OrdersAndSettlementByDay = at(`?g=daily&m=${CREATED},metrics/settlement&r=2026-10-01..2026-10-07`);
+const SettlementByDay = at("?g=daily&m=metrics/settlement&r=2026-10-01..2026-10-07");
 
 const meta = {
   title: "Pages/Analytic/Composer",
@@ -251,6 +253,43 @@ export const AddingStockLostRemovesTheShopFilter: Story = {
     const toast = await screen.findByText("Shop filter removed");
     await waitFor(() => expect(toast).toBeVisible());
     await expect(canvas.getByTestId("analytic-chip-metrics-inventory-lost")).toBeVisible();
+  },
+};
+
+/** Open the "created by" field and wait for its options — they are portalled, so read off `screen`. */
+async function openPeople(canvas: ReturnType<typeof within>) {
+  const field = await canvas.findByTestId("analytic-filter-user", {}, { timeout: 4000 });
+  await userEvent.click(within(field).getByRole("combobox"));
+  await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(0), { timeout: 4000 });
+}
+
+// a-who-filter-lists-the-people-on-its-rows: the "created by" field offers the people on the chosen metrics' own rows —
+// selling's order creators (Eko 65, Budi 62, Citra 63) and settlement's people (Ani 61, Budi 62), UNIONED: Budi once.
+// Never the system-wide user search, which only Root may call — the field was dead for a seller before.
+export const CreatedByOffersThePeopleOnTheRows: Story = {
+  render: () => <OrdersAndSettlementByDay />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openPeople(canvas);
+
+    for (const id of [65, 62, 63, 61]) {
+      await waitFor(() => expect(screen.getAllByTestId(`person-filter-option-${id}`)).toHaveLength(1));
+    }
+    await expect(screen.getAllByRole("option")).toHaveLength(4);
+  },
+};
+
+// A settlement metric alone offers settlement's people only: Eko typed orders in, but no settlement row counts for him.
+export const CreatedByForSettlementIsSettlementsPeople: Story = {
+  render: () => <SettlementByDay />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openPeople(canvas);
+
+    await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
+    await expect(screen.getByTestId("person-filter-option-61")).toBeVisible();
+    await expect(screen.getByTestId("person-filter-option-62")).toBeVisible();
+    await expect(screen.queryByTestId("person-filter-option-65")).toBeNull();
   },
 };
 

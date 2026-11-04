@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { returnAcceptScenario, withOrdersInReturn } from "../../../.storybook/sessionScenario";
+import { returnAcceptScenario, withOrderStatus, withOrdersInReturn } from "../../../.storybook/sessionScenario";
 import { orderDetailFor, orders, teams } from "../../../.storybook/fixtures";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { PickOrderPage } from "./index";
@@ -27,6 +27,8 @@ import { PickOrderPage } from "./index";
 //   | AReturnIsAcceptedHere           | RETURN → Accept Return, then return_completed — nothing left |
 //   | OnlyAReturnOffersTheAccept      | a pending order is confirmed, never accepted as a return     |
 //   | TheReturnWarehouseAccepts…      | the configured return warehouse opens and accepts a return   |
+//   | ForceReturnOnTheOrderPage       | shipped → Force Return, confirmed → Accept Return is offered  |
+//   | ForceReturnIsOnlyForAParcel…    | a pending order offers no Force Return                       |
 
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const SELLER = teams[1]!; // Toko Melati (12)
@@ -247,5 +249,46 @@ export const TheReturnWarehouseAcceptsAnOrderItDidNotShip: Story = {
     // A toast from an earlier story may still be on screen — at least one says so.
     await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
     await expect(returnAcceptScenario.last?.orderId).toBe(109n);
+  },
+};
+
+// ── The forced return (a-return-is-received-by-search-then-forced, A) ─────────────────────────────────────────────
+
+/**
+ * FORCE RETURN ON THE ORDER PAGE — someone already looking at a shipped order, with its parcel back in hand. It confirms
+ * in the owner's words, the order re-reads in `return`, and Accept Return takes the Force Return button's place.
+ */
+export const ForceReturnOnTheOrderPage: Story = {
+  beforeEach: withOrderStatus(SHIPPED.id, OrderStatus.SHIPPED),
+  render: () => <AtShipped />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.queryByTestId("pick-order-accept-return")).toBeNull();
+    await userEvent.click(await canvas.findByTestId("pick-order-force-return"));
+
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await expect(
+      screen.getByText(`Order #${SHIPPED.id} is "Shipped". Mark it as returned so you can accept it?`),
+    ).toBeInTheDocument();
+    await userEvent.click(confirm);
+
+    await expect((await screen.findAllByText("Order marked as returned")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(canvas.getByTestId("pick-order-accept-return")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("pick-order-force-return")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("pick-order-accept-return"));
+    await expect(await screen.findByTestId("accept-return-dialog")).toHaveTextContent(`Accept Return #${SHIPPED.id}`);
+  },
+};
+
+/** …only for a parcel that left: a pending order is confirmed, never forced back. */
+export const ForceReturnIsOnlyForAParcelThatLeft: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("pick-order-advance")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("pick-order-force-return")).toBeNull();
   },
 };

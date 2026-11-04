@@ -218,3 +218,20 @@ sequenceDiagram
 | a code | spent once, by the statement that reads it; a wrong verifier spends it too |
 | revoke | `AgentConnectionRevoke` (mine) or `AgentConnectionTeamRevoke` (the owner's) stamp `revoked_at`; the next call is a 401 — no cache in between |
 | no refresh | 90 days, then the person connects again |
+
+## ProfileDetail, UserList's grant filter, SearchUser's monitor guard (built 2026-11-04)
+
+Three narrow rules, each a single read, written down because each closes a bug.
+
+| RPC | rule | why |
+| --- | --- | --- |
+| `ProfileDetail` (new, `allow_only_authenticated`, a marked read) | the caller's OWN `User` row — email and phone included. No `user_id` | the profile form loaded only `UserByIDs`' `PublicUser` (no email, no phone), started both blank and saved them blank, wiping the phone a password reset goes to. It now loads this, and sends only the fields that changed — `UpdateProfile` reads an absent field as "leave alone" |
+| `UserList` `filter.exclude_suspended` | leaves out `is_suspended` and `erased_at IS NOT NULL` accounts, in the count too | asked by the shop-grant picker only ([a-suspended-user-is-never-picked](../../business/user/context_decision.md#a-suspended-user-is-never-picked)); the member list and "who" filters keep them, badged ([a-filter-keeps-former-and-suspended-people](../../business/user/context_decision.md#a-filter-keeps-former-and-suspended-people)) |
+| `SearchUser` | a MONITOR (`san_auth.IsMonitor`) passes only when its admin-team role is in the request's own `request_policy` roles — the admin team's Owner yes, its Admin no | the interceptor's step 8b lets a monitor through any marked read without reading that read's roles; the admin team's Admin could probe any account's existence and phone ending ([only-member-managers-open-the-search](../../business/user/context_decision.md#only-member-managers-open-the-search)). Other monitored reads are unchanged |
+
+```mermaid
+flowchart LR
+  M["a monitor calls SearchUser in a team it is not in"] --> P{"its admin-team role is in SearchUserRequest's policy?"}
+  P -->|"ADMIN_OWNER - yes"| OK["searched, as an Owner - exact match only"]
+  P -->|"ADMIN_ADMINISTRATOR - no"| R["PermissionDenied"]
+```

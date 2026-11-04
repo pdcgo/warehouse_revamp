@@ -22,10 +22,8 @@ import { rpcError } from "../../../api/clients";
 import { toaster } from "../../../components/feedback/Toaster";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { ProductListItem } from "../../../components/products/ProductListItem";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { useRackContents, useRackSample } from "../../../features/racks/queries";
 import type { Rack, RackStockLine } from "../../../gen/warehouse/inventory/v1/rack_pb";
-import { RACK_DETAIL_PENDING } from "../pending";
 
 const units = (raw: string | undefined) => {
   const n = Number(raw ?? "");
@@ -204,7 +202,6 @@ export function RecordSampleDialog({
                                   <Text fontSize="xs" color="fg.muted">
                                     {t("racks.move.countingHelp")}
                                   </Text>
-                                  <NotImplemented list={RACK_DETAIL_PENDING} id="countLock" />
                                 </HStack>
                               ) : (
                                 <HStack gap="2">

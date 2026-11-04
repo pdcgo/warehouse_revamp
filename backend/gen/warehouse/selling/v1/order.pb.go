@@ -635,6 +635,59 @@ func (OrderCreatorSort) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{10}
 }
 
+// Why an order's label is not behind the link.
+type OrderLabelReason int32
+
+const (
+	OrderLabelReason_ORDER_LABEL_REASON_UNSPECIFIED OrderLabelReason = 0
+	// The order does not ship from this warehouse — or there is no such order. The two read alike, so ids cannot be
+	// probed.
+	OrderLabelReason_ORDER_LABEL_REASON_NOT_SHIPPED_HERE OrderLabelReason = 1
+	// The seller has not attached a label file to the order.
+	OrderLabelReason_ORDER_LABEL_REASON_NO_LABEL OrderLabelReason = 2
+)
+
+// Enum value maps for OrderLabelReason.
+var (
+	OrderLabelReason_name = map[int32]string{
+		0: "ORDER_LABEL_REASON_UNSPECIFIED",
+		1: "ORDER_LABEL_REASON_NOT_SHIPPED_HERE",
+		2: "ORDER_LABEL_REASON_NO_LABEL",
+	}
+	OrderLabelReason_value = map[string]int32{
+		"ORDER_LABEL_REASON_UNSPECIFIED":      0,
+		"ORDER_LABEL_REASON_NOT_SHIPPED_HERE": 1,
+		"ORDER_LABEL_REASON_NO_LABEL":         2,
+	}
+)
+
+func (x OrderLabelReason) Enum() *OrderLabelReason {
+	p := new(OrderLabelReason)
+	*p = x
+	return p
+}
+
+func (x OrderLabelReason) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (OrderLabelReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_selling_v1_order_proto_enumTypes[11].Descriptor()
+}
+
+func (OrderLabelReason) Type() protoreflect.EnumType {
+	return &file_warehouse_selling_v1_order_proto_enumTypes[11]
+}
+
+func (x OrderLabelReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use OrderLabelReason.Descriptor instead.
+func (OrderLabelReason) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{11}
+}
+
 // One row of an order's timeline (order-timeline-logs-replaces-order-events) — a STATUS CHANGE, or a NOTE written
 // while working it (*no goods on Rak A*), with who wrote it and from which side.
 type OrderTimelineLog struct {
@@ -5340,6 +5393,185 @@ func (x *OrderCreatorListResponse) GetPageInfo() *v1.PageInfo {
 	return nil
 }
 
+type OrderLabelsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The warehouse — the scope. Each order must ship from it.
+	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// In print order. ⚠ One for now: merging several labels into one PDF is step 2.
+	OrderIds      []uint64 `protobuf:"varint,2,rep,packed,name=order_ids,json=orderIds,proto3" json:"order_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderLabelsRequest) Reset() {
+	*x = OrderLabelsRequest{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderLabelsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderLabelsRequest) ProtoMessage() {}
+
+func (x *OrderLabelsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderLabelsRequest.ProtoReflect.Descriptor instead.
+func (*OrderLabelsRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *OrderLabelsRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *OrderLabelsRequest) GetOrderIds() []uint64 {
+	if x != nil {
+		return x.OrderIds
+	}
+	return nil
+}
+
+// One asked order, and whether its label is behind the link.
+type OrderLabelResult struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	OrderId  uint64                 `protobuf:"varint,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	Included bool                   `protobuf:"varint,2,opt,name=included,proto3" json:"included,omitempty"`
+	// UNSPECIFIED when included.
+	Reason        OrderLabelReason `protobuf:"varint,3,opt,name=reason,proto3,enum=warehouse.selling.v1.OrderLabelReason" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderLabelResult) Reset() {
+	*x = OrderLabelResult{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderLabelResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderLabelResult) ProtoMessage() {}
+
+func (x *OrderLabelResult) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderLabelResult.ProtoReflect.Descriptor instead.
+func (*OrderLabelResult) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *OrderLabelResult) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
+func (x *OrderLabelResult) GetIncluded() bool {
+	if x != nil {
+		return x.Included
+	}
+	return false
+}
+
+func (x *OrderLabelResult) GetReason() OrderLabelReason {
+	if x != nil {
+		return x.Reason
+	}
+	return OrderLabelReason_ORDER_LABEL_REASON_UNSPECIFIED
+}
+
+type OrderLabelsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The label file behind a short-lived signed link. Empty when no asked order's label is included.
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	// When the link stops working, unix seconds. 0 with no link.
+	ExpiresAtUnix int64 `protobuf:"varint,2,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
+	// One per asked order, in the asked order.
+	Results       []*OrderLabelResult `protobuf:"bytes,3,rep,name=results,proto3" json:"results,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderLabelsResponse) Reset() {
+	*x = OrderLabelsResponse{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderLabelsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderLabelsResponse) ProtoMessage() {}
+
+func (x *OrderLabelsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderLabelsResponse.ProtoReflect.Descriptor instead.
+func (*OrderLabelsResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *OrderLabelsResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *OrderLabelsResponse) GetExpiresAtUnix() int64 {
+	if x != nil {
+		return x.ExpiresAtUnix
+	}
+	return 0
+}
+
+func (x *OrderLabelsResponse) GetResults() []*OrderLabelResult {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
 var File_warehouse_selling_v1_order_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_order_proto_rawDesc = "" +
@@ -5726,7 +5958,19 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x18OrderCreatorListResponse\x12H\n" +
 	"\x05items\x18\x01 \x03(\v22.warehouse.selling.v1.OrderCreatorListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\xc7\x03\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"x\n" +
+	"\x12OrderLabelsRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12/\n" +
+	"\torder_ids\x18\x02 \x03(\x04B\x12\xbaH\x0f\x92\x01\f\b\x01\x10\x01\x18\x01\"\x042\x02 \x00R\borderIds:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"\x89\x01\n" +
+	"\x10OrderLabelResult\x12\x19\n" +
+	"\border_id\x18\x01 \x01(\x04R\aorderId\x12\x1a\n" +
+	"\bincluded\x18\x02 \x01(\bR\bincluded\x12>\n" +
+	"\x06reason\x18\x03 \x01(\x0e2&.warehouse.selling.v1.OrderLabelReasonR\x06reason\"\x91\x01\n" +
+	"\x13OrderLabelsResponse\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12&\n" +
+	"\x0fexpires_at_unix\x18\x02 \x01(\x03R\rexpiresAtUnix\x12@\n" +
+	"\aresults\x18\x03 \x03(\v2&.warehouse.selling.v1.OrderLabelResultR\aresults*\xc7\x03\n" +
 	"\vOrderStatus\x12\x1c\n" +
 	"\x18ORDER_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14ORDER_STATUS_PENDING\x10\x01\x12\x1a\n" +
@@ -5782,7 +6026,11 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"$ORDER_CREATOR_LIST_DATA_TYPE_CREATOR\x10\x01*V\n" +
 	"\x10OrderCreatorSort\x12\"\n" +
 	"\x1eORDER_CREATOR_SORT_UNSPECIFIED\x10\x00\x12\x1e\n" +
-	"\x1aORDER_CREATOR_SORT_LAST_AT\x10\x012\xb8\x0e\n" +
+	"\x1aORDER_CREATOR_SORT_LAST_AT\x10\x01*\x80\x01\n" +
+	"\x10OrderLabelReason\x12\"\n" +
+	"\x1eORDER_LABEL_REASON_UNSPECIFIED\x10\x00\x12'\n" +
+	"#ORDER_LABEL_REASON_NOT_SHIPPED_HERE\x10\x01\x12\x1f\n" +
+	"\x1bORDER_LABEL_REASON_NO_LABEL\x10\x022\xa1\x0f\n" +
 	"\fOrderService\x12b\n" +
 	"\vOrderCreate\x12(.warehouse.selling.v1.OrderCreateRequest\x1a).warehouse.selling.v1.OrderCreateResponse\x12a\n" +
 	"\tOrderList\x12&.warehouse.selling.v1.OrderListRequest\x1a'.warehouse.selling.v1.OrderListResponse\"\x03\x90\x02\x01\x12g\n" +
@@ -5799,7 +6047,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x11OrderActivityStat\x12..warehouse.selling.v1.OrderActivityStatRequest\x1a/.warehouse.selling.v1.OrderActivityStatResponse\"\x03\x90\x02\x01\x12a\n" +
 	"\tOrderStat\x12&.warehouse.selling.v1.OrderStatRequest\x1a'.warehouse.selling.v1.OrderStatResponse\"\x03\x90\x02\x01\x12\x7f\n" +
 	"\x13OrderByExternalRefs\x120.warehouse.selling.v1.OrderByExternalRefsRequest\x1a1.warehouse.selling.v1.OrderByExternalRefsResponse\"\x03\x90\x02\x01\x12v\n" +
-	"\x10OrderCreatorList\x12-.warehouse.selling.v1.OrderCreatorListRequest\x1a..warehouse.selling.v1.OrderCreatorListResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"\x10OrderCreatorList\x12-.warehouse.selling.v1.OrderCreatorListRequest\x1a..warehouse.selling.v1.OrderCreatorListResponse\"\x03\x90\x02\x01\x12g\n" +
+	"\vOrderLabels\x12(.warehouse.selling.v1.OrderLabelsRequest\x1a).warehouse.selling.v1.OrderLabelsResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_order_proto_rawDescOnce sync.Once
@@ -5813,8 +6062,8 @@ func file_warehouse_selling_v1_order_proto_rawDescGZIP() []byte {
 	return file_warehouse_selling_v1_order_proto_rawDescData
 }
 
-var file_warehouse_selling_v1_order_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_warehouse_selling_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 70)
+var file_warehouse_selling_v1_order_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
+var file_warehouse_selling_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 73)
 var file_warehouse_selling_v1_order_proto_goTypes = []any{
 	(OrderStatus)(0),                              // 0: warehouse.selling.v1.OrderStatus
 	(OrderTimelineFrom)(0),                        // 1: warehouse.selling.v1.OrderTimelineFrom
@@ -5827,200 +6076,208 @@ var file_warehouse_selling_v1_order_proto_goTypes = []any{
 	(OrderByExternalRefsDataType)(0),              // 8: warehouse.selling.v1.OrderByExternalRefsDataType
 	(OrderCreatorListDataType)(0),                 // 9: warehouse.selling.v1.OrderCreatorListDataType
 	(OrderCreatorSort)(0),                         // 10: warehouse.selling.v1.OrderCreatorSort
-	(*OrderTimelineLog)(nil),                      // 11: warehouse.selling.v1.OrderTimelineLog
-	(*OrderItem)(nil),                             // 12: warehouse.selling.v1.OrderItem
-	(*OrderAddress)(nil),                          // 13: warehouse.selling.v1.OrderAddress
-	(*OrderReceipt)(nil),                          // 14: warehouse.selling.v1.OrderReceipt
-	(*Order)(nil),                                 // 15: warehouse.selling.v1.Order
-	(*OrderCreateRequest)(nil),                    // 16: warehouse.selling.v1.OrderCreateRequest
-	(*OrderCreateResponse)(nil),                   // 17: warehouse.selling.v1.OrderCreateResponse
-	(*OrderListRequest)(nil),                      // 18: warehouse.selling.v1.OrderListRequest
-	(*OrderListFilter)(nil),                       // 19: warehouse.selling.v1.OrderListFilter
-	(*OrderListFilterSort)(nil),                   // 20: warehouse.selling.v1.OrderListFilterSort
-	(*OrderRowMapItem)(nil),                       // 21: warehouse.selling.v1.OrderRowMapItem
-	(*OrderListResponseItem)(nil),                 // 22: warehouse.selling.v1.OrderListResponseItem
-	(*OrderListResponse)(nil),                     // 23: warehouse.selling.v1.OrderListResponse
-	(*OrderDetailRequest)(nil),                    // 24: warehouse.selling.v1.OrderDetailRequest
-	(*OrderDetailResponse)(nil),                   // 25: warehouse.selling.v1.OrderDetailResponse
-	(*OrderCancelRequest)(nil),                    // 26: warehouse.selling.v1.OrderCancelRequest
-	(*OrderCancelResponse)(nil),                   // 27: warehouse.selling.v1.OrderCancelResponse
-	(*OrderExportRequest)(nil),                    // 28: warehouse.selling.v1.OrderExportRequest
-	(*OrderExportResponse)(nil),                   // 29: warehouse.selling.v1.OrderExportResponse
-	(*OrderImportTally)(nil),                      // 30: warehouse.selling.v1.OrderImportTally
-	(*ShopeeOrderImportRequest)(nil),              // 31: warehouse.selling.v1.ShopeeOrderImportRequest
-	(*ShopeeOrderImportResponse)(nil),             // 32: warehouse.selling.v1.ShopeeOrderImportResponse
-	(*TiktokOrderImportRequest)(nil),              // 33: warehouse.selling.v1.TiktokOrderImportRequest
-	(*TiktokOrderImportResponse)(nil),             // 34: warehouse.selling.v1.TiktokOrderImportResponse
-	(*OrderStatusChangeRequest)(nil),              // 35: warehouse.selling.v1.OrderStatusChangeRequest
-	(*OrderStatusChangeResponse)(nil),             // 36: warehouse.selling.v1.OrderStatusChangeResponse
-	(*OrderStatusChangeResult)(nil),               // 37: warehouse.selling.v1.OrderStatusChangeResult
-	(*OrderReturnAcceptRequest)(nil),              // 38: warehouse.selling.v1.OrderReturnAcceptRequest
-	(*OrderReturnMissingLine)(nil),                // 39: warehouse.selling.v1.OrderReturnMissingLine
-	(*OrderReturnAcceptResponse)(nil),             // 40: warehouse.selling.v1.OrderReturnAcceptResponse
-	(*OrderReturnLabel)(nil),                      // 41: warehouse.selling.v1.OrderReturnLabel
-	(*OrderNoteCreateRequest)(nil),                // 42: warehouse.selling.v1.OrderNoteCreateRequest
-	(*OrderNoteCreateResponse)(nil),               // 43: warehouse.selling.v1.OrderNoteCreateResponse
-	(*OrderReceiptUpdateRequest)(nil),             // 44: warehouse.selling.v1.OrderReceiptUpdateRequest
-	(*OrderReceiptUpdateResponse)(nil),            // 45: warehouse.selling.v1.OrderReceiptUpdateResponse
-	(*OrderProductActivityItem)(nil),              // 46: warehouse.selling.v1.OrderProductActivityItem
-	(*OrderProductActivityMapItem)(nil),           // 47: warehouse.selling.v1.OrderProductActivityMapItem
-	(*OrderProductActivityByIdsFilter)(nil),       // 48: warehouse.selling.v1.OrderProductActivityByIdsFilter
-	(*OrderProductActivityByIdsRequest)(nil),      // 49: warehouse.selling.v1.OrderProductActivityByIdsRequest
-	(*OrderProductActivityByIdsResponseItem)(nil), // 50: warehouse.selling.v1.OrderProductActivityByIdsResponseItem
-	(*OrderProductActivityByIdsResponseList)(nil), // 51: warehouse.selling.v1.OrderProductActivityByIdsResponseList
-	(*OrderProductActivityByIdsResponse)(nil),     // 52: warehouse.selling.v1.OrderProductActivityByIdsResponse
-	(*OrderActivityStatRequest)(nil),              // 53: warehouse.selling.v1.OrderActivityStatRequest
-	(*OrderActivityPreview)(nil),                  // 54: warehouse.selling.v1.OrderActivityPreview
-	(*OrderActivityStatResponse)(nil),             // 55: warehouse.selling.v1.OrderActivityStatResponse
-	(*OrderStatFilter)(nil),                       // 56: warehouse.selling.v1.OrderStatFilter
-	(*OrderStatRequest)(nil),                      // 57: warehouse.selling.v1.OrderStatRequest
-	(*OrderStatusCount)(nil),                      // 58: warehouse.selling.v1.OrderStatusCount
-	(*OrderStatPreview)(nil),                      // 59: warehouse.selling.v1.OrderStatPreview
-	(*OrderStatResponse)(nil),                     // 60: warehouse.selling.v1.OrderStatResponse
-	(*OrderByExternalRefsFilter)(nil),             // 61: warehouse.selling.v1.OrderByExternalRefsFilter
-	(*OrderByExternalRefsRequest)(nil),            // 62: warehouse.selling.v1.OrderByExternalRefsRequest
-	(*OrderRefItem)(nil),                          // 63: warehouse.selling.v1.OrderRefItem
-	(*OrderRefMapItem)(nil),                       // 64: warehouse.selling.v1.OrderRefMapItem
-	(*OrderByExternalRefsResponseItem)(nil),       // 65: warehouse.selling.v1.OrderByExternalRefsResponseItem
-	(*OrderByExternalRefsResponseList)(nil),       // 66: warehouse.selling.v1.OrderByExternalRefsResponseList
-	(*OrderByExternalRefsResponse)(nil),           // 67: warehouse.selling.v1.OrderByExternalRefsResponse
-	(*OrderCreatorListFilter)(nil),                // 68: warehouse.selling.v1.OrderCreatorListFilter
-	(*OrderCreatorListFilterSort)(nil),            // 69: warehouse.selling.v1.OrderCreatorListFilterSort
-	(*OrderCreatorListRequest)(nil),               // 70: warehouse.selling.v1.OrderCreatorListRequest
-	(*OrderCreatorItem)(nil),                      // 71: warehouse.selling.v1.OrderCreatorItem
-	(*OrderCreatorMapItem)(nil),                   // 72: warehouse.selling.v1.OrderCreatorMapItem
-	(*OrderCreatorListResponseItem)(nil),          // 73: warehouse.selling.v1.OrderCreatorListResponseItem
-	(*OrderCreatorListResponse)(nil),              // 74: warehouse.selling.v1.OrderCreatorListResponse
-	nil,                                           // 75: warehouse.selling.v1.OrderRowMapItem.MapDataEntry
-	nil,                                           // 76: warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry
-	nil,                                           // 77: warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry
-	nil,                                           // 78: warehouse.selling.v1.OrderRefMapItem.MapDataEntry
-	nil,                                           // 79: warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry
-	nil,                                           // 80: warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry
-	(*v1.CommonPagination)(nil),                   // 81: warehouse.common.v1.CommonPagination
-	(v11.Marketplace)(0),                          // 82: warehouse.marketplace.v1.Marketplace
-	(v1.CommonSortType)(0),                        // 83: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),                           // 84: warehouse.common.v1.GeneralSort
-	(*v1.GeneralMapItem)(nil),                     // 85: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),                           // 86: warehouse.common.v1.PageInfo
+	(OrderLabelReason)(0),                         // 11: warehouse.selling.v1.OrderLabelReason
+	(*OrderTimelineLog)(nil),                      // 12: warehouse.selling.v1.OrderTimelineLog
+	(*OrderItem)(nil),                             // 13: warehouse.selling.v1.OrderItem
+	(*OrderAddress)(nil),                          // 14: warehouse.selling.v1.OrderAddress
+	(*OrderReceipt)(nil),                          // 15: warehouse.selling.v1.OrderReceipt
+	(*Order)(nil),                                 // 16: warehouse.selling.v1.Order
+	(*OrderCreateRequest)(nil),                    // 17: warehouse.selling.v1.OrderCreateRequest
+	(*OrderCreateResponse)(nil),                   // 18: warehouse.selling.v1.OrderCreateResponse
+	(*OrderListRequest)(nil),                      // 19: warehouse.selling.v1.OrderListRequest
+	(*OrderListFilter)(nil),                       // 20: warehouse.selling.v1.OrderListFilter
+	(*OrderListFilterSort)(nil),                   // 21: warehouse.selling.v1.OrderListFilterSort
+	(*OrderRowMapItem)(nil),                       // 22: warehouse.selling.v1.OrderRowMapItem
+	(*OrderListResponseItem)(nil),                 // 23: warehouse.selling.v1.OrderListResponseItem
+	(*OrderListResponse)(nil),                     // 24: warehouse.selling.v1.OrderListResponse
+	(*OrderDetailRequest)(nil),                    // 25: warehouse.selling.v1.OrderDetailRequest
+	(*OrderDetailResponse)(nil),                   // 26: warehouse.selling.v1.OrderDetailResponse
+	(*OrderCancelRequest)(nil),                    // 27: warehouse.selling.v1.OrderCancelRequest
+	(*OrderCancelResponse)(nil),                   // 28: warehouse.selling.v1.OrderCancelResponse
+	(*OrderExportRequest)(nil),                    // 29: warehouse.selling.v1.OrderExportRequest
+	(*OrderExportResponse)(nil),                   // 30: warehouse.selling.v1.OrderExportResponse
+	(*OrderImportTally)(nil),                      // 31: warehouse.selling.v1.OrderImportTally
+	(*ShopeeOrderImportRequest)(nil),              // 32: warehouse.selling.v1.ShopeeOrderImportRequest
+	(*ShopeeOrderImportResponse)(nil),             // 33: warehouse.selling.v1.ShopeeOrderImportResponse
+	(*TiktokOrderImportRequest)(nil),              // 34: warehouse.selling.v1.TiktokOrderImportRequest
+	(*TiktokOrderImportResponse)(nil),             // 35: warehouse.selling.v1.TiktokOrderImportResponse
+	(*OrderStatusChangeRequest)(nil),              // 36: warehouse.selling.v1.OrderStatusChangeRequest
+	(*OrderStatusChangeResponse)(nil),             // 37: warehouse.selling.v1.OrderStatusChangeResponse
+	(*OrderStatusChangeResult)(nil),               // 38: warehouse.selling.v1.OrderStatusChangeResult
+	(*OrderReturnAcceptRequest)(nil),              // 39: warehouse.selling.v1.OrderReturnAcceptRequest
+	(*OrderReturnMissingLine)(nil),                // 40: warehouse.selling.v1.OrderReturnMissingLine
+	(*OrderReturnAcceptResponse)(nil),             // 41: warehouse.selling.v1.OrderReturnAcceptResponse
+	(*OrderReturnLabel)(nil),                      // 42: warehouse.selling.v1.OrderReturnLabel
+	(*OrderNoteCreateRequest)(nil),                // 43: warehouse.selling.v1.OrderNoteCreateRequest
+	(*OrderNoteCreateResponse)(nil),               // 44: warehouse.selling.v1.OrderNoteCreateResponse
+	(*OrderReceiptUpdateRequest)(nil),             // 45: warehouse.selling.v1.OrderReceiptUpdateRequest
+	(*OrderReceiptUpdateResponse)(nil),            // 46: warehouse.selling.v1.OrderReceiptUpdateResponse
+	(*OrderProductActivityItem)(nil),              // 47: warehouse.selling.v1.OrderProductActivityItem
+	(*OrderProductActivityMapItem)(nil),           // 48: warehouse.selling.v1.OrderProductActivityMapItem
+	(*OrderProductActivityByIdsFilter)(nil),       // 49: warehouse.selling.v1.OrderProductActivityByIdsFilter
+	(*OrderProductActivityByIdsRequest)(nil),      // 50: warehouse.selling.v1.OrderProductActivityByIdsRequest
+	(*OrderProductActivityByIdsResponseItem)(nil), // 51: warehouse.selling.v1.OrderProductActivityByIdsResponseItem
+	(*OrderProductActivityByIdsResponseList)(nil), // 52: warehouse.selling.v1.OrderProductActivityByIdsResponseList
+	(*OrderProductActivityByIdsResponse)(nil),     // 53: warehouse.selling.v1.OrderProductActivityByIdsResponse
+	(*OrderActivityStatRequest)(nil),              // 54: warehouse.selling.v1.OrderActivityStatRequest
+	(*OrderActivityPreview)(nil),                  // 55: warehouse.selling.v1.OrderActivityPreview
+	(*OrderActivityStatResponse)(nil),             // 56: warehouse.selling.v1.OrderActivityStatResponse
+	(*OrderStatFilter)(nil),                       // 57: warehouse.selling.v1.OrderStatFilter
+	(*OrderStatRequest)(nil),                      // 58: warehouse.selling.v1.OrderStatRequest
+	(*OrderStatusCount)(nil),                      // 59: warehouse.selling.v1.OrderStatusCount
+	(*OrderStatPreview)(nil),                      // 60: warehouse.selling.v1.OrderStatPreview
+	(*OrderStatResponse)(nil),                     // 61: warehouse.selling.v1.OrderStatResponse
+	(*OrderByExternalRefsFilter)(nil),             // 62: warehouse.selling.v1.OrderByExternalRefsFilter
+	(*OrderByExternalRefsRequest)(nil),            // 63: warehouse.selling.v1.OrderByExternalRefsRequest
+	(*OrderRefItem)(nil),                          // 64: warehouse.selling.v1.OrderRefItem
+	(*OrderRefMapItem)(nil),                       // 65: warehouse.selling.v1.OrderRefMapItem
+	(*OrderByExternalRefsResponseItem)(nil),       // 66: warehouse.selling.v1.OrderByExternalRefsResponseItem
+	(*OrderByExternalRefsResponseList)(nil),       // 67: warehouse.selling.v1.OrderByExternalRefsResponseList
+	(*OrderByExternalRefsResponse)(nil),           // 68: warehouse.selling.v1.OrderByExternalRefsResponse
+	(*OrderCreatorListFilter)(nil),                // 69: warehouse.selling.v1.OrderCreatorListFilter
+	(*OrderCreatorListFilterSort)(nil),            // 70: warehouse.selling.v1.OrderCreatorListFilterSort
+	(*OrderCreatorListRequest)(nil),               // 71: warehouse.selling.v1.OrderCreatorListRequest
+	(*OrderCreatorItem)(nil),                      // 72: warehouse.selling.v1.OrderCreatorItem
+	(*OrderCreatorMapItem)(nil),                   // 73: warehouse.selling.v1.OrderCreatorMapItem
+	(*OrderCreatorListResponseItem)(nil),          // 74: warehouse.selling.v1.OrderCreatorListResponseItem
+	(*OrderCreatorListResponse)(nil),              // 75: warehouse.selling.v1.OrderCreatorListResponse
+	(*OrderLabelsRequest)(nil),                    // 76: warehouse.selling.v1.OrderLabelsRequest
+	(*OrderLabelResult)(nil),                      // 77: warehouse.selling.v1.OrderLabelResult
+	(*OrderLabelsResponse)(nil),                   // 78: warehouse.selling.v1.OrderLabelsResponse
+	nil,                                           // 79: warehouse.selling.v1.OrderRowMapItem.MapDataEntry
+	nil,                                           // 80: warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry
+	nil,                                           // 81: warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry
+	nil,                                           // 82: warehouse.selling.v1.OrderRefMapItem.MapDataEntry
+	nil,                                           // 83: warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry
+	nil,                                           // 84: warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry
+	(*v1.CommonPagination)(nil),                   // 85: warehouse.common.v1.CommonPagination
+	(v11.Marketplace)(0),                          // 86: warehouse.marketplace.v1.Marketplace
+	(v1.CommonSortType)(0),                        // 87: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),                           // 88: warehouse.common.v1.GeneralSort
+	(*v1.GeneralMapItem)(nil),                     // 89: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),                           // 90: warehouse.common.v1.PageInfo
 }
 var file_warehouse_selling_v1_order_proto_depIdxs = []int32{
 	0,  // 0: warehouse.selling.v1.OrderTimelineLog.status:type_name -> warehouse.selling.v1.OrderStatus
 	1,  // 1: warehouse.selling.v1.OrderTimelineLog.from:type_name -> warehouse.selling.v1.OrderTimelineFrom
 	0,  // 2: warehouse.selling.v1.Order.status:type_name -> warehouse.selling.v1.OrderStatus
-	12, // 3: warehouse.selling.v1.Order.items:type_name -> warehouse.selling.v1.OrderItem
-	11, // 4: warehouse.selling.v1.Order.timeline_logs:type_name -> warehouse.selling.v1.OrderTimelineLog
-	13, // 5: warehouse.selling.v1.Order.address:type_name -> warehouse.selling.v1.OrderAddress
-	14, // 6: warehouse.selling.v1.Order.receipt:type_name -> warehouse.selling.v1.OrderReceipt
-	14, // 7: warehouse.selling.v1.OrderCreateRequest.receipt:type_name -> warehouse.selling.v1.OrderReceipt
-	12, // 8: warehouse.selling.v1.OrderCreateRequest.items:type_name -> warehouse.selling.v1.OrderItem
-	13, // 9: warehouse.selling.v1.OrderCreateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
-	15, // 10: warehouse.selling.v1.OrderCreateResponse.order:type_name -> warehouse.selling.v1.Order
-	19, // 11: warehouse.selling.v1.OrderListRequest.filter:type_name -> warehouse.selling.v1.OrderListFilter
-	20, // 12: warehouse.selling.v1.OrderListRequest.sort:type_name -> warehouse.selling.v1.OrderListFilterSort
+	13, // 3: warehouse.selling.v1.Order.items:type_name -> warehouse.selling.v1.OrderItem
+	12, // 4: warehouse.selling.v1.Order.timeline_logs:type_name -> warehouse.selling.v1.OrderTimelineLog
+	14, // 5: warehouse.selling.v1.Order.address:type_name -> warehouse.selling.v1.OrderAddress
+	15, // 6: warehouse.selling.v1.Order.receipt:type_name -> warehouse.selling.v1.OrderReceipt
+	15, // 7: warehouse.selling.v1.OrderCreateRequest.receipt:type_name -> warehouse.selling.v1.OrderReceipt
+	13, // 8: warehouse.selling.v1.OrderCreateRequest.items:type_name -> warehouse.selling.v1.OrderItem
+	14, // 9: warehouse.selling.v1.OrderCreateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
+	16, // 10: warehouse.selling.v1.OrderCreateResponse.order:type_name -> warehouse.selling.v1.Order
+	20, // 11: warehouse.selling.v1.OrderListRequest.filter:type_name -> warehouse.selling.v1.OrderListFilter
+	21, // 12: warehouse.selling.v1.OrderListRequest.sort:type_name -> warehouse.selling.v1.OrderListFilterSort
 	3,  // 13: warehouse.selling.v1.OrderListRequest.data_request:type_name -> warehouse.selling.v1.OrderListDataType
-	81, // 14: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	85, // 14: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.CommonPagination
 	0,  // 15: warehouse.selling.v1.OrderListFilter.status:type_name -> warehouse.selling.v1.OrderStatus
-	82, // 16: warehouse.selling.v1.OrderListFilter.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	86, // 16: warehouse.selling.v1.OrderListFilter.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
 	2,  // 17: warehouse.selling.v1.OrderListFilter.date_field:type_name -> warehouse.selling.v1.OrderDateField
-	83, // 18: warehouse.selling.v1.OrderListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	84, // 19: warehouse.selling.v1.OrderListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	87, // 18: warehouse.selling.v1.OrderListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	88, // 19: warehouse.selling.v1.OrderListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	4,  // 20: warehouse.selling.v1.OrderListFilterSort.order:type_name -> warehouse.selling.v1.OrderRowSort
-	75, // 21: warehouse.selling.v1.OrderRowMapItem.map_data:type_name -> warehouse.selling.v1.OrderRowMapItem.MapDataEntry
-	85, // 22: warehouse.selling.v1.OrderListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	21, // 23: warehouse.selling.v1.OrderListResponseItem.order:type_name -> warehouse.selling.v1.OrderRowMapItem
-	22, // 24: warehouse.selling.v1.OrderListResponse.items:type_name -> warehouse.selling.v1.OrderListResponseItem
-	86, // 25: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	15, // 26: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
-	15, // 27: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
-	19, // 28: warehouse.selling.v1.OrderExportRequest.filter:type_name -> warehouse.selling.v1.OrderListFilter
+	79, // 21: warehouse.selling.v1.OrderRowMapItem.map_data:type_name -> warehouse.selling.v1.OrderRowMapItem.MapDataEntry
+	89, // 22: warehouse.selling.v1.OrderListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	22, // 23: warehouse.selling.v1.OrderListResponseItem.order:type_name -> warehouse.selling.v1.OrderRowMapItem
+	23, // 24: warehouse.selling.v1.OrderListResponse.items:type_name -> warehouse.selling.v1.OrderListResponseItem
+	90, // 25: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	16, // 26: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
+	16, // 27: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
+	20, // 28: warehouse.selling.v1.OrderExportRequest.filter:type_name -> warehouse.selling.v1.OrderListFilter
 	5,  // 29: warehouse.selling.v1.OrderExportRequest.view:type_name -> warehouse.selling.v1.OrderExportView
 	6,  // 30: warehouse.selling.v1.ShopeeOrderImportResponse.level:type_name -> warehouse.selling.v1.OrderImportLogLevel
-	30, // 31: warehouse.selling.v1.ShopeeOrderImportResponse.tally:type_name -> warehouse.selling.v1.OrderImportTally
+	31, // 31: warehouse.selling.v1.ShopeeOrderImportResponse.tally:type_name -> warehouse.selling.v1.OrderImportTally
 	6,  // 32: warehouse.selling.v1.TiktokOrderImportResponse.level:type_name -> warehouse.selling.v1.OrderImportLogLevel
-	30, // 33: warehouse.selling.v1.TiktokOrderImportResponse.tally:type_name -> warehouse.selling.v1.OrderImportTally
+	31, // 33: warehouse.selling.v1.TiktokOrderImportResponse.tally:type_name -> warehouse.selling.v1.OrderImportTally
 	0,  // 34: warehouse.selling.v1.OrderStatusChangeRequest.to:type_name -> warehouse.selling.v1.OrderStatus
-	37, // 35: warehouse.selling.v1.OrderStatusChangeResponse.results:type_name -> warehouse.selling.v1.OrderStatusChangeResult
+	38, // 35: warehouse.selling.v1.OrderStatusChangeResponse.results:type_name -> warehouse.selling.v1.OrderStatusChangeResult
 	0,  // 36: warehouse.selling.v1.OrderStatusChangeResult.status:type_name -> warehouse.selling.v1.OrderStatus
-	39, // 37: warehouse.selling.v1.OrderReturnAcceptRequest.missing_lines:type_name -> warehouse.selling.v1.OrderReturnMissingLine
-	15, // 38: warehouse.selling.v1.OrderReturnAcceptResponse.order:type_name -> warehouse.selling.v1.Order
-	41, // 39: warehouse.selling.v1.OrderReturnAcceptResponse.labels:type_name -> warehouse.selling.v1.OrderReturnLabel
-	11, // 40: warehouse.selling.v1.OrderNoteCreateResponse.log:type_name -> warehouse.selling.v1.OrderTimelineLog
-	14, // 41: warehouse.selling.v1.OrderReceiptUpdateRequest.receipt:type_name -> warehouse.selling.v1.OrderReceipt
-	15, // 42: warehouse.selling.v1.OrderReceiptUpdateResponse.order:type_name -> warehouse.selling.v1.Order
-	76, // 43: warehouse.selling.v1.OrderProductActivityMapItem.map_data:type_name -> warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry
-	48, // 44: warehouse.selling.v1.OrderProductActivityByIdsRequest.filter:type_name -> warehouse.selling.v1.OrderProductActivityByIdsFilter
+	40, // 37: warehouse.selling.v1.OrderReturnAcceptRequest.missing_lines:type_name -> warehouse.selling.v1.OrderReturnMissingLine
+	16, // 38: warehouse.selling.v1.OrderReturnAcceptResponse.order:type_name -> warehouse.selling.v1.Order
+	42, // 39: warehouse.selling.v1.OrderReturnAcceptResponse.labels:type_name -> warehouse.selling.v1.OrderReturnLabel
+	12, // 40: warehouse.selling.v1.OrderNoteCreateResponse.log:type_name -> warehouse.selling.v1.OrderTimelineLog
+	15, // 41: warehouse.selling.v1.OrderReceiptUpdateRequest.receipt:type_name -> warehouse.selling.v1.OrderReceipt
+	16, // 42: warehouse.selling.v1.OrderReceiptUpdateResponse.order:type_name -> warehouse.selling.v1.Order
+	80, // 43: warehouse.selling.v1.OrderProductActivityMapItem.map_data:type_name -> warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry
+	49, // 44: warehouse.selling.v1.OrderProductActivityByIdsRequest.filter:type_name -> warehouse.selling.v1.OrderProductActivityByIdsFilter
 	7,  // 45: warehouse.selling.v1.OrderProductActivityByIdsRequest.data_request:type_name -> warehouse.selling.v1.OrderProductActivityDataType
-	47, // 46: warehouse.selling.v1.OrderProductActivityByIdsResponseItem.activity:type_name -> warehouse.selling.v1.OrderProductActivityMapItem
-	50, // 47: warehouse.selling.v1.OrderProductActivityByIdsResponseList.items:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponseItem
-	77, // 48: warehouse.selling.v1.OrderProductActivityByIdsResponse.items:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry
-	54, // 49: warehouse.selling.v1.OrderActivityStatResponse.preview:type_name -> warehouse.selling.v1.OrderActivityPreview
-	82, // 50: warehouse.selling.v1.OrderStatFilter.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	48, // 46: warehouse.selling.v1.OrderProductActivityByIdsResponseItem.activity:type_name -> warehouse.selling.v1.OrderProductActivityMapItem
+	51, // 47: warehouse.selling.v1.OrderProductActivityByIdsResponseList.items:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponseItem
+	81, // 48: warehouse.selling.v1.OrderProductActivityByIdsResponse.items:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry
+	55, // 49: warehouse.selling.v1.OrderActivityStatResponse.preview:type_name -> warehouse.selling.v1.OrderActivityPreview
+	86, // 50: warehouse.selling.v1.OrderStatFilter.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
 	2,  // 51: warehouse.selling.v1.OrderStatFilter.date_field:type_name -> warehouse.selling.v1.OrderDateField
-	56, // 52: warehouse.selling.v1.OrderStatRequest.filter:type_name -> warehouse.selling.v1.OrderStatFilter
+	57, // 52: warehouse.selling.v1.OrderStatRequest.filter:type_name -> warehouse.selling.v1.OrderStatFilter
 	0,  // 53: warehouse.selling.v1.OrderStatusCount.status:type_name -> warehouse.selling.v1.OrderStatus
-	59, // 54: warehouse.selling.v1.OrderStatResponse.preview:type_name -> warehouse.selling.v1.OrderStatPreview
-	58, // 55: warehouse.selling.v1.OrderStatResponse.by_status:type_name -> warehouse.selling.v1.OrderStatusCount
-	61, // 56: warehouse.selling.v1.OrderByExternalRefsRequest.filter:type_name -> warehouse.selling.v1.OrderByExternalRefsFilter
+	60, // 54: warehouse.selling.v1.OrderStatResponse.preview:type_name -> warehouse.selling.v1.OrderStatPreview
+	59, // 55: warehouse.selling.v1.OrderStatResponse.by_status:type_name -> warehouse.selling.v1.OrderStatusCount
+	62, // 56: warehouse.selling.v1.OrderByExternalRefsRequest.filter:type_name -> warehouse.selling.v1.OrderByExternalRefsFilter
 	8,  // 57: warehouse.selling.v1.OrderByExternalRefsRequest.data_request:type_name -> warehouse.selling.v1.OrderByExternalRefsDataType
 	0,  // 58: warehouse.selling.v1.OrderRefItem.status:type_name -> warehouse.selling.v1.OrderStatus
-	78, // 59: warehouse.selling.v1.OrderRefMapItem.map_data:type_name -> warehouse.selling.v1.OrderRefMapItem.MapDataEntry
-	64, // 60: warehouse.selling.v1.OrderByExternalRefsResponseItem.order_ref:type_name -> warehouse.selling.v1.OrderRefMapItem
-	65, // 61: warehouse.selling.v1.OrderByExternalRefsResponseList.items:type_name -> warehouse.selling.v1.OrderByExternalRefsResponseItem
-	79, // 62: warehouse.selling.v1.OrderByExternalRefsResponse.items:type_name -> warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry
-	83, // 63: warehouse.selling.v1.OrderCreatorListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	82, // 59: warehouse.selling.v1.OrderRefMapItem.map_data:type_name -> warehouse.selling.v1.OrderRefMapItem.MapDataEntry
+	65, // 60: warehouse.selling.v1.OrderByExternalRefsResponseItem.order_ref:type_name -> warehouse.selling.v1.OrderRefMapItem
+	66, // 61: warehouse.selling.v1.OrderByExternalRefsResponseList.items:type_name -> warehouse.selling.v1.OrderByExternalRefsResponseItem
+	83, // 62: warehouse.selling.v1.OrderByExternalRefsResponse.items:type_name -> warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry
+	87, // 63: warehouse.selling.v1.OrderCreatorListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
 	10, // 64: warehouse.selling.v1.OrderCreatorListFilterSort.creator:type_name -> warehouse.selling.v1.OrderCreatorSort
-	68, // 65: warehouse.selling.v1.OrderCreatorListRequest.filter:type_name -> warehouse.selling.v1.OrderCreatorListFilter
-	69, // 66: warehouse.selling.v1.OrderCreatorListRequest.sort:type_name -> warehouse.selling.v1.OrderCreatorListFilterSort
+	69, // 65: warehouse.selling.v1.OrderCreatorListRequest.filter:type_name -> warehouse.selling.v1.OrderCreatorListFilter
+	70, // 66: warehouse.selling.v1.OrderCreatorListRequest.sort:type_name -> warehouse.selling.v1.OrderCreatorListFilterSort
 	9,  // 67: warehouse.selling.v1.OrderCreatorListRequest.data_request:type_name -> warehouse.selling.v1.OrderCreatorListDataType
-	81, // 68: warehouse.selling.v1.OrderCreatorListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	80, // 69: warehouse.selling.v1.OrderCreatorMapItem.map_data:type_name -> warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry
-	72, // 70: warehouse.selling.v1.OrderCreatorListResponseItem.creator:type_name -> warehouse.selling.v1.OrderCreatorMapItem
-	73, // 71: warehouse.selling.v1.OrderCreatorListResponse.items:type_name -> warehouse.selling.v1.OrderCreatorListResponseItem
-	86, // 72: warehouse.selling.v1.OrderCreatorListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	15, // 73: warehouse.selling.v1.OrderRowMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.Order
-	46, // 74: warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderProductActivityItem
-	51, // 75: warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponseList
-	63, // 76: warehouse.selling.v1.OrderRefMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderRefItem
-	66, // 77: warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderByExternalRefsResponseList
-	71, // 78: warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderCreatorItem
-	16, // 79: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
-	18, // 80: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
-	24, // 81: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
-	26, // 82: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
-	28, // 83: warehouse.selling.v1.OrderService.OrderExport:input_type -> warehouse.selling.v1.OrderExportRequest
-	35, // 84: warehouse.selling.v1.OrderService.OrderStatusChange:input_type -> warehouse.selling.v1.OrderStatusChangeRequest
-	38, // 85: warehouse.selling.v1.OrderService.OrderReturnAccept:input_type -> warehouse.selling.v1.OrderReturnAcceptRequest
-	42, // 86: warehouse.selling.v1.OrderService.OrderNoteCreate:input_type -> warehouse.selling.v1.OrderNoteCreateRequest
-	44, // 87: warehouse.selling.v1.OrderService.OrderReceiptUpdate:input_type -> warehouse.selling.v1.OrderReceiptUpdateRequest
-	31, // 88: warehouse.selling.v1.OrderService.ShopeeOrderImport:input_type -> warehouse.selling.v1.ShopeeOrderImportRequest
-	33, // 89: warehouse.selling.v1.OrderService.TiktokOrderImport:input_type -> warehouse.selling.v1.TiktokOrderImportRequest
-	49, // 90: warehouse.selling.v1.OrderService.OrderProductActivityByIds:input_type -> warehouse.selling.v1.OrderProductActivityByIdsRequest
-	53, // 91: warehouse.selling.v1.OrderService.OrderActivityStat:input_type -> warehouse.selling.v1.OrderActivityStatRequest
-	57, // 92: warehouse.selling.v1.OrderService.OrderStat:input_type -> warehouse.selling.v1.OrderStatRequest
-	62, // 93: warehouse.selling.v1.OrderService.OrderByExternalRefs:input_type -> warehouse.selling.v1.OrderByExternalRefsRequest
-	70, // 94: warehouse.selling.v1.OrderService.OrderCreatorList:input_type -> warehouse.selling.v1.OrderCreatorListRequest
-	17, // 95: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
-	23, // 96: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
-	25, // 97: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
-	27, // 98: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
-	29, // 99: warehouse.selling.v1.OrderService.OrderExport:output_type -> warehouse.selling.v1.OrderExportResponse
-	36, // 100: warehouse.selling.v1.OrderService.OrderStatusChange:output_type -> warehouse.selling.v1.OrderStatusChangeResponse
-	40, // 101: warehouse.selling.v1.OrderService.OrderReturnAccept:output_type -> warehouse.selling.v1.OrderReturnAcceptResponse
-	43, // 102: warehouse.selling.v1.OrderService.OrderNoteCreate:output_type -> warehouse.selling.v1.OrderNoteCreateResponse
-	45, // 103: warehouse.selling.v1.OrderService.OrderReceiptUpdate:output_type -> warehouse.selling.v1.OrderReceiptUpdateResponse
-	32, // 104: warehouse.selling.v1.OrderService.ShopeeOrderImport:output_type -> warehouse.selling.v1.ShopeeOrderImportResponse
-	34, // 105: warehouse.selling.v1.OrderService.TiktokOrderImport:output_type -> warehouse.selling.v1.TiktokOrderImportResponse
-	52, // 106: warehouse.selling.v1.OrderService.OrderProductActivityByIds:output_type -> warehouse.selling.v1.OrderProductActivityByIdsResponse
-	55, // 107: warehouse.selling.v1.OrderService.OrderActivityStat:output_type -> warehouse.selling.v1.OrderActivityStatResponse
-	60, // 108: warehouse.selling.v1.OrderService.OrderStat:output_type -> warehouse.selling.v1.OrderStatResponse
-	67, // 109: warehouse.selling.v1.OrderService.OrderByExternalRefs:output_type -> warehouse.selling.v1.OrderByExternalRefsResponse
-	74, // 110: warehouse.selling.v1.OrderService.OrderCreatorList:output_type -> warehouse.selling.v1.OrderCreatorListResponse
-	95, // [95:111] is the sub-list for method output_type
-	79, // [79:95] is the sub-list for method input_type
-	79, // [79:79] is the sub-list for extension type_name
-	79, // [79:79] is the sub-list for extension extendee
-	0,  // [0:79] is the sub-list for field type_name
+	85, // 68: warehouse.selling.v1.OrderCreatorListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	84, // 69: warehouse.selling.v1.OrderCreatorMapItem.map_data:type_name -> warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry
+	73, // 70: warehouse.selling.v1.OrderCreatorListResponseItem.creator:type_name -> warehouse.selling.v1.OrderCreatorMapItem
+	74, // 71: warehouse.selling.v1.OrderCreatorListResponse.items:type_name -> warehouse.selling.v1.OrderCreatorListResponseItem
+	90, // 72: warehouse.selling.v1.OrderCreatorListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	11, // 73: warehouse.selling.v1.OrderLabelResult.reason:type_name -> warehouse.selling.v1.OrderLabelReason
+	77, // 74: warehouse.selling.v1.OrderLabelsResponse.results:type_name -> warehouse.selling.v1.OrderLabelResult
+	16, // 75: warehouse.selling.v1.OrderRowMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.Order
+	47, // 76: warehouse.selling.v1.OrderProductActivityMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderProductActivityItem
+	52, // 77: warehouse.selling.v1.OrderProductActivityByIdsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderProductActivityByIdsResponseList
+	64, // 78: warehouse.selling.v1.OrderRefMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderRefItem
+	67, // 79: warehouse.selling.v1.OrderByExternalRefsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderByExternalRefsResponseList
+	72, // 80: warehouse.selling.v1.OrderCreatorMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderCreatorItem
+	17, // 81: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
+	19, // 82: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
+	25, // 83: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
+	27, // 84: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
+	29, // 85: warehouse.selling.v1.OrderService.OrderExport:input_type -> warehouse.selling.v1.OrderExportRequest
+	36, // 86: warehouse.selling.v1.OrderService.OrderStatusChange:input_type -> warehouse.selling.v1.OrderStatusChangeRequest
+	39, // 87: warehouse.selling.v1.OrderService.OrderReturnAccept:input_type -> warehouse.selling.v1.OrderReturnAcceptRequest
+	43, // 88: warehouse.selling.v1.OrderService.OrderNoteCreate:input_type -> warehouse.selling.v1.OrderNoteCreateRequest
+	45, // 89: warehouse.selling.v1.OrderService.OrderReceiptUpdate:input_type -> warehouse.selling.v1.OrderReceiptUpdateRequest
+	32, // 90: warehouse.selling.v1.OrderService.ShopeeOrderImport:input_type -> warehouse.selling.v1.ShopeeOrderImportRequest
+	34, // 91: warehouse.selling.v1.OrderService.TiktokOrderImport:input_type -> warehouse.selling.v1.TiktokOrderImportRequest
+	50, // 92: warehouse.selling.v1.OrderService.OrderProductActivityByIds:input_type -> warehouse.selling.v1.OrderProductActivityByIdsRequest
+	54, // 93: warehouse.selling.v1.OrderService.OrderActivityStat:input_type -> warehouse.selling.v1.OrderActivityStatRequest
+	58, // 94: warehouse.selling.v1.OrderService.OrderStat:input_type -> warehouse.selling.v1.OrderStatRequest
+	63, // 95: warehouse.selling.v1.OrderService.OrderByExternalRefs:input_type -> warehouse.selling.v1.OrderByExternalRefsRequest
+	71, // 96: warehouse.selling.v1.OrderService.OrderCreatorList:input_type -> warehouse.selling.v1.OrderCreatorListRequest
+	76, // 97: warehouse.selling.v1.OrderService.OrderLabels:input_type -> warehouse.selling.v1.OrderLabelsRequest
+	18, // 98: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
+	24, // 99: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
+	26, // 100: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
+	28, // 101: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
+	30, // 102: warehouse.selling.v1.OrderService.OrderExport:output_type -> warehouse.selling.v1.OrderExportResponse
+	37, // 103: warehouse.selling.v1.OrderService.OrderStatusChange:output_type -> warehouse.selling.v1.OrderStatusChangeResponse
+	41, // 104: warehouse.selling.v1.OrderService.OrderReturnAccept:output_type -> warehouse.selling.v1.OrderReturnAcceptResponse
+	44, // 105: warehouse.selling.v1.OrderService.OrderNoteCreate:output_type -> warehouse.selling.v1.OrderNoteCreateResponse
+	46, // 106: warehouse.selling.v1.OrderService.OrderReceiptUpdate:output_type -> warehouse.selling.v1.OrderReceiptUpdateResponse
+	33, // 107: warehouse.selling.v1.OrderService.ShopeeOrderImport:output_type -> warehouse.selling.v1.ShopeeOrderImportResponse
+	35, // 108: warehouse.selling.v1.OrderService.TiktokOrderImport:output_type -> warehouse.selling.v1.TiktokOrderImportResponse
+	53, // 109: warehouse.selling.v1.OrderService.OrderProductActivityByIds:output_type -> warehouse.selling.v1.OrderProductActivityByIdsResponse
+	56, // 110: warehouse.selling.v1.OrderService.OrderActivityStat:output_type -> warehouse.selling.v1.OrderActivityStatResponse
+	61, // 111: warehouse.selling.v1.OrderService.OrderStat:output_type -> warehouse.selling.v1.OrderStatResponse
+	68, // 112: warehouse.selling.v1.OrderService.OrderByExternalRefs:output_type -> warehouse.selling.v1.OrderByExternalRefsResponse
+	75, // 113: warehouse.selling.v1.OrderService.OrderCreatorList:output_type -> warehouse.selling.v1.OrderCreatorListResponse
+	78, // 114: warehouse.selling.v1.OrderService.OrderLabels:output_type -> warehouse.selling.v1.OrderLabelsResponse
+	98, // [98:115] is the sub-list for method output_type
+	81, // [81:98] is the sub-list for method input_type
+	81, // [81:81] is the sub-list for extension type_name
+	81, // [81:81] is the sub-list for extension extendee
+	0,  // [0:81] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_order_proto_init() }
@@ -6056,8 +6313,8 @@ func file_warehouse_selling_v1_order_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_order_proto_rawDesc), len(file_warehouse_selling_v1_order_proto_rawDesc)),
-			NumEnums:      11,
-			NumMessages:   70,
+			NumEnums:      12,
+			NumMessages:   73,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

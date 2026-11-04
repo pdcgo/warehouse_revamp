@@ -219,6 +219,11 @@ message OrderDraftListResponse {
   repeated OrderDraftListResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+  // How many drafts of the WHOLE filtered set (every page, not this one) have nothing left before Promote — the
+  // list's own readiness rule (the frontend's draftGaps): a shop, a warehouse, a customer, at least one line and none
+  // unmapped, an order date, a sell price, and not a `manual` draft (its order ref is still to be typed). Stock is not
+  // in it: only the draft's page can read the warehouse's availability for its lines.
+  uint64 ready_count = 4;
 }
 
 message OrderDraftDetailRequest {

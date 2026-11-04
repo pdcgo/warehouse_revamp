@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
@@ -22,14 +23,31 @@ import (
 )
 
 type Service struct {
-	db *gorm.DB
+	db       *gorm.DB
+	events   event_source.EventSender
+	accounts PayingAccounts
 }
 
 // compile-time proof Service satisfies the generated handler interface.
 var _ expensev1connect.ExpenseServiceHandler = (*Service)(nil)
 
-func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+// NewService builds the handlers. `events` carries ExpenseCreated / ExpenseAdjusted to whoever posts the money
+// (financial_account_service); `accounts` answers whether the account an expense names may pay it — both from the
+// composition root, the one place allowed to know two services at once.
+func NewService(db *gorm.DB, events event_source.EventSender, accounts PayingAccounts) *Service {
+	// A nil sender would panic on the first expense. EmptySender still VALIDATES the event, so a malformed one is caught
+	// with no broker in sight — the right default for a test.
+	if events == nil {
+		events = event_source.EmptySender
+	}
+
+	// With no account service to ask, every account is REFUSED rather than trusted — a test that records only a
+	// STOCK_LOSS never asks.
+	if accounts == nil {
+		accounts = noPayingAccounts{}
+	}
+
+	return &Service{db: db, events: events, accounts: accounts}
 }
 
 // The date layout every cost date crosses the wire in. A DATE, not a timestamp: nobody records the
@@ -45,17 +63,28 @@ var (
 	// A correction cannot turn a cost into income: an expense and its adjustments never sum below 0.
 	errBelowZero      = errors.New("the correction would take the expense below 0")
 	errZeroCorrection = errors.New("a correction of 0 corrects nothing")
+
+	// Every expense a person types names the account that paid it (an-expense-must-name-the-account-that-paid). The
+	// validation interceptor says it first (`uint64.gt = 0`); this is the handler not trusting a caller that skips it.
+	errNoAccount = errors.New("finance_account_id: an expense names the account that paid it")
+	// Only an ADS expense names a shop, and it must (an-expense-names-a-shop-only-for-ads). The words are the screen's
+	// own (the Storybook stub says the same).
+	errAdsNeedsAShop    = errors.New("an ads expense names its shop")
+	errShopIsForAdsOnly = errors.New("only an ads expense names a shop")
+	// The account is not one the team may pay an expense from — wrapped with its name (accountRefusal).
+	errNotOperational = errors.New("not one of the team's active operational accounts")
 )
 
 func costErr(err error) error {
 	switch {
-	case errors.Is(err, errBadDate), errors.Is(err, errZeroCorrection):
+	case errors.Is(err, errBadDate), errors.Is(err, errZeroCorrection), errors.Is(err, errNoAccount),
+		errors.Is(err, errAdsNeedsAShop), errors.Is(err, errShopIsForAdsOnly):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		// NotFound, never PermissionDenied: another team's cost must be indistinguishable from one that
 		// does not exist, or the error itself confirms the id.
 		return connect.NewError(connect.CodeNotFound, errCostMissing)
-	case errors.Is(err, errAdjustsAnAdjustment), errors.Is(err, errBelowZero):
+	case errors.Is(err, errAdjustsAnAdjustment), errors.Is(err, errBelowZero), errors.Is(err, errNotOperational):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
@@ -114,6 +143,7 @@ func costToProto(c *expense_service_models.ExpenseRecord, net int64) *expensev1.
 		CreatedAtUnix:    c.CreatedAt.Unix(),
 		AdjustsExpenseId: c.AdjustsExpenseID,
 		NetAmount:        net,
+		FinanceAccountId: c.FinanceAccountID,
 	}
 }
 

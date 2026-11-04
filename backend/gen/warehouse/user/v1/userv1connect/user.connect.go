@@ -68,6 +68,9 @@ const (
 	// UserServiceUpdateProfileProcedure is the fully-qualified name of the UserService's UpdateProfile
 	// RPC.
 	UserServiceUpdateProfileProcedure = "/warehouse.user.v1.UserService/UpdateProfile"
+	// UserServiceProfileDetailProcedure is the fully-qualified name of the UserService's ProfileDetail
+	// RPC.
+	UserServiceProfileDetailProcedure = "/warehouse.user.v1.UserService/ProfileDetail"
 	// UserServiceUpdateUserProcedure is the fully-qualified name of the UserService's UpdateUser RPC.
 	UserServiceUpdateUserProcedure = "/warehouse.user.v1.UserService/UpdateUser"
 	// UserServiceSuspendUserProcedure is the fully-qualified name of the UserService's SuspendUser RPC.
@@ -286,6 +289,10 @@ type UserServiceClient interface {
 	AdminResetPassword(context.Context, *connect.Request[v1.AdminResetPasswordRequest]) (*connect.Response[v1.AdminResetPasswordResponse], error)
 	// UpdateProfile edits the CALLER'S OWN details. No user_id — same rule as ResetPassword.
 	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
+	// ProfileDetail reads the CALLER'S OWN details — the full row, email and phone included, which no other read
+	// gives to anyone outside a role-gated list. No user_id — same rule as UpdateProfile: the profile form loads what
+	// it then edits, so a save never blanks a field it could not show.
+	ProfileDetail(context.Context, *connect.Request[v1.ProfileDetailRequest]) (*connect.Response[v1.ProfileDetailResponse], error)
 	// UpdateUser edits ANOTHER user's details. Root/admin only.
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 	// SuspendUser blocks (or unblocks) an account.
@@ -369,6 +376,13 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("UpdateProfile")),
 			connect.WithClientOptions(opts...),
 		),
+		profileDetail: connect.NewClient[v1.ProfileDetailRequest, v1.ProfileDetailResponse](
+			httpClient,
+			baseURL+UserServiceProfileDetailProcedure,
+			connect.WithSchema(userServiceMethods.ByName("ProfileDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		updateUser: connect.NewClient[v1.UpdateUserRequest, v1.UpdateUserResponse](
 			httpClient,
 			baseURL+UserServiceUpdateUserProcedure,
@@ -427,6 +441,7 @@ type userServiceClient struct {
 	resetPassword      *connect.Client[v1.ResetPasswordRequest, v1.ResetPasswordResponse]
 	adminResetPassword *connect.Client[v1.AdminResetPasswordRequest, v1.AdminResetPasswordResponse]
 	updateProfile      *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	profileDetail      *connect.Client[v1.ProfileDetailRequest, v1.ProfileDetailResponse]
 	updateUser         *connect.Client[v1.UpdateUserRequest, v1.UpdateUserResponse]
 	suspendUser        *connect.Client[v1.SuspendUserRequest, v1.SuspendUserResponse]
 	userErase          *connect.Client[v1.UserEraseRequest, v1.UserEraseResponse]
@@ -474,6 +489,11 @@ func (c *userServiceClient) AdminResetPassword(ctx context.Context, req *connect
 // UpdateProfile calls warehouse.user.v1.UserService.UpdateProfile.
 func (c *userServiceClient) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
 	return c.updateProfile.CallUnary(ctx, req)
+}
+
+// ProfileDetail calls warehouse.user.v1.UserService.ProfileDetail.
+func (c *userServiceClient) ProfileDetail(ctx context.Context, req *connect.Request[v1.ProfileDetailRequest]) (*connect.Response[v1.ProfileDetailResponse], error) {
+	return c.profileDetail.CallUnary(ctx, req)
 }
 
 // UpdateUser calls warehouse.user.v1.UserService.UpdateUser.
@@ -534,6 +554,10 @@ type UserServiceHandler interface {
 	AdminResetPassword(context.Context, *connect.Request[v1.AdminResetPasswordRequest]) (*connect.Response[v1.AdminResetPasswordResponse], error)
 	// UpdateProfile edits the CALLER'S OWN details. No user_id — same rule as ResetPassword.
 	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
+	// ProfileDetail reads the CALLER'S OWN details — the full row, email and phone included, which no other read
+	// gives to anyone outside a role-gated list. No user_id — same rule as UpdateProfile: the profile form loads what
+	// it then edits, so a save never blanks a field it could not show.
+	ProfileDetail(context.Context, *connect.Request[v1.ProfileDetailRequest]) (*connect.Response[v1.ProfileDetailResponse], error)
 	// UpdateUser edits ANOTHER user's details. Root/admin only.
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 	// SuspendUser blocks (or unblocks) an account.
@@ -613,6 +637,13 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceMethods.ByName("UpdateProfile")),
 		connect.WithHandlerOptions(opts...),
 	)
+	userServiceProfileDetailHandler := connect.NewUnaryHandler(
+		UserServiceProfileDetailProcedure,
+		svc.ProfileDetail,
+		connect.WithSchema(userServiceMethods.ByName("ProfileDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	userServiceUpdateUserHandler := connect.NewUnaryHandler(
 		UserServiceUpdateUserProcedure,
 		svc.UpdateUser,
@@ -676,6 +707,8 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceAdminResetPasswordHandler.ServeHTTP(w, r)
 		case UserServiceUpdateProfileProcedure:
 			userServiceUpdateProfileHandler.ServeHTTP(w, r)
+		case UserServiceProfileDetailProcedure:
+			userServiceProfileDetailHandler.ServeHTTP(w, r)
 		case UserServiceUpdateUserProcedure:
 			userServiceUpdateUserHandler.ServeHTTP(w, r)
 		case UserServiceSuspendUserProcedure:
@@ -729,6 +762,10 @@ func (UnimplementedUserServiceHandler) AdminResetPassword(context.Context, *conn
 
 func (UnimplementedUserServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.UpdateProfile is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) ProfileDetail(context.Context, *connect.Request[v1.ProfileDetailRequest]) (*connect.Response[v1.ProfileDetailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.ProfileDetail is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error) {

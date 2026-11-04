@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName as nameOfPerson } from "../../../lib/users";
 import { Alert, Card, Heading, Separator, Skeleton, Stack, Switch, Text } from "@chakra-ui/react";
 import { Bot } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -48,7 +49,7 @@ export function TeamAgentsCard({ teamId }: TeamAgentsCardProps) {
   function personName(userId: bigint): string {
     const person = people.data?.get(userId.toString());
 
-    return t("agents.team.connectedBy", { name: person?.name || person?.username || `#${userId}` });
+    return t("agents.team.connectedBy", { name: nameOfPerson(person, `#${userId}`) });
   }
 
   async function flip(membersMayConnect: boolean) {

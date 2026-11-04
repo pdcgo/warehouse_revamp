@@ -193,6 +193,48 @@ func TestPerf_UserListMembership(t *testing.T) {
 	}
 }
 
+// UserList with exclude_suspended — the shop-grant picker (a-suspended-user-is-never-picked): a team's members, the
+// suspended and erased left out, first page of 20. One in ten of the volume is suspended, so the predicate filters rows.
+func TestPerf_UserListExcludeSuspended(t *testing.T) {
+	db, svc, probe, _, root, _ := seedGrantVolume(t)
+
+	err := db.Exec("UPDATE users SET is_suspended = true WHERE username LIKE 'perfuser%' AND id % 10 = 0").Error
+	if err != nil {
+		t.Fatalf("suspend a tenth: %v", err)
+	}
+
+	// The last case is the CONTROL: the same search without the filter, so a slow search is told from a slow filter.
+	for _, c := range []struct {
+		q       string
+		exclude bool
+	}{{"", true}, {"perfuser12", true}, {"perfuser12", false}} {
+		measure(t, probe, fmt.Sprintf("UserList exclude_suspended=%v q=%q", c.exclude, c.q), func(int) error {
+			_, err := svc.UserList(root, connect.NewRequest(&userv1.UserListRequest{
+				TeamId:      1000, // 100 members in the seeded volume
+				Filter:      &userv1.UserListFilter{Q: c.q, ExcludeSuspended: c.exclude},
+				DataRequest: []userv1.UserListDataType{userv1.UserListDataType_USER_LIST_DATA_TYPE_USER},
+				Page:        &commonv1.CommonPagination{Page: 1, Limit: 20},
+			}))
+
+			return err
+		})
+	}
+
+	t.Log(san_perf.Explain(t, db, `SELECT users.* FROM users JOIN user_team_roles ON user_team_roles.user_id = users.id
+		WHERE user_team_roles.team_id = 1000 AND NOT users.is_suspended AND users.erased_at IS NULL ORDER BY users.id LIMIT 20`))
+}
+
+// ProfileDetail — the profile form's load: one primary-key read of the caller's own row.
+func TestPerf_ProfileDetail(t *testing.T) {
+	_, svc, probe, owner, _, _ := seedGrantVolume(t)
+
+	measure(t, probe, "ProfileDetail", func(int) error {
+		_, err := svc.ProfileDetail(owner, connect.NewRequest(&userv1.ProfileDetailRequest{}))
+
+		return err
+	})
+}
+
 // TeamMemberLogList — the Users screen's History tab. The log is a TRANSACTION table, so 50 000 rows over the
 // 300 seeded teams plus one busy team; measured at two page sizes, and filtered to one person.
 func TestPerf_TeamMemberLogList(t *testing.T) {

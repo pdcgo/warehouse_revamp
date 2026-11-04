@@ -30,7 +30,7 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	events := &recorder{}
 	twoLines := &fakePicker{draw: draw}
-	svc := selling_v1.NewService(db, twoLines, events.send, &fakeCatalog{}, &fakeCredit{}, nil, nil, &fakeFees{percent: 10})
+	svc := selling_v1.NewService(db, twoLines, events.send, &fakeCatalog{}, &fakeCredit{}, nil, nil, &fakeFees{percent: 10}, nil)
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
@@ -56,7 +56,7 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	// THE SAME ORDER, TYPED AS ONE LINE OF 3 — what the merged order must be indistinguishable from.
 	oneLine := &fakePicker{draw: draw}
-	single := selling_v1.NewService(db, oneLine, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, &fakeFees{percent: 10})
+	single := selling_v1.NewService(db, oneLine, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, &fakeFees{percent: 10}, nil)
 
 	singleReq := orderReq(shop)
 	singleReq.Items = []*sellingv1.OrderItem{

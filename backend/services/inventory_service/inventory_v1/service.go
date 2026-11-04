@@ -35,6 +35,10 @@ type Service struct {
 	// Where an accepted restock is announced (`RestockAccepted`) — supplier_service folds it into a supplier's figures
 	// (the-report-is-processed-like-settlement). Inventory does not know who listens.
 	events event_source.EventSender
+	// Who signs the link to a restock's label photo for its warehouse — document_service, in-process
+	// (the-restocks-warehouse-opens-its-label-photo). See restock_photo_linker.go in the composition root. Nil answers
+	// RestockReceiptPhoto Unimplemented.
+	photos ReceiptPhotoLinker
 }
 
 // SupplierChecker answers whether a supplier is LIVE — any selling team's
@@ -84,6 +88,7 @@ func NewService(
 	suppliers SupplierChecker,
 	events event_source.EventSender,
 	products ProductReader,
+	photos ReceiptPhotoLinker,
 ) *Service {
 	// A nil poster drops COD obligations silently, which is the right default for a test receiving a
 	// box and the wrong one for production — the composition root always wires the real thing, and
@@ -116,7 +121,15 @@ func NewService(
 		products = factsUnchecked{}
 	}
 
-	return &Service{db: db, liability: liability, expense: expense, suppliers: suppliers, events: events, products: products}
+	return &Service{
+		db:        db,
+		liability: liability,
+		expense:   expense,
+		suppliers: suppliers,
+		events:    events,
+		products:  products,
+		photos:    photos,
+	}
 }
 
 // actorFrom pulls the acting user's id from the request identity (0 if somehow absent — the ledger records who, but a

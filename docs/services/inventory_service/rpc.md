@@ -79,6 +79,7 @@ counts it in, and *the accept is what receives the stock*. The design is
 | `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once; whether it did is written on the trail row and announced in *Restock Cancelled* |
 | `RestockRequestLabels` | warehouse | accepted | one label per placement the good units went to |
 | `RestockInboundStat` | warehouse | — | what is still coming: ongoing **and** arrived |
+| `RestockReceiptPhoto` | warehouse (+ Root, Administrator) | any | a signed link to the seller's label photo — below |
 
 ### Lifecycle
 
@@ -100,6 +101,39 @@ stateDiagram-v2
 Every move takes the restock row `FOR UPDATE` first and checks the status under it, so an accept and a cancel at the
 same second queue on one lock and the second sees what the first did
 ([accept-locks-the-restock](../../business/inventory/restock_decision.md#accept-locks-the-restock)).
+
+### RestockReceiptPhoto — the warehouse opens the label photo
+
+The restock's own warehouse opens the selling team's label photo (`receipt_file`) to match the box at its door
+([the-restocks-warehouse-opens-its-label-photo](../../business/inventory/restock_decision.md#the-restocks-warehouse-opens-its-label-photo)). Policy: Root, Administrator,
+Warehouse Owner / Admin / Staff; `team_id` is the scope; `NO_SIDE_EFFECTS` (the monitor and an agent may call it).
+
+```mermaid
+sequenceDiagram
+    participant W as warehouse screen
+    participant I as inventory RestockReceiptPhoto
+    participant D as document_service LabelURL, in-process
+    W->>I: team_id = the warehouse, request_id
+    I->>I: restocks WHERE id AND warehouse_id = team_id
+    alt another warehouse or no such restock
+        I-->>W: NotFound
+    else receipt_file empty
+        I-->>W: FailedPrecondition - this restock has no label photo
+    else
+        I->>D: owner = the restock's selling team, receipt_file
+        D-->>I: signed url and expiry, or NotFound
+        I-->>W: url, expires_at_unix - NotFound from D reads as no label photo
+    end
+```
+
+The owner handed to document_service is inventory's finding (the restock's `team_id`), never the browser's; the seam
+signs only an active `order_receipt` (the type the restock form's ReceiptUpload stores) of that owner. No
+`document_shares` row is written — GetDownloadUrl under the warehouse stays NotFound. A document_service failure other
+than NotFound is the call's error. The seam is inventory's `ReceiptPhotoLinker`, wired by
+`cmd/app_development/restock_photo_linker.go`; nil answers Unimplemented. The selling team keeps opening its own
+upload with GetDownloadUrl. Root and the Administrator name the warehouse as `team_id`, as `RestockRequestLabels`.
+Code `inventory_v1/restock_receipt_photo.go`; audit
+[RestockReceiptPhoto.md](../../../audits/services/inventory_service/performances/RestockReceiptPhoto.md) (1 PK lookup).
 
 ### The accept transaction
 

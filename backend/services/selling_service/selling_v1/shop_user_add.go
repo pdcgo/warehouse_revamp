@@ -12,7 +12,8 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
-// ShopUserAdd grants a user access to a shop. Idempotent — granting an existing access is a no-op
+// ShopUserAdd grants a user access to a shop — only a member of the shop's team, and never a suspended account
+// (a-grant-goes-only-to-a-team-member, a-suspended-user-is-never-picked): both refused FailedPrecondition. Idempotent — granting an existing access is a no-op
 // success (the unique (shop_id, user_id) is upserted). The shop must belong to the scoped team.
 //
 // A NEW grant on a shop with no primary CS becomes it (the-primary-cs-is-a-flag-on-a-grant) — the first
@@ -26,7 +27,14 @@ func (s *Service) ShopUserAdd(
 	shopID := req.Msg.GetShopId()
 	userID := req.Msg.GetUserId()
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	// A grant goes only to a member of the shop's team who is not suspended (a-grant-goes-only-to-a-team-member,
+	// a-suspended-user-is-never-picked) — the picker offers no one else, and this refuses anyone it did not offer.
+	err := s.refuseUngrantable(ctx, teamID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// The shop's row, FOR UPDATE: two grants landing on a shop with no primary run one after the
 		// other, so exactly one of them finds none and becomes it.
 		exists, err := lockShop(tx, teamID, shopID)

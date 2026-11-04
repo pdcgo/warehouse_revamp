@@ -91,6 +91,13 @@ test("Order drafts: a pushed draft appears, saying exactly what it still needs (
   await expect(gaps).toHaveText("Shop +4");
   await expect(gaps).toHaveAttribute("title", "Shop · Warehouse · Order date · Sell price · Unmapped lines");
   await expect(draftRow.getByText("1 of 1 unmapped")).toBeVisible();
+
+  // #16 — the Ready card is the server's set-wide ready_count, out of the same total as the Drafts card: no ⚠ and no
+  // "on this page". This draft is not ready, so it does not count.
+  const total = (await page.getByTestId("draft-summary-total-value").textContent())?.trim();
+  await expect(page.getByTestId("draft-summary-ready-value")).toHaveText(`0 of ${total}`);
+  await expect(page.getByTestId("draft-summary-ready")).not.toContainText("on this page");
+  await expect(page.locator('[data-testid^="not-implemented-"]')).toHaveCount(0);
 });
 
 // PRUNING IS THE OTHER HALF OF THIS SCREEN. Nothing expires, and an app pushing continuously fills

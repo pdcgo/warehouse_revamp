@@ -114,7 +114,7 @@ func wslStocked(t *testing.T) *inventory_v1.Service {
 	t.Helper()
 
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, wslProducts())
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, wslProducts(), nil)
 
 	rakA := newRack(t, svc, otWarehouse, "rak-a")
 	rakB := newRack(t, svc, otWarehouse, "rak-b")
@@ -379,7 +379,7 @@ func TestWarehouseStockList_Slices(t *testing.T) {
 // With no product_service to ask, the list fails loudly rather than reading as "nothing stocked here".
 func TestWarehouseStockList_NoProductServiceIsUnavailable(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	rak := newRack(t, svc, otWarehouse, "rak-a")
 	otRestock(t, svc, otMelati, otKaosHitam, 1, 10000, []*inventoryv1.RestockPlacement{{PlacementId: rak, Quantity: 1}})

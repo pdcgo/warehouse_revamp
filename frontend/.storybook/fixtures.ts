@@ -94,6 +94,16 @@ export const users = [
   { id: 68n, username: "anil", name: "Ani Lestari", email: "anil@example.test", phoneNumber: "081377778888", isSuspended: false, avatarUrl: "" },
 ];
 
+// A FORMER USER (erase-keeps-the-row): Gudang Pusat's staff member removed two days ago (userStub's BASE_LOG) and since
+// erased — the name blanked, the username replaced with `erased<id>`. Kept OUT of `users`, so no list, search or count
+// above changes: only a name lookup (UserByIDs) finds them, which is exactly where a record still names them. Every
+// screen must read them as "Former user #69", never `erased69`. A story points a record at them with the stub's
+// `…ForStory` helper.
+export const FORMER_USER_ID = 69n;
+export const formerUsers = [
+  { id: FORMER_USER_ID, username: `erased${FORMER_USER_ID}`, name: "", email: "", phoneNumber: "", isSuspended: true, avatarUrl: "" },
+];
+
 // PublicUser is the narrower shape a name lookup and the search return — no email, and of the phone only its last
 // four digits (a-result-shows-the-phones-last-four-digits). Suspension is on it: a "who" filter badges it.
 export const publicUsers = users.map((u) => ({
@@ -1066,7 +1076,7 @@ export const settlementImports: ImportFile[] = [
     periodTo: "2026-09-27",
     status: UploadedFileStatus.DONE,
     failure: "",
-    tally: { total: 124, posted: 120, existing: 0, held: 2, skipped: 2, postedToShop: 2 },
+    tally: { total: 124, posted: 120, existing: 0, held: 2, skipped: 2, postedToShop: 3 },
     createdByUserId: 62n,
     createdAt: importedAt("2026-09-28T09:10:00+07:00"),
     updatedAt: importedAt("2026-09-28T09:10:40+07:00"),
@@ -1142,6 +1152,8 @@ type ImportLine = {
   reason: UploadedFileLineReason;
   detail: string;
   settlementLogId: bigint;
+  /** SEVERAL_ORDERS: the live orders the ref found (two-live-orders-on-a-ref-post-to-the-shop). */
+  foundOrderIds?: bigint[];
 };
 
 const SHOPEE_SHEET = "Rincian Transaksi";
@@ -1156,6 +1168,8 @@ export const settlementImportLines: ImportLine[] = [
   // Posted to the shop: their refs found no order (an-unmatched-ref-posts-to-the-shop).
   { id: 9015n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927ABCD", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927ABCD", settlementType: SettlementType.FUND, change: 185_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7001n },
   { id: 9016n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927EFGH", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927EFGH", settlementType: SettlementType.FUND, change: 92_500n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7002n },
+  // Posted to the shop: its ref is on two live orders, both named (two-live-orders-on-a-ref-post-to-the-shop).
+  { id: 9017n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927DUPE", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927DUPE", settlementType: SettlementType.FUND, change: 64_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.SEVERAL_ORDERS, detail: "", settlementLogId: 7004n, foundOrderIds: [5001n, 5002n] },
 
   // 902 — TikTok. Held: an adjustment type nobody mapped.
   { id: 9021n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577001234567", platformType: "Seller shipping fee compensation", description: "Seller shipping fee compensation", settlementType: SettlementType.UNSPECIFIED, change: 8_000n, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, detail: "", settlementLogId: 0n },

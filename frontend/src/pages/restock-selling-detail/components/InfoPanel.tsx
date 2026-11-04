@@ -1,10 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { Card, HStack, Icon, Link, Separator, SimpleGrid, Stack, Text } from "@chakra-ui/react";
-import { ExternalLink } from "lucide-react";
+import { Card, HStack, Separator, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 
 import type { RestockRequest } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { DetailField } from "../../../features/restock/DetailField";
+import { ReceiptPhoto } from "../../../features/restock/ReceiptPhoto";
 import { committedValue, courierCharge, goodsTotal } from "../../../features/restock/summary";
 import { useFinancialAccount } from "../../../features/financialAccount/queries";
 import { useShipmentChannelsByIds } from "../../../features/shipment/queries";
@@ -83,7 +83,7 @@ export function InfoPanel({ request, teamId, warehouseName }: InfoPanelProps) {
                 value={
                   <Stack gap="0.5">
                     <Text as="span">{request.receipt || "—"}</Text>
-                    <ReceiptPhoto url={request.receiptFile} />
+                    <ReceiptPhoto documentId={request.receiptFile} teamId={teamId} requestId={request.id} opensAs="owner" />
                   </Stack>
                 }
               />
@@ -190,25 +190,5 @@ function MoneyLine({ label, value, testId }: { label: string; value: number; tes
         {formatRupiahNumber(value)}
       </Text>
     </Text>
-  );
-}
-
-// The photo of the label — a link out, since it is somebody's phone picture rather than something to lay out here.
-function ReceiptPhoto({ url }: { url: string }) {
-  const { t } = useTranslation();
-
-  return (
-    <HStack gap="1.5">
-      {url ? (
-        <Link href={url} target="_blank" rel="noreferrer" fontSize="xs" data-testid="restock-detail-receipt-photo">
-          <Icon as={ExternalLink} boxSize="3" />
-          {t("restock.detail.receiptPhoto")}
-        </Link>
-      ) : (
-        <Text as="span" fontSize="xs" color="fg.muted">
-          {t("restock.detail.noReceiptPhoto")}
-        </Text>
-      )}
-    </HStack>
   );
 }

@@ -1,11 +1,11 @@
 import { create } from "@bufbuild/protobuf";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { receiptUpdateScenario } from "../../../.storybook/sessionScenario";
+import { orderLabelScenario, receiptUpdateScenario, withOrderStatus } from "../../../.storybook/sessionScenario";
 import { orderDetailFor, orders, products, teams, users } from "../../../.storybook/fixtures";
-import { OrderTimelineLogSchema } from "../../gen/warehouse/selling/v1/order_pb";
+import { OrderLabelReason, OrderStatus, OrderTimelineLogSchema } from "../../gen/warehouse/selling/v1/order_pb";
 import { NotesSection, noteWriter } from "./components/NotesSection";
 import { OrderDetailPage } from "./index";
 import { ORDER_DETAIL_PENDING } from "./pending";
@@ -45,6 +45,7 @@ import { ORDER_DETAIL_PENDING } from "./pending";
 //   | TheTimelineKeepsStatusRowsOnly    | a note is not a step; a hand-back's reason stays on it    |
 //   | WarehouseDetailShowsTheNotes…     | the warehouse reads the notes and writes as the warehouse |
 //   | WarehouseTimelineKeepsStatus…     | the warehouse's Timeline tab drops the notes too          |
+//   | WarehouseForcesAReturn            | completed → Force Return, confirmed → Accept Return       |
 
 const SELLER = teams[1]!; // Toko Melati (12)
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
@@ -316,6 +317,60 @@ export const EditResiSendsOnlyTheNumber: Story = {
 
     await waitFor(() => expect(screen.queryByTestId("edit-receipt-dialog")).not.toBeInTheDocument());
     await expect(receiptUpdateScenario.last).toEqual({ orderId: FULL.id, receiptCode: "JNE-NEW-01", documentId: undefined });
+  },
+};
+
+// ── The shipping label (a-warehouse-prints-the-labels-of-orders-it-ships) ─────────────────────────────────────────
+
+// The SELLER opens its own label as the file's owner — GetDownloadUrl, never OrderLabels.
+export const TheSellerOpensItsLabelAsTheOwner: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    await userEvent.click(await canvas.findByTestId("order-receipt-open", {}, { timeout: 3000 }));
+
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith(`https://example.invalid/proof/${FULL.receipt!.documentId}`, "_blank", "noopener,noreferrer"),
+    );
+    await expect(orderLabelScenario.last).toBeUndefined();
+    open.mockRestore();
+  },
+};
+
+// THE WAREHOUSE THAT SHIPS IT opens the seller's label through the ORDER — OrderLabels, scoped to the warehouse. As the
+// document's owner it would be NotFound: the label is the seller's, and nothing is shared.
+export const TheWarehouseOpensTheLabelThroughTheOrder: Story = {
+  beforeEach: asTeam(WAREHOUSE.id),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    await userEvent.click(await canvas.findByTestId("order-receipt-open", {}, { timeout: 3000 }));
+
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith(`https://example.invalid/label/${FULL.receipt!.documentId}`, "_blank", "noopener,noreferrer"),
+    );
+    await expect(orderLabelScenario.last).toEqual({ teamId: WAREHOUSE.id, orderIds: [FULL.id] });
+    open.mockRestore();
+  },
+};
+
+// A refused label says WHY, and opens nothing — here, the seller has not attached one the server can find.
+export const AWarehouseLabelRefusalSaysWhy: Story = {
+  beforeEach: () => {
+    asTeam(WAREHOUSE.id)();
+    orderLabelScenario.refusal = OrderLabelReason.NO_LABEL;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    await userEvent.click(await canvas.findByTestId("order-receipt-open", {}, { timeout: 3000 }));
+
+    await expect(await screen.findByText(`Order #${FULL.id} has no label attached yet — ask the seller to attach it`)).toBeVisible();
+    await expect(open).not.toHaveBeenCalled();
+    open.mockRestore();
   },
 };
 
@@ -705,5 +760,34 @@ export const EveryDeclaredGapIsMarkedOnScreen: Story = {
     for (const part of ORDER_DETAIL_PENDING.parts) {
       await expect(canvas.queryAllByTestId(`not-implemented-${part.id}`).length).toBeGreaterThan(0);
     }
+  },
+};
+
+/**
+ * THE WAREHOUSE FORCES A RETURN FROM ITS ORDER DETAIL (a-return-is-received-by-search-then-forced, A) — 106 read as
+ * completed: the buyer sent it back after delivery. Force Return confirms, the order re-reads in `return`, and Accept
+ * Return is offered on the same header.
+ */
+const AtCompleted = Routed("/orders/106");
+
+export const WarehouseForcesAReturn: Story = {
+  beforeEach: () => {
+    asTeam(WAREHOUSE.id)();
+    withOrderStatus(106n, OrderStatus.COMPLETED)();
+  },
+  render: () => <AtCompleted />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.queryByTestId("order-accept-return")).toBeNull();
+    await userEvent.click(await canvas.findByTestId("order-force-return"));
+
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await expect(screen.getByText('Order #106 is "Completed". Mark it as returned so you can accept it?')).toBeInTheDocument();
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(canvas.getByTestId("order-accept-return")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("order-force-return")).toBeNull();
   },
 };

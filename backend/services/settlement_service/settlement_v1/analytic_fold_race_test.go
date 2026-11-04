@@ -105,6 +105,20 @@ func TestRace_Fold_ConcurrentDaysKeepTheCarryTrue(t *testing.T) {
 	if state.CloseBalance != running {
 		t.Fatalf("shop state close = %d, want the newest day's %d", state.CloseBalance, running)
 	}
+
+	// THE PERSON'S LAST DAY is the newest day whatever order the folds committed in: each raises it with GREATEST
+	// under the person's advisory lock, so a late fold committing last never lowers it.
+	var person settlement_service_models.UserSettlementReport
+
+	err = db.Where("user_id = ? AND team_id = ?", creator, team).Take(&person).Error
+	if err != nil {
+		t.Fatalf("read the person state: %v", err)
+	}
+
+	want := fmt.Sprintf("2026-02-%02d", n)
+	if person.LastDay == nil || person.LastDay.Format(time.DateOnly) != want || person.CloseBalance != running {
+		t.Fatalf("person state = last_day %v, close %d — want %s and %d", person.LastDay, person.CloseBalance, want, running)
+	}
 }
 
 // ⚠ THE BUG THIS PROVES IS ABSENT: one event delivered eight times at once is folded ONCE.

@@ -2,12 +2,15 @@ package expense_v1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_service_models"
+	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 )
 
 // #168 — a cost is recorded, and it keeps the date the person CHOSE.
@@ -48,6 +51,7 @@ func TestCostCreate_RefusesADateThatIsNotADay(t *testing.T) {
 	for _, bad := range []string{"2026-02-31", "2026-13-01", "not-a-date"} {
 		_, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
 			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 1000, OccurredAt: bad,
+			ShopId: adsShop, FinanceAccountId: payingAccount,
 		}))
 		if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {
 			t.Fatalf("ExpenseCreate(%q) = %v, want InvalidArgument", bad, code)
@@ -55,31 +59,135 @@ func TestCostCreate_RefusesADateThatIsNotADay(t *testing.T) {
 	}
 }
 
-// #168 — a shop is optional on EVERY kind (owner, 2026-07-21), not only ads.
-//
-// A team running two shops may split its packing wages between them, and "only ads may name a shop"
-// is a rule somebody would hit and ask to have relaxed.
-func TestCostCreate_AnyKindMayNameAShop(t *testing.T) {
+// an-expense-names-a-shop-only-for-ads — an ADS expense names the shop the ads ran for, and must; every other kind names
+// none. InvalidArgument either way, with the screen's own words. (It reverses the 2026-07-21 "optional on every kind".)
+func TestExpenseCreate_OnlyAdsNamesAShop(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := context.Background()
 
-	const shop uint64 = 77
+	create := func(kind expensev1.ExpenseKind, shop uint64) (*expensev1.ExpenseRecord, error) {
+		res, err := svc.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
+			TeamId: teamA, Kind: kind, Amount: 800_000, OccurredAt: "2026-07-05", ShopId: shop,
+			FinanceAccountId: payingAccount,
+		}))
+		if err != nil {
+			return nil, err
+		}
 
-	res, err := svc.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL,
-		Amount: 800_000, OccurredAt: "2026-07-05", ShopId: shop,
+		return res.Msg.GetExpense(), nil
+	}
+
+	_, err := create(expensev1.ExpenseKind_EXPENSE_KIND_ADS, 0)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "an ads expense names its shop") {
+		t.Fatalf("ads with no shop = %v, want InvalidArgument \"an ads expense names its shop\"", err)
+	}
+
+	for _, kind := range []expensev1.ExpenseKind{
+		expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL,
+		expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL,
+		expensev1.ExpenseKind_EXPENSE_KIND_OTHER,
+	} {
+		_, err = create(kind, adsShop)
+		if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "only an ads expense names a shop") {
+			t.Fatalf("%v naming a shop = %v, want InvalidArgument \"only an ads expense names a shop\"", kind, err)
+		}
+
+		got, err := create(kind, 0)
+		if err != nil || got.GetShopId() != 0 {
+			t.Fatalf("%v with no shop = %v, %v — want recorded with shop 0", kind, got, err)
+		}
+	}
+
+	got, err := create(expensev1.ExpenseKind_EXPENSE_KIND_ADS, adsShop)
+	if err != nil || got.GetShopId() != adsShop {
+		t.Fatalf("ads naming shop %d = %v, %v — want recorded with it", adsShop, got, err)
+	}
+}
+
+// an-expense-must-name-the-account-that-paid — the account is required, and is stored on the row; the list returns it.
+func TestExpenseCreate_StoresTheAccountThatPaid(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	got := record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, 450_000, "2026-07-05")
+	if got.GetFinanceAccountId() != payingAccount {
+		t.Fatalf("finance_account_id = %d, want %d", got.GetFinanceAccountId(), payingAccount)
+	}
+
+	rows := expenseRows(list(t, svc, &expensev1.ExpenseListRequest{TeamId: teamA, Page: page1()}))
+	if len(rows) != 1 || rows[0].GetFinanceAccountId() != payingAccount {
+		t.Fatalf("the list = %v, want the one row naming account %d", rows, payingAccount)
+	}
+
+	// No account: the handler does not trust a caller that skipped the validation interceptor.
+	_, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 1000, OccurredAt: "2026-07-05",
 	}))
-	if err != nil {
-		t.Fatalf("payroll naming a shop was refused: %v", err)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("no account = %v, want InvalidArgument", err)
 	}
-	if res.Msg.GetExpense().GetShopId() != shop {
-		t.Fatalf("shop_id = %d, want %d", res.Msg.GetExpense().GetShopId(), shop)
+}
+
+// The account must be one of the TEAM'S ACTIVE OPERATIONAL accounts — another team's, an archived one, one not marked
+// operational and one that never existed are FailedPrecondition, naming it so the person knows which pick to change.
+// Nothing is stored.
+func TestExpenseCreate_RefusesAnAccountThatMayNotPay(t *testing.T) {
+	db := san_testdb.DB(t)
+	sent := &sentEvents{}
+	svc := newServiceSending(t, db, sent)
+
+	cases := []struct {
+		name    string
+		account uint64
+		says    string
+	}{
+		{"another team's", otherTeamsAccount, "account #10"},
+		{"archived", archivedAccount, "Mandiri Lama is archived"},
+		{"not operational", plainAccount, "Tabungan Pemilik is not one of the team's active operational accounts"},
+		{"unknown", 999, "account #999"},
 	}
 
-	// And naming none is equally fine — it is optional, not required.
-	none := record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, 500_000, "2026-07-01")
-	if none.GetShopId() != 0 {
-		t.Fatalf("shop_id = %d, want 0 when none was named", none.GetShopId())
+	for _, tc := range cases {
+		_, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 1000, OccurredAt: "2026-07-05",
+			FinanceAccountId: tc.account,
+		}))
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), tc.says) {
+			t.Fatalf("%s account = %v, want FailedPrecondition saying %q", tc.name, err, tc.says)
+		}
+	}
+
+	var n int64
+
+	err := db.Model(&expense_service_models.ExpenseRecord{}).Where("team_id = ?", teamA).Count(&n).Error
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+
+	if n != 0 || len(sent.events) != 0 {
+		t.Fatalf("%d rows stored and %d events sent after refusals, want none", n, len(sent.events))
+	}
+}
+
+// STOCK_LOSS is outside the rule: inventory records it by an internal call with no validation interceptor, it moves no
+// cash, and it is stored with NO account — whatever was sent — and never asks financial_account.
+func TestExpenseCreate_StockLossNamesNoAccount(t *testing.T) {
+	db := san_testdb.DB(t)
+	// No account service at all: every account would be refused, so the write proves it never asked.
+	svc := expense_v1.NewService(db, nil, nil)
+
+	for _, sentAccount := range []uint64{0, payingAccount} {
+		res, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Amount: 30_000, OccurredAt: "2026-07-05",
+			FinanceAccountId: sentAccount,
+		}))
+		if err != nil {
+			t.Fatalf("stock loss (account %d sent): %v", sentAccount, err)
+		}
+
+		if got := res.Msg.GetExpense().GetFinanceAccountId(); got != 0 {
+			t.Fatalf("stock loss stored account %d, want 0", got)
+		}
 	}
 }

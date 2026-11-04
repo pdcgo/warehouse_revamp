@@ -4,7 +4,7 @@ The one ranked list of incomplete work: feature, frontend, API, service, event, 
 Rules: [the-backlog-is-reranked-after-every-slice](../development_lifecycle_decision.md#the-backlog-is-reranked-after-every-slice).
 Open questions are ranked separately in [biggest_question.md](../biggest_question.md).
 
-**Last full re-audit:** 2026-11-04 (against the code, at `2a7fd781`). **Last re-rank:** 2026-11-04.
+**Last full re-audit:** 2026-11-04 (against the code, at `2a7fd781`). **Last re-rank:** 2026-11-04 (after #11, #15, #16, #18, 16c, 16g).
 
 Size: S ≈ under a pass · M ≈ one pass · L ≈ several passes. Kind: bug · frontend · API · service · event · statistic · flow.
 
@@ -12,39 +12,31 @@ Size: S ≈ under a pass · M ≈ one pass · L ≈ several passes. Kind: bug ·
 
 ### Tier 1 — bugs that hurt a person
 
-| # | What is incomplete | Kind | Area | Size | Where |
-| --- | --- | --- | --- | --- | --- |
-| 1 | **Saving the profile wipes the user's own email and phone** — the page never loads them and sends them blank, so the phone password reset stops working | bug | users | M | `pages/profile/index.tsx:31-72`, `user_v1/helpers.go:39-52` |
-| 2 | **The admin team's Admin can search every account and see its phone's last 4 digits** — the monitor bypass lets the read through without the policy's role list | bug | users | S | `access_interceptors/interceptor.go:363-428`, `search_user.go` |
-| 3 | **Shop access can be granted to a non-member, a suspended or an erased account** — the server takes any user ([a-grant-goes-only-to-a-team-member](../business/shop/context_decision.md)); the picker offers suspended people | bug | users · shop | S–M | `selling_v1/shop_user_add.go`, `user_v1/user_list.go` |
-| 4 | **A warehouse may not be able to print shipping labels** — the decision record says Print Label fails because the label belongs to the seller. ⚠ Not reproduced yet: verify first | bug | order | M | [warehouse_order_list_decision](../technical/frontend/warehouse_order_list_decision.md) `a-warehouse-prints-the-labels-of-orders-it-ships` |
-| 5 | **Statement money can land on the wrong order** — two live orders on one marketplace ref: the importer credits the newest instead of posting to the shop | bug | settlement | S | `import_run.go:308,537-560` |
-| 6 | **Analytic's "Created by" filter is dead for everyone but Root and the Administrator** — it uses the system-wide user search | bug | statistic | M | `pages/analytic/index.tsx:228` |
+Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 
 ### Tier 2 — money that never arrives
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
-| 7 | **Restock payments and transfer shipping never leave the paying account** — 6 events are published with no listener (restock and transfer created/updated/cancelled) | event | financial account | M | `financial_account_service/register.go`, `tools/san/pubsub.go` |
-| 8 | **A transfer's courier fee is never booked in the team balance** — decided 2026-10-19 (TRANSFER_FEE); the screens still say undecided | event | balance | M | `liability_service/push_handler.go`, `warehouse-transfer-accept/pending.ts` |
-| 9 | **An expense names no paying account and publishes nothing** | event · API | expense | M | `expense.proto` |
+| 7c | **A restock or transfer made before its listener existed** — its payment was never posted, yet a later edit posts the difference and a cancel refunds, so the account gains money that never left. Matters only for data from before 2026-11-04 | event | financial account | S | `postPaymentLegs` |
+| 7d | **No warehouse-transfer e2e spec** | test | inventory | M | `frontend/e2e` |
+| 9c | **Restocks never check their paying account on the server** — only the form narrows the picker; reuse the expense `PayingAccounts` seam | API | inventory | S | `restock_request_create.go` |
+| 9d | **An API caller can send a STOCK_LOSS expense** — stored with no account; refuse it outside inventory's internal call | API | expense | S | `expense_create.go` |
 
 ### Tier 3 — order robustness
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
 | 10 | **Stock stays taken when an order create fails after the take** — no per-submit key, no compensation event; cancel calls inventory directly | flow · event | order | L | `stock_picker.go:57-62`, `order_cancel.go:74` |
-| 11 | **Problem, lost and forced-return moves have no buttons** — the server allows them | frontend | order | S | `features/orders/rowActions.ts:95-104`, `pages/pick-order` |
 | 12 | **No duplicate-ref warning on the order form** (create, draft finalize, Try Again) | frontend | order | M | `OrderByExternalRefs` has no caller |
 
 ### Tier 4 — cleanup and small gaps
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
-| 13 | **Two always-red tests and no CI on developer branches** — `language.spec.ts:47` matches two "Produk Baru" buttons; financial-account stories fail 22:00–10:00 WIB (`financialAccountStub.ts:77`); `ci.yml` skips `backup/**`, `thoni` | test | all | S | |
-| 14 | **Screens say working features are not built** — rack countLock, transfer labelPhoto, courierDebt's reason, discover lockFilter copy, 4 orphan orderForm keys | frontend | inventory · order | S | `pending.ts` files |
-| 15 | **Erased people read "erased57" instead of "Former user #57"** on ~10 screens | frontend | users | M | `formerUserId` unused there |
-| 16 | **Small screen gaps** — handover scan finds only the first 200 orders; shop filters do nothing; drafts "ready" counts one page; counted racks not disabled in the accept's rack picker; role labels English-only | frontend · API | order · shop · inventory | S each | |
+| 16h | **Return dialogs stretch to full height on desktop** — Receive a Return and Accept Return | frontend | order | S | `features/orders/AcceptReturnDialog.tsx` |
+| 16f | **Only the sending warehouse can open a transfer's label photo** — the file is not shared with warehouse B or the seller; owner call | frontend · API | inventory | S | `TransferDetailCards.tsx` |
+| 16e | **Several warehouse labels in one PDF** — OrderLabels takes one order today (step 2: merge, a new resource type) | API · frontend | order | L | `pick-queue-next/pending.ts` printMerge |
 | 17 | **About 30 stale "not built" markers** in decision and state files (users, settlement, inventory open points) | doc | all | S | |
 
 ### Later — decided, bigger
@@ -74,3 +66,28 @@ Size: S ≈ under a pass · M ≈ one pass · L ≈ several passes. Kind: bug ·
 
 | Date | Item | Commit |
 | --- | --- | --- |
+| 2026-11-04 | Table mirroring package — `backend/pkgs/san_table_mirroring`, all 9 decisions; no caller yet ([state](packages/table_mirroring.md)) | uncommitted |
+| 2026-11-04 | #1 Saving the profile wiped email and phone — new `ProfileDetail`; save sends only changed fields | uncommitted |
+| 2026-11-04 | #2 The admin team's Admin could search every account — SearchUser holds a monitor to its policy | uncommitted |
+| 2026-11-04 | #3 Shop grants to non-members or suspended people — refused by ShopUserAdd/SetPrimary; picker excludes them | uncommitted |
+| 2026-11-04 | #13 Red tests and CI — language e2e by test id, financial-account stub at N×24h, CI on `backup/**` and `thoni` | uncommitted |
+| 2026-11-04 | #4 A warehouse could not open a label — new `OrderLabels` (one order) through an in-process document seam | uncommitted |
+| 2026-11-04 | #5 The importer credited the newest of two live orders — posts to the shop, reason "several orders", ids kept | uncommitted |
+| 2026-11-04 | #6 Analytic "Created by" was dead for non-root — lists the people on the metric's rows; new `SettlementPersonList` | uncommitted |
+| 2026-11-04 | #16b Expenses Storybook — stub, 25 stories with play() | uncommitted |
+| 2026-11-04 | #16d Settlement "Created by" read the whole daily report — `user_settlement_reports.last_day` (`00008`, kept by the fold and the replay); 28/31 ms → 1.06/1.04 ms | uncommitted |
+| 2026-11-04 | #16b Expenses: the WIB date pre-fill, Record hidden from customer service, the list refreshed after a refusal, short WIB dates | uncommitted |
+| 2026-11-04 | #7 Restock payments post to the paying account — created, the difference on edit, account moves, the refund on a returned cancel | uncommitted |
+| 2026-11-04 | #8 A transfer's courier fee is booked in the team balance as TRANSFER_FEE (owed to the receiving warehouse) | uncommitted |
+| 2026-11-04 | #14 Stale "not built" marks removed (rack count lock, transfer marks); the transfer label photo is shown; the Expenses ⋯ menu closes behind Cancel | uncommitted |
+| 2026-11-04 | #18 The restock label photo opens through a signed link (seller); the warehouse sees "attached" | uncommitted |
+| 2026-11-04 | #16 Shop filters work (marketplace, primary CS, no primary CS); the drafts Ready count covers every page | uncommitted |
+| 2026-11-04 | #11 Mark as Problem, Mark as Lost and Return Goods on problem orders (selling side) | uncommitted |
+| 2026-11-04 | #15 Erased people read "Former user #N" everywhere | uncommitted |
+| 2026-11-04 | 16c Server errors read as sentences, faults translated | uncommitted |
+| 2026-11-04 | 16g Stale notes fixed; the Expenses month follows WIB | uncommitted |
+| 2026-11-04 | 16b Expenses phone layout accepted (`the-expenses-phone-layout-is-accepted`) | uncommitted |
+| 2026-11-04 | #9 Expenses pay from an account — stored and checked, ads need a shop, events posted to the account (ads_expense / expense), corrections follow | uncommitted |
+| 2026-11-04 | #7b A transfer's shipping leaves the paying account as `expense` (`a-transfers-shipping-posts-as-an-expense`) | uncommitted |
+| 2026-11-04 | #18b The restock's warehouse opens its label photo (`RestockReceiptPhoto`) | uncommitted |
+| 2026-11-04 | #11b Receive a Return (search, force, accept), Force Return on the order pages, Mark as Lost on shipped, Return Goods on completed | uncommitted |

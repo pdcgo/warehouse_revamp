@@ -154,6 +154,34 @@ function rankMinimum(metricId: string, field: string): number {
 }
 
 export const settlementAnalyticService: Partial<ServiceImpl<typeof SettlementAnalyticService>> = {
+  // The USER filter's feed (a-who-filter-lists-the-people-on-its-rows): everyone the team's person rows count for, the
+  // latest day first, the id breaking a tie — never a member list. 0 is "not recorded", never a person.
+  settlementPersonList: (req) => {
+    const last = new Map<bigint, string>();
+    for (const row of settlementBook) {
+      if (row.userId === 0n || (req.teamId !== ROOT_TEAM && row.teamId !== req.teamId)) continue;
+      const day = dayKey(row.ago);
+      if ((last.get(row.userId) ?? "") < day) last.set(row.userId, day);
+    }
+
+    const ids = [...last.keys()].sort((a, b) =>
+      last.get(a)! !== last.get(b)! ? (last.get(a)! < last.get(b)! ? 1 : -1) : a < b ? 1 : -1,
+    );
+
+    return {
+      items: [
+        {
+          d: {
+            case: "person" as const,
+            value: { mapData: Object.fromEntries(ids.map((id) => [id.toString(), { userId: id, lastDay: last.get(id)! }])) },
+          },
+        },
+      ],
+      ids,
+      pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(ids.length) },
+    };
+  },
+
   metricSearch: (req) => {
     const { scope, rows } = scopeOf(req.teamId, req.groupBy, req.filters);
     const metricId = req.sort?.metricId ?? "";

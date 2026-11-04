@@ -27,3 +27,14 @@ func (r *roleReader) Roles(ctx context.Context, userID, teamID uint64) (role_bas
 
 	return access.Role, access.RootRole, nil
 }
+
+// Member answers whether a grant may go to the person: their role in the team and the account's suspension, from the
+// same cached resolver (a-grant-goes-only-to-a-team-member, a-suspended-user-is-never-picked).
+func (r *roleReader) Member(ctx context.Context, userID, teamID uint64) (selling_v1.TeamMember, error) {
+	access, err := r.resolver.Resolve(ctx, userID, teamID)
+	if err != nil {
+		return selling_v1.TeamMember{}, err
+	}
+
+	return selling_v1.TeamMember{Role: access.Role, Suspended: access.Suspended}, nil
+}

@@ -37,6 +37,13 @@ export function resetBundleStub() {
 
 resetBundleStub();
 
+/** For a story: who made bundle `id` — e.g. a former user, to show the list naming them (erase-keeps-the-row). */
+export function bundleCreatedByForStory(id: bigint, userId: bigint) {
+  const bundle = bundles.find((b) => b.id === id);
+  if (!bundle) throw new Error(`no bundle ${id} in the stub`);
+  bundle.createdByUserId = userId;
+}
+
 // The signed-in person — the stub's AuthService answers as `users[0]`.
 const ME = users[0]!.id;
 const now = () => BigInt(Math.floor(Date.now() / 1000));

@@ -15,6 +15,7 @@ package eventsv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v12 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
 	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	v11 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -141,6 +142,8 @@ type Event struct {
 	//	*Event_WarehouseTransferCancelled
 	//	*Event_WarehouseTransferAccepted
 	//	*Event_LiabilityPaymentAccepted
+	//	*Event_ExpenseCreated
+	//	*Event_ExpenseAdjusted
 	Message       isEvent_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -353,13 +356,31 @@ func (x *Event) GetLiabilityPaymentAccepted() *LiabilityPaymentAccepted {
 	return nil
 }
 
+func (x *Event) GetExpenseCreated() *ExpenseCreated {
+	if x != nil {
+		if x, ok := x.Message.(*Event_ExpenseCreated); ok {
+			return x.ExpenseCreated
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetExpenseAdjusted() *ExpenseAdjusted {
+	if x != nil {
+		if x, ok := x.Message.(*Event_ExpenseAdjusted); ok {
+			return x.ExpenseAdjusted
+		}
+	}
+	return nil
+}
+
 type isEvent_Message interface {
 	isEvent_Message()
 }
 
 type Event_MemberRemoved struct {
 	// Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-	// inventory 400–499, liability 500–599.
+	// inventory 400–499, liability 500–599, expense 600–699.
 	MemberRemoved *MemberRemoved `protobuf:"bytes,100,opt,name=member_removed,json=memberRemoved,proto3,oneof"`
 }
 
@@ -419,6 +440,14 @@ type Event_LiabilityPaymentAccepted struct {
 	LiabilityPaymentAccepted *LiabilityPaymentAccepted `protobuf:"bytes,500,opt,name=liability_payment_accepted,json=liabilityPaymentAccepted,proto3,oneof"`
 }
 
+type Event_ExpenseCreated struct {
+	ExpenseCreated *ExpenseCreated `protobuf:"bytes,600,opt,name=expense_created,json=expenseCreated,proto3,oneof"`
+}
+
+type Event_ExpenseAdjusted struct {
+	ExpenseAdjusted *ExpenseAdjusted `protobuf:"bytes,601,opt,name=expense_adjusted,json=expenseAdjusted,proto3,oneof"`
+}
+
 func (*Event_MemberRemoved) isEvent_Message() {}
 
 func (*Event_OrderPlaced) isEvent_Message() {}
@@ -448,6 +477,10 @@ func (*Event_WarehouseTransferCancelled) isEvent_Message() {}
 func (*Event_WarehouseTransferAccepted) isEvent_Message() {}
 
 func (*Event_LiabilityPaymentAccepted) isEvent_Message() {}
+
+func (*Event_ExpenseCreated) isEvent_Message() {}
+
+func (*Event_ExpenseAdjusted) isEvent_Message() {}
 
 // MemberRemoved announces that a person left ONE team (removing-a-member-drops-their-shop-access).
 //
@@ -2193,9 +2226,9 @@ func (x *WarehouseTransferCancelled) GetCancelledAtUnix() int64 {
 // (balance-posts-the-transfers-on-site-debt-from-the-event). Published after EVERY accept, a charge of 0 included; the
 // selling team owes B the charge, and nothing for 0.
 //
-// `event_id` is `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once. ⚠ Balance does not listen
-// yet: the source type it posts under is open (balance context Q13) — never INCIDENTAL_FEE keyed by the transfer id,
-// which collides with a restock's of the same number.
+// `event_id` is `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once. Balance posts it as a
+// TRANSFER_FEE keyed by the transfer (a-transfer-charge-is-a-transfer-fee) — never INCIDENTAL_FEE, which is keyed by a
+// restock and would collide with a restock of the same number.
 type WarehouseTransferAccepted struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	TransferId uint64                 `protobuf:"varint,1,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
@@ -2414,6 +2447,270 @@ func (x *LiabilityPaymentAccepted) GetActorIsOverride() bool {
 	return false
 }
 
+// ExpenseCreated announces an expense a person typed, and the account that paid it (an-expense-must-name-the-account-that-paid).
+//
+// Published by expense_service after ExpenseCreate commits; financial_account_service posts `amount` OUT of
+// `finance_account_id` — as `ads_expense` when the kind is ADS, `expense` for the rest (ads-expense-joins-the-types).
+// Never published for a STOCK_LOSS (inventory posts it, it moves no cash) and never for an account 0. `event_id` is
+// `expense-created:<expense_id>` — an expense is created once (a row never changes, an-expense-is-never-edited).
+type ExpenseCreated struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	ExpenseId uint64                 `protobuf:"varint,1,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
+	TeamId    uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Kind      v12.ExpenseKind        `protobuf:"varint,3,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
+	// The account that paid — one of the team's operational accounts when the expense was recorded.
+	FinanceAccountId uint64 `protobuf:"varint,4,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	// Whole rupiah, always positive: the money that went out.
+	Amount int64 `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	// The day the expense belongs to (YYYY-MM-DD), as the person chose it — the day the account's row counts on.
+	OccurredOn string `protobuf:"bytes,6,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
+	// The shop an ADS expense ran for; 0 on every other kind.
+	ShopId uint64 `protobuf:"varint,7,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// Who typed it, and whether as Root or the Administrator from outside the team (an-override-is-stamped-in-every-service).
+	ActorId         uint64 `protobuf:"varint,8,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	ActorIsOverride bool   `protobuf:"varint,9,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
+	CreatedAtUnix   int64  `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ExpenseCreated) Reset() {
+	*x = ExpenseCreated{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpenseCreated) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpenseCreated) ProtoMessage() {}
+
+func (x *ExpenseCreated) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpenseCreated.ProtoReflect.Descriptor instead.
+func (*ExpenseCreated) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ExpenseCreated) GetExpenseId() uint64 {
+	if x != nil {
+		return x.ExpenseId
+	}
+	return 0
+}
+
+func (x *ExpenseCreated) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ExpenseCreated) GetKind() v12.ExpenseKind {
+	if x != nil {
+		return x.Kind
+	}
+	return v12.ExpenseKind(0)
+}
+
+func (x *ExpenseCreated) GetFinanceAccountId() uint64 {
+	if x != nil {
+		return x.FinanceAccountId
+	}
+	return 0
+}
+
+func (x *ExpenseCreated) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *ExpenseCreated) GetOccurredOn() string {
+	if x != nil {
+		return x.OccurredOn
+	}
+	return ""
+}
+
+func (x *ExpenseCreated) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *ExpenseCreated) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
+func (x *ExpenseCreated) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
+}
+
+func (x *ExpenseCreated) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
+}
+
+// ExpenseAdjusted announces a correction of an expense — an adjustment, or the screen's Batalkan, which is an adjustment
+// of minus what the expense still counts for (every-correction-is-a-signed-adjustment).
+//
+// It names the ORIGINAL expense's account, copied onto the adjustment, never typed (a-correction-follows-the-expenses-account):
+// financial_account_service posts the signed `amount` there with the opposite sign — a correction down gives money
+// back, a correction up takes more, a cancel gives the net back. Never published for an expense with no account (made
+// before *Paid from*) nor for a STOCK_LOSS. `event_id` is `expense-adjusted:<adjustment_id>` — one per adjustment row.
+type ExpenseAdjusted struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The adjustment row, and the expense it corrects.
+	AdjustmentId uint64 `protobuf:"varint,1,opt,name=adjustment_id,json=adjustmentId,proto3" json:"adjustment_id,omitempty"`
+	ExpenseId    uint64 `protobuf:"varint,2,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
+	TeamId       uint64 `protobuf:"varint,3,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The expense's kind, copied — ADS posts as `ads_expense`.
+	Kind v12.ExpenseKind `protobuf:"varint,4,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
+	// The expense's account, copied.
+	FinanceAccountId uint64 `protobuf:"varint,5,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	// Whole rupiah, SIGNED, never 0 — the correction itself, not a new total: minus is less was spent.
+	Amount int64 `protobuf:"varint,6,opt,name=amount,proto3" json:"amount,omitempty"`
+	// The corrected expense's day, copied (an-adjustment-counts-on-the-day-it-fixes).
+	OccurredOn string `protobuf:"bytes,7,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
+	ShopId     uint64 `protobuf:"varint,8,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// Who corrected it, and whether as Root or the Administrator from outside the team.
+	ActorId         uint64 `protobuf:"varint,9,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	ActorIsOverride bool   `protobuf:"varint,10,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
+	CreatedAtUnix   int64  `protobuf:"varint,11,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ExpenseAdjusted) Reset() {
+	*x = ExpenseAdjusted{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpenseAdjusted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpenseAdjusted) ProtoMessage() {}
+
+func (x *ExpenseAdjusted) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpenseAdjusted.ProtoReflect.Descriptor instead.
+func (*ExpenseAdjusted) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ExpenseAdjusted) GetAdjustmentId() uint64 {
+	if x != nil {
+		return x.AdjustmentId
+	}
+	return 0
+}
+
+func (x *ExpenseAdjusted) GetExpenseId() uint64 {
+	if x != nil {
+		return x.ExpenseId
+	}
+	return 0
+}
+
+func (x *ExpenseAdjusted) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ExpenseAdjusted) GetKind() v12.ExpenseKind {
+	if x != nil {
+		return x.Kind
+	}
+	return v12.ExpenseKind(0)
+}
+
+func (x *ExpenseAdjusted) GetFinanceAccountId() uint64 {
+	if x != nil {
+		return x.FinanceAccountId
+	}
+	return 0
+}
+
+func (x *ExpenseAdjusted) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *ExpenseAdjusted) GetOccurredOn() string {
+	if x != nil {
+		return x.OccurredOn
+	}
+	return ""
+}
+
+func (x *ExpenseAdjusted) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *ExpenseAdjusted) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
+func (x *ExpenseAdjusted) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
+}
+
+func (x *ExpenseAdjusted) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
+}
+
 var file_warehouse_events_v1_event_proto_extTypes = []protoimpl.ExtensionInfo{
 	{
 		ExtendedType:  (*descriptorpb.MessageOptions)(nil),
@@ -2439,9 +2736,9 @@ var File_warehouse_events_v1_event_proto protoreflect.FileDescriptor
 
 const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\n" +
-	"\x1fwarehouse/events/v1/event.proto\x12\x13warehouse.events.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!warehouse/role_base/v1/role.proto\x1a(warehouse/settlement/v1/settlement.proto\"#\n" +
+	"\x1fwarehouse/events/v1/event.proto\x12\x13warehouse.events.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"warehouse/expense/v1/expense.proto\x1a!warehouse/role_base/v1/role.proto\x1a(warehouse/settlement/v1/settlement.proto\"#\n" +
 	"\vEventConfig\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"\x93\x0e\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\"\xb8\x0f\n" +
 	"\x05Event\x12\"\n" +
 	"\bevent_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x12C\n" +
 	"\voccurred_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -2463,7 +2760,9 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\x1awarehouse_transfer_updated\x18\x95\x03 \x01(\v2-.warehouse.events.v1.WarehouseTransferUpdatedH\x00R\x18warehouseTransferUpdated\x12t\n" +
 	"\x1cwarehouse_transfer_cancelled\x18\x96\x03 \x01(\v2/.warehouse.events.v1.WarehouseTransferCancelledH\x00R\x1awarehouseTransferCancelled\x12q\n" +
 	"\x1bwarehouse_transfer_accepted\x18\x97\x03 \x01(\v2..warehouse.events.v1.WarehouseTransferAcceptedH\x00R\x19warehouseTransferAccepted\x12n\n" +
-	"\x1aliability_payment_accepted\x18\xf4\x03 \x01(\v2-.warehouse.events.v1.LiabilityPaymentAcceptedH\x00R\x18liabilityPaymentAccepted\x1a;\n" +
+	"\x1aliability_payment_accepted\x18\xf4\x03 \x01(\v2-.warehouse.events.v1.LiabilityPaymentAcceptedH\x00R\x18liabilityPaymentAccepted\x12O\n" +
+	"\x0fexpense_created\x18\xd8\x04 \x01(\v2#.warehouse.events.v1.ExpenseCreatedH\x00R\x0eexpenseCreated\x12R\n" +
+	"\x10expense_adjusted\x18\xd9\x04 \x01(\v2$.warehouse.events.v1.ExpenseAdjustedH\x00R\x0fexpenseAdjusted\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
@@ -2663,7 +2962,38 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\rto_account_id\x18\x06 \x01(\x04R\vtoAccountId\x12\x19\n" +
 	"\bactor_id\x18\a \x01(\x04R\aactorId\x12*\n" +
 	"\x11actor_is_override\x18\b \x01(\bR\x0factorIsOverride: \x8a\xb5\x18\x1c\n" +
-	"\x1aliability-payment-accepted:f\n" +
+	"\x1aliability-payment-accepted\"\x85\x03\n" +
+	"\x0eExpenseCreated\x12\x1d\n" +
+	"\n" +
+	"expense_id\x18\x01 \x01(\x04R\texpenseId\x12\x17\n" +
+	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x125\n" +
+	"\x04kind\x18\x03 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindR\x04kind\x12,\n" +
+	"\x12finance_account_id\x18\x04 \x01(\x04R\x10financeAccountId\x12\x16\n" +
+	"\x06amount\x18\x05 \x01(\x03R\x06amount\x12\x1f\n" +
+	"\voccurred_on\x18\x06 \x01(\tR\n" +
+	"occurredOn\x12\x17\n" +
+	"\ashop_id\x18\a \x01(\x04R\x06shopId\x12\x19\n" +
+	"\bactor_id\x18\b \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\t \x01(\bR\x0factorIsOverride\x12&\n" +
+	"\x0fcreated_at_unix\x18\n" +
+	" \x01(\x03R\rcreatedAtUnix:\x15\x8a\xb5\x18\x11\n" +
+	"\x0fexpense-created\"\xac\x03\n" +
+	"\x0fExpenseAdjusted\x12#\n" +
+	"\radjustment_id\x18\x01 \x01(\x04R\fadjustmentId\x12\x1d\n" +
+	"\n" +
+	"expense_id\x18\x02 \x01(\x04R\texpenseId\x12\x17\n" +
+	"\ateam_id\x18\x03 \x01(\x04R\x06teamId\x125\n" +
+	"\x04kind\x18\x04 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindR\x04kind\x12,\n" +
+	"\x12finance_account_id\x18\x05 \x01(\x04R\x10financeAccountId\x12\x16\n" +
+	"\x06amount\x18\x06 \x01(\x03R\x06amount\x12\x1f\n" +
+	"\voccurred_on\x18\a \x01(\tR\n" +
+	"occurredOn\x12\x17\n" +
+	"\ashop_id\x18\b \x01(\x04R\x06shopId\x12\x19\n" +
+	"\bactor_id\x18\t \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\n" +
+	" \x01(\bR\x0factorIsOverride\x12&\n" +
+	"\x0fcreated_at_unix\x18\v \x01(\x03R\rcreatedAtUnix:\x16\x8a\xb5\x18\x12\n" +
+	"\x10expense-adjusted:f\n" +
 	"\fevent_config\x12\x1f.google.protobuf.MessageOptions\x18ц\x03 \x01(\v2 .warehouse.events.v1.EventConfigR\veventConfigBLZJgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1;eventsv1b\x06proto3"
 
 var (
@@ -2678,7 +3008,7 @@ func file_warehouse_events_v1_event_proto_rawDescGZIP() []byte {
 	return file_warehouse_events_v1_event_proto_rawDescData
 }
 
-var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_warehouse_events_v1_event_proto_goTypes = []any{
 	(*EventConfig)(nil),                 // 0: warehouse.events.v1.EventConfig
 	(*Event)(nil),                       // 1: warehouse.events.v1.Event
@@ -2699,17 +3029,20 @@ var file_warehouse_events_v1_event_proto_goTypes = []any{
 	(*WarehouseTransferCancelled)(nil),  // 16: warehouse.events.v1.WarehouseTransferCancelled
 	(*WarehouseTransferAccepted)(nil),   // 17: warehouse.events.v1.WarehouseTransferAccepted
 	(*LiabilityPaymentAccepted)(nil),    // 18: warehouse.events.v1.LiabilityPaymentAccepted
-	nil,                                 // 19: warehouse.events.v1.Event.MetadataEntry
-	(*timestamppb.Timestamp)(nil),       // 20: google.protobuf.Timestamp
-	(*v1.Identity)(nil),                 // 21: warehouse.role_base.v1.Identity
-	(v11.SettlementType)(0),             // 22: warehouse.settlement.v1.SettlementType
-	(v11.SourceType)(0),                 // 23: warehouse.settlement.v1.SourceType
-	(*descriptorpb.MessageOptions)(nil), // 24: google.protobuf.MessageOptions
+	(*ExpenseCreated)(nil),              // 19: warehouse.events.v1.ExpenseCreated
+	(*ExpenseAdjusted)(nil),             // 20: warehouse.events.v1.ExpenseAdjusted
+	nil,                                 // 21: warehouse.events.v1.Event.MetadataEntry
+	(*timestamppb.Timestamp)(nil),       // 22: google.protobuf.Timestamp
+	(*v1.Identity)(nil),                 // 23: warehouse.role_base.v1.Identity
+	(v11.SettlementType)(0),             // 24: warehouse.settlement.v1.SettlementType
+	(v11.SourceType)(0),                 // 25: warehouse.settlement.v1.SourceType
+	(v12.ExpenseKind)(0),                // 26: warehouse.expense.v1.ExpenseKind
+	(*descriptorpb.MessageOptions)(nil), // 27: google.protobuf.MessageOptions
 }
 var file_warehouse_events_v1_event_proto_depIdxs = []int32{
-	20, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	19, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
-	21, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
+	22, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	21, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
+	23, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
 	2,  // 3: warehouse.events.v1.Event.member_removed:type_name -> warehouse.events.v1.MemberRemoved
 	4,  // 4: warehouse.events.v1.Event.order_placed:type_name -> warehouse.events.v1.OrderPlaced
 	6,  // 5: warehouse.events.v1.Event.order_cancelled:type_name -> warehouse.events.v1.OrderCancelled
@@ -2725,17 +3058,21 @@ var file_warehouse_events_v1_event_proto_depIdxs = []int32{
 	16, // 15: warehouse.events.v1.Event.warehouse_transfer_cancelled:type_name -> warehouse.events.v1.WarehouseTransferCancelled
 	17, // 16: warehouse.events.v1.Event.warehouse_transfer_accepted:type_name -> warehouse.events.v1.WarehouseTransferAccepted
 	18, // 17: warehouse.events.v1.Event.liability_payment_accepted:type_name -> warehouse.events.v1.LiabilityPaymentAccepted
-	22, // 18: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
-	23, // 19: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
-	5,  // 20: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
-	10, // 21: warehouse.events.v1.RestockAccepted.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
-	24, // 22: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
-	0,  // 23: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	23, // [23:24] is the sub-list for extension type_name
-	22, // [22:23] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	19, // 18: warehouse.events.v1.Event.expense_created:type_name -> warehouse.events.v1.ExpenseCreated
+	20, // 19: warehouse.events.v1.Event.expense_adjusted:type_name -> warehouse.events.v1.ExpenseAdjusted
+	24, // 20: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
+	25, // 21: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
+	5,  // 22: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
+	10, // 23: warehouse.events.v1.RestockAccepted.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
+	26, // 24: warehouse.events.v1.ExpenseCreated.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	26, // 25: warehouse.events.v1.ExpenseAdjusted.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	27, // 26: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
+	0,  // 27: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	27, // [27:28] is the sub-list for extension type_name
+	26, // [26:27] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_events_v1_event_proto_init() }
@@ -2759,6 +3096,8 @@ func file_warehouse_events_v1_event_proto_init() {
 		(*Event_WarehouseTransferCancelled)(nil),
 		(*Event_WarehouseTransferAccepted)(nil),
 		(*Event_LiabilityPaymentAccepted)(nil),
+		(*Event_ExpenseCreated)(nil),
+		(*Event_ExpenseAdjusted)(nil),
 	}
 	file_warehouse_events_v1_event_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
@@ -2767,7 +3106,7 @@ func file_warehouse_events_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_events_v1_event_proto_rawDesc), len(file_warehouse_events_v1_event_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 1,
 			NumServices:   0,
 		},

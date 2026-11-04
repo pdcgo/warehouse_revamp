@@ -205,7 +205,8 @@
     "requestAskedTitle": "{{name}} meminta Anda membayar {{amount}}",
     "requestAskedHelp": "Diminta pada {{date}}. Bayar lewat Buat Pembayaran — tidak ada yang bergerak sendiri.",
     "requestSent": "Anda meminta {{name}} membayar {{amount}} pada {{date}}.",
-    "causeReturnIncidentalFee": "Biaya kurir retur · pesanan #{{id}}"
+    "causeReturnIncidentalFee": "Biaya kurir retur · pesanan #{{id}}",
+    "causeTransferFee": "Biaya kurir transfer · transfer #{{id}}"
   },
   "common": {
     "perPage": "Per halaman",
@@ -461,7 +462,7 @@
       },
       "lockFilter": {
         "label": "Filter kunci",
-        "reason": "Produk yang dikunci tidak dikirim server ke Discover, dan apakah minimum sudah mengunci sebuah produk bergantung pada stok siapnya, yang ada di layanan inventaris. Pilihannya disimpan, tapi belum menyaring."
+        "reason": "Produk yang dikunci kini dikirim server ke Discover, tapi server belum punya filter kunci, dan apakah minimum sudah mengunci sebuah produk bergantung pada stok siapnya, yang ada di layanan inventaris. Pilihannya disimpan, tapi belum menyaring."
       }
     },
     "stock": {
@@ -1167,7 +1168,8 @@
       "returnGoods": "Retur Barang",
       "complete": "Selesaikan Order",
       "markLost": "Jadikan Lost",
-      "resolveDispute": "Selesaikan Sengketa"
+      "resolveDispute": "Selesaikan Sengketa",
+      "markProblem": "Tandai Bermasalah"
     },
     "rowActionConfirm": {
       "cancel": "Batalkan pesanan #{{id}}? Tindakan ini tidak bisa dibatalkan.",
@@ -1207,7 +1209,12 @@
     "orderTitleLabel": "Pesanan",
     "noOrdersHint": "Pesanan muncul di sini setelah dibuat atau diimpor.",
     "noWarehouseOrdersHint": "Pesanan dari tim penjual yang dikirim dari gudang ini muncul di sini.",
-    "statusMoved": "Pesanan dipindah ke {{status}}"
+    "statusMoved": "Pesanan dipindah ke {{status}}",
+    "label": {
+      "notShippedHere": "Pesanan #{{id}} tidak dikirim dari gudang ini — labelnya bukan untuk dicetak di sini",
+      "noLabel": "Pesanan #{{id}} belum punya label — minta penjual melampirkannya",
+      "refused": "Label pesanan #{{id}} tidak bisa dibuka"
+    }
   },
   "orderDetail": {
     "nav": {
@@ -1329,12 +1336,6 @@
     "deleteOneTitle": "Hapus Draf Pesanan",
     "deleteOneMessage": "Hapus draf {{ref}}? Tindakan ini tidak bisa dibatalkan, dan aplikasi pengirim bisa mengirimnya lagi.",
     "updated": "Diubah",
-    "pending": {
-      "readyCount": {
-        "label": "Jumlah siap",
-        "reason": "Hanya dihitung dari draft di halaman ini. Untuk seluruh draft perlu agregat draft di server, yang belum ada."
-      }
-    },
     "created": "Dibuat",
     "summary": {
       "total": "Draft",
@@ -1346,8 +1347,7 @@
         "days_one": "{{count}} hari",
         "days_other": "{{count}} hari"
       },
-      "ready": "Siap",
-      "onThisPage": "di halaman ini"
+      "ready": "Siap"
     },
     "missingOrderDate": "Tanggal pesanan marketplace belum diisi.",
     "missingRef": "Nomor pesanan marketplace belum diisi.",
@@ -1427,7 +1427,7 @@
       "from": "Dari",
       "courier": "Kurir",
       "tracking": "Nomor resi",
-      "receiptPhoto": "Foto label",
+      "openReceiptPhoto": "Buka Foto Label",
       "noReceiptPhoto": "Belum ada foto label",
       "arrivedAt": "Tiba",
       "payment": "Pembayaran",
@@ -1881,20 +1881,6 @@
       "primaryAll": "Semua CS utama",
       "optionsClear": "Hapus filter di panel"
     },
-    "pending": {
-      "marketplaceFilter": {
-        "label": "Filter marketplace",
-        "reason": "Daftar toko belum bisa disaring per marketplace — pilihannya disimpan, tapi semua toko tetap tampil."
-      },
-      "primaryFilter": {
-        "label": "Filter CS utama",
-        "reason": "Daftar toko belum bisa disaring per CS utama — pilihannya disimpan, tapi semua toko tetap tampil."
-      },
-      "noPrimaryFilter": {
-        "label": "Filter belum ada CS utama",
-        "reason": "Daftar toko belum bisa disaring ke toko yang belum punya CS utama — centangnya disimpan, tapi semua toko tetap tampil."
-      }
-    },
     "withdrawal": {
       "title": "Akun Penarikan",
       "description": "Rekening tempat dana marketplace toko ini ditarik.",
@@ -1978,13 +1964,7 @@
         "stockHistory": "Riwayat Stok",
         "placementHistory": "Riwayat Penempatan"
       },
-      "actions": "Aksi rak",
-      "pending": {
-        "countLock": {
-          "label": "Kunci opname",
-          "reason": "Produk yang sedang diopname terkunci di 0 di sini — opname menghentikan perpindahan barang (sudah diputuskan), tetapi opname belum dibangun, jadi hanya prototipe yang mengisinya."
-        }
-      }
+      "actions": "Aksi rak"
     },
     "move": {
       "action": "Pindahkan Barang",
@@ -2902,7 +2882,9 @@
       "confirm": "Konfirmasi Pesanan",
       "markPicked": "Tandai Sudah Diambil",
       "markHandedOver": "Tandai Diserahkan",
-      "acceptReturn": "Terima Retur"
+      "acceptReturn": "Terima Retur",
+      "forceReturn": "Paksa Retur",
+      "receiveReturn": "Terima Retur"
     },
     "detail": {
       "title": "Pesanan #{{id}}",
@@ -2938,6 +2920,30 @@
       "labelOver": "Di atas label lama {{code}}",
       "labelCount_other": "{{count}} label",
       "done": "Selesai"
+    },
+    "forceReturn": {
+      "title": "Paksa Retur",
+      "message": "Pesanan #{{id}} berstatus \"{{status}}\". Jadikan retur agar bisa diterima?",
+      "done": "Pesanan dijadikan retur",
+      "failed": "Pesanan tidak bisa dijadikan retur"
+    },
+    "receive": {
+      "title": "Terima Retur",
+      "intro": "Scan label pada paket, atau ketik nomor pesanan atau resinya lalu tekan Enter.",
+      "placeholder": "Nomor pesanan atau resi",
+      "search": "Cari",
+      "searching": "Mencari…",
+      "resultsFor": "Hasil untuk {{term}}",
+      "notFound": "Tidak ada pesanan gudang ini yang cocok dengan {{term}}.",
+      "notFoundHint": "Periksa nomor pada label. Paket yang pesanannya tidak dikirim dari gudang ini tidak ditemukan di sini — tanyakan ke customer service.",
+      "ref": "No. Pesanan",
+      "tracking": "Resi",
+      "shop": "Toko",
+      "customer": "Pelanggan",
+      "notLeft": "Pesanan #{{id}} masih \"{{status}}\" — barangnya belum keluar dari gudang, jadi tidak bisa kembali sebagai retur.",
+      "alreadyAccepted": "Pesanan #{{id}} sudah diterima sebagai retur.",
+      "cancelled": "Pesanan #{{id}} dibatalkan sebelum dikirim — tidak ada yang perlu diretur.",
+      "lost": "Pesanan #{{id}} sudah dijadikan lost — tidak bisa diterima sebagai retur. Tanyakan ke customer service."
     }
   },
   "batches": {
@@ -3218,7 +3224,8 @@
       "shop": "Toko",
       "note": "Catatan",
       "amount": "Jumlah",
-      "actions": "Aksi"
+      "actions": "Aksi",
+      "paidFrom": "Dibayar dari"
     },
     "kind": {
       "ads": "Iklan",
@@ -3254,7 +3261,24 @@
       "title": "Batalkan Biaya",
       "message": "Penyesuaian minus {{net}} dicatat pada tanggal yang sama, sehingga biaya ini tidak lagi terhitung. Kedua baris tetap terlihat.",
       "confirm": "Batalkan"
-    }
+    },
+    "paidFrom": "Dibayar dari",
+    "paidFromHelp": "Rekening operasional tim yang membayar biaya ini.",
+    "noOperational": "Tim ini belum punya rekening operasional, jadi biaya belum bisa dicatat. Admin menandainya di halaman akun.",
+    "openAccounts": "Buka Akun Keuangan",
+    "shopAdsHelp": "Toko tempat iklan ini berjalan.",
+    "noAccount": "Tanpa rekening",
+    "adjustPaidFrom": "Dibayar dari {{account}} — koreksi dicatat di sini.",
+    "adjustNoAccount": "Biaya ini tidak menyebut rekening, jadi koreksi tidak mengubah saldo apa pun.",
+    "missing": {
+      "title": "Masih dibutuhkan sebelum menyimpan:",
+      "kind": "jenisnya",
+      "amount": "jumlah di atas 0",
+      "account": "rekening yang membayar",
+      "shop": "toko tempat iklan berjalan"
+    },
+    "cancelAccount": "{{net}} kembali ke {{account}}.",
+    "cancelNoAccount": "Biaya ini tidak menyebut rekening, jadi tidak ada saldo yang berubah."
   },
   "periodGrain": {
     "label": "Kelompokkan per",
@@ -3631,8 +3655,8 @@
     },
     "tally": {
       "posted": "Tercatat",
-      "postedToShop_one": "{{count}} ke toko — pesanan tidak ditemukan",
-      "postedToShop_other": "{{count}} ke toko — pesanan tidak ditemukan",
+      "postedToShop_one": "{{count}} ke toko — tidak ada satu pesanan yang cocok",
+      "postedToShop_other": "{{count}} ke toko — tidak ada satu pesanan yang cocok",
       "existing": "Sudah ada",
       "held": "Ditahan",
       "skipped": "Dilewati"
@@ -3682,7 +3706,7 @@
       },
       "heldNote": "Baris ini tidak bisa tercatat. Setelah penyebabnya diperbaiki, unggah file yang sama lagi — hanya baris ini yang masuk.",
       "skippedNote": "Baris ini sengaja tidak dicatat — mengulang uang yang sudah dibawa baris lain, atau penarikan yang tidak berhasil.",
-      "toShopNote": "Baris ini menyebut pesanan yang tidak ditemukan, jadi tercatat ke toko. Pesanan yang dibuat kemudian tidak menerimanya.",
+      "toShopNote": "Baris ini tercatat ke toko: pesanannya tidak ditemukan, atau ref-nya ada di beberapa pesanan aktif (masing-masing disebut). Pesanan yang dibuat kemudian tidak menerimanya.",
       "noLines": "Tidak ada baris di sini."
     },
     "line": {
@@ -3701,7 +3725,8 @@
       "fractionalAmount": "Pecahan rupiah — tidak dibulatkan",
       "refused": "Ditolak oleh penyelesaian",
       "repeatsOrderDetails": "Mengulang baris pesanan",
-      "failedWithdrawal": "Penarikan yang tidak berhasil"
+      "failedWithdrawal": "Penarikan yang tidak berhasil",
+      "severalOrders": "Ada di beberapa pesanan aktif — tidak ada yang dikreditkan"
     },
     "type": {
       "unspecified": "—",
@@ -4033,24 +4058,6 @@
     }
   },
   "orderForm": {
-    "pending": {
-      "draftKeeps": {
-        "label": "Yang disimpan draft",
-        "reason": "Draft menyimpan toko, gudang, customer, username pembeli, kurir, baris, dua tanggal dari marketplace dan harga jual. Resi, referensi, nomor resi dan catatan tidak disimpan oleh Simpan — Promote memasukkannya ke pesanan."
-      },
-      "rowBundle": {
-        "label": "Baris dipetakan ke bundle",
-        "reason": "Baris draft hanya menyimpan satu produk, jadi pemetaan bundle tampil dan dihitung tapi disimpan sebagai belum dipetakan. Promote mengirimnya sebagai produk-produknya."
-      },
-      "rowSplit": {
-        "label": "Baris dipecah ke beberapa produk",
-        "reason": "Baris draft hanya menyimpan satu produk, jadi pecahan tampil dan dihitung tapi disimpan sebagai belum dipetakan. Promote mengirimnya sebagai produk-produknya."
-      },
-      "listingQty": {
-        "label": "Qty listing",
-        "reason": "Baris draft hanya menyimpan satu qty, jadi qty yang berbeda dari listing menimpanya saat disimpan — qty listing asli dan peringatan ini hilang saat draft dibuka lagi."
-      }
-    },
     "source": {
       "title": "Informasi Order",
       "help": "Toko mana yang menjualnya, gudang mana yang mengirimnya, dan kapan dibelinya.",
@@ -4421,14 +4428,6 @@
       "accepted": "Transfer diterima",
       "acceptFailed": "Gagal menerima transfer"
     },
-    "selling": {
-      "pending": {
-        "costEvent": {
-          "label": "Biaya kirim",
-          "reason": "Biaya tersimpan dan diumumkan setiap kali disimpan, tetapi akun pembayar belum mencatatnya — pendengarnya belum dibuat."
-        }
-      }
-    },
     "form": {
       "back": "Kembali ke Transfer",
       "route": "Rute",
@@ -4457,12 +4456,6 @@
         "count": "jumlah untuk setiap produk",
         "stock": "jumlah dalam batas stok gudang pengirim",
         "account": "akun yang membayar biaya kirim"
-      },
-      "pending": {
-        "costEvent": {
-          "label": "Biaya kirim",
-          "reason": "Biaya tersimpan dan diumumkan setiap kali disimpan, tetapi akun pembayar belum mencatatnya — pendengarnya belum dibuat."
-        }
       }
     },
     "detail": {
@@ -4489,32 +4482,10 @@
       "total": "Nilai dipindahkan: {{amount}}",
       "loss": "Rusak atau kurang: {{amount}} — kerugian tim Anda",
       "pickHint": "Ambil tiap produk dari rak yang tercantum — dipilih saat transfer dibuat, yang paling sedikit dulu.",
-      "pending": {
-        "costEvent": {
-          "label": "Biaya kirim",
-          "reason": "Biaya tersimpan dan diumumkan setiap kali disimpan, tetapi akun pembayar belum mencatatnya — pendengarnya belum dibuat."
-        },
-        "labelPhoto": {
-          "label": "Foto label",
-          "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
-        }
-      }
-    },
-    "warehouse": {
-      "pending": {
-        "labelPhoto": {
-          "label": "Foto label",
-          "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
-        }
-      }
-    },
-    "warehouseDetail": {
-      "pending": {
-        "labelPhoto": {
-          "label": "Foto label",
-          "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
-        }
-      }
+      "labelPhoto": "Foto label",
+      "noLabelPhoto": "Belum ada foto label",
+      "openLabelPhoto": "Buka Foto",
+      "labelPhotoAtSender": "Terlampir — hanya gudang pengirim yang bisa membukanya"
     },
     "accept": {
       "back": "Kembali ke Transfer",
@@ -4544,13 +4515,7 @@
       "summaryUncounted": "Baris belum dihitung",
       "confirmTitle": "Terima Transfer #{{id}}",
       "confirmMessage": "{{good}} dari {{sent}} unit masuk ke rak Anda. Tindakan ini tidak bisa dibatalkan.",
-      "keepCounting": "Lanjut Menghitung",
-      "pending": {
-        "courierDebt": {
-          "label": "Biaya kurir",
-          "reason": "Biaya ini tersimpan dan diumumkan saat diterima, tetapi balance belum mencatat utang tim penjual ke gudang ini — jenis entri yang dipakai masih dibahas."
-        }
-      }
+      "keepCounting": "Lanjut Menghitung"
     }
   },
   "emptyHint": {
@@ -5112,5 +5077,17 @@
     "withdrawTitle": "Tarik Stok Ditemukan #{{id}}",
     "withdrawMessage": "Anda yang melaporkannya. Tidak ada yang diposting; tulis alasan Anda menariknya.",
     "withdrawnToast": "Stok ditemukan #{{id}} ditarik"
+  },
+  "serverError": {
+    "canceled": "Permintaan dibatalkan.",
+    "unknown": "Terjadi kesalahan. Coba lagi.",
+    "deadlineExceeded": "Server terlalu lama menjawab. Coba lagi.",
+    "unimplemented": "Fitur ini belum dibuat.",
+    "internal": "Terjadi kesalahan di server. Coba lagi.",
+    "unavailable": "Server tidak dapat dihubungi saat ini. Coba lagi sebentar lagi.",
+    "dataLoss": "Terjadi kesalahan di server. Coba lagi.",
+    "permissionDenied": "Anda tidak diizinkan melakukan ini.",
+    "unauthenticated": "Sesi masuk Anda telah berakhir. Silakan masuk lagi.",
+    "refused": "Server menolak permintaan ini."
   }
 }

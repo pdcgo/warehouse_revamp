@@ -17,6 +17,9 @@ import (
 //
 //   - The adjustment copies the expense's team, shop, kind and DAY, never typed — so it counts in the month that holds
 //     the mistake (an-adjustment-counts-on-the-day-it-fixes), and every total and the daily statement just sum rows.
+//   - It copies the expense's ACCOUNT too (a-correction-follows-the-expenses-account): after the commit it is published
+//     (ExpenseAdjusted) and that account gets the signed difference — a correction down gives money back, a cancel the
+//     whole net. An expense made before *Paid from* names none, so its corrections post nothing.
 //   - It corrects an EXPENSE, never another adjustment: a mistaken adjustment is fixed by a second one on the same
 //     expense.
 //   - An expense and its adjustments never sum below 0 — a correction cannot turn a cost into income.
@@ -80,12 +83,18 @@ func (s *Service) ExpenseAdjust(
 			CreatedBy:        actorFrom(ctx),
 			IsOverride:       overrideFrom(ctx),
 			AdjustsExpenseID: expense.ID,
+			FinanceAccountID: expense.FinanceAccountID,
 		}
 
 		return tx.Create(&adjustment).Error
 	})
 	if err != nil {
 		return nil, costErr(err)
+	}
+
+	// AFTER the commit: the expense's account hears the correction.
+	if moves(&adjustment) {
+		s.publishMoney(ctx, expenseAdjustedEvent(&adjustment))
 	}
 
 	return connect.NewResponse(&expensev1.ExpenseAdjustResponse{

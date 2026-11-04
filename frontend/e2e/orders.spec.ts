@@ -572,6 +572,102 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("orders-table").locator('[data-testid^="order-row-"]')).toHaveCount(1);
 });
 
+// A WAREHOUSE OPENS THE SELLER'S LABEL (a-warehouse-prints-the-labels-of-orders-it-ships). The label of the order placed
+// above was uploaded by the SELLING side, so as the document's owner the warehouse reads NotFound — that was the bug:
+// Print Label failed on every order. A warehouse STAFF member — the person who actually prints it, created here with
+// that one role — opens the order detail and the label opens through OrderLabels, the order checked to ship from here.
+test("Label: the warehouse's staff opens the seller's label from the order detail", async ({ page }) => {
+  const STAFF = `e2elabelstaff${SUFFIX}`;
+  const PASSWORD = "e2e-label-pass-1";
+
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const seed = await page.evaluate(
+    async ([whCode, ref, staff, password]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const rowMap = (res: { items?: Record<string, { mapData?: Record<string, unknown> }>[] }, slice: string) =>
+        Object.values(res.items?.find((it) => it[slice])?.[slice]?.mapData ?? {}) as Record<string, string>[];
+
+      const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+      const warehouse = rowMap(teams, "team").find((t) => t.teamCode === whCode)!;
+
+      const list = await call("selling.v1.OrderService/OrderList", {
+        teamId: "1",
+        filter: { search: ref },
+        page: { page: 1, limit: 5 },
+      });
+
+      await call("user.v1.UserService/CreateUser", {
+        teamId: warehouse.id,
+        username: staff,
+        password,
+        name: staff,
+        role: "ROLE_WAREHOUSE_STAFF",
+      });
+
+      return { warehouse: warehouse.id as string, order: (list.ids as string[])[0] };
+    },
+    [WH_CODE, MARKETPLACE_REF, STAFF, PASSWORD],
+  );
+
+  expect(seed.order).toBeTruthy();
+
+  await login(page, STAFF, PASSWORD);
+  await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), seed.warehouse);
+
+  await page.goto(`/orders/${seed.order}`);
+  await expect(page.getByTestId("order-detail-page")).toBeVisible();
+  await expect(page.getByTestId("order-detail-receipt")).toContainText("resi-jne.pdf");
+
+  // The label opens in a new tab, from a link the ORDER SERVICE signed — and the file is the seller's upload. (A PDF tab
+  // never settles in headless Chromium, so the answer that minted the link is what is read, beside the tab opening.)
+  const [answer, popup] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith("/warehouse.selling.v1.OrderService/OrderLabels")),
+    page.waitForEvent("popup"),
+    page.getByTestId("order-receipt-open").click(),
+  ]);
+  expect(answer.status()).toBe(200);
+  const labels = (await answer.json()) as { url: string; results: { orderId: string; included?: boolean }[] };
+  expect(labels.results).toEqual([{ orderId: seed.order, included: true }]);
+  expect(labels.url).toContain("resi-jne.pdf");
+  await popup.close();
+
+  // No refusal toast was shown, and the label was never shared: as its "owner" the warehouse still reads NotFound.
+  await expect(page.getByText(/does not ship from this warehouse|has no label attached/)).toHaveCount(0);
+  const asOwner = await page.evaluate(async ([warehouse, order]) => {
+    const token =
+      window.sessionStorage.getItem("warehouse_revamp.token") ?? window.localStorage.getItem("warehouse_revamp.token");
+    const post = (method: string, body: unknown) =>
+      fetch(`http://localhost:8081/warehouse.${method}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+
+    const detail = await (await post("selling.v1.OrderService/OrderDetail", { teamId: warehouse, orderId: order })).json();
+    const res = await post("document.v1.DocumentService/GetDownloadUrl", {
+      teamId: warehouse,
+      documentId: detail.order.receipt.documentId,
+    });
+
+    return res.status;
+  }, [seed.warehouse, seed.order]);
+  expect(asOwner).toBe(404);
+});
+
 // THE SETTLEMENT REPORT is wired end to end: the route, settlement's metric RPCs and their policy.
 //
 // The report lays out EVERY day of the window as a row, so the series table exists only if MetricData
@@ -1436,4 +1532,86 @@ test("Export: the order list downloads as an .xlsx file", async ({ page }) => {
   expect(statSync(path).size).toBeGreaterThan(0);
 
   await expect(page.getByText("Export ready — the file is downloading")).toBeVisible();
+});
+
+// #11 — THE MOVES THE SERVER ALLOWED WITH NO BUTTON. §Status Move draws shipped → problem, problem → return and
+// problem → lost (customer-service-sets-shipped-and-problem-by-hand, a-forced-return-follows-the-status-move); the
+// selling seat's buttons now make each, through OrderStatusChange, the destructive two behind a confirm. Last in the
+// file: each places an order, and the tests above count orders and stock.
+async function toShipped(page: Page, customer: string): Promise<string> {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await placeOrderViaForm(page, customer);
+  const orderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
+
+  // The warehouse walks it to the courier.
+  await switchToWarehouse(page);
+  await page.goto(`/warehouse-orders/${orderId}`);
+  for (const next of ["Mark Picked", "Mark Handed Over"]) {
+    await page.getByTestId("pick-order-advance").click();
+    await expect(page.getByTestId("pick-order-advance")).toContainText(next);
+  }
+  await page.getByTestId("pick-order-advance").click();
+  await expect(page.getByTestId("pick-order-advance")).toBeHidden();
+
+  // Customer service sees it moving on the platform.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto(`/orders/${orderId}`);
+  await page.getByTestId("order-action-ship").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "shipped");
+
+  return orderId;
+}
+
+test("Moves: a shipped order is marked a problem, then returned (#11)", async ({ page }) => {
+  await toShipped(page, `${CUSTOMER} problem-return`);
+
+  // shipped → problem — customer service, by hand from the platform. A waystation: no confirm.
+  await page.getByTestId("order-action-markProblem").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "problem");
+
+  // problem → return — destructive, so it confirms first.
+  await expect(page.getByTestId("order-action-resolveDispute")).toBeVisible();
+  await page.getByTestId("order-action-returnGoods").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "return");
+});
+
+test("Moves: a problem order is written off as lost (#11)", async ({ page }) => {
+  await toShipped(page, `${CUSTOMER} problem-lost`);
+
+  await page.getByTestId("order-action-markProblem").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "problem");
+
+  // problem → lost — destructive, so it confirms first; then nothing is left to press.
+  await page.getByTestId("order-action-markLost").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "lost");
+  await expect(page.getByTestId("order-action-bar")).toBeHidden();
+});
+
+// every-allowed-move-has-a-button — the last two edges of orderMoves the seller's screen had no button for, each confirmed.
+test("Moves: a shipped order is written off as lost directly", async ({ page }) => {
+  await toShipped(page, `${CUSTOMER} shipped-lost`);
+
+  // shipped → lost, without passing through problem. Four actions on shipped, so the destructive two sit in ⋯.
+  await page.getByTestId("order-action-more").click();
+  await page.getByTestId("order-action-markLost").click();
+  await expect(page.getByText(/Mark order #\d+ as lost\?/)).toBeVisible();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "lost");
+  await expect(page.getByTestId("order-action-bar")).toBeHidden();
+});
+
+test("Moves: a completed order is returned", async ({ page }) => {
+  await toShipped(page, `${CUSTOMER} completed-return`);
+
+  // shipped → completed — customer service, no confirm.
+  await page.getByTestId("order-action-complete").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "completed");
+
+  // completed → return — the buyer sent it back; destructive, so it confirms first.
+  await page.getByTestId("order-action-returnGoods").click();
+  await expect(page.getByText(/Return the goods on order #\d+\?/)).toBeVisible();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "return");
 });

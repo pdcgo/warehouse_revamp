@@ -126,6 +126,17 @@ service OrderService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
+  // ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
+  // link is minted under its own identity, so a label is never shared document by document.
+  //
+  // ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+  rpc OrderLabels(OrderLabelsRequest) returns (OrderLabelsResponse) {
+    // A READ — it writes no row and moves no file; it signs a link (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // An order's status: the eleven of the order context's status diagram
@@ -1506,4 +1517,62 @@ message OrderCreatorListResponse {
   // User ids, in the sort's order.
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── The labels a warehouse prints (a-warehouse-prints-the-labels-of-orders-it-ships) ───────────────────────────────
+
+message OrderLabelsRequest {
+  // The warehouse that ships the orders — and Root and the Administrator, who open any order's label. The seller keeps
+  // reading its own labels with document_service's GetDownloadUrl.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — the scope. Each order must ship from it.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // In print order. ⚠ One for now: merging several labels into one PDF is step 2.
+  repeated uint64 order_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 1
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+// Why an order's label is not behind the link.
+enum OrderLabelReason {
+  ORDER_LABEL_REASON_UNSPECIFIED = 0;
+  // The order does not ship from this warehouse — or there is no such order. The two read alike, so ids cannot be
+  // probed.
+  ORDER_LABEL_REASON_NOT_SHIPPED_HERE = 1;
+  // The seller has not attached a label file to the order.
+  ORDER_LABEL_REASON_NO_LABEL = 2;
+}
+
+// One asked order, and whether its label is behind the link.
+message OrderLabelResult {
+  uint64 order_id = 1;
+  bool included = 2;
+  // UNSPECIFIED when included.
+  OrderLabelReason reason = 3;
+}
+
+message OrderLabelsResponse {
+  // The label file behind a short-lived signed link. Empty when no asked order's label is included.
+  string url = 1;
+  // When the link stops working, unix seconds. 0 with no link.
+  int64 expires_at_unix = 2;
+  // One per asked order, in the asked order.
+  repeated OrderLabelResult results = 3;
 }

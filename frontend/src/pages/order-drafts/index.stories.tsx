@@ -151,9 +151,8 @@ export const AWarehouseHasNoDrafts: Story = {
 };
 
 /**
- * THREE NUMBERS, and only the third is partial. The total is the server's page count, the oldest is one
- * ASC row off the same RPC (201 was written first), and "ready" counts the page on screen — which its
- * label says, and which carries a ⚠.
+ * THREE NUMBERS, all of the whole set. The total is the server's page count, the oldest is one ASC row off the same
+ * RPC (201 was written first), and "ready" is OrderDraftList's `ready_count` (#16) — no ⚠ and no "on this page" left.
  */
 export const TheSummaryCountsWhatItCan: Story = {
   play: async ({ canvasElement }) => {
@@ -169,7 +168,9 @@ export const TheSummaryCountsWhatItCan: Story = {
     await expect(within(ready).getByTestId("draft-summary-ready-value")).toHaveTextContent(
       `1 of ${orderDrafts.length}`,
     );
-    await expect(within(ready).getByTestId("not-implemented-readyCount")).toBeInTheDocument();
+    await expect(within(ready).queryByTestId("not-implemented-readyCount")).toBeNull();
+    await expect(ready).not.toHaveTextContent("on this page");
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
   },
 };
 

@@ -65,6 +65,13 @@ service RestockRequestService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // The restock's own warehouse opens its label photo (`receipt_file`) to match the box at its door
+  // (the-restocks-warehouse-opens-its-label-photo): checked here, signed by document_service in-process, no share.
+  rpc RestockReceiptPhoto(RestockReceiptPhotoRequest) returns (RestockReceiptPhotoResponse) {
+    // A READ — it writes no row and moves no file; it signs a link (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // Where a restock is. APPEND ONLY, like every enum here — the values were renamed in place
@@ -765,4 +772,33 @@ message RestockRequestLabelsResponse {
   repeated RestockLabel labels = 3;
   // Units broken or missing — they never became stock, so got no label.
   int64 excluded_count = 4;
+}
+
+// The restock's label photo, for the warehouse it is going to (the-restocks-warehouse-opens-its-label-photo). The
+// selling team keeps opening its own upload with document_service's GetDownloadUrl, as the file's owner.
+message RestockReceiptPhotoRequest {
+  // The restock's own warehouse — and Root and the Administrator, who name the warehouse as team_id.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — the scope. The restock must be going to it; another warehouse's reads as NotFound.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// A short-lived signed link, minted per call — never stored, never rendered as an href. A restock with no photo (none
+// attached, or the file is gone) is FailedPrecondition instead.
+message RestockReceiptPhotoResponse {
+  string url = 1;
+  int64 expires_at_unix = 2;
 }

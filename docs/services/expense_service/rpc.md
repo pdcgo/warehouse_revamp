@@ -162,6 +162,49 @@ with no special case ([an-adjustment-counts-on-the-day-it-fixes](../../business/
 A day whose only expense was cancelled reads **0, made of two entries** — something was entered and taken back, and the
 day says so. The list shows both rows, the expense with what it counts for now.
 
+## ExpenseCreate — Paid from and the ads-only shop
+
+Built 2026-11-04 — [an-expense-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid),
+[an-expense-names-a-shop-only-for-ads](../../business/financial_account/context_decision.md#an-expense-names-a-shop-only-for-ads),
+[the-paid-from-prototype-is-accepted](../../business/financial_account/context_decision.md#the-paid-from-prototype-is-accepted).
+Every expense a person types names the account that paid it. expense_service never reads financial_account's tables:
+the composition root's [expense_accounts.go](../../../backend/cmd/app_development/expense_accounts.go) answers
+`PayingAccounts` in-process from `FinancialAccountByIds` (team-scoped, so another team's account is simply absent).
+
+```mermaid
+sequenceDiagram
+  participant UI as Record Expense dialog
+  participant E as expense_service
+  participant FA as financial_account, in-process
+  participant DB as expense_records
+  participant B as Pub/Sub
+  UI->>E: ExpenseCreate(team, kind, amount, day, shop, finance_account_id)
+  E->>E: the day, then the shop rule — ADS needs a shop, any other kind none
+  alt STOCK_LOSS — inventory's internal call
+    E->>DB: INSERT with account 0 — no cash moved, nothing published
+  else every kind a person types
+    E->>FA: FinancialAccountByIds(team, the account) — BEFORE any transaction
+    alt absent, archived, or not marked operational
+      E-->>UI: FailedPrecondition, naming the account
+    else the team's active operational account
+      E->>DB: INSERT with the account
+      E->>B: ExpenseCreated — after the commit, event id expense-created and the expense id
+      E-->>UI: the expense
+    end
+  end
+```
+
+| | |
+| --- | --- |
+| `finance_account_id` | `uint64.gt = 0` in the proto, re-checked in the handler (InvalidArgument) — a caller that skips the interceptor is not trusted |
+| a refused account | FailedPrecondition, naming it: *"BCA Gaji is not one of the team's active operational accounts — pick another, or ask an admin to mark it operational"*, *"… is archived — …"*, or *"account #N …"* for another team's or an unknown id (never confirms an id) |
+| the shop | ADS with shop 0 → InvalidArgument *"an ads expense names its shop"* · any other kind with a shop → *"only an ads expense names a shop"* |
+| `STOCK_LOSS` | inventory's `expensePoster` calls the handler directly, with no account and no interceptor — stored with account 0 whatever was sent, the account service never asked, nothing published |
+| the event | `ExpenseCreated` (topic `expense-created`) — expense id, team, kind, account, amount, the expense's day, shop, actor + override. Published AFTER the commit; a failed publish is logged with its event_id and never fails the expense (no outbox, as a restock's) |
+| never published | a `STOCK_LOSS`, an account 0 |
+
+---
+
 ## ExpenseAdjust — a correction is a row
 
 The one way to correct an expense ([every-correction-is-a-signed-adjustment](../../business/analytic/context_decision.md#every-correction-is-a-signed-adjustment)). The screen's
@@ -183,8 +226,9 @@ sequenceDiagram
     alt amount plus adjustments plus this one is below 0
       E-->>UI: FailedPrecondition — a correction cannot make a cost income
     else
-      E->>DB: INSERT the adjustment — the expense's team, shop, kind and day
+      E->>DB: INSERT the adjustment — the expense's team, shop, kind, day and ACCOUNT
       E-->>UI: the adjustment, and the expense with its new net
+      E->>E: after the commit, ExpenseAdjusted when the expense names an account
     end
   end
 ```
@@ -194,4 +238,5 @@ sequenceDiagram
 | the lock | the expense row, for the check and the write — two people pressing Batalkan at once cannot both pass the floor |
 | `amount` | signed, never 0 (validated, and re-checked in the handler) |
 | `net_amount` | on an expense row in `ExpenseList` and in this response: its amount plus every adjustment of it |
-| events | none — expense_service publishes nothing yet; when it does, an adjustment publishes like any new row |
+| the account | copied from the expense, never typed ([a-correction-follows-the-expenses-account](../../business/financial_account/context_decision.md#a-correction-follows-the-expenses-account)) — 0 on an expense made before *Paid from* |
+| events | `ExpenseAdjusted` (topic `expense-adjusted`, event_id `expense-adjusted:<adjustment id>`) after the commit — adjustment and expense ids, team, kind, the expense's account, the SIGNED amount, the expense's day, actor + override. Batalkan is just an adjustment of minus the net, so a cancel gives the account the net back. Not published for an account 0 or a `STOCK_LOSS` (built 2026-11-04) |

@@ -153,13 +153,13 @@ export function useOrderStat(args: {
 // (whoever-reads-a-list-may-filter-it).
 //
 // `referenceQuery`: it LABELS a picker, and is re-read whenever one mounts.
-export function useOrderCreators(args: { teamId: bigint | undefined }) {
-  const { teamId } = args;
+export function useOrderCreators(args: { teamId: bigint | undefined; enabled?: boolean }) {
+  const { teamId, enabled = true } = args;
 
   return useQuery({
     queryKey: key.orders(teamId, { creators: 1 }),
     ...referenceQuery,
-    enabled: teamId !== undefined,
+    enabled: enabled && teamId !== undefined,
     queryFn: async () => {
       const res = await orderClient.orderCreatorList({
         teamId: teamId!,

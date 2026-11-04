@@ -45,6 +45,9 @@ export const AsTheOwner: Story = {
     await expect(canvas.getByTestId("transfer-detail-tracking")).toHaveTextContent("JNE7788990011");
     await expect(canvas.getByTestId("transfer-detail-shipping-cost")).toHaveTextContent("18.000");
     await expect(canvas.getByTestId("transfer-detail-total")).toHaveTextContent("488.000");
+    // A's label photo is A's document: the owner is told it is attached, not offered a link the server would refuse.
+    await expect(canvas.getByTestId("transfer-detail-label-photo")).toHaveTextContent("only the sending warehouse");
+    await expect(canvas.queryByTestId("transfer-detail-label-photo-open")).toBeNull();
   },
 };
 

@@ -205,7 +205,8 @@
     "requestAskedTitle": "{{name}} asks you to pay {{amount}}",
     "requestAskedHelp": "Asked on {{date}}. Pay through Make Payment — nothing moves by itself.",
     "requestSent": "You asked {{name}} to pay {{amount}} on {{date}}.",
-    "causeReturnIncidentalFee": "Courier at a return · order #{{id}}"
+    "causeReturnIncidentalFee": "Courier at a return · order #{{id}}",
+    "causeTransferFee": "Courier on a transfer · transfer #{{id}}"
   },
   "common": {
     "perPage": "Per page",
@@ -467,7 +468,7 @@
       },
       "lockFilter": {
         "label": "Lock filter",
-        "reason": "A locked product is not sent to Discover by the server, and whether a minimum has closed a product depends on its ready stock, which lives in the inventory service. The pick is kept, but narrows nothing yet."
+        "reason": "A locked product is sent to Discover by the server now, but it has no lock filter, and whether a minimum has closed a product depends on its ready stock, which lives in the inventory service. The pick is kept, but narrows nothing yet."
       }
     },
     "stock": {
@@ -1179,7 +1180,8 @@
       "returnGoods": "Return Goods",
       "complete": "Complete Order",
       "markLost": "Mark as Lost",
-      "resolveDispute": "Resolve Dispute"
+      "resolveDispute": "Resolve Dispute",
+      "markProblem": "Mark as Problem"
     },
     "rowActionConfirm": {
       "cancel": "Cancel order #{{id}}? This cannot be undone.",
@@ -1219,7 +1221,12 @@
     "orderTitleLabel": "Order",
     "noOrdersHint": "Orders appear here once they are created or imported.",
     "noWarehouseOrdersHint": "Orders the selling teams ship from this warehouse appear here.",
-    "statusMoved": "Order moved to {{status}}"
+    "statusMoved": "Order moved to {{status}}",
+    "label": {
+      "notShippedHere": "Order #{{id}} does not ship from this warehouse — its label is not yours to print",
+      "noLabel": "Order #{{id}} has no label attached yet — ask the seller to attach it",
+      "refused": "The label of order #{{id}} could not be opened"
+    }
   },
   "orderDetail": {
     "nav": {
@@ -1341,12 +1348,6 @@
     "deleteOneTitle": "Delete Order Draft",
     "deleteOneMessage": "Delete draft {{ref}}? This cannot be undone, and the app that pushed it may push it again.",
     "updated": "Updated",
-    "pending": {
-      "readyCount": {
-        "label": "Ready count",
-        "reason": "Counted over the drafts on this page only. The whole set needs a draft aggregate on the server, which does not exist yet."
-      }
-    },
     "created": "Created",
     "summary": {
       "total": "Drafts",
@@ -1358,8 +1359,7 @@
         "days_one": "{{count}} day",
         "days_other": "{{count}} days"
       },
-      "ready": "Ready",
-      "onThisPage": "on this page"
+      "ready": "Ready"
     },
     "missingOrderDate": "The marketplace order date is missing.",
     "missingRef": "The marketplace order number is missing.",
@@ -1440,7 +1440,7 @@
       "from": "From",
       "courier": "Courier",
       "tracking": "Tracking number",
-      "receiptPhoto": "Photo of the label",
+      "openReceiptPhoto": "Open Label Photo",
       "noReceiptPhoto": "No photo of the label",
       "arrivedAt": "Arrived",
       "payment": "Payment",
@@ -1894,20 +1894,6 @@
       "primaryAll": "Any primary CS",
       "optionsClear": "Clear the panel's filters"
     },
-    "pending": {
-      "marketplaceFilter": {
-        "label": "Marketplace filter",
-        "reason": "The shop list cannot be narrowed by marketplace yet — the pick is kept, but every shop is still listed."
-      },
-      "primaryFilter": {
-        "label": "Primary CS filter",
-        "reason": "The shop list cannot be narrowed by its primary CS yet — the pick is kept, but every shop is still listed."
-      },
-      "noPrimaryFilter": {
-        "label": "No primary CS filter",
-        "reason": "The shop list cannot be narrowed to the shops with no primary CS yet — the tick is kept, but every shop is still listed."
-      }
-    },
     "withdrawal": {
       "title": "Withdrawal Account",
       "description": "Where this shop's marketplace withdrawals land.",
@@ -1991,13 +1977,7 @@
         "stockHistory": "Stock History",
         "placementHistory": "Placement History"
       },
-      "actions": "Rack actions",
-      "pending": {
-        "countLock": {
-          "label": "Count lock",
-          "reason": "A product being counted is locked at 0 here — a count stops units moving (decided), but the stock count is not built, so only the prototype ever sets it."
-        }
-      }
+      "actions": "Rack actions"
     },
     "move": {
       "action": "Move Goods",
@@ -2915,7 +2895,9 @@
       "confirm": "Confirm Order",
       "markPicked": "Mark Picked",
       "markHandedOver": "Mark Handed Over",
-      "acceptReturn": "Accept Return"
+      "acceptReturn": "Accept Return",
+      "forceReturn": "Force Return",
+      "receiveReturn": "Receive a Return"
     },
     "detail": {
       "title": "Order #{{id}}",
@@ -2953,6 +2935,30 @@
       "labelCount_one": "{{count}} label",
       "labelCount_other": "{{count}} labels",
       "done": "Done"
+    },
+    "forceReturn": {
+      "title": "Force Return",
+      "message": "Order #{{id}} is \"{{status}}\". Mark it as returned so you can accept it?",
+      "done": "Order marked as returned",
+      "failed": "Could not mark the order as returned"
+    },
+    "receive": {
+      "title": "Receive a Return",
+      "intro": "Scan the label on the parcel, or type its order ref or tracking number and press Enter.",
+      "placeholder": "Order ref or tracking number",
+      "search": "Search",
+      "searching": "Searching…",
+      "resultsFor": "Results for {{term}}",
+      "notFound": "No order of this warehouse matches {{term}}.",
+      "notFoundHint": "Check the number on the label. A parcel whose order does not ship from this warehouse is not found here — ask customer service.",
+      "ref": "Ref",
+      "tracking": "Tracking",
+      "shop": "Shop",
+      "customer": "Customer",
+      "notLeft": "Order #{{id}} is still \"{{status}}\" — its goods never left the warehouse, so it cannot come back as a return.",
+      "alreadyAccepted": "Order #{{id}} is already accepted as a return.",
+      "cancelled": "Order #{{id}} was cancelled before it shipped — there is nothing to return.",
+      "lost": "Order #{{id}} was written off as lost — it cannot be received as a return. Ask customer service."
     }
   },
   "batches": {
@@ -3235,7 +3241,8 @@
       "shop": "Shop",
       "note": "Note",
       "amount": "Amount",
-      "actions": "Actions"
+      "actions": "Actions",
+      "paidFrom": "Paid from"
     },
     "kind": {
       "ads": "Ads",
@@ -3271,7 +3278,24 @@
       "title": "Cancel Expense",
       "message": "An adjustment of minus {{net}} is recorded on the same day, so this expense counts for nothing. Both rows stay on the list.",
       "confirm": "Cancel Expense"
-    }
+    },
+    "paidFrom": "Paid from",
+    "paidFromHelp": "The team's operational account that paid for this expense.",
+    "noOperational": "This team has no operational account, so an expense cannot be recorded yet. An admin marks one on the accounts page.",
+    "openAccounts": "Open Accounts",
+    "shopAdsHelp": "The shop these ads ran for.",
+    "noAccount": "No account",
+    "adjustPaidFrom": "Paid from {{account}} — the correction posts here.",
+    "adjustNoAccount": "This expense names no account, so the correction moves no balance.",
+    "missing": {
+      "title": "Still needed before saving:",
+      "kind": "the kind",
+      "amount": "an amount above 0",
+      "account": "the account that paid",
+      "shop": "the shop the ads ran for"
+    },
+    "cancelAccount": "{{net}} goes back to {{account}}.",
+    "cancelNoAccount": "This expense names no account, so no balance moves."
   },
   "periodGrain": {
     "label": "Group by",
@@ -3650,8 +3674,8 @@
     },
     "tally": {
       "posted": "Posted",
-      "postedToShop_one": "{{count}} to the shop — no order found",
-      "postedToShop_other": "{{count}} to the shop — no order found",
+      "postedToShop_one": "{{count}} to the shop — no single order found",
+      "postedToShop_other": "{{count}} to the shop — no single order found",
       "existing": "Already there",
       "held": "Held",
       "skipped": "Skipped"
@@ -3701,7 +3725,7 @@
       },
       "heldNote": "These rows could not post. Once the reason is fixed, upload the same file again — only these rows go in.",
       "skippedNote": "These rows are not recorded, by design — they repeat money another row already carries, or a withdrawal that did not go through.",
-      "toShopNote": "These rows name an order that was not found, so they went to the shop. An order entered later does not receive them.",
+      "toShopNote": "These rows went to the shop: their order was not found, or their ref is on several live orders (each named). An order entered later does not receive them.",
       "noLines": "No rows here."
     },
     "line": {
@@ -3720,7 +3744,8 @@
       "fractionalAmount": "A fraction of a rupiah — never rounded",
       "refused": "Refused by settlement",
       "repeatsOrderDetails": "Repeats the order rows",
-      "failedWithdrawal": "A withdrawal that did not succeed"
+      "failedWithdrawal": "A withdrawal that did not succeed",
+      "severalOrders": "On several live orders — none was credited"
     },
     "type": {
       "unspecified": "—",
@@ -4052,24 +4077,6 @@
     }
   },
   "orderForm": {
-    "pending": {
-      "draftKeeps": {
-        "label": "What a draft keeps",
-        "reason": "A draft stores the shop, the warehouse, the customer, the buyer’s username, the courier, the rows, the marketplace’s two dates and the sell price. The receipt, the references, the tracking number and the note are not kept by Save — Promote puts them on the order."
-      },
-      "rowBundle": {
-        "label": "A row mapped to a bundle",
-        "reason": "A draft line holds one product, so a bundle mapping is shown and counted but saved unmapped. Promote sends it as its products."
-      },
-      "rowSplit": {
-        "label": "A row split into several products",
-        "reason": "A draft line holds one product, so a split is shown and counted but saved unmapped. Promote sends it as its products."
-      },
-      "listingQty": {
-        "label": "The listing's quantity",
-        "reason": "A draft line holds one quantity, so a count that differs from the listing replaces it on save — the listing's own number and this warning are gone when the draft is opened again."
-      }
-    },
     "source": {
       "title": "Order Information",
       "help": "Which storefront sold it, which warehouse ships it, and when it was bought.",
@@ -4442,14 +4449,6 @@
       "accepted": "Transfer accepted",
       "acceptFailed": "Could not accept the transfer"
     },
-    "selling": {
-      "pending": {
-        "costEvent": {
-          "label": "Shipping cost",
-          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
-        }
-      }
-    },
     "form": {
       "back": "Back to Transfers",
       "route": "Route",
@@ -4478,12 +4477,6 @@
         "count": "a count for every product",
         "stock": "counts within the stock at the sending warehouse",
         "account": "the account that pays the shipping"
-      },
-      "pending": {
-        "costEvent": {
-          "label": "Shipping cost",
-          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
-        }
       }
     },
     "detail": {
@@ -4510,32 +4503,10 @@
       "total": "Value moved: {{amount}}",
       "loss": "Broken or missing: {{amount}} — your team's loss",
       "pickHint": "Take each product from the racks listed — chosen when the transfer was created, the fewest first.",
-      "pending": {
-        "costEvent": {
-          "label": "Shipping cost",
-          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
-        },
-        "labelPhoto": {
-          "label": "Label photo",
-          "reason": "The photo's upload type is not designed yet — it is uploaded nowhere."
-        }
-      }
-    },
-    "warehouse": {
-      "pending": {
-        "labelPhoto": {
-          "label": "Label photo",
-          "reason": "The photo's upload type is not designed yet — it is uploaded nowhere."
-        }
-      }
-    },
-    "warehouseDetail": {
-      "pending": {
-        "labelPhoto": {
-          "label": "Label photo",
-          "reason": "The photo's upload type is not designed yet — it is uploaded nowhere."
-        }
-      }
+      "labelPhoto": "Label photo",
+      "noLabelPhoto": "No photo of the label",
+      "openLabelPhoto": "Open Photo",
+      "labelPhotoAtSender": "Attached — only the sending warehouse can open it"
     },
     "accept": {
       "back": "Back to Transfer",
@@ -4565,13 +4536,7 @@
       "summaryUncounted": "Lines not counted",
       "confirmTitle": "Accept Transfer #{{id}}",
       "confirmMessage": "{{good}} of {{sent}} units go onto your racks. This cannot be undone.",
-      "keepCounting": "Keep Counting",
-      "pending": {
-        "courierDebt": {
-          "label": "Courier's charge",
-          "reason": "The charge is saved and announced at accept, but balance does not post the selling team's debt to this warehouse yet — which kind of entry it posts as is still open."
-        }
-      }
+      "keepCounting": "Keep Counting"
     }
   },
   "emptyHint": {
@@ -5133,5 +5098,17 @@
     "withdrawTitle": "Withdraw Found Stock #{{id}}",
     "withdrawMessage": "You reported it. Nothing is posted; say why you take it back.",
     "withdrawnToast": "Found stock #{{id}} withdrawn"
+  },
+  "serverError": {
+    "canceled": "The request was cancelled.",
+    "unknown": "Something went wrong. Try again.",
+    "deadlineExceeded": "The server took too long to answer. Try again.",
+    "unimplemented": "This is not built yet.",
+    "internal": "Something went wrong on the server. Try again.",
+    "unavailable": "The server cannot be reached right now. Try again in a moment.",
+    "dataLoss": "Something went wrong on the server. Try again.",
+    "permissionDenied": "You are not allowed to do this.",
+    "unauthenticated": "Your sign-in has ended. Sign in again.",
+    "refused": "The server refused this request."
   }
 }

@@ -35,7 +35,8 @@ type ExpenseKind int32
 
 const (
 	ExpenseKind_EXPENSE_KIND_UNSPECIFIED ExpenseKind = 0
-	// Marketplace ads budget. The kind most likely to name a shop, though any kind may.
+	// Marketplace ads budget. The ONE kind that names a shop, and it must (an-expense-names-a-shop-only-for-ads). Posted to
+	// the paying account as `ads_expense` (ads-expense-joins-the-types).
 	ExpenseKind_EXPENSE_KIND_ADS ExpenseKind = 1
 	// Wages paid to people.
 	ExpenseKind_EXPENSE_KIND_PAYROLL ExpenseKind = 2
@@ -231,11 +232,9 @@ type ExpenseRecord struct {
 	// A recharge would have been a second team on this row, which is why it was asked before the
 	// migration was written rather than after.
 	TeamId uint64 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	// OPTIONALLY which shop the money was spent on. 0 = not attributed to one shop.
-	//
-	// Optional on EVERY kind (owner, 2026-07-21), not just ads: a team running two shops may want to
-	// split its packing wages or a subscription between them, and "only ads may name a shop" is a rule
-	// somebody would hit and ask to have relaxed.
+	// The shop the ads ran for — an ADS expense names one, every other kind names none
+	// (an-expense-names-a-shop-only-for-ads, which reverses the earlier "optional on every kind"). 0 = no shop. A row
+	// made before that rule keeps whatever shop it carries; an adjustment copies its expense's.
 	ShopId uint64 `protobuf:"varint,3,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
 	// On an adjustment, the expense's kind, copied — so a kind's total and the daily split take the correction where the
 	// mistake is.
@@ -259,9 +258,15 @@ type ExpenseRecord struct {
 	// adjustment is fixed by a second one on the same expense.
 	AdjustsExpenseId uint64 `protobuf:"varint,11,opt,name=adjusts_expense_id,json=adjustsExpenseId,proto3" json:"adjusts_expense_id,omitempty"`
 	// On an EXPENSE, what it counts for after every adjustment of it: its amount plus theirs. 0 on an adjustment.
-	NetAmount     int64 `protobuf:"varint,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NetAmount int64 `protobuf:"varint,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
+	// WHICH ACCOUNT PAID — a financial_account_service id, one of the team's operational accounts
+	// (an-expense-must-name-the-account-that-paid). 0 on an expense made before *Paid from* existed: nothing posts back
+	// for the past. On an ADJUSTMENT, the expense's account, copied and never typed — a correction posts where the
+	// original did (a-correction-follows-the-expenses-account), so an old expense's corrections name none either.
+	// The account's NAME is the screen's own read (FinancialAccountByIds), as on a restock.
+	FinanceAccountId uint64 `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ExpenseRecord) Reset() {
@@ -371,6 +376,13 @@ func (x *ExpenseRecord) GetNetAmount() int64 {
 	return 0
 }
 
+func (x *ExpenseRecord) GetFinanceAccountId() uint64 {
+	if x != nil {
+		return x.FinanceAccountId
+	}
+	return 0
+}
+
 type ExpenseCreateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -379,11 +391,21 @@ type ExpenseCreateRequest struct {
 	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The date the expense BELONGS TO (YYYY-MM-DD), chosen by the person.
 	OccurredAt string `protobuf:"bytes,4,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
-	// Optional on ANY kind. 0 = not attributed to one shop.
-	ShopId        uint64 `protobuf:"varint,5,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	Note          string `protobuf:"bytes,6,opt,name=note,proto3" json:"note,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// REQUIRED on ADS, refused on every other kind (an-expense-names-a-shop-only-for-ads): only an ads expense names the
+	// shop it ran for. InvalidArgument either way — "an ads expense names its shop" / "only an ads expense names a shop".
+	// Checked by the handler, since the rule spans two fields.
+	ShopId uint64 `protobuf:"varint,5,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	Note   string `protobuf:"bytes,6,opt,name=note,proto3" json:"note,omitempty"`
+	// REQUIRED — every expense a person types names the account that paid it, one of the team's ACTIVE OPERATIONAL
+	// accounts (an-expense-must-name-the-account-that-paid); the same rule and name as a restock's `finance_account_id`.
+	// Another team's account, an archived one, or one not marked operational is FailedPrecondition, naming it. The
+	// expense is published after its commit and financial_account_service posts it out of this account — `ads_expense`
+	// for ADS, `expense` for the rest.
+	// STOCK_LOSS is outside the rule: inventory posts it by an internal call (no validation interceptor), it moves no
+	// cash, and it is stored with no account and never published.
+	FinanceAccountId uint64 `protobuf:"varint,7,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ExpenseCreateRequest) Reset() {
@@ -456,6 +478,13 @@ func (x *ExpenseCreateRequest) GetNote() string {
 		return x.Note
 	}
 	return ""
+}
+
+func (x *ExpenseCreateRequest) GetFinanceAccountId() uint64 {
+	if x != nil {
+		return x.FinanceAccountId
+	}
+	return 0
 }
 
 type ExpenseCreateResponse struct {
@@ -816,9 +845,12 @@ type ExpenseRowItem struct {
 	// As on ExpenseRecord: 0 on an expense, the corrected expense on an adjustment.
 	AdjustsExpenseId uint64 `protobuf:"varint,11,opt,name=adjusts_expense_id,json=adjustsExpenseId,proto3" json:"adjusts_expense_id,omitempty"`
 	// As on ExpenseRecord: an expense's amount after every adjustment of it; 0 on an adjustment.
-	NetAmount     int64 `protobuf:"varint,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NetAmount int64 `protobuf:"varint,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
+	// As on ExpenseRecord: the account that paid; 0 on an expense made before Paid from; an adjustment carries its
+	// expense's.
+	FinanceAccountId uint64 `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ExpenseRowItem) Reset() {
@@ -924,6 +956,13 @@ func (x *ExpenseRowItem) GetAdjustsExpenseId() uint64 {
 func (x *ExpenseRowItem) GetNetAmount() int64 {
 	if x != nil {
 		return x.NetAmount
+	}
+	return 0
+}
+
+func (x *ExpenseRowItem) GetFinanceAccountId() uint64 {
+	if x != nil {
+		return x.FinanceAccountId
 	}
 	return 0
 }
@@ -1538,7 +1577,7 @@ var File_warehouse_expense_v1_expense_proto protoreflect.FileDescriptor
 
 const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xf7\x02\n" +
+	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xa5\x03\n" +
 	"\rExpenseRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1554,8 +1593,9 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	" \x01(\x03R\rcreatedAtUnix\x12,\n" +
 	"\x12adjusts_expense_id\x18\v \x01(\x04R\x10adjustsExpenseId\x12\x1d\n" +
 	"\n" +
-	"net_amount\x18\f \x01(\x03R\tnetAmountJ\x04\b\t\x10\n" +
-	"R\x06voided\"\xa9\x02\n" +
+	"net_amount\x18\f \x01(\x03R\tnetAmount\x12,\n" +
+	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountIdJ\x04\b\t\x10\n" +
+	"R\x06voided\"\xe0\x02\n" +
 	"\x14ExpenseCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12A\n" +
 	"\x04kind\x18\x02 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindB\n" +
@@ -1564,7 +1604,8 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\voccurred_at\x18\x04 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
 	"occurredAt\x12\x17\n" +
 	"\ashop_id\x18\x05 \x01(\x04R\x06shopId\x12\x1c\n" +
-	"\x04note\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\n" +
+	"\x04note\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note\x125\n" +
+	"\x12finance_account_id\x18\a \x01(\x04B\a\xbaH\x042\x02 \x00R\x10financeAccountId:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"V\n" +
 	"\x15ExpenseCreateResponse\x12=\n" +
@@ -1594,7 +1635,7 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\aby_kind\x18\x02 \x03(\v2/.warehouse.expense.v1.ExpenseTotals.ByKindEntryR\x06byKind\x1a9\n" +
 	"\vByKindEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xf8\x02\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xa6\x03\n" +
 	"\x0eExpenseRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1610,7 +1651,8 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	" \x01(\x03R\rcreatedAtUnix\x12,\n" +
 	"\x12adjusts_expense_id\x18\v \x01(\x04R\x10adjustsExpenseId\x12\x1d\n" +
 	"\n" +
-	"net_amount\x18\f \x01(\x03R\tnetAmountJ\x04\b\t\x10\n" +
+	"net_amount\x18\f \x01(\x03R\tnetAmount\x12,\n" +
+	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountIdJ\x04\b\t\x10\n" +
 	"R\x06voided\"\xc6\x01\n" +
 	"\x11ExpenseRowMapItem\x12O\n" +
 	"\bmap_data\x18\x01 \x03(\v24.warehouse.expense.v1.ExpenseRowMapItem.MapDataEntryR\amapData\x1a`\n" +

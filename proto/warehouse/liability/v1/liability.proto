@@ -202,6 +202,15 @@ enum LiabilitySourceType {
   // would collide — the second swallowed as a redelivery of the first — and the history would read "restock #<order>".
   // Its own type keeps both the key and the label honest; a reader summing the courier's asks reads both.
   LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE = 9;
+
+  // What the courier asked at the RECEIVING warehouse's door for a WAREHOUSE TRANSFER (a-transfer-charge-is-a-transfer-fee)
+  // — the selling team owes that warehouse (B, `to_warehouse_id`). `source_id` is the TRANSFER, posted once from
+  // WarehouseTransferAccepted (balance-posts-the-transfers-on-site-debt-from-the-event); a charge of 0 posts nothing.
+  //
+  // ⚠ NOT INCIDENTAL_FEE, for RETURN_INCIDENTAL_FEE's reason: transfers and restocks are numbered separately, so transfer
+  // 41 beside restock 41 for the same pair would share the idempotency key and the second would be dropped as a
+  // redelivery.
+  LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10;
 }
 
 // One leg of one movement, immutable (§4.1). Entries are APPEND ONLY: a correction is a compensating

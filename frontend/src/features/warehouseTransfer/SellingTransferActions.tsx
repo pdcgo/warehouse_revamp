@@ -9,8 +9,6 @@ import { rpcError } from "../../api/clients";
 import type { WarehouseTransfer } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { WarehouseTransferStatus as S } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { useCancelWarehouseTransfer, useMarkLostWarehouseTransfer, useUpdateWarehouseTransfer } from "./queries";
-import type { PendingList } from "../../features/pending/registry";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
@@ -57,13 +55,11 @@ export interface SellingTransferActionsProps {
   teamId: bigint;
   /** `menu` — one ⋯ trigger (a list row, a phone header). `buttons` — labelled buttons (a desktop header). */
   variant: "menu" | "buttons";
-  /** The screen's pending list — it must carry `costEvent`. */
-  pending: PendingList<string>;
 }
 
 // The actions, and the three dialogs behind them. Nothing renders when the status allows nothing — a disabled button
 // would offer an act the server can only refuse.
-export function SellingTransferActions({ transfer, teamId, variant, pending }: SellingTransferActionsProps) {
+export function SellingTransferActions({ transfer, teamId, variant }: SellingTransferActionsProps) {
   const { t } = useTranslation();
   const [dialog, setDialog] = useState<"" | SellingTransferAction>("");
   // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
@@ -126,7 +122,7 @@ export function SellingTransferActions({ transfer, teamId, variant, pending }: S
 
       {/* Mounted only while open, so each opening starts from the transfer as it is now. */}
       {dialog === "editCost" && (
-        <EditCostDialog transfer={transfer} teamId={teamId} pending={pending} onClose={() => setDialog("")} />
+        <EditCostDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />
       )}
       {dialog === "cancel" && <CancelDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />}
       {dialog === "markLost" && <MarkLostDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />}
@@ -143,12 +139,10 @@ const amountOf = (digits: string) => (digits === "" ? 0 : Number(digits));
 function EditCostDialog({
   transfer,
   teamId,
-  pending,
   onClose,
 }: {
   transfer: WarehouseTransfer;
   teamId: bigint;
-  pending: PendingList<string>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -188,12 +182,7 @@ function EditCostDialog({
     >
       <Stack gap="field">
         <Field.Root>
-          <Field.Label>
-            <HStack gap="1.5">
-              {t("warehouseTransfer.cost.shippingCost")}
-              <NotImplemented list={pending} id="costEvent" />
-            </HStack>
-          </Field.Label>
+          <Field.Label>{t("warehouseTransfer.cost.shippingCost")}</Field.Label>
           <CurrencyInput value={cost} onChange={setCost} data-testid="transfer-cost-amount" />
           <Field.HelperText>{t("warehouseTransfer.cost.shippingCostHint")}</Field.HelperText>
         </Field.Root>

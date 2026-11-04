@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
@@ -114,8 +115,7 @@ export function ChangeLogPanel({
                     </Table.Cell>
                     <Table.Cell>
                       <Text as="span">
-                        {actors[c.actorId.toString()]?.name ??
-                          t("terms.userFallback", { id: c.actorId.toString() })}
+                        {personName(actors[c.actorId.toString()], t("terms.userFallback", { id: c.actorId.toString() }))}
                       </Text>
                       {/* An override is a write by somebody outside the creditor team. It is
                           derived by the server from who acted — never claimed by the caller. */}

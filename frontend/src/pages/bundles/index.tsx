@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Flex, HStack, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
@@ -105,7 +106,7 @@ export function BundlesPage() {
   }
 
   const creatorName = (bundle: BundleRecord) =>
-    actors.data?.get(bundle.createdByUserId.toString())?.name ?? `#${bundle.createdByUserId}`;
+    personName(actors.data?.get(bundle.createdByUserId.toString()), `#${bundle.createdByUserId}`);
 
   const mayChange = (bundle: BundleRecord) =>
     canWrite(current) && canChangeBundle({ role: current.role, createdByUserId: bundle.createdByUserId, me });

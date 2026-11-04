@@ -41,6 +41,9 @@ func NewRegister(
 		// …and the courier's charge at a RETURN's door — the same handler, its own subscription
 		// (a-return-may-carry-the-couriers-ask). The same ingress restriction applies.
 		mux.Handle("/event/"+OrderReturnAcceptedSubscription+"/push", push)
+		// …and at a TRANSFER's receiving door — a `transfer_fee` keyed by the transfer
+		// (a-transfer-charge-is-a-transfer-fee). The same ingress restriction applies.
+		mux.Handle("/event/"+WarehouseTransferAcceptedSubscription+"/push", push)
 
 		return san_grpc.ServiceReflectNames{
 			liabilityv1connect.LiabilityServiceName,

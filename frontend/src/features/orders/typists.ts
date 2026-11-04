@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { formerUserId } from "../../lib/users";
+import { personName } from "../../lib/users";
 import { useActors } from "../users/queries";
 
 // WHO TYPED EACH ORDER IN — the name on a row, for a page of orders.
@@ -15,10 +15,7 @@ export function useTypists(orders: { createdByUserId: bigint }[]): (userId: bigi
     if (userId === 0n) return "";
 
     const person = people.data?.get(userId.toString());
-    if (!person) return t("orders.timeline.userRef", { id: userId.toString() });
 
-    const formerId = formerUserId(person);
-
-    return formerId ? t("users.formerUser", { id: formerId }) : person.name || person.username;
+    return personName(person, t("orders.timeline.userRef", { id: userId.toString() }));
   };
 }
