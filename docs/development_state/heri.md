@@ -7,6 +7,18 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-04 · inventory — the count locks, found stock, a warehouse's Products; the backlog
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A count stops sales, cancels and moves on what it counts** | while a rack is counted, an order or transfer cannot take from it, and a cancel or rollback says *"being counted in count #12"*; the order stays pending until the count ends. A rack a count holds cannot be deleted |
+| **Found stock waits for the Owner or Admin** | staff report extra units they found; an Owner or Admin who is not the reporter approves or rejects it under *Inventories ▸ Found Stock*. The reporter can withdraw it, and a finished count settles what it counted |
+| **A warehouse picks only what it has held** | the product pickers on warehouse screens offer the products that have stock history in that building, archived ones labelled |
+| **A warehouse's Products is what it holds** | the Products menu of a warehouse lists what is on its shelves, and the product page opens for warehouse staff |
+| **One ranked list of what is incomplete** | [backlog.md](backlog.md) ranks every unfinished feature, screen, API, event and statistic, and is re-ranked after each slice. Top of it now: six bugs, starting with *saving your profile wipes your email and phone* |
+
+**Next:** the backlog's Tier 1 bugs.
+
 ## 2026-11-02 · every decided item built
 
 | What shipped | What it means for a person |
