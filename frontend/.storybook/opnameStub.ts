@@ -78,6 +78,18 @@ export function opnameHeldHere(warehouseId: bigint): bigint[] {
   return batches.filter((b) => b.warehouseId === warehouseId).map((b) => b.productId);
 }
 
+/**
+ * What each product held in this warehouse has left — its batches' stock, summed; an emptied one reads 0. The Stock
+ * screen's on hand (warehouseStockListStub.ts), read off the same register its held set comes from.
+ */
+export function opnameOnHandHere(warehouseId: bigint): Map<bigint, bigint> {
+  const onHand = new Map<bigint, bigint>();
+  for (const b of batches) {
+    if (b.warehouseId === warehouseId) onHand.set(b.productId, (onHand.get(b.productId) ?? 0n) + b.stock);
+  }
+  return onHand;
+}
+
 /** A `beforeEach`: the signed-in person counted one of Gudang Cabang's rows — so they may not finalize session 21. */
 export function opnameSelfCounted() {
   const row = rows.find((r) => r.id === 2105n);

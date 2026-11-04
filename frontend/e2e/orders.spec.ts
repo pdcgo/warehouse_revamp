@@ -999,85 +999,36 @@ test("Return: the warehouse accepts a returned parcel and the courier's charge l
     .toContain(`Courier at a return · order #${orderId}`);
 });
 
-// #142 — a WAREHOUSE's Products screen shows what it has been ASKED to handle.
-//
-// Before this, a warehouse team opened Products and saw nothing: ProductList is scoped to the team that
-// OWNS the products, and a warehouse owns none. The restock request is what creates the arrangement, so
-// this places one and then looks at the screen from the warehouse's seat.
-test("Products: a warehouse sees the products it was asked to stock (#142)", async ({ page }) => {
+// A WAREHOUSE'S PRODUCTS IS WHAT IT HOLDS (a-warehouses-products-is-what-it-holds). It was #142's list of what the
+// warehouse had been ASKED to handle — the restock arrangement, with the seller's catalogue columns read as "—" and the
+// owner as "Team #1". Now it is every product with a batch here, any team's, at 0 too: the setup received this product
+// into this warehouse, so it is listed, its owner named and its units on hand, searchable. The owner's actions and the
+// seller's columns are not a warehouse's.
+test("Products: a warehouse's Products lists what it holds, without the seller's columns", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
-
-  // Ask this warehouse to stock the product — the API, because the restock create form is a different
-  // issue's surface and what is under test here is the warehouse's product list.
-  await page.evaluate(
-    async ([whCode, productCode]) => {
-      const token =
-        window.sessionStorage.getItem("warehouse_revamp.token") ??
-        window.localStorage.getItem("warehouse_revamp.token");
-
-      const call = async (method: string, body: unknown) => {
-        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
-        return res.json();
-      };
-
-      const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
-      const warehouse = (Object.values(teams.items?.find((it: any) => it.team)?.team?.mapData ?? {}) as any[]).find((t: any) => t.teamCode === whCode);
-
-      // Searched by SKU rather than scanned out of a page: this test runs late in a serial suite, and
-      // relying on the wanted product being inside an arbitrary first page is a fuse waiting to blow.
-      const products = await call("product.v1.ProductService/ProductDiscover", {
-        teamId: "1",
-        filter: { q: productCode },
-        page: { page: 1, limit: 50 },
-      });
-      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.productCode === productCode);
-      if (!product) {
-        throw new Error(
-          `product ${productCode} not found among ${(Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).length} results for q=${productCode}`,
-        );
-      }
-
-      // RestockRequestService, not InventoryService — restock requests are their own proto service, and
-      // the wrong path is a 404 rather than a helpful error.
-      // Every restock names the account that paid (a-restock-must-name-the-account-that-paid).
-      const account = await call("financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
-        teamId: "1",
-        type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
-        provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
-        name: "E2E stock ask",
-        holderName: "E2E",
-        accountNumber: "E2E-ORDERS-2",
-        openingBalance: 0,
-        openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
-      });
-
-      await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
-        teamId: "1",
-        warehouseId: warehouse.id,
-        financeAccountId: account.account.id,
-        items: [{ productId: product.id, productCode, name: "e2e", count: "1", total: 1000 }],
-      });
-    },
-    [WH_CODE, CODE],
-  );
-
   await switchToWarehouse(page);
   await page.goto("/products");
 
-  // The product the warehouse was asked to stock is on ITS list, even though a selling team owns it.
-  await expect(page.getByTestId("products-table")).toContainText(SKU);
+  // The product the setup received here is on ITS list, even though a selling team owns it.
+  const row = page.getByTestId(`stock-row-${CODE}`);
+  await expect(row).toBeVisible();
+  await expect(row).toContainText(PRODUCT_NAME);
+  await expect(page.getByTestId(`stock-owner-${CODE}`)).not.toBeEmpty();
+  await expect(page.getByTestId(`stock-owner-${CODE}`)).not.toContainText("Team #");
+  await expect(page.getByTestId(`stock-onhand-${CODE}`)).toHaveText(/^\d+$/);
 
-  // And the actions that belong to the OWNER are not offered: a warehouse handles these products, it
-  // does not own them, so edit/delete would only ever be refused by the server.
-  await expect(page.getByTestId(`edit-${CODE}`)).toBeHidden();
-  await expect(page.getByTestId(`archive-${CODE}`)).toBeHidden();
-  await expect(page.getByTestId("open-create-product")).toBeHidden();
-  await expect(page.getByTestId("product-search")).toBeHidden();
+  // The OWNER's actions are not offered — a warehouse handles these products, it does not own them — and the seller's
+  // columns (Cross markup, Lock, the cost range, the catalogue's figures) are not on its view.
+  await expect(page.getByTestId(`edit-${CODE}`)).toHaveCount(0);
+  await expect(page.getByTestId(`archive-${CODE}`)).toHaveCount(0);
+  await expect(page.getByTestId("open-create-product")).toHaveCount(0);
+  await expect(page.getByTestId("products-table")).toHaveCount(0);
+  await expect(page.getByTestId(`cross-${CODE}`)).toHaveCount(0);
+  await expect(page.getByTestId(`lock-${CODE}`)).toHaveCount(0);
+
+  // It searches, on the server.
+  await page.getByTestId("inventory-search").fill(SKU);
+  await expect(row).toBeVisible();
 });
 
 // #153 — placing an order RECORDS ITS EXPECTED REVENUE, with nothing in between.
@@ -1352,10 +1303,10 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await switchToWarehouse(page);
 
-  // Reached by clicking the product in the warehouse's own list (#142) — which must NOT open the
-  // selling team's catalogue page.
+  // Reached by clicking the product in the warehouse's own Products — what it holds (a-warehouses-products-is-what-it-holds)
+  // — which must NOT open the selling team's catalogue page.
   await page.goto("/products");
-  await page.getByTestId(`product-row-${CODE}`).click();
+  await page.getByTestId(`stock-row-${CODE}`).getByText(PRODUCT_NAME).click();
 
   await expect(page.getByTestId("warehouse-product-page")).toBeVisible();
 

@@ -598,11 +598,9 @@
       "saved": "Kunci disimpan"
     },
     "lead": "Katalog tim ini — yang dijual, yang ada di rak, dan yang sedang dikirim.",
-    "leadWarehouse": "Produk milik tim lain yang disimpan di rak gudang ini.",
     "none": "Belum ada produk.",
     "emptyHint": "Tambahkan produk pertama untuk mulai menjualnya — stoknya menyusul begitu restok tiba.",
     "emptyArchivedHint": "Produk yang diarsipkan menunggu di sini sampai dipulihkan.",
-    "emptyWarehouseHint": "Produk yang disimpan tim penjual di gudang ini muncul di sini.",
     "searchPlaceholder": "Cari kode produk atau nama",
     "empty": "Produk tidak ditemukan.",
     "backToProducts": "Kembali ke Produk",
@@ -2623,10 +2621,14 @@
     "pickWarehousePlaceholder": "Pilih gudang",
     "pickWarehousePrompt": "Pilih gudang untuk melihat stoknya.",
     "searchPlaceholder": "Cari produk berdasarkan kode produk atau nama",
-    "empty": "Tidak ada produk dalam katalog gudang ini.",
+    "empty": "Belum ada stok di gudang ini.",
+    "emptyHint": "Produk muncul di sini setelah masuk ke gudang ini lewat restock atau transfer — dan tetap ada, juga saat stoknya 0.",
+    "noneMatch": "Tidak ada produk di sini yang cocok dengan pencarian.",
+    "stockLead": "Semua produk yang ada atau pernah ada di gudang ini — milik tim mana pun, termasuk yang stoknya 0.",
     "table": {
       "sku": "Kode produk",
       "product": "Produk",
+      "owner": "Pemilik",
       "onHand": "Tersedia",
       "actions": "Aksi"
     },

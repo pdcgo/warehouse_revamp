@@ -2191,7 +2191,7 @@ flowchart TB
 
 ✅ **Built 2026-11-03.** `layouts/nav.ts`: Found Stock right after Stock Opname, for the warehouse Owner, Admin and Staff; the
 number waiting for the Owner and Admin, read and refreshed as Kewajiban's, carried by a shut Inventories group; staff get
-no number. ⚠ The phone menu sheet does not show the number yet.
+no number. The phone shell shows no count, by decision ([the-phone-menu-carries-no-count-for-now](../../technical/frontend/context_decision.md#the-phone-menu-carries-no-count-for-now)).
 
 ---
 

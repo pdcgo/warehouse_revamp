@@ -96,6 +96,9 @@ const LiabilityDetailPage = lazy(() =>
 const InventoryPage = lazy(() =>
   import("./pages/inventory").then((m) => ({ default: m.InventoryPage })),
 );
+const StockForward = lazy(() =>
+  import("./pages/inventory/StockForward").then((m) => ({ default: m.StockForward })),
+);
 const ReturnsPage = lazy(() =>
   import("./pages/returns").then((m) => ({ default: m.ReturnsPage })),
 );
@@ -431,10 +434,11 @@ export const router = createBrowserRouter([
       // "terms" would otherwise look like a counterparty id to anyone scanning the file.
       // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row (#222).
       { path: "liability/:counterpartyId", element: <LiabilityDetailPage /> },
+      // Root and the admin team's Inventory: what a picked warehouse holds. A warehouse reads the same list as its own
+      // Products (a-warehouses-products-is-what-it-holds).
       { path: "inventory", element: <InventoryPage /> },
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122), and it is now TWO
-      // screens behind ONE path — see RestockRoute. The on-hand list is "Stock" (it was only ever
-      // called Restock under the superseded "pick a warehouse and receive there" design).
+      // screens behind ONE path — see RestockRoute.
       { path: "inventories/restock", element: <RestockRoute /> },
       // `new` is static and `:requestId` is dynamic, so React Router ranks `new` first regardless of
       // the order here — /inventories/restock/new stays the create form, not a detail of id "new".
@@ -460,7 +464,9 @@ export const router = createBrowserRouter([
       { path: "inventories/transfer/:transferId", element: <WarehouseTransferDetailRoute /> },
       // Warehouse B counts the box in — a page, not a dialog.
       { path: "inventories/transfer/:transferId/accept", element: write(<WarehouseTransferAcceptPage />) },
-      { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
+      // The old Stock address FORWARDS — a warehouse to its Products, anyone else to /inventory (StockForward). Not a
+      // loader redirect: where it goes depends on the current team, which only TeamProvider knows.
+      { path: "inventories/stock", element: <StockForward /> },
       // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
       // catalogue entry it does not own.
       { path: "inventories/products/:productId", element: <WarehouseProductPage /> },

@@ -412,8 +412,8 @@ and nothing reads the dropped `stock_*` tables. One idea explains most of the su
 > **A rack row counts units of ONE product on ONE rack; a batch counts units of ONE delivery. Neither knows the other.**
 
 - **Where** a product sits is `product_placements` (one row per product per rack, its count after every change in
-  `product_placement_logs`). `StockList`, `ProductPlaces`, `PlacementList`, `RackList`'s stock slice, `RackStock` and
-  `RackHistory` read these.
+  `product_placement_logs`). `StockList`, `WarehouseStockList`'s on hand, `ProductPlaces`, `PlacementList`, `RackList`'s
+  stock slice, `RackStock` and `RackHistory` read these.
 - **What it is worth** is `batches` (price, units, value — `stock_valuation` is the truth). `StockAvailability`,
   `StockCost`, the batch and cost-layer reads and every owner read use these; the owner is `batches.team_id`.
 - **No row carries both**, so a product's history without a batch reads the rack rows and with one reads the batch's
@@ -982,6 +982,60 @@ The owner team on a batch is the product's owner, written at mint (a-batch-carri
 team had a batch here" are one set: what the picker offers is exactly what `FoundRequestCreate` and `OpnameRowAddFound`
 accept, and their never-stocked refusals stay as the backstop. Measured: 2 statements, ≈ 19 ms at 10 000 products held
 ([performance audit](../../../audits/services/inventory_service/performances/WarehouseProductSearch.md)).
+
+## The Stock screen — `WarehouseStockList`
+
+A warehouse's **Products** (`/products`, [a-warehouses-products-is-what-it-holds](../../business/inventory/context_decision.md#a-warehouses-products-is-what-it-holds) —
+a row opens the warehouse product page) and root and the admin team's **Inventory** (`/inventory`, a warehouse picked)
+list **what the warehouse has held** — one list, `features/inventory/WarehouseStockList.tsx`; the old Inventories ▸ Stock
+address (`/inventories/stock`) forwards to them
+([the-stock-screen-lists-what-the-warehouse-has-held](../../business/inventory/context_decision.md#the-stock-screen-lists-what-the-warehouse-has-held)):
+every product with a batch in this warehouse — any team's, archived ones flagged, at 0 or not — each with its owner team
+and its units on hand here, searched by name or product code on the server, paged. A product emptied to 0 stays listed, so
+it can still be found and adjusted. It replaced `ProductList` scoped to the warehouse (the warehouse TEAM's own catalogue —
+always empty for a real warehouse) joined client-side to a fixed page of `StockList`; on a warehouse's Products it replaced
+`WarehouseProductList` (what the warehouse was ASKED to hold) resolved through `ProductByIds` — which no screen calls now. **Built 2026-11-04**:
+[inventory.proto](../../../proto/warehouse/inventory/v1/inventory.proto), `inventory_v1/warehouse_stock_list.go`. State:
+[opname.md](../../development_state/inventory/opname.md#the-stock-screen-lists-what-the-warehouse-has-held--built).
+
+| | |
+| --- | --- |
+| who | Root, Administrator, warehouse Owner, Admin, Staff; the admin team's monitor and an agent (`NO_SIDE_EFFECTS`) — no selling role. The same policy as `StockList` |
+| scope | `warehouse_id` (`use_scope`) |
+| term | `filter.q` ≤ 100 — EMPTY lists everything held; otherwise at least 2 characters after trimming (else InvalidArgument), anywhere in the name or the product code, case-insensitive |
+| set | `WarehouseProductSearch`'s: products with a row in `batches` for this warehouse, any `stock_count` |
+| order | by name, then product code, then id — paged (`CommonPagination`, limit ≤ 200; the screen asks 10/20/50) |
+| slices | `PRODUCT` (`WarehouseProductSearchItem`: id, owner `team_id`, `product_code`, `name`, `archived`) and `STOCK` (`StockLevel`: `on_hand`) by default; `GENERAL` on request |
+| on hand | `StockList`'s formula, one helper (`warehouseOnHand`): `SUM(product_placements.stock_count)` over the warehouse's racks, for the page's products only; a held product with no rack row reads 0 |
+
+**Three steps, each over its own rows** (HARD RULE 3) — the picker's two, then the shelves. product_service's
+`SearchAmong` gained a list mode: with no term it returns the whole given set in the same order, still never a product
+outside it, the page and its total from one statement (`COUNT(*) OVER ()`). The picker keeps its own minimum of 2.
+
+```mermaid
+sequenceDiagram
+    participant A as Budi — warehouse Admin
+    participant I as WarehouseStockList — inventory
+    participant DB as Postgres
+    participant P as SearchAmong — product_service
+    participant T as TeamByIds — team_service
+    A->>I: warehouse 11, no term, page 1 of 20
+    I->>I: policy — warehouse roles, scope warehouse 11
+    I->>DB: DISTINCT product_id FROM batches WHERE warehouse_id = 11
+    alt nothing ever held here
+        I-->>A: no products, total 0 — product_service not asked
+    else
+        I->>P: Search — the held ids, no term, the window
+        P->>DB: products WHERE id = ANY(held), COUNT(*) OVER (), ORDER BY name, code, id LIMIT 20
+        P-->>I: the page and the total
+        I->>DB: SUM(stock_count) FROM product_placements WHERE warehouse_id = 11 AND product_id IN (the page) GROUP BY product
+        I-->>A: id, owner team, code, name, archived, on hand — by name
+        A->>T: the owners' names, best-effort
+    end
+```
+
+Measured: 3 statements flat at a page of 20 and 50, ≈ 20 ms at 10 000 products held
+([performance audit](../../../audits/services/inventory_service/performances/WarehouseStockList.md)).
 
 ## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
 

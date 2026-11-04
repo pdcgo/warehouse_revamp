@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
@@ -27,12 +28,6 @@ func (s *Service) StockList(
 ) (*connect.Response[inventoryv1.StockListResponse], error) {
 	page := req.Msg.GetPage()
 
-	query := s.db.
-		WithContext(ctx).
-		Model(&inventory_service_models.ProductPlacement{}).
-		Where("warehouse_id = ?", req.Msg.GetWarehouseId()).
-		Group("warehouse_id, product_id")
-
 	var total int64
 
 	// COUNT the GROUPS, not the rows. GORM's Count() over a grouped query counts rows per group and
@@ -50,8 +45,7 @@ func (s *Service) StockList(
 
 	var levels []stockLevelRow
 
-	err = query.
-		Select("warehouse_id, product_id, SUM(stock_count) AS on_hand").
+	err = warehouseOnHand(s.db.WithContext(ctx), req.Msg.GetWarehouseId()).
 		Order("product_id ASC").
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).
@@ -73,6 +67,17 @@ func (s *Service) StockList(
 		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
+}
+
+// warehouseOnHand is a warehouse's ON HAND, one row per product: the placement ledger's rows on every rack, summed
+// (there-is-no-unplaced-pile). StockList pages it; WarehouseStockList (the Stock screen) reads it for the products on its
+// page. ONE formula, so the two can never disagree about how much of a product a building holds.
+func warehouseOnHand(db *gorm.DB, warehouseID uint64) *gorm.DB {
+	return db.
+		Model(&inventory_service_models.ProductPlacement{}).
+		Select("warehouse_id, product_id, SUM(stock_count) AS on_hand").
+		Where("warehouse_id = ?", warehouseID).
+		Group("warehouse_id, product_id")
 }
 
 // stockLevelRow is one product's total in one warehouse.

@@ -604,11 +604,9 @@
       "saved": "Lock saved"
     },
     "lead": "This team's catalogue — what it sells, what is on a shelf, and what is on its way.",
-    "leadWarehouse": "The products other teams keep on this warehouse's shelves.",
     "none": "No products yet.",
     "emptyHint": "Add the first product to start selling it — its stock follows once a restock arrives.",
     "emptyArchivedHint": "An archived product waits here until it is restored.",
-    "emptyWarehouseHint": "Products the selling teams keep in this warehouse appear here.",
     "searchPlaceholder": "Search product code or name",
     "empty": "No products found.",
     "backToProducts": "Back to Products",
@@ -2636,10 +2634,14 @@
     "pickWarehousePlaceholder": "Pick a warehouse",
     "pickWarehousePrompt": "Pick a warehouse to see its stock.",
     "searchPlaceholder": "Search products by product code or name",
-    "empty": "No products in this warehouse's catalogue.",
+    "empty": "Nothing is stocked here yet.",
+    "emptyHint": "A product shows here once a restock or a transfer brings it into this warehouse — and stays, at 0 too.",
+    "noneMatch": "No product here matches the search.",
+    "stockLead": "Every product this warehouse holds or has held — any team's, at 0 too.",
     "table": {
       "sku": "Product code",
       "product": "Product",
+      "owner": "Owner",
       "onHand": "On hand",
       "actions": "Actions"
     },

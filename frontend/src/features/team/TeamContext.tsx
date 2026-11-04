@@ -52,7 +52,7 @@ const TeamContext = createContext<TeamState | null>(null);
 // the backend's (use_scope) option reads it from the message, not from a header, so no
 // interceptor can do this for you.
 export function TeamProvider({ children }: { children: ReactNode }) {
-  const { identity } = useAuth();
+  const { identity, ready: authReady } = useAuth();
 
   const [teams, setTeams] = useState<TeamAccessItem[]>([]);
   const [current, setCurrent] = useState<CurrentTeam | null>(null);
@@ -103,6 +103,14 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    // `ready` says the current team is SETTLED, so it waits for the sign-in check first: before it, "no identity" means
+    // "not known yet", not "signed out". In the app AuthGate holds the shell back until then; a provider mounted without
+    // one (a Storybook story) would otherwise read "no team" and call it ready — and a screen that decides once on the
+    // current team (StockForward) would decide on that.
+    if (!authReady) {
+      return;
+    }
+
     if (!identity) {
       setTeams([]);
       setCurrent(null);
@@ -112,6 +120,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     }
 
     let cancelled = false;
+
+    // Not ready while this identity's memberships load — after a sign-out and a sign-in, the last answer was "no team".
+    setReady(false);
 
     void (async () => {
       try {
@@ -135,7 +146,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [identity, load]);
+  }, [authReady, identity, load]);
 
   // refresh re-loads memberships but keeps whichever team is currently selected.
   const refresh = useCallback(async () => {

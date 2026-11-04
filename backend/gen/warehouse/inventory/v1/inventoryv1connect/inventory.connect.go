@@ -60,6 +60,9 @@ const (
 	// InventoryServiceWarehouseProductSearchProcedure is the fully-qualified name of the
 	// InventoryService's WarehouseProductSearch RPC.
 	InventoryServiceWarehouseProductSearchProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseProductSearch"
+	// InventoryServiceWarehouseStockListProcedure is the fully-qualified name of the InventoryService's
+	// WarehouseStockList RPC.
+	InventoryServiceWarehouseStockListProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseStockList"
 	// InventoryServiceProductPlacesProcedure is the fully-qualified name of the InventoryService's
 	// ProductPlaces RPC.
 	InventoryServiceProductPlacesProcedure = "/warehouse.inventory.v1.InventoryService/ProductPlaces"
@@ -132,6 +135,10 @@ type InventoryServiceClient interface {
 	// a count's found: the products with a batch in this warehouse, any team's, at 0 today or not, searched by name or
 	// product code. Inventory knows what has been here; product_service names and searches it.
 	WarehouseProductSearch(context.Context, *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error)
+	// The STOCK SCREEN (the-stock-screen-lists-what-the-warehouse-has-held) — Inventories ▸ Stock: every product with a
+	// batch in this warehouse, any team's, at 0 today or not, archived ones flagged, each with its owner team and its units
+	// on hand here; searched by name or product code on the server, paged. The same set the picker searches.
+	WarehouseStockList(context.Context, *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
@@ -243,6 +250,13 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+InventoryServiceWarehouseProductSearchProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductSearch")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		warehouseStockList: connect.NewClient[v1.WarehouseStockListRequest, v1.WarehouseStockListResponse](
+			httpClient,
+			baseURL+InventoryServiceWarehouseStockListProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("WarehouseStockList")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -358,6 +372,7 @@ type inventoryServiceClient struct {
 	stockTakeQuote         *connect.Client[v1.StockTakeQuoteRequest, v1.StockTakeQuoteResponse]
 	warehouseProductList   *connect.Client[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse]
 	warehouseProductSearch *connect.Client[v1.WarehouseProductSearchRequest, v1.WarehouseProductSearchResponse]
+	warehouseStockList     *connect.Client[v1.WarehouseStockListRequest, v1.WarehouseStockListResponse]
 	productPlaces          *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
 	stockPickLocations     *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
 	batchList              *connect.Client[v1.BatchListRequest, v1.BatchListResponse]
@@ -417,6 +432,11 @@ func (c *inventoryServiceClient) WarehouseProductList(ctx context.Context, req *
 // WarehouseProductSearch calls warehouse.inventory.v1.InventoryService.WarehouseProductSearch.
 func (c *inventoryServiceClient) WarehouseProductSearch(ctx context.Context, req *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error) {
 	return c.warehouseProductSearch.CallUnary(ctx, req)
+}
+
+// WarehouseStockList calls warehouse.inventory.v1.InventoryService.WarehouseStockList.
+func (c *inventoryServiceClient) WarehouseStockList(ctx context.Context, req *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error) {
+	return c.warehouseStockList.CallUnary(ctx, req)
 }
 
 // ProductPlaces calls warehouse.inventory.v1.InventoryService.ProductPlaces.
@@ -518,6 +538,10 @@ type InventoryServiceHandler interface {
 	// a count's found: the products with a batch in this warehouse, any team's, at 0 today or not, searched by name or
 	// product code. Inventory knows what has been here; product_service names and searches it.
 	WarehouseProductSearch(context.Context, *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error)
+	// The STOCK SCREEN (the-stock-screen-lists-what-the-warehouse-has-held) — Inventories ▸ Stock: every product with a
+	// batch in this warehouse, any team's, at 0 today or not, archived ones flagged, each with its owner team and its units
+	// on hand here; searched by name or product code on the server, paged. The same set the picker searches.
+	WarehouseStockList(context.Context, *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
@@ -625,6 +649,13 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		InventoryServiceWarehouseProductSearchProcedure,
 		svc.WarehouseProductSearch,
 		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductSearch")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceWarehouseStockListHandler := connect.NewUnaryHandler(
+		InventoryServiceWarehouseStockListProcedure,
+		svc.WarehouseStockList,
+		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseStockList")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -746,6 +777,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceWarehouseProductListHandler.ServeHTTP(w, r)
 		case InventoryServiceWarehouseProductSearchProcedure:
 			inventoryServiceWarehouseProductSearchHandler.ServeHTTP(w, r)
+		case InventoryServiceWarehouseStockListProcedure:
+			inventoryServiceWarehouseStockListHandler.ServeHTTP(w, r)
 		case InventoryServiceProductPlacesProcedure:
 			inventoryServiceProductPlacesHandler.ServeHTTP(w, r)
 		case InventoryServiceStockPickLocationsProcedure:
@@ -817,6 +850,10 @@ func (UnimplementedInventoryServiceHandler) WarehouseProductList(context.Context
 
 func (UnimplementedInventoryServiceHandler) WarehouseProductSearch(context.Context, *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.WarehouseProductSearch is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) WarehouseStockList(context.Context, *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.WarehouseStockList is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error) {

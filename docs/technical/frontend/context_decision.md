@@ -78,6 +78,7 @@ when it applies one of these.
 | [a-narrowed-page-stays-at-the-left](#a-narrowed-page-stays-at-the-left) | a page held narrower than the canvas — a form, a detail — stays at the canvas's LEFT edge; centring it was tried on the product form and withdrawn | every narrowed page |
 | [sticky-sticks-to-the-window](#sticky-sticks-to-the-window) | the desktop shell lets the window scroll, so `<main>` is `overflowX="clip"`, never `overflow="auto"` — anything else made every sticky header inside a page never stick | every desktop page |
 | [a-nav-jump-blinks-where-it-lands](#a-nav-jump-blinks-where-it-lands) | a detail page's section nav scrolls to the clicked section and that card BLINKS — a pale tint of the main tone, once, no ring or border | the product page and the order detail, every page on the shared `SectionNav` |
+| [the-phone-menu-carries-no-count-for-now](#the-phone-menu-carries-no-count-for-now) | the phone shell shows no waiting count — not on a menu item, not on More — for Kewajiban or Found Stock; the counts stay the desktop sidebar's, for now | the phone shell |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1753,3 +1754,28 @@ not restated here: Title Case for titles and actions; a detail view is a page, n
 confirm; three or more row actions fold into an overflow menu; a growing set is a search select; a date is
 `DatePicker` and a quantity `QuantityInput`; never a card inside a card; a screen built ahead of its backend marks
 its gaps, and only Storybook can hide the marks.
+
+---
+
+## the-phone-menu-carries-no-count-for-now
+
+> Owner, in chat *(2026-11-03)*: *"For now, no number at all"* — to *should the phone menu show the waiting numbers?*,
+> shown the desktop sidebar's counts and a mock of the phone menu and its More button carrying them.
+
+**The verdict.** The waiting counts — Kewajiban's payments awaiting confirmation
+([the-sidebar-is-in-sections](#the-sidebar-is-in-sections)) and Found Stock's requests waiting
+([found-stock-sits-after-stock-opname-with-its-count](../../business/inventory/opname_decision.md#found-stock-sits-after-stock-opname-with-its-count))
+— stay on the desktop sidebar. The phone shell shows none: not on an item in the More sheet, not on the More tab. *For
+now*: the owner may ask for them later, and the mock (counts on the items, their total on More) is the shape it was shown.
+
+```mermaid
+flowchart LR
+  D["desktop sidebar"] --> C["Found Stock 2 - Liability 1"]
+  P["phone - More sheet and tab"] --> N["no number"]
+```
+
+| | |
+| --- | --- |
+| desktop | unchanged — the counts on their items, a shut group carrying its children's |
+| phone | no count anywhere — the More sheet's items and the More tab stay bare |
+| later | the owner's call; the shown mock was counts on the items and their total on More |

@@ -80,6 +80,15 @@ service InventoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
+  // The STOCK SCREEN (the-stock-screen-lists-what-the-warehouse-has-held) — Inventories ▸ Stock: every product with a
+  // batch in this warehouse, any team's, at 0 today or not, archived ones flagged, each with its owner team and its units
+  // on hand here; searched by name or product code on the server, paged. The same set the picker searches.
+  rpc WarehouseStockList(WarehouseStockListRequest) returns (WarehouseStockListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
   // Which shelves already hold a product (#156) — the put-away recommendation.
   rpc ProductPlaces(ProductPlacesRequest) returns (ProductPlacesResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
@@ -825,7 +834,8 @@ message WarehouseProductListResponse {
 // Owned HERE, not by the catalogue, because the filter that defines the set — "has had a batch in this building" — is
 // inventory's fact, and the filter has to be applied where the paging happens. The names and codes stay product_service's:
 // inventory hands it the held ids in-process and it searches among them, so no id list ever travels from the browser and
-// no product name is mirrored here (HARD RULE 3). An archived product is out, as it is out of every picker.
+// no product name is mirrored here (HARD RULE 3). An archived product is in, flagged — a warehouse still finds what its
+// seller archived while units of it sit here (an-archived-product-held-here-can-be-picked).
 message WarehouseProductSearchRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
@@ -889,6 +899,65 @@ message WarehouseProductSearchResponseItem {
 message WarehouseProductSearchResponse {
   repeated WarehouseProductSearchResponseItem items = 1;
   // The product ids in order — by name, then product code — the authoritative ordering of the page.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// WarehouseStockList — the Stock screen lists what the warehouse has held (the-stock-screen-lists-what-the-warehouse-has-held).
+//
+// The set is WarehouseProductSearch's: every product with a BATCH in this warehouse — any team's, emptied ones included,
+// archived ones flagged. A warehouse owns no products (the selling teams do), so its own catalogue is not the list; what it
+// holds and has held is. A product emptied to 0 stays on the list, so it can still be found and adjusted.
+//
+// Two halves, each over its own rows (HARD RULE 3): inventory reads which products have been here and their units on hand
+// (the placement ledger, summed as StockList sums it); product_service names, searches and orders them among the held
+// ids, in-process — so the page, its order and its total are one statement's, and no product name is mirrored here.
+message WarehouseStockListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  WarehouseStockListFilter filter = 2;
+  // Which slices to load per product. Empty defaults to the PRODUCT and STOCK slices — a row of the screen.
+  repeated WarehouseStockListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message WarehouseStockListFilter {
+  // A name or a product code, or part of one — matched anywhere, case-insensitive. EMPTY lists every product held here;
+  // otherwise at least 2 characters after the server trims it (else InvalidArgument), as the picker's term.
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+}
+
+enum WarehouseStockListDataType {
+  WAREHOUSE_STOCK_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  WAREHOUSE_STOCK_LIST_DATA_TYPE_GENERAL = 1;
+  // WarehouseProductSearchItem per product: id, its OWNER team, product code, name, archived.
+  WAREHOUSE_STOCK_LIST_DATA_TYPE_PRODUCT = 2;
+  // StockLevel per product: its units on hand in this warehouse — its rows on every rack, summed; 0 when none.
+  WAREHOUSE_STOCK_LIST_DATA_TYPE_STOCK = 3;
+}
+
+message WarehouseStockListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    WarehouseProductSearchMapItem product = 2;
+    StockLevelMapItem stock = 3;
+  }
+}
+
+message WarehouseStockListResponse {
+  repeated WarehouseStockListResponseItem items = 1;
+  // The product ids in order — by name, then product code, then id — the authoritative ordering of the page.
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
 }

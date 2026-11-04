@@ -135,7 +135,7 @@ flowchart LR
 | **staff's views — awaiting design accept** | the staff list view (`pages/found-requests/pending.ts` *staffView*) and the rack page's **Report Found** door (`pages/rack-detail/pending.ts` *reportFound*) — the rules are decided and built; their placement is not yet design-accepted |
 | two identical reports | two requests — `FoundRequestCreate` has no idempotency key (none was decided); the approver rejects the duplicate |
 | the warehouse product page | ✅ fixed 2026-11-03: `/inventories/products/:id` reads `StockCost`, whose policy was the selling roles' only (from when it was an order's cost), so it answered permission_denied to every warehouse role. The policy now admits warehouse Owner, Admin and Staff — RackDetail and RackStock already give them the same average — and a warehouse caller reads its own building only (`filter.warehouse_id` must be its `team_id`, else PermissionDenied). Tests: `TestStockCost_PolicyAdmitsTheWarehouse`, `TestStockCost_AWarehouseReadsItsOwnBuildingOnly`; e2e *the warehouse product page opens for the warehouse's Admin and Staff* |
-| the Stock screen | ⚠ reported by the found-stock build, not verified: it lists only the warehouse's own catalogue |
+| the Stock screen | ✅ verified live, then decided and built 2026-11-04: it listed the warehouse team's own catalogue (always empty) — it now lists what the warehouse has held, [below](#the-stock-screen-lists-what-the-warehouse-has-held--built) |
 | the Adjust screen itself | still undesigned ([adjustment.md](../../business/inventory/adjustment.md) is empty) |
 
 ## The warehouse picks only what it has held — built
@@ -187,3 +187,82 @@ team's, at 0 or not, searched by name or code on the server, paged ([rpc.md](../
 | --- | --- |
 | an archived product on the shelf | not offered for a found or a one-product count; an `all`/team/rack count still snapshots it. Whether a warehouse should pick it is not decided |
 | the held read grows with the batch history | one row per batch read per keystroke (20 000 → 5 ms); an index or a skip-scan if a warehouse's history gets large — inventory's migration, the owner's call |
+
+## The Stock screen lists what the warehouse has held — built
+
+**As of 2026-11-04, BUILT** — [the-stock-screen-lists-what-the-warehouse-has-held](../../business/inventory/context_decision.md#the-stock-screen-lists-what-the-warehouse-has-held)
+(owner, 2026-11-03). Uncommitted — the owner commits.
+
+**The bug (verified live).** Inventories ▸ Stock (`/inventories/stock`; the root/admin `/inventory` is the same page) read
+`ProductList` scoped to the warehouse — the warehouse TEAM's own catalogue, which a real warehouse never has — plus a fixed
+200-row `StockList` joined client-side: a warehouse holding 10 Kaos Temuan read *"No products in this warehouse's
+catalogue"*. And on a fresh load a warehouse member was asked to pick a warehouse: the default was taken at mount, before
+the current team had loaded.
+
+| | |
+| --- | --- |
+| contract | `inventory.proto` — `WarehouseStockList` (`NO_SIDE_EFFECTS`), StockList's policy (Root, Administrator, warehouse Owner/Admin/Staff; the monitor by the read mark), `use_scope` on `warehouse_id`; `filter.q` ≤ 100, empty = everything, else ≥ 2 after trimming; `CommonPagination`; slices GENERAL / PRODUCT (`WarehouseProductSearchItem`, reused) / STOCK (`StockLevel`, reused), default PRODUCT + STOCK ([rpc.md](../../services/inventory_service/rpc.md#the-stock-screen--warehousestocklist)) |
+| inventory | `inventory_v1/warehouse_stock_list.go` — the picker's held ids (`heldProductIDs`), `ProductReader.Search` for the page and its total, then the page's on hand through `warehouseOnHand` — StockList's formula, now ONE helper in `stock_list.go` that StockList also calls |
+| product_service | `SearchAmong` gains a LIST mode: an empty term lists the whole given set, same order, same one statement; still never a product outside it. The picker keeps its own ≥ 2 |
+| screen | `pages/inventory/index.tsx` — `useWarehouseStock` (features/inventory/queries.ts) calls the new RPC (`listQuery`), names the owners through `ownerNames` (now exported from features/products/queries.ts); columns Product code · Product (*Archived* badge, `products.picker.archived`) · **Owner** · On hand · Actions (Adjust, Move — unchanged); `FilterBar` search, debounced, sent from its 2nd character, in the URL; `RefreshOverlay`; `GrowingPager` (was `Pagination`); `EmptyHint` — *Nothing is stocked here yet.* / no match; a phone reads each product as a block; the warehouse picker offers warehouses only. i18n en + id: `inventory.empty` (reworded), `emptyHint`, `noneMatch`, `stockLead`, `table.owner` |
+| stub | `.storybook/warehouseStockListStub.ts` — the held set from `heldHere` (the picker stub's batch registers), on hand from `opnameOnHandHere` (opnameStub), the policy enforced; `warehouseStockNothingHeld()` for an empty warehouse |
+
+### Tests
+
+| | |
+| --- | --- |
+| unit | `warehouse_stock_list_test.go` — `ListsEveryProductHeldHere` (held at 0 listed with 0, never-held not, another warehouse's not, archived flagged, two teams' same-named both with their owners, on hand summed over two racks and equal to StockList's), `SearchesByNameAndCode`, `Pages`, `NothingHeldAndTooShort`, `Slices`, `NoProductServiceIsUnavailable`, `PolicyIsTheWarehouses` · `product_search_among_test.go` — `NoTermListsTheWholeSet` · `app_development/product_reader_test.go` — `TestInventoryProductReader_ListsWhatTheWarehouseHasHeld`, through the real wiring |
+| perf (`-tags perfaudit`) | `app_development/warehouse_stock_list_perf_test.go` — 3 statements flat at 20 and 50; ≈ 20 ms at 10 000 held, with or without a term → [WarehouseStockList.md](../../../audits/services/inventory_service/performances/WarehouseStockList.md) |
+| stories | `Pages/Inventory/Stock` (8, new): Default (other teams' products with owners, not the warehouse team's catalogue), Mobile, HeldAtZeroIsListedAndAdjusted, ArchivedIsLabelled, SearchNarrows (name, code, one letter does not), NothingMatches, NothingStockedYet, AMonitorReadsAnotherWarehouse |
+| e2e | `found_requests.spec.ts` — new *the warehouse Admin's Stock screen lists Kaos Temuan with its on-hand* (12, owner named, server search); `inventory.spec.ts` unchanged and green (root is still prompted for a warehouse) |
+
+### Choices made in the build, where the decision is silent
+
+| | choice |
+| --- | --- |
+| the row | the product slice the picker already answers (reused message) plus `StockLevel` — no new per-row message |
+| a one-letter term | refused by the server (InvalidArgument), never sent by the screen: below 2 characters the list stays unnarrowed |
+| the owner's name | not on the wire, as for the picker: the screen asks `TeamByIds`, best-effort |
+| the warehouse picker | now offers WAREHOUSE teams only (`teamType`), the name alone — picking a selling team listed its catalogue before; now it would read as an empty warehouse |
+| the pager | `GrowingPager`, per [every-list-pages-with-the-growing-pager](../../technical/frontend/context_decision.md#every-list-pages-with-the-growing-pager) — the screen was next touched |
+| the menu | unchanged — a warehouse team's Inventories group still carries no Stock link (the route is reached by URL); not decided |
+
+🔄 *(2026-11-04)* Two rows above are overtaken by [a-warehouses-products-is-what-it-holds](#a-warehouses-products-is-what-it-holds--built) below: the
+list is a warehouse's **Products** now (the menu row), `/inventories/stock` forwards, and the stories are
+`Pages/Inventory/Inventory` (the route `/inventory`).
+
+## A warehouse's Products is what it holds — built
+
+**As of 2026-11-04, BUILT** — [a-warehouses-products-is-what-it-holds](../../business/inventory/context_decision.md#a-warehouses-products-is-what-it-holds)
+(owner, 2026-11-03). Uncommitted — the owner commits. Frontend only: no proto, no backend change.
+
+**Why.** A warehouse's **Products** (`pages/products`, `ProductsTable mode="warehouse"`) listed what the warehouse was ASKED
+to hold (`WarehouseProductList`'s arrangement), with the seller's columns — Cross markup, Lock, the cost range, Ready,
+Ongoing, Stock age — read as *—* for every row, the owner as *Team #1*, and no search; the rebuilt Stock screen listed what
+it HOLDS but had no menu item. The owner: one screen, the Products item, and it is the Stock list.
+
+| | |
+| --- | --- |
+| the list | `features/inventory/WarehouseStockList.tsx` (new, `Features/Inventory/WarehouseStockList`) — the Stock screen's list moved out of `pages/inventory/index.tsx` whole: `FilterBar` search in the URL, `useWarehouseStock` (`WarehouseStockList` RPC), Product code · Product (*Archived*) · Owner · On hand · Actions (Adjust, Move), `RefreshOverlay`, `GrowingPager`, `EmptyHint`, a phone block per product. New: `opensProduct` — a row (desktop) / block (phone, `PRESSABLE`) opens `/inventories/products/:id`; the actions' cell / box stops the click, so the ⋯ and its portalled menu never open the row. The first load is a `ListSkeleton` (was a Spinner) |
+| a warehouse's Products | `pages/products/index.tsx` — `ProductsPage` now chooses by the current team's type, as `RestockRoute` does: a warehouse gets `WarehouseProductsPage` (title *Products* + the team badge, the sentence `inventory.stockLead`, the list with `opensProduct`, its own building — no picker); anyone else the catalogue (`CatalogueProductsPage`, unchanged but for the warehouse branches it no longer needs) |
+| root/admin Inventory | `pages/inventory/index.tsx` — the title, the warehouse sentence, the warehouse picker (warehouse teams only; the current team when it IS a warehouse) and the list without `opensProduct`: the warehouse product page reads the CURRENT team's building, so it would not open for root/admin. The `title` prop is gone with the Stock route |
+| `/inventories/stock` | `pages/inventory/StockForward.tsx` — `<Navigate replace>`: a warehouse → `/products`, anyone else → `/inventory`; the query rides along. It waits for `useTeam().ready` |
+| `TeamProvider.ready` | now waits for the auth check too (`useAuth().ready`) and drops to false while an identity's memberships load: before, a provider mounted ahead of the identity (a Storybook story, which has no AuthGate) said ready with no team, and a one-shot forward decided on it. Nothing else read `ready` |
+| removed | `ProductsTable`'s `"warehouse"` mode (its row → `/inventories/products/:id`, the team badge on the product cell, the warehouse empty hint, the no-sort/no-search branches); `useProducts`' `isWarehouse` flag and its `WarehouseProductList` + `ProductByIds` branch (its only caller was that mode); i18n `products.leadWarehouse`, `products.emptyWarehouseHint` (en + id). **Kept:** the `WarehouseProductList` RPC itself — backend, proto and Go tests untouched — though no screen calls it now |
+
+### Tests
+
+| | |
+| --- | --- |
+| stories | `Pages/Products/Products` + 6: `AWarehouseListsWhatItHolds` (held set, owners named — never *Team #*, on hand, archived label, title and sentence), `AWarehouseSeesNoSellerColumns` (five columns; no cross/lock cells, stats, lens or lock filters, New Product, Archive), `AWarehouseRowOpensTheWarehouseProductPage` (→ id 74), `AWarehouseRowsActionsDoNotOpenIt` (Adjust opens its dialog, no navigation), `AWarehouseSearchNarrows`, `AWarehouseOnAPhone`; the selling team's 28 unchanged and green · `Pages/Inventory/Inventory` (was `…/Stock`, now on `/inventory`) + `ARowOpensNothingHere`, `RootPicksAWarehouse` · `Pages/Inventory/StockForward` (3): a warehouse → Products with the query, the admin team's monitor and Root → Inventory · `Features/Inventory/WarehouseStockList` (5): Default (a row opens id 73), Mobile, ActionsDoNotOpenTheRow (Move), WithoutOpensProductRowsStay, AMonitorIsOfferedNoActions |
+| e2e | `found_requests.spec.ts` — *the warehouse Admin's Products lists Kaos Temuan with its owner and on-hand, and opens it* (12, owner not *Team #*, no seller cells, server search, the row → `/inventories/products/:id`, `/inventories/stock?q=kaos` → `/products?q=kaos`) · `inventory.spec.ts` — *the old Stock address forwards root to Inventory* · `orders.spec.ts` — #142's *a warehouse sees the products it was asked to stock* became *a warehouse's Products lists what it holds, without the seller's columns* (the setup's received product; its pending-restock seed dropped), and *Warehouse product* opens the page from the held list's row |
+
+### Choices made in the build, where the decision is silent
+
+| | choice |
+| --- | --- |
+| `/products/archived` for a warehouse | the held list too — a warehouse owns nothing to archive; an archived product it holds is labelled in the list |
+| `/inventories/stock` for a SELLING team | → `/inventory` (anyone not a warehouse), the screen that address rendered before; the list refuses a selling role, as it did |
+| a monitor reading a warehouse | `/inventories/stock` → that warehouse's `/products` (the current team is a warehouse), read-only — no ⋯ |
+| rows on root/admin's Inventory | open nothing, as before — the warehouse product page is the current warehouse's |
+| the warehouse product page's Back | unchanged — it already returns to `/products` |

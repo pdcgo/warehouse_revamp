@@ -38,9 +38,9 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up); Chakra's `_hover` honours `data-hover`.
 const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
-// Which list this table is: the two tabs of a selling team's own catalogue, or the warehouse's
-// "what am I holding" list, which is a different RPC entirely (see useProducts).
-export type ProductsMode = "active" | "archived" | "warehouse";
+// Which list this table is: a team's own catalogue, live or archived. A warehouse's Products is not this table — it is
+// what the warehouse holds (WarehouseStockList, a-warehouses-products-is-what-it-holds).
+export type ProductsMode = "active" | "archived";
 
 interface ProductsTableProps {
   mode: ProductsMode;
@@ -54,7 +54,7 @@ interface ProductsTableProps {
   warehouseId: bigint;
   /** Its name, for the column headers — a figure that silently became one warehouse's is a trap. */
   warehouseName?: string;
-  /** The heading's sort (a-table-sorts-from-its-headings) — held in the page's URL. Absent on the warehouse list. */
+  /** The heading's sort (a-table-sorts-from-its-headings) — held in the page's URL. */
   sort?: SortState<ProductSortKey> | null;
   onSortChange?: (next: SortState<ProductSortKey> | null) => void;
   /** Whether the page's filter strip narrows the list — an empty list then says "nothing matches", not "nothing yet". */
@@ -346,9 +346,9 @@ function Fact({ label, children, wide = false }: { label: string; children: Reac
   );
 }
 
-// One table, three lists. They share their whole body — a page of products, searched and paginated — and differ only in
-// which rows they ask for and what may be done to a row, so splitting them into three components would be three copies
-// of the same table drifting apart.
+// One table, two lists. They share their whole body — a page of products, searched and paginated — and differ only in
+// which rows they ask for and what may be done to a row, so splitting them into two components would be two copies of
+// the same table drifting apart.
 export function ProductsTable({
   mode,
   teamId,
@@ -380,21 +380,18 @@ export function ProductsTable({
   const setPage = (next: number) => setPaging({ question, page: next });
   const [pageSize, setPageSize] = useState(20);
 
-  const isWarehouse = mode === "warehouse";
   const isArchived = mode === "archived";
   // While the admin team monitors the team, a row offers nothing and the lock only reads.
   const writable = useCanWrite();
 
   const query = useProducts({
     teamId,
-    isWarehouse,
-    // WarehouseProductList takes no query (#142), so the shared search box simply does not reach it.
-    q: isWarehouse ? "" : q,
+    q,
     page,
     pageSize,
     status: isArchived ? ProductStatus.ARCHIVED : ProductStatus.ACTIVE,
     warehouseId,
-    sort: isWarehouse ? null : sort,
+    sort,
   });
   const archiveProduct = useArchiveProduct();
   const restoreProduct = useUnarchiveProduct();
@@ -486,40 +483,29 @@ export function ProductsTable({
     }
   }
 
-  // Whether a row opens anything. A WAREHOUSE opens the stock view (#158), not the catalogue entry it does not own; an
-  // archived product opens nothing from here — restore it first, that is what the tab is for.
+  // Whether a row opens anything. An archived product opens nothing from here — restore it first, that is what the
+  // archive is for.
   const opens = !isArchived;
 
   function openRow(product: Product) {
-    if (isWarehouse) {
-      navigate(`/inventories/products/${product.id}`);
-
-      return;
-    }
-
     if (opens) {
       navigate(`/products/${product.id}`);
     }
   }
 
-  // ONE cell, not image + SKU + name: a product is one thing, and this is the app's one way of drawing it (#128). The
-  // team badge is passed ONLY on the warehouse list, where the rows genuinely belong to other teams — on your own
-  // catalogue it would be your own name on every row.
+  // ONE cell, not image + SKU + name: a product is one thing, and this is the app's one way of drawing it (#128). No
+  // team badge: on your own catalogue it would be your own name on every row.
   function productItem(product: Product) {
     return (
       <Box data-testid={`open-product-${product.productCode}`} minW={isMobile ? "0" : "15rem"}>
         <ProductListItem
-          product={
-            isWarehouse
-              ? product
-              : {
-                  id: product.id,
-                  productCode: product.productCode,
-                  name: product.name,
-                  defaultImageUrl: product.defaultImageUrl,
-                  defaultImageThumbnailUrl: product.defaultImageThumbnailUrl,
-                }
-          }
+          product={{
+            id: product.id,
+            productCode: product.productCode,
+            name: product.name,
+            defaultImageUrl: product.defaultImageUrl,
+            defaultImageThumbnailUrl: product.defaultImageThumbnailUrl,
+          }}
           // THE SKU COPIES on a click (owner: *"sku copyable"*) — it is carried into marketplace listings and suppliers'
           // sheets; the click does not open the row.
           productCodeCopyable
@@ -545,8 +531,7 @@ export function ProductsTable({
   }
 
   // EACH ACTION A LABELLED BUTTON WITH ITS ICON (an-action-button-carries-its-icon) — the same on a row and at a phone
-  // block's foot. A warehouse HANDLES these products; it does not own them (#142): editing or archiving somebody else's
-  // catalogue entry is not its call, and the writes are scoped to the OWNING team, so they would only ever be refused.
+  // block's foot.
   function actions(product: Product) {
     if (!writable) return null;
 
@@ -639,8 +624,8 @@ export function ProductsTable({
       return (
         <EmptyHint
           icon={Package}
-          title={isWarehouse ? t("products.empty") : t("products.none")}
-          description={isWarehouse ? t("products.emptyWarehouseHint") : t("products.emptyHint")}
+          title={t("products.none")}
+          description={t("products.emptyHint")}
           action={
             onCreate && (
               <Button colorPalette="brand" onClick={onCreate}>
@@ -723,8 +708,8 @@ export function ProductsTable({
           <Table.Header>
             <Table.Row>
               {/* THE SORT IS IN THE HEADING (a-table-sorts-from-its-headings) — by name, A to Z first: the column the
-                  contract orders the catalogue by that the row shows first. The warehouse's list cannot sort. */}
-              {onSortChange && !isWarehouse ? (
+                  contract orders the catalogue by that the row shows first. */}
+              {onSortChange ? (
                 <SortableHeader
                   column="name"
                   label={t("products.table.product")}

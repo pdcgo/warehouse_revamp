@@ -11,6 +11,7 @@ import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/Fi
 import { CompactActions } from "../../components/chrome/CompactActions";
 import type { SortState } from "../../components/chrome/SortableHeader";
 import { type ProductSortKey, useProductStats } from "../../features/products/queries";
+import { WarehouseStockList } from "../../features/inventory/WarehouseStockList";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
 import { idCodec, nullableCodec, oneOfCodec, optionalCodec, sortCodec, textCodec, useUrlState } from "../../lib/urlState";
@@ -32,9 +33,60 @@ const AGE_FILTERS = ["30", "60", "90"] as const;
 type AgeFilter = (typeof AGE_FILTERS)[number];
 const AGE_CODEC = optionalCodec(oneOfCodec(AGE_FILTERS));
 
-// ProductsPage lists the CURRENT TEAM's catalogue — at `/products` the live products, at `/products/archived` the
-// archived ones. Every RPC carries `current.teamId` in its body — the team is the scope, and a selling/warehouse team only
-// ever sees its own products. Create and edit are a dedicated PAGE (issue #60), reached from here.
+// /products is TWO screens, chosen by the current team's type — on RestockRoute's rule (router.tsx): the team switcher
+// changes the team without navigating, so one path re-renders the right screen.
+//
+//   a selling team   its CATALOGUE (CatalogueProductsPage) — what it sells, with the stock, cost and sales behind it
+//   a warehouse      WHAT IT HOLDS (WarehouseProductsPage) — a-warehouses-products-is-what-it-holds
+export function ProductsPage({ archived = false }: { archived?: boolean }) {
+  const { current } = useTeam();
+
+  // A warehouse has no archive — it owns no products — so /products/archived is its held list too, where an archived
+  // product it still holds is labelled.
+  return current?.teamType === TeamType.WAREHOUSE ? <WarehouseProductsPage /> : <CatalogueProductsPage archived={archived} />;
+}
+
+// A WAREHOUSE'S PRODUCTS IS WHAT IT HOLDS (a-warehouses-products-is-what-it-holds): every product with a batch in this
+// building — any team's, archived ones labelled, at 0 too — with its owner, its units on hand and its Adjust and Move,
+// searched by name or code on the server (WarehouseStockList, the-stock-screen-lists-what-the-warehouse-has-held). A row
+// opens the warehouse product page. No picker — it is the warehouse's own building — and none of the seller's columns:
+// Cross markup, Lock, the cost range and the catalogue's figures are the owning team's, not the warehouse's.
+//
+//   Products [Gudang Pusat]
+//   Every product this warehouse holds or has held — any team's, at 0 too.
+//   [⌕ Search products by product code or name                ×]
+//   Product code   · Product                     · Owner          · On hand · Actions
+//
+// It used to be the arrangement list (WarehouseProductList, #142): what the warehouse was ASKED to hold, with the
+// seller's catalogue columns read as "—", the owner as "Team #1", and no search.
+function WarehouseProductsPage() {
+  const { current } = useTeam();
+  const { t } = useTranslation();
+
+  if (!current) {
+    return null;
+  }
+
+  return (
+    <Stack gap="section" animationStyle="enter" data-testid="warehouse-products-page">
+      <Stack gap="1" minW="0">
+        <HStack gap="card" wrap="wrap">
+          <Heading size="md">{t("products.heading")}</Heading>
+          <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
+        </HStack>
+        <Text color="fg.muted" fontSize="sm">
+          {t("inventory.stockLead")}
+        </Text>
+      </Stack>
+
+      <WarehouseStockList warehouseId={current.teamId} opensProduct />
+    </Stack>
+  );
+}
+
+// CatalogueProductsPage lists the CURRENT TEAM's catalogue — at `/products` the live products, at `/products/archived`
+// the archived ones. Every RPC carries `current.teamId` in its body — the team is the scope, and a team only ever sees its
+// own products. Create and edit are a dedicated PAGE (issue #60), reached from here.
 //
 // IT FOLLOWS THE SCREEN RULES (owner: *"sekarang kita ke product, coba terapkan keputusan sebelumnya"*,
 // `the-product-screens-follow-the-screen-rules`):
@@ -50,16 +102,13 @@ const AGE_CODEC = optionalCodec(oneOfCodec(AGE_FILTERS));
 // the archived products alone, searchable, each offering Pulihkan, and a way back. Archiving is a soft delete: the row is
 // not gone, which is why every word here says Archive rather than Delete.
 //
-// A WAREHOUSE gets no archive, no figures and no filters. It owns no products, so it has nothing to archive — what it sees
-// is the arrangement of other teams' goods on its shelves, which is a different RPC (see useProducts).
-export function ProductsPage({ archived = false }: { archived?: boolean }) {
+// A WAREHOUSE never reaches this page: its Products is WarehouseProductsPage above.
+function CatalogueProductsPage({ archived }: { archived: boolean }) {
   const { current } = useTeam();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-
-  const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
 
   // THE SEARCH, THE WAREHOUSE LENS AND THE SORT LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back
   // from a product, opens the same narrowed list.
@@ -75,7 +124,7 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
   // to "everywhere".
   const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
   // Just for the labels — a cache hit on the list TeamSelect has already loaded.
-  const warehouses = useTeams({ teamType: TeamType.WAREHOUSE, page: 1, pageSize: 100, enabled: !isWarehouse, reference: true });
+  const warehouses = useTeams({ teamType: TeamType.WAREHOUSE, page: 1, pageSize: 100, reference: true });
   const warehouseName =
     warehouseId === 0n
       ? undefined
@@ -107,7 +156,7 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
   // change what the headline says you own. The warehouse lens DOES reach them, because "ready stock" narrowed to one
   // building is still a fact about the catalogue.
   const stats = useProductStats({
-    teamId: isWarehouse || archived ? undefined : current?.teamId,
+    teamId: archived ? undefined : current?.teamId,
     warehouseId,
   });
 
@@ -155,14 +204,12 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
             <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
           </HStack>
           <Text color="fg.muted" fontSize="sm">
-            {archived ? t("products.archiveView.lead") : isWarehouse ? t("products.leadWarehouse") : t("products.lead")}
+            {archived ? t("products.archiveView.lead") : t("products.lead")}
           </Text>
         </Stack>
 
-        {/* A warehouse team stocks products but does not create or archive them (#101) — no actions; the archive has
-            none of its own. */}
-        {!isWarehouse &&
-          !archived &&
+        {/* The archive has no actions of its own. */}
+        {!archived &&
           (isMobile ? (
             <CompactActions
               menuLabel={t("products.table.actions")}
@@ -190,11 +237,10 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
       </Flex>
 
       {/* What this list cannot do yet — the two filters it holds and throws away. */}
-      {!isWarehouse && !archived && <NotImplementedSummary list={PRODUCTS_LIST_PENDING} />}
+      {!archived && <NotImplementedSummary list={PRODUCTS_LIST_PENDING} />}
 
-      {/* The warehouse list is somebody else's catalogue on our shelves — a product count is not the headline there; the
-          archive holds what left the catalogue. */}
-      {!isWarehouse && !archived && (
+      {/* The archive holds what left the catalogue — a product count is not its headline. */}
+      {!archived && (
         <ProductStats
           totalItems={stats.data?.activeProducts ?? 0}
           ready={stats.data?.ready}
@@ -206,99 +252,85 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
       )}
 
       {/* THE SHARED FILTER STRIP (a-phone-filters-from-a-sheet) — the search with its icon and its ×, the warehouse lens
-          with its own × (every-filter-clears-from-its-own-x); the sort is the headings'. No strip for a warehouse
-          (#142): WarehouseProductList takes no query, and a dead control is worse than an absent one. */}
-      {!isWarehouse && (
-        <FilterBar testId="products-filter" active={filterCount > 0} count={filterCount} onClear={clearFilters}>
-          <FilterSearch
-            value={q}
-            onChange={setQ}
-            placeholder={t("products.searchPlaceholder")}
-            testId="product-search"
+          with its own × (every-filter-clears-from-its-own-x); the sort is the headings'. */}
+      <FilterBar testId="products-filter" active={filterCount > 0} count={filterCount} onClear={clearFilters}>
+        <FilterSearch
+          value={q}
+          onChange={setQ}
+          placeholder={t("products.searchPlaceholder")}
+          testId="product-search"
+        />
+
+        {/* The shared team picker, restricted to WAREHOUSE teams — every option is one, so the pick reads as its name
+            alone (a-one-type-picker-shows-the-name-alone). */}
+        <FilterField w="16rem" testId="product-warehouse-filter">
+          <TeamSelect
+            value={warehouseId > 0n ? warehouseId : undefined}
+            onChange={setWarehouseId}
+            teamType={TeamType.WAREHOUSE}
+            showType={false}
+            placeholder={t("products.allWarehouses")}
           />
+        </FilterField>
 
-          {/* The shared team picker, restricted to WAREHOUSE teams — every option is one, so the pick reads as its name
-              alone (a-one-type-picker-shows-the-name-alone). */}
-          <FilterField w="16rem" testId="product-warehouse-filter">
-            <TeamSelect
-              value={warehouseId > 0n ? warehouseId : undefined}
-              onChange={setWarehouseId}
-              teamType={TeamType.WAREHOUSE}
-              showType={false}
-              placeholder={t("products.allWarehouses")}
-            />
-          </FilterField>
+        {!archived && (
+          <>
+            {/* THE LOCK — the three ways, and the minimums in force right now (one-lock-three-ways). Held, marked, not
+                sent. */}
+            <FilterField w="13rem" testId="product-lock-filter">
+              <Flex align="center" gap="1">
+                <Box flex="1" minW="0">
+                  <ChoiceFilter
+                    value={lock}
+                    onChange={setLock}
+                    placeholder={t("products.filter.lockAll")}
+                    testId="product-lock-select"
+                    options={[
+                      { value: "open", label: t("products.lock.mode.open") },
+                      { value: "min", label: t("products.lock.mode.min") },
+                      { value: "always", label: t("products.lock.mode.always") },
+                      { value: "lockedNow", label: t("products.filter.lockedNow") },
+                    ]}
+                  />
+                </Box>
+                <NotImplemented list={PRODUCTS_LIST_PENDING} id="lockFilter" />
+              </Flex>
+            </FilterField>
 
-          {!archived && (
-            <>
-              {/* THE LOCK — the three ways, and the minimums in force right now (one-lock-three-ways). Held, marked, not
-                  sent. */}
-              <FilterField w="13rem" testId="product-lock-filter">
-                <Flex align="center" gap="1">
-                  <Box flex="1" minW="0">
-                    <ChoiceFilter
-                      value={lock}
-                      onChange={setLock}
-                      placeholder={t("products.filter.lockAll")}
-                      testId="product-lock-select"
-                      options={[
-                        { value: "open", label: t("products.lock.mode.open") },
-                        { value: "min", label: t("products.lock.mode.min") },
-                        { value: "always", label: t("products.lock.mode.always") },
-                        { value: "lockedNow", label: t("products.filter.lockedNow") },
-                      ]}
-                    />
-                  </Box>
-                  <NotImplemented list={PRODUCTS_LIST_PENDING} id="lockFilter" />
-                </Flex>
-              </FilterField>
+            {/* THE STOCK'S AGE — at least this many days on a shelf (the-dates-read-as-ages). Held, marked, not sent. */}
+            <FilterField w="13rem" testId="product-age-filter">
+              <Flex align="center" gap="1">
+                <Box flex="1" minW="0">
+                  <ChoiceFilter
+                    value={age}
+                    onChange={setAge}
+                    placeholder={t("products.filter.stockAgeAll")}
+                    testId="product-age-select"
+                    options={AGE_FILTERS.map((days) => ({
+                      value: days,
+                      label: t("products.filter.stockAgeAtLeast", { days }),
+                    }))}
+                  />
+                </Box>
+                <NotImplemented list={PRODUCTS_LIST_PENDING} id="stockAgeFilter" />
+              </Flex>
+            </FilterField>
+          </>
+        )}
+      </FilterBar>
 
-              {/* THE STOCK'S AGE — at least this many days on a shelf (the-dates-read-as-ages). Held, marked, not sent. */}
-              <FilterField w="13rem" testId="product-age-filter">
-                <Flex align="center" gap="1">
-                  <Box flex="1" minW="0">
-                    <ChoiceFilter
-                      value={age}
-                      onChange={setAge}
-                      placeholder={t("products.filter.stockAgeAll")}
-                      testId="product-age-select"
-                      options={AGE_FILTERS.map((days) => ({
-                        value: days,
-                        label: t("products.filter.stockAgeAtLeast", { days }),
-                      }))}
-                    />
-                  </Box>
-                  <NotImplemented list={PRODUCTS_LIST_PENDING} id="stockAgeFilter" />
-                </Flex>
-              </FilterField>
-            </>
-          )}
-        </FilterBar>
-      )}
-
-      {isWarehouse ? (
-        <ProductsTable
-          mode="warehouse"
-          teamId={current.teamId}
-          q=""
-          warehouseId={0n}
-          filtered={false}
-          onClearFilters={clearFilters}
-        />
-      ) : (
-        <ProductsTable
-          mode={archived ? "archived" : "active"}
-          teamId={current.teamId}
-          q={term}
-          warehouseId={warehouseId}
-          warehouseName={warehouseName}
-          sort={sort}
-          onSortChange={setSort}
-          filtered={filterCount > 0}
-          onClearFilters={clearFilters}
-          onCreate={archived || !writable ? undefined : openCreate}
-        />
-      )}
+      <ProductsTable
+        mode={archived ? "archived" : "active"}
+        teamId={current.teamId}
+        q={term}
+        warehouseId={warehouseId}
+        warehouseName={warehouseName}
+        sort={sort}
+        onSortChange={setSort}
+        filtered={filterCount > 0}
+        onClearFilters={clearFilters}
+        onCreate={archived || !writable ? undefined : openCreate}
+      />
     </Stack>
   );
 }

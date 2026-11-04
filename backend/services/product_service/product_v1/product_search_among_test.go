@@ -2,6 +2,7 @@ package product_v1_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -138,5 +139,75 @@ func TestSearchAmong_AnEmptySetFindsNothing(t *testing.T) {
 
 	if total != 0 || len(rows) != 0 {
 		t.Fatalf("an empty set found %d (total %d), want nothing", len(rows), total)
+	}
+}
+
+// NO TERM LISTS THE WHOLE SET (the-stock-screen-lists-what-the-warehouse-has-held): the Stock screen before anything is
+// typed — every product of the given ids, archived ones flagged, in the search's order, paged, the total from the same
+// statement — and still never one outside the set.
+func TestSearchAmong_NoTermListsTheWholeSet(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	kemeja := insertProduct(t, db, 2, "T2-KMJ-07", "Kemeja Flanel")
+	kaosSinar := insertProduct(t, db, 3, "T3-KAOS-01", "Kaos Temuan")
+	kaosMelati := insertProduct(t, db, 2, "T2-KAOS-01", "Kaos Temuan")
+	archived := insertProduct(t, db, 2, "T2-KAOS-OLD", "Kaos Lama")
+	insertProduct(t, db, 4, "T4-KAOS-09", "Kaos Abu") // outside the set
+
+	err := db.
+		Model(&product_service_models.Product{}).
+		Where("id = ?", archived).
+		Update("archived", true).
+		Error
+	if err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+
+	held := []uint64{kemeja, kaosSinar, kaosMelati, archived}
+
+	list := func(q string, offset, limit int) ([]uint64, map[uint64]bool, int64) {
+		t.Helper()
+
+		rows, total, listErr := svc.SearchAmong(context.Background(), product_v1.ProductSearchAmong{
+			IDs: held, Q: q, Offset: offset, Limit: limit,
+		})
+		if listErr != nil {
+			t.Fatalf("list %q: %v", q, listErr)
+		}
+
+		ids := make([]uint64, 0, len(rows))
+		flags := map[uint64]bool{}
+
+		for _, r := range rows {
+			ids = append(ids, r.GetId())
+			flags[r.GetId()] = r.GetArchived()
+		}
+
+		return ids, flags, total
+	}
+
+	want := []uint64{archived, kaosMelati, kaosSinar, kemeja}
+
+	// Spaces alone are no term.
+	for _, q := range []string{"", "   "} {
+		ids, flags, total := list(q, 0, 10)
+		if !slices.Equal(ids, want) || total != 4 {
+			t.Fatalf("%q = %v (total %d), want %v — the whole set by name, then code, never the one outside it", q, ids, total, want)
+		}
+
+		if !flags[archived] || flags[kaosMelati] {
+			t.Fatalf("archived flags = %v, want only Kaos Lama", flags)
+		}
+	}
+
+	second, _, total := list("", 2, 2)
+	if !slices.Equal(second, []uint64{kaosSinar, kemeja}) || total != 4 {
+		t.Fatalf("second page of two = %v (total %d), want Sinar's Kaos Temuan then Kemeja Flanel of 4", second, total)
+	}
+
+	past, _, total := list("", 10, 2)
+	if len(past) != 0 || total != 4 {
+		t.Fatalf("past the end = %v (total %d), want nothing of 4", past, total)
 	}
 }

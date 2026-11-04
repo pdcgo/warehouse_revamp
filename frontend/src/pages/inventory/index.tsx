@@ -1,92 +1,66 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Menu,
-  Portal,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
-import { ArrowRightLeft, MoreHorizontal, Pencil } from "lucide-react";
-import { rpcError } from "../../api/clients";
-import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import { Box, Flex, Heading, Spacer, Stack, Text } from "@chakra-ui/react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { canWrite, useTeam } from "../../features/team/TeamContext";
-import { useWarehouseStock } from "../../features/inventory/queries";
+import { useTeam } from "../../features/team/TeamContext";
+import { WarehouseStockList } from "../../features/inventory/WarehouseStockList";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { Pagination } from "../../components/chrome/Pagination";
-import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
-import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
-import { idCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { idCodec, useUrlState } from "../../lib/urlState";
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
-// StockList is not filterable by product, so we pull a generous page of levels and join client-side.
-// A warehouse with more than this many stocked lines would need paging here too (noted for later).
-const LEVEL_LIMIT = 200;
+// The warehouse pick before anybody has made one: the URL carries no `warehouse`, so the screen opens on the current
+// team when it IS a warehouse. Never a real id (idCodec reads digits only) and never written to the URL.
+const NOT_PICKED = -1n;
 
-// InventoryPage is the warehouse stock screen (#55): pick a warehouse, see its products with on-hand,
-// and adjust or move stock. Goods come IN only by a restock (a-box-nobody-raised-comes-in-by-the-teams-restock). It assumes a warehouse stocks its OWN team's catalogue (product
-// team_id = warehouse_id) — the cross-team-storage question is still open (see the brainstorming doc).
-// `title` lets it serve both the root/admin "Inventory" route and the "Stock" sub-menu entry (#95).
+// InventoryPage is root and the admin team's INVENTORY (/inventory, #55): pick a warehouse, see what it holds, and adjust
+// or move it. The list is WarehouseStockList — every product with a batch in that warehouse, any team's, at 0 too, each
+// with its owner and its units on hand (the-stock-screen-lists-what-the-warehouse-has-held).
 //
-// It used to take a `restock` flag that hid the adjust action, because this screen doubled as
-// "Restock" under the superseded "pick a warehouse and receive there" design. Restock is now the
-// request flow on its own screen (#105/#122), so this is simply the full stock view again.
-export function InventoryPage({ title }: { title?: string } = {}) {
+//   Inventory                                                                 [Gudang Pusat ⌄]
+//   Every product this warehouse holds or has held — any team's, at 0 too.
+//   [⌕ Search products by product code or name                ×]
+//   Product code   · Product                 · Owner          · On hand · Actions
+//
+// A WAREHOUSE reads the same list as its own Products (a-warehouses-products-is-what-it-holds), with no picker — it is
+// its own building — and rows that open the warehouse product page. The old Inventories ▸ Stock address forwards there
+// (StockForward); it no longer renders this page.
+export function InventoryPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
 
   // Default to the current team when it IS a warehouse; otherwise the user picks one.
   //
-  // THE WAREHOUSE AND THE SEARCH LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same
-  // warehouse's stock. The pick is kept as an id with 0n for none, so a cleared picker survives a refresh too; this
-  // page's "no warehouse" is still `undefined` (it shows the pick-a-warehouse prompt instead of reading warehouse 0).
-  const [warehousePick, setWarehousePick] = useUrlState(
-    "warehouse",
-    current?.teamType === TeamType.WAREHOUSE ? current.teamId : 0n,
-    idCodec,
-  );
-  const warehouseId = warehousePick === 0n ? undefined : warehousePick;
-
-  const [q, setQ] = useUrlState("q", "", textCodec);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const [dialog, setDialog] = useState<{
-    kind: "adjust" | "move";
-    product: Product;
-  } | null>(null);
-
-  const query = useWarehouseStock({ warehouseId, q, page, pageSize, levelLimit: LEVEL_LIMIT });
-
-  const products = query.data?.products ?? [];
-  const onHand = query.data?.onHand ?? new Map<string, bigint>();
-  const totalItems = query.data?.totalItems ?? 0;
-  const loading = query.isPending && warehouseId !== undefined;
-  const error = query.isError ? rpcError(query.error) : "";
+  // THE WAREHOUSE LIVES IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same warehouse's stock; the
+  // search is the list's own. The pick is kept as an id with 0n for none, so a cleared picker survives a refresh too;
+  // this page's "no warehouse" is still `undefined` (it shows the pick-a-warehouse prompt instead of reading warehouse 0).
+  //
+  // The default is read on EVERY render, not once at mount: the current team arrives after the page mounts on a fresh
+  // load (TeamProvider loads the memberships), and a default taken at mount read "no team" — a warehouse's own Admin
+  // was asked to pick a warehouse.
+  const [warehousePick, setWarehousePick] = useUrlState("warehouse", NOT_PICKED, idCodec);
+  const ownWarehouse = current?.teamType === TeamType.WAREHOUSE ? current.teamId : 0n;
+  const pick = warehousePick === NOT_PICKED ? ownWarehouse : warehousePick;
+  const warehouseId = pick === 0n ? undefined : pick;
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card" wrap="wrap">
-        <Heading size="md">{title ?? t("inventory.title")}</Heading>
+    <Stack gap="section" data-testid="inventory-page">
+      <Flex align="start" gap="card" wrap="wrap">
+        <Stack gap="1" flex="1 1 16rem" minW="0">
+          <Heading size="md">{t("inventory.title")}</Heading>
+          <Text color="fg.muted" fontSize="sm">
+            {t("inventory.stockLead")}
+          </Text>
+        </Stack>
         <Spacer />
-        <TeamSelect
-          value={warehouseId}
-          onChange={(id) => {
-            // A cleared picker emits 0n — kept as the pick, read as "no warehouse" above.
-            setWarehousePick(id);
-            setPage(1);
-          }}
-          placeholder={t("inventory.pickWarehousePlaceholder")}
-        />
+        <Box minW="14rem">
+          <TeamSelect
+            value={warehouseId}
+            teamType={TeamType.WAREHOUSE}
+            showType={false}
+            // A cleared picker emits 0n — kept as the pick, read as "no warehouse" above. The list starts again at page
+            // one for another building on its own.
+            onChange={setWarehousePick}
+            placeholder={t("inventory.pickWarehousePlaceholder")}
+          />
+        </Box>
       </Flex>
 
       {warehouseId === undefined ? (
@@ -94,147 +68,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           {t("inventory.pickWarehousePrompt")}
         </Text>
       ) : (
-        <>
-          <HStack>
-            <Input
-              maxW="sm"
-              placeholder={t("inventory.searchPlaceholder")}
-              value={q}
-              data-testid="inventory-search"
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-            />
-          </HStack>
-
-          {error && (
-            <Text color="error.fg" data-testid="inventory-error">
-              {error}
-            </Text>
-          )}
-
-          {loading ? (
-            <Spinner colorPalette="brand" />
-          ) : products.length === 0 ? (
-            <Text color="fg.muted" data-testid="inventory-empty">
-              {t("inventory.empty")}
-            </Text>
-          ) : (
-            <Table.Root size="sm" data-testid="inventory-table">
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeader>{t("inventory.table.sku")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("inventory.table.product")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("inventory.table.onHand")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("inventory.table.actions")}</Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-
-              <Table.Body>
-                {products.map((product) => {
-                  const stock = onHand.get(product.id.toString()) ?? 0n;
-
-                  return (
-                    <Table.Row key={product.id.toString()} data-testid={`stock-row-${product.productCode}`}>
-                      <Table.Cell>{product.productCode}</Table.Cell>
-                      <Table.Cell>{product.name}</Table.Cell>
-                      <Table.Cell textAlign="end" data-testid={`stock-onhand-${product.productCode}`}>
-                        {stock.toString()}
-                      </Table.Cell>
-                      {/* Adjust and Move sit in the overflow — goods come in by a restock, so the row has no
-                          receive of its own. */}
-                      <Table.Cell textAlign="end">
-                        {canWrite(current) && (
-                        <HStack justify="end" gap="1">
-                          <Menu.Root>
-                            <Menu.Trigger asChild>
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                aria-label={t("inventory.rowActions")}
-                                data-testid={`row-actions-${product.productCode}`}
-                              >
-                                <Icon as={MoreHorizontal} boxSize="4" />
-                              </IconButton>
-                            </Menu.Trigger>
-
-                            <Portal>
-                              <Menu.Positioner>
-                                <Menu.Content>
-                                  <Menu.Item
-                                    value="adjust"
-                                    data-testid={`adjust-${product.productCode}`}
-                                    onClick={() => setDialog({ kind: "adjust", product })}
-                                  >
-                                    <Icon as={Pencil} boxSize="4" />
-                                    {t("inventory.adjust")}
-                                  </Menu.Item>
-
-                                  <Menu.Item
-                                    value="move"
-                                    data-testid={`move-${product.productCode}`}
-                                    onClick={() => setDialog({ kind: "move", product })}
-                                  >
-                                    <Icon as={ArrowRightLeft} boxSize="4" />
-                                    {t("inventory.move")}
-                                  </Menu.Item>
-                                </Menu.Content>
-                              </Menu.Positioner>
-                            </Portal>
-                          </Menu.Root>
-                        </HStack>
-                        )}
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                })}
-              </Table.Body>
-            </Table.Root>
-          )}
-
-          {!loading && (
-            <HStack justify="end">
-              <Pagination
-                count={totalItems}
-                pageSize={pageSize}
-                page={page}
-                onPageChange={setPage}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-                onPageSizeChange={(n) => {
-                  setPageSize(n);
-                  setPage(1);
-                }}
-              />
-            </HStack>
-          )}
-        </>
-      )}
-
-      {dialog?.kind === "adjust" && warehouseId !== undefined && (
-        <AdjustStockDialog
-          key={dialog.product.id.toString()}
-          warehouseId={warehouseId}
-          product={dialog.product}
-          currentOnHand={onHand.get(dialog.product.id.toString()) ?? 0n}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
-      )}
-
-      {dialog?.kind === "move" && warehouseId !== undefined && (
-        <MoveStockDialog
-          key={dialog.product.id.toString()}
-          warehouseId={warehouseId}
-          product={dialog.product}
-          currentOnHand={onHand.get(dialog.product.id.toString()) ?? 0n}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
+        <WarehouseStockList warehouseId={warehouseId} />
       )}
     </Stack>
   );

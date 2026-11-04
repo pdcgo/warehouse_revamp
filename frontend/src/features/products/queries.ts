@@ -31,7 +31,6 @@ import type { OwnerStockRow, ProductActivityRow } from "./adapt";
 
 interface ProductListArgs {
   teamId: bigint | undefined;
-  isWarehouse: boolean;
   q: string;
   page: number;
   pageSize: number;
@@ -53,19 +52,12 @@ export type ProductSortKey = "name";
 
 const SORT_COLUMN: Record<ProductSortKey, ProductRowSort> = { name: ProductRowSort.NAME };
 
-// The team's catalogue — or, for a WAREHOUSE, what it has been asked to hold.
+// The team's catalogue, with the stock and the sales behind each row.
 //
-// A warehouse owns no products (they belong to selling teams), so `ProductList` scoped to it
-// correctly returns nothing. What it should see is inventory's arrangement list, resolved to names
-// by product_service. Two calls on purpose: mirroring the catalogue into inventory would put a
-// product's name in two places, and the copy would go stale the first time anyone renamed it.
-//
-// `isWarehouse` is in the key even though it is derived from the team. It changes WHICH RPC answers,
-// so two cache entries that disagree about that must not collide — and a key that reads
-// `{ isWarehouse: true }` says why the entry exists without tracing it back through team type.
+// A WAREHOUSE never asks this: it owns no products, and its Products is what it holds — useWarehouseStock
+// (a-warehouses-products-is-what-it-holds).
 export function useProducts({
   teamId,
-  isWarehouse,
   q,
   page,
   pageSize,
@@ -77,7 +69,6 @@ export function useProducts({
     // `status` is in the key because the two tabs are two different answers: caching the archived
     // page under the active one would show a dead SKU where the live catalogue belongs.
     queryKey: key.products(teamId, {
-      isWarehouse,
       q,
       page,
       pageSize,
@@ -88,28 +79,6 @@ export function useProducts({
     ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
-      if (isWarehouse) {
-        const arrangement = await inventoryClient.warehouseProductList({
-          warehouseId: teamId!,
-          page: { page, limit: pageSize },
-        });
-
-        const totalItems = Number(arrangement.pageInfo?.totalItems ?? 0n);
-
-        // No ids means no second call — ProductByIds with an empty list is a request for nothing.
-        if (arrangement.ids.length === 0) {
-          return { products: [], totalItems };
-        }
-
-        const resolved = await productClient.productByIds({
-          teamId: teamId!,
-          filter: { ids: arrangement.ids },
-          dataRequest: productByIdsRowData(),
-        });
-
-        return { products: productsFromByIds(resolved), totalItems };
-      }
-
       const res = await productClient.productList({
         teamId: teamId!,
         filter: { q, status },
@@ -640,8 +609,8 @@ export function useUnarchiveProduct() {
 // The product PICKER's search (ProductSelect).
 //
 // `scope` chooses the RPC — the team's own catalogue, every team's (#106), or what a WAREHOUSE has held
-// (a-warehouse-picks-only-what-it-has-held) — and is in the key for the same reason `isWarehouse` is above: it decides
-// which question was asked, and one answer must not be served under the other.
+// (a-warehouse-picks-only-what-it-has-held) — and is in the key because it decides which question was asked, and one
+// answer must not be served under the other.
 //
 // A catalogue is too large to load whole, which is why this searches rather than listing. Through
 // the cache a transient failure retries instead of turning into "no products found", and backing up
@@ -722,8 +691,9 @@ function productsFromWarehouseSearch(res: WarehouseProductSearchResponse): Wareh
 }
 
 // Owner team id → name, best-effort: a name is a label, so a failed lookup leaves the option with its code alone rather
-// than failing the search. Through teamsByIdsQuery, so it shares the team-name cache.
-async function ownerNames(client: QueryClient, teamIds: bigint[]): Promise<{ [id: string]: string }> {
+// than failing the search. Through teamsByIdsQuery, so it shares the team-name cache. The warehouse Stock screen names
+// its rows' owners with it too (features/inventory/queries.ts, useWarehouseStock).
+export async function ownerNames(client: QueryClient, teamIds: bigint[]): Promise<{ [id: string]: string }> {
   if (!teamIds.some((id) => id > 0n)) return {};
 
   try {
@@ -740,8 +710,8 @@ async function ownerNames(client: QueryClient, teamIds: bigint[]): Promise<{ [id
 // page after it, and the counts with them.
 //
 // It also clears `["inventory"]`, for the reason given above the writes: the warehouse stock screen
-// loads the product list INSIDE its inventory query, so the catalogue rows it renders would otherwise
-// survive a rename or a delete that every other screen had already noticed.
+// reads its products' names and codes INSIDE its inventory query, so the rows it renders would otherwise
+// survive a rename or an archive that every other screen had already noticed.
 export function useInvalidateProducts() {
   const client = useQueryClient();
 

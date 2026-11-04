@@ -30,12 +30,13 @@ type ProductFact struct {
 type ProductReader interface {
 	Facts(ctx context.Context, callerTeamID uint64, productIDs []uint64) (map[uint64]ProductFact, error)
 	// Search finds, AMONG the given products only, those — archived ones too, flagged — whose name or product code contains the term — one
-	// window by name, and how many match in all (a-warehouse-picks-only-what-it-has-held). Inventory knows which products
-	// have been in a warehouse; product_service names and searches them, so no name is mirrored here (HARD RULE 3).
+	// window by name, and how many match in all (a-warehouse-picks-only-what-it-has-held). An EMPTY term lists the whole
+	// set in the same order (the-stock-screen-lists-what-the-warehouse-has-held). Inventory knows which products have been
+	// in a warehouse; product_service names and searches them, so no name is mirrored here (HARD RULE 3).
 	Search(ctx context.Context, callerTeamID uint64, search ProductSearch) (ProductSearchPage, error)
 }
 
-// ProductSearch is one search among a known set of products.
+// ProductSearch is one search among a known set of products. Q empty = every product of the set.
 type ProductSearch struct {
 	ProductIDs []uint64
 	Q          string

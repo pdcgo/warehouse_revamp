@@ -9,8 +9,8 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 // to the deciders (found-stock-sits-after-stock-opname-with-its-count).
 //
 // The Adjust dialog is opened from the batch page. The warehouse product page (/inventories/products/:id) once answered
-// permission_denied to every warehouse role — it reads StockCost, whose policy was the selling roles' only; the last
-// test here opens it as the warehouse's Admin and Staff.
+// permission_denied to every warehouse role — it reads StockCost, whose policy was the selling roles' only; a test here
+// opens it as the warehouse's Admin and Staff. The last one opens the warehouse's Products — what it holds — as the Admin.
 //
 // A warehouse of its own: Kaos Temuan, 10 units on Rak A at Rp 10.000 — nothing lost, so the found mints 2 at the
 // team's newest price here.
@@ -295,4 +295,49 @@ test("Found: the warehouse product page opens for the warehouse's Admin and Staf
       await expect(page.getByTestId("wp-action-adjust")).toBeVisible();
     }
   }
+});
+
+// A WAREHOUSE'S PRODUCTS IS WHAT IT HOLDS (a-warehouses-products-is-what-it-holds — the list is
+// the-stock-screen-lists-what-the-warehouse-has-held): the warehouse's Admin opens Products and finds Kaos Temuan — another
+// team's product — with its owner NAMED and the 12 units the approved found brought it to. A row opens the warehouse
+// product page, and the old Inventories ▸ Stock address forwards to Products. Products once listed what the warehouse was
+// ASKED to hold, with the seller's columns read as "—" and the owner as "Team #1"; the Stock screen before it read "No
+// products in this warehouse's catalogue" — it listed the warehouse TEAM's own products, and a warehouse owns none.
+test("Found: the warehouse Admin's Products lists Kaos Temuan with its owner and on-hand, and opens it", async ({ page }) => {
+  await login(page, ADMIN, PASSWORD);
+  await useTeam(page, state.warehouse);
+
+  await page.goto("/products");
+  await expect(page.getByTestId("warehouse-products-page")).toBeVisible();
+  const row = page.getByTestId(`stock-row-${state.code}`);
+  await expect(row).toBeVisible();
+  await expect(row).toContainText("Kaos Temuan");
+  await expect(page.getByTestId(`stock-onhand-${state.code}`)).toHaveText("12");
+  const owner = page.getByTestId(`stock-owner-${state.code}`);
+  await expect(owner).not.toBeEmpty();
+  await expect(owner).not.toContainText("Team #");
+  await expect(page.getByTestId("inventory-error")).toHaveCount(0);
+
+  // The seller's catalogue is not the warehouse's view: no Cross markup, no Lock, no catalogue table.
+  await expect(page.getByTestId("products-table")).toHaveCount(0);
+  await expect(page.getByTestId(`cross-${state.code}`)).toHaveCount(0);
+  await expect(page.getByTestId(`lock-${state.code}`)).toHaveCount(0);
+
+  // The search runs on the server: a word nothing here carries empties the list, the product's name finds it again.
+  await page.getByTestId("inventory-search").fill("zzzz");
+  await expect(page.getByTestId("inventory-none-match")).toBeVisible();
+  await page.getByTestId("inventory-search").fill("kaos tem");
+  await expect(row).toBeVisible();
+
+  // A row opens the warehouse product page — this product's stock in this building.
+  await page.getByTestId(`stock-row-${state.code}`).getByText("Kaos Temuan").click();
+  await expect(page).toHaveURL(new RegExp(`/inventories/products/${state.kaos}$`));
+  await expect(page.getByTestId("warehouse-product-page")).toBeVisible();
+  await expect(page.getByTestId("warehouse-product-error")).toHaveCount(0);
+
+  // The old Stock address forwards to Products, the search with it.
+  await page.goto("/inventories/stock?q=kaos");
+  await expect(page).toHaveURL(/\/products\?q=kaos$/);
+  await expect(page.getByTestId("warehouse-products-page")).toBeVisible();
+  await expect(row).toBeVisible();
 });

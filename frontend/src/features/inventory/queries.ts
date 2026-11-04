@@ -9,13 +9,10 @@ import {
   teamClient,
   userClient,
 } from "../../api/clients";
-import { key } from "../../api/queryClient";
-import {
-  productByIdsRowData,
-  productListRowData,
-  productsFromByIds,
-  productsFromList,
-} from "../products/adapt";
+import { create } from "@bufbuild/protobuf";
+import { key, listQuery } from "../../api/queryClient";
+import { productByIdsRowData, productsFromByIds } from "../products/adapt";
+import { ownerNames } from "../products/queries";
 import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
 import { supplierByIdsRowData, suppliersFromByIds } from "../suppliers/adapt";
 import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
@@ -37,64 +34,79 @@ import {
   stockCostLines,
   stockCostRowData,
   stockHistoryRowData,
-  stockListRowData,
-  stockLevelsFromList,
+  warehouseStockFromList,
+  warehouseStockListRowData,
 } from "./adapt";
 import type {
   BatchReceiptResponse,
   StockBatch,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
-import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import { type Product, ProductSchema } from "../../gen/warehouse/product/v1/product_pb";
 import type { Costs } from "../orders/lines";
 import { useDebounced } from "../../lib/useDebounced";
 
 // The inventory screens' reads (#176).
 
-// One page of a warehouse's catalogue, with the on-hand level for each row.
+/** One row of the Stock screen, ready to draw: the product (as the Adjust and Move dialogs take it), its owner's name, and its units here. */
+export interface StockScreenRow {
+  product: Product;
+  /** The selling team that owns it — "" when the name could not be read; the row keeps its code. */
+  ownerName: string;
+  /** Its seller archived it; units of it may still sit here, so it stays listed, labelled. */
+  archived: boolean;
+  onHand: bigint;
+}
+
+// THE STOCK SCREEN (the-stock-screen-lists-what-the-warehouse-has-held): one page of every product with a batch in this
+// warehouse — any team's, at 0 or not, archived ones flagged — each with its units on hand here, searched by name or code
+// ON THE SERVER (`q`: "" lists all; the caller sends a term only from its second character), by name. ONE read,
+// InventoryService.WarehouseStockList: inventory knows what has been here and how much is left, product_service names it.
 //
-// Both calls in one query function, as the old effect had them: a product row without its count is
-// not a stock screen, and rendering the names first would show a column of blanks that reads as
-// "zero" rather than "still loading".
+// It used to be the warehouse TEAM's own catalogue (ProductList scoped to the warehouse) joined to a fixed page of levels —
+// always empty for a real warehouse, which owns no products.
 //
-// The levels call asks for ONE large page rather than matching the product pager — it is a lookup
-// table for the rows on screen, not a list in its own right.
+// The owners are named best-effort through the shared team-name cache (ownerNames, as the warehouse picker does): a name
+// is a label, so a failed lookup leaves the column blank rather than the page.
+//
+// `listQuery`: a page, a term and a page size refine the same question, so the rows stay up behind a RefreshOverlay.
 export function useWarehouseStock(args: {
   warehouseId: bigint | undefined;
   q: string;
   page: number;
   pageSize: number;
-  levelLimit: number;
 }) {
-  const { warehouseId, q, page, pageSize, levelLimit } = args;
+  const { warehouseId, q, page, pageSize } = args;
+  const client = useQueryClient();
 
   return useQuery({
-    queryKey: key.inventory(warehouseId, { q, page, pageSize }),
+    ...listQuery,
+    queryKey: key.inventory(warehouseId, { stock: "held", q, page, pageSize }),
     enabled: warehouseId !== undefined,
     queryFn: async () => {
-      const [productRes, stockRes] = await Promise.all([
-        productClient.productList({
-          teamId: warehouseId!,
-          filter: { q },
-          dataRequest: productListRowData(),
-          page: { page, limit: pageSize },
-        }),
-        inventoryClient.stockList({
-          warehouseId: warehouseId!,
-          dataRequest: stockListRowData(),
-          page: { page: 1, limit: levelLimit },
-        }),
-      ]);
+      const res = await inventoryClient.warehouseStockList({
+        warehouseId: warehouseId!,
+        filter: { q },
+        dataRequest: warehouseStockListRowData(),
+        page: { page, limit: pageSize },
+      });
 
-      const onHand = new Map<string, bigint>();
-      for (const level of stockLevelsFromList(stockRes)) {
-        onHand.set(level.productId.toString(), level.onHand);
-      }
+      const held = warehouseStockFromList(res);
+      const owners = await ownerNames(client, held.map((row) => row.product.teamId));
 
-      return {
-        products: productsFromList(productRes.items, productRes.ids),
+      const rows: StockScreenRow[] = held.map(({ product, onHand }) => ({
+        product: create(ProductSchema, {
+          id: product.id,
+          teamId: product.teamId,
+          productCode: product.productCode,
+          name: product.name,
+          archived: product.archived,
+        }),
+        ownerName: owners[product.teamId.toString()] ?? "",
+        archived: product.archived,
         onHand,
-        totalItems: Number(productRes.pageInfo?.totalItems ?? 0n),
-      };
+      }));
+
+      return { rows, totalItems: Number(res.pageInfo?.totalItems ?? 0n) };
     },
   });
 }

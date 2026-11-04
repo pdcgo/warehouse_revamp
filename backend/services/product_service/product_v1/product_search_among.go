@@ -12,7 +12,8 @@ import (
 )
 
 // ProductSearchAmong is one search among a KNOWN set of products: those of `IDs` whose name or product code contains
-// `Q` (case-insensitive, anywhere), one window of them by name, and how many match in all.
+// `Q` (case-insensitive, anywhere), one window of them by name, and how many match in all. An EMPTY `Q` lists the whole
+// set — still only `IDs`, never the rest of the catalogue.
 type ProductSearchAmong struct {
 	IDs    []uint64
 	Q      string
@@ -20,13 +21,18 @@ type ProductSearchAmong struct {
 	Limit  int
 }
 
-// SearchAmong answers a warehouse's product picker (a-warehouse-picks-only-what-it-has-held): inventory knows which
-// products have had a batch in a building, and hands their ids here, where the names and codes live. It searches only
-// among them — never the rest of the catalogue — so a warehouse finds what it has held and nothing it has not.
+// SearchAmong answers a warehouse's product picker (a-warehouse-picks-only-what-it-has-held) and its Stock screen
+// (the-stock-screen-lists-what-the-warehouse-has-held): inventory knows which products have had a batch in a building,
+// and hands their ids here, where the names and codes live. It searches only among them — never the rest of the
+// catalogue — so a warehouse finds what it has held and nothing it has not.
+//
+// Two modes, one statement: with a term it narrows by name or code (the picker, which asks only with a term of 2 or
+// more); with NONE it lists every product of the set, in the same order (the Stock screen before anything is typed).
 //
 // A plain method, not an RPC: the composition root calls it for inventory's WarehouseProductSearch, which ran its own
 // policy against the warehouse, and it reads nothing but product_service's rows (HARD RULE 3). As an RPC it would have to
-// take the id list from a caller — the very browse ProductDiscover keeps from warehouse roles.
+// take the id list from a caller — the very browse ProductDiscover keeps from warehouse roles. That is also why an empty
+// term may list: the set is inventory's, never a browser's.
 //
 // ARCHIVED products are in, flagged (an-archived-product-held-here-can-be-picked): archiving retires a product from its
 // catalogue and every other picker, not its units from a shelf, so the warehouse that holds them still finds it. A
@@ -40,17 +46,21 @@ func (s *Service) SearchAmong(
 	search ProductSearchAmong,
 ) ([]*productv1.ProductRowItem, int64, error) {
 	q := strings.TrimSpace(search.Q)
-	if len(search.IDs) == 0 || q == "" || search.Limit <= 0 {
+	if len(search.IDs) == 0 || search.Limit <= 0 {
 		return nil, 0, nil
 	}
-
-	pattern := "%" + escapeLike(q) + "%"
 
 	query := s.db.
 		WithContext(ctx).
 		Model(&product_service_models.Product{}).
-		Where("id = ANY(CAST(? AS bigint[]))", idArray(search.IDs)).
-		Where("name ILIKE ? OR product_code ILIKE ?", pattern, pattern)
+		Where("id = ANY(CAST(? AS bigint[]))", idArray(search.IDs))
+
+	// No term: the whole set, listed. A term: those of it whose name or code holds it.
+	if q != "" {
+		pattern := "%" + escapeLike(q) + "%"
+
+		query = query.Where("name ILIKE ? OR product_code ILIKE ?", pattern, pattern)
+	}
 
 	var found []searchAmongRow
 

@@ -104,6 +104,7 @@ import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { batchList, foundRequestService, stockAdjust } from "./foundRequestStub";
 import { warehouseProductSearch } from "./warehouseProductSearchStub";
+import { warehouseStockList } from "./warehouseStockListStub";
 import { FoundRequestService } from "../src/gen/warehouse/inventory/v1/found_request_pb";
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
@@ -1364,6 +1365,11 @@ export const transport = createRouterTransport(({ service }) => {
     // its found. ONLY what has had a batch in this warehouse comes back, read off the found and count stubs' registers, and
     // a selling role is refused as the policy refuses it (warehouseProductSearchStub.ts).
     warehouseProductSearch: (req) => warehouseProductSearch(req),
+
+    // THE STOCK SCREEN (the-stock-screen-lists-what-the-warehouse-has-held) — every product with a batch in this
+    // warehouse, any team's, at 0 too, archived flagged, with its on hand; the same held set as the picker above
+    // (warehouseStockListStub.ts).
+    warehouseStockList: (req) => warehouseStockList(req),
   });
 
   service(OrderService, {

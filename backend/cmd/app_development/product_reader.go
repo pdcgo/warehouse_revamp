@@ -72,10 +72,11 @@ func (r *inventoryProductReader) Facts(
 	return facts, nil
 }
 
-// Search answers inventory's WarehouseProductSearch (a-warehouse-picks-only-what-it-has-held): inventory hands over
-// the ids of every product that has had a batch in the warehouse, and product_service searches its names and codes
-// among them — SearchAmong, a plain method, because the id list is inventory's and must never come from a browser.
-// The warehouse's own policy already ran on the RPC that asks.
+// Search answers inventory's WarehouseProductSearch (a-warehouse-picks-only-what-it-has-held) and WarehouseStockList
+// (the-stock-screen-lists-what-the-warehouse-has-held): inventory hands over the ids of every product that has had a
+// batch in the warehouse, and product_service searches its names and codes among them — or, with no term, lists them —
+// SearchAmong, a plain method, because the id list is inventory's and must never come from a browser. The warehouse's
+// own policy already ran on the RPC that asks.
 func (r *inventoryProductReader) Search(
 	ctx context.Context,
 	_ uint64,

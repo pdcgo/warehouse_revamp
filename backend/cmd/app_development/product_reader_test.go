@@ -87,6 +87,73 @@ func TestInventoryProductReader_SearchesWhatTheWarehouseHasHeld(t *testing.T) {
 	}
 }
 
+// THE STOCK SCREEN THROUGH THE REAL WIRING (the-stock-screen-lists-what-the-warehouse-has-held): with nothing typed,
+// inventory's WarehouseStockList lists every product with a batch in the warehouse — any team's, archived flagged — named
+// and ordered by product_service's SearchAmong, each with its units on hand from the placement ledger.
+func TestInventoryProductReader_ListsWhatTheWarehouseHasHeld(t *testing.T) {
+	const (
+		melati    uint64 = 9_000_040
+		sinar     uint64 = 9_000_041
+		warehouse uint64 = 9_000_042
+		elsewhere uint64 = 9_000_043
+	)
+
+	db := san_testdb.DB(t)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil)))
+
+	kaosMelati := insertCatalogue(t, db, melati, "E4-KAOS-01", "Kaos Temuan", false)
+	kaosSinar := insertCatalogue(t, db, sinar, "E5-KAOS-01", "Kaos Temuan", false)
+	old := insertCatalogue(t, db, sinar, "E5-KAOS-OLD", "Kaos Lama", false)
+	away := insertCatalogue(t, db, sinar, "E5-KAOS-09", "Kaos Cabang", false)
+	insertCatalogue(t, db, sinar, "E5-KAOS-NEW", "Kaos Baru", false) // stocked nowhere
+
+	stockHeld(t, inventory, melati, warehouse, kaosMelati, 3)
+	stockHeld(t, inventory, sinar, warehouse, kaosSinar, 2)
+	stockHeld(t, inventory, sinar, warehouse, old, 1)
+	stockHeld(t, inventory, sinar, elsewhere, away, 5)
+
+	err := db.Exec(`UPDATE products SET archived = TRUE WHERE id = ?`, old).Error
+	if err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+
+	res, err := inventory.WarehouseStockList(context.Background(), connect.NewRequest(&inventoryv1.WarehouseStockListRequest{
+		WarehouseId: warehouse,
+		Page:        &commonv1.CommonPagination{Page: 1, Limit: 10},
+	}))
+	if err != nil {
+		t.Fatalf("WarehouseStockList: %v", err)
+	}
+
+	if !slices.Equal(res.Msg.GetIds(), []uint64{old, kaosMelati, kaosSinar}) || res.Msg.GetPageInfo().GetTotalItems() != 3 {
+		t.Fatalf("ids = %v (total %d), want the archived Kaos Lama, then Melati's and Sinar's Kaos Temuan",
+			res.Msg.GetIds(), res.Msg.GetPageInfo().GetTotalItems())
+	}
+
+	var (
+		rows  map[uint64]*inventoryv1.WarehouseProductSearchItem
+		stock map[uint64]*inventoryv1.StockLevel
+	)
+
+	for _, item := range res.Msg.GetItems() {
+		if p := item.GetProduct(); p != nil {
+			rows = p.GetMapData()
+		}
+
+		if s := item.GetStock(); s != nil {
+			stock = s.GetMapData()
+		}
+	}
+
+	if rows[kaosMelati].GetTeamId() != melati || rows[kaosSinar].GetTeamId() != sinar || !rows[old].GetArchived() {
+		t.Fatalf("rows = %v — want each owner, and only the old pack archived", rows)
+	}
+
+	if stock[kaosMelati].GetOnHand() != 3 || stock[kaosSinar].GetOnHand() != 2 || stock[old].GetOnHand() != 1 {
+		t.Fatalf("on hand = %v, want 3, 2 and 1", stock)
+	}
+}
+
 // insertCatalogue writes a product row as product_service stores it — the test owns no product_service writer here.
 func insertCatalogue(t *testing.T, db *gorm.DB, team uint64, code, name string, archived bool) uint64 {
 	t.Helper()
