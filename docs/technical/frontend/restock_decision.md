@@ -48,6 +48,8 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [an-empty-produk-is-the-full-size-hint](#an-empty-produk-is-the-full-size-hint) | with no product yet, the Produk part shows `EmptyHint` at its full size, not the small one |
 | [the-summary-folds-its-products](#the-summary-folds-its-products) | Rincian's product list folds away under its heading — open to start |
 | [the-summary-folds-without-a-scrollbar](#the-summary-folds-without-a-scrollbar) | no scrollbar flashes while Rincian's products fold or unfold; the list keeps its scrollbar gutter |
+| [an-edit-opens-with-its-one-supplier](#an-edit-opens-with-its-one-supplier) | an edit whose open products all name one supplier and store opens with it on top — ONE product counts |
+| [the-restock-form-returns-where-it-was-opened](#the-restock-form-returns-where-it-was-opened) | an edit's Simpan and Kembali go back to the list or the restock's page, whichever opened it; by a link, the list |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -960,3 +962,35 @@ Produk         Rp 2.060.000
 | the gutter | the list is `layerStyle="scrollList"`: its scrollbar's room is kept, so the amounts never jump sideways when a bar comes or goes |
 | still a bar | only open and at rest, in a column capped at a short window (1280×720: 93px of the list's 141px show) — the list scrolls there so Buat Restok stays in the window ([the-note-sits-over-buat-restok](#the-note-sits-over-buat-restok)); folding it takes the bar away |
 | pinned by | `TheSummaryFoldsItsProducts` (overflow hidden as it unfolds, scrolling again after) |
+
+## an-edit-opens-with-its-one-supplier
+
+> Owner, in chat (2026-11-04): *"di edit supplier, default supplier kalau semua itemnya sama, itu yang dipakai, bisa?"*,
+> then, on the dev app: *"aku lihat di dev belum begitu … maksudku untuk supplier paling atas sendiri"*.
+
+| | |
+| --- | --- |
+| the rule | an edit opens with the **supplier part on top** set to the supplier and store every open product already names, each product marked *Ikut semua* |
+| one product | **counts** — its supplier is all of them. The dev restock that showed the gap was one product with a supplier and a store, and it opened with *Belum dipilih* |
+| not the same | any open product with another supplier, another store, or none: the part opens empty, each product keeps its own |
+| arrived | no supplier part ([the-supplier-leads-the-produk-card](#the-supplier-leads-the-produk-card)) |
+| pinned by | `AOneProductEditOpensWithItsSupplier`, `AnEditFromOneSupplierOpensWithIt`, `AnEditFromSeveralSuppliersOpensWithout` |
+
+What it replaces: *"Null below two open lines"* in `sharedSupplier` — the edit row of
+[one-supplier-for-all-in-two-steps](#one-supplier-for-all-in-two-steps), written when the part appeared only for two or
+more products.
+
+## the-restock-form-returns-where-it-was-opened
+
+> Owner, in chat (2026-11-04): *"untuk navigasi edit bukan ke detail, tapi sesuai halaman sebelumnya, kalau detail ke
+> detail, kalau list ke list"*.
+
+| | |
+| --- | --- |
+| the rule | [a-form-returns-where-it-was-opened](context_decision.md#a-form-returns-where-it-was-opened), applied |
+| opened from the list | Simpan and Kembali go back to the list, its filters kept |
+| opened from the restock's page | back to that page |
+| opened from a product's page (a new restock) | back to that page, as before |
+| by a link, or the "cannot be edited" page | the list |
+
+What it replaces: an edit always returning to the restock's page.

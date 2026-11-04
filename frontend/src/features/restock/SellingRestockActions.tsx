@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Alert,
   Button,
@@ -28,6 +28,7 @@ import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { formatRupiahNumber } from "../../lib/money";
 import { CompactActions } from "../../components/chrome/CompactActions";
+import { fromHere } from "../../lib/cameFrom";
 import { RestockNotesDialog } from "./RestockNotesDialog";
 
 // WHAT THE SELLING TEAM MAY DO TO ITS RESTOCK, BY STATUS — the one matrix both the selling list's row menu and the
@@ -102,6 +103,7 @@ export function SellingRestockActions({
 }: SellingRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dialog, setDialog] = useState<"" | "cancel" | "markLost" | "notes">("");
 
   const actions: SellingAction[] = [...sellingActions(request.status), ...(withNotes ? (["notes"] as const) : [])];
@@ -113,7 +115,8 @@ export function SellingRestockActions({
     switch (action) {
       case "edit":
       case "editLines":
-        navigate(`/inventories/restock/${id}/edit`);
+        // The form returns here — the list, filters and all, or the restock's page (a-form-returns-where-it-was-opened).
+        navigate(`/inventories/restock/${id}/edit`, { state: fromHere(location) });
         return;
       case "cancel":
       case "markLost":

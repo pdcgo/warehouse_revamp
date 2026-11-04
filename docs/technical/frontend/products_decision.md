@@ -72,6 +72,7 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [the-product-history-names-the-transaction](#the-product-history-names-the-transaction) | on both product pages Riwayat Stok's column is **Transaksi** — Restok, Pesanan, Transfer, Penyesuaian, Retur — not the shelf's Diterima / Diambil |
 | [the-order-and-restock-start-on-the-page](#the-order-and-restock-start-on-the-page) | Buat Pesanan and Restok first ask, on the page, the **warehouse** (each with its ready stock — the stock check) and the **quantity**; the form then opens with both on its first line |
 | [an-empty-product-cannot-start-an-order](#an-empty-product-cannot-start-an-order) | with no stock ready in any warehouse, **Buat Pesanan** is held back with *Stok siap habis di semua gudang* — on both pages; Restok stays |
+| [a-picture-comes-from-the-web-by-drag-or-paste](#a-picture-comes-from-the-web-by-drag-or-paste) | a picture dragged from a web page is fetched and uploaded like a file; an image copied anywhere pastes with Ctrl+V; a site that refuses is answered with how to copy it |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -1655,3 +1656,26 @@ Discover detail      [←] Gula Pasir 1kg  [⚗ Riset]  [🛒 Buat Pesanan]   �
 | Restok | unchanged — an empty product is the reason to restock |
 | one warehouse empty | the dialog already handles it ([the-order-and-restock-start-on-the-page](#the-order-and-restock-start-on-the-page)): an empty warehouse cannot be picked |
 | ✅ built *(2026-10-31)* | the stories `OrderIsHeldBackWithNoStock` (product page, discover detail) — Tepung, which no shelf holds |
+
+## a-picture-comes-from-the-web-by-drag-or-paste
+
+> Owner, in chat (2026-11-04): *"di produk aku seret file dari intertet untuk gambar tidak bisa"*.
+
+```
+a picture dragged from a page ──► its <img src> ──► fetch ──► a File ──► the upload a dropped file takes
+                                                      │
+                                                      └─ refused (no CORS) ──► ⚠ "Situs itu tidak mengizinkan gambarnya diambil"
+                                                                               "Klik kanan gambarnya, pilih Salin gambar, lalu tempel di sini dengan Ctrl+V."
+Ctrl+V with a copied picture ─────────────────────────────► a File ──► the same upload
+```
+
+| | |
+| --- | --- |
+| why it did nothing | a drag from a web page carries **no file** — only the page's HTML for the picture (`text/html`) and the address it links to (`text/uri-list`); the dropzone takes files alone, so the drop was ignored |
+| a drag from a page | the gallery reads the `<img src>` (before the link around it, which is a page), fetches it, and uploads it as a file — its box spins meanwhile; the gallery lights while it is dragged over, as for a file |
+| a site that refuses | a picture a page may not read (no CORS header) cannot be fetched from the browser at all; a warning says how to copy it instead. The marketplaces' and Wikimedia's image hosts send `access-control-allow-origin: *`, so a drag from a marketplace page works |
+| not a picture | *Yang diseret bukan gambar* |
+| paste | **Ctrl+V** with a copied picture uploads it, anywhere on the form — the way round any site, since the browser copies the picture itself. A text paste is left alone |
+| the words | the cover box reads *Seret atau tempel (Ctrl+V) gambar ke sini, atau klik untuk memilih* |
+| no server change | the picture is fetched by the page and goes up the two-phase upload every file takes |
+| pinned by | `APictureFromAWebPageDrops`, `ABlockedPictureSaysHowToCopyIt`, `APastedPictureFillsABox` |

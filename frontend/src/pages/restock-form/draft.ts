@@ -116,7 +116,9 @@ export function supplierOpen(mode: FormMode, line: LineDraft): boolean {
 
 /**
  * The supplier every open line already shares — what an edit opens with as its supplier for all products
- * (one-supplier-for-all-in-two-steps). Null below two open lines, or when any of them differs or names none.
+ * (one-supplier-for-all-in-two-steps). ONE line counts: its supplier is all of them (owner, seeing a one-product restock
+ * open with the supplier part empty: *"maksudku untuk supplier paling atas sendiri"*, an-edit-opens-with-its-one-supplier).
+ * Null with no open line, or when any of them differs or names none.
  */
 export function sharedSupplier(
   mode: FormMode,
@@ -124,7 +126,7 @@ export function sharedSupplier(
 ): { supplierId: bigint; supplierChannelId: bigint } | null {
   const open = lines.filter((l) => supplierOpen(mode, l));
   const first = open[0];
-  if (open.length < 2 || !first || first.supplierId === 0n) return null;
+  if (!first || first.supplierId === 0n) return null;
 
   const same = open.every((l) => l.supplierId === first.supplierId && l.supplierChannelId === first.supplierChannelId);
 

@@ -162,8 +162,12 @@ export function RestockFormPage() {
   // OPENED FROM A PRODUCT'S PAGE (a-product-page-opens-the-order-and-restock-forms) — `?product=` starts a NEW restock
   // with that product as its first line, `&warehouse=` with that warehouse; Back and Save return to the page.
   const preset = usePresetProduct(isEdit ? undefined : teamId);
+  // BACK AND SAVE RETURN WHERE THE FORM WAS OPENED (owner: *"untuk navigasi edit bukan ke detail, tapi sesuai halaman
+  // sebelumnya, kalau detail ke detail, kalau list ke list"*, a-form-returns-where-it-was-opened) — the restock's page,
+  // the list (with its filters), a product's page. Reached by a link, with nothing to return to: the list, as the
+  // product form does.
   const openedFrom = cameFrom(useLocation());
-  const backTo = isEdit ? `/inventories/restock/${id}` : (openedFrom ?? "/inventories/restock");
+  const backTo = openedFrom ?? "/inventories/restock";
 
   // ── The draft ────────────────────────────────────────────────────────────────────────────────
   const [warehouseId, setWarehouseId] = useState<bigint>(() => (isEdit ? 0n : preset.warehouseId));

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, FileUpload, Icon, IconButton, Image, SimpleGrid, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ImagePlus, Plus, Star, X } from "lucide-react";
@@ -11,6 +11,51 @@ import { toaster } from "../../../components/feedback/Toaster";
 export interface ProductImageValue {
   url: string;
   thumbnailUrl: string;
+}
+
+// WHERE A PICTURE DRAGGED FROM A WEB PAGE IS. A drag from a page carries no file — only the page's HTML for the picture
+// (`text/html`, its <img src>) and the address it links to (`text/uri-list`). The <img> first: a picture inside a link
+// lists the LINK's address, which is a page, not the picture.
+function droppedImageUrl(data: DataTransfer): string {
+  const html = data.getData("text/html");
+  if (html) {
+    const src = new DOMParser().parseFromString(html, "text/html").querySelector("img")?.getAttribute("src");
+    if (src) return src;
+  }
+
+  return (
+    data
+      .getData("text/uri-list")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find((l) => l !== "" && !l.startsWith("#")) ?? ""
+  );
+}
+
+// The picture at an address, as a File the upload already knows how to send — or why it could not be had. A site that
+// sends no CORS header cannot be read from a page at all: the browser refuses, and that is "blocked", not a bug here.
+async function fileFromUrl(url: string): Promise<File | "blocked" | "not-image"> {
+  let blob: Blob;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return "blocked";
+    blob = await res.blob();
+  } catch {
+    return "blocked";
+  }
+
+  if (!blob.type.startsWith("image/")) return "not-image";
+
+  let base = "";
+  try {
+    base = url.startsWith("data:") ? "" : decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");
+  } catch {
+    base = "";
+  }
+  const ext = blob.type.slice("image/".length).split("+")[0] || "jpg";
+  const name = /\.[a-z0-9]{2,5}$/i.test(base) ? base : `${base || "image"}.${ext}`;
+
+  return new File([blob], name, { type: blob.type });
 }
 
 // ProductImagesInput manages a product's gallery — up to `max` images (default 5). Each picked file
@@ -27,7 +72,9 @@ export interface ProductImageValue {
 //   [ ★ ✕ ] [ ★ ✕ ] [ + ] [ + ]   the rest; ★ makes one the cover, + picks a file
 //
 // FILES ARE DROPPED ANYWHERE ON THE GALLERY, several at once, and fill the empty boxes in order; clicking an empty box
-// picks them instead. The COVER CHANGES BY ★, not by dragging a box onto the big one: a reorder by drag does not work
+// picks them instead. A PICTURE FROM A WEB PAGE drops too, and an image copied anywhere PASTES with Ctrl+V (owner: *"di
+// produk aku seret file dari internet untuk gambar tidak bisa"*, a-picture-comes-from-the-web-by-drag-or-paste) — a page
+// that will not hand its picture over is answered with how to copy it instead. The COVER CHANGES BY ★, not by dragging a box onto the big one: a reorder by drag does not work
 // under a finger, and this form is used from a phone at the shelf too.
 //
 // `value` (the uploaded URLs) is our single source of truth for how many images exist. Chakra's
@@ -35,6 +82,9 @@ export interface ProductImageValue {
 // (it accumulates across picks and is not touched by our Remove) — so we REMOUNT it after every
 // commit (a bumped `pickerKey`) to reset that internal list, and cap `maxFiles` to the remaining
 // room. That way each pick's `acceptedFiles` is exactly the newly-chosen files, never a stale sum.
+// How the gallery looks while something is dragged over it — a file, or a web page's picture.
+const DRAGGING = { bg: "brand.subtle", outline: "2px dashed", outlineColor: "brand.solid", outlineOffset: "4px" } as const;
+
 export function ProductImagesInput({
   teamId,
   value,
@@ -56,6 +106,10 @@ export function ProductImagesInput({
 
   const busy = pending > 0;
   const full = value.length >= max;
+
+  // A picture dragged from a web page over the gallery — the dropzone lights only for FILES, so this lights it for a
+  // page's picture too.
+  const [webDrag, setWebDrag] = useState(false);
 
   // commit updates the images AND resets the picker so its internal file list can't accumulate.
   function commit(next: ProductImageValue[]) {
@@ -135,6 +189,49 @@ export function ProductImagesInput({
     // commit even when nothing uploaded successfully, to reset the picker for the next attempt.
     commit(added.length > 0 ? [...value, ...added] : value);
   }
+
+  // A PICTURE FROM A WEB PAGE: fetched, then sent as a file. Its box spins while it is fetched.
+  async function fromWeb(url: string) {
+    if (uploadingRef.current || full) return;
+
+    setPending(1);
+    const file = await fileFromUrl(url);
+    setPending(0);
+
+    if (file === "blocked") {
+      toaster.create({
+        type: "warning",
+        title: t("products.toast.webImageBlocked"),
+        description: t("products.toast.webImageBlockedHow"),
+      });
+      return;
+    }
+    if (file === "not-image") {
+      toaster.create({ type: "warning", title: t("products.toast.webNotImage") });
+      return;
+    }
+
+    await onFiles([file]);
+  }
+
+  // A COPIED IMAGE PASTES (Ctrl+V) anywhere on the form — the way round a page that will not let its picture be fetched:
+  // the browser copies the picture itself. Text pastes are left alone. Read through a ref, so the listener added once
+  // always sees the gallery as it is now.
+  const onFilesRef = useRef(onFiles);
+  onFilesRef.current = onFiles;
+  useEffect(() => {
+    function onPaste(event: ClipboardEvent) {
+      const images = [...(event.clipboardData?.files ?? [])].filter((file) => file.type.startsWith("image/"));
+      if (images.length === 0) return;
+
+      event.preventDefault();
+      void onFilesRef.current(images);
+    }
+
+    window.addEventListener("paste", onPaste);
+
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
 
   function removeAt(index: number) {
     commit(value.filter((_, i) => i !== index));
@@ -297,7 +394,27 @@ export function ProductImagesInput({
           borderRadius="l2"
           bg="transparent"
           _hover={{ bg: "transparent" }}
-          _dragging={{ bg: "brand.subtle", outline: "2px dashed", outlineColor: "brand.solid", outlineOffset: "4px" }}
+          _dragging={DRAGGING}
+          css={webDrag ? DRAGGING : undefined}
+          // A page's picture carries no file, so the dropzone ignores it: read its address here instead. A drop WITH
+          // files is the dropzone's own.
+          onDragOver={(e) => {
+            const types = [...e.dataTransfer.types];
+            if (!busy && !full && !types.includes("Files") && (types.includes("text/uri-list") || types.includes("text/html"))) {
+              setWebDrag(true);
+            }
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setWebDrag(false);
+          }}
+          onDrop={(e) => {
+            setWebDrag(false);
+            if (busy || full || e.dataTransfer.files.length > 0) return;
+
+            const url = droppedImageUrl(e.dataTransfer);
+            if (url) void fromWeb(url);
+          }}
+          data-web-dragging={webDrag || undefined}
           data-testid="product-images-dropzone"
         >
           <Stack gap="2">

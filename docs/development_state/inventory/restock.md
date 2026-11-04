@@ -42,6 +42,8 @@ A product's note is two rows; the empty Produk hint is full size; Rincian's prod
 [an-empty-produk-is-the-full-size-hint](../../technical/frontend/restock_decision.md#an-empty-produk-is-the-full-size-hint),
 [the-summary-folds-its-products](../../technical/frontend/restock_decision.md#the-summary-folds-its-products)).
 No scrollbar flashes through the fold ([the-summary-folds-without-a-scrollbar](../../technical/frontend/restock_decision.md#the-summary-folds-without-a-scrollbar)).
+An edit opens with its one shared supplier on top, one product included ([an-edit-opens-with-its-one-supplier](../../technical/frontend/restock_decision.md#an-edit-opens-with-its-one-supplier)).
+The form goes back where it was opened — the list or the restock's page; by a link, the list ([the-restock-form-returns-where-it-was-opened](../../technical/frontend/restock_decision.md#the-restock-form-returns-where-it-was-opened)).
 Screen state only: each line still saves its own supplier.
 
 🔀 **2026-10-31: the selling list follows the screen rules** — uncommitted, for the owner's pass

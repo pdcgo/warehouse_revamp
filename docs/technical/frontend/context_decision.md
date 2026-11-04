@@ -87,6 +87,7 @@ when it applies one of these.
 | [a-dialog-pages-simply](#a-dialog-pages-simply) | a list inside a dialog pages with `Pagination` — ‹ 1 of 3 › — never the page's numbered `GrowingPager` | every product picker, from the restock form |
 | [a-dialog-pager-is-one-number](#a-dialog-pager-is-one-number) | a dialog's pager is `GrowingPager compact` — ‹ [2] ›, the current page alone in the app's pager boxes; it REPLACES the ‹ 1 of 3 › of [a-dialog-pages-simply](#a-dialog-pages-simply) | every product picker |
 | [a-save-button-says-what-it-waits-for](#a-save-button-says-what-it-waits-for) | a form's save button has ONE line by it — the first thing still missing, the rest on asking, or a green ✓ *Siap dibuat* once nothing is; `ReadyLine` | [the restock form](restock_decision.md#what-is-missing-is-one-line-over-buat), then the bundle and product forms |
+| [a-form-returns-where-it-was-opened](#a-form-returns-where-it-was-opened) | every way out of a form — save, Back, the top arrow — goes to the screen that opened it: a record's page, or a list with its filters; reached by a link, the list | [the product form](products_decision.md#the-form-returns-where-it-was-opened), then the restock form |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1962,6 +1963,27 @@ ready        ✓ Siap dibuat                          ← green
 form's Buat that was off with no reason given, and on the restock form the every-part line of
 [what-is-missing-is-one-line-over-buat](restock_decision.md#what-is-missing-is-one-line-over-buat) — now the first part,
 and the ready mark.
+
+## a-form-returns-where-it-was-opened
+
+> Owner, in chat (2026-11-04), on the restock form: *"untuk navigasi edit bukan ke detail, tapi sesuai halaman
+> sebelumnya, kalau detail ke detail, kalau list ke list"* — the rule the product form was given on 2026-10-23
+> ([the-form-returns-where-it-was-opened](products_decision.md#the-form-returns-where-it-was-opened)), said on a second
+> screen, so it is every form's.
+
+```
+a record's page ── Ubah ──► the form ── Simpan · Kembali · ← ──► that record's page
+a list, filtered ── Ubah ──► the form ── Simpan · Kembali · ← ──► the list, its filters kept
+a pasted link ─────────────► the form ── Simpan · Kembali · ← ──► the list
+```
+
+| | |
+| --- | --- |
+| the rule | every way out of a form — its save, its Back, the top arrow — goes to **one** place: the screen that opened it |
+| how | the opening screen passes its own path and query in the navigation's state (`fromHere`); the form reads it (`cameFrom`) — [lib/cameFrom.ts](../../../frontend/src/lib/cameFrom.ts). Never the browser's history: a step back after a save lands on the form's own past, and a pasted link has none |
+| reached by a link | the form's list |
+| applied to | the product form; the restock form — its Ubah, from the list's row menu and from the restock's page, both carry where they were (`SellingRestockActions`) |
+| pinned by | the product form's four stories in its entry; the restock form's `AnEditFromTheListSavesBackToTheList`, `AnEditFromTheListGoesBackToTheList`, `AnEditFromTheDetailSavesBackToTheDetail`, `ArrivedAddsALineOnlyWithANote` (by a link: the list) |
 
 ## Recorded elsewhere
 

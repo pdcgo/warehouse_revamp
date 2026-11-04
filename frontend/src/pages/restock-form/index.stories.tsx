@@ -379,7 +379,8 @@ export const ArrivedAddsALineOnlyWithANote: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("submit-restock")).toBeEnabled());
     await userEvent.click(canvas.getByTestId("submit-restock"));
-    await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 });
+    // Reached by a link (no screen opened it), so the save lands on the list (a-form-returns-where-it-was-opened).
+    await canvas.findByTestId("at-restock-list", {}, { timeout: 4000 });
   },
 };
 
@@ -429,8 +430,9 @@ export const AnAcceptedRestockIsNotEditable: Story = {
     await expect(canvas.getByTestId(`restock-status-${RestockRequestStatus.ACCEPTED}`)).toBeInTheDocument();
     await expect(canvas.queryByTestId("submit-restock")).toBeNull();
 
+    // Reached by a link, so back is the list (a-form-returns-where-it-was-opened).
     await userEvent.click(canvas.getByTestId("restock-not-editable-back"));
-    await canvas.findByTestId("at-restock-detail");
+    await canvas.findByTestId("at-restock-list");
   },
 };
 
@@ -792,5 +794,89 @@ export const TheSummaryFoldsItsProducts: Story = {
     await expect(getComputedStyle(list).overflowY).toBe("hidden");
     await waitFor(() => expect(getComputedStyle(list).overflowY).toBe("auto"));
     await expect(list).toBeVisible();
+  },
+};
+
+/** 501 cut to its first product — Beras, bought from PT Sumber Makmur's Shopee store. */
+function ongoingWithOneProduct() {
+  const saved = ONGOING.items;
+  ONGOING.items = saved.slice(0, 1);
+  resetRestockStub();
+
+  return () => {
+    ONGOING.items = saved;
+    resetRestockStub();
+  };
+}
+
+// AN EDIT OF ONE PRODUCT OPENS WITH ITS SUPPLIER on top (owner: *"aku lihat di dev belum begitu … maksudku untuk supplier
+// paling atas sendiri"*, an-edit-opens-with-its-one-supplier) — one product is "all of them", so the supplier part is not
+// left empty; the product follows it.
+export const AOneProductEditOpensWithItsSupplier: Story = {
+  render: () => <EditOngoing />,
+  beforeEach: ongoingWithOneProduct,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+
+    await waitFor(() => expect(canvas.getByTestId("restock-all-supplier-shown")).toHaveTextContent(SUMBER.name), {
+      timeout: 4000,
+    });
+    await expect(canvas.getByTestId("restock-all-supplier-shown")).toHaveTextContent("Sumber Makmur Official");
+    await expect(canvas.getByTestId("restock-line-0-supplier-follows")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("restock-line-1")).toBeNull();
+  },
+};
+
+// ── Back and Save return where the form was opened (a-form-returns-where-it-was-opened) ──────────────────────────
+
+function editOpenedFrom(from: string) {
+  return routedPage(
+    [
+      { path: "/inventories/restock/:requestId/edit", element: <RestockFormPage key="edit" /> },
+      marker("/inventories/restock/:requestId", "at-restock-detail"),
+      marker("/inventories/restock", "at-restock-list"),
+    ],
+    { pathname: `/inventories/restock/${ONGOING.id}/edit`, state: { from } },
+  );
+}
+
+const EditFromList = editOpenedFrom("/inventories/restock?status=ongoing");
+const EditFromDetail = editOpenedFrom(`/inventories/restock/${ONGOING.id}`);
+
+// OPENED FROM THE LIST, BACK TO THE LIST (owner: *"untuk navigasi edit bukan ke detail, tapi sesuai halaman sebelumnya,
+// kalau detail ke detail, kalau list ke list"*) — Save goes back there, its filter kept.
+export const AnEditFromTheListSavesBackToTheList: Story = {
+  render: () => <EditFromList />,
+  beforeEach: ongoingFromOneSupplier,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+
+    await waitFor(() => expect(canvas.getByTestId("submit-restock")).toBeEnabled(), { timeout: 4000 });
+    await userEvent.click(canvas.getByTestId("submit-restock"));
+    await canvas.findByTestId("at-restock-list", {}, { timeout: 4000 });
+  },
+};
+
+// …and the arrow back goes there too.
+export const AnEditFromTheListGoesBackToTheList: Story = {
+  render: () => <EditFromList />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+
+    await userEvent.click(canvas.getByTestId("restock-edit-back"));
+    await canvas.findByTestId("at-restock-list", {}, { timeout: 4000 });
+  },
+};
+
+// OPENED FROM THE RESTOCK'S PAGE, BACK TO IT.
+export const AnEditFromTheDetailSavesBackToTheDetail: Story = {
+  render: () => <EditFromDetail />,
+  beforeEach: ongoingFromOneSupplier,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+
+    await waitFor(() => expect(canvas.getByTestId("submit-restock")).toBeEnabled(), { timeout: 4000 });
+    await userEvent.click(canvas.getByTestId("submit-restock"));
+    await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 });
   },
 };

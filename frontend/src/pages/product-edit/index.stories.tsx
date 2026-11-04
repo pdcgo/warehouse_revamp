@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { liveProducts } from "../../../.storybook/productStub";
@@ -119,6 +119,30 @@ async function drop(canvasElement: HTMLElement, files: File[]) {
   } finally {
     DataTransferItem.prototype.webkitGetAsEntry = original;
   }
+}
+
+/**
+ * Drop a picture FROM A WEB PAGE on the gallery — no file, only the page's HTML for it and the address it links to, as a
+ * browser carries a drag from another tab.
+ */
+function dropFromPage(canvasElement: HTMLElement, src: string, link = "https://toko.example/produk/42") {
+  const zone = canvasElement.querySelector<HTMLElement>('[data-testid="product-images-dropzone"]')!;
+  const data = new DataTransfer();
+  data.setData("text/html", `<a href="${link}"><img src="${src}" alt="produk"></a>`);
+  data.setData("text/uri-list", link);
+  for (const type of ["dragenter", "dragover", "drop"]) {
+    zone.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data }));
+  }
+}
+
+/** A picture as a page would show it — a data: address, which the browser can always read. */
+async function pictureUrl(colour: string): Promise<string> {
+  const file = await picture("web.png", colour);
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.readAsDataURL(file);
+  });
 }
 
 async function attach(canvasElement: HTMLElement, files: File[]) {
@@ -429,7 +453,7 @@ export const AnEmptyGalleryAsksForADrop: Story = {
     const add = canvas.getByTestId("add-product-image");
 
     await expect(add).toHaveAttribute("data-slot", "cover");
-    await expect(add).toHaveTextContent("Drop images here, or click to choose");
+    await expect(add).toHaveTextContent("Drop or paste (Ctrl+V) images here, or click to choose");
     for (const i of [1, 2, 3, 4]) {
       await expect(canvas.getByTestId(`product-image-empty-${i}`)).toHaveAttribute("data-slot", "small");
     }
@@ -581,5 +605,50 @@ export const AWarehouseCannotCreate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByTestId("at-products", {}, { timeout: 5000 })).toBeInTheDocument();
+  },
+};
+
+// ── A picture from the web (owner: *"di produk aku seret file dari intertet untuk gambar tidak bisa"*,
+//    a-picture-comes-from-the-web-by-drag-or-paste) ────────────────────────────────────────────────────────────────
+
+/** A PICTURE DRAGGED FROM A WEB PAGE carries no file — its <img> is fetched and uploaded, and fills the cover. The
+ * <img>'s address is used, not the link around it, which is a page. */
+export const APictureFromAWebPageDrops: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    dropFromPage(canvasElement, await pictureUrl("#0ea5e9"));
+
+    await waitFor(() => expect(canvas.getByTestId("product-image-0")).toBeVisible(), { timeout: 4000 });
+    await expect(canvas.getByTestId("product-images-help")).toHaveTextContent("1/5");
+  },
+};
+
+/** A SITE THAT WILL NOT HAND ITS PICTURE OVER is answered with the way round it — copy the picture, paste it here. */
+export const ABlockedPictureSaysHowToCopyIt: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    dropFromPage(canvasElement, "https://blocked-shop.invalid/foto.jpg");
+
+    // The toast slides in — visible once it has arrived.
+    const title = await screen.findByText("That site does not let its picture be taken", {}, { timeout: 8000 });
+    await waitFor(() => expect(title).toBeVisible());
+    await expect(screen.getByText("Right-click the picture, choose Copy image, then paste it here with Ctrl+V.")).toBeVisible();
+    await expect(canvas.queryByTestId("product-image-0")).toBeNull();
+  },
+};
+
+/** A COPIED PICTURE PASTES with Ctrl+V — from any page, since the browser copies the picture itself. */
+export const APastedPictureFillsABox: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const data = new DataTransfer();
+    data.items.add(await picture("salin.png", "#f59e0b"));
+
+    document.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: data }));
+
+    await waitFor(() => expect(canvas.getByTestId("product-image-0")).toBeVisible(), { timeout: 4000 });
+    await expect(canvas.getByTestId("product-images-help")).toHaveTextContent("1/5");
   },
 };
