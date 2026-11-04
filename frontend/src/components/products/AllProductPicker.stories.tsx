@@ -214,13 +214,13 @@ export const ManyProducts: Story = {
   play: async ({ canvasElement }) => {
     await openOtherTab(canvasElement);
 
-    // A pager, which only renders when the list genuinely does not fit on one page.
-    await expect(screen.getByTestId("pagination")).toBeVisible();
+    // The pager — one number between the arrows (a-dialog-pager-is-one-number), here over several pages.
+    await expect(screen.getByTestId("product-picker-pager")).toBeVisible();
 
     // THE SHORT LAST PAGE. 45 products over pages of ten leaves five on page 5, so the dialog is
     // asked to hold two very different row counts in one sitting.
     for (let i = 1; i < LAST_PAGE; i += 1) {
-      await userEvent.click(screen.getByTestId("page-next"));
+      await userEvent.click(screen.getByTestId("product-picker-pager-next"));
     }
 
     await waitFor(() => {
@@ -258,7 +258,7 @@ export const OnlyTheTableScrolls: Story = {
     scroll.scrollTop = scroll.scrollHeight;
     await waitFor(() => expect(scroll.scrollTop).toBeGreaterThan(0));
 
-    await expect(screen.getByTestId("pagination").getBoundingClientRect().bottom).toBeLessThanOrEqual(
+    await expect(screen.getByTestId("product-picker-pager").getBoundingClientRect().bottom).toBeLessThanOrEqual(
       dialog.getBoundingClientRect().bottom + 1,
     );
     await expect(screen.getByTestId("product-picker-search")).toBeVisible();
@@ -266,7 +266,7 @@ export const OnlyTheTableScrolls: Story = {
     // A NEW PAGE IS SHOWN FROM ITS FIRST ROW. The browser keeps a container's scrollTop across a
     // content swap, so without the reset page 2 opens halfway down — which reads as a list that
     // starts at row six.
-    await userEvent.click(screen.getByTestId("page-next"));
+    await userEvent.click(screen.getByTestId("product-picker-pager-next"));
 
     await waitFor(() => expect(scroll.scrollTop).toBe(0));
   },

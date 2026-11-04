@@ -48,6 +48,9 @@ flowchart LR
 | shared | `features/bundles/` — `adapt.ts` (`lineState`), `queries.ts` (`useBundles`, `useBundle`, `useBundleSearch`, `useBundleProducts`, `useBundleStock`, the writes), `prefill.ts`; `lib/roles.ts` `canCreateBundle`, `canChangeBundle` |
 | Storybook | `.storybook/bundleStub.ts` + `bundleFixtures.ts` play the same rules; `productScenario.ts` locks, archives or reserves a product for one story |
 
+🔀 **2026-11-03:** the form's "Masih kurang" list under Simpan became `ReadyLine` over it — the first missing part,
+the rest on asking, ✓ when ready ([a-save-button-says-what-it-waits-for](../../technical/frontend/context_decision.md#a-save-button-says-what-it-waits-for)).
+
 ## Tests and audits
 
 | | |

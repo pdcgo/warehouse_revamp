@@ -170,8 +170,8 @@ const RestockSellingPage = lazy(() =>
 const RestockWarehousePage = lazy(() =>
   import("./pages/restock-warehouse").then((m) => ({ default: m.RestockWarehousePage })),
 );
-const RestockRequestFormPage = lazy(() =>
-  import("./pages/restock-request-form").then((m) => ({ default: m.RestockRequestFormPage })),
+const RestockFormPage = lazy(() =>
+  import("./pages/restock-form").then((m) => ({ default: m.RestockFormPage })),
 );
 const RestockSellingDetailPage = lazy(() =>
   import("./pages/restock-selling-detail").then((m) => ({ default: m.RestockSellingDetailPage })),
@@ -397,9 +397,9 @@ export const router = createBrowserRouter([
       // distinct `key`s so that switching between them REMOUNTS rather than reconciles — same component
       // type at the same position otherwise keeps its state, which would carry a loaded request's
       // fields into a blank create form.
-      { path: "inventories/restock/new", element: <RestockRequestFormPage key="create" /> },
+      { path: "inventories/restock/new", element: <RestockFormPage key="create" /> },
       { path: "inventories/restock/:requestId", element: <RestockDetailRoute /> },
-      { path: "inventories/restock/:requestId/edit", element: <RestockRequestFormPage key="edit" /> },
+      { path: "inventories/restock/:requestId/edit", element: <RestockFormPage key="edit" /> },
       // The warehouse ACCEPTS a delivery here (#157) — a page, not a dialog.
       { path: "inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },
       // After accepting, print the shelf labels for what landed (#207) — the step after accept.

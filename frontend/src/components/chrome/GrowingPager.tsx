@@ -15,7 +15,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export const description =
-  "A pager for lists that know only whether ANOTHER page exists — no total. Every page already opened gets a number, so going back to any of them is one click; › at the end opens the next new page and the numbers grow (owner: `the-accounts-pager-grows-with-the-pages-opened`). The trail lives in the component, so a refresh or leaving the screen forgets it, and a `resetKey` change (a filter, a tab, a sort) starts it over. The current page is filled in the main tone. One page reads ‹ [1] › with both arrows off — it is always on screen. On a phone the buttons are centred and the per-page selector is not drawn.";
+  "A pager for lists that know only whether ANOTHER page exists — no total. Every page already opened gets a number, so going back to any of them is one click; › at the end opens the next new page and the numbers grow (owner: `the-accounts-pager-grows-with-the-pages-opened`). The trail lives in the component, so a refresh or leaving the screen forgets it, and a `resetKey` change (a filter, a tab, a sort) starts it over. The current page is filled in the main tone. One page reads ‹ [1] › with both arrows off — it is always on screen. On a phone the buttons are centred and the per-page selector is not drawn. `compact` draws the current page alone, ‹ [2] › — a dialog's pager (`a-dialog-pager-is-one-number`).";
 
 export interface GrowingPagerProps {
   /** The current page, 1-based. */
@@ -32,6 +32,11 @@ export interface GrowingPagerProps {
   /** With both this and `onPageSizeChange`, a per-page selector sits on the left. */
   pageSizeOptions?: number[];
   onPageSizeChange?: (size: number) => void;
+  /**
+   * ONE NUMBER — the current page alone between the arrows, ‹ [2] ›, in the same boxes. For a list inside a dialog
+   * (a-dialog-pager-is-one-number): a quick pass over a small window, where a trail of numbers is more than it needs.
+   */
+  compact?: boolean;
   testId?: string;
 }
 
@@ -52,6 +57,7 @@ export function GrowingPager({
   pageSize = 20,
   pageSizeOptions,
   onPageSizeChange,
+  compact = false,
   testId = "growing-pager",
 }: GrowingPagerProps) {
   const { t } = useTranslation();
@@ -92,6 +98,10 @@ export function GrowingPager({
   // selector and its label filled the row and pushed the numbers to a second one; a phone keeps the list's page size.
   // The breakpoint is FilterBar's and the shells' (`md`).
   const phone = useBreakpointValue({ base: true, md: false }) ?? false;
+
+  // The page you are on, in the main tone (a-chosen-option-is-in-the-main-tone) — its border too, so the filled box is
+  // the same size as the outlined ones beside it.
+  const onPage = { bg: "brand.solid", borderColor: "brand.solid", color: "brand.contrast", _hover: { bg: "brand.solid" } };
 
   return (
     <Flex justify={phone ? "center" : "flex-end"} align="center" gap="3" wrap="wrap" w="full" data-testid={testId}>
@@ -149,19 +159,24 @@ export function GrowingPager({
             </IconButton>
           </ChakraPagination.PrevTrigger>
 
-          <ChakraPagination.Items
-            render={(item) => (
-              <IconButton
-                aria-label={t("common.goToPage", { page: item.value })}
-                data-testid={`${testId}-page-${item.value}`}
-                // The page you are on, in the main tone (a-chosen-option-is-in-the-main-tone) — its border too, so
-                // the filled box is the same size as the outlined ones beside it.
-                _selected={{ bg: "brand.solid", borderColor: "brand.solid", color: "brand.contrast", _hover: { bg: "brand.solid" } }}
-              >
-                {item.value}
-              </IconButton>
-            )}
-          />
+          {compact ? (
+            // Not a button to press — the page you are on, said in the box the trail would fill.
+            <IconButton as="span" aria-current="page" pointerEvents="none" data-testid={`${testId}-page-${page}`} {...onPage}>
+              {page}
+            </IconButton>
+          ) : (
+            <ChakraPagination.Items
+              render={(item) => (
+                <IconButton
+                  aria-label={t("common.goToPage", { page: item.value })}
+                  data-testid={`${testId}-page-${item.value}`}
+                  _selected={onPage}
+                >
+                  {item.value}
+                </IconButton>
+              )}
+            />
+          )}
 
           <ChakraPagination.NextTrigger asChild>
             <IconButton aria-label={t("common.nextPage")} data-testid={`${testId}-next`}>

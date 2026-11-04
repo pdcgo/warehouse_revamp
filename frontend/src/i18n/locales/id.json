@@ -211,6 +211,13 @@
     "clearSearch": "Hapus pencarian",
     "actions": "Aksi"
   },
+  "readyLine": {
+    "missing": "Belum diisi:",
+    "more": "+{{count}} lainnya",
+    "detailTitle": "Yang belum diisi",
+    "readyCreate": "Siap dibuat",
+    "readySave": "Siap disimpan"
+  },
   "dateRange": {
     "all": "Semua tanggal",
     "today": "Hari ini",
@@ -771,6 +778,14 @@
       "crossLocked": "Hanya milik kami"
     },
     "form": {
+      "missing": {
+        "sku": "SKU",
+        "skuTaken": "SKU yang belum dipakai",
+        "name": "nama",
+        "category": "kategori",
+        "markup": "markup cross yang benar",
+        "minimum": "stok minimum"
+      },
       "editTitle": "Ubah Produk",
       "newTitle": "Produk Baru",
       "infoTitle": "Info Produk",
@@ -889,10 +904,9 @@
       "created": "Bundel \"{{name}}\" dibuat",
       "saved": "Bundel disimpan",
       "missing": {
-        "title": "Masih kurang:",
         "name": "nama",
-        "lines": "minimal satu produk",
-        "quantity": "jumlah 1 sampai 9999 di setiap produk"
+        "lines": "produk",
+        "quantity": "jumlah tiap produk"
       }
     },
     "detail": {
@@ -1338,8 +1352,8 @@
   "restock": {
     "title": "Permintaan Restok",
     "selectTeam": "Pilih tim untuk melihat permintaan restoknya.",
-    "selectTeamCreate": "Pilih tim untuk membuat permintaan restok.",
-    "selectTeamEdit": "Pilih tim untuk mengubah permintaan restok.",
+    "selectTeamCreate": "Pilih tim untuk membuat restok.",
+    "selectTeamEdit": "Pilih tim untuk mengubah restok.",
     "newRequest": "Restok Baru",
     "newRequestTitle": "Permintaan Restok Baru",
     "editRequestTitle": "Ubah Permintaan Restok",
@@ -1465,8 +1479,8 @@
       "from": "Dari",
       "courier": "Kurir",
       "tracking": "Nomor resi",
-      "receiptPhoto": "Foto label",
-      "noReceiptPhoto": "Belum ada foto label",
+      "receiptPhoto": "Foto resi",
+      "noReceiptPhoto": "Belum ada foto resi",
       "arrivedAt": "Tiba",
       "payment": "Pembayaran",
       "paidFrom": "Dibayar dari",
@@ -1514,7 +1528,7 @@
         }
       },
       "navLabel": "Bagian restok",
-      "receiptPhotoLabel": "Foto label",
+      "receiptPhotoLabel": "Foto resi",
       "section": {
         "courier": "Ongkir COD"
       },
@@ -1588,7 +1602,8 @@
       "products": "Produk",
       "addProduct": "Pilih Produk",
       "removeProduct": "Hapus produk",
-      "noProducts": "Belum ada produk — pilih produk yang diminta restock ini.",
+      "noProducts": "Belum ada produk",
+      "noProductsHint": "Pilih produk yang dibawa restok ini.",
       "shippingCost": "Ongkos kirim",
       "shippingCostHelp": "Biaya pengiriman itu sendiri, di luar harga barang.",
       "paymentTypeNone": "Tidak dicatat",
@@ -1596,37 +1611,46 @@
       "paymentBankAccount": "Rekening bank",
       "note": "Catatan",
       "noteHelp": "Hal yang perlu diketahui gudang tentang restok ini.",
-      "notePlaceholder": "Tambahkan catatan tentang restok ini…",
-      "submit": "Buat Permintaan",
+      "notePlaceholder": "Contoh: Untuk promo 10.10",
+      "submit": "Buat Restok",
       "saveChanges": "Simpan Perubahan",
-      "newTitle": "Permintaan Restok Baru",
-      "editTitle": "Ubah Permintaan Restok",
+      "newTitle": "Restok Baru",
+      "editTitle": "Ubah Restok",
       "back": "Kembali",
-      "selectTeamCreate": "Pilih tim untuk membuat permintaan restok.",
-      "selectTeamEdit": "Pilih tim untuk mengubah permintaan restok.",
-      "invalidId": "ID permintaan restok tidak valid.",
-      "notFound": "Permintaan restok tidak ditemukan.",
-      "backToList": "Kembali ke Permintaan Restok",
+      "selectTeamCreate": "Pilih tim untuk membuat restok.",
+      "selectTeamEdit": "Pilih tim untuk mengubah restok.",
+      "invalidId": "ID restok tidak valid.",
+      "notFound": "Restok tidak ditemukan.",
+      "backToList": "Kembali ke Restok",
       "count": "Jumlah",
       "lineTotal": "Total",
       "perPiece": "{{price}} / pcs",
       "boughtFrom": "Dibeli dari",
       "changeSupplier": "Ganti",
       "clearSupplier": "Hapus supplier",
+      "allSupplierPick": "Pilih Supplier",
+      "supplierTitle": "Supplier",
+      "supplierHelp": "Setiap produk perlu supplier — pilih satu untuk semua, atau atur di tiap produk.",
+      "allSupplierNone": "Belum dipilih",
+      "clearAllSupplier": "Hapus supplier semua produk",
+      "followsAll": "Ikut semua",
+      "followAll": "Ikut Semua",
       "lineNote": "Catatan baris",
-      "lineNotePlaceholder": "mis. stok lebih",
+      "lineNotePlaceholder": "Contoh: stok lebih",
       "lineNoteRequired": "Produk yang ditambahkan setelah paket tiba wajib diberi catatan.",
       "addedLine": "Ditambahkan",
       "paymentAndParcel": "Pembayaran dan Paket",
       "financeAccount": "Dibayar dari",
       "financeAccountHelp": "Rekening operasional tim yang membayar restok ini.",
-      "invoiceRef": "Nomor invoice atau pesanan",
-      "invoiceRefHelp": "Nomor invoice atau pesanan dari toko — satu per restok.",
+      "invoiceRef": "Order ID",
+      "invoiceRefHelp": "Order ID dari toko tempat membeli — satu per restok.",
+      "invoiceRefPlaceholder": "Contoh: INV/2026/10/1001",
       "courier": "Kurir",
       "courierHelp": "Yang membawa paket ke gudang.",
       "trackingNumber": "Nomor resi",
       "trackingNumberHelp": "Resi pada label paket — cara gudang menemukan restok ini saat paket tiba.",
-      "labelPhoto": "Foto label",
+      "trackingNumberPlaceholder": "Contoh: JNE0123456789",
+      "labelPhoto": "Foto resi",
       "restockNote": "Catatan Restok",
       "lockedArrived": "Ditutup sejak paket tiba",
       "linesLockedHint": "Jumlah, total, dan catatan masih bisa diubah. Baris yang sudah dipesan tetap dengan supplier dan tokonya; baris yang Anda tambahkan bisa memilih sendiri.",
@@ -1635,8 +1659,8 @@
       "notEditable": "Restok ini tidak bisa diubah lagi — hanya restok yang masih berjalan, atau baris dari restok yang sudah tiba, yang bisa diubah.",
       "notEditableOwner": "Hanya tim yang membuat restok ini yang bisa mengubahnya.",
       "backToRestock": "Kembali ke Restok",
-      "toastCreated": "Permintaan restok dibuat",
-      "toastUpdated": "Permintaan restok diperbarui",
+      "toastCreated": "Restok dibuat",
+      "toastUpdated": "Restok diperbarui",
       "summary": {
         "products": "Produk",
         "none": "Belum ada produk dipilih.",
@@ -1646,12 +1670,14 @@
         "courierNote": "Biaya kurir di depan pintu tidak termasuk total ini — gudang mengisinya saat menerima paket."
       },
       "missing": {
-        "title": "Masih dibutuhkan sebelum menyimpan:",
         "warehouse": "gudang",
-        "account": "rekening yang membayar",
-        "lines": "minimal satu produk",
-        "count": "jumlah minimal 1 di setiap baris",
-        "newLineNote": "catatan pada setiap produk yang ditambahkan setelah paket tiba"
+        "account": "rekening",
+        "lines": "produk",
+        "count": "jumlah tiap produk",
+        "total": "total tiap produk",
+        "newLineNote": "catatan produk tambahan",
+        "supplier": "supplier tiap produk",
+        "receipt": "resi"
       }
     },
     "cancel": {
@@ -4445,7 +4471,7 @@
       "courier": "Kurir",
       "courierPlaceholder": "Pilih kurir",
       "tracking": "Nomor resi",
-      "labelPhoto": "Foto label",
+      "labelPhoto": "Foto resi",
       "optionalHint": "Semua opsional — kendaraan gudang sendiri tidak punya resi.",
       "dismiss": "Nanti Saja"
     },
@@ -4563,7 +4589,7 @@
           "reason": "Biaya tersimpan dan diumumkan setiap kali disimpan, tetapi akun pembayar belum mencatatnya — pendengarnya belum dibuat."
         },
         "labelPhoto": {
-          "label": "Foto label",
+          "label": "Foto resi",
           "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
         }
       }
@@ -4571,7 +4597,7 @@
     "warehouse": {
       "pending": {
         "labelPhoto": {
-          "label": "Foto label",
+          "label": "Foto resi",
           "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
         }
       }
@@ -4579,7 +4605,7 @@
     "warehouseDetail": {
       "pending": {
         "labelPhoto": {
-          "label": "Foto label",
+          "label": "Foto resi",
           "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
         }
       }

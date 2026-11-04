@@ -55,6 +55,11 @@ export interface LineDraft {
   supplierId: bigint;
   /** One of that supplier's stores; 0n = none (a-line-may-name-a-supplier-without-a-channel). */
   supplierChannelId: bigint;
+  /**
+   * The line takes the form's SUPPLIER FOR ALL PRODUCTS (one-supplier-for-all-in-two-steps) — a screen convenience,
+   * never sent: the line still saves its own supplier and store. False once the line picks its own.
+   */
+  followsAll: boolean;
   /** The selling team's note on the line — "extra stock" (three-notes-one-writer-each). */
   note: string;
   /** Display only — the restock line stores no picture. */
@@ -78,6 +83,7 @@ export function lineFromPicked(p: PickedProduct): LineDraft {
     total: "",
     supplierId: 0n,
     supplierChannelId: 0n,
+    followsAll: false,
     note: "",
     imageUrl: p.defaultImageUrl ?? "",
     thumbnailUrl: p.defaultImageThumbnailUrl ?? "",
@@ -95,11 +101,34 @@ export function lineFromItem(item: RestockRequestItem): LineDraft {
     total: String(item.total),
     supplierId: item.supplierId,
     supplierChannelId: item.supplierChannelId,
+    followsAll: false,
     note: item.note,
     imageUrl: "",
     thumbnailUrl: "",
     stored: true,
   };
+}
+
+/** Whether the line's supplier may change — closed on a STORED line while the box is at the door. */
+export function supplierOpen(mode: FormMode, line: LineDraft): boolean {
+  return !(mode === "arrived" && line.stored);
+}
+
+/**
+ * The supplier every open line already shares — what an edit opens with as its supplier for all products
+ * (one-supplier-for-all-in-two-steps). Null below two open lines, or when any of them differs or names none.
+ */
+export function sharedSupplier(
+  mode: FormMode,
+  lines: LineDraft[],
+): { supplierId: bigint; supplierChannelId: bigint } | null {
+  const open = lines.filter((l) => supplierOpen(mode, l));
+  const first = open[0];
+  if (open.length < 2 || !first || first.supplierId === 0n) return null;
+
+  const same = open.every((l) => l.supplierId === first.supplierId && l.supplierChannelId === first.supplierChannelId);
+
+  return same ? { supplierId: first.supplierId, supplierChannelId: first.supplierChannelId } : null;
 }
 
 /** A count is a whole number of at least 1; anything else reads as 0, which no line may carry. */
@@ -110,7 +139,7 @@ export function toQty(raw: string): number {
   return n;
 }
 
-/** The line's money — the typed total (blank is 0, which is legitimate: a sample). */
+/** The line's money — the typed total; blank reads as 0, which the form no longer saves (the-count-and-total-are-required). */
 export function lineMoney(line: LineDraft): number {
   return toRupiah(line.total);
 }
@@ -140,24 +169,47 @@ export function totals(lines: LineDraft[], shippingCost: string) {
 }
 
 /** What still stands between the form and Save — each an i18n key under `restock.form.missing`. */
-export type MissingId = "warehouse" | "account" | "lines" | "count" | "newLineNote";
+export type MissingId =
+  | "lines"
+  | "supplier"
+  | "count"
+  | "total"
+  | "newLineNote"
+  | "warehouse"
+  | "account"
+  | "receipt";
 
+/**
+ * IN THE ORDER THE FORM IS CHECKED (owner: *"untuk urutan validasi restocknya mulai dari produk, gudang, rekening, resi"*,
+ * *"di produk perlu cek semuanya punya supplier dulu"*, the-checks-run-products-warehouse-account-resi): the products —
+ * there are some, every one names its supplier, every count is real, an added one says why — then the warehouse, the
+ * paying account, the tracking number. The first entry is the one the line by Buat Restok names.
+ *
+ * ⚠ Stricter than the server: it takes a line with no supplier and a restock with no resi. A supplier closed by the
+ * box's arrival, and the account and the resi closed with the parcel, are never asked for — they cannot be given.
+ */
 export function missingParts(args: {
   mode: FormMode;
   warehouseId: bigint;
   financeAccountId: bigint;
+  receipt: string;
   lines: LineDraft[];
 }): MissingId[] {
-  const { mode, warehouseId, financeAccountId, lines } = args;
+  const { mode, warehouseId, financeAccountId, receipt, lines } = args;
   const out: MissingId[] = [];
 
+  if (lines.length === 0) out.push("lines");
+  if (lines.some((l) => supplierOpen(mode, l) && l.supplierId === 0n)) out.push("supplier");
+  if (lines.some((l) => toQty(l.count) < 1)) out.push("count");
+  // A TOTAL ABOVE ZERO on every line (owner: *"jumlah dan total produk juga wajib"*, the-count-and-total-are-required) —
+  // a blank total no longer passes as a free sample.
+  if (lines.some((l) => lineMoney(l) <= 0)) out.push("total");
+  if (lines.some((l) => needsNote(mode, l))) out.push("newLineNote");
   if (warehouseId === 0n) out.push("warehouse");
   // REQUIRED (a-restock-names-its-paying-account). While arrived it is closed, and was set when the restock was
-  // raised, so it is not asked for again.
+  // raised, so it is not asked for again — nor is the resi, closed with it.
   if (financeAccountId === 0n && mode !== "arrived") out.push("account");
-  if (lines.length === 0) out.push("lines");
-  if (lines.some((l) => toQty(l.count) < 1)) out.push("count");
-  if (lines.some((l) => needsNote(mode, l))) out.push("newLineNote");
+  if (receipt.trim() === "" && mode !== "arrived") out.push("receipt");
 
   return out;
 }

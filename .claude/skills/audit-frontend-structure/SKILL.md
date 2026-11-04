@@ -96,7 +96,7 @@ rules (#136/#139, #131) — **extract, never rewrite**, and keep the props ident
 
 `body` and `local(≥40)` are near-independent, and the pair tells you *which* problem the page has:
 
-- **big `body`, no locals** (`restock-request-form` 621, `order-draft-detail` 477) — one giant
+- **big `body`, no locals** (`restock-form` 621, `order-draft-detail` 477) — one giant
   function. Splitting means *finding* the seams, not moving existing ones. The harder case.
 - **moderate `body`, big locals** (`rack-detail` 410 + two 122-line locals) — the seams are already
   there and named. Nearly mechanical: move the local to `components/`, export it, import it back.
@@ -210,7 +210,7 @@ Write to `.claude/skills/audit-frontend-structure/last-report.md` (gitignored). 
 
 ## Needs a seam decision — one big body, no existing boundaries
 | page | body | proposed split | the call to make |
-| restock-request-form | 621 | header / item rows / totals footer | do the item rows own their own state? |
+| restock-form | 621 | header / item rows / totals footer | do the item rows own their own state? |
 
 ## Misfiled today (CLAUDE.md violation)
 ## Replace with an existing shared component

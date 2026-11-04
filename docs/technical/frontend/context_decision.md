@@ -84,6 +84,9 @@ when it applies one of these.
 | [nothing-runs-past-a-phones-edge](#nothing-runs-past-a-phones-edge) | on a phone — down to 320px — nothing runs past the screen's edge: a panel is capped at the screen, a row of tabs or a table scrolls inside its own box, a row of controls lets its search give way | every screen; swept on every Mobile story |
 | [a-phone-card-shows-no-note](#a-phone-card-shows-no-note) | on a phone a summary card drops its NOTE — how the figure is made — and keeps its label, figure and data line; `SummaryCard` does it on every screen | [the supplier figures](suppliers_decision.md#a-phone-card-shows-no-note), then every card |
 | [a-sticky-bar-waits-for-the-whole-title-row](#a-sticky-bar-waits-for-the-whole-title-row) | a detail page's sticky title bar shows once its WHOLE title row has gone behind it — the heading, what wrapped beside it, the reference line under it — never while part of the row still shows below; `useStickyTitle` | the restock page on a phone, then every detail page with a sticky title |
+| [a-dialog-pages-simply](#a-dialog-pages-simply) | a list inside a dialog pages with `Pagination` — ‹ 1 of 3 › — never the page's numbered `GrowingPager` | every product picker, from the restock form |
+| [a-dialog-pager-is-one-number](#a-dialog-pager-is-one-number) | a dialog's pager is `GrowingPager compact` — ‹ [2] ›, the current page alone in the app's pager boxes; it REPLACES the ‹ 1 of 3 › of [a-dialog-pages-simply](#a-dialog-pages-simply) | every product picker |
+| [a-save-button-says-what-it-waits-for](#a-save-button-says-what-it-waits-for) | a form's save button has ONE line by it — the first thing still missing, the rest on asking, or a green ✓ *Siap dibuat* once nothing is; `ReadyLine` | [the restock form](restock_decision.md#what-is-missing-is-one-line-over-buat), then the bundle and product forms |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1884,6 +1887,81 @@ before                          now
 
 **What it refines:** [the-title-row-is-the-sticky-bar](products_decision.md#the-title-row-is-the-sticky-bar) said
 the bar shows *"once the title has gone behind it"*, and *the title* was built as the heading. It is the row.
+
+## a-dialog-pages-simply
+
+> Owner, in chat (2026-11-03), on the restock form's product picker: *"paginasi di modal simpel saja, < page >, bukan
+> seperti halaman"*.
+
+```
+a page — GrowingPager                    a dialog — Pagination
+[‹] [1] [2] [3] [›]                      ‹  1 of 3  ›
+```
+
+| | |
+| --- | --- |
+| the rule | a list inside a **dialog** pages with `Pagination` — ‹, the page of the total, › — never the page's numbered `GrowingPager` |
+| why | a picker is a quick pass over a small window of rows; a trail of page numbers is a page's tool for walking a long list and back |
+| still on screen | on one page and on none, ‹ 1 of 1 › — [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) holds |
+| where | every product picker at once, through `ProductPickerShell`; the supplier picker already paged so |
+| pinned by | `ThePickerPagesSimply` (the restock form) |
+
+**What it narrows:** [every-list-pages-with-the-growing-pager](#every-list-pages-with-the-growing-pager) is for a
+page's lists — a dialog's list is not one of them. It reverses the picker's pager in
+[the-restock-form-is-three-columns](restock_decision.md#the-restock-form-is-three-columns), which had moved it to
+`GrowingPager` the same day.
+
+## a-dialog-pager-is-one-number
+
+> Owner, in chat (2026-11-03), seeing ‹ 1 of 3 › in the product picker: *"paginasinya aku ga mau yang num of num, nomor
+> saja, ui mirip yang sudah pernah dibuat"*.
+
+```
+a page — the trail          a dialog — one number          withdrawn
+[‹] [1] [2] [3] [›]          [‹] [2] [›]                    ‹  2 of 3  ›
+```
+
+| | |
+| --- | --- |
+| the rule | a list inside a dialog pages with **`GrowingPager` `compact`**: ‹, the current page alone, › — the same outlined boxes as a page's pager, the page filled in the main tone ([a-chosen-option-is-in-the-main-tone](#a-chosen-option-is-in-the-main-tone)) |
+| never | "2 of 3", and never a trail of numbers |
+| the arrows | ‹ off on page 1, › off on the last — still on screen on one page, ‹ [1] › ([the-pager-is-always-on-screen](#the-pager-is-always-on-screen)) |
+| the number | not a button — it says where you are (`aria-current="page"`) |
+| where | every product picker, through `ProductPickerShell` |
+| pinned by | `CompactIsOneNumber` (`GrowingPager`), `ThePickerPagerIsOneNumber` (the restock form) |
+
+**What it replaces:** the control in [a-dialog-pages-simply](#a-dialog-pages-simply) — `Pagination`, ‹ 1 of 3 ›. That a
+dialog pages more simply than a page still holds; *how* is this.
+
+## a-save-button-says-what-it-waits-for
+
+> Owner, in chat (2026-11-03), on the restock form: *"catatan di bawah buat tidak butuh, atau buat lebih bagus sebelum
+> buat restok, tapi jangan makan tempat"*; asked which other forms still listed what was missing: *"aku ingin info 1 aja
+> ditampilkan yang belum saja, kalau sudah semua berarti ada tanda siap, masih bisa didetailkan"*.
+
+```
+not ready    ⓘ Belum diisi: gudang  +2 lainnya      ← +2 lainnya opens the whole list
+             [ + Buat Restok ]  (off)
+ready        ✓ Siap dibuat                          ← green
+             [ + Buat Restok ]
+```
+
+| | |
+| --- | --- |
+| the rule | a form whose save button can be OFF has **one line by it** saying why — or that it is ready |
+| not ready | the **first** thing still missing, in the order the form asks for it — *Belum diisi: gudang*. More than one: **+N lainnya**, which opens every missing part in a popover ("masih bisa didetailkan") |
+| ready | a green ✓ and the form's word — *Siap dibuat* on a new record, *Siap disimpan* on an edit |
+| the words | each part a word or two — *gudang*, *rekening*, *produk*, *kategori* — never a sentence |
+| the space | one line, 18px — over the button in a narrow column, beside it in a row of buttons; never a list under the button |
+| the component | [`ReadyLine`](../../../frontend/src/components/feedback/ReadyLine.tsx) — `missing` (id + label), `readyLabel`, `testId`; story *Components/Feedback/ReadyLine* |
+| applied to | the restock form (over Buat Restok), the bundle form (over Simpan), the product form (beside Kembali · Buat, in the foot) |
+| not | the order form — its Buat is never off, its checks run on the click; a small dialog whose two or three required fields all show their `*` |
+| the rest | the warehouse transfer form says what it needs in a line beside its button already — it moves to `ReadyLine` when it is next worked on |
+
+**What it replaces:** the list under the button on the bundle form (*Masih kurang:* and a line per part), the product
+form's Buat that was off with no reason given, and on the restock form the every-part line of
+[what-is-missing-is-one-line-over-buat](restock_decision.md#what-is-missing-is-one-line-over-buat) — now the first part,
+and the ready mark.
 
 ## Recorded elsewhere
 

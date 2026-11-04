@@ -28,6 +28,7 @@ import { CharCount } from "../../components/inputs/CharCount";
 import { PRODUCT_LIMITS } from "../../features/products/limits";
 import { cameFrom } from "../../lib/cameFrom";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { ReadyLine } from "../../components/feedback/ReadyLine";
 import { formatMarkupValue, parseMarkupPercent } from "../../lib/markup";
 import { parseQuantity } from "../../lib/quantity";
 import { toaster } from "../../components/feedback/Toaster";
@@ -239,14 +240,17 @@ export function ProductEditPage() {
   // The SKU the server refused, while it is still the one typed.
   const skuTaken = takenSku !== null && sku.trim() === takenSku;
 
-  // Category is required; SKU and name too. The backend enforces all three regardless.
-  const canSave =
-    sku.trim() !== "" &&
-    name.trim() !== "" &&
-    categoryId > 0n &&
-    crossMarkupBps !== null &&
-    lockUsable &&
-    !skuTaken;
+  // Category is required; SKU and name too. The backend enforces all three regardless. Each part that is not there yet
+  // has a name, in the order the form asks for them, for the line by Save (a-save-button-says-what-it-waits-for).
+  const missing = [
+    sku.trim() === "" && "sku",
+    skuTaken && "skuTaken",
+    name.trim() === "" && "name",
+    categoryId <= 0n && "category",
+    crossMarkupBps === null && "markup",
+    !lockUsable && "minimum",
+  ].filter((m): m is string => m !== false);
+  const canSave = missing.length === 0;
 
   return (
     // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared). At the canvas's LEFT edge, not
@@ -433,7 +437,14 @@ export function ProductEditPage() {
               *"kembali di sebelah buat, buat plus saja"*) — somebody who scrolled to the end of the form leaves it from
               there, not by climbing back to the arrow at the top. Back goes where the top arrow goes; both carry their
               icon (an-action-button-carries-its-icon) — Buat its plus, Simpan its disk. */}
-          <Flex justify="end" gap="3">
+          <Flex justify="end" align="center" gap="3" wrap="wrap">
+            {/* READY, OR THE ONE THING IT WAITS FOR — beside the buttons, in the row they already take, so it costs
+                no height; on a phone the row wraps and it sits over them (a-save-button-says-what-it-waits-for). */}
+            <ReadyLine
+              missing={missing.map((m) => ({ id: m, label: t(`products.form.missing.${m}`) }))}
+              readyLabel={editing ? t("readyLine.readySave") : t("readyLine.readyCreate")}
+              testId="product-edit"
+            />
             <Button type="button" variant="outline" data-testid="product-edit-back-foot" onClick={() => navigate(backTo)}>
               <Icon as={ArrowLeft} boxSize="4" />
               {t("products.form.back")}

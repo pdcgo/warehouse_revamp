@@ -8,23 +8,24 @@ import {
   HStack,
   Icon,
   IconButton,
-  Input,
   SimpleGrid,
   Stack,
-  Text,
+  Textarea,
 } from "@chakra-ui/react";
-import { Trash2, X } from "lucide-react";
+import { Trash2, Undo2, X } from "lucide-react";
 
 import type { SupplierChannel } from "../../../gen/warehouse/supplier/v1/supplier_channel_pb";
 import type { SupplierRecord } from "../../../features/suppliers/adapt";
-import { LineSupplier } from "../../../features/restock/LineSupplier";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
-import { SupplierChannelPicker } from "../../../components/pickers/SupplierChannelPicker";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatRupiahNumber } from "../../../lib/money";
-import { type FormMode, type LineDraft, needsNote, perPiece, toQty } from "../draft";
+import { type FormMode, type LineDraft, needsNote, perPiece, supplierOpen, toQty } from "../draft";
+import { SupplierBox } from "./SupplierBox";
+
+/** A line's note — the contract's `max_len`. */
+const MAX_LINE_NOTE = 200;
 
 export interface LineCardProps {
   line: LineDraft;
@@ -34,7 +35,11 @@ export interface LineCardProps {
   teamId: bigint;
   suppliers: Record<string, SupplierRecord>;
   channels: Record<string, SupplierChannel>;
+  /** The form has a supplier for all products (one-supplier-for-all-in-two-steps). */
+  hasAllSupplier: boolean;
   onPatch: (patch: Partial<LineDraft>) => void;
+  /** Back to the supplier for all products, from a line that picked its own. */
+  onFollowAll: () => void;
   onRemove: () => void;
 }
 
@@ -49,12 +54,29 @@ export interface LineCardProps {
 // A STORED line keeps its supplier and cannot be removed — it becomes `missing` at accept
 // (lines-can-be-added-not-removed-while-arrived). A line added in this edit carries an "Added" badge, needs a note, and
 // may name where it was bought (a-line-added-after-arrival-names-its-supplier).
-export function LineCard({ line, index, mode, teamId, suppliers, channels, onPatch, onRemove }: LineCardProps) {
+//
+// A ROW OF THE PRODUK CARD, not a card of its own (never a card inside a card) — the card draws a rule between lines.
+//
+// WITH A SUPPLIER FOR ALL PRODUCTS (one-supplier-for-all-in-two-steps) a line either FOLLOWS it — marked "Ikut semua",
+// Ganti makes it its own — or has picked its own, and "Ikut Semua" takes it back. Without one, ✕ clears the line.
+export function LineCard({
+  line,
+  index,
+  mode,
+  teamId,
+  suppliers,
+  channels,
+  hasAllSupplier,
+  onPatch,
+  onFollowAll,
+  onRemove,
+}: LineCardProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
   const arrived = mode === "arrived";
-  const supplierLocked = arrived && line.stored;
+  const supplierLocked = !supplierOpen(mode, line);
+  const follows = hasAllSupplier && line.followsAll;
   const removable = !(arrived && line.stored);
   const noteMissing = needsNote(mode, line);
   const id = `restock-line-${index}`;
@@ -75,8 +97,12 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
 
   const numbers = (
     <>
-      <Field.Root w={isMobile ? "full" : "auto"}>
-        <Field.Label fontSize="xs">{t("restock.form.count")}</Field.Label>
+      {/* Both REQUIRED (owner: *"jumlah dan total produk juga wajib"*, the-count-and-total-are-required). */}
+      <Field.Root required w={isMobile ? "full" : "auto"}>
+        <Field.Label>
+          {t("restock.form.count")}
+          <Field.RequiredIndicator />
+        </Field.Label>
         <QuantityInput
           min={1}
           width={isMobile ? "full" : "16"}
@@ -87,8 +113,11 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
         />
       </Field.Root>
 
-      <Field.Root w={isMobile ? "full" : "32"}>
-        <Field.Label fontSize="xs">{t("restock.form.lineTotal")}</Field.Label>
+      <Field.Root required w={isMobile ? "full" : "32"}>
+        <Field.Label>
+          {t("restock.form.lineTotal")}
+          <Field.RequiredIndicator data-testid={`restock-total-required-${index}`} />
+        </Field.Label>
         <CurrencyInput
           value={line.total}
           data-testid={`restock-total-price-${index}`}
@@ -104,7 +133,7 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
   );
 
   return (
-    <Box borderWidth="1px" rounded="md" p="card" data-testid={id}>
+    <Box data-testid={id}>
       <Stack gap="card">
         <ProductListItem
           product={{
@@ -147,41 +176,48 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
         <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
           {/* ── Where it was bought ─────────────────────────────────────────────────────────────── */}
           <Stack gap="1.5" minW="0" data-testid={`${id}-supplier`}>
-            <HStack gap="1">
-              <Text fontSize="xs" fontWeight="bold" color="fg.label">
+            {/* Every product names its supplier (the-checks-run-products-warehouse-account-resi) — marked as a required
+                field is, where it can still be given. */}
+            <Field.Root required={!supplierLocked}>
+              <Field.Label>
                 {t("restock.form.boughtFrom")}
-              </Text>
-            </HStack>
+                {!supplierLocked && <Field.RequiredIndicator data-testid={`${id}-supplier-required`} />}
+              </Field.Label>
+            </Field.Root>
 
-            <Flex gap="2" align="center" wrap="wrap">
-              {/* A basis, not just `flex="1"`: on a phone the actions wrap to their own line rather than squeezing the
-                  name into a one-word column. */}
-              <Box flex="1 1 12rem" minW="0">
-                <LineSupplier
-                  supplierId={line.supplierId}
-                  supplierChannelId={line.supplierChannelId}
-                  suppliers={suppliers}
-                  channels={channels}
-                  testId={`${id}-supplier-shown`}
-                />
-              </Box>
-
-              {!supplierLocked && (
-                <HStack gap="1">
-                  <SupplierChannelPicker
-                    teamId={teamId}
-                    value={{ supplierId: line.supplierId, supplierChannelId: line.supplierChannelId }}
-                    onChange={(pick) => onPatch(pick)}
-                    testId={`${id}-picker`}
-                    trigger={
-                      line.supplierId > 0n ? (
-                        <Button type="button" size="xs" variant="outline">
-                          {t("restock.form.changeSupplier")}
-                        </Button>
-                      ) : undefined
-                    }
-                  />
-                  {line.supplierId > 0n && (
+            {/* THE SAME BOX AS THE CARD'S SUPPLIER PART (owner: *"hubungkan supplier per produk desainnya kurang"*,
+                a-product-picks-its-supplier-from-the-same-box) — a field to choose in, not a sentence beside a button. */}
+            <SupplierBox
+              teamId={teamId}
+              value={{ supplierId: line.supplierId, supplierChannelId: line.supplierChannelId }}
+              suppliers={suppliers}
+              channels={channels}
+              // A pick of its own — the line stops following the supplier for all products.
+              onPick={(pick) => onPatch({ ...pick, followsAll: false })}
+              locked={supplierLocked}
+              noneText={supplierLocked ? t("restock.lineSupplier.none") : t("restock.form.allSupplierNone")}
+              after={
+                follows && (
+                  <Badge size="sm" variant="subtle" colorPalette="info" flexShrink={0} data-testid={`${id}-supplier-follows`}>
+                    {t("restock.form.followsAll")}
+                  </Badge>
+                )
+              }
+              actions={
+                <>
+                  {hasAllSupplier && !follows && (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="ghost"
+                      data-testid={`${id}-supplier-follow`}
+                      onClick={onFollowAll}
+                    >
+                      <Icon as={Undo2} boxSize="4" />
+                      {t("restock.form.followAll")}
+                    </Button>
+                  )}
+                  {!hasAllSupplier && line.supplierId > 0n && (
                     <IconButton
                       type="button"
                       size="xs"
@@ -193,27 +229,41 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
                       <Icon as={X} boxSize="4" />
                     </IconButton>
                   )}
-                </HStack>
-              )}
-            </Flex>
+                </>
+              }
+              testId={`${id}-supplier`}
+              shownTestId={`${id}-supplier-shown`}
+              pickerTestId={`${id}-picker`}
+              changeTestId={`${id}-picker`}
+            />
           </Stack>
 
           {/* ── The selling team's note on the line ─────────────────────────────────────────────── */}
           <Field.Root invalid={noteMissing} required={arrived && !line.stored}>
-            <Field.Label fontSize="xs">
+            <Field.Label>
               <HStack gap="1">
                 {t("restock.form.lineNote")}
                 <Field.RequiredIndicator />
               </HStack>
             </Field.Label>
-            <Input
+            {/* A TEXTAREA, TWO ROWS TO START (owner: *"catatan produk jadi textarea tingginya default 2"*,
+                a-line-note-is-two-rows) — a note on a product is a sentence, not a code; two rows sit level with the
+                supplier box beside it. */}
+            <Textarea
+              rows={2}
               value={line.note}
-              maxLength={200}
+              maxLength={MAX_LINE_NOTE}
               placeholder={t("restock.form.lineNotePlaceholder")}
               data-testid={`${id}-note`}
               onChange={(e) => onPatch({ note: e.target.value })}
             />
-            {noteMissing && <Field.ErrorText>{t("restock.form.lineNoteRequired")}</Field.ErrorText>}
+            <Flex w="full" gap="card" justify="space-between" align="start">
+              {noteMissing ? <Field.ErrorText>{t("restock.form.lineNoteRequired")}</Field.ErrorText> : <span />}
+              {/* How much of the limit is used (a-limited-field-shows-its-count). */}
+              <Field.HelperText alignSelf="end" flexShrink={0} data-testid={`${id}-note-count`}>
+                {line.note.length}/{MAX_LINE_NOTE}
+              </Field.HelperText>
+            </Flex>
           </Field.Root>
         </SimpleGrid>
       </Stack>

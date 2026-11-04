@@ -224,19 +224,29 @@ export const TheLockSaysWhatEachWayMeans: Story = {
   },
 };
 
-/** Save stays shut until the SKU, the name AND a category are given — the category is the one people forget. */
+/**
+ * Save stays shut until the SKU, the name AND a category are given — the category is the one people forget. The line by
+ * Save names the FIRST thing missing, the rest on asking, and turns into the ready mark once nothing is
+ * (a-save-button-says-what-it-waits-for).
+ */
 export const SaveWaitsForTheRequired: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const save = canvas.getByTestId("product-edit-save");
 
     await expect(save).toBeDisabled();
+    await expect(canvas.getByTestId("product-edit-missing")).toHaveTextContent("Not filled in: SKU");
+    await expect(canvas.getByTestId("product-edit-missing-more")).toHaveTextContent("+2 more");
+
     await userEvent.type(canvas.getByTestId("product-edit-sku"), "SKU-ANG-045", { delay: 30 });
     await userEvent.type(canvas.getByTestId("product-edit-name"), "Minyak Goreng Sawit 5L — Jeriken", { delay: 30 });
     await expect(save).toBeDisabled();
+    await expect(canvas.getByTestId("product-edit-missing-category")).toHaveTextContent("category");
+    await expect(canvas.queryByTestId("product-edit-missing-more")).toBeNull();
 
     await pickDapur(canvas);
     await expect(save).toBeEnabled();
+    await expect(canvas.getByTestId("product-edit-ready")).toHaveTextContent("Ready to create");
   },
 };
 

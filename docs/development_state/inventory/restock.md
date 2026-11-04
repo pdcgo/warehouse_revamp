@@ -16,7 +16,33 @@ On a phone the restock page edits it in a bottom sheet, the list's dialog in pla
 ([a-phone-edits-the-note-in-a-sheet](../../technical/frontend/restock_decision.md#a-phone-edits-the-note-in-a-sheet)).
 The timeline centres each icon, gives every person one width, and runs its line icon to icon
 ([the-timeline-is-centred-and-lines-up](../../technical/frontend/restock_decision.md#the-timeline-is-centred-and-lines-up)).
-Next on the selling side: the form.
+The form is `pages/restock-form/` (`RestockFormPage`, stories *RestockForm*), on the screen rules
+([the-restock-form-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-form-follows-the-screen-rules)):
+Order ID, an example and a count in every typed field, lines as rows, Default and Mobile stories. No proto change. Then three columns from 2xl, the warehouse over the note, the money
+sticky ([the-restock-form-is-three-columns](../../technical/frontend/restock_decision.md#the-restock-form-is-three-columns)).
+The product picker's pager is one number, ‹ [2] › — `GrowingPager compact`
+([a-dialog-pager-is-one-number](../../technical/frontend/context_decision.md#a-dialog-pager-is-one-number)).
+The card is Produk dan Supplier: a supplier for all products leads it, from the start — Pilih Supplier, then a pick;
+lines follow it, a line may pick its own ([one-supplier-for-all-in-two-steps](../../technical/frontend/restock_decision.md#one-supplier-for-all-in-two-steps),
+[the-supplier-leads-the-produk-card](../../technical/frontend/restock_decision.md#the-supplier-leads-the-produk-card)).
+Now two titled parts — Supplier, a rule, Produk with Pilih Produk; the supplier popup keeps its height
+([the-card-is-supplier-then-produk](../../technical/frontend/restock_decision.md#the-card-is-supplier-then-produk)).
+The warehouse over the payment; the note between Rincian and Buat Restok in the sticky column, which is capped at
+the window ([the-note-sits-over-buat-restok](../../technical/frontend/restock_decision.md#the-note-sits-over-buat-restok)).
+Over Buat Restok, `ReadyLine`: the first thing missing (+N on asking), or ✓ Siap dibuat
+([a-save-button-says-what-it-waits-for](../../technical/frontend/context_decision.md#a-save-button-says-what-it-waits-for)).
+The checks run products (each with a supplier) → warehouse → account → resi; the supplier and the resi are required on
+the form, ⚠ not by the server and against the business record
+([the-checks-run-products-warehouse-account-resi](../../technical/frontend/restock_decision.md#the-checks-run-products-warehouse-account-resi)).
+Every product's count and total (above 0) are required too
+([the-count-and-total-are-required](../../technical/frontend/restock_decision.md#the-count-and-total-are-required)); a product's
+*Dibeli dari* is the supplier part's `SupplierBox` ([a-product-picks-its-supplier-from-the-same-box](../../technical/frontend/restock_decision.md#a-product-picks-its-supplier-from-the-same-box)).
+A product's note is two rows; the empty Produk hint is full size; Rincian's product list folds
+([a-line-note-is-two-rows](../../technical/frontend/restock_decision.md#a-line-note-is-two-rows),
+[an-empty-produk-is-the-full-size-hint](../../technical/frontend/restock_decision.md#an-empty-produk-is-the-full-size-hint),
+[the-summary-folds-its-products](../../technical/frontend/restock_decision.md#the-summary-folds-its-products)).
+No scrollbar flashes through the fold ([the-summary-folds-without-a-scrollbar](../../technical/frontend/restock_decision.md#the-summary-folds-without-a-scrollbar)).
+Screen state only: each line still saves its own supplier.
 
 🔀 **2026-10-31: the selling list follows the screen rules** — uncommitted, for the owner's pass
 ([the-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-list-follows-the-screen-rules)).
@@ -141,7 +167,7 @@ stateDiagram-v2
 | backend: ported | accept (git-mv'd from fulfill), create, update, cancel, labels, the accepted event, stock cost, owner stock, product stock summary, inbound stat (`status IN restockInboundStatuses`, which is ongoing + arrived), and supplier's `analytic_fold.go` (`GetMissingCount`) |
 | frontend: features | `features/restock/`: `summary.ts`, `lines.ts`, `counting.ts`, `statusTabs.ts`, `dateFields.ts`, `problemType.ts`, `queries.ts` (+ Accept/Arrive/MarkLost hooks), `LineSupplier`, `RestockItemsCell`, `SellingRestockActions`, `WarehouseRestockActions`, `RestockTimeline` (each with a story), `storyRestock.ts` (stories only) · `features/suppliers/queries.ts`: `useSupplierChannelsByIds` |
 | frontend: components | `badges/RestockStatusBadge` (5 statuses) · new `badges/DeletedBadge` · new `pickers/SupplierChannelPicker` (the Connect Supplier Channel popup, all suppliers) · `pickers/RackSelect` `allowUnplaced` (default true; the accept passes false, per [there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile)) · `feedback/ConfirmDialog`: optional body, `confirmDisabled`, `dismissLabel` · `pickers/DamageTypeSelect` **removed** |
-| frontend: pages | restock-request-form, restock-accept, restock-selling, restock-selling-detail, restock-warehouse, restock-warehouse-detail, restock-labels (each with an `index.stories.tsx`; all but labels have a `pending.ts`) · warehouse-product type fixes |
+| frontend: pages | restock-form, restock-accept, restock-selling, restock-selling-detail, restock-warehouse, restock-warehouse-detail, restock-labels (each with an `index.stories.tsx`; all but labels have a `pending.ts`) · warehouse-product type fixes |
 | Storybook | `.storybook/restockFixtures.ts` (restocks 501–507, one per state) · `.storybook/restockStub.ts` plays the decided rules (`resetRestockStub` runs in preview's `beforeEach`, `restockWire(id)`) · `supplierStub.ts` + `supplierChannelByIds` |
 | docs | `docs/services/inventory_service/rpc.md` restock section (lifecycle, the accept transaction, the rules, the event) · liability, selling and supplier `rpc.md`: Fulfill renamed to Accept |
 | tests | Go: every package green from the root, 0 skips · stories: **1171** green · mermaid: 1006 parse |

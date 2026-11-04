@@ -131,7 +131,7 @@ async function restockGround(page: Page, tag: string) {
 async function seed(page: Page, tag: string) {
   const { whCode, whName, category, skuA, skuB } = names(tag);
 
-  await page.evaluate(
+  const supplier = await page.evaluate(
     async ([whCode, whName, category, skuA, skuB, ownerId]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
@@ -177,11 +177,27 @@ async function seed(page: Page, tag: string) {
           images: sku === skuA ? [{ url: cover, thumbnailUrl: cover }] : [],
         });
       }
+
+      // A SUPPLIER for the lines — the form will not save a product with none
+      // (the-checks-run-products-warehouse-account-resi). Kept by a selling team of its own, since only a selling team
+      // has suppliers and the root team is not one; the line picker searches every team's.
+      const vendorTeam = await call("team.v1.TeamService/TeamCreate", {
+        type: "TEAM_TYPE_SELLING",
+        name: `E2E Vendor ${whCode}`,
+        teamCode: `VT${whCode}`.slice(0, 10),
+        ownerUserId: ownerId,
+      });
+      const supplier = await call("supplier.v1.SupplierService/SupplierCreate", {
+        teamId: vendorTeam.team.id,
+        name: `E2E Supplier ${whCode}`,
+      });
+
+      return { supplierId: supplier.supplier.id as string, supplierName: `E2E Supplier ${whCode}` };
     },
     [whCode, whName, category, skuA, skuB, ROOT_USER_ID] as const,
   );
 
-  return { whCode, whName, skuA, skuB, accountId: await payingAccount(page, tag) };
+  return { whCode, whName, skuA, skuB, ...supplier, accountId: await payingAccount(page, tag) };
 }
 
 // Searches for one product by SKU and toggles it, leaving the dialog OPEN — a caller ticks several
@@ -282,7 +298,7 @@ test("Restock list: raised-by and accepted-by offer who did it, and narrow to th
 // shared multi-select dialog, in one pass, instead of one combobox per line.
 test("Restock create: tick two products in the picker and save (#165)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
-  const { whCode, skuA, skuB, accountId } = await seed(page, "S");
+  const { whCode, skuA, skuB, accountId, supplierId, supplierName } = await seed(page, "S");
 
   await page.goto("/inventories/restock/new");
 
@@ -331,6 +347,20 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   await page.getByTestId("restock-finance-account").click();
   await page.getByTestId(`restock-finance-account-option-${accountId}`).click();
 
+  // Every product names its supplier, and the restock its resi (the-checks-run-products-warehouse-account-resi) — the
+  // supplier set ONCE for both lines, from the card's supplier part (one-supplier-for-all-in-two-steps). It sells from
+  // no store, so "no store" is chosen for it and Connect is live at once.
+  await expect(page.getByTestId("restock-form-missing-supplier")).toBeVisible();
+  await page.getByTestId("restock-all-supplier-picker-trigger").click();
+  await page.getByTestId("restock-all-supplier-picker-search").fill(supplierName);
+  await page.getByTestId(`restock-all-supplier-picker-supplier-${supplierId}`).click();
+  await page.getByTestId("restock-all-supplier-picker-confirm").click();
+  await expect(page.getByTestId("restock-line-1-supplier-shown")).toContainText(supplierName);
+
+  await expect(page.getByTestId("restock-form-missing-receipt")).toBeVisible();
+  await page.getByTestId("restock-receipt").fill(`E2E-RESI-${whCode}`);
+
+  await expect(page.getByTestId("restock-form-ready")).toBeVisible();
   await expect(page.getByTestId("submit-restock")).toBeEnabled();
   await page.getByTestId("submit-restock").click();
 

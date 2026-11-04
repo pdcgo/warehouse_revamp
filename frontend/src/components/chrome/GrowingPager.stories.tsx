@@ -8,7 +8,17 @@ import { GrowingPager, description } from "./GrowingPager";
 
 // A list of `total` rows the pager is NOT told about — it learns, page by page, only whether another page
 // exists, the way a list RPC with no total answers.
-function Harness({ total = 95, pageSize: initialSize = 20, sizes = false }: { total?: number; pageSize?: number; sizes?: boolean }) {
+function Harness({
+  total = 95,
+  pageSize: initialSize = 20,
+  sizes = false,
+  compact = false,
+}: {
+  total?: number;
+  pageSize?: number;
+  sizes?: boolean;
+  compact?: boolean;
+}) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialSize);
   const [filter, setFilter] = useState("all");
@@ -35,6 +45,7 @@ function Harness({ total = 95, pageSize: initialSize = 20, sizes = false }: { to
         hasNext={page * pageSize < total}
         resetKey={`${filter}|${pageSize}`}
         pageSize={pageSize}
+        compact={compact}
         pageSizeOptions={sizes ? [10, 20, 50] : undefined}
         onPageSizeChange={
           sizes
@@ -144,5 +155,34 @@ export const ANewFilterStartsOver: Story = {
 
     await userEvent.click(canvas.getByTestId("harness-refilter"));
     await waitFor(() => expect(numbers(canvas)).toEqual(["1", "2"]));
+  },
+};
+
+/**
+ * COMPACT IS ONE NUMBER (owner: *"paginasi … nomor saja, ui mirip yang sudah pernah dibuat"*, a-dialog-pager-is-one-number)
+ * — a dialog's pager: ‹ [2] ›, the current page alone in the main tone, never "2 of 5" and never a trail.
+ */
+export const CompactIsOneNumber: Story = {
+  args: { compact: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(numbers(canvas)).toEqual(["1"]);
+    await expect(getComputedStyle(canvas.getByTestId("growing-pager-page-1")).backgroundColor).toBe("rgb(225, 29, 72)");
+    await expect(canvas.getByTestId("growing-pager-prev")).toBeDisabled();
+
+    await userEvent.click(canvas.getByTestId("growing-pager-next"));
+    await userEvent.click(canvas.getByTestId("growing-pager-next"));
+    await waitFor(() => expect(canvas.getByTestId("harness-page")).toHaveTextContent("Page 3"));
+    await expect(numbers(canvas)).toEqual(["3"]);
+    await expect(canvas.queryByText(/ of /)).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("growing-pager-prev"));
+    await waitFor(() => expect(numbers(canvas)).toEqual(["2"]));
+
+    // 95 rows at 20 a page: the last is 5, and › stops there.
+    for (let i = 0; i < 3; i += 1) await userEvent.click(canvas.getByTestId("growing-pager-next"));
+    await waitFor(() => expect(numbers(canvas)).toEqual(["5"]));
+    await expect(canvas.getByTestId("growing-pager-next")).toBeDisabled();
   },
 };

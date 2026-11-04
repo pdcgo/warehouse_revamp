@@ -32,6 +32,22 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [the-timeline-names-its-people-small](#the-timeline-names-its-people-small) | a timeline step's person is a small avatar and the name alone (`UserItem` `size="xs"`); the products' total line reads *Stok aman untuk diterima gudang* |
 | [the-timeline-is-centred-and-lines-up](#the-timeline-is-centred-and-lines-up) | a timeline step's icon sits at the middle of its step, its person column is one width on every step, and the line runs icon to icon |
 | [a-phone-edits-the-note-in-a-sheet](#a-phone-edits-the-note-in-a-sheet) | on a phone the restock page's Ubah opens a bottom sheet; the list's dialog edits in place; Tutup hides while a note is typed |
+| [the-label-photo-is-foto-resi](#the-label-photo-is-foto-resi) | `receipt_file` reads *Foto resi* in Indonesian, on every screen that shows it — the word people use for the printed label |
+| [the-form-is-a-restock-not-a-request](#the-form-is-a-restock-not-a-request) | the form page is `restock-form` / `RestockFormPage`, its story *RestockForm*, and it is titled *Restok Baru* / *Ubah Restok* |
+| [the-restock-form-follows-the-screen-rules](#the-restock-form-follows-the-screen-rules) | the form (create and edit) on the every-screen rules — Order ID, an example and a count in every typed field, Buat ＋ / Simpan 💾, lines as rows, an empty hint with the picker, Default and Mobile stories |
+| [the-restock-form-is-three-columns](#the-restock-form-is-three-columns) | the form fills the canvas — three columns from `2xl` (the lines · the payment, the warehouse over the note · the money), the money column sticky; the product picker pages with `GrowingPager` |
+| [one-supplier-for-all-in-two-steps](#one-supplier-for-all-in-two-steps) | a supplier for all products, not on screen until asked — **Samakan Supplier**, then a pick; every line follows it, a line may pick its own and come back with **Ikut Semua**; screen state only |
+| [the-supplier-leads-the-produk-card](#the-supplier-leads-the-produk-card) | the supplier for all products is its own box at the TOP of the card — now **Produk dan Supplier** — on screen from the start with **Pilih Supplier**; it REPLACES the *not from the start* of [one-supplier-for-all-in-two-steps](#one-supplier-for-all-in-two-steps) |
+| [the-card-is-supplier-then-produk](#the-card-is-supplier-then-produk) | the card is two titled parts — **Supplier** (a line that stays: optional, for all or per product; the choice in a field-like box), a rule, then **Produk** with Pilih Produk in its title; the supplier popup keeps its height |
+| [the-note-sits-over-buat-restok](#the-note-sits-over-buat-restok) | the warehouse over the payment; the restock note in the money column, between the summary and **Buat Restok**; the column capped at the window; the supplier box one height, picked or not |
+| [what-is-missing-is-one-line-over-buat](#what-is-missing-is-one-line-over-buat) | what still stands between the form and Buat Restok is ONE short line over the button — *Belum diisi: gudang · rekening · produk* — not a list under it |
+| [the-checks-run-products-warehouse-account-resi](#the-checks-run-products-warehouse-account-resi) | the form checks the products (some, each with a **supplier**, real counts) → the warehouse → the paying account → the **resi**; the supplier and the resi become required on this form |
+| [the-count-and-total-are-required](#the-count-and-total-are-required) | every product's count (at least 1) and total (above Rp 0) are required, marked `*`, checked after its supplier |
+| [a-product-picks-its-supplier-from-the-same-box](#a-product-picks-its-supplier-from-the-same-box) | a product's *Dibeli dari* is the supplier part's box — `SupplierBox`, a field with *Belum dipilih* and **Pilih Supplier**, or the supplier with **Ganti** |
+| [a-line-note-is-two-rows](#a-line-note-is-two-rows) | a product's note is a textarea, two rows to start |
+| [an-empty-produk-is-the-full-size-hint](#an-empty-produk-is-the-full-size-hint) | with no product yet, the Produk part shows `EmptyHint` at its full size, not the small one |
+| [the-summary-folds-its-products](#the-summary-folds-its-products) | Rincian's product list folds away under its heading — open to start |
+| [the-summary-folds-without-a-scrollbar](#the-summary-folds-without-a-scrollbar) | no scrollbar flashes while Rincian's products fold or unfold; the list keeps its scrollbar gutter |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -575,3 +591,372 @@ Produk · Pemasok · Dipesan · Penyesuaian                       · Harga satua
 | a tap outside | does not throw a typed note away — in the sheet as in the dialog; Batal or × do |
 | on a desktop | unchanged — the edit in place, the buttons at the end |
 | pinned by | `OnAPhoneTheNoteIsEditedInASheet`, `OnAPhoneBatalLeavesTheNote` (the restock page), `OnAPhoneTheDialogEditsInPlace`, and `NotesOpenFromTheRowAndSave` for Tutup (the list) |
+
+## the-label-photo-is-foto-resi
+
+> Owner, in chat (2026-11-02): *"foto label itu apa?"* — then, on my recommendation, *"foto resi jadi?"*.
+
+| | |
+| --- | --- |
+| what it is | `receipt_file` — the photo of the courier's label on the parcel, the tracking number and its barcode on it (the contract: *"A photo of the label"*). Entered on the restock form under Resi, optional; the detail links out to it |
+| the word | ***Foto resi*** in Indonesian — the printed label is what people here call *resi* (*cetak resi*), so it reads as the photo of the Resi right above it. It read *Foto label*, which nobody says |
+| where | every screen that shows `receipt_file`, so one field never has two names: the restock form, both restock details, the warehouse transfer's ship step, and their pending marks. The order screen already said *Foto resi dari kurir* |
+| English | unchanged — *Label photo*: English has no *resi*, and *label* is the word there |
+
+## the-form-is-a-restock-not-a-request
+
+> Owner, in chat (2026-11-02), on the stories: *"namanya bukan request form tapi form aja"*.
+
+| | |
+| --- | --- |
+| the page | `pages/restock-form/`, `RestockFormPage` — it was `restock-request-form` / `RestockRequestFormPage`. The routes are unchanged (`/inventories/restock/new`, `…/:id/edit`) |
+| the stories | *Pages / Inventory / Restock / **RestockForm*** — the 17 stories, create and edit, unchanged in content |
+| the titles | ***Restok Baru*** / ***Ubah Restok*** (en *New Restock* / *Edit Restock*), and the no-team line *Pilih tim untuk membuat / mengubah restok* — they read *Permintaan Restok …*, while the list is titled *Restok* |
+| not renamed | the contract's `RestockRequest` and its hooks (`useRestockRequest`, `useSaveRestockRequest`) — that is the API's name, not a screen's |
+
+## the-restock-form-follows-the-screen-rules
+
+> Owner, in chat (2026-11-02): *"inisiasi di restock form ini"* — apply the every-screen rules to the restock form.
+
+```mermaid
+flowchart LR
+  subgraph "Restok Baru · Ubah Restok"
+    P["Produk — Pilih Produk · lines as rows, a rule between · none: EmptyHint + the picker"] --> M["Pembayaran dan Paket — Order ID · Kurir · Resi · Foto resi · Ongkos kirim, an example and a count each"]
+    M --> N["Catatan Restok — an example, 17/1000"]
+    N --> G["Gudang — the name alone"]
+    G --> S["Ringkasan · ＋ Buat Restok / 💾 Simpan Perubahan"]
+  end
+```
+
+| | before | now — and the rule |
+| --- | --- | --- |
+| the store's reference | *Nomor invoice atau pesanan* | **Order ID**, its help *Order ID dari toko tempat membeli* ([the-store-reference-is-the-order-id](#the-store-reference-is-the-order-id)) |
+| the words | *Buat Permintaan*, *Permintaan restok dibuat*, *Kembali ke Permintaan Restok* | **Buat Restok**, *Restok dibuat / diperbarui*, *Kembali ke Restok* ([the-form-is-a-restock-not-a-request](#the-form-is-a-restock-not-a-request)) |
+| typed fields | Order ID and Resi blank; the notes *Tambahkan catatan…*, *mis. stok lebih* | an example in each — *Contoh: INV/2026/10/1001*, *Contoh: JNE0123456789*, *Contoh: Untuk promo 10.10*, *Contoh: stok lebih* ([every-form-field-shows-an-example](context_decision.md#every-form-field-shows-an-example)); the money fields keep their 0 |
+| limits | silent `maxLength`s | a count at each field's end — Order ID and Resi **x/100**, a line's note **x/200**, the restock's note **x/1000** ([a-limited-field-shows-its-count](context_decision.md#a-limited-field-shows-its-count)) |
+| the main button | no icon | **＋ Buat Restok** on a new restock, **💾 Simpan Perubahan** on an edit, as the product form's; **⇄ Ganti** on a line's supplier ([an-action-button-carries-its-icon](context_decision.md#an-action-button-carries-its-icon)) |
+| the lines | each a bordered box inside the Produk card | **rows of the card**, a rule between them — never a card inside a card (CLAUDE.md); their field labels on the theme's scale, not shrunk |
+| no lines | a grey sentence under the card's button | an `EmptyHint` — *Belum ada produk*, *Pilih produk yang dibawa restok ini.*, and **Pilih Produk** as its action; the title's button returns once a product is picked ([an-empty-list-shows-a-hint](context_decision.md#an-empty-list-shows-a-hint)) |
+| the warehouse | its name and a *Gudang* badge | **the name alone** — the picker offers warehouses only ([a-one-type-picker-shows-the-name-alone](context_decision.md#a-one-type-picker-shows-the-name-alone)) |
+| loading · arrival | a spinner | the page's shape, and the page rising in ([motion-is-small-quick-and-shared](context_decision.md#motion-is-small-quick-and-shared)) |
+| the stories | no Default, no phone, Storybook's padding | **Default** then **Mobile** (and *Mobile Edit*), framed by the shell's gutter ([every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story), [a-page-story-has-its-shells-gutter](context_decision.md#a-page-story-has-its-shells-gutter)); nothing past a 360px edge ([nothing-runs-past-a-phones-edge](context_decision.md#nothing-runs-past-a-phones-edge)) |
+| pinned by | | `Mobile`, `MobileEdit`, `EveryFieldShowsAnExampleAndItsCount`, `NoLinesIsAHintWithThePicker`, `CreateCarriesAPlus`, `SaveCarriesADisk`, `TheLinesAreRowsNotCards` |
+
+Unchanged: the layout (the lines and the payment on the left, the warehouse, the summary and Save on the right), what
+each status may change, the missing-parts list under Save. ⚠ On a phone the warehouse comes **last**, after every line,
+though the picker shows stock at the picked warehouse — not moved here, since no rule covers it.
+
+## the-restock-form-is-three-columns
+
+> Owner, in chat (2026-11-03): *"paginasi di pilih produk"*, *"halaman tidak penuh, 3 kotak buat memenuhi halaman 2xl"*,
+> *"gudang taruh saja di atas catatan restok"*, *"perincian sticky berarti"*.
+
+```
+2xl     [ Produk 2fr ] [ Pembayaran dan Paket · Gudang · Catatan Restok 1fr ] [ Rincian · Simpan 22rem, sticky ]
+lg      [ Produk                                                 ] [ Rincian · Simpan 22rem, sticky ]
+        [ Pembayaran dan Paket ] [ Gudang · Catatan Restok ]
+below   Produk · [ Pembayaran dan Paket | Gudang · Catatan Restok ] · Rincian · Simpan — one column on a phone
+```
+
+| | |
+| --- | --- |
+| the width | the form **fills the canvas** — no `maxW`; held to `7xl` it left the right of a wide screen empty, as the product form's did ([the-form-fills-the-canvas-in-three-cards](products_decision.md#the-form-fills-the-canvas-in-three-cards)) |
+| three columns | from `2xl`: the lines, then the payment with the warehouse and the note, then the money. At `lg` two — the lines with the payment and the note under them, the money beside. A JS breakpoint read on the first render, so no card exists twice and nothing jumps |
+| the warehouse | **over the restock note**, in the payment's column — it was the first card of the money column |
+| the money | the summary, Simpan and what is missing — a column of its own, **sticky** 20px from the top from `lg` up, so the total and Simpan stay beside the lines as they scroll. On a phone it ends the page and does not stick |
+| a long restock | the summary's line list scrolls inside the card (`40vh`), so a sticky column never pushes Simpan past the window's foot |
+| the picker's pager | `GrowingPager`, always on screen — one page reads ‹ [1] › ([every-list-pages-with-the-growing-pager](context_decision.md#every-list-pages-with-the-growing-pager), [the-pager-is-always-on-screen](context_decision.md#the-pager-is-always-on-screen)). It is in `ProductPickerShell`, so **every product picker** takes it — the own, own-stocked, all and all-stocked pickers alike |
+| the stories | team 12 sells three products now (Beras, Tepung, Kecap), so a restock of several can be built — `SeveralProductsInOnePick` (owner: *"di halaman ini aku tidak bisa multi produk … maksudku di storynya"*); `ThePickerHasTheAppsPager` |
+
+What it replaces: the *"Unchanged: the layout"* line of
+[the-restock-form-follows-the-screen-rules](#the-restock-form-follows-the-screen-rules), and its ⚠ on the warehouse
+coming last on a phone — the warehouse now comes before the note.
+
+## one-supplier-for-all-in-two-steps
+
+> Owner, in chat (2026-11-03): *"supplier bisa sama semua bisa pilih tiap produk, atau semua dengan opsi masih bisa
+> dicustom beberapa, gimana?"* — and on the proposal: *"supplier semua produk tidak muncul sejak awal, kalau bisa 2
+> langkah"*.
+
+```
+two open lines →  ① [Samakan Supplier]  →  ② the supplier popup, Connect
+                                  ↓
+┌ Produk ─────────────────────────────────────────── [Pilih Produk] ┐
+│ Supplier semua produk  CV Cahaya Abadi · cahayaabadi.co.id  [Ganti] ✕ │
+│ Beras   Dibeli dari  CV Cahaya Abadi [Ikut semua]   [Ganti]            │
+│ Kecap   Dibeli dari  Toko Grosir Sinar              [Ganti] [Ikut Semua] │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| not from the start | nothing is on screen until the card holds **two lines whose supplier can change** — one line has its own picker |
+| two steps | **Samakan Supplier** opens the supplier popup; Connect makes the pick the supplier for all products — a row under the card's title, with Ganti and ✕ |
+| the lines | set the first time, every open line takes it, marked *Ikut semua*; a product picked afterwards follows it too |
+| a line of its own | Ganti on a line picks its own and drops the mark. Changing the supplier for all moves only the lines that follow it; **Ikut Semua** takes a line back |
+| cleared | ✕ on the row — the lines that followed it are connected to nothing again, a line with its own keeps it, and Samakan Supplier comes back |
+| an edit | open lines that all share one supplier open with it as the supplier for all, following it; lines that differ open without one |
+| arrived | a stored line's supplier stays closed ([a-line-added-after-arrival-names-its-supplier](../../business/inventory/restock_decision.md#a-line-added-after-arrival-names-its-supplier)), so only lines added in this edit count and follow |
+| the data | **none** — a screen convenience. Each line still saves its own supplier and store ([a-line-names-the-channel-it-was-bought-from](../../business/inventory/restock_decision.md#a-line-names-the-channel-it-was-bought-from)); no proto change |
+| pinned by | `OneSupplierForAllInTwoSteps`, `ALineKeepsItsOwnSupplierUnderTheOneForAll`, `AnEditFromOneSupplierOpensWithIt`, `AnEditFromSeveralSuppliersOpensWithout` |
+
+What it replaces: picking the same supplier line by line — one popup per product.
+
+## the-supplier-leads-the-produk-card
+
+> Owner, in chat (2026-11-03): *"supplier jadikan semacam div sendiri, 1 section pilih produk dan supplier, supplier di
+> atas dan muncul dari awal, masalahnya karena produk belum pilih apa-apa ruang ke bawahnya sangat longgar"*.
+
+```
+┌ Produk dan Supplier ──────────────────────────────────────┐
+│ ┌ Supplier semua produk ─────────────────────────────────┐ │   its own box, tinted, at the top
+│ │ Belum dipilih. Produk ikut supplier ini — …  [Pilih Supplier] │ │   ← from the start
+│ └────────────────────────────────────────────────────────┘ │
+│   ⬚  Belum ada produk                                       │
+│      [Pilih Produk]                                         │
+└─────────────────────────────────────────────────────────────┘
+        picked ↓
+│ │ CV Cahaya Abadi · cahayaabadi.co.id        [Ganti] ✕ │ │
+```
+
+| | |
+| --- | --- |
+| one section | the card is **Produk dan Supplier** — what was bought and where, chosen in one place |
+| the box | the supplier for all products is a box of its own (tinted, no border — not a card inside the card) at the **top**, over the products |
+| from the start | on screen before any product — an empty card was a hint with a lot of loose space under it, and the supplier is a choice that can be made first |
+| two steps | unchanged ([one-supplier-for-all-in-two-steps](#one-supplier-for-all-in-two-steps)) — **Pilih Supplier** opens the supplier popup, Connect sets it; then Ganti and ✕ |
+| before any product | allowed — every product picked afterwards follows it |
+| cleared | ✕ — the box goes back to *Belum dipilih* and Pilih Supplier |
+| arrived | **no box** — the stored lines' suppliers are closed, and a line added while the box is at the door names its own on its row |
+| pinned by | `OneSupplierForAllInTwoSteps` (on screen first, above the products), `ArrivedClosesTheHeaderAndKeepsTheLines` (no box) |
+
+What it replaces: from [one-supplier-for-all-in-two-steps](#one-supplier-for-all-in-two-steps) — *not from the start*
+(nothing until two lines), the **Samakan Supplier** button in the card's title, and *arrived* counting the added lines.
+The rest of that entry holds: lines follow, a line may pick its own and come back with Ikut Semua, an edit from one
+supplier opens with it, and nothing new is sent.
+
+## the-card-is-supplier-then-produk
+
+> Owner, in chat (2026-11-03): *"ingat, buat modal heightnya fix kalau bentuknya select, ini supplier tidak fix, tidak
+> konsisten"*; *"lalu untuk pilih supplier sendiri kasih judul sub judul tidak hilang keterangan pilih untuk semua atau
+> kustomisasi diproduk sendiri, opsional, aku cuma ingin select suppliernya lebih tinggi di section produk dan supplier,
+> lalu ada batas yang jelas dengan produk"*; *"jadi pilih produknya juga di bawah pilih supplier"*.
+
+```
+┌───────────────────────────────────────────────────────────┐
+│ Supplier                                                    │  a title
+│ Opsional — pilih satu supplier untuk semua produk, atau     │  a line that STAYS, picked or not
+│ atur di tiap produk.                                        │
+│ ┌──────────────────────────────────────────────────────┐   │
+│ │ Belum dipilih                        [Pilih Supplier] │   │  the choice, a field-like box
+│ └──────────────────────────────────────────────────────┘   │
+│ ─────────────────────────────────────────────────────────── │  the boundary
+│ Produk                                     [Pilih Produk]   │  Pilih Produk under the supplier
+│   ⬚ Belum ada produk                                        │
+└───────────────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| two parts, one card | the card has no title of its own: **Supplier** and **Produk** are its two titles, in that order |
+| the supplier's line | *Opsional — pilih satu supplier untuk semua produk, atau atur di tiap produk.* — under its title, **picked or not**; it was a hint that vanished on the pick |
+| the choice | a field-like box — outlined, as a select's trigger: *Belum dipilih* and **Pilih Supplier**, then the supplier and its store with Ganti and ✕ |
+| the boundary | a rule between the supplier's part and the products' |
+| Pilih Produk | in the **Produk** title, under the supplier — not in the card's corner. With no product yet, the empty hint carries it, as before |
+| arrived | no supplier part, so no rule — the card is Produk alone ([the-supplier-leads-the-produk-card](#the-supplier-leads-the-produk-card)) |
+| the popup | `SupplierChannelPicker` keeps one height, `min(88dvh, 48rem)`, and only its lists scroll — each column under a heading that stays on a desktop, one scroller on a phone; its suppliers page with one number. It is [a-picker-dialog-keeps-its-height](context_decision.md#a-picker-dialog-keeps-its-height) and [a-dialog-pager-is-one-number](context_decision.md#a-dialog-pager-is-one-number), which it had missed — it grew and shrank with each search and each supplier's stores |
+| pinned by | `OneSupplierForAllInTwoSteps` (the order, the line that stays), `TheDialogKeepsItsHeight` (the supplier picker) |
+
+What it replaces: in [the-supplier-leads-the-produk-card](#the-supplier-leads-the-produk-card) — the card's title
+*Produk dan Supplier*, the tinted box, and Pilih Produk in the card's title row.
+
+## the-note-sits-over-buat-restok
+
+> Owner, in chat (2026-11-03): *"buat tingginya sama ketika select dan tidak suppliernya, gudang taruh di atas pembayaran
+> dan paket, catatan taruh di atas buat restok"*.
+
+```
+2xl   [ Produk dan Supplier 2fr ] [ Gudang · Pembayaran dan Paket 1fr ] [ Rincian · Catatan Restok · Buat Restok 22rem, sticky ]
+lg    [ Produk dan Supplier · Gudang · Pembayaran dan Paket        ] [ Rincian · Catatan Restok · Buat Restok 22rem, sticky ]
+below   Produk dan Supplier · Gudang · Pembayaran dan Paket · Rincian · Catatan Restok · Buat Restok — one column
+```
+
+| | |
+| --- | --- |
+| the warehouse | **over Pembayaran dan Paket** — where the goods go, then how they were paid and sent. At `lg` and below the two stack under the products; they were side by side |
+| the note | in the money column, **between Rincian and Buat Restok** — the last thing written before the restock is raised. Four rows, not eight |
+| the sticky column | **capped at the window** (`100dvh` less the page gutter twice) while it sticks: with the note in it the column was 702px, past a 720px laptop window, and Buat Restok went under the fold. Under the cap the summary's **line list gives way** and scrolls (at least two lines' worth); the note and the button never shrink. Measured stuck at 1280×720: Buat Restok's foot 20px above the window's |
+| the supplier box | **one height, picked or not** — `h="14"`, the height of a picked supplier's two lines (name, store); it never wraps, the name gives way and the buttons hold their place. A pick or a clear moves nothing under it |
+| on a phone | one column, nothing sticks, nothing is capped — the line list never scrolls |
+| pinned by | `TheNoteSitsOverBuatRestok` (the order), `OneSupplierForAllInTwoSteps` (the box's height before and after a pick, and the pick inside it) |
+
+What it replaces: in [the-restock-form-is-three-columns](#the-restock-form-is-three-columns) — *the warehouse over the
+restock note, in the payment's column*, and the summary's line list held at a fixed `40vh`.
+
+## what-is-missing-is-one-line-over-buat
+
+> Owner, in chat (2026-11-03): *"catatan di bawah buat tidak butuh, atau buat lebih bagus sebelum buat restok, tapi jangan
+> makan tempat"*.
+
+```
+BEFORE                                   NOW
+[ + Buat Restok ]  (off)                 ⓘ Belum diisi: gudang · rekening · produk
+Masih dibutuhkan sebelum menyimpan:      [ + Buat Restok ]  (off)
+· gudang
+· rekening yang membayar
+· minimal satu produk
+```
+
+| | |
+| --- | --- |
+| kept, not dropped | a disabled button says nothing about WHY, so the reason stays — the one of the owner's two choices that does not leave a dead button |
+| where | **over** Buat Restok, close to it — read on the way to the button, not found after it |
+| the shape | one line: an ⓘ, *Belum diisi:*, then each missing part as a word or two joined by · — *gudang*, *rekening*, *produk*, *jumlah tiap produk*, *catatan produk tambahan* |
+| the space | 18px — one line in the 22rem column (measured at 1280, 1600 and on a 400px phone, the English wording the longer); it was a title and a line per part, five lines in a fresh form |
+| gone | once nothing is missing, as before |
+| pinned by | `WhatIsMissingIsOneLineOverBuat` (over the button, one line, nothing under it), `PayingAccountIsRequiredBeforeSubmit` |
+
+What it replaces: the list under the button that [the-note-sits-over-buat-restok](#the-note-sits-over-buat-restok)
+left in place, and its long wording (*rekening yang membayar*, *minimal satu produk*, …).
+
+## the-checks-run-products-warehouse-account-resi
+
+> Owner, in chat (2026-11-04): *"untuk urutan validasi restocknya mulai dari produk, gudang, rekening, resi"* — then
+> *"maaf, di produk perlu cek semuanya punya supplier dulu"*.
+
+```
+1 produk     ⓘ Belum diisi: produk                 none picked
+             ⓘ Belum diisi: supplier tiap produk   a product with no supplier
+             ⓘ Belum diisi: jumlah tiap produk     a count under 1
+             ⓘ Belum diisi: catatan produk tambahan  (arrived) an added product without its note
+2 gudang     ⓘ Belum diisi: gudang
+3 rekening   ⓘ Belum diisi: rekening
+4 resi       ⓘ Belum diisi: resi
+             ✓ Siap dibuat
+```
+
+| | |
+| --- | --- |
+| the order | `missingParts` returns the parts in this order, so the line by Buat Restok ([a-save-button-says-what-it-waits-for](context_decision.md#a-save-button-says-what-it-waits-for)) names the first one still open and the rest are behind +N |
+| a supplier on every product | 🆕 **required** — every line whose supplier can still be given names one, through the supplier part or its own Ganti. Its *Dibeli dari* carries a red `*`; the supplier part's line now reads *Setiap produk perlu supplier — pilih satu untuk semua, atau atur di tiap produk.* |
+| the resi | 🆕 **required** — the field carries its `*` |
+| arrived | nothing that cannot be given is asked for: a stored line's supplier, the account and the resi are closed with the parcel, so they are skipped; an added line still needs its supplier and its note |
+| the server | **does not enforce either** — it still takes a line with no supplier and a restock with no resi. The rule is this form's |
+| pinned by | `TheChecksRunProductsWarehouseAccountResi` (each step, then the ready mark and the save — it replaces `PayingAccountIsRequiredBeforeSubmit`), `WhatIsMissingIsOneLineOverBuat` (*produk* first, +3), e2e *Restock create: tick two products…* (a supplier for all and a resi before the save) |
+
+⚠ **Against the business record** — noted here, not argued in `docs/business/`:
+
+| business decision | says | this form now |
+| --- | --- | --- |
+| [a-line-names-the-channel-it-was-bought-from](../../business/inventory/restock_decision.md#a-line-names-the-channel-it-was-bought-from), [a-line-may-name-a-supplier-without-a-channel](../../business/inventory/restock_decision.md#a-line-may-name-a-supplier-without-a-channel) | a line's supplier and store are **both optional** | the supplier is required (the store stays optional) |
+| [a-restock-carries-its-tracking-number](../../business/inventory/restock_decision.md#a-restock-carries-its-tracking-number) | the marketplace issues the number **a day after the purchase**, so it can be added while the restock is on its way | the resi is required to **raise** the restock |
+
+What it replaces: the old order (warehouse, account, products, counts, note); *Opsional* in the supplier part's line
+([the-card-is-supplier-then-produk](#the-card-is-supplier-then-produk)).
+
+## the-count-and-total-are-required
+
+> Owner, in chat (2026-11-04): *"jumlah dan total produk juga wajib"*.
+
+```
+Jumlah *          Total *
+[ − 10 + ]        [ Rp 650.000 ]
+                  Rp 65.000 / pc
+```
+
+| | |
+| --- | --- |
+| the count | at least 1, as before — now marked `*` |
+| the total | **above Rp 0** — a blank total read as Rp 0 and passed as a free sample; it no longer saves |
+| the order | inside the products' checks: some products → a supplier on each → a count on each → a **total on each** → an added product's note, then the warehouse ([the-checks-run-products-warehouse-account-resi](#the-checks-run-products-warehouse-account-resi)). *Belum diisi: total tiap produk* |
+| the server | takes a total of 0 — the rule is this form's |
+| pinned by | `TheChecksRunProductsWarehouseAccountResi` (*total* after the supplier, the `*`), `ArrivedAddsALineOnlyWithANote` (an added product's total) |
+
+⚠ A free sample — goods that cost nothing — can no longer be written on a restock line at Rp 0. Nothing in the business
+record settles samples either way; noted here only so the next change knows the case exists.
+
+## a-product-picks-its-supplier-from-the-same-box
+
+> Owner, in chat (2026-11-04): *"hubungkan supplier per produk desainnya kurang"*.
+
+```
+BEFORE                                         NOW
+Dibeli dari *                                  Dibeli dari *
+Belum terhubung ke supplier                    ┌──────────────────────────────────────────┐
+[⛓ Hubungkan Kanal Supplier]                   │ Belum dipilih           [⛓ Pilih Supplier] │
+                                               └──────────────────────────────────────────┘
+                                               ┌──────────────────────────────────────────┐
+                                               │ PT Sumber Makmur  [Ikut semua]  [⇄ Ganti] ✕ │
+                                               │ Shopee · Sumber Makmur Official            │
+                                               └──────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| one box | [`SupplierBox`](../../../frontend/src/pages/restock-form/components/SupplierBox.tsx) — the card's supplier part and every product's *Dibeli dari* draw the same field: outlined, `h="14"`, never wrapping |
+| empty | *Belum dipilih* and **Pilih Supplier** — the supplier part's words, not *Hubungkan Kanal Supplier* |
+| chosen | the supplier, its store under it, **Ganti**; then ✕ (no supplier for all) or **Ikut Semua** (a product with its own); *Ikut semua* beside the name of a product that follows |
+| the label | *Dibeli dari* is a field label with its red `*`, as *Catatan baris* beside it |
+| closed | a stored product while the box is at the door: the box shaded, no buttons, and an empty one says *Belum terhubung ke supplier* — it is not waiting for a choice |
+| a page part | `pages/restock-form/components/` — one page uses it |
+| pinned by | `ConnectingASupplierShowsItOnTheLine`, `ALineKeepsItsOwnSupplierUnderTheOneForAll` (*Belum dipilih* on an open product with none) |
+
+What it replaces: the line's own block — the supplier's name as a sentence beside a *Hubungkan Kanal Supplier* button.
+
+## a-line-note-is-two-rows
+
+> Owner, in chat (2026-11-04): *"catatan produk jadi textarea tingginya default 2"*.
+
+| | |
+| --- | --- |
+| the field | *Catatan baris* is a `Textarea`, `rows={2}` — a note on a product is a sentence, not a code |
+| beside it | the two rows sit level with the product's supplier box ([a-product-picks-its-supplier-from-the-same-box](#a-product-picks-its-supplier-from-the-same-box)) |
+| unchanged | its example, its 200 limit and count, its required mark on a product added after arrival |
+| pinned by | `TheLinesAreRowsNotCards` (a `TEXTAREA`, `rows="2"`) |
+
+## an-empty-produk-is-the-full-size-hint
+
+> Owner, in chat (2026-11-04): *"card belum ada produk pilih produk sedikit lebih tinggi heightnya"*.
+
+| | |
+| --- | --- |
+| the hint | `EmptyHint` at its default size, `md` — the bigger icon and title, more room around them, Pilih Produk in it |
+| the height | 186px → 266px, at every width; no new prop on the shared component |
+| pinned by | `NoLinesIsAHintWithThePicker` (taller than 240px) |
+
+What it replaces: `size="sm"` on this hint, from [the-restock-form-follows-the-screen-rules](#the-restock-form-follows-the-screen-rules).
+
+## the-summary-folds-its-products
+
+> Owner, in chat (2026-11-04): *"rincian produk di kanan bisa di collapse"*.
+
+```
+OPEN                                    FOLDED
+Produk ˄                         3      Produk ˅                         3
+────────────────────────────────        ────────────────────────────────
+Beras Pandan Wangi 5kg  Rp 650.000      Produk         Rp 2.060.000
+10 × Rp 65.000 / pc                     Ongkos kirim       Rp 20.000
+…                                       Total          Rp 2.080.000
+────────────────────────────────
+Produk         Rp 2.060.000
+```
+
+| | |
+| --- | --- |
+| the switch | the *Produk · 3* heading itself, with a chevron — Chakra's `Collapsible` |
+| to start | **open** |
+| folded | the card is the money alone — goods, shipping, total, the courier's note; the count stays on the heading |
+| the sticky column | the fold carries the shrink chain on, so an open list still gives way under the window's cap ([the-note-sits-over-buat-restok](#the-note-sits-over-buat-restok)); measured at 1280×720 and 1600×900, Buat Restok stays in the window |
+| pinned by | `TheSummaryFoldsItsProducts` |
+
+## the-summary-folds-without-a-scrollbar
+
+> Owner, in chat (2026-11-04): *"collapse muncul scrollbar dan mengganggu"*.
+
+| | |
+| --- | --- |
+| what it was | the fold animates the list's box from its height to nothing (and back); the list, free to shrink inside it for the window's cap, was squeezed below its rows the whole way and drew a scrollbar for the ~200ms — measured at 1600, 1280 and 400px wide |
+| now | the list **cannot scroll while it moves**: its overflow is hidden from the toggle until the animation ends, or 400ms at most — with reduced motion there is no animation, so no end to wait for |
+| the gutter | the list is `layerStyle="scrollList"`: its scrollbar's room is kept, so the amounts never jump sideways when a bar comes or goes |
+| still a bar | only open and at rest, in a column capped at a short window (1280×720: 93px of the list's 141px show) — the list scrolls there so Buat Restok stays in the window ([the-note-sits-over-buat-restok](#the-note-sits-over-buat-restok)); folding it takes the bar away |
+| pinned by | `TheSummaryFoldsItsProducts` (overflow hidden as it unfolds, scrolling again after) |

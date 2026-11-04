@@ -854,7 +854,7 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
 | `entity/` | 6 | show a product / a team / a shop / a person the same way everywhere |
 | `badges/` | 6 | a status or a kind, in its ONE standard colour |
-| `feedback/` | 5 | what the app says back — `ConfirmDialog`, `EmptyHint`, `ListSkeleton`, `RefreshOverlay`, `Toaster` |
+| `feedback/` | 6 | what the app says back — `ConfirmDialog`, `EmptyHint`, `ListSkeleton`, `ReadyLine` (by a save button: the first thing missing, or ✓ ready), `RefreshOverlay`, `Toaster` |
 | `chrome/` | 9 | app furniture — `FilterBar`, `FilterChips`, `GrowingPager`, `SortableHeader`, `CompactActions` (a phone header's actions), `CopyText`, `Logo`, `Pagination`, `ColorModeToggle` |
 | `inputs/` | 3 | a typed value, formatted or masked — money, a password, a quantity |
 | `charts/` | 1 | a graph — `LineGraph`, on Chakra's `@chakra-ui/charts` ([a-chart-is-chakras-chart](docs/technical/frontend/context_decision.md#a-chart-is-chakras-chart)); a screen never draws Recharts itself |

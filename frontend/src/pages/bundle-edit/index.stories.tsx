@@ -105,8 +105,11 @@ export const SaveWaitsForANameAndAProduct: Story = {
 
     const save = await canvas.findByTestId("bundle-save", {}, { timeout: 4000 });
     await expect(save).toBeDisabled();
+    // The first thing missing on the line, the rest on asking (a-save-button-says-what-it-waits-for).
     await expect(canvas.getByTestId("bundle-form-missing-name")).toBeVisible();
-    await expect(canvas.getByTestId("bundle-form-missing-lines")).toBeVisible();
+    await userEvent.click(canvas.getByTestId("bundle-form-missing-more"));
+    const detail = await screen.findByTestId("bundle-form-missing-detail");
+    await waitFor(() => expect(within(detail).getByTestId("bundle-form-missing-detail-lines")).toBeVisible());
     // An example, not a label, as its placeholder (every-form-field-shows-an-example).
     await expect(canvas.getByTestId("bundle-name")).toHaveAttribute("placeholder", "e.g. Paket Hemat Lebaran");
   },
