@@ -363,6 +363,23 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "warehouse-transfer-cancelled",
 			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferCancelled"`,
 		},
+		// inventory_service's compensation listener — mirrors inventory_service.InventoryTxCancelSubscription
+		// (the-compensation-event-is-inventory-tx-cancel, inventory-tx-cancel-is-an-order-event): the take of an order
+		// create that failed after it is released by its key. Its only subscriber. Its dead-letter is what catches a
+		// cancel that kept meeting a stock count past the retry limit (a-cancel-still-meets-the-count-first).
+		{
+			ID:     "inventory-tx-cancel",
+			Topic:  "inventory-tx-cancel",
+			Filter: `attributes.event_type = "warehouse.events.v1.InventoryTxCancel"`,
+		},
+		// inventory_service's cancelled-order listener — mirrors inventory_service.InventoryOrderCancelledSubscription
+		// (inventory-returns-stock-on-order-cancelled): the cancelled order's take released by its key. Its dead-letter
+		// catches a release that kept meeting a stock count past the retry limit (a-cancel-still-meets-the-count-first).
+		{
+			ID:     "inventory-order-cancelled",
+			Topic:  "order-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
+		},
 	}
 }
 

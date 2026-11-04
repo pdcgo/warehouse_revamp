@@ -26,6 +26,21 @@ func (s *Service) OrderCreate(
 	req *connect.Request[sellingv1.OrderCreateRequest],
 ) (*connect.Response[sellingv1.OrderCreateResponse], error) {
 	teamID := req.Msg.GetTeamId()
+	key := req.Msg.GetIdempotencyKey()
+
+	// THE KEY FIRST (the-order-refuses-a-used-key; ⚠ the order of the checks awaits the owner, #10 Q10 — built as
+	// recommended): its shape, then whether an order already holds it — before the draft, the owner lookup, the credit
+	// check and the take, so a used key costs one indexed read and moves nothing. The unique index is the backstop for
+	// two submits of one key in the same second (placeOrder).
+	err := keyShapeError(key)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	err = s.refuseUsedKey(ctx, key)
+	if err != nil {
+		return nil, err
+	}
 
 	finishesDraft, err := s.draftToFinish(ctx, teamID, req.Msg.GetOrderDraftId())
 	if err != nil {
@@ -55,7 +70,9 @@ func (s *Service) OrderCreate(
 		// (an-order-ref-is-required-by-the-rpc). From the draft page it is the draft's external id, seeded on screen.
 		orderExternalRefID: req.Msg.GetOrderExternalRefId(),
 		items:              req.Msg.GetItems(),
-		inTx:               finishesDraft,
+		// The submit's own key, stored on the order (the-order-stores-its-idempotency-key).
+		idempotencyKey: key,
+		inTx:           finishesDraft,
 	})
 	if err != nil {
 		return nil, err

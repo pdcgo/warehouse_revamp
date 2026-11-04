@@ -17,6 +17,7 @@ import (
 // feeOrderReq is two lines of goods whose cost the picker knows: 2 × 4.000 + 1 × 6.000 = a goods cost of 14.000.
 func feeOrderReq(shopID uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,

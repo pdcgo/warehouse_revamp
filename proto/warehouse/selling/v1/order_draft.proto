@@ -45,6 +45,16 @@ service OrderDraftService {
   // Pruning, which is entirely manual (nothing expires) — so it takes several at once.
   rpc OrderDraftDelete(OrderDraftDeleteRequest) returns (OrderDraftDeleteResponse);
 
+  // The duplicate-ref warning's draft half (the-duplicate-warning-reads-drafts-too, settled in
+  // the-duplicate-ref-warning-is-accepted): the TEAM's drafts in one shop carrying any of these marketplace refs —
+  // shaped like OrderService.OrderByExternalRefs. ⚠ Team-wide, not the caller's own: a colleague's scrape of the
+  // same ref is exactly the double the warning exists to name. The drafts list keeps its own-drafts rule.
+  rpc OrderDraftByExternalRefs(OrderDraftByExternalRefsRequest) returns (OrderDraftByExternalRefsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
   // ⚠ NO PROMOTE. A draft becomes an order through OrderCreate with `order_draft_id`
   // (a-draft-becomes-an-order-through-order-create) — one door into `orders`, so a promoted order cannot skip a
   // field the typed one is held to. OrderDraftPromote was removed for exactly that: it rebuilt the order by hand
@@ -465,4 +475,78 @@ message OrderDraftPushResponse {
   // the only caller, and it is the one that cannot otherwise tell a successful retry from a new
   // scrape — the id alone looks identical either way.
   bool created = 2;
+}
+
+// ── OrderDraftByExternalRefs ─────────────────────────────────────────────────────────────────────
+
+message OrderDraftByExternalRefsFilter {
+  // The shop the order is being created in — another shop's draft on the same ref is not this order's double.
+  uint64 shop_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // The marketplace refs as the form holds them. A form asks for one; the cap keeps the read bounded.
+  repeated string refs = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
+}
+
+enum OrderDraftByExternalRefsDataType {
+  ORDER_DRAFT_BY_EXTERNAL_REFS_DATA_TYPE_UNSPECIFIED = 0;
+  ORDER_DRAFT_BY_EXTERNAL_REFS_DATA_TYPE_DRAFT_REF = 1;
+}
+
+message OrderDraftByExternalRefsRequest {
+  // Read: the people who may create orders — the warning runs before OrderCreate, for the same callers.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OrderDraftByExternalRefsFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OrderDraftByExternalRefsDataType data_request = 3;
+}
+
+// One of the team's drafts carrying the ref, in the asked shop.
+message OrderDraftRefItem {
+  uint64 draft_id = 1;
+  uint64 shop_id = 2;
+  // Whose draft it is — the caller can open only their own (OrderDraftDetail narrows to the author).
+  uint64 author_user_id = 3;
+  int64 created_at_unix = 4;
+}
+
+message OrderDraftRefMapItem {
+  // Keyed by draft id. One per app (source) at most, since a draft is unique on (team, source, ref).
+  map<uint64, OrderDraftRefItem> map_data = 1;
+}
+
+message OrderDraftByExternalRefsResponseItem {
+  oneof d {
+    OrderDraftRefMapItem draft_ref = 1;
+  }
+}
+
+message OrderDraftByExternalRefsResponseList {
+  repeated OrderDraftByExternalRefsResponseItem items = 1;
+}
+
+message OrderDraftByExternalRefsResponse {
+  // Keyed by ref. A ref no draft of the team in that shop carries is ABSENT. A `manual` draft (saved from the order
+  // form) is never answered: its external id is a minted form id, not a marketplace ref.
+  map<string, OrderDraftByExternalRefsResponseList> items = 1;
 }

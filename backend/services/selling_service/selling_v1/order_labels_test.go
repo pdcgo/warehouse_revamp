@@ -54,6 +54,7 @@ func insertLabelOrder(t *testing.T, db *gorm.DB, warehouse uint64, documentID st
 	shop := insertShop(t, db, 2, "Toko Label", "LBL-"+documentID, "shopee")
 
 	order := selling_service_models.Order{
+		IdempotencyKey:    newOrderKey(),
 		TeamID:            2,
 		ShopID:            shop,
 		WarehouseID:       warehouse,

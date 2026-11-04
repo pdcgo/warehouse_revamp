@@ -1263,8 +1263,19 @@ type Order struct {
 	//
 	// 0 = the filter reads no status, or no timeline row records the order entering it.
 	DateEnteredAtUnix int64 `protobuf:"varint,32,opt,name=date_entered_at_unix,json=dateEnteredAtUnix,proto3" json:"date_entered_at_unix,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// THE KEY THIS ORDER WAS CREATED WITH — minted by the form at the submit that placed it
+	// (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key) and kept on the order
+	// (the-order-stores-its-idempotency-key), UNIQUE across all orders (the-idempotency-key-is-unique).
+	//
+	// A row from a developer's database that predates the column reads `order:<id>` — the migration's fill
+	// (revamp-has-no-real-orders-yet); no new order can carry that shape.
+	IdempotencyKey string `protobuf:"bytes,33,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	// THE INVENTORY TRANSACTION ITS STOCK WAS TAKEN IN — the take's answer, stored with the order
+	// (the-placement-page-reads-racks-by-transaction-id). 0 = none recorded: an order from a developer's database that
+	// predates the column (revamp-has-no-real-orders-yet).
+	TransactionId uint64 `protobuf:"varint,34,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
@@ -1479,6 +1490,20 @@ func (x *Order) GetDateEnteredAtUnix() int64 {
 	return 0
 }
 
+func (x *Order) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *Order) GetTransactionId() uint64 {
+	if x != nil {
+		return x.TransactionId
+	}
+	return 0
+}
+
 type OrderCreateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -1541,9 +1566,17 @@ type OrderCreateRequest struct {
 	// must be the scoped team's and the caller's, and it is DELETED in the order's own transaction: a refused order
 	// leaves it, and a draft already turned into an order refuses the second one. Everything the order says comes from
 	// the fields above, never from the draft — the page sends what is on its screen.
-	OrderDraftId  uint64 `protobuf:"varint,21,opt,name=order_draft_id,json=orderDraftId,proto3" json:"order_draft_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OrderDraftId uint64 `protobuf:"varint,21,opt,name=order_draft_id,json=orderDraftId,proto3" json:"order_draft_id,omitempty"`
+	// THE SUBMIT'S OWN KEY — minted by the browser inside every submit and never reused
+	// (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key). REQUIRED from the start
+	// (revamp-has-no-real-orders-yet): the order stores it, and it is UNIQUE (the-idempotency-key-is-unique).
+	//
+	// A key already on an order is REFUSED as a used key — AlreadyExists with inventory's OrderTransactionRefusal
+	// KEY_USED detail — never answered with that order (the-order-refuses-a-used-key). A key starting `order:` is
+	// refused too: that shape is reserved for the rows the migration filled. Capped at 128, like the ref.
+	IdempotencyKey string `protobuf:"bytes,22,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *OrderCreateRequest) Reset() {
@@ -1693,6 +1726,13 @@ func (x *OrderCreateRequest) GetOrderDraftId() uint64 {
 		return x.OrderDraftId
 	}
 	return 0
+}
+
+func (x *OrderCreateRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 type OrderCreateResponse struct {
@@ -4716,8 +4756,11 @@ type OrderRefItem struct {
 	// Who placed it — 0 on an order placed before the creator was recorded.
 	CreatedByUserId uint64      `protobuf:"varint,3,opt,name=created_by_user_id,json=createdByUserId,proto3" json:"created_by_user_id,omitempty"`
 	Status          OrderStatus `protobuf:"varint,4,opt,name=status,proto3,enum=warehouse.selling.v1.OrderStatus" json:"status,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// When it was typed in — the order form's duplicate-ref warning dates each order it names with it
+	// (the-duplicate-ref-warning-is-accepted), in one read rather than an OrderDetail per order.
+	CreatedAtUnix int64 `protobuf:"varint,5,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OrderRefItem) Reset() {
@@ -4776,6 +4819,13 @@ func (x *OrderRefItem) GetStatus() OrderStatus {
 		return x.Status
 	}
 	return OrderStatus_ORDER_STATUS_UNSPECIFIED
+}
+
+func (x *OrderRefItem) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
 }
 
 type OrderRefMapItem struct {
@@ -5618,7 +5668,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\vdocument_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
 	"documentId\x12$\n" +
 	"\bfilename\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\bfilename\x12%\n" +
-	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xeb\t\n" +
+	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xbb\n" +
+	"\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -5647,10 +5698,12 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x18platform_created_at_unix\x18\x1c \x01(\x03R\x15platformCreatedAtUnix\x12E\n" +
 	"\x1fplatform_shipment_deadline_unix\x18\x1d \x01(\x03R\x1cplatformShipmentDeadlineUnix\x12%\n" +
 	"\x0ebuyer_username\x18\x1e \x01(\tR\rbuyerUsername\x12/\n" +
-	"\x14date_entered_at_unix\x18  \x01(\x03R\x11dateEnteredAtUnixB\x10\n" +
+	"\x14date_entered_at_unix\x18  \x01(\x03R\x11dateEnteredAtUnix\x12'\n" +
+	"\x0fidempotency_key\x18! \x01(\tR\x0eidempotencyKey\x12%\n" +
+	"\x0etransaction_id\x18\" \x01(\x04R\rtransactionIdB\x10\n" +
 	"\x0e_warehouse_feeJ\x04\b\a\x10\bJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
-	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\xcc\a\n" +
+	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\x81\b\n" +
 	"\x12OrderCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12*\n" +
@@ -5671,7 +5724,9 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x05items\x18\n" +
 	" \x03(\v2\x1f.warehouse.selling.v1.OrderItemB\b\xbaH\x05\x92\x01\x02\b\x01R\x05items\x12<\n" +
 	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12$\n" +
-	"\x0eorder_draft_id\x18\x15 \x01(\x04R\forderDraftId:\v\x92\xb5\x18\a\n" +
+	"\x0eorder_draft_id\x18\x15 \x01(\x04R\forderDraftId\x123\n" +
+	"\x0fidempotency_key\x18\x16 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x0eidempotencyKey:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05J\x04\b\x05\x10\x06J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"R\x10customer_addressR\bsubtotalR\rshipping_costR\x05total\"H\n" +
 	"\x13OrderCreateResponse\x121\n" +
@@ -5908,12 +5963,13 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12O\n" +
 	"\x06filter\x18\x02 \x01(\v2/.warehouse.selling.v1.OrderByExternalRefsFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12T\n" +
 	"\fdata_request\x18\x03 \x03(\x0e21.warehouse.selling.v1.OrderByExternalRefsDataTypeR\vdataRequest:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"\xaa\x01\n" +
+	"\x05\x01\x02\x03\x04\x05\"\xd2\x01\n" +
 	"\fOrderRefItem\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12\x17\n" +
 	"\ashop_id\x18\x02 \x01(\x04R\x06shopId\x12+\n" +
 	"\x12created_by_user_id\x18\x03 \x01(\x04R\x0fcreatedByUserId\x129\n" +
-	"\x06status\x18\x04 \x01(\x0e2!.warehouse.selling.v1.OrderStatusR\x06status\"\xc0\x01\n" +
+	"\x06status\x18\x04 \x01(\x0e2!.warehouse.selling.v1.OrderStatusR\x06status\x12&\n" +
+	"\x0fcreated_at_unix\x18\x05 \x01(\x03R\rcreatedAtUnix\"\xc0\x01\n" +
 	"\x0fOrderRefMapItem\x12M\n" +
 	"\bmap_data\x18\x01 \x03(\v22.warehouse.selling.v1.OrderRefMapItem.MapDataEntryR\amapData\x1a^\n" +
 	"\fMapDataEntry\x12\x10\n" +

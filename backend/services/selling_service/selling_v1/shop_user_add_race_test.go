@@ -132,11 +132,12 @@ func raceSetPrimary(svc *selling_v1.Service, shopID, userID uint64) (*sellingv1.
 func raceOrderOn(shopID uint64) func(tx *gorm.DB) error {
 	return func(tx *gorm.DB) error {
 		return tx.Create(&selling_service_models.Order{
-			TeamID:       raceShopTeam,
-			ShopID:       shopID,
-			WarehouseID:  testWarehouse,
-			Status:       "pending",
-			CustomerName: "Race",
+			IdempotencyKey: newOrderKey(),
+			TeamID:         raceShopTeam,
+			ShopID:         shopID,
+			WarehouseID:    testWarehouse,
+			Status:         "pending",
+			CustomerName:   "Race",
 		}).Error
 	}
 }

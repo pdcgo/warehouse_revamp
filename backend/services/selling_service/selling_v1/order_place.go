@@ -56,6 +56,10 @@ type orderPlacement struct {
 	// (an-order-ref-is-required-by-the-rpc); "" only on an order placed before that rule.
 	orderExternalRefID string
 
+	// The submit's own key (the-frontend-mints-the-idempotency-key), stored on the order. REQUIRED, never `order:…`
+	// (validate). Already refused by OrderCreate when an order holds it; the unique index catches the same-second twin.
+	idempotencyKey string
+
 	items []*sellingv1.OrderItem
 
 	// Extra work to run INSIDE the order's transaction, once the order row exists. OrderCreate deletes the
@@ -86,6 +90,11 @@ var (
 // directly — a unit test, a CLI command — gets no validation interceptor. (It was load-bearing while OrderDraftPromote
 // existed: that request carried only a draft id, so none of the field rules ran.)
 func (p *orderPlacement) validate() error {
+	keyErr := keyShapeError(p.idempotencyKey)
+	if keyErr != nil {
+		return keyErr
+	}
+
 	if p.shopID == 0 {
 		return errOrderNoShop
 	}
@@ -125,12 +134,13 @@ func (p *orderPlacement) validate() error {
 	return nil
 }
 
-// placeOrder writes an order, takes its stock, and announces it — the whole of what "placing" means.
+// placeOrder takes an order's stock, writes the order, and announces it — the whole of what "placing" means.
 //
-// Extracted from OrderCreate for #194 so promote ran the same path; promote IS OrderCreate now. The
-// behaviour is unchanged, including the parts that look odd and are not: the stock draw happens
-// inside the still-uncommitted transaction, and the compensation tracks whether the pick was
-// ATTEMPTED rather than whether it succeeded.
+// THE TAKE COMES FIRST, under the order's key K, before the order row and outside its transaction (backlog #10 slice
+// 3, the-compensation-event-is-inventory-tx-cancel). Any failure once the take was called — the take itself, the fee,
+// the draft, the database, a person leaving — releases the take by K, directly and then by InventoryTxCancel
+// (the-release-is-direct-then-the-event), EXCEPT a take refused because K is already used, which is another submit's
+// live take and is never released (a-used-key-is-never-cancelled). Promote IS OrderCreate (#194), so both doors run this.
 func (s *Service) placeOrder(
 	ctx context.Context,
 	p *orderPlacement,
@@ -196,20 +206,43 @@ func (s *Service) placeOrder(
 		return nil, creditBlocked(block)
 	}
 
+	// THE STOCK TAKE, BEFORE THE ORDER ROW AND OUTSIDE ITS TRANSACTION (backlog #10 slice 3) — after the key check, the
+	// owner lookup, the return maps and the credit check, so a refused order never takes anything. Filed under the
+	// order's own key K (the-frontend-mints-the-idempotency-key, every-release-goes-by-the-key): the row does not exist
+	// yet, so K is the only name the take can have, and it is what the release names. No selling lock is held across the
+	// inventory call any more.
+	//
+	// It runs under the REQUEST's context with no deadline of its own (no-answer-is-only-a-lost-connection): a slow
+	// warehouse keeps the person waiting; a person who leaves cancels it, and the compensation below still runs.
+	take, err := s.stock.Pick(ctx, p.teamID, p.warehouseID, pickLines(p.items), p.idempotencyKey)
+	if err != nil {
+		// A KEY ALREADY USED IS NEVER COMPENSATED (a-used-key-is-never-cancelled): the key is another submit's live take,
+		// and only the order that owns a key may release it. The order fails with the refusal, as it came.
+		if isKeyUsedRefusal(err) {
+			return nil, takeError(err)
+		}
+
+		// Any other failure — a refusal, an error, a context cancelled mid-call — may still have committed on the
+		// inventory side (an answer lost on the way back), so the take is released by K all the same. A release of a key
+		// nothing was taken under claims it with none, so a take that lands late is refused.
+		s.compensateTake(ctx, p, "the stock take failed: "+err.Error())
+
+		return nil, takeError(err)
+	}
+
+	draw := take.Draw
+
 	var (
 		order selling_service_models.Order
-		// Whether the stock draw was ATTEMPTED. See the compensation block below for why "attempted"
-		// rather than "succeeded" is the right thing to track.
-		picked bool
-		// What the take drew for each product — the one answer every money figure of the order is frozen from.
-		draw PickDraw
 		// The warehouse's refusal of the fee, or the pricer being unreachable, kept AS IT CAME: priceWarehouseFee has
 		// already shaped it for the form, so it must not be re-wrapped as an internal error on the way out.
 		feeErr error
-		// The take's own answer when it failed — kept apart from the database's errors for the same reason: a take
-		// refused for short stock or a borrowed product below its reserve is the warehouse saying WHY, and the form can
-		// only say it too if the code and the OrderTransactionRefusal detail reach it. See takeError.
-		takeErr error
+		// The insert met orders_idempotency_key_idx. Unreachable in practice since the take runs first — a twin of this
+		// key is refused KEY_USED at the take — but kept as the backstop it was (the-idempotency-key-is-unique).
+		keyTaken bool
+		// The transaction's body ran to the end and only its COMMIT was left — an error from here on may come from a
+		// commit that landed (backlog #10c), so the order is looked for before anything is released.
+		reachedCommit bool
 	)
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -248,12 +281,17 @@ func (s *Service) placeOrder(
 			// The platform's two dates, as read off the storefront. The deadline may be absent; the order date may not.
 			PlatformCreatedAt:        timeOrNil(p.platformCreatedAt),
 			PlatformShipmentDeadline: timeOrNil(p.platformShipmentDeadline),
-			// `goods_cost`, `warehouse_fee` and `total_cost` are NOT written here: all three come from the take's draw,
-			// which needs this row's id first. They are written below, after the pick, in this same transaction.
+			// `goods_cost` is the take's draw, known before the row is written. `warehouse_fee` and `total_cost` are
+			// priced below, in this same transaction.
+			GoodsCost:     orderGoodsCost(p.items, draw),
 			PlatformTotal: p.platformTotal,
 			// Verbatim, exactly as the person read it off the storefront — never trimmed into a
 			// shape, never parsed.
 			OrderExternalRefID: p.orderExternalRefID,
+			// The submit's key, as sent (the-order-stores-its-idempotency-key) — the key the take above is filed under.
+			IdempotencyKey: p.idempotencyKey,
+			// The inventory transaction the take wrote (the-placement-page-reads-racks-by-transaction-id).
+			TransactionID: transactionIDOrNil(take.TransactionID),
 			// WHO CREATED IT, from the TOKEN and never from the request
 			// (settlement #the-creator-is-read-from-the-token-at-placement): a client-supplied creator is
 			// a client that can attribute somebody else's sales. 0 when the caller is unidentifiable.
@@ -263,14 +301,19 @@ func (s *Service) placeOrder(
 			Items:      orderItemModels(p.items),
 		}
 
-		// THE HEADER FIRST, THE LINES AFTER THE PICK. A line's money is written ONCE, complete
-		// (a-lines-money-is-frozen-at-finalize), and its `total` is the take's answer — so the lines wait for it
-		// rather than being inserted short and patched. Held aside here and inserted below, in this same transaction.
+		// THE HEADER FIRST, THE LINES LAST. A line's money is written ONCE, complete (a-lines-money-is-frozen-at-finalize):
+		// held aside here, stamped from the draw, and inserted at the end of this same transaction.
 		items := order.Items
 		order.Items = nil
 
+		// THE BACKSTOP (the-idempotency-key-is-unique). A twin submit of this key is refused KEY_USED at the take
+		// above, before it gets here; the unique index stays the last word.
 		createErr := tx.Create(&order).Error
 		if createErr != nil {
+			if isUniqueViolation(createErr) {
+				keyTaken = true
+			}
+
 			return createErr
 		}
 
@@ -313,31 +356,13 @@ func (s *Service) placeOrder(
 
 		// Whatever the caller needs done atomically with the order. For a draft's Promote this is the
 		// draft's deletion: same service, same database, so it is one transaction and the "gap between
-		// two writes" a cross-service split would have created never exists.
+		// two writes" a cross-service split would have created never exists. A delete that finds the draft gone
+		// fails the order — after the take, so the compensation below gives the stock back.
 		if p.inTx != nil {
 			hookErr := p.inTx(tx, &order)
 			if hookErr != nil {
 				return hookErr
 			}
-		}
-
-		// THE STOCK, inside the order's still-uncommitted transaction (#149).
-		//
-		// The header insert comes first only to get the order's id, which is what the pick is recorded
-		// under — the ref is what a later cancel names to put exactly this draw back (#70). The
-		// GUARANTEE is unchanged and is what the owner chose: the pick must succeed before the order
-		// is committed, so not enough stock means this transaction rolls back and NO ORDER EXISTS.
-		// Writing the order first and deducting afterwards would leave a gap in which two orders
-		// could be placed against the same unit.
-		picked = true
-
-		var pickErr error
-
-		draw, pickErr = s.stock.Pick(ctx, p.teamID, order.WarehouseID, pickLines(p.items), stockRef(order.ID))
-		if pickErr != nil {
-			takeErr = pickErr
-
-			return pickErr
 		}
 
 		// EVERY MONEY FIGURE OF THE ORDER FROM THE ONE DRAW (an-order-is-costed-at-what-leaves-the-shelf): what the units
@@ -366,17 +391,13 @@ func (s *Service) placeOrder(
 			}
 		}
 
-		order.GoodsCost = orderGoodsCost(p.items, draw)
-
 		// THE WAREHOUSE FEE, priced on that goods_cost and frozen (the-fee-is-priced-on-goods-cost,
 		// the-flat-rate-is-dropped-last step 3) — so a borrowed line's markup is in the basis, as the goods cost the
-		// seller. AFTER the take and INSIDE this transaction, because its basis is the draw and the draw exists only once
-		// the take has answered. The fee is warehouse_service's to compute, never this service's
-		// (warehouse-prices-balance-records), so it is asked here rather than worked out from a rate read beforehand.
+		// seller. The fee is warehouse_service's to compute, never this service's (warehouse-prices-balance-records).
 		//
 		// A warehouse with no rate (a-warehouse-with-no-rate-takes-no-orders), or a pricer nobody can reach, fails this
-		// transaction like any failed step, and the compensation below gives the take back — the owner's own flow. The
-		// order form refuses such a warehouse before Create, so this is the rare path, not the usual one.
+		// transaction like any failed step, and the compensation below gives the take back. The order form refuses such a
+		// warehouse before Create, so this is the rare path, not the usual one.
 		warehouseFee, priceErr := s.priceWarehouseFee(ctx, p.teamID, p.warehouseID, order.GoodsCost)
 		if priceErr != nil {
 			feeErr = priceErr
@@ -387,10 +408,9 @@ func (s *Service) placeOrder(
 		order.WarehouseFee = warehouseFee
 		order.TotalCost = orderTotalCost(order.GoodsCost, warehouseFee)
 
-		// THE HEADER'S MONEY, written now that it is known — in the transaction that inserted the row, so no reader ever
-		// sees the order without it. A nil fee only on a service built without a pricer.
+		// THE FEE AND THE TOTAL, written now that they are known — in the transaction that inserted the row, so no reader
+		// ever sees the order without them. A nil fee only on a service built without a pricer.
 		moneyErr := tx.Model(&order).UpdateColumns(map[string]any{
-			"goods_cost":    order.GoodsCost,
 			"warehouse_fee": order.WarehouseFee,
 			"total_cost":    order.TotalCost,
 		}).Error
@@ -405,39 +425,73 @@ func (s *Service) placeOrder(
 
 		order.Items = items
 
+		// Every step ran: from here the only thing left is the COMMIT, and a commit that reports an error may still have
+		// landed (an answer lost on the way back). Recorded so the failure below knows to look before it releases.
+		reachedCommit = true
+
 		return nil
 	})
+	if s.orderCommitResult != nil {
+		err = s.orderCommitResult(err)
+	}
+
+	if err != nil && reachedCommit {
+		// THE COMMIT MAY HAVE LANDED (backlog #10c). The error came at or after the commit, so the order may exist — and
+		// releasing its take then would leave a live order with no stock behind it. A FRESH read by K, outside the failed
+		// transaction, decides: the order is there → it was placed, nothing is released or announced as cancelled, and it
+		// is answered as placed; it is not → it never committed, and the take is compensated as any failure is.
+		placed, readErr := s.placedOrderByKey(ctx, p.idempotencyKey)
+		if readErr != nil {
+			// NOT KNOWN EITHER WAY, so nothing is released: a release under an order that did commit is stock gone from a
+			// live order, which nothing would find; a take left standing under an order that did not is named here, by K.
+			slog.ErrorContext(ctx, "STOCK MAY STILL BE TAKEN: an order's commit reported an error and the re-read by its "+
+				"key failed too — check whether the order exists, and release the key by hand if it does not "+
+				"(OrderTransactionRelease)",
+				"idempotency_key", p.idempotencyKey,
+				"team_id", p.teamID,
+				"warehouse_id", p.warehouseID,
+				"commit_error", err,
+				"read_error", readErr,
+			)
+
+			return nil, connect.NewError(connect.CodeUnavailable, errOrderOutcomeUnknown)
+		}
+
+		if placed != nil {
+			slog.WarnContext(ctx, "an order's commit reported an error but the order is there — answered as placed",
+				"order_id", placed.ID,
+				"idempotency_key", p.idempotencyKey,
+				"commit_error", err,
+			)
+
+			order = *placed
+			err = nil
+		}
+	}
+
 	if err != nil {
-		// COMPENSATION (#149). The pick runs against another service and commits on its own; if this
-		// transaction then failed, stock has left for an order that does not exist. There is no
-		// rollback that reaches across both, so the draw is UNDONE explicitly.
-		//
-		// `picked` is set before the call rather than after, deliberately: a Pick that fails midway
-		// takes nothing (it is one transaction there), but a Pick whose result never reached us — a
-		// timeout, a panic — may well have committed. Compensating a draw that never happened is a
-		// harmless NotFound; failing to compensate one that did is stock lost from the building.
-		if picked {
-			returnErr := s.stock.Return(ctx, p.teamID, order.WarehouseID, stockRef(order.ID))
-			if returnErr != nil {
-				// The order failed AND its stock could not be put back. Say both, because the second
-				// is the one someone has to fix by hand, and a message naming only the first would
-				// send them looking in the wrong place.
-				return nil, connect.NewError(connect.CodeInternal,
-					errors.New("the order failed and its stock could not be returned ("+
-						stockRef(order.ID)+"): "+returnErr.Error()))
-			}
+		// COMPENSATION (the-compensation-event-is-inventory-tx-cancel, the-release-is-direct-then-the-event). The take
+		// committed on its own before this transaction began; this transaction failing — the fee refused, the draft
+		// already promoted, the database, the person leaving — means stock left for an order that does not exist. There
+		// is no rollback that reaches across both, so the take is RELEASED by K: directly first, then by event.
+		s.compensateTake(ctx, p, "the order was not written after its stock take: "+err.Error())
+
+		if keyTaken {
+			return nil, keyUsed()
 		}
 
 		if feeErr != nil {
 			return nil, feeErr
 		}
 
-		if takeErr != nil {
-			return nil, takeError(takeErr)
-		}
-
 		if errors.Is(err, errShopMissing) {
 			return nil, notFound()
+		}
+
+		// A step's own answer — the draft already turned into an order (Aborted) — reaches the caller as it came.
+		var answered *connect.Error
+		if errors.As(err, &answered) {
+			return nil, answered
 		}
 
 		return nil, dbError(err)
@@ -490,6 +544,9 @@ func (s *Service) placeOrder(
 				// The fee as frozen above — liability posts this number and reads no rate of its own
 				// (the-event-carries-the-warehouse-fee).
 				WarehouseFee: order.WarehouseFee,
+				// The key the order and its take are filed under, and the take's inventory transaction.
+				IdempotencyKey: order.IdempotencyKey,
+				TransactionId:  take.TransactionID,
 			},
 		},
 	})

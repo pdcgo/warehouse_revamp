@@ -22,6 +22,8 @@ import {
 import { TeamProvider } from "../src/features/team/TeamContext";
 import { resetFinancialAccounts } from "./financialAccountStub";
 import { resetSessionScenario } from "./sessionScenario";
+import { resetDuplicateRefStub } from "./duplicateRefStub";
+import { resetOrderAnswerStub } from "./orderAnswerStub";
 import { resetUserStub } from "./userStub";
 import { resetSupplierStub } from "./supplierStub";
 import { resetShopStub } from "./shopStub";
@@ -400,6 +402,10 @@ const preview: Preview = {
     resetFinancialAccounts();
     // …and who is signed in — a story standing as a CS must not leave the next one a CS.
     resetSessionScenario();
+    // …and the duplicate-ref lookup's extra orders, its failure switch and its call log (duplicateRefStub.ts).
+    resetDuplicateRefStub();
+    // …and OrderCreate's scripted answers — a held (slow) Create is dropped, so it never lands in the next story.
+    resetOrderAnswerStub();
     resetUserStub();
     // …and the suppliers and their channels, which a create, an edit or a delete writes to.
     resetSupplierStub();

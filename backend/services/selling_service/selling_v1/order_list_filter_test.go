@@ -35,6 +35,7 @@ func namedOrder(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -187,6 +188,7 @@ func TestOrderList_SearchNeverLeaksAnotherTeamsOrders(t *testing.T) {
 	ours := namedOrder(t, svc, mine, "Budi Santoso", "081200001111")
 
 	_, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                3, ShopId: theirs, WarehouseId: 901,

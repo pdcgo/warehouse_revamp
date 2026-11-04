@@ -2,9 +2,6 @@ package selling_v1
 
 import (
 	"context"
-	"strconv"
-
-	"connectrpc.com/connect"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 )
@@ -39,6 +36,13 @@ type PickedLine struct {
 // exactly one line's.
 type PickDraw map[uint64]PickedLine
 
+// Take is the stock take's whole answer: the inventory transaction it wrote — stored on the order as
+// `transaction_id` (the-placement-page-reads-racks-by-transaction-id) — and what each line drew.
+type Take struct {
+	TransactionID uint64
+	Draw          PickDraw
+}
+
 // StockPicker is how selling_service moves stock when an order is placed or cancelled (#149/#70).
 //
 // It is an INTERFACE THIS SERVICE OWNS, expressed in this service's own types, and that is deliberate:
@@ -56,50 +60,48 @@ type StockPicker interface {
 	// A REFUSAL comes back as the take's own Connect error — its code and its OrderTransactionRefusal
 	// detail — and placeOrder hands it to the caller unchanged (takeError), so it must not be reshaped here.
 	//
-	// `ref` is written onto every movement, and is what Return later names to undo exactly this pick.
+	// `key` is the ORDER'S OWN IDEMPOTENCY KEY K (the-frontend-mints-the-idempotency-key): the take is filed under it,
+	// once — a key already used is refused AlreadyExists with the KEY_USED detail — and Return names it to undo exactly
+	// this pick (every-release-goes-by-the-key). The take runs BEFORE the order row exists, so K is all it can be named by.
 	//
 	// It answers WHAT EACH LINE DREW, by product: the cost of the units that left the shelf, and the line's total — that
 	// cost plus, on another team's product, the product's own cross markup — computed by the warehouse, never here
 	// (inventory-computes-the-markup, an-order-is-costed-at-what-leaves-the-shelf). The order freezes every money figure
 	// of the line and its header from this one answer (a-lines-money-is-frozen-at-finalize). A product absent from the
 	// map was priced at nothing the warehouse could say: its line freezes no cost and no total.
-	Pick(ctx context.Context, sellingTeamID, warehouseID uint64, lines []PickLine, ref string) (PickDraw, error)
+	Pick(ctx context.Context, sellingTeamID, warehouseID uint64, lines []PickLine, key string) (Take, error)
 
-	// Return puts a pick back, naming the `ref` it was taken under. The stock goes back exactly where
-	// it came from, including the split across shelves — the inventory side reverses the movements it
+	// Return releases the take filed under `key` — the one release by key (every-release-goes-by-the-key). The stock goes
+	// back exactly where it came from, including the split across shelves — the inventory side reverses the movements it
 	// recorded rather than trusting quantities from here.
 	//
-	// Returning a ref twice is refused there, which is what makes a retry safe from here.
-	Return(ctx context.Context, sellingTeamID, warehouseID uint64, ref string) error
+	// ONLY THE COMPENSATION OF A FAILED CREATE calls it (the-release-is-direct-then-the-event). A cancelled order's stock
+	// goes back on OrderCancelled, released by inventory itself (inventory-returns-stock-on-order-cancelled), so the
+	// cancel never calls this.
+	//
+	// Releasing a key twice gives nothing back the second time, and releasing a key nothing was taken under yet claims it
+	// so a late take is refused — which is what makes the compensation's direct call and its InventoryTxCancel backup
+	// safe together. Another team's key answers NotFound; a rack a stock count holds answers FailedPrecondition.
+	Return(ctx context.Context, sellingTeamID, warehouseID uint64, key string) error
+
+	// StockLockCheck is the count that holds a rack the take under `key` came from, or nil when none does — a READ, in
+	// process, that moves nothing (a-cancel-still-meets-the-count-first). OrderCancel asks it FIRST, before the order's
+	// status moves, so a cancel a count would block is refused naming the count and the order stays pending.
+	//
+	// It is a courtesy, not the lock: a count that starts after this answered still stops the release inventory makes on
+	// OrderCancelled, which then waits (redelivered) until the count ends. A key with no take of this team answers nil.
+	StockLockCheck(ctx context.Context, sellingTeamID, warehouseID uint64, key string) (*StockLock, error)
 
 	// ⚠ There is no cost read beside Pick any more. An order is costed at the units that leave the shelf
 	// (an-order-is-costed-at-what-leaves-the-shelf), which only the take knows — the shelf's average, read before it,
 	// was a different figure and is never an order's cost.
 }
 
-// isNothingToReturn reports whether a Return failed because there was nothing to give back.
-//
-// That is not an error from the caller's side (#70): an order placed before #149 never drew stock, so
-// cancelling it has nothing to undo, and refusing to cancel those would be punishing history. Every
-// other failure is real and must not be swallowed with it.
-//
-// It reads the Connect CODE rather than matching the message, so a reworded error on the inventory
-// side cannot silently turn "nothing to return" into "we swallowed a genuine failure".
-func isNothingToReturn(err error) bool {
-	return connect.CodeOf(err) == connect.CodeNotFound
-}
-
-// stockRef is the reference an order's stock draw is recorded under (#149/#70).
-//
-// It is derived from the order id rather than being a separate token, so the ledger traces straight
-// back to the order without another column to keep in sync — and a cancel can name the draw to undo
-// knowing only the order it is cancelling.
-//
-// The prefix matters: `ref` is a free-text column shared with every other movement kind (a restock
-// fulfil writes a shipping code there), so an un-prefixed "42" could collide with something that is
-// not an order at all.
-func stockRef(orderID uint64) string {
-	return "order:" + strconv.FormatUint(orderID, 10)
+// StockLock is a stock count holding a rack an order's take came from: the count's session, and the warehouse's own
+// sentence naming it — the count, who started it and when — which the refused cancel hands to the person as it came.
+type StockLock struct {
+	SessionID uint64
+	Reason    string
 }
 
 // pickLines turns an order's lines into the picker's terms. Deliberately a translation rather than a

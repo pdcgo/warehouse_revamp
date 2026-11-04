@@ -123,15 +123,16 @@ async function addProducts(page: Page, skus: string[]) {
   await page.getByTestId("product-picker-confirm").click();
 }
 
-// Places one order through the form (reusing the setup shop + product) and lands on its detail page.
-// Deliberately fills NO address: it is optional (#118), so this also proves the form submits and the
-// detail page renders without one.
-async function placeOrderViaForm(page: Page, customer: string) {
+// Fills the smallest placeable order on the form (the setup shop + product), the marketplace ref last, and stops
+// short of Create. Returns the shop's id, read off the option picked — the duplicate-ref test pushes a draft into it.
+async function fillOrderForm(page: Page, customer: string, ref: string): Promise<string> {
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
   await page.getByTestId("order-create-customer-name").fill(customer);
   await page.getByTestId("shop-select").click();
-  await page.getByRole("option").filter({ hasText: SHOP_NAME }).click();
+  const shopOption = page.getByRole("option").filter({ hasText: SHOP_NAME });
+  const shopId = ((await shopOption.getAttribute("data-testid")) ?? "").replace("shop-select-option-", "");
+  await shopOption.click();
   // Which warehouse ships it (#72) — required, so the form cannot submit without it. Chosen BEFORE
   // the products so the picker can show what that warehouse holds on each row.
   await page.getByTestId("order-warehouse").locator("input").fill(WH_CODE);
@@ -141,10 +142,20 @@ async function placeOrderViaForm(page: Page, customer: string) {
   await pickOrderDate(page);
   // What the buyer paid on the storefront — required to place (platform-total-is-required-at-finalize).
   await page.getByTestId("order-marketplace-total").fill("25000");
-  // The marketplace ref — required to place (an-order-ref-is-required-by-the-rpc). One per order, so the duplicate
-  // warning never stands between two orders this spec places.
-  await page.getByTestId("order-external-ref-id").fill(`E2E-${Date.now()}`);
+  // The marketplace ref — required to place (an-order-ref-is-required-by-the-rpc).
+  await page.getByTestId("order-external-ref-id").fill(ref);
   // No price: a line is valued at the warehouse HPP, which this fixture's product has none of.
+  await expect(page.getByTestId("order-create-save")).toBeEnabled();
+
+  return shopId;
+}
+
+// Places one order through the form (reusing the setup shop + product) and lands on its detail page.
+// Deliberately fills NO address: it is optional (#118), so this also proves the form submits and the
+// detail page renders without one. One ref per order, so the duplicate warning never stands between two orders
+// this spec places.
+async function placeOrderViaForm(page: Page, customer: string) {
+  await fillOrderForm(page, customer, `E2E-${Date.now()}`);
   await page.getByTestId("order-create-save").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
 }
@@ -713,6 +724,43 @@ test("Address: a postal code suggests the address and fills the whole cascade", 
   await expect(page.getByTestId("address-kodepos").locator("input")).toHaveValue(KODE_POS);
 });
 
+// How many units stand on this spec's seed rack — the one shelf the setup put the product on. Read the way the app reads
+// a rack (RackList with its stock totals), so a cancel's stock coming back is asserted on the shelf itself.
+async function seedRackStock(page: Page): Promise<number> {
+  return page.evaluate(async (whCode) => {
+    const token =
+      window.sessionStorage.getItem("warehouse_revamp.token") ??
+      window.localStorage.getItem("warehouse_revamp.token");
+
+    const call = async (method: string, body: unknown) => {
+      const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+      return res.json();
+    };
+
+    const slice = (res: { items?: Record<string, { mapData?: Record<string, unknown> }>[] }, name: string) =>
+      Object.values(res.items?.find((it) => it[name])?.[name]?.mapData ?? {}) as Record<string, string>[];
+
+    const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+    const warehouse = slice(teams, "team").find((t) => t.teamCode === whCode)!;
+
+    const racks = await call("inventory.v1.RackService/RackList", {
+      teamId: warehouse.id,
+      filter: { q: "e2e-seed" },
+      dataRequest: ["RACK_LIST_DATA_TYPE_RACK", "RACK_LIST_DATA_TYPE_STOCK"],
+      page: { page: 1, limit: 5 },
+    });
+    const rack = slice(racks, "rack").find((r) => r.code === "e2e-seed")!;
+    const stock = slice(racks, "stock").find((r) => r.rackId === rack.id);
+
+    return Number(stock?.stockCount ?? 0);
+  }, WH_CODE);
+}
+
 // The order the Lifecycle test places and cancels. The list has no customer column, and this order
 // has no marketplace ref, so the list tests below find its row by id. (The file is serial, one worker.)
 let lifecycleOrderId = "";
@@ -724,7 +772,9 @@ let lifecycleOrderId = "";
 // the building takes it on.
 test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  const onShelf = await seedRackStock(page);
   await placeOrderViaForm(page, `${CUSTOMER} lifecycle`);
+  expect(await seedRackStock(page)).toBeLessThan(onShelf);
   lifecycleOrderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
   const detail = page.getByTestId("order-detail-page");
 
@@ -738,6 +788,12 @@ test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", 
   await page.getByTestId("confirm-action").click();
   await expect(detail).toContainText("Cancelled");
   await expect(page.getByTestId("order-action-cancel")).toBeHidden();
+
+  // THE STOCK COMES BACK A MOMENT LATER, not inside the cancel: inventory releases the take when OrderCancelled reaches
+  // it (inventory-returns-stock-on-order-cancelled), so the shelf is polled until it reads what it held before the order.
+  await expect(async () => {
+    expect(await seedRackStock(page)).toBe(onShelf);
+  }).toPass({ timeout: 45_000 });
 });
 
 // The header and the status tabs above the list.
@@ -1614,4 +1670,107 @@ test("Moves: a completed order is returned", async ({ page }) => {
   await expect(page.getByText(/Return the goods on order #\d+\?/)).toBeVisible();
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "return");
+});
+
+// THE DUPLICATE MARKETPLACE REF IS WARNED, NOT REFUSED (a-duplicate-ref-is-warned-not-refused,
+// the-duplicate-warning-reads-drafts-too, the-duplicate-ref-warning-is-accepted). A first order on a fresh ref goes
+// straight through; a second order typed on the same shop + ref is stopped by a warning naming the first (a link, its
+// status, the WIB day it was typed in); Go Back keeps the form as typed; Create Anyway places the double. A draft
+// pushed on another ref in the same shop is named the same way, as "Draft #id". LAST in the file: the double it places
+// would otherwise change the counts the list tests above assert.
+test("Duplicate ref: a second order on a used ref is warned about, and can still be created", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const ref = `250817DU${SUFFIX}`;
+  const customer = `E2E Duplicate ${SUFFIX}`;
+
+  // THE FIRST ORDER on the ref: nothing recorded yet, so no warning — Create goes straight to the detail.
+  await fillOrderForm(page, `${customer} first`, ref);
+  await page.getByTestId("order-create-save").click();
+  await expect(page.getByTestId("order-detail-page")).toBeVisible();
+  const firstId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
+
+  const shopId = await fillOrderForm(page, customer, ref);
+  await page.getByTestId("order-create-save").click();
+
+  const dialog = page.getByTestId("duplicate-ref-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId("duplicate-ref-lead")).toContainText(ref);
+  const link = dialog.getByTestId(`duplicate-ref-order-link-${firstId}`);
+  await expect(link).toHaveText(`Order #${firstId}`);
+  await expect(link).toHaveAttribute("href", `/orders/${firstId}`);
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(dialog.getByTestId(`duplicate-ref-order-${firstId}`)).toContainText("Pending");
+  // Typed in today — the short WIB day, off the lookup itself (OrderRefItem.created_at_unix), no detail read.
+  const today = new Date().toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  });
+  await expect(dialog.getByTestId(`duplicate-ref-order-${firstId}`)).toContainText(`created ${today}`);
+
+  // GO BACK keeps the form exactly as typed, and places nothing.
+  await dialog.getByTestId("duplicate-ref-go-back").click();
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/\/orders\/new$/);
+  await expect(page.getByTestId("order-create-customer-name")).toHaveValue(customer);
+  await expect(page.getByTestId("order-external-ref-id")).toHaveValue(ref);
+  await expect(page.getByTestId("order-line-0")).toContainText(SKU);
+
+  // CREATE ANYWAY places the double — the server refuses nothing for a repeated ref.
+  await page.getByTestId("order-create-save").click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId("duplicate-ref-create-anyway").click();
+  await expect(page.getByTestId("order-detail-page")).toBeVisible();
+  await expect(page).toHaveURL(/\/orders\/\d+$/);
+  expect(page.url()).not.toMatch(new RegExp(`/orders/${firstId}$`));
+  await expect(page.getByTestId("order-reference-mp")).toContainText(ref);
+
+  // A DRAFT ON THE SHOP + REF IS NAMED TOO — pushed the way the external app pushes one, into this shop.
+  const draftRef = `250816DR${SUFFIX}`;
+  const draftId = await page.evaluate(
+    async ({ draft, shop }: { draft: string; shop: string }) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const res = await fetch("http://localhost:8081/warehouse.selling.v1.OrderDraftService/OrderDraftPush", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teamId: "1", source: "e2e-scraper", externalId: draft, shopId: shop, customerName: "Budi" }),
+      });
+      if (res.status !== 200) throw new Error(`OrderDraftPush: ${res.status} ${await res.text()}`);
+
+      return ((await res.json()) as { draft: { id: string } }).draft.id;
+    },
+    { draft: draftRef, shop: shopId },
+  );
+
+  await fillOrderForm(page, customer, draftRef);
+  await page.getByTestId("order-create-save").click();
+  await expect(dialog).toBeVisible();
+  const draftLink = dialog.getByTestId(`duplicate-ref-draft-link-${draftId}`);
+  await expect(draftLink).toHaveText(`Draft #${draftId}`);
+  await expect(draftLink).toHaveAttribute("href", `/orders/new?draft=${draftId}`);
+  await expect(dialog.getByTestId(`duplicate-ref-draft-${draftId}`)).toContainText(`created ${today}`);
+  await expect(dialog.locator('[data-testid^="duplicate-ref-order-"]')).toHaveCount(0);
+  await dialog.getByTestId("duplicate-ref-go-back").click();
+  await expect(dialog).toBeHidden();
+
+  // The draft is left as it was found — deleted here so the drafts screen of a later spec starts as it did.
+  const deleted = await page.evaluate(async (id: string) => {
+    const token =
+      window.sessionStorage.getItem("warehouse_revamp.token") ??
+      window.localStorage.getItem("warehouse_revamp.token");
+
+    const res = await fetch("http://localhost:8081/warehouse.selling.v1.OrderDraftService/OrderDraftDelete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ teamId: "1", draftIds: [id] }),
+    });
+
+    return res.status;
+  }, draftId);
+  expect(deleted).toBe(200);
 });

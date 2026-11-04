@@ -127,7 +127,7 @@ func wslStocked(t *testing.T) *inventory_v1.Service {
 	otRestock(t, svc, otMelati, wslKemeja, 2, 20000, []*inventoryv1.RestockPlacement{{PlacementId: rakA, Quantity: 2}})
 
 	// Every Kaos Polos leaves on an order: held here, at 0 now.
-	_, err := take(svc, "order:wsl-1", line(wslKaosPolos, 4))
+	_, err := take(svc, "key-wsl-1", line(wslKaosPolos, 4))
 	if err != nil {
 		t.Fatalf("take every Kaos Polos: %v", err)
 	}

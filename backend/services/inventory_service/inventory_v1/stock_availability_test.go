@@ -72,13 +72,13 @@ func TestStockAvailability_AgreesWithWhatATakeCanTake(t *testing.T) {
 	}
 
 	// Exactly what it promised goes through...
-	err = take("order:1", available)
+	err = take("key-1", available)
 	if err != nil {
 		t.Fatalf("taking the %d it reported as available failed: %v", available, err)
 	}
 
 	// ...and the next unit does not — the figure was the true ceiling, not an approximation.
-	err = take("order:2", 1)
+	err = take("key-2", 1)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("taking one more than it reported: err = %v, want FailedPrecondition", err)
 	}

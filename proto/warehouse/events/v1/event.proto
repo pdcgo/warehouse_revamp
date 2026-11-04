@@ -100,6 +100,7 @@ message Event {
     OrderCancelled order_cancelled = 201;
     OrderStatusChanged order_status_changed = 202;
     OrderReturnAccepted order_return_accepted = 203;
+    InventoryTxCancel inventory_tx_cancel = 204;
 
     SettlementLogPosted settlement_log_posted = 300;
 
@@ -274,6 +275,14 @@ message OrderPlaced {
   // Unset = an order placed before fees were frozen, charged nothing rather than guessed at. 0 = a warehouse that
   // charges nothing.
   optional double warehouse_fee = 12;
+
+  // THE KEY THE ORDER WAS PLACED UNDER — `orders.idempotency_key`, the submit's own key, which is also the key its
+  // stock was taken under (the-order-stores-its-idempotency-key). Carried so a consumer can name the take; nothing
+  // that releases stock needs it from here (every-release-goes-by-the-key).
+  string idempotency_key = 14;
+  // The inventory transaction the take wrote — `orders.transaction_id`, what the placement page reads the racks by
+  // (the-placement-page-reads-racks-by-transaction-id). 0 = none recorded.
+  uint64 transaction_id = 15;
 }
 
 // One line of a placed order, as liability_service needs it (#186).
@@ -336,6 +345,50 @@ message OrderCancelled {
   // The shop it was sold on — settlement cancels the sale on that shop's account
   // (settlement-opens-the-sale-from-the-order-event).
   uint64 shop_id = 4;
+
+  // The order's own key K — the key its stock take was filed under (every-release-goes-by-the-key). Inventory releases
+  // that take by it, on this event and no longer inside the cancel (inventory-returns-stock-on-order-cancelled): checked
+  // against `team_id` (the-cancel-event-names-the-team); while a stock count holds a rack the take came from, the
+  // release errors and the event is redelivered until the count ends (a-cancel-still-meets-the-count-first). Empty only
+  // on an order that never took stock — nothing to release, acknowledged.
+  string idempotency_key = 6;
+  // The warehouse the order shipped from — where the stock goes back to. 0 only on an order that never took stock.
+  uint64 warehouse_id = 7;
+}
+
+// InventoryTxCancel is the compensation of an order create that FAILED AFTER ITS STOCK TAKE WAS CALLED
+// (the-compensation-event-is-inventory-tx-cancel): give back whatever was taken under `idempotency_key`.
+//
+// Published by selling_service — an ORDER event (inventory-tx-cancel-is-an-order-event) — and only as the BACKUP: the
+// order first releases the take directly, in-process, with a context the browser leaving cannot cancel, and then
+// publishes this (the-release-is-direct-then-the-event). Inventory is its only subscriber; a release that finds the take
+// already released does nothing, so the direct call and this event never give stock back twice. NEVER published after
+// the take was refused as KEY ALREADY USED — that key is another order's live take (a-used-key-is-never-cancelled).
+//
+// The listener releases through the same TEAM-CHECKED release as OrderTransactionRelease
+// (the-cancel-event-names-the-team): another team's key is acknowledged and logged, never released. A rack a stock count
+// holds makes the listener refuse, and the broker redelivers until the count ends (a-cancel-still-meets-the-count-first).
+// A key inventory has not seen yet is claimed with no take, so a take that arrives late is refused
+// (every-release-goes-by-the-key).
+//
+// `event_id` is `inventory-tx-cancel:<idempotency_key>` — one compensation per key, so a retried publish collides.
+message InventoryTxCancel {
+  option (event_config).topic = "inventory-tx-cancel";
+
+  // The key the take was asked under — the order's own (the-frontend-mints-the-idempotency-key).
+  string idempotency_key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+  // The SELLING team the take was made for — the release is checked against it.
+  uint64 team_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The warehouse the take was asked of. For the log and the dead-letter triage; the key finds the take.
+  uint64 warehouse_id = 3;
+  // Who placed the failed order — the person the release's ledger rows name (every-entry-names-who-posted-it). 0 when
+  // the caller was unidentifiable.
+  uint64 actor_id = 4;
+  // Why the create failed, in words, for whoever reads a dead-lettered message. Nothing branches on it.
+  string reason = 5;
 }
 
 // OrderStatusChanged announces one order's PLAIN status move — every move but the placement, the cancel and the return

@@ -30,7 +30,7 @@ stateDiagram-v2
     completed --> return: customer service, or the warehouse
     return --> return_completed: warehouse - OrderReturnAccept, no stock yet
     return --> lost: customer service
-    pending --> cancel: OrderCancel (selling) - returns the stock (#70)
+    pending --> cancel: OrderCancel (selling) - inventory returns the stock on OrderCancelled
     cancel --> [*]
     lost --> [*]
     return_completed --> [*]
@@ -41,15 +41,52 @@ stateDiagram-v2
 Every edge above except two goes through **`OrderStatusChange(team_id, order_ids, to, note)`**
 ([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)).
 It replaced `OrderConfirm`, `OrderPick`, `OrderPack` and `OrderShip`, which only ever changed the status.
-The two that keep their own RPC do more than move a status: `OrderCancel` returns the stock and cancels
-the sale, and the return accept (`OrderReturnAccept`, [below](#the-warehouse-accepts-a-return--orderreturnaccept)) notes the
+The two that keep their own RPC do more than move a status: `OrderCancel` checks the count first and announces the
+cancel that gives the stock back and cancels the sale, and the return accept (`OrderReturnAccept`, [below](#the-warehouse-accepts-a-return--orderreturnaccept)) notes the
 missing units, answers the labels for borrowed lines and announces the courier's charge.
 
-`OrderCancel` returns the stock inside its own transaction, so a return the warehouse refuses rolls the cancel back and
-the order stays pending. When the refusal is a stock count holding a rack the take came from
-([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)),
-the warehouse's FailedPrecondition — naming the count, who started it and when — is handed on as it came, so the person
-reads why and cancels again after the count; any other failure is still an internal error.
+### `OrderCancel` — the count first, then the status, then the event (backlog #10 slice 4)
+
+The cancel **no longer releases the stock inside its own flow**. Inventory releases it when `OrderCancelled` reaches it
+([inventory-returns-stock-on-order-cancelled](../../business/order/context_decision.md#inventory-returns-stock-on-order-cancelled)),
+by the order's key K ([every-release-goes-by-the-key](../../business/order/context_decision.md#every-release-goes-by-the-key)).
+What the person meets is unchanged: a stock count holding a rack the take came from still refuses the cancel, naming the
+count, who started it and when, and the order stays pending
+([a-cancel-still-meets-the-count-first](../../business/order/context_decision.md#a-cancel-still-meets-the-count-first),
+[a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CS as customer service
+    participant S as OrderCancel (selling)
+    participant DB as orders, order_timeline_logs
+    participant INV as inventory - in process
+    participant PS as Pub/Sub order-cancelled
+
+    CS->>S: team_id, order_id
+    S->>DB: BEGIN, SELECT the order FOR UPDATE - pending only
+    S->>INV: StockLockCheck(team, warehouse, K) - a read of inventory's own tables
+    alt a count holds a rack the take came from
+        INV-->>S: the count, in the warehouse's words
+        S-->>CS: FailedPrecondition naming the count - nothing changed, still pending
+    else nothing holds it
+        S->>DB: status cancel + its timeline row, COMMIT
+        S->>PS: OrderCancelled with idempotency_key K and warehouse_id
+        S-->>CS: the cancelled order
+        PS->>INV: inventory-order-cancelled - releaseByKey(team, K)
+        Note over INV: a count that began after the check refuses the release - an error, redelivered until the count ends
+    end
+```
+
+| | |
+| --- | --- |
+| the check | `StockPicker.StockLockCheck(ctx, team, warehouse, K)` → `*StockLock{SessionID, Reason}` or nil; the bridge (`cmd/app_development/stock_picker.go`) calls `inventory_v1.StockLockCheck`, which reads `idempotency_order_check` → the take (team-checked) → its rack rows → the open count snapshots. Inside the cancel's transaction, after the order row is locked and before its status moves |
+| refused | `FailedPrecondition` whose message is the warehouse's own `CountedError` sentence — the same words the release used to refuse with, so the screen and the e2e read the same text. A check that could not be made refuses `Unavailable` (try again); nothing moves |
+| no stock to check | an order with no warehouse or no key took none: no check, and the event carries an empty key, which inventory acknowledges |
+| the event | `OrderCancelled` gains `idempotency_key` (6) and `warehouse_id` (7). Published after the commit; a failed publish is logged as *STOCK IS STILL TAKEN* with K — release it by hand (`OrderTransactionRelease`) — besides the revenue row it leaves |
+| the race | a count planned between the check and the release is the decided fallback: the listener's release is refused by the lock itself, errors, and is redelivered until the count ends — proved in [inventory's race](../../../audits/services/inventory_service/concurrency/lock-order.md) |
+| ⚠ the person is not told | the stock comes back a moment after the cancel answers; whether to say so on screen is the owner's open question (#10 Q11) — no message changed |
 
 ```mermaid
 sequenceDiagram
@@ -156,8 +193,9 @@ would take the goods twice.
 
 ### The cancel window (#70/#150)
 
-Cancel is allowed from **`pending` only**, and returns the stock **exactly where it came from** — same racks, same batches, because the release (`OrderTransactionRelease`, by the order's key) reverses the
-take's own ledger rows rather than trusting quantities (a-rollback-reverses-its-log-rows).
+Cancel is allowed from **`pending` only**, and the stock goes back **exactly where it came from** — same racks, same
+batches, because inventory's release on `OrderCancelled` (`releaseByKey`, by the order's key) reverses the take's own
+ledger rows rather than trusting quantities (a-rollback-reverses-its-log-rows).
 
 A `processed` or `picked` order is first handed back to `pending` by the warehouse — the moment the goods
 are unpacked and re-shelved — so the stock a cancel returns is really on a shelf. **After the handover a
@@ -285,7 +323,7 @@ sequenceDiagram
         UI-->>CS: HPP per line, e.g. 1 x Rp 8.000 + 1 x Rp 9.500, invoice, margin, fee
         CS->>UI: Create
         UI->>SELL: OrderCreate
-        SELL->>INV: OrderTransactionCreate - key order:id, before the order commits
+        SELL->>INV: OrderTransactionCreate - under the order's key K, before the order row
         INV-->>SELL: the draw it really made, or insufficient
         SELL-->>UI: the order, frozen at that draw, or the refusal
     end
@@ -335,19 +373,18 @@ sequenceDiagram
     UI->>SELL: OrderCreate
     SELL->>SELL: each line's owner, then every borrowed line's return map — see the return map
     SELL->>SELL: credit check — before the transaction
-    SELL->>SELL: open tx, insert the order header - no goods_cost, no fee yet - and its first timeline row, plus the typed note as its first note row
-    SELL->>INV: take the stock — key order:id
-    INV-->>SELL: per product - the draw's cost, unit cost, and total with the product's markup
-    SELL->>SELL: the four money figures per line, goods_cost = the lines' totals rounded once
+    SELL->>INV: take the stock — under the order's key K, before the transaction (slice 3)
+    INV-->>SELL: the transaction id, and per product the draw's cost, unit cost, and total with the product's markup
+    SELL->>SELL: open tx, insert the order header with K, transaction_id and goods_cost = the lines' totals rounded once, its first timeline row, plus the typed note as its first note row
     SELL->>WH: WarehouseFeeCalculate(team, warehouse, goods_cost) — in-process, inside the tx
     alt the warehouse never set its fee, or cannot be reached
         WH-->>SELL: FailedPrecondition naming it, or an error
         SELL->>SELL: roll the tx back
-        SELL->>INV: release the take — key order:id
+        SELL->>INV: release the take by K, then publish InventoryTxCancel — the compensation
         SELL-->>UI: the same refusal — no order, the stock back on the shelf
     else priced
         WH-->>SELL: the fee
-        SELL->>SELL: UPDATE the header's goods_cost, warehouse_fee and total_cost, insert the lines, commit
+        SELL->>SELL: UPDATE the header's warehouse_fee and total_cost, insert the lines, commit
         SELL-->>UI: the order, its cost and fee frozen from the one draw
     end
 ```
@@ -356,8 +393,8 @@ sequenceDiagram
 | --- | --- |
 | the basis | `goods_cost` — Σ the lines' frozen `total` (the draw's cost plus, on a borrowed product, its owner's markup), rounded once to whole rupiah ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost), [an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)). A line the take named no draw for adds 0, so a percent warehouse charges its floor on it |
 | when | AFTER the take, inside the order's transaction — its basis is the draw, which exists only once the take answers. The fee is warehouse_service's to compute, never selling's ([warehouse-prices-balance-records](../../business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)), so it is asked rather than worked out from a rate read earlier. A refusal fails the transaction and the compensation releases the take — the owner's own flow ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders) *"the take is rolled back like any failed step"*). The form refuses such a warehouse before Create, so it is the rare path |
-| the header | inserted first, for the id the take's key is made of; its `goods_cost`, `warehouse_fee` and `total_cost` (= the two added) are written by one UPDATE of that row after the take, in the same transaction — no reader sees the order without them |
-| concurrency | the fee read takes no lock; the order's KEY SHARE on its shop is held across it as it is across the take — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
+| the header | inserted AFTER the take (slice 3), with its `goods_cost` from the draw; `warehouse_fee` and `total_cost` (= the two added) are written by one UPDATE of that row once priced, in the same transaction — no reader sees the order without them |
+| concurrency | the fee read takes no lock; the order's KEY SHARE on its shop is held across it. The take is no longer inside the transaction (slice 3) — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
 | the refusal | `FailedPrecondition`, the warehouse's own sentence passed through unchanged ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)). An unreachable warehouse_service is `Unavailable` — no order at a fee nobody computed |
 | the wiring | `selling_v1.WarehouseFeePricer`, adapted in the composition root (`warehouse_fee_pricer.go`) to the handler itself |
 | the event | `OrderPlaced.warehouse_fee` carries the frozen fee as stored (step 4, [the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)); liability posts it and reads no rate. Unset only for an order placed before fees were frozen |
@@ -412,6 +449,124 @@ sequenceDiagram
 | passed through | any Connect error the take answers with — its code, message and details. A take that never answered in its own terms (not a Connect error) is still `Internal` |
 | the release | unchanged: a refused take is still released by its key, as every failed placement is |
 
+## The submit's own key — `OrderCreate.idempotency_key` (backlog #10, slice 1)
+
+Every submit of the order form — a new order, a resubmit after an error, a draft's finalize — mints a fresh key with
+`crypto.randomUUID()` **inside the submit** and sends it as `idempotency_key`
+([the-frontend-mints-the-idempotency-key](../../business/order/context_decision.md#the-frontend-mints-the-idempotency-key),
+[every-submit-mints-a-new-key](../../business/order/context_decision.md#every-submit-mints-a-new-key)). It is
+**required** from the start ([revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet)),
+stored on `orders.idempotency_key` and UNIQUE ([the-idempotency-key-is-unique](../../business/order/context_decision.md#the-idempotency-key-is-unique)).
+A key already on an order is **refused**, never answered with that order
+([the-order-refuses-a-used-key](../../business/order/context_decision.md#the-order-refuses-a-used-key)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form or draft page
+    participant SELL as selling_service OrderCreate
+    participant DB as orders
+    participant INV as inventory_service take
+
+    UI->>UI: mint K inside this submit
+    UI->>SELL: OrderCreate with K
+    SELL->>SELL: K empty or starting order: - InvalidArgument
+    SELL->>DB: does an order hold K - one index read
+    alt an order holds K
+        SELL-->>UI: AlreadyExists with the KEY_USED refusal - nothing read further, nothing taken
+    else K is free
+        SELL->>SELL: draft, owners, return maps, credit
+        SELL->>INV: take under K (slice 3)
+        alt a same-second twin took under K first
+            INV-->>SELL: AlreadyExists KEY_USED - inventory's claim of K
+            SELL-->>UI: the same KEY_USED refusal - nothing released, the key is the twin's
+        else taken
+            SELL->>DB: INSERT the order with K - orders_idempotency_key_idx stays the backstop
+            SELL-->>UI: the order, carrying K
+        end
+    end
+```
+
+| | |
+| --- | --- |
+| the shape | `min_len 1`, `max_len 128` (proto); the handler re-checks empty and refuses a key starting `order:` — the shape the migration filled older developer rows with, which was their take's key too — as `InvalidArgument` |
+| ⚠ where it is checked | **first** — before the draft, the owner lookup, the credit check and the take; the unique index is the backstop. The owner's recommended default, **awaiting the owner (#10 Q10)** |
+| ⚠ how a used key is refused | `AlreadyExists` carrying inventory's `OrderTransactionRefusal{reason: KEY_USED}` with no lines — the detail the take answers a used key with, so the form shows its one *key already used* alert. The recommended default, **awaiting the owner (#10 Q9)** |
+| what it discloses | nothing: no order id, no team. A key held by another team's order is refused the same way |
+| the twin | two submits of one key at the same second both pass the lookup; since slice 3 the second is refused KEY_USED **at the take**, at once — inventory's claim of K committed with the first's take — and releases nothing (`TestInterleave_OrderCreateSameKey_TheTakeRefusesTheTwin`). The unique index stays the backstop |
+| since slice 3 | K is also the key the order's stock take is filed under and released by — see [the take before the order](#the-take-before-the-order-and-its-compensation--backlog-10-slice-3) |
+
+## The take before the order, and its compensation — backlog #10 slice 3
+
+`placeOrder` (both doors) takes the stock **before the order row exists and outside selling's transaction**, under the
+order's own key K, then writes the order with K and the take's `transaction_id`. Any failure once the take was called
+is **compensated**: the take is released by K directly, under a context the browser cannot cancel, and then
+`InventoryTxCancel{K, team_id, warehouse_id, actor}` is published as the backup
+([the-compensation-event-is-inventory-tx-cancel](../../business/order/context_decision.md#the-compensation-event-is-inventory-tx-cancel),
+[the-release-is-direct-then-the-event](../../business/order/context_decision.md#the-release-is-direct-then-the-event),
+[every-release-goes-by-the-key](../../business/order/context_decision.md#every-release-goes-by-the-key)). A take refused
+because K is **already used** is never compensated — the key is another submit's live take
+([a-used-key-is-never-cancelled](../../business/order/context_decision.md#a-used-key-is-never-cancelled)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form or draft page
+    participant SELL as selling_service placeOrder
+    participant INV as inventory_service
+    participant DB as selling DB
+    participant PS as Pub/Sub
+
+    UI->>SELL: OrderCreate with K
+    SELL->>SELL: the key, the shop, owners, return maps, credit - nothing taken yet
+    SELL->>INV: OrderTransactionCreate under K - the request's context, no deadline of its own
+    alt refused as KEY_USED
+        INV-->>SELL: AlreadyExists with KEY_USED
+        SELL-->>UI: the refusal as it came - nothing released, nothing published
+    else any other failure of the take - a refusal, an error, the person leaving
+        INV-->>SELL: the failure - it may still have committed
+        SELL->>INV: release by K - context.WithoutCancel
+        SELL->>PS: InventoryTxCancel K - the backup
+        SELL-->>UI: the take's answer as it came
+    else taken
+        INV-->>SELL: transaction_id and the draw
+        SELL->>DB: BEGIN, INSERT the order with K and transaction_id, timeline rows, the draft's delete, the fee, the lines
+        alt any step fails - the fee, the draft already promoted, the database, the person leaving
+            DB-->>SELL: rolled back
+            SELL->>INV: release by K - context.WithoutCancel
+            SELL->>PS: InventoryTxCancel K - the backup
+            SELL-->>UI: that step's answer
+        else the COMMIT reports an error - it may have landed
+            SELL->>DB: a fresh read of the order by K
+            alt the order is there
+                SELL->>PS: OrderPlaced - nothing released
+                SELL-->>UI: the order, as placed
+            else it is not
+                SELL->>INV: release by K, then InventoryTxCancel K
+                SELL-->>UI: the error
+            else the read fails too
+                SELL-->>UI: Unavailable - nothing released, K logged
+            end
+        else committed
+            SELL->>PS: OrderPlaced with idempotency_key and transaction_id
+            SELL-->>UI: the order, carrying K and transaction_id
+        end
+    end
+```
+
+| | |
+| --- | --- |
+| the take | `StockPicker.Pick(ctx, team, warehouse, lines, K)` → `Take{TransactionID, Draw}`; the bridge (`cmd/app_development/stock_picker.go`) passes K through as `OrderTransactionCreate.idempotency_key`. Runs under the request's context with no deadline of its own ([no-answer-is-only-a-lost-connection](../../business/order/context_decision.md#no-answer-is-only-a-lost-connection)) |
+| what the order stores | `orders.idempotency_key = K` and `orders.transaction_id` (selling `00036`, `BIGINT NULL`); `Order.transaction_id` exposes it, `OrderPlaced` carries both |
+| the compensation | `compensateTake` (`order_take_compensation.go`): `StockPicker.Return(K)` first, then the event — ALWAYS both, since a released take makes the listener's release a no-op. Neither fails the caller, who hears the order's own failure. A failed release logs and leaves the event to do it; a failed publish is logged loudly; both failing logs *STOCK STILL TAKEN* with K, the key to release by hand |
+| the context | `context.WithoutCancel(ctx)` — keeps the identity (the release's ledger rows name who placed the order), drops the cancellation and any deadline |
+| KEY_USED | read off the refusal's `OrderTransactionRefusal` detail (`isKeyUsedRefusal`), never the code alone |
+| a refusal for stock | compensated too, as decided — the release of a key nothing was taken under claims it, so a take that lands late is refused |
+| a commit that reports an error (#10c) | the error came after every step ran, so the commit may have landed. `placedOrderByKey` re-reads `orders` by K on the service's own handle (never the failed transaction), under `context.WithoutCancel`: found → answered as placed and `OrderPlaced` published, nothing released; not found → compensated as above; the read failing too → `Unavailable`, nothing released, logged *STOCK MAY STILL BE TAKEN* with K. An error from inside the transaction's body is a rollback and compensates without the read. Test seam `SetOrderCommitResult` (`export_test.go`) |
+| the cancel | slice 4 — see [`OrderCancel`](#ordercancel--the-count-first-then-the-status-then-the-event-backlog-10-slice-4): no release in the cancel; inventory releases by K on `OrderCancelled` |
+| the event | `InventoryTxCancel` = envelope field 204, topic `inventory-tx-cancel`, `event_id` `inventory-tx-cancel:<K>` ([inventory-tx-cancel-is-an-order-event](../../business/order/context_decision.md#inventory-tx-cancel-is-an-order-event)); inventory's listener — [inventory_service rpc](../inventory_service/rpc.md#inventorytxcancel--the-compensations-listener) |
+| proved | `selling_v1/order_create_compensation_test.go`, `order_create_commit_test.go` (#10c); races in [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
+
 ## The pick screen's reads (#151)
 
 The crew's screen is a join of things that already existed — but two of the reads it needs were
@@ -455,21 +610,21 @@ sequenceDiagram
     participant S as selling_service
     participant I as inventory_service
 
-    Note over UI: the two reads are issued together —<br/>lines without shelves are useless, and<br/>shelves without lines are meaningless
-    par
-        UI->>S: OrderDetail(team_id=warehouse, order_id)
-        S-->>UI: the order + its lines
-    and
-        UI->>I: StockPickLocations(warehouse_id, ref="order:<id>")
-        I-->>UI: per product, per rack, how much
-    end
+    Note over UI: one query function returns both —<br/>lines without shelves are useless, and<br/>shelves without lines are meaningless
+    UI->>S: OrderDetail(team_id=warehouse, order_id)
+    S-->>UI: the order + its lines + its transaction_id
+    UI->>I: StockPickLocations(warehouse_id, transaction_id)
+    I-->>UI: per product, per rack, how much
 
     Note over UI: joined on product_id —<br/>a product drawn from 3 shelves = 3 stops
 ```
 
 **From the take, not from the racks now — this is the whole design.** The goods were drawn at placement (#149) and the
-take recorded, per rack, exactly how much it took under the order's key (`order:<id>`, found through
-`idempotency_order_check`). Those rows are what the order *holds*. Current levels answer a question whose answer
+take recorded, per rack, exactly how much it took, as placement log rows of one inventory transaction — the
+`transaction_id` the order stores ([the-placement-page-reads-racks-by-transaction-id](../../business/inventory/order_decision.md#the-placement-page-reads-racks-by-transaction-id),
+✅ backlog #10 slice 5). The detail is read first for that id, so the two reads are sequential; an order with no
+transaction took nothing and the page asks nothing. Inventory reads the rows only within the caller's `warehouse_id`,
+so one building never reads another's take. Those rows are what the order *holds*. Current levels answer a question whose answer
 keeps moving — another order draws from the same shelf, a stock-take shifts goods — and a picker sent
 by current levels can arrive at a shelf whose stock is spoken for.
 
@@ -931,6 +1086,41 @@ cancelled orders and other shops' included. A ref nothing carries is absent. The
 counts: the order in its own shop — live first — and a ref found only in another shop fails the file
 ([a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)).
 It reads `orders_team_external_ref_idx` (`00014`); up to 2,000 refs a call.
+
+🔄 *(2026-11-04)* Each `OrderRefItem` also carries **`created_at_unix`** — when the order was typed in. The order form's
+duplicate-ref warning ([the-duplicate-ref-warning-is-accepted](../../business/order/context_decision.md#the-duplicate-ref-warning-is-accepted))
+dates every order it names from it, so the form no longer reads an `OrderDetail` per found order.
+
+### The duplicate-ref warning's two reads — `OrderByExternalRefs` + `OrderDraftByExternalRefs`
+
+Before *Create* (a new order, or a draft finalized through the form) the form asks both at once for the shop + ref
+([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused),
+[the-duplicate-warning-reads-drafts-too](../../business/order/context_decision.md#the-duplicate-warning-reads-drafts-too)).
+A find is a warning with *Create Anyway*; the server refuses nothing for a repeated ref.
+
+```mermaid
+sequenceDiagram
+  participant F as order form
+  participant O as OrderService
+  participant D as OrderDraftService
+  F->>O: OrderByExternalRefs(team, refs=[ref])
+  F->>D: OrderDraftByExternalRefs(team, shop, refs=[ref])
+  O-->>F: every order of the team on the ref, with status and created_at_unix
+  D-->>F: the team's drafts in that shop on the ref, never a manual one
+  Note over F: keeps live orders of this shop, drops the draft being finalized
+  F->>F: nothing left - straight on, else the warning names each with a link and its date
+```
+
+`OrderDraftService.OrderDraftByExternalRefs(team_id use_scope, filter {shop_id > 0, refs 1..50 unique})` →
+`items: map<ref, list{ draft_ref: map<draft_id, {draft_id, shop_id, author_user_id, created_at_unix}> }>`, a ref no
+draft carries absent. Same roles as `OrderCreate` (ROOT, ADMINISTRATOR, SELLING_OWNER/ADMIN/CS); `NO_SIDE_EFFECTS`.
+
+| | |
+| --- | --- |
+| whose drafts | the **team's**, any author's — a colleague's scrape of the ref is the double worth naming. The drafts list and detail keep their own-drafts rule |
+| the ref | a draft's `external_id`, with `source <> 'manual'`: a draft saved from the form carries a minted form id, not a marketplace ref |
+| the draft being finalized | answered like any other; the form drops it (`otherDrafts`) |
+| index | `order_drafts_external_ref_idx` UNIQUE `(team_id, source, external_id)` — `team_id` bounds the scan; with no `source` in the ask, `external_id` cannot seek. 1 query: ≈6 ms at 50 000 drafts in one team (a seq scan, since one team is the table), ≈15 ms at 50 refs. See [the audit](../../../audits/services/selling_service/performances/OrderDraftByExternalRefs.md) for the index it would want |
 
 ## The labels a warehouse prints — `OrderLabels` (step 1)
 

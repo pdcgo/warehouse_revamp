@@ -76,6 +76,17 @@ export const takeRefusalScenario = {
       },
 };
 
+/**
+ * THE ORDER'S IDEMPOTENCY KEY (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key). `sent` is every
+ * key OrderCreate was sent, in order — refused submits included — so a story can pin that each submit minted its own.
+ * `used` is every key an order already holds: the stub refuses one as the server does (the-order-refuses-a-used-key) —
+ * AlreadyExists with the take's KEY_USED detail. A placed order adds its key; a refused one does not.
+ */
+export const orderKeyScenario = {
+  sent: [] as string[],
+  used: [] as string[],
+};
+
 /** A `beforeEach`: the next order this story places is refused at the take, for `reason`, naming `lines`. */
 export function withTakeRefusal(
   reason: OrderTransactionRefusalReason,
@@ -157,6 +168,8 @@ export function resetSessionScenario() {
   orderLabelScenario.refusal = undefined;
   receiptCheckScenario.refused = 0;
   takeRefusalScenario.refusal = undefined;
+  orderKeyScenario.sent = [];
+  orderKeyScenario.used = [];
   orderStatScenario.calls = 0;
   returnAcceptScenario.inReturn = [];
   returnAcceptScenario.accepted = [];

@@ -736,13 +736,17 @@ message StockPickLocationsRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  // The pick's reference — `order:<id>` for an order (selling_service builds it). Naming the ref rather
-  // than the order id keeps inventory_service ignorant of what a selling order IS: it recorded movements
-  // under a string, and it hands back the movements under that string.
-  string ref = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 64
-  }];
+  // The take's inventory transaction — the order's `transaction_id`
+  // (the-placement-page-reads-racks-by-transaction-id). The take runs before the order exists and is filed under the
+  // order's key, so the order keeps the transaction id for exactly this read. Naming the transaction rather than the
+  // order keeps inventory_service ignorant of what a selling order IS. Read only within `warehouse_id`: one building
+  // never reads another's take.
+  uint64 transaction_id = 3 [(buf.validate.field).uint64.gt = 0];
+
+  // `ref` was the pick's string reference — first `order:<id>`, then the order's idempotency key. Replaced by
+  // transaction_id (backlog #10 slice 6).
+  reserved 2;
+  reserved "ref";
 }
 
 // One product, on one rack, in the quantity taken FROM THAT RACK for this pick.

@@ -132,7 +132,8 @@ func seedImportOrder(t *testing.T, db *gorm.DB, shopID uint64, ref, status strin
 	t.Helper()
 
 	order := selling_service_models.Order{
-		TeamID: 2, ShopID: shopID, WarehouseID: testWarehouse,
+		IdempotencyKey: newOrderKey(),
+		TeamID:         2, ShopID: shopID, WarehouseID: testWarehouse,
 		Status: status, OrderExternalRefID: ref, CustomerName: "Budi",
 	}
 

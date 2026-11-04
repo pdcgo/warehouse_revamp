@@ -25,7 +25,7 @@ func (s *Service) OrderByExternalRefs(
 	// orders_team_external_ref_idx — (team_id, order_external_ref_id), partial on a ref being present.
 	err := s.db.
 		WithContext(ctx).
-		Select("id", "shop_id", "status", "created_by_user_id", "order_external_ref_id").
+		Select("id", "shop_id", "status", "created_by_user_id", "order_external_ref_id", "created_at").
 		Where("team_id = ? AND order_external_ref_id <> '' AND order_external_ref_id IN ?",
 			req.Msg.GetTeamId(), req.Msg.GetFilter().GetRefs()).
 		Find(&orders).
@@ -50,6 +50,8 @@ func (s *Service) OrderByExternalRefs(
 			ShopId:          order.ShopID,
 			CreatedByUserId: order.CreatedByUserID,
 			Status:          orderStatusFromText(order.Status),
+			// The duplicate-ref warning dates each order it names (the-duplicate-ref-warning-is-accepted).
+			CreatedAtUnix: order.CreatedAt.Unix(),
 		}
 	}
 

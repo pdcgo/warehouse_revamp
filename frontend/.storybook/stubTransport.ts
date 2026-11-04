@@ -68,6 +68,7 @@ import {
   ADMIN_TEAM,
   orderExportScenario,
   orderImportScenario,
+  orderKeyScenario,
   orderStatScenario,
   receiptCheckScenario,
   receiptUpdateScenario,
@@ -114,6 +115,8 @@ import { FoundRequestService } from "../src/gen/warehouse/inventory/v1/found_req
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
 import { orderReturnAccept, orderStatusChange, readsOrder, scenarioStatus } from "./returnAcceptStub";
+import { orderByExternalRefs, orderDraftByExternalRefs } from "./duplicateRefStub";
+import { orderAnswerInterceptor, refuseOrderCreateIfScripted } from "./orderAnswerStub";
 import { warehouseFeeService } from "./warehouseFeeStub";
 import { warehouseInfoService } from "./warehouseInfoStub";
 import { agentService } from "./agentStub";
@@ -161,7 +164,7 @@ import {
   orderDraftDetailFor,
   orderDrafts,
   STATUS_OFFSET,
-  pickLocationsFor,
+  pickLocationsByTransaction,
   orders,
   productCosts,
   products,
@@ -336,6 +339,30 @@ function channelById(id: bigint): StubChannel {
 
 // THE TAKE'S REFUSAL, as selling passes it through (takeRefusalScenario): FailedPrecondition with the take's own message
 // and its OrderTransactionRefusal detail — the shape the order form decodes to name the reason and the lines.
+// THE ORDER'S KEY, checked FIRST as the server checks it (the-order-refuses-a-used-key; ⚠ #10 Q9/Q10 defaults): required
+// and never `order:…` (InvalidArgument), and a key an order already holds is refused AlreadyExists with the take's
+// KEY_USED detail — before the take. Every key sent is recorded (orderKeyScenario.sent).
+function refuseOrderKeyIfUsed(key: string) {
+  orderKeyScenario.sent.push(key);
+
+  if (key === "") {
+    throw new ConnectError("idempotency_key: value length must be at least 1 characters", Code.InvalidArgument);
+  }
+
+  if (key.startsWith("order:")) {
+    throw new ConnectError('an idempotency key must not start with "order:" — that shape is reserved', Code.InvalidArgument);
+  }
+
+  if (orderKeyScenario.used.includes(key)) {
+    throw new ConnectError(
+      "this idempotency key is already used by another order — submit again to send a new one",
+      Code.AlreadyExists,
+      undefined,
+      [{ desc: OrderTransactionRefusalSchema, value: { reason: OrderTransactionRefusalReason.KEY_USED, lines: [] } }],
+    );
+  }
+}
+
 function refuseTakeIfScripted() {
   const refusal = takeRefusalScenario.refusal;
   if (!refusal) return;
@@ -1353,13 +1380,10 @@ export const transport = createRouterTransport(({ service }) => {
         }),
     }),
 
-    // The shelves an order's goods were drawn from, keyed by the ref selling_service recorded the draw
-    // under (`order:<id>`). A ref this stub does not recognise answers EMPTY, as the server would —
-    // "nothing was drawn" is a real answer, not an error.
-    stockPickLocations: (req) => {
-      const match = /^order:(\d+)$/.exec(req.ref);
-      return { locations: match ? pickLocationsFor(BigInt(match[1]!)) : [] };
-    },
+    // The shelves an order's goods were drawn from, read by the take's TRANSACTION id — the order's `transactionId`
+    // (the-placement-page-reads-racks-by-transaction-id). A transaction no fixture order holds answers EMPTY, as the
+    // server would — "nothing was drawn" is a real answer, not an error.
+    stockPickLocations: (req) => ({ locations: pickLocationsByTransaction(req.transactionId) }),
 
     // The Adjust dialog (features/inventory/AdjustStockDialog): its write, and the batches Damaged and Lost pick from.
     // FOUND is refused here, as on the server — the dialog reports it through FoundRequestCreate (foundRequestStub.ts).
@@ -1382,14 +1406,22 @@ export const transport = createRouterTransport(({ service }) => {
     // team 15 only (productStub.ts).
     orderProductActivityByIds: (req) => orderProductActivityByIds(req),
     orderActivityStat: (req) => orderActivityStat(req),
+    // The order form's duplicate marketplace-ref warning reads it (duplicateRefStub.ts) — every status, every shop of
+    // the caller's team, as the handler answers; the form keeps the live orders of its own shop.
+    orderByExternalRefs: (req) => orderByExternalRefs(req),
     // The write the order form exists to make. It answers with an id so the page can navigate to the
     // order it just placed — which is also what tells the unsaved-work blocker to stand down.
     //
     // The draft page's Promote is this same call with `orderDraftId` (a-draft-becomes-an-order-through-order-create),
     // and answers with the promoted order's id, 902 — what a draft story asserts the page navigates to.
     orderCreate: (req) => {
+      // A scripted answer first (orderAnswerStub.ts): the server's own Internal, sent as a real Connect error.
+      refuseOrderCreateIfScripted();
+      refuseOrderKeyIfUsed(req.idempotencyKey);
       refuseTakeIfScripted();
-      return { order: { id: req.orderDraftId > 0n ? 902n : 900n } };
+      // Placed: the order now holds its key (the-order-stores-its-idempotency-key).
+      orderKeyScenario.used.push(req.idempotencyKey);
+      return { order: { id: req.orderDraftId > 0n ? 902n : 900n, idempotencyKey: req.idempotencyKey } };
     },
 
     // ⚠ THE TWO-SIDED READ (#151), and it is the reason the order list has two versions at all.
@@ -1646,6 +1678,9 @@ export const transport = createRouterTransport(({ service }) => {
   });
 
   service(OrderDraftService, {
+    // The duplicate-ref warning's draft half (duplicateRefStub.ts) — the TEAM's drafts in the asked shop on the refs,
+    // any author's, never a `manual` one; the form drops the draft it is finalizing.
+    orderDraftByExternalRefs: (req) => orderDraftByExternalRefs(req),
     // A draft is team-scoped AND personal, and — unlike an order — it has only ONE side: it belongs
     // to the team that typed it. So this is a plain `teamId` match, and a warehouse's list is empty
     // because a warehouse never types one.
@@ -2172,4 +2207,7 @@ export const transport = createRouterTransport(({ service }) => {
     tiktokSettlementImport: (req) => stubImport(req, Marketplace.TIKTOK),
     shopeeSettlementImport: (req) => stubImport(req, Marketplace.SHOPEE),
   });
-});
+},
+// The order form's lock (orderAnswerStub.ts): a client-side interceptor, where a real fetch fails — a dropped
+// connection, a held (slow) answer, a reply lost after the server placed the order.
+{ transport: { interceptors: [orderAnswerInterceptor] } });

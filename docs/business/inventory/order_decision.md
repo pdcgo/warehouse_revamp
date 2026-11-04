@@ -320,6 +320,9 @@ flowchart LR
 | the receipt | the shipping label customer service uploaded — printed for the parcel, carries no racks |
 | the build | ⚠ `StockPickLocations` takes `ref = "order:<id>"` — to change when the take is built |
 
+✅ **Built 2026-11-04.** `StockPickLocations` takes `transaction_id` (required) and reads `product_placement_logs` by it and the caller's warehouse; `ref` is removed (reserved). The pick page sends `order.transactionId` (selling 00036). Tests `stock_pick_locations_test.go`; perf 1 query ≈0.5 ms.
+
+
 ## missing-goods-send-the-order-back-to-pending
 
 > Owner, in chat (2026-10-15): *"im add 4. Table `order_timeline_logs`. in order/context.md. when that happen, warehouse can

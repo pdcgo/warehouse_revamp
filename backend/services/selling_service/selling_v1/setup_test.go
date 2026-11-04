@@ -2,6 +2,7 @@ package selling_v1_test
 
 import (
 	"context"
+	"crypto/rand"
 	"strconv"
 	"testing"
 
@@ -15,6 +16,12 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
+// newOrderKey mints the key a submit carries (every-submit-mints-a-new-key) — a fresh random one per call, so two
+// requests built by one helper never share a key and the second is never refused as a used one.
+func newOrderKey() string {
+	return "test-" + rand.Text()
+}
+
 // fakePicker stands in for inventory_service in these tests (#149/#70).
 //
 // A fake rather than the real thing on purpose: it makes the FAILURE paths reachable. "Not enough
@@ -27,28 +34,46 @@ import (
 // `draw` is the answer verbatim, for a draw no single unit price describes — two batches at two costs. A product absent
 // from all three is one the take named no draw for (an-order-is-costed-at-what-leaves-the-shelf).
 type fakePicker struct {
-	picked    []string                // refs picked, in order
-	asked     [][]selling_v1.PickLine // the lines each pick was asked for, in order
-	returned  []string                // refs returned, in order
-	pickErr   error                   // if set, Pick refuses
-	costs     map[uint64]int64        // each product's unit cost as the take draws it
-	totals    map[uint64]float64      // a line's total, when it is not its cost
-	draw      selling_v1.PickDraw     // a product's draw, verbatim
-	returnErr error                   // if set, Return refuses
+	calls     int                       // every Pick call, a refused one included
+	picked    []string                  // keys picked, in order
+	asked     [][]selling_v1.PickLine   // the lines each pick was asked for, in order
+	returned  []string                  // keys returned, in order
+	live      []bool                    // per Return: whether its context was still live (never cancelled)
+	pickErr   error                     // if set, Pick refuses
+	onPick    func(ctx context.Context) // if set, runs at the start of every Pick — a test cancels the request here
+	txID      uint64                    // the transaction a successful take answers; 0 = 7001
+	costs     map[uint64]int64          // each product's unit cost as the take draws it
+	totals    map[uint64]float64        // a line's total, when it is not its cost
+	draw      selling_v1.PickDraw       // a product's draw, verbatim
+	returnErr error                     // if set, Return refuses
+	lock      *selling_v1.StockLock     // if set, StockLockCheck answers that a count holds the take
+	lockErr   error                     // if set, StockLockCheck fails
+	checked   []string                  // keys StockLockCheck was asked about, in order
 }
 
 func (f *fakePicker) Pick(
-	_ context.Context,
+	ctx context.Context,
 	_, _ uint64,
 	lines []selling_v1.PickLine,
-	ref string,
-) (selling_v1.PickDraw, error) {
-	if f.pickErr != nil {
-		return nil, f.pickErr
+	key string,
+) (selling_v1.Take, error) {
+	f.calls++
+
+	if f.onPick != nil {
+		f.onPick(ctx)
 	}
 
-	f.picked = append(f.picked, ref)
+	if f.pickErr != nil {
+		return selling_v1.Take{}, f.pickErr
+	}
+
+	f.picked = append(f.picked, key)
 	f.asked = append(f.asked, lines)
+
+	txID := f.txID
+	if txID == 0 {
+		txID = 7001
+	}
 
 	draw := selling_v1.PickDraw{}
 
@@ -82,17 +107,29 @@ func (f *fakePicker) Pick(
 		}
 	}
 
-	return draw, nil
+	return selling_v1.Take{TransactionID: txID, Draw: draw}, nil
 }
 
-func (f *fakePicker) Return(_ context.Context, _, _ uint64, ref string) error {
+func (f *fakePicker) Return(ctx context.Context, _, _ uint64, key string) error {
+	f.live = append(f.live, ctx.Err() == nil)
+
 	if f.returnErr != nil {
 		return f.returnErr
 	}
 
-	f.returned = append(f.returned, ref)
+	f.returned = append(f.returned, key)
 
 	return nil
+}
+
+func (f *fakePicker) StockLockCheck(_ context.Context, _, _ uint64, key string) (*selling_v1.StockLock, error) {
+	f.checked = append(f.checked, key)
+
+	if f.lockErr != nil {
+		return nil, f.lockErr
+	}
+
+	return f.lock, nil
 }
 
 // fakeCatalog stands in for product_service when a draft is promoted (#194).
@@ -217,6 +254,7 @@ func placeOrderAs(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,

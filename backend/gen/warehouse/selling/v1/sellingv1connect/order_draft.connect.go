@@ -48,6 +48,9 @@ const (
 	// OrderDraftServiceOrderDraftDeleteProcedure is the fully-qualified name of the OrderDraftService's
 	// OrderDraftDelete RPC.
 	OrderDraftServiceOrderDraftDeleteProcedure = "/warehouse.selling.v1.OrderDraftService/OrderDraftDelete"
+	// OrderDraftServiceOrderDraftByExternalRefsProcedure is the fully-qualified name of the
+	// OrderDraftService's OrderDraftByExternalRefs RPC.
+	OrderDraftServiceOrderDraftByExternalRefsProcedure = "/warehouse.selling.v1.OrderDraftService/OrderDraftByExternalRefs"
 )
 
 // OrderDraftServiceClient is a client for the warehouse.selling.v1.OrderDraftService service.
@@ -64,6 +67,11 @@ type OrderDraftServiceClient interface {
 	OrderDraftUpdate(context.Context, *connect.Request[v1.OrderDraftUpdateRequest]) (*connect.Response[v1.OrderDraftUpdateResponse], error)
 	// Pruning, which is entirely manual (nothing expires) — so it takes several at once.
 	OrderDraftDelete(context.Context, *connect.Request[v1.OrderDraftDeleteRequest]) (*connect.Response[v1.OrderDraftDeleteResponse], error)
+	// The duplicate-ref warning's draft half (the-duplicate-warning-reads-drafts-too, settled in
+	// the-duplicate-ref-warning-is-accepted): the TEAM's drafts in one shop carrying any of these marketplace refs —
+	// shaped like OrderService.OrderByExternalRefs. ⚠ Team-wide, not the caller's own: a colleague's scrape of the
+	// same ref is exactly the double the warning exists to name. The drafts list keeps its own-drafts rule.
+	OrderDraftByExternalRefs(context.Context, *connect.Request[v1.OrderDraftByExternalRefsRequest]) (*connect.Response[v1.OrderDraftByExternalRefsResponse], error)
 }
 
 // NewOrderDraftServiceClient constructs a client for the warehouse.selling.v1.OrderDraftService
@@ -109,16 +117,24 @@ func NewOrderDraftServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDelete")),
 			connect.WithClientOptions(opts...),
 		),
+		orderDraftByExternalRefs: connect.NewClient[v1.OrderDraftByExternalRefsRequest, v1.OrderDraftByExternalRefsResponse](
+			httpClient,
+			baseURL+OrderDraftServiceOrderDraftByExternalRefsProcedure,
+			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftByExternalRefs")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // orderDraftServiceClient implements OrderDraftServiceClient.
 type orderDraftServiceClient struct {
-	orderDraftPush   *connect.Client[v1.OrderDraftPushRequest, v1.OrderDraftPushResponse]
-	orderDraftList   *connect.Client[v1.OrderDraftListRequest, v1.OrderDraftListResponse]
-	orderDraftDetail *connect.Client[v1.OrderDraftDetailRequest, v1.OrderDraftDetailResponse]
-	orderDraftUpdate *connect.Client[v1.OrderDraftUpdateRequest, v1.OrderDraftUpdateResponse]
-	orderDraftDelete *connect.Client[v1.OrderDraftDeleteRequest, v1.OrderDraftDeleteResponse]
+	orderDraftPush           *connect.Client[v1.OrderDraftPushRequest, v1.OrderDraftPushResponse]
+	orderDraftList           *connect.Client[v1.OrderDraftListRequest, v1.OrderDraftListResponse]
+	orderDraftDetail         *connect.Client[v1.OrderDraftDetailRequest, v1.OrderDraftDetailResponse]
+	orderDraftUpdate         *connect.Client[v1.OrderDraftUpdateRequest, v1.OrderDraftUpdateResponse]
+	orderDraftDelete         *connect.Client[v1.OrderDraftDeleteRequest, v1.OrderDraftDeleteResponse]
+	orderDraftByExternalRefs *connect.Client[v1.OrderDraftByExternalRefsRequest, v1.OrderDraftByExternalRefsResponse]
 }
 
 // OrderDraftPush calls warehouse.selling.v1.OrderDraftService.OrderDraftPush.
@@ -146,6 +162,11 @@ func (c *orderDraftServiceClient) OrderDraftDelete(ctx context.Context, req *con
 	return c.orderDraftDelete.CallUnary(ctx, req)
 }
 
+// OrderDraftByExternalRefs calls warehouse.selling.v1.OrderDraftService.OrderDraftByExternalRefs.
+func (c *orderDraftServiceClient) OrderDraftByExternalRefs(ctx context.Context, req *connect.Request[v1.OrderDraftByExternalRefsRequest]) (*connect.Response[v1.OrderDraftByExternalRefsResponse], error) {
+	return c.orderDraftByExternalRefs.CallUnary(ctx, req)
+}
+
 // OrderDraftServiceHandler is an implementation of the warehouse.selling.v1.OrderDraftService
 // service.
 type OrderDraftServiceHandler interface {
@@ -161,6 +182,11 @@ type OrderDraftServiceHandler interface {
 	OrderDraftUpdate(context.Context, *connect.Request[v1.OrderDraftUpdateRequest]) (*connect.Response[v1.OrderDraftUpdateResponse], error)
 	// Pruning, which is entirely manual (nothing expires) — so it takes several at once.
 	OrderDraftDelete(context.Context, *connect.Request[v1.OrderDraftDeleteRequest]) (*connect.Response[v1.OrderDraftDeleteResponse], error)
+	// The duplicate-ref warning's draft half (the-duplicate-warning-reads-drafts-too, settled in
+	// the-duplicate-ref-warning-is-accepted): the TEAM's drafts in one shop carrying any of these marketplace refs —
+	// shaped like OrderService.OrderByExternalRefs. ⚠ Team-wide, not the caller's own: a colleague's scrape of the
+	// same ref is exactly the double the warning exists to name. The drafts list keeps its own-drafts rule.
+	OrderDraftByExternalRefs(context.Context, *connect.Request[v1.OrderDraftByExternalRefsRequest]) (*connect.Response[v1.OrderDraftByExternalRefsResponse], error)
 }
 
 // NewOrderDraftServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -202,6 +228,13 @@ func NewOrderDraftServiceHandler(svc OrderDraftServiceHandler, opts ...connect.H
 		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDelete")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderDraftServiceOrderDraftByExternalRefsHandler := connect.NewUnaryHandler(
+		OrderDraftServiceOrderDraftByExternalRefsProcedure,
+		svc.OrderDraftByExternalRefs,
+		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftByExternalRefs")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderDraftService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderDraftServiceOrderDraftPushProcedure:
@@ -214,6 +247,8 @@ func NewOrderDraftServiceHandler(svc OrderDraftServiceHandler, opts ...connect.H
 			orderDraftServiceOrderDraftUpdateHandler.ServeHTTP(w, r)
 		case OrderDraftServiceOrderDraftDeleteProcedure:
 			orderDraftServiceOrderDraftDeleteHandler.ServeHTTP(w, r)
+		case OrderDraftServiceOrderDraftByExternalRefsProcedure:
+			orderDraftServiceOrderDraftByExternalRefsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -241,4 +276,8 @@ func (UnimplementedOrderDraftServiceHandler) OrderDraftUpdate(context.Context, *
 
 func (UnimplementedOrderDraftServiceHandler) OrderDraftDelete(context.Context, *connect.Request[v1.OrderDraftDeleteRequest]) (*connect.Response[v1.OrderDraftDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderDraftService.OrderDraftDelete is not implemented"))
+}
+
+func (UnimplementedOrderDraftServiceHandler) OrderDraftByExternalRefs(context.Context, *connect.Request[v1.OrderDraftByExternalRefsRequest]) (*connect.Response[v1.OrderDraftByExternalRefsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderDraftService.OrderDraftByExternalRefs is not implemented"))
 }

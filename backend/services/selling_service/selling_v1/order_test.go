@@ -19,6 +19,7 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S1", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -81,6 +82,7 @@ func TestOrder_CreateWithoutAddress(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S-NOADDR", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -120,6 +122,7 @@ func TestOrder_CreateWithNote(t *testing.T) {
 		t.Helper()
 
 		created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+			IdempotencyKey:        newOrderKey(),
 			PlatformCreatedAtUnix: testPlatformDate,
 			PlatformTotal:         testPlatformTotal,
 			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -188,6 +191,7 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 	const ref = "250815ABCD1234"
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -219,6 +223,7 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 	// An order taken over the phone has NO marketplace reference, and "" is how it says so — not a
 	// placeholder, and nothing to back-fill.
 	phone, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -275,6 +280,7 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 	}
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -304,6 +310,7 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 
 	// No receipt is an EMPTY message, never nil — the same convention the address follows.
 	plain, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -333,6 +340,7 @@ func TestOrder_CreateShopNotInTeam(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S2", "shopee")
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                3, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: "X",
@@ -352,6 +360,7 @@ func TestOrder_ListScopedAndCrossTeamDetail(t *testing.T) {
 
 	create := func(name string) uint64 {
 		r, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+			IdempotencyKey:        newOrderKey(),
 			PlatformCreatedAtUnix: testPlatformDate,
 			PlatformTotal:         testPlatformTotal,
 			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: name,
@@ -396,6 +405,7 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
@@ -427,6 +437,7 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 	// An order that names no warehouse is refused. Proto validation rejects it at the boundary, but
 	// unit tests bypass the interceptor — which is exactly why the handler re-checks.
 	_, err = svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop,

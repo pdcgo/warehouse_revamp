@@ -83,6 +83,7 @@ func promote(
 	}
 
 	res, err := svc.OrderCreate(asUser(userID), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:               newOrderKey(),
 		TeamId:                       teamID,
 		ShopId:                       draft.GetShopId(),
 		WarehouseId:                  draft.GetWarehouseId(),
@@ -181,7 +182,8 @@ func TestOrderCreateFromDraft_TheSameDraftCannotBecomeTwoOrders(t *testing.T) {
 	}
 
 	_, err = svc.OrderCreate(asUser(draftPusher), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shop, WarehouseId: testWarehouse, CustomerName: "Budi",
+		IdempotencyKey: newOrderKey(),
+		TeamId:         2, ShopId: shop, WarehouseId: testWarehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: testPlatformDate, PlatformTotal: testPlatformTotal,
 		OrderExternalRefId: "SHP-100", Items: items, OrderDraftId: draftID,
 	}))

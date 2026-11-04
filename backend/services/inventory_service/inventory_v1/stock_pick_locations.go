@@ -19,12 +19,14 @@ type pickLocationRow struct {
 // StockPickLocations returns WHERE THIS PICK'S GOODS WERE TAKEN FROM — the pick screen's shelf column
 // (#151).
 //
-// Read from the TAKE, not from the racks now. The order's take wrote, per rack, exactly how much it drew under
-// this ref — its key (the-order-take-bridges-its-key-per-order); those rows are what the order holds and they cannot
-// drift. Current levels answer
-// a different question whose answer keeps changing — another order draws from the same shelf, a
-// stock-take shifts goods — and a picker sent by current levels can arrive at a shelf whose stock is
-// spoken for.
+// Read from the TAKE, not from the racks now. The order's take wrote, per rack, exactly how much it drew, as
+// placement log rows of ONE inventory transaction — the id the order keeps (the-placement-page-reads-racks-by-transaction-id).
+// Those rows are what the order holds and they cannot drift. Current levels answer a different question whose answer
+// keeps changing — another order draws from the same shelf, a stock-take shifts goods — and a picker sent by current
+// levels can arrive at a shelf whose stock is spoken for.
+//
+// Read only within the CALLER'S warehouse (`warehouse_id` is the scoped field): a transaction id from another building
+// reads as an empty walk, so one warehouse never reads another's take.
 //
 // The take and its rollback are NETTED, per rack, and only a positive remainder is a stop on the walk: the log is
 // append-only, so a released take's rows are still there beside their reversal (a-rollback-reverses-its-log-rows).
@@ -38,12 +40,11 @@ func (s *Service) StockPickLocations(
 
 	err := s.db.
 		WithContext(ctx).
-		Table("idempotency_order_check AS k").
+		Table("product_placement_logs AS l").
 		Select("l.product_id AS product_id, l.placement_id AS rack_id, r.code AS rack_code, "+
 			"SUM(-l.stock_change) AS quantity").
-		Joins("JOIN product_placement_logs l ON l.transaction_id = k.transaction_id").
 		Joins("JOIN placements r ON r.id = l.placement_id").
-		Where("k.idempotency_key = ? AND l.warehouse_id = ?", req.Msg.GetRef(), req.Msg.GetWarehouseId()).
+		Where("l.transaction_id = ? AND l.warehouse_id = ?", req.Msg.GetTransactionId(), req.Msg.GetWarehouseId()).
 		Group("l.product_id, l.placement_id, r.code").
 		Having("SUM(-l.stock_change) > 0").
 		Order("l.product_id, r.code").

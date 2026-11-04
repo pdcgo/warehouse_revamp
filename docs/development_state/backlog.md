@@ -27,13 +27,16 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
-| 10 | **Stock stays taken when an order create fails after the take** — no per-submit key, no compensation event; cancel calls inventory directly | flow · event | order | L | `stock_picker.go:57-62`, `order_cancel.go:74` |
-| 12 | **No duplicate-ref warning on the order form** (create, draft finalize, Try Again) | frontend | order | M | `OrderByExternalRefs` has no caller |
 
 ### Tier 4 — cleanup and small gaps
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
+| 10e | **#10 questions still open** — Q12 (a `san` command to list and replay stuck releases; also covers 10d) and Q13 (the build order, now moot); Q9 / Q10 / Q11 built as recommended, awaiting the owner's confirmation | decision | order | S | `docs/business/order/context_decision.md` |
+| 10d | **A lost `OrderCancelled` publish leaves the take standing** — logged with the key, released by hand; the #10 Q12 replay command would cover it | event | order | S | `order_cancel.go` |
+| 10b | **OrderList sorted by Total fails** — `ORDER BY total` names a column that no longer exists; no screen sorts by it yet. Which figure is "total" (the cost or the platform total) is the owner's call | bug · API | order | S | `selling_v1/list_slices.go:25` |
+| 12b | **The duplicate warning links a colleague's draft that only its author can open** — label it "a colleague's draft" without a link | frontend | order | S | `DuplicateRefDialog.tsx` |
+| 12c | **The draft-by-ref read scans the team's drafts** — 15 ms at 50 refs over 50 000 drafts; an index on `order_drafts (team_id, shop_id, external_id)` | perf | order | S | `audits/.../OrderDraftByExternalRefs.md` |
 | 16h | **Return dialogs stretch to full height on desktop** — Receive a Return and Accept Return | frontend | order | S | `features/orders/AcceptReturnDialog.tsx` |
 | 16f | **Only the sending warehouse can open a transfer's label photo** — the file is not shared with warehouse B or the seller; owner call | frontend · API | inventory | S | `TransferDetailCards.tsx` |
 | 16e | **Several warehouse labels in one PDF** — OrderLabels takes one order today (step 2: merge, a new resource type) | API · frontend | order | L | `pick-queue-next/pending.ts` printMerge |
@@ -66,28 +69,30 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 
 | Date | Item | Commit |
 | --- | --- | --- |
-| 2026-11-04 | Table mirroring package — `backend/pkgs/san_table_mirroring`, all 9 decisions; no caller yet ([state](packages/table_mirroring.md)) | uncommitted |
-| 2026-11-04 | #1 Saving the profile wiped email and phone — new `ProfileDetail`; save sends only changed fields | uncommitted |
-| 2026-11-04 | #2 The admin team's Admin could search every account — SearchUser holds a monitor to its policy | uncommitted |
-| 2026-11-04 | #3 Shop grants to non-members or suspended people — refused by ShopUserAdd/SetPrimary; picker excludes them | uncommitted |
-| 2026-11-04 | #13 Red tests and CI — language e2e by test id, financial-account stub at N×24h, CI on `backup/**` and `thoni` | uncommitted |
-| 2026-11-04 | #4 A warehouse could not open a label — new `OrderLabels` (one order) through an in-process document seam | uncommitted |
-| 2026-11-04 | #5 The importer credited the newest of two live orders — posts to the shop, reason "several orders", ids kept | uncommitted |
-| 2026-11-04 | #6 Analytic "Created by" was dead for non-root — lists the people on the metric's rows; new `SettlementPersonList` | uncommitted |
-| 2026-11-04 | #16b Expenses Storybook — stub, 25 stories with play() | uncommitted |
-| 2026-11-04 | #16d Settlement "Created by" read the whole daily report — `user_settlement_reports.last_day` (`00008`, kept by the fold and the replay); 28/31 ms → 1.06/1.04 ms | uncommitted |
-| 2026-11-04 | #16b Expenses: the WIB date pre-fill, Record hidden from customer service, the list refreshed after a refusal, short WIB dates | uncommitted |
-| 2026-11-04 | #7 Restock payments post to the paying account — created, the difference on edit, account moves, the refund on a returned cancel | uncommitted |
-| 2026-11-04 | #8 A transfer's courier fee is booked in the team balance as TRANSFER_FEE (owed to the receiving warehouse) | uncommitted |
-| 2026-11-04 | #14 Stale "not built" marks removed (rack count lock, transfer marks); the transfer label photo is shown; the Expenses ⋯ menu closes behind Cancel | uncommitted |
-| 2026-11-04 | #18 The restock label photo opens through a signed link (seller); the warehouse sees "attached" | uncommitted |
-| 2026-11-04 | #16 Shop filters work (marketplace, primary CS, no primary CS); the drafts Ready count covers every page | uncommitted |
-| 2026-11-04 | #11 Mark as Problem, Mark as Lost and Return Goods on problem orders (selling side) | uncommitted |
-| 2026-11-04 | #15 Erased people read "Former user #N" everywhere | uncommitted |
-| 2026-11-04 | 16c Server errors read as sentences, faults translated | uncommitted |
-| 2026-11-04 | 16g Stale notes fixed; the Expenses month follows WIB | uncommitted |
-| 2026-11-04 | 16b Expenses phone layout accepted (`the-expenses-phone-layout-is-accepted`) | uncommitted |
-| 2026-11-04 | #9 Expenses pay from an account — stored and checked, ads need a shop, events posted to the account (ads_expense / expense), corrections follow | uncommitted |
-| 2026-11-04 | #7b A transfer's shipping leaves the paying account as `expense` (`a-transfers-shipping-posts-as-an-expense`) | uncommitted |
-| 2026-11-04 | #18b The restock's warehouse opens its label photo (`RestockReceiptPhoto`) | uncommitted |
-| 2026-11-04 | #11b Receive a Return (search, force, accept), Force Return on the order pages, Mark as Lost on shipped, Return Goods on completed | uncommitted |
+| 2026-11-04 | Table mirroring package — `backend/pkgs/san_table_mirroring`, all 9 decisions; no caller yet ([state](packages/table_mirroring.md)) | `19607cbb` |
+| 2026-11-04 | #1 Saving the profile wiped email and phone — new `ProfileDetail`; save sends only changed fields | `19607cbb` |
+| 2026-11-04 | #2 The admin team's Admin could search every account — SearchUser holds a monitor to its policy | `19607cbb` |
+| 2026-11-04 | #3 Shop grants to non-members or suspended people — refused by ShopUserAdd/SetPrimary; picker excludes them | `19607cbb` |
+| 2026-11-04 | #13 Red tests and CI — language e2e by test id, financial-account stub at N×24h, CI on `backup/**` and `thoni` | `19607cbb` |
+| 2026-11-04 | #4 A warehouse could not open a label — new `OrderLabels` (one order) through an in-process document seam | `19607cbb` |
+| 2026-11-04 | #5 The importer credited the newest of two live orders — posts to the shop, reason "several orders", ids kept | `19607cbb` |
+| 2026-11-04 | #6 Analytic "Created by" was dead for non-root — lists the people on the metric's rows; new `SettlementPersonList` | `19607cbb` |
+| 2026-11-04 | #16b Expenses Storybook — stub, 25 stories with play() | `19607cbb` |
+| 2026-11-04 | #16d Settlement "Created by" read the whole daily report — `user_settlement_reports.last_day` (`00008`, kept by the fold and the replay); 28/31 ms → 1.06/1.04 ms | `19607cbb` |
+| 2026-11-04 | #16b Expenses: the WIB date pre-fill, Record hidden from customer service, the list refreshed after a refusal, short WIB dates | `19607cbb` |
+| 2026-11-04 | #7 Restock payments post to the paying account — created, the difference on edit, account moves, the refund on a returned cancel | `19607cbb` |
+| 2026-11-04 | #8 A transfer's courier fee is booked in the team balance as TRANSFER_FEE (owed to the receiving warehouse) | `19607cbb` |
+| 2026-11-04 | #14 Stale "not built" marks removed (rack count lock, transfer marks); the transfer label photo is shown; the Expenses ⋯ menu closes behind Cancel | `19607cbb` |
+| 2026-11-04 | #18 The restock label photo opens through a signed link (seller); the warehouse sees "attached" | `19607cbb` |
+| 2026-11-04 | #16 Shop filters work (marketplace, primary CS, no primary CS); the drafts Ready count covers every page | `19607cbb` |
+| 2026-11-04 | #11 Mark as Problem, Mark as Lost and Return Goods on problem orders (selling side) | `19607cbb` |
+| 2026-11-04 | #15 Erased people read "Former user #N" everywhere | `19607cbb` |
+| 2026-11-04 | 16c Server errors read as sentences, faults translated | `19607cbb` |
+| 2026-11-04 | 16g Stale notes fixed; the Expenses month follows WIB | `19607cbb` |
+| 2026-11-04 | 16b Expenses phone layout accepted (`the-expenses-phone-layout-is-accepted`) | `19607cbb` |
+| 2026-11-04 | #9 Expenses pay from an account — stored and checked, ads need a shop, events posted to the account (ads_expense / expense), corrections follow | `19607cbb` |
+| 2026-11-04 | #7b A transfer's shipping leaves the paying account as `expense` (`a-transfers-shipping-posts-as-an-expense`) | `19607cbb` |
+| 2026-11-04 | #18b The restock's warehouse opens its label photo (`RestockReceiptPhoto`) | `19607cbb` |
+| 2026-11-04 | #11b Receive a Return (search, force, accept), Force Return on the order pages, Mark as Lost on shipped, Return Goods on completed | `19607cbb` |
+| 2026-11-04 | #12 The duplicate-ref warning names live orders and drafts on the same shop + ref (`OrderDraftByExternalRefs`) | uncommitted |
+| 2026-11-04 | #10 Stock never stays taken by a failed order — a unique key per order, the take first and given back on failure (`InventoryTxCancel`), cancel by event behind the count check, the pick page by transaction id, the form lock + Try Again | uncommitted |

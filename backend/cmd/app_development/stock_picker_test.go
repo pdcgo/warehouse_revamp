@@ -13,10 +13,11 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
-// THE ORDER'S TAKE THROUGH THE BRIDGE (the-order-take-bridges-its-key-per-order): selling's Pick reaches
-// OrderTransactionCreate with the order's ref as its key, and its Return releases by the same key. This is the only
-// place selling's picker and inventory's ledgers meet a database together.
-func TestStockPicker_TakesAndReleasesByTheOrdersRef(t *testing.T) {
+// THE ORDER'S TAKE THROUGH THE BRIDGE (backlog #10 slice 3): selling's Pick reaches OrderTransactionCreate with the
+// order's own idempotency key K, passed through as sent, answers the transaction it wrote, and its Return releases by
+// the same key (every-release-goes-by-the-key). This is the only place selling's picker and inventory's ledgers meet a
+// database together.
+func TestStockPicker_TakesAndReleasesByTheOrdersKey(t *testing.T) {
 	const (
 		team      uint64 = 9_000_020
 		warehouse uint64 = 9_000_021
@@ -30,10 +31,20 @@ func TestStockPicker_TakesAndReleasesByTheOrdersRef(t *testing.T) {
 
 	stockForPicker(t, inventory, team, warehouse, product, 5)
 
-	draw, err := picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 3}}, "order:42")
+	taken, err := picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 3}}, "K-42")
 	if err != nil {
 		t.Fatalf("Pick: %v", err)
 	}
+
+	// The transaction the take wrote, carried across — the order stores it (the-placement-page-reads-racks-by-transaction-id).
+	var filed uint64
+	db.Raw(`SELECT transaction_id FROM idempotency_order_check WHERE idempotency_key = 'K-42'`).Scan(&filed)
+
+	if taken.TransactionID == 0 || taken.TransactionID != filed {
+		t.Fatalf("the pick answered transaction %d, want the one filed under K-42 (%d)", taken.TransactionID, filed)
+	}
+
+	draw := taken.Draw
 
 	// WHAT THE LINE DREW, as the take priced it and carried across untouched — the cost the line divides its unit_cost from
 	// (an-order-is-costed-at-what-leaves-the-shelf) and the total the product fee is posted from and the order's goods_cost sums
@@ -52,12 +63,12 @@ func TestStockPicker_TakesAndReleasesByTheOrdersRef(t *testing.T) {
 	}
 
 	// The same order cannot take twice — its key is spent.
-	_, err = picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 1}}, "order:42")
+	_, err = picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 1}}, "K-42")
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
-		t.Fatalf("a second pick of order 42: err = %v, want AlreadyExists", err)
+		t.Fatalf("a second pick under K-42: err = %v, want AlreadyExists", err)
 	}
 
-	err = picker.Return(ctx, team, warehouse, "order:42")
+	err = picker.Return(ctx, team, warehouse, "K-42")
 	if err != nil {
 		t.Fatalf("Return: %v", err)
 	}
@@ -67,13 +78,13 @@ func TestStockPicker_TakesAndReleasesByTheOrdersRef(t *testing.T) {
 	}
 
 	// An order that never drew stock cancels cleanly.
-	err = picker.Return(ctx, team, warehouse, "order:43")
+	err = picker.Return(ctx, team, warehouse, "K-43")
 	if err != nil {
 		t.Fatalf("Return of an order that took nothing: %v", err)
 	}
 
 	// Too few is refused as it always was, so selling still refuses the order.
-	_, err = picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 9}}, "order:44")
+	_, err = picker.Pick(ctx, team, warehouse, []selling_v1.PickLine{{ProductID: product, Quantity: 9}}, "K-44")
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("a pick of 9 from 5: err = %v, want FailedPrecondition", err)
 	}

@@ -36,14 +36,15 @@ func perfOrderRows(n int, shopIDs []uint64) []selling_service_models.Order {
 
 	for i := range n {
 		rows = append(rows, selling_service_models.Order{
-			ID:            uint64(1 + i),
-			TeamID:        uint64(2 + i%5),
-			ShopID:        shopIDs[i%len(shopIDs)],
-			WarehouseID:   uint64(900 + i%3),
-			Status:        statuses[i%len(statuses)],
-			CustomerName:  "Budi",
-			GoodsCost:     int64(10_000 + i),
-			PlatformTotal: int64(15_000 + i),
+			IdempotencyKey: newOrderKey(),
+			ID:             uint64(1 + i),
+			TeamID:         uint64(2 + i%5),
+			ShopID:         shopIDs[i%len(shopIDs)],
+			WarehouseID:    uint64(900 + i%3),
+			Status:         statuses[i%len(statuses)],
+			CustomerName:   "Budi",
+			GoodsCost:      int64(10_000 + i),
+			PlatformTotal:  int64(15_000 + i),
 			// Half inside the 30-day window, half outside it, so the FILTER aggregates are not
 			// measured against a set that trivially matches everything.
 			CreatedAt: time.Now().Add(-time.Duration(i%60) * 24 * time.Hour),
@@ -82,6 +83,7 @@ func perfStatOrderRows(n int, teamOf func(int) uint64, shopIDs []uint64, salt in
 		total := int64(15_000 + k%5_000)
 
 		o := selling_service_models.Order{
+			IdempotencyKey:     newOrderKey(),
 			TeamID:             teamOf(i),
 			ShopID:             shopIDs[i%len(shopIDs)],
 			WarehouseID:        uint64(900 + i%3),

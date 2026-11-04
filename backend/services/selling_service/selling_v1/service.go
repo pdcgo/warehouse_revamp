@@ -52,6 +52,11 @@ type Service struct {
 	// The link to an order's label file, for the warehouse that ships it (a-warehouse-prints-the-labels-of-orders-it-ships)
 	// — document_service, behind an interface this service owns. See order_labels.go. nil = OrderLabels is Unimplemented.
 	labels LabelLinker
+
+	// A TEST SEAM, nil in every built server: when set, placeOrder hands it the order transaction's result and uses what
+	// it returns — so a test can make a commit that landed REPORT an error (backlog #10c), which no real database does on
+	// demand. Set only through export_test.go.
+	orderCommitResult func(error) error
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"testing"
 
@@ -14,6 +15,12 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
+
+// newOrderKey mints the key a submit carries (every-submit-mints-a-new-key) — a fresh random one per call, so two
+// requests built by one helper never share a key and the second is never refused as a used one.
+func newOrderKey() string {
+	return "test-" + rand.Text()
+}
 
 // ONE PRODUCT ON TWO LINES, THROUGH THE REAL TAKE. The take refuses a product listed twice, so before placeOrder merged
 // them an order carrying a bundle's product beside the same product picked by hand could never be placed. Here selling's
@@ -111,7 +118,8 @@ func twoLinesOf(team, shop, warehouse, product uint64) *sellingv1.OrderCreateReq
 	}
 
 	return &sellingv1.OrderCreateRequest{
-		TeamId: team, ShopId: shop, WarehouseId: warehouse, CustomerName: "Budi",
+		IdempotencyKey: newOrderKey(),
+		TeamId:         team, ShopId: shop, WarehouseId: warehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: 1_790_000_000, PlatformTotal: 40_000,
 		Items: []*sellingv1.OrderItem{line(2), line(1)},
 	}

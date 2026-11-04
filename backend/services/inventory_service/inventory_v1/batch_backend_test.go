@@ -188,7 +188,7 @@ func TestBatchDetail_ReturnAggregate(t *testing.T) {
 
 	before := time.Now().Add(-time.Minute)
 
-	for key, qty := range map[string]int64{"order:1": 4, "order:2": 1} {
+	for key, qty := range map[string]int64{"key-1": 4, "key-2": 1} {
 		takeForOrder(t, svc, 2, warehouse, product, qty, key)
 
 		_, err = svc.OrderTransactionRelease(ctxUser(1), connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{

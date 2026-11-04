@@ -112,6 +112,16 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-return-is-received-by-search-then-forced](#a-return-is-received-by-search-then-forced) | the warehouse receives a parcel by search on the pick queue, forces the order to return if needed, then accepts; also a Force Return on the order page | owner, as recommended | — |
 | [every-allowed-move-has-a-button](#every-allowed-move-has-a-button) | Mark as Lost on shipped and Return Goods on completed, each confirmed — every allowed move is on a screen | owner, as recommended | — |
 | [the-return-receiving-screens-are-accepted](#the-return-receiving-screens-are-accepted) | Receive a Return, Force Return and the seller's new moves are the design | owner | — |
+| [the-duplicate-ref-warning-is-accepted](#the-duplicate-ref-warning-is-accepted) | the duplicate-ref warning dialog is the design: named matches as links, Go Back / Create Anyway | owner | ✅ drafts: a new `OrderDraftByExternalRefs` read |
+| [superseded-the-take-before-the-order-follows-the-recommendations](#superseded-the-take-before-the-order-follows-the-recommendations) | ⛔ WITHDRAWN — the thirteen points are asked one by one | owner | — |
+| [a-used-key-is-never-cancelled](#a-used-key-is-never-cancelled) | #10 Q1: a take refused as *key already used* never publishes the cancel | owner, as recommended | — |
+| [the-release-is-direct-then-the-event](#the-release-is-direct-then-the-event) | #10 Q2: the compensation releases directly first, the event is the backup | owner, as recommended | — |
+| [the-cancel-event-names-the-team](#the-cancel-event-names-the-team) | #10 Q3: InventoryTxCancel carries the team; one team-checked release | owner, as recommended | — |
+| [a-cancel-still-meets-the-count-first](#a-cancel-still-meets-the-count-first) | #10 Q4: a cancel checks the count lock first and is refused; the compensation waits for the count | owner, as recommended | — |
+| [revamp-has-no-real-orders-yet](#revamp-has-no-real-orders-yet) | #10 Q5–Q6: no production yet — key required, no backfill, the order:<id> bridge removed | owner | — |
+| [inventory-tx-cancel-is-an-order-event](#inventory-tx-cancel-is-an-order-event) | #10 Q7: InventoryTxCancel is an order event (204), its own topic | owner, as recommended | — |
+| [no-answer-is-only-a-lost-connection](#no-answer-is-only-a-lost-connection) | #10 Q8: no time limit — only a lost connection is *no answer*; the take has no deadline of its own | owner, against my recommendation | — |
+| [the-form-lock-and-try-again-are-accepted](#the-form-lock-and-try-again-are-accepted) | the locked form, the no-answer panel and Try Again are the design, with four calls | owner | — |
 
 ---
 
@@ -3947,4 +3957,182 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 **The verdict.** The screens are the design: [a-return-is-received-by-search-then-forced](#a-return-is-received-by-search-then-forced) and [every-allowed-move-has-a-button](#every-allowed-move-has-a-button) as drawn, including *Accept Return* on the warehouse order detail so a *Force Return* there has its next step.
 
 **What it does NOT settle.** The receive search finds this warehouse's orders and returns addressed to it, never a parcel still shipped from another building under a stale label; the dialogs stretch to full height on desktop (shared with the older Accept Return dialog — a styling fix, not a decision).
+
+---
+
+## the-duplicate-ref-warning-is-accepted
+
+> In chat *(owner, 2026-11-04)* — *"Yes, I accept design"*, replying to the Storybook screenshots of the duplicate-ref warning (a live order found on the order form, the draft rows as the dialog draws them, the phone dialog).
+
+**The verdict.** The warning is the design for [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) and [the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too): before Create (and when a draft is finalized through the form) the shop + marketplace ref is looked up; each live order and draft found is named with a link opening in a new tab (order: status and date; draft: its number); **Go Back** keeps the form as typed, **Create Anyway** goes on; a cancelled order never warns, nor does the draft being finalized; a failed lookup says so and still offers *Create Anyway*; on a phone the two buttons stack full width.
+
+**What it does NOT settle.** How drafts are found by shop + ref (no read does it today); the *Try Again* path, which comes with the form lock ([the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered)) and reuses this dialog ([a-try-again-always-warns](#a-try-again-always-warns)).
+
+🔄 *(2026-11-04)* **Settled in chat** — *"B"*, as recommended: drafts are found by a new read `OrderDraftByExternalRefs`, shaped like `OrderByExternalRefs` (the team's drafts carrying those refs in that shop); the drafts list keeps its own-drafts rule.
+
+⛔ Not built — the live-order half works in the prototype through `OrderByExternalRefs`; the draft half and the order date in the short WIB form are the backend step.
+
+✅ **Built 2026-11-04.** `OrderDraftService.OrderDraftByExternalRefs` (`selling_v1/order_draft_by_external_refs.go`: the team's drafts in the shop on those refs, any author, never `manual`); `OrderRefItem.created_at_unix`; `features/orders/form/duplicateRef.ts` reads both at once. Tests `order_draft_by_external_refs_test.go`; e2e *the warning names the first order, Go Back keeps the form, Create Anyway places the second, a pushed draft is named*.
+
+---
+
+## superseded-the-take-before-the-order-follows-the-recommendations
+
+> ⛔ **WITHDRAWN** *(2026-11-04, before it was built or committed)*: the owner, a minute later — *"Sorry B"*: the thirteen points are taken **one by one** instead. Each answer gets its own entry.
+
+> In chat *(owner, 2026-11-04)* — *"A"* (*follow your recommendations*) to the thirteen points the take-before-the-order decisions leave open, listed back to the owner the same message. Builds [the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key), [every-submit-mints-a-new-key](#every-submit-mints-a-new-key), [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered), [the-compensation-event-is-inventory-tx-cancel](#the-compensation-event-is-inventory-tx-cancel), [every-release-goes-by-the-key](#every-release-goes-by-the-key), [inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled).
+
+| # | point | verdict |
+| --- | --- | --- |
+| 1 | a take refused as *key already used* | **never** publishes the cancel — the key is someone else's live take |
+| 2 | how the compensation travels | the in-process release first, the `InventoryTxCancel` event as the backup; a double release is a no-op |
+| 3 | the team on the release | the event carries `team_id`; the listener reuses the team-checked release |
+| 4 | a count lock against an asynchronous release | a cancel pre-checks the lock and is refused as today ([a-lock-stops-sales-and-cancels-too](../inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)); an `InventoryTxCancel` that meets a lock is redelivered until the count ends |
+| 5 | the key of an existing order | backfilled as `order:<id>`; a new key starting `order:` is refused |
+| 6 | `transaction_id` for existing orders | no backfill if revamp holds no real orders (a dev reset); otherwise a `san` backfill command — ⬜ the owner confirms which |
+| 7 | the event | `InventoryTxCancel`, in the order range (204), topic `inventory-tx-cancel`, published by the order service |
+| 8 | what the browser calls *no answer* | a 30 s client deadline; the server's take stops at 20 s, so a server timeout comes back as an error (already compensated) |
+| 9 | how a used key is shown | the inventory refusal's *key already used* detail, the same message |
+| 10 | where the key is checked | first, before the owner lookup and the credit check; the unique index is the backstop |
+| 11 | telling the person stock comes back after a cancel | no change |
+| 12 | a release stuck in the dead-letter | a `san` command lists and replays dead-lettered `InventoryTxCancel` / `OrderCancelled` |
+| 13 | the build order | slices 1 → 3 → 4 → 5 → 6, then 2 (the form lock and *Try Again*, which needs a design accept) |
+
+⛔ Not built.
+
+---
+
+## a-used-key-is-never-cancelled
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended — #10 question 1: when the take is refused as *key already used*, does the order still publish the cancel?
+
+**The verdict.** A take refused because its key is **already used** never publishes `InventoryTxCancel` and never releases: the key belongs to another order's live take, and only the order that owns a key may release it. It narrows [the-compensation-event-is-inventory-tx-cancel](#the-compensation-event-is-inventory-tx-cancel)'s *"any failure after the take was called"*. Every other failure after the take still compensates.
+
+| | |
+| --- | --- |
+| *key already used* | no cancel, no release — the order fails with the refusal |
+| any other failure after the take was called | compensated, as decided |
+| not chosen | always cancel (B — can release another order's stock); cancel only on timeouts (C) |
+
+⛔ Not built — part of backlog #10, slice 3.
+
+---
+
+## the-release-is-direct-then-the-event
+
+> In chat *(owner, 2026-11-04)* — *"B"*, as recommended — #10 question 2: how does the compensation travel?
+
+**The verdict.** When an order fails after its take, the order service **first releases the take directly** (in-process, while the services share one program) and **then publishes `InventoryTxCancel`** as the backup. A release that finds the take already released is a no-op, so the two never give stock back twice. Stock stays taken only if the program dies between the take and both releases — the case [no-outbox-the-publish-is-trusted] already accepts.
+
+| | |
+| --- | --- |
+| first | the direct release by the key, with a context the browser leaving cannot cancel |
+| then | `InventoryTxCancel{key}` — the backup when the direct call failed |
+| when the services split | the direct call becomes the event alone |
+| not chosen | the event only (A); an outbox table (C) |
+
+⛔ Not built — backlog #10, slice 3.
+
+---
+
+## the-cancel-event-names-the-team
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended — #10 question 3: does `InventoryTxCancel` name the team?
+
+**The verdict.** `InventoryTxCancel` carries the **key and the team** (`team_id`, the order's selling team). Inventory's listener releases through the same team-checked release as `OrderTransactionRelease`, so one team can never release another's take, by call or by event. It amends the inventory note *"InventoryTxCancel stays the key alone"* (`the-key-is-claimed-in-its-own-table`).
+
+| | |
+| --- | --- |
+| the event | `idempotency_key`, `team_id` (+ the warehouse and the actor) |
+| the release | one path, team-checked, for the call and the event |
+| another team's key | refused — the listener acknowledges and logs it |
+| not chosen | key alone (B); dropping the team check (C) |
+
+⛔ Not built — backlog #10, slice 3.
+
+---
+
+## a-cancel-still-meets-the-count-first
+
+> In chat *(owner, 2026-11-04)* — *"B"*, as recommended — #10 question 4: what happens when a release meets a stock count?
+
+**The verdict.** [a-lock-stops-sales-and-cancels-too](../inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too) keeps holding once the cancel's release travels by event: **OrderCancel checks the count lock first** (an in-process read before the status moves) and is refused as today — *"being counted in count #12"* — leaving the order pending. Only `InventoryTxCancel`, the automatic compensation of a failed create that has no person to refuse, **waits**: its listener refuses while the count holds and the broker redelivers until the count ends (dead-lettered after the retry limit, then replayed by hand).
+
+| | |
+| --- | --- |
+| a person's cancel on a counted rack | refused before anything changes, the count named |
+| a cancel that slips past the check (a race) | its `OrderCancelled` release waits and redelivers, like the compensation |
+| a failed create's compensation | waits for the count to end |
+| not chosen | the cancel always passes and the stock comes back later (A); a release that ignores the count (C) |
+
+⛔ Not built — backlog #10, slices 3 and 4.
+
+---
+
+## revamp-has-no-real-orders-yet
+
+> In chat *(owner, 2026-11-04)* — *"Older order ? We don't go to production yet"* — answering #10 questions 5 and 6 (what key and which stock-take id an order made before the change gets).
+
+**The verdict.** Revamp holds **no real orders**, so nothing is carried forward for them:
+
+| | |
+| --- | --- |
+| the key on an order | **required** from the start — the form always sends one |
+| rows already in a developer's database | the migration fills them with `order:<id>` only so it applies cleanly; no code keeps a path for them |
+| `transaction_id` | no backfill command; the pick page reads by `transaction_id` only, and a pre-change dev order simply shows no racks (reset the dev data if it matters) |
+| the `order:<id>` bridge | removed in the same build, not kept as a fallback |
+| a new key starting `order:` | refused, so it never meets a filled dev row |
+
+⛔ Not built — backlog #10, slices 1, 5 and 6 (slice 6 shrinks to deleting the bridge).
+
+---
+
+## inventory-tx-cancel-is-an-order-event
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended — #10 question 7: where does `InventoryTxCancel` live?
+
+**The verdict.** `InventoryTxCancel` is an **order event**: field 204 of the envelope's order range, its own topic `inventory-tx-cancel`, published by the order service; inventory is its only subscriber (filtered on its event type, with a dead-letter like every subscription). `event_id` = `inventory-tx-cancel:<key>`.
+
+| | |
+| --- | --- |
+| range | order (200s), beside OrderPlaced · OrderCancelled · OrderStatusChanged · OrderReturnAccepted |
+| topic | `inventory-tx-cancel` |
+| not chosen | the inventory range (B); a second kind on `order-cancelled` (C) |
+
+⛔ Not built — backlog #10, slice 3.
+
+---
+
+## no-answer-is-only-a-lost-connection
+
+> In chat *(owner, 2026-11-04)* — *"A"*, **against my recommendation** (*B — the form waits 30 s, the server's take stops at 20 s*) — #10 question 8: when does the order form decide there is *no answer*?
+
+**The verdict.** There is **no time limit**. The form stays locked ([the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered)) for as long as the request is open; only a **lost connection** (the request fails without any reply from the server) counts as *no answer* and offers *Try Again* with a new key. The server's take runs under the request: it has no deadline of its own.
+
+| | |
+| --- | --- |
+| a slow server | the person waits, locked, until it answers |
+| a dropped connection | *no answer* → *Try Again* (a new key, the duplicate warning first) |
+| a person who leaves while waiting | the request may still finish; if it fails after the take, the compensation still runs ([the-release-is-direct-then-the-event](#the-release-is-direct-then-the-event)) |
+| what is given up | a bounded wait — a server that hangs keeps the form locked until the connection itself drops |
+| not chosen | 30 s / 20 s (B); 60 s / 45 s (C) |
+
+⛔ Not built — backlog #10, slices 2 and 3.
+
+---
+
+## the-form-lock-and-try-again-are-accepted
+
+> In chat *(owner, 2026-11-04)* — *"Yes, i accept it"*, replying to the Storybook screenshots of the order form locked while waiting, the *no answer* panel (desktop and phone) and *Try Again*'s duplicate warning naming the first order, with the four calls listed in the same message.
+
+**The verdict.** The screens are the design for [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered), [every-submit-mints-a-new-key](#every-submit-mints-a-new-key), [a-try-again-always-warns](#a-try-again-always-warns) and [no-answer-is-only-a-lost-connection](#no-answer-is-only-a-lost-connection): while Create waits the whole form fades and locks, the button reads *Placing order…*, and leaving the page asks first; an answer from the server (any error it sent) unlocks the form as typed; a lost connection keeps it locked on what was sent and shows *"No answer from the server — the order may or may not have been placed."* with **Try Again** and *Check the Orders List* (a new tab); Try Again always runs the duplicate check first, then sends the same order under a new key.
+
+| the four calls, accepted | |
+| --- | --- |
+| Try Again finds nothing yet | the button reads **Send Again**, and the dialog says the last Create may still be finishing |
+| closing the warning by X or Escape | keeps the lock — only **Go Back** unlocks |
+| the margin checks on a resend | not re-run — the order is unchanged |
+| a gateway's bare 502 / 503 / 504 | counts as *no answer* — the request may still be running behind it |
+
+✅ **Built 2026-11-04** — `features/orders/createAnswer.ts` (+ unit tests), `pages/order-create/components/NoAnswerPanel.tsx`, `DuplicateRefDialog` `retry`; stories `Pages/Order/OrderCreateFormLock`.
 

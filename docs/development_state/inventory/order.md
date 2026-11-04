@@ -2,15 +2,17 @@
 
 **As of 2026-10-17, inventory's side of an order is BUILT** (uncommitted, for the owner's review — [ledgers.md](ledgers.md),
 stage 4a and the cut-over). The order FORM does not call it yet: selling's `OrderCreate` and `OrderCancel` reach it
-through a bridge that uses `order:<id>` as the key ([the-order-take-bridges-its-key-per-order](../../technical/stock/design_decision.md#the-order-take-bridges-its-key-per-order)).
+through the composition root's stock picker, under the order form's own key K (backlog #10 slices 1–4, 2026-11-04 — the
+earlier `order:<id>` key of [the-order-take-bridges-its-key-per-order](../../technical/stock/design_decision.md#the-order-take-bridges-its-key-per-order) is gone).
 [order_clarify.md](../../business/inventory/order_clarify.md) has **no open question**; what is left there is five
 Contradictions in the owner's [order.md](../../business/inventory/order.md), for the owner to redraw. The decisions are in
 [order_decision.md](../../business/inventory/order_decision.md), with the key's in
 [transaction_decision.md](../../business/inventory/transaction_decision.md) and the order side's in
 [order/context_decision.md](../../business/order/context_decision.md).
 
-**Next step: the order context builds its form's K** (every submit mints a key, the take before the order row) — then
-the bridge goes and the placement page reads by `orders.transaction_id`.
+✅ *(2026-11-04, backlog #10 slices 5–6)* the placement page reads its racks by `orders.transaction_id`; the
+`StockPickLocations.ref` field and every `order:<id>` bridge path are removed (only the selling migration `00035`'s fill
+of developer rows and the `order:` prefix refusal remain).
 The take has no screen of its own; its screens are the order form (order context) and the placement page, which exists.
 
 ```mermaid
@@ -37,6 +39,28 @@ flow in [rpc.md](../../services/inventory_service/rpc.md#stocktakequote--what-th
 | tests | `stock_take_quote_test.go` (5 — 1/2/3 units of a two-batch product match the real take's batches and cost; short reported; ownership/refusals/other warehouse; a product twice; validation) |
 | audits | perf [StockTakeQuote.md](../../../audits/services/inventory_service/performances/StockTakeQuote.md): ✅ fixed 2026-10-26 — the reserve rule shared with the take was an N+1 on borrowed lines (21 queries at 20); now one grouped read (`ownerTotalStocks`) on `batches_owner_product_idx` (`00032`), 2 queries and 1.57 ms at 20 ([the-reserve-is-read-once-for-every-line](../../business/inventory/order_decision.md#the-reserve-is-read-once-for-every-line)) |
 
+## 2026-11-04 — the compensation's listener (backlog #10, slice 3)
+
+| | |
+| --- | --- |
+| built | `inventory_v1.Service.InventoryTxCancel` (`inventory_tx_cancel_listener.go`) on `/event/inventory-tx-cancel/push` (`InventoryTxCancelSubscription`, `register.go`; `push_handler.go` dispatches the variant). `releaseByKey` is the ONE release, extracted from `OrderTransactionRelease` and shared ([every-release-goes-by-the-key](../../business/order/context_decision.md#every-release-goes-by-the-key), [the-cancel-event-names-the-team](../../business/order/context_decision.md#the-cancel-event-names-the-team)) |
+| outcomes | taken → rolled back once · released or claimed-with-none → ACK, nothing · unseen key → claimed with none, a late take refused KEY_USED · another team → ACK + warn log, nothing · a count lock → error, redelivered until the count ends, then the dead-letter ([a-cancel-still-meets-the-count-first](../../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) |
+| provisioning | `tools/san/pubsub.go` `inventory-tx-cancel` on topic `inventory-tx-cancel`, `event_type` filter, dead-letter; [san.md](../../tools/san.md) row. The old `/events/inventory` catch-all route is removed |
+| tests | `inventory_tx_cancel_listener_test.go` (taken → once + redelivery no-op; unseen → claimed, late take refused; another team → acked and kept; count lock → error, then released after the count) · `push_handler_test.go` (an unhandled variant acked; InventoryTxCancel dispatched) · raceaudit `TestRace_TakeVsTxCancel` (×20 per run, both outcomes hit, net 0 without a settling release) and `TestRace_TxCancelRedelivery` (×10, one rollback) |
+| audits | `TestPerf_InventoryTxCancel` — 14 statements at 1 or 20 lines (5.3 / 8.8 ms), 4 for a released take or an unseen key (≈1 ms), not heavy. [lock-order](../../../audits/services/inventory_service/concurrency/lock-order.md#order-takes-and-their-release-2026-11-04): the take claims the key LAST, a release FIRST — no cycle |
+| the order side | see [order/context.md](../order/context.md) |
+
+## 2026-11-04 — a cancelled order's stock on its event (backlog #10, slice 4)
+
+| | |
+| --- | --- |
+| built | `inventory_v1.Service.OrderCancelled` (`order_cancelled_listener.go`) on `/event/inventory-order-cancelled/push` (`InventoryOrderCancelledSubscription`); `StockLockCheck` (`stock_lock_check.go`) — the order's in-process count check, wired by `cmd/app_development/stock_picker.go` ([inventory-returns-stock-on-order-cancelled](../../business/order/context_decision.md#inventory-returns-stock-on-order-cancelled), [a-cancel-still-meets-the-count-first](../../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) |
+| outcomes | empty key → ACK, nothing claimed · taken → rolled back once (`releaseByKey`, team-checked) · released (a redelivery, or a late `InventoryTxCancel` first) → ACK · another team → ACK + warn · a count lock → error, redelivered until the count ends, then the dead-letter |
+| StockLockCheck | reads `idempotency_order_check` ⋈ `inventory_transactions` (team, warehouse, not rolled back) → the take's rack rows → `RefuseCounted`; answers the `CountedError` the release would refuse with, or nil. No lock, no write |
+| provisioning | `tools/san/pubsub.go` `inventory-order-cancelled` on topic `order-cancelled`, `event_type` filter, dead-letter; [san.md](../../tools/san.md) row |
+| tests | `order_cancelled_listener_test.go` (listener: once + redelivery + late TxCancel no-op, empty key, another team, count lock; StockLockCheck: names the count, nil for no/other take, other warehouse, after the count, a released take) · `push_handler_test.go` (OrderCancelled dispatched) · raceaudit `TestRace_OrderCancelled_AndALateTxCancelRollBackOnce`, `TestRace_OrderCancelled_RacingACountStartWaitsForIt` |
+| audits | `TestPerf_OrderCancelled` — `StockLockCheck` 3 statements ≈1 ms, the release 14 (4.4 / 8.2 ms at 1 / 20 lines), redelivery 4 ≈1 ms; not heavy. [lock-order](../../../audits/services/inventory_service/concurrency/lock-order.md#a-cancelled-order-released-on-its-event-2026-11-04) |
+
 ## What was decided
 
 | | |
@@ -54,8 +78,8 @@ flow in [rpc.md](../../services/inventory_service/rpc.md#stocktakequote--what-th
 
 | | as built | decided |
 | --- | --- | --- |
-| the take | ✅ `OrderTransactionCreate` / `Release`, `PostOrder`, `RollbackTake`, `00026` `idempotency_order_check`; 7 handler + 4 race tests. Selling calls it AFTER its order row exists, with K = `order:<id>` (`cmd/app_development/stock_picker.go`) | the form mints K and takes BEFORE the order row exists |
-| the placement page | `pick-order` → `StockPickLocations` by `ref = "order:<id>"`, now read off the take's own rack rows (the key → `product_placement_logs`, netted against a rollback) | by `orders.transaction_id` — the take is filed before the order exists |
+| the take | ✅ `OrderTransactionCreate` / `Release`, `PostOrder`, `RollbackTake`, `00026` `idempotency_order_check`. ✅ *(2026-11-04, backlog #10 slice 3)* Selling takes BEFORE its order row, under the form's K, and stores the answered `transaction_id` on the order | — matches |
+| the placement page | ✅ *(2026-11-04, slices 5–6)* `pick-order` → `OrderDetail`, then `StockPickLocations(warehouse_id, transaction_id)` = the order's `transactionId`, read off `product_placement_logs` by `transaction_id` AND the caller's `warehouse_id`, netted against a rollback (`HAVING SUM(-stock_change) > 0`). `ref` (2) reserved; no `idempotency_order_check` join | — matches |
 | the order's history | `order_events` (selling_service `00011`), the Timeline tab | `order_timeline_logs` replaces it ([order-timeline-logs-replaces-order-events](../../business/order/context_decision.md#order-timeline-logs-replaces-order-events)) |
 | the settlement importer | `orderInShop` pays the newest of two live orders | the shop, naming both |
 | the order's statuses | `OrderStatus` placed · confirmed · picking · packed · shipped; `pick-order` advances one step per button, with no item scan (the scan is only in the `PickQueueNextPage` preview) | `processed` · `picked` at *Set Picked* after every good is scanned · `shipping` at the handover |

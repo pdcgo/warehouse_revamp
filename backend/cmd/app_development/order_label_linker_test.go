@@ -78,7 +78,8 @@ func TestOrderLabelLinker_TheShippingWarehouseOpensTheSellersLabel(t *testing.T)
 	}
 
 	order := selling_service_models.Order{
-		TeamID: seller, ShopID: shop.ID, WarehouseID: warehouse, Status: "processed", CustomerName: "Budi",
+		IdempotencyKey: newOrderKey(),
+		TeamID:         seller, ShopID: shop.ID, WarehouseID: warehouse, Status: "processed", CustomerName: "Budi",
 		ReceiptDocumentID: conf.Msg.GetDocument().GetId(), ReceiptFilename: "resi.pdf", ReceiptMimeType: "application/pdf",
 	}
 

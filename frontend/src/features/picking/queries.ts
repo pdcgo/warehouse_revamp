@@ -3,12 +3,6 @@ import { inventoryClient, orderClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
 import { orderListRowData, ordersFromList } from "../orders/adapt";
 
-// The ref inventory_service recorded this order's draw under (#149). selling_service builds the same
-// string; it is the handle that ties an order to the shelves its goods were taken from.
-function stockRef(orderId: bigint): string {
-  return `order:${orderId}`;
-}
-
 // The picking screens' reads (#176).
 //
 // These are keyed under the ORDERS domain, not a picking one, because that is what they read: the
@@ -57,13 +51,20 @@ export function usePickOrder(args: { warehouseId: bigint | undefined; orderId: b
     queryKey: key.orders(warehouseId, { picking: true, orderId: orderId.toString() }),
     enabled: warehouseId !== undefined && orderId > 0n,
     queryFn: async () => {
-      const [detail, places] = await Promise.all([
-        orderClient.orderDetail({ teamId: warehouseId!, orderId }),
-        inventoryClient.stockPickLocations({ warehouseId: warehouseId!, ref: stockRef(orderId) }),
-      ]);
+      // The order first: its `transactionId` names the take (the-placement-page-reads-racks-by-transaction-id). The
+      // take runs before the order row exists, so the order keeps the take's inventory transaction for exactly this
+      // read. An order with no transaction has taken nothing, so there is no shelf to walk to.
+      const detail = await orderClient.orderDetail({ teamId: warehouseId!, orderId });
+      const order = detail.order ?? null;
+      const transactionId = order?.transactionId ?? 0n;
+
+      const places =
+        transactionId > 0n
+          ? await inventoryClient.stockPickLocations({ warehouseId: warehouseId!, transactionId })
+          : { locations: [] };
 
       return {
-        order: detail.order ?? null,
+        order,
         locations: places.locations,
       };
     },

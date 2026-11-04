@@ -251,6 +251,7 @@ func TestOrderList_FiltersByProduct(t *testing.T) {
 
 	// An order for the product we are asking about, listing it TWICE.
 	twice, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
@@ -266,6 +267,7 @@ func TestOrderList_FiltersByProduct(t *testing.T) {
 
 	// And one for a different product entirely.
 	_, err = svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,

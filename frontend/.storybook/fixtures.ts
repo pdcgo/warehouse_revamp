@@ -669,6 +669,9 @@ export function orderDetailFor(id: bigint) {
     platformTotal: extra.platformTotal ?? row.platformTotal ?? 0n,
     goodsCost: extra.goodsCost ?? row.goodsCost ?? 0n,
     orderExternalRefId: extra.orderExternalRefId ?? row.orderExternalRefId ?? "",
+    // The take's inventory transaction — what the pick page asks stockPickLocations by
+    // (the-placement-page-reads-racks-by-transaction-id). See `pickTransactionOf` below.
+    transactionId: pickTransactionOf(id),
     address: extra.address,
     receipt: extra.receipt,
     items: extra.items ?? [
@@ -757,6 +760,9 @@ export function orderDraftDetailFor(id: bigint) {
 
 // ── Where an order's goods were drawn from — `StockPickLocations` ───────────────────────────────
 //
+// The server reads them by the take's TRANSACTION id, which the order carries (`transactionId`). The fixtures give
+// order N the transaction `PICK_TX_BASE + N`, so the table below stays keyed by the order id a story reads in its URL.
+//
 // Keyed by order id. 101 is the pick list worth looking at, because its three lines land on the
 // three things the shelf column can say:
 //
@@ -775,6 +781,18 @@ export const pickLocations: Record<string, { productId: bigint; rackId: bigint; 
 
 export function pickLocationsFor(orderId: bigint) {
   return pickLocations[orderId.toString()] ?? [{ productId: 301n, rackId: 43n, rackCode: "B-02-1", quantity: 1n }];
+}
+
+/** The fixture order's take — the inventory transaction its goods were drawn under. */
+export const PICK_TX_BASE = 70_000n;
+export const pickTransactionOf = (orderId: bigint): bigint => PICK_TX_BASE + orderId;
+
+/** The shelves of a take, by its transaction id — empty for a transaction no fixture order holds, as the server
+ * answers an unknown transaction (nothing was drawn under it). */
+export function pickLocationsByTransaction(transactionId: bigint) {
+  const orderId = transactionId - PICK_TX_BASE;
+
+  return orderId > 0n && orders.some((o) => o.id === orderId) ? pickLocationsFor(orderId) : [];
 }
 
 // ── The daily statement's money ─────────────────────────────────────────────────────────────────

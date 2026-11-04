@@ -19,6 +19,7 @@ import (
 // borrowedOrderReq is team 2's order of one own product and the given borrowed ones.
 func borrowedOrderReq(shopID uint64, borrowed ...uint64) *sellingv1.OrderCreateRequest {
 	req := &sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                mapTeam, ShopId: shopID, WarehouseId: testWarehouse,

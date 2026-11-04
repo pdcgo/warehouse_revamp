@@ -113,7 +113,8 @@ func orderService(db *gorm.DB, fees selling_v1.WarehouseFeePricer) *selling_v1.S
 
 func twoUnits(shop uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
-		TeamId: ocTeam, ShopId: shop, WarehouseId: ocWarehouse, CustomerName: "Budi",
+		IdempotencyKey: newOrderKey(),
+		TeamId:         ocTeam, ShopId: shop, WarehouseId: ocWarehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: 1_790_000_000, PlatformTotal: 60_000,
 		Items: []*sellingv1.OrderItem{{ProductId: ocProduct, ProductCode: "KAOS", Name: "Kaos", Quantity: 2}},
 	}
@@ -122,7 +123,8 @@ func twoUnits(shop uint64) *sellingv1.OrderCreateRequest {
 // EIGHT CREATES OVER A FOUR-UNIT SHELF, each wanting 2: exactly two win, and each freezes THE DRAW IT MADE — one the
 // January pair (20.000), the other the March pair (28.000). Their goods_cost add up to the 48.000 the goods were bought for,
 // each fee is 10% of its own goods_cost (an own product: no markup), each line's unit cost is its own batch's, and each order's goods_cost is exactly what its
-// inventory transaction took. A loser's take is given back. The data, not the errors, is asserted.
+// inventory transaction took — found by the order's own key AND its stored transaction_id (backlog #10 slice 3). A loser's
+// take is refused and its key released. The data, not the errors, is asserted.
 func TestRace_OrderCreate_EachOrderFreezesItsOwnDraw(t *testing.T) {
 	h := san_race.New(t, orderRaceTables...)
 	db := h.DB()
@@ -169,7 +171,8 @@ func TestRace_OrderCreate_EachOrderFreezesItsOwnDraw(t *testing.T) {
 			db.Raw(`
 				SELECT COALESCE(SUM(i.total), 0) FROM inventory_transaction_items i
 				JOIN idempotency_order_check k ON k.transaction_id = i.transaction_id
-				WHERE k.idempotency_key = ?`, "order:"+itoa(o.ID)).Scan(&taken)
+				JOIN orders o ON o.idempotency_key = k.idempotency_key AND o.transaction_id = k.transaction_id
+				WHERE o.id = ?`, o.ID).Scan(&taken)
 
 			if int64(math.Round(taken)) != o.GoodsCost {
 				t.Fatalf("round %d: order %d froze goods_cost %d, its take drew %v", round, o.ID, o.GoodsCost, taken)

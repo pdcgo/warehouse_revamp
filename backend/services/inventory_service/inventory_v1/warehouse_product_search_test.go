@@ -99,7 +99,7 @@ func wpsStocked(t *testing.T) *inventory_v1.Service {
 	otRestock(t, svc, otSinar, otKaosPolos, 4, 80000, []*inventoryv1.RestockPlacement{{PlacementId: rakA, Quantity: 4}})
 
 	// Every Kaos Polos leaves on an order: held here, at 0 now.
-	_, err := take(svc, "order:wps-1", line(otKaosPolos, 4))
+	_, err := take(svc, "key-wps-1", line(otKaosPolos, 4))
 	if err != nil {
 		t.Fatalf("take every Kaos Polos: %v", err)
 	}

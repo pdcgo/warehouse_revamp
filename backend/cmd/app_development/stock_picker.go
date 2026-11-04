@@ -11,7 +11,8 @@ import (
 )
 
 // stockPicker joins selling_service to inventory_service (#149/#70): an order takes stock out of a
-// warehouse, and a cancelled order gives it back.
+// warehouse, a create that failed after its take gives it back directly, and a cancel first asks whether a stock count
+// holds it (the cancelled order's stock itself goes back on OrderCancelled, inventory-returns-stock-on-order-cancelled).
 //
 // IT LIVES IN THE COMPOSITION ROOT ON PURPOSE. This is the one place that is allowed to know about
 // two services at once — wiring them together is its entire job. selling_service declares the
@@ -45,8 +46,8 @@ func (p *stockPicker) Pick(
 	ctx context.Context,
 	sellingTeamID, warehouseID uint64,
 	lines []selling_v1.PickLine,
-	ref string,
-) (selling_v1.PickDraw, error) {
+	key string,
+) (selling_v1.Take, error) {
 	out := make([]*inventoryv1.OrderTransactionLine, 0, len(lines))
 	for _, line := range lines {
 		out = append(out, &inventoryv1.OrderTransactionLine{
@@ -55,16 +56,17 @@ func (p *stockPicker) Pick(
 		})
 	}
 
-	// THE ORDER'S REF IS ITS KEY until the order form mints one per submit (the-order-take-bridges-its-key-per-order):
-	// `order:<order id>` takes once, and the cancel releases by the same key.
+	// THE ORDER'S OWN KEY K, passed through as sent (backlog #10 slice 3, the-frontend-mints-the-idempotency-key): the
+	// take runs before the order row exists, so it is filed under K and the release finds it by K
+	// (every-release-goes-by-the-key).
 	res, err := p.inventory.OrderTransactionCreate(ctx, connect.NewRequest(&inventoryv1.OrderTransactionCreateRequest{
 		TeamId:         sellingTeamID,
-		IdempotencyKey: ref,
+		IdempotencyKey: key,
 		WarehouseId:    warehouseID,
 		Lines:          out,
 	}))
 	if err != nil {
-		return nil, err
+		return selling_v1.Take{}, err
 	}
 
 	// WHAT EACH LINE DREW, as the take priced it: the cost of the units that left the shelf — the owner's batches oldest
@@ -83,20 +85,41 @@ func (p *stockPicker) Pick(
 		}
 	}
 
-	return draw, nil
+	// The inventory transaction the take wrote — the order stores it (the-placement-page-reads-racks-by-transaction-id).
+	return selling_v1.Take{TransactionID: res.Msg.GetTransactionId(), Draw: draw}, nil
 }
 
 func (p *stockPicker) Return(
 	ctx context.Context,
 	sellingTeamID, _ uint64,
-	ref string,
+	key string,
 ) error {
 	// A release of a key that never took answers released = false, never an error — an order that drew no stock
 	// cancels cleanly. The warehouse is the take's own; the key finds it.
 	_, err := p.inventory.OrderTransactionRelease(ctx, connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{
 		TeamId:         sellingTeamID,
-		IdempotencyKey: ref,
+		IdempotencyKey: key,
 	}))
 
 	return err
+}
+
+// StockLockCheck asks inventory, in process, whether a stock count holds a rack the take under `key` came from — a read
+// of inventory's own tables (a-cancel-still-meets-the-count-first). The answer is carried over in selling's terms: the
+// count's session and the warehouse's own sentence naming it, the same words the release refuses with.
+func (p *stockPicker) StockLockCheck(
+	ctx context.Context,
+	sellingTeamID, warehouseID uint64,
+	key string,
+) (*selling_v1.StockLock, error) {
+	counted, err := p.inventory.StockLockCheck(ctx, sellingTeamID, warehouseID, key)
+	if err != nil {
+		return nil, err
+	}
+
+	if counted == nil {
+		return nil, nil
+	}
+
+	return &selling_v1.StockLock{SessionID: counted.SessionID, Reason: counted.Error()}, nil
 }

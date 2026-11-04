@@ -77,6 +77,7 @@ func perfRefOrders(shopIDs [][]uint64) []selling_service_models.Order {
 		}
 
 		rows = append(rows, selling_service_models.Order{
+			IdempotencyKey:     newOrderKey(),
 			TeamID:             perfRefTeamBase + uint64(team),
 			ShopID:             shopIDs[team][j],
 			WarehouseID:        testWarehouse,

@@ -20,6 +20,11 @@ pie showData
     "key, transaction, header" : 2.2
 ```
 
+🔄 *(2026-11-04, backlog #10 slice 3)* The release is now `releaseByKey`, shared with the `InventoryTxCancel` listener.
+`TestPerf_InventoryTxCancel` measures the listener on the same volume: **14** statements at 1 line and at 20 (5.3 / 8.8 ms
+median, against the RPC's 13 measured 2026-10-17 — still flat in the lines), and **4** (≈1 ms) for the usual backup delivery that finds the take
+already released by the order's direct call, or a key nothing was taken under.
+
 ---
 
 ## Queries (20 lines)

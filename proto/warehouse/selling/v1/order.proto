@@ -472,6 +472,19 @@ message Order {
   //
   // 0 = the filter reads no status, or no timeline row records the order entering it.
   int64 date_entered_at_unix = 32;
+
+  // THE KEY THIS ORDER WAS CREATED WITH — minted by the form at the submit that placed it
+  // (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key) and kept on the order
+  // (the-order-stores-its-idempotency-key), UNIQUE across all orders (the-idempotency-key-is-unique).
+  //
+  // A row from a developer's database that predates the column reads `order:<id>` — the migration's fill
+  // (revamp-has-no-real-orders-yet); no new order can carry that shape.
+  string idempotency_key = 33;
+
+  // THE INVENTORY TRANSACTION ITS STOCK WAS TAKEN IN — the take's answer, stored with the order
+  // (the-placement-page-reads-racks-by-transaction-id). 0 = none recorded: an order from a developer's database that
+  // predates the column (revamp-has-no-real-orders-yet).
+  uint64 transaction_id = 34;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -597,6 +610,18 @@ message OrderCreateRequest {
   // leaves it, and a draft already turned into an order refuses the second one. Everything the order says comes from
   // the fields above, never from the draft — the page sends what is on its screen.
   uint64 order_draft_id = 21;
+
+  // THE SUBMIT'S OWN KEY — minted by the browser inside every submit and never reused
+  // (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key). REQUIRED from the start
+  // (revamp-has-no-real-orders-yet): the order stores it, and it is UNIQUE (the-idempotency-key-is-unique).
+  //
+  // A key already on an order is REFUSED as a used key — AlreadyExists with inventory's OrderTransactionRefusal
+  // KEY_USED detail — never answered with that order (the-order-refuses-a-used-key). A key starting `order:` is
+  // refused too: that shape is reserved for the rows the migration filled. Capped at 128, like the ref.
+  string idempotency_key = 22 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
 }
 
 message OrderCreateResponse {
@@ -1415,6 +1440,9 @@ message OrderRefItem {
   // Who placed it — 0 on an order placed before the creator was recorded.
   uint64 created_by_user_id = 3;
   OrderStatus status = 4;
+  // When it was typed in — the order form's duplicate-ref warning dates each order it names with it
+  // (the-duplicate-ref-warning-is-accepted), in one read rather than an OrderDetail per order.
+  int64 created_at_unix = 5;
 }
 
 message OrderRefMapItem {

@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
@@ -17,6 +18,7 @@ import (
 
 func orderReq(shopID uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -27,15 +29,18 @@ func orderReq(shopID uint64) *sellingv1.OrderCreateRequest {
 	}
 }
 
-// #149 — placing an order TAKES ITS STOCK, under a reference derived from the order id so a later
-// cancel can name exactly this draw.
+// #149 — placing an order TAKES ITS STOCK, under the order's own idempotency key (backlog #10 slice 3,
+// every-release-goes-by-the-key) so a later cancel or a compensation can name exactly this draw — and the order stores
+// the transaction the take answered (the-placement-page-reads-racks-by-transaction-id).
 func TestOrderCreate_TakesStock(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{}
+	picker := &fakePicker{txID: 4242}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
+	req := orderReq(shop)
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -44,10 +49,19 @@ func TestOrderCreate_TakesStock(t *testing.T) {
 		t.Fatalf("placing an order picked %d times, want 1", len(picker.picked))
 	}
 
-	// The ref names the order, so the ledger traces back to it and a cancel can undo exactly this.
-	want := "order:" + itoa(created.Msg.GetOrder().GetId())
-	if picker.picked[0] != want {
-		t.Fatalf("picked under ref %q, want %q", picker.picked[0], want)
+	if picker.picked[0] != req.GetIdempotencyKey() {
+		t.Fatalf("picked under key %q, want the order's own key %q", picker.picked[0], req.GetIdempotencyKey())
+	}
+
+	if got := created.Msg.GetOrder().GetTransactionId(); got != 4242 {
+		t.Fatalf("the order exposes transaction %d, want the take's 4242", got)
+	}
+
+	var stored selling_service_models.Order
+	db.First(&stored, created.Msg.GetOrder().GetId())
+
+	if stored.TransactionID == nil || *stored.TransactionID != 4242 || stored.IdempotencyKey != req.GetIdempotencyKey() {
+		t.Fatalf("stored transaction %v, key %q — want 4242 under the request's key", stored.TransactionID, stored.IdempotencyKey)
 	}
 }
 
@@ -101,11 +115,14 @@ func TestOrderCreate_BadShopTakesNoStock(t *testing.T) {
 	}
 }
 
-// #70 — cancelling an order PUTS ITS STOCK BACK, naming the same reference it was taken under.
-func TestOrderCancel_ReturnsStock(t *testing.T) {
+// A CANCEL NO LONGER RELEASES IN ITS OWN FLOW (inventory-returns-stock-on-order-cancelled, backlog #10 slice 4): it asks
+// whether a count holds the take — by the order's key — moves the status, and announces OrderCancelled carrying K and
+// the warehouse, which inventory releases on. The picker's Return is never called.
+func TestOrderCancel_ChecksTheCountThenPublishesTheKeyAndTheWarehouse(t *testing.T) {
 	db := san_testdb.DB(t)
+	rec := &recorder{}
 	picker := &fakePicker{}
-	svc := newServiceWithPicker(t, db, picker)
+	svc := compensationService(db, picker, rec, nil)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
@@ -113,26 +130,45 @@ func TestOrderCancel_ReturnsStock(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	id := created.Msg.GetOrder().GetId()
+	key := created.Msg.GetOrder().GetIdempotencyKey()
 
 	_, err = svc.OrderCancel(context.Background(), connect.NewRequest(&sellingv1.OrderCancelRequest{
-		TeamId: 2, OrderId: id,
+		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
 	}))
 	if err != nil {
 		t.Fatalf("cancel: %v", err)
 	}
 
-	if len(picker.returned) != 1 || picker.returned[0] != "order:"+itoa(id) {
-		t.Fatalf("cancel returned %v, want one return of order:%d", picker.returned, id)
+	if len(picker.checked) != 1 || picker.checked[0] != key {
+		t.Fatalf("count checked for %v, want once for the order's key %q", picker.checked, key)
+	}
+
+	if len(picker.returned) != 0 {
+		t.Fatalf("the cancel released %v itself — the release is inventory's, on OrderCancelled", picker.returned)
+	}
+
+	var cancelled *eventsv1.OrderCancelled
+
+	for _, e := range rec.events {
+		if c := e.GetOrderCancelled(); c != nil {
+			cancelled = c
+		}
+	}
+
+	if cancelled == nil || cancelled.GetIdempotencyKey() != key || cancelled.GetWarehouseId() != testWarehouse ||
+		cancelled.GetTeamId() != 2 {
+		t.Fatalf("OrderCancelled = %+v, want key %q, warehouse %d, team 2", cancelled, key, testWarehouse)
 	}
 }
 
-// #70 — if the stock cannot be returned, the CANCEL FAILS and the order stays live. An order marked
-// cancelled whose goods are still held out is a discrepancy nothing would ever reconcile.
-func TestOrderCancel_FailedReturnLeavesTheOrderLive(t *testing.T) {
+// A STOCK COUNT HOLDS A RACK THE TAKE CAME FROM (a-cancel-still-meets-the-count-first, a-lock-stops-sales-and-cancels-too):
+// the cancel is refused BEFORE ANYTHING CHANGES — FailedPrecondition in the warehouse's words naming the count — the
+// order stays pending with no cancel row on its timeline, nothing is announced and nothing released.
+func TestOrderCancel_ACountRefusesItBeforeAnythingChanges(t *testing.T) {
 	db := san_testdb.DB(t)
+	rec := &recorder{}
 	picker := &fakePicker{}
-	svc := newServiceWithPicker(t, db, picker)
+	svc := compensationService(db, picker, rec, nil)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
@@ -141,49 +177,12 @@ func TestOrderCancel_FailedReturnLeavesTheOrderLive(t *testing.T) {
 	}
 
 	id := created.Msg.GetOrder().GetId()
+	published := len(rec.events)
 
-	// The warehouse refuses to give it back.
-	picker.returnErr = connect.NewError(connect.CodeInternal, errors.New("warehouse unreachable"))
-
-	_, err = svc.OrderCancel(context.Background(), connect.NewRequest(&sellingv1.OrderCancelRequest{
-		TeamId: 2, OrderId: id,
-	}))
-	if err == nil {
-		t.Fatal("the cancel succeeded despite the stock not coming back")
+	picker.lock = &selling_v1.StockLock{
+		SessionID: 12,
+		Reason:    "product 7 on rack rak-a is being counted — count #12, started by user #3 at 2026-11-03 09:00 WIB",
 	}
-
-	// The order is still PLACED — the status flip rolled back with the return.
-	detail, err := svc.OrderDetail(context.Background(), connect.NewRequest(&sellingv1.OrderDetailRequest{
-		TeamId: 2, OrderId: id,
-	}))
-	if err != nil {
-		t.Fatalf("detail: %v", err)
-	}
-
-	if got := detail.Msg.GetOrder().GetStatus(); got != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
-		t.Fatalf("order status = %v, want still PLACED — a cancel whose stock did not come back "+
-			"must not stand", got)
-	}
-}
-
-// A STOCK COUNT HOLDS A RACK THE TAKE CAME FROM (a-lock-stops-sales-and-cancels-too): the warehouse refuses the return
-// with FailedPrecondition naming the count, and the cancel hands that on as it came — the person reads why, not an
-// internal error — and the order stays pending, to be cancelled after the count.
-func TestOrderCancel_ACountedRackRefusesItInWords(t *testing.T) {
-	db := san_testdb.DB(t)
-	picker := &fakePicker{}
-	svc := newServiceWithPicker(t, db, picker)
-	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
-
-	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-
-	id := created.Msg.GetOrder().GetId()
-
-	picker.returnErr = connect.NewError(connect.CodeFailedPrecondition,
-		errors.New("product 7 on rack rak-a is being counted — count #12, started by user #3 at 2026-11-03 09:00 WIB"))
 
 	_, err = svc.OrderCancel(context.Background(), connect.NewRequest(&sellingv1.OrderCancelRequest{
 		TeamId: 2, OrderId: id,
@@ -192,26 +191,30 @@ func TestOrderCancel_ACountedRackRefusesItInWords(t *testing.T) {
 		t.Fatalf("cancel under a count: err = %v, want FailedPrecondition naming count #12", err)
 	}
 
-	detail, err := svc.OrderDetail(context.Background(), connect.NewRequest(&sellingv1.OrderDetailRequest{
-		TeamId: 2, OrderId: id,
-	}))
-	if err != nil {
-		t.Fatalf("detail: %v", err)
+	var order selling_service_models.Order
+	db.First(&order, id)
+
+	if order.Status != "pending" {
+		t.Fatalf("order status = %q, want still pending", order.Status)
 	}
 
-	if got := detail.Msg.GetOrder().GetStatus(); got != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
-		t.Fatalf("order status = %v, want still pending", got)
+	var cancelRows int64
+	db.Model(&selling_service_models.OrderTimelineLog{}).Where("order_id = ? AND status = ?", id, "cancel").Count(&cancelRows)
+
+	if cancelRows != 0 {
+		t.Fatalf("%d cancel rows on the timeline of a refused cancel", cancelRows)
+	}
+
+	if len(rec.events) != published || len(picker.returned) != 0 {
+		t.Fatalf("a refused cancel published %d events and released %v", len(rec.events)-published, picker.returned)
 	}
 }
 
-// #70 — an order placed before #149 drew no stock, so cancelling it has nothing to undo. The return
-// reports NotFound for a ref that never picked, and that must read as success rather than blocking
-// the cancel: refusing would be punishing history.
-func TestOrderCancel_OrderThatNeverDrewStockStillCancels(t *testing.T) {
+// THE CHECK COULD NOT BE MADE: the cancel is refused Unavailable — try again — and the order stays pending, rather than a
+// status moved that nobody checked.
+func TestOrderCancel_AFailedCountCheckLeavesTheOrderPending(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{
-		returnErr: connect.NewError(connect.CodeNotFound, errors.New("no stock was picked under this reference")),
-	}
+	picker := &fakePicker{}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -220,11 +223,21 @@ func TestOrderCancel_OrderThatNeverDrewStockStillCancels(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
+	id := created.Msg.GetOrder().GetId()
+	picker.lockErr = errors.New("inventory unreachable")
+
 	_, err = svc.OrderCancel(context.Background(), connect.NewRequest(&sellingv1.OrderCancelRequest{
-		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
+		TeamId: 2, OrderId: id,
 	}))
-	if err != nil {
-		t.Fatalf("cancelling an order that drew no stock must work: %v", err)
+	if connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("err = %v, want Unavailable", err)
+	}
+
+	var order selling_service_models.Order
+	db.First(&order, id)
+
+	if order.Status != "pending" {
+		t.Fatalf("order status = %q, want still pending", order.Status)
 	}
 }
 

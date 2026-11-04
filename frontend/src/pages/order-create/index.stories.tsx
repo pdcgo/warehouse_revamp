@@ -2,18 +2,32 @@ import { useMemo } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Text } from "@chakra-ui/react";
-import { RouterProvider, createMemoryRouter } from "react-router-dom";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { RouterProvider, createMemoryRouter, useParams } from "react-router-dom";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { bundleFixture } from "../../../.storybook/bundleFixtures";
-import { products, receiptLabel, receiptLabelFile, shops, users } from "../../../.storybook/fixtures";
+import { orderDrafts, orders, products, receiptLabel, receiptLabelFile, shops, users } from "../../../.storybook/fixtures";
 import { asTeam } from "../../../.storybook/pageStory";
 import { withProductState } from "../../../.storybook/productScenario";
-import { asRole, receiptCheckScenario, withTakeRefusal } from "../../../.storybook/sessionScenario";
+import {
+  asRole,
+  orderKeyScenario,
+  receiptCheckScenario,
+  takeRefusalScenario,
+  withTakeRefusal,
+} from "../../../.storybook/sessionScenario";
+import {
+  duplicateRefScenario,
+  withFailingRefLookup,
+  withRefDrafts,
+  withRefOrders,
+} from "../../../.storybook/duplicateRefStub";
+import { seedReturnMap } from "../../../.storybook/returnConfigurationStub";
+import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderTransactionRefusalReason } from "../../gen/warehouse/inventory/v1/order_transaction_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { formatRupiah } from "../../lib/money";
-import { todayDateInput } from "../../lib/datetime";
+import { formatUnixDate, todayDateInput } from "../../lib/datetime";
 import { OrderCreatePage } from "./index";
 
 // The FIRST page storied, rather than another shared component — and the reason is that this screen
@@ -33,10 +47,21 @@ const routes = [
   // The three destinations, stubbed as markers. A story asserts it ARRIVED — pulling in the real
   // orders list would make this a test of that page's queries instead.
   { path: "/orders", element: <Text data-testid="at-orders">Orders</Text> },
-  { path: "/orders/:orderId", element: <Text data-testid="at-order-detail">Order detail</Text> },
+  // Carries the id it was opened for, so a story can tell a promoted draft (902) from a new order (900).
+  { path: "/orders/:orderId", element: <OrderDetailMarker /> },
   // Where a saved draft, and a deleted one, go: the drafts list (the-draft-opens-in-the-order-form).
   { path: "/order-drafts", element: <Text data-testid="at-drafts">Drafts</Text> },
 ];
+
+function OrderDetailMarker() {
+  const { orderId } = useParams();
+
+  return (
+    <Text data-testid="at-order-detail" data-order={orderId}>
+      Order detail
+    </Text>
+  );
+}
 
 // ⚠ MEMOISED. Storybook calls `render` on every re-render, so building the router inline would hand
 // the page a fresh one each time — and with it a fresh history, resetting the navigation this file
@@ -658,7 +683,8 @@ export const TheWarehouseLeadsTheForm: Story = {
 // EVERY PART OF THE FORM IS WIRED (2026-10-23): the receipt file was the last, and ReceiptCheck is built
 // (the-receipt-check-prototype-is-accepted). So a new order carries no strip and no mark — a mark that comes back
 // is a part that stopped being real, and this fails the day it does. Even with a label read, the line that says the
-// boxes filled themselves carries no ⚠.
+// boxes filled themselves carries no ⚠. (The duplicate-ref warning's draft half held one entry for a day, until
+// OrderDraftByExternalRefs was built.)
 export const NothingOnTheFormIsMarkedNotImplemented: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -1073,5 +1099,434 @@ export const DeletingTheDraftGoesBackToTheList: Story = {
 
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
     await waitFor(() => expect(canvas.getByTestId("at-drafts")).toBeInTheDocument());
+  },
+};
+
+// ── The duplicate marketplace ref (a-duplicate-ref-is-warned-not-refused) ─────────────────────────────────────────────
+//
+// Before Create — a new order or a draft being finalized — the form asks OrderByExternalRefs and
+// OrderDraftByExternalRefs whether this shop and ref are already recorded. A live order or a draft on them is NAMED in a
+// warning with Create Anyway and Go Back; a cancelled order, another shop's, or the draft being finalized is not;
+// nothing found goes straight through. The server refuses nothing for a repeated ref.
+//
+// ⚠ THE NEW-ORDER STORIES RUN AS THE FIRST MEMBERSHIP, Gudang Pusat (11), like every other new-order story in this
+// file — the product picker's fixtures are read from there. The lookup answers only the CALLER's team's orders (the
+// handler's `team_id = ?`), so each story puts the order it needs on a ref for that team: order 101 — pending, typed in
+// yesterday — on SP-2409-8841 in Melati Official (shops[0]).
+const STORY_TEAM = 11n;
+const LIVE_REF = "SP-2409-8841";
+const LIVE_ORDER = orders.find((o) => o.id === 101n)!;
+const onLiveRef = withRefOrders({
+  orderId: LIVE_ORDER.id,
+  teamId: STORY_TEAM,
+  shopId: shops[0]!.id,
+  ref: LIVE_REF,
+  status: OrderStatus.PENDING,
+});
+
+// Draft 202 — MEL-9002 in Melati Store, every line mapped, its date and sell price stored. Its two products are Gudang
+// Pusat's, so Toko Melati needs their return maps before Create (a-borrowed-line-needs-its-map-at-create): seeded as
+// standing pairs to its own Beras (74), as an earlier order would have left them.
+function RoutedFromDraft202() {
+  const router = useMemo(() => createMemoryRouter(routes, { initialEntries: ["/order-create?draft=202"] }), []);
+
+  return <RouterProvider router={router} />;
+}
+
+function asMelatiWithMaps() {
+  asTeam(12n)();
+  seedReturnMap(12n, 71n, 74n);
+  seedReturnMap(12n, 72n, 74n);
+}
+
+// Every field Create needs, the ref last — the smallest order this form will place.
+async function fillPlaceableOrder(canvasElement: HTMLElement, ref: string) {
+  const canvas = within(canvasElement);
+
+  await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
+
+  await userEvent.click(canvas.getByTestId("shop-select"));
+  const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
+  await waitFor(() => expect(shop).toBeVisible());
+  await userEvent.click(shop);
+
+  await pickProduct(canvasElement, products[0]!.id);
+  await pickOrderDate(canvasElement);
+  await fillSellPrice(canvasElement);
+  await fillOrderRef(canvasElement, ref);
+
+  const create = canvas.getByTestId("order-create-save");
+  await waitFor(() => expect(create).toBeEnabled());
+
+  return create;
+}
+
+// If the order's own checks ask anything (a thin margin), it is a warning with a way through — passed here, because
+// these stories are about the ref.
+async function passTheChecks() {
+  const checks = await screen.findByTestId("order-checks-dialog", {}, { timeout: 800 }).catch(() => null);
+  if (checks) await userEvent.click(within(checks).getByTestId("order-checks-place"));
+}
+
+async function warning() {
+  const dialog = await screen.findByTestId("duplicate-ref-dialog", {}, { timeout: 4000 });
+  await waitFor(() => expect(dialog).toBeVisible());
+
+  return dialog;
+}
+
+// NOTHING ON THE REF → NO DIALOG AT ALL. TK-88120347 IS recorded — order 102, in Melati STORE — but not in this shop,
+// and another shop's order is not this one's double: the lookup runs once, and Create goes straight to the order.
+export const NoDuplicateCreatesStraightAway: Story = {
+  beforeEach: withRefOrders({ orderId: 102n, teamId: STORY_TEAM, shopId: 22n, ref: "TK-88120347", status: OrderStatus.PENDING }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, "TK-88120347"));
+    await passTheChecks();
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+    await expect(duplicateRefScenario.calls).toEqual([["TK-88120347"]]);
+    await expect(screen.queryByTestId("duplicate-ref-dialog")).toBeNull();
+  },
+};
+
+// A CANCELLED ORDER ON THE REF IS NOT WARNED ABOUT — cancel and re-create is the normal path.
+export const ACancelledOrderOnTheRefDoesNotWarn: Story = {
+  beforeEach: withRefOrders({
+    orderId: 107n,
+    teamId: STORY_TEAM,
+    shopId: shops[0]!.id,
+    ref: "SP-2409-9999",
+    status: OrderStatus.CANCEL,
+  }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, "SP-2409-9999"));
+    await passTheChecks();
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+    await expect(duplicateRefScenario.calls).toHaveLength(1);
+    await expect(screen.queryByTestId("duplicate-ref-dialog")).toBeNull();
+  },
+};
+
+// A LIVE ORDER ON THE SHOP + REF WARNS, naming it: a link to order 101 (a new tab — the form stays), its status and
+// the day it was typed in (the short WIB date, straight off the lookup). Nothing is sent until the person answers.
+export const ALiveOrderOnTheRefWarns: Story = {
+  beforeEach: onLiveRef,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, LIVE_REF));
+
+    const dialog = await warning();
+    await expect(within(dialog).getByTestId("duplicate-ref-lead")).toHaveTextContent(LIVE_REF);
+
+    const link = within(dialog).getByTestId("duplicate-ref-order-link-101");
+    await expect(link).toHaveTextContent("Order #101");
+    await expect(link).toHaveAttribute("href", "/orders/101");
+    await expect(link).toHaveAttribute("target", "_blank");
+    const row = within(dialog).getByTestId("duplicate-ref-order-101");
+    await expect(row).toHaveTextContent("Pending");
+    await expect(row).toHaveTextContent(`created ${formatUnixDate(LIVE_ORDER.createdAtUnix)}`);
+    await expect(within(dialog).queryAllByTestId(/^not-implemented-/)).toHaveLength(0);
+
+    // Still here, nothing placed.
+    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
+  },
+};
+
+// A DRAFT ON THE REF WARNS (the-duplicate-warning-reads-drafts-too) — a colleague's scrape of MEL-9001 in Melati
+// Official (draft 201's ref, put on the story's team), and no live order on it: the warning names Draft #201 as a link
+// to its page, dated; Create Anyway still places the order.
+const DRAFT_201 = orderDrafts.find((d) => d.id === 201n)!;
+
+export const ADraftOnTheRefWarns: Story = {
+  beforeEach: withRefDrafts({
+    draftId: 201n,
+    teamId: STORY_TEAM,
+    shopId: shops[0]!.id,
+    ref: "MEL-9001",
+    createdAtUnix: DRAFT_201.createdAtUnix,
+    source: "ScraperX",
+    authorUserId: 62n,
+  }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, "MEL-9001"));
+
+    const dialog = await warning();
+    const link = within(dialog).getByTestId("duplicate-ref-draft-link-201");
+    await expect(link).toHaveTextContent("Draft #201");
+    await expect(link).toHaveAttribute("href", "/orders/new?draft=201");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(within(dialog).getByTestId("duplicate-ref-draft-201")).toHaveTextContent(
+      `created ${formatUnixDate(DRAFT_201.createdAtUnix)}`,
+    );
+    await expect(within(dialog).queryAllByTestId(/^duplicate-ref-order-/)).toHaveLength(0);
+    await expect(duplicateRefScenario.draftCalls).toEqual([{ shopId: shops[0]!.id, refs: ["MEL-9001"] }]);
+
+    await userEvent.click(within(dialog).getByTestId("duplicate-ref-create-anyway"));
+    await passTheChecks();
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+  },
+};
+
+// …BUT ANOTHER SHOP'S DRAFT ON THE SAME REF IS NOT THIS ORDER'S DOUBLE — the lookup asks for this shop only.
+export const AnotherShopsDraftDoesNotWarn: Story = {
+  beforeEach: withRefDrafts({
+    draftId: 203n,
+    teamId: STORY_TEAM,
+    shopId: 22n,
+    ref: "MEL-9003",
+    createdAtUnix: DRAFT_201.createdAtUnix,
+  }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, "MEL-9003"));
+    await passTheChecks();
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+    await expect(screen.queryByTestId("duplicate-ref-dialog")).toBeNull();
+  },
+};
+
+// CREATE ANYWAY GOES THROUGH — the warning is a question, not a refusal: the order is placed and opened.
+export const CreateAnywayGoesThrough: Story = {
+  beforeEach: onLiveRef,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, LIVE_REF));
+
+    const dialog = await warning();
+    await userEvent.click(within(dialog).getByTestId("duplicate-ref-create-anyway"));
+    await passTheChecks();
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+    // No discard question on the way out.
+    await expect(screen.queryByTestId("confirm-action")).toBeNull();
+  },
+};
+
+// GO BACK KEEPS THE FORM — exactly as typed, and Create still offered; pressing it again asks again.
+export const GoBackKeepsTheForm: Story = {
+  beforeEach: onLiveRef,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const create = await fillPlaceableOrder(canvasElement, LIVE_REF);
+    await userEvent.click(create);
+
+    const dialog = await warning();
+    await userEvent.click(within(dialog).getByTestId("duplicate-ref-go-back"));
+
+    await waitFor(() => expect(screen.queryByTestId("duplicate-ref-dialog")).toBeNull());
+    await expect(canvas.getByTestId("order-create-page")).toBeInTheDocument();
+    await expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Bu Ani");
+    await expect(canvas.getByTestId("order-external-ref-id")).toHaveValue(LIVE_REF);
+    await expect(canvas.getByTestId("order-line-0")).toHaveTextContent(products[0]!.name);
+    await expect(create).toBeEnabled();
+    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
+
+    // A second Create re-reads — the warning is asked fresh, never remembered.
+    await userEvent.click(create);
+    await warning();
+    await expect(duplicateRefScenario.calls).toHaveLength(2);
+  },
+};
+
+// A LOOKUP THAT FAILS STILL WARNS — it says the check could not run, and Create Anyway is still the person's call.
+export const AFailedLookupSaysSoAndStillCreates: Story = {
+  beforeEach: [onLiveRef, withFailingRefLookup()],
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, LIVE_REF));
+
+    const dialog = await warning();
+    await expect(within(dialog).getByTestId("duplicate-ref-failed")).toHaveTextContent(
+      `Could not check whether ${LIVE_REF} is already recorded`,
+    );
+    await userEvent.click(within(dialog).getByTestId("duplicate-ref-create-anyway"));
+    await passTheChecks();
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+  },
+};
+
+// FINALIZING A DRAFT DOES NOT WARN ABOUT ITSELF (the-duplicate-warning-reads-drafts-too). Draft 202 (MEL-9002, Melati
+// Store) is ready as it stands: Create runs the check on its ref, finds nothing to name, and the draft is promoted —
+// order 902 — with no dialog.
+export const FinalizingADraftDoesNotWarnAboutItself: Story = {
+  render: () => <RoutedFromDraft202 />,
+  beforeEach: asMelatiWithMaps,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
+      timeout: 4000,
+    });
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
+    await userEvent.click(create);
+    await passTheChecks();
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toHaveAttribute("data-order", "902"));
+    await expect(duplicateRefScenario.calls).toEqual([["MEL-9002"]]);
+    // The draft read ran, and answered draft 202 itself — which the form dropped.
+    await expect(duplicateRefScenario.draftCalls).toEqual([{ shopId: 22n, refs: ["MEL-9002"] }]);
+    await expect(screen.queryByTestId("duplicate-ref-dialog")).toBeNull();
+  },
+};
+
+// …BUT ANOTHER DRAFT ON THE DRAFT'S SHOP + REF IS NAMED — a second app scraped the same order. Draft 205 (another app,
+// a colleague's) is put on MEL-9002 in Melati Store; the warning names it, and never draft 202.
+export const FinalizingADraftNamesAnotherDraft: Story = {
+  render: () => <RoutedFromDraft202 />,
+  beforeEach: [
+    asMelatiWithMaps,
+    withRefDrafts({
+      draftId: 205n,
+      teamId: 12n,
+      shopId: 22n,
+      ref: "MEL-9002",
+      createdAtUnix: DRAFT_201.createdAtUnix,
+      source: "OtherApp",
+      authorUserId: 62n,
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
+      timeout: 4000,
+    });
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
+    await userEvent.click(create);
+
+    const dialog = await warning();
+    await expect(within(dialog).getByTestId("duplicate-ref-draft-205")).toBeInTheDocument();
+    await expect(within(dialog).queryByTestId("duplicate-ref-draft-202")).toBeNull();
+  },
+};
+
+// …BUT A LIVE ORDER ON THE DRAFT'S REF IS NAMED — the scrape most likely already became an order. Order 102 is put on
+// MEL-9002 in Melati Store; the warning names it, and not draft 202.
+export const FinalizingADraftWarnsAboutALiveOrder: Story = {
+  render: () => <RoutedFromDraft202 />,
+  beforeEach: [
+    asMelatiWithMaps,
+    withRefOrders({ orderId: 102n, teamId: 12n, shopId: 22n, ref: "MEL-9002", status: OrderStatus.PROCESSED }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
+      timeout: 4000,
+    });
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
+    await userEvent.click(create);
+
+    const dialog = await warning();
+    await expect(within(dialog).getByTestId("duplicate-ref-order-102")).toHaveTextContent("Processed");
+    await expect(within(dialog).queryByTestId("duplicate-ref-draft-202")).toBeNull();
+  },
+};
+
+// ── THE ORDER'S IDEMPOTENCY KEY (backlog #10, slice 1) ─────────────────────────────────────────────────────────────
+//
+// The form mints a key INSIDE every submit (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key) and
+// sends it with OrderCreate; the order stores it, and a key an order already holds is refused with the take's *key
+// already used* refusal (the-order-refuses-a-used-key — ⚠ the refusal's shape awaits the owner, #10 Q9).
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+// EVERY SUBMIT MINTS A NEW KEY — a resubmit after a refusal included. The first Create is refused at the take; the
+// second, once the shelf has it, places the order. Both carried a key, and never the same one.
+export const EverySubmitMintsANewKey: Story = {
+  beforeEach: withTakeRefusal(OrderTransactionRefusalReason.NOT_ENOUGH_STOCK, [
+    { productId: products[0]!.id, wanted: 1n, available: 0n },
+  ]),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const create = await fillPlaceableOrder(canvasElement, "SP-KEY-0001");
+    await userEvent.click(create);
+    await passTheChecks();
+    await expect(await canvas.findByTestId("order-create-refusal")).toHaveAttribute("data-reason", "notEnoughStock");
+
+    // The shelf has it now: the same form, submitted again.
+    takeRefusalScenario.refusal = undefined;
+    await waitFor(() => expect(create).toBeEnabled());
+    await userEvent.click(create);
+    await passTheChecks();
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+
+    const [first, second] = orderKeyScenario.sent;
+    await expect(orderKeyScenario.sent).toHaveLength(2);
+    await expect(first).toMatch(UUID);
+    await expect(second).toMatch(UUID);
+    await expect(second).not.toEqual(first);
+  },
+};
+
+// A DRAFT'S FINALIZE MINTS ITS OWN KEY TOO — it is the same submit (a-draft-becomes-an-order-through-order-create).
+export const FinalizingADraftSendsItsOwnKey: Story = {
+  render: () => <RoutedFromDraft202 />,
+  beforeEach: asMelatiWithMaps,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
+      timeout: 4000,
+    });
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
+    await userEvent.click(create);
+    await passTheChecks();
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toHaveAttribute("data-order", "902"));
+    await expect(orderKeyScenario.sent).toHaveLength(1);
+    await expect(orderKeyScenario.sent[0]).toMatch(UUID);
+  },
+};
+
+// A USED KEY IS REFUSED, WITH THE TAKE'S *KEY ALREADY USED* MESSAGE. No honest form sends one — every submit mints its
+// own — so the browser's minting is pinned to a key an order already holds, as a bug would. The server refuses it
+// before anything is taken; the form shows the same alert it shows for the take's own KEY_USED, and nothing navigates.
+const USED_KEY = "11111111-2222-4333-8444-555555555555";
+
+export const AUsedKeyIsRefused: Story = {
+  beforeEach: () => {
+    orderKeyScenario.used = [USED_KEY];
+    const minted = spyOn(crypto, "randomUUID").mockReturnValue(USED_KEY);
+
+    return () => minted.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await fillPlaceableOrder(canvasElement, "SP-KEY-0002"));
+    await passTheChecks();
+
+    const refusal = await canvas.findByTestId("order-create-refusal");
+    await expect(refusal).toHaveAttribute("data-reason", "keyUsed");
+    await expect(refusal).toHaveTextContent("This order was already placed");
+    await expect(refusal).not.toHaveTextContent(/already_exists|internal/i);
+    await expect(canvas.queryByTestId("order-create-error")).toBeNull();
+    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
+    await expect(orderKeyScenario.sent).toEqual([USED_KEY]);
+  },
+};
+
+// ON A PHONE — the same warning inside the screen, its two answers stacked full width with Create Anyway on top.
+export const Phone: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  beforeEach: onLiveRef,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, LIVE_REF));
+
+    const dialog = await warning();
+    await expect(within(dialog).getByTestId("duplicate-ref-order-101")).toBeVisible();
+
+    const create = within(dialog).getByTestId("duplicate-ref-create-anyway");
+    const back = within(dialog).getByTestId("duplicate-ref-go-back");
+    await expect(create.getBoundingClientRect().bottom).toBeLessThanOrEqual(back.getBoundingClientRect().top + 1);
+    await expect(Math.abs(create.getBoundingClientRect().width - back.getBoundingClientRect().width)).toBeLessThan(1);
+
+    const box = dialog.getBoundingClientRect();
+    await expect(box.left).toBeGreaterThanOrEqual(0);
+    await expect(box.right).toBeLessThanOrEqual(window.innerWidth + 1);
   },
 };

@@ -1,52 +1,21 @@
 # inventory_service — RPC & event flows
 
-## Pub/Sub push receiver (#102)
+## Pub/Sub push receiver — `/event/<sub>/push`
 
-`inventory_service` exposes a **Pub/Sub PUSH** endpoint so it can react to events published by other
-services (the counterpart to publishing via `event_source.NewPubsubEventSender`). It is a plain HTTP
-endpoint — **not** a Connect RPC — mounted at **`/events/inventory`** in
-[register.go](../../../backend/services/inventory_service/register.go) and wrapped by
-`event_source.NewMuxPushHandler` (which continues the publisher's trace and encodes the ACK/NACK
-contract).
+`inventory_service` hears other services' events on **Pub/Sub PUSH** routes — plain HTTP, **not** Connect RPCs — mounted
+in [register.go](../../../backend/services/inventory_service/register.go) as `/event/<subscription id>/push` and wrapped
+by `event_source.NewMuxPushHandler` (which continues the publisher's trace and encodes the ACK/NACK contract). One
+handler, [push_handler.go](../../../backend/services/inventory_service/push_handler.go), dispatches on the event
+**variant**; a variant it does not handle is ACKed. The old catch-all `/events/inventory` skeleton is gone.
 
-One handler dispatches by **subscription name** (`push.subscription`), so a single endpoint can serve
-several subscriptions.
+| subscription | topic | handler |
+| --- | --- | --- |
+| `inventory-tx-cancel` (`InventoryTxCancelSubscription`) | `inventory-tx-cancel` | [`InventoryTxCancel`](#inventorytxcancel--the-compensations-listener) — release the take under the event's key |
+| `inventory-order-cancelled` (`InventoryOrderCancelledSubscription`) | `order-cancelled` | [`OrderCancelled`](#ordercancelled--a-cancelled-orders-stock-back) — release a cancelled order's take by its key |
 
-```mermaid
-sequenceDiagram
-    participant PS as Pub/Sub (push subscription)
-    participant H as /events/inventory (NewMuxPushHandler)
-    participant D as NewInventoryPushHandler (dispatch by subscription)
-    participant DB as Postgres (tx)
-
-    PS->>H: POST push envelope (message + subscription + trace attrs)
-    H->>D: PushRequest
-    alt known subscription (future — #69)
-        D->>DB: BEGIN
-        D->>DB: dedup insert (message_id) ON CONFLICT DO NOTHING
-        D->>DB: apply stock change
-        D->>DB: COMMIT
-        D-->>H: nil  (200 → ACK)
-    else unknown subscription (skeleton today)
-        D-->>H: nil  (200 → ACK, no-op)
-    end
-    H-->>PS: 200 ACK  /  5xx NACK → redeliver
-```
-
-**Status: SKELETON.** No subscription consumes events yet — inventory reacts to order/stock events,
-and that integration (order → stock) lands with **#69**, which also introduces the stock-event
-contract. Until then the handler ACKs every message as a no-op (returning non-2xx would make Pub/Sub
-redeliver forever).
-
-When a real subscription is wired, the handler will, in **one transaction**: insert an **exactly-once**
-dedup row keyed by `message.messageId` (`ON CONFLICT DO NOTHING` — a redelivery finds the row and
-skips), then decode the event with `event_source.DecodeEvent` and apply the stock change. If the work
-fails, the whole transaction (dedup row included) rolls back so a redelivery reprocesses it.
-
-> **Dead-letter policy required.** `event_source/push.go` returns a non-2xx for a malformed or failed
-> message, and Pub/Sub redelivers any non-2xx forever. Every push subscription pointed at this
-> endpoint must therefore have a dead-letter policy so a poison message is eventually parked, not
-> looped. (Push-endpoint authentication — OIDC/token — is a deployment concern, not handled in code.)
+Created by `go run ./tools/san pubsub ensure` ([docs/tools/san.md](../../tools/san.md)) with an `event_type` filter and a
+**dead-letter policy**: a non-2xx is a NACK and Pub/Sub redelivers it, so a message that never succeeds must be parked,
+not looped. (Push-endpoint authentication — OIDC/token — is a deployment concern, not handled in code.)
 
 ---
 
@@ -200,8 +169,9 @@ the wire and in the tables a double, as the ledgers hold it
 `OrderTransactionService` (`order_transaction.proto`): the order service calls it while it creates an order, before the
 order exists, so inventory knows the take only by the order form's key K
 ([every-release-goes-by-the-key](../../business/order/context_decision.md#every-release-goes-by-the-key)). ✅ *(2026-10-17)*
-**Selling's order calls it** through the composition root's stock picker, with the key `order:<order id>` until the
-order form mints K ([the-order-take-bridges-its-key-per-order](../../technical/stock/design_decision.md#the-order-take-bridges-its-key-per-order)).
+**Selling's order calls it** through the composition root's stock picker. ✅ *(2026-11-04, backlog #10 slice 3)* With the
+order's own key K, passed through as sent, BEFORE the order row exists; the order stores the answered
+`transaction_id`, which is what the pick page reads the take's racks by ([StockPickLocations](#stockpicklocations--the-pick-pages-racks-by-transaction)).
 
 ### OrderTransactionCreate
 
@@ -258,11 +228,158 @@ flowchart LR
   T -->|"yes"| B["RollbackTake - once, every log row flipped, is_rollback set"]
 ```
 
-One path for an order cancelled and for a create that failed after its take. Only a take is rolled back
-([a-rollback-only-undoes-a-take](../../business/inventory/transaction_decision.md#a-rollback-only-undoes-a-take)); the
+One path for an order cancelled and for a create that failed after its take — `releaseByKey`, which the RPC, the
+[InventoryTxCancel listener](#inventorytxcancel--the-compensations-listener) and the
+[OrderCancelled listener](#ordercancelled--a-cancelled-orders-stock-back) all run, team-checked
+([the-cancel-event-names-the-team](../../business/order/context_decision.md#the-cancel-event-names-the-team)). Only a take
+is rolled back ([a-rollback-only-undoes-a-take](../../business/inventory/transaction_decision.md#a-rollback-only-undoes-a-take)); the
 rollback reverses the log rows, not the items
 ([a-rollback-reverses-its-log-rows](../../business/inventory/transaction_decision.md#a-rollback-reverses-its-log-rows)).
-⚠ Still to wire: *Order Cancel* and the create's *InventoryTxCancel* compensation reach this by K at the cutover.
+✅ *(2026-11-04)* A failed create calls it directly as its compensation, then publishes `InventoryTxCancel` as the
+backup. *Order Cancel* no longer calls it (backlog #10 slice 4): it asks [`StockLockCheck`](#stocklockcheck--the-cancels-count-check)
+first and inventory releases on [`OrderCancelled`](#ordercancelled--a-cancelled-orders-stock-back).
+
+### InventoryTxCancel — the compensation's listener
+
+The order service's compensation of a create that failed after its take
+([the-compensation-event-is-inventory-tx-cancel](../../business/order/context_decision.md#the-compensation-event-is-inventory-tx-cancel)):
+the backup of its direct release ([the-release-is-direct-then-the-event](../../business/order/context_decision.md#the-release-is-direct-then-the-event)),
+so it usually finds the take already released. `inventory_v1.Service.InventoryTxCancel`
+([inventory_tx_cancel_listener.go](../../../backend/services/inventory_service/inventory_v1/inventory_tx_cancel_listener.go)).
+
+```mermaid
+sequenceDiagram
+    participant PS as Pub/Sub
+    participant H as /event/inventory-tx-cancel/push
+    participant L as InventoryTxCancel listener
+    participant DB as Postgres
+
+    PS->>H: InventoryTxCancel - K, team, warehouse, actor, reason
+    H->>L: the decoded variant
+    L->>DB: releaseByKey(team, K, actor) - the RPC's own release
+    alt taken by this team
+        DB-->>L: rolled back, once
+        L-->>PS: 200 ACK
+    else already released, or K claimed with none
+        DB-->>L: nothing to do
+        L-->>PS: 200 ACK
+    else K unseen
+        DB-->>L: K claimed with none - a late take is refused
+        L-->>PS: 200 ACK
+    else another team's take
+        DB-->>L: not this team's
+        L-->>PS: 200 ACK - logged, nothing released
+    else a stock count holds the take's rack
+        DB-->>L: refused, the count named
+        L-->>PS: 5xx NACK - redelivered until the count ends, then the dead-letter
+    end
+```
+
+| | |
+| --- | --- |
+| idempotency | by the key — a released take is a no-op, so no `event_id` claim is needed; a redelivery and the direct release both find it released |
+| another team | acknowledged and logged, never released ([the-cancel-event-names-the-team](../../business/order/context_decision.md#the-cancel-event-names-the-team)) |
+| a count lock | an error, so the broker redelivers until the count ends ([a-cancel-still-meets-the-count-first](../../business/order/context_decision.md#a-cancel-still-meets-the-count-first)); after the retry limit the dead-letter holds it — `san pubsub redrive --topic inventory-tx-cancel` once the count is over |
+| the actor | the variant's `actor_id` (who placed the failed order), never the envelope's identity |
+| performance | 14 statements to roll back a take of 1 line or 20 (5.3 / 8.8 ms); 4 for an already-released take or an unseen key (≈1 ms) — `TestPerf_InventoryTxCancel` |
+| races | `TestRace_TakeVsTxCancel`, `TestRace_TxCancelRedelivery` — [lock-order](../../../audits/services/inventory_service/concurrency/lock-order.md#order-takes-and-their-release-2026-11-04) |
+
+### StockLockCheck — the cancel's count check
+
+An **in-process read** (no RPC, no policy of its own — the cancel already passed its own), wired to selling through
+`cmd/app_development/stock_picker.go`: `StockLockCheck(ctx, team, warehouse, K)` → the `*CountedError` of the count
+holding a rack the take under K came from, or nil
+([a-cancel-still-meets-the-count-first](../../business/order/context_decision.md#a-cancel-still-meets-the-count-first)).
+It reads inventory's own tables only and locks nothing.
+
+```mermaid
+flowchart LR
+  K["K, the order's team and warehouse"] --> T{"a take under K, this team's, this warehouse's, not rolled back?"}
+  T -->|"no"| N["nil - nothing to hold back"]
+  T -->|"yes"| R["its rack rows - product_placement_logs by transaction_id"]
+  R --> C{"an open snapshot over one? - RefuseCounted"}
+  C -->|"no"| N
+  C -->|"yes"| E["the first in product, rack order - the count, who, when"]
+```
+
+| | |
+| --- | --- |
+| the words | the same `CountedError` the release refuses with (`RefuseCounted`), so the cancel's refusal and a refused release name the same count |
+| a courtesy, not the lock | a count planned after it answered still stops the release on `OrderCancelled`, which errors and is redelivered (`TestRace_OrderCancelled_RacingACountStartWaitsForIt`) |
+| performance | 3 statements, ≈1 ms at 1 line and 20 — `TestPerf_OrderCancelled`; index lookups on `idempotency_order_check`'s key and `product_placement_logs_transaction_idx` |
+
+### OrderCancelled — a cancelled order's stock back
+
+The order's cancel moves its status and announces `OrderCancelled{K, warehouse}`; inventory releases the take by K
+([inventory-returns-stock-on-order-cancelled](../../business/order/context_decision.md#inventory-returns-stock-on-order-cancelled)).
+`inventory_v1.Service.OrderCancelled`
+([order_cancelled_listener.go](../../../backend/services/inventory_service/inventory_v1/order_cancelled_listener.go)),
+on subscription `inventory-order-cancelled` (topic `order-cancelled`, `event_type` filter, dead-letter).
+
+```mermaid
+sequenceDiagram
+    participant PS as Pub/Sub
+    participant H as /event/inventory-order-cancelled/push
+    participant L as OrderCancelled listener
+    participant DB as Postgres
+
+    PS->>H: OrderCancelled - team, order, K, warehouse, actor
+    H->>L: the decoded variant
+    alt no key - an order that never took stock
+        L-->>PS: 200 ACK - nothing claimed
+    else
+        L->>DB: releaseByKey(team, K, actor) - the RPC's own release
+        alt taken by this team
+            DB-->>L: rolled back, once
+            L-->>PS: 200 ACK
+        else already released - a redelivery, or a late InventoryTxCancel came first
+            L-->>PS: 200 ACK
+        else another team's take
+            L-->>PS: 200 ACK - logged, nothing released
+        else a stock count holds the take's rack - the cancel slipped past its check
+            L-->>PS: 5xx NACK - redelivered until the count ends, then the dead-letter
+        end
+    end
+```
+
+| | |
+| --- | --- |
+| idempotency | by the key, as `InventoryTxCancel` — no `event_id` claim |
+| the actor | the variant's `actor_id` — who cancelled — on the rollback's ledger rows |
+| a count lock | an error; after the retry limit the dead-letter holds it — `san pubsub redrive --topic order-cancelled` once the count is over (other subscribers ack a redrive by their own idempotency) |
+| performance | 14 statements to roll back 1 line (≈4.4 ms) or 20 (≈8.2 ms); 4 when already released (≈1 ms) — `TestPerf_OrderCancelled`; end to end with the cancel in `TestPerf_OrderCancel_CountCheckThenEvent` (cmd/app_development: the cancel 8 statements ≈2.5 ms) |
+| races | `TestRace_OrderCancelled_AndALateTxCancelRollBackOnce`, `TestRace_OrderCancelled_RacingACountStartWaitsForIt` — [lock-order](../../../audits/services/inventory_service/concurrency/lock-order.md) |
+
+### StockPickLocations — the pick page's racks, by transaction
+
+✅ *(2026-11-04, backlog #10 slices 5–6)* [the-placement-page-reads-racks-by-transaction-id](../../business/inventory/order_decision.md#the-placement-page-reads-racks-by-transaction-id):
+the pick page reads the order, then asks for the racks of its take by the order's `transaction_id`. The request's old
+`ref` (first `order:<id>`, then the order's key, read through `idempotency_order_check`) is removed and its number and
+name reserved.
+
+```mermaid
+sequenceDiagram
+    participant UI as pick page
+    participant S as selling OrderDetail
+    participant H as StockPickLocations
+    participant DB as Postgres
+    UI->>S: OrderDetail(warehouse, order)
+    S-->>UI: the order with transaction_id T
+    UI->>H: warehouse_id W (scoped), transaction_id T
+    H->>DB: product_placement_logs WHERE transaction_id = T AND warehouse_id = W
+    Note over DB: JOIN placements, GROUP BY product, rack — SUM(-stock_change) HAVING > 0
+    DB-->>H: per product, per rack, the net taken
+    H-->>UI: the walk, product then rack label
+```
+
+| | |
+| --- | --- |
+| request | `warehouse_id` (`use_scope`, gt 0) · `transaction_id` (gt 0). `2` / `ref` reserved |
+| policy | unchanged — root, administrator, warehouse owner / admin / staff; `NO_SIDE_EFFECTS` |
+| another building | a transaction taken in another warehouse reads as an EMPTY walk — the `warehouse_id` filter, not an error |
+| netting | the take and its rollback net per rack; a released take nets to zero and drops out (empty walk) |
+| unknown transaction | empty walk, not an error |
+| performance | 1 query, ≈0.5 ms at 1 and 20 lines over 50 000 placement log rows — index scan on `product_placement_logs_transaction_idx` (`TestPerf_StockPickLocations`); not heavy, no audit file |
 
 ### StockTakeQuote — what the take WOULD draw
 

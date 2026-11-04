@@ -4234,6 +4234,33 @@
       "deleteConfirm": "Hapus draf {{ref}}? Data dari aplikasi ikut hilang, dan tidak bisa dibatalkan.",
       "deleted": "Draf dihapus",
       "deleteFailed": "Draf tidak terhapus"
+    },
+    "duplicate": {
+      "title": "Ref Ini Sudah Tercatat",
+      "lead": "{{ref}} di toko ini sudah tercatat. Periksa dulu sebelum membuat pesanan lain untuknya.",
+      "failed": "Tidak bisa memeriksa apakah {{ref}} sudah tercatat ({{error}}). Pesanan tetap bisa dibuat.",
+      "order": "Pesanan #{{id}}",
+      "draft": "Draf #{{id}}",
+      "created": "dibuat {{date}}",
+      "newTab": "terbuka di tab baru",
+      "createAnyway": "Tetap Buat",
+      "goBack": "Kembali"
+    },
+    "lock": {
+      "placing": "Membuat pesanan…",
+      "waiting": "Pesanan sedang dibuat — formulir terkunci sampai server menjawab.",
+      "noAnswerTitle": "Tidak ada jawaban dari server — pesanan mungkin sudah dibuat, mungkin juga belum.",
+      "noAnswerHelp": "Koneksi terputus sebelum server menjawab. Formulir tetap terkunci pada data yang dikirim; Coba Lagi memeriksa toko dan ref ini dulu, lalu mengirimnya dengan kunci baru.",
+      "tryAgain": "Coba Lagi",
+      "checkOrders": "Periksa Daftar Pesanan",
+      "retryFoundLead": "Pembuatan terakhir Anda tidak mendapat jawaban, dan {{ref}} di toko ini sudah tercatat — kemungkinan besar oleh pembuatan itu. Buka dulu sebelum mengirim pesanan lagi.",
+      "retryNoneTitle": "Pembuatan Terakhir Mungkin Masih Berjalan",
+      "retryNoneLead": "Pembuatan terakhir Anda tidak mendapat jawaban dan mungkin masih berjalan — belum ada yang tercatat dengan {{ref}} di toko ini. Periksa daftar pesanan, atau kirim lagi.",
+      "sendAgain": "Kirim Lagi",
+      "leaveTitle": "Keluar Sebelum Ada Jawaban?",
+      "leaveWaiting": "Pesanan sudah dikirim dan server belum menjawab. Keluar tidak menghentikannya — pesanan mungkin tetap dibuat. Periksa daftar pesanan sebelum mengetiknya lagi.",
+      "leaveNoAnswer": "Pembuatan terakhir Anda tidak mendapat jawaban — pesanan mungkin sudah dibuat, mungkin juga belum. Periksa daftar pesanan sebelum mengetiknya lagi.",
+      "leaveConfirm": "Keluar"
     }
   },
   "quantityInput": {

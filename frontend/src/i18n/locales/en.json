@@ -4255,6 +4255,33 @@
       "deleteConfirm": "Delete draft {{ref}}? What the app sent is gone, and it is not undone.",
       "deleted": "Draft deleted",
       "deleteFailed": "The draft was not deleted"
+    },
+    "duplicate": {
+      "title": "This Ref Is Already Recorded",
+      "lead": "{{ref}} on this shop is already recorded. Check it before you create another order for it.",
+      "failed": "Could not check whether {{ref}} is already recorded ({{error}}). You can still create the order.",
+      "order": "Order #{{id}}",
+      "draft": "Draft #{{id}}",
+      "created": "created {{date}}",
+      "newTab": "opens in a new tab",
+      "createAnyway": "Create Anyway",
+      "goBack": "Go Back"
+    },
+    "lock": {
+      "placing": "Placing order…",
+      "waiting": "Placing the order — the form is locked until the server answers.",
+      "noAnswerTitle": "No answer from the server — the order may or may not have been placed.",
+      "noAnswerHelp": "The connection dropped before the server answered. The form stays locked on what was sent; Try Again checks this shop and ref first, then sends it under a new key.",
+      "tryAgain": "Try Again",
+      "checkOrders": "Check the Orders List",
+      "retryFoundLead": "Your last Create got no answer, and {{ref}} on this shop is already recorded — most likely by that Create. Open it before you send the order again.",
+      "retryNoneTitle": "Your Last Create May Still Be Finishing",
+      "retryNoneLead": "Your last Create got no answer and may still be finishing — nothing with {{ref}} is recorded on this shop yet. Check the orders list, or send it again.",
+      "sendAgain": "Send Again",
+      "leaveTitle": "Leave Before the Answer?",
+      "leaveWaiting": "The order has been sent and the server has not answered yet. Leaving does not stop it — it may still be placed. Check the orders list before you type it again.",
+      "leaveNoAnswer": "Your last Create got no answer — the order may or may not have been placed. Check the orders list before you type it again.",
+      "leaveConfirm": "Leave"
     }
   },
   "quantityInput": {

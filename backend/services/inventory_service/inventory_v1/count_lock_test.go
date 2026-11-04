@@ -130,7 +130,7 @@ func TestCountLock_AnOrderOnlyACountedRackHoldsIsRefused(t *testing.T) {
 
 	before := batchesOf(t, f, otKaosHitam)
 
-	_, err := orderKaosHitam(f, "order:77", 1)
+	_, err := orderKaosHitam(f, "key-77", 1)
 	refusedByTheCount(t, "an order under the count", err)
 
 	r := refusalOf(t, err)
@@ -175,7 +175,7 @@ func TestCountLock_AnOrderOnlyACountedRackHoldsIsRefused(t *testing.T) {
 	// Released, the same order goes.
 	cancelCount(t, f, s.GetId())
 
-	_, err = orderKaosHitam(f, "order:78", 1)
+	_, err = orderKaosHitam(f, "key-78", 1)
 	if err != nil {
 		t.Fatalf("the order after the count: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestCountLock_ATakeSkipsTheCountedRacks(t *testing.T) {
 		t.Fatalf("put-away onto Rak C: %v", err)
 	}
 
-	_, err = orderKaosHitam(f, "order:78", 1)
+	_, err = orderKaosHitam(f, "key-78", 1)
 	if err != nil {
 		t.Fatalf("order: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestCountLock_ATakeSkipsTheCountedRacks(t *testing.T) {
 		t.Fatalf("Rak A %d, B %d, C %d — want the unit taken from C, the one rack the count does not hold", a, b, c)
 	}
 
-	_, err = orderKaosHitam(f, "order:79", 9)
+	_, err = orderKaosHitam(f, "key-79", 9)
 	refusedByTheCount(t, "an order of 9 under the count", err)
 
 	if lines := refusalOf(t, err).GetLines(); len(lines) != 1 || lines[0].GetAvailable() != 7 ||
@@ -220,7 +220,7 @@ func TestCountLock_ATakeSkipsTheCountedRacks(t *testing.T) {
 func TestCountLock_ACancelWaitsForTheCount(t *testing.T) {
 	f := opnameStocked(t)
 
-	_, err := orderKaosHitam(f, "order:80", 1)
+	_, err := orderKaosHitam(f, "key-80", 1)
 	if err != nil {
 		t.Fatalf("order before the count: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestCountLock_ACancelWaitsForTheCount(t *testing.T) {
 
 	release := func() (*connect.Response[inventoryv1.OrderTransactionReleaseResponse], error) {
 		return f.svc.OrderTransactionRelease(ctxUser(8), connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{
-			TeamId: otMelati, IdempotencyKey: "order:80",
+			TeamId: otMelati, IdempotencyKey: "key-80",
 		}))
 	}
 
@@ -310,7 +310,7 @@ func TestCountLock_ARackACountHoldsIsNotDeleted(t *testing.T) {
 	}
 
 	// Fewest first: Rak D's one unit goes, and its row stays at 0.
-	_, err = orderKaosHitam(f, "order:81", 1)
+	_, err = orderKaosHitam(f, "key-81", 1)
 	if err != nil {
 		t.Fatalf("order: %v", err)
 	}

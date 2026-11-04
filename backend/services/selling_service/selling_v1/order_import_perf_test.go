@@ -54,7 +54,8 @@ func TestPerf_OrderImport(t *testing.T) {
 		}
 
 		rows = append(rows, selling_service_models.Order{
-			TeamID: 2, ShopID: shop, WarehouseID: testWarehouse, Status: status,
+			IdempotencyKey: newOrderKey(),
+			TeamID:         2, ShopID: shop, WarehouseID: testWarehouse, Status: status,
 			OrderExternalRefID: ref, CustomerName: "Budi",
 		})
 	}

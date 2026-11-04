@@ -406,6 +406,8 @@ erDiagram
         double      total_cost         "the owner's total_cost - goods_cost + warehouse_fee, frozen at create (00027). Unrounded, CHECK >= 0; back-filled with a NULL fee as 0"
         bigint      platform_total     "the owner's platform_total - what the buyer paid on the platform (marketplace_total until 00026). Required at placement since 00022, checked in code; 0 only before that"
         text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — its rule is checked in code, not built yet"
+        text        idempotency_key     "UK - the key the submit that created it minted (00035). NOT NULL, UNIQUE. Older dev rows filled as order:id. The key its stock take is filed under"
+        bigint      transaction_id      "the inventory transaction its stock take wrote (00036) - no FK, another service's id. NULL = none recorded, no backfill"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         boolean     is_override         "the creator was Root or the Administrator, not a member - set at placement, never updated (00033)"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
@@ -590,6 +592,24 @@ erDiagram
       The Down puts each order's earliest note row back into a re-added column and deletes no row.
     - **A note row moves nothing**: the list's `status_at` subquery matches `status = orders.status`, which a note row
       never does.
+- **`orders.idempotency_key`** (`00035`) — the key the browser minted inside the submit that created the order
+  ([the-frontend-mints-the-idempotency-key](business/order/context_decision.md#the-frontend-mints-the-idempotency-key),
+  [every-submit-mints-a-new-key](business/order/context_decision.md#every-submit-mints-a-new-key)), kept on the order
+  ([the-order-stores-its-idempotency-key](business/order/context_decision.md#the-order-stores-its-idempotency-key)).
+  `NOT NULL`, and **`orders_idempotency_key_idx`** makes it **UNIQUE**
+  ([the-idempotency-key-is-unique](business/order/context_decision.md#the-idempotency-key-is-unique)): `OrderCreate`
+  looks the key up first and refuses a used one, and the index is the backstop for two submits of one key in the same
+  second — its violation is the same refusal ([the-order-refuses-a-used-key](business/order/context_decision.md#the-order-refuses-a-used-key)).
+  Rows already in a developer's database were filled `order:<id>` only so the constraints apply
+  ([revamp-has-no-real-orders-yet](business/order/context_decision.md#revamp-has-no-real-orders-yet)); a new key
+  starting `order:` is refused, so it never meets one. The Down drops the index and the column.
+- **`orders.transaction_id`** (`00036`, backlog #10 slice 3) — the inventory transaction the order's stock take wrote,
+  stored in the transaction that inserts the order. The take runs BEFORE the order row, under `idempotency_key`, so the
+  row is written knowing it. `BIGINT NULL`, no FK (inventory_service's id, HARD RULE 3) and no index (nothing reads orders
+  by it); what the placement page reads the order's racks by
+  ([the-placement-page-reads-racks-by-transaction-id](business/inventory/order_decision.md#the-placement-page-reads-racks-by-transaction-id)).
+  NULL = none recorded; no backfill ([revamp-has-no-real-orders-yet](business/order/context_decision.md#revamp-has-no-real-orders-yet)).
+  The Down drops the column.
 - **`orders_return_team_idx`** (`00034`) — `(team_id) WHERE status IN ('return', 'return_completed')`, partial: the index of
   the third reader every order read now has, the selling team's configured return warehouse, which reads that team's
   returns only (`orderReaders`, [a-return-may-land-in-another-warehouse](business/order/context_decision.md#a-return-may-land-in-another-warehouse)).

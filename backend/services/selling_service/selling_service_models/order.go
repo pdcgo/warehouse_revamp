@@ -59,6 +59,15 @@ type Order struct {
 	// evidence of where an order came from, not a key.
 	OrderExternalRefID string
 
+	// THE KEY THE ORDER WAS CREATED WITH (00035, the-order-stores-its-idempotency-key) — minted by the form inside every
+	// submit (every-submit-mints-a-new-key) and UNIQUE (the-idempotency-key-is-unique, orders_idempotency_key_idx).
+	// Required: OrderCreate refuses an empty one, a used one (the-order-refuses-a-used-key) and one starting `order:`,
+	// the shape the migration filled a developer's older rows with (revamp-has-no-real-orders-yet).
+	IdempotencyKey string
+	// The inventory transaction the take wrote — the take's answer, stored in the transaction that inserts the order
+	// (the-placement-page-reads-racks-by-transaction-id). nil = none recorded (a developer's row from before 00036).
+	TransactionID *uint64
+
 	// THE ORDER'S MONEY — the owner's three header figures (00027), and nothing else: no subtotal, no shipping
 	// (an-order-records-no-shipping-cost).
 	//

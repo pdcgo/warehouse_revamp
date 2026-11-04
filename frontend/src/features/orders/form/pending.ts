@@ -10,6 +10,8 @@ import type { PendingList, PendingPart } from "../../pending/registry";
 // `NotImplementedSummary` renders nothing for an empty list. The file stays, and the order-create page still mounts
 // the summary, because the draft page EXTENDS this list and the form's cards mark against it: the next part built
 // ahead of the system is one entry here, and the strip comes back with it.
+// 🔄 (2026-11-04) It held ONE entry for a day — the duplicate-ref warning's draft half — gone when
+// OrderDraftByExternalRefs was built (the-duplicate-ref-warning-is-accepted).
 //
 // ⚠ THE BADGE AND THE SUMMARY READ THIS FILE, both of them. That is the whole point of a registry:
 // a badge on a card and a line in the summary strip cannot disagree, and neither can be forgotten
@@ -28,6 +30,8 @@ export type PendingId = never;
 // The four KINDS and the numbering live in `features/pending` — this file is only this screen's
 // list, because "what is missing" is a fact about this screen and nothing else.
 const PARTS: PendingPart<PendingId>[] = [
+  // (The duplicate warning's draft half is gone: OrderDraftByExternalRefs finds the team's drafts on a shop + ref —
+  // the-duplicate-warning-reads-drafts-too.)
   // (The Bundles card's mark is gone: the bundles are BundleList's, and the order keeps no trace of one
   // BY DESIGN — the-order-keeps-only-product-lines.)
   // (The return mapping's mark is gone: a pick is written by ProductReturnMapCreate the moment it is confirmed, a pair

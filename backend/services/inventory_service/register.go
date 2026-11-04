@@ -34,9 +34,13 @@ func NewRegister(
 		// a count (found_request_*.go, an-adjust-found-waits-for-the-owner-or-admin).
 		mux.Handle(inventoryv1connect.NewFoundRequestServiceHandler(inventory, opts))
 
-		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
-		// directly rather than through san_grpc. Push auth (OIDC/token) is a deployment concern.
-		mux.Handle("/events/inventory", event_source.NewMuxPushHandler(NewInventoryPushHandler()))
+		// THE LISTENER — /event/<sub_id>/push. A plain HTTP route, not a Connect RPC, so the roling ACL does not reach
+		// it: it is the broker's door, restricted at the ingress. Push auth (OIDC/token) is a deployment concern.
+		// InventoryTxCancel — the compensation of an order create that failed after its take (push_handler.go).
+		mux.Handle("/event/"+InventoryTxCancelSubscription+"/push", event_source.NewMuxPushHandler(NewInventoryPushHandler(inventory)))
+		// OrderCancelled — a cancelled order's stock released by its key (inventory-returns-stock-on-order-cancelled).
+		mux.Handle("/event/"+InventoryOrderCancelledSubscription+"/push",
+			event_source.NewMuxPushHandler(NewInventoryPushHandler(inventory)))
 
 		return san_grpc.ServiceReflectNames{
 			inventoryv1connect.InventoryServiceName,

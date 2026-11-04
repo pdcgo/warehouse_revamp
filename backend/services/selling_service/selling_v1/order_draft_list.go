@@ -114,7 +114,7 @@ func readyDrafts(query *gorm.DB) *gorm.DB {
 		Where("customer_name <> ''").
 		Where("platform_created_at IS NOT NULL AND platform_created_at > to_timestamp(0)").
 		Where("platform_total > 0").
-		Where("source <> ?", "manual").
+		Where("source <> ?", draftSourceManual).
 		Where("EXISTS (SELECT 1 FROM order_draft_items i WHERE i.draft_id = order_drafts.id)").
 		Where("NOT EXISTS (SELECT 1 FROM order_draft_items i WHERE i.draft_id = order_drafts.id AND i.product_id = 0)")
 }

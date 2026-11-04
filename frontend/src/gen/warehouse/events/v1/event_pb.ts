@@ -26,7 +26,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/events/v1/event.proto.
  */
 export const file_warehouse_events_v1_event: GenFile = /*@__PURE__*/
-  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIqMMCgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkgKFG9yZGVyX3N0YXR1c19jaGFuZ2VkGMoBIAEoCzInLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJTdGF0dXNDaGFuZ2VkSAASSgoVb3JkZXJfcmV0dXJuX2FjY2VwdGVkGMsBIAEoCzIoLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJSZXR1cm5BY2NlcHRlZEgAEkoKFXNldHRsZW1lbnRfbG9nX3Bvc3RlZBisAiABKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlNldHRsZW1lbnRMb2dQb3N0ZWRIABJBChByZXN0b2NrX2FjY2VwdGVkGJADIAEoCzIkLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0FjY2VwdGVkSAASPwoPcmVzdG9ja19jcmVhdGVkGJEDIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0NyZWF0ZWRIABJDChFyZXN0b2NrX2NhbmNlbGxlZBiSAyABKAsyJS53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tDYW5jZWxsZWRIABI/Cg9yZXN0b2NrX3VwZGF0ZWQYkwMgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrVXBkYXRlZEgAElQKGndhcmVob3VzZV90cmFuc2Zlcl9jcmVhdGVkGJQDIAEoCzItLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJDcmVhdGVkSAASVAoad2FyZWhvdXNlX3RyYW5zZmVyX3VwZGF0ZWQYlQMgASgLMi0ud2FyZWhvdXNlLmV2ZW50cy52MS5XYXJlaG91c2VUcmFuc2ZlclVwZGF0ZWRIABJYChx3YXJlaG91c2VfdHJhbnNmZXJfY2FuY2VsbGVkGJYDIAEoCzIvLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJDYW5jZWxsZWRIABJWCht3YXJlaG91c2VfdHJhbnNmZXJfYWNjZXB0ZWQYlwMgASgLMi4ud2FyZWhvdXNlLmV2ZW50cy52MS5XYXJlaG91c2VUcmFuc2ZlckFjY2VwdGVkSAASVAoabGlhYmlsaXR5X3BheW1lbnRfYWNjZXB0ZWQY9AMgASgLMi0ud2FyZWhvdXNlLmV2ZW50cy52MS5MaWFiaWxpdHlQYXltZW50QWNjZXB0ZWRIABI/Cg9leHBlbnNlX2NyZWF0ZWQY2AQgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5FeHBlbnNlQ3JlYXRlZEgAEkEKEGV4cGVuc2VfYWRqdXN0ZWQY2QQgASgLMiQud2FyZWhvdXNlLmV2ZW50cy52MS5FeHBlbnNlQWRqdXN0ZWRIABovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCEAoHbWVzc2FnZRIFukgCCAEiWQoNTWVtYmVyUmVtb3ZlZBIPCgd0ZWFtX2lkGAEgASgEEg8KB3VzZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQ6FIq1GBAKDm1lbWJlci1yZW1vdmVkItEDChNTZXR0bGVtZW50TG9nUG9zdGVkEg4KBmxvZ19pZBgBIAEoBBIRCgl1bmlxdWVfaWQYAiABKAkSEAoIb3JkZXJfaWQYAyABKAQSDwoHc2hvcF9pZBgEIAEoBBIPCgd0ZWFtX2lkGAUgASgEEhAKCGFjdG9yX2lkGAYgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGBEgASgIEiAKGG9yZGVyX2NyZWF0ZWRfYnlfdXNlcl9pZBgHIAEoBBJACg9zZXR0bGVtZW50X3R5cGUYCCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZRI4Cgtzb3VyY2VfdHlwZRgJIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGUSDgoGY2hhbmdlGAogASgDEg8KB2JhbGFuY2UYCyABKAMSEQoJcG9zdGVkX29uGAwgASgJEhMKC29jY3VycmVkX29uGA0gASgJEhMKC3JldmVyc2VzX2lkGA4gASgEEgwKBG5vdGUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBDobirUYFwoVc2V0dGxlbWVudC1sb2ctcG9zdGVkIt8CCgtPcmRlclBsYWNlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhIKCmdvb2RzX2Nvc3QYBCABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSMwoFbGluZXMYCCADKAsyJC53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyUGxhY2VkTGluZRIQCghhY3Rvcl9pZBgJIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgNIAEoCBIPCgdzaG9wX2lkGAogASgEEhYKDnBsYXRmb3JtX3RvdGFsGAsgASgDEhoKDXdhcmVob3VzZV9mZWUYDCABKAFIAIgBAToSirUYDgoMb3JkZXItcGxhY2VkQhAKDl93YXJlaG91c2VfZmVlSgQIAxAESgQIBRAGUgdyZXZlbnVlUg1zaGlwcGluZ19jb3N0InEKD09yZGVyUGxhY2VkTGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhYKDm93bmluZ190ZWFtX2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhEKCXVuaXRfY29zdBgEIAEoAxINCgV0b3RhbBgFIAEoASKIAQoOT3JkZXJDYW5jZWxsZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIQCghhY3Rvcl9pZBgDIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgFIAEoCBIPCgdzaG9wX2lkGAQgASgEOhWKtRgRCg9vcmRlci1jYW5jZWxsZWQipgEKEk9yZGVyU3RhdHVzQ2hhbmdlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhMKC2Zyb21fc3RhdHVzGAMgASgJEhEKCXRvX3N0YXR1cxgEIAEoCRIQCghhY3Rvcl9pZBgFIAEoBBIXCg90aW1lbGluZV9sb2dfaWQYBiABKAQ6Goq1GBYKFG9yZGVyLXN0YXR1cy1jaGFuZ2VkIuYBChNPcmRlclJldHVybkFjY2VwdGVkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhAKCGFjdG9yX2lkGAQgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAUgASgIEhcKD3RpbWVsaW5lX2xvZ19pZBgGIAEoBBIWCg5jb3VyaWVyX2NoYXJnZRgHIAEoAxIbChNjb3VyaWVyX2NoYXJnZV9ub3RlGAggASgJOhuKtRgXChVvcmRlci1yZXR1cm4tYWNjZXB0ZWQi2QIKD1Jlc3RvY2tBY2NlcHRlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhMKC3N1cHBsaWVyX2lkGAQgASgEEhMKC2FjY2VwdGVkX29uGAUgASgJEjcKBWxpbmVzGAYgAygLMigud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrQWNjZXB0ZWRMaW5lEhgKEGFjY2VwdGVkX2F0X3VuaXgYByABKAMSIQoZd2FyZWhvdXNlX2FkZGl0aW9uYWxfY29zdBgIIAEoARImCh53YXJlaG91c2VfYWRkaXRpb25hbF9jb3N0X25vdGUYCSABKAkSEAoIYWN0b3JfaWQYCiABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCyABKAg6Foq1GBIKEHJlc3RvY2stYWNjZXB0ZWQi3QEKE1Jlc3RvY2tBY2NlcHRlZExpbmUSDwoHaXRlbV9pZBgBIAEoBBISCgpwcm9kdWN0X2lkGAIgASgEEhUKDW9yZGVyZWRfY291bnQYAyABKAMSEwoLdG90YWxfcHJpY2UYBCABKAESFgoOYWNjZXB0ZWRfY291bnQYBSABKAMSFAoMYnJva2VuX2NvdW50GAYgASgDEhUKDW1pc3NpbmdfY291bnQYByABKAMSEwoLc3VwcGxpZXJfaWQYCCABKAQSGwoTc3VwcGxpZXJfY2hhbm5lbF9pZBgJIAEoBCK5AQoOUmVzdG9ja0NyZWF0ZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhQKDHdhcmVob3VzZV9pZBgDIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYBCABKAQSDgoGYW1vdW50GAUgASgBEhAKCGFjdG9yX2lkGAYgASgEEhcKD2NyZWF0ZWRfYXRfdW5peBgHIAEoAzoVirUYEQoPcmVzdG9jay1jcmVhdGVkIsEBChBSZXN0b2NrQ2FuY2VsbGVkEhIKCnJlc3RvY2tfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYAyABKAQSDgoGYW1vdW50GAQgASgBEhYKDm1vbmV5X3JldHVybmVkGAUgASgIEhAKCGFjdG9yX2lkGAYgASgEEhkKEWNhbmNlbGxlZF9hdF91bml4GAcgASgDOheKtRgTChFyZXN0b2NrLWNhbmNlbGxlZCLfAQoOUmVzdG9ja1VwZGF0ZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEh4KFm9sZF9maW5hbmNlX2FjY291bnRfaWQYAyABKAQSHgoWbmV3X2ZpbmFuY2VfYWNjb3VudF9pZBgEIAEoBBISCgpvbGRfYW1vdW50GAUgASgBEhIKCm5ld19hbW91bnQYBiABKAESEAoIYWN0b3JfaWQYByABKAQSFwoPdXBkYXRlZF9hdF91bml4GAggASgDOhWKtRgRCg9yZXN0b2NrLXVwZGF0ZWQi7QEKGFdhcmVob3VzZVRyYW5zZmVyQ3JlYXRlZBITCgt0cmFuc2Zlcl9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhkKEWZyb21fd2FyZWhvdXNlX2lkGAMgASgEEhcKD3RvX3dhcmVob3VzZV9pZBgEIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYBSABKAQSDgoGYW1vdW50GAYgASgBEhAKCGFjdG9yX2lkGAcgASgEEhcKD2NyZWF0ZWRfYXRfdW5peBgIIAEoAzogirUYHAoad2FyZWhvdXNlLXRyYW5zZmVyLWNyZWF0ZWQi9QEKGFdhcmVob3VzZVRyYW5zZmVyVXBkYXRlZBITCgt0cmFuc2Zlcl9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEh4KFm9sZF9maW5hbmNlX2FjY291bnRfaWQYAyABKAQSHgoWbmV3X2ZpbmFuY2VfYWNjb3VudF9pZBgEIAEoBBISCgpvbGRfYW1vdW50GAUgASgBEhIKCm5ld19hbW91bnQYBiABKAESEAoIYWN0b3JfaWQYByABKAQSFwoPdXBkYXRlZF9hdF91bml4GAggASgDOiCKtRgcChp3YXJlaG91c2UtdHJhbnNmZXItdXBkYXRlZCK/AQoaV2FyZWhvdXNlVHJhbnNmZXJDYW5jZWxsZWQSEwoLdHJhbnNmZXJfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYAyABKAQSDgoGYW1vdW50GAQgASgBEhAKCGFjdG9yX2lkGAUgASgEEhkKEWNhbmNlbGxlZF9hdF91bml4GAYgASgDOiKKtRgeChx3YXJlaG91c2UtdHJhbnNmZXItY2FuY2VsbGVkIo8CChlXYXJlaG91c2VUcmFuc2ZlckFjY2VwdGVkEhMKC3RyYW5zZmVyX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSGQoRZnJvbV93YXJlaG91c2VfaWQYAyABKAQSFwoPdG9fd2FyZWhvdXNlX2lkGAQgASgEEiEKGXdhcmVob3VzZV9hZGRpdGlvbmFsX2Nvc3QYBSABKAESJgoed2FyZWhvdXNlX2FkZGl0aW9uYWxfY29zdF9ub3RlGAYgASgJEhAKCGFjdG9yX2lkGAcgASgEEhgKEGFjY2VwdGVkX2F0X3VuaXgYCCABKAM6IYq1GB0KG3dhcmVob3VzZS10cmFuc2Zlci1hY2NlcHRlZCLuAQoYTGlhYmlsaXR5UGF5bWVudEFjY2VwdGVkEhIKCnBheW1lbnRfaWQYASABKAQSFQoNcGF5ZXJfdGVhbV9pZBgCIAEoBBIYChBjcmVkaXRvcl90ZWFtX2lkGAMgASgEEg4KBmFtb3VudBgEIAEoAxIXCg9mcm9tX2FjY291bnRfaWQYBSABKAQSFQoNdG9fYWNjb3VudF9pZBgGIAEoBBIQCghhY3Rvcl9pZBgHIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgIIAEoCDogirUYHAoabGlhYmlsaXR5LXBheW1lbnQtYWNjZXB0ZWQilQIKDkV4cGVuc2VDcmVhdGVkEhIKCmV4cGVuc2VfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIvCgRraW5kGAMgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSGgoSZmluYW5jZV9hY2NvdW50X2lkGAQgASgEEg4KBmFtb3VudBgFIAEoAxITCgtvY2N1cnJlZF9vbhgGIAEoCRIPCgdzaG9wX2lkGAcgASgEEhAKCGFjdG9yX2lkGAggASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAkgASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAzoVirUYEQoPZXhwZW5zZS1jcmVhdGVkIq4CCg9FeHBlbnNlQWRqdXN0ZWQSFQoNYWRqdXN0bWVudF9pZBgBIAEoBBISCgpleHBlbnNlX2lkGAIgASgEEg8KB3RlYW1faWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgFIAEoBBIOCgZhbW91bnQYBiABKAMSEwoLb2NjdXJyZWRfb24YByABKAkSDwoHc2hvcF9pZBgIIAEoBBIQCghhY3Rvcl9pZBgJIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgKIAEoCBIXCg9jcmVhdGVkX2F0X3VuaXgYCyABKAM6Foq1GBIKEGV4cGVuc2UtYWRqdXN0ZWQ6ZgoMZXZlbnRfY29uZmlnEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNGGAyABKAsyIC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Q29uZmlnUgtldmVudENvbmZpZ0JMWkpnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V2ZW50cy92MTtldmVudHN2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_expense_v1_expense, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
+  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIusMCgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkgKFG9yZGVyX3N0YXR1c19jaGFuZ2VkGMoBIAEoCzInLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJTdGF0dXNDaGFuZ2VkSAASSgoVb3JkZXJfcmV0dXJuX2FjY2VwdGVkGMsBIAEoCzIoLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJSZXR1cm5BY2NlcHRlZEgAEkYKE2ludmVudG9yeV90eF9jYW5jZWwYzAEgASgLMiYud2FyZWhvdXNlLmV2ZW50cy52MS5JbnZlbnRvcnlUeENhbmNlbEgAEkoKFXNldHRsZW1lbnRfbG9nX3Bvc3RlZBisAiABKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlNldHRsZW1lbnRMb2dQb3N0ZWRIABJBChByZXN0b2NrX2FjY2VwdGVkGJADIAEoCzIkLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0FjY2VwdGVkSAASPwoPcmVzdG9ja19jcmVhdGVkGJEDIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0NyZWF0ZWRIABJDChFyZXN0b2NrX2NhbmNlbGxlZBiSAyABKAsyJS53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tDYW5jZWxsZWRIABI/Cg9yZXN0b2NrX3VwZGF0ZWQYkwMgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrVXBkYXRlZEgAElQKGndhcmVob3VzZV90cmFuc2Zlcl9jcmVhdGVkGJQDIAEoCzItLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJDcmVhdGVkSAASVAoad2FyZWhvdXNlX3RyYW5zZmVyX3VwZGF0ZWQYlQMgASgLMi0ud2FyZWhvdXNlLmV2ZW50cy52MS5XYXJlaG91c2VUcmFuc2ZlclVwZGF0ZWRIABJYChx3YXJlaG91c2VfdHJhbnNmZXJfY2FuY2VsbGVkGJYDIAEoCzIvLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJDYW5jZWxsZWRIABJWCht3YXJlaG91c2VfdHJhbnNmZXJfYWNjZXB0ZWQYlwMgASgLMi4ud2FyZWhvdXNlLmV2ZW50cy52MS5XYXJlaG91c2VUcmFuc2ZlckFjY2VwdGVkSAASVAoabGlhYmlsaXR5X3BheW1lbnRfYWNjZXB0ZWQY9AMgASgLMi0ud2FyZWhvdXNlLmV2ZW50cy52MS5MaWFiaWxpdHlQYXltZW50QWNjZXB0ZWRIABI/Cg9leHBlbnNlX2NyZWF0ZWQY2AQgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5FeHBlbnNlQ3JlYXRlZEgAEkEKEGV4cGVuc2VfYWRqdXN0ZWQY2QQgASgLMiQud2FyZWhvdXNlLmV2ZW50cy52MS5FeHBlbnNlQWRqdXN0ZWRIABovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCEAoHbWVzc2FnZRIFukgCCAEiWQoNTWVtYmVyUmVtb3ZlZBIPCgd0ZWFtX2lkGAEgASgEEg8KB3VzZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQ6FIq1GBAKDm1lbWJlci1yZW1vdmVkItEDChNTZXR0bGVtZW50TG9nUG9zdGVkEg4KBmxvZ19pZBgBIAEoBBIRCgl1bmlxdWVfaWQYAiABKAkSEAoIb3JkZXJfaWQYAyABKAQSDwoHc2hvcF9pZBgEIAEoBBIPCgd0ZWFtX2lkGAUgASgEEhAKCGFjdG9yX2lkGAYgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGBEgASgIEiAKGG9yZGVyX2NyZWF0ZWRfYnlfdXNlcl9pZBgHIAEoBBJACg9zZXR0bGVtZW50X3R5cGUYCCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZRI4Cgtzb3VyY2VfdHlwZRgJIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGUSDgoGY2hhbmdlGAogASgDEg8KB2JhbGFuY2UYCyABKAMSEQoJcG9zdGVkX29uGAwgASgJEhMKC29jY3VycmVkX29uGA0gASgJEhMKC3JldmVyc2VzX2lkGA4gASgEEgwKBG5vdGUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBDobirUYFwoVc2V0dGxlbWVudC1sb2ctcG9zdGVkIpADCgtPcmRlclBsYWNlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhIKCmdvb2RzX2Nvc3QYBCABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSMwoFbGluZXMYCCADKAsyJC53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyUGxhY2VkTGluZRIQCghhY3Rvcl9pZBgJIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgNIAEoCBIPCgdzaG9wX2lkGAogASgEEhYKDnBsYXRmb3JtX3RvdGFsGAsgASgDEhoKDXdhcmVob3VzZV9mZWUYDCABKAFIAIgBARIXCg9pZGVtcG90ZW5jeV9rZXkYDiABKAkSFgoOdHJhbnNhY3Rpb25faWQYDyABKAQ6Eoq1GA4KDG9yZGVyLXBsYWNlZEIQCg5fd2FyZWhvdXNlX2ZlZUoECAMQBEoECAUQBlIHcmV2ZW51ZVINc2hpcHBpbmdfY29zdCJxCg9PcmRlclBsYWNlZExpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIWCg5vd25pbmdfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoDRIRCgl1bml0X2Nvc3QYBCABKAMSDQoFdG90YWwYBSABKAEitwEKDk9yZGVyQ2FuY2VsbGVkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYBSABKAgSDwoHc2hvcF9pZBgEIAEoBBIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAkSFAoMd2FyZWhvdXNlX2lkGAcgASgEOhWKtRgRCg9vcmRlci1jYW5jZWxsZWQipQEKEUludmVudG9yeVR4Q2FuY2VsEiMKD2lkZW1wb3RlbmN5X2tleRgBIAEoCUIKukgHcgUQARiAARIYCgd0ZWFtX2lkGAIgASgEQge6SAQyAiAAEhQKDHdhcmVob3VzZV9pZBgDIAEoBBIQCghhY3Rvcl9pZBgEIAEoBBIOCgZyZWFzb24YBSABKAk6GYq1GBUKE2ludmVudG9yeS10eC1jYW5jZWwipgEKEk9yZGVyU3RhdHVzQ2hhbmdlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhMKC2Zyb21fc3RhdHVzGAMgASgJEhEKCXRvX3N0YXR1cxgEIAEoCRIQCghhY3Rvcl9pZBgFIAEoBBIXCg90aW1lbGluZV9sb2dfaWQYBiABKAQ6Goq1GBYKFG9yZGVyLXN0YXR1cy1jaGFuZ2VkIuYBChNPcmRlclJldHVybkFjY2VwdGVkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhAKCGFjdG9yX2lkGAQgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAUgASgIEhcKD3RpbWVsaW5lX2xvZ19pZBgGIAEoBBIWCg5jb3VyaWVyX2NoYXJnZRgHIAEoAxIbChNjb3VyaWVyX2NoYXJnZV9ub3RlGAggASgJOhuKtRgXChVvcmRlci1yZXR1cm4tYWNjZXB0ZWQi2QIKD1Jlc3RvY2tBY2NlcHRlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhMKC3N1cHBsaWVyX2lkGAQgASgEEhMKC2FjY2VwdGVkX29uGAUgASgJEjcKBWxpbmVzGAYgAygLMigud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrQWNjZXB0ZWRMaW5lEhgKEGFjY2VwdGVkX2F0X3VuaXgYByABKAMSIQoZd2FyZWhvdXNlX2FkZGl0aW9uYWxfY29zdBgIIAEoARImCh53YXJlaG91c2VfYWRkaXRpb25hbF9jb3N0X25vdGUYCSABKAkSEAoIYWN0b3JfaWQYCiABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCyABKAg6Foq1GBIKEHJlc3RvY2stYWNjZXB0ZWQi3QEKE1Jlc3RvY2tBY2NlcHRlZExpbmUSDwoHaXRlbV9pZBgBIAEoBBISCgpwcm9kdWN0X2lkGAIgASgEEhUKDW9yZGVyZWRfY291bnQYAyABKAMSEwoLdG90YWxfcHJpY2UYBCABKAESFgoOYWNjZXB0ZWRfY291bnQYBSABKAMSFAoMYnJva2VuX2NvdW50GAYgASgDEhUKDW1pc3NpbmdfY291bnQYByABKAMSEwoLc3VwcGxpZXJfaWQYCCABKAQSGwoTc3VwcGxpZXJfY2hhbm5lbF9pZBgJIAEoBCK5AQoOUmVzdG9ja0NyZWF0ZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhQKDHdhcmVob3VzZV9pZBgDIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYBCABKAQSDgoGYW1vdW50GAUgASgBEhAKCGFjdG9yX2lkGAYgASgEEhcKD2NyZWF0ZWRfYXRfdW5peBgHIAEoAzoVirUYEQoPcmVzdG9jay1jcmVhdGVkIsEBChBSZXN0b2NrQ2FuY2VsbGVkEhIKCnJlc3RvY2tfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYAyABKAQSDgoGYW1vdW50GAQgASgBEhYKDm1vbmV5X3JldHVybmVkGAUgASgIEhAKCGFjdG9yX2lkGAYgASgEEhkKEWNhbmNlbGxlZF9hdF91bml4GAcgASgDOheKtRgTChFyZXN0b2NrLWNhbmNlbGxlZCLfAQoOUmVzdG9ja1VwZGF0ZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEh4KFm9sZF9maW5hbmNlX2FjY291bnRfaWQYAyABKAQSHgoWbmV3X2ZpbmFuY2VfYWNjb3VudF9pZBgEIAEoBBISCgpvbGRfYW1vdW50GAUgASgBEhIKCm5ld19hbW91bnQYBiABKAESEAoIYWN0b3JfaWQYByABKAQSFwoPdXBkYXRlZF9hdF91bml4GAggASgDOhWKtRgRCg9yZXN0b2NrLXVwZGF0ZWQi7QEKGFdhcmVob3VzZVRyYW5zZmVyQ3JlYXRlZBITCgt0cmFuc2Zlcl9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhkKEWZyb21fd2FyZWhvdXNlX2lkGAMgASgEEhcKD3RvX3dhcmVob3VzZV9pZBgEIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYBSABKAQSDgoGYW1vdW50GAYgASgBEhAKCGFjdG9yX2lkGAcgASgEEhcKD2NyZWF0ZWRfYXRfdW5peBgIIAEoAzogirUYHAoad2FyZWhvdXNlLXRyYW5zZmVyLWNyZWF0ZWQi9QEKGFdhcmVob3VzZVRyYW5zZmVyVXBkYXRlZBITCgt0cmFuc2Zlcl9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEh4KFm9sZF9maW5hbmNlX2FjY291bnRfaWQYAyABKAQSHgoWbmV3X2ZpbmFuY2VfYWNjb3VudF9pZBgEIAEoBBISCgpvbGRfYW1vdW50GAUgASgBEhIKCm5ld19hbW91bnQYBiABKAESEAoIYWN0b3JfaWQYByABKAQSFwoPdXBkYXRlZF9hdF91bml4GAggASgDOiCKtRgcChp3YXJlaG91c2UtdHJhbnNmZXItdXBkYXRlZCK/AQoaV2FyZWhvdXNlVHJhbnNmZXJDYW5jZWxsZWQSEwoLdHJhbnNmZXJfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIaChJmaW5hbmNlX2FjY291bnRfaWQYAyABKAQSDgoGYW1vdW50GAQgASgBEhAKCGFjdG9yX2lkGAUgASgEEhkKEWNhbmNlbGxlZF9hdF91bml4GAYgASgDOiKKtRgeChx3YXJlaG91c2UtdHJhbnNmZXItY2FuY2VsbGVkIo8CChlXYXJlaG91c2VUcmFuc2ZlckFjY2VwdGVkEhMKC3RyYW5zZmVyX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSGQoRZnJvbV93YXJlaG91c2VfaWQYAyABKAQSFwoPdG9fd2FyZWhvdXNlX2lkGAQgASgEEiEKGXdhcmVob3VzZV9hZGRpdGlvbmFsX2Nvc3QYBSABKAESJgoed2FyZWhvdXNlX2FkZGl0aW9uYWxfY29zdF9ub3RlGAYgASgJEhAKCGFjdG9yX2lkGAcgASgEEhgKEGFjY2VwdGVkX2F0X3VuaXgYCCABKAM6IYq1GB0KG3dhcmVob3VzZS10cmFuc2Zlci1hY2NlcHRlZCLuAQoYTGlhYmlsaXR5UGF5bWVudEFjY2VwdGVkEhIKCnBheW1lbnRfaWQYASABKAQSFQoNcGF5ZXJfdGVhbV9pZBgCIAEoBBIYChBjcmVkaXRvcl90ZWFtX2lkGAMgASgEEg4KBmFtb3VudBgEIAEoAxIXCg9mcm9tX2FjY291bnRfaWQYBSABKAQSFQoNdG9fYWNjb3VudF9pZBgGIAEoBBIQCghhY3Rvcl9pZBgHIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgIIAEoCDogirUYHAoabGlhYmlsaXR5LXBheW1lbnQtYWNjZXB0ZWQilQIKDkV4cGVuc2VDcmVhdGVkEhIKCmV4cGVuc2VfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIvCgRraW5kGAMgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSGgoSZmluYW5jZV9hY2NvdW50X2lkGAQgASgEEg4KBmFtb3VudBgFIAEoAxITCgtvY2N1cnJlZF9vbhgGIAEoCRIPCgdzaG9wX2lkGAcgASgEEhAKCGFjdG9yX2lkGAggASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAkgASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAzoVirUYEQoPZXhwZW5zZS1jcmVhdGVkIq4CCg9FeHBlbnNlQWRqdXN0ZWQSFQoNYWRqdXN0bWVudF9pZBgBIAEoBBISCgpleHBlbnNlX2lkGAIgASgEEg8KB3RlYW1faWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgFIAEoBBIOCgZhbW91bnQYBiABKAMSEwoLb2NjdXJyZWRfb24YByABKAkSDwoHc2hvcF9pZBgIIAEoBBIQCghhY3Rvcl9pZBgJIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgKIAEoCBIXCg9jcmVhdGVkX2F0X3VuaXgYCyABKAM6Foq1GBIKEGV4cGVuc2UtYWRqdXN0ZWQ6ZgoMZXZlbnRfY29uZmlnEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNGGAyABKAsyIC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Q29uZmlnUgtldmVudENvbmZpZ0JMWkpnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V2ZW50cy92MTtldmVudHN2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_expense_v1_expense, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
 
 /**
  * EventConfig declares, ON THE VARIANT ITSELF, which Pub/Sub topic that event belongs to. The topic
@@ -157,6 +157,12 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
      */
     value: OrderReturnAccepted;
     case: "orderReturnAccepted";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.InventoryTxCancel inventory_tx_cancel = 204;
+     */
+    value: InventoryTxCancel;
+    case: "inventoryTxCancel";
   } | {
     /**
      * @generated from field: warehouse.events.v1.SettlementLogPosted settlement_log_posted = 300;
@@ -537,6 +543,23 @@ export type OrderPlaced = Message<"warehouse.events.v1.OrderPlaced"> & {
    * @generated from field: optional double warehouse_fee = 12;
    */
   warehouseFee?: number | undefined;
+
+  /**
+   * THE KEY THE ORDER WAS PLACED UNDER — `orders.idempotency_key`, the submit's own key, which is also the key its
+   * stock was taken under (the-order-stores-its-idempotency-key). Carried so a consumer can name the take; nothing
+   * that releases stock needs it from here (every-release-goes-by-the-key).
+   *
+   * @generated from field: string idempotency_key = 14;
+   */
+  idempotencyKey: string;
+
+  /**
+   * The inventory transaction the take wrote — `orders.transaction_id`, what the placement page reads the racks by
+   * (the-placement-page-reads-racks-by-transaction-id). 0 = none recorded.
+   *
+   * @generated from field: uint64 transaction_id = 15;
+   */
+  transactionId: bigint;
 };
 
 /**
@@ -657,6 +680,24 @@ export type OrderCancelled = Message<"warehouse.events.v1.OrderCancelled"> & {
    * @generated from field: uint64 shop_id = 4;
    */
   shopId: bigint;
+
+  /**
+   * The order's own key K — the key its stock take was filed under (every-release-goes-by-the-key). Inventory releases
+   * that take by it, on this event and no longer inside the cancel (inventory-returns-stock-on-order-cancelled): checked
+   * against `team_id` (the-cancel-event-names-the-team); while a stock count holds a rack the take came from, the
+   * release errors and the event is redelivered until the count ends (a-cancel-still-meets-the-count-first). Empty only
+   * on an order that never took stock — nothing to release, acknowledged.
+   *
+   * @generated from field: string idempotency_key = 6;
+   */
+  idempotencyKey: string;
+
+  /**
+   * The warehouse the order shipped from — where the stock goes back to. 0 only on an order that never took stock.
+   *
+   * @generated from field: uint64 warehouse_id = 7;
+   */
+  warehouseId: bigint;
 };
 
 /**
@@ -665,6 +706,71 @@ export type OrderCancelled = Message<"warehouse.events.v1.OrderCancelled"> & {
  */
 export const OrderCancelledSchema: GenMessage<OrderCancelled> = /*@__PURE__*/
   messageDesc(file_warehouse_events_v1_event, 6);
+
+/**
+ * InventoryTxCancel is the compensation of an order create that FAILED AFTER ITS STOCK TAKE WAS CALLED
+ * (the-compensation-event-is-inventory-tx-cancel): give back whatever was taken under `idempotency_key`.
+ *
+ * Published by selling_service — an ORDER event (inventory-tx-cancel-is-an-order-event) — and only as the BACKUP: the
+ * order first releases the take directly, in-process, with a context the browser leaving cannot cancel, and then
+ * publishes this (the-release-is-direct-then-the-event). Inventory is its only subscriber; a release that finds the take
+ * already released does nothing, so the direct call and this event never give stock back twice. NEVER published after
+ * the take was refused as KEY ALREADY USED — that key is another order's live take (a-used-key-is-never-cancelled).
+ *
+ * The listener releases through the same TEAM-CHECKED release as OrderTransactionRelease
+ * (the-cancel-event-names-the-team): another team's key is acknowledged and logged, never released. A rack a stock count
+ * holds makes the listener refuse, and the broker redelivers until the count ends (a-cancel-still-meets-the-count-first).
+ * A key inventory has not seen yet is claimed with no take, so a take that arrives late is refused
+ * (every-release-goes-by-the-key).
+ *
+ * `event_id` is `inventory-tx-cancel:<idempotency_key>` — one compensation per key, so a retried publish collides.
+ *
+ * @generated from message warehouse.events.v1.InventoryTxCancel
+ */
+export type InventoryTxCancel = Message<"warehouse.events.v1.InventoryTxCancel"> & {
+  /**
+   * The key the take was asked under — the order's own (the-frontend-mints-the-idempotency-key).
+   *
+   * @generated from field: string idempotency_key = 1;
+   */
+  idempotencyKey: string;
+
+  /**
+   * The SELLING team the take was made for — the release is checked against it.
+   *
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * The warehouse the take was asked of. For the log and the dead-letter triage; the key finds the take.
+   *
+   * @generated from field: uint64 warehouse_id = 3;
+   */
+  warehouseId: bigint;
+
+  /**
+   * Who placed the failed order — the person the release's ledger rows name (every-entry-names-who-posted-it). 0 when
+   * the caller was unidentifiable.
+   *
+   * @generated from field: uint64 actor_id = 4;
+   */
+  actorId: bigint;
+
+  /**
+   * Why the create failed, in words, for whoever reads a dead-lettered message. Nothing branches on it.
+   *
+   * @generated from field: string reason = 5;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message warehouse.events.v1.InventoryTxCancel.
+ * Use `create(InventoryTxCancelSchema)` to create a new message.
+ */
+export const InventoryTxCancelSchema: GenMessage<InventoryTxCancel> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 7);
 
 /**
  * OrderStatusChanged announces one order's PLAIN status move — every move but the placement, the cancel and the return
@@ -728,7 +834,7 @@ export type OrderStatusChanged = Message<"warehouse.events.v1.OrderStatusChanged
  * Use `create(OrderStatusChangedSchema)` to create a new message.
  */
 export const OrderStatusChangedSchema: GenMessage<OrderStatusChanged> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 7);
+  messageDesc(file_warehouse_events_v1_event, 8);
 
 /**
  * OrderReturnAccepted announces that a WAREHOUSE accepted an order's returned parcel — `return → return_completed`
@@ -808,7 +914,7 @@ export type OrderReturnAccepted = Message<"warehouse.events.v1.OrderReturnAccept
  * Use `create(OrderReturnAcceptedSchema)` to create a new message.
  */
 export const OrderReturnAcceptedSchema: GenMessage<OrderReturnAccepted> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 8);
+  messageDesc(file_warehouse_events_v1_event, 9);
 
 /**
  * RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.
@@ -909,7 +1015,7 @@ export type RestockAccepted = Message<"warehouse.events.v1.RestockAccepted"> & {
  * Use `create(RestockAcceptedSchema)` to create a new message.
  */
 export const RestockAcceptedSchema: GenMessage<RestockAccepted> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 9);
+  messageDesc(file_warehouse_events_v1_event, 10);
 
 /**
  * One line as the accept counted it. Lost and broken sit BESIDE accepted, never inside it, so
@@ -987,7 +1093,7 @@ export type RestockAcceptedLine = Message<"warehouse.events.v1.RestockAcceptedLi
  * Use `create(RestockAcceptedLineSchema)` to create a new message.
  */
 export const RestockAcceptedLineSchema: GenMessage<RestockAcceptedLine> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 10);
+  messageDesc(file_warehouse_events_v1_event, 11);
 
 /**
  * RestockCreated announces a restock was RAISED — the money left the paying account then
@@ -1047,7 +1153,7 @@ export type RestockCreated = Message<"warehouse.events.v1.RestockCreated"> & {
  * Use `create(RestockCreatedSchema)` to create a new message.
  */
 export const RestockCreatedSchema: GenMessage<RestockCreated> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 11);
+  messageDesc(file_warehouse_events_v1_event, 12);
 
 /**
  * RestockCancelled announces an ONGOING restock was called off (a-restock-is-cancelled-only-while-ongoing).
@@ -1100,7 +1206,7 @@ export type RestockCancelled = Message<"warehouse.events.v1.RestockCancelled"> &
  * Use `create(RestockCancelledSchema)` to create a new message.
  */
 export const RestockCancelledSchema: GenMessage<RestockCancelled> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 12);
+  messageDesc(file_warehouse_events_v1_event, 13);
 
 /**
  * RestockUpdated announces an edit that changed WHAT WAS PAID, or FROM WHERE (an-edit-sends-the-difference,
@@ -1159,7 +1265,7 @@ export type RestockUpdated = Message<"warehouse.events.v1.RestockUpdated"> & {
  * Use `create(RestockUpdatedSchema)` to create a new message.
  */
 export const RestockUpdatedSchema: GenMessage<RestockUpdated> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 13);
+  messageDesc(file_warehouse_events_v1_event, 14);
 
 /**
  * WarehouseTransferCreated announces a transfer OPENED, and the shipping expense typed with it — the selling team's,
@@ -1230,7 +1336,7 @@ export type WarehouseTransferCreated = Message<"warehouse.events.v1.WarehouseTra
  * Use `create(WarehouseTransferCreatedSchema)` to create a new message.
  */
 export const WarehouseTransferCreatedSchema: GenMessage<WarehouseTransferCreated> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 14);
+  messageDesc(file_warehouse_events_v1_event, 15);
 
 /**
  * WarehouseTransferUpdated announces an edit that changed the shipping cost or the account that paid it — until the
@@ -1289,7 +1395,7 @@ export type WarehouseTransferUpdated = Message<"warehouse.events.v1.WarehouseTra
  * Use `create(WarehouseTransferUpdatedSchema)` to create a new message.
  */
 export const WarehouseTransferUpdatedSchema: GenMessage<WarehouseTransferUpdated> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 15);
+  messageDesc(file_warehouse_events_v1_event, 16);
 
 /**
  * WarehouseTransferCancelled announces a transfer called off while created
@@ -1337,7 +1443,7 @@ export type WarehouseTransferCancelled = Message<"warehouse.events.v1.WarehouseT
  * Use `create(WarehouseTransferCancelledSchema)` to create a new message.
  */
 export const WarehouseTransferCancelledSchema: GenMessage<WarehouseTransferCancelled> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 16);
+  messageDesc(file_warehouse_events_v1_event, 17);
 
 /**
  * WarehouseTransferAccepted announces B counted the box in, and the courier's charge B paid at its door
@@ -1405,7 +1511,7 @@ export type WarehouseTransferAccepted = Message<"warehouse.events.v1.WarehouseTr
  * Use `create(WarehouseTransferAcceptedSchema)` to create a new message.
  */
 export const WarehouseTransferAcceptedSchema: GenMessage<WarehouseTransferAccepted> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 17);
+  messageDesc(file_warehouse_events_v1_event, 18);
 
 /**
  * LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the
@@ -1477,7 +1583,7 @@ export type LiabilityPaymentAccepted = Message<"warehouse.events.v1.LiabilityPay
  * Use `create(LiabilityPaymentAcceptedSchema)` to create a new message.
  */
 export const LiabilityPaymentAcceptedSchema: GenMessage<LiabilityPaymentAccepted> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 18);
+  messageDesc(file_warehouse_events_v1_event, 19);
 
 /**
  * ExpenseCreated announces an expense a person typed, and the account that paid it (an-expense-must-name-the-account-that-paid).
@@ -1556,7 +1662,7 @@ export type ExpenseCreated = Message<"warehouse.events.v1.ExpenseCreated"> & {
  * Use `create(ExpenseCreatedSchema)` to create a new message.
  */
 export const ExpenseCreatedSchema: GenMessage<ExpenseCreated> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 19);
+  messageDesc(file_warehouse_events_v1_event, 20);
 
 /**
  * ExpenseAdjusted announces a correction of an expense — an adjustment, or the screen's Batalkan, which is an adjustment
@@ -1643,7 +1749,7 @@ export type ExpenseAdjusted = Message<"warehouse.events.v1.ExpenseAdjusted"> & {
  * Use `create(ExpenseAdjustedSchema)` to create a new message.
  */
 export const ExpenseAdjustedSchema: GenMessage<ExpenseAdjusted> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 20);
+  messageDesc(file_warehouse_events_v1_event, 21);
 
 /**
  * 50001 — the number warehouse.event_base.v1 held before it was removed

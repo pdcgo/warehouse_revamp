@@ -3284,10 +3284,12 @@ func (x *StockTakeQuoteResponse) GetItems() []*StockTakeQuoteItem {
 type StockPickLocationsRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	WarehouseId uint64                 `protobuf:"varint,1,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
-	// The pick's reference — `order:<id>` for an order (selling_service builds it). Naming the ref rather
-	// than the order id keeps inventory_service ignorant of what a selling order IS: it recorded movements
-	// under a string, and it hands back the movements under that string.
-	Ref           string `protobuf:"bytes,2,opt,name=ref,proto3" json:"ref,omitempty"`
+	// The take's inventory transaction — the order's `transaction_id`
+	// (the-placement-page-reads-racks-by-transaction-id). The take runs before the order exists and is filed under the
+	// order's key, so the order keeps the transaction id for exactly this read. Naming the transaction rather than the
+	// order keeps inventory_service ignorant of what a selling order IS. Read only within `warehouse_id`: one building
+	// never reads another's take.
+	TransactionId uint64 `protobuf:"varint,3,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3329,11 +3331,11 @@ func (x *StockPickLocationsRequest) GetWarehouseId() uint64 {
 	return 0
 }
 
-func (x *StockPickLocationsRequest) GetRef() string {
+func (x *StockPickLocationsRequest) GetTransactionId() uint64 {
 	if x != nil {
-		return x.Ref
+		return x.TransactionId
 	}
-	return ""
+	return 0
 }
 
 // One product, on one rack, in the quantity taken FROM THAT RACK for this pick.
@@ -8732,11 +8734,11 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"_unit_cost\"Z\n" +
 	"\x16StockTakeQuoteResponse\x12@\n" +
-	"\x05items\x18\x01 \x03(\v2*.warehouse.inventory.v1.StockTakeQuoteItemR\x05items\"u\n" +
+	"\x05items\x18\x01 \x03(\v2*.warehouse.inventory.v1.StockTakeQuoteItemR\x05items\"\x93\x01\n" +
 	"\x19StockPickLocationsRequest\x12.\n" +
-	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12\x1b\n" +
-	"\x03ref\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x03ref:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"\x9f\x01\n" +
+	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12.\n" +
+	"\x0etransaction_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\rtransactionId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\bJ\x04\b\x02\x10\x03R\x03ref\"\x9f\x01\n" +
 	"\x11StockPickLocation\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x17\n" +

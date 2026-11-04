@@ -25,6 +25,8 @@ interface NoteAndSubmitCardProps {
   /** Create is a SUBMIT — the form around it owns the handler (see the page). */
   canSave: boolean;
   saving: boolean;
+  /** Beside the spinner while `saving` — "Placing order…" once the order is sent (the-form-locks-until-it-is-answered). */
+  savingText?: string;
   // ⚠ CREATE ALONE — no Save as Draft, because a person never drafts (a-draft-becomes-an-order-through-order-create),
   // and a draft is finished on this same form (the-draft-opens-in-the-order-form), so there is no Promote either.
   /** A ⚠ beside the note's title — on a draft, the note is not stored. */
@@ -40,6 +42,7 @@ export function NoteAndSubmitCard({
   compact,
   canSave,
   saving,
+  savingText,
   noteMark,
   footer,
 }: NoteAndSubmitCardProps) {
@@ -78,6 +81,7 @@ export function NoteAndSubmitCard({
                 w="full"
                 colorPalette="brand"
                 loading={saving}
+                loadingText={savingText}
                 disabled={!canSave}
                 data-testid="order-create-save"
               >

@@ -202,7 +202,7 @@ func TestOverride_WarehouseTransferTrailAndOutLeg(t *testing.T) {
 func TestOverride_UnscopedCallIsNotAnOverride(t *testing.T) {
 	svc, db, _, _ := otStocked(t)
 
-	_, err := take(svc, "order:1", &inventoryv1.OrderTransactionLine{ProductId: otKaosHitam, Quantity: 1})
+	_, err := take(svc, "key-1", &inventoryv1.OrderTransactionLine{ProductId: otKaosHitam, Quantity: 1})
 	if err != nil {
 		t.Fatalf("take: %v", err)
 	}

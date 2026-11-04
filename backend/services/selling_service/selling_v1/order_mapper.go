@@ -210,7 +210,20 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		BuyerUsername: o.BuyerUsername,
 		// The first entry into the status the list's date filter reads; 0 = not asked, or not recorded.
 		DateEnteredAtUnix: unixOrZero(o.DateEnteredAt),
+		// The key the order was created with (the-order-stores-its-idempotency-key).
+		IdempotencyKey: o.IdempotencyKey,
+		// The inventory transaction its stock was taken in; 0 = none recorded.
+		TransactionId: uint64OrZero(o.TransactionID),
 	}
+}
+
+// uint64OrZero is a nullable id as the contract spells it — 0 = none.
+func uint64OrZero(id *uint64) uint64 {
+	if id == nil {
+		return 0
+	}
+
+	return *id
 }
 
 // unixOrZero is a nullable moment as unix seconds — 0 when it was never recorded, which is how the contract spells
