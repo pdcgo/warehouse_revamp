@@ -28,13 +28,13 @@ export const TheNotesAreOnePerWriter: Story = {
     const selling = canvas.getByTestId("restock-detail-note-selling");
     await waitFor(() => expect(within(selling).getByTestId("restock-detail-note-selling-by")).toHaveTextContent(/^Ani Rahayu · /));
     // The broken photo is the page's second mark (in Produk, above), so the notes' are third and fifth.
-    await expect(within(selling).getByTestId("not-implemented-sellingNoteBy")).toHaveTextContent("3");
+    await expect(within(selling).getByTestId("not-implemented-sellingNoteBy")).toHaveTextContent("4");
 
     const warehouse = canvas.getByTestId("restock-detail-note-warehouse");
     await expect(warehouse).toHaveTextContent("No note from the warehouse yet.");
-    await expect(within(warehouse).getByTestId("not-implemented-warehouseNote")).toHaveTextContent("5");
+    await expect(within(warehouse).getByTestId("not-implemented-warehouseNote")).toHaveTextContent("6");
 
-    await expect(within(canvas.getByTestId("restock-detail-timeline-section")).getByTestId("not-implemented-trailChanges")).toHaveTextContent("6");
+    await expect(within(canvas.getByTestId("restock-detail-timeline-section")).getByTestId("not-implemented-trailChanges")).toHaveTextContent("7");
   },
 };
 
@@ -121,6 +121,6 @@ export const ARecordsNoteHasAMarkedUbah: Story = {
     const section = canvas.getByTestId("restock-detail-note-section");
 
     await expect(within(section).getByTestId("restock-notes-edit")).toBeVisible();
-    await expect(within(section).getByTestId("not-implemented-lateNote")).toHaveTextContent("4");
+    await expect(within(section).getByTestId("not-implemented-lateNote")).toHaveTextContent("5");
   },
 };

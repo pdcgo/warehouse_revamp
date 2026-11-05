@@ -1,9 +1,6 @@
-import { useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Box, Button, CloseButton, Drawer, Field, HStack, Icon, Portal, Stack, Text, Textarea } from "@chakra-ui/react";
-import { Pencil } from "lucide-react";
+import { Box, HStack, Stack, Text } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
@@ -11,8 +8,8 @@ import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_r
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamTypeBadge } from "../../components/badges/TeamTypeBadge";
 import { toaster } from "../../components/feedback/Toaster";
-import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
+import { NoteEditor } from "./NoteEditor";
 import { useRestockActors, useSaveRestockRequest } from "./queries";
 
 /** The selling team's head line — its badge, who and when, the mark on them, and an action at its end. */
@@ -40,29 +37,9 @@ export function SellingNoteHead({ request, mark, action }: { request: RestockReq
   );
 }
 
-/** The longest the selling team's note may be — the contract's `max_len`. */
-export const MAX_NOTE = 1000;
-
 // THE SELLING TEAM'S NOTE, READ — AND CHANGED FROM A BUTTON, IN PLACE (the-note-is-edited-from-a-button). One component
 // for the list's Catatan dialog and the restock page's Catatan section (owner: *"edit di detailnya?"*), so the two edit
-// the same way:
-//
-//   [Penjual]  Ani Rahayu · 29 Okt 13:05 ⚠          [✎ Ubah]        ← in any status; ⚠ past its way, where it is not kept
-//   Untuk promo 10.10
-//        ↓ Ubah
-//   ┌──────────────────────────────────────┐  ← the focus is in it
-//   │ Untuk promo 10.10                    │
-//   └──────────────────────────────────────┘
-//                                   17/1000
-//                         [Batal] [Simpan Catatan]
-//        ↓ Simpan — back to reading, the saved note in place (owner: *"close saat save maksudku"*)
-//
-// ON A PHONE THE EDIT IS A SHEET (owner: *"edit catatan di mobile tidak bagus"*, a-phone-edits-the-note-in-a-sheet). In
-// the middle of a long page the textarea shared a phone's height with the sticky title, the section chips and the
-// keyboard, and its Batal / Simpan were two small buttons in a corner. So Ubah opens a bottom sheet of its own — the
-// title, the textarea, the count, and Batal | Simpan as two equal halves. Where the note already sits in a dialog
-// (`inPlace`, the list's Catatan) it is edited where it is: a sheet over a dialog is one surface too many — only the
-// buttons take the two halves.
+// the same way — and the way itself is NoteEditor's, which the warehouse's own note shares (the-warehouse-writes-its-own-note).
 //
 // ⚠ IT SAVES THE RESTOCK WHOLE. The update replaces every field and every line while the restock is on its way, so the
 // restock passed in must be the STORED one (a by-id read, never a list's row), and it is sent back exactly as stored
@@ -93,166 +70,45 @@ export function SellingNote({
 }) {
   const { t } = useTranslation();
   const save = useSaveRestockRequest();
-  const isMobile = useIsMobile();
-  const inSheet = isMobile && !inPlace;
-  const [draft, setDraft] = useState("");
-  const [editing, setEditingState] = useState(false);
-  const input = useRef<HTMLTextAreaElement>(null);
 
   // THE NOTE IS EDITED IN ANY STATUS (owner: *"catatan bisa diedit kapanpun"*, the-note-is-edited-in-any-status) — Ubah is
   // always there. Only while the restock is on its way does the server take it: after that the head of a restock is
   // closed, the note with it, so a save is thrown away, said so, and marked.
   const storable = request.status === RestockRequestStatus.ONGOING;
-  const changed = draft.trim() !== request.note.trim();
 
-  const setEditing = (next: boolean) => {
-    setEditingState(next);
-    onEditingChange?.(next);
-  };
-
-  // UBAH OPENS THE EDIT IN PLACE. Ubah itself leaves the page as it is pressed, and the focus it held would fall outside
-  // a dialog, which a dialog reads as the reader leaving — so the textarea is drawn at once (flushSync) and takes the
-  // focus in the same click. A sheet focuses it itself, as it opens (`initialFocusEl`).
-  const startEditing = () => {
-    if (inSheet) {
-      setDraft(request.note);
-      setEditing(true);
-      return;
-    }
-    flushSync(() => {
-      setDraft(request.note);
-      setEditing(true);
-    });
-    const el = input.current;
-    if (el) {
-      el.focus();
-      el.setSelectionRange(el.value.length, el.value.length);
-    }
-  };
-
-  async function submit() {
-    if (!changed) return;
-
+  async function submit(draft: string): Promise<boolean> {
     if (!storable) {
       toaster.create({ type: "info", title: t("restock.notes.notStored") });
-      setEditing(false);
-      return;
+      return true;
     }
 
     try {
-      await save.mutateAsync({ requestId: request.id, fields: unchangedBut(request, teamId, draft.trim()) });
+      await save.mutateAsync({ requestId: request.id, fields: unchangedBut(request, teamId, draft) });
       toaster.create({ type: "success", title: t("restock.notes.saved") });
       // Back to reading — the save refreshes the restock, so the saved note is what is read.
-      setEditing(false);
+      return true;
     } catch (err) {
       toaster.create({ type: "error", title: t("restock.notes.saveFailed"), description: rpcError(err) });
+      return false;
     }
   }
 
-  // The edit's own field — in place, or in the phone's sheet.
-  const field = (
-    <Field.Root>
-      <Textarea
-        ref={input}
-        value={draft}
-        maxLength={MAX_NOTE}
-        rows={isMobile ? 5 : 4}
-        autoresize
-        // An example, not a label (every-form-field-shows-an-example).
-        placeholder={t("restock.form.notePlaceholder")}
-        aria-label={t("restock.notes.sellingLabel")}
-        data-testid="restock-notes-input"
-        onChange={(e) => setDraft(e.target.value)}
-      />
-      {/* How much of the limit is used (a-limited-field-shows-its-count). */}
-      <Field.HelperText alignSelf="end" data-testid="restock-notes-count">
-        {draft.length}/{MAX_NOTE}
-      </Field.HelperText>
-    </Field.Root>
-  );
-
-  // Batal leaves the edit — the note as it was; Simpan saves and goes back to reading. On a phone they are two equal
-  // halves of the width, under the thumb; on a desktop, two buttons at the end.
-  const halves = isMobile ? "1" : undefined;
-  const buttons = (
-    <HStack gap="2" justify="end" w={isMobile ? "full" : undefined}>
-      <Button variant="outline" flex={halves} data-testid="restock-notes-cancel-edit" onClick={() => setEditing(false)}>
-        {t("common.cancel")}
-      </Button>
-      <Button
-        colorPalette="brand"
-        flex={halves}
-        disabled={!changed}
-        loading={save.isPending}
-        data-testid="restock-notes-save"
-        onClick={() => void submit()}
-      >
-        {t("restock.notes.save")}
-      </Button>
-    </HStack>
-  );
-
-  const editingHere = editing && !inSheet;
-
   return (
     <Stack gap="2" data-testid="restock-detail-note-selling">
-      <SellingNoteHead
-        request={request}
-        mark={mark}
-        action={
-          !editingHere ? (
-            <HStack gap="1">
-              <Button size="xs" variant="outline" data-testid="restock-notes-edit" onClick={startEditing}>
-                <Icon as={Pencil} boxSize="4" />
-                {t("restock.notes.edit")}
-              </Button>
-              {!storable && lateMark}
-            </HStack>
-          ) : undefined
-        }
+      <NoteEditor
+        value={request.note}
+        head={(action) => <SellingNoteHead request={request} mark={mark} action={action} />}
+        emptyText="—"
+        onSubmit={submit}
+        saving={save.isPending}
+        testId="restock-notes"
+        textTestId="restock-detail-note"
+        ariaLabel={t("restock.notes.sellingLabel")}
+        sheetTitle={t("restock.notes.editTitle")}
+        beside={!storable && lateMark}
+        onEditingChange={onEditingChange}
+        inPlace={inPlace}
       />
-
-      {editingHere ? (
-        <Stack gap="2">
-          {field}
-          {buttons}
-        </Stack>
-      ) : (
-        <Stack gap="1">
-          <Text fontSize="sm" whiteSpace="pre-wrap" wordBreak="break-word" data-testid="restock-detail-note">
-            {request.note || "—"}
-          </Text>
-        </Stack>
-      )}
-
-      {inSheet && (
-        // A tap outside does not throw a typed note away — Batal or × do.
-        <Drawer.Root
-          open={editing}
-          onOpenChange={(e) => {
-            if (!e.open) setEditing(false);
-          }}
-          placement="bottom"
-          closeOnInteractOutside={false}
-          initialFocusEl={() => input.current}
-        >
-          <Portal>
-            <Drawer.Backdrop />
-            <Drawer.Positioner>
-              <Drawer.Content roundedTop="l3" data-testid="restock-notes-sheet">
-                <Drawer.Header>
-                  <Drawer.Title>{t("restock.notes.editTitle")}</Drawer.Title>
-                </Drawer.Header>
-                <Drawer.CloseTrigger asChild>
-                  <CloseButton size="sm" />
-                </Drawer.CloseTrigger>
-                <Drawer.Body>{field}</Drawer.Body>
-                <Drawer.Footer>{buttons}</Drawer.Footer>
-              </Drawer.Content>
-            </Drawer.Positioner>
-          </Portal>
-        </Drawer.Root>
-      )}
     </Stack>
   );
 }

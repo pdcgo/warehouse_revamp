@@ -1,44 +1,38 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Link,
-  Separator,
-  SimpleGrid,
-  Spacer,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { Badge, Box, Button, Grid, Heading, Icon, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
+import { ArrowLeft } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
-import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { useRestockRequest } from "../../features/restock/queries";
-import { DetailField } from "../../features/restock/DetailField";
-import { committedValue, courierCharge, goodsTotal, shortfall } from "../../features/restock/summary";
-import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
-import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
-import { useIsMobile } from "../../layouts/shell";
-import { formatUnixDateTime } from "../../lib/datetime";
-import { formatRupiahNumber } from "../../lib/money";
-import { LinesCard } from "./components/LinesCard";
+import { shortfall } from "../../features/restock/summary";
+import { CourierChargeFacts, DeliveryFacts } from "../../features/restock/RestockFacts";
+import { RestockNotes } from "../../features/restock/RestockNotes";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
+import { RestockTitleRow } from "../../features/restock/RestockTitleRow";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
+import { type RestockSectionKey, restockSection, restockSectionDomId } from "../../features/restock/sections";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
+import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
+import { Section } from "../../components/chrome/DetailSection";
+import { SectionNav } from "../../components/chrome/SectionNav";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../layouts/shell";
+import { useScrollSpy } from "../../lib/useScrollSpy";
+import { useStickyTitle } from "../../lib/useStickyTitle";
+import { LinesCard } from "./components/LinesCard";
 import { RESTOCK_WAREHOUSE_DETAIL_PENDING } from "./pending";
+
+// The warehouse's sections, in its own order (the-restock-page-leads-with-the-box): the box, then the info about it.
+// No Pembayaran (the-warehouse-reads-the-box-not-the-purchase).
+// The Ongkir COD it paid is a fact in Kiriman, not a section (the-warehouse-sees-the-ongkir-it-paid).
+const WAREHOUSE_ORDER: RestockSectionKey[] = ["products", "delivery", "note", "timeline"];
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -53,16 +47,27 @@ function parseRequestId(raw: string | undefined): bigint {
 //
 // The warehouse owns the two acts at its door (the-warehouse-signs-and-accepts-the-team-does-the-rest): it SIGNS for the
 // box (ongoing → arrived, or a lost parcel that turned up, lost → arrived — a-late-lost-box-is-signed-for-as-arrived) and
-// ACCEPTS it (ongoing or arrived → accepted). Those are this header's actions, with Print Labels and Receipt once it is
+// ACCEPTS it (ongoing or arrived → accepted). Those are the title row's actions, with Print Labels and Receipt once it is
 // counted in. Everything else about the restock is the selling team's, and is only read here.
 //
-// What it shows, top to bottom: the parcel (who sent it, the courier, the tracking number and its photo — what finds the
-// box), the selling team's note, the lines as counted with WHERE the good units went, the money — and the courier's
-// charge this warehouse paid at the door, owed back by the selling team and never part of the total
-// (the-couriers-charge-stays-out-of-total) — then the trail.
+// THE SCREEN RULES, AND THE SELLING PAGE'S SHAPE (owner: *"inisiasi untuk detail restok warehouse"*,
+// the-warehouse-restock-detail-follows-the-screen-rules) — the two sides of one restock read alike:
 //
-// NOT HERE: which account paid, and the invoice. They are the selling team's purchase terms, and its accounts are not
-// readable from the warehouse (FinancialAccountByIds is scoped to the owning team).
+//   ┌ Kiriman      ┐   ←  JNE0123456789 ⧉  [Dalam Perjalanan]                    [⊡ Tandai Tiba] [✓ Terima]
+//   │ Kiriman      │   ┌ Produk ── the cards, the lines ──────────────────────┐   ┌ Kiriman ── Dari · Kurir ·   ┐
+//   │              │                                                            │   Ongkir COD · Foto label · … ┘
+//   │              │   ┌ Produk ── picture, the count, the places ─────────────┐
+//   │ Produk       │   ┌ Catatan ── the selling team's, read · this warehouse's, written ┐
+//   │ Catatan      │   ┌ Riwayat                                                 ┐
+//   └ Riwayat      ┘
+//
+// ONE PAGE OF SECTIONS, the nav on the left (Section, SectionNav, useScrollSpy); the title row sticks once it scrolls
+// away; on a phone the chips stick at the top, the actions are their icons and each line is a block. The TITLE is the
+// tracking number — what finds the box at the door — never the order id.
+//
+// NOT HERE: which account paid, the order id, the supplier, the goods' price and the restock's total
+// (the-warehouse-reads-the-box-not-the-purchase). They are the selling team's purchase, and nothing at the door turns on
+// them — and its accounts are not readable from the warehouse (FinancialAccountByIds is scoped to the owning team).
 export function RestockWarehouseDetailPage() {
   const { t } = useTranslation();
   const { requestId } = useParams();
@@ -84,7 +89,29 @@ export function RestockWarehouseDetailPage() {
 
   // Who the goods are coming FROM. TeamDetail is unscoped, so the name resolves for either side.
   const requester = useTeamDetail({ teamId: requestingTeamId, enabled: requestingTeamId > 0n });
-  const channels = useShipmentChannelsByIds(request ? [request.shipmentId] : []);
+
+  // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
+  // NO PEMBAYARAN (owner: *"harga barang dan totalnya juga tidak perlu"*, the-warehouse-reads-the-box-not-the-purchase) —
+  // the goods' price and the restock's total are the selling team's purchase; the warehouse's own money is the courier's
+  // charge it paid, a fact in Kiriman.
+  const accepted = request?.status === RestockRequestStatus.ACCEPTED;
+  // THE BOX FIRST (owner: *"karena ini gudang, produk taruh atas, lalu info ada di kanan"*,
+  // the-restock-page-leads-with-the-box) — what is in it leads, then where it came from; the nav follows that order.
+  const keys = WAREHOUSE_ORDER;
+  // The info on the right where there is room beside the nav — Chakra's `xl`, as the selling page's money.
+  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
+  const stick = useStickyTitle(request !== null, isMobile);
+  const { active, scrollTo } = useScrollSpy(
+    request !== null,
+    stick.bar,
+    keys,
+    restockSectionDomId,
+    wide ? keys.filter((key) => key !== "delivery") : undefined,
+  );
+  const navSections = keys.map((key) => {
+    const entry = restockSection(key);
+    return { key, label: t(entry.titleKey), icon: entry.icon };
+  });
 
   const back = () => navigate("/inventories/restock");
 
@@ -99,8 +126,9 @@ export function RestockWarehouseDetailPage() {
     );
   }
 
+  // The first load shows the page's shape (motion-is-small-quick-and-shared).
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading rows={3} testId="restock-detail-loading" />;
   }
 
   if (error || !request || teamId === undefined) {
@@ -117,212 +145,177 @@ export function RestockWarehouseDetailPage() {
     );
   }
 
+  // Missing units are a fact about the whole delivery, so they sit in the title row. 0 until accepted.
   const missing = shortfall(request);
   const fromName = requester.data?.name || t("restock.teamRef", { id: request.requestingTeamId.toString() });
-  const accepted = request.status === RestockRequestStatus.ACCEPTED;
-  const charge = courierCharge(request);
-
-  const status = (
-    <Box data-testid="restock-detail-status">
-      <RestockStatusBadge status={request.status} />
-    </Box>
-  );
-  const missingBadge = missing > 0n && (
-    <Badge colorPalette="warning" data-testid="restock-detail-missing">
-      {t("restock.detail.missingBadge", { count: Number(missing) })}
-    </Badge>
-  );
 
   // The sign dialog's courier charge is typed and not kept (the-cod-can-be-noted-when-the-box-arrives).
   const codMark = <NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="arrivalCod" />;
 
-  return (
-    <Stack gap="section" data-testid="restock-detail-page">
-      {isMobile ? (
-        // THE PHONE HEADER IS ONE ROW — back, the number, the status, ⋯.
-        <Stack gap="1">
-          <Flex align="center" gap="2">
-            <IconButton
-              size="xs"
-              variant="ghost"
-              aria-label={t("restock.detail.back")}
-              data-testid="restock-detail-back"
-              onClick={back}
-            >
-              <Icon as={ArrowLeft} boxSize="4" />
-            </IconButton>
-            <Heading size="md" truncate data-testid="restock-detail-title">
-              #{request.id.toString()}
-            </Heading>
-            {status}
-            <Spacer />
-            <WarehouseRestockActions request={request} teamId={teamId} variant="menu" codMark={codMark} />
-          </Flex>
-          {missingBadge && <Box>{missingBadge}</Box>}
-        </Stack>
-      ) : (
+  // ── THE TITLE ROW — back, the tracking number, the status, and the acts at the door held to the right. ONE builder,
+  // drawn twice: as the page's title, and as the sticky bar once that title has scrolled behind it. ───────────────────
+  const titleRow = (stuck: boolean) => (
+    <RestockTitleRow
+      stuck={stuck}
+      request={request}
+      withOrderId={false}
+      backLabel={t("restock.detail.back")}
+      onBack={back}
+      titleRef={stick.title}
+      badges={
         <>
-          <Button size="xs" variant="ghost" alignSelf="flex-start" data-testid="restock-detail-back" onClick={back}>
-            <Icon as={ArrowLeft} boxSize="4" />
-            {t("restock.detail.back")}
-          </Button>
-
-          <Flex align="center" gap="card" wrap="wrap">
-            <Heading size="md" data-testid="restock-detail-title">
-              {t("restock.detail.requestTitle", { id: request.id.toString() })}
-            </Heading>
-            {status}
-            {missingBadge}
-            <Spacer />
-            <WarehouseRestockActions request={request} teamId={teamId} variant="buttons" codMark={codMark} />
-          </Flex>
+          <Box flexShrink={0} data-testid={stuck ? undefined : "restock-detail-status"}>
+            <RestockStatusBadge status={request.status} />
+          </Box>
+          {missing > 0n && (
+            <Badge colorPalette="warning" flexShrink={0} data-testid={stuck ? undefined : "restock-detail-missing"}>
+              {t("restock.detail.missingBadge", { count: Number(missing) })}
+            </Badge>
+          )}
         </>
-      )}
+      }
+      actions={
+        // Labelled buttons on a desktop; on a phone their icons (a-phone-header-action-is-an-icon). The bar's copy is
+        // always the compact one, its test ids suffixed `-sticky`, so a test finds each of the page's once.
+        stuck ? (
+          <Box data-testid="restock-detail-sticky-actions">
+            <WarehouseRestockActions request={request} teamId={teamId} variant="compact" codMark={codMark} idSuffix="-sticky" />
+          </Box>
+        ) : (
+          <WarehouseRestockActions
+            request={request}
+            teamId={teamId}
+            variant={isMobile ? "compact" : "buttons"}
+            codMark={codMark}
+          />
+        )
+      }
+    />
+  );
 
-      {/* What is not real yet — the courier's charge noted at Tandai Tiba, the broken photo (pending.ts). */}
+  /** A section card, keyed by its entry in `sections.ts` — its id, icon and title come from there. */
+  const section = (key: RestockSectionKey, children: ReactNode, testId: string, marks?: ReactNode) => {
+    const entry = restockSection(key);
+
+    return (
+      <Section id={restockSectionDomId(key)} icon={entry.icon} title={t(entry.titleKey)} marks={marks} testId={testId}>
+        {children}
+      </Section>
+    );
+  };
+
+  const title = titleRow(false);
+  // KIRIMAN — what finds the box at the door: who sent it, the courier, THE ONGKIR THIS WAREHOUSE PAID — the charge at the
+  // door, its note and slip, owed back by the selling team (owner: *"ongkirnya yang dibayar gudang … dibayar selling kita
+  // tidak perlu tahu"*, the-warehouse-sees-the-ongkir-it-paid) — the label's photo, when. The tracking number is the title.
+  // Before the box is counted the charge is not on the restock, so it reads "—".
+  const delivery = section(
+    "delivery",
+    <DeliveryFacts
+      request={request}
+      narrow={wide}
+      party={{ label: t("restock.detail.from"), name: fromName, testId: "restock-detail-from" }}
+      withCourierCharge
+      courierCharge={
+        accepted ? (
+          <CourierChargeFacts
+            request={request}
+            owed={t("restock.detail.courierChargeOwedToUs", { team: fromName })}
+            slipMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="courierPhoto" />}
+          />
+        ) : undefined
+      }
+    />,
+    "restock-detail-info",
+  );
+  const products = section(
+    "products",
+    <LinesCard
+      request={request}
+      brokenPhotoMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="brokenPhoto" />}
+      brokenRackMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="brokenRack" />}
+    />,
+    "restock-detail-products",
+  );
+  // ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's, READ here, never changed; this warehouse's,
+  // WRITTEN here (the-warehouse-writes-its-own-note), which nothing stores yet.
+  const note = section(
+    "note",
+    <RestockNotes
+      request={request}
+      teamId={teamId}
+      side="warehouse"
+      sellingByMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="sellingNoteBy" />}
+      warehouseMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="warehouseNoteKept" />}
+    />,
+    "restock-detail-note-section",
+  );
+  const timeline = section(
+    "timeline",
+    <RestockTimeline request={request} bare />,
+    "restock-detail-timeline-section",
+    <NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="trailChanges" />,
+  );
+
+  return (
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack
+      gap="section"
+      animationStyle="enter"
+      data-testid="restock-detail-page"
+      style={{ ["--detail-header-h" as string]: `${stick.height}px` }}
+    >
+      {/* What is not real yet (pending.ts). */}
       <NotImplementedSummary list={RESTOCK_WAREHOUSE_DETAIL_PENDING} />
 
-      {/* THE PARCEL — what finds the box at the door: who sent it, the courier, the tracking number and its photo. */}
-      <Card.Root maxW="full" overflow="hidden">
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.detail.delivery")}
-            </Text>
-            <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap="card">
-              <DetailField label={t("restock.detail.from")} value={fromName} testId="restock-detail-from" />
-              <DetailField
-                label={t("restock.detail.courier")}
-                testId="restock-detail-courier"
-                value={
-                  <HStack gap="1.5">
-                    <ShipmentChannelBadge
-                      channelId={request.shipmentId}
-                      channel={channels.data?.get(request.shipmentId.toString())}
-                    />
-                  </HStack>
-                }
-              />
-              <DetailField
-                label={t("restock.detail.tracking")}
-                testId="restock-detail-tracking"
-                value={
-                  <Stack gap="0.5">
-                    <Text as="span">{request.receipt || "—"}</Text>
-                    <HStack gap="1.5">
-                      {request.receiptFile ? (
-                        <Link
-                          href={request.receiptFile}
-                          target="_blank"
-                          rel="noreferrer"
-                          fontSize="xs"
-                          data-testid="restock-detail-receipt-photo"
-                        >
-                          <Icon as={ExternalLink} boxSize="3" />
-                          {t("restock.detail.receiptPhoto")}
-                        </Link>
-                      ) : (
-                        <Text as="span" fontSize="xs" color="fg.muted">
-                          {t("restock.detail.noReceiptPhoto")}
-                        </Text>
-                      )}
-                    </HStack>
-                  </Stack>
-                }
-              />
-              <DetailField
-                label={t("restock.detail.arrivedAt")}
-                value={request.arrivedAtUnix > 0n ? formatUnixDateTime(request.arrivedAtUnix) : ""}
-                testId="restock-detail-arrived-at"
-              />
-            </SimpleGrid>
+      {/* THE STICKY STRIP — the section chips on a phone (always), and the title bar under them, drawn over the page once
+          the title has gone behind it. */}
+      <ProductStickyStrip
+        prefix="restock-detail"
+        stripRef={stick.strip}
+        barRef={stick.bar}
+        shown={stick.past}
+        isMobile={isMobile}
+        chips={<SectionNav compact sections={navSections} ariaLabel={t("restock.detail.navLabel")} active={active} onSelect={scrollTo} />}
+      >
+        {titleRow(true)}
+      </ProductStickyStrip>
+
+      {/* THE NAVIGATION, THEN THE SECTIONS. ⚠ `minmax(0, 1fr)` so the wide table scrolls in its own box. */}
+      <Grid templateColumns={isMobile ? "minmax(0, 1fr)" : "13rem minmax(0, 1fr)"} gap="section" alignItems="start">
+        {!isMobile && (
+          <Box position="sticky" top="calc(var(--detail-header-h, 0px) + 1rem)">
+            <SectionNav sections={navSections} ariaLabel={t("restock.detail.navLabel")} active={active} onSelect={scrollTo} />
+          </Box>
+        )}
+
+        {/* THE BOX ON THE LEFT, THE INFO ON THE RIGHT (the-restock-page-leads-with-the-box) — Produk, Catatan, Riwayat
+            in the main column; Kiriman, the Ongkir COD it paid among its facts, a 20rem column beside it where there is room; in
+            the nav's order in one column otherwise. A JS branch, so no card exists twice. */}
+        {wide ? (
+          <Stack gap="section" minW="0" w="full">
+            {title}
+            <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
+              <Stack gap="section" minW="0">
+                {products}
+                {note}
+                {timeline}
+              </Stack>
+              <Stack gap="section" minW="0">
+                {delivery}
+              </Stack>
+            </Grid>
           </Stack>
-        </Card.Body>
-      </Card.Root>
-
-      {/* The selling team's note — its own help text on the form reads "anything the warehouse should know". */}
-      <Card.Root maxW="full" overflow="hidden">
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.detail.note")}
-            </Text>
-            <Text fontSize="sm" whiteSpace="pre-wrap" wordBreak="break-word" data-testid="restock-detail-note">
-              {request.note || "—"}
-            </Text>
+        ) : (
+          <Stack gap="section" minW="0" w="full">
+            {title}
+            {products}
+            {delivery}
+            {note}
+            {timeline}
           </Stack>
-        </Card.Body>
-      </Card.Root>
-
-      <LinesCard
-        request={request}
-        teamId={teamId}
-        brokenPhotoMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="brokenPhoto" />}
-      />
-
-      {/* THE MONEY — goods + shipping is the total; the courier's charge this warehouse paid at the door is owed back
-          by the selling team, on its own line, and never added in (the-couriers-charge-stays-out-of-total). */}
-      <Card.Root maxW="full" overflow="hidden">
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.detail.payment")}
-            </Text>
-            <Stack gap="1" align="end">
-              <Text fontSize="sm" color="fg.muted">
-                {t("restock.detail.subtotal")}:{" "}
-                <Text as="span" color="fg" data-testid="restock-detail-subtotal">
-                  {formatRupiahNumber(goodsTotal(request.items))}
-                </Text>
-              </Text>
-              <Text fontSize="sm" color="fg.muted">
-                {t("restock.detail.shipping")}:{" "}
-                <Text as="span" color="fg" data-testid="restock-detail-shipping">
-                  {formatRupiahNumber(request.shipmentCost)}
-                </Text>
-              </Text>
-              <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-total">
-                {t("restock.detail.total")}: {formatRupiahNumber(committedValue(request))}
-              </Text>
-            </Stack>
-
-            {accepted && (
-              <>
-                <Separator />
-                <Stack gap="1" data-testid="restock-detail-courier-charge-card">
-                  <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-                    {t("restock.detail.courierCharge")}
-                  </Text>
-                  {charge > 0n ? (
-                    <>
-                      <Text fontWeight="semibold" data-testid="restock-detail-courier-charge">
-                        {formatRupiahNumber(charge)}
-                      </Text>
-                      <Text fontSize="sm" wordBreak="break-word" data-testid="restock-detail-courier-charge-note">
-                        {request.warehouseAdditionalCostNote}
-                      </Text>
-                      <Text fontSize="xs" color="fg.muted">
-                        {t("restock.detail.courierChargeOwedToUs", { team: fromName })}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text fontSize="sm" color="fg.muted" data-testid="restock-detail-courier-charge-none">
-                      {t("restock.detail.courierChargeNone")}
-                    </Text>
-                  )}
-                </Stack>
-              </>
-            )}
-          </Stack>
-        </Card.Body>
-      </Card.Root>
-
-      <Stack gap="card">
-        <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-          {t("restock.detail.tab.timeline")}
-        </Text>
-        <RestockTimeline request={request} />
-      </Stack>
+        )}
+      </Grid>
     </Stack>
   );
 }

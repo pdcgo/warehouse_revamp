@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Box, Flex, Heading, HStack, Icon, IconButton, Span, Stack } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 
-import type { RestockRequest } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
-import { CopyText } from "../../../components/chrome/CopyText";
+import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { CopyText } from "../../components/chrome/CopyText";
 
 // A RESTOCK PAGE'S TITLE ROW — the product page's shape (owner: *"kalau menggunakan yang sesuai dengan produk detail, untuk
 // restok id tidak penting ditampilkan, kembali cuma icon saja, yang utama di restok adalah order id dan resi"*,
@@ -20,6 +20,10 @@ import { CopyText } from "../../../components/chrome/CopyText";
 // name. The restock's own #id is not shown: a restock with no order id is titled by its tracking number, and only one
 // with neither falls back to its number. ONE builder, drawn twice: as the page's title, and as the sticky bar once that
 // title has scrolled behind it.
+//
+// THE WAREHOUSE'S PAGE TOO (the-warehouse-restock-detail-follows-the-screen-rules), without the order id
+// (`withOrderId={false}`): the store's reference is the selling team's purchase term, so there the tracking number — what
+// finds the box at the door — leads.
 export function RestockTitleRow({
   stuck,
   request,
@@ -28,6 +32,7 @@ export function RestockTitleRow({
   titleRef,
   badges,
   actions,
+  withOrderId = true,
 }: {
   /** The bar's copy — smaller, its ids suffixed so the page's stay unique. */
   stuck: boolean;
@@ -38,9 +43,11 @@ export function RestockTitleRow({
   titleRef?: RefObject<HTMLDivElement>;
   badges?: ReactNode;
   actions?: ReactNode;
+  /** False on the warehouse's page — the tracking number leads. */
+  withOrderId?: boolean;
 }) {
   const { t } = useTranslation();
-  const orderId = request.invoiceRefId.trim();
+  const orderId = withOrderId ? request.invoiceRefId.trim() : "";
   const receipt = request.receipt.trim();
   // The page's copy carries the test ids; the bar's carries none of the copy controls', so nothing is found twice.
   const id = (base: string) => (stuck ? undefined : base);

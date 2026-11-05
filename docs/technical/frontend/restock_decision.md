@@ -64,6 +64,15 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack) | at Terima a line's broken units are **thrown away** (the default) **or put on a rack**, which must then be chosen; the rack is not kept yet (`dropped`) |
 | [the-courier-slip-has-an-optional-photo](#the-courier-slip-has-an-optional-photo) | the courier's charge takes an optional **photo of the slip** — at Tandai Tiba and at Terima; not kept yet (`dropped`) |
 | [the-rest-of-thonis-restock-stays-ours](#the-rest-of-thonis-restock-stays-ours) | the rest of the `thoni` restock stays ours: the count at Terima, the total above 0, one line per product, returns apart — and its backend is not this screen work's to weigh |
+| [the-detail-pages-show-the-slip-and-the-broken-rack](#the-detail-pages-show-the-slip-and-the-broken-rack) | the courier's slip photo shows under the charge on both detail pages, and the broken units' rack under the good units' places on the warehouse's — both samples (`sample`) |
+| [terima-starts-from-the-charge-noted-at-tiba](#terima-starts-from-the-charge-noted-at-tiba) | Tiba and Terima can both change the charge; Terima opens with the one already on the restock, so a charge noted at Tiba is not typed again — empty today, marked `missing` |
+| [the-warehouse-restock-detail-follows-the-screen-rules](#the-warehouse-restock-detail-follows-the-screen-rules) | the warehouse's restock page takes every screen rule and the selling page's shape — one page of sections under a nav, the tracking number as its title, the money on the right, the lines in two-line cells and blocks on a phone |
+| [the-warehouse-reads-the-box-not-the-purchase](#the-warehouse-reads-the-box-not-the-purchase) | the warehouse's restock page shows the box, not the purchase: the product's picture, and no supplier, no goods' price, no line total and no Pembayaran |
+| [the-warehouse-writes-its-own-note](#the-warehouse-writes-its-own-note) | on its own restock page the warehouse writes its note — Ubah, as the selling note's — and reads the selling team's; not kept yet (`dropped`) |
+| [the-charge-is-asked-for-before-it-is-filled](#the-charge-is-asked-for-before-it-is-filled) | the courier's charge is asked first — *Ongkir COD dari kurir: (• Tidak ada) ( Ada )*, a radio pill; on *Ada* the amount and the note (a textarea) appear and are required. At Tandai Tiba and at Terima |
+| [the-restock-page-leads-with-the-box](#the-restock-page-leads-with-the-box) | both restock pages lead with the box — Produk first, opened by five cards of what the box is — and the info on the right: Kiriman over the money (Pembayaran, Ongkir COD) |
+| [the-warehouse-sees-the-ongkir-it-paid](#the-warehouse-sees-the-ongkir-it-paid) | on the warehouse's restock page the ongkir shown is the one **it paid** — the COD charge — a fact in Kiriman after the courier, not a section; the selling team's own ongkir is not shown |
+| [a-door-photo-is-a-thumbnail-that-opens-whole](#a-door-photo-is-a-thumbnail-that-opens-whole) | a photo from the door is a small thumbnail everywhere it is read back — the selling page's Penyesuaian dialog too — and opens whole in a dialog of its own; never drawn wide and cut to fit |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -1352,3 +1361,228 @@ What it replaces: *"no photo — the courier's slip is not photographed"* in [th
 The `thoni` branch's **backend** — its storage, tables, events and locks — is not weighed in this screen work.
 
 What it replaces: nothing — the open half of [thonis-restock-is-weighed-one-feature-at-a-time](#thonis-restock-is-weighed-one-feature-at-a-time), closed.
+
+## the-detail-pages-show-the-slip-and-the-broken-rack
+
+> Owner, in chat (2026-11-05), on how the door's new extras read back on the detail pages: *"1. tampilkan 2. tampilkan"*.
+
+```
+selling, Ongkir COD     Rp 5.000 · Ongkos bongkar di gudang · [▣] ⚠2 · owed to Gudang Pusat
+warehouse, money card   Rp 5.000 · Ongkos bongkar di gudang · [▣] ⚠4 · owed by Toko Melati
+warehouse, Tempat       A-01 (5), B-02 (2)
+                        Rusak 2 → A-01  ⚠3
+```
+
+| | |
+| --- | --- |
+| the slip | a thumbnail under the charge's note, opening it whole — on both detail pages, wherever the charge is shown |
+| the rack | on the **warehouse's** page only, in the Tempat cell under the good units' places: *Rusak 2 → A-01*. The selling page shows no places at all, so none here either |
+| one component | `features/restock/PhotoView` (was `BrokenPhotoView`) — the broken photo and the slip alike, given their words |
+| ⚠ pending, `sample` | nothing keeps either (`photoSamples.ts`): a restock with a charge shows the same slip drawing; a line with broken units shows its first place as their rack. The selling page's slip is its **2** (its marks after it move up one); the warehouse page's rack is its **3**, the slip its **4** |
+| the rack's conflict | it shows a broken unit on a rack, against [a-broken-unit-is-thrown-away](../../business/inventory/context_decision.md#a-broken-unit-is-thrown-away) — `conflict: true`, said in the strip ([a-conflict-with-a-business-decision-is-said-in-its-mark](context_decision.md#a-conflict-with-a-business-decision-is-said-in-its-mark)) |
+| pinned by | `TheSlipIsShownWithTheCharge` (both pages), `TheBrokenRackIsUnderThePlaces` |
+
+What it replaces: the slip and the rack shown nowhere after Terima ([the-courier-slip-has-an-optional-photo](#the-courier-slip-has-an-optional-photo), [a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack)).
+
+## terima-starts-from-the-charge-noted-at-tiba
+
+> Owner, in chat (2026-11-05): *"tiba dan diterima bisa mengubah ongkir, kalau sudah diset di tiba, diterima tidak perlu
+> set lagi"*.
+
+```
+Tandai Tiba   Jumlah [ 15.000 ]  Untuk apa [ biaya COD ]      noted — not final
+Terima        Jumlah [ 15.000 ]  Untuk apa [ biaya COD ]      opens with it, may change it — final
+```
+
+| | |
+| --- | --- |
+| both may change it | the charge and its note are typed at Tandai Tiba and again open at Terima ([the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives)) |
+| Terima opens with it | the accept page's charge and note start from the restock's own — read once per restock, so a refetch never overwrites what is being typed; the hint says *"Kalau sudah dicatat saat Tandai Tiba, sudah terisi di sini — ubah kalau berbeda."* |
+| ⚠ pending, `missing` | Tandai Tiba keeps no charge yet, so today the charge opens empty and one noted at Tiba is typed again. The accept page's **1**, on the charge's title; its other marks move up one. The day Tiba keeps it, the page opens with it and the mark comes off |
+| pinned by | `TheChargeOpensWithTheRestocks` (502 given a charge by hand) |
+
+What it replaces: Terima always opening with an empty charge.
+
+## the-warehouse-restock-detail-follows-the-screen-rules
+
+> Owner, in chat (2026-11-05): *"inisiasi untuk detail restok warehouse"* — start the warehouse's restock page from the
+> rules every screen follows.
+
+```
+┌ ▸ Kiriman    ┐   ←  JNE0123456789 ⧉  [Dalam Perjalanan]               [⊡ Tandai Tiba] [✓ Terima]
+│   Pembayaran │   ┌ Kiriman ── Dari · Kurir · Foto label · Dibuat · Tiba ┐   ┌ Pembayaran ── Subtotal · Ongkir · Total ┐
+│   Ongkir COD │   ┌ Produk ── the count, the places (two-line cells)     ┐   └ Ongkir COD (once accepted) · its slip    ┘
+│   Produk     │   ┌ Catatan ── the selling team's, read · this warehouse's ┐
+│   Catatan    │   ┌ Riwayat                                               ┐
+└   Riwayat    ┘
+```
+
+| rule | applied |
+| --- | --- |
+| the selling page's shape | as [the-restock-detail-is-the-product-pages-shape](#the-restock-detail-is-the-product-pages-shape) — the two sides of one restock read alike: **one page of sections** (Kiriman, Pembayaran, Ongkir COD once accepted, Produk, Catatan, Riwayat) under a **nav** that scrolls and lights ([a-nav-jump-blinks-where-it-lands](context_decision.md#a-nav-jump-blinks-where-it-lands)); the money on the right where there is room ([payment-is-a-receipt-on-the-right](#payment-is-a-receipt-on-the-right)). It was a back button, a heading and five plain cards |
+| the title | **the tracking number**, copyable — what finds the box at the door. **Never the order id**: it is the selling team's purchase term, as the account is (`RestockTitleRow withOrderId={false}`). It was *Restok #501* |
+| back | its icon alone, in the title row — it was *← Kembali ke Restok* above it |
+| sticky | [sticky-sticks-to-the-window](context_decision.md#sticky-sticks-to-the-window) · [a-sticky-bar-waits-for-the-whole-title-row](context_decision.md#a-sticky-bar-waits-for-the-whole-title-row) — the same row sticks, small, once the title scrolls away; on a phone the section chips stick at the top |
+| [a-phone-header-action-is-an-icon](context_decision.md#a-phone-header-action-is-an-icon) | Tandai Tiba, Terima, Cetak Label, Struk are their icons on a phone and in the sticky bar — `WarehouseRestockActions` gained the `compact` variant (`CompactActions`) and `idSuffix`. It was a ⋯ for one or two |
+| [one-context-per-column-and-never-three-lines](context_decision.md#one-context-per-column-and-never-three-lines) | the product cell is two lines, its note an icon (`LineNoteIcon`, shared now); a problem cell is the count, then *worth · note* on one line; the Tempat cell the good places, then the broken rack. Each was three |
+| [a-table-row-lights-up](context_decision.md#a-table-row-lights-up) | a line lights up under the pointer, every cell |
+| [a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block) | on a phone each line is a block — the product, the supplier, *10 × Rp 65.000* beside its total, *Datang · Baik*, each problem with its worth and note, the places. It was a ten-column table scrolling sideways |
+| the notes | the selling team's note **read, never changed** here (`RestockNotes readOnly`) — with who and when (⚠ derived) — and this warehouse's own block (⚠ missing): one per writer ([the-notes-are-one-per-writer](#the-notes-are-one-per-writer)). It was the note's text alone |
+| [motion-is-small-quick-and-shared](context_decision.md#motion-is-small-quick-and-shared) | the page rises in; a first load is the page's shape (`ListSkeleton`), not a spinner |
+| [every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story) · [a-page-story-has-its-shells-gutter](context_decision.md#a-page-story-has-its-shells-gutter) · [nothing-runs-past-a-phones-edge](context_decision.md#nothing-runs-past-a-phones-edge) | a **Default** and a **Mobile** story lead; the stories lost Storybook's `padded` layout; the Mobile story checks the edge |
+| shared now | `RestockTitleRow`, `sections.ts`, `RestockFacts` (`DeliveryFacts` takes its party — *Tujuan* or *Dari*; `PaymentFacts` its account only when given; `CourierChargeFacts` its *owed* line) moved from the selling page to `features/restock/` |
+| ⚠ pending | seven, in the page's order: the charge at Tiba (dropped, against a business decision) · the slip (sample) · the broken photo (sample) · the broken rack (sample, against a business decision) · who wrote the selling note (derived) · this warehouse's note (missing) · what an edit changed (missing) |
+| pinned by | `Default`, `Mobile`, and every story of the page's folders |
+
+What it replaces: the warehouse page's own layout — *Restok #501* over five cards, a ten-column table on a phone.
+
+## the-warehouse-reads-the-box-not-the-purchase
+
+> Owner, in chat (2026-11-05), on the warehouse's restock page: *"di warehouse tidak perlu menampilkan pemasok"*, then
+> *"harga barang dan totalnya juga tidak perlu, gambar perlu"*.
+
+```
+BEFORE  Produk · Pemasok · Dipesan · Datang · Baik · Rusak · Kurang · Tempat · Harga/pcs · Total     + Pembayaran
+NOW     [▣] Produk · Dipesan · Datang · Baik · Rusak · Kurang · Tempat                               (no Pembayaran)
+```
+
+| | |
+| --- | --- |
+| the picture | each line leads with the product's picture (`ProductListItem`) — the crew matches a box by it before the SKU. Read with **this warehouse's** team, as the accept page reads its covers |
+| no supplier | where it was bought is the selling team's purchase; nothing at the door turns on it. Gone from the table and from a phone's block |
+| no price, no total | the goods' price per piece and the line's total are gone from the table; a phone's block says *Dipesan 10*, not *10 × Rp 65.000 … Rp 650.000* |
+| no Pembayaran | its section (subtotal, shipping, total) is gone from the page and its nav — as the warehouse's list shows no restock value ([the-warehouse-sees-the-cod-it-paid](#the-warehouse-sees-the-cod-it-paid)). The warehouse's own money is the **Ongkir COD** it paid, on the right once accepted |
+| kept | what a broken or missing unit was worth (*senilai Rp …*) beside its count |
+| pinned by | `Default` (no Pembayaran, no supplier, no *Rp* in the lines), `Courier's charge owed back` |
+
+What it replaces: the Pembayaran section, the supplier, *Harga/pcs* and *Total* in [the-warehouse-restock-detail-follows-the-screen-rules](#the-warehouse-restock-detail-follows-the-screen-rules); the story
+*Deleted store named* on this page (a deleted supplier still shows on the selling team's page).
+
+## the-warehouse-writes-its-own-note
+
+> Owner, in chat (2026-11-05): *"bisa mengubah catatan waehouse"*.
+
+```
+[Penjual]  Ani Rahayu · 29 Okt 13:05 ⚠5            ← read, no Ubah
+Untuk promo 10.10
+──────────────────────────
+[Gudang] ⚠6                          [✎ Ubah]     ← written here
+Belum ada catatan dari gudang.
+```
+
+| | |
+| --- | --- |
+| each writer its own | on the warehouse's page Ubah sits on **the warehouse's** note, and the selling team's is read; on the selling team's page the reverse ([the-notes-are-one-per-writer](#the-notes-are-one-per-writer)) — `RestockNotes side="warehouse"` |
+| the edit | the selling note's own — in place on a desktop, a sheet on a phone, the count, Batal | Simpan (`NoteEditor`, taken out of `SellingNote` so both use it) |
+| ⚠ pending, `dropped` | nothing stores the warehouse's note: a save says *"Catatan gudang belum tersimpan"* and the block reads empty again. The page's **6**. On the selling team's page the block stays read and `missing` |
+| pinned by | `TheWarehouseWritesItsOwnNote` |
+
+What it replaces: the warehouse's note as a read-only, empty block on its own page.
+
+## the-charge-is-asked-for-before-it-is-filled
+
+> Owner, in chat (2026-11-05): *"tandai tiba kasih keterangan jelas kalau tidak wajib diisi, catatannya textarea"*, then
+> *"gini aja, default formnya ongkir dsb itu disabled, baru enabled saat interaksi tertentu, saran?"* — *"oke"* to a tick
+> that reveals the fields; then *"desain kurir meminta ongkir di tandai tiba aku belum suka, ada desain lain?"*, and the
+> radio pill picked of three.
+
+```
+Ongkir COD dari kurir
+(• Tidak ada) (  Ada  )                             the default — nothing to fill, nothing checked, nothing sent
+(  Tidak ada) (• Ada  )
+  Jumlah *     [ Rp 15.000 ]
+  Untuk apa *  [ biaya COD …            ] 9/200    ← a textarea
+  Foto nota (opsional)  [📷 Tambah Foto]
+```
+
+| | |
+| --- | --- |
+| the question | two **radio pills**, *Tidak ada* · *Ada*, under the section's title — *Ongkir COD dari kurir*, the owner's word — and its hint; *Tidak ada* by default. A radio pill because every choice in a dialog is one ([a-dialog-choice-is-a-radio-pill](financial_accounts_decision.md#a-dialog-choice-is-a-radio-pill)); that it is optional is said by the question itself, no *Tidak wajib* badge. A tick was tried first and turned down, as was a *+ Tambah* button and a folded section |
+| hidden, not disabled | on *Tidak ada* the fields are not drawn: the sign dialog is narrow, and a disabled field still reads as something to fill |
+| on *Ada* | the **amount and the note are required** — the person has said there was a charge. The act waits for both; the note's error shows once there is an amount, so a fresh *Ada* is not all red; Terima's line under its button says which is missing. The slip's photo stays *(opsional)* |
+| the note | a **textarea**, two rows growing, with its count (*9/200* — `a-limited-field-shows-its-count`) |
+| back to *Tidak ada* | the fields go and nothing is sent — what was typed is kept on screen, in case *Ada* comes back |
+| at Terima | the same pills; they open on **Ada** when the restock already carries a charge ([terima-starts-from-the-charge-noted-at-tiba](#terima-starts-from-the-charge-noted-at-tiba)) |
+| pinned by | `TheChargeIsAskedFirst` (`Features/Restock/CourierCharge`), `SignForBoxNotesTheCourierCharge`, `ACourierChargeNeedsANote`, `TheChargeOpensWithTheRestocks`; e2e *Accept: a delivery is counted…* picks *Ada* |
+
+What it replaces: the amount and the note always open in [the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives) and on the accept page, with the note a
+one-line input.
+
+## the-restock-page-leads-with-the-box
+
+> Owner, in chat (2026-11-05), on the warehouse's restock page: *"karena ini gudang, produk taruh atas, lalu info ada di
+> kanan"*, *"di produk kasih statistik"* — then *"kurasa selling juga sama, infonya di atas ongkir berarti"*.
+
+```
+┌ ▸ Produk     ┐   ←  title row
+│   Kiriman    │   ┌ Produk ─────────────────────────────────────┐   ┌ Kiriman ──── Dari/Tujuan · Kurir · … ┐
+│   Pembayaran │   │ [Produk 2] [Datang 29] [Baik 27] [Rusak 2] [Kurang 1] │   ┌ Pembayaran (selling only)            ┐
+│   Ongkir COD │   │ the lines …                                  │   └ Ongkir COD (once accepted)           ┘
+│   Catatan    │   ┌ Catatan ┐ ┌ Riwayat ┐
+└   Riwayat    ┘
+```
+
+| | |
+| --- | --- |
+| the order | **Produk first**, then the info — Kiriman, Pembayaran (the selling team's page only, [the-warehouse-reads-the-box-not-the-purchase](#the-warehouse-reads-the-box-not-the-purchase)), Ongkir COD once accepted — then Catatan and Riwayat. The nav follows that order; the pending marks are numbered by it |
+| where there is room (`xl`) | the main column holds Produk, Catatan, Riwayat; a 20rem column on the right holds the info, **Kiriman over the money**. Kiriman's facts take one a row there |
+| one column | the nav's order, Produk first |
+| the statistics | the Produk section opens with **five cards** (`BoxStats`, shared): *Produk* — how many, and the pieces ordered; *Datang* — of how many ordered; *Baik* — into stock; *Rusak*; *Kurang*. Before the count the four read "—", *belum dihitung*. They replace the *Baik dari dipesan* line under the table |
+| no money in them | the cards count pieces only — the warehouse sees no restock value, and the selling page has its money in Pembayaran |
+| the marks moved | the warehouse page: the charge at Tiba 1, the broken photo 2, the broken rack 3, the slip 4, then the notes and the trail; the selling page: the cancel check 1, the broken photo 2, the slip 3, then the notes and the trail |
+| pinned by | `TheStatisticsLeadTheBox`, `TheStatisticsWaitForTheCount` and `Default` (Produk leads the nav) on the warehouse's page; the selling page's stories at their new marks |
+
+What it replaces: Kiriman first and the money on the right in [the-restock-detail-is-the-product-pages-shape](#the-restock-detail-is-the-product-pages-shape) and [the-warehouse-restock-detail-follows-the-screen-rules](#the-warehouse-restock-detail-follows-the-screen-rules); the
+*Baik dari dipesan* line under both pages' tables.
+
+## the-warehouse-sees-the-ongkir-it-paid
+
+> Owner, in chat (2026-11-05): *"di gudang nilai ongkir harusnya juga ditampilkan, di mana saranmu?"* — then, to Kiriman
+> after the courier, *"okeee, tapi ongkirnya yang dibayar gudang, beda dengan yang dibayar seller, dibayar selling kita
+> tidak perlu tahu"*.
+
+```
+┌ Kiriman ─────────────────────────────┐
+│ Dari         Toko Melati              │
+│ Kurir        [JNE]                    │
+│ Ongkir COD   Rp 5.000                 │   ← what THIS warehouse paid at the door
+│              Ongkos bongkar di gudang │
+│              [▣] ⚠4                   │
+│              ditagih ke Toko Melati   │
+│ Foto label   Lihat foto ↗             │
+│ Dibuat · Tiba                         │
+└───────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| which ongkir | the warehouse's own: the **COD charge it paid the courier** (`warehouse_additional_cost`), with its note, its slip and who owes it back. **Not** the selling team's ongkir (`shipment_cost`) — that is its purchase, and nothing at the door turns on it ([the-warehouse-reads-the-box-not-the-purchase](#the-warehouse-reads-the-box-not-the-purchase)) |
+| where | a **fact in Kiriman, after the courier** — the courier and what it was paid read together (`DeliveryFacts withCourierCharge`). The Ongkir COD **section** is gone from this page and its nav |
+| before the count | the restock carries no charge until Terima (the one noted at Tiba is not kept — [the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives)), so the fact reads "—" |
+| the selling team's page | unchanged — its Ongkir COD stays a section on the right, under Pembayaran |
+| pinned by | `TheCouriersChargeIsOwedBack` (inside Kiriman, no section, no selling ongkir), `BeforeTheCountTheOngkirIsADash` |
+
+What it replaces: the warehouse page's Ongkir COD section on the right in [the-restock-page-leads-with-the-box](#the-restock-page-leads-with-the-box).
+
+## a-door-photo-is-a-thumbnail-that-opens-whole
+
+> Owner, in chat (2026-11-05): *"gambar rusak di selling perkecil saja, nanti bisa preview lagi, soalnya sepertinya yang
+> sekarang kepotong"*.
+
+```
+BEFORE  Penyesuaian dialog   Rusak 2 · senilai … · Karung sobek
+                             [ the photo, the dialog's width, cut to 14rem high ]
+
+NOW                          Rusak 2 · senilai … · Karung sobek
+                                                           [▣] ⚠2   → opens the photo whole
+```
+
+| | |
+| --- | --- |
+| everywhere | the broken photo and the courier's slip are the same 40px thumbnail in every place they are read back — the selling page's Penyesuaian dialog, a phone's block, the warehouse page's Rusak cell, the Ongkir COD fact |
+| the preview | a click opens the photo **whole**, at the dialog's width with its own height — nothing cut. From the Penyesuaian dialog it opens over it, and Esc shuts the photo first |
+| in the dialog | held right, with the row's figures and note |
+| one shape | `PhotoView` lost its `full` variant and its caption — it only draws the thumbnail now |
+| pinned by | `TheBrokenRowShowsItsPhoto` (the thumbnail at most 48px wide, opened whole, shut in order) |
+
+What it replaces: the photo at the dialog's width in [the-detail-pages-show-the-broken-photo](#the-detail-pages-show-the-broken-photo).

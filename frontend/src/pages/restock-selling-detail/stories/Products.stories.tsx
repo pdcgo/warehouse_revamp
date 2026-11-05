@@ -68,9 +68,18 @@ export const TheBrokenRowShowsItsPhoto: Story = {
     const dialog = await screen.findByTestId("restock-detail-adjustment-74-dialog");
     await waitFor(() => expect(dialog).toBeVisible());
 
+    // A THUMBNAIL, never the dialog's width cut to fit (a-door-photo-is-a-thumbnail-that-opens-whole) — opened, the photo
+    // is shown whole in its own dialog.
     const photo = within(dialog).getByTestId("restock-detail-broken-photo-74");
-    await expect(within(photo).getByRole("img")).toHaveAttribute("src", expect.stringMatching(/^data:image\/svg\+xml/));
+    const thumb = within(photo).getByRole("img");
+    await expect(thumb).toHaveAttribute("src", expect.stringMatching(/^data:image\/svg\+xml/));
+    await expect(thumb.getBoundingClientRect().width).toBeLessThanOrEqual(48);
     await expect(within(photo).getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("2");
+    await userEvent.click(within(photo).getByTestId("restock-detail-broken-photo-74-open"));
+    const whole = await screen.findByTestId("restock-detail-broken-photo-74-dialog");
+    await waitFor(() => expect(whole).toBeVisible());
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("restock-detail-broken-photo-74-dialog")).toBeNull());
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByTestId("restock-detail-adjustment-74-dialog")).toBeNull());
 
@@ -142,7 +151,7 @@ export const TheLineNote: Story = {
   render: () => <At502 />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await openTab(canvas, "products");
+    // No jump to Produk: it leads the page (the-restock-page-leads-with-the-box), and a tooltip shuts on the jump's scroll.
 
     // An icon at the end of the product — its words in its name and its tooltip, so the cell stays two lines.
     const note = canvas.getByTestId("restock-detail-line-note-71");

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -83,6 +83,8 @@ export function RestockAcceptPage() {
   // Only what the person at the door TYPES is state — the restock comes from a query. A line nobody has touched reads
   // as an empty draft, so a line the selling team adds while the box is open simply appears, uncounted.
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>({});
+  // ASKED FIRST, THEN FILLED (the-charge-is-asked-for-before-it-is-filled) — the tick that reveals the charge.
+  const [chargeAsked, setChargeAsked] = useState(false);
   const [charge, setCharge] = useState("");
   const [chargeNote, setChargeNote] = useState("");
   // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — picked, not kept.
@@ -97,6 +99,22 @@ export function RestockAcceptPage() {
 
   const query = useRestockRequest({ teamId, requestId });
   const request = query.data ?? null;
+
+  // TERIMA STARTS FROM THE CHARGE NOTED AT TIBA (owner: *"tiba dan diterima bisa mengubah ongkir, kalau sudah diset di
+  // tiba, diterima tidak perlu set lagi"*, terima-starts-from-the-charge-noted-at-tiba) — the restock's own charge and
+  // note, read ONCE per restock so a refetch never overwrites what is being typed; still open to change here.
+  // ⚠ Tandai Tiba keeps no charge yet, so this is empty today — the `codFromArrival` mark says so.
+  const seededCharge = useRef("");
+  useEffect(() => {
+    if (!request || seededCharge.current === request.id.toString()) return;
+    seededCharge.current = request.id.toString();
+    if (request.warehouseAdditionalCost > 0) {
+      // A charge already on the restock opens ticked.
+      setChargeAsked(true);
+      setCharge(String(request.warehouseAdditionalCost));
+      setChargeNote(request.warehouseAdditionalCostNote);
+    }
+  }, [request]);
   const items = request?.items ?? [];
   const loading = query.isPending && teamId !== undefined && requestId !== 0n;
   const loadError = query.isError ? rpcError(query.error) : "";
@@ -112,9 +130,13 @@ export function RestockAcceptPage() {
   const updater = (itemId: bigint) => (fn: (d: LineDraft) => LineDraft) =>
     setDrafts((prev) => ({ ...prev, [itemId.toString()]: fn(prev[itemId.toString()] ?? emptyLine()) }));
 
-  const courierCharge = toRupiah(charge);
-  // The charge's note is required once it is above 0 (the-courier-is-paid-once-per-restock).
-  const chargeNoteMissing = courierCharge > 0 && chargeNote.trim() === "";
+  // Unticked, there is no charge, whatever was typed before the tick came off.
+  const courierCharge = chargeAsked ? toRupiah(charge) : 0;
+  // Ticked, the amount and the note are both required (the-courier-is-paid-once-per-restock); the note's error shows once
+  // there is an amount, so a fresh tick is not all red.
+  const chargeAmountMissing = chargeAsked && courierCharge <= 0;
+  const chargeNoteMissing = chargeAsked && courierCharge > 0 && chargeNote.trim() === "";
+  const chargeIncomplete = chargeAsked && (courierCharge <= 0 || chargeNote.trim() === "");
 
   // The landed unit price: shipping + the courier's charge, spread over every unit ORDERED in the restock
   // (unit-price-is-line-price-plus-costs-per-unit, all-qty-is-every-unit-ordered). It does not move as the box is
@@ -130,7 +152,7 @@ export function RestockAcceptPage() {
   });
 
   const unfinished = lines.filter((l) => !l.st.ready).length;
-  const ready = lines.length > 0 && unfinished === 0 && !chargeNoteMissing;
+  const ready = lines.length > 0 && unfinished === 0 && !chargeIncomplete;
   const busy = accept.isPending;
 
   const ordered = allQty;
@@ -155,7 +177,7 @@ export function RestockAcceptPage() {
       // swallowed (restock-accept/pending.ts).
       const broken = lines.filter((l) => l.st.broken > 0n);
       const notKept = [
-        chargePhoto && t("restock.accept.notKept.courierPhoto"),
+        chargeAsked && chargePhoto && t("restock.accept.notKept.courierPhoto"),
         broken.some((l) => l.draft.brokenPhoto) && t("restock.accept.notKept.brokenPhoto"),
         broken.some((l) => l.draft.brokenTo === "rack") && t("restock.accept.notKept.brokenRack"),
       ].filter(Boolean);
@@ -261,7 +283,11 @@ export function RestockAcceptPage() {
         <Text fontSize="xs" color="warning.fg" data-testid="accept-progress">
           {t("restock.accept.progress", { count: unfinished })}
         </Text>
-      ) : chargeNoteMissing ? (
+      ) : chargeAmountMissing ? (
+        <Text fontSize="xs" color="warning.fg" data-testid="accept-progress">
+          {t("restock.accept.courier.amountRequired")}
+        </Text>
+      ) : chargeIncomplete ? (
         <Text fontSize="xs" color="warning.fg" data-testid="accept-progress">
           {t("restock.accept.courier.noteRequired")}
         </Text>
@@ -350,14 +376,16 @@ export function RestockAcceptPage() {
       {/* The courier's charge lives OUTSIDE the summary cards (owner): everything in them is already on the record,
           and this is a figure the person at the door types. It moves the owed line above and every HPP below. */}
       <CourierCharge
+        asked={chargeAsked}
+        onAsked={setChargeAsked}
         amount={charge}
         note={chargeNote}
-        charged={courierCharge > 0n}
         noteMissing={chargeNoteMissing}
         onAmount={setCharge}
         onNote={setChargeNote}
         photo={chargePhoto}
         onPhoto={setChargePhoto}
+        mark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="codFromArrival" />}
         photoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="courierPhoto" />}
       />
 

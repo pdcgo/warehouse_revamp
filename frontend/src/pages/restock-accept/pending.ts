@@ -5,9 +5,12 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // position here.
 
 /** One unwired part of the page. The id is also its i18n key (`restock.accept.pending.<id>`). */
-export type PendingId = "courierPhoto" | "brokenPhoto" | "brokenRack";
+export type PendingId = "codFromArrival" | "courierPhoto" | "brokenPhoto" | "brokenRack";
 
 const PARTS: PendingPart<PendingId>[] = [
+  // ⚠ THE CHARGE NOTED AT TIBA IS NOT HERE (terima-starts-from-the-charge-noted-at-tiba): the charge opens with the
+  // restock's own, and Tandai Tiba keeps none yet — so a charge noted there is MISSING, and must be typed again.
+  { id: "codFromArrival", kind: "missing" },
   // ⚠ THE COURIER'S SLIP IS THROWN AWAY (the-courier-slip-has-an-optional-photo): the accept carries the charge and its
   // note, not a photo, and the picked file is never uploaded.
   { id: "courierPhoto", kind: "dropped" },

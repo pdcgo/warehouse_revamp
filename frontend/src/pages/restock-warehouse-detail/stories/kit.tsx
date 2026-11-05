@@ -39,7 +39,8 @@ export const At507 = routedAt(507n);
 /** Everything in a file's meta but its title. */
 export const WAREHOUSE_DETAIL_META = {
   component: At501,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  // No "padded" layout: a page story is framed by its shell's gutter (a-page-story-has-its-shells-gutter).
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(11n)();
     asRole(Role.WAREHOUSE_STAFF)();
@@ -52,10 +53,11 @@ export async function loaded(canvasElement: HTMLElement) {
   return canvas;
 }
 
+/** The title row's acts — the page's own copy; the sticky bar's (`-sticky`) is the same set again. */
 export function actionsIn(canvasElement: HTMLElement): string[] {
-  return [...canvasElement.querySelectorAll<HTMLElement>("[data-testid^='restock-action-']")].map(
-    (el) => el.dataset.testid ?? "",
-  );
+  return [...canvasElement.querySelectorAll<HTMLElement>("[data-testid^='restock-action-']")]
+    .map((el) => el.dataset.testid ?? "")
+    .filter((id) => !id.endsWith("-sticky"));
 }
 
 export function trailRows(canvasElement: HTMLElement): HTMLElement[] {

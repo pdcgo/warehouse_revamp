@@ -1564,6 +1564,19 @@
         "brokenPhoto": {
           "label": "Broken product photo",
           "reason": "A sample — no photo is kept yet, so every broken line shows the same drawing."
+        },
+        "courierPhoto": {
+          "label": "Courier's slip photo",
+          "reason": "A sample — no photo of the slip is kept yet, so every restock with a charge shows the same drawing."
+        },
+        "brokenRack": {
+          "label": "Broken products' rack",
+          "reason": "A sample — Put on a rack is not kept yet, so the line's first place is shown as where the broken units went.",
+          "conflict": "a broken unit is thrown away — no rack holds it."
+        },
+        "warehouseNoteKept": {
+          "label": "The warehouse's note",
+          "reason": "Written here and not kept — the warehouse's note has nowhere to go yet; a save says so."
         }
       },
       "navLabel": "Restock sections",
@@ -1579,9 +1592,23 @@
       "notCounted": "Not counted yet",
       "brokenPhoto": {
         "title": "Broken Products Photo",
-        "caption": "Photo of the broken products",
-        "alt": "Photo of the broken {{name}}",
-        "open": "Open the photo of the broken {{name}}"
+        "alt": "Photo of the broken {{name}}"
+      },
+      "photoOpen": "Open: {{what}}",
+      "slipPhoto": {
+        "title": "Courier's Slip",
+        "alt": "Photo of the courier's slip"
+      },
+      "brokenRack": "Broken {{count}} → {{rack}}",
+      "stat": {
+        "products": "Products",
+        "ordered_one": "{{count}} pc ordered",
+        "ordered_other": "{{count}} pcs ordered",
+        "ofOrdered_one": "of {{count}} ordered",
+        "ofOrdered_other": "of {{count}} ordered",
+        "intoStock": "into stock",
+        "pcs_one": "{{count}} pc",
+        "pcs_other": "{{count}} pcs"
       }
     },
     "timeline": {
@@ -1873,14 +1900,18 @@
       "placementPlaceholder": "Select a placement",
       "placementQty": "Units on this placement",
       "courier": {
-        "title": "Courier's charge at the door",
-        "hint": "What the courier asked when handing the parcel over. The warehouse pays it and the selling team owes it back — it is not part of the restock's total.",
+        "title": "Courier's COD charge",
+        "hint": "What the courier asked when handing the parcel over. The warehouse pays it and the selling team owes it back — it is not part of the restock's total. Noted at Mark Arrived, it is filled in here — change it if it differs.",
         "amount": "Amount",
         "note": "What it was for",
         "notePlaceholder": "e.g. COD handling fee",
         "noteRequired": "Say what the courier's charge was for.",
         "photo": "Courier's slip photo",
-        "photoAlt": "Photo of the courier's slip"
+        "photoAlt": "Photo of the courier's slip",
+        "optional": "(optional)",
+        "amountRequired": "Enter the courier's charge.",
+        "askedNone": "None",
+        "askedYes": "Yes"
       },
       "brokenPhoto": {
         "alt": "Photo of the broken products"
@@ -1898,6 +1929,10 @@
           "label": "Broken products' rack",
           "reason": "Put on a rack is not kept — the broken units are still recorded as thrown away.",
           "conflict": "a broken unit is thrown away — no rack holds it."
+        },
+        "codFromArrival": {
+          "label": "Charge noted at Mark Arrived",
+          "reason": "The charge opens with the restock's own — and marking arrived keeps none yet, so one noted there must be entered again."
         }
       },
       "brokenTo": {
@@ -1957,7 +1992,7 @@
         "dismiss": "Not Yet",
         "tracking": "Tracking number on the label: {{receipt}}",
         "noTracking": "No tracking number was given — check the box against its lines.",
-        "courierHint": "If the courier asked for something when handing the box over. Optional — it can still be entered or changed at Accept."
+        "courierHint": "If the courier asked for a charge when handing the box over — it can still be entered or changed at Accept."
       },
       "toast": {
         "cancelled": "Restock cancelled",
@@ -1987,7 +2022,10 @@
       "save": "Save Notes",
       "saved": "Notes saved",
       "saveFailed": "Couldn't save the notes",
-      "notStored": "Not saved — once the restock has arrived the server does not take a note change yet."
+      "notStored": "Not saved — once the restock has arrived the server does not take a note change yet.",
+      "warehouseNotStored": "The warehouse's note was not kept — nothing stores it yet.",
+      "warehouseLabel": "The warehouse's note",
+      "warehouseEditTitle": "Edit the Warehouse's Note"
     },
     "photo": {
       "add": "Add Photo",

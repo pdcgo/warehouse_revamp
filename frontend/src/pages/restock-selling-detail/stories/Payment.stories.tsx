@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { At503, SELLING_DETAIL_META, loaded } from "./kit";
 
@@ -83,5 +83,22 @@ export const OngkirCodIsASectionOnceAccepted: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await expect(canvas.queryByTestId("section-nav-courier")).toBeNull();
+  },
+};
+
+// THE COURIER'S SLIP (owner: *"tampilkan"*, the-detail-pages-show-the-slip-and-the-broken-rack) — under the charge's note,
+// a thumbnail that opens it whole. A SAMPLE, the page's second mark.
+export const TheSlipIsShownWithTheCharge: Story = {
+  name: "Slip photo",
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const slip = canvas.getByTestId("restock-detail-courier-photo");
+
+    await expect(within(slip).getByTestId("not-implemented-courierPhoto")).toHaveTextContent("3");
+    await userEvent.click(within(slip).getByTestId("restock-detail-courier-photo-open"));
+    const whole = await screen.findByTestId("restock-detail-courier-photo-dialog");
+    await waitFor(() => expect(whole).toBeVisible());
+    await expect(within(whole).getByRole("img")).toHaveAttribute("src", expect.stringMatching(/^data:image\/svg\+xml/));
   },
 };

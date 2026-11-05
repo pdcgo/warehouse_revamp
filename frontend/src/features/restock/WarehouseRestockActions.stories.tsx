@@ -67,10 +67,14 @@ export const SignForBoxNotesTheCourierCharge: Story = {
 
     await expect(screen.getByText(/stock does not go up until you accept it/)).toBeVisible();
     await expect(within(screen.getByTestId("sign-courier")).getByTestId("story-cod-mark")).toBeVisible();
-    // The slip's photo sits under it, optional (the-courier-slip-has-an-optional-photo).
-    await expect(screen.getByTestId("sign-courier-photo-pick")).toBeVisible();
-    // Optional — nothing typed, the sign goes ahead.
+    // ASKED FIRST (the-charge-is-asked-for-before-it-is-filled) — unticked, nothing to fill, and the sign goes ahead.
+    await expect(screen.queryByTestId("sign-courier-charge")).toBeNull();
     await expect(confirm).toBeEnabled();
+
+    // Ticked, the amount and the note are required — the sign waits for them; the slip's photo is optional.
+    await userEvent.click(screen.getByTestId("sign-courier-asked-yes"));
+    await expect(await screen.findByTestId("sign-courier-photo-pick")).toBeVisible();
+    await expect(confirm).toBeDisabled();
 
     await userEvent.type(screen.getByTestId("sign-courier-charge"), "15000", { delay: 20 });
     await expect(await screen.findByTestId("sign-courier-note-error")).toBeVisible();

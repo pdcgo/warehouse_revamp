@@ -3,7 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { restockFixture } from "../../../.storybook/restockFixtures";
-import { restockRequestService } from "../../../.storybook/restockStub";
+import { resetRestockStub, restockRequestService } from "../../../.storybook/restockStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { RestockProblemType, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -112,6 +112,13 @@ async function acceptControl(canvasElement: HTMLElement) {
   const item = await screen.findByTestId("accept-submit");
   await waitFor(() => expect(item).toBeVisible());
   return item;
+}
+
+// The charge is asked first (the-charge-is-asked-for-before-it-is-filled) — Ada, and its fields appear.
+async function askCharge(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByTestId("accept-courier-asked-yes"));
+  await canvas.findByTestId("accept-courier-charge");
 }
 
 function blocked(el: HTMLElement) {
@@ -284,6 +291,11 @@ export const ACourierChargeNeedsANote: Story = {
     await countWhole(canvasElement, RICE.productId, A_01_2);
     await expectAccept(canvasElement, true);
 
+    // Ticked, the charge is required — Accept waits for an amount.
+    await askCharge(canvasElement);
+    await expectAccept(canvasElement, false);
+    await expect(canvas.getByTestId("accept-progress")).toHaveTextContent("Enter the courier's charge.");
+
     await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
     await expect(await canvas.findByTestId("accept-courier-note-error")).toBeInTheDocument();
     await expectAccept(canvasElement, false);
@@ -309,6 +321,7 @@ export const TheChargeStaysOutOfTheTotal: Story = {
     // 400.000 ÷ 12 + 15.000 ÷ 17 units ordered = 34.215,69.
     await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.216");
 
+    await askCharge(canvasElement);
     await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
 
     await waitFor(() => expect(canvas.getByTestId("accept-courier-owed")).toHaveTextContent("5.000"));
@@ -359,7 +372,7 @@ export const ABrokenLineTakesAPhoto: Story = {
     const photo = within(await line.findByTestId(`accept-broken-photo-${pid}`));
     await expect(photo.getByTestId(`accept-broken-photo-${pid}-pick`)).toHaveTextContent("Add Photo");
     // The page's second mark — the courier's slip, above the lines, is the first.
-    await expect(photo.getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("2");
+    await expect(photo.getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("3");
     await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
 
     await userEvent.upload(photo.getByTestId(`accept-broken-photo-${pid}-input`), PHOTO());
@@ -390,7 +403,7 @@ export const BrokenUnitsCanGoOnARack: Story = {
     await expectAccept(canvasElement, true);
 
     await userEvent.click(to.getByTestId(`accept-broken-to-rack-${pid}`));
-    await expect(to.getByTestId("not-implemented-brokenRack")).toHaveTextContent("3");
+    await expect(to.getByTestId("not-implemented-brokenRack")).toHaveTextContent("4");
     await expect(await to.findByTestId(`accept-broken-place-error-${pid}`)).toBeVisible();
     await expectAccept(canvasElement, false);
 
@@ -417,9 +430,10 @@ export const BrokenUnitsCanGoOnARack: Story = {
 export const TheCouriersSlipTakesAPhoto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
+    await askCharge(canvasElement);
     const slip = within(canvas.getByTestId("accept-courier-photo"));
 
-    await expect(slip.getByTestId("not-implemented-courierPhoto")).toHaveTextContent("1");
+    await expect(slip.getByTestId("not-implemented-courierPhoto")).toHaveTextContent("2");
     await userEvent.upload(slip.getByTestId("accept-courier-photo-input"), PHOTO());
     await waitFor(() => expect(slip.getByTestId("accept-courier-photo-shown")).toHaveTextContent("rusak.png"));
   },
@@ -431,6 +445,9 @@ export const AcceptingSaysWhatWasNotKept: Story = {
     const canvas = await loaded(canvasElement);
     const pid = COFFEE.productId;
 
+    await askCharge(canvasElement);
+    await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
+    await typeInto(canvas.getByTestId("accept-courier-note"), "Biaya COD");
     await userEvent.upload(within(canvas.getByTestId("accept-courier-photo")).getByTestId("accept-courier-photo-input"), PHOTO());
     await count(canvasElement, pid, "12", "1");
     const line = await lineOf(canvasElement, pid);
@@ -466,6 +483,7 @@ export const AcceptingCountsTheBoxIn: Story = {
     await count(canvasElement, RICE.productId, "4");
     await place(canvasElement, RICE.productId, 0, A_01_2);
 
+    await askCharge(canvasElement);
     await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
     await typeInto(canvas.getByTestId("accept-courier-note"), "Biaya COD");
 
@@ -489,5 +507,37 @@ export const AcceptingCountsTheBoxIn: Story = {
 
     const rice = stored.items!.find((l) => l.productId === RICE.productId)!;
     await expect(rice.problems!.find((p) => p.type === RestockProblemType.MISSING)?.count).toBe(1n);
+  },
+};
+
+// TERIMA STARTS FROM THE CHARGE NOTED AT TIBA (owner: *"kalau sudah diset di tiba, diterima tidak perlu set lagi"*,
+// terima-starts-from-the-charge-noted-at-tiba) — the charge and its note open with the restock's own, still open to change.
+// Tandai Tiba keeps none yet, so this story gives 502 one by hand; the page's first mark says the rest is missing.
+function arrivedWithACharge() {
+  const saved = { cost: ARRIVED.warehouseAdditionalCost, note: ARRIVED.warehouseAdditionalCostNote };
+  ARRIVED.warehouseAdditionalCost = 15000;
+  ARRIVED.warehouseAdditionalCostNote = "Biaya COD";
+  resetRestockStub();
+
+  return () => {
+    ARRIVED.warehouseAdditionalCost = saved.cost;
+    ARRIVED.warehouseAdditionalCostNote = saved.note;
+    resetRestockStub();
+  };
+}
+
+export const TheChargeOpensWithTheRestocks: Story = {
+  beforeEach: arrivedWithACharge,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("accept-courier-charge")).toHaveValue("15.000"));
+    await expect(canvas.getByTestId("accept-courier-asked-yes")).toHaveAttribute("data-state", "checked");
+    await expect(canvas.getByTestId("accept-courier-note")).toHaveValue("Biaya COD");
+    await expect(within(canvas.getByTestId("accept-courier")).getByTestId("not-implemented-codFromArrival")).toHaveTextContent("1");
+
+    // Still open to change.
+    await typeInto(canvas.getByTestId("accept-courier-charge"), "20000");
+    await expect(canvas.getByTestId("accept-courier-charge")).toHaveValue("20.000");
   },
 };

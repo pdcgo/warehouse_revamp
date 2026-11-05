@@ -1,14 +1,13 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Box, Button, CloseButton, Dialog, Flex, HStack, Icon, Portal, Separator, Span, Stack, Table, Text, Tooltip } from "@chakra-ui/react";
-import { CircleCheck, MessageSquareText } from "lucide-react";
+import { Badge, Button, CloseButton, Dialog, Flex, HStack, Icon, Portal, Separator, Span, Stack, Table, Text } from "@chakra-ui/react";
+import { CircleCheck } from "lucide-react";
 
 import type { RestockRequest, RestockRequestItem } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockProblemType, RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { lineTotal, unitPrice } from "../../../features/restock/lines";
 import {
-  askedQuantity,
   brokenQuantity,
   goodQuantity,
   missingQuantity,
@@ -16,8 +15,10 @@ import {
   problemValue,
 } from "../../../features/restock/summary";
 import { LineSupplier, useLineSuppliers } from "../../../features/restock/LineSupplier";
-import { BrokenPhotoView } from "../../../features/restock/BrokenPhotoView";
-import { brokenPhotoSample } from "../../../features/restock/brokenPhotoSample";
+import { PhotoView } from "../../../features/restock/PhotoView";
+import { BoxStats } from "../../../features/restock/BoxStats";
+import { LineNoteIcon } from "../../../features/restock/LineNoteIcon";
+import { brokenPhotoSample } from "../../../features/restock/photoSamples";
 import { useProductsByIds } from "../../../features/products/queries";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { formatRupiahNumber } from "../../../lib/money";
@@ -59,7 +60,7 @@ export interface ProductsPanelProps {
 // what it was worth — and on a phone each line is a block (a-phone-reads-each-line-as-a-block).
 //
 // THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — in the Penyesuaian dialog under the broken row, and as a
-// thumbnail in a phone's block. ⚠ A SAMPLE (brokenPhotoSample.ts): nothing stores one yet.
+// thumbnail in a phone's block. ⚠ A SAMPLE (photoSamples.ts): nothing stores one yet.
 export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPanelProps) {
   const { t } = useTranslation();
 
@@ -72,7 +73,6 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
   });
   const { suppliers, channels } = useLineSuppliers(teamId, items);
 
-  const good = items.reduce((sum, item) => sum + goodQuantity(item), 0n);
   const isMobile = useIsMobile();
   const coverOf = (item: RestockRequestItem) => covers.data?.get(item.productId.toString());
 
@@ -80,6 +80,9 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
   // inside a card.
   return (
         <Stack gap="card" minW="0">
+          {/* What the box is, in five cards — as the warehouse's page (the-restock-page-leads-with-the-box). */}
+          <BoxStats request={request} />
+
           {isMobile ? (
             <Stack gap="3" data-testid="restock-detail-items">
               {items.map((item) => (
@@ -167,15 +170,6 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
               </Table.Body>
             </Table.Root>
           </Table.ScrollArea>
-          )}
-
-          {counted && (
-            <Text fontSize="sm" color="fg.muted" textAlign="end">
-              {t("restock.detail.goodOfOrdered")}:{" "}
-              <Text as="span" fontWeight="medium" color="fg" data-testid="restock-detail-good-total">
-                {good.toString()} / {askedQuantity(items).toString()}
-              </Text>
-            </Text>
           )}
         </Stack>
   );
@@ -286,8 +280,19 @@ function AdjustmentDialog({ item, photoMark }: { item: RestockRequestItem; photo
             {note}
           </Text>
         )}
+        {/* A THUMBNAIL, held right with the row's figures — it opens the photo whole (owner: *"gambar rusak di selling
+            perkecil saja, nanti bisa preview lagi"*, a-door-photo-is-a-thumbnail-that-opens-whole). */}
         {type === RestockProblemType.BROKEN && photo && (
-          <BrokenPhotoView url={photo} name={item.name} variant="full" mark={photoMark} testId={`restock-detail-broken-photo-${pid}`} />
+          <Flex justify="end">
+            <PhotoView
+              url={photo}
+              title={t("restock.detail.brokenPhoto.title")}
+              alt={t("restock.detail.brokenPhoto.alt", { name: item.name })}
+              subject={item.name}
+              mark={photoMark}
+              testId={`restock-detail-broken-photo-${pid}`}
+            />
+          </Flex>
         )}
       </Stack>
     );
@@ -326,37 +331,6 @@ function AdjustmentDialog({ item, photoMark }: { item: RestockRequestItem; photo
   );
 }
 
-// THE LINE'S NOTE, AS AN ICON — at the end of the product, its words in the tooltip and in its name, so the product
-// cell stays two lines. A note is rare (a line added after arrival carries one), so a line without one shows nothing.
-function LineNoteIcon({ note, productId }: { note: string; productId: bigint }) {
-  const { t } = useTranslation();
-  const text = t("restock.detail.lineNote", { note });
-
-  return (
-    <Tooltip.Root openDelay={150} closeDelay={80}>
-      <Tooltip.Trigger asChild>
-        <Box
-          as="span"
-          tabIndex={0}
-          display="inline-flex"
-          color="fg.muted"
-          flexShrink={0}
-          aria-label={text}
-          data-testid={`restock-detail-line-note-${productId}`}
-        >
-          <Icon as={MessageSquareText} boxSize="4" />
-        </Box>
-      </Tooltip.Trigger>
-      <Portal>
-        <Tooltip.Positioner>
-          <Tooltip.Content maxW="xs" data-testid={`restock-detail-line-note-${productId}-text`}>
-            {text}
-          </Tooltip.Content>
-        </Tooltip.Positioner>
-      </Portal>
-    </Tooltip.Root>
-  );
-}
 
 // ONE LINE ON A PHONE (a-phone-reads-each-line-as-a-block) — the product at full width, where it was bought, the
 // arithmetic as a line, then what the box held and what went wrong, each a line of its own; its note, when it has one,
@@ -439,7 +413,14 @@ function LineBlock({
       )}
       {problem(RestockProblemType.BROKEN, broken, t("restock.problem.broken"), `restock-detail-broken-${pid}`)}
       {photo && (
-        <BrokenPhotoView url={photo} name={item.name} variant="thumb" mark={photoMark} testId={`restock-detail-broken-photo-${pid}`} />
+        <PhotoView
+          url={photo}
+          title={t("restock.detail.brokenPhoto.title")}
+          alt={t("restock.detail.brokenPhoto.alt", { name: item.name })}
+          subject={item.name}
+          mark={photoMark}
+          testId={`restock-detail-broken-photo-${pid}`}
+        />
       )}
       {problem(RestockProblemType.MISSING, missing, t("restock.problem.missing"), `restock-detail-missing-${pid}`)}
       {item.note && (

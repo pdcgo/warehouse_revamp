@@ -2,45 +2,34 @@ import type { ReactNode } from "react";
 import { Box, CloseButton, Dialog, HStack, Image, Portal, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-// THE PHOTO OF A LINE'S BROKEN UNITS, READ BACK (a-broken-product-carries-a-photo) — the selling team's and the
-// warehouse's detail pages show it beside the broken row, the same way.
+// A PHOTO TAKEN AT THE DOOR, READ BACK — the broken units' (the-detail-pages-show-the-broken-photo) and the courier's
+// slip (the-detail-pages-show-the-slip-and-the-broken-rack). The selling team's and the warehouse's detail pages show it
+// the same way: A SMALL SQUARE THAT OPENS THE PHOTO WHOLE, in a dialog of its own — in a cell, a card, a phone's block, and
+// in the selling page's Penyesuaian dialog too (owner: *"gambar rusak di selling perkecil saja, nanti bisa preview lagi,
+// soalnya sepertinya yang sekarang kepotong"*, a-door-photo-is-a-thumbnail-that-opens-whole). It was drawn there at the
+// dialog's width and cut to fit; the photo is only ever shown whole when it is opened.
 //
-//   full   the photo at the dialog's width, under the row's note — inside the selling page's Penyesuaian dialog,
-//          which is already the "look closer" step
-//   thumb  a small square in a cell or a phone block; it opens the photo whole in a dialog
-//
-// The pages pass the URL — today the SAMPLE (brokenPhotoSample.ts), marked by each page's own pending mark.
-export function BrokenPhotoView({
+// The pages pass the URL — today a SAMPLE (photoSamples.ts), marked by each page's own pending mark.
+export function PhotoView({
   url,
-  name,
-  variant,
+  title,
+  alt,
+  subject,
   mark,
   testId,
 }: {
   url: string;
-  /** The product, for the dialog's title and the picture's alt. */
-  name: string;
-  variant: "full" | "thumb";
+  /** The opened dialog's title — Title Case. */
+  title: string;
+  /** What the picture shows — said to a screen reader. */
+  alt: string;
+  /** What it belongs to — the product, the restock — under the dialog's title. */
+  subject: string;
   mark?: ReactNode;
-  /** `<testId>` on the picture; `<testId>-open` on the thumb, `<testId>-dialog` on what it opens. */
+  /** `<testId>` on the thumbnail's row; `<testId>-open` on the thumb, `<testId>-dialog` on what it opens. */
   testId: string;
 }) {
   const { t } = useTranslation();
-  const alt = t("restock.detail.brokenPhoto.alt", { name });
-
-  if (variant === "full") {
-    return (
-      <Stack gap="1" data-testid={testId}>
-        <Image src={url} alt={alt} w="full" maxH="56" objectFit="cover" borderRadius="md" borderWidth="1px" />
-        <HStack gap="1.5" justify="end">
-          <Text fontSize="xs" color="fg.muted">
-            {t("restock.detail.brokenPhoto.caption")}
-          </Text>
-          {mark}
-        </HStack>
-      </Stack>
-    );
-  }
 
   return (
     <HStack gap="1.5" data-testid={testId}>
@@ -53,7 +42,7 @@ export function BrokenPhotoView({
             overflow="hidden"
             borderWidth="1px"
             cursor="zoom-in"
-            aria-label={t("restock.detail.brokenPhoto.open", { name })}
+            aria-label={t("restock.detail.photoOpen", { what: alt })}
             data-testid={`${testId}-open`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -66,9 +55,9 @@ export function BrokenPhotoView({
             <Dialog.Content data-testid={`${testId}-dialog`}>
               <Dialog.Header>
                 <Stack gap="0.5" minW="0">
-                  <Dialog.Title>{t("restock.detail.brokenPhoto.title")}</Dialog.Title>
+                  <Dialog.Title>{title}</Dialog.Title>
                   <Text fontSize="sm" color="fg.muted" truncate>
-                    {name}
+                    {subject}
                   </Text>
                 </Stack>
               </Dialog.Header>

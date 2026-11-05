@@ -22,12 +22,16 @@ import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../layouts/shell";
 import { useScrollSpy } from "../../lib/useScrollSpy";
 import { useStickyTitle } from "../../lib/useStickyTitle";
-import { CourierChargeFacts, DeliveryFacts, PaymentFacts } from "./components/RestockFacts";
+import { CourierChargeFacts, DeliveryFacts, PaymentFacts } from "../../features/restock/RestockFacts";
 import { RestockNotes } from "../../features/restock/RestockNotes";
+import { RestockTitleRow } from "../../features/restock/RestockTitleRow";
+import { type RestockSectionKey, restockSection, restockSectionDomId } from "../../features/restock/sections";
 import { ProductsPanel } from "./components/ProductsPanel";
-import { RestockTitleRow } from "./components/RestockTitleRow";
 import { RESTOCK_SELLING_DETAIL_PENDING } from "./pending";
-import { RESTOCK_SECTIONS, type RestockSectionKey, restockSection, restockSectionDomId } from "./sections";
+
+// The page's sections in its own order (owner: *"kurasa selling juga sama, infonya di atas ongkir berarti"*,
+// the-restock-page-leads-with-the-box): the box, then the info about it — Kiriman over the money.
+const SELLING_ORDER: RestockSectionKey[] = ["products", "delivery", "payment", "courier", "note", "timeline"];
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -84,7 +88,7 @@ export function RestockSellingDetailPage() {
   // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
   // The courier's charge is a section only once accepted — the warehouse enters it at the door.
   const accepted = request?.status === RestockRequestStatus.ACCEPTED;
-  const keys = RESTOCK_SECTIONS.map((s) => s.key).filter((key) => key !== "courier" || accepted);
+  const keys = SELLING_ORDER.filter((key) => key !== "courier" || accepted);
   // The money column only where there is room beside the nav — Chakra's `xl`, as the product page. `ssr: false` reads the
   // screen on the first render, so a wide screen never paints the one column first and then jumps.
   const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
@@ -96,7 +100,7 @@ export function RestockSellingDetailPage() {
     stick.bar,
     keys,
     restockSectionDomId,
-    wide ? keys.filter((key) => key !== "payment" && key !== "courier") : undefined,
+    wide ? keys.filter((key) => key !== "delivery" && key !== "payment" && key !== "courier") : undefined,
   );
   const navSections = keys.map((key) => {
     const entry = restockSection(key);
@@ -202,11 +206,27 @@ export function RestockSellingDetailPage() {
   };
 
   const title = titleRow(false);
-  const delivery = section("delivery", <DeliveryFacts request={request} warehouseName={warehouseName} />, "restock-detail-info");
+  const delivery = section(
+    "delivery",
+    <DeliveryFacts
+      request={request}
+      narrow={wide}
+      party={{ label: t("restock.detail.destination"), name: warehouseName, testId: "restock-detail-warehouse" }}
+    />,
+    "restock-detail-info",
+  );
   const payment = section("payment", <PaymentFacts request={request} teamId={teamId} />, "restock-detail-payment");
   const courier =
     accepted &&
-    section("courier", <CourierChargeFacts request={request} warehouseName={warehouseName} />, "restock-detail-courier-charge-card");
+    section(
+      "courier",
+      <CourierChargeFacts
+        request={request}
+        owed={t("restock.detail.courierChargeOwedBySelling", { warehouse: warehouseName })}
+        slipMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="courierPhoto" />}
+      />,
+      "restock-detail-courier-charge-card",
+    );
   const products = section(
     "products",
     <ProductsPanel
@@ -280,12 +300,13 @@ export function RestockSellingDetailPage() {
             {title}
             <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
               <Stack gap="section" minW="0">
-                {delivery}
                 {products}
                 {note}
                 {timeline}
               </Stack>
+              {/* The info on the right — Kiriman over the money (the-restock-page-leads-with-the-box). */}
               <Stack gap="section" minW="0">
+                {delivery}
                 {payment}
                 {courier}
               </Stack>
@@ -294,10 +315,10 @@ export function RestockSellingDetailPage() {
         ) : (
           <Stack gap="section" minW="0" w="full">
             {title}
+            {products}
             {delivery}
             {payment}
             {courier}
-            {products}
             {note}
             {timeline}
           </Stack>

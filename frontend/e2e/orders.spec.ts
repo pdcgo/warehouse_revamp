@@ -1175,6 +1175,8 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   // (the-couriers-ask-is-in-the-unit-price).
   const hpp = page.getByTestId(`accept-hpp-${pid}`);
   const before = await hpp.innerText();
+  // Asked first (the-charge-is-asked-for-before-it-is-filled) — Ada reveals the charge.
+  await page.getByTestId("accept-courier-asked-yes").click();
   await page.getByTestId("accept-courier-charge").fill("8000");
   await expect(hpp).not.toHaveText(before);
 

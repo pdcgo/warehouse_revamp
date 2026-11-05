@@ -80,6 +80,13 @@ slip at Tiba and Terima — ⚠ `dropped` ([the-courier-slip-has-an-optional-pho
 comparison is closed: the rest stays ours ([the-rest-of-thonis-restock-stays-ours](../../technical/frontend/restock_decision.md#the-rest-of-thonis-restock-stays-ours)).
 The two parts that go against a business decision — the broken rack, the charge at Tiba — say so in their marks
 ([a-conflict-with-a-business-decision-is-said-in-its-mark](../../technical/frontend/context_decision.md#a-conflict-with-a-business-decision-is-said-in-its-mark)).
+The detail pages show the slip photo, and the warehouse's the broken rack — samples
+([the-detail-pages-show-the-slip-and-the-broken-rack](../../technical/frontend/restock_decision.md#the-detail-pages-show-the-slip-and-the-broken-rack)); Terima opens with the restock's own charge, empty
+today, marked missing ([terima-starts-from-the-charge-noted-at-tiba](../../technical/frontend/restock_decision.md#terima-starts-from-the-charge-noted-at-tiba)).
+The warehouse's restock page follows the screen rules and the selling page's shape — sections under a nav, the resi
+as its title ([the-warehouse-restock-detail-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-warehouse-restock-detail-follows-the-screen-rules)); the box, not the purchase — pictures, no
+supplier, price, total or Pembayaran ([the-warehouse-reads-the-box-not-the-purchase](../../technical/frontend/restock_decision.md#the-warehouse-reads-the-box-not-the-purchase)); the warehouse
+writes its own note there, dropped ([the-warehouse-writes-its-own-note](../../technical/frontend/restock_decision.md#the-warehouse-writes-its-own-note)).
 
 🔀 **2026-10-31: the selling list follows the screen rules** — uncommitted, for the owner's pass
 ([the-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-list-follows-the-screen-rules)).

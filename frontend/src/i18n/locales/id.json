@@ -1550,6 +1550,19 @@
         "brokenPhoto": {
           "label": "Foto barang rusak",
           "reason": "Contoh — belum ada foto yang tersimpan, jadi setiap baris rusak menampilkan gambar yang sama."
+        },
+        "courierPhoto": {
+          "label": "Foto nota",
+          "reason": "Contoh — foto nota belum tersimpan, jadi setiap restok yang punya ongkir COD menampilkan gambar yang sama."
+        },
+        "brokenRack": {
+          "label": "Rak barang rusak",
+          "reason": "Contoh — pilihan Ditaruh di rak belum tersimpan, jadi tempat pertama baris ini ditampilkan sebagai rak barang rusaknya.",
+          "conflict": "barang rusak dibuang — tidak ada rak yang menyimpannya."
+        },
+        "warehouseNoteKept": {
+          "label": "Catatan gudang",
+          "reason": "Ditulis di sini dan belum tersimpan — catatan gudang belum punya tempat; simpan mengatakannya."
         }
       },
       "navLabel": "Bagian restok",
@@ -1565,9 +1578,20 @@
       "notCounted": "Belum dihitung",
       "brokenPhoto": {
         "title": "Foto Barang Rusak",
-        "caption": "Foto barang rusak",
-        "alt": "Foto {{name}} yang rusak",
-        "open": "Buka foto {{name}} yang rusak"
+        "alt": "Foto {{name}} yang rusak"
+      },
+      "photoOpen": "Buka {{what}}",
+      "slipPhoto": {
+        "title": "Foto Nota",
+        "alt": "Foto nota kurir"
+      },
+      "brokenRack": "Rusak {{count}} → {{rack}}",
+      "stat": {
+        "products": "Produk",
+        "ordered_other": "{{count}} pcs dipesan",
+        "ofOrdered_other": "dari {{count}} dipesan",
+        "intoStock": "masuk stok",
+        "pcs_other": "{{count}} pcs"
       }
     },
     "timeline": {
@@ -1859,14 +1883,18 @@
       "placementPlaceholder": "Pilih penempatan",
       "placementQty": "Jumlah di penempatan ini",
       "courier": {
-        "title": "Biaya kurir di pintu",
-        "hint": "Yang diminta kurir saat menyerahkan paket. Gudang membayarnya dan tim penjual menggantinya — tidak termasuk total restok.",
+        "title": "Ongkir COD dari kurir",
+        "hint": "Yang diminta kurir saat menyerahkan paket. Gudang membayarnya dan tim penjual menggantinya — tidak termasuk total restok. Kalau sudah dicatat saat Tandai Tiba, sudah terisi di sini — ubah kalau berbeda.",
         "amount": "Jumlah",
         "note": "Untuk apa",
         "notePlaceholder": "mis. biaya penanganan COD",
         "noteRequired": "Tulis untuk apa biaya kurir ini.",
         "photo": "Foto nota",
-        "photoAlt": "Foto nota kurir"
+        "photoAlt": "Foto nota kurir",
+        "optional": "(opsional)",
+        "amountRequired": "Isi jumlah ongkir COD.",
+        "askedNone": "Tidak ada",
+        "askedYes": "Ada"
       },
       "brokenPhoto": {
         "alt": "Foto barang rusak"
@@ -1884,6 +1912,10 @@
           "label": "Rak barang rusak",
           "reason": "Pilihan Ditaruh di rak belum tersimpan — barang rusak tetap tercatat dibuang.",
           "conflict": "barang rusak dibuang — tidak ada rak yang menyimpannya."
+        },
+        "codFromArrival": {
+          "label": "Ongkir COD dari Tandai Tiba",
+          "reason": "Isian ongkir dibuka dengan ongkir restok ini — dan Tandai Tiba belum menyimpannya, jadi yang dicatat di sana perlu diisi lagi."
         }
       },
       "brokenTo": {
@@ -1943,7 +1975,7 @@
         "dismiss": "Belum",
         "tracking": "Nomor resi di label: {{receipt}}",
         "noTracking": "Tidak ada nomor resi — cocokkan paket dengan barisnya.",
-        "courierHint": "Kalau kurir meminta biaya saat menyerahkan paket. Boleh kosong — masih bisa diisi atau diubah saat Terima."
+        "courierHint": "Kalau kurir meminta biaya saat menyerahkan paket — masih bisa diisi atau diubah saat Terima."
       },
       "toast": {
         "cancelled": "Restok dibatalkan",
@@ -1973,7 +2005,10 @@
       "save": "Simpan Catatan",
       "saved": "Catatan disimpan",
       "saveFailed": "Gagal menyimpan catatan",
-      "notStored": "Catatan belum tersimpan — setelah restok tiba, server belum menerima perubahan catatan."
+      "notStored": "Catatan belum tersimpan — setelah restok tiba, server belum menerima perubahan catatan.",
+      "warehouseNotStored": "Catatan gudang belum tersimpan — belum ada tempat menyimpannya.",
+      "warehouseLabel": "Catatan gudang",
+      "warehouseEditTitle": "Ubah Catatan Gudang"
     },
     "photo": {
       "add": "Tambah Foto",

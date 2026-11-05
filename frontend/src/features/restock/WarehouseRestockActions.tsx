@@ -12,6 +12,7 @@ import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_r
 import { useArriveRestockRequest } from "./queries";
 import { toRupiah } from "./counting";
 import { CourierCharge } from "./CourierCharge";
+import { CompactActions } from "../../components/chrome/CompactActions";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 
@@ -57,17 +58,20 @@ export interface WarehouseRestockActionsProps {
   teamId: bigint;
   /**
    * `row` — small labelled buttons for a list row (never more than two, so they stay inline). `buttons` — a desktop
-   * header. `menu` — one ⋯ trigger, for a phone header.
+   * header. `menu` — one ⋯ trigger. `compact` — a phone header's, and a sticky bar's: each action its icon, past two all
+   * of them under ⋯ (a-phone-header-action-is-an-icon, CompactActions).
    */
-  variant: "row" | "buttons" | "menu";
+  variant: "row" | "buttons" | "menu" | "compact";
   /**
    * The page's pending mark for the courier's charge in the sign dialog — typed there and NOT kept yet
    * (the-cod-can-be-noted-when-the-box-arrives). Each page passes its own, numbered in its own list.
    */
   codMark?: ReactNode;
+  /** Appended to every test id — the sticky bar's copy (`-sticky`), so a test finds each of the page's once. */
+  idSuffix?: string;
 }
 
-export function WarehouseRestockActions({ request, teamId, variant, codMark }: WarehouseRestockActionsProps) {
+export function WarehouseRestockActions({ request, teamId, variant, codMark, idSuffix = "" }: WarehouseRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [signing, setSigning] = useState(false);
@@ -98,14 +102,26 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark }: W
 
   return (
     <>
-      {variant === "menu" ? (
+      {variant === "compact" ? (
+        <CompactActions
+          menuLabel={t("restock.actions.menu")}
+          menuTestId={`restock-actions-${id}${idSuffix}`}
+          actions={actions.map((action) => ({
+            id: action,
+            label: t(LOOK[action].labelKey),
+            icon: LOOK[action].icon,
+            testId: `restock-action-${LOOK[action].slug}-${id}${idSuffix}`,
+            onClick: () => run(action),
+          }))}
+        />
+      ) : variant === "menu" ? (
         <Menu.Root>
           <Menu.Trigger asChild>
             <IconButton
               size="xs"
               variant="ghost"
               aria-label={t("restock.actions.menu")}
-              data-testid={`restock-actions-${id}`}
+              data-testid={`restock-actions-${id}${idSuffix}`}
             >
               <Icon as={MoreHorizontal} boxSize="4" />
             </IconButton>
@@ -117,7 +133,7 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark }: W
                   <Menu.Item
                     key={action}
                     value={action}
-                    data-testid={`restock-action-${LOOK[action].slug}-${id}`}
+                    data-testid={`restock-action-${LOOK[action].slug}-${id}${idSuffix}`}
                     onSelect={() => run(action)}
                   >
                     <Icon as={LOOK[action].icon} boxSize="4" />
@@ -136,7 +152,7 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark }: W
               size={variant === "row" ? "xs" : undefined}
               variant={LOOK[action].primary ? "solid" : "outline"}
               colorPalette={LOOK[action].primary ? "brand" : undefined}
-              data-testid={`restock-action-${LOOK[action].slug}-${id}`}
+              data-testid={`restock-action-${LOOK[action].slug}-${id}${idSuffix}`}
               onClick={() => run(action)}
             >
               <Icon as={LOOK[action].icon} boxSize="4" />
@@ -160,9 +176,10 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark }: W
 // tiba-marks-and-terima-is-final) — the message says stock does not move until Terima, and nothing here says "received".
 //
 // THE COURIER'S CHARGE CAN BE NOTED HERE (owner: *"ongkir cod bisa keduanya"*, the-cod-can-be-noted-when-the-box-arrives)
-// — when the courier asks for it at the door, which is now. Optional; the note is required once there is an amount, as at
-// Terima. ⚠ RestockRequestArrive takes no charge, so it is NOT KEPT (`dropped`): the mark says so, and so does a toast
-// after the sign — enter it again at Terima.
+// — when the courier asks for it at the door, which is now. ASKED FIRST (the-charge-is-asked-for-before-it-is-filled): unticked,
+// the sign goes ahead with nothing to fill; ticked, the amount and the note are required and the sign waits for them.
+// ⚠ RestockRequestArrive takes no charge, so it is NOT KEPT (`dropped`): the mark says so, and so does a toast after the
+// sign — enter it again at Terima.
 function SignForBoxDialog({
   request,
   teamId,
@@ -177,19 +194,22 @@ function SignForBoxDialog({
   const { t } = useTranslation();
   const arrive = useArriveRestockRequest();
   const late = request.status === RestockRequestStatus.LOST;
+  const [asked, setAsked] = useState(false);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — not kept with the rest of the charge.
   const [photo, setPhoto] = useState<File | null>(null);
 
-  const charged = toRupiah(amount) > 0;
+  const charged = asked && toRupiah(amount) > 0;
+  // Ticked, both are required; the note's error shows once there is an amount, so a fresh tick is not all red.
+  const incomplete = asked && (!charged || note.trim() === "");
   const noteMissing = charged && note.trim() === "";
 
   async function confirm() {
     try {
       await arrive.mutateAsync({ teamId, requestId: request.id });
       toaster.create({ type: "success", title: t("restock.actions.toast.arrived") });
-      if (charged || photo) {
+      if (asked) {
         toaster.create({ type: "warning", title: t("restock.actions.toast.arrivedCodNotKept") });
       }
     } catch (err) {
@@ -206,7 +226,7 @@ function SignForBoxDialog({
       message={late ? t("restock.actions.sign.messageLost") : t("restock.actions.sign.message")}
       confirmLabel={t("restock.actions.signForBox")}
       dismissLabel={t("restock.actions.sign.dismiss")}
-      confirmDisabled={noteMissing}
+      confirmDisabled={incomplete}
       onConfirm={confirm}
     >
       <HStack gap="1.5" fontSize="sm" color="fg.muted">
@@ -218,9 +238,10 @@ function SignForBoxDialog({
       <Separator />
 
       <CourierCharge
+        asked={asked}
+        onAsked={setAsked}
         amount={amount}
         note={note}
-        charged={charged}
         noteMissing={noteMissing}
         onAmount={setAmount}
         onNote={setNote}
