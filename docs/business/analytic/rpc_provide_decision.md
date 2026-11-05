@@ -134,6 +134,8 @@ can mix services, which no shipped report can. It is weaker in **one** place unl
 field is a string, so a typo fails at run time instead of at build. The guard is to never type one by hand — the
 frontend reads both off the generated schema, and the server refuses an unknown one by reflection.
 
+✅ Built 2026-11-05 — financial account, the last of the three: `AnalyticTimeSearch` / `AnalyticGroupSearch` / `AnalyticGroupMetric` removed with their callers, tests and docs; the Financial Account Report moved onto `MetricSearch` / `MetricData`.
+
 ---
 
 ## the-fill-step-scopes-its-numbers-by-the-filters
@@ -960,6 +962,8 @@ flowchart LR
 | `TEAM` across teams | only for a caller scoped to the **root** team; any other scope yields its own team alone — carried over from settlement's shipped rule |
 | `USER` | the user the fact is booked to — each metric's doc says which user that is |
 
+✅ Built 2026-11-05 — `GROUP_TYPE_ACCOUNT`, `GROUP_TYPE_PROVIDER`, `GROUP_TYPE_CHANGE_TYPE` (12–14) joined `analytic_base` with the Finance metrics.
+
 ---
 
 ## every-metric-has-a-summary
@@ -1204,6 +1208,8 @@ flowchart LR
 | the number 2 | reserved in `FilterType` and in `FilterItem`, so case N stays `FilterType` N ([a-filter-names-one-id-and-shares-its-types-number](#a-filter-names-one-id-and-shares-its-types-number)) |
 | the code it removes | `KeywordFilter` in `analytic_base`; `FILTER_TYPE_KEYWORD` on `metrics/suppliers`, its keyword join and their tests |
 | ⚠ still open | the Supplier Report's search is sent as that keyword — [the-supplier-search-loses-its-filter](#the-supplier-report-keeps-its-search). The code waits for it |
+
+✅ **Built 2026-10-30** (verified in code 2026-11-05) — the Supplier Report's search is back as a typed `FILTER_TYPE_SUPPLIER_KEYWORD` (`analytic_base/v1/analytic.proto` 9, `supplier_analytic.proto`), per [the-supplier-report-keeps-its-search](#the-supplier-report-keeps-its-search).
 
 ---
 
@@ -1767,3 +1773,204 @@ flowchart LR
 | ⚠ my build detail — two services | the composer reads several services; it shows the **oldest** of their times, the one every figure on the table is complete up to |
 | ⚠ not on | a supplier's own page (`SupplierStatistics`) and the daily statement — neither is a metric-pattern report screen; each is a one-line addition if wanted |
 | tests | one per service (0 before any claim, then the newest claim's time whatever order they landed in) and a `SaysAsOfWhen` story on each of the three screens |
+
+---
+
+## a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: when an order is cancelled, what happens to its warehouse fee in the Warehouse Fee figures?
+
+**The verdict.** Warehouse Fee is **net, each on the day it happened**: an order's fee counts on the day it was placed, and a cancel takes it back on the day of the cancel. Past days never change, and the figures match what the Team Balance actually charged ([the-event-carries-the-warehouse-fee](../teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee) — frozen on the order, carried by `OrderPlaced`, reversed on cancel).
+
+| | |
+| --- | --- |
+| placed | `transaction_count` +1, `amount` + the fee, on the placement day |
+| cancelled | `transaction_count` −1, `amount` − the fee, on the cancel day |
+| an earlier day | never re-folded by a later cancel |
+
+✅ Built 2026-11-05 — selling's order metrics fold writes a signed `warehouse_fee` row of `order_daily_reports` (00038) in the same claim as the `created` / `cancelled` row: +1 / + the frozen fee on the placement day, −1 / − the fee on the cancel's day (`order_analytic_fold.go`).
+
+---
+
+## warehouse-fee-groups-like-the-order-metrics
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: which groupings should Warehouse Fee offer?
+
+**The verdict.** Warehouse Fee offers the order metrics' eight groups — **seller, shop, warehouse, created by, and daily, weekly, monthly, yearly** — because the fee is a fact of the order and carries the same keys (the order's selling team, shop, warehouse and creator). *Seller* is the selling team and *Warehouse* the warehouse for every reader ([the-warehouse-is-its-own-group](#the-warehouse-is-its-own-group)). The filters are the owner's tree's: team, shop, warehouse, user, date range.
+
+✅ Built 2026-11-05 — `WarehouseFeeMetric` in `order_analytic.proto` declares the order metrics' filters and groups; served by `OrderAnalyticService.MetricSearch` / `MetricData` over the same report rows.
+
+---
+
+## a-warehouse-sees-its-own-fee-amount
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: does a warehouse see the Warehouse Fee amount?
+
+**The verdict.** Yes. A warehouse reading Warehouse Fee sees both `transaction_count` and `amount`: the fee is the warehouse's own income, not the seller's money, so [a-warehouse-sees-no-seller-money](../order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money) — which leaves a warehouse counts only on the order metrics — does not hide it. A seller sees the same two fields for what it paid.
+
+✅ Built 2026-11-05 — `amount` is set (and sortable) for a warehouse reader (`orderMetric.warehouseMoney`); the order metrics' money stays unset for it.
+
+---
+
+## the-warehouse-fee-prototype-is-accepted
+
+> In chat *(owner, 2026-11-05)* — *"A"*, replying to the six Storybook screenshots of Warehouse Fee (Add Metric under Expense; a seller by warehouse; a warehouse by seller; by shop; phone by warehouse and by shop).
+
+**The verdict.** The prototype is the design: **Warehouse fee** under *Expense*, two fields — *Fee transactions* (`transaction_count`) and *Fee amount* (`amount`) — with the filters team, shop, warehouse, user and date range, and the groups of [warehouse-fee-groups-like-the-order-metrics](#warehouse-fee-groups-like-the-order-metrics). Accepted with it: the metric id **`metrics/warehouse_fee`**, and *Created by* is **the person who created the order**.
+
+✅ Built 2026-11-05 — `metrics/warehouse_fee` moved from `PROTOTYPE_METRICS` into the live catalogue (`WAREHOUSE_FEE_METRIC`, read off the proto); the Storybook stub serves it; e2e place → cancel nets the figure back.
+
+---
+
+## financial-accounts-serve-their-changes-and-their-types
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: when the financial-account figures move onto the metric shape ([the-pattern-replaces-the-shipped-analytics](#the-pattern-replaces-the-shipped-analytics)), what do they contain?
+
+**The verdict.** Two metrics, like settlement's headline and breakdown ([settlement-serves-its-headline-and-its-breakdown](../settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown)):
+
+| metric | fields | groups |
+| --- | --- | --- |
+| `metrics/financial_accounts` | one money field per change type (restock, expense, transfer, …) plus `change` (the net); `opening_balance` and `closing_balance` as positions — the balance at the start and the end of each period, never summed | summary, daily / weekly / monthly / yearly, Account, Provider |
+| `metrics/financial_accounts/types` | `amount` | Change type (with time, Account, Provider) |
+
+Together they cover every grouping already decided for the move — Account, Provider, Change type ([the-group-enum-grows-with-the-reports](#the-group-enum-grows-with-the-reports)) and time.
+
+✅ Built 2026-11-05 — `AccountChangeMetric` (`metrics/financial_accounts`) and `AccountChangeTypeMetric` (`metrics/financial_accounts/types`) in `financial_account_analytic.proto`, served by `FinancialAccountAnalyticService.MetricSearch` / `MetricData` (`financial_account_v1/metric_*.go`) from `financial_account_daily_reports`.
+
+---
+
+## analytic-gains-a-finance-category
+
+> In chat *(owner, 2026-11-05)* — *"B"* (not the recommended A, which kept them off the screen until the tree had a Finance category), to: where do the financial-account metrics appear?
+
+**The verdict.** The Analytic composer gains a **Finance** category now, holding the two metrics of [financial-accounts-serve-their-changes-and-their-types](#financial-accounts-serve-their-changes-and-their-types); the Financial Account Report moves onto the same reads. The owner's tree in `rpc_provide.md` has no Finance category yet — this adds it. A visible change, so a Storybook prototype comes first and the owner accepts it before the backend.
+
+✅ Built 2026-11-05 — Finance is a live category of the composer (`FINANCE_METRICS` in `features/analytic/catalogue.ts`, read off the proto); the Financial Account Report reads the same two RPCs (`features/financialAccount/analytics.ts`).
+
+---
+
+## the-balance-series-is-a-running-sum
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: should the financial-account move also fix the slow balance-over-time read?
+
+**The verdict.** Yes, in the same move. The balance per period is **one running sum** over the account's changes in date order — the balance before the range read once, then each period's change added — instead of re-deriving the balance from all history for every period (the `AnalyticTimeSearch` perf audit finding). The `opening_balance` / `closing_balance` positions of [financial-accounts-serve-their-changes-and-their-types](#financial-accounts-serve-their-changes-and-their-types) are read this way.
+
+✅ Built 2026-11-05 — each account's last daily row before the window is read once, the window's rows summed per day, then a running sum per period (`metric_shared.go` `series`); a year daily at a page of 200 went from 1 482 ms to 11 ms (`TestPerf_FinanceMetric`, audit `AnalyticTimeSearch.md` marked resolved).
+
+---
+
+## inventory-lost-counts-the-warehouses-custody-losses
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: what counts as lost in Inventory Lost?
+
+**The verdict.** Inventory Lost counts losses **in the warehouse's custody**: a shortage a stock count found, and stock a Stock Adjust marked *lost* — each valued at its batch price, which is what the warehouse owes. Not counted: broken stock, a transfer lost on the way, a restock parcel lost before it arrived.
+
+| field | what |
+| --- | --- |
+| `lost_count` | units lost |
+| `lost_amount` | those units at their batch price |
+
+The losses are recorded per batch in `warehouse_stock_problems`; no event publishes them yet, so the build adds one before a report can fold them.
+
+✅ Built 2026-11-05 — `inventory_lost_daily_reports` (inventory 00037), folded in-process in the loss's own transaction from a count's shortage and a Stock Adjust "lost" at the batch price (`inventory_mutations.foldLost`); no event — inventory owns both the register and the report (reasoned in docs/development_state/analytic/rpc_provide.md).
+
+---
+
+## inventory-lost-is-gross
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: when lost stock is later found, does Inventory Lost go down?
+
+**The verdict.** No. Inventory Lost counts **every loss on the day it happened** ([inventory-lost-counts-the-warehouses-custody-losses](#inventory-lost-counts-the-warehouses-custody-losses)); a Found Stock claim never subtracts from it, and past days never change. *Found* becomes its own figure later, so both can be read side by side.
+
+✅ Built 2026-11-05 — the fold only adds; a Found claim updates the problem row, never the report (`TestMetricData_AFoundClaimDoesNotSubtract`).
+
+---
+
+## inventory-lost-groups-and-sits-under-inventory
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: how is Inventory Lost grouped, and where does it sit?
+
+**The verdict.** Inventory Lost (`lost_count`, `lost_amount` — [inventory-lost-counts-the-warehouses-custody-losses](#inventory-lost-counts-the-warehouses-custody-losses), [inventory-lost-is-gross](#inventory-lost-is-gross)) groups by **product, supplier, seller** (the team that owns the stock), **warehouse**, and **daily / weekly / monthly / yearly**. No shop: lost stock belongs to no shop, so the shop filter is removed ([a-new-metric-removes-the-filters-it-cannot-use](#a-new-metric-removes-the-filters-it-cannot-use)). It sits in the composer as a new leaf **Inventory › Lost**, which the owner's tree (Transfer, Ready, Restock, Return) did not list. A visible change, so a Storybook prototype and the owner's accept come before the backend.
+
+✅ Built 2026-11-05 — `InventoryLostMetric` groups product, supplier, seller (`TEAM`), warehouse and time, no shop; Inventory › Lost stock in the composer.
+
+---
+
+## the-finance-prototype-is-accepted
+
+> In chat *(owner, 2026-11-05)* — *"A"*, replying to the Storybook screenshots of the Finance category (picker, Account changes daily / by account / graph / phone, Change types by change type).
+
+**The verdict.** The prototype is the design for [analytic-gains-a-finance-category](#analytic-gains-a-finance-category) and [financial-accounts-serve-their-changes-and-their-types](#financial-accounts-serve-their-changes-and-their-types), with the calls drawn in it:
+
+| | |
+| --- | --- |
+| place | Finance is the last category, with a bank icon |
+| Account changes | reads as a statement: opening balance, one column per change type (all nine, in the proto's order, even when 0), net change, closing balance |
+| sign | money out is negative, so the type columns add up to the net change |
+| the type named like the balance | `OPENING_BALANCE` reads **Account opened** (`account_opening`) |
+| a period cut by the range | its edges are at the range boundary |
+| a quiet account | shown, with its balance |
+| summary cards | the range's opening and closing balance — positions, never summed ([a-position-is-its-own-stat-type](#a-position-is-its-own-stat-type)) |
+| Change types | `amount`, grouped by change type; Account changes is greyed under that group |
+
+Built with it: the highlighted summary card no longer cuts a nine-digit Rp figure, and the by-account table fits a 1440 screen.
+
+✅ Built 2026-11-05 — the statement columns, signs, `account_opening`, the cut period, the quiet account and the summary positions served by the backend and asserted in `metric_data_test.go`; the lead headline card takes two columns of a crowded strip and the composer's table wraps headings to two lines, so both fit 1440 (story `FitsA1440Screen`).
+
+---
+
+## finance-filters-by-account
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: which filters should Finance have? (the prototype drew the date range only)
+
+**The verdict.** Both Finance metrics take the **date range** and an **Account** filter — one account or several — under every group. No Provider filter (grouping by Provider stays).
+
+✅ Built 2026-11-05 — `FILTER_TYPE_ACCOUNT` (`AccountFilter{account_ids}`, one to 200) in `analytic_base`, listed by both Finance metrics; the composer's multi-account `AccountsFilter` (`acc=` in the URL).
+
+---
+
+## every-team-reads-its-own-finance
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: who can read Finance?
+
+**The verdict.** **Every team reads its own accounts** in Finance — selling teams and warehouses alike (a warehouse has accounts too, e.g. *Kas Gudang*, and the financial-account analytics already let a warehouse read its own). No team reads another team's accounts. Root reads within its own scope; an admin reads only — Finance has nothing to change.
+
+✅ Built 2026-11-05 — both reads are scoped to `team_id` always (the root team to its own), the warehouse roles are on both policies, and another team's account id in the filter matches nothing (`TestMetric_AnotherTeamReadsNothing`, `TestMetric_AWarehouseReadsItsOwnAccounts`, e2e `finance_metrics.spec.ts`).
+
+---
+
+## the-inventory-lost-prototype-is-accepted
+
+> In chat *(owner, 2026-11-05)* — *"A"*, replying to the Storybook screenshots of Inventory › Lost (picker, by product, by supplier, by warehouse, the shop filter removed, phone).
+
+**The verdict.** The prototype is the design for [inventory-lost-groups-and-sits-under-inventory](#inventory-lost-groups-and-sits-under-inventory): `metrics/inventory/lost` under *Inventory*, fields **Lost units** (`lost_count`) and **Lost amount** (`lost_amount`); filters date, seller, warehouse, product, supplier; groups product, supplier, seller, warehouse and time; adding it drops a shop filter with a toast saying why. Accepted with it: the leaf is named **Lost stock** (id *Stok hilang*) — so the rows line reads "suppliers with lost stock in this period".
+
+✅ Built 2026-11-05 — served by `InventoryAnalyticService` (`inventory_analytic.proto`), live in the composer as **Lost stock / Stok hilang**, replacing the *Stock lost* sample; filters date, seller, warehouse, product, supplier.
+
+---
+
+## a-warehouse-sees-its-lost-amount
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: can a warehouse see the Lost amount?
+
+**The verdict.** Yes. A warehouse reading Lost stock sees **Lost units and Lost amount**: the amount is what the warehouse owes for stock lost in its custody — its own money — so [a-warehouse-sees-no-seller-money](../order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money) does not hide it. The seller owning the stock sees both too; a team that is neither reads nothing.
+
+✅ Built 2026-11-05 — the reader is `warehouse_id = team OR team_id = team`: the warehouse and the owning seller read both fields, any other team nothing (`TestMetricData_TheWarehouseAndTheOwnerReadItAnotherTeamNothing`).
+
+---
+
+## root-reads-every-teams-lost-stock
+
+> In chat *(owner, 2026-11-05)* — *"Yes I follow your recommendation, A"*, to: does root see every team's Lost stock, or only its own?
+
+**The verdict.** Root reads **every team's** Lost stock, as it reads the order metrics. Finance stays root's own accounts only ([every-team-reads-its-own-finance](#every-team-reads-its-own-finance)) — an account is one team's money, a loss is a warehouse's and a seller's shared fact.
+
+✅ **Built 2026-11-05** — `inventory_v1/lost_metric_shared.go` scoping.
+
+---
+
+## lost-stock-is-not-backfilled
+
+> In chat *(owner, 2026-11-05)* — *"Yes I follow your recommendation, A"*, to: are losses recorded before the Lost stock report (inventory migration 00037) replayed into it?
+
+**The verdict.** No backfill. Lost stock counts from the day the report was built; losses already in `warehouse_stock_problems` before it are not replayed. Revamp has no real counts yet ([revamp-has-no-real-orders-yet](../order/context_decision.md#revamp-has-no-real-orders-yet)), so nothing real is missed.

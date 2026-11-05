@@ -8,7 +8,7 @@
 // rows, and `balance_after` is computed in entry order on the way out. So "the balance moves only with a
 // row" (the-accounts-are-one-ledger) is true of the stub by construction, not by care.
 //
-// The analytics read the same rows, summed by day — what `financial_account_daily_reports` will hold —
+// The Finance metrics read the same rows, summed by day — what `financial_account_daily_reports` holds —
 // so a transfer made in one story moves the report in the same story
 // (the-daily-row-is-written-with-the-log-row: the report is never behind the balance).
 //
@@ -19,12 +19,11 @@ import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import { type Timestamp, timestampFromDate } from "@bufbuild/protobuf/wkt";
 
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
+import { GroupType, SortType } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
+import { FinancialAccountAnalyticService } from "../src/gen/warehouse/financial_account/v1/financial_account_analytic_pb";
+import { timeSpine } from "../src/features/analytic/provider";
 import {
-  AnalyticGroupType,
-  AnalyticMetricSort,
-  AnalyticTimeframe,
   CapitalDirection,
-  FinancialAccountAnalyticService,
   FinancialAccountChangeType as T,
   FinancialAccountLogSort,
   FinancialAccountMetricDataType,
@@ -137,6 +136,27 @@ export function noOperationalAccountForStory(teamId: bigint) {
  */
 export function unmarkOperationalForStory(accountId: bigint) {
   for (const a of accounts) if (a.id === accountId) a.operational = false;
+}
+
+/**
+ * A STORY'S SETUP: one account archived — as an admin would, between a form loading its picker and the person pressing
+ * Save. `resetFinancialAccounts` (preview's beforeEach) brings it back.
+ */
+export function archiveAccountForStory(accountId: bigint) {
+  for (const a of accounts) if (a.id === accountId) a.status = FinancialAccountStatus.ARCHIVED;
+}
+
+/**
+ * Whether an account may pay a warehouse transfer's shipping — the team's own and ACTIVE, operational or not
+ * (a-transfers-shipping-is-paid-from-any-active-account; inventory_v1 `checkActive`). `null` when it may; else the
+ * server's FailedPrecondition sentence. Another team's account reads as one that never existed.
+ */
+export function activeAccountRefusal(teamId: bigint, accountId: bigint): string | null {
+  const a = accounts.find((x) => x.id === accountId && x.teamId === teamId);
+  const why = "not one of the team's active accounts";
+  if (!a) return `account #${accountId} is ${why}`;
+  if (a.status === FinancialAccountStatus.ARCHIVED) return `${a.name} is archived — it is ${why}`;
+  return null;
 }
 
 /**
@@ -663,182 +683,243 @@ export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccoun
   },
 };
 
-// ── FinancialAccountAnalyticService ─────────────────────────────────────────────────────────────
+// ── FinancialAccountAnalyticService — the Finance metrics ───────────────────────────────────────────
+//
+// `metrics/financial_accounts` and `metrics/financial_accounts/types` (financial-accounts-serve-their-changes-and-their-
+// types), folded from the stub's OWN ledger, as the server folds `financial_account_daily_reports` — so a transfer a
+// story makes moves both the accounts page and every report in the same story. The rules the server keeps:
+//   - every team reads its own accounts, the root team its own too (every-team-reads-its-own-finance);
+//   - a balance is one running sum: the balance before the window, then each period's change in date order
+//     (the-balance-series-is-a-running-sum) — a period cut by the range opens on the range's first day;
+//   - an account with a row up to the window's end is a key, a quiet one included; a change type is a key when it moved;
+//   - money out is negative; the change type OPENING_BALANCE is `account_opening`, the position `opening_balance`.
 
-const COLUMN: Record<number, keyof Omit<Metric, "change" | "openBalance" | "closeBalance">> = {
+const CHANGE_FIELD: Record<number, string> = {
   [T.EXPENSE]: "expense",
   [T.ADS_EXPENSE]: "adsExpense",
   [T.ADJUSTMENT]: "adjustment",
   [T.WITHDRAWAL]: "withdrawal",
   [T.RESTOCK]: "restock",
-  [T.OPENING_BALANCE]: "openingBalance",
+  [T.OPENING_BALANCE]: "accountOpening",
   [T.TRANSFER]: "transfer",
   [T.TEAM_PAYMENT]: "teamPayment",
   [T.CAPITAL]: "capital",
 };
 
-type Metric = {
-  expense: number;
-  adsExpense: number;
-  adjustment: number;
-  withdrawal: number;
-  restock: number;
-  openingBalance: number;
-  transfer: number;
-  teamPayment: number;
-  capital: number;
-  change: number;
-  openBalance: number;
-  closeBalance: number;
+/** One key's figures — the AccountChangeMetric's fields by their JS names. */
+type Figures = Record<string, number>;
+
+const zeroFigures = (): Figures => {
+  const f: Figures = { openingBalance: 0, change: 0, closingBalance: 0 };
+  for (const name of Object.values(CHANGE_FIELD)) f[name] = 0;
+
+  return f;
 };
 
-const zero = (): Metric => ({
-  expense: 0,
-  adsExpense: 0,
-  adjustment: 0,
-  withdrawal: 0,
-  restock: 0,
-  openingBalance: 0,
-  transfer: 0,
-  teamPayment: 0,
-  capital: 0,
-  change: 0,
-  openBalance: 0,
-  closeBalance: 0,
-});
+const CHANGES_ID = "metrics/financial_accounts";
+const TYPES_ID = "metrics/financial_accounts/types";
 
-// The movements in [start, end], and the balance carried up to `end`.
-function metricOf(rows: StubLog[], start: string, end: string): Metric {
-  const m = zero();
-
-  for (const l of rows) {
-    if (l.occurredOn > end) continue;
-    m.closeBalance += l.change;
-    if (l.occurredOn < start) continue;
-    m[COLUMN[l.changeType]!] += l.change;
-    m.change += l.change;
-  }
-
-  m.openBalance = m.closeBalance - m.change;
-
-  return m;
+interface FinanceFilters {
+  from: string;
+  to: string;
+  accounts: bigint[];
 }
 
-const teamRows = (teamId: bigint) => logs.filter((l) => l.teamId === teamId);
+type AnyFilter = { f: { case: string | undefined; value?: unknown } };
 
-// Every bucket from start to end, ascending: `yyyy-mm-dd`, `yyyy-mm` or `yyyy`.
-function buckets(start: string, end: string, width: number): string[] {
-  const first = Date.parse(`${start}T00:00:00Z`);
-  const last = Date.parse(`${end}T00:00:00Z`);
-  if (Number.isNaN(first) || Number.isNaN(last)) return [];
+function financeFilters(filters: AnyFilter[], metricIds: string[]): FinanceFilters {
+  for (const id of metricIds) {
+    if (id !== CHANGES_ID && id !== TYPES_ID) {
+      throw new ConnectError(`this service does not serve "${id}"`, Code.InvalidArgument);
+    }
+  }
 
-  const out: string[] = [];
-  for (let at = first; at <= last && out.length < 800; at += 86_400_000) {
-    const label = new Date(at).toISOString().slice(0, width);
-    if (out[out.length - 1] !== label) out.push(label);
+  const out: FinanceFilters = { from: "", to: "", accounts: [] };
+  for (const item of filters) {
+    if (item.f.case === "dateRangeFilter") {
+      const range = item.f.value as { dateMin: string; dateMax: string };
+      out.from = range.dateMin;
+      out.to = range.dateMax;
+    } else if (item.f.case === "accountFilter") {
+      out.accounts = (item.f.value as { accountIds: bigint[] }).accountIds;
+    } else {
+      // finance-filters-by-account: the date range and the Account filter, nothing else.
+      throw new ConnectError(`the Finance metrics do not support ${item.f.case}`, Code.InvalidArgument);
+    }
+  }
+
+  if (!out.from || !out.to) throw new ConnectError("the Finance metrics require a date range", Code.InvalidArgument);
+
+  return out;
+}
+
+/** The team's rows, narrowed to the Account filter — never another team's (every-team-reads-its-own-finance). */
+function scopedRows(teamId: bigint, filters: FinanceFilters): StubLog[] {
+  return logs.filter((l) => l.teamId === teamId && (filters.accounts.length === 0 || filters.accounts.includes(l.accountId)));
+}
+
+/** A set of rows over a window: the balance before it, what moved inside it, by type, and the balance at its end. */
+function foldWindow(rows: StubLog[], from: string, to: string, opening?: number): Figures {
+  const f = zeroFigures();
+  f.openingBalance = opening ?? rows.filter((l) => l.occurredOn < from).reduce((s, l) => s + l.change, 0);
+
+  for (const l of rows) {
+    if (l.occurredOn < from || l.occurredOn > to) continue;
+    f[CHANGE_FIELD[l.changeType]!] = (f[CHANGE_FIELD[l.changeType]!] ?? 0) + l.change;
+    f.change! += l.change;
+  }
+
+  f.closingBalance = f.openingBalance! + f.change!;
+
+  return f;
+}
+
+const GROUP_TIME = new Set([GroupType.DAILY, GroupType.WEEKLY, GroupType.MONTHLY, GroupType.YEARLY]);
+const TIME_OF: Partial<Record<GroupType, "daily" | "weekly" | "monthly" | "yearly">> = {
+  [GroupType.DAILY]: "daily",
+  [GroupType.WEEKLY]: "weekly",
+  [GroupType.MONTHLY]: "monthly",
+  [GroupType.YEARLY]: "yearly",
+};
+
+/** The last day of the period starting on `key`. */
+function periodEnd(key: string, group: "daily" | "weekly" | "monthly" | "yearly"): string {
+  const d = new Date(`${key}T00:00:00Z`);
+  if (group === "weekly") d.setUTCDate(d.getUTCDate() + 6);
+  if (group === "monthly") d.setUTCMonth(d.getUTCMonth() + 1, 0);
+  if (group === "yearly") d.setUTCFullYear(d.getUTCFullYear(), 11, 31);
+
+  return d.toISOString().slice(0, 10);
+}
+
+/** Every period of the window, oldest first, each carrying the running balance. */
+function financeSeries(teamId: bigint, group: GroupType, filters: FinanceFilters): Map<string, Figures> {
+  const time = TIME_OF[group]!;
+  const rows = scopedRows(teamId, filters);
+  const out = new Map<string, Figures>();
+
+  let running = rows.filter((l) => l.occurredOn < filters.from).reduce((s, l) => s + l.change, 0);
+  for (const key of timeSpine(filters.from, filters.to, time)) {
+    const from = key < filters.from ? filters.from : key;
+    const end = periodEnd(key, time);
+    const f = foldWindow(rows, from, end < filters.to ? end : filters.to, running);
+    running = f.closingBalance!;
+    out.set(key, f);
   }
 
   return out;
 }
 
-type GroupKey =
-  | { case: "accountId"; value: bigint }
-  | { case: "provider"; value: FinancialAccountProvider }
-  | { case: "changeType"; value: T };
+/** The id keys of a group, each with its figures — in key order. */
+function financeIdKeys(teamId: bigint, group: GroupType, filters: FinanceFilters): Map<string, Figures> {
+  const rows = scopedRows(teamId, filters);
+  const held = accounts.filter((a) => a.teamId === teamId && rows.some((l) => l.accountId === a.id && l.occurredOn <= filters.to));
+  const out = new Map<string, Figures>();
 
-function rowsOfKey(teamId: bigint, key: GroupKey): StubLog[] {
-  const rows = teamRows(teamId);
-
-  if (key.case === "accountId") return rows.filter((l) => l.accountId === key.value);
-  if (key.case === "provider") {
-    return rows.filter((l) => accounts.find((a) => a.id === l.accountId)?.provider === key.value);
+  if (group === GroupType.ACCOUNT) {
+    for (const a of held) out.set(a.id.toString(), foldWindow(rows.filter((l) => l.accountId === a.id), filters.from, filters.to));
+  } else if (group === GroupType.PROVIDER) {
+    for (const provider of [...new Set(held.map((a) => a.provider))].sort((x, y) => x - y)) {
+      const ids = held.filter((a) => a.provider === provider).map((a) => a.id);
+      out.set(String(provider), foldWindow(rows.filter((l) => ids.includes(l.accountId)), filters.from, filters.to));
+    }
+  } else if (group === GroupType.CHANGE_TYPE) {
+    const moved = rows.filter((l) => l.occurredOn >= filters.from && l.occurredOn <= filters.to && l.change !== 0);
+    for (const type of [...new Set(moved.map((l) => l.changeType))].sort((x, y) => x - y)) {
+      // A type's figure, and no balance — a balance belongs to an account, not to a type.
+      const f = zeroFigures();
+      f.change = moved.filter((l) => l.changeType === type).reduce((s, l) => s + l.change, 0);
+      out.set(String(type), f);
+    }
+  } else {
+    throw new ConnectError(`the Finance metrics cannot be grouped by ${GroupType[group]}`, Code.InvalidArgument);
   }
 
-  return rows.filter((l) => l.changeType === key.value);
+  return out;
 }
 
-function groupMetric(teamId: bigint, key: GroupKey, start: string, end: string): Metric {
-  const m = metricOf(rowsOfKey(teamId, key), start, end);
+/** The two metrics' messages for one key. */
+const changesOf = (f: Figures) => ({ ...f });
+const typesOf = (f: Figures) => ({ amount: f.change ?? 0 });
 
-  // A balance belongs to an account, not to a type.
-  if (key.case === "changeType") {
-    m.openBalance = 0;
-    m.closeBalance = 0;
+const camel = (name: string) => name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+
+function checkGroupOf(metricIds: string[], group: GroupType) {
+  // Account changes cannot be grouped by change type — a balance belongs to an account (the picker greys it).
+  if (group === GroupType.CHANGE_TYPE && metricIds.includes(CHANGES_ID)) {
+    throw new ConnectError("metrics/financial_accounts cannot be grouped by GROUP_TYPE_CHANGE_TYPE", Code.InvalidArgument);
   }
-
-  return m;
-}
-
-function groupKeys(teamId: bigint, groupType: AnalyticGroupType | undefined, start: string, end: string): GroupKey[] {
-  const teamAccounts = accounts.filter((a) => a.teamId === teamId);
-
-  if (groupType === AnalyticGroupType.ACCOUNT) {
-    return teamAccounts.map((a) => ({ case: "accountId" as const, value: a.id }));
-  }
-  if (groupType === AnalyticGroupType.PROVIDER) {
-    return [...new Set(teamAccounts.map((a) => a.provider))].map((p) => ({ case: "provider" as const, value: p }));
-  }
-
-  // Change types that moved in the window.
-  const moved = teamRows(teamId).filter((l) => l.occurredOn >= start && l.occurredOn <= end);
-
-  return [...new Set(moved.map((l) => l.changeType))].map((t) => ({ case: "changeType" as const, value: t }));
 }
 
 export const financialAccountAnalyticService: Partial<ServiceImpl<typeof FinancialAccountAnalyticService>> = {
-  analyticTimeSearch: (req) => {
-    const start = req.filter?.dateRange?.startDate ?? "";
-    const end = req.filter?.dateRange?.endDate ?? "";
-    const width = req.timeframe === AnalyticTimeframe.MONTHLY ? 7 : req.timeframe === AnalyticTimeframe.YEARLY ? 4 : 10;
+  metricSearch: (req) => {
+    const metricId = req.sort?.metricId ?? "";
+    const filters = financeFilters(req.filters as AnyFilter[], [metricId]);
+    checkGroupOf([metricId], req.groupBy);
 
-    const accountId = req.filter?.accountId ?? 0n;
-    const rows = teamRows(req.teamId).filter((l) => !accountId || l.accountId === accountId);
+    const time = GROUP_TIME.has(req.groupBy);
+    const all = time ? financeSeries(req.teamId, req.groupBy, filters) : financeIdKeys(req.teamId, req.groupBy, filters);
+    const field = camel(req.sort?.field ?? "");
+    const value = (f: Figures) => (metricId === TYPES_ID ? typesOf(f).amount : (f[field] ?? 0));
+    const desc = req.sort?.sortType !== SortType.ASC;
+    const byKey = (a: string, b: string) => (time ? (a < b ? -1 : a > b ? 1 : 0) : Number(a) - Number(b));
 
-    const points = buckets(start, end, width).map((bucket) => {
-      // The bucket clipped to the window — a month that starts before the window opens at the window.
-      const bucketStart = width === 10 ? bucket : width === 7 ? `${bucket}-01` : `${bucket}-01-01`;
-      const bucketEnd = width === 10 ? bucket : width === 7 ? `${bucket}-31` : `${bucket}-12-31`;
-
-      return {
-        at: bucketStart,
-        metric: metricOf(rows, bucketStart < start ? start : bucketStart, bucketEnd > end ? end : bucketEnd),
-      };
-    });
-
-    if (req.sortType === CommonSortType.DESC) points.reverse();
-
-    const { rows: page, pageInfo } = window(points, req.page);
-
-    return { datas: page, pageInfo };
-  },
-
-  analyticGroupSearch: (req) => {
-    const start = req.filter?.dateRange?.startDate ?? "";
-    const end = req.filter?.dateRange?.endDate ?? "";
-
-    const ranked = groupKeys(req.teamId, req.filter?.groupType, start, end)
-      .map((key) => ({ key, m: groupMetric(req.teamId, key, start, end) }))
-      .sort((x, y) =>
-        req.sort === AnalyticMetricSort.CLOSE_BALANCE
-          ? y.m.closeBalance - x.m.closeBalance
-          : Math.abs(y.m.change) - Math.abs(x.m.change),
-      );
-
-    if (req.sortType === CommonSortType.ASC) ranked.reverse();
-
-    const { rows: page, pageInfo } = window(ranked, req.page);
-
-    return { keys: page.map((r) => ({ key: r.key })), pageInfo };
-  },
-
-  analyticGroupMetric: (req) => {
-    const start = req.filter?.dateRange?.startDate ?? "";
-    const end = req.filter?.dateRange?.endDate ?? "";
+    const ranked = [...all.entries()].sort(([ka, a], [kb, b]) => (desc ? value(b) - value(a) : value(a) - value(b)) || -byKey(ka, kb));
+    const offset = req.page?.offset ?? 0;
+    const limit = req.page?.limit ?? 20;
+    const page = ranked.slice(offset, offset + limit + 1);
+    const keys = page.slice(0, limit).map(([k]) => k);
 
     return {
-      items: req.keys
-        .filter((k) => k.key.case !== undefined)
-        .map((k) => ({ key: k, metric: groupMetric(req.teamId, k.key as GroupKey, start, end) })),
+      keys: time ? { k: { case: "days", value: { days: keys } } } : { k: { case: "ids", value: { ids: keys.map((k) => BigInt(k)) } } },
+      hasNext: page.length > limit,
+    };
+  },
+
+  metricData: (req) => {
+    const filters = financeFilters(req.filters as AnyFilter[], req.metricIds);
+    checkGroupOf(req.metricIds, req.groupBy);
+    const asOfUnix = BigInt(Math.floor(Date.now() / 1000));
+
+    if (req.groupBy === GroupType.SUMMARY) {
+      const total = foldWindow(scopedRows(req.teamId, filters), filters.from, filters.to);
+
+      return {
+        asOfUnix,
+        metricDatas: req.metricIds.map((id) =>
+          id === CHANGES_ID
+            ? { m: { case: "changesSummary" as const, value: changesOf(total) } }
+            : { m: { case: "typesSummary" as const, value: typesOf(total) } },
+        ),
+      };
+    }
+
+    if (GROUP_TIME.has(req.groupBy)) {
+      const asked = req.keys?.k.case === "days" ? req.keys.k.value.days : [];
+      const series = financeSeries(req.teamId, req.groupBy, filters);
+      const at = (k: string) => series.get(k) ?? zeroFigures();
+
+      return {
+        asOfUnix,
+        metricDatas: req.metricIds.map((id) =>
+          id === CHANGES_ID
+            ? { m: { case: "changesByDay" as const, value: { items: Object.fromEntries(asked.map((k) => [k, changesOf(at(k))])) } } }
+            : { m: { case: "typesByDay" as const, value: { items: Object.fromEntries(asked.map((k) => [k, typesOf(at(k))])) } } },
+        ),
+      };
+    }
+
+    const asked = req.keys?.k.case === "ids" ? req.keys.k.value.ids : [];
+    const keyed = financeIdKeys(req.teamId, req.groupBy, filters);
+    const of = (id: bigint) => keyed.get(id.toString()) ?? zeroFigures();
+
+    return {
+      asOfUnix,
+      metricDatas: req.metricIds.map((id) =>
+        id === CHANGES_ID
+          ? { m: { case: "changesById" as const, value: { items: Object.fromEntries(asked.map((k) => [k.toString(), changesOf(of(k))])) } } }
+          : { m: { case: "typesById" as const, value: { items: Object.fromEntries(asked.map((k) => [k.toString(), typesOf(of(k))])) } } },
+      ),
     };
   },
 };

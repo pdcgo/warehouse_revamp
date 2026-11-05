@@ -74,3 +74,23 @@ statements a line and gained the same fix. Same cause as
 | --- | --- | --- | --- |
 | 2026-10-17 | 56.0 ms | 20 / 153 | first audit |
 | 2026-10-17 | 12.5 ms | 19 / 19 | set-based ledger primitives; `00031` index on `(transaction_id)` |
+
+---
+
+## The paying account (2026-11-05)
+
+✅ **ok** — a-transfer-names-its-paying-account now asks the shipping's account through `PayingAccounts` (the restock's
+seam, the composition root's `restockPayingAccounts` → in-process `FinancialAccountByIds`), BEFORE anything is written.
+It adds **three indexed reads outside the transaction**, the same three as
+[RestockRequestCreate](RestockRequestCreate.md): `financial_accounts` by team and id (pkey), its `operational_accounts`
+mark, and ByIds' unused `shop_accounts` slice — each ≤0.6 ms. A transfer with no cost asks nothing.
+
+Measured through the REAL wiring by `backend/cmd/app_development/transfer_accounts_perf_test.go`
+(`-tags perfaudit`, `TestPerf_TransferPayingAccount`): `financial_accounts` 20 200 rows (the team holds 200, 40
+operational), A holds 20 products × 10 batches on 3 racks, no ledger background volume (so the take is cheaper than the
+table above), warm, 5 runs. The probe's count includes the test transaction's `SAVEPOINT`.
+
+| lines | median wall | queries |
+| --- | --- | --- |
+| 1 | 9.2 ms | 23 |
+| 20 | 14.0 ms | 23 |

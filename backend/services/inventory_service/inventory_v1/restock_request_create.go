@@ -45,6 +45,15 @@ func (s *Service) RestockRequestCreate(
 
 	stores := s.askLineStores(ctx, teamID, req.Msg.GetItems())
 
+	// The account that paid must be one of the team's ACTIVE OPERATIONAL accounts (a-restock-names-its-paying-account,
+	// operational-accounts-pay-for-operations) — asked of financial_account_service before the transaction, like the
+	// suppliers. An account archived between this answer and the commit is the same state as "restock first, then
+	// archive", which is kept.
+	err = s.askPayingAccount(ctx, teamID, req.Msg.GetFinanceAccountId()).check()
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
 	for _, item := range req.Msg.GetItems() {
 		err = stores.check(item)
 		if err != nil {

@@ -38,6 +38,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-batch-carries-its-owner](#a-batch-carries-its-owner) | `batches.team_id` is written at mint — the restock's team, or the source batch's at a transfer; no climb through restocks | chat, 2026-10-10 — as recommended |
 | [the-transfer-expense-event-waits-for-the-events-pass](#the-transfer-expense-event-waits-for-the-events-pass) | the shipping-expense event is built in one events pass with restock's | chat, 2026-10-10 — as recommended |
 | [balance-posts-the-transfers-on-site-debt-from-the-event](#balance-posts-the-transfers-on-site-debt-from-the-event) | B's accept saves the courier's charge on the transfer and never writes balance; balance posts the team's debt to B from *Warehouse Transfer Accepted*, once per transfer | chat, 2026-10-15 — answers [Q10](./warehouse_transfer_clarify.md#question), as recommended (option B) |
+| [a-transfers-shipping-is-paid-from-any-active-account](#a-transfers-shipping-is-paid-from-any-active-account) | a transfer's shipping is paid from any active account of the team, operational or not | owner | — |
 
 ---
 
@@ -1005,3 +1006,20 @@ and balance refuses a second row with the same *(team, counterparty, source type
 transfers are numbered separately, so transfer 41 posted as `INCIDENTAL_FEE` beside restock 41 — same team, same
 warehouse — reads as a duplicate and is **dropped**. Asked where it is answered:
 [balance Q13](../balance/context_clarify.md#question).
+
+---
+
+## a-transfers-shipping-is-paid-from-any-active-account
+
+> In chat *(owner, 2026-11-05)* — *"A"*, then *"Sorry B"*, to: must a transfer's shipping be paid from an operational account? **B — no: any active account of the team.**
+
+**The verdict.** A warehouse transfer's `finance_account_id` must be one of the paying selling team's **active** accounts — operational or not. Unlike a restock or an expense ([operational-accounts-pay-for-operations](../financial_account/context_decision.md#operational-accounts-pay-for-operations)), the operational mark is not asked. It completes [a-transfer-names-its-paying-account](#a-transfer-names-its-paying-account), which named the account but not which accounts qualify.
+
+| | |
+| --- | --- |
+| create | an archived account, or another team's, is refused, naming it; nothing is written |
+| edit | checked only when the account changes; keeping an account archived since still passes |
+| no shipping cost | no account, nothing checked |
+| the pickers | the transfer form and Edit Cost list every active account of the team |
+
+✅ **Built 2026-11-05** — `WarehouseTransferCreate` / `WarehouseTransferUpdate` through the inventory `PayingAccounts` seam (`accountAnswer.checkActive`, `inventory_v1/paying_accounts.go`); tests `TestWarehouseTransferCreate_RefusesAnAccountThatIsNotActive`, `TestWarehouseTransferUpdate_RefusesAChangedAccountThatIsNotActive`.

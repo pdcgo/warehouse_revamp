@@ -1,6 +1,8 @@
 package inventory_v1_test
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -9,6 +11,7 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
+	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"gorm.io/gorm"
 )
 
@@ -1962,5 +1965,150 @@ func TestRestockRequestList_FiltersByProduct(t *testing.T) {
 	}
 	if len(requestRows(unfiltered.Msg)) != 2 {
 		t.Fatalf("unfiltered list holds %d requests, want 2", len(requestRows(unfiltered.Msg)))
+	}
+}
+
+// fakeAccounts is the PayingAccounts fake: account id → what financial_account_service would answer for the restock's
+// team. An id absent from the map is another team's or unknown — both read as not found.
+type fakeAccounts map[uint64]inventory_v1.PayingAccount
+
+func (f fakeAccounts) Account(_ context.Context, _ uint64, accountID uint64) (inventory_v1.PayingAccount, bool, error) {
+	account, found := f[accountID]
+
+	return account, found, nil
+}
+
+const (
+	accountOperational uint64 = 41
+	accountPlain       uint64 = 42
+	accountArchived    uint64 = 43
+	accountOtherTeams  uint64 = 44
+)
+
+func restockAccounts() fakeAccounts {
+	return fakeAccounts{
+		accountOperational: {Name: "BCA Operasional", Active: true, Operational: true},
+		accountPlain:       {Name: "BCA Tabungan", Active: true},
+		accountArchived:    {Name: "Mandiri Lama", Operational: true},
+	}
+}
+
+// a-restock-names-its-paying-account: the account that paid is one of the restock team's ACTIVE OPERATIONAL accounts.
+// Anything else is FailedPrecondition naming it — an archived one, one not marked operational, and another team's,
+// which reads exactly as one that never existed — and nothing is written.
+func TestRestockRequestCreate_RefusesAnAccountThatIsNotOperational(t *testing.T) {
+	db := san_testdb.DB(t)
+	ctx := ctxUser(1)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, restockAccounts())
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	create := func(account uint64) error {
+		_, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+			TeamId: sellingTeam, WarehouseId: warehouse, FinanceAccountId: account,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
+			},
+		}))
+
+		return err
+	}
+
+	cases := []struct {
+		account uint64
+		names   string
+	}{
+		{accountPlain, "BCA Tabungan"},
+		{accountArchived, "Mandiri Lama"},
+		{accountOtherTeams, "account #44"},
+	}
+
+	for _, c := range cases {
+		err := create(c.account)
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("account %d: code = %v, want FailedPrecondition (%v)", c.account, connect.CodeOf(err), err)
+		}
+
+		if !strings.Contains(err.Error(), c.names) || !strings.Contains(err.Error(), "active operational") {
+			t.Fatalf("account %d: the refusal must name it: %v", c.account, err)
+		}
+	}
+
+	var stored int64
+
+	err := db.Model(&inventory_service_models.Restock{}).Where("team_id = ?", sellingTeam).Count(&stored).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if stored != 0 {
+		t.Fatalf("a refused restock wrote %d rows", stored)
+	}
+
+	err = create(accountOperational)
+	if err != nil {
+		t.Fatalf("an active operational account must be accepted: %v", err)
+	}
+}
+
+// On edit the account is judged like a line's supplier: a CHANGED account must be active and operational, an
+// unchanged one is the restock keeping what it already holds — so un-marking or archiving an account never locks the
+// restocks that already named it.
+func TestRestockRequestUpdate_RefusesAChangedAccountThatIsNotOperational(t *testing.T) {
+	db := san_testdb.DB(t)
+	ctx := ctxUser(1)
+	accounts := restockAccounts()
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, accounts)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, FinanceAccountId: accountOperational,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	reqID := created.Msg.GetRequest().GetId()
+
+	edit := func(account uint64, count int64) error {
+		_, editErr := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+			TeamId: sellingTeam, RequestId: reqID, WarehouseId: warehouse, FinanceAccountId: account,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: count, Total: 100},
+			},
+		}))
+
+		return editErr
+	}
+
+	for _, account := range []uint64{accountPlain, accountArchived, accountOtherTeams} {
+		err = edit(account, 2)
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("moving the payment to account %d: code = %v, want FailedPrecondition (%v)",
+				account, connect.CodeOf(err), err)
+		}
+	}
+
+	var row inventory_service_models.Restock
+
+	err = db.Where("id = ?", reqID).First(&row).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if row.FinanceAccountID != accountOperational {
+		t.Fatalf("a refused edit moved the account to %d", row.FinanceAccountID)
+	}
+
+	// The account it already holds is archived since: an edit that keeps it still goes through.
+	accounts[accountOperational] = inventory_v1.PayingAccount{Name: "BCA Operasional", Operational: true}
+
+	err = edit(accountOperational, 3)
+	if err != nil {
+		t.Fatalf("an edit keeping the account the restock already holds must pass: %v", err)
 	}
 }

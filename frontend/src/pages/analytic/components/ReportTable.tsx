@@ -81,6 +81,10 @@ export function ReportTable({
 
   const current = columnOf(sort);
   const change = (next: SortState<string>) => onSortChange(sortOf(next));
+  // A WIDE TABLE FITS THE SCREEN: a heading and a row's name may take two lines (cells-are-two-lines-at-most), so a
+  // table of many columns — Account changes by account, thirteen of them — is as wide as its figures, not its longest
+  // words (the-finance-prototype-is-accepted: it ran ~40 px past a 1440 screen). The figures never wrap.
+  const wraps = { whiteSpace: "normal", verticalAlign: "bottom" } as const;
 
   return (
     <Table.ScrollArea>
@@ -96,7 +100,7 @@ export function ReportTable({
                 testId="analytic-sort-key"
               />
             ) : (
-              <Table.ColumnHeader>{t(`analytic.group.${groupBy}`)}</Table.ColumnHeader>
+              <Table.ColumnHeader {...wraps}>{t(`analytic.group.${groupBy}`)}</Table.ColumnHeader>
             )}
             {columns.map(({ def, field, id }) =>
               field.canSort ? (
@@ -108,9 +112,10 @@ export function ReportTable({
                   onSortChange={change}
                   end
                   testId={`analytic-sort-${field.name}`}
+                  headerProps={wraps}
                 />
               ) : (
-                <Table.ColumnHeader key={id} textAlign="end">
+                <Table.ColumnHeader key={id} textAlign="end" {...wraps}>
                   {fieldLabel(t, def, field.name)}
                 </Table.ColumnHeader>
               ),
@@ -120,7 +125,9 @@ export function ReportTable({
         <Table.Body>
           {keys.map((key) => (
             <Table.Row key={key} css={{ _hover: { "& > td": { bg: "bg.muted" } } }} data-testid={`analytic-row-${key}`}>
-              <Table.Cell whiteSpace="nowrap">{labelOf(key)}</Table.Cell>
+              <Table.Cell whiteSpace={isTimeGroup(groupBy) ? "nowrap" : "normal"} minW="7rem">
+                <Text lineClamp={2}>{labelOf(key)}</Text>
+              </Table.Cell>
               {columns.map(({ def, field, id }) => (
                 <Table.Cell key={id} textAlign="end" whiteSpace="nowrap" data-testid={`analytic-cell-${key}-${field.name}`}>
                   {formatFigure(field.kind, value(key, def.metricId, field.name))}

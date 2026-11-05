@@ -1442,6 +1442,8 @@ The DLQ and its triage subscription stay — they are not an archive
 ([setup-ensures-safe-defaults-never-deletes](#setup-ensures-safe-defaults-never-deletes)) — and so does topic
 retention at 31 days, which is what lets a replacement subscription seek back.
 
+✅ **Built 2026-09-14** (verified in code 2026-11-05) — the protection exists: `order_settlements.created_by_user_id` (settlement `00004_order_settlement_creator.sql`), so the creator outlives the event.
+
 ---
 
 ## events-are-encoded-with-protojson

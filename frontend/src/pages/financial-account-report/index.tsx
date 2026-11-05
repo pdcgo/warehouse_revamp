@@ -25,7 +25,7 @@ import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { FinancialAccountStatus } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { toDateInputValue } from "../../lib/datetime";
-import type { PeriodGrain } from "../../lib/period";
+import { MAX_PERIOD_DAYS, type PeriodGrain, spanDays } from "../../lib/period";
 import { dateRangeCodec, idCodec, oneOfCodec, sortCodec, useUrlState } from "../../lib/urlState";
 import { AccountFilter } from "./components/AccountFilter";
 import { Breakdown } from "./components/Breakdown";
@@ -90,7 +90,10 @@ export function FinancialAccountReportPage() {
 
   const teamId = current?.teamId;
   const { from, to } = windowOf(range);
-  const valid = from !== "" && to !== "" && from <= to;
+  // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the Finance metrics refuse a longer range, so it is not sent.
+  const span = from !== "" && to !== "" ? spanDays(from, to) : 0;
+  const tooLong = span > MAX_PERIOD_DAYS;
+  const valid = from !== "" && to !== "" && from <= to && !tooLong;
 
   // Every account the report can name — archived and Lainnya included, their past still happened.
   const accounts = useFinancialAccounts({ teamId, q: "", includeArchived: true, page: 1, pageSize: 200 });
@@ -287,7 +290,7 @@ export function FinancialAccountReportPage() {
 
           {!valid && (
             <Text fontSize="sm" color="fg.error" data-testid="account-report-range-invalid">
-              {t("financialAccounts.report.rangeInvalid")}
+              {tooLong ? t("analytic.rangeTooLong", { days: span, max: MAX_PERIOD_DAYS }) : t("financialAccounts.report.rangeInvalid")}
             </Text>
           )}
 

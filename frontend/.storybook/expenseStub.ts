@@ -9,7 +9,8 @@
 //   who may: ROOT, ADMINISTRATOR, SELLING_OWNER, SELLING_ADMIN read and write; the admin team's monitor reads
 //   (NO_SIDE_EFFECTS); anyone else is PermissionDenied. A missing row, or another team's, is NotFound.
 //   the request validation the interceptor runs (expense.proto): kind set, amount > 0, a YYYY-MM-DD day, note ≤ 500,
-//                                                and finance_account_id > 0 (an-expense-must-name-the-account-that-paid).
+//                                                and finance_account_id > 0 (an-expense-must-name-the-account-that-paid);
+//                                                STOCK_LOSS is refused — stock loss is recorded by inventory, not typed.
 //   an-expense-names-a-shop-only-for-ads         an ADS expense names its shop, and only an ADS expense names one —
 //                                                InvalidArgument either way. Rows already stored keep whatever shop.
 //   an-expense-must-name-the-account-that-paid  the account is the team's ACTIVE OPERATIONAL one, asked of the
@@ -164,6 +165,7 @@ export const expenseService: Partial<ServiceImpl<typeof ExpenseService>> = {
     // The request validation (expense.proto) — what the interceptor answers before the service runs.
     if (req.teamId === 0n) throw invalid("team_id: value must be greater than 0");
     if (req.kind === ExpenseKind.UNSPECIFIED || !(req.kind in ExpenseKind)) throw invalid("kind: value must not be in list [0]");
+    if (req.kind === ExpenseKind.STOCK_LOSS) throw invalid("kind: stock loss is recorded by inventory, not typed");
     if (req.amount <= 0n) throw invalid("amount: value must be greater than 0");
     if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(req.occurredAt)) throw invalid("a date must be YYYY-MM-DD");
     if ([...req.note].length > 500) throw invalid("note: value length must be at most 500 characters");
@@ -171,7 +173,7 @@ export const expenseService: Partial<ServiceImpl<typeof ExpenseService>> = {
     // The service's own rules (expense_create.go): the ads-only shop, then the account that paid.
     if (req.kind === ExpenseKind.ADS && req.shopId === 0n) throw invalid("an ads expense names its shop");
     if (req.kind !== ExpenseKind.ADS && req.shopId !== 0n) throw invalid("only an ads expense names a shop");
-    const refused = req.kind === ExpenseKind.STOCK_LOSS ? null : payingAccountRefusal(req.teamId, req.financeAccountId);
+    const refused = payingAccountRefusal(req.teamId, req.financeAccountId);
     if (refused !== null) throw new ConnectError(refused, Code.FailedPrecondition);
 
     expenseScenario.lastCreate = {

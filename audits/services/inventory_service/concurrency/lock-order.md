@@ -85,6 +85,8 @@ local read. Where that call sits relative to the locks:
 | --- | --- | --- |
 | `RestockRequestUpdate` (supplier changed) | ✅ **before** the transaction (`askSupplier`); the answer is judged under `FOR UPDATE` | none — fixed 2026-10-07 ([RestockRequestUpdate.md](RestockRequestUpdate.md)); it was the request row |
 | `RestockRequestCreate` | ✅ **before** `Transaction` | none, and no pinned connection — proved |
+| `RestockRequestCreate` / `RestockRequestUpdate` — the paying account (`PayingAccounts`, 2026-11-05) | ✅ **before** the transaction; Update judges a changed account under `FOR UPDATE` | none — proved ([RestockRequestUpdate.md](RestockRequestUpdate.md#the-paying-account-2026-11-05)) |
+| `WarehouseTransferCreate` / `WarehouseTransferUpdate` — the shipping's paying account (same seam, 2026-11-05) | ✅ **before** the transaction (Create: before the receiver's product link too); Update judges a changed account under the transfer's `FOR UPDATE` | none — proved ([WarehouseTransferUpdate.md](WarehouseTransferUpdate.md)) |
 
 The rule this adds to the hierarchy: **a call to another service happens before the first lock, or after commit.**
 
@@ -97,6 +99,8 @@ The rule this adds to the hierarchy: **a call to another service happens before 
 | The `stock_levels` `FOR UPDATE` **actually holds**, and the waiter re-reads after it | `TestInterleave_StockOpname_TheShelfLockHolds` — `⏸ blocked, released on the other commit`, B reads A's 45 not the stale 50 |
 | `RestockRequestUpdate` does NOT hold the request across its supplier_service call (fixed) | `TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheSupplierRoundTrip`: Cancel 56 ms on an 800 ms call · before the fix, 817 ms |
 | `RestockRequestCreate` holds no transaction during its call | `TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheSupplierCall`: 0 idle in transaction, 0 locks |
+| Neither restock write holds a lock across the paying-account call | `TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheAccountRoundTrip` (Cancel 62 ms on 800 ms) · `TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheAccountCall` (0 / 0) |
+| Neither transfer write holds a lock across the paying-account call | `TestRace_WarehouseTransferUpdate_ACancelDoesNotWaitForTheAccountRoundTrip` (Cancel 65 ms on 800 ms) · `TestRace_WarehouseTransferCreate_HoldsNoTransactionDuringTheAccountCall` (0 / 0) |
 
 ```sh
 go test -tags raceaudit -run 'StockOpname' -v ./backend/services/inventory_service/inventory_v1/

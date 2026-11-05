@@ -17,7 +17,7 @@ func newService(t *testing.T, db *gorm.DB) *inventory_v1.Service {
 
 	// nil posters — NewService substitutes no-ops, so a test receiving a box onto a shelf does not
 	// have to construct a liability ledger (#184) or an expense ledger (#211) it has no opinion about.
-	return inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+	return inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
 }
 
 // fakeSuppliers is the SupplierChecker fake: supplier id → live. A deleted supplier is false; an id that
@@ -37,7 +37,7 @@ func (f fakeSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]inv
 func newServiceWithSuppliers(t *testing.T, db *gorm.DB, suppliers fakeSuppliers) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, nil, nil, suppliers, nil, nil, nil)
+	return inventory_v1.NewService(db, nil, nil, suppliers, nil, nil, nil, nil)
 }
 
 // fakeSupplierService is fakeSuppliers plus the stores it knows: store id → its supplier and whether it is live. A store
@@ -68,7 +68,7 @@ func newServiceWithStores(
 ) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, nil, nil, fakeSupplierService{fakeSuppliers: suppliers, stores: stores}, nil, nil, nil)
+	return inventory_v1.NewService(db, nil, nil, fakeSupplierService{fakeSuppliers: suppliers, stores: stores}, nil, nil, nil, nil)
 }
 
 // recordingExpense captures the stock-loss values an adjust posts, so a test can assert on WHAT was
@@ -92,7 +92,7 @@ func (e *recordingExpense) PostStockLoss(_ context.Context, warehouseID uint64, 
 func newServiceWithExpense(t *testing.T, db *gorm.DB, expense inventory_v1.ExpensePoster) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, nil, expense, nil, nil, nil, nil)
+	return inventory_v1.NewService(db, nil, expense, nil, nil, nil, nil, nil)
 }
 
 // recordingPoster captures the stock-damage reimbursements an adjust or a count posts, so a test can assert on WHAT
@@ -115,7 +115,7 @@ func newServiceWithLiability(
 ) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, poster, nil, nil, nil, nil, nil)
+	return inventory_v1.NewService(db, poster, nil, nil, nil, nil, nil, nil)
 }
 
 // page1 is the first page at a generous limit — enough for the tiny fixtures here. Every inventory

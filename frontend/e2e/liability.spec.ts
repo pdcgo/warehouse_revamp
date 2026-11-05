@@ -190,6 +190,13 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
 
   // Opened at 0, so team 1's accounts still add up to what the financial accounts spec expects.
   const paidFrom = await openAccount(page, String(WAREHOUSE_TEAM), `E2E COD ${SUFFIX}`, `E2E-COD-${SUFFIX}`, 0);
+  // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account) — the server refuses any other.
+  const marked = await call(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: String(WAREHOUSE_TEAM),
+    accountId: paidFrom,
+    operational: true,
+  });
+  expect(marked.status).toBe(200);
 
   const created = await call(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
     teamId: String(WAREHOUSE_TEAM),

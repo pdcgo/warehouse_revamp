@@ -175,6 +175,9 @@ flowchart LR
 - **Assumed, not asked back:** "filter type" meant choosing the searched field, and "status (bukan status order)"
   meant the warehouse step. If either meant something else, it is a new filter, not a change to these.
 
+✅ **Built 2026-10-21** (verified in code 2026-11-05) — `OrderListFilter.seller_team_id` / `marketplace` / `shipping_code` (`proto/warehouse/selling/v1/order.proto` 8–10), applied in `scopedOrders`; recorded under [the-filter-gains-seller-marketplace-and-courier](#the-filter-gains-seller-marketplace-and-courier).
+
+
 ## a-warehouse-step-moves-by-the-old-systems-table
 
 > Owner, in chat (2026-10-01): the old system's table — *waiting: picking, picked, packing_completed · picking:

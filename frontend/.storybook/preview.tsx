@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { Box, ChakraProvider } from "@chakra-ui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Decorator, Preview } from "@storybook/react-vite";
+import { MINIMAL_VIEWPORTS } from "storybook/viewport";
 import { MemoryRouter } from "react-router-dom";
 
 import { PendingMarksProvider } from "../src/features/pending/PendingMarks";
@@ -446,6 +447,13 @@ const preview: Preview = {
   parameters: {
     // No frame padding by default — the `Pages/` gutter is added in StoryProviders instead.
     layout: "fullscreen",
+    // Storybook's own sizes, plus the 1440 desktop a story pins a layout at (Finance's `FitsA1440Screen`).
+    viewport: {
+      options: {
+        ...MINIMAL_VIEWPORTS,
+        desktop1440: { name: "Desktop 1440", styles: { width: "1440px", height: "900px" }, type: "desktop" },
+      },
+    },
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     options: {
       // The sidebar groups mirror `src/components/<group>/` one-for-one, so "where does this live?"

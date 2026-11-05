@@ -137,6 +137,12 @@ test("Count: the warehouse plans a count of every rack, and the shelves are lock
     openingBalance: 0,
     openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
   });
+  // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account) — the server refuses any other.
+  await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: "1",
+    accountId: account.account.id,
+    operational: true,
+  });
 
   // Kaos A at Rp 10.000 a unit, Kaos B at Rp 20.000 — what the shortage is priced at.
   const restock = await rpc<{ request: { id: string; items: { id: string }[] } }>(
@@ -366,4 +372,67 @@ test("Count: the warehouse Admin plans a one-product count, picking from what th
   expect([...products]).toEqual([state.kaosB]);
 
   await rpc(page, "inventory.v1.OpnameService/OpnameSessionCancel", { teamId: state.warehouse, sessionId: list.ids[0] });
+});
+
+// LOST STOCK, read back from the count above (inventory-lost-counts-the-warehouses-custody-losses): its shortage was
+// Kaos B's 1 unit lost at Rp 20.000 — counted — and Kaos A's torn unit — broken, NOT counted. Read through
+// InventoryAnalyticService and the Analytic composer, as the warehouse (a-warehouse-sees-its-lost-amount).
+test("Lost stock: the count's shortage is read back, its broken unit is not", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await useTeam(page, state.warehouse);
+
+  const LOST = "metrics/inventory/lost";
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+  const week = new Date(Date.now() - 6 * 86_400_000).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+  const filters = [{ dateRangeFilter: { dateMin: week, dateMax: today } }];
+
+  const ranked = await rpc<{ keys: { ids: { ids: string[] } } }>(page, "inventory.v1.InventoryAnalyticService/MetricSearch", {
+    teamId: state.warehouse,
+    groupBy: "GROUP_TYPE_PRODUCT",
+    filters,
+    sort: { metricId: LOST, field: "lost_amount", sortType: "SORT_TYPE_DESC" },
+    page: { offset: 0, limit: 20 },
+  });
+  expect(ranked.keys.ids.ids).toEqual([state.kaosB]);
+
+  type Lost = { lostCount?: string; lostAmount?: number };
+  const head = await rpc<{ metricDatas: { lostSummary: Lost }[] }>(page, "inventory.v1.InventoryAnalyticService/MetricData", {
+    teamId: state.warehouse,
+    groupBy: "GROUP_TYPE_SUMMARY",
+    filters,
+    metricIds: [LOST],
+  });
+  expect([Number(head.metricDatas[0]!.lostSummary.lostCount ?? 0), head.metricDatas[0]!.lostSummary.lostAmount ?? 0]).toEqual([1, 20000]);
+
+  await page.goto(`/analytic?g=product&m=${LOST}&r=7d&s=${LOST}:lost_amount:desc`);
+  await expect(page.getByTestId("analytic-table")).toBeVisible();
+  await expect(page.getByTestId(`analytic-row-${state.kaosB}`)).toContainText("Kaos B");
+  await expect(page.getByTestId(`analytic-cell-${state.kaosB}-lost_amount`)).toHaveText("Rp 20.000");
+  await expect(page.getByTestId(`analytic-row-${state.kaosA}`)).toHaveCount(0);
+  await expect(page.getByTestId("analytic-headline-lost_count-value")).toHaveText("1");
+  await expect(page.getByTestId("analytic-rows-line")).toContainText("with lost stock in this period");
+
+  // THE PRODUCT FILTER (backlog #19): a warehouse searches what it holds (WarehouseProductSearch) — Kaos A, whose torn
+  // unit is no loss, narrows the table to nothing; Kaos B brings its row back. The pick is in the URL and reads as a
+  // chip named by ProductByIds, after a reload too.
+  const pickProduct = async (id: string) => {
+    const input = page.getByTestId("analytic-filter-product").getByRole("combobox");
+    await input.click();
+    await input.fill("Kaos");
+    await page.getByTestId(`product-select-option-${state.codes.get(id)}`).click();
+    await expect(page).toHaveURL(new RegExp(`[?&]product=${id}(&|$)`));
+  };
+
+  await pickProduct(state.kaosA);
+  await expect(page.getByTestId("analytic-product-chip")).toHaveText("Kaos A");
+  await expect(page.getByTestId(`analytic-row-${state.kaosB}`)).toHaveCount(0);
+
+  await page.getByTestId("analytic-product-chip-remove").click();
+  await pickProduct(state.kaosB);
+  await expect(page.getByTestId(`analytic-row-${state.kaosB}`)).toContainText("Kaos B");
+  await expect(page.getByTestId("analytic-headline-lost_count-value")).toHaveText("1");
+
+  await page.reload();
+  await expect(page.getByTestId("analytic-product-chip")).toHaveText("Kaos B");
+  await expect(page.getByTestId(`analytic-cell-${state.kaosB}-lost_amount`)).toHaveText("Rp 20.000");
 });

@@ -18,6 +18,7 @@ import {
 import { CircleSlash, PackageCheck, PackageSearch, Search, Undo2 } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
+import { useIsMobile } from "../../../layouts/shell";
 import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatusBadge, orderStatusLabelKey } from "../../../components/badges/OrderStatusBadge";
@@ -64,6 +65,9 @@ export function ReceiveReturnDialog({
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
+  // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
+  // `{ base: "full", md: "lg" }` kept full's min-height on desktop and stretched the dialog to the window's height.
+  const isMobile = useIsMobile();
 
   const [value, setValue] = useState("");
   // What was searched — set on Enter or the search button, never per keystroke: a scanner types a whole code at once.
@@ -114,7 +118,7 @@ export function ReceiveReturnDialog({
         open={open}
         onOpenChange={(e) => onOpenChange(e.open)}
         placement="center"
-        size={{ base: "full", md: "lg" }}
+        size={isMobile ? "full" : "lg"}
         initialFocusEl={() => inputRef.current}
       >
         <Portal>

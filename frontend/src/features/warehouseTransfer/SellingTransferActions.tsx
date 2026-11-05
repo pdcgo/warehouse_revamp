@@ -196,7 +196,6 @@ function EditCostDialog({
             teamId={teamId}
             value={accountId > 0n ? accountId : undefined}
             onChange={setAccountId}
-            operationalOnly
             disabled={amountOf(cost) === 0}
             testId="transfer-cost-account"
           />

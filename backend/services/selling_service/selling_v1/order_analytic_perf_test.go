@@ -1,7 +1,7 @@
 //go:build perfaudit
 
-// Performance audit (the audit-rpc-performance skill) for the order metrics — MetricSearch and MetricData over a year
-// of `order_daily_reports`.
+// Performance audit (the audit-rpc-performance skill) for the order metrics and Warehouse Fee — MetricSearch and
+// MetricData over a year of `order_daily_reports`.
 //
 //	go test -tags perfaudit -run TestPerf_OrderMetric -v ./backend/services/selling_service/selling_v1/
 package selling_v1_test
@@ -22,13 +22,13 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
-// perfReportRows is a year of report rows: 365 days × 5 metrics × 55 (seller, shop, warehouse, creator) — ~100 000
-// rows over 5 sellers, 20 shops, 3 warehouses and 7 creators.
+// perfReportRows is a year of report rows: 365 days × 6 metrics (the five order metrics and Warehouse Fee) × 55
+// (seller, shop, warehouse, creator) — ~120 000 rows over 5 sellers, 20 shops, 3 warehouses and 7 creators.
 func perfReportRows() []selling_service_models.OrderDailyReport {
-	metrics := []string{"created", "cancelled", "return_created", "return_arrived", "lost_created"}
+	metrics := []string{"created", "cancelled", "return_created", "return_arrived", "lost_created", "warehouse_fee"}
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	rows := make([]selling_service_models.OrderDailyReport, 0, 365*5*55)
+	rows := make([]selling_service_models.OrderDailyReport, 0, 365*len(metrics)*55)
 
 	for d := range 365 {
 		for _, metric := range metrics {
@@ -75,7 +75,8 @@ func TestPerf_OrderMetric(t *testing.T) {
 	analytic := selling_v1.NewAnalytic(db, fakeTeamTypes{900: true})
 	ctx := context.Background()
 
-	all := []string{metricCreated, metricCancelled, metricReturnCreated, metricReturnArrived, metricLostCreated}
+	all := []string{metricCreated, metricCancelled, metricReturnCreated, metricReturnArrived, metricLostCreated,
+		metricWarehouseFee}
 	shops := &analytic_basev1.MetricKeys{K: &analytic_basev1.MetricKeys_Ids{Ids: &analytic_basev1.IDList{
 		Ids: []uint64{100, 105, 110, 115, 101, 106, 111, 116},
 	}}}
@@ -112,7 +113,31 @@ func TestPerf_OrderMetric(t *testing.T) {
 
 			return err
 		}},
-		{"data · seller · 8 shops × 5 metrics · a year", func() error {
+		// WAREHOUSE FEE — a warehouse ranks its sellers by the fee amount it is shown (a-warehouse-sees-its-own-fee-amount).
+		{"search · warehouse · fee by team, by amount · a year", func() error {
+			_, err := analytic.MetricSearch(ctx, connect.NewRequest(&sellingv1.MetricSearchRequest{
+				TeamId: 900, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_TEAM, Filters: perfWindow("2026-01-01", "2026-12-31"),
+				Sort: &analytic_basev1.MetricSort{MetricId: metricWarehouseFee, Field: "amount"},
+				Page: &analytic_basev1.PaginationFilter{Limit: 50},
+			}))
+
+			return err
+		}},
+		{"data · warehouse · fee by day · 31 days", func() error {
+			days := make([]string, 0, 31)
+			for d := range 31 {
+				days = append(days, time.Date(2026, 10, 1+d, 0, 0, 0, 0, time.UTC).Format("2006-01-02"))
+			}
+
+			_, err := analytic.MetricData(ctx, connect.NewRequest(&sellingv1.MetricDataRequest{
+				TeamId: 900, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_DAILY, Filters: perfWindow("2026-10-01", "2026-10-31"),
+				Keys:      &analytic_basev1.MetricKeys{K: &analytic_basev1.MetricKeys_Days{Days: &analytic_basev1.DayList{Days: days}}},
+				MetricIds: []string{metricWarehouseFee},
+			}))
+
+			return err
+		}},
+		{"data · seller · 8 shops × 6 metrics · a year", func() error {
 			_, err := analytic.MetricData(ctx, connect.NewRequest(&sellingv1.MetricDataRequest{
 				TeamId: 2, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP, Filters: perfWindow("2026-01-01", "2026-12-31"),
 				Keys: shops, MetricIds: all,
@@ -120,7 +145,7 @@ func TestPerf_OrderMetric(t *testing.T) {
 
 			return err
 		}},
-		{"data · root · summary × 5 metrics · a year", func() error {
+		{"data · root · summary × 6 metrics · a year", func() error {
 			_, err := analytic.MetricData(ctx, connect.NewRequest(&sellingv1.MetricDataRequest{
 				TeamId: san_auth.RootTeamID, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SUMMARY,
 				Filters: perfWindow("2026-01-01", "2026-12-31"), MetricIds: all,

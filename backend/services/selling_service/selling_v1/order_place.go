@@ -163,14 +163,12 @@ func (s *Service) placeOrder(
 	}
 
 	// The shop is checked BEFORE any stock moves. A bad shop is a rejected request, and rejecting it
-	// after taking stock would mean compensating a draw that never needed to happen.
-	shopOK, err := shopExists(s.db.WithContext(ctx), p.teamID, p.shopID)
+	// after taking stock would mean compensating a draw that never needed to happen. It is the write gate
+	// (a-write-needs-a-grant-or-a-manager): this team's, open, and the caller granted it or running the team — so a
+	// draft's Promote, which is this same door, meets it too.
+	err = s.refuseShopWrite(ctx, p.teamID, p.shopID)
 	if err != nil {
-		return nil, dbError(err)
-	}
-
-	if !shopOK {
-		return nil, notFound()
+		return nil, err
 	}
 
 	// WHO OWNS EACH LINE, looked up ONCE — the owner's flow draws it as the first step after the request check, and

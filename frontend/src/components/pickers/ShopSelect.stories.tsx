@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
 import { shops } from "../../../.storybook/fixtures";
+import { setShopWriter } from "../../../.storybook/shopStub";
 import { ShopSelect, description } from "./ShopSelect";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 
@@ -176,5 +177,50 @@ export const Interactive: Story = {
     await userEvent.click(option);
 
     await expect(canvas.getByTestId("shop-select")).toHaveValue(shops[2]!.name);
+  },
+};
+
+// THE PICKER OF A WRITE offers only the shops this person may write on (a-write-needs-a-grant-or-a-manager). Eko is a
+// CS granted Melati Grosir alone: the order form shows him that one, never Melati Official or Melati Store — which the
+// server would refuse him anyway.
+export const WritableOffersOnlyTheGrantedShops: Story = {
+  args: { writable: true },
+  beforeEach: () => {
+    setShopWriter(65n);
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+
+    await expect(await canvas.findByTestId(`shop-select-option-${shops[2]!.id}`)).toBeInTheDocument();
+    await expect(canvas.queryByTestId(`shop-select-option-${shops[0]!.id}`)).not.toBeInTheDocument();
+    await expect(canvas.queryByTestId(`shop-select-option-${shops[1]!.id}`)).not.toBeInTheDocument();
+  },
+};
+
+// A shop held from before — a draft pushed onto a shop this person may not write on — is CLEARED, not kept invisibly
+// until the create is refused.
+export const WritableClearsAShopThePersonMayNotWriteOn: Story = {
+  args: { writable: true, value: shops[0]!.id },
+  beforeEach: () => {
+    setShopWriter(65n);
+  },
+  play: async ({ args }) => {
+    await waitFor(() => expect(args.onChange).toHaveBeenCalledWith(0n));
+  },
+};
+
+// The team's owner or admin writes on every shop, so the writable picker offers them all — the same list as a filter.
+export const WritableOffersAManagerEveryShop: Story = {
+  args: { writable: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+
+    for (const shop of shops.filter((s) => s.teamId === 12n)) {
+      await expect(await canvas.findByTestId(`shop-select-option-${shop.id}`)).toBeInTheDocument();
+    }
   },
 };

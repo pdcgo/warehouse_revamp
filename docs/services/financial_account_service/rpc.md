@@ -18,7 +18,7 @@ that moves only with a log row ([context_decision.md](../../business/financial_a
 | | `FinancialAccountIdentify` | an `unknown` account filled in, or moved into a registered one |
 | | `FinancialAccountTransfer` · `Capital` · `Reconcile` | the hand rows — two legs · the owner's money · the bank's figure in, the difference posted |
 | | `FinancialAccountShopSet` · `OperationalSet` | which account a shop withdraws into · which accounts pay for operations |
-| `FinancialAccountAnalyticService` | `AnalyticTimeSearch` · `AnalyticGroupSearch` · `AnalyticGroupMetric` | settlement's report shape, read from one row per account per day |
+| `FinancialAccountAnalyticService` | `MetricSearch` · `MetricData` | the Finance metrics `metrics/financial_accounts` and `metrics/financial_accounts/types` — the analytic pattern, read from one row per account per day, a balance as one running sum ([below](#the-finance-metrics--metricsearch--metricdata)). The three old reads `AnalyticTimeSearch` / `AnalyticGroupSearch` / `AnalyticGroupMetric` were removed 2026-11-05 ([the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)) |
 | *(push route)* | `/event/financial-account-withdrawal/push` | settlement's `withdrawal` rows into the shop's account |
 | *(push route)* | `/event/financial-account-team-payment/push` | liability's accepted team payments — out of the payer's account, into the creditor's |
 | *(push routes)* | `/event/financial-account-restock-{created,updated,cancelled}/push` | inventory's restock payments — out at create, the difference or the move on an edit, the refund on a cancel |
@@ -49,9 +49,52 @@ flowchart LR
   LS -.->|"FinancialAccountByIds, the caller's token"| BI["is the account the team's own, active, named"]
   POST --> L[("financial_account_logs + the balance")]
   POST --> D[("financial_account_daily_reports")]
-  D --> A["AnalyticTimeSearch, GroupSearch, GroupMetric"]
+  D --> A["MetricSearch, MetricData - the Finance metrics"]
   SS["FinancialAccountShopSet"] -.->|"ShopAccessCheck, the caller's token"| SH["selling_service"]
 ```
+
+---
+
+## The Finance metrics — MetricSearch / MetricData
+
+Built 2026-11-05 ([financial-accounts-serve-their-changes-and-their-types](../../business/analytic/rpc_provide_decision.md#financial-accounts-serve-their-changes-and-their-types),
+[the-balance-series-is-a-running-sum](../../business/analytic/rpc_provide_decision.md#the-balance-series-is-a-running-sum),
+[finance-filters-by-account](../../business/analytic/rpc_provide_decision.md#finance-filters-by-account),
+[every-team-reads-its-own-finance](../../business/analytic/rpc_provide_decision.md#every-team-reads-its-own-finance)) —
+[financial_account_analytic.proto](../../../proto/warehouse/financial_account/v1/financial_account_analytic.proto),
+`financial_account_v1/metric_{shared,search,data}.go`. Read by the Analytic composer (Finance) and the Financial Account Report.
+
+| | |
+| --- | --- |
+| metrics | **Account changes** `metrics/financial_accounts`: `opening_balance` (POSITION), the nine change types in proto order (`account_opening` is the type OPENING_BALANCE), `change`, `closing_balance` (POSITION) · **Change types** `metrics/financial_accounts/types`: `amount` |
+| groups | SUMMARY, DAILY–YEARLY, ACCOUNT (id), PROVIDER (enum number) — and CHANGE_TYPE (enum number) for Change types only |
+| filters | the date range (≤ 366 days, required) and ACCOUNT — one or several account ids; another team's id matches nothing |
+| scope | always `team_id = request.team_id`, the root team's included: every team reads its own, never another's; the warehouse roles are on both policies |
+| sign | money out negative — the nine types add up to `change`, and `opening_balance + change = closing_balance` for every key |
+| keys | ACCOUNT: every account with a daily row up to the window's end (a quiet one included, with its balance) · PROVIDER: those accounts' providers now · CHANGE_TYPE: every type that moved · time: every period of the window |
+| as of | the read's own time — the daily rows are written in the log row's transaction, so nothing lags |
+
+```mermaid
+sequenceDiagram
+  participant ui as Analytic or the Report
+  participant fa as FinancialAccountAnalyticService
+  participant db as financial_account_daily_reports
+  ui->>fa: MetricSearch or MetricData - team, group, date range, accounts
+  alt a time group
+    fa->>db: once - each account's last row before the first day, summed
+    fa->>db: the window's rows, summed per day - one range of the team_day index
+    fa->>fa: the running sum - each period opens on the balance so far, closes on it plus its change
+  else an id group or SUMMARY
+    fa->>db: per account - its last row before the window and the window's sums, one statement
+    fa->>fa: fold by provider or by type, closing = opening + change
+  end
+  fa-->>ui: keys ranked by the field, key DESC on a tie - or each key's figures
+```
+
+A period cut by the range has its edges at the range boundary: the running sum starts on the window's first day. A
+time page needs the whole window's sum (a page's balance depends on every period before it), so MetricData reads the
+whole window — at most 366 daily rows per account — and answers the asked keys. Perf: 2–15 ms on 50 accounts × a year
+(was 156 ms – 3.3 s, [AnalyticTimeSearch.md](../../../audits/services/financial_account_service/performances/AnalyticTimeSearch.md)).
 
 ---
 

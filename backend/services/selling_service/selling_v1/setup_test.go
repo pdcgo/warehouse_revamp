@@ -175,19 +175,21 @@ func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
 	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneServes{}, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
 }
 
-// everyoneServes is a team where every person asked about is an active Customer Service — a member who may be granted a
-// shop (a-grant-goes-only-to-a-team-member) and manages nothing, so ShopAccessCheck reads exactly as with no roles.
-// The tests about WHO may be granted use fakeRoles / fakeMembers instead.
-type everyoneServes struct{}
+// everyoneMayWrite is a team where every person asked about may write on every shop and may be granted one: the write
+// gate reads them as the team's owner (a-write-needs-a-grant-or-a-manager), so an order test about something else
+// places its order without seeding a grant — a call with no identity included — and a grant reads them as an active
+// member (a-grant-goes-only-to-a-team-member). The tests about WHO may write use fakeRoles (shop_write_gate_test.go,
+// shop_access_check_test.go); about who may be granted, fakeRoles / fakeMembers.
+type everyoneMayWrite struct{}
 
-func (everyoneServes) Roles(context.Context, uint64, uint64) (role_basev1.Role, role_basev1.Role, error) {
-	return role_basev1.Role_ROLE_SELLING_CS, role_basev1.Role_ROLE_UNSPECIFIED, nil
+func (everyoneMayWrite) Roles(context.Context, uint64, uint64) (role_basev1.Role, role_basev1.Role, error) {
+	return role_basev1.Role_ROLE_SELLING_OWNER, role_basev1.Role_ROLE_UNSPECIFIED, nil
 }
 
-func (everyoneServes) Member(context.Context, uint64, uint64) (selling_v1.TeamMember, error) {
+func (everyoneMayWrite) Member(context.Context, uint64, uint64) (selling_v1.TeamMember, error) {
 	return selling_v1.TeamMember{Role: role_basev1.Role_ROLE_SELLING_CS}, nil
 }
 
@@ -195,14 +197,14 @@ func (everyoneServes) Member(context.Context, uint64, uint64) (selling_v1.TeamMe
 func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
 }
 
 // newServiceWithCatalog is for the tests where a product died underneath a draft (#194).
@@ -213,7 +215,7 @@ func newServiceWithCatalog(
 ) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
 }
 
 // insertShop seeds an active shop directly and returns its id.
@@ -316,14 +318,14 @@ func (f *fakeFees) Price(_ context.Context, _, _ uint64, goodsCost float64) (flo
 func newServiceWithFees(t *testing.T, db *gorm.DB, picker *fakePicker, fees selling_v1.WarehouseFeePricer) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, fees, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil)
 }
 
 // newServiceWithCredit is for the tests that care whether an order is REFUSED (#189).
 func newServiceWithCredit(t *testing.T, db *gorm.DB, credit selling_v1.CreditChecker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, nil, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, everyoneMayWrite{}, nil, nil, nil)
 }
 
 // testPlatformDate is when the buyer of every test order ordered on the storefront — REQUIRED at placement

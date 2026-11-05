@@ -263,7 +263,7 @@ sequenceDiagram
 | the event | `OrderReturnAccepted` on `order-return-accepted`, `event_id` = `order-return-accepted:<order_id>` — the status is terminal, so an order is accepted once. It also replaces `OrderStatusChanged` as Return Arrived's feed: the plain move refuses `return_completed`, so no `OrderStatusChanged` ever carries it |
 | two crew, one parcel | ✅ safe — the row lock serialises them: 8 accepts at once leave one `return_completed` row and one event, and the interleave shows the second waiting on the first's lock, then refused. Two **warehouses** at once — the order's own and the configured one, 4 + 4 — the same: one wins, and the row names the one that won (`order_return_accept_race_test.go`) |
 | cost | ✅ 7 queries, ~3.7 ms over 50 000 orders, every read an index scan (`order_return_accept_perf_test.go`) |
-| ⚠ not built | the stock half — the return transaction into the configured return warehouse and the missing units' write-off ([return-is-unplanned](../../business/inventory/context_decision.md#return-is-unplanned)); **a way for a stale-label warehouse to FIND the order** — it is neither end nor the configured warehouse, so no list or scan of its own matches, and a cross-team search by the label is not designed (the server accepts it by id); a screen showing where a return was accepted (it is on the wire); a reprint of the labels after the dialog closes |
+| ⚠ not built | the stock half — the return transaction into the configured return warehouse and the missing units' write-off ([return-is-unplanned](../../business/inventory/context_decision.md#return-is-unplanned)); **a way for a stale-label warehouse to FIND the order** — it is neither end nor the configured warehouse, so no list or scan of its own matches, and a cross-team search by the label is not designed (the server accepts it by id) — the warehouse's own *Receive Return* search and forced return are built 2026-11-04 (`ReceiveReturnDialog.tsx`); a screen showing where a return was accepted (it is on the wire); a reprint of the labels after the dialog closes |
 
 ### A return reads to its return warehouse — `orderReaders`
 
@@ -669,7 +669,9 @@ which is a record of who published, never something a consumer authorises from.
 ## The order metrics — the fold and `OrderAnalyticService`
 
 The five order metrics of [order_statistic_metric.md](../../business/order/order_statistic_metric.md) — Created, Cancel,
-Return Created, Return Arrived, Lost Created — through the analytic pattern
+Return Created, Return Arrived, Lost Created — and **Warehouse Fee** (`metrics/warehouse_fee`,
+[the-warehouse-fee-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-warehouse-fee-prototype-is-accepted))
+through the analytic pattern
 ([rpc_provide.md](../../business/analytic/rpc_provide.md)): a folded report, ranked by `MetricSearch` and filled by
 `MetricData`. Served by `selling_v1.Analytic`, its own struct: its one outside question, whether the reader is a
 warehouse, is asked of team_service through `TeamTypeReader` (`selling_team_types.go` in the composition root).
@@ -687,9 +689,11 @@ sequenceDiagram
     B->>F: four push subscriptions, one per topic, one handler
     Note over F: created, cancelled, a move to return or lost, or a return accepted - anything else is ACKED
     F->>R: one transaction - claim the event id in order_event_logs, read the order, upsert its day row
+    F->>R: placed or cancelled with a fee - then the day's warehouse_fee row, +1 and +fee or -1 and -fee
     A->>T: is the reader a warehouse - TeamByIds
     A->>R: the reader rows - root all, a warehouse by warehouse_id, a seller by team_id
-    Note over A: a warehouse gets counts only - money unset, a sort on money refused
+    Note over A: a warehouse gets counts only on the five order metrics - money unset, a sort on it refused
+    Note over A: Warehouse Fee - the amount is set and sortable for a warehouse too
 ```
 
 | | |
@@ -697,10 +701,11 @@ sequenceDiagram
 | the subscriptions | `selling-order-fold-placed` (order-placed), `selling-order-fold-cancelled` (order-cancelled), `selling-order-fold-moved` (order-status-changed), `selling-order-fold-return-accepted` (order-return-accepted — Return Arrived, since `return_completed` is the accept's own event) — each its OWN subscription on a topic liability and settlement also read |
 | the day | the event's `occurred_at` as a Jakarta date — the placement, the cancel, the move's timeline row ([a-fact-counts-on-the-day-it-happened](../../business/order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened)) |
 | the row | (day, metric, seller, shop, warehouse, creator) += 1 order, its `total_cost`, its `platform_total`, read off the order |
+| Warehouse Fee | a sixth `metric` value, `warehouse_fee` (00038), written by the SAME claim: a placement adds +1 and the order's frozen `warehouse_fee` to the placement day's fee row, a cancel −1 and the fee to the CANCEL day's row ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](../../business/analytic/rpc_provide_decision.md#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)) — an earlier day is never re-folded, so a period can read negative. `order_count` = Fee transactions, `total` = Fee amount, `mp_total` 0. An order with no fee writes no fee row. The keys and filters are the order metrics' ([warehouse-fee-groups-like-the-order-metrics](../../business/analytic/rpc_provide_decision.md#warehouse-fee-groups-like-the-order-metrics)); `amount` is set for a warehouse ([a-warehouse-sees-its-own-fee-amount](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-its-own-fee-amount), `orderMetric.warehouseMoney`). Why a metric row and not a column: the signed row reuses every read (search, fill, summary, sort) unchanged, where a column on `created`/`cancelled` would need a cross-row net in each. The fee row is always the transaction's second report lock, so a placement and a cancel meeting on it queue (raced ×10, 0 deadlocks) |
 | a redelivery | the claim is the write: a second claim finds the row and folds nothing. Raced 40/40 |
 | the reads | one statement each, after the team-type lookup. A seller's or a warehouse's read uses its scope index (1–8 ms over 100 000 rows); root's scans (13–30 ms) |
 | an id of 0 | left out of an id group: `IDList` takes ids above 0 ([a-no-user-row-cannot-be-a-key](../../business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key)) |
-| ⚠ not built | a backfill of the orders before the fold ([are-past-orders-folded](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)), a replay and a dedup prune — supplier's fold has all three |
+| ⚠ not built | a refold of Warehouse Fee for orders folded before 00038 (none in production, [revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet), [the-order-metrics-count-from-the-fold-onward](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward) — a dev order placed before it and cancelled after nets its seller below zero); a backfill of the orders before the fold ([are-past-orders-folded](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)), a replay and a dedup prune — supplier's fold has all three |
 
 ## Draft orders — `OrderDraftPush` and the blanks-only merge (#190, #191)
 
@@ -979,15 +984,15 @@ sequenceDiagram
     participant DB as shops, shop_users
     participant R as user_service's role resolver
     C->>S: team_id, shop_id, user_id — under the caller's token
-    S->>DB: a live shop of this team?
-    alt none — another team's, or deleted
+    S->>DB: a shop of this team — a deleted one included?
+    alt none — another team's, or never existed
         S-->>C: NotFound
-    else found
+    else found — open, or deleted and flagged
         S->>DB: the primary grant, and the user's own grant — one read
         opt the user holds no grant
             S->>R: the user's role in the team, and in the root team — cached
         end
-        S-->>C: the shop, primary_user_id, is_have_access
+        S-->>C: the shop with deleted, primary_user_id, is_have_access
     end
 ```
 
@@ -996,7 +1001,33 @@ sequenceDiagram
 | `is_have_access` | granted the shop, or the team's owner or admin, or root or admin ([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). A grant answers it without asking for a role |
 | `primary_user_id` | the grant flagged `is_primary` — 0 = none |
 | the roles | `RoleReader`, an interface selling owns; the composition root answers it with the access interceptor's resolver, so it is the same cached lookup every request pays for |
-| a deleted shop | `NotFound`, like every shop read — its last statements cannot be imported ([shop Q3](../../business/shop/context_clarify.md#question)) |
+| a deleted shop | 🔄 *(2026-11-05)* **answered**, `shop.deleted = true` — each caller decides ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)). The settlement importer and settlement's primary-CS lookup accept it, so a closed shop's last statements import; financial_account's `ShopOfTeam` adapter (`cmd/app_development/financial_account_deps.go`) refuses it as `NotFound`, as before — a new account link is not a payout; the order writes refuse it (below). Until the close is built, a closed shop is a deleted one |
+| in-process | the body is `shopAccess` (`selling_v1/shop_write_gate.go`) — the same answer this service's own order writes read, with no RPC hop |
+
+### The write gate on new selling — `refuseShopWrite` (2026-11-05)
+
+`OrderCreate` (and so a draft's Promote), `OrderDraftPush` naming a shop, and `OrderDraftUpdate` setting one ask
+`shopAccess` **in-process**, before any stock moves or any row is written
+([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). The
+caller is the request's identity; a call with none holds no grant and no role, so it is refused like a stranger.
+
+```mermaid
+flowchart TD
+  W["OrderCreate, a draft's Promote, OrderDraftPush with a shop, OrderDraftUpdate setting a shop"] --> A["shopAccess - the shop, the caller's grant, the role if no grant"]
+  A -->|"another team's, or none"| NF["NotFound - shop not found"]
+  A -->|"deleted - closed"| FP["FailedPrecondition - NAME: the shop is closed"]
+  A -->|"no grant, not owner or admin, not root or admin"| PD["PermissionDenied - You have no access to NAME"]
+  A -->|"granted, or a manager"| OK["the write goes on - the take, the row"]
+```
+
+| | |
+| --- | --- |
+| refused | `PermissionDenied`, *"You have no access to <shop> — ask the team's owner or admin for it"* — the importer's words · a closed shop `FailedPrecondition`, *"<shop>: the shop is closed — it takes no new orders"* ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)) |
+| not gated | reads (`ShopList`, `OrderList`, reports) · a draft push with no shop yet · an edit that leaves or clears the shop · the order moves and the order imports (`OrderStatusChange`, `ShopeeOrderImport`, `TiktokOrderImport`) — not in the decision's list, an open question |
+| the picker | `ShopList` `writable` (below) — the order form's `ShopSelect` (the draft page is the same form) and the statement import dialog ask it |
+| cost | 2 indexed reads (the shop by PK, `shop_users` by `(shop_id, user_id)`) + the cached role; `OrderCreate`'s whole create is 8 queries ≈3.2 ms (`TestPerf_OrderCreateKeyLookup`), was 7 |
+| concurrency | no lock — a revoke or a close landing between the gate and the write lets that one write through, serializable as *write, then revoke* ([lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |
+| tests | `shop_write_gate_test.go` — `TestOrderCreate_NeedsAGrantOrAManager` · `TestOrderCreate_AClosedShopOrAnotherTeamsIsRefused` · `TestOrderDraftPush_NeedsAGrantOrAManager` · `TestOrderDraftUpdate_SettingTheShopNeedsAGrantOrAManager` · `TestShopList_WritableIsTheCallersShops`; `shop_access_check_test.go` `TestShopAccessCheck_ADeletedShopIsAnsweredFlagged`; e2e `writes_need_a_shop_grant.spec.ts` |
 
 ## The shop list's filters — `ShopList` (#16)
 
@@ -1011,6 +1042,7 @@ is refused, InvalidArgument. Perf: 3 queries, ≤ 4.3 ms median over 500 shops a
 | `marketplace` ≠ UNSPECIFIED | `marketplace = <text>` |
 | `primary_user_id` > 0 | `id IN (SELECT shop_id FROM shop_users WHERE is_primary AND user_id = ?)` |
 | `no_primary` | `NOT EXISTS (SELECT 1 FROM shop_users WHERE shop_id = shops.id AND is_primary)` |
+| `writable` *(2026-11-05)* | none for a manager (the team's owner or admin, root or admin); anyone else `EXISTS (SELECT 1 FROM shop_users su WHERE su.shop_id = shops.id AND su.user_id = <caller>)` — the picker of a write. ⚠ planned as a `Seq Scan` on `shop_users` (≈5 ms at 30 000 grants): [ShopList.md](../../../audits/services/selling_service/performances/ShopList.md) recommends an index on `user_id` |
 
 ## The primary CS — `ShopUserAdd` and `ShopUserSetPrimary`
 
@@ -1120,7 +1152,8 @@ draft carries absent. Same roles as `OrderCreate` (ROOT, ADMINISTRATOR, SELLING_
 | whose drafts | the **team's**, any author's — a colleague's scrape of the ref is the double worth naming. The drafts list and detail keep their own-drafts rule |
 | the ref | a draft's `external_id`, with `source <> 'manual'`: a draft saved from the form carries a minted form id, not a marketplace ref |
 | the draft being finalized | answered like any other; the form drops it (`otherDrafts`) |
-| index | `order_drafts_external_ref_idx` UNIQUE `(team_id, source, external_id)` — `team_id` bounds the scan; with no `source` in the ask, `external_id` cannot seek. 1 query: ≈6 ms at 50 000 drafts in one team (a seq scan, since one team is the table), ≈15 ms at 50 refs. See [the audit](../../../audits/services/selling_service/performances/OrderDraftByExternalRefs.md) for the index it would want |
+| index | `order_drafts_team_shop_external_idx` `(team_id, shop_id, external_id)` (selling `00037`, 2026-11-05) — the lookup's own key, one seek per ref. 1 query: ≈0.5 ms at 50 000 drafts in one team for 1 ref and for 50 (was ≈6 ms / ≈15 ms on the unique `(team_id, source, external_id)`, which could not seek without `source`). [Audit](../../../audits/services/selling_service/performances/OrderDraftByExternalRefs.md) |
+| the warning's links | the read answers `author_user_id`; the dialog links only the caller's OWN drafts to `/orders/new?draft=id` — a colleague's is named *"A colleague's draft #id"* with no link, since a draft opens only for its author |
 
 ## The labels a warehouse prints — `OrderLabels` (step 1)
 

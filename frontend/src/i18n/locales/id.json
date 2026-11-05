@@ -2063,6 +2063,10 @@
       "unavailable": "Pemasok tidak tersedia",
       "empty": "Pemasok tidak ditemukan"
     },
+    "searchSelect": {
+      "placeholder": "Cari pemasok berdasarkan nama",
+      "typeMore": "Ketik minimal 2 karakter"
+    },
     "sellingOnly": "Hanya tim penjual yang memiliki pemasok.",
     "discover": {
       "title": "Temukan Pemasok",
@@ -4241,6 +4245,7 @@
       "failed": "Tidak bisa memeriksa apakah {{ref}} sudah tercatat ({{error}}). Pesanan tetap bisa dibuat.",
       "order": "Pesanan #{{id}}",
       "draft": "Draf #{{id}}",
+      "colleagueDraft": "Draf rekan #{{id}}",
       "created": "dibuat {{date}}",
       "newTab": "terbuka di tab baru",
       "createAnyway": "Tetap Buat",
@@ -4793,7 +4798,10 @@
       "daily": "Harian",
       "weekly": "Mingguan",
       "monthly": "Bulanan",
-      "yearly": "Tahunan"
+      "yearly": "Tahunan",
+      "account": "Akun",
+      "provider": "Penyedia",
+      "change_type": "Jenis perubahan"
     },
     "groupPlural": {
       "shop": "toko",
@@ -4805,10 +4813,14 @@
       "daily": "hari",
       "weekly": "minggu",
       "monthly": "bulan",
-      "yearly": "tahun"
+      "yearly": "tahun",
+      "account": "akun",
+      "provider": "penyedia",
+      "change_type": "jenis perubahan"
     },
     "addMetric": "Tambah Metrik",
     "removeMetric": "Hapus {{metric}}",
+    "removeFilter": "Hapus filter {{filter}}",
     "searchMetric": "Cari metrik",
     "noMetricMatches": "Tidak ada metrik yang cocok.",
     "openCategory": "Buka {{category}}",
@@ -4816,7 +4828,8 @@
       "order": "Pesanan",
       "settlement": "Penyelesaian",
       "inventory": "Inventaris",
-      "expense": "Biaya"
+      "expense": "Biaya",
+      "finance": "Keuangan"
     },
     "metric": {
       "ordersCreated": "Pesanan dibuat",
@@ -4826,9 +4839,12 @@
       "ordersLostCreated": "Pesanan hilang",
       "settlement": "Penyelesaian",
       "settlementTypes": "Penyelesaian per jenis",
-      "stockLost": "Stok hilang",
       "ads": "Biaya iklan",
-      "expenses": "Biaya"
+      "expenses": "Biaya",
+      "warehouseFee": "Biaya gudang",
+      "financialAccounts": "Perubahan akun",
+      "financialAccountTypes": "Jenis perubahan",
+      "inventoryLost": "Stok hilang"
     },
     "field": {
       "created_count": "Pesanan dibuat",
@@ -4864,7 +4880,9 @@
       "lost_count": "Unit hilang",
       "lost_amount": "Nilai hilang",
       "ads_spend": "Biaya iklan",
-      "expense_total": "Biaya"
+      "expense_total": "Biaya",
+      "transaction_count": "Transaksi biaya",
+      "amount": "Jumlah biaya"
     },
     "fieldOf": {
       "ordersCreated": {
@@ -4872,6 +4890,27 @@
       },
       "ordersCancelled": {
         "mp_total": "Total MP dibatalkan"
+      },
+      "financialAccounts": {
+        "opening_balance": "Saldo awal",
+        "expense": "Biaya",
+        "ads_expense": "Iklan",
+        "adjustment": "Penyesuaian",
+        "withdrawal": "Penarikan",
+        "restock": "Restok",
+        "account_opening": "Pembukaan akun",
+        "transfer": "Transfer",
+        "team_payment": "Pembayaran tim",
+        "capital": "Modal",
+        "change": "Perubahan bersih",
+        "closing_balance": "Saldo akhir"
+      },
+      "financialAccountTypes": {
+        "amount": "Jumlah"
+      },
+      "inventoryLost": {
+        "lost_count": "Unit hilang",
+        "lost_amount": "Nilai hilang"
       }
     },
     "cannotGroup": "Tidak bisa dikelompokkan per {{group}}",
@@ -4882,7 +4921,8 @@
       "warehouse": "Gudang",
       "user": "Orang",
       "product": "Produk",
-      "supplier": "Supplier"
+      "supplier": "Supplier",
+      "account": "Akun"
     },
     "all": {
       "shop": "Semua toko",
@@ -4890,7 +4930,8 @@
       "warehouse": "Semua gudang",
       "user": "Semua orang",
       "product": "Semua produk",
-      "supplier": "Semua supplier"
+      "supplier": "Semua supplier",
+      "account": "Semua akun"
     },
     "sortBy": "Urutkan",
     "sortOption": "{{field}}, {{dir}}",
@@ -4937,12 +4978,9 @@
       "catalogue": {
         "label": "Daftar metrik",
         "reason": "Metrik pesanan dan penyelesaian dibaca dari kontrak layanannya; sisanya masih daftar tetap di layar sampai layanannya ada."
-      },
-      "pickers": {
-        "label": "Filter produk dan supplier",
-        "reason": "Isinya data contoh; filter aslinya mencari milik tim sendiri."
       }
-    }
+    },
+    "accountsPicked_other": "{{count}} akun"
   },
   "warehouseHours": {
     "closedBadge": "Tutup",

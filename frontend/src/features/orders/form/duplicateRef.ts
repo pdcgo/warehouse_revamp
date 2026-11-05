@@ -27,6 +27,8 @@ export interface DuplicateOrder {
 export interface DuplicateDraft {
   id: bigint;
   createdAtUnix: bigint;
+  /** Whose draft it is — only the author can open it (OrderDraftDetail narrows to the author). */
+  authorUserId: bigint;
 }
 
 /** What the check found. `error` set = the check itself failed, and the dialog says so rather than staying quiet. */
@@ -75,7 +77,7 @@ export function draftsOn(res: OrderDraftByExternalRefsResponse, ref: string): Du
     if (item.d.case !== "draftRef") continue;
 
     for (const draft of Object.values(item.d.value.mapData)) {
-      found.push({ id: draft.draftId, createdAtUnix: draft.createdAtUnix });
+      found.push({ id: draft.draftId, createdAtUnix: draft.createdAtUnix, authorUserId: draft.authorUserId });
     }
   }
 

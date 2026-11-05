@@ -9,7 +9,7 @@ import { formatUnixDate } from "../../../lib/datetime";
 import { type DuplicateFinding, warns } from "./duplicateRef";
 
 export const description =
-  "The order form's duplicate marketplace-ref warning: names each live order (and draft) already on this shop + ref, as links that open in a new tab, with Create Anyway and Go Back. A warning, never a refusal. With `retry` it is Try Again's warning after a Create that got no answer: it always opens — naming the order, or saying the last Create may still be finishing (Send Again).";
+  "The order form's duplicate marketplace-ref warning: names each live order (and draft) already on this shop + ref, as links that open in a new tab, with Create Anyway and Go Back. A draft is a link only when it is the caller's own (`selfUserId`); a colleague's is named without one, since only its author can open it. A warning, never a refusal. With `retry` it is Try Again's warning after a Create that got no answer: it always opens — naming the order, or saying the last Create may still be finishing (Send Again).";
 
 // THE SHOP + REF IS ALREADY RECORDED (a-duplicate-ref-is-warned-not-refused, the-duplicate-warning-reads-drafts-too).
 //
@@ -20,6 +20,10 @@ export const description =
 // ⚠ EVERY FOUND ROW IS A LINK THAT OPENS IN A NEW TAB. The form behind the dialog is real work (lines, a buyer on
 // the phone); following the link in this tab would meet the leave-guard, or lose the form. A new tab lets the person
 // look, come back and decide.
+//
+// ⚠ ONLY THE CALLER'S OWN DRAFT IS A LINK. The read is team-wide (any author's draft on the ref warns), but a draft
+// opens only for its author (OrderDraftDetail narrows to the author) — a link to a colleague's would open a NotFound.
+// So a colleague's draft is named, "A colleague's draft #id", dated, and left as text.
 //
 // ⚠ TRY AGAIN REUSES IT (`retry`, a-try-again-always-warns). After a Create that got NO answer the first submit may have
 // landed, so the re-check usually finds it: the lead says so. When it finds nothing the dialog still opens — the first
@@ -33,6 +37,7 @@ export function DuplicateRefDialog({
   onDismiss,
   placing,
   retry = false,
+  selfUserId,
 }: {
   /** null = closed. The page holds it, because the page ran the check. */
   finding: DuplicateFinding | null;
@@ -43,6 +48,8 @@ export function DuplicateRefDialog({
   placing: boolean;
   /** Try Again's warning, after a Create that got no answer — it opens even when nothing is found. */
   retry?: boolean;
+  /** The signed-in person — their own drafts are links; anyone else's is named as a colleague's, with no link. */
+  selfUserId?: bigint;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -144,18 +151,24 @@ export function DuplicateRefDialog({
                         wrap="wrap"
                         data-testid={`duplicate-ref-draft-${draft.id}`}
                       >
-                        <Link asChild colorPalette="brand" fontSize="sm" fontWeight="bold">
-                          <RouterLink
-                            to={`/orders/new?draft=${draft.id}`}
-                            target="_blank"
-                            rel="noopener"
-                            data-testid={`duplicate-ref-draft-link-${draft.id}`}
-                            aria-label={`${t("orderForm.duplicate.draft", { id: draft.id.toString() })}, ${t("orderForm.duplicate.newTab")}`}
-                          >
-                            {t("orderForm.duplicate.draft", { id: draft.id.toString() })}
-                            <Icon as={ExternalLink} boxSize="3.5" />
-                          </RouterLink>
-                        </Link>
+                        {selfUserId !== undefined && draft.authorUserId === selfUserId ? (
+                          <Link asChild colorPalette="brand" fontSize="sm" fontWeight="bold">
+                            <RouterLink
+                              to={`/orders/new?draft=${draft.id}`}
+                              target="_blank"
+                              rel="noopener"
+                              data-testid={`duplicate-ref-draft-link-${draft.id}`}
+                              aria-label={`${t("orderForm.duplicate.draft", { id: draft.id.toString() })}, ${t("orderForm.duplicate.newTab")}`}
+                            >
+                              {t("orderForm.duplicate.draft", { id: draft.id.toString() })}
+                              <Icon as={ExternalLink} boxSize="3.5" />
+                            </RouterLink>
+                          </Link>
+                        ) : (
+                          <Text fontSize="sm" fontWeight="bold" data-testid={`duplicate-ref-draft-colleague-${draft.id}`}>
+                            {t("orderForm.duplicate.colleagueDraft", { id: draft.id.toString() })}
+                          </Text>
+                        )}
                         <Text fontSize="sm" color="fg.muted">
                           {t("orderForm.duplicate.created", { date: formatUnixDate(draft.createdAtUnix) })}
                         </Text>

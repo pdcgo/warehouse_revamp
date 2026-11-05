@@ -19,7 +19,7 @@ func TestPerf_RestockRequestAccept(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLedgerBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil)
 	rack := newRack(t, svc, otWarehouse, "perf-door")
 
 	counts := map[int]int{}

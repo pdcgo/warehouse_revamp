@@ -336,6 +336,9 @@ flowchart LR
 | the first row | the `opening_balance` row — its `balance_after` is the money the account opened with |
 | ⚠ still missing | the account the row belongs to — without it, *previous row* runs across every account of the team ([Contradiction](./context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains)) |
 
+✅ **Built** (verified in code 2026-11-05) — the row names its account: `financial_account_logs.account_id`, indexed `(account_id, id)` (`financial_account_service/db_migrations/00001_create_financial_accounts.sql`).
+
+
 ## restock-is-never-typed-by-hand
 
 > Chat *(owner, 2026-09-29)* — *"restock cant create by hand"*, after reading [Q10](./context_clarify.md#question):
@@ -366,6 +369,9 @@ sequenceDiagram
 | the hand screens | offer no `restock` — the four hand acts are New account, Transfer, Capital, Reconcile |
 | a refund | the same way — inventory publishes it when a cancel says the money came back ([Q2](./context_clarify.md#question)) |
 | until inventory publishes | ⚠ nothing does today. Until the event exists, a restock's payment reaches the account only through a reconcile — as an `adjustment`, money not yet recorded ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) |
+
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — inventory publishes, and `financial_account_v1/restock_payment_listener.go` posts the restock's payment from its account (`restock_payment_listener_test.go`, `restock_payment_race_test.go`).
+
 
 ## one-way-in-per-type
 
@@ -1376,6 +1382,8 @@ flowchart LR
 **What it replaces** — the *⚠ not built* rows of [another-bank-is-provider-lainnya](#another-bank-is-provider-lainnya) and
 [the-type-decides-the-provider](#the-type-decides-the-provider), and the *still open* cell of both in the table above.
 
+✅ **Built 2026-10-15** (verified in code 2026-11-05) — `FINANCIAL_ACCOUNT_TYPE_UNKNOWN` / `FINANCIAL_ACCOUNT_PROVIDER_UNKNOWN` opened by a person through `checkIdentity`'s `allowOther` (`financial_account_v1/account_rules.go`, `financial_account_create_test.go`), and the list's `archived_only`.
+
 ---
 
 ## a-correction-follows-the-expenses-account
@@ -1413,6 +1421,8 @@ Also confirmed the same day: *"When create expense it need financial account"* �
 
 ⛔ **Not built.** The Storybook prototype of *Paid from* shows it (2026-11-04); the server still takes an optional shop on every kind. The backend step changes `ExpenseCreate`'s validation and the `expense.proto` comment.
 
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — `ExpenseCreate`'s `shopRule` (`expense_service/expense_v1/expense_create.go`): ADS needs a shop, every other kind names none (InvalidArgument).
+
 ---
 
 ## the-paid-from-prototype-is-accepted
@@ -1428,6 +1438,8 @@ Also confirmed the same day: *"When create expense it need financial account"* �
 🔄 *(2026-11-04)* **Settled in chat** — yes: [the-expenses-phone-layout-is-accepted](#the-expenses-phone-layout-is-accepted).
 
 ⛔ Not built — the prototype only; the server ignores the account today.
+
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — `ExpenseCreateRequest.finance_account_id` required, checked against the team's active operational accounts (`cmd/app_development/expense_accounts.go`), and posted by `financial_account_v1/expense_payment_listener.go`.
 
 ---
 

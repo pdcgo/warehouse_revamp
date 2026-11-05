@@ -394,7 +394,8 @@ func restockErr(err error) error {
 		errors.Is(err, errRestockNotArrivable),
 		errors.Is(err, errRestockArrivedLinesOnly),
 		errors.Is(err, errRestockLineRemoved),
-		errors.Is(err, errRestockArrivedSupplierLocked):
+		errors.Is(err, errRestockArrivedSupplierLocked),
+		errors.Is(err, errAccountNotOperational):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, errRestockCountIncomplete),
 		errors.Is(err, errRestockOverCount),

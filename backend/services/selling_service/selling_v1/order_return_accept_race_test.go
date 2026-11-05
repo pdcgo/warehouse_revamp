@@ -91,7 +91,7 @@ func raceAcceptAt(svc *selling_v1.Service, warehouseID, orderID uint64) error {
 func TestRace_OrderReturnAccept_SameParcelAtOnce(t *testing.T) {
 	h := orderRaceHarness(t)
 	rec := &lockedRecorder{}
-	svc := selling_v1.NewService(h.DB(), &fakePicker{}, rec.send, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(h.DB(), &fakePicker{}, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
 	shopID := insertShop(t, h.DB(), raceOrderTeam, "Race Return", "RR-1", "shopee")
 
 	const n = 8
@@ -191,7 +191,7 @@ func TestInterleave_OrderReturnAccept_SecondWaitsAndReReads(t *testing.T) {
 func TestRace_OrderReturnAccept_TwoWarehousesAtOnce(t *testing.T) {
 	h := orderRaceHarness(t)
 	rec := &lockedRecorder{}
-	svc := selling_v1.NewService(h.DB(), &fakePicker{}, rec.send, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(h.DB(), &fakePicker{}, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
 	shopID := insertShop(t, h.DB(), raceOrderTeam, "Race Return", "RR-3", "shopee")
 
 	const returnWarehouse uint64 = 7_700_950

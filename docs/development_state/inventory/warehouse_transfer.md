@@ -1,5 +1,29 @@
 # Development state — inventory / warehouse_transfer
 
+✅ **2026-11-05: the shipping's account is server-checked** — uncommitted. `WarehouseTransferCreate` and
+`WarehouseTransferUpdate` refuse an account that is not one of the paying team's ACTIVE accounts — operational or not
+([a-transfers-shipping-is-paid-from-any-active-account](../../business/inventory/warehouse_transfer_decision.md#a-transfers-shipping-is-paid-from-any-active-account),
+owner "B": unlike a restock or an expense, the operational mark is not asked). The same `PayingAccounts` seam as the
+restock (`restockPayingAccounts` is team-scoped and fits), judged by `accountAnswer.checkActive()` → `errAccountNotActive`
+(FailedPrecondition naming it, *"… is not one of the team's active accounts"*; another team's or an unknown id reads
+`account #N`), asked before anything is written / before the lock, and on edit judged only when the account CHANGES (an
+unchanged one is kept even if archived since; dropping the cost to 0 is never refused). The pickers (form and Edit Cost)
+list every active account. Tests: `TestWarehouseTransferCreate_RefusesAnAccountThatIsNotActive`,
+`TestWarehouseTransferUpdate_RefusesAChangedAccountThatIsNotActive` (both accept one not marked operational); race
+`warehouse_transfer_account_race_test.go` ([audit](../../../audits/services/inventory_service/concurrency/WarehouseTransferUpdate.md));
+perf `cmd/app_development/transfer_accounts_perf_test.go` (Create +3 reads; [Update](../../../audits/services/inventory_service/performances/WarehouseTransferUpdate.md)
+11 statements, 3.5 ms). The Storybook stub refuses the same way (`activeAccountRefusal`); stories
+`TransferForm › A Refused Paying Account Is Said` and `SellingTransferActions › A Refused Paying Account Is Said` archive
+the picked account mid-flight.
+
+✅ **2026-11-05: the first e2e** — `frontend/e2e/transfers.spec.ts` (6 serial tests, sorts after `orders.spec` and
+`statement.spec`), uncommitted. Root's team 1 opens a transfer A → B on the form (`/inventories/transfer/new`) with a
+Rp 20.000 shipping cost paid from an operational account; A processes and ships it from the detail page's actions; B
+counts it in on the accept page (rack + a Rp 15.000 courier's charge with its note). Asserts: A's rack 10 → 6 at ship and
+B's rack 4 after accept; the paying account's balance Rp 20.000 → Rp 0 (polled — the real publish → emulator push →
+`transfer_shipping_listener`); `/liability` as team 1 shows Rp 15.000 on B's row (polled — `transfer_fee`), and no row for A.
+The account opens at the shipping cost so it ends at 0 (root's team total unchanged for financial_accounts.spec).
+
 🔨 **2026-11-04: both listeners are built** — uncommitted.
 ✅ *Accepted* → liability: the courier's charge at B's door posts as **`transfer_fee`** (`LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10`),
 keyed by the transfer, the selling team owing B, nothing for 0 ([a-transfer-charge-is-a-transfer-fee](../../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee));
@@ -19,7 +43,7 @@ question. The screens now reach a real server; Storybook still runs them on its 
 
 ✅ **2026-10-17: the cut-over is in** (ledgers stage 3) — every stock screen reads the ledgers, so a transfer shows on
 them. ⚠ The four transfer events have no listener yet: the cost and the courier's debt are stored and announced, and
-posted nowhere (the screens' pending marks say so).
+posted nowhere (the screens' pending marks say so). ✅ *(2026-11-04)* Both listeners are built — see the top of this file.
 
 ## Lifecycle as decided
 
@@ -86,7 +110,7 @@ stateDiagram-v2
    `InventoryService.StockTransfer` is gone from the contract.
 3. **The in-transit figure** on the team's stock screen (`the-transfer-is-where-goods-in-transit-are`): Σ of its
    transfers' lines in `created`…`lost`, not built anywhere yet.
-4. **The count lock**: a rack being counted must refuse B's put-away once opname is built
+4. ✅ **The count lock** *(built 2026-11-03)*: a rack being counted refuses B's put-away (`PutOnPlacements` → `RefuseCounted`)
    ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
 5. ✅ `audit-rpc-performance` on create and accept — fixed 2026-10-17, 19 and 23 statements whatever the lines (stage 5).
 

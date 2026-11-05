@@ -26,6 +26,7 @@ import { type orderClient, rpcError, teamClient } from "../../api/clients";
 import { awaitAnswer } from "../../features/orders/createAnswer";
 import { NoAnswerPanel } from "./components/NoAnswerPanel";
 import { useTeam } from "../../features/team/TeamContext";
+import { useAuth } from "../../features/auth/AuthContext";
 import { useCreateOrder } from "../../features/orders/queries";
 import { useDeleteOrderDrafts, useOrderDraft } from "../../features/orderDrafts/queries";
 import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
@@ -175,6 +176,8 @@ function parseDraftId(raw: string | null): bigint {
 export function OrderCreatePage() {
   const { t } = useTranslation();
   const { current } = useTeam();
+  // Whose drafts the duplicate warning may link to — only the caller's own open (OrderDraftDetail narrows to the author).
+  const { identity } = useAuth();
   const navigate = useNavigate();
   const createOrder = useCreateOrder();
 
@@ -1458,6 +1461,7 @@ export function OrderCreatePage() {
       {/* THIS SHOP + REF IS ALREADY RECORDED — asked before the checks below; Go Back keeps the form as typed. */}
       <DuplicateRefDialog
         finding={duplicate}
+        selfUserId={identity?.identityId}
         placing={saving}
         onGoBack={() => setDuplicate(null)}
         onCreateAnyway={runChecks}
@@ -1468,6 +1472,7 @@ export function OrderCreatePage() {
       <DuplicateRefDialog
         retry
         finding={retry}
+        selfUserId={identity?.identityId}
         placing={saving}
         onGoBack={goBackFromRetry}
         onDismiss={() => setRetry(null)}

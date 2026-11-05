@@ -4,7 +4,7 @@ The one ranked list of incomplete work: feature, frontend, API, service, event, 
 Rules: [the-backlog-is-reranked-after-every-slice](../development_lifecycle_decision.md#the-backlog-is-reranked-after-every-slice).
 Open questions are ranked separately in [biggest_question.md](../biggest_question.md).
 
-**Last full re-audit:** 2026-11-04 (against the code, at `2a7fd781`). **Last re-rank:** 2026-11-04 (after #11, #15, #16, #18, 16c, 16g).
+**Last full re-audit:** 2026-11-04 (against the code, at `2a7fd781`). **Last re-rank:** 2026-11-05 (after #10, #12 and the small pass).
 
 Size: S ≈ under a pass · M ≈ one pass · L ≈ several passes. Kind: bug · frontend · API · service · event · statistic · flow.
 
@@ -18,10 +18,6 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
-| 7c | **A restock or transfer made before its listener existed** — its payment was never posted, yet a later edit posts the difference and a cancel refunds, so the account gains money that never left. Matters only for data from before 2026-11-04 | event | financial account | S | `postPaymentLegs` |
-| 7d | **No warehouse-transfer e2e spec** | test | inventory | M | `frontend/e2e` |
-| 9c | **Restocks never check their paying account on the server** — only the form narrows the picker; reuse the expense `PayingAccounts` seam | API | inventory | S | `restock_request_create.go` |
-| 9d | **An API caller can send a STOCK_LOSS expense** — stored with no account; refuse it outside inventory's internal call | API | expense | S | `expense_create.go` |
 
 ### Tier 3 — order robustness
 
@@ -32,19 +28,19 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
+| 21b | **Close a shop** (`a-shop-is-closed-never-deleted`: status, Close/Reopen, a "closed" filter) — until then a closed shop's statements import through the API and auto-import but not from the dialog | feature | shop | M | `docs/business/shop/context_decision.md` |
+| 22 | **No report folds expenses** — `ExpenseCreated` / `ExpenseAdjusted` reach only the paying account; Analytic's expense figures do not hear them | statistic | expense | M | `tools/san/pubsub.go` |
+| 23 | **Settlement loose ends** — `AnalyticReseedGenesis` (undecided), finding an order whose settlement account never opened (undecided), the day re-fold, a screen for a shop's own rows, the Jakarta-time DSN, slow MetricData/MetricSearch, a report e2e | statistic · decision | settlement | M | `docs/development_state/settlement/` |
+| 24 | **The warehouse's own order screens may lack Mark as Lost (shipped) and Return Goods (completed)** — the seller's list has them (`every-allowed-move-has-a-button`); verify the warehouse side | frontend | order | S | `pages/pick-order`, warehouse order detail |
 | 10e | **#10 questions still open** — Q12 (a `san` command to list and replay stuck releases; also covers 10d) and Q13 (the build order, now moot); Q9 / Q10 / Q11 built as recommended, awaiting the owner's confirmation | decision | order | S | `docs/business/order/context_decision.md` |
 | 10d | **A lost `OrderCancelled` publish leaves the take standing** — logged with the key, released by hand; the #10 Q12 replay command would cover it | event | order | S | `order_cancel.go` |
 | 10b | **OrderList sorted by Total fails** — `ORDER BY total` names a column that no longer exists; no screen sorts by it yet. Which figure is "total" (the cost or the platform total) is the owner's call | bug · API | order | S | `selling_v1/list_slices.go:25` |
-| 12b | **The duplicate warning links a colleague's draft that only its author can open** — label it "a colleague's draft" without a link | frontend | order | S | `DuplicateRefDialog.tsx` |
-| 12c | **The draft-by-ref read scans the team's drafts** — 15 ms at 50 refs over 50 000 drafts; an index on `order_drafts (team_id, shop_id, external_id)` | perf | order | S | `audits/.../OrderDraftByExternalRefs.md` |
-| 16h | **Return dialogs stretch to full height on desktop** — Receive a Return and Accept Return | frontend | order | S | `features/orders/AcceptReturnDialog.tsx` |
 | 16f | **Only the sending warehouse can open a transfer's label photo** — the file is not shared with warehouse B or the seller; owner call | frontend · API | inventory | S | `TransferDetailCards.tsx` |
 | 16e | **Several warehouse labels in one PDF** — OrderLabels takes one order today (step 2: merge, a new resource type) | API · frontend | order | L | `pick-queue-next/pending.ts` printMerge |
-| 17 | **About 30 stale "not built" markers** in decision and state files (users, settlement, inventory open points) | doc | all | S | |
 
 ### Later — decided, bigger
 
-- **Statistics:** Analytic Warehouse Fee and Inventory Lost (data exists); financial account onto MetricSearch; the report-day rebuild command (`a-wrong-day-is-refolded-from-the-log`); server-side month grouping for the expense and balance daily views; real supplier figures (Sold/Ready/Sales/Warehouse); product page suppliers and daily in/out; category product count.
+- **Statistics:** the report-day rebuild command (`a-wrong-day-is-refolded-from-the-log`); server-side month grouping for the expense and balance daily views; real supplier figures (Sold/Ready/Sales/Warehouse); product page suppliers and daily in/out; category product count.
 - **Order model:** courier as `shipment_channel_id` (and "no order without a courier"); `order_addresses` tables; drafts without stored mappings; refuse an order for a team with no return warehouse (after every team sets one).
 - **Money type:** settlement, liability and expense ledgers still integer (decided double); stock reads still int64.
 - **Inventory:** goods-in-transit figure; `warehouse_products` team column; legacy supplier tables to drop; expiry report.
@@ -69,7 +65,7 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 
 | Date | Item | Commit |
 | --- | --- | --- |
-| 2026-11-04 | Table mirroring package — `backend/pkgs/san_table_mirroring`, all 9 decisions; no caller yet ([state](packages/table_mirroring.md)) | `19607cbb` |
+| 2026-11-04 | Table mirroring package — `backend/pkgs/san_table_mirroring`, all 9 decisions, README + examples; no caller yet ([state](packages/table_mirroring.md)) | `57c1c6c4` |
 | 2026-11-04 | #1 Saving the profile wiped email and phone — new `ProfileDetail`; save sends only changed fields | `19607cbb` |
 | 2026-11-04 | #2 The admin team's Admin could search every account — SearchUser holds a monitor to its policy | `19607cbb` |
 | 2026-11-04 | #3 Shop grants to non-members or suspended people — refused by ShopUserAdd/SetPrimary; picker excludes them | `19607cbb` |
@@ -94,5 +90,14 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 | 2026-11-04 | #7b A transfer's shipping leaves the paying account as `expense` (`a-transfers-shipping-posts-as-an-expense`) | `19607cbb` |
 | 2026-11-04 | #18b The restock's warehouse opens its label photo (`RestockReceiptPhoto`) | `19607cbb` |
 | 2026-11-04 | #11b Receive a Return (search, force, accept), Force Return on the order pages, Mark as Lost on shipped, Return Goods on completed | `19607cbb` |
-| 2026-11-04 | #12 The duplicate-ref warning names live orders and drafts on the same shop + ref (`OrderDraftByExternalRefs`) | uncommitted |
-| 2026-11-04 | #10 Stock never stays taken by a failed order — a unique key per order, the take first and given back on failure (`InventoryTxCancel`), cancel by event behind the count check, the pick page by transaction id, the form lock + Try Again | uncommitted |
+| 2026-11-04 | #12 The duplicate-ref warning names live orders and drafts on the same shop + ref (`OrderDraftByExternalRefs`) | `c67bea5b` |
+| 2026-11-04 | #10 Stock never stays taken by a failed order — a unique key per order, the take first and given back on failure (`InventoryTxCancel`), cancel by event behind the count check, the pick page by transaction id, the form lock + Try Again | `c67bea5b` |
+| 2026-11-05 | 9c Restocks refuse an account that is not the team's active operational one; 9d STOCK_LOSS refused through the API | uncommitted |
+| 2026-11-05 | 12b A colleague's draft is named without a link; 12c draft-by-ref index (selling 00037); 16h return dialogs normal size on desktop | uncommitted |
+| 2026-11-05 | 7d Warehouse-transfer e2e (`transfers.spec.ts`); 7c dropped — no real data before the listeners (`revamp-has-no-real-orders-yet`) | uncommitted |
+| 2026-11-05 | 9e Transfers refuse a paying account that is archived or not the team's (any active one may pay — owner B); 16i five more dialogs normal size on desktop | uncommitted |
+| 2026-11-05 | Statistics: Warehouse Fee on Analytic (net per day, a warehouse sees its amount); Finance category (Account changes, Change types, Account filter, running-sum balance — a year 1.5 s → 11 ms; the three old reads removed, the report moved onto them); Lost stock (count shortages + adjust lost, gross, folded in-process) | uncommitted |
+| 2026-11-05 | #19 Analytic product and supplier filters are real searchable pickers with name chips (seller: its own; warehouse: what it holds; root: every team's) | uncommitted |
+| 2026-11-05 | #17 Stale markers: 295 checked against the code — 108 built (58 ✅ lines in decision files, 46 rewritten), 50 still open with current reasons, 137 obsolete; table in `D:/hermes/cache/scratch/stale_markers.md` | uncommitted |
+| 2026-11-05 | #20 Order create, draft push and draft shop-setting need a shop grant or a manager (shared `shop_write_gate.go`; ShopList `writable` for the pickers); #21 a deleted shop still imports its statements, refused for new orders | uncommitted |
+| 2026-11-05 | #20b `san shop grant-current-cs` — the shop gate's rollout grant (every current CS gets every live shop of their team; idempotent, --dry-run); **the release must run it**. #20c index `shop_users (user_id, shop_id)` (selling 00039) — ShopList writable 5.7 → 2.9 ms | uncommitted |

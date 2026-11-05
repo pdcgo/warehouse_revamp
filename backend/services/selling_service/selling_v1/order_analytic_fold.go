@@ -21,6 +21,9 @@ const (
 	reportReturnCreated = "return_created"
 	reportReturnArrived = "return_arrived"
 	reportLostCreated   = "lost_created"
+	// WAREHOUSE FEE (the-warehouse-fee-prototype-is-accepted) — not a move of its own: the created and cancelled folds
+	// each write it a SIGNED row beside their own (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day).
+	reportWarehouseFee = "warehouse_fee"
 )
 
 // FoldHandler is the order metrics' push handler: it folds OrderPlaced, OrderCancelled, OrderStatusChanged and
@@ -74,6 +77,12 @@ func foldTarget(event *eventsv1.Event) (string, uint64) {
 //
 // ⚠ ONE TRANSACTION for the claim and the upsert. A failure rolls the claim back with the figures, so the redelivery
 // genuinely reprocesses rather than being recognised as "already done" with nothing counted.
+//
+// WAREHOUSE FEE rides the same claim: a placement also adds +1 and + the order's frozen `warehouse_fee` to the fee row of
+// the placement's day, and a cancel −1 and − the fee to the fee row of the CANCEL's day
+// (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day) — the placement's day is never re-folded. An
+// order with no fee (a server built without a pricer) writes no fee row, so its cancel takes nothing back. The fee row
+// is always the transaction's SECOND lock, after the move's own row, so two folds never wait on each other in a cycle.
 func (a *Analytic) fold(ctx context.Context, event *eventsv1.Event, metric string, orderID uint64) error {
 	day := event.GetOccurredAt().AsTime().In(wib).Format(metricDateLayout)
 
@@ -100,7 +109,8 @@ func (a *Analytic) fold(ctx context.Context, event *eventsv1.Event, metric strin
 		var order selling_service_models.Order
 
 		err := tx.
-			Select("id", "team_id", "shop_id", "warehouse_id", "created_by_user_id", "total_cost", "platform_total").
+			Select("id", "team_id", "shop_id", "warehouse_id", "created_by_user_id", "total_cost", "platform_total",
+				"warehouse_fee").
 			Where("id = ?", orderID).
 			Take(&order).
 			Error
@@ -116,25 +126,68 @@ func (a *Analytic) fold(ctx context.Context, event *eventsv1.Event, metric strin
 			return err
 		}
 
-		// ⚠ ONE ROW PER (day, metric, seller, shop, warehouse, creator): every figure is a count of moves, so two moves
-		// on one day simply ADD. The row is locked by the upsert itself, so two folds into one row queue.
-		err = tx.Exec(`
-INSERT INTO order_daily_reports AS d (
-    day, metric, team_id, shop_id, warehouse_id, user_id, order_count, total, mp_total, last_updated
-)
-VALUES (CAST(? AS date), ?, ?, ?, ?, ?, 1, ?, ?, NOW())
-ON CONFLICT (day, metric, team_id, shop_id, warehouse_id, user_id) DO UPDATE
-SET order_count  = d.order_count + 1,
-    total        = d.total + EXCLUDED.total,
-    mp_total     = d.mp_total + EXCLUDED.mp_total,
-    last_updated = NOW()`,
-			day, metric, order.TeamID, order.ShopID, order.WarehouseID, order.CreatedByUserID,
-			order.TotalCost, order.PlatformTotal,
-		).Error
+		err = addToReport(tx, day, metric, &order, selling_service_models.OrderMetricColumns{
+			OrderCount: 1,
+			Total:      order.TotalCost,
+			MpTotal:    order.PlatformTotal,
+		})
 		if err != nil {
 			return fmt.Errorf("order metrics: %s into %s on %s: %w", event.GetEventId(), metric, day, err)
 		}
 
+		fee, ok := feeMove(metric, order.WarehouseFee)
+		if !ok {
+			return nil
+		}
+
+		err = addToReport(tx, day, reportWarehouseFee, &order, fee)
+		if err != nil {
+			return fmt.Errorf("order metrics: %s into %s on %s: %w", event.GetEventId(), reportWarehouseFee, day, err)
+		}
+
 		return nil
 	})
+}
+
+// feeMove is what a move does to Warehouse Fee: a placement adds its order's fee, a cancel takes it back; no other move
+// touches it, nor does an order with no fee (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day).
+func feeMove(metric string, warehouseFee *float64) (selling_service_models.OrderMetricColumns, bool) {
+	if warehouseFee == nil {
+		return selling_service_models.OrderMetricColumns{}, false
+	}
+
+	switch metric {
+	case reportCreated:
+		return selling_service_models.OrderMetricColumns{OrderCount: 1, Total: *warehouseFee}, true
+	case reportCancelled:
+		return selling_service_models.OrderMetricColumns{OrderCount: -1, Total: -*warehouseFee}, true
+	default:
+		return selling_service_models.OrderMetricColumns{}, false
+	}
+}
+
+// addToReport ADDS `move` to the order's row of `metric` on `day`.
+//
+// ⚠ ONE ROW PER (day, metric, seller, shop, warehouse, creator): every figure is a sum of moves, so two moves on one day
+// simply ADD — a signed one (a fee's cancel) subtracts. The row is locked by the upsert itself, so two folds into one row
+// queue.
+func addToReport(
+	tx *gorm.DB,
+	day, metric string,
+	order *selling_service_models.Order,
+	move selling_service_models.OrderMetricColumns,
+) error {
+	return tx.Exec(`
+INSERT INTO order_daily_reports AS d (
+    day, metric, team_id, shop_id, warehouse_id, user_id, order_count, total, mp_total, last_updated
+)
+VALUES (CAST(? AS date), ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+ON CONFLICT (day, metric, team_id, shop_id, warehouse_id, user_id) DO UPDATE
+SET order_count  = d.order_count + EXCLUDED.order_count,
+    total        = d.total + EXCLUDED.total,
+    mp_total     = d.mp_total + EXCLUDED.mp_total,
+    last_updated = NOW()`,
+		day, metric, order.TeamID, order.ShopID, order.WarehouseID, order.CreatedByUserID,
+		move.OrderCount, move.Total, move.MpTotal,
+	).Error
 }

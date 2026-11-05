@@ -39,6 +39,10 @@ type Service struct {
 	// (the-restocks-warehouse-opens-its-label-photo). See restock_photo_linker.go in the composition root. Nil answers
 	// RestockReceiptPhoto Unimplemented.
 	photos ReceiptPhotoLinker
+	// Whether the account a restock names is one of the team's ACTIVE OPERATIONAL accounts — asked of
+	// financial_account_service in-process (a-restock-names-its-paying-account). See paying_accounts.go here and
+	// restock_accounts.go in the composition root.
+	accounts PayingAccounts
 }
 
 // SupplierChecker answers whether a supplier is LIVE — any selling team's
@@ -89,6 +93,7 @@ func NewService(
 	events event_source.EventSender,
 	products ProductReader,
 	photos ReceiptPhotoLinker,
+	accounts PayingAccounts,
 ) *Service {
 	// A nil poster drops COD obligations silently, which is the right default for a test receiving a
 	// box and the wrong one for production — the composition root always wires the real thing, and
@@ -121,7 +126,14 @@ func NewService(
 		products = factsUnchecked{}
 	}
 
+	// A nil account seam counts every account as active and operational — a test raising its own restock has no
+	// financial_account_service; the composition root always wires the real one.
+	if accounts == nil {
+		accounts = accountsUnchecked{}
+	}
+
 	return &Service{
+		accounts:  accounts,
 		db:        db,
 		liability: liability,
 		expense:   expense,

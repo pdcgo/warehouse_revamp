@@ -23,7 +23,7 @@ func TestPerf_StockTakeQuote(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLedgerBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, perfFacts(100), nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, perfFacts(100), nil, nil)
 	racks := []uint64{newRack(t, svc, otWarehouse, "perf-a"), newRack(t, svc, otWarehouse, "perf-b"), newRack(t, svc, otWarehouse, "perf-c")}
 	perfStock(t, db, otWarehouse, 100, 10, 100, racks)
 
@@ -61,7 +61,7 @@ func TestPerf_StockTakeQuote(t *testing.T) {
 		stockOnLedger(t, db, otWarehouse, otMelati+100, id, lenderRack, 100, 1000)
 	}
 
-	lender := inventory_v1.NewService(db, nil, nil, nil, nil, borrowed, nil)
+	lender := inventory_v1.NewService(db, nil, nil, nil, nil, borrowed, nil, nil)
 	reserved := map[int]int{}
 
 	for _, size := range []int{1, 20} {

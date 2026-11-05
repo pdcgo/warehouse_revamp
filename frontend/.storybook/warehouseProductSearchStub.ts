@@ -21,7 +21,7 @@ import type { WarehouseProductSearchRequest } from "../src/gen/warehouse/invento
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { foundHeldHere } from "./foundRequestStub";
 import { opnameHeldHere } from "./opnameStub";
-import { allProducts } from "./productStub";
+import { allProducts, analyticSamplesHeldHere } from "./productStub";
 import { sessionScenario } from "./sessionScenario";
 
 const PICKERS = new Set<Role>([
@@ -42,7 +42,7 @@ export const warehouseProductSearchScenario = { refused: 0 };
 
 /** Every product with a batch in this warehouse, at 0 or not — the set the picker searches, and nothing else. */
 export function heldHere(warehouseId: bigint): Set<bigint> {
-  return new Set([...foundHeldHere(warehouseId), ...opnameHeldHere(warehouseId)]);
+  return new Set([...foundHeldHere(warehouseId), ...opnameHeldHere(warehouseId), ...analyticSamplesHeldHere(warehouseId)]);
 }
 
 export function warehouseProductSearch(req: WarehouseProductSearchRequest) {

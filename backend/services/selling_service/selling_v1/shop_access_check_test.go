@@ -120,27 +120,53 @@ func TestShopAccessCheck_AShopWithNoGrantHasNoPrimary(t *testing.T) {
 	}
 }
 
-// Another team's shop, and a deleted one, are not found — the scope check, and delete hiding a shop
-// from every read.
-func TestShopAccessCheck_AnotherTeamsOrADeletedShopIsNotFound(t *testing.T) {
+// Another team's shop is not found — the scope check (every-shop-call-is-scoped-to-its-team).
+func TestShopAccessCheck_AnotherTeamsShopIsNotFound(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithRoles(t, db, nil)
 	ctx := context.Background()
 
 	foreign := insertShop(t, db, 3, "Other", "O1", "shopee")
-	deleted := insertShop(t, db, 2, "Gone", "G1", "shopee")
 
-	_, err := svc.ShopDelete(ctx, connect.NewRequest(&sellingv1.ShopDeleteRequest{TeamId: 2, ShopId: deleted}))
-	if err != nil {
-		t.Fatalf("ShopDelete: %v", err)
-	}
-
-	for name, shopID := range map[string]uint64{"another team's shop": foreign, "a deleted shop": deleted} {
+	for name, shopID := range map[string]uint64{"another team's shop": foreign, "a shop that never existed": foreign + 1000} {
 		_, err := svc.ShopAccessCheck(ctx, connect.NewRequest(&sellingv1.ShopAccessCheckRequest{
 			TeamId: 2, ShopId: shopID, UserId: 10,
 		}))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Errorf("%s: code = %v, want NotFound", name, connect.CodeOf(err))
 		}
+	}
+}
+
+// A deleted (closed) shop is ANSWERED, flagged, with its primary CS and the user's access — so its last statements
+// still import and its rows still find their primary (a-closed-shop-refuses-only-new-selling). Each caller decides;
+// the order writes refuse it (shop_write_gate_test.go).
+func TestShopAccessCheck_ADeletedShopIsAnsweredFlagged(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newServiceWithRoles(t, db, nil)
+	ctx := context.Background()
+
+	const (
+		team    = 2
+		primary = 10
+	)
+
+	deleted := insertShop(t, db, team, "Gone", "G1", "shopee")
+	grantShop(t, db, deleted, primary, true)
+
+	_, err := svc.ShopDelete(ctx, connect.NewRequest(&sellingv1.ShopDeleteRequest{TeamId: team, ShopId: deleted}))
+	if err != nil {
+		t.Fatalf("ShopDelete: %v", err)
+	}
+
+	got := accessCheck(t, svc, team, deleted, primary)
+
+	if !got.GetShop().GetDeleted() {
+		t.Error("the deleted shop should be answered with deleted set")
+	}
+
+	if got.GetShop().GetName() != "Gone" || got.GetPrimaryUserId() != primary || !got.GetIsHaveAccess() {
+		t.Errorf("got shop %q, primary %d, access %v — want Gone, %d, true",
+			got.GetShop().GetName(), got.GetPrimaryUserId(), got.GetIsHaveAccess(), primary)
 	}
 }

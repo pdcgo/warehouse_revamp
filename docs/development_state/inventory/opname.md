@@ -266,3 +266,12 @@ it HOLDS but had no menu item. The owner: one screen, the Products item, and it 
 | a monitor reading a warehouse | `/inventories/stock` → that warehouse's `/products` (the current team is a warehouse), read-only — no ⋯ |
 | rows on root/admin's Inventory | open nothing, as before — the warehouse product page is the current warehouse's |
 | the warehouse product page's Back | unchanged — it already returns to `/products` |
+
+## Lost stock is folded from the register — built 2026-11-05
+
+Every `lost` row the register gets — a count's shortage (`PostCountFinalize`) or a Stock Adjust "lost"
+(`PostShelfProblem`) — also adds its units and their batch-price value to its Jakarta day's row of
+`inventory_lost_daily_reports` (00037), in the same transaction and as its last lock (`inventory_mutations/fold_lost.go`).
+Read by `InventoryAnalyticService` as the Analytic metric *Lost stock* — see
+[analytic/rpc_provide.md](../analytic/rpc_provide.md) (2026-11-05, Lost stock served). In-process rather than an event:
+inventory owns both the register and the report. A broken row, a Found claim, a transfer or restock lost never touch it.

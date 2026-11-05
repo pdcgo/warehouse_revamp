@@ -100,7 +100,7 @@ func TestRestockPhotoLinker_TheRestocksWarehouseOpensTheSellersPhoto(t *testing.
 
 	cfg := docstore.DefaultConfig(docstore.Config{Dir: t.TempDir(), BaseURL: "http://test.local/files", TokenSecret: "test"})
 	documents := document_v1.NewService(db, cfg)
-	restocks := inventory_v1.NewService(db, nil, nil, nil, nil, nil, NewRestockPhotoLinker(documents))
+	restocks := inventory_v1.NewService(db, nil, nil, nil, nil, nil, NewRestockPhotoLinker(documents), nil)
 
 	photo := uploadPhotoAs(t, documents, cfg, seller, documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT)
 	restock := insertWiredRestock(t, db, seller, warehouse, photo)

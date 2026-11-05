@@ -33,13 +33,17 @@ export function SummaryStrip({ children, testId }: { children: ReactNode; testId
   const cap = useBreakpointValue(MAX_SHARE) ?? MAX_SHARE.base;
   const count = Children.toArray(children).length;
 
+  const crowded = count > cap;
+
   return (
     <Box
       display="grid"
       gap="3"
-      gridTemplateColumns={
-        count > cap ? "repeat(auto-fit, minmax(8.5rem, 1fr))" : `repeat(${cap}, minmax(0, 1fr))`
-      }
+      gridTemplateColumns={crowded ? "repeat(auto-fit, minmax(8.5rem, 1fr))" : `repeat(${cap}, minmax(0, 1fr))`}
+      // A crowded strip's cards are as narrow as 8.5rem: a card marked `double` takes two of them, so its figure — the
+      // lead one, a size up — is never cut (a nine-digit Rp at 1440, the-finance-prototype-is-accepted). A strip with
+      // room gives every card its full share already.
+      css={crowded ? { "& > [data-double]": { gridColumn: "span 2" } } : undefined}
       data-testid={testId}
     >
       {children}
@@ -57,6 +61,7 @@ export function SummaryCard({
   muted = false,
   emphasis = false,
   wide = false,
+  double = false,
   testId,
 }: {
   /** The card's name. Given instead of a badge — for a pile that is not a status. */
@@ -84,6 +89,8 @@ export function SummaryCard({
    * a row as an afterthought.
    */
   wide?: boolean;
+  /** Take two columns of a crowded strip, so a long figure is never cut — the lead card of a wide table's headline. */
+  double?: boolean;
   testId?: string;
 }) {
   return (
@@ -100,6 +107,7 @@ export function SummaryCard({
       minW="0"
       data-testid={testId}
       data-emphasis={emphasis || undefined}
+      data-double={double || undefined}
     >
       {label ? (
         <Flex gap="1" align="center">

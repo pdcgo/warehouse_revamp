@@ -3,6 +3,7 @@ package inventory_mutations
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -128,6 +129,13 @@ func PostShelfProblem(tx *gorm.DB, p ShelfProblem) (ShelfProblemPosted, error) {
 	err = inventory_ledgers.AddItems(tx, t, []inventory_ledgers.ItemLine{{
 		ProductID: p.ProductID, ProductTeamID: batch.TeamID, Quantity: p.Count, Total: taken.Valuation,
 	}})
+	if err != nil {
+		return ShelfProblemPosted{}, err
+	}
+
+	// A Stock Adjust "lost" is lost stock (inventory-lost-counts-the-warehouses-custody-losses); a broken one is not. The
+	// report row is the transaction's last lock.
+	err = foldLost(tx, time.Now(), []lostRow{{problem: row, supplierID: batch.SupplierID}})
 	if err != nil {
 		return ShelfProblemPosted{}, err
 	}

@@ -22,7 +22,7 @@ go run ./tools/san user reset-password --username ani
 | --- | --- | --- |
 | **the schema** | [`migrate`](#migrate) | goose, per service (HARD RULE 3) |
 | **the fixtures** | [`seed`](#seed) · [`db`](#db) · [`region`](#region) | dev data, the test database, reference data |
-| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) · [`product recompose-codes`](#product-recompose-codes) | acts on real data, through the real services |
+| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) · [`product recompose-codes`](#product-recompose-codes) · [`shop grant-current-cs`](#shop-grant-current-cs) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
 | **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
 | **the deployment** | [`deploy`](#deploy) | ship one service to Cloud Run — built by Cloud Build, never migrated |
@@ -89,6 +89,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`supplier move`](#supplier-move) | Copy inventory_service's suppliers and stores into supplier_service, ids kept. One-shot, safe to re-run |
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
 | [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
+| [`shop grant-current-cs`](#shop-grant-current-cs) | The shop write gate's rollout: grant every current CS every live shop of their team, through `ShopUserAdd`. `--dry-run` prints it first. Safe to re-run — a second run adds nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
@@ -674,6 +675,89 @@ composed and is left as it is — it is exactly the string composition would hav
 | --- | --- |
 | `two products would carry one code: product 9 would become "ABC-SHOE-42", which product 4 already carries …` | Two of today's rows compose to one code. Rename one in the product form, then run it again |
 | `column "product_code" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first — product `00008` renames the column |
+
+---
+
+## `shop grant-current-cs`
+
+The rollout of [a-write-needs-a-grant-or-a-manager](../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager):
+*"in the release that turns the gate on, every current CS is granted every shop of their team — nobody loses order-taking
+on day one, and the owner trims afterwards."* **Run it in the release that ships the gate** (`selling_v1/shop_write_gate.go`)
+— dry first, then for real. **Safe to re-run**: a grant that exists is skipped, so a second run adds nothing.
+
+```sh
+go run ./tools/san shop grant-current-cs --dry-run                  # prompts: Local or Production — writes nothing
+go run ./tools/san shop grant-current-cs                            # the real run
+go run ./tools/san shop grant-current-cs --dsn "$DATABASE_URL" --dry-run
+```
+
+| Flag | |
+| --- | --- |
+| `--dry-run` | Walk everything and print each grant it **would** add, and the summary — write nothing |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+| who | gets |
+| --- | --- |
+| a **current CS** — role `SELLING_CS` in a live selling team, not suspended, not erased | every live shop of that team they do not hold yet |
+| the team's owner and admin | nothing — they write on every shop without a grant |
+| a suspended or erased CS | nothing — the grant picker never offers them (a-suspended-user-is-never-picked) |
+| a deleted (closed) shop · another team's shop · a deleted team | nothing |
+
+Every read and the write go through the **owning service's handler**, validated first as the interceptor would — team_service
+`TeamList` (live selling teams), user_service `UserList` (members, `exclude_suspended`, with their role), selling_service
+`ShopList` (live shops, each with its primary) and `ShopUserList` (who already holds it), then **`ShopUserAdd`** for each missing
+pair. No migration could do it: CS roles are user_service's tables, grants are selling_service's (HARD RULE 3). Going through
+`ShopUserAdd` keeps its own rules: membership and suspension are checked again (`refuseUngrantable`), and **the primary rule
+applies** — a shop's existing primary is never touched; a shop with **none** gets the first CS granted, lowest user id, as its
+primary ([the-primary-cs-is-a-flag-on-a-grant](../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)). The
+line says so (`— becomes its primary CS`).
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san shop grant-current-cs
+  participant TEAM as team_service — TeamList
+  participant USER as user_service — UserList
+  participant SELL as selling_service — ShopList, ShopUserList, ShopUserAdd
+  SAN->>SAN: refuse a database without teams, user_team_roles, shops, shop_users
+  SAN->>TEAM: live selling teams, 200 a page, by id
+  loop each team
+    SAN->>USER: members, not suspended, with their role — keep role CS, lowest id first
+    SAN->>SELL: ShopList — the team's live shops, each with its primary
+    loop each shop
+      SAN->>SELL: ShopUserList — who already holds it
+      SAN->>SAN: a CS already granted, skipped
+      SAN->>SELL: ShopUserAdd for each CS missing — unless --dry-run
+      SELL-->>SAN: granted — the first grant on a shop with no primary becomes it
+    end
+  end
+  SAN-->>SAN: one line per grant, then the summary
+```
+
+### Output
+
+The dev database's first dry run (2026-11-05):
+
+```
+team 14 Dev Selling: 0 CS, 1 live shops
+team 89 Selling Srengat: 0 CS, 2 live shops
+team 91 Selling Developer: 1 CS, 1 live shops
+  would grant sutoni (#254) on shoshoseee (#4) — becomes its primary CS
+[explicit --dsn] shop grant-current-cs DRY RUN, nothing written: 3 teams, 1 CS users, 4 live shops — 1 grants would be added (1 would become a shop's primary CS), 0 skipped (already granted)
+```
+
+The real run prints `granted …` and `… — 1 grants added (1 became a shop's primary CS), 0 skipped`. A CS in two teams is
+counted in each. Each grant line is printed as it is written, so an interrupted run still says what it did — and simply
+runs again.
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `no database selected (use --dsn to run non-interactively)` | No `--dsn` / `DATABASE_URL` and no terminal to prompt on — nothing is run |
+| ``this database has no selling/user/team schema — wrong --dsn, or run `san migrate up-all` first (no teams table)`` | The DSN points at a database without the services' tables. Refused, rather than "succeeding" with 0 teams |
+| `grant <user> (#id) on <shop> (#id): … is not a member of this shop's team` / `… is suspended` | `ShopUserAdd` refused one between the list and the write — someone changed the team meanwhile. The grants before it are written; run it again |
 
 ---
 

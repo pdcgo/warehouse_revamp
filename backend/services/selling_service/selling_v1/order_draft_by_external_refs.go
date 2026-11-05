@@ -31,8 +31,8 @@ func (s *Service) OrderDraftByExternalRefs(
 
 	filter := req.Msg.GetFilter()
 
-	// order_drafts_external_ref_idx — UNIQUE (team_id, source, external_id): team_id bounds the scan, and the
-	// external_id list is checked inside the index before any heap row is read (perf probe in the _perf_test).
+	// order_drafts_team_shop_external_idx — (team_id, shop_id, external_id), the lookup's own key (selling 00037): one
+	// index seek per ref, whatever the team's backlog of drafts (perf probe in the _perf_test).
 	err := s.db.
 		WithContext(ctx).
 		Select("id", "shop_id", "author_user_id", "external_id", "created_at").

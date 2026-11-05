@@ -554,6 +554,9 @@ flowchart LR
 | the menu | ⚠ my spec: **My Supplier** and **Discover Supplier** under Inventories for a selling team — the same pair as My Product and Discover Product |
 | ⚠ the data | **SAMPLE** (`features/suppliers/discover.ts`): no server searches every team's suppliers yet. supplier_service's `SupplierList` needs a cross-team scope and `SupplierDetail` / `SupplierChannelList` must answer for another team's supplier |
 
+✅ **Built 2026-10-07** (verified in code 2026-11-05) — the data is real: `features/suppliers/discover.ts` calls `SupplierList` with `SupplierListScope.EVERY_TEAM`, and `SupplierDetail` / `SupplierChannelList` answer for any team's supplier.
+
+
 ## restock-accepted-links-the-product-to-its-channel
 
 🔄 **Its readings are decided** (2026-10-07): [every-accepted-line-links-its-own-product](#every-accepted-line-links-its-own-product) · [a-store-delete-is-soft-too](#a-store-delete-is-soft-too) · [a-link-remembers-its-last-restock](#a-link-remembers-its-last-restock) — a redelivered event now raises `last_restocked_at` at most, instead of writing nothing.

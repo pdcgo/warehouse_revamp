@@ -50,12 +50,17 @@ func TestOrderDraftByExternalRefs_FindsTheTeamsDraftsInTheShop(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	const team, shop, otherShop uint64 = 2, 31, 32
+	const team uint64 = 2
+
+	// Real shops: a push names a shop it writes on (a-write-needs-a-grant-or-a-manager), so each must exist in its team.
+	shop := insertShop(t, db, team, "Ref Shop", "RS1", "shopee")
+	otherShop := insertShop(t, db, team, "Ref Other", "RS2", "shopee")
+	otherTeams := insertShop(t, db, 3, "Ref Team 3", "RS3", "shopee")
 
 	mine := pushDraftOn(t, svc, 7, team, shop, "scraper-app", "SHP-1")
 	colleagues := pushDraftOn(t, svc, 8, team, shop, "other-app", "SHP-1")
 	pushDraftOn(t, svc, 7, team, otherShop, "scraper-app", "SHP-2") // another shop — not this order's double
-	pushDraftOn(t, svc, 50, 3, shop, "scraper-app", "SHP-1")        // another team — never answered
+	pushDraftOn(t, svc, 50, 3, otherTeams, "scraper-app", "SHP-1")  // another team — never answered
 	pushDraftOn(t, svc, 7, team, shop, "manual", "SHP-3")           // a form-saved draft — its id is no ref
 	second := pushDraftOn(t, svc, 9, team, shop, "scraper-app", "SHP-4")
 

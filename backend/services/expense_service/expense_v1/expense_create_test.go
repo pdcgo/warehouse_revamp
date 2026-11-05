@@ -2,12 +2,16 @@ package expense_v1_test
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	"connectrpc.com/validate"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1/expensev1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_service_models"
 	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
@@ -189,5 +193,57 @@ func TestExpenseCreate_StockLossNamesNoAccount(t *testing.T) {
 		if got := res.Msg.GetExpense().GetFinanceAccountId(); got != 0 {
 			t.Fatalf("stock loss stored account %d, want 0", got)
 		}
+	}
+}
+
+// STOCK_LOSS is never typed: through the API — the validation interceptor every mounted handler runs — it is refused
+// InvalidArgument, "stock loss is recorded by inventory, not typed", with or without an account, and nothing is stored.
+// A typed kind passes the same interceptor. Inventory's own path calls the handler in-process with no interceptor
+// (cmd/app_development/expense_poster.go), which TestExpenseCreate_StockLossNamesNoAccount above and the composition
+// root's TestExpensePoster_* keep proving.
+func TestExpenseCreate_StockLossIsRefusedThroughTheAPI(t *testing.T) {
+	db := san_testdb.DB(t)
+
+	mux := http.NewServeMux()
+	mux.Handle(expensev1connect.NewExpenseServiceHandler(newService(t, db),
+		connect.WithInterceptors(validate.NewInterceptor())))
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client := expensev1connect.NewExpenseServiceClient(server.Client(), server.URL)
+
+	for _, sentAccount := range []uint64{0, payingAccount} {
+		_, err := client.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Amount: 30_000, OccurredAt: "2026-07-05",
+			FinanceAccountId: sentAccount,
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("stock loss typed (account %d): code = %v, want InvalidArgument (%v)", sentAccount, connect.CodeOf(err), err)
+		}
+
+		if !strings.Contains(err.Error(), "stock loss is recorded by inventory, not typed") {
+			t.Fatalf("stock loss typed (account %d): %v, want the person's words", sentAccount, err)
+		}
+	}
+
+	var stored int64
+
+	err := db.Model(&expense_service_models.ExpenseRecord{}).Where("team_id = ?", teamA).Count(&stored).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if stored != 0 {
+		t.Fatalf("a refused stock loss stored %d rows", stored)
+	}
+
+	// A kind a person does type passes the same interceptor.
+	_, err = client.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 30_000, OccurredAt: "2026-07-05",
+		FinanceAccountId: payingAccount,
+	}))
+	if err != nil {
+		t.Fatalf("payroll through the API: %v", err)
 	}
 }

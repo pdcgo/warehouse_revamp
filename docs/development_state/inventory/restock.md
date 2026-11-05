@@ -1,5 +1,24 @@
 # Development state — inventory / restock
 
+✅ **2026-11-05: the paying account is checked server-side** — uncommitted
+([a-restock-names-its-paying-account](../../business/inventory/restock_decision.md#a-restock-names-its-paying-account)).
+`RestockRequestCreate`, and an ongoing `RestockRequestUpdate` that CHANGES the account, refuse one that is not the team's
+ACTIVE OPERATIONAL account — FailedPrecondition naming it, the expense *Paid from* words. Inventory owns
+`PayingAccounts` ([paying_accounts.go](../../../backend/services/inventory_service/inventory_v1/paying_accounts.go), the 8th
+`NewService` dep; nil = unchecked, tests only); the composition root's `restock_accounts.go` answers it from
+`FinancialAccountByIds`, sharing `teamAccount` with `expense_accounts.go`. Asked before the transaction / the lock; an
+unchanged account is kept even if archived since (the supplier rule). Tests: `restock_request_test.go`
+(`TestRestockRequestCreate_RefusesAnAccountThatIsNotOperational`,
+`TestRestockRequestUpdate_RefusesAChangedAccountThatIsNotOperational`), `cmd/app_development/restock_accounts_test.go`
+(real seam + wired create), race `restock_request_account_race_test.go`, perf `restock_accounts_perf_test.go`
+([Create](../../../audits/services/inventory_service/performances/RestockRequestCreate.md) /
+[Update](../../../audits/services/inventory_service/performances/RestockRequestUpdate.md), ✅ ≈0.5 ms added). Stub
+`restockStub.ts` refuses the same (`payingAccountRefusal`); story `ARefusedPayingAccountIsSaid`. e2e seeds that raise
+restocks (`found_requests`, `liability`, `opname_sessions`, `stock_count_cancel`, `orders` ×2) now mark their account
+operational. Flow: [rpc.md](../../services/inventory_service/rpc.md#the-paying-account--one-of-the-teams-active-operational-accounts).
+⚠ For the owner: an UNCHANGED account is not re-checked on edit (else un-marking an account locks every restock that
+named it) — say if an ongoing edit should re-check it too.
+
 ✅ **2026-11-04: the three money events have a listener** — uncommitted. `financial_account_service`'s
 [restock_payment_listener.go](../../../backend/services/financial_account_service/financial_account_v1/restock_payment_listener.go)
 posts *Created* (the amount out), *Updated* (the difference, or the whole payment moved between accounts) and *Cancelled*

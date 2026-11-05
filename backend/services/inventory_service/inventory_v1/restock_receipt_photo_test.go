@@ -50,7 +50,7 @@ func (f *fakePhotoLinker) LabelURL(_ context.Context, ownerTeamID uint64, docume
 }
 
 func photoService(db *gorm.DB, linker inventory_v1.ReceiptPhotoLinker) *inventory_v1.Service {
-	return inventory_v1.NewService(db, nil, nil, nil, nil, nil, linker)
+	return inventory_v1.NewService(db, nil, nil, nil, nil, nil, linker, nil)
 }
 
 // insertPhotoRestock writes a restock of selling team 2 going to `warehouse`, with a label photo or none.

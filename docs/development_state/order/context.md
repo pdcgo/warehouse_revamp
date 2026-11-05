@@ -85,7 +85,7 @@ the draft list's readiness, and the invoice's fee copy.
 | the ledger | liability posts Σ an owner's line totals, rounded once on the sum, and reads no markup — liability `00010` dropped `product_markup_bp` (and the terms log's pair); the form's invoice and the posted fee are now one rate |
 | the draft list | `draftReadiness.ts` gains the order date and the stored sell price, in the detail's Promote order — badges *Order date* / *Sell price* (`orderDrafts.gapOrderDate` / `gapSellPrice`). Fixtures 203 (no date) and 204 (no sell price); story *NoDateOrNoPriceIsNotReady*; the e2e's pushed draft now reads *Shop +4* |
 | the fee copy | `orderForm.totals.feeNote` — *Priced by the warehouse for fulfilling this order.* (en) / *Ditetapkan oleh gudang untuk pemenuhan pesanan ini.* (id) |
-| ⚠ not built | `unit_cost_with_markup` and `markup_total` ([the-cross-charge-lives-on-the-line](../../business/order/context_decision.md#the-cross-charge-lives-on-the-line)); `order_items.total` is not on the `OrderItem` wire message |
+| ✅ built 2026-10-28 | `unit_cost_with_markup` and `markup_total` (selling `00025_order_item_markup.sql`, `OrderItem` 9–10) ([the-cross-charge-lives-on-the-line](../../business/order/context_decision.md#the-cross-charge-lives-on-the-line)); `OrderItem.total` (8) is on the wire |
 | ⚠ two cost bases | `unit_cost` (and `cogs`, the fee's basis) is `StockCost`'s weighted average read before the transaction; `total` is the take's oldest-first draw. One batch drawn, they agree |
 | dev DB | selling migrated to 23, liability to 10 (both round-tripped down/up) |
 
@@ -199,7 +199,7 @@ decisions in [order_detail_decision.md](../../technical/frontend/order_detail_de
 | return leg | gone — the order leg only ([the-return-leg-waits-for-tracking](../../technical/frontend/order_detail_decision.md#the-return-leg-waits-for-tracking)) |
 | withdrawal | *Edit Withdrawal* and both screens' `withdrawal` marks gone; a completed order has no actions ([no-withdrawal-is-typed-on-an-order](../../technical/frontend/order_detail_decision.md#no-withdrawal-is-typed-on-an-order)) |
 | notes | `OrderNoteCreate` writes a status-less `order_timeline_logs` row from either end; the create form's note is the first such row; selling `00029` moved `orders.note` there and dropped it; `Order.note` (18) reserved. *Catatan* on both details, the Timeline status rows only ([a-note-is-a-timeline-row](../../technical/frontend/order_detail_decision.md#a-note-is-a-timeline-row)) |
-| Edit Resi's mark | was broken — it pointed at `receiptCode`, declared on neither screen, so its ⚠ read 0 with no label. Declared on both now; the action still has no RPC ([the-seller-edits-the-resi-until-handover](../../technical/frontend/order_list_decision.md#the-seller-edits-the-resi-until-handover)) |
+| Edit Resi's mark | was broken — it pointed at `receiptCode`, declared on neither screen, so its ⚠ read 0 with no label. Declared on both now; the action had no RPC then (✅ `OrderReceiptUpdate` built 2026-10-29) ([the-seller-edits-the-resi-until-handover](../../technical/frontend/order_list_decision.md#the-seller-edits-the-resi-until-handover)) |
 | marks left | order detail **2** (shippingTracking — deferred, receiptCode) · seller list **2** (import, receiptCode) |
 | note limits | `OrderCreateRequest.note` 2000, `OrderNoteCreate` 500 — kept different by the owner ([the-two-note-limits-stay-different](../../technical/frontend/order_detail_decision.md#the-two-note-limits-stay-different)) |
 | dev DB | selling migrated to 29 |
@@ -264,7 +264,7 @@ at the owner's *"build now"*.
 | why the pick screen | it is where the warehouse's Orders menu goes (`/warehouse-orders`) and it offers the ONE next step per status — a return's is the accept. `pages/returns` / `return-detail` stay preview: they model a return RECORD (codes, received/cancelled), which [the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed) decided against |
 | tests | Go: `order_return_accept_test.go` (10), `return_courier_charge_test.go` (3, incl. the key not colliding with a restock of the same number), the push handler's override cases, the fold test now on the accept event. Race: `order_return_accept_race_test.go`. Perf: `order_return_accept_perf_test.go`. Stories: `Pages/Order/AcceptReturnDialog` (7), PickOrderPage *AReturnIsAcceptedHere*, *OnlyAReturnOffersTheAccept*, PickQueuePage *TheReturnsTabListsWhatIsComingBack*. E2E: orders.spec *Return: the warehouse accepts a returned parcel…* |
 | stub | `.storybook/returnAcceptStub.ts` + `returnAcceptScenario` / `withOrdersInReturn` (sessionScenario.ts): a story names the orders read in `return`; no fixture moved |
-| ⚠ not built | the stock half (above); **finding the order at a stale-label warehouse** — it is neither end nor the configured one, so no list or scan of its own matches; the server accepts it by id, and a cross-team label search is not designed; a screen naming where a return was accepted (on the wire, not drawn); a forced return from the warehouse's screens — the server allows it, no warehouse screen offers it; a reprint of the labels after the dialog closes |
+| ⚠ not built | the stock half (above); **finding the order at a stale-label warehouse** — it is neither end nor the configured one, so no list or scan of its own matches; the server accepts it by id, and a cross-team label search is not designed; a screen naming where a return was accepted (on the wire, not drawn); ~~a forced return from the warehouse's screens~~ ✅ built 2026-11-04 (*Receive Return*, `pages/pick-queue/components/ReceiveReturnDialog.tsx`); a reprint of the labels after the dialog closes |
 
 ## What exists
 
@@ -329,7 +329,7 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | the gap | `orderMoves` served `shipped → problem`, `problem → return`, `problem → lost`, but the action table offered none of them |
 | decisions | [customer-service-sets-shipped-and-problem-by-hand](../../business/order/context_decision.md#customer-service-sets-shipped-and-problem-by-hand) (its ⚠: the menu had no way into `problem`), [a-forced-return-follows-the-status-move](../../business/order/context_decision.md#a-forced-return-follows-the-status-move), [the-action-menu-is-a-table-keyed-by-status](../../technical/frontend/order_list_decision.md#the-action-menu-is-a-table-keyed-by-status) |
 | frontend | `features/orders/rowActions.ts`: `shipped` = Return Goods · Complete Order · **Mark as Problem** (`markProblem`, CircleAlert, selling, no confirm — `problem` still completes, returns or is lost); `problem` = Resolve Dispute · **Return Goods** (either end, confirms) · **Mark as Lost** (selling, confirms). The list's kebab and the detail's button bar draw it through `useOrderActions`; en + id `orders.rowAction.markProblem` |
-| ⚠ not built | the warehouse's forced return on its own screens (pick queue, pick order, warehouse order detail) — none of them draws `useOrderActions`, and no decision places the button; asked of the owner. `shipped → lost` and `completed → return` are also server moves with no button — not in this brief, asked too |
+| ✅ built 2026-11-04 | the warehouse's forced return — the pick queue's *Receive Return* and the pick order page (`features/orders/useForceReturn.tsx`), per [a-return-is-received-by-search-then-forced](../../business/order/context_decision.md#a-return-is-received-by-search-then-forced). ⚠ Still open: `shipped → lost` and `completed → return` are also server moves with no button — not in this brief, asked too |
 | tests | stories `Pages/Order/OrderRowActions` (5: the two menus, both confirms, the warehouse end offered only the return) and `Pages/Order/OrderActionBar` (3); e2e `orders.spec.ts` *Moves: a shipped order is marked a problem, then returned (#11)* and *Moves: a problem order is written off as lost (#11)* — last in the file, since earlier tests count orders and stock |
 | drafts' ready | `OrderDraftListResponse.ready_count` — the whole filtered set's ready drafts (`readyDrafts`, the SQL twin of `draftGaps`); the drafts screen's *Ready* card reads it, its ⚠ `readyCount` mark, `pages/order-drafts/pending.ts` and the `orderDrafts.pending` / `summary.onThisPage` keys are gone. `TestOrderDraftList_ReadyCountIsTheWholeSets`, `TestPerf_OrderDraftListReadyCount` (4 queries, ≈9 ms at 5 000 drafts an author), e2e *Order drafts: a pushed draft appears…* asserts `0 of N` and no mark. Flow in [rpc.md](../../services/selling_service/rpc.md#reading-drafts--two-narrowings-not-one-192) |
 
@@ -345,7 +345,26 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | marks left | order form **0** again |
 | tests | Go `TestOrderDraftByExternalRefs_FindsTheTeamsDraftsInTheShop` (any author's, not another shop/team/manual, created_at) · `_NothingFoundIsEmpty` · `_Policy` (OrderCreate's roles, NO_SIDE_EFFECTS) · `TestOrderDraftByExternalRefsRequest_IsBounded` (50 ok; 51, none, no shop, empty, repeated refused) · `TestOrderByExternalRefs_CarriesWhenTheOrderWasTypedIn` · `TestPerf_OrderDraftByExternalRefs`. Stories: order form *ADraftOnTheRefWarns* (now really warns, Create Anyway places) · *AnotherShopsDraftDoesNotWarn* · *FinalizingADraftNamesAnotherDraft* · *FinalizingADraftDoesNotWarnAboutItself* asserts the draft read ran and 202 was dropped · *NothingOnTheFormIsMarkedNotImplemented* restored; dialog *TheDateIsTheWibDay*. e2e `orders.spec.ts` *Duplicate ref: a second order on a used ref is warned about, and can still be created* — last in the file (it places orders the list tests would count): the warning names the first order (link, Pending, today's WIB date), Go Back keeps the form, Create Anyway places the double, a pushed draft on another ref in the shop is named *Draft #id* |
 | audit | `OrderDraftByExternalRefs` 🟡 [report](../../../audits/services/selling_service/performances/OrderDraftByExternalRefs.md) — 1 query, ≈6.6 ms (1 ref) / ≈15 ms (50 refs) at 50 000 drafts in one team; the unique `(team_id, source, external_id)` index cannot seek on the ref, so it is linear in the team's drafts. A `(team_id, shop_id, external_id)` index is recommended, NOT added. `OrderByExternalRefs` re-probed with the extra column: 0.65 ms at 20 refs, unchanged plan |
-| ⚠ open | a colleague's draft is named with a link to `/orders/new?draft=ID`, but `OrderDraftDetail` narrows to the author, so that link opens NotFound for anyone else. `author_user_id` is in the answer if the dialog should label it instead |
+| ✅ was open | a colleague's draft linked to `/orders/new?draft=ID`, which opens NotFound for anyone but its author — fixed 2026-11-05, below |
+
+## 2026-11-05 — the duplicate-ref warning names a colleague's draft without a link; the lookup seeks
+
+| | |
+| --- | --- |
+| frontend | `DuplicateDraft` carries `authorUserId` (from `OrderDraftByExternalRefs`); `DuplicateRefDialog` takes `selfUserId` (the order form passes `useAuth().identity.identityId`) and links ONLY the caller's own drafts to `/orders/new?draft=id`. A colleague's is *"A colleague's draft #id"* (`orderForm.duplicate.colleagueDraft`, en + id *"Draf rekan #id"*), dated, no link (`duplicate-ref-draft-colleague-<id>`) |
+| stories | dialog `AColleaguesDraftIsNamedWithoutALink` (own 201 links, colleague's 202 does not); order form `ADraftOnTheRefWarns` now a colleague's (author 62) — named, no link, Create Anyway still places — and `YourOwnDraftOnTheRefLinks` (author = the signed-in user). e2e `orders.spec` *Duplicate ref…* unchanged: its pushed draft is root's own, so it still links |
+| schema | selling `00037_order_drafts_external_ref_lookup.sql` — `order_drafts_team_shop_external_idx (team_id, shop_id, external_id)`, not unique ([database-schema.md](../../database-schema.md)) |
+| audit | `OrderDraftByExternalRefs` ✅ re-probed: an index seek per ref, ≈0.52 ms (1 ref) / ≈0.56 ms (50 refs) at 50 000 drafts in one team, was ≈6.6 / ≈15 ms ([report](../../../audits/services/selling_service/performances/OrderDraftByExternalRefs.md)) |
+
+## 2026-11-05 — the return dialogs stop stretching on desktop
+
+*Receive a Return* (`pages/pick-queue/components/ReceiveReturnDialog.tsx`) and *Accept Return*
+(`features/orders/AcceptReturnDialog.tsx`) used `size={{ base: "full", md: "lg" }}`: Chakra merges a responsive variant,
+so full's min-height survived on desktop and the dialog filled the window. Now `size={isMobile ? "full" : "lg"}` by the
+JS breakpoint (`useIsMobile`). Pinned by `AcceptReturnDialog` *Default* and pick queue *ReceiveNotFound* (dialog shorter
+than the window, narrower than it) — both fail on the old size. ⚠ The same responsive `size={{ base: "full", md: … }}` is
+still on `ReportFoundDialog`, `AddFoundDialog`, `NewSessionDialog`, `MoveGoodsDialog` and `RecordSampleDialog` — not
+touched here.
 
 ## 2026-11-04 — the order's idempotency key (backlog #10, slice 1)
 
@@ -422,6 +441,18 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 
 | | |
 | --- | --- |
+
+## The shop write gate on the order writes (2026-11-05, backlog #20/#21)
+
+| | |
+| --- | --- |
+| what | `OrderCreate` (a draft's Promote included), `OrderDraftPush` naming a shop and `OrderDraftUpdate` setting one refuse a shop the caller may not write — [a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager): `PermissionDenied` *"You have no access to <shop> — ask the team's owner or admin for it"*; a deleted (closed) shop `FailedPrecondition` *"<shop>: the shop is closed"* ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)); another team's `NotFound`, as before |
+| how | `refuseShopWrite` → `shopAccess` (`selling_v1/shop_write_gate.go`), the body `ShopAccessCheck` now shares — in-process, no RPC hop, before the take. Replaces `placeOrder`'s `shopExists` |
+| the form | `ShopSelect writable` (← `ShopListFilter.writable`) on `MarketplaceInfoForm` — the order form and the draft page — and on the statement import dialog; a held shop not on the list is cleared |
+| not gated | the order imports and the hand moves — not in the decision's list (open question, see the shop state doc) |
+| tests | `shop_write_gate_test.go` (5 tests), `TestShopCheckers_AClosedShopImportsButIsNotLinked`, `ShopSelect` stories ×3, e2e `writes_need_a_shop_grant.spec.ts`. The test role readers `everyoneMayWrite` / `runsEveryShop` answer the team's owner, so an order test about something else needs no grant |
+| audits | whole create 8 queries ≈3.2 ms (was 7) — not heavy; `ShopList` writable heavy by plan only ([ShopList.md](../../../audits/services/selling_service/performances/ShopList.md)); concurrency: no lock, row in [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
+| ⛔ left | the rollout grant (every current CS granted every shop of their team) — decided to ship in the SAME release, not built |
 
 ## Traps this pass walked into
 

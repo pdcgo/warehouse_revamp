@@ -39,9 +39,9 @@ counts it in, and *the accept is what receives the stock*. The design is
 
 | RPC | Who | From → to | What it does |
 | --- | --- | --- | --- |
-| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction, and the first trail row; each product once (refused as InvalidArgument, and by a unique index); each product the team's own, asked of product_service before the transaction (another team's or an unknown one is InvalidArgument); each line's supplier and store asked of supplier_service before the transaction (a store names its supplier and belongs to it). Announces *Restock Created* after commit |
+| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction, and the first trail row; each product once (refused as InvalidArgument, and by a unique index); each product the team's own, asked of product_service before the transaction (another team's or an unknown one is InvalidArgument); each line's supplier and store asked of supplier_service before the transaction (a store names its supplier and belongs to it); the paying account must be one of the team's ACTIVE OPERATIONAL accounts, asked of financial_account before the transaction (FailedPrecondition naming it — see [the paying account](#the-paying-account--one-of-the-teams-active-operational-accounts)). Announces *Restock Created* after commit |
 | `RestockRequestList` / `Detail` | either side | — | rows where `team_id = team` **OR** `warehouse_id = team`; a third team reads **NotFound**. Every filter server-side; a lens narrows the two-sided scope, never replaces it |
-| `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace; every product the team's own, asked before the lock, as create. **Ongoing:** every field, the paying account required. **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged. An edit that moves money announces *Restock Updated* |
+| `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace; every product the team's own, asked before the lock, as create. **Ongoing:** every field, the paying account required — a CHANGED account must be active and operational (asked before the lock, judged under it); an unchanged one is kept even if archived or un-marked since. **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged. An edit that moves money announces *Restock Updated* |
 | `RestockRequestArrive` | warehouse | ongoing / lost → arrived | signs for the box: who and when, a trail row; moves no stock. Locked FOR UPDATE, scoped to `warehouse_id` — the selling team and another warehouse read NotFound. A late lost box keeps its lost-by. Opens the arrived window of Update |
 | `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
 | `RestockRequestMarkLost` | selling team | ongoing → lost | gives the parcel up: who and when, a trail row carrying the optional why; moves no money. Ongoing only — a box in the building is not lost. A lost restock is neither accepted nor cancelled; only signing for a late box brings it back |
@@ -436,9 +436,9 @@ it, A processes and ships it, B signs for it and counts it in. The design is
 
 | RPC | Who | From → to | What it does |
 | --- | --- | --- | --- |
-| `WarehouseTransferCreate` | selling team | → created | the transfer, its lines and its `transfer_out` at A in one transaction — below |
+| `WarehouseTransferCreate` | selling team | → created | the transfer, its lines and its `transfer_out` at A in one transaction — below. With a cost, the paying account must be one of the team's ACTIVE accounts — operational or not (a-transfers-shipping-is-paid-from-any-active-account) — asked before anything is written (FailedPrecondition naming it, *"… is not one of the team's active accounts"*; [the paying account](#the-paying-account--one-of-the-teams-active-operational-accounts) shows the seam) |
 | `WarehouseTransferList` / `Detail` | any side | — | rows where the team owns it, or is A, or is B; a fourth team reads **NotFound**. `direction` splits a warehouse's outgoing from its incoming |
-| `WarehouseTransferUpdate` | selling team | until accepted | the shipping cost, its account and the note — never the lines. Not a status change: no trail row. An edit that moved money bumps `cost_revision` and publishes *Warehouse Transfer Updated* with both sides |
+| `WarehouseTransferUpdate` | selling team | until accepted | the shipping cost, its account and the note — never the lines. A CHANGED account must be one of the team's active accounts, operational or not (asked before the lock, judged under it); an unchanged one is kept even if archived since. Not a status change: no trail row. An edit that moved money bumps `cost_revision` and publishes *Warehouse Transfer Updated* with both sides |
 | `WarehouseTransferCancel` | selling team | created → cancelled | rolls the `transfer_out` back (`RollbackTake`) under the transfer's lock; publishes *Warehouse Transfer Cancelled* — the cost back to its account |
 | `WarehouseTransferMarkLost` | selling team | shipped → lost | the loss is the team's |
 | `WarehouseTransferProcess` | A | created → process | from here on there is no cancel |
@@ -479,6 +479,7 @@ sequenceDiagram
     S->>H: from, to, lines [product, count], note, shipment_cost + account
     H->>H: from equals to, a product twice, or a cost without an account → InvalidArgument
     H->>H: ask product_service — a product not the team's own → InvalidArgument
+    H->>F: with a cost, ask the account in-process — archived or not the team's → FailedPrecondition
     H->>DB: warehouse_transfers row, created — so the out-leg can name it
     H->>DB: lock A's batches of every line, in product order, and count them
     alt any line short
@@ -500,7 +501,7 @@ sequenceDiagram
     participant B as Warehouse B member
     participant H as WarehouseTransferAccept
     participant DB as Postgres - one tx
-    participant BAL as balance - by event, not built yet
+    participant BAL as balance - by event
 
     B->>H: lines [item, arrived, broken, notes, placements], courier charge + note
     H->>DB: SELECT transfer WHERE id AND to_warehouse_id FOR UPDATE
@@ -545,7 +546,7 @@ sequenceDiagram
 | the price B's batch copies | the source batch's `price_unit_after` on the out-leg's row — its price when it left A, so a revaluation at A after the out-leg never reaches B |
 | broken and missing on one newest layer | broken first, then missing |
 | a pick list and a put-away | never stored: read back from the legs' `product_placement_logs` (takes are negative, puts positive) |
-| the events | four, published after commit and never failing the request: *Created* (every create, cost 0 included), *Updated* (only an edit that moved money, id `…:<cost_revision>`), *Cancelled*, *Accepted* (every accept, charge 0 included). Their money is `double` from day one. ⚠ Nobody listens yet: the financial account's listener is not built, and balance waits on the source type ([balance Q13](../../business/balance/context_clarify.md#question)) |
+| the events | four, published after commit and never failing the request: *Created* (every create, cost 0 included), *Updated* (only an edit that moved money, id `…:<cost_revision>`), *Cancelled*, *Accepted* (every accept, charge 0 included). Their money is `double` from day one. ✅ Heard since 2026-11-04: `transfer_shipping_listener.go` (financial account, the shipping cost) and `transfer_courier_charge.go` (liability, `transfer_fee` on *Accepted*) |
 | not checked | that A and B are warehouse teams — as a restock's warehouse is not; a transfer to a team with no warehouse roles simply waits, unaccepted |
 
 Proven under concurrency by `warehouse_transfer_race_test.go` (`-tags raceaudit`): eight accepts of one box count it in
@@ -729,6 +730,57 @@ The guard is a single expression mirroring the handler's rules — a second one 
 courier's charge included, so the figure on screen is the one the batch freezes.
 
 ---
+
+## The paying account — one of the team's active operational accounts
+
+Built 2026-11-05 — [a-restock-names-its-paying-account](../../business/inventory/restock_decision.md#a-restock-names-its-paying-account),
+on the seam expense's *Paid from* uses. inventory_service owns an interface, `PayingAccounts`
+([paying_accounts.go](../../../backend/services/inventory_service/inventory_v1/paying_accounts.go)); the composition
+root's [restock_accounts.go](../../../backend/cmd/app_development/restock_accounts.go) answers it in-process from
+`FinancialAccountByIds` (team-scoped — another team's account is absent; the lookup `teamAccount` is shared with
+[expense_accounts.go](../../../backend/cmd/app_development/expense_accounts.go)).
+
+```mermaid
+sequenceDiagram
+  participant UI as restock form
+  participant I as inventory_service
+  participant FA as financial_account, in-process
+  participant DB as restocks
+  UI->>I: RestockRequestCreate or Update(team, finance_account_id, lines)
+  I->>FA: FinancialAccountByIds(team, the account) - BEFORE any transaction or lock
+  alt Create, or an ongoing Update that CHANGES the account
+    alt absent, archived, or not marked operational
+      I-->>UI: FailedPrecondition, naming the account
+    else the team's active operational account
+      I->>DB: write the restock
+    end
+  else an Update keeping the account it holds
+    I->>DB: write the restock - the account is preserved, even if archived since
+  end
+```
+
+| | |
+| --- | --- |
+| refused | FailedPrecondition: *"BCA Tabungan is not one of the team's active operational accounts — pick another, or ask an admin to mark it operational"*, *"… is archived — …"*, or *"account #N …"* for another team's or an unknown id (never confirms an id) — the same words as expense's |
+| 0 | asks nothing: Create's contract refuses 0 (`uint64.gt = 0`), an ongoing Update refuses it in the handler, and an arrived restock raised before paying accounts keeps its 0 |
+| no seam wired | `NewService(…, nil)` counts every account as active and operational — unit tests only; the composition root always wires the real one |
+| concurrency | the call happens before the transaction (Create) and before `FOR UPDATE` (Update); proved by `restock_request_account_race_test.go` ([audit](../../../audits/services/inventory_service/concurrency/RestockRequestUpdate.md#the-paying-account-2026-11-05)) |
+| cost | three indexed reads outside the transaction, ≈0.5 ms ([Create](../../../audits/services/inventory_service/performances/RestockRequestCreate.md), [Update](../../../audits/services/inventory_service/performances/RestockRequestUpdate.md)) |
+
+**Warehouse transfers too** (2026-11-05,
+[a-transfer-names-its-paying-account](../../business/inventory/warehouse_transfer_decision.md#a-transfer-names-its-paying-account)):
+`WarehouseTransferCreate` and `WarehouseTransferUpdate` ask the same seam, with the same words and the same rules, for
+the account that pays the shipping — the transfer's owning (paying) team's. No second adapter: `restockPayingAccounts`
+is team-scoped and answers both. Differences:
+
+| | transfer |
+| --- | --- |
+| 0 | a transfer with no cost names no account (the handler drops it), so nothing is asked |
+| create | asked after the product check and BEFORE the receiver's product link, so a refused create writes nothing |
+| update | judged under the transfer's `FOR UPDATE` only when the account CHANGES (a cost going from 0 to above 0 always does); dropping the cost to 0 is never refused |
+| mapping | `errAccountNotOperational` (paying_accounts.go) → FailedPrecondition in `transferErr`, as in `restockErr` |
+| concurrency | `warehouse_transfer_account_race_test.go` ([audit](../../../audits/services/inventory_service/concurrency/WarehouseTransferUpdate.md)) |
+| cost | the same three reads ([Create](../../../audits/services/inventory_service/performances/WarehouseTransferCreate.md#the-paying-account-2026-11-05), [Update](../../../audits/services/inventory_service/performances/WarehouseTransferUpdate.md)) |
 
 ## RestockInboundStat — the receiving warehouse's headline (owner, 2026-07-30)
 
@@ -1078,6 +1130,35 @@ request serialise on its row: whichever is second finds it decided. Proved in `f
 > ⚠ **Two identical reports are two requests** — `FoundRequestCreate` has no idempotency key, on purpose (none was
 > decided). A double click writes two WAITING rows; the approver sees both and rejects one
 > ([concurrency audit](../../../audits/services/inventory_service/concurrency/FoundRequest.md)).
+
+## Lost stock on the Analytic composer — `InventoryAnalyticService`
+
+Built 2026-11-05 ([inventory-lost-counts-the-warehouses-custody-losses](../../business/analytic/rpc_provide_decision.md#inventory-lost-counts-the-warehouses-custody-losses),
+[inventory-lost-is-gross](../../business/analytic/rpc_provide_decision.md#inventory-lost-is-gross),
+[a-warehouse-sees-its-lost-amount](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-its-lost-amount)) —
+[inventory_analytic.proto](../../../proto/warehouse/inventory/v1/inventory_analytic.proto), `inventory_v1/lost_metric_*.go`.
+
+| | |
+| --- | --- |
+| metric | `metrics/inventory/lost` — `lost_count` (units), `lost_amount` (at the batch price) |
+| groups / filters | summary, daily–yearly, product, supplier, team (the owning seller), warehouse / date range (required), team, warehouse, product, supplier — no shop |
+| reader | `warehouse_id = team_id OR team_id = team_id` of the request: the warehouse that held the stock and the seller owning it, both fields; root every team's; any other team nothing |
+| source | `inventory_lost_daily_reports`, written by `inventory_mutations.foldLost` inside the count's finalize and the Stock Adjust "lost" — the same transaction as the `warehouse_stock_problems` row. `as_of_unix` = the read's time |
+
+```mermaid
+sequenceDiagram
+  participant w as Count finalize or Stock Adjust lost
+  participant db as inventory DB
+  participant ui as Analytic
+  w->>db: one tx - the problem rows, ledgers, items
+  w->>db: same tx, last - upsert the day's lost row per warehouse, team, product, supplier
+  ui->>db: MetricSearch or MetricData - warehouse_id or team_id is the reader, a window of days
+```
+
+Supplier 0 (a batch naming none) counts everywhere but is left out of the Supplier group's keys (an id key is > 0).
+Perf on 219 000 rows: 1–6 ms for a warehouse or a seller, 30–40 ms for root over every team.
+
+---
 
 ## The warehouse's product picker — `WarehouseProductSearch`
 

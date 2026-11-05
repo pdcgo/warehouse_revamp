@@ -386,7 +386,10 @@ func (x *ExpenseRecord) GetFinanceAccountId() uint64 {
 type ExpenseCreateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Kind   ExpenseKind            `protobuf:"varint,2,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
+	// STOCK_LOSS is never typed: inventory records it when stock is written off, by an internal call that does not pass
+	// the validation interceptor (cmd/app_development/expense_poster.go) — so this rule refuses it from every API caller
+	// and leaves inventory's path open. InvalidArgument, in the person's words.
+	Kind ExpenseKind `protobuf:"varint,2,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
 	// Whole rupiah, POSITIVE. Recording an expense of nothing is not an expense.
 	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The date the expense BELONGS TO (YYYY-MM-DD), chosen by the person.
@@ -402,7 +405,7 @@ type ExpenseCreateRequest struct {
 	// expense is published after its commit and financial_account_service posts it out of this account — `ads_expense`
 	// for ADS, `expense` for the rest.
 	// STOCK_LOSS is outside the rule: inventory posts it by an internal call (no validation interceptor), it moves no
-	// cash, and it is stored with no account and never published.
+	// cash, and it is stored with no account and never published. Through the API it is refused outright (`kind`).
 	FinanceAccountId uint64 `protobuf:"varint,7,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -1595,11 +1598,11 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\n" +
 	"net_amount\x18\f \x01(\x03R\tnetAmount\x12,\n" +
 	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountIdJ\x04\b\t\x10\n" +
-	"R\x06voided\"\xe0\x02\n" +
+	"R\x06voided\"\xcc\x03\n" +
 	"\x14ExpenseCreateRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12A\n" +
-	"\x04kind\x18\x02 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04kind\x12\x1f\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\xac\x01\n" +
+	"\x04kind\x18\x02 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindBu\xbaHr\xba\x01h\n" +
+	"+expense_create.kind.stock_loss_is_not_typed\x12.stock loss is recorded by inventory, not typed\x1a\tthis != 5\x82\x01\x04\x10\x01 \x00R\x04kind\x12\x1f\n" +
 	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12D\n" +
 	"\voccurred_at\x18\x04 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
 	"occurredAt\x12\x17\n" +

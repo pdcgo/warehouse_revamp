@@ -9,6 +9,7 @@ import { CharCount } from "../../components/inputs/CharCount";
 import { QuantityInput } from "../../components/inputs/QuantityInput";
 import { ProductSelect } from "../../components/products/ProductSelect";
 import { useReportFound } from "./foundRequests";
+import { useIsMobile } from "../../layouts/shell";
 
 export const description =
   "Reports units found on THIS rack outside a stock count (staff-may-report-a-found): the rack is set, the product is picked, and the units are sent through FoundRequestCreate to the warehouse Owner or Admin. Nothing changes until one of them — never the reporter — approves. A product its team never had here, or a rack a count holds, is refused with the server's own words.";
@@ -33,6 +34,9 @@ export function ReportFoundDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
+  // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
+  // `{ base: "full", md: ... }` kept full's min-height on desktop and stretched the dialog to the window's height.
+  const isMobile = useIsMobile();
   const report = useReportFound();
 
   const [product, setProduct] = useState<{ id: bigint; name: string; code: string } | null>(null);
@@ -74,7 +78,7 @@ export function ReportFoundDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => close(e.open)} size={{ base: "full", md: "md" }}>
+    <Dialog.Root open={open} onOpenChange={(e) => close(e.open)} size={isMobile ? "full" : "md"}>
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>

@@ -33,10 +33,12 @@ export const SAMPLE_SHOPS: SampleEntity[] = [
   { id: "16", name: "Toko Sinar" },
 ];
 
+// Toko Melati's own suppliers, named as the Storybook stub's SupplierByIds names them (.storybook/supplierFixtures.ts) —
+// Lost stock is served, so its supplier rows are named by that lookup, and the filter's picks must read the same.
 export const SAMPLE_SUPPLIERS: SampleEntity[] = [
-  { id: "31", name: "CV Sumber Jaya" },
-  { id: "32", name: "PT Kain Nusantara" },
-  { id: "33", name: "UD Plastik Makmur" },
+  { id: "31", name: "PT Sumber Makmur" },
+  { id: "32", name: "CV Cahaya Abadi" },
+  { id: "33", name: "Toko Grosir Sinar" },
 ];
 
 export const SAMPLE_PRODUCTS: SampleProduct[] = [
@@ -57,6 +59,9 @@ const SHOP_PROFILE: Record<string, { products: string[]; chance: number; most: n
   "15": { products: ["201", "202", "206"], chance: 0.35, most: 3 },
   "16": { products: ["204", "205"], chance: 0.3, most: 2 },
 };
+
+/** Where each product's lost stock sat — Toko Melati's stock, in two warehouses (Gudang Pusat 11, Gudang Cabang 14). */
+export const SAMPLE_LOST_WAREHOUSE: Record<string, string> = { "201": "11", "202": "11", "203": "11", "204": "14", "205": "14", "206": "11" };
 
 /** The shops that buy ads. */
 const ADS_SHOPS = ["11", "12", "15"];
@@ -116,9 +121,12 @@ function build(): Record<string, Fact[]> {
   const facts: Record<string, Fact[]> = {
     "metrics/orders/created": [],
     ...Object.fromEntries(ORDER_MOVES.map((m) => [m.metricId, []])),
+    // Served by inventory_service; the Storybook stub (inventoryAnalyticStub.ts) answers it from these facts.
     "metrics/inventory/lost": [],
     "metrics/ads": [],
     "metrics/expenses": [],
+    // Served by selling_service; the Storybook stub answers it from these facts.
+    "metrics/warehouse_fee": [],
   };
 
   for (const day of days) {
@@ -142,6 +150,14 @@ function build(): Record<string, Fact[]> {
         facts["metrics/orders/created"]!.push({
           ...who,
           values: { created_count: count, created_total: total, mp_total: mpOf(total) },
+        });
+
+        // The warehouse fee, frozen on each placed order: 2.5% of its goods, at least Rp 2.500 — charged on the
+        // placement's day, to the seller, by the warehouse that ships. The sample draws no cancel; the server takes one
+        // back on the cancel's day (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day).
+        facts["metrics/warehouse_fee"]!.push({
+          ...who,
+          values: { transaction_count: count, amount: count * Math.max(2_500, Math.round(product.price * 0.025)) },
         });
 
         for (const move of ORDER_MOVES) {
@@ -172,6 +188,10 @@ function build(): Record<string, Fact[]> {
         day,
         product: product.id,
         supplier: product.supplier,
+        // The seller is the team owning the stock, the warehouse the one that held it
+        // (inventory-lost-groups-and-sits-under-inventory).
+        team: SAMPLE_SELLER,
+        warehouse: SAMPLE_LOST_WAREHOUSE[product.id]!,
         values: { lost_count: lost, lost_amount: lost * product.price },
       });
     }

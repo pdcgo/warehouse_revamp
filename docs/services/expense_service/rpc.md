@@ -30,6 +30,12 @@ Three consequences worth knowing:
 - **The form does not offer it.** `COST_KINDS` (the picker) excludes it and `COST_FILTER_KINDS` includes
   it — reading a kind and being able to type one are different permissions. A hand-typed loss beside the
   automatic ones would make the total partly a guess.
+- **The API refuses it** (2026-11-05). `ExpenseCreateRequest.kind` carries a CEL rule
+  (`expense_create.kind.stock_loss_is_not_typed`, `this != 5`), so the validation interceptor answers any caller
+  InvalidArgument *"stock loss is recorded by inventory, not typed"*. Inventory's `expensePoster` calls the handler
+  in-process, where no interceptor runs, so its write-offs still land
+  (`TestExpenseCreate_StockLossIsRefusedThroughTheAPI`, `TestExpenseCreate_StockLossNamesNoAccount`,
+  `TestExpensePoster_*`).
 - **History stays mixed.** Rows written before the kind existed are still `OPERATIONAL`. They are only
   identifiable by their free-text note, so a backfill would be a guess that could move a real rent row
   (owner). The split is honest from that date forward, not backwards.
@@ -199,7 +205,7 @@ sequenceDiagram
 | `finance_account_id` | `uint64.gt = 0` in the proto, re-checked in the handler (InvalidArgument) — a caller that skips the interceptor is not trusted |
 | a refused account | FailedPrecondition, naming it: *"BCA Gaji is not one of the team's active operational accounts — pick another, or ask an admin to mark it operational"*, *"… is archived — …"*, or *"account #N …"* for another team's or an unknown id (never confirms an id) |
 | the shop | ADS with shop 0 → InvalidArgument *"an ads expense names its shop"* · any other kind with a shop → *"only an ads expense names a shop"* |
-| `STOCK_LOSS` | inventory's `expensePoster` calls the handler directly, with no account and no interceptor — stored with account 0 whatever was sent, the account service never asked, nothing published |
+| `STOCK_LOSS` | through the API: InvalidArgument *"stock loss is recorded by inventory, not typed"* (a CEL rule on `kind`, enforced by the validation interceptor). Inventory's `expensePoster` calls the handler directly, with no account and no interceptor — stored with account 0 whatever was sent, the account service never asked, nothing published |
 | the event | `ExpenseCreated` (topic `expense-created`) — expense id, team, kind, account, amount, the expense's day, shop, actor + override. Published AFTER the commit; a failed publish is logged with its event_id and never fails the expense (no outbox, as a restock's) |
 | never published | a `STOCK_LOSS`, an account 0 |
 

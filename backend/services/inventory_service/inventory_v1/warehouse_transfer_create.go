@@ -63,6 +63,21 @@ func (s *Service) WarehouseTransferCreate(
 		}
 	}
 
+	// The account is kept only with a cost (a-transfer-names-its-paying-account).
+	account := msg.GetFinanceAccountId()
+	if msg.GetShipmentCost() == 0 {
+		account = 0
+	}
+
+	// The account that pays the shipping must be one of the paying team's ACTIVE accounts — any of them, operational or
+	// not (a-transfers-shipping-is-paid-from-any-active-account) — asked of financial_account_service before anything is
+	// written, and before the transaction, so no lock waits on the round-trip. An account archived between this answer
+	// and the commit is the same state as "transfer first, then archive", which is kept.
+	err = s.askPayingAccount(ctx, teamID, account).checkActive()
+	if err != nil {
+		return nil, transferErr(err)
+	}
+
 	// B's crew can find what is coming. Not critical: an upsert BEFORE the transaction that never fails the create — a
 	// link says B handles the product, not that it holds any (a-transfer-links-its-products-to-the-receiver).
 	linkErr := linkWarehouseProductIDs(s.db.WithContext(ctx), msg.GetToWarehouseId(), ids)
@@ -71,12 +86,6 @@ func (s *Service) WarehouseTransferCreate(
 			"warehouse_id", msg.GetToWarehouseId(),
 			"error", linkErr,
 		)
-	}
-
-	// The account is kept only with a cost (a-transfer-names-its-paying-account).
-	account := msg.GetFinanceAccountId()
-	if msg.GetShipmentCost() == 0 {
-		account = 0
 	}
 
 	t := models.WarehouseTransfer{

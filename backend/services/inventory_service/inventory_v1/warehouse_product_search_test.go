@@ -91,7 +91,7 @@ func wpsStocked(t *testing.T) *inventory_v1.Service {
 	t.Helper()
 
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, wpsFacts(), nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, wpsFacts(), nil, nil)
 
 	rakA := newRack(t, svc, otWarehouse, "rak-a")
 	otRestock(t, svc, otMelati, otKaosHitam, 8, 80000, []*inventoryv1.RestockPlacement{{PlacementId: rakA, Quantity: 8}})
@@ -281,7 +281,7 @@ func TestWarehouseProductSearch_NothingHeldAndTooShort(t *testing.T) {
 // With no product_service to ask, the search fails loudly rather than reading as "held none of it".
 func TestWarehouseProductSearch_NoProductServiceIsUnavailable(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
 
 	rak := newRack(t, svc, otWarehouse, "rak-a")
 	otRestock(t, svc, otMelati, otKaosHitam, 1, 10000, []*inventoryv1.RestockPlacement{{PlacementId: rak, Quantity: 1}})

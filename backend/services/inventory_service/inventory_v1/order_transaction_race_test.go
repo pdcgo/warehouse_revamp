@@ -26,6 +26,7 @@ import (
 // Children first, so the harness's DELETEs do not fight the foreign keys. The stock count's tables and the found requests
 // point at the transactions, the batches and the racks, so they go first.
 var ledgerTables = []string{
+	"inventory_lost_daily_reports",
 	"found_requests",
 	"problem_claimed_transactions",
 	"opname_session_final_transactions",
@@ -104,7 +105,7 @@ func raceService(db *gorm.DB) *inventory_v1.Service {
 	return inventory_v1.NewService(db, nil, nil, nil, nil, fakeFacts{
 		raceProductA: {TeamID: raceOwner},
 		raceProductB: {TeamID: raceOwner},
-	}, nil)
+	}, nil, nil)
 }
 
 func raceTake(svc *inventory_v1.Service, key string, lines ...*inventoryv1.OrderTransactionLine) error {

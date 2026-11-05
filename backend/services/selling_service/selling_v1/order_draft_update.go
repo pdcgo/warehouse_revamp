@@ -36,6 +36,15 @@ func (s *Service) OrderDraftUpdate(
 		return nil, err
 	}
 
+	// SETTING the draft's shop is a write on that shop (a-write-needs-a-grant-or-a-manager) — the same gate Promote
+	// meets, asked here so a draft never holds a shop it could not become an order on. Clearing it (0) writes on none.
+	if shopID := req.Msg.GetShopId(); req.Msg.ShopId != nil && shopID != 0 {
+		err = s.refuseShopWrite(ctx, req.Msg.GetTeamId(), shopID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var draft selling_service_models.OrderDraft
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

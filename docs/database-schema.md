@@ -378,7 +378,7 @@ erDiagram
     shop_users {
         bigserial   id         PK
         bigint      shop_id    FK "-> shops(id), ON DELETE CASCADE"
-        bigint      user_id    "opaque user_service id, no FK"
+        bigint      user_id    "opaque user_service id, no FK, indexed (user_id, shop_id) (00039)"
         boolean     is_primary "the shop's primary CS, at most one per shop, partial unique (00014)"
         timestamptz created_at
     }
@@ -405,7 +405,7 @@ erDiagram
         bigint      goods_cost         "the owner's goods_cost - sum of the lines' frozen total, a borrowed line WITH its markup; the warehouse fee's basis. Whole rupiah, rounded once; 0 = unknown, not free (cogs until 00027)"
         double      total_cost         "the owner's total_cost - goods_cost + warehouse_fee, frozen at create (00027). Unrounded, CHECK >= 0; back-filled with a NULL fee as 0"
         bigint      platform_total     "the owner's platform_total - what the buyer paid on the platform (marketplace_total until 00026). Required at placement since 00022, checked in code; 0 only before that"
-        text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — its rule is checked in code, not built yet"
+        text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — a duplicate is warned by the order form, never refused (a-duplicate-ref-is-warned-not-refused)"
         text        idempotency_key     "UK - the key the submit that created it minted (00035). NOT NULL, UNIQUE. Older dev rows filled as order:id. The key its stock take is filed under"
         bigint      transaction_id      "the inventory transaction its stock take wrote (00036) - no FK, another service's id. NULL = none recorded, no backfill"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
@@ -453,7 +453,7 @@ erDiagram
         bigint      author_user_id "personal — only the author lists it; opaque, no FK"
         boolean     is_override    "the author pushed it as Root or the Administrator, not a member - follows the push (00033)"
         text        source         "which app pushed it"
-        text        external_id    "the marketplace's own id — UNIQUE with team_id and source"
+        text        external_id    "the marketplace's own id — UNIQUE with team_id and source; indexed (team_id, shop_id, external_id) for the duplicate-ref lookup (00037)"
         jsonb       touched_fields "field names a human has edited; the push writes only what is absent here"
         bigint      shop_id        "0 until known — no FK, can go stale"
         bigint      warehouse_id   "0 until known — no FK, can go stale"
@@ -517,14 +517,14 @@ erDiagram
     order_daily_reports {
         bigserial        id           PK
         date             day          "the move s Jakarta day (00030)"
-        text             metric       "created, cancelled, return_created, return_arrived, lost_created"
+        text             metric       "created, cancelled, return_created, return_arrived, lost_created, warehouse_fee (00038)"
         bigint           team_id      "the seller - UNIQUE with day, metric, shop, warehouse, user"
         bigint           shop_id
         bigint           warehouse_id
         bigint           user_id      "the order s creator, 0 = none recorded"
-        bigint           order_count
-        double_precision total        "sum of total_cost"
-        bigint           mp_total     "sum of platform_total"
+        bigint           order_count  "warehouse_fee - signed fee transactions"
+        double_precision total        "sum of total_cost - warehouse_fee - signed fee amount"
+        bigint           mp_total     "sum of platform_total - 0 on warehouse_fee"
         timestamptz      last_updated
     }
 ```
@@ -550,6 +550,10 @@ erDiagram
     flag. `UNIQUE (shop_id) WHERE is_primary` holds it to one; every change to it takes the shop's row
     `FOR UPDATE` first. The migration flagged each shop's earliest grant. It is read onto
     `Shop.primary_user_id` and by `ShopAccessCheck` — a shop with none cannot import a statement.
+  - **`shop_users_user_shop_idx`** (`00039`) — `(user_id, shop_id)`: a person's grants, by person. Serves `ShopList`'s
+    `writable` filter (the order form's picker for a CS, [a-write-needs-a-grant-or-a-manager](business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)),
+    which scanned every grant of every team without it, and the member-removed listener's delete by user. Both columns,
+    so the filter's probe needs no heap column ([ShopList.md](../audits/services/selling_service/performances/ShopList.md)).
 - **`orders_team_external_ref_idx`** (`00014`) — `(team_id, order_external_ref_id) WHERE
   order_external_ref_id <> ''`, for `OrderByExternalRefs`: the settlement importer resolves a whole
   statement's refs to orders in one query. **Not unique, by decision** — two live orders may share a ref, and the
@@ -726,7 +730,7 @@ erDiagram
 - **`orders.receipt`** (`00018`) — the TRACKING NUMBER printed on the slip, beside the `receipt_*` columns that name
   the FILE it is printed on. The owner's `orders.receipt`; on the wire `Order.receipt_code`, because the proto's
   `receipt` is the file. Written at create; the seller's *Edit Resi* (pending, processed, picked —
-  the-seller-edits-the-resi-until-handover) is decided and not built.
+  the-seller-edits-the-resi-until-handover) is built: OrderReceiptUpdate (2026-10-29).
   The list's search reaches it with ILIKE, which no b-tree serves (see audits/…/OrderList.md).
 - **`is_override`** (`00033`) on `orders`, `order_timeline_logs` and `order_drafts` — the actor beside it was Root or the
   Administrator, writing inside a team they hold no role in
@@ -786,6 +790,11 @@ erDiagram
     `team_id` with `use_scope`, because a team-level policy without a scope is a dead letter.
     `shop_id` / `warehouse_id` / a mapped `product_id` have **no FK** and can go stale underneath a
     draft; promote re-checks them and names which reference died.
+  - **`order_drafts_team_shop_external_idx` (`team_id, shop_id, external_id`, `00037`)** is the order form's
+    duplicate-ref lookup (`OrderDraftByExternalRefs`): a team's drafts in one shop on the refs being typed. That ask
+    carries no `source`, so the unique key above could not seek on `external_id` and the read walked the team's whole
+    backlog. Not unique — two apps may push one ref into one shop
+    ([audit](../audits/services/selling_service/performances/OrderDraftByExternalRefs.md)).
 - **`team_return_configurations`** (00016) — where a selling team's returned parcels are received
   ([the-return-warehouse-lives-in-team-return-configurations](business/order/context_decision.md#the-return-warehouse-lives-in-team-return-configurations)).
   One row per team; **no row = not set**, the state order create will refuse once its check is on
@@ -835,6 +844,13 @@ erDiagram
     Root reads every row; over 100 000 rows a year of it is a 13–30 ms scan.
   - **Not backfilled.** Orders placed before the fold ran have no row
     ([are-past-orders-folded](business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)).
+  - **`warehouse_fee` rows are SIGNED** (00038 widens the `metric` CHECK): Warehouse Fee
+    ([the-warehouse-fee-prototype-is-accepted](business/analytic/rpc_provide_decision.md#the-warehouse-fee-prototype-is-accepted))
+    is net, each on its own day — a placement adds +1 / + the order's frozen `warehouse_fee` on the placement day, a cancel
+    −1 / − the fee on the cancel's day
+    ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](business/analytic/rpc_provide_decision.md#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)).
+    `order_count` is the fee transactions, `total` the fee amount, `mp_total` 0. Written in the same claim as the
+    `created` / `cancelled` row; orders folded before 00038 are not refolded.
 
 `backend/services/category_service/db_migrations/`
 
@@ -1540,6 +1556,39 @@ erDiagram
 - **The request row is the approval's first lock**: two approvals, or an approval and a rejection, queue on it and the
   second finds it no longer waiting.
 - `team_id`, `product_id`, `warehouse_id` and the people are other services' ids — no FK, as everywhere in this service.
+
+### Lost stock, by day (`00037`)
+
+The report `metrics/inventory/lost` reads (built 2026-11-05 —
+[inventory-lost-counts-the-warehouses-custody-losses](business/analytic/rpc_provide_decision.md#inventory-lost-counts-the-warehouses-custody-losses),
+[inventory-lost-is-gross](business/analytic/rpc_provide_decision.md#inventory-lost-is-gross)). Every **lost**
+`warehouse_stock_problems` row — a count's shortage, a Stock Adjust "lost" — adds its units and their value at the
+batch's price to its Jakarta day's row, **in the same transaction** (`inventory_mutations.foldLost`, the transaction's
+last lock). A broken row never does; a transfer or restock lost on the way writes other tables and never reaches it. A
+Found claim never lowers it — rows only grow.
+
+```mermaid
+erDiagram
+    inventory_lost_daily_reports {
+        bigserial   id           PK
+        date        day          "the Jakarta day the loss was written"
+        bigint      warehouse_id "the warehouse that held the stock"
+        bigint      team_id      "the stock's owner - the batch's team, the Seller group"
+        bigint      product_id
+        bigint      supplier_id  "the batch's supplier, 0 when none"
+        bigint      lost_count   "CHECK 0 or more"
+        numeric     lost_amount  "units x the batch's price, rupiah"
+        timestamptz last_updated
+    }
+    warehouse_stock_problems ||--o{ inventory_lost_daily_reports : "a lost row folds into"
+```
+
+- **Unique** `(day, warehouse_id, team_id, product_id, supplier_id)` — the fold's `ON CONFLICT DO UPDATE` target: two
+  losses into one row queue on it and both add.
+- **The readers**: `(warehouse_id, day)` for the warehouse that held the stock, `(team_id, day)` for the seller owning
+  it — one `warehouse_id = T OR team_id = T` condition, a BitmapOr of the two (a-warehouse-sees-its-lost-amount).
+- Logical link only to `warehouse_stock_problems` (no FK): the report is derived and its sums equal the register's lost
+  rows (asserted by `TestRace_LostFold_EveryLossAddsToTheDaysRow`).
 
 ---
 

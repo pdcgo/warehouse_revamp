@@ -281,3 +281,5 @@ flowchart LR
 | the screen | *Edit* is **Adjust** — a direction (Reduce / Add) and an amount, showing what it will count for; **Batalkan** confirms, then adjusts by minus the net; an adjustment is its own muted row with its sign; an expense shows *now Rp …* once corrected |
 | tests | `expense_adjust_test.go` (the example above, Batalkan, adding, the floor, no chains, the refusals), the schema CHECK, the daily day at 0, and `e2e/expenses.spec.ts` |
 | ⛔ still not built | the events — `expense_service` publishes nothing yet, so no report or account hears an adjustment |
+
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — the events: expense_service publishes `ExpenseCreated` / `ExpenseAdjusted` (events 600/601, `expense_v1/expense_events.go`), and the paying account hears both (`financial_account_v1/expense_payment_listener.go`). ⚠ No analytic report folds an expense yet.

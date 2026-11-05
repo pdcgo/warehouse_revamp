@@ -30,13 +30,13 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 | | |
 | --- | --- |
 | **the move** | `backend/services/shop_service/` (HARD RULE 2) · proto `warehouse.shop.v1` (my spec) · ⚠ how existing rows move — which migration creates the tables, the copy, when `selling_service` drops its copy — is **not designed**: no `docs/technical/shop/` exists |
-| **the write gate** | 🔨 half built — both imports call `ShopAccessCheck` and refuse without a grant or a manager role (f163139) · ⛔ the three order RPCs do not yet · `ShopSelect` on the order form still offers every shop · **the rollout backfill in the same release** as the order gate |
+| **the write gate** | ✅ built for the order writes 2026-11-05 (below) — both statement imports (f163139) and now `OrderCreate` (a draft's Promote included), `OrderDraftPush` and `OrderDraftUpdate` setting a shop refuse without a grant or a manager role; the order form's and the statement import's `ShopSelect` offer only writable shops · ✅ **the rollout grant** built 2026-11-05 as `san shop grant-current-cs` (below) — ⚠ **the release that ships the gate MUST run it** on that database (`--dry-run` first, then for real), or every CS without a grant loses order-taking on day one |
 
 ## What the build gets wrong today — found, not fixed
 
 | | where |
 | --- | --- |
-| a deleted shop is readable NOWHERE — `ShopList`, `ShopDetail` and `ShopAccessCheck` all answer as if it never existed, so a closed shop's last statements cannot be imported (Q3) | `selling_v1/shop_list.go`, `shop_detail.go`, `shop_access_check.go` |
+| a deleted shop is readable only through `ShopAccessCheck` — 🔄 2026-11-05 it answers a deleted shop flagged, so the importer's API accepts a closed shop's statements; `ShopList` and `ShopDetail` still hide it, so the import DIALOG cannot pick one until the close and its *closed* list filter ([a-shop-is-closed-never-deleted](../../business/shop/context_decision.md#a-shop-is-closed-never-deleted)) are built | `selling_v1/shop_list.go`, `shop_detail.go` |
 | `ShopUpdate` lets the marketplace change on a shop with history (Q4) | `selling_v1/shop_update.go`, `ShopFormDialog` |
 | `ShopCreate` does not check the team is a SELLING team (critique 4) | `selling_v1/shop_create.go` |
 | ⛔ `SettlementPost` opens a shop-addressed account under the CALLER's team on the first row — the first team to post claims the shop (critique 6) | `settlement_v1/post_entry.go:300-332` |
@@ -60,3 +60,34 @@ and message it before changing shop files it touches.
 
 ### a-grant-goes-only-to-a-team-member
 🔄 Built 2026-11-04 — `ShopUserAdd` and Make primary (`ShopUserSetPrimary`) refuse a person outside the shop's team, and a suspended or erased one (`refuseUngrantable`, `selling_v1/role_reader.go`); the grant picker offers only active members (`UserList` `exclude_suspended`). Tests: `shop_user_add_test.go`, `shop_user_set_primary_test.go`, `cmd/app_development/role_reader_test.go`, `e2e/shops.spec.ts` "a person outside the shop's team is refused a grant".
+
+### a-write-needs-a-grant-or-a-manager — the order writes (2026-11-05)
+🔄 Built 2026-11-05 — `refuseShopWrite` (`selling_v1/shop_write_gate.go`) asks `shopAccess`, the body `ShopAccessCheck` now
+shares, in-process: `placeOrder` (OrderCreate + Promote) before the take, `OrderDraftPush` with a shop, `OrderDraftUpdate`
+setting one. Refusals: another team's → NotFound · deleted → FailedPrecondition *"<shop>: the shop is closed"* · no grant and no
+manager role (incl. no identity) → PermissionDenied *"You have no access to <shop> — ask the team's owner or admin for it"*.
+`ShopListFilter.writable` (field 5) feeds `ShopSelect writable` on the order form (the draft page is the same form) and the
+statement `ImportFileDialog`; filters still list every shop. Not gated (outside the decision's list — open question): the
+order imports and the hand moves. Tests: `shop_write_gate_test.go` (5), `shop_access_check_test.go`
+`…ADeletedShopIsAnsweredFlagged`, stories `ShopSelect` *WritableOffersOnlyTheGrantedShops* · *WritableClearsAShopThePersonMayNotWriteOn*
+· *WritableOffersAManagerEveryShop*, e2e `writes_need_a_shop_grant.spec.ts`. Perf: `ShopList` writable was heavy by plan only
+([ShopList.md](../../../audits/services/selling_service/performances/ShopList.md) — 🔄 fixed by selling `00039`, below).
+Test fakes: `everyoneMayWrite` (selling_v1) and `runsEveryShop` (cmd/app_development) answer the team's owner, so order tests
+about something else need no grant. ⛔ Left: the close (`status`, Close/Reopen, the closed filter).
+
+### a-write-needs-a-grant-or-a-manager — the rollout grant (2026-11-05)
+✅ Built 2026-11-05 — `san shop grant-current-cs [--dry-run]` (`tools/san/shop.go`, [san.md](../../tools/san.md#shop-grant-current-cs)).
+⚠ **RELEASE STEP: the release that turns the gate on runs it against its database** — dry, then real — in the same deploy.
+For every live selling team (team_service `TeamList`), its current CS (user_service `UserList`, `exclude_suspended`, role CS)
+get every live shop (`ShopList`) they do not hold (`ShopUserList`), each through `ShopUserAdd` — so `refuseUngrantable` and the
+primary rule apply: an existing primary is untouched, a shop with none gets the lowest-id CS granted (the line says so).
+Idempotent; refuses a DSN without the schema. Dev DB run 2026-11-05: 3 teams, 1 CS, 4 live shops — 1 grant added (sutoni on
+shoshoseee, its first primary); the re-run added 0, skipped 1. Tests `tools/san/shop_test.go` (two teams + a deleted one,
+owner/admin/suspended CS, a deleted shop, an existing grant: dry run = real run, idempotent, unmigrated DB refused).
+`ShopList` writable: `shop_users_user_shop_idx (user_id, shop_id)` (selling `00039`) — the HEAVY plan is fixed
+([ShopList.md](../../../audits/services/selling_service/performances/ShopList.md)).
+
+### a-closed-shop-refuses-only-new-selling — the ShopAccessCheck half (2026-11-05)
+🔄 Built 2026-11-05 — `ShopAccessCheck` answers a deleted shop with `deleted = true` (NotFound only for another team's or a
+missing one); the settlement importer and settlement's primary-CS lookup accept it; the order writes refuse it; financial
+account's `ShopOfTeam` still refuses it (adapter). The `status`/Close model itself is not built — a closed shop is a deleted one.

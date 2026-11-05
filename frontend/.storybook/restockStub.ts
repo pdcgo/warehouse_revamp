@@ -18,6 +18,9 @@
 //   the-couriers-charge-stays-out-of-total                  total = goods + shipping.
 //   every-status-change-is-logged, edits-are-in-the-same-trail   every change appends a trail row.
 //   a-product-appears-once-per-restock                      a product twice on one restock is refused.
+//   a-restock-names-its-paying-account                      Create, and an ongoing Update that CHANGES the account,
+//                                                           refuse one that is not the team's active operational
+//                                                           account (payingAccountRefusal, the server's words).
 //
 // WRITEABLE: a restock raised in one step is on the list in the next. preview.tsx resets it in its `beforeEach`.
 
@@ -32,6 +35,7 @@ import {
   RestockRequestStatus as S,
 } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { unitHpp } from "../src/features/restock/counting";
+import { payingAccountRefusal } from "./financialAccountStub";
 import { racks } from "./fixtures";
 import { type LineFixture, type RestockFixture, restockFixtures } from "./restockFixtures";
 import { SELF_ID } from "./userStub";
@@ -72,6 +76,13 @@ function pageOf<R>(all: R[], page: PageReq) {
 const notFound = () => new ConnectError("restock request not found", Code.NotFound);
 const precondition = (msg: string) => new ConnectError(msg, Code.FailedPrecondition);
 const invalid = (msg: string) => new ConnectError(msg, Code.InvalidArgument);
+
+// a-restock-names-its-paying-account: the account must be one of the team's active operational ones — the server's
+// FailedPrecondition sentence, from the financial account stub's live table (so a story may unmark one mid-flight).
+function refuseAccount(teamId: bigint, accountId: bigint) {
+  const refused = payingAccountRefusal(teamId, accountId);
+  if (refused) throw precondition(refused);
+}
 
 // Either side may READ a restock; a third team reads NotFound.
 function visible(teamId: bigint, id: bigint): RestockFixture {
@@ -208,6 +219,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     if (req.items.length === 0) throw invalid("items: at least one line is required");
     if (req.financeAccountId === 0n) throw invalid("finance_account_id: value is required");
     onceEach(req.items);
+    refuseAccount(req.teamId, req.financeAccountId);
 
     const id = rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
     const r: RestockFixture = {
@@ -319,6 +331,8 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     onceEach(req.items);
 
     if (r.status === S.ONGOING) {
+      // Only a CHANGED account is judged — an unchanged one is the restock keeping what it holds.
+      if (req.financeAccountId !== r.financeAccountId) refuseAccount(req.teamId, req.financeAccountId);
       r.warehouseId = req.warehouseId;
       r.receipt = req.receipt;
       r.receiptFile = req.receiptFile;

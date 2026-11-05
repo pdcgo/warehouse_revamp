@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
+import { METRICS, catalogueMetrics, tableGroups, TABLE_GROUPS } from "../../features/analytic/catalogue";
 import { AnalyticPage } from "./index";
 
 // The Analytic composer (docs/business/analytic/rpc_provide.md). The five ORDER metrics and the two SETTLEMENT metrics
@@ -159,6 +160,35 @@ export const AddMetricDrillsIntoACategory: Story = {
   },
 };
 
+// THE LIVE PICKER — no prototype is drawn now (PROTOTYPE_METRICS is empty since Finance and Lost stock went live,
+// 2026-11-05), so the live catalogue is the whole picker: the owner's four categories and Finance last, Inventory's leaf
+// the served Lost stock, Finance's two metrics, and the financial-account groups offered.
+export const TheLivePickerShowsNoPrototype: Story = {
+  render: () => <ByShop />,
+  play: async ({ canvasElement }) => {
+    await expect(catalogueMetrics()).toBe(METRICS);
+    await expect(tableGroups()).toBe(TABLE_GROUPS);
+
+    const canvas = await loaded(canvasElement);
+    const menu = await openMetricMenu(canvas, "inventory");
+
+    for (const c of ["order", "settlement", "inventory", "expense", "finance"]) {
+      await expect(menu.getByTestId(`analytic-category-${c}`)).toBeVisible();
+    }
+    await expect(menu.getByTestId("analytic-metric-metrics-inventory-lost")).toHaveTextContent("Lost stock");
+
+    await userEvent.click(menu.getByTestId("analytic-category-finance"));
+    await expect(menu.getByTestId("analytic-metric-metrics-financial_accounts")).toHaveTextContent("Account changes");
+    await expect(menu.getByTestId("analytic-metric-metrics-financial_accounts-types")).toHaveTextContent("Change types");
+
+    await userEvent.click(menu.getByTestId("analytic-metric-done"));
+    await userEvent.click(canvas.getByTestId("analytic-group"));
+    await waitFor(() => expect(canvas.getByTestId("analytic-group-option-shop")).toBeVisible());
+    await expect(canvas.getByTestId("analytic-group-option-account")).toBeVisible();
+    await expect(canvas.getByTestId("analytic-group-option-change_type")).toBeVisible();
+  },
+};
+
 // SEARCH FINDS A METRIC IN ANY CATEGORY — each match named by its path, greyed the same way when it cannot follow the group.
 export const AddMetricSearchesEveryCategory: Story = {
   render: () => <ByShop />,
@@ -170,13 +200,13 @@ export const AddMetricSearchesEveryCategory: Story = {
 
     const results = await menu.findByTestId("analytic-metric-search-results");
     const stockLost = within(results).getByTestId("analytic-metric-metrics-inventory-lost");
-    await expect(stockLost).toHaveTextContent("Inventory › Stock lost");
+    await expect(stockLost).toHaveTextContent("Inventory › Lost stock");
     await expect(stockLost).toHaveAttribute("data-disabled");
   },
 };
 
 // INVENTORY IS GREYED WHILE GROUPED BY SHOP (a-metric-that-cannot-group-is-greyed) — stock is lost in the warehouse and has
-// no shop, so Stock lost is shown, cannot be ticked, and says why.
+// no shop, so Lost stock is shown, cannot be ticked, and says why.
 export const InventoryGreyedByShop: Story = {
   render: () => <ByShop />,
   play: async ({ canvasElement }) => {

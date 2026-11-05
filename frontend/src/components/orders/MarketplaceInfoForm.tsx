@@ -123,6 +123,8 @@ export function MarketplaceInfoForm({
             teamId={teamId}
             value={value.shopId}
             marketplace={value.marketplace}
+            // The order form writes on the shop — it offers only the ones this person may (a-write-needs-a-grant-or-a-manager).
+            writable
             onChange={(shopId) => onChange({ ...value, shopId })}
             disabled={disabled}
           />

@@ -17,7 +17,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
-// ShopList's #16 filters — marketplace, primary CS, no primary CS — over 20 teams of 500 shops (10 000), each shop
+// ShopList's #16 filters — marketplace, primary CS, no primary CS — and the pickers' `writable` (a CS's grants), over 20 teams of 500 shops (10 000), each shop
 // granted to three people and two of every three with a primary. A team runs tens of shops; 500 is the ceiling probe.
 func TestPerf_ShopListFilters(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
@@ -66,11 +66,22 @@ func TestPerf_ShopListFilters(t *testing.T) {
 		}
 	}
 
+	// The order form's picker for a CS (a-write-needs-a-grant-or-a-manager): no manager role, so the grants narrow it.
+	cs := newServiceWithRoles(t, db, nil)
+	writable := func() error {
+		_, err := cs.ShopList(asUser(101), connect.NewRequest(&sellingv1.ShopListRequest{
+			TeamId: 2, Filter: &sellingv1.ShopListFilter{Writable: true}, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
+		}))
+
+		return err
+	}
+
 	calls := map[string]func() error{
-		"ShopList unfiltered":  list(nil),
-		"ShopList marketplace": list(&sellingv1.ShopListFilter{Marketplace: marketplacev1.Marketplace_MARKETPLACE_SHOPEE}),
-		"ShopList primary cs":  list(&sellingv1.ShopListFilter{PrimaryUserId: 101}),
-		"ShopList no primary":  list(&sellingv1.ShopListFilter{NoPrimary: true}),
+		"ShopList writable, a CS": writable,
+		"ShopList unfiltered":     list(nil),
+		"ShopList marketplace":    list(&sellingv1.ShopListFilter{Marketplace: marketplacev1.Marketplace_MARKETPLACE_SHOPEE}),
+		"ShopList primary cs":     list(&sellingv1.ShopListFilter{PrimaryUserId: 101}),
+		"ShopList no primary":     list(&sellingv1.ShopListFilter{NoPrimary: true}),
 	}
 
 	for name, call := range calls {

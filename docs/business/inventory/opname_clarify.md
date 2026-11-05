@@ -7,19 +7,19 @@
 > ([an-archived-product-held-here-can-be-picked](./opname_decision.md#an-archived-product-held-here-can-be-picked)), as recommended. **Opname has no open question.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q30 — Found Stock sits after Stock Opname with its count
-> ([found-stock-sits-after-stock-opname-with-its-count](./opname_decision.md#found-stock-sits-after-stock-opname-with-its-count)), as recommended. ⛔ Not built. **Opname has no open question.**
+> ([found-stock-sits-after-stock-opname-with-its-count](./opname_decision.md#found-stock-sits-after-stock-opname-with-its-count)), as recommended. ⛔ Not built then — ✅ built 2026-11-03. **Opname has no open question.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q28 — the reporter may withdraw their found
-> ([the-reporter-may-withdraw-their-found](./opname_decision.md#the-reporter-may-withdraw-their-found)), as recommended. ⛔ Not built. **One open: Q30.**
+> ([the-reporter-may-withdraw-their-found](./opname_decision.md#the-reporter-may-withdraw-their-found)), as recommended. ⛔ Not built then — ✅ built 2026-11-03. **One open: Q30.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q29 — a found never stocked here is refused at the report
-> ([a-found-never-stocked-here-is-refused-at-the-report](./opname_decision.md#a-found-never-stocked-here-is-refused-at-the-report)), as recommended. ⛔ Not built. **Two open: Q28, Q30.**
+> ([a-found-never-stocked-here-is-refused-at-the-report](./opname_decision.md#a-found-never-stocked-here-is-refused-at-the-report)), as recommended. ⛔ Not built then — ✅ built 2026-11-03. **Two open: Q28, Q30.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q27 — staff may report a found
-> ([staff-may-report-a-found](./opname_decision.md#staff-may-report-a-found)), as recommended. ⛔ Not built. **Three open: Q28–Q30.**
+> ([staff-may-report-a-found](./opname_decision.md#staff-may-report-a-found)), as recommended. ⛔ Not built then — ✅ built 2026-11-03. **Three open: Q28–Q30.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q26 — a count settles the found it counted
-> ([a-count-settles-the-found-it-counted](./opname_decision.md#a-count-settles-the-found-it-counted)), as recommended. ⛔ Not built. **Four open: Q27–Q30.**
+> ([a-count-settles-the-found-it-counted](./opname_decision.md#a-count-settles-the-found-it-counted)), as recommended. ⛔ Not built then — ✅ built 2026-11-03. **Four open: Q27–Q30.**
 >
 > 🆕 **2026-11-03, the found-request prototype:** [Q26–Q30](#question) were opened, raised by building it. Its design is
 > accepted ([the-found-stock-prototype-is-accepted](./opname_decision.md#the-found-stock-prototype-is-accepted)); the backend step builds each the safe way.
@@ -28,18 +28,18 @@
 > one-time permission. **Opname: no open question, no open contradiction.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q25 — a rack a count holds cannot be deleted
-> ([a-rack-a-count-holds-cannot-be-deleted](./opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)), as recommended. ⛔ Not built. **Opname has no open question.**
+> ([a-rack-a-count-holds-cannot-be-deleted](./opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)), as recommended. ⛔ Not built then — ✅ built 2026-11-03. **Opname has no open question.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q23 — a count that moves no money is still finalized by a non-counter
 > ([a-quiet-count-is-finalized-by-a-non-counter](./opname_decision.md#a-quiet-count-is-finalized-by-a-non-counter)), as recommended; already built. **Open: Q25.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q22 — an Adjust found is a claim the Owner or Admin approves
 > ([an-adjust-found-waits-for-the-owner-or-admin](./opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin)), as recommended; it confirms the 2026-10-13 rule.
-> ⛔ Not built. **Open: Q23, Q25.**
+> ⛔ Not built then — ✅ built 2026-11-03. **Open: Q23, Q25.**
 >
 > ✅ **Answered 2026-11-03, in chat:** Q24 — a count stops the sale and the cancel too
 > ([a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)), against my *correct each count by the movements since*; it
-> reverses Q4's sales half. ⛔ Not built. **Open: Q22, Q23, Q25.**
+> reverses Q4's sales half. ⛔ Not built then — ✅ built 2026-11-03. **Open: Q22, Q23, Q25.**
 
 > 🔄 **Re-examined after your transaction, placement, batch and opname edits (2026-10-16).** ✅ Recorded:
 > [problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname) and

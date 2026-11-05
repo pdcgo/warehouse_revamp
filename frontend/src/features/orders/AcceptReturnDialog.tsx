@@ -25,6 +25,7 @@ import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { QuantityInput } from "../../components/inputs/QuantityInput";
 import { toaster } from "../../components/feedback/Toaster";
 import { useAcceptReturn } from "./queries";
+import { useIsMobile } from "../../layouts/shell";
 
 export const description =
   "Accept Return: the warehouse has the returned parcel in its hands. The whole order comes back — a unit missing from the box is named on its line, and noted on the order for customer service to claim. The courier's charge at the door is entered only if it asked one, with what it was for. Once accepted, a borrowed product's label to print is shown, one per unit in hand.";
@@ -59,6 +60,9 @@ export function AcceptReturnDialog({
 }) {
   const { t } = useTranslation();
   const accept = useAcceptReturn();
+  // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
+  // `{ base: "full", md: "lg" }` kept full's min-height on desktop and stretched the dialog to the window's height.
+  const isMobile = useIsMobile();
 
   // Per line, what did NOT come back — as typed; "" is nothing missing.
   const [missing, setMissing] = useState<Record<string, string>>({});
@@ -115,7 +119,7 @@ export function AcceptReturnDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} placement="center" size={{ base: "full", md: "lg" }}>
+    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} placement="center" size={isMobile ? "full" : "lg"}>
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>

@@ -1,6 +1,6 @@
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supplierClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { SupplierListScope } from "../../gen/warehouse/supplier/v1/supplier_pb";
 import { teamsByIdsQuery } from "../teams/queries";
@@ -8,6 +8,7 @@ import {
   type SupplierChannelRecord,
   type SupplierRecord,
   supplierChannelsFromList,
+  supplierListRowData,
   supplierListWithChannelsData,
   supplierRecord,
   suppliersFromList,
@@ -137,6 +138,35 @@ export function useDiscoverSupplier(args: { teamId: bigint | undefined; supplier
       const names = await teamNames(client, [supplier.teamId]);
 
       return { ...supplier, teamName: names[supplier.teamId.toString()] ?? "" };
+    },
+  });
+}
+
+/**
+ * A SUPPLIER PICKER'S SEARCH across every team (the EVERY_TEAM scope, Discover's) — for a reader with no suppliers of its
+ * own that still meets other teams' ones: a warehouse holds several sellers' stock, each batch naming its seller's
+ * supplier (only-a-selling-team-has-suppliers). Server-side, at least 2 characters, ten at a time, each with the team
+ * that keeps it; a pickers' read (`referenceQuery`), so nobody works from it.
+ */
+export function useSupplierSearch(args: { teamId: bigint; q: string }) {
+  const { teamId, q } = args;
+  const client = useQueryClient();
+
+  return useQuery({
+    ...referenceQuery,
+    queryKey: key.suppliers(teamId, { discover: true, search: q }),
+    enabled: q.length >= 2 && teamId > 0n,
+    queryFn: async (): Promise<OwnedSupplier[]> => {
+      const res = await supplierClient.supplierList({
+        teamId,
+        filter: { q, scope: SupplierListScope.EVERY_TEAM },
+        dataRequest: supplierListRowData(),
+        page: { page: 1, limit: 10 },
+      });
+      const rows = suppliersFromList(res.items, res.ids);
+      const names = await teamNames(client, rows.map((s) => s.teamId));
+
+      return rows.map((s) => ({ ...s, teamName: names[s.teamId.toString()] ?? "" }));
     },
   });
 }

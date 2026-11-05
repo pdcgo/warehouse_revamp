@@ -28,7 +28,7 @@ func TestInventoryProductReader_SearchesWhatTheWarehouseHasHeld(t *testing.T) {
 	)
 
 	db := san_testdb.DB(t)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil)), nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil)), nil, nil)
 
 	kaosMelati := insertCatalogue(t, db, melati, "E2-KAOS-01", "Kaos Temuan", false)
 	kaosSinar := insertCatalogue(t, db, sinar, "E3-KAOS-01", "Kaos Temuan", false)
@@ -99,7 +99,7 @@ func TestInventoryProductReader_ListsWhatTheWarehouseHasHeld(t *testing.T) {
 	)
 
 	db := san_testdb.DB(t)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil)), nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil)), nil, nil)
 
 	kaosMelati := insertCatalogue(t, db, melati, "E4-KAOS-01", "Kaos Temuan", false)
 	kaosSinar := insertCatalogue(t, db, sinar, "E5-KAOS-01", "Kaos Temuan", false)

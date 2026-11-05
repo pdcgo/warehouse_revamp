@@ -2,9 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 
 import { key, referenceQuery } from "../../api/queryClient";
-import { type FieldKind, type MetricDef, type TableGroup, isTimeGroup } from "../../features/analytic/catalogue";
+import { CHANGE_TYPE_FIELDS, type FieldKind, type MetricDef, type TableGroup, isTimeGroup } from "../../features/analytic/catalogue";
 import { sampleName } from "../../features/analytic/sample";
+import { useFinancialAccountsByIds } from "../../features/financialAccount/queries";
+import { useProductsByIds } from "../../features/products/queries";
 import { useShopsByIds } from "../../features/shops/queries";
+import { useSuppliersByIds } from "../../features/suppliers/queries";
 import { useTeamsByIds } from "../../features/teams/queries";
 import { fetchActors } from "../../features/users/queries";
 import { dateInputToUnix, formatUnixDate } from "../../lib/datetime";
@@ -34,14 +37,19 @@ export function formatFigure(kind: FieldKind, value: number | undefined): string
 
 /**
  * THE NAMES OF A PAGE'S ROWS, for an id group a SERVED metric keys by real ids — shops by ShopByIds, sellers and
- * warehouses by TeamByIds, people by UserByIDs. One read per page, never one per row; a name lookup (referenceQuery), so
+ * warehouses by TeamByIds, people by UserByIDs, products by ProductByIds and suppliers by SupplierByIds (both answer
+ * any team's, archived or deleted ones included — a loss in a warehouse names the seller's product). One read per page, never one per row; a name lookup (referenceQuery), so
  * it labels and nobody works from it. An id nobody could name is simply absent, and keyLabel falls back.
  */
-export function useKeyNames(group: TableGroup, keys: string[]): Map<string, string> {
+export function useKeyNames(group: TableGroup, keys: string[], teamId?: bigint): Map<string, string> {
   const ids = isTimeGroup(group) ? [] : keys.filter((k) => /^\d+$/.test(k)).map((k) => BigInt(k));
 
   const shops = useShopsByIds({ shopIds: group === "shop" ? ids : [] });
   const teams = useTeamsByIds({ ids: group === "team" || group === "warehouse" ? ids : [] });
+  // A Finance account by FinancialAccountByIds — the caller's own team's, archived ones included.
+  const accounts = useFinancialAccountsByIds(teamId, group === "account" ? ids : []);
+  const products = useProductsByIds({ teamId, productIds: group === "product" ? ids : [] });
+  const suppliers = useSuppliersByIds({ teamId, supplierIds: group === "supplier" ? ids : [] });
   const people = useQuery({
     ...referenceQuery,
     queryKey: key.users(undefined, { byIds: ids.map(String).sort().join(",") }),
@@ -54,6 +62,9 @@ export function useKeyNames(group: TableGroup, keys: string[]): Map<string, stri
   if (group === "shop") for (const [id, shop] of shops.data ?? []) out.set(id, shop.name);
   if (group === "team" || group === "warehouse") for (const [id, team] of Object.entries(teams.data ?? {})) out.set(id, team.name);
   if (group === "user") for (const [id, person] of people.data ?? []) out.set(id, person.name);
+  if (group === "account") for (const [id, account] of accounts.data ?? []) out.set(id, account.name);
+  if (group === "product") for (const [id, product] of products.data ?? []) out.set(id, product.name);
+  if (group === "supplier") for (const [id, supplier] of suppliers.data ?? []) out.set(id, supplier.name);
 
   return out;
 }
@@ -61,15 +72,28 @@ export function useKeyNames(group: TableGroup, keys: string[]): Map<string, stri
 /**
  * What a row is called — an entity's name, a day, the week it starts, a month, a year. In the app's language.
  *
- * An id is named by `names` first (a served metric's real ids); a shop, product or supplier the lookup could not name is
- * a SAMPLE metric's, named by the sample; anything else reads `#<id>`.
+ * An id is named by `names` first (a served metric's real ids); a shop the lookup could not name is a SAMPLE metric's
+ * (Ads), named by the sample; anything else reads `#<id>` — a product or a supplier is only ever a served metric's row
+ * (Lost stock), so a sample name there would put a made-up product on a real loss.
  */
+/** A provider's enum number (`FinancialAccountProvider`) as the account screens' i18n key. */
+const PROVIDER_KEY: Record<string, string> = { "1": "cash", "2": "bca", "3": "bni", "4": "jago", "5": "shopeepay", "6": "unknown" };
+
 export function keyLabel(group: TableGroup, key: string, t: TFunction, language: string, names?: Map<string, string>): string {
   if (!isTimeGroup(group)) {
     const named = names?.get(key);
     if (named) return named;
 
-    return group === "shop" || group === "product" || group === "supplier" ? sampleName(group, key) : `#${key}`;
+    // The Finance groups: an account is named by FinancialAccountByIds (above), a provider as the account screens name
+    // it, a change type by its column's own label on Account changes — so a row and a column of the same type read the same.
+    if (group === "account") return `#${key}`;
+    if (group === "provider") return PROVIDER_KEY[key] ? t(`financialAccounts.provider.${PROVIDER_KEY[key]}`) : `#${key}`;
+    if (group === "change_type") {
+      const field = CHANGE_TYPE_FIELDS[Number(key) - 1];
+      return field ? t(`analytic.fieldOf.financialAccounts.${field}`) : `#${key}`;
+    }
+
+    return group === "shop" ? sampleName(group, key) : `#${key}`;
   }
 
   const date = new Date(`${key}T00:00:00`);

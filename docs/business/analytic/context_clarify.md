@@ -9,7 +9,7 @@ mine. Answered points are **deleted**, so this file is always the current open s
 > metric reaches the screen. Most of this file was arguing a pipeline that now exists in a different shape, so **six of
 > the seven questions and most critiques are closed** ([closed-this-pass](#closed-this-pass)), each with its evidence.
 >
-> **Open:** no question — the expense correction was answered 2026-10-31 and is not built ([Question](#question)) · three
+> **Open:** no question — the expense correction was answered 2026-10-31 and built 2026-11-02 (`ExpenseAdjust`) ([Question](#question)) · three
 > contradictions · five critiques.
 >
 > ✅ The diagrams parse (`npm run lint:mermaid`).

@@ -86,6 +86,19 @@ message SupplierKeywordFilter {
   }];
 }
 
+// AccountFilter — a team's own financial accounts, one or several (finance-filters-by-account). An id of another team's
+// account matches nothing: the scope is the request's `team_id`.
+message AccountFilter {
+  repeated uint64 account_ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
 // FilterItem — one case per FilterType, and each case's NUMBER IS ITS FilterType's, so a set case maps to its type
 // without a table. 2 was the keyword (the-generic-keyword-is-removed) — reserved, so the numbers still match.
 message FilterItem {
@@ -103,6 +116,7 @@ message FilterItem {
     WarehouseFilter warehouse_filter = 7;
     UserFilter user_filter = 8;
     SupplierKeywordFilter supplier_keyword_filter = 9;
+    AccountFilter account_filter = 10;
   }
 }
 
@@ -123,6 +137,8 @@ enum FilterType {
   FILTER_TYPE_USER = 8;
   // A supplier's name, address, contact or store — the Supplier Report's search (the-supplier-report-keeps-its-search).
   FILTER_TYPE_SUPPLIER_KEYWORD = 9;
+  // A team's financial accounts, one or several — the Finance metrics' (finance-filters-by-account).
+  FILTER_TYPE_ACCOUNT = 10;
 }
 
 // PaginationFilter — on the search request only. The response says whether another page follows and never how many
@@ -159,6 +175,12 @@ enum GroupType {
   GROUP_TYPE_USER = 10;
   // The warehouse that fulfils, beside TEAM, which is the seller (the-warehouse-is-its-own-group).
   GROUP_TYPE_WAREHOUSE = 11;
+  // The financial-account groups (the-group-enum-grows-with-the-reports), joined with the Finance metrics: an account
+  // (keyed by its id), its provider and a change type (each keyed by its enum number in warehouse.financial_account.v1 —
+  // FinancialAccountProvider, FinancialAccountChangeType).
+  GROUP_TYPE_ACCOUNT = 12;
+  GROUP_TYPE_PROVIDER = 13;
+  GROUP_TYPE_CHANGE_TYPE = 14;
 }
 
 // MetricOption — what a metric declares about itself. Checked at startup by san_metric.ValidateDescriptors.
@@ -207,7 +229,8 @@ extend google.protobuf.FieldOptions {
   FieldStatType field_stat_type = 50004;
 }
 
-// IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER, WAREHOUSE. At most a page.
+// IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER, WAREHOUSE, ACCOUNT — and for PROVIDER and
+// CHANGE_TYPE the enum's number. At most a page.
 message IDList {
   repeated uint64 ids = 1 [(buf.validate.field).repeated = {
     max_items: 200

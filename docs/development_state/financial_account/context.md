@@ -79,7 +79,7 @@ expense record (settled in chat: not on the Expenses screen). It is the restock 
 
 | | where |
 | --- | --- |
-| the contract | [financial_account.proto](../../../proto/warehouse/financial_account/v1/financial_account.proto) — `FinancialAccountService` (14 RPCs) and `FinancialAccountAnalyticService` (3), as accepted |
+| the contract | [financial_account.proto](../../../proto/warehouse/financial_account/v1/financial_account.proto) — `FinancialAccountService` (14 RPCs) · 🔄 *(2026-11-05)* `FinancialAccountAnalyticService` is now [financial_account_analytic.proto](../../../proto/warehouse/financial_account/v1/financial_account_analytic.proto) — `MetricSearch` / `MetricData` over the two Finance metrics; the three old reads are removed (below) |
 | **the service** | [backend/services/financial_account_service/](../../../backend/services/financial_account_service/) — one handler file per RPC and a unit test beside each · the ledger's one write path [ledger.go](../../../backend/services/financial_account_service/financial_account_v1/ledger.go): lock the account, the log row, the balance, the day's report row and every later day's shift, one transaction · mounted in the dev server, wired by Wire |
 | the schema | [00001_create_financial_accounts.sql](../../../backend/services/financial_account_service/db_migrations/00001_create_financial_accounts.sql) — `financial_accounts`, `financial_account_logs`, `shop_accounts`, `operational_accounts`, `financial_account_daily_reports`, the listener's `financial_account_event_logs` · [database-schema.md](../../database-schema.md#financial_account_service) · flows: [rpc.md](../../services/financial_account_service/rpc.md) |
 | the withdrawal listener | push route `/event/financial-account-withdrawal/push` on `settlement-log-posted` — settlement's `withdrawal` rows into the shop's account, sign turned; an `unknown` account made for a shop with none · subscription declared in `san pubsub ensure` ([san.md](../../tools/san.md)) |
@@ -120,7 +120,7 @@ flowchart LR
 | | verdict |
 | --- | --- |
 | concurrency | ✅ safe — one lock, the account row, two only in id order ([lock-order.md](../../../audits/services/financial_account_service/concurrency/lock-order.md)) · ⚠ **one race found and fixed**: the listener read the shop's link before locking, so a withdrawal waiting on a move-in posted into the archived account the shop had left — it now re-checks under the lock and retries |
-| `AnalyticTimeSearch` | 🔴 heavy — the balance is re-derived per bucket over the team's history: 156 ms for 30 days, 3.3 s for 200 daily points. Settlement's report has the same shape and the same open finding. **→ Recommend a running sum** ([report](../../../audits/services/financial_account_service/performances/AnalyticTimeSearch.md)) — the owner's call |
+| `AnalyticTimeSearch` | ✅ **resolved 2026-11-05** — the RPC is gone; its successor `MetricData` reads the balance as ONE running sum ([the-balance-series-is-a-running-sum](../../business/analytic/rpc_provide_decision.md#the-balance-series-is-a-running-sum)): a year daily at a page of 200 1 482 ms → 11 ms, a month daily ~120–156 ms → 2 ms (fresh `warehouse_test`, same seed) ([report](../../../audits/services/financial_account_service/performances/AnalyticTimeSearch.md)). Settlement's own report keeps the old per-period shape |
 | 8 write paths | 🟡 heavy by the "> 5 statements" rule only — 6 to 15 fixed statements, 2–6 ms, none growing · **→ Recommend** reading a write's answer in one query instead of three; the 4-statement ledger leg left as is |
 | every read but the series | not heavy — 1 to 4 queries, ≤ 47 ms at a production-like spread, no N+1 |
 
@@ -132,7 +132,16 @@ flowchart LR
 
 ✅ *Paid from* on a restock (2026-11-04) and on an expense (2026-11-04) are built — see *What exists*.
 
-Until each is wired, a reconcile catches what it moved as an `adjustment` — honest: it was not recorded.
+✅ **2026-11-05 — both payers ask the same seam.** A restock's account is now checked server-side like an expense's: one
+of the team's ACTIVE OPERATIONAL accounts, asked in-process through `FinancialAccountByIds` — `restock_accounts.go`
+beside `expense_accounts.go` in the composition root, sharing their lookup `teamAccount`
+([inventory restock.md](../inventory/restock.md)). `ExpenseCreate` through the API refuses `STOCK_LOSS` (InvalidArgument
+*"stock loss is recorded by inventory, not typed"*, a CEL rule on `kind`); inventory's in-process write-off still lands.
+The first warehouse-transfer e2e (`e2e/transfers.spec.ts`) asserts the transfer's shipping cost leaves the operational
+account that paid it (polled: the real publish → emulator push → `transfer_shipping_listener`) and the courier's charge
+lands on the team balance as owed to B.
+
+✅ Every way in is wired (restock, expense, transfer shipping, withdrawal); a reconcile's `adjustment` is left for money no event recorded.
 
 ## ⚠ Traps this pass walked into
 
@@ -143,11 +152,33 @@ Until each is wired, a reconcile catches what it moved as an `adjustment` — ho
 | **`gofmt -l` lists ~50 CRLF files in `tools/san`** | untouched files — format only the files you wrote |
 | **Docker Desktop was down** | every `san_testdb` test SKIPS without Postgres — start Docker and `docker compose up -d` before believing a green run |
 
+## 2026-11-05 — the Finance metrics, and the report moved onto them
+
+Built from [financial-accounts-serve-their-changes-and-their-types](../../business/analytic/rpc_provide_decision.md#financial-accounts-serve-their-changes-and-their-types),
+[analytic-gains-a-finance-category](../../business/analytic/rpc_provide_decision.md#analytic-gains-a-finance-category),
+[the-balance-series-is-a-running-sum](../../business/analytic/rpc_provide_decision.md#the-balance-series-is-a-running-sum),
+[the-finance-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-finance-prototype-is-accepted),
+[finance-filters-by-account](../../business/analytic/rpc_provide_decision.md#finance-filters-by-account),
+[every-team-reads-its-own-finance](../../business/analytic/rpc_provide_decision.md#every-team-reads-its-own-finance) and
+[the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics).
+
+| | |
+| --- | --- |
+| the contract | `financial_account_analytic.proto`: `AccountChangeMetric` (`metrics/financial_accounts`: `opening_balance` POSITION, the nine types in proto order — `account_opening` is OPENING_BALANCE — `change`, `closing_balance` POSITION) · `AccountChangeTypeMetric` (`metrics/financial_accounts/types`: `amount`) · `…ByID` / `…ByDay` maps, a `MetricData` oneof of six. `analytic_base` gains `FILTER_TYPE_ACCOUNT = 10` (`AccountFilter{account_ids}`, 1–200) and `GROUP_TYPE_ACCOUNT / PROVIDER / CHANGE_TYPE = 12 / 13 / 14` |
+| removed | `AnalyticTimeSearch`, `AnalyticGroupSearch`, `AnalyticGroupMetric` and their messages (`FinancialAccountMetric`, `AnalyticTimeframe`, `AnalyticGroupKey`, …), handlers, tests, perf probes. Callers checked: only `features/financialAccount/analytics.ts` and the Storybook stub — both moved. Settlement and supplier lost theirs earlier |
+| the reads | `metric_shared.go`: `byAccount` — per account of the scope, its last daily row before the window (backward probe of `(account_id, day)`) and its window's sums, ONE statement; `series` — that opening summed once (`openingOf`), the window's rows summed per day on `(team_id, day)`, then a running sum per period in Go. Ranking in Go (the keys are few: accounts, six providers, nine types, ≤ 366 days), the key DESC on a tie |
+| scope | `team_id = request.team_id` always — root reads its own team, never every team (unlike settlement); the warehouse roles are on both policies; another team's account id in the Account filter matches nothing |
+| as of | `as_of_unix` = the read's own time: the daily rows are written in the log row's transaction |
+| the report | `features/financialAccount/analytics.ts` keeps its hooks and `Metric` shape, now over MetricSearch/MetricData — the series lists its periods itself (`timeSpine`) and fills a page; the groups rank by the movement's SIZE client-side as before; a range over a year is not sent (the year cap now applies to the report too) |
+| the composer | `FINANCE_METRICS` live in `catalogue.ts` (Finance last, `account` filter, groups Account / Provider / Change type); the multi-account `AccountsFilter` (features/financialAccount, `acc=` in the URL); account rows named by `FinancialAccountByIds` |
+| display fixes | the lead headline card takes two columns of a crowded strip (`SummaryCard double`), so a nine-digit Rp is whole at 1440; the composer's table lets headings and row names wrap to two lines, so Account changes by account fits 1440 (was 1 505 px in a 1 400 px frame) — story `FitsA1440Screen` |
+| MCP | `mcp_service` lists and reads both metrics (source `finance`, date range only) |
+| tests | `metric_data_test.go` (every period opens where the last closed at four grains · a cut period's edges at the range · money out negative, types sum to change, CHANGE_TYPE keys · the Account filter · another team reads nothing · a warehouse reads its own + both policies list the warehouse roles · refusals) · `metric_search_test.go` (paging, has_next, ties, refusals) · `TestPerf_FinanceMetric` · e2e `finance_metrics.spec.ts` (5 tests) · stories `finance.stories.tsx` (10), `AccountsFilter.stories.tsx` (3) |
+
 ## Open
 
-Nothing in the business analysis. For the owner: whether to adopt the running-sum read in `AnalyticTimeSearch` (and
-settlement's), and the one-query answer for the writes — both open questions in their reports. Still empty in the
-owner's doc: §General.
+Nothing in the business analysis. For the owner: the one-query answer for the writes (open in their reports); whether
+settlement's own per-period position read should get the same running sum. Still empty in the owner's doc: §General.
 
 **Next agent:** ✅ the restock, expense and transfer-shipping listeners are built (2026-11-04). A new
 listener follows [withdrawal_listener.go](../../../backend/services/financial_account_service/financial_account_v1/withdrawal_listener.go): claim, then lock the
@@ -158,6 +189,5 @@ account, re-check what was read before the lock, then `post`. Its subscription g
 day (`occurred_at`, the day the person says the cost belongs to), not the day it was typed — the decisions say *the
 event's own time*, and for an expense that reads as its day. For payroll typed on the 5th for last month, the
 account's row then lands last month while the bank shows the 5th. Options and the recommendation are in the build's
-report. And inventory's restock does NOT check its `finance_account_id` against the operational accounts — only the
-form narrows it; expense_service now does (`PayingAccounts` seam in `backend/cmd/app_development/expense_accounts.go`),
-which the restock could reuse.
+report. ✅ *(2026-11-05)* The restock now checks its `finance_account_id` server-side too
+(`backend/cmd/app_development/restock_accounts.go` beside `expense_accounts.go` — see the 2026-11-05 note above).

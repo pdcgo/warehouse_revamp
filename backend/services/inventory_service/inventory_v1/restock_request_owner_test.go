@@ -41,7 +41,7 @@ func ownerService(t *testing.T) *inventory_v1.Service {
 	t.Helper()
 
 	return inventory_v1.NewService(san_testdb.DB(t), nil, nil, nil, nil,
-		fakeOwners{melatisProduct: ownerMelati, sinarsProduct: ownerSinar}, nil)
+		fakeOwners{melatisProduct: ownerMelati, sinarsProduct: ownerSinar}, nil, nil)
 }
 
 func createFor(svc *inventory_v1.Service, team, product uint64) error {

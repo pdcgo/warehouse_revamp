@@ -64,7 +64,9 @@ func transferErr(err error) error {
 		}
 
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
-	case errors.Is(err, errTransferWrongStatus):
+	case errors.Is(err, errTransferWrongStatus),
+		errors.Is(err, errAccountNotActive):
+		// The shipping's account must be one of the team's active ones: FailedPrecondition, naming it (paying_accounts.go).
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, errTransferToItself),
 		errors.Is(err, errTransferProductTwice),

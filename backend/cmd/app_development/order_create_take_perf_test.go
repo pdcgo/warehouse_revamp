@@ -107,8 +107,8 @@ func TestPerf_OrderCreate_TakeBeforeTheRow(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	shop := perfTakeShelf(t, db)
 
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil)
-	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, nil, nil,
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil,
 		NewWarehouseFeePricer(warehouse_v1.NewService(db, nil)), nil)
 
 	run := 0

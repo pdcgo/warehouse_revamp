@@ -24,6 +24,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1/financial_accountv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1/inventoryv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1/liabilityv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1/productv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1/sellingv1connect"
@@ -43,6 +45,8 @@ type Clients struct {
 	OrderAnalytic      sellingv1connect.OrderAnalyticServiceClient
 	SettlementAnalytic settlementv1connect.SettlementAnalyticServiceClient
 	SupplierAnalytic   supplierv1connect.SupplierAnalyticServiceClient
+	FinanceAnalytic    financial_accountv1connect.FinancialAccountAnalyticServiceClient
+	LostAnalytic       inventoryv1connect.InventoryAnalyticServiceClient
 	Products           productv1connect.ProductServiceClient
 	Liability          liabilityv1connect.LiabilityServiceClient
 	Teams              teamv1connect.TeamServiceClient
@@ -57,6 +61,8 @@ func NewClients(httpClient connect.HTTPClient, baseURL string) Clients {
 		OrderAnalytic:      sellingv1connect.NewOrderAnalyticServiceClient(httpClient, baseURL, forward),
 		SettlementAnalytic: settlementv1connect.NewSettlementAnalyticServiceClient(httpClient, baseURL, forward),
 		SupplierAnalytic:   supplierv1connect.NewSupplierAnalyticServiceClient(httpClient, baseURL, forward),
+		FinanceAnalytic:    financial_accountv1connect.NewFinancialAccountAnalyticServiceClient(httpClient, baseURL, forward),
+		LostAnalytic:       inventoryv1connect.NewInventoryAnalyticServiceClient(httpClient, baseURL, forward),
 		Products:           productv1connect.NewProductServiceClient(httpClient, baseURL, forward),
 		Liability:          liabilityv1connect.NewLiabilityServiceClient(httpClient, baseURL, forward),
 		Teams:              teamv1connect.NewTeamServiceClient(httpClient, baseURL, forward),

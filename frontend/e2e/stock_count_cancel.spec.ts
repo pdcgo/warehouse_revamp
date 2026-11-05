@@ -109,6 +109,12 @@ test("Count: a cancel is refused naming the count, and goes through once the cou
     openingBalance: 0,
     openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
   });
+  // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account) — the server refuses any other.
+  await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: seller,
+    accountId: account.account.id,
+    operational: true,
+  });
   const restock = await rpc<{ request: { id: string; items: { id: string }[] } }>(
     page,
     "inventory.v1.RestockRequestService/RestockRequestCreate",

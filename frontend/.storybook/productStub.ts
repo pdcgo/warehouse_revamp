@@ -27,12 +27,31 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import { BatchOrigin, MovementKind } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
+import { SAMPLE_LOST_WAREHOUSE, SAMPLE_PRODUCTS, SAMPLE_SELLER } from "../src/features/analytic/sample";
 import { products as productFixtures, teams as teamFixtures } from "./fixtures";
 
 type Image = { url: string; thumbnailUrl: string };
 type ProductRow = (typeof productFixtures)[number] & { images: Image[] };
 
 const FIGURED_TEAM = 15n;
+
+/** An Analytic sample product as a by-ids row — undefined for any other id. */
+function analyticSampleProduct(id: bigint): ProductRow | undefined {
+  const sample = SAMPLE_PRODUCTS.find((p) => p.id === id.toString());
+  if (!sample) return undefined;
+
+  return {
+    ...productFixtures[0]!,
+    id,
+    teamId: BigInt(SAMPLE_SELLER),
+    productCode: `MEL-SMP-${sample.id}`,
+    name: sample.name,
+    archived: false,
+    crossMarkupBps: 0,
+    reservedStock: 0,
+    images: [],
+  };
+}
 
 const ARCHIVED: ProductRow[] = [
   {
@@ -82,6 +101,10 @@ const MINYAK: Partial<ProductRow> = {
 
 let rows: ProductRow[] = [];
 
+// Whether the Analytic sample's products are CATALOGUE rows for this story (`listAnalyticSampleProducts`) — off by
+// default, so no other picker story meets them.
+let analyticSamplesListed = false;
+
 // The products with NO HISTORY — never stocked, ordered or restocked: 791, and whatever a story creates. Only these may
 // be deleted, or have their code's part corrected, as the server's history reader decides (product_history.go).
 let neverUsed = new Set<bigint>();
@@ -89,6 +112,7 @@ let neverUsed = new Set<bigint>();
 export function resetProductStub() {
   rows = [...productFixtures.map((p) => ({ ...p, images: [] as Image[] })), ...ARCHIVED.map((p) => ({ ...p }))];
   neverUsed = new Set([791n]);
+  analyticSamplesListed = false;
 
   const minyak = rows.find((r) => r.id === 700n)!;
   Object.assign(minyak, MINYAK, { images: [...MINYAK.images!] });
@@ -103,6 +127,27 @@ resetProductStub();
  */
 export function patchProduct(productId: bigint, patch: Partial<ProductRow>) {
   Object.assign(rows.find((r) => r.id === productId)!, patch);
+}
+
+/**
+ * A `beforeEach` (via productScenario's `withAnalyticSampleProducts`): the Analytic sample's products (201–206, Toko
+ * Melati's — the ones Lost stock's stub loses) become Toko Melati's catalogue rows, and each counts as HELD in the
+ * warehouse the sample lost it in (`analyticSamplesHeldHere`), so the composer's product filter can find them by the
+ * real searches — ProductList for the seller, WarehouseProductSearch for the warehouse. The next story's reset takes
+ * them away.
+ */
+export function listAnalyticSampleProducts() {
+  if (analyticSamplesListed) return;
+
+  analyticSamplesListed = true;
+  for (const sample of SAMPLE_PRODUCTS) rows.push(analyticSampleProduct(BigInt(sample.id))!);
+}
+
+/** The Analytic sample's products held in this warehouse — none unless a story listed them. */
+export function analyticSamplesHeldHere(warehouseId: bigint): bigint[] {
+  if (!analyticSamplesListed) return [];
+
+  return SAMPLE_PRODUCTS.filter((p) => SAMPLE_LOST_WAREHOUSE[p.id] === warehouseId.toString()).map((p) => BigInt(p.id));
 }
 
 /** The live catalogue — what every other stub (and every picker) reads. */
@@ -230,11 +275,14 @@ export const productService = {
     );
   },
 
-  // Any team's, archived or not — an unknown id is simply ABSENT.
+  // Any team's, archived or not — an unknown id is simply ABSENT. The Analytic sample's products (201–206, Toko
+  // Melati's, the ones Lost stock's stub loses) are answered too, by-ids only, so a served product row is named by this
+  // lookup as on the server — never a catalogue row, so no list or picker sees them, unless a story lists them
+  // (`listAnalyticSampleProducts`, for the Analytic product filter).
   productByIds: (req: { filter?: { ids?: bigint[] } }) => {
     const items: Record<string, unknown> = {};
     for (const id of req.filter?.ids ?? []) {
-      const row = rows.find((r) => r.id === id);
+      const row = rows.find((r) => r.id === id) ?? analyticSampleProduct(id);
       if (row) items[id.toString()] = { items: [{ d: { case: "product", value: { mapData: { [id.toString()]: row } } } }] };
     }
     return { items };

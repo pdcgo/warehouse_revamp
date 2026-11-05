@@ -1184,6 +1184,9 @@ flowchart LR
 | not built | liability has no subscription to `warehouse-transfer-accepted` and no case for it in `push_handler.go`, so today the charge is booked nowhere |
 | your doc | §What Things That Affect The Team Balance, cause 2, says *"to receive restock"*. Widening it to a transfer is yours: [cause-2-names-the-restock-only](./context_clarify.md#cause-2-names-the-restock-only) |
 
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — `liability-warehouse-transfer-accepted` (`liability_service/push_handler.go`), `liability_v1/transfer_courier_charge.go` posts `transfer_fee` (`LIABILITY_SOURCE_TYPE_TRANSFER_FEE`), tests `transfer_courier_charge_test.go`, `…_race_test.go`.
+
+
 ## an-entry-stays-disputable-forever
 
 > Owner, in chat (2026-10-31): *"yes, it can disputed forever"* — to [Q5](./context_clarify.md#question), *is an entry

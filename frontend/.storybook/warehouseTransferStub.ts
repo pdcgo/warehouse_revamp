@@ -12,7 +12,9 @@
 //   cancel-before-processed-lost-only-in-transit            Cancel from created only; MarkLost from shipped only.
 //   a-transfer-has-seven-statuses                           Process from created, Ship from process, Arrive from
 //                                                           shipped or lost, Accept from shipped or arrived.
-//   a-transfer-names-its-paying-account                     a cost above 0 needs an account.
+//   a-transfer-names-its-paying-account                     a cost above 0 needs an account, one of the paying
+//                                                           team's active accounts, operational or not (activeAccountRefusal,
+//                                                           the server's words); an edit judges only a CHANGED one.
 //   the-shipping-expense-reaches-the-account-by-event       the cost is editable until accepted.
 //   the-on-site-charge-is-paid-by-b-at-accept               a charge above 0 needs its note.
 //   the-system-fills-a-transfers-prices                     line totals and problem prices are worked out here.
@@ -31,6 +33,7 @@ import {
 } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { products, racks, warehouseStock } from "./fixtures";
 import { type TransferFixture, type TransferLineFixture, transferFixtures } from "./warehouseTransferFixtures";
+import { activeAccountRefusal } from "./financialAccountStub";
 import { SELF_ID } from "./userStub";
 
 let rows: TransferFixture[] = [];
@@ -140,11 +143,21 @@ function requireAccount(cost: number, accountId: bigint) {
   if (cost > 0 && accountId === 0n) throw invalid("finance_account_id: required when shipment_cost is above 0");
 }
 
+// The shipping's account must be one of the paying team's ACTIVE ones, operational or not
+// (a-transfers-shipping-is-paid-from-any-active-account) — the server's FailedPrecondition sentence, from the financial account stub's live table (so a story may unmark one
+// mid-flight). 0 (no cost) asks nothing.
+function refuseAccount(teamId: bigint, accountId: bigint) {
+  if (accountId === 0n) return;
+  const refused = activeAccountRefusal(teamId, accountId);
+  if (refused) throw precondition(refused);
+}
+
 export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTransferService>> = {
   warehouseTransferCreate(req) {
     if (req.lines.length === 0) throw invalid("lines: at least one line is required");
     if (req.fromWarehouseId === req.toWarehouseId) throw invalid("a transfer never goes to its own warehouse");
     requireAccount(req.shipmentCost, req.financeAccountId);
+    refuseAccount(req.teamId, req.shipmentCost > 0 ? req.financeAccountId : 0n);
 
     const seen = new Set<string>();
     for (const l of req.lines) {
@@ -265,9 +278,12 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
       throw precondition("the cost can only change until the transfer is accepted");
     }
     requireAccount(req.shipmentCost, req.financeAccountId);
+    // Only a CHANGED account is judged: an unchanged one keeps what the transfer already holds.
+    const account = req.shipmentCost > 0 ? req.financeAccountId : 0n;
+    if (account !== r.financeAccountId) refuseAccount(req.teamId, account);
 
     r.shipmentCost = req.shipmentCost;
-    r.financeAccountId = req.shipmentCost > 0 ? req.financeAccountId : 0n;
+    r.financeAccountId = account;
     r.note = req.note;
 
     return { transfer: toWire(r, true) };

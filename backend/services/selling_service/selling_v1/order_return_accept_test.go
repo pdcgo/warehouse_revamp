@@ -25,7 +25,7 @@ import (
 func returnAcceptService(t *testing.T, db *gorm.DB, rec *recorder, catalog selling_v1.ProductCatalog) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, rec.send, catalog, &fakeCredit{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, rec.send, catalog, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
 }
 
 // returnedOrder places team 2's order, walks it to the courier and has customer service claim it back — `return`, the

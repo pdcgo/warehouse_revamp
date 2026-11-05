@@ -58,7 +58,7 @@ func raceRestockItemsFrom(supplierID uint64) []*inventoryv1.RestockRequestItem {
 func raceRestockSeed(t *testing.T, db *gorm.DB) uint64 {
 	t.Helper()
 
-	created, err := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil).RestockRequestCreate(ctxUser(1),
+	created, err := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil).RestockRequestCreate(ctxUser(1),
 		connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, Items: raceRestockItems(),
 		}))
@@ -201,8 +201,8 @@ func TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheSupplierRoundTrip(t *
 	slow := raceRestockNewParked(map[uint64]bool{newSupplier: true})
 	slow.latency = latency
 
-	updater := inventory_v1.NewService(h.DB(), nil, nil, slow, nil, nil, nil)
-	canceller := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil)
+	updater := inventory_v1.NewService(h.DB(), nil, nil, slow, nil, nil, nil, nil)
+	canceller := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, nil)
 	ctx := ctxUser(1)
 
 	res := h.Race(t, 2, func(i int) error {
@@ -272,7 +272,7 @@ func TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheSupplierCall(t *te
 		idleInTx, locks, probeErr = raceRestockHeldLocks(h.DB())
 	}
 
-	_, err := inventory_v1.NewService(h.DB(), nil, nil, probe, nil, nil, nil).RestockRequestCreate(ctxUser(1),
+	_, err := inventory_v1.NewService(h.DB(), nil, nil, probe, nil, nil, nil, nil).RestockRequestCreate(ctxUser(1),
 		connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, Items: raceRestockItemsFrom(supplier),
 		}))
@@ -318,7 +318,7 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 	sched := h.Interleave(t,
 		san_race.Block("A", "A: RestockRequestCreate names the supplier — supplier_service says live, the answer is in flight",
 			func(tx *gorm.DB) error {
-				_, err := inventory_v1.NewService(tx, nil, nil, answering, nil, nil, nil).RestockRequestCreate(ctx,
+				_, err := inventory_v1.NewService(tx, nil, nil, answering, nil, nil, nil, nil).RestockRequestCreate(ctx,
 					connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 						TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse,
 						Items: raceRestockItemsFrom(supplierID),

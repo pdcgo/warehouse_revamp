@@ -60,7 +60,9 @@ export function ImportFileDialog({ teamId }: { teamId: bigint }) {
   const [fileError, setFileError] = useState("");
   const [showLog, setShowLog] = useState(false);
 
-  const shops = useShopOptions({ teamId });
+  // A statement import writes on the shop (a-write-needs-a-grant-or-a-manager): the picker offers only the shops this
+  // person may import for — the same writable list ShopSelect asks below, so the pick is always found here.
+  const shops = useShopOptions({ teamId, writable: true });
   const shop = useMemo(() => (shops.data ?? []).find((s) => s.id === shopId), [shops.data, shopId]);
   const importable = canImportFrom(shop?.marketplace);
 
@@ -134,7 +136,7 @@ export function ImportFileDialog({ teamId }: { teamId: bigint }) {
                 <Stack gap="card">
                   <Field.Root required>
                     <Field.Label>{t("settlementImports.dialog.shop")}</Field.Label>
-                    <ShopSelect teamId={teamId} value={shopId} onChange={setShopId} />
+                    <ShopSelect teamId={teamId} value={shopId} onChange={setShopId} writable />
                     {shop && (
                       <HStack gap="2" mt="1">
                         <MarketplaceBadge marketplace={shop.marketplace} size="sm" />

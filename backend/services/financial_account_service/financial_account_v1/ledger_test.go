@@ -4,7 +4,8 @@ import "testing"
 
 // the-daily-row-is-written-with-the-log-row — and a LATE row shifts every later day, never recomputes.
 func TestDailyReport_ALateRowShiftsEveryLaterDay(t *testing.T) {
-	db, svc, ops, kas := book(t)
+	b := book(t)
+	db, svc, ops, kas := b.db, b.svc, b.ops, b.kas
 
 	before := daily(t, db, ops)
 	last := before[len(before)-1]

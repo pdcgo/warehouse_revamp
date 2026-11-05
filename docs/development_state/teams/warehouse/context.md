@@ -44,11 +44,11 @@ cd frontend && npm run test:stories -- src/pages/settings
 ⚠ **Dev DB:** only Dev Warehouse (13) had a default flat fee, so it is the only warehouse with a rate. Every other
 warehouse there refuses orders until it sets one on Settings.
 
-## Decided, not built — the rest of the rollout
+## ✅ The rollout is built — nothing decided is left
 
 | step | what |
 | --- | --- |
-| 5 | `liability_terms.handling_fee` dropped, with its Credit Terms field |
+| 5 | ✅ built 2026-10-29 — `liability_terms.handling_fee` dropped (liability `00011_drop_terms_handling_fee.sql`), with its Credit Terms field; see *Step 5* below |
 
 ## Open
 

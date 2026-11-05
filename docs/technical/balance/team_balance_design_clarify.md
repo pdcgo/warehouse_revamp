@@ -432,7 +432,7 @@ does, against the screen that carries it.
 | §Responsbility 3 — **manage payments** | the detail's payment tabs | ⚠ record ✅ · confirm ✅ · **reject ❌** · reverse ⛔ **removed** — [an-accepted-payment-is-final](../../business/balance/context_decision.md#an-accepted-payment-is-final) |
 | §Payment Flow — the payer **brings proof** | `MakePaymentDialog` | ✅ required, uploaded and shared |
 | §Payment Flow — the creditor **checks it manually** | the payment row | ⛔ **the proof has NO VIEWER.** It is attached and readable by contract, and nothing on the screen opens it |
-| §Payment Flow — the creditor **rejects** | the payment row | ⛔ **not built.** Decided, spec'd in [§Reject, as build work](#reject-as-build-work), and the only refusal available today is confirm-then-reverse |
+| §Payment Flow — the creditor **rejects** | the payment row | ✅ **built** — `LiabilityPaymentReject` (liability `00007_payment_reject.sql`), as spec'd in [§Reject, as build work](#reject-as-build-work) |
 | §What Warehouse Can Receivable / Payable — five named kinds | the detail's entry rows | ✅ five distinct labels since the vocabulary migration — they shared one until this week |
 | §Balance Policy 1 — threshold **set by team owner, overridden by admin/root** | the detail's Terms tab | ⚠ built, and the **DEFAULT row is settable nowhere** ([Q6](#question)) |
 | §About Thresholds 1 — **warning at 80% on the BALANCE SCREEN** | `/liability` list | ⛔ **absent.** Four tiles: payable, receivable, awaiting, oldest. None is about a limit |
@@ -473,7 +473,7 @@ before the second table exists.
 | what it logs | table | built? |
 | --- | --- | --- |
 | money that MOVED — one leg per side, `group_id` pairs them | **`liability_logs`** | ✅ today as `liability_entries` |
-| a RULE that changed — the credit limit, the fee, the markup | **`liability_terms_logs`** | ❌ not built. [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) requires it |
+| a RULE that changed — the credit limit, the fee, the markup | **`liability_terms_logs`** | ✅ built — liability `00008_liability_terms_logs.sql`, read by `LiabilityTermsHistoryList`. [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) requires it |
 
 ```mermaid
 flowchart TB

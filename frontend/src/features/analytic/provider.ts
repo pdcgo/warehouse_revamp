@@ -8,12 +8,18 @@
 //   And the headline: the same metrics read with group SUMMARY and no keys (the-headline-is-the-metric-grouped-by-summary).
 //
 // A metric with a `schema` is SERVED: its service answers MetricSearch / MetricData over the wire — the five order
-// metrics by selling_service, the two settlement metrics by settlement_service. Every other metric is still a SAMPLE
+// metrics and Warehouse Fee by selling_service, the two settlement metrics by settlement_service, the two Finance
+// metrics by financial_account_service, Lost stock by inventory_service. Every other metric is still a SAMPLE
 // (sample.ts), answered here by the same two steps, until its service ships. The steps do not change between the two.
 
 import type { DescMessage, MessageInitShape } from "@bufbuild/protobuf";
 
-import { orderAnalyticClient, settlementAnalyticClient } from "../../api/clients";
+import {
+  financialAccountAnalyticClient,
+  inventoryAnalyticClient,
+  orderAnalyticClient,
+  settlementAnalyticClient,
+} from "../../api/clients";
 import {
   type FilterItemSchema,
   GroupType as PbGroupType,
@@ -40,6 +46,8 @@ export interface ReportFilters {
   team?: string;
   warehouse?: string;
   user?: string;
+  /** The team's own financial accounts, one or several (finance-filters-by-account). */
+  accounts?: string[];
 }
 
 /**
@@ -137,6 +145,11 @@ function compareKeys(a: ReportKey, b: ReportKey, group: TableGroup): number {
 function inScope(def: MetricDef, fact: Fact, filters: ReportFilters): boolean {
   if (fact.day < filters.from || fact.day > filters.to) return false;
 
+  return inEntityScope(def, fact, filters);
+}
+
+/** The filters but the date range. */
+function inEntityScope(def: MetricDef, fact: Fact, filters: ReportFilters): boolean {
   const checks: [FilterType, string | undefined, string | undefined][] = [
     ["shop", filters.shop, fact.shop],
     ["product", filters.product, fact.product],
@@ -217,6 +230,9 @@ const PB_GROUP: Record<TableGroup | "summary", PbGroupType> = {
   team: PbGroupType.TEAM,
   warehouse: PbGroupType.WAREHOUSE,
   user: PbGroupType.USER,
+  account: PbGroupType.ACCOUNT,
+  provider: PbGroupType.PROVIDER,
+  change_type: PbGroupType.CHANGE_TYPE,
 };
 
 type Filter = MessageInitShape<typeof FilterItemSchema>;
@@ -232,6 +248,9 @@ function wireFilters(filters: ReportFilters): Filter[] {
   if (filters.team) out.push({ f: { case: "teamFilter", value: { teamId: id(filters.team) } } });
   if (filters.warehouse) out.push({ f: { case: "warehouseFilter", value: { warehouseId: id(filters.warehouse) } } });
   if (filters.user) out.push({ f: { case: "userFilter", value: { userId: id(filters.user) } } });
+  if (filters.accounts && filters.accounts.length > 0) {
+    out.push({ f: { case: "accountFilter", value: { accountIds: filters.accounts.map(id) } } });
+  }
 
   return out;
 }
@@ -308,6 +327,8 @@ interface MetricClient {
 function clientOf(def: MetricDef): MetricClient {
   if (def.service === "selling") return orderAnalyticClient;
   if (def.service === "settlement") return settlementAnalyticClient;
+  if (def.service === "financial_account") return financialAccountAnalyticClient;
+  if (def.service === "inventory") return inventoryAnalyticClient;
 
   throw new Error(`no client for ${def.service}, which serves ${def.metricId}`);
 }

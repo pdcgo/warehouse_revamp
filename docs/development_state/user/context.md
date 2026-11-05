@@ -9,7 +9,7 @@ of them superseded**. One question was re-routed: who confirms a stock count is
 [inventory Q12](../../business/inventory/context_clarify.md#question).
 
 The service predates the lifecycle: every RPC in `proto/warehouse/user/v1/user.proto` (19) has a handler and a test,
-and they pass against Postgres. **The decisions below are mostly NOT built yet.**
+and they pass against Postgres. ✅ **Every decision below is built** (2026-10-05 … 2026-11-04; re-verified in code 2026-11-05).
 
 ## Prototype — accepted
 
@@ -38,7 +38,7 @@ imports `lib/roles.ts`), writeable, reset per story.
 | members | the warehouse and selling Admins and every Owner manage them — [the-admin-team-admin-alone-does-not-manage-members](../../business/user/context_decision.md#the-admin-team-admin-alone-does-not-manage-members) |
 | markup, reserve, lock | the selling Owner and Admin, not Customer Service — [the-selling-owner-and-admin-set-markup-reserve-and-lock](../../business/user/context_decision.md#the-selling-owner-and-admin-set-markup-reserve-and-lock) |
 
-## Decided, not built
+## Decided — all built
 
 Grouped by what changes, in the decided order ([rename-the-roles-before-the-grant-checks](../../business/user/context_decision.md#rename-the-roles-before-the-grant-checks)): ~~**1a** add `admin_owner` and `admin_administrator`~~ ✅ built 2026-10-05 (12 waits on [Q28](../../business/user/context_clarify.md#question)), ~~1b rename four roles~~ ✅ built 2026-10-05, then 2–11 · 13 · 16 · 19, then 14 · 17 · 18. `ownerRoleFor` now gives an admin-type team `ROLE_ADMIN_OWNER`.
 

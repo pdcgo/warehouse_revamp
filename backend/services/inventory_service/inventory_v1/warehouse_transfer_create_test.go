@@ -10,6 +10,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
+	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
 // Melati sends Kaos Hitam × 3 and Kaos Polos × 1 to B, paying Rp 18.000 from account 77. The out-leg takes at create —
@@ -140,5 +141,74 @@ func TestWarehouseTransferCreate_RefusesTheShapeRules(t *testing.T) {
 	for name, req := range cases {
 		_, err := f.svc.WarehouseTransferCreate(ctxUser(wtSeller), connect.NewRequest(req))
 		wantCode(t, err, connect.CodeInvalidArgument, name)
+	}
+}
+
+// The account paying the shipping must be one of Melati's ACTIVE accounts (a-transfer-names-its-paying-account,
+// a-transfers-shipping-is-paid-from-any-active-account): an archived one, and another team's, which reads as one that
+// never existed, are FailedPrecondition naming it —
+// and nothing is written: no transfer, no out-leg, nothing published. A transfer with no cost names no account and
+// asks nothing.
+func TestWarehouseTransferCreate_RefusesAnAccountThatIsNotActive(t *testing.T) {
+	f := wtStocked(t)
+	svc := inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, restockAccounts())
+
+	create := func(cost float64, account uint64) error {
+		_, err := svc.WarehouseTransferCreate(ctxUser(wtSeller), connect.NewRequest(&inventoryv1.WarehouseTransferCreateRequest{
+			TeamId: otMelati, FromWarehouseId: wtA, ToWarehouseId: wtB,
+			Lines:        []*inventoryv1.WarehouseTransferLine{wtLine(wtKaosPolos, 1)},
+			ShipmentCost: cost, FinanceAccountId: account,
+		}))
+
+		return err
+	}
+
+	cases := []struct {
+		account uint64
+		names   string
+	}{
+		{accountArchived, "Mandiri Lama"},
+		{accountOtherTeams, "account #44"},
+	}
+
+	for _, c := range cases {
+		err := create(18000, c.account)
+		wantCode(t, err, connect.CodeFailedPrecondition, "shipping paid from account "+itoa(c.account))
+
+		if !strings.Contains(err.Error(), c.names) || !strings.Contains(err.Error(), "active accounts") {
+			t.Fatalf("account %d: the refusal must name it: %v", c.account, err)
+		}
+	}
+
+	var stored int64
+
+	err := f.db.Model(&models.WarehouseTransfer{}).Where("team_id = ?", otMelati).Count(&stored).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if stored != 0 || len(f.sent.events) != 0 {
+		t.Fatalf("a refused transfer wrote %d rows and published %d events", stored, len(f.sent.events))
+	}
+
+	if batches, racks := unitsAt(t, f.db, wtA, wtKaosPolos); batches != 4 || racks != 4 {
+		t.Fatalf("a refused transfer took from A: %d in batches, %d on racks, want 4 and 4", batches, racks)
+	}
+
+	err = create(18000, accountOperational)
+	if err != nil {
+		t.Fatalf("an active operational account must be accepted: %v", err)
+	}
+
+	// Not marked operational, but active and Melati's own: a transfer may be paid from it.
+	err = create(18000, accountPlain)
+	if err != nil {
+		t.Fatalf("an active account not marked operational must be accepted: %v", err)
+	}
+
+	// No cost: the account is dropped before anything is asked, so even a stale id passes.
+	err = create(0, accountArchived)
+	if err != nil {
+		t.Fatalf("a transfer with no cost names no account: %v", err)
 	}
 }

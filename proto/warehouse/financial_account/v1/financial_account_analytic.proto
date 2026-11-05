@@ -1,0 +1,287 @@
+syntax = "proto3";
+
+package warehouse.financial_account.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/analytic_base/v1/analytic.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1;financial_accountv1";
+
+// THE FINANCE METRICS (financial-accounts-serve-their-changes-and-their-types, analytic-gains-a-finance-category),
+// served through the analytic pattern (docs/business/analytic/rpc_provide.md): `MetricSearch` ranks the keys,
+// `MetricData` fills them. They REPLACE the three shipped reads AnalyticTimeSearch / AnalyticGroupSearch /
+// AnalyticGroupMetric (the-pattern-replaces-the-shipped-analytics) — the Financial Account Report and the Analytic
+// composer read the same two:
+//
+//   Account changes   a statement: the opening balance, what moved it (one field per change type), the net, the closing
+//   Change types      the same postings, one `amount` per change type — the breakdown read as rows
+//
+// ⚠ EVERY NUMBER IS READ FROM `financial_account_daily_reports`, one row per account per day, written in the log row's
+// own transaction (the-daily-row-is-written-with-the-log-row) — so a figure is never behind the balance.
+//
+// ⚠ A BALANCE IS ONE RUNNING SUM (the-balance-series-is-a-running-sum): each account's balance before the window is read
+// once (its last daily row before the first day, by the (account_id, day) index), then each period's change is added in
+// date order. A period's opening is the balance at its first day in the window, its closing that plus its change — so
+// a period cut by the range has its edges at the range boundary (the-finance-prototype-is-accepted).
+//
+// ⚠ EVERY TEAM READS ITS OWN ACCOUNTS (every-team-reads-its-own-finance) — a selling team, a warehouse, and the root team
+// its own, never another team's: the scope is `team_id`, always, root included. The admin team monitors read-only.
+service FinancialAccountAnalyticService {
+  // The keys of a page of the table, ranked by one field of one Finance metric.
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// Both metrics have the same keys:
+//
+//   the day       the Jakarta day the money moved (a-row-counts-on-the-day-the-money-moved)
+//   ACCOUNT       an account of the team, archived ones included — their past happened. Every account with a row up to
+//                 the window's END is a key, a quiet one included: it is shown with its balance
+//   PROVIDER      the account's provider NOW (an `unknown` account filled in moves its history), keyed by the
+//                 FinancialAccountProvider number
+//   CHANGE_TYPE   (Change types only) a FinancialAccountChangeType number — every type that moved in the window
+//   a period      every period of the window is a row, a quiet one included: it still has a balance
+//
+// ⚠ SIGN: money in is positive, money OUT IS NEGATIVE (the-finance-prototype-is-accepted) — so the nine type fields add up
+// to `change`, and `opening_balance + change = closing_balance` for every key.
+
+// ACCOUNT CHANGES — the statement (`metrics/financial_accounts`).
+message AccountChangeMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/financial_accounts"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_ACCOUNT
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_ACCOUNT,
+      GROUP_TYPE_PROVIDER
+    ]
+  };
+
+  // The balance at the key's FIRST day in the window — a POSITION (a-position-is-its-own-stat-type): it adds up across
+  // accounts, never across periods. The headline's is the window's first day.
+  double opening_balance = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_POSITION
+  ];
+
+  // ⚠ ONE FIELD PER CHANGE TYPE, in FinancialAccountChangeType's order (all nine, even when 0) — each named for its
+  // report column, but the type OPENING_BALANCE is `account_opening` here ("Account opened"), so it never shares a name
+  // with the position above.
+  double expense = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  double ads_expense = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  double adjustment = 4 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  double withdrawal = 5 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  double restock = 6 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // The change type OPENING_BALANCE — an account's first deposit, posted as it is created.
+  double account_opening = 7 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Nets to zero over a whole team — both legs are its own accounts.
+  double transfer = 8 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  double team_payment = 9 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  double capital = 10 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+
+  // The net — the nine above summed: `closing_balance − opening_balance`.
+  double change = 11 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // The balance at the key's LAST day in the window — a POSITION. The headline's is the window's last day.
+  double closing_balance = 12 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_POSITION
+  ];
+}
+
+// A page of keys' figures — keyed by account id or provider number. A key with no row up to the window's end is zero.
+message AccountChangeMetricByID {
+  map<uint64, AccountChangeMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period carries its balance.
+message AccountChangeMetricByDay {
+  map<string, AccountChangeMetric> items = 1;
+}
+
+// CHANGE TYPES — the same postings as one amount (`metrics/financial_accounts/types`): grouped by change type it is that
+// type's; grouped by anything else it is the key's net change. Signed like Account changes.
+message AccountChangeTypeMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/financial_accounts/types"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_ACCOUNT
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_CHANGE_TYPE,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_ACCOUNT,
+      GROUP_TYPE_PROVIDER
+    ]
+  };
+
+  double amount = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+}
+
+// A page of keys' figures — keyed by change type number, account id or provider number. An asked key that did not move is 0.
+message AccountChangeTypeMetricByID {
+  map<uint64, AccountChangeTypeMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+message AccountChangeTypeMetricByDay {
+  map<string, AccountChangeTypeMetric> items = 1;
+}
+
+message MetricSearchRequest {
+  // Every team reads its own (every-team-reads-its-own-finance): selling teams and warehouses alike.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The caller's scope — and whose accounts are read, the root team's included: never another team's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // Never SUMMARY — a headline is not searched.
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0, 1]
+  }];
+
+  // At most one of each FilterType: the date range, and an Account filter of one or several accounts.
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 2];
+
+  // Names ONE of this service's metrics and one of its sortable fields.
+  warehouse.analytic_base.v1.MetricSort sort = 4 [(buf.validate.field).required = true];
+
+  warehouse.analytic_base.v1.PaginationFilter page = 5 [(buf.validate.field).required = true];
+}
+
+message MetricSearchResponse {
+  // Ranked; the key DESC breaks a tie (the-key-breaks-every-tie).
+  warehouse.analytic_base.v1.MetricKeys keys = 1;
+  // Read as limit + 1 — no total (a-page-says-whether-another-follows).
+  bool has_next = 2;
+}
+
+message MetricDataRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The caller's scope — and whose accounts are read, the root team's included: never another team's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The same as the search's — they scope the numbers, never the keys (the-fill-step-scopes-its-numbers-by-the-filters).
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 2];
+
+  // Ids for ACCOUNT, PROVIDER and CHANGE_TYPE, days for a period; none for SUMMARY. At most a page.
+  warehouse.analytic_base.v1.MetricKeys keys = 4;
+
+  // Either metric or both, in any order; the answer keeps it.
+  repeated string metric_ids = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2
+    unique: true
+  }];
+}
+
+// One per asked metric, in the asked order (one-call-answers-every-asked-metric): the case says which metric and how
+// it is keyed.
+message MetricData {
+  oneof m {
+    AccountChangeMetricByID changes_by_id = 1;
+    AccountChangeMetricByDay changes_by_day = 2;
+    AccountChangeMetric changes_summary = 3;
+    AccountChangeTypeMetricByID types_by_id = 4;
+    AccountChangeTypeMetricByDay types_by_day = 5;
+    AccountChangeTypeMetric types_summary = 6;
+  }
+}
+
+message MetricDataResponse {
+  repeated MetricData metric_datas = 1;
+  // AS OF WHEN (a-money-metric-says-as-of-when), unix seconds. The daily rows are written in the log row's own
+  // transaction, so a Finance figure is never behind its postings: this is the moment the figures were read.
+  int64 as_of_unix = 2;
+}

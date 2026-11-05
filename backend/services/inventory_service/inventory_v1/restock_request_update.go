@@ -52,6 +52,7 @@ func (s *Service) RestockRequestUpdate(
 	// whose supplier changed is checked — can only be known under the lock, so it is judged there.
 	answers := s.askLineSuppliers(ctx, teamID, msg.GetItems())
 	stores := s.askLineStores(ctx, teamID, msg.GetItems())
+	account := s.askPayingAccount(ctx, teamID, msg.GetFinanceAccountId())
 
 	var (
 		rr         inventory_service_models.Restock
@@ -123,6 +124,17 @@ func (s *Service) RestockRequestUpdate(
 			storeErr := stores.check(item)
 			if storeErr != nil {
 				return storeErr
+			}
+		}
+
+		// The paying account is judged like a supplier: only a CHANGED one must be one of the team's active
+		// operational accounts (a-restock-names-its-paying-account). The form re-sends the account it prefilled, so an
+		// unchanged one PRESERVES what the restock already holds — re-checking it would lock the lines of a restock
+		// whose account was archived or un-marked since. An arrived restock cannot change it at all (editArrived).
+		if rr.Status == restockStatusOngoing && msg.GetFinanceAccountId() != rr.FinanceAccountID {
+			accountErr := account.check()
+			if accountErr != nil {
+				return accountErr
 			}
 		}
 

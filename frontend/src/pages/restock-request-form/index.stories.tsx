@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
+import { unmarkOperationalForStory } from "../../../.storybook/financialAccountStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { restockFixture } from "../../../.storybook/restockFixtures";
 import { resetRestockStub } from "../../../.storybook/restockStub";
@@ -163,6 +164,29 @@ export const PayingAccountIsRequiredBeforeSubmit: Story = {
 
     await userEvent.click(canvas.getByTestId("submit-restock"));
     await canvas.findByTestId("at-restock-list", {}, { timeout: 4000 });
+  },
+};
+
+// a-restock-names-its-paying-account: BCA Operasional is picked, then an admin unmarks it before Save. The server refuses
+// — FailedPrecondition, naming the account — and its words are said on the form, which stays where it is. Nothing is
+// raised.
+export const ARefusedPayingAccountIsSaid: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-create-page");
+
+    await pickTeam(canvas.getByTestId("restock-warehouse"), "WH-01");
+    await pickProducts(canvas, [BERAS]);
+    await canvas.findByTestId("restock-line-0");
+    await pickAccount(canvas, BCA_OPS);
+    unmarkOperationalForStory(BCA_OPS);
+
+    await userEvent.click(canvas.getByTestId("submit-restock"));
+
+    await expect(await canvas.findByTestId("restock-create-error", {}, { timeout: 4000 })).toHaveTextContent(
+      "BCA Operasional is not one of the team's active operational accounts — pick another, or ask an admin to mark it operational",
+    );
+    await expect(canvas.queryByTestId("at-restock-list")).toBeNull();
+    await expect(canvas.getByTestId("submit-restock")).toBeInTheDocument();
   },
 };
 

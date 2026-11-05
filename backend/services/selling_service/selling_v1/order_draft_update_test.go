@@ -78,11 +78,12 @@ func TestOrderDraftUpdate_AnUnsetFieldIsNotTouched(t *testing.T) {
 	svc := newService(t, db)
 
 	draftID := pushRef(t, svc, 7, "SHP-100")
+	shop := insertShop(t, db, 2, "Draft Shop", "DS1", "shopee")
 
 	draft := updateDraft(t, svc, 7, &sellingv1.OrderDraftUpdateRequest{
 		TeamId:  2,
 		DraftId: draftID,
-		ShopId:  u64(11),
+		ShopId:  u64(shop),
 	})
 
 	for _, name := range draft.GetTouchedFields() {

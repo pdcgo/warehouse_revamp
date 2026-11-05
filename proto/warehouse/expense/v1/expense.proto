@@ -171,10 +171,20 @@ message ExpenseCreateRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  ExpenseKind kind = 2 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: [0]
-  }];
+  // STOCK_LOSS is never typed: inventory records it when stock is written off, by an internal call that does not pass
+  // the validation interceptor (cmd/app_development/expense_poster.go) — so this rule refuses it from every API caller
+  // and leaves inventory's path open. InvalidArgument, in the person's words.
+  ExpenseKind kind = 2 [
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    },
+    (buf.validate.field).cel = {
+      id: "expense_create.kind.stock_loss_is_not_typed"
+      message: "stock loss is recorded by inventory, not typed"
+      expression: "this != 5"
+    }
+  ];
 
   // Whole rupiah, POSITIVE. Recording an expense of nothing is not an expense.
   int64 amount = 3 [(buf.validate.field).int64.gt = 0];
@@ -195,7 +205,7 @@ message ExpenseCreateRequest {
   // expense is published after its commit and financial_account_service posts it out of this account — `ads_expense`
   // for ADS, `expense` for the rest.
   // STOCK_LOSS is outside the rule: inventory posts it by an internal call (no validation interceptor), it moves no
-  // cash, and it is stored with no account and never published.
+  // cash, and it is stored with no account and never published. Through the API it is refused outright (`kind`).
   uint64 finance_account_id = 7 [(buf.validate.field).uint64.gt = 0];
 }
 

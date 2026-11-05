@@ -17,7 +17,7 @@ import (
 // ShopList returns the scoped team's active shops, newest first, paginated. `q` filters by name or
 // shop code; `marketplace` by the shop's marketplace; `primary_user_id` by its primary CS and
 // `no_primary` to the shops with none (the-primary-cs-is-a-flag-on-a-grant) — the last two exclude
-// each other.
+// each other. `writable` narrows it to the shops the caller may write on — what a picker for a write offers.
 func (s *Service) ShopList(
 	ctx context.Context,
 	req *connect.Request[sellingv1.ShopListRequest],
@@ -54,6 +54,23 @@ func (s *Service) ShopList(
 
 	if filter.GetNoPrimary() {
 		query = query.Where("NOT EXISTS (SELECT 1 FROM shop_users su WHERE su.shop_id = shops.id AND su.is_primary)")
+	}
+
+	// Only the shops the CALLER may write on — the pickers of the order form and the imports
+	// (a-write-needs-a-grant-or-a-manager). The rule is shopAccess's: a manager writes on every shop of the team, so
+	// no clause; anyone else on the shops granted to them — probed per team shop on shop_users' (shop_id, user_id)
+	// unique index, so the cost follows the team's shops, never every grant of every team.
+	if filter.GetWritable() {
+		caller := eventActor(ctx)
+
+		team, root, err := s.roles.Roles(ctx, caller, req.Msg.GetTeamId())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+
+		if !isManager(team, root) {
+			query = query.Where("EXISTS (SELECT 1 FROM shop_users su WHERE su.shop_id = shops.id AND su.user_id = ?)", caller)
+		}
 	}
 
 	var total int64

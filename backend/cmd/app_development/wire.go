@@ -116,6 +116,8 @@ func InitializeApp() (*App, error) {
 		// Expense's one outside question, whether the account an expense names may pay it, is asked of
 		// financial_account in-process — see expense_accounts.go.
 		NewExpensePayingAccounts,
+		// The restock's paying account is asked the same question of the same service — see restock_accounts.go.
+		NewRestockPayingAccounts,
 		// The money a team holds — its accounts, their logs, the withdrawal listener. Its one outside question,
 		// whether a shop is the team's, is asked of the shop — see financial_account_deps.go.
 		financial_account_v1.NewService,

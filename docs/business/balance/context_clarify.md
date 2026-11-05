@@ -214,7 +214,7 @@ points are **deleted**, so this file is always the current open set.
 > | brings **Proof of bank transfer** — image/doc/screenshot | ❌ **nowhere to put it.** A payment carries a 500-char `note` and nothing else |
 > | Team B checks manually | ⛔ **impossible today** — [Critique 18](#critique) |
 > | Team B **accepts** | ✅ `LiabilityPaymentConfirm`, creditor-scoped |
-> | Team B **rejects** | ❌ not built — `RECORDED · CONFIRMED · REVERSED`, no `REJECTED` |
+> | Team B **rejects** | ❌ not built then — ✅ built since: `LiabilityPaymentReject`, `LIABILITY_PAYMENT_STATUS_REJECTED` (liability `00007_payment_reject.sql`) |
 > | `accept` is **terminal** | ✅ **now true** — the reverse is removed: [an-accepted-payment-is-final](./context_decision.md#an-accepted-payment-is-final) |
 >
 > ✅ **It settles a reading of cause 6.** *"Create / Accepting Payment"* in §What Things That Affect
@@ -546,7 +546,7 @@ flowchart LR
 3. ✅ *(2026-10-31)* **Answered: no — a payment always moves money** — [a-payment-always-moves-money](./context_decision.md#a-payment-always-moves-money):
    goods moving is a restock, with a payment beside it if the teams agree. Kept as a line so the numbers hold.
 4. ✅ *(2026-10-31)* **Answered: yes — optional at the return accept** — [a-return-may-carry-the-couriers-ask](./context_decision.md#a-return-may-carry-the-couriers-ask),
-   against my *later*; the courier rarely asks. ⛔ Not built. Kept as a line so the numbers hold.
+   against my *later*; the courier rarely asks. ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 5. ✅ *(2026-10-31)* **Answered: yes, forever — no dispute window** —
    [an-entry-stays-disputable-forever](./context_decision.md#an-entry-stays-disputable-forever), against my window; a
    false `found` is bounded by the claim rule once stock problems are built. Kept as a line so the numbers hold.

@@ -1650,6 +1650,9 @@ flowchart LR
   NEW["a shop is set to return elsewhere on the platform"] -.->|"reversal trigger"| D
 ```
 
+✅ **Built 2026-10-21** (verified in code 2026-11-05) — the 🔄 above: `team_return_configurations` (`selling_service/db_migrations/00016_team_return_configurations.sql`, `proto/warehouse/selling/v1/return_configuration.proto`) and its Settings card. `shops.return_warehouse_id` stays absent, by this verdict.
+
+
 ## the-return-warehouse-is-read-when-the-return-happens
 
 > Asked as *"Is the return warehouse copied onto the order at create?"*
@@ -3029,6 +3032,8 @@ mapping the owner agreed), and every plain move goes through `OrderStatusChange`
 ([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)).
 Not built: the return accept (`return → return_completed`).
 
+✅ **Built 2026-11-03** (verified in code 2026-11-05) — the return accept (`return → return_completed`): `OrderReturnAccept` (`selling_v1/order_return_accept.go`, `order_return_accept_test.go`, `order_return_accept_race_test.go`).
+
 ---
 
 ## the-draft-is-deleted-in-the-orders-transaction
@@ -4016,6 +4021,8 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 
 ⛔ Not built — part of backlog #10, slice 3.
 
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `selling_v1/order_place.go`: a take refused *key already used* is returned as it came and never compensated; `order_create_compensation_test.go`.
+
 ---
 
 ## the-release-is-direct-then-the-event
@@ -4032,6 +4039,8 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 | not chosen | the event only (A); an outbox table (C) |
 
 ⛔ Not built — backlog #10, slice 3.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `selling_v1/order_place.go` releases by the key in-process, then publishes `InventoryTxCancel`; a second release is a no-op (`order_create_compensation_test.go`, `inventory_v1/inventory_tx_cancel_listener_test.go`).
 
 ---
 
@@ -4050,6 +4059,8 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 
 ⛔ Not built — backlog #10, slice 3.
 
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `InventoryTxCancel{idempotency_key, team_id, warehouse_id, actor_id, reason}` (`proto/warehouse/events/v1/event.proto`); `inventory_v1/inventory_tx_cancel_listener.go` releases through `releaseByKey`, team-checked.
+
 ---
 
 ## a-cancel-still-meets-the-count-first
@@ -4066,6 +4077,8 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 | not chosen | the cancel always passes and the stock comes back later (A); a release that ignores the count (C) |
 
 ⛔ Not built — backlog #10, slices 3 and 4.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `OrderCancel` reads the count lock first (`cmd/app_development/stock_picker.go`), and `inventory_tx_cancel_listener.go` errors while a count holds the rack, so the broker redelivers (`inventory_tx_cancel_listener_test.go`, `inventory_tx_cancel_race_test.go`).
 
 ---
 
@@ -4085,6 +4098,8 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 
 ⛔ Not built — backlog #10, slices 1, 5 and 6 (slice 6 shrinks to deleting the bridge).
 
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `OrderCreateRequest.idempotency_key` required, dev rows filled by selling `00035_order_idempotency_key`, a new `order:` key refused (`order_idempotency_key.go`); `StockPickLocations` takes `transaction_id` only, the `order:<id>` ref reserved ([the-placement-page-reads-racks-by-transaction-id](../inventory/order_decision.md#the-placement-page-reads-racks-by-transaction-id)).
+
 ---
 
 ## inventory-tx-cancel-is-an-order-event
@@ -4100,6 +4115,8 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 | not chosen | the inventory range (B); a second kind on `order-cancelled` (C) |
 
 ⛔ Not built — backlog #10, slice 3.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — field 204 of the envelope (`event.proto`), topic `inventory-tx-cancel` (`tools/san/pubsub.go`), published by selling, heard by `inventory_v1/inventory_tx_cancel_listener.go`.
 
 ---
 
@@ -4118,6 +4135,8 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 | not chosen | 30 s / 20 s (B); 60 s / 45 s (C) |
 
 ⛔ Not built — backlog #10, slices 2 and 3.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — no time limit: `features/orders/createAnswer.ts`, `pages/order-create/components/NoAnswerPanel.tsx` (*Try Again* only on a lost connection), stories `pages/order-create/formLock.stories.tsx`.
 
 ---
 

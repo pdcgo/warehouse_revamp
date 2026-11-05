@@ -170,6 +170,9 @@ export const FoundPicksOnlyWhatWasHeldHere: Story = {
     const dialog = await screen.findByTestId("opname-found-dialog");
     // The dialog animates in — until it is visible, a click and the keys typed after it go nowhere.
     await waitFor(() => expect(dialog).toBeVisible());
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — its own height, well short of the window (full screen is the phone's,
+    // by the JS breakpoint; a responsive `size` once stretched it to the window).
+    await waitFor(() => expect(dialog.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.8));
     const input = within(dialog).getByRole("combobox");
     await userEvent.click(input);
     await userEvent.type(input, "karton", { delay: 20 });

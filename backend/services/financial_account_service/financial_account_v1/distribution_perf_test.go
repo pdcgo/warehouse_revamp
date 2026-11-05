@@ -15,6 +15,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	fa "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_perf"
@@ -73,28 +74,22 @@ func TestPerf_Spread(t *testing.T) {
 		return err
 	})
 
-	perfRun(t, b, "Spread/AnalyticGroupSearch/ACCOUNT-365d", func(int) error {
-		_, err := b.svc.AnalyticGroupSearch(context.Background(), connect.NewRequest(&fa.AnalyticGroupSearchRequest{
-			TeamId: b.team, Filter: &fa.AnalyticGroupFilter{DateRange: window(364, 0), GroupType: fa.AnalyticGroupType_ANALYTIC_GROUP_TYPE_ACCOUNT},
-			Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
-		}))
-		return err
-	})
-
-	perfRun(t, b, "Spread/AnalyticGroupSearch/ACCOUNT-30d", func(int) error {
-		_, err := b.svc.AnalyticGroupSearch(context.Background(), connect.NewRequest(&fa.AnalyticGroupSearchRequest{
-			TeamId: b.team, Filter: &fa.AnalyticGroupFilter{DateRange: window(29, 0), GroupType: fa.AnalyticGroupType_ANALYTIC_GROUP_TYPE_ACCOUNT},
-			Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
-		}))
-		return err
-	})
-
-	perfRun(t, b, "Spread/AnalyticTimeSearch/daily-30d", func(int) error {
-		_, err := b.svc.AnalyticTimeSearch(context.Background(), connect.NewRequest(&fa.AnalyticTimeSearchRequest{
-			TeamId: b.team, Timeframe: fa.AnalyticTimeframe_ANALYTIC_TIMEFRAME_DAILY,
-			Filter: &fa.AnalyticTimeSearchFilter{DateRange: window(29, 0)}, SortType: commonv1.CommonSortType_COMMON_SORT_TYPE_DESC,
-			Page:   &commonv1.CommonPagination{Page: 1, Limit: 20},
-		}))
-		return err
-	})
+	for _, c := range []struct {
+		name  string
+		from  int
+		group analytic_basev1.GroupType
+	}{
+		{"account-365d", 364, analytic_basev1.GroupType_GROUP_TYPE_ACCOUNT},
+		{"account-30d", 29, analytic_basev1.GroupType_GROUP_TYPE_ACCOUNT},
+		{"daily-30d", 29, analytic_basev1.GroupType_GROUP_TYPE_DAILY},
+	} {
+		perfRun(t, b, "Spread/MetricSearch/"+c.name, func(int) error {
+			_, err := b.svc.MetricSearch(context.Background(), connect.NewRequest(&fa.MetricSearchRequest{
+				TeamId: b.team, GroupBy: c.group, Filters: []*analytic_basev1.FilterItem{window(c.from, 0)},
+				Sort: &analytic_basev1.MetricSort{MetricId: metricChanges, Field: "change"},
+				Page: &analytic_basev1.PaginationFilter{Limit: 20},
+			}))
+			return err
+		})
+	}
 }

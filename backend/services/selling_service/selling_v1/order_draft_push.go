@@ -42,6 +42,16 @@ func (s *Service) OrderDraftPush(
 		return nil, err
 	}
 
+	// A draft pushed onto a shop is a write on it (a-write-needs-a-grant-or-a-manager): the app's login needs a grant
+	// or a manager role, and a closed shop takes no new drafts (a-closed-shop-refuses-only-new-selling). A draft with
+	// no shop yet (0) writes on none — it is checked when a shop is set, and again at Promote.
+	if shopID := req.Msg.GetShopId(); shopID != 0 {
+		err = s.refuseShopWrite(ctx, req.Msg.GetTeamId(), shopID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	draft, created, err := s.pushDraft(ctx, req.Msg, authorID)
 	if err != nil {
 		// Two pushes of the same external ref arriving together: both find nothing and both insert,

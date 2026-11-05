@@ -28,7 +28,7 @@ func TestInventoryPushHandler_AcksAnUnhandledVariant(t *testing.T) {
 // is claimed and the push acknowledged. The listener's own outcomes are inventory_v1's tests.
 func TestInventoryPushHandler_DispatchesInventoryTxCancel(t *testing.T) {
 	db := san_testdb.DB(t)
-	handler := inventory_service.NewInventoryPushHandler(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil))
+	handler := inventory_service.NewInventoryPushHandler(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil))
 
 	err := handler(context.Background(), &eventsv1.Event{
 		EventId: "inventory-tx-cancel:K-push",
@@ -53,7 +53,7 @@ func TestInventoryPushHandler_DispatchesInventoryTxCancel(t *testing.T) {
 // inventory_v1's tests.
 func TestInventoryPushHandler_DispatchesOrderCancelled(t *testing.T) {
 	db := san_testdb.DB(t)
-	handler := inventory_service.NewInventoryPushHandler(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil))
+	handler := inventory_service.NewInventoryPushHandler(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil))
 
 	for _, key := range []string{"K-cancel-push", ""} {
 		err := handler(context.Background(), &eventsv1.Event{

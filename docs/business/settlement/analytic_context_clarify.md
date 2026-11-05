@@ -1770,7 +1770,7 @@ flowchart LR
 
 - ➡ **MOVED to [Q1](#question)** — the event's shape is now the one thing blocking a build, so it is a
   question rather than a note.
-- ⛔ **`created_by_user_id` is decided and unbuilt** —
+- ✅ *(built 2026-09-14, settlement `00004_order_settlement_creator.sql`)* **`created_by_user_id` was decided and unbuilt** —
   [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
   put it on `order_settlements`; the model has no user column, so `user_settlement_daily_reports` cannot
   be folded at all. It is a migration in this service, not a question.

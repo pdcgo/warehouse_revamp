@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -597,6 +598,9 @@ func PostCountFinalize(tx *gorm.DB, f CountFinalize) (CountPosted, error) {
 
 	var problems []models.WarehouseStockProblem
 
+	// The lost rows as the lost-stock fold reads them — with their batch's supplier.
+	var lost []lostRow
+
 	var claims []models.ProblemClaimedTransaction
 
 	var mints []inventory_ledgers.Mint
@@ -669,6 +673,15 @@ func PostCountFinalize(tx *gorm.DB, f CountFinalize) (CountPosted, error) {
 					}
 
 					problems = append(problems, row)
+
+					if part.kind == models.ProblemLost {
+						var supplierID uint64
+						if batch := book.Batches.Batch(b.BatchID); batch != nil {
+							supplierID = batch.SupplierID
+						}
+
+						lost = append(lost, lostRow{problem: row, supplierID: supplierID})
+					}
 
 					units += b.Count
 					value += b.Valuation
@@ -814,6 +827,13 @@ func PostCountFinalize(tx *gorm.DB, f CountFinalize) (CountPosted, error) {
 		if err != nil {
 			return CountPosted{}, err
 		}
+	}
+
+	// A count's shortage written off as lost is lost stock (inventory-lost-counts-the-warehouses-custody-losses) — the
+	// report rows are the transaction's last locks. A claim (a Found) never lowers them (inventory-lost-is-gross).
+	err = foldLost(tx, time.Now(), lost)
+	if err != nil {
+		return CountPosted{}, err
 	}
 
 	// Hand back the values as posted, in order.

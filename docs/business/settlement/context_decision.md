@@ -2218,6 +2218,8 @@ flowchart LR
 ⚠ **It also makes the webhook a first-class part of the design**, and the webhook is the one write path
 in this system the proto-based ACL does not cover — [analytic Q3](./analytic_context_clarify.md#question).
 
+✅ **Built 2026-09-14** (verified in code 2026-11-05) — the four parts exist: settlement publishes `SettlementLogPosted` (events 300, `settlement_v1/events.go`), `settlement_v1/analytic_fold.go` consumes it, and the report tables are `settlement_service/db_migrations/00005_settlement_analytics.sql`.
+
 ---
 
 ## dedup-and-compute-share-one-transaction
@@ -3164,6 +3166,8 @@ attribution under which the gap means anything.
 ⚠ **So `created_by_user_id` remains decided and unbuilt**, and remains a blocker for the order half of
 `user_settlement_daily_reports`. This decision closes the shop half only.
 
+✅ **Built 2026-09-14** (verified in code 2026-11-05) — `created_by_user_id` on the order's account: `settlement_service/db_migrations/00004_order_settlement_creator.sql` (set once, at the opening post).
+
 ---
 
 ## an-entry-names-an-order-or-a-shop
@@ -3209,6 +3213,8 @@ flowchart LR
 | ⛔ no creator for the user report | **Fixed**: [a-shop-addressed-row-is-attributed-to-its-actor](#a-shop-addressed-row-is-attributed-to-its-actor) |
 | ⚠ **`balance` names two numbers** | the log's `balance` on a shop row runs over shop-addressed rows only; the daily report's `close_balance` folds both grains. Open — see the clarify |
 | ⛔ **not built** | `00001` still has `order_id BIGINT NOT NULL`, and there is no `shop_settlements` table. The doc is ahead of the schema |
+
+✅ **Built 2026-09-10** (verified in code 2026-11-05) — `settlement_service/db_migrations/00003_settlement_two_grains.sql`: `settlement_logs.order_id` nullable and `shop_settlements`.
 
 ---
 

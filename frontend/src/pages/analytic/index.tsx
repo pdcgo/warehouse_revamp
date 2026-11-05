@@ -17,16 +17,15 @@ import { TeamSelect } from "../../components/teams/TeamSelect";
 import {
   type FilterType,
   type MetricDef,
-  TABLE_GROUPS,
   type TableGroup,
   isTimeGroup,
   metricById,
   metricSlug,
   sharedFilters,
+  tableGroups,
 } from "../../features/analytic/catalogue";
 import { useAnalyticPeople } from "../../features/analytic/people";
 import { EMPTY_REPORT, type ReportSort, answeredFields, loadReport } from "../../features/analytic/provider";
-import { SAMPLE_PRODUCTS, SAMPLE_SUPPLIERS, type SampleEntity } from "../../features/analytic/sample";
 import {
   DEFAULT_RANGE,
   PAGE_SIZES,
@@ -40,8 +39,10 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { windowOf } from "../../features/settlement/window";
 import { useTeam } from "../../features/team/TeamContext";
+import { AccountsFilter } from "../../features/financialAccount/AccountsFilter";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useIsMobile } from "../../layouts/shell";
+import { EntityFilter, type EntityFilterKind } from "./components/EntityFilter";
 import { CATEGORY_ICON, MetricPicker } from "./components/MetricPicker";
 import { PlainSelect } from "./components/PlainSelect";
 import { ReportGraphs } from "./components/ReportGraphs";
@@ -51,11 +52,6 @@ import { fieldLabel, keyLabel, useKeyNames } from "./format";
 import { ANALYTIC_PENDING } from "./pending";
 import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
-
-/** The filters still picked from SAMPLE entries — no served metric narrows by a product or a supplier yet. */
-type SampleFilter = "product" | "supplier";
-
-const SAMPLES: Record<SampleFilter, SampleEntity[]> = { product: SAMPLE_PRODUCTS, supplier: SAMPLE_SUPPLIERS };
 
 /** Every filter naming one entity — what a metric that cannot use one makes the screen drop. */
 const ENTITY_FILTERS = ["shop", "team", "warehouse", "user", "product", "supplier"] as const;
@@ -114,6 +110,7 @@ export function AnalyticPage() {
     team: shared.includes("team") ? state.team || undefined : undefined,
     warehouse: shared.includes("warehouse") ? state.warehouse || undefined : undefined,
     user: shared.includes("user") ? state.user || undefined : undefined,
+    accounts: shared.includes("account") && state.accounts.length > 0 ? state.accounts : undefined,
   };
 
   // THE REPORT — asked of every service that serves a chosen metric. `listQuery`: a page, a sort or a filter REFINES the
@@ -134,7 +131,7 @@ export function AnalyticPage() {
   // A column the service left unset is not the reader's to see — a warehouse reads no seller money
   // (a-warehouse-sees-no-seller-money) — so it goes, rather than reading 0.
   const shown = answeredFields(defs, report);
-  const names = useKeyNames(state.groupBy, report.keys);
+  const names = useKeyNames(state.groupBy, report.keys, teamId);
 
   const commit = (next: Partial<ReportState>, restart = true) =>
     setParams(formatReportState({ ...state, ...next, ...(restart ? { page: 1 } : {}) }), { replace: true });
@@ -174,11 +171,14 @@ export function AnalyticPage() {
     if (!def || state.metricIds.includes(metricId)) return;
 
     const next = sharedFilters([...defs, def]);
-    const lost = ENTITY_FILTERS.filter((f) => state[f] !== "" && !next.includes(f));
+    const lost: FilterType[] = [
+      ...ENTITY_FILTERS.filter((f) => state[f] !== "" && !next.includes(f)),
+      ...(state.accounts.length > 0 && !next.includes("account") ? (["account"] as const) : []),
+    ];
 
     commit({
       metricIds: [...state.metricIds, metricId],
-      ...Object.fromEntries(lost.map((f) => [f, ""])),
+      ...Object.fromEntries(lost.map((f) => (f === "account" ? ["accounts", []] : [f, ""]))),
     });
 
     if (lost.length > 0) {
@@ -191,7 +191,11 @@ export function AnalyticPage() {
     }
   };
 
-  const filtering = [!isDefaultRange(state), ...ENTITY_FILTERS.map((f) => shared.includes(f) && state[f] !== "")].filter(Boolean).length;
+  const filtering = [
+    !isDefaultRange(state),
+    ...ENTITY_FILTERS.map((f) => shared.includes(f) && state[f] !== ""),
+    shared.includes("account") && state.accounts.length > 0,
+  ].filter(Boolean).length;
 
   const sortOptions = [
     ...(isTimeGroup(state.groupBy)
@@ -240,24 +244,23 @@ export function AnalyticPage() {
       </FilterField>
     );
 
-  const entityField = (kind: SampleFilter) =>
-    shared.includes(kind) && (
+  // A PRODUCT OR A SUPPLIER — only Lost stock narrows by one today (metrics/inventory/lost, read by the warehouse that
+  // held the stock and the seller that owns it). The team's real entities, searched as that team may search them
+  // elsewhere (EntityFilter: a warehouse what it holds, a seller its own); a pick shows as a chip naming it.
+  const entityField = (kind: EntityFilterKind) =>
+    shared.includes(kind) &&
+    teamId !== undefined && (
       <FilterField key={kind} w="13rem" testId={`analytic-filter-${kind}`}>
-        <HStack gap="2">
-          <Box flex="1" minW="0">
-            <PlainSelect
-              items={[
-                { value: "all", label: t(`analytic.all.${kind}`) },
-                ...SAMPLES[kind].map((e) => ({ value: e.id, label: e.name })),
-              ]}
-              value={state[kind] || "all"}
-              onChange={(v) => commit({ [kind]: v === "all" ? "" : v })}
-              ariaLabel={filterLabel(kind)}
-              testId={`analytic-${kind}`}
-            />
-          </Box>
-          <NotImplemented list={ANALYTIC_PENDING} id="pickers" />
-        </HStack>
+        <EntityFilter
+          kind={kind}
+          teamId={teamId}
+          teamType={current?.teamType}
+          value={state[kind]}
+          onChange={(id) => commit({ [kind]: id })}
+          placeholder={t(`analytic.all.${kind}`)}
+          label={filterLabel(kind).toLowerCase()}
+          portalled={!isMobile}
+        />
       </FilterField>
     );
 
@@ -286,7 +289,7 @@ export function AnalyticPage() {
           </Text>
           <Box w="10rem">
             <PlainSelect
-              items={TABLE_GROUPS.map((g) => ({ value: g, label: t(`analytic.group.${g}`) }))}
+              items={tableGroups().map((g) => ({ value: g, label: t(`analytic.group.${g}`) }))}
               value={state.groupBy}
               onChange={(v) => setGroup(v as TableGroup)}
               ariaLabel={t("analytic.groupBy")}
@@ -318,11 +321,24 @@ export function AnalyticPage() {
         active={filtering > 0}
         count={filtering}
         testId="analytic-filters"
-        onClear={() => commit({ range: DEFAULT_RANGE, shop: "", product: "", supplier: "", team: "", warehouse: "", user: "" })}
+        onClear={() =>
+          commit({ range: DEFAULT_RANGE, shop: "", product: "", supplier: "", team: "", warehouse: "", user: "", accounts: [] })
+        }
       >
         <FilterField w="auto">
           <DateRangePicker value={state.range} onChange={(range) => commit({ range })} testId="analytic-range" />
         </FilterField>
+        {/* THE TEAM'S OWN ACCOUNTS, one or several (finance-filters-by-account) — the Finance metrics' filter. */}
+        {shared.includes("account") && teamId !== undefined && (
+          <FilterField w="15rem" testId="analytic-filter-account">
+            <AccountsFilter
+              teamId={teamId}
+              value={state.accounts}
+              onChange={(accounts) => commit({ accounts })}
+              testId="analytic-accounts"
+            />
+          </FilterField>
+        )}
         {realField("shop")}
         {realField("team")}
         {realField("warehouse")}
@@ -441,6 +457,7 @@ export function AnalyticPage() {
                   from,
                   to,
                   ...ENTITY_FILTERS.map((f) => state[f]),
+                  state.accounts.join(","),
                   sortValue(sort),
                   state.pageSize,
                 ].join("|")}

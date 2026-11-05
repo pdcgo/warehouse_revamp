@@ -99,6 +99,13 @@ export const MoveToOneRack: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openMove();
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — as tall as its lines, never held to the window's height (full screen
+    // is the phone's, by the JS breakpoint; a responsive `size` once kept full's min-height here).
+    await waitFor(() => {
+      const box = screen.getByTestId("move-goods-dialog");
+      expect(box.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.95);
+      expect(parseFloat(getComputedStyle(box).minHeight) || 0).toBeLessThan(window.innerHeight * 0.5);
+    });
 
     await pickRack("move-default-to", 42n);
     await type(screen.getByTestId("move-qty-71-0"), "4");
@@ -230,6 +237,13 @@ export const RecordSample: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openSample();
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — as tall as its lines, never held to the window's height (full screen
+    // is the phone's, by the JS breakpoint; a responsive `size` once kept full's min-height here).
+    await waitFor(() => {
+      const box = screen.getByTestId("record-sample-dialog");
+      expect(box.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.95);
+      expect(parseFloat(getComputedStyle(box).minHeight) || 0).toBeLessThan(window.innerHeight * 0.5);
+    });
 
     await expect(screen.getByTestId("sample-final")).toHaveTextContent(/final/i);
     await type(await screen.findByTestId("sample-qty-71"), "2");
@@ -318,6 +332,9 @@ export const StaffReportFoundHere: Story = {
     await expect(dialog).toHaveTextContent("Report Found on A-01-1");
     await expect(within(dialog).getByTestId("report-found-waits")).toHaveTextContent("Nothing changes until one of them approves it");
     await expect(within(dialog).getByTestId("report-found-submit")).toBeDisabled();
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — its own height, well short of the window (full screen is the phone's,
+    // by the JS breakpoint; a responsive `size` once stretched it to the window).
+    await waitFor(() => expect(dialog.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.8));
 
     await pickProduct("beras", "SKU-BERAS-5K");
     await type(within(dialog).getByTestId("report-found-amount"), "2");

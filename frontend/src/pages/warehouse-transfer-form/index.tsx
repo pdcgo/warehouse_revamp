@@ -297,7 +297,6 @@ export function WarehouseTransferFormPage() {
                 teamId={teamId}
                 value={accountId > 0n ? accountId : undefined}
                 onChange={setAccountId}
-                operationalOnly
                 disabled={costValue === 0}
                 testId="transfer-form-account"
               />

@@ -91,7 +91,7 @@ func TestRestockAccept_PostsNoDebtItself(t *testing.T) {
 func TestRestockAccept_TheEventCarriesTheCourierCharge(t *testing.T) {
 	db := san_testdb.DB(t)
 	sender := &recordingSender{}
-	svc := inventory_v1.NewService(db, nil, nil, nil, sender.send, nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, sender.send, nil, nil, nil)
 
 	created, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: codSellingTeam, WarehouseId: codWarehouse,

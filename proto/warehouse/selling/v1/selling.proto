@@ -134,6 +134,10 @@ message ShopListFilter {
   // Only the shops with NO primary CS — the ones that cannot import a statement yet. Asking for a person and for
   // nobody at once is refused (InvalidArgument): the two cannot both hold.
   bool no_primary = 4;
+  // Only the shops the CALLER may write on (a-write-needs-a-grant-or-a-manager): every shop for the team's owner or
+  // admin and for root or admin, otherwise the shops granted to them. The order form's and the imports' pickers ask
+  // it; a filter over orders or reports does not, and still offers every shop.
+  bool writable = 5;
 }
 
 enum ShopListDataType {
@@ -401,7 +405,9 @@ message ShopAccessCheckRequest {
 }
 
 message ShopAccessCheckResponse {
-  // A live shop of the request's team. Another team's shop, or a deleted one, is NotFound.
+  // A shop of the request's team — a DELETED (closed) one included, with `deleted` set, and each caller decides
+  // (a-closed-shop-refuses-only-new-selling): a statement import still passes, a new order does not. Another team's
+  // shop, or one that never existed, is NotFound.
   Shop shop = 1;
   // The shop's primary CS — 0 = none (a-shop-with-no-primary-cs-cannot-import).
   uint64 primary_user_id = 2;

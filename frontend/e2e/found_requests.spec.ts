@@ -124,6 +124,12 @@ test("Found: a warehouse with stock, its Admin and a second Owner", async ({ pag
     openingBalance: 0,
     openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
   });
+  // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account) — the server refuses any other.
+  await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: "1",
+    accountId: account.account.id,
+    operational: true,
+  });
 
   const restock = await rpc<{ request: { id: string; items: { id: string }[] } }>(
     page,

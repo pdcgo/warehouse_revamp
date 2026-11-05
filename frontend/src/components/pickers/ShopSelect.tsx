@@ -19,6 +19,12 @@ export interface ShopSelectProps {
    * is prepared to receive that `onChange(0n)`.
    */
   marketplace?: Marketplace;
+  /**
+   * Offer only the shops the signed-in person may WRITE on (a-write-needs-a-grant-or-a-manager) — the picker of a
+   * write: the order form, a draft, a statement import. Omitted = every shop of the team, which is what a FILTER over
+   * orders or reports asks for (reads stay team-wide).
+   */
+  writable?: boolean;
   placeholder?: string;
   disabled?: boolean;
 }
@@ -39,7 +45,7 @@ interface ShopItem {
 // runs a handful of shops today and there is no ceiling on that, so the list is loaded whole (one
 // request, no paging) and FILTERED IN THE FIELD, on the shop's name or its marketplace: typing
 // "shopee" narrows to that storefront's shops without touching the marketplace prop.
-export const description = "Searchable marketplace-shop picker for a selling team (Chakra Combobox over ShopList) — type to filter by shop name or marketplace. Emits a shop id, and 0n when cleared. Each option carries the shop's name and its standard-coloured MarketplaceBadge. Optionally narrowed to one marketplace — and a filter that excludes the current value clears it.";
+export const description = "Searchable marketplace-shop picker for a selling team (Chakra Combobox over ShopList) — type to filter by shop name or marketplace. Emits a shop id, and 0n when cleared. Each option carries the shop's name and its standard-coloured MarketplaceBadge. Optionally narrowed to one marketplace — and a filter that excludes the current value clears it. `writable` offers only the shops the signed-in person may write on (a grant, or the team's owner or admin) — the picker of a write.";
 
 // One empty list for every render, so "nothing loaded yet" is the SAME value each time — a fresh `[]`
 // is a new identity, and any memo or effect keyed on it would re-run on every render.
@@ -50,6 +56,7 @@ export function ShopSelect({
   value,
   onChange,
   marketplace,
+  writable,
   placeholder = "Select a shop",
   disabled,
 }: ShopSelectProps) {
@@ -59,7 +66,7 @@ export function ShopSelect({
   // and stopped: the effect could not re-run because the team had not changed, so a single transient
   // failure left this control permanently empty — "Shops unavailable" with no way back but a reload.
   // See src/shops/queries.ts for the full note.
-  const query = useShopOptions({ teamId });
+  const query = useShopOptions({ teamId, writable });
 
   // ⚠ A STABLE EMPTY LIST, not a fresh `[]` — see the loop note on `shops` below.
   const all = query.data ?? NO_SHOPS;
@@ -94,15 +101,18 @@ export function ShopSelect({
   //
   // Guarded three ways so no existing caller changes behaviour: only when a filter is actually set,
   // only once the list has RESOLVED (mid-load every value looks absent), and only for a real value.
+  //
+  // `writable` narrows too: a draft pushed onto a shop the person may not write on opens with that shop CLEARED, rather
+  // than held invisibly until the create is refused (a-write-needs-a-grant-or-a-manager).
   useEffect(() => {
-    if (!filtering || !query.isSuccess || value === undefined || value === 0n) {
+    if ((!filtering && !writable) || !query.isSuccess || value === undefined || value === 0n) {
       return;
     }
 
     if (!shops.some((shop) => shop.id === value)) {
       onChange?.(0n);
     }
-  }, [filtering, query.isSuccess, shops, value, onChange]);
+  }, [filtering, writable, query.isSuccess, shops, value, onChange]);
 
   const items: ShopItem[] = useMemo(
     () =>

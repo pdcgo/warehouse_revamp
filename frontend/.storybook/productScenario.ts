@@ -1,4 +1,4 @@
-import { allProducts, patchProduct } from "./productStub";
+import { allProducts, listAnalyticSampleProducts, patchProduct } from "./productStub";
 
 // A PRODUCT'S STATE AS ONE STORY NEEDS IT — locked by its owner, archived, or held back by a reserve — without touching
 // `products` in fixtures.ts, which dozens of stories count on exactly as it is.
@@ -22,6 +22,14 @@ export function resetProductScenario() {}
  */
 export function withProductState(id: bigint, state: ProductState) {
   return () => patchProduct(id, state);
+}
+
+/**
+ * A `beforeEach`: the Analytic sample's products (201–206) are Toko Melati's catalogue rows, held where the sample lost
+ * them — so the composer's product filter finds them by the real searches (productStub's `listAnalyticSampleProducts`).
+ */
+export function withAnalyticSampleProducts() {
+  listAnalyticSampleProducts();
 }
 
 /** The catalogue as this story left it — the fixtures plus productStub's own rows, with every override applied. */

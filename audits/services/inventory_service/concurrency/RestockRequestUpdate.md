@@ -206,3 +206,20 @@ free and removes the pin.
 | --- | --- | --- | --- |
 | 2026-10-07 | Interleave Update ∥ Cancel (5/5), timed 2-way race (5/5) | Cancel waited 817 ms on an 800 ms supplier_service call. Holder `idle in transaction`. Data correct | first audit, after the-supplier-gets-its-own-service turned the in-transaction `supplierExists(tx, …)` read into an RPC |
 | 2026-10-07 | `TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheSupplierRoundTrip`, `TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheSupplierCall` | Cancel **56 ms** on the same 800 ms call; the update then refuses FailedPrecondition (the request is cancelled). Create: 0 backends idle in transaction, 0 locks | ✅ fixed — `askSupplier` before the transaction, the answer judged under the lock; Create asks before `Transaction`. The interleave test that asserted the lock was held was removed with the defect |
+
+---
+
+## The paying account (2026-11-05)
+
+✅ **Safe.** a-restock-names-its-paying-account adds a second outside question — `PayingAccounts.Account`, the
+composition root's in-process `FinancialAccountByIds` (a network RPC once the services split). It follows the rule this
+audit set: asked BEFORE the transaction in both handlers, judged under `FOR UPDATE` (Update: only when the account
+changed). Proved by `restock_request_account_race_test.go` (`-tags raceaudit`):
+
+| Claim | Proof |
+| --- | --- |
+| Update does not hold the restock across the account call | `TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheAccountRoundTrip`: Cancel 62 ms on an 800 ms call; the edit then reads the cancel and refuses FailedPrecondition |
+| Create holds no transaction during the account call | `TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheAccountCall`: 0 idle in transaction, 0 locks |
+
+An account archived or un-marked between the answer and the commit leaves the same state as "restock first, then
+archive" — kept, exactly as for a deleted supplier.

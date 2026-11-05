@@ -15,6 +15,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
+	financial_accountv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1"
+	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
@@ -129,6 +131,63 @@ func (t *tools) sources() []*metricSource {
 			},
 			data: func(ctx context.Context, req proto.Message) (proto.Message, error) {
 				res, err := c.SupplierAnalytic.MetricData(ctx, connect.NewRequest(req.(*supplierv1.MetricDataRequest)))
+				if err != nil {
+					return nil, err
+				}
+
+				return res.Msg, nil
+			},
+		},
+		{
+			// Lost stock (the-inventory-lost-prototype-is-accepted) — the warehouse's custody losses.
+			name: "inventory",
+			pkg:  "warehouse.inventory.v1",
+			newReq: func(search bool) proto.Message {
+				if search {
+					return &inventoryv1.MetricSearchRequest{}
+				}
+
+				return &inventoryv1.MetricDataRequest{}
+			},
+			search: func(ctx context.Context, req proto.Message) (proto.Message, error) {
+				res, err := c.LostAnalytic.MetricSearch(ctx, connect.NewRequest(req.(*inventoryv1.MetricSearchRequest)))
+				if err != nil {
+					return nil, err
+				}
+
+				return res.Msg, nil
+			},
+			data: func(ctx context.Context, req proto.Message) (proto.Message, error) {
+				res, err := c.LostAnalytic.MetricData(ctx, connect.NewRequest(req.(*inventoryv1.MetricDataRequest)))
+				if err != nil {
+					return nil, err
+				}
+
+				return res.Msg, nil
+			},
+		},
+		{
+			// The Finance metrics (analytic-gains-a-finance-category) — read with the date range; the Account filter is
+			// the screen's, not yet a tool input.
+			name: "finance",
+			pkg:  "warehouse.financial_account.v1",
+			newReq: func(search bool) proto.Message {
+				if search {
+					return &financial_accountv1.MetricSearchRequest{}
+				}
+
+				return &financial_accountv1.MetricDataRequest{}
+			},
+			search: func(ctx context.Context, req proto.Message) (proto.Message, error) {
+				res, err := c.FinanceAnalytic.MetricSearch(ctx, connect.NewRequest(req.(*financial_accountv1.MetricSearchRequest)))
+				if err != nil {
+					return nil, err
+				}
+
+				return res.Msg, nil
+			},
+			data: func(ctx context.Context, req proto.Message) (proto.Message, error) {
+				res, err := c.FinanceAnalytic.MetricData(ctx, connect.NewRequest(req.(*financial_accountv1.MetricDataRequest)))
 				if err != nil {
 					return nil, err
 				}

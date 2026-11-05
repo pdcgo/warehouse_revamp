@@ -42,8 +42,8 @@ func TestPerf_OrderCancel_CountCheckThenEvent(t *testing.T) {
 		return nil
 	}
 
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil)
-	svc := selling_v1.NewService(db, NewStockPicker(inventory), send, nil, nil, nil, nil,
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, NewStockPicker(inventory), send, nil, nil, runsEveryShop{}, nil,
 		NewWarehouseFeePricer(warehouse_v1.NewService(db, nil)), nil)
 
 	// Six placed orders — one per run, the warm-up included.

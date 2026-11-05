@@ -1233,8 +1233,8 @@ export const ALiveOrderOnTheRefWarns: Story = {
 };
 
 // A DRAFT ON THE REF WARNS (the-duplicate-warning-reads-drafts-too) — a colleague's scrape of MEL-9001 in Melati
-// Official (draft 201's ref, put on the story's team), and no live order on it: the warning names Draft #201 as a link
-// to its page, dated; Create Anyway still places the order.
+// Official (draft 201's ref, put on the story's team), and no live order on it: the warning names it "A colleague's
+// draft #201", dated, with NO link — only its author can open a draft; Create Anyway still places the order.
 const DRAFT_201 = orderDrafts.find((d) => d.id === 201n)!;
 
 export const ADraftOnTheRefWarns: Story = {
@@ -1251,19 +1251,40 @@ export const ADraftOnTheRefWarns: Story = {
     await userEvent.click(await fillPlaceableOrder(canvasElement, "MEL-9001"));
 
     const dialog = await warning();
-    const link = within(dialog).getByTestId("duplicate-ref-draft-link-201");
-    await expect(link).toHaveTextContent("Draft #201");
-    await expect(link).toHaveAttribute("href", "/orders/new?draft=201");
-    await expect(link).toHaveAttribute("target", "_blank");
-    await expect(within(dialog).getByTestId("duplicate-ref-draft-201")).toHaveTextContent(
-      `created ${formatUnixDate(DRAFT_201.createdAtUnix)}`,
-    );
+    const row = within(dialog).getByTestId("duplicate-ref-draft-201");
+    await expect(row).toHaveTextContent("A colleague's draft #201");
+    await expect(within(row).queryByRole("link")).toBeNull();
+    await expect(row).toHaveTextContent(`created ${formatUnixDate(DRAFT_201.createdAtUnix)}`);
     await expect(within(dialog).queryAllByTestId(/^duplicate-ref-order-/)).toHaveLength(0);
     await expect(duplicateRefScenario.draftCalls).toEqual([{ shopId: shops[0]!.id, refs: ["MEL-9001"] }]);
 
     await userEvent.click(within(dialog).getByTestId("duplicate-ref-create-anyway"));
     await passTheChecks();
     await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+  },
+};
+
+// THE CALLER'S OWN DRAFT ON THE REF — the same warning, and this one IS a link to its page (a new tab), since its author
+// is the person in front of the screen.
+export const YourOwnDraftOnTheRefLinks: Story = {
+  beforeEach: withRefDrafts({
+    draftId: 201n,
+    teamId: STORY_TEAM,
+    shopId: shops[0]!.id,
+    ref: "MEL-9001",
+    createdAtUnix: DRAFT_201.createdAtUnix,
+    source: "ScraperX",
+    authorUserId: users[0]!.id,
+  }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await fillPlaceableOrder(canvasElement, "MEL-9001"));
+
+    const dialog = await warning();
+    const link = within(dialog).getByTestId("duplicate-ref-draft-link-201");
+    await expect(link).toHaveTextContent("Draft #201");
+    await expect(link).toHaveAttribute("href", "/orders/new?draft=201");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(within(dialog).queryByTestId("duplicate-ref-draft-colleague-201")).toBeNull();
   },
 };
 

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { archiveAccountForStory } from "../../../.storybook/financialAccountStub";
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { transferWire } from "../../../.storybook/warehouseTransferStub";
@@ -38,6 +39,9 @@ type Story = StoryObj<typeof meta>;
 
 // The new transfer's id — one past the fixtures' last.
 const NEW_ID = 610n;
+
+// Toko Melati's BCA Operasional — active, marked operational (financialAccountFixtures).
+const BCA_OPS = 1301n;
 
 async function pickBeras() {
   await userEvent.click(screen.getByTestId("transfer-form-pick"));
@@ -136,5 +140,41 @@ export const ACostNeedsAnAccount: Story = {
     await userEvent.type(canvas.getByTestId("transfer-form-cost"), "18000", { delay: 20 });
     await waitFor(() => expect(canvas.getByTestId("transfer-form-missing")).toHaveTextContent(/account/i));
     await expect(canvas.getByTestId("transfer-form-submit")).toBeDisabled();
+  },
+};
+
+// The account paying the trip must be one of the team's ACTIVE OPERATIONAL accounts, exactly as a restock's
+// (a-transfer-names-its-paying-account, operational-accounts-pay-for-operations). BCA Operasional is picked, then an
+// admin unmarks it before Save: the server refuses — FailedPrecondition, naming the account — its words are said, the
+// form stays where it is, and nothing is opened.
+export const ARefusedPayingAccountIsSaid: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await route(canvasElement);
+    await pickBeras();
+
+    const count = await canvas.findByTestId("transfer-form-count-74");
+    await userEvent.clear(count);
+    await userEvent.type(count, "8", { delay: 40 });
+    await userEvent.type(canvas.getByTestId("transfer-form-cost"), "18000", { delay: 20 });
+
+    await userEvent.click(canvas.getByTestId("transfer-form-account"));
+    const option = await screen.findByTestId(`transfer-form-account-option-${BCA_OPS}`, {}, { timeout: 4000 });
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    archiveAccountForStory(BCA_OPS);
+
+    await waitFor(() => expect(canvas.getByTestId("transfer-form-submit")).toBeEnabled());
+    await userEvent.click(canvas.getByTestId("transfer-form-submit"));
+
+    await expect(
+      await screen.findByText(
+        "BCA Operasional is archived — it is not one of the team's active accounts",
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByTestId("at-transfer-detail")).toBeNull();
+    await expect(canvas.getByTestId("transfer-form")).toBeInTheDocument();
+    await expect(() => transferWire(NEW_ID)).toThrow();
   },
 };

@@ -74,5 +74,5 @@ carries only the cover).
 - The **reserve applies to the owner's own product** on this page too — consistent with the owner detail's
   "never offered for sale", not settled for cross lines.
 - ⚠ **`sampleSuppliers.ts` imports `features/suppliers/discover.ts`** — the supplier discover sample, written by
-  the supplier pass. When that sample becomes a real read, the product side needs its own read (product →
-  channels), not the supplier search.
+  the supplier pass. ✅ That search is a real read since 2026-10-07 (`EVERY_TEAM`), but the product side still needs
+  its own read (product → channels), which waits on a store per restock line — the suppliers stay sample.

@@ -24,6 +24,7 @@ import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { useRackContents, useRackSample } from "../../../features/racks/queries";
 import type { Rack, RackStockLine } from "../../../gen/warehouse/inventory/v1/rack_pb";
+import { useIsMobile } from "../../../layouts/shell";
 
 const units = (raw: string | undefined) => {
   const n = Number(raw ?? "");
@@ -56,6 +57,9 @@ export function RecordSampleDialog({
   onRecorded: () => void;
 }) {
   const { t } = useTranslation();
+  // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
+  // `{ base: "full", md: ... }` kept full's min-height on desktop and stretched the dialog to the window's height.
+  const isMobile = useIsMobile();
 
   const contents = useRackContents({ warehouseId, rackId: rack.id, enabled: open });
   const lines = contents.data?.lines ?? [];
@@ -128,7 +132,7 @@ export function RecordSampleDialog({
     <Dialog.Root
       open={open}
       onOpenChange={(e) => onOpenChange(e.open)}
-      size={{ base: "full", md: "md" }}
+      size={isMobile ? "full" : "md"}
       scrollBehavior="inside"
     >
       <Portal>

@@ -1164,7 +1164,7 @@ flowchart LR
 >
 > Shipped — those three **plus `team_id`, `shop_id`, `created_at`, `updated_at`**. And
 > [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
-> owes it a sixth, `created_by_user_id`, which is **not built in either place**.
+> owes it a sixth, `created_by_user_id`, which was **not built in either place** — ✅ built 2026-09-14 (`00004_order_settlement_creator.sql`).
 
 **The dangerous one is not a missing column — it is one name meaning two opposite things.**
 
@@ -1574,7 +1574,7 @@ flowchart LR
   records that *"no policy" is not a buildable state* — a message with none is DENIED to everybody. A
   reader following §Access Role literally ships an RPC nobody can call. **Yours to update** (RULE 7b).
 
-- ⛔ **`created_by_user_id` is decided, unbuilt, and it is THIS doc's table.**
+- ✅ *(built 2026-09-14, `00004_order_settlement_creator.sql`)* **`created_by_user_id` was decided, unbuilt, and it is THIS doc's table.**
   [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
   puts it on `order_settlements` — §Settlement State's table, not the analytic doc's — so the shape
   belongs here even though the column exists for `user_settlement_daily_reports`. The model has no user

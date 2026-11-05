@@ -531,7 +531,11 @@ type ShopListFilter struct {
 	PrimaryUserId uint64 `protobuf:"varint,3,opt,name=primary_user_id,json=primaryUserId,proto3" json:"primary_user_id,omitempty"`
 	// Only the shops with NO primary CS — the ones that cannot import a statement yet. Asking for a person and for
 	// nobody at once is refused (InvalidArgument): the two cannot both hold.
-	NoPrimary     bool `protobuf:"varint,4,opt,name=no_primary,json=noPrimary,proto3" json:"no_primary,omitempty"`
+	NoPrimary bool `protobuf:"varint,4,opt,name=no_primary,json=noPrimary,proto3" json:"no_primary,omitempty"`
+	// Only the shops the CALLER may write on (a-write-needs-a-grant-or-a-manager): every shop for the team's owner or
+	// admin and for root or admin, otherwise the shops granted to them. The order form's and the imports' pickers ask
+	// it; a filter over orders or reports does not, and still offers every shop.
+	Writable      bool `protobuf:"varint,5,opt,name=writable,proto3" json:"writable,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -590,6 +594,13 @@ func (x *ShopListFilter) GetPrimaryUserId() uint64 {
 func (x *ShopListFilter) GetNoPrimary() bool {
 	if x != nil {
 		return x.NoPrimary
+	}
+	return false
+}
+
+func (x *ShopListFilter) GetWritable() bool {
+	if x != nil {
+		return x.Writable
 	}
 	return false
 }
@@ -1865,7 +1876,9 @@ func (x *ShopAccessCheckRequest) GetUserId() uint64 {
 
 type ShopAccessCheckResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// A live shop of the request's team. Another team's shop, or a deleted one, is NotFound.
+	// A shop of the request's team — a DELETED (closed) one included, with `deleted` set, and each caller decides
+	// (a-closed-shop-refuses-only-new-selling): a statement import still passes, a new order does not. Another team's
+	// shop, or one that never existed, is NotFound.
 	Shop *Shop `protobuf:"bytes,1,opt,name=shop,proto3" json:"shop,omitempty"`
 	// The shop's primary CS — 0 = none (a-shop-with-no-primary-cs-cannot-import).
 	PrimaryUserId uint64 `protobuf:"varint,2,opt,name=primary_user_id,json=primaryUserId,proto3" json:"primary_user_id,omitempty"`
@@ -2347,13 +2360,14 @@ const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\x04sort\x18\x03 \x01(\v2(.warehouse.selling.v1.ShopListFilterSortR\x04sort\x12I\n" +
 	"\fdata_request\x18\x04 \x03(\x0e2&.warehouse.selling.v1.ShopListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"\xc1\x01\n" +
+	"\x05\x01\x02\x03\x04\x05\"\xdd\x01\n" +
 	"\x0eShopListFilter\x12\x15\n" +
 	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12Q\n" +
 	"\vmarketplace\x18\x02 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vmarketplace\x12&\n" +
 	"\x0fprimary_user_id\x18\x03 \x01(\x04R\rprimaryUserId\x12\x1d\n" +
 	"\n" +
-	"no_primary\x18\x04 \x01(\bR\tnoPrimary\"\xd2\x01\n" +
+	"no_primary\x18\x04 \x01(\bR\tnoPrimary\x12\x1a\n" +
+	"\bwritable\x18\x05 \x01(\bR\bwritable\"\xd2\x01\n" +
 	"\x12ShopListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x127\n" +

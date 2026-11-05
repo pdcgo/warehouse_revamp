@@ -26,7 +26,7 @@ flowchart TB
 
 | call | ledgers | money — unchanged from today |
 | --- | --- | --- |
-| `StockAdjust` recount | as drawn above | **none** today — ⛔ decided, not built: a shortfall is written off and owed ([a-recount-shortfall-is-written-off-and-owed](./adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed)) |
+| `StockAdjust` recount | as drawn above | ✅ built 2026-11-02 (`inventory_v1/stock_adjust.go`, recount branch): a shortfall is written off and owed ([a-recount-shortfall-is-written-off-and-owed](./adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed)) |
 | `StockAdjust` damaged / lost | the named batch, value at its share | written off to expense after commit; the owner is owed it, inside the transaction |
 | `StockAdjust` found | the named batch, at its `price_unit` | the owner's debt given back; no expense |
 | `StockOpname` (one rack, many lines) | each line is a recount; one transaction per owning team | the shortfall written off (one expense for the rack) and owed to each owner |

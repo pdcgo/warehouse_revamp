@@ -392,6 +392,8 @@ flowchart LR
 | filtering orders | `OrderList` takes a `shop_id`, `0` = every shop ([order.proto:438](../../../proto/warehouse/selling/v1/order.proto#L438)) |
 | ⚠ the person | not checked against the shop's grants — [Q1](./context_clarify.md#question) |
 
+✅ Built 2026-11-05 — the person half: the shop check is now the write gate — granted, or the team's owner or admin, or root or admin (`refuseShopWrite` in `placeOrder`, before the take); a deleted shop answers *"the shop is closed"* (FailedPrecondition).
+
 ## other-services-keep-a-shop-id-unchecked
 
 > 🏗 As built — [expense_create.go:30](../../../backend/services/expense_service/expense_v1/expense_create.go#L30),
@@ -491,6 +493,9 @@ shop's granted users, the first grant becomes it. What the list below asked is k
 - What the importer does with it. ✅ **Answered in the importer doc** (2026-09-29): a row with no order is counted for
   the shop's primary CS — [user-id-is-the-orders-creator-else-the-shops-primary-cs](../settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs).
 
+✅ **Built 2026-09-29** (verified in code 2026-11-05) — `shop_users.is_primary` (selling `00014`) and `ShopUserSetPrimary`, read by the importer as `primary_user_id`.
+
+
 ## one-call-answers-the-shop-and-the-access
 
 > `context.md` §Rpc That Must Exist that Used by Settlement Importer Service *(owner, 2026-09-29)* —
@@ -579,6 +584,10 @@ flowchart TD
 - ⚠ **An app that pushes drafts** writes too — its login needs a grant, or a manager role.
 - ⚠ **Other writes that name a shop** — a hand-posted settlement row, an expense — were not in the question. They stay
   gated by the team role alone unless you extend this.
+
+✅ Built 2026-11-05 — the order writes: `OrderCreate` (a draft's Promote is OrderCreate; `OrderDraftPromote` no longer exists), `OrderDraftPush` naming a shop and `OrderDraftUpdate` setting one ask `ShopAccessCheck`'s rule in-process (`refuseShopWrite`, `selling_v1/shop_write_gate.go`) and refuse `PermissionDenied`, *"You have no access to <shop> — ask the team's owner or admin for it"*; the order form's shop picker (the draft page is the same form) and the statement import's offer only writable shops (`ShopListFilter.writable`), filters still every shop. Tests `shop_write_gate_test.go`, e2e `writes_need_a_shop_grant.spec.ts`. ⛔ Not built: the rollout grant of every current CS. Not gated: the order imports and hand moves — outside the spec's list.
+
+✅ Built 2026-11-05 — the rollout: `san shop grant-current-cs [--dry-run]` (`tools/san/shop.go`, [docs/tools/san.md](../../tools/san.md#shop-grant-current-cs)) grants every current CS (role CS, not suspended or erased) of every live selling team every live shop of that team, through `ShopUserAdd` — owners and admins get none, an existing grant is skipped (a second run adds nothing), an existing primary is untouched and a shop with none gets the first CS granted. Test `tools/san/shop_test.go`. To be run in the release that turns the gate on.
 
 ## the-primary-cs-is-a-flag-on-a-grant
 
@@ -735,6 +744,8 @@ flowchart LR
 | settlement, the accounts, expenses | accepted |
 | grants and the primary CS | 3e, still open |
 | `ShopAccessCheck` | returns a closed shop with `status`; `NotFound` only for a shop that does not exist or is another team's |
+
+✅ Built 2026-11-05 — the `ShopAccessCheck` half: it answers a deleted shop with `deleted = true` (NotFound only for another team's or a missing one); the settlement importer and settlement's primary-CS lookup accept it; order create, a draft push and a draft's shop refuse it, *"<shop>: the shop is closed"*; the order form's picker never lists it. Until the close is built a closed shop is a deleted one — `status`, Close/Reopen and the list's *closed* filter are not built, so the import dialog cannot pick a closed shop yet. Tests `TestShopAccessCheck_ADeletedShopIsAnsweredFlagged`, `TestShopCheckers_AClosedShopImportsButIsNotLinked`.
 
 ---
 
@@ -909,3 +920,21 @@ flowchart LR
 | leaving the team | drops the person's grants in it — already built |
 | rejoining | starts with no grants; access is given again, on purpose |
 | *Make primary* | the primary CS is a grant, so the same rule holds |
+
+---
+
+## order-moves-stay-team-wide
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: should importing orders and moving an order by hand also need a grant on its shop?
+
+**The verdict.** No. The shop grant of [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) gates **creating** selling on a shop — `OrderCreate` (and so a draft's promote), `OrderDraftPush`, setting a draft's shop — and the statement imports. Writes on orders that already exist stay gated by **team role alone**: `ShopeeOrderImport`, `TiktokOrderImport`, `OrderStatusChange`, `OrderCancel`, `OrderReceiptUpdate`. An import makes the same moves a CS can already make by hand on any shop of the team, so gating only the import would add nothing.
+
+---
+
+## a-closed-shop-takes-no-new-account-link
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: can a financial account be newly linked to a deleted (closed) shop?
+
+**The verdict.** No. Linking an account to a closed shop is refused — financial_account's shop check (`ShopOfTeam`) reads a closed shop as one that does not exist. Links made while the shop was open stay, and payouts on them keep working ([a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling)).
+
+✅ **Built 2026-11-05** — `backend/cmd/app_development/financial_account_deps.go` (`ShopOfTeam` treats a deleted shop as NotFound); test `shop_checkers_test.go`.

@@ -2076,6 +2076,10 @@
       "unavailable": "Suppliers unavailable",
       "empty": "No suppliers found"
     },
+    "searchSelect": {
+      "placeholder": "Search suppliers by name",
+      "typeMore": "Type at least 2 characters"
+    },
     "sellingOnly": "Only a selling team has suppliers.",
     "discover": {
       "title": "Discover Suppliers",
@@ -4262,6 +4266,7 @@
       "failed": "Could not check whether {{ref}} is already recorded ({{error}}). You can still create the order.",
       "order": "Order #{{id}}",
       "draft": "Draft #{{id}}",
+      "colleagueDraft": "A colleague's draft #{{id}}",
       "created": "created {{date}}",
       "newTab": "opens in a new tab",
       "createAnyway": "Create Anyway",
@@ -4814,7 +4819,10 @@
       "daily": "Daily",
       "weekly": "Weekly",
       "monthly": "Monthly",
-      "yearly": "Yearly"
+      "yearly": "Yearly",
+      "account": "Account",
+      "provider": "Provider",
+      "change_type": "Change type"
     },
     "groupPlural": {
       "shop": "shops",
@@ -4826,10 +4834,14 @@
       "daily": "days",
       "weekly": "weeks",
       "monthly": "months",
-      "yearly": "years"
+      "yearly": "years",
+      "account": "accounts",
+      "provider": "providers",
+      "change_type": "change types"
     },
     "addMetric": "Add Metric",
     "removeMetric": "Remove {{metric}}",
+    "removeFilter": "Remove the {{filter}} filter",
     "searchMetric": "Search metrics",
     "noMetricMatches": "No metric matches.",
     "openCategory": "Open {{category}}",
@@ -4837,7 +4849,8 @@
       "order": "Order",
       "settlement": "Settlement",
       "inventory": "Inventory",
-      "expense": "Expense"
+      "expense": "Expense",
+      "finance": "Finance"
     },
     "metric": {
       "ordersCreated": "Orders created",
@@ -4847,9 +4860,12 @@
       "ordersLostCreated": "Orders lost",
       "settlement": "Settlement",
       "settlementTypes": "Settlement by type",
-      "stockLost": "Stock lost",
       "ads": "Ads expense",
-      "expenses": "Expenses"
+      "expenses": "Expenses",
+      "warehouseFee": "Warehouse fee",
+      "financialAccounts": "Account changes",
+      "financialAccountTypes": "Change types",
+      "inventoryLost": "Lost stock"
     },
     "field": {
       "created_count": "Orders created",
@@ -4885,7 +4901,9 @@
       "lost_count": "Units lost",
       "lost_amount": "Lost value",
       "ads_spend": "Ads spend",
-      "expense_total": "Expenses"
+      "expense_total": "Expenses",
+      "transaction_count": "Fee transactions",
+      "amount": "Fee amount"
     },
     "fieldOf": {
       "ordersCreated": {
@@ -4893,6 +4911,27 @@
       },
       "ordersCancelled": {
         "mp_total": "Cancelled MP total"
+      },
+      "financialAccounts": {
+        "opening_balance": "Opening balance",
+        "expense": "Expense",
+        "ads_expense": "Ads",
+        "adjustment": "Adjustment",
+        "withdrawal": "Withdrawal",
+        "restock": "Restock",
+        "account_opening": "Account opened",
+        "transfer": "Transfer",
+        "team_payment": "Team payment",
+        "capital": "Capital",
+        "change": "Net change",
+        "closing_balance": "Closing balance"
+      },
+      "financialAccountTypes": {
+        "amount": "Amount"
+      },
+      "inventoryLost": {
+        "lost_count": "Lost units",
+        "lost_amount": "Lost amount"
       }
     },
     "cannotGroup": "Cannot be grouped by {{group}}",
@@ -4903,7 +4942,8 @@
       "warehouse": "Warehouse",
       "user": "Person",
       "product": "Product",
-      "supplier": "Supplier"
+      "supplier": "Supplier",
+      "account": "Account"
     },
     "all": {
       "shop": "All shops",
@@ -4911,7 +4951,8 @@
       "warehouse": "All warehouses",
       "user": "Everyone",
       "product": "All products",
-      "supplier": "All suppliers"
+      "supplier": "All suppliers",
+      "account": "All accounts"
     },
     "sortBy": "Sort by",
     "sortOption": "{{field}}, {{dir}}",
@@ -4958,12 +4999,10 @@
       "catalogue": {
         "label": "Metric list",
         "reason": "The order and settlement metrics are read from their services' contracts; the rest are a fixed list in the screen until their services ship."
-      },
-      "pickers": {
-        "label": "Product and supplier filters",
-        "reason": "They list sample entries; the real filters search the team's own."
       }
-    }
+    },
+    "accountsPicked_one": "{{count}} account",
+    "accountsPicked_other": "{{count}} accounts"
   },
   "warehouseHours": {
     "closedBadge": "Closed",

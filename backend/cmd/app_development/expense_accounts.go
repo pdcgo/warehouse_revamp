@@ -30,7 +30,27 @@ func (a *expensePayingAccounts) Account(
 	ctx context.Context,
 	teamID, accountID uint64,
 ) (expense_v1.PayingAccount, bool, error) {
-	res, err := a.accounts.FinancialAccountByIds(ctx, connect.NewRequest(&financial_accountv1.FinancialAccountByIdsRequest{
+	row, err := teamAccount(ctx, a.accounts, teamID, accountID)
+	if err != nil || row == nil {
+		return expense_v1.PayingAccount{}, false, err
+	}
+
+	return expense_v1.PayingAccount{
+		Name:        row.GetName(),
+		Active:      row.GetStatus() == financial_accountv1.FinancialAccountStatus_FINANCIAL_ACCOUNT_STATUS_ACTIVE,
+		Operational: row.GetOperational(),
+	}, true, nil
+}
+
+// teamAccount reads one of the team's accounts through FinancialAccountByIds, in-process — the one lookup both paying
+// account seams share (expense's here, the restock's in restock_accounts.go). nil means absent: another team's or
+// unknown, which must read the same.
+func teamAccount(
+	ctx context.Context,
+	accounts *financial_account_v1.Service,
+	teamID, accountID uint64,
+) (*financial_accountv1.FinancialAccount, error) {
+	res, err := accounts.FinancialAccountByIds(ctx, connect.NewRequest(&financial_accountv1.FinancialAccountByIdsRequest{
 		TeamId: teamID,
 		Filter: &financial_accountv1.FinancialAccountByIdsFilter{Ids: []uint64{accountID}},
 		DataRequest: []financial_accountv1.FinancialAccountByIdsDataType{
@@ -38,21 +58,15 @@ func (a *expensePayingAccounts) Account(
 		},
 	}))
 	if err != nil {
-		return expense_v1.PayingAccount{}, false, err
+		return nil, err
 	}
 
 	for _, item := range res.Msg.GetItems()[accountID].GetItems() {
 		row := item.GetAccount().GetMapData()[accountID]
-		if row == nil {
-			continue
+		if row != nil {
+			return row, nil
 		}
-
-		return expense_v1.PayingAccount{
-			Name:        row.GetName(),
-			Active:      row.GetStatus() == financial_accountv1.FinancialAccountStatus_FINANCIAL_ACCOUNT_STATUS_ACTIVE,
-			Operational: row.GetOperational(),
-		}, true, nil
 	}
 
-	return expense_v1.PayingAccount{}, false, nil
+	return nil, nil
 }

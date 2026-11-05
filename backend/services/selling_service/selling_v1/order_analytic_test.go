@@ -188,8 +188,9 @@ func TestOrderMetricFold_EachMoveCountsOnceForItsMetric(t *testing.T) {
 	var rows int64
 
 	err = db.Raw(`SELECT count(*) FROM order_daily_reports`).Scan(&rows).Error
-	if err != nil || rows != 5 {
-		t.Fatalf("%d report rows (err %v), want 5 — the confirm counts for no metric", rows, err)
+	// Five moves' rows, and Warehouse Fee's one: the placement and the cancel fell on the same day, so they share it.
+	if err != nil || rows != 6 {
+		t.Fatalf("%d report rows (err %v), want 6 — the confirm counts for no metric", rows, err)
 	}
 }
 

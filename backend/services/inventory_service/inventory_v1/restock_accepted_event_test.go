@@ -59,7 +59,7 @@ func createTwoLines(t *testing.T, svc *inventory_v1.Service) *inventoryv1.Restoc
 }
 
 func newAcceptService(db *gorm.DB, sender *recordingSender) *inventory_v1.Service {
-	return inventory_v1.NewService(db, nil, nil, fakeSuppliers{acceptSupplier: true}, sender.send, nil, nil)
+	return inventory_v1.NewService(db, nil, nil, fakeSuppliers{acceptSupplier: true}, sender.send, nil, nil, nil)
 }
 
 // The accept announces what it COUNTED (each-figure-is-read-at-the-accept): per line the good units, the broken and

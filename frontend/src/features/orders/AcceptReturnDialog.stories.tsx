@@ -57,6 +57,12 @@ export const Default: Story = {
     // Nothing is typed, and nothing has to be: the whole parcel is the common case.
     await expect(screen.getByTestId("accept-return-submit")).toBeEnabled();
     await expect(screen.queryByTestId("accept-return-short")).not.toBeInTheDocument();
+
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — as tall as its lines, never stretched to the window (full screen is the
+    // phone's, by the JS breakpoint).
+    const dialog = screen.getByTestId("accept-return-dialog");
+    await expect(dialog.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.95);
+    await expect(dialog.getBoundingClientRect().width).toBeLessThan(window.innerWidth);
   },
 };
 

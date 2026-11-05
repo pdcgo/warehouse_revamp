@@ -11,6 +11,7 @@ import { ProductSelect } from "../../../components/products/ProductSelect";
 import { TeamSelect } from "../../../components/teams/TeamSelect";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useCreateOpnameSession } from "../../../features/opname/queries";
+import { useIsMobile } from "../../../layouts/shell";
 
 type PlanChoice = "all" | "team" | "product" | "placement";
 
@@ -37,6 +38,9 @@ export function NewSessionDialog({
   onCreated: (sessionId: bigint) => void;
 }) {
   const { t } = useTranslation();
+  // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
+  // `{ base: "full", md: ... }` kept full's min-height on desktop and stretched the dialog to the window's height.
+  const isMobile = useIsMobile();
   const create = useCreateOpnameSession();
 
   const [plan, setPlan] = useState<PlanChoice>("all");
@@ -77,7 +81,7 @@ export function NewSessionDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} size={{ base: "full", md: "md" }} scrollBehavior="inside">
+    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} size={isMobile ? "full" : "md"} scrollBehavior="inside">
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>

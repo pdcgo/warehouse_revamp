@@ -1858,6 +1858,8 @@ the lines — fast, no audit file.
 and its cancel are refused on a counted rack exactly like an order's, since they share the take. It closes ledgers open
 point 22. ⛔ Not built. Left of *does NOT settle*: the undo of a failed order create.
 
+✅ **Built 2026-11-03** (verified in code 2026-11-05) — the transfer half settled above: `PostTransferOut` shares the take's `LockedRacks.Free`, `WarehouseTransferCancel` goes through `ReversePlacementLogs`' `RefuseCounted`, and B's put-away is refused on a counted rack (`PutOnPlacements`); test `count_lock_test.go` `TestCountLock_ATransferAndItsCancelWaitForTheCount`.
+
 ---
 
 ## an-adjust-found-waits-for-the-owner-or-admin

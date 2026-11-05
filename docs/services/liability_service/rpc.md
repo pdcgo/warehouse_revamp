@@ -353,7 +353,7 @@ every handling fee was 0 and every credit limit was unlimited — permanently. T
 | `LiabilityTermsList` | what the scoped team charges each debtor — the **creditor's own books**, never what it is charged |
 | `LiabilityTermsSet` | upsert one pair's rate and limit |
 | `LiabilityTermsDelete` | remove a pair's row entirely |
-| `LiabilityTermsHistoryList` | every change to those terms, in order. ⛔ **declared, not implemented** — see below |
+| `LiabilityTermsHistoryList` | every change to those terms, in order. ✅ implemented (`liability_v1/terms_history_list.go`) — see below |
 
 **The scope is the CREDITOR.** `team_id` is the team that WROTE these rows. A debtor asking what it
 is charged is asking about somebody else's configuration and gets its own empty list.

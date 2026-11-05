@@ -319,6 +319,11 @@ export const ReceiveNotFound: Story = {
       expect(screen.getByTestId("receive-return-empty")).toHaveTextContent(`matches ${SHIPS_ELSEWHERE.receiptCode}.`),
     );
     await expect(screen.queryByTestId(`receive-return-row-${SHIPS_ELSEWHERE.id}`)).toBeNull();
+
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — its own height, well short of the window (full screen is the phone's).
+    const dialog = screen.getByTestId("receive-return-dialog");
+    await expect(dialog.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.8);
+    await expect(dialog.getBoundingClientRect().width).toBeLessThan(window.innerWidth);
   },
 };
 

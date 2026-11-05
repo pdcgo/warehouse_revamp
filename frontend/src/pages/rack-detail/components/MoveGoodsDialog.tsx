@@ -26,6 +26,7 @@ import { RackSelect } from "../../../components/pickers/RackSelect";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { useRackCodes, useRackContents, useRackMove } from "../../../features/racks/queries";
 import type { Rack, RackStockLine } from "../../../gen/warehouse/inventory/v1/rack_pb";
+import { useIsMobile } from "../../../layouts/shell";
 
 // ONE DESTINATION OF ONE PRODUCT. A product starts with one leg; "Split to Another Rack" adds more
 // (a-move-is-one-rack-to-one-or-more-racks). A leg that is not `custom` goes to the dialog's default rack.
@@ -72,6 +73,9 @@ export function MoveGoodsDialog({
   onMoved: () => void;
 }) {
   const { t } = useTranslation();
+  // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
+  // `{ base: "full", md: ... }` kept full's min-height on desktop and stretched the dialog to the window's height.
+  const isMobile = useIsMobile();
 
   const contents = useRackContents({ warehouseId, rackId: rack.id, enabled: open });
   const lines = contents.data?.lines ?? [];
@@ -199,7 +203,7 @@ export function MoveGoodsDialog({
     <Dialog.Root
       open={open}
       onOpenChange={(e) => onOpenChange(e.open)}
-      size={{ base: "full", md: "lg" }}
+      size={isMobile ? "full" : "lg"}
       scrollBehavior="inside"
     >
       <Portal>

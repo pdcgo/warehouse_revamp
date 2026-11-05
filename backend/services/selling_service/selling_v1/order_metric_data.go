@@ -19,7 +19,8 @@ import (
 //   - The filters scope the numbers, never the keys (the-fill-step-scopes-its-numbers-by-the-filters): every asked key
 //     comes back for every asked metric, one with nothing in the scope all zero — never missing.
 //   - One answer per asked metric, in the asked order (one-call-answers-every-asked-metric).
-//   - A warehouse's money fields are UNSET, never 0 (a-warehouse-sees-no-seller-money).
+//   - A warehouse's money fields on an order metric are UNSET, never 0 (a-warehouse-sees-no-seller-money); Warehouse
+//     Fee's amount is set for it (a-warehouse-sees-its-own-fee-amount).
 //
 // ONE statement for all the asked metrics, after the reader's team type: grouped by metric and key.
 func (a *Analytic) MetricData(
@@ -139,7 +140,7 @@ func (a *Analytic) metricSummary(
 		data := &sellingv1.MetricData{}
 		reflected := data.ProtoReflect()
 		reflected.Set(oneofField(reflected, metric, "_summary"),
-			protoreflect.ValueOfMessage(metricMessage(metric, sums[metric.report], reader.money)))
+			protoreflect.ValueOfMessage(metricMessage(metric, sums[metric.report], metric.showsMoney(reader))))
 
 		datas = append(datas, data)
 	}
@@ -250,7 +251,7 @@ func (a *Analytic) metricByKey(
 
 		// Every asked key, zero where nothing happened — never missing (the-rows-are-the-keys-step-one-sends).
 		for _, k := range asked {
-			items.Set(k.mapKey, protoreflect.ValueOfMessage(metricMessage(metric, filled[metric.report][k.text], reader.money)))
+			items.Set(k.mapKey, protoreflect.ValueOfMessage(metricMessage(metric, filled[metric.report][k.text], metric.showsMoney(reader))))
 		}
 
 		reflected.Set(field, protoreflect.ValueOfMessage(keyed))

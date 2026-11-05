@@ -88,16 +88,22 @@ export function useShops(args: {
 // makes over the courier catalogue. It is a separate key from the paged list because it asks a
 // different question ("all of them"), and sharing an entry would let a filtered page of the
 // management screen become the picker's options.
-export function useShopOptions(args: { teamId: bigint }) {
+//
+// `writable` asks only the shops the signed-in person may WRITE on (a-write-needs-a-grant-or-a-manager) — every shop for
+// the team's owner or admin, otherwise the ones granted to them. The server answers it (ShopList `writable`), so the
+// picker of a write offers exactly what the write will accept. A separate key: it is a different question.
+export function useShopOptions(args: { teamId: bigint; writable?: boolean }) {
   const { teamId } = args;
+  const writable = args.writable ?? false;
 
   return useQuery({
-    queryKey: key.shops(teamId, { options: true }),
+    queryKey: key.shops(teamId, writable ? { options: true, writable: true } : { options: true }),
     ...referenceQuery,
     enabled: teamId > 0n,
     queryFn: async () => {
       const res = await shopClient.shopList({
         teamId,
+        filter: writable ? { writable: true } : undefined,
         dataRequest: shopListRowData(),
         page: { page: 1, limit: 100 },
       });

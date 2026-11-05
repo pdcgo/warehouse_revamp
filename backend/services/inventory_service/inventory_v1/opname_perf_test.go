@@ -111,7 +111,7 @@ func TestPerf_OpnameSessionFinalize(t *testing.T) {
 	perfLedgerBackground(t, db)
 	perfOpnameBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil)
 	racks := []uint64{
 		newRack(t, svc, otWarehouse, "perf-1"), newRack(t, svc, otWarehouse, "perf-2"), newRack(t, svc, otWarehouse, "perf-3"),
 	}
@@ -178,7 +178,7 @@ func TestPerf_OpnameReads(t *testing.T) {
 	perfLedgerBackground(t, db)
 	perfOpnameBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil)
 	racks := []uint64{newRack(t, svc, otWarehouse, "perf-1"), newRack(t, svc, otWarehouse, "perf-2")}
 	perfStock(t, db, otWarehouse, 20, 2, 100, racks)
 

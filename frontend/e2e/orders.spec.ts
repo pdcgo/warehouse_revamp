@@ -295,6 +295,12 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       openingBalance: 0,
       openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
     });
+    // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account) — the server refuses any other.
+    await call("financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+      teamId: product.teamId,
+      accountId: account.account.id,
+      operational: true,
+    });
 
     const restock = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
       teamId: product.teamId,
@@ -1297,6 +1303,12 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
         openingBalance: 0,
         openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
       });
+      // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account).
+      await call("financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+        teamId: "1",
+        accountId: account.account.id,
+        operational: true,
+      });
 
       // The supplier is the LINE's (a-line-names-the-channel-it-was-bought-from).
       const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
@@ -1773,4 +1785,70 @@ test("Duplicate ref: a second order on a used ref is warned about, and can still
     return res.status;
   }, draftId);
   expect(deleted).toBe(200);
+});
+
+// WAREHOUSE FEE, END TO END (the-warehouse-fee-prototype-is-accepted): an order's frozen fee reaches Analytic through the
+// order metrics' fold — OrderPlaced adds +1 and the fee on the placement day, OrderCancelled takes both back on the
+// cancel's day (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day), so placing and cancelling one
+// order today nets the day back to where it stood. The warehouse reads the amount too (a-warehouse-sees-its-own-fee-amount).
+// Read as DELTAS from a settled baseline: root reads every order this spec placed. LAST in the file: it places an order.
+test("Analytic: an order's warehouse fee counts when placed and nets back when cancelled", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const digits = (text: string | null) => Number((text ?? "").replace(/[^\d-]/g, ""));
+  const readFee = async (url = "/analytic?g=warehouse&m=metrics/warehouse_fee") => {
+    await page.goto(url);
+    await expect(page.getByTestId("analytic-page")).toBeVisible();
+    const count = page.getByTestId("analytic-headline-transaction_count-value");
+    const amount = page.getByTestId("analytic-headline-amount-value");
+    await expect(amount).toBeVisible({ timeout: 10_000 });
+
+    return `${digits(await count.textContent())}|${digits(await amount.textContent())}`;
+  };
+
+  // A SETTLED BASELINE — the earlier tests' folds have landed when two reads a few seconds apart agree.
+  let previous = "";
+  await expect
+    .poll(
+      async () => {
+        const now = await readFee();
+        const settled = now === previous;
+        previous = now;
+
+        return settled;
+      },
+      { timeout: 45_000, intervals: [3_000] },
+    )
+    .toBe(true);
+  const [baseCount, baseAmount] = previous.split("|").map(Number) as [number, number];
+
+  // Place one order; its fee is the one frozen on it, read off its detail.
+  await placeOrderViaForm(page, `${CUSTOMER} warehouse-fee`);
+  const orderUrl = page.url();
+  const fee = digits(await page.getByTestId("money-fees").textContent());
+  expect(fee).toBeGreaterThan(0);
+
+  // PLACED — one more fee transaction and the fee, once the push has been folded.
+  await expect.poll(() => readFee(), { timeout: 45_000, intervals: [1_000, 2_000, 3_000] }).toBe(
+    `${baseCount + 1}|${baseAmount + fee}`,
+  );
+
+  // THE WAREHOUSE READS THE AMOUNT — its own income, by seller (a-warehouse-sees-its-own-fee-amount).
+  await switchToWarehouse(page);
+  await page.goto("/analytic?g=team&m=metrics/warehouse_fee");
+  await expect(page.getByTestId("analytic-page")).toBeVisible();
+  await expect
+    .poll(async () => digits(await page.getByTestId("analytic-headline-amount-value").textContent()), { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(fee);
+
+  // CANCELLED — the cancel takes the fee back on its own day (today), so the day nets back to the baseline.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto(orderUrl);
+  await page.getByTestId("order-action-cancel").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("order-detail-page")).toContainText("Cancelled");
+
+  await expect.poll(() => readFee(), { timeout: 45_000, intervals: [1_000, 2_000, 3_000] }).toBe(
+    `${baseCount}|${baseAmount}`,
+  );
 });

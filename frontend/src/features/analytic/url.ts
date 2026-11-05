@@ -4,12 +4,13 @@
 // access: whoever opens it sees only what their role and team allow.
 //
 //   ?g=shop&m=metrics/orders/created,metrics/settlement&r=30d&shop=13&s=metrics/orders/created:created_count:desc&p=2&n=20&v=graph
+//   ?g=account&m=metrics/financial_accounts&r=30d&acc=1301,1303
 //
 // Read forgivingly: a malformed value is ignored and the report opens without it — never an error page. A metric the
 // link names that no longer exists, or cannot be read by the link's group, is dropped.
 
 import type { DateRange } from "../../components/datetime/DateRangePicker";
-import { TABLE_GROUPS, type TableGroup, isTimeGroup, metricById } from "./catalogue";
+import { type TableGroup, isTimeGroup, metricById, tableGroups } from "./catalogue";
 import type { ReportSort } from "./provider";
 
 export interface ReportState {
@@ -23,6 +24,8 @@ export interface ReportState {
   team: string;
   warehouse: string;
   user: string;
+  /** The team's own financial accounts, one or several (finance-filters-by-account) — `acc=1301,1303`. [] = every. */
+  accounts: string[];
   /** null → the default sort for the group and the metrics (`defaultSort`). */
   sort: ReportSort | null;
   page: number;
@@ -73,7 +76,7 @@ function formatSort(sort: ReportSort): string {
 
 export function parseReportState(params: URLSearchParams): ReportState {
   const g = params.get("g");
-  const groupBy: TableGroup = TABLE_GROUPS.includes(g as TableGroup) ? (g as TableGroup) : "shop";
+  const groupBy: TableGroup = tableGroups().includes(g as TableGroup) ? (g as TableGroup) : "shop";
 
   // Unknown, repeated, or not readable by this group → dropped.
   const metricIds = [...new Set((params.get("m") ?? "").split(",").filter(Boolean))].filter((id) =>
@@ -98,6 +101,7 @@ export function parseReportState(params: URLSearchParams): ReportState {
     team: idOf("team"),
     warehouse: idOf("warehouse"),
     user: idOf("user"),
+    accounts: [...new Set((params.get("acc") ?? "").split(",").filter((id) => ID.test(id)))],
     sort: parseSort(params.get("s"), groupBy, metricIds),
     page: Number.isInteger(page) && page >= 1 ? page : 1,
     pageSize: PAGE_SIZES.includes(size) ? size : 20,
@@ -116,6 +120,7 @@ export function formatReportState(state: ReportState): URLSearchParams {
   if (state.team) params.set("team", state.team);
   if (state.warehouse) params.set("warehouse", state.warehouse);
   if (state.user) params.set("user", state.user);
+  if (state.accounts.length > 0) params.set("acc", state.accounts.join(","));
   if (state.sort) params.set("s", formatSort(state.sort));
   if (state.page > 1) params.set("p", String(state.page));
   if (state.pageSize !== 20) params.set("n", String(state.pageSize));

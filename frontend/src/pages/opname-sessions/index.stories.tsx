@@ -91,6 +91,9 @@ export const NewCountWhenNoneIsActive: Story = {
     const dialog = await screen.findByTestId("opname-new-session-dialog");
     // The dialog says what it locks.
     await expect(within(dialog).getByTestId("opname-new-session-lock")).toHaveTextContent("locked");
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — its own height, well short of the window (full screen is the phone's,
+    // by the JS breakpoint; a responsive `size` once stretched it to the window).
+    await waitFor(() => expect(dialog.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.8));
     await userEvent.click(within(dialog).getByTestId("opname-new-session-submit"));
     await canvas.findByTestId("at-session-detail");
   },

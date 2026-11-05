@@ -19,17 +19,21 @@ const LIVE: DuplicateFinding = {
   drafts: [],
 };
 
+// The signed-in person, and a colleague on the same team.
+const ME = 1n;
+const COLLEAGUE = 2n;
+
 const DRAFT: DuplicateFinding = {
   ref: "MEL-9001",
   orders: [],
-  drafts: [{ id: 201n, createdAtUnix: yesterday - DAY }],
+  drafts: [{ id: 201n, createdAtUnix: yesterday - DAY, authorUserId: ME }],
 };
 
 const meta = {
   title: "Features/Orders/DuplicateRefDialog",
   component: DuplicateRefDialog,
   parameters: { docs: { description: { component: description } } },
-  args: { finding: LIVE, placing: false, onCreateAnyway: fn(), onGoBack: fn() },
+  args: { finding: LIVE, placing: false, onCreateAnyway: fn(), onGoBack: fn(), selfUserId: ME },
 } satisfies Meta<typeof DuplicateRefDialog>;
 
 export default meta;
@@ -74,6 +78,31 @@ export const ADraftOnTheRefWarns: Story = {
   },
 };
 
+// A COLLEAGUE'S DRAFT ON THE REF — the read is team-wide, so it warns; but only its author can open a draft, so it is
+// named "A colleague's draft #202", dated, and is NOT a link. The caller's own draft beside it still links.
+export const AColleaguesDraftIsNamedWithoutALink: Story = {
+  args: {
+    finding: {
+      ...DRAFT,
+      drafts: [...DRAFT.drafts, { id: 202n, createdAtUnix: yesterday, authorUserId: COLLEAGUE }],
+    },
+  },
+  play: async () => {
+    const dialog = await screen.findByTestId("duplicate-ref-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+
+    const theirs = within(dialog).getByTestId("duplicate-ref-draft-202");
+    await expect(theirs).toHaveTextContent("A colleague's draft #202");
+    await expect(theirs).toHaveTextContent(`created ${formatUnixDate(yesterday)}`);
+    await expect(within(theirs).queryByRole("link")).toBeNull();
+    await expect(within(dialog).queryByTestId("duplicate-ref-draft-link-202")).toBeNull();
+
+    const mine = within(dialog).getByTestId("duplicate-ref-draft-link-201");
+    await expect(mine).toHaveTextContent("Draft #201");
+    await expect(mine).toHaveAttribute("href", "/orders/new?draft=201");
+  },
+};
+
 // BOTH AT ONCE — a live order and a draft on one ref, each its own row.
 export const AnOrderAndADraft: Story = {
   args: { finding: { ...LIVE, drafts: DRAFT.drafts } },
@@ -91,7 +120,7 @@ export const TheDateIsTheWibDay: Story = {
     finding: {
       ref: "SP-2409-8841",
       orders: [{ id: 101n, status: OrderStatus.PENDING, createdAtUnix: 1_793_644_200n }],
-      drafts: [{ id: 201n, createdAtUnix: 1_793_644_200n }],
+      drafts: [{ id: 201n, createdAtUnix: 1_793_644_200n, authorUserId: ME }],
     },
   },
   play: async () => {

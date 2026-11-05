@@ -56,7 +56,7 @@ func wtStocked(t *testing.T) *wtFixture {
 
 	f := &wtFixture{sent: &sentEvents{}}
 	f.db = san_testdb.DB(t)
-	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil)
+	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, nil)
 
 	f.rakA = newRack(t, f.svc, wtA, "rak-a")
 	f.rakB = newRack(t, f.svc, wtA, "rak-b")
