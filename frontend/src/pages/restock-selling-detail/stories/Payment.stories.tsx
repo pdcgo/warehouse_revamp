@@ -1,0 +1,87 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, waitFor, within } from "storybook/test";
+
+import { At503, SELLING_DETAIL_META, loaded } from "./kit";
+
+// RESTOCK SELLING DETAIL — the money — the receipt, the parcel and the paying account, and the courier's charge on its own.
+// The page's stories are grouped by the part of the screen they are about
+// (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
+
+const meta = {
+  title: "Pages/Inventory/Restock/RestockSellingDetail/Payment",
+  ...SELLING_DETAIL_META,
+} satisfies Meta;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+// the-couriers-charge-stays-out-of-total — 503's total is goods 950.000 + shipping 30.000; the courier's 5.000 shows on
+// its own, with its note, as owed to the warehouse (the-warehouse-cost-is-the-couriers-charge-at-the-door).
+export const TheTotalLeavesOutTheCouriersCharge: Story = {
+  name: "Total leaves out the charge",
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("restock-detail-subtotal")).toHaveTextContent("Rp 950.000");
+    await expect(canvas.getByTestId("restock-detail-shipping")).toHaveTextContent("Rp 30.000");
+    await expect(canvas.getByTestId("restock-detail-total")).toHaveTextContent("Rp 980.000");
+
+    await expect(canvas.getByTestId("restock-detail-courier-charge")).toHaveTextContent("Rp 5.000");
+    await expect(canvas.getByTestId("restock-detail-courier-charge-note")).toHaveTextContent("Ongkos bongkar di gudang");
+  },
+};
+
+// Before it is accepted there is no charge to owe, so the card is not there at all.
+export const NoCouriersChargeBeforeAccept: Story = {
+  name: "No charge before accept",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("restock-detail-total")).toHaveTextContent("Rp 2.080.000");
+    await expect(canvas.queryByTestId("restock-detail-courier-charge-card")).toBeNull();
+  },
+};
+
+// The parcel and the payment: the courier by its shipment channel, the tracking number with a photo of the label, the
+// paying account by name, the invoice.
+export const TheParcelAndThePayment: Story = {
+  name: "Parcel and payment",
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("restock-detail-paid-from")).toHaveTextContent("BCA Operasional"));
+    await expect(canvas.getByTestId("restock-detail-invoice")).toHaveTextContent("INV/2026/09/0412");
+    await expect(canvas.getByTestId("restock-detail-tracking")).toHaveTextContent("SCP5544332211");
+    await expect(canvas.getByTestId("restock-detail-receipt-photo")).toHaveAttribute(
+      "href",
+      "https://example.test/labels/scp5544332211.jpg",
+    );
+    await waitFor(() => expect(canvas.getByTestId("restock-detail-courier")).toHaveTextContent("SiCepat"));
+  },
+};
+
+// PEMBAYARAN IS A SMALL RECEIPT (payment-is-a-receipt-on-the-right) — which account, then each line's figure held right on
+// its own row, the total last.
+export const PaymentIsAReceipt: Story = {
+  name: "A receipt",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const total = canvas.getByTestId("restock-detail-total");
+    const label = within(canvas.getByTestId("restock-detail-payment")).getByText("Total");
+
+    await expect(total).toHaveTextContent("Rp 2.080.000");
+    await expect(Math.abs(total.getBoundingClientRect().top - label.getBoundingClientRect().top)).toBeLessThan(2);
+    await expect(total.getBoundingClientRect().left).toBeGreaterThan(label.getBoundingClientRect().right);
+  },
+};
+
+// The courier's charge is a section only once accepted — an ongoing restock's nav has no Ongkir COD.
+export const OngkirCodIsASectionOnceAccepted: Story = {
+  name: "Ongkir COD once accepted",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.queryByTestId("section-nav-courier")).toBeNull();
+  },
+};

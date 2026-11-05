@@ -90,6 +90,7 @@ when it applies one of these.
 | [a-form-returns-where-it-was-opened](#a-form-returns-where-it-was-opened) | every way out of a form — save, Back, the top arrow — goes to the screen that opened it: a record's page, or a list with its filters; reached by a link, the list | [the product form](products_decision.md#the-form-returns-where-it-was-opened), then the restock form |
 | [every-combobox-reopens-whole](#every-combobox-reopens-whole) | EVERY combobox, opened again after a pick, shows its whole list — the person filter and the product search were the two that did not; the product search opens on its catalogue's first page | every combobox; swept 2026-11-04 |
 | [a-conflict-with-a-business-decision-is-said-in-its-mark](#a-conflict-with-a-business-decision-is-said-in-its-mark) | a part of a screen that does what the owner asked AGAINST a written business decision says so in its pending mark — `conflict: true`, and the decision in plain words in the strip's row and on the badge's hover | every pending list; restock's three, 2026-11-05 |
+| [stories-are-grouped-by-the-part-of-the-screen](#stories-are-grouped-by-the-part-of-the-screen) | a big page's stories are folders by the part of the screen they are about, each story with a short name; Default and Mobile lead, straight under the page | every page over 15 stories — 24 pages, 2026-11-05 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -2028,6 +2029,41 @@ What it replaces: `ProductSelect` withholding its list until two characters were
 | pinned by | `AConflictIsSaidInItsRow` (`Features/Pending/PendingMarks`), `BrokenUnitsCanGoOnARack` |
 
 What it replaces: a conflict recorded only in the technical decision entry.
+
+## stories-are-grouped-by-the-part-of-the-screen
+
+> Owner, in chat (2026-11-05): *"aku sekarang punya masalah pada story yang kebanyakan, misal restok selling ada banyak
+> sekali, namanya juga kepanjangan"* — the rules to stay visible, so grouped rather than hidden: *"ya begini saja"*, then
+> *"default dan mobile taruh di depan saja"*; then for every big page — *"setidaknya untuk yang aku ubah saja"*, every page over
+> 15 stories.
+
+```
+BEFORE  RestockSelling (27 in one list)        NOW  RestockSelling
+          Default                                   Default
+          Mobile                                    Mobile
+          Ongoing Row Menu                          ▸ Actions     Ongoing menu · Menu by status · Edit lines · Cancel · Mark lost
+          The Screen Rules                          ▸ Filters     Status tabs · Arrived tab · In the URL · Nothing matches · …
+          Export And The Courier Filter Are …       ▸ Notes       Open and save · Phone · edit in place · Arrived · not kept
+          On A Phone The Statistics Button …        ▸ Rows        Screen rules · Columns · Copy, and a long one cut · …
+          … 21 more                                 ▸ Statistics  Shut, then counted · Per tab, and payments · …
+```
+
+| | |
+| --- | --- |
+| which pages | a page with more than ~15 stories. A small page or a component keeps one file, and only takes the short names |
+| the files | `pages/<page>/index.stories.tsx` — Default and Mobile, title `…/<Page>`; `pages/<page>/stories/<Part>.stories.tsx` — one per part, title `…/<Page>/<Part>`; `pages/<page>/stories/kit.tsx` — the meta (bar its title), the routes and the helpers they share |
+| Default and Mobile first | the page's own title also holds the folders, so Storybook draws it as a folder with those two stories leading it — they load first, from `index.stories.tsx` |
+| ⚠ the title is written in each file | Storybook reads `title` statically; the rest of the meta is spread from the kit |
+| ⚠ so are the tags | `tags` is read statically too, and ignored inside a spread — a page hidden with `tags: ["!dev"]` (the pick queue) writes it in every one of its files, or every part shows in the sidebar |
+| no Default | a page with no Default story leads with its first plain look (the warehouse's restock page: Ongoing) |
+| States | plain look stories other than Default and Mobile — one per status, say — are a part of their own |
+| the parts | named by what is on the screen — Actions, Filters, Notes, Rows, Statistics on the restock list; another page has its own |
+| short names | `name: "Menu by status"` — a few words, the part's folder says the rest; a phone story starts *Phone ·*. The export keeps its long name, so a decision's *pinned by* and the comment above the story still read as the rule. A one-line story (`{ render: () => <AtX /> }`) keeps its automatic name, already short |
+| tests | unchanged — the same play() bodies, moved; only the story ids (the URL) follow the new titles |
+| applied | restock: the selling list and detail, the form, the warehouse list and detail · order create and detail · the pick queue · shops and a shop · suppliers, a supplier, its report, discover and its detail · products, a product, its form, discover and its detail · the accounts, an account, the report · categories |
+| pinned by | every story of those pages, passing in their folders |
+
+What it replaces: one `index.stories.tsx` per page, every story in one list under its long name.
 
 ## Recorded elsewhere
 

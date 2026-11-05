@@ -1027,6 +1027,11 @@ against a real Go server and a real Postgres, while a story pins ONE component w
 A regression in `RackSelect` should fail here in a second, naming the component — not as a mysterious
 timeout in an order-flow spec.
 
+**A big page's stories are folders by the part of the screen** (owner) — `index.stories.tsx` holds Default and Mobile,
+`stories/<Part>.stories.tsx` one part each, `stories/kit.tsx` what they share; every story a short `name`
+([stories-are-grouped-by-the-part-of-the-screen](docs/technical/frontend/context_decision.md#stories-are-grouped-by-the-part-of-the-screen)) — every page over
+15 stories. ⚠ `title` AND `tags` are read statically: write both in each file, never only in the kit's spread.
+
 **Only `Pages/*` stories get the page gutter** (owner) — the shell's own gutter, applied by `preview.tsx` to
 those and to nothing else: `card` (12px) on a phone viewport, as `MobileLayout` has it, and `page` (20px) from
 `md` up, as `DesktopLayout` has it. A page story is framed the way the app frames it while a component
