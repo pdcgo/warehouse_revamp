@@ -36,6 +36,9 @@ import { formatRupiahNumber } from "../../lib/money";
 import { LinesCard } from "./components/LinesCard";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { RESTOCK_WAREHOUSE_DETAIL_PENDING } from "./pending";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -130,6 +133,9 @@ export function RestockWarehouseDetailPage() {
     </Badge>
   );
 
+  // The sign dialog's courier charge is typed and not kept (the-cod-can-be-noted-when-the-box-arrives).
+  const codMark = <NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="arrivalCod" />;
+
   return (
     <Stack gap="section" data-testid="restock-detail-page">
       {isMobile ? (
@@ -150,7 +156,7 @@ export function RestockWarehouseDetailPage() {
             </Heading>
             {status}
             <Spacer />
-            <WarehouseRestockActions request={request} teamId={teamId} variant="menu" />
+            <WarehouseRestockActions request={request} teamId={teamId} variant="menu" codMark={codMark} />
           </Flex>
           {missingBadge && <Box>{missingBadge}</Box>}
         </Stack>
@@ -168,11 +174,13 @@ export function RestockWarehouseDetailPage() {
             {status}
             {missingBadge}
             <Spacer />
-            <WarehouseRestockActions request={request} teamId={teamId} variant="buttons" />
+            <WarehouseRestockActions request={request} teamId={teamId} variant="buttons" codMark={codMark} />
           </Flex>
         </>
       )}
 
+      {/* What is not real yet — the courier's charge noted at Tandai Tiba, the broken photo (pending.ts). */}
+      <NotImplementedSummary list={RESTOCK_WAREHOUSE_DETAIL_PENDING} />
 
       {/* THE PARCEL — what finds the box at the door: who sent it, the courier, the tracking number and its photo. */}
       <Card.Root maxW="full" overflow="hidden">
@@ -246,7 +254,11 @@ export function RestockWarehouseDetailPage() {
         </Card.Body>
       </Card.Root>
 
-      <LinesCard request={request} teamId={teamId} />
+      <LinesCard
+        request={request}
+        teamId={teamId}
+        brokenPhotoMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="brokenPhoto" />}
+      />
 
       {/* THE MONEY — goods + shipping is the total; the courier's charge this warehouse paid at the door is owed back
           by the selling team, on its own line, and never added in (the-couriers-charge-stays-out-of-total). */}

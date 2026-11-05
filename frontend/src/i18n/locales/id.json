@@ -1433,12 +1433,13 @@
     "searchPlaceholder": "Cari restok, resi, pesanan atau SKU",
     "warehouseAll": "Semua gudang",
     "stat": {
+      "codPaid": "Ongkir COD dibayar",
+      "codPaidLine_other": "bulan ini · {{count}} restok",
+      "codPaidNote": "ditagih kembali ke tim penjual",
       "inboundProducts": "Produk menunggu",
       "inboundProductsHint": "jenis barang untuk dirakkan",
       "inboundUnits": "Pcs menunggu",
       "inboundUnitsHint": "untuk dihitung di pintu",
-      "inboundAmount": "Nilai antrean",
-      "inboundAmountHint": "barang yang belum dihitung masuk",
       "oldestPending": "Menunggu terlama",
       "oldestDays_other": "{{count}} hari",
       "inboundRestocks": "Restock menunggu",
@@ -1452,9 +1453,21 @@
       "lost": "Hilang"
     },
     "inbound": {
+      "pending": {
+        "cod": {
+          "label": "Ongkir COD dibayar",
+          "reason": "Belum ada yang menjumlahkan ongkir COD yang dibayar gudang — angkanya contoh."
+        },
+        "arrivalCod": {
+          "label": "Ongkir COD saat Tandai Tiba",
+          "reason": "Ongkir COD, keterangan dan foto nota yang diisi di dialog Tandai Tiba belum tersimpan — Tandai Tiba belum menerimanya. Isi lagi saat Terima.",
+          "conflict": "ongkir COD diisi saat Terima."
+        }
+      },
       "title": "Restok Masuk",
       "subtitle": "Kiriman yang menuju gudang ini — tandai tiba saat paket datang, terima untuk menghitungnya ke rak.",
       "empty": "Belum ada kiriman masuk ke gudang ini.",
+      "emptyHint": "Restok muncul di sini saat tim penjual mengirim barang ke gudang ini.",
       "fromAll": "Dari semua tim",
       "actorCreated": "Dibuat oleh",
       "actorAccepted": "Dihitung oleh",
@@ -1528,6 +1541,15 @@
         "lateNote": {
           "label": "Mengubah catatan setelahnya",
           "reason": "Setelah restok tiba, server mengunci catatannya — perubahan saat itu tidak tersimpan."
+        },
+        "arrivalCod": {
+          "label": "Ongkir COD saat Tandai Tiba",
+          "reason": "Ongkir COD, keterangan dan foto nota yang diisi di dialog Tandai Tiba belum tersimpan — Tandai Tiba belum menerimanya. Isi lagi saat Terima.",
+          "conflict": "ongkir COD diisi saat Terima."
+        },
+        "brokenPhoto": {
+          "label": "Foto barang rusak",
+          "reason": "Contoh — belum ada foto yang tersimpan, jadi setiap baris rusak menampilkan gambar yang sama."
         }
       },
       "navLabel": "Bagian restok",
@@ -1540,7 +1562,13 @@
       "adjustmentOpen": "Penyesuaian {{name}}",
       "asOrdered": "Sesuai",
       "goodShort": "Baik {{count}}",
-      "notCounted": "Belum dihitung"
+      "notCounted": "Belum dihitung",
+      "brokenPhoto": {
+        "title": "Foto Barang Rusak",
+        "caption": "Foto barang rusak",
+        "alt": "Foto {{name}} yang rusak",
+        "open": "Buka foto {{name}} yang rusak"
+      }
     },
     "timeline": {
       "created": "Restok dibuat",
@@ -1581,6 +1609,7 @@
       "shipment": "Pengiriman",
       "receipt": "Tanda terima",
       "accepted": "Diterima",
+      "arrived": "Tiba",
       "reference": "Referensi",
       "by": "oleh {{name}}",
       "userRef": "Pengguna #{{id}}",
@@ -1673,14 +1702,32 @@
         "courierNote": "Biaya kurir di depan pintu tidak termasuk total ini — gudang mengisinya saat menerima paket."
       },
       "missing": {
-        "warehouse": "gudang",
-        "account": "rekening",
         "lines": "produk",
+        "supplier": "supplier tiap produk",
         "count": "jumlah tiap produk",
         "total": "total tiap produk",
         "newLineNote": "catatan produk tambahan",
-        "supplier": "supplier tiap produk",
-        "receipt": "resi"
+        "warehouse": "gudang",
+        "account": "rekening",
+        "invoiceRefTaken": "Order ID yang belum dipakai restok lain",
+        "invoiceRefChecking": "Order ID (sedang dicek)",
+        "courier": "kurir",
+        "receipt": "resi",
+        "receiptTaken": "resi yang belum dipakai restok lain",
+        "receiptChecking": "resi (sedang dicek)"
+      },
+      "invoiceRefTaken": "Order ID ini sudah dipakai restok #{{id}}",
+      "receiptTaken": "Resi ini sudah dipakai restok #{{id}}",
+      "refCheckFailed": "Belum bisa dicek apakah sudah dipakai restok lain.",
+      "pending": {
+        "invoiceRefCheck": {
+          "label": "Cek Order ID",
+          "reason": "Dicek di layar ini saja. Server belum menolak Order ID yang sama, jadi dua simpan di saat yang sama tetap lolos."
+        },
+        "receiptCheck": {
+          "label": "Cek resi",
+          "reason": "Dicek di layar ini, hanya atas restok tim ini — resi yang sudah dipakai restok tim lain belum tertangkap, dan server belum menolak resi yang sama."
+        }
       }
     },
     "cancel": {
@@ -1777,7 +1824,8 @@
       },
       "toast": {
         "accepted": "Kiriman diterima",
-        "failed": "Tidak dapat menerima kiriman"
+        "failed": "Tidak dapat menerima kiriman",
+        "notKept": "Belum tersimpan: {{parts}}."
       },
       "actions": "Aksi",
       "notAcceptable": {
@@ -1816,7 +1864,38 @@
         "amount": "Jumlah",
         "note": "Untuk apa",
         "notePlaceholder": "mis. biaya penanganan COD",
-        "noteRequired": "Tulis untuk apa biaya kurir ini."
+        "noteRequired": "Tulis untuk apa biaya kurir ini.",
+        "photo": "Foto nota",
+        "photoAlt": "Foto nota kurir"
+      },
+      "brokenPhoto": {
+        "alt": "Foto barang rusak"
+      },
+      "pending": {
+        "brokenPhoto": {
+          "label": "Foto barang rusak",
+          "reason": "Dipilih di layar ini dan tidak diunggah — Terima belum menyimpan foto."
+        },
+        "courierPhoto": {
+          "label": "Foto nota",
+          "reason": "Dipilih di layar ini dan tidak diunggah — Terima menyimpan ongkir dan keterangannya, belum fotonya."
+        },
+        "brokenRack": {
+          "label": "Rak barang rusak",
+          "reason": "Pilihan Ditaruh di rak belum tersimpan — barang rusak tetap tercatat dibuang.",
+          "conflict": "barang rusak dibuang — tidak ada rak yang menyimpannya."
+        }
+      },
+      "brokenTo": {
+        "label": "Barang rusak",
+        "discard": "Dibuang",
+        "rack": "Ditaruh di rak",
+        "rackRequired": "Pilih rak untuk barang rusak."
+      },
+      "notKept": {
+        "courierPhoto": "foto nota",
+        "brokenPhoto": "foto barang rusak",
+        "brokenRack": "rak barang rusak"
       }
     },
     "createdByAll": "Siapa saja yang membuat",
@@ -1859,18 +1938,20 @@
       "menu": "Aksi restok",
       "sign": {
         "title": "Tandai Tiba Restok #{{id}}",
-        "message": "Pastikan kurir sudah menyerahkan paket ini. Restok menjadi Tiba — tim penjual masih bisa memperbaiki barisnya sampai kamu menerimanya.",
+        "message": "Pastikan kurir sudah menyerahkan paket ini. Restok menjadi Tiba — stok belum bertambah sampai kamu menerimanya, dan tim penjual masih bisa memperbaiki barisnya sampai saat itu.",
         "messageLost": "Restok ini sudah ditandai hilang, dan paketnya ternyata datang. Menandainya tiba memindahkannya ke Tiba, lalu terima seperti biasa.",
         "dismiss": "Belum",
         "tracking": "Nomor resi di label: {{receipt}}",
-        "noTracking": "Tidak ada nomor resi — cocokkan paket dengan barisnya."
+        "noTracking": "Tidak ada nomor resi — cocokkan paket dengan barisnya.",
+        "courierHint": "Kalau kurir meminta biaya saat menyerahkan paket. Boleh kosong — masih bisa diisi atau diubah saat Terima."
       },
       "toast": {
         "cancelled": "Restok dibatalkan",
         "cancelFailed": "Gagal membatalkan",
         "lost": "Restok ditandai hilang",
         "lostFailed": "Gagal menandai hilang",
-        "arrived": "Paket diterima — restok sudah tiba",
+        "arrived": "Restok ditandai tiba",
+        "arrivedCodNotKept": "Isian biaya kurir belum tersimpan — isi lagi saat Terima.",
         "arriveFailed": "Gagal menandai tiba"
       },
       "notes": "Catatan"
@@ -1893,6 +1974,11 @@
       "saved": "Catatan disimpan",
       "saveFailed": "Gagal menyimpan catatan",
       "notStored": "Catatan belum tersimpan — setelah restok tiba, server belum menerima perubahan catatan."
+    },
+    "photo": {
+      "add": "Tambah Foto",
+      "replace": "Ganti Foto",
+      "remove": "Hapus foto"
     }
   },
   "shops": {
@@ -4132,7 +4218,8 @@
       "sample": "· angka contoh",
       "derived": "· rumus belum final",
       "missing": "· tidak masuk total"
-    }
+    },
+    "conflict": "Bertentangan dengan keputusan bisnis:"
   },
   "orderForm": {
     "pending": {

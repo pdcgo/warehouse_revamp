@@ -44,7 +44,42 @@ A product's note is two rows; the empty Produk hint is full size; Rincian's prod
 No scrollbar flashes through the fold ([the-summary-folds-without-a-scrollbar](../../technical/frontend/restock_decision.md#the-summary-folds-without-a-scrollbar)).
 An edit opens with its one shared supplier on top, one product included ([an-edit-opens-with-its-one-supplier](../../technical/frontend/restock_decision.md#an-edit-opens-with-its-one-supplier)).
 The form goes back where it was opened — the list or the restock's page; by a link, the list ([the-restock-form-returns-where-it-was-opened](../../technical/frontend/restock_decision.md#the-restock-form-returns-where-it-was-opened)).
+
+🔀 **2026-11-04: the warehouse's inbound list follows the screen rules** — uncommitted, for the owner's pass
+([the-warehouse-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-warehouse-restock-list-follows-the-screen-rules)).
+`pages/restock-warehouse`: the card strip, `FilterBar` with a search (`q`), short dates, a block per restock on a phone,
+the empty hints, `GrowingPager`, Default and Mobile stories. No proto change.
+Then Dari is the team with who raised it under it, and Dibuat and Sampai are columns — Sampai with who signed for the box
+([the-inbound-row-says-who-and-when](../../technical/frontend/restock_decision.md#the-inbound-row-says-who-and-when)).
+No restock value on the warehouse's list; its money card is the COD it paid this month — ⚠ a sample. **Backend needed:**
+a sum of `warehouse_additional_cost` over the restocks a warehouse accepted in a window
+([the-warehouse-sees-the-cod-it-paid](../../technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)).
 Screen state only: each line still saves its own supplier.
+
+🔀 **2026-11-04: the form takes the courier and checks its references** — uncommitted, for the owner's pass. The courier
+is required ([the-courier-is-required-on-the-form](../../technical/frontend/restock_decision.md#the-courier-is-required-on-the-form)). A resi or Order ID already on another
+restock of this team is in danger under its field and holds Buat back — `useRestockRefInUse` over `RestockRequestList`'s
+search, no proto change ([a-reference-in-use-stops-the-restock-form](../../technical/frontend/restock_decision.md#a-reference-in-use-stops-the-restock-form)).
+**Backend needed:** a resi refused on create and update while another restock not cancelled holds it, across teams; the
+same for the Order ID; and `shipment_id > 0`.
+
+🔀 **2026-11-04: the courier's charge at Tandai Tiba** — uncommitted, for the owner's pass. The sign dialog carries the
+accept page's charge (`CourierCharge`, moved to `features/restock/`): optional at Tiba, final at Terima, one charge
+([the-cod-can-be-noted-when-the-box-arrives](../../technical/frontend/restock_decision.md#the-cod-can-be-noted-when-the-box-arrives)). ⚠ `dropped`: Arrive takes no charge.
+**Backend needed:** the charge and its note on `RestockRequestArrive`, and the accept page opening with them.
+The words: Tiba marks, Terima is final; the sign toast and the list's *Sampai* column fixed
+([tiba-marks-and-terima-is-final](../../technical/frontend/restock_decision.md#tiba-marks-and-terima-is-final)).
+Then a photo of the broken units on the accept page — one per line, optional, the camera on a phone
+([a-broken-product-carries-a-photo](../../technical/frontend/restock_decision.md#a-broken-product-carries-a-photo)). ⚠ `dropped`: never uploaded.
+**Backend needed:** a photo per broken row on `RestockRequestReceivedLine`, shown back on both detail pages.
+Both detail pages show where it is read back — the selling page's Penyesuaian dialog and phone block, the warehouse
+page's broken cell — with a sample drawing, ⚠ `sample` ([the-detail-pages-show-the-broken-photo](../../technical/frontend/restock_decision.md#the-detail-pages-show-the-broken-photo)).
+At Terima the broken units are thrown away or put on a rack, then required — ⚠ `dropped`
+([a-broken-product-may-go-on-a-rack](../../technical/frontend/restock_decision.md#a-broken-product-may-go-on-a-rack)); the courier's charge takes an optional photo of the
+slip at Tiba and Terima — ⚠ `dropped` ([the-courier-slip-has-an-optional-photo](../../technical/frontend/restock_decision.md#the-courier-slip-has-an-optional-photo)). The `thoni`
+comparison is closed: the rest stays ours ([the-rest-of-thonis-restock-stays-ours](../../technical/frontend/restock_decision.md#the-rest-of-thonis-restock-stays-ours)).
+The two parts that go against a business decision — the broken rack, the charge at Tiba — say so in their marks
+([a-conflict-with-a-business-decision-is-said-in-its-mark](../../technical/frontend/context_decision.md#a-conflict-with-a-business-decision-is-said-in-its-mark)).
 
 🔀 **2026-10-31: the selling list follows the screen rules** — uncommitted, for the owner's pass
 ([the-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-list-follows-the-screen-rules)).
@@ -174,12 +209,24 @@ stateDiagram-v2
 | docs | `docs/services/inventory_service/rpc.md` restock section (lifecycle, the accept transaction, the rules, the event) · liability, selling and supplier `rpc.md`: Fulfill renamed to Accept |
 | tests | Go: every package green from the root, 0 skips · stories: **1171** green · mermaid: 1006 parse |
 
-## Pending marks: none
+## Pending marks
+
+⚠ *(2026-11-05)* **Ten are back** — the accept page's slip photo and broken rack are `dropped` too. The warehouse list's COD
+card is a `sample`; the broken photo on both detail pages is a
+`sample` ([the-detail-pages-show-the-broken-photo](../../technical/frontend/restock_decision.md#the-detail-pages-show-the-broken-photo)); the accept page's broken photo is `dropped`
+([a-broken-product-carries-a-photo](../../technical/frontend/restock_decision.md#a-broken-product-carries-a-photo)); the courier's charge noted at Tandai Tiba is
+`dropped` on the warehouse list and its detail ([the-cod-can-be-noted-when-the-box-arrives](../../technical/frontend/restock_decision.md#the-cod-can-be-noted-when-the-box-arrives)); and the form's two reference checks are
+`derived` — screen-only, this team's restocks only ([a-reference-in-use-stops-the-restock-form](../../technical/frontend/restock_decision.md#a-reference-in-use-stops-the-restock-form)).
+The COD card:
+([the-warehouse-sees-the-cod-it-paid](../../technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)).
+A `thoni` feature not yet taken is deliberately NOT marked
+([thonis-restock-is-weighed-one-feature-at-a-time](../../technical/frontend/restock_decision.md#thonis-restock-is-weighed-one-feature-at-a-time)).
 
 ✅ *(2026-10-15)* **Removed from all six restock pages**, with their `pending.ts` files, the action components' `pending`
 prop and the `restock.*.pending` translations: every one of the 28 marks named something stages 1–3 now store or do.
 Checked against the real dev API (screens shot, `[data-testid^=not-implemented]` counted at 0).
-`NothingIsMarkedNotImplemented` on the request form fails the day a mark comes back.
+`OnlyTheReferenceChecksAreMarked` (was `NothingIsMarkedNotImplemented`) on the request form fails the day a third mark
+comes back.
 
 ## Backend analysis — the parts that write no stock (2026-10-15)
 
@@ -247,8 +294,8 @@ stage hunk by hunk.
 
 ## Elsewhere
 
-- The warehouse's list has no phone arrangement yet (one block per row, FilterBar sheet); the selling list has had one
-  since 2026-10-31.
+- The `thoni` branch's restock design is a reference the owner weighs one feature at a time; this branch does not
+  follow it ([thonis-restock-is-weighed-one-feature-at-a-time](../../technical/frontend/restock_decision.md#thonis-restock-is-weighed-one-feature-at-a-time)).
 - warehouse-product's **Incoming** reads ongoing restocks only (comment at `pages/warehouse-product/index.tsx:99`).
   An arrived box is incoming too, but the activity read takes one status.
 - The receipt photo's upload type is not designed. It stays a `dropped` mark.

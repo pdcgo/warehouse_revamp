@@ -926,7 +926,9 @@ list, because searching seven options you can already see in full is a keystroke
 - ⚠ **A search select searches ONLY what is typed** — spread `searchOnlyWhatIsTyped(filter)`
   ([lib/comboboxSearch.ts](frontend/src/lib/comboboxSearch.ts)) on the Root. Filtering on every `onInputValueChange`
   also filters on the picked label the machine writes into the field, so the panel reopens with one option
-  ([a-search-select-reopens-whole](docs/technical/frontend/context_decision.md#a-search-select-reopens-whole)).
+  ([a-search-select-reopens-whole](docs/technical/frontend/context_decision.md#a-search-select-reopens-whole)). That is EVERY
+  combobox, and an unbounded one opens on its first page — `ProductSelect` does
+  ([every-combobox-reopens-whole](docs/technical/frontend/context_decision.md#every-combobox-reopens-whole)).
 - **Clearing emits the "none" sentinel** (`0n`, or `undefined`) — never nothing. #131 again: a field
   that empties while the parent still holds the old id filters on a shop the screen no longer shows.
 
@@ -938,7 +940,8 @@ in the list**, so a badge and its row cannot drift, and removing an entry remove
 and they cost the reader different things: `dropped` (typed and thrown away), `sample` (invented
 figures), `derived` (real figures, unsettled rule), `missing` (not on screen at all, and a total is
 short because of it). The shared copy is the `pending.*` i18n namespace; each screen's own labels are
-`<ns>.pending.<id>.label|reason`.
+`<ns>.pending.<id>.label|reason`. A part that goes **against a written business decision** says so in its mark — `conflict: true`, the decision
+in plain words at `<ns>.pending.<id>.conflict` ([a-conflict-with-a-business-decision-is-said-in-its-mark](docs/technical/frontend/context_decision.md#a-conflict-with-a-business-decision-is-said-in-its-mark)).
 
 **The marks can be switched off — in STORYBOOK ONLY** (owner, 2026-09-29). The toolbar's *Pending
 marks* global hides the badges and the strip together, so a layout is reviewable without the

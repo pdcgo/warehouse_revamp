@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, CloseButton, Dialog, Flex, HStack, Icon, Portal, Separator, Span, Stack, Table, Text, Tooltip } from "@chakra-ui/react";
 import { CircleCheck, MessageSquareText } from "lucide-react";
@@ -15,6 +16,8 @@ import {
   problemValue,
 } from "../../../features/restock/summary";
 import { LineSupplier, useLineSuppliers } from "../../../features/restock/LineSupplier";
+import { BrokenPhotoView } from "../../../features/restock/BrokenPhotoView";
+import { brokenPhotoSample } from "../../../features/restock/brokenPhotoSample";
 import { useProductsByIds } from "../../../features/products/queries";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { formatRupiahNumber } from "../../../lib/money";
@@ -27,6 +30,8 @@ export interface ProductsPanelProps {
   request: RestockRequest;
   /** The READING team — whose catalogue the covers are looked up in. */
   teamId: bigint | undefined;
+  /** The page's mark on the broken photo — a sample until the received line carries one. */
+  brokenPhotoMark?: ReactNode;
 }
 
 // PRODUCTS — WHAT WAS ORDERED, WHERE IT WAS BOUGHT, AND WHAT THE BOX HELD.
@@ -52,7 +57,10 @@ export interface ProductsPanelProps {
 // THE SCREEN RULES (the-restock-detail-follows-the-screen-rules): a row lights up under the pointer; no cell is over two
 // lines — the line's note is an icon beside the product, its words in the tooltip; a problem's note shares the line of
 // what it was worth — and on a phone each line is a block (a-phone-reads-each-line-as-a-block).
-export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
+//
+// THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — in the Penyesuaian dialog under the broken row, and as a
+// thumbnail in a phone's block. ⚠ A SAMPLE (brokenPhotoSample.ts): nothing stores one yet.
+export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPanelProps) {
   const { t } = useTranslation();
 
   const counted = request.status === RestockRequestStatus.ACCEPTED;
@@ -80,6 +88,7 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
                   item={item}
                   counted={counted}
                   cover={coverOf(item)}
+                  photoMark={brokenPhotoMark}
                   supplier={
                     <LineSupplier
                       supplierId={item.supplierId}
@@ -148,7 +157,7 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
                       </Table.Cell>
                       <Table.Cell textAlign="end">{item.count.toString()}</Table.Cell>
                       <Table.Cell>
-                        <AdjustmentCell item={item} counted={counted} />
+                        <AdjustmentCell item={item} counted={counted} photoMark={brokenPhotoMark} />
                       </Table.Cell>
                       <Table.Cell textAlign="end">{formatRupiahNumber(unitPrice(item))}</Table.Cell>
                       <Table.Cell textAlign="end">{formatRupiahNumber(lineTotal(item))}</Table.Cell>
@@ -181,7 +190,7 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
 //
 // A counted cell is a button: it opens the line's detail in a dialog — ordered, came, good, and each problem with what it
 // was worth (filled by the system) and the warehouse's note (AdjustmentDialog).
-function AdjustmentCell({ item, counted }: { item: RestockRequestItem; counted: boolean }) {
+function AdjustmentCell({ item, counted, photoMark }: { item: RestockRequestItem; counted: boolean; photoMark?: ReactNode }) {
   const { t } = useTranslation();
   const pid = item.productId;
 
@@ -233,16 +242,17 @@ function AdjustmentCell({ item, counted }: { item: RestockRequestItem; counted: 
           )}
         </Button>
       </Dialog.Trigger>
-      <AdjustmentDialog item={item} />
+      <AdjustmentDialog item={item} photoMark={photoMark} />
     </Dialog.Root>
   );
 }
 
 // THE LINE'S ADJUSTMENT, IN FULL — a small receipt: ordered, came, good, then each problem with what it was worth and why.
 // The problems' worth is the LANDED price (the-problem-price-is-filled-by-the-system), not the line's unit price.
-function AdjustmentDialog({ item }: { item: RestockRequestItem }) {
+function AdjustmentDialog({ item, photoMark }: { item: RestockRequestItem; photoMark?: ReactNode }) {
   const { t } = useTranslation();
   const pid = item.productId;
+  const photo = brokenPhotoSample(item);
 
   const row = (label: string, value: string, testId: string, strong = false) => (
     <Flex justify="space-between" gap="3" fontWeight={strong ? "bold" : undefined}>
@@ -275,6 +285,9 @@ function AdjustmentDialog({ item }: { item: RestockRequestItem }) {
           <Text fontSize="xs" color="fg.muted" textAlign="end" whiteSpace="pre-wrap" wordBreak="break-word" data-testid={`${testId}-note`}>
             {note}
           </Text>
+        )}
+        {type === RestockProblemType.BROKEN && photo && (
+          <BrokenPhotoView url={photo} name={item.name} variant="full" mark={photoMark} testId={`restock-detail-broken-photo-${pid}`} />
         )}
       </Stack>
     );
@@ -353,16 +366,19 @@ function LineBlock({
   counted,
   cover,
   supplier,
+  photoMark,
 }: {
   item: RestockRequestItem;
   counted: boolean;
   cover?: { defaultImageUrl?: string; defaultImageThumbnailUrl?: string };
   supplier: React.ReactNode;
+  photoMark?: ReactNode;
 }) {
   const { t } = useTranslation();
   const broken = brokenQuantity(item);
   const missing = missingQuantity(item);
   const pid = item.productId;
+  const photo = brokenPhotoSample(item);
 
   const problem = (type: RestockProblemType, count: bigint, label: string, testId: string) => {
     if (count === 0n) return null;
@@ -422,6 +438,9 @@ function LineBlock({
         </Text>
       )}
       {problem(RestockProblemType.BROKEN, broken, t("restock.problem.broken"), `restock-detail-broken-${pid}`)}
+      {photo && (
+        <BrokenPhotoView url={photo} name={item.name} variant="thumb" mark={photoMark} testId={`restock-detail-broken-photo-${pid}`} />
+      )}
       {problem(RestockProblemType.MISSING, missing, t("restock.problem.missing"), `restock-detail-missing-${pid}`)}
       {item.note && (
         <Text fontSize="sm" color="fg.muted" data-testid={`restock-detail-line-note-${pid}`}>

@@ -5,6 +5,7 @@ import {
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import type { PickedProduct } from "../../components/products/ProductSelect";
 import { toRupiah } from "../../features/restock/counting";
+import type { RefCheck } from "../../features/restock/queries";
 
 // The restock form's rules, in one place — the page reads them and so do its stories, and a second copy of "what may
 // change while the box is at the door" is how the screen and the server start disagreeing.
@@ -179,26 +180,40 @@ export type MissingId =
   | "newLineNote"
   | "warehouse"
   | "account"
-  | "receipt";
+  | "invoiceRefTaken"
+  | "invoiceRefChecking"
+  | "courier"
+  | "receipt"
+  | "receiptTaken"
+  | "receiptChecking";
 
 /**
  * IN THE ORDER THE FORM IS CHECKED (owner: *"untuk urutan validasi restocknya mulai dari produk, gudang, rekening, resi"*,
  * *"di produk perlu cek semuanya punya supplier dulu"*, the-checks-run-products-warehouse-account-resi): the products —
- * there are some, every one names its supplier, every count is real, an added one says why — then the warehouse, the
- * paying account, the tracking number. The first entry is the one the line by Buat Restok names.
+ * there are some, every one names its supplier, every count is real, an added one says why — then the warehouse, then
+ * the payment card top to bottom: the paying account, the Order ID not on another restock, the courier, the resi — given,
+ * and not on another restock (the-courier-is-required-on-the-form, a-reference-in-use-stops-the-restock-form). The first
+ * entry is the one the line by Buat Restok names.
  *
- * ⚠ Stricter than the server: it takes a line with no supplier and a restock with no resi. A supplier closed by the
- * box's arrival, and the account and the resi closed with the parcel, are never asked for — they cannot be given.
+ * A reference still being CHECKED holds Buat back too: a check that a quick click could outrun is not a check.
+ *
+ * ⚠ Stricter than the server: it takes a line with no supplier, a restock with no courier or no resi, and a resi or
+ * Order ID another restock holds. A supplier closed by the box's arrival, and the payment and parcel closed with it,
+ * are never asked for — they cannot be given.
  */
 export function missingParts(args: {
   mode: FormMode;
   warehouseId: bigint;
   financeAccountId: bigint;
+  shipmentId: bigint;
   receipt: string;
+  invoiceRefCheck: RefCheck["state"];
+  receiptCheck: RefCheck["state"];
   lines: LineDraft[];
 }): MissingId[] {
-  const { mode, warehouseId, financeAccountId, receipt, lines } = args;
+  const { mode, warehouseId, financeAccountId, shipmentId, receipt, invoiceRefCheck, receiptCheck, lines } = args;
   const out: MissingId[] = [];
+  const parcelOpen = mode !== "arrived";
 
   if (lines.length === 0) out.push("lines");
   if (lines.some((l) => supplierOpen(mode, l) && l.supplierId === 0n)) out.push("supplier");
@@ -209,9 +224,17 @@ export function missingParts(args: {
   if (lines.some((l) => needsNote(mode, l))) out.push("newLineNote");
   if (warehouseId === 0n) out.push("warehouse");
   // REQUIRED (a-restock-names-its-paying-account). While arrived it is closed, and was set when the restock was
-  // raised, so it is not asked for again — nor is the resi, closed with it.
-  if (financeAccountId === 0n && mode !== "arrived") out.push("account");
-  if (receipt.trim() === "" && mode !== "arrived") out.push("receipt");
+  // raised, so it is not asked for again — nor is anything closed with it.
+  if (!parcelOpen) return out;
+
+  if (financeAccountId === 0n) out.push("account");
+  // The Order ID is optional — but one another restock holds is not given.
+  if (invoiceRefCheck === "taken") out.push("invoiceRefTaken");
+  if (invoiceRefCheck === "checking") out.push("invoiceRefChecking");
+  if (shipmentId === 0n) out.push("courier");
+  if (receipt.trim() === "") out.push("receipt");
+  if (receiptCheck === "taken") out.push("receiptTaken");
+  if (receiptCheck === "checking") out.push("receiptChecking");
 
   return out;
 }

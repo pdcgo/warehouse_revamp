@@ -1,7 +1,8 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Button, HStack, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
+import { Button, HStack, Icon, IconButton, Menu, Portal, Separator } from "@chakra-ui/react";
 import { MoreHorizontal, PackageCheck, PackageOpen, Printer, Receipt } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -9,6 +10,8 @@ import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useArriveRestockRequest } from "./queries";
+import { toRupiah } from "./counting";
+import { CourierCharge } from "./CourierCharge";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 
@@ -57,9 +60,14 @@ export interface WarehouseRestockActionsProps {
    * header. `menu` — one ⋯ trigger, for a phone header.
    */
   variant: "row" | "buttons" | "menu";
+  /**
+   * The page's pending mark for the courier's charge in the sign dialog — typed there and NOT kept yet
+   * (the-cod-can-be-noted-when-the-box-arrives). Each page passes its own, numbered in its own list.
+   */
+  codMark?: ReactNode;
 }
 
-export function WarehouseRestockActions({ request, teamId, variant }: WarehouseRestockActionsProps) {
+export function WarehouseRestockActions({ request, teamId, variant, codMark }: WarehouseRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [signing, setSigning] = useState(false);
@@ -139,7 +147,7 @@ export function WarehouseRestockActions({ request, teamId, variant }: WarehouseR
       )}
 
       {signing && (
-        <SignForBoxDialog request={request} teamId={teamId} onClose={() => setSigning(false)} />
+        <SignForBoxDialog request={request} teamId={teamId} codMark={codMark} onClose={() => setSigning(false)} />
       )}
     </>
   );
@@ -147,23 +155,43 @@ export function WarehouseRestockActions({ request, teamId, variant }: WarehouseR
 
 // SIGN FOR THE BOX — the courier handed it over: ongoing (or lost) → arrived. It cannot be taken back, so it confirms;
 // it is not destructive, so the confirm is the brand colour, not red.
+//
+// TIBA ONLY MARKS; TERIMA IS FINAL (owner: *"tiba itu untuk menandai, diterima itu final"*,
+// tiba-marks-and-terima-is-final) — the message says stock does not move until Terima, and nothing here says "received".
+//
+// THE COURIER'S CHARGE CAN BE NOTED HERE (owner: *"ongkir cod bisa keduanya"*, the-cod-can-be-noted-when-the-box-arrives)
+// — when the courier asks for it at the door, which is now. Optional; the note is required once there is an amount, as at
+// Terima. ⚠ RestockRequestArrive takes no charge, so it is NOT KEPT (`dropped`): the mark says so, and so does a toast
+// after the sign — enter it again at Terima.
 function SignForBoxDialog({
   request,
   teamId,
+  codMark,
   onClose,
 }: {
   request: RestockRequest;
   teamId: bigint;
+  codMark?: ReactNode;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const arrive = useArriveRestockRequest();
   const late = request.status === RestockRequestStatus.LOST;
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — not kept with the rest of the charge.
+  const [photo, setPhoto] = useState<File | null>(null);
+
+  const charged = toRupiah(amount) > 0;
+  const noteMissing = charged && note.trim() === "";
 
   async function confirm() {
     try {
       await arrive.mutateAsync({ teamId, requestId: request.id });
       toaster.create({ type: "success", title: t("restock.actions.toast.arrived") });
+      if (charged || photo) {
+        toaster.create({ type: "warning", title: t("restock.actions.toast.arrivedCodNotKept") });
+      }
     } catch (err) {
       toaster.create({ type: "error", title: t("restock.actions.toast.arriveFailed"), description: rpcError(err) });
     }
@@ -178,6 +206,7 @@ function SignForBoxDialog({
       message={late ? t("restock.actions.sign.messageLost") : t("restock.actions.sign.message")}
       confirmLabel={t("restock.actions.signForBox")}
       dismissLabel={t("restock.actions.sign.dismiss")}
+      confirmDisabled={noteMissing}
       onConfirm={confirm}
     >
       <HStack gap="1.5" fontSize="sm" color="fg.muted">
@@ -185,6 +214,22 @@ function SignForBoxDialog({
           ? t("restock.actions.sign.tracking", { receipt: request.receipt })
           : t("restock.actions.sign.noTracking")}
       </HStack>
+
+      <Separator />
+
+      <CourierCharge
+        amount={amount}
+        note={note}
+        charged={charged}
+        noteMissing={noteMissing}
+        onAmount={setAmount}
+        onNote={setNote}
+        photo={photo}
+        onPhoto={setPhoto}
+        hint={t("restock.actions.sign.courierHint")}
+        mark={codMark}
+        testId="sign-courier"
+      />
     </ConfirmDialog>
   );
 }

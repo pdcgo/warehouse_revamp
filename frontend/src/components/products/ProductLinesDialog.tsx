@@ -90,11 +90,15 @@ export function ProductLinesDialog({
   return (
     <Dialog.Root size="lg" lazyMount unmountOnExit scrollBehavior="inside">
       <Dialog.Trigger asChild>
+        {/* AT THE TEXT'S LEFT EDGE (owner: *"produk more harusnya sama teks rata kiri"*) — in a column a button stretches to
+            the cell's width and centres its label, which then floated under the line above it. */}
         <Button
           variant="plain"
           size="xs"
           h="auto"
           px="0"
+          alignSelf="flex-start"
+          justifyContent="flex-start"
           fontWeight="normal"
           color="fg.muted"
           textDecoration="underline"

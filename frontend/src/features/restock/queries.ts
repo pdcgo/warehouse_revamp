@@ -3,8 +3,9 @@ import { restockClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
 import { fetchActors, peopleFor, useActors, WHO_FILTER_SIZE } from "../users/queries";
-import type { RestockActorRole, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockDateField } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import type { RestockActorRole } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockDateField, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { useDebounced } from "../../lib/useDebounced";
 import { restocksFromList, restockListRowData } from "./adapt";
 
 // The restock screens' reads (#176).
@@ -93,11 +94,10 @@ export function useRestockRequests(args: RestockListArgs) {
 
       const requests = restocksFromList(res.items, res.ids);
 
-      // WHO RAISED IT AND WHO ACCEPTED IT, resolved in the same query rather than by each row —
-      // one call for the whole page. Both columns come from the same map: the same person often
-      // does both.
+      // WHO RAISED IT, WHO SIGNED FOR THE BOX AND WHO ACCEPTED IT, resolved in the same query rather than by each row —
+      // one call for the whole page. Every column comes from the same map: the same person often does two.
       const actors = await fetchActors(
-        requests.flatMap((r) => [r.createdByUserId, r.acceptedByUserId]),
+        requests.flatMap((r) => [r.createdByUserId, r.arrivedByUserId, r.acceptedByUserId]),
       );
 
       return {
@@ -107,6 +107,85 @@ export function useRestockRequests(args: RestockListArgs) {
       };
     },
   });
+}
+
+/** Which of a restock's references a check is about — the resi, or the store's Order ID. */
+export type RestockRef = "receipt" | "invoiceRef";
+
+/**
+ * What the form knows about a reference it was given:
+ *
+ *   idle      nothing typed, or the field is closed
+ *   checking  typed, and the answer is not in yet — the debounce, then the read
+ *   free      no other restock holds it
+ *   taken     the newest restock holding it, which is not cancelled
+ *   failed    the read failed — said under the field, and nothing is held back on it
+ */
+export type RefCheck =
+  | { state: "idle" | "checking" | "free" | "failed" }
+  | { state: "taken"; id: bigint; status: RestockRequestStatus };
+
+// How many search hits are read. The search is a substring match over the resi, the Order ID and the lines' SKU and
+// name, and the exact match is picked out of it here — a full reference matches a handful, never a page.
+const IN_USE_PAGE = 50;
+
+const normalised = (ref: string) => ref.trim().toLowerCase();
+
+// IS THIS RESI — OR THIS ORDER ID — ALREADY ON ANOTHER RESTOCK? (owner: *"ada checker … untuk cek resi dan order id ->
+// danger langsung di formnya"*, *"hasil checkernya jadi validasi juga"*, a-reference-in-use-stops-the-restock-form).
+//
+// Asked of the LIST's own search (`filter.q` reaches the resi and the Order ID), then matched EXACTLY, letter case
+// aside: `jne0123` and `JNE0123` are one parcel. A CANCELLED restock holds nothing — its parcel never came — and the
+// restock being edited is not its own duplicate. Every other status holds it: an accepted box cannot arrive twice, and
+// a lost one may still turn up.
+//
+// ⚠ THIS TEAM'S RESTOCKS ONLY — the list a selling team may read. A resi on another team's restock is not caught, and
+// nothing on the server refuses a repeated one: the form's two pending marks say so (`restock-form/pending.ts`).
+//
+// Keyed on the value, so each one typed is its own question — never `listQuery`, which would show the answer about the
+// previous value while asking about this one.
+export function useRestockRefInUse(args: {
+  teamId: bigint | undefined;
+  ref: RestockRef;
+  value: string;
+  /** The restock being edited; 0n on create. */
+  exceptId: bigint;
+  /** False while the field is closed — an arrived restock's references are not asked about again. */
+  enabled: boolean;
+}): RefCheck {
+  const { teamId, ref, value, exceptId, enabled } = args;
+  const typed = normalised(value);
+  // Asked once the typing pauses, not per keystroke.
+  const asked = useDebounced(typed, 400);
+  const on = enabled && teamId !== undefined && asked !== "";
+
+  const query = useQuery({
+    queryKey: key.restock(teamId, { inUse: ref, value: asked, except: exceptId.toString() }),
+    enabled: on,
+    queryFn: async () => {
+      const res = await restockClient.restockRequestList({
+        teamId: teamId!,
+        filter: { q: asked },
+        dataRequest: restockListRowData(),
+        page: { page: 1, limit: IN_USE_PAGE },
+      });
+
+      const holder = restocksFromList(res.items, res.ids).find(
+        (r) =>
+          r.id !== exceptId &&
+          r.status !== RestockRequestStatus.CANCELLED &&
+          normalised(ref === "receipt" ? r.receipt : r.invoiceRefId) === asked,
+      );
+
+      return holder ? { id: holder.id, status: holder.status } : null;
+    },
+  });
+
+  if (!enabled || teamId === undefined || typed === "") return { state: "idle" };
+  if (asked !== typed || query.isPending) return { state: "checking" };
+  if (query.isError) return { state: "failed" };
+
+  return query.data ? { state: "taken", ...query.data } : { state: "free" };
 }
 
 // WHO A RESTOCK LIST'S "WHO" FILTER OFFERS (a-who-filter-lists-the-people-on-its-rows): everyone who raised — or

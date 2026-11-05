@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Combobox, Portal, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 import { formerUserId } from "../../lib/users";
 import { UserItem } from "../entity/UserItem";
 
@@ -96,7 +97,9 @@ export function PersonFilterSelect({
       key={filled ? "ready" : "loading"}
       collection={collection}
       disabled={disabled}
-      onInputValueChange={(e) => filter(e.inputValue)}
+      // SEARCH ONLY WHAT IS TYPED (a-search-select-reopens-whole) — the picked name the machine writes into the field is
+      // not a search, so the list opened again shows everyone, not the one picked.
+      {...searchOnlyWhatIsTyped(filter)}
       selectionBehavior="replace"
       openOnClick
       value={value !== undefined && value > 0n ? [value.toString()] : []}

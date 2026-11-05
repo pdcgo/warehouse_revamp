@@ -207,7 +207,15 @@ export function RestockSellingDetailPage() {
   const courier =
     accepted &&
     section("courier", <CourierChargeFacts request={request} warehouseName={warehouseName} />, "restock-detail-courier-charge-card");
-  const products = section("products", <ProductsPanel request={request} teamId={teamId} />, "restock-detail-products");
+  const products = section(
+    "products",
+    <ProductsPanel
+      request={request}
+      teamId={teamId}
+      brokenPhotoMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="brokenPhoto" />}
+    />,
+    "restock-detail-products",
+  );
   // ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's, real; the warehouse's, not stored yet.
   const note = section(
     "note",

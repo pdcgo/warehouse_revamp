@@ -176,9 +176,9 @@ export function TeamSelect({
       // that window anyway, and a blank REQUIRED field is far worse.
       key={loading ? "loading" : "ready"}
       // OPEN ON CLICK (#146's lesson, applied here too). The teams are already loaded, so making
-      // somebody type before they can see which ones exist is asking them to guess. Every bounded
-      // picker in the app now behaves this way; only ProductSelect withholds its list, because it
-      // searches the server over a catalogue too large to show.
+      // somebody type before they can see which ones exist is asking them to guess. Every picker in
+      // the app now behaves this way — ProductSelect too, which opens on its catalogue's first page
+      // because the whole catalogue is too large to show (every-combobox-reopens-whole).
       openOnClick
       collection={collection}
       disabled={disabled}

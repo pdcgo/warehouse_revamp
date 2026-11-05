@@ -34,10 +34,13 @@ import { RESTOCK_STATUS_TABS } from "../../features/restock/statusTabs";
 import { useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
 import { AcceptSummary } from "./components/AcceptSummary";
-import { CourierCharge } from "./components/CourierCharge";
+import { CourierCharge } from "../../features/restock/CourierCharge";
 import { LineCard } from "./components/LineCard";
 import type { LineDraft } from "./draft";
 import { emptyLine, lineState, receivedLine } from "./draft";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { RESTOCK_ACCEPT_PENDING } from "./pending";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -64,6 +67,10 @@ function acceptable(request: RestockRequest): boolean {
 //   more than ordered                → refused: the selling team edits the line first (accept-refuses-more-than-the-line-says)
 //   the courier's charge             → its own debt, outside the total, inside the unit price
 //                                       (the-couriers-charge-stays-out-of-total)
+//   a photo of the broken units      → optional, one per line — ⚠ picked, NOT KEPT yet (a-broken-product-carries-a-photo)
+//   where the broken units go        → thrown away, or onto a rack that is then required — ⚠ the rack is NOT KEPT yet
+//                                       (a-broken-product-may-go-on-a-rack)
+//   a photo of the courier's slip    → optional — ⚠ NOT KEPT yet (the-courier-slip-has-an-optional-photo)
 export function RestockAcceptPage() {
   const { current } = useTeam();
   const { requestId: rawId } = useParams();
@@ -78,6 +85,8 @@ export function RestockAcceptPage() {
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>({});
   const [charge, setCharge] = useState("");
   const [chargeNote, setChargeNote] = useState("");
+  // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — picked, not kept.
+  const [chargePhoto, setChargePhoto] = useState<File | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -142,6 +151,17 @@ export function RestockAcceptPage() {
       });
 
       toaster.create({ type: "success", title: t("restock.accept.toast.accepted") });
+      // WHAT WAS GIVEN AND NOT KEPT — the slip's photo, a broken photo, a rack for broken units — said in one toast, not
+      // swallowed (restock-accept/pending.ts).
+      const broken = lines.filter((l) => l.st.broken > 0n);
+      const notKept = [
+        chargePhoto && t("restock.accept.notKept.courierPhoto"),
+        broken.some((l) => l.draft.brokenPhoto) && t("restock.accept.notKept.brokenPhoto"),
+        broken.some((l) => l.draft.brokenTo === "rack") && t("restock.accept.notKept.brokenRack"),
+      ].filter(Boolean);
+      if (notKept.length > 0) {
+        toaster.create({ type: "warning", title: t("restock.accept.toast.notKept", { parts: notKept.join(", ") }) });
+      }
       navigate(`/inventories/restock/${request.id}`);
     } catch (err) {
       setSubmitError(rpcError(err));
@@ -322,6 +342,8 @@ export function RestockAcceptPage() {
         </Text>
       )}
 
+      {/* What is not kept yet — the broken units' photo (pending.ts). */}
+      <NotImplementedSummary list={RESTOCK_ACCEPT_PENDING} />
 
       <AcceptSummary request={request} courierCharge={courierCharge} />
 
@@ -334,6 +356,9 @@ export function RestockAcceptPage() {
         noteMissing={chargeNoteMissing}
         onAmount={setCharge}
         onNote={setChargeNote}
+        photo={chargePhoto}
+        onPhoto={setChargePhoto}
+        photoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="courierPhoto" />}
       />
 
       {lines.map(({ item, draft, landed, st }) => {
@@ -354,6 +379,8 @@ export function RestockAcceptPage() {
             hpp={landed}
             // Real placements only — a pile with no placement is not somewhere to put things.
             recommendations={places.filter((p) => p.productId === item.productId && p.rackId !== 0n)}
+            brokenPhotoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenPhoto" />}
+            brokenRackMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenRack" />}
             update={updater(item.id)}
           />
         );

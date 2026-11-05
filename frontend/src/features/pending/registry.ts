@@ -26,6 +26,12 @@ export type PendingKind = "dropped" | "sample" | "derived" | "missing";
 export interface PendingPart<Id extends string = string> {
   id: Id;
   kind: PendingKind;
+  /**
+   * The part does what the owner asked AGAINST A WRITTEN BUSINESS DECISION (owner: *"kalau bertentangan kamu kasih
+   * catatan di unimplemented"*, a-conflict-with-a-business-decision-is-said-in-its-mark). Its words are
+   * `<ns>.pending.<id>.conflict` — WHICH decision, said plainly, never its slug: the strip is read in the real app too.
+   */
+  conflict?: boolean;
 }
 
 /** Every screen's list is read through this, so the two components need nothing else. */

@@ -340,6 +340,117 @@ export const ProblemUnitsCarryTheLandedPrice: Story = {
   },
 };
 
+// A picture file the browser takes from a picker — the bytes do not matter, it is never sent.
+const PHOTO = () => new File([new Uint8Array([137, 80, 78, 71])], "rusak.png", { type: "image/png" });
+
+// A BROKEN LINE TAKES A PHOTO (owner: *"foto maksudku untuk produk rusak"*, a-broken-product-carries-a-photo) — under the
+// broken note, only once something is broken; optional, one per line, replaced or removed. Not kept yet: the page's mark
+// is beside it and its strip at the top.
+export const ABrokenLineTakesAPhoto: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const pid = COFFEE.productId;
+    const line = await lineOf(canvasElement, pid);
+
+    await count(canvasElement, pid, "12");
+    await expect(line.queryByTestId(`accept-broken-photo-${pid}`)).toBeNull();
+
+    await typeInto(line.getByTestId(`accept-broken-${pid}`), "1");
+    const photo = within(await line.findByTestId(`accept-broken-photo-${pid}`));
+    await expect(photo.getByTestId(`accept-broken-photo-${pid}-pick`)).toHaveTextContent("Add Photo");
+    // The page's second mark — the courier's slip, above the lines, is the first.
+    await expect(photo.getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("2");
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+
+    await userEvent.upload(photo.getByTestId(`accept-broken-photo-${pid}-input`), PHOTO());
+    await waitFor(() => expect(photo.getByTestId(`accept-broken-photo-${pid}-shown`)).toHaveTextContent("rusak.png"));
+    await expect(photo.getByTestId(`accept-broken-photo-${pid}-pick`)).toHaveTextContent("Replace Photo");
+
+    await userEvent.click(photo.getByTestId(`accept-broken-photo-${pid}-remove`));
+    await waitFor(() => expect(photo.queryByTestId(`accept-broken-photo-${pid}-shown`)).toBeNull());
+    await expect(photo.getByTestId(`accept-broken-photo-${pid}-pick`)).toHaveTextContent("Add Photo");
+  },
+};
+
+// BROKEN UNITS GO TWO WAYS (owner: *"ditaruh rak itu opsional, jadi ada 2 pilihan"*, a-broken-product-may-go-on-a-rack) —
+// thrown away, as before and by default, or onto a rack, which then must be chosen: Terima waits for it. Not kept yet: the
+// mark is on the rack choice, the page's third.
+export const BrokenUnitsCanGoOnARack: Story = {
+  play: async ({ canvasElement }) => {
+    const pid = COFFEE.productId;
+
+    await count(canvasElement, pid, "12", "1");
+    await place(canvasElement, pid, 0, A_01_1);
+    await countWhole(canvasElement, RICE.productId, A_01_2);
+
+    const line = await lineOf(canvasElement, pid);
+    const to = within(line.getByTestId(`accept-broken-to-${pid}`));
+    await expect(to.getByTestId(`accept-broken-to-discard-${pid}`)).toHaveAttribute("data-state", "checked");
+    await expect(to.queryByTestId(`accept-broken-place-${pid}`)).toBeNull();
+    await expectAccept(canvasElement, true);
+
+    await userEvent.click(to.getByTestId(`accept-broken-to-rack-${pid}`));
+    await expect(to.getByTestId("not-implemented-brokenRack")).toHaveTextContent("3");
+    await expect(await to.findByTestId(`accept-broken-place-error-${pid}`)).toBeVisible();
+    await expectAccept(canvasElement, false);
+
+    const field = within(to.getByTestId(`accept-broken-place-${pid}`));
+    await userEvent.click(field.getByTestId("rack-select"));
+    const option = await field.findByTestId(`rack-select-option-${B_02_1}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() => expect(to.queryByTestId(`accept-broken-place-error-${pid}`)).toBeNull());
+    await expectAccept(canvasElement, true);
+
+    // The choice goes against a business decision, and the page's strip says which
+    // (a-conflict-with-a-business-decision-is-said-in-its-mark).
+    await userEvent.click(within(canvasElement).getByTestId("not-implemented-toggle"));
+    const conflict = await within(canvasElement).findByTestId("pending-row-brokenRack-conflict");
+    await waitFor(() => expect(conflict).toBeVisible());
+    await expect(conflict).toHaveTextContent("a broken unit is thrown away");
+  },
+};
+
+// A PHOTO OF THE COURIER'S SLIP (owner: *"kurasa masuk akal kalau opsional"*, the-courier-slip-has-an-optional-photo) —
+// under the charge's amount and note, optional, the page's first mark.
+export const TheCouriersSlipTakesAPhoto: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const slip = within(canvas.getByTestId("accept-courier-photo"));
+
+    await expect(slip.getByTestId("not-implemented-courierPhoto")).toHaveTextContent("1");
+    await userEvent.upload(slip.getByTestId("accept-courier-photo-input"), PHOTO());
+    await waitFor(() => expect(slip.getByTestId("accept-courier-photo-shown")).toHaveTextContent("rusak.png"));
+  },
+};
+
+// …and Terima says, after it lands, everything given that was not kept — in one toast, never a silent loss.
+export const AcceptingSaysWhatWasNotKept: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const pid = COFFEE.productId;
+
+    await userEvent.upload(within(canvas.getByTestId("accept-courier-photo")).getByTestId("accept-courier-photo-input"), PHOTO());
+    await count(canvasElement, pid, "12", "1");
+    const line = await lineOf(canvasElement, pid);
+    await userEvent.upload(await line.findByTestId(`accept-broken-photo-${pid}-input`), PHOTO());
+    await line.findByTestId(`accept-broken-photo-${pid}-shown`);
+    await place(canvasElement, pid, 0, A_01_1);
+    await countWhole(canvasElement, RICE.productId, A_01_2);
+
+    await userEvent.click(await acceptControl(canvasElement));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await userEvent.click(confirm);
+
+    await expect(await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 })).toBeInTheDocument();
+    await expect(
+      await screen.findByText("Not kept: the courier's slip photo, the broken products' photo."),
+    ).toBeInTheDocument();
+  },
+};
+
 /**
  * Accepting sends the count and lands on the restock. The stub keeps what the handler would: received 12 with 1
  * broken on coffee, the rice 1 short (missing, worked out), the charge and its note.

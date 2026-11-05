@@ -1445,12 +1445,14 @@
     "searchPlaceholder": "Search restock, tracking, order or SKU",
     "warehouseAll": "All warehouses",
     "stat": {
+      "codPaid": "COD paid",
+      "codPaidLine_one": "this month · {{count}} restock",
+      "codPaidLine_other": "this month · {{count}} restocks",
+      "codPaidNote": "owed back by the selling teams",
       "inboundProducts": "Products waiting",
       "inboundProductsHint": "different items to shelve",
       "inboundUnits": "Pieces waiting",
       "inboundUnitsHint": "to count at the door",
-      "inboundAmount": "Queue value",
-      "inboundAmountHint": "goods not yet counted in",
       "oldestPending": "Oldest waiting",
       "oldestDays_one": "{{count}} day",
       "oldestDays_other": "{{count}} days",
@@ -1465,9 +1467,21 @@
       "lost": "Lost"
     },
     "inbound": {
+      "pending": {
+        "cod": {
+          "label": "COD paid",
+          "reason": "Nothing sums the courier's charge this warehouse paid yet — the figure is a sample."
+        },
+        "arrivalCod": {
+          "label": "Courier's charge at Mark Arrived",
+          "reason": "The charge, its note and the slip's photo typed in the Mark Arrived dialog are not kept — marking arrived takes none of them yet. Enter them again at Accept.",
+          "conflict": "the courier's charge is entered at accept."
+        }
+      },
       "title": "Incoming Restocks",
       "subtitle": "Deliveries on their way to this warehouse — sign for a box when it arrives, accept it to count it onto the shelves.",
       "empty": "Nothing is coming in to this warehouse yet.",
+      "emptyHint": "A restock shows here when a selling team sends goods to this warehouse.",
       "fromAll": "From any team",
       "actorCreated": "Raised by",
       "actorAccepted": "Counted by",
@@ -1541,6 +1555,15 @@
         "lateNote": {
           "label": "Editing the note later",
           "reason": "Once the restock has arrived the server keeps its note closed — an edit then is not saved."
+        },
+        "arrivalCod": {
+          "label": "Courier's charge at Mark Arrived",
+          "reason": "The charge, its note and the slip's photo typed in the Mark Arrived dialog are not kept — marking arrived takes none of them yet. Enter them again at Accept.",
+          "conflict": "the courier's charge is entered at accept."
+        },
+        "brokenPhoto": {
+          "label": "Broken product photo",
+          "reason": "A sample — no photo is kept yet, so every broken line shows the same drawing."
         }
       },
       "navLabel": "Restock sections",
@@ -1553,7 +1576,13 @@
       "adjustmentOpen": "Adjustment of {{name}}",
       "asOrdered": "As ordered",
       "goodShort": "Good {{count}}",
-      "notCounted": "Not counted yet"
+      "notCounted": "Not counted yet",
+      "brokenPhoto": {
+        "title": "Broken Products Photo",
+        "caption": "Photo of the broken products",
+        "alt": "Photo of the broken {{name}}",
+        "open": "Open the photo of the broken {{name}}"
+      }
     },
     "timeline": {
       "created": "Restock raised",
@@ -1594,6 +1623,7 @@
       "shipment": "Shipment",
       "receipt": "Receipt",
       "accepted": "Accepted",
+      "arrived": "Arrived",
       "reference": "Reference",
       "by": "by {{name}}",
       "userRef": "User #{{id}}",
@@ -1686,14 +1716,32 @@
         "courierNote": "The courier's charge at the door is not part of this total — the warehouse enters it when it accepts the box."
       },
       "missing": {
-        "warehouse": "warehouse",
-        "account": "paying account",
         "lines": "products",
+        "supplier": "a supplier on every product",
         "count": "a count on every product",
         "total": "a total on every product",
         "newLineNote": "a note on each added product",
-        "supplier": "a supplier on every product",
-        "receipt": "tracking number"
+        "warehouse": "warehouse",
+        "account": "paying account",
+        "invoiceRefTaken": "an Order ID no other restock has",
+        "invoiceRefChecking": "Order ID (checking)",
+        "courier": "courier",
+        "receipt": "tracking number",
+        "receiptTaken": "a tracking number no other restock has",
+        "receiptChecking": "tracking number (checking)"
+      },
+      "invoiceRefTaken": "This Order ID is already on restock #{{id}}",
+      "receiptTaken": "This tracking number is already on restock #{{id}}",
+      "refCheckFailed": "Could not check whether another restock has it.",
+      "pending": {
+        "invoiceRefCheck": {
+          "label": "Order ID check",
+          "reason": "Checked on this screen only. The server does not refuse a repeated Order ID yet, so two saves at the same moment both pass."
+        },
+        "receiptCheck": {
+          "label": "Tracking number check",
+          "reason": "Checked on this screen, over this team's restocks only — a tracking number on another team's restock is not caught, and the server does not refuse a repeated one yet."
+        }
       }
     },
     "cancel": {
@@ -1790,7 +1838,8 @@
       },
       "toast": {
         "accepted": "Delivery accepted",
-        "failed": "Could not accept the delivery"
+        "failed": "Could not accept the delivery",
+        "notKept": "Not kept: {{parts}}."
       },
       "actions": "Actions",
       "notAcceptable": {
@@ -1829,7 +1878,38 @@
         "amount": "Amount",
         "note": "What it was for",
         "notePlaceholder": "e.g. COD handling fee",
-        "noteRequired": "Say what the courier's charge was for."
+        "noteRequired": "Say what the courier's charge was for.",
+        "photo": "Courier's slip photo",
+        "photoAlt": "Photo of the courier's slip"
+      },
+      "brokenPhoto": {
+        "alt": "Photo of the broken products"
+      },
+      "pending": {
+        "brokenPhoto": {
+          "label": "Broken product photo",
+          "reason": "Picked on this screen and not uploaded — accepting keeps no photo yet."
+        },
+        "courierPhoto": {
+          "label": "Courier's slip photo",
+          "reason": "Picked on this screen and not uploaded — accepting keeps the charge and its note, not the photo."
+        },
+        "brokenRack": {
+          "label": "Broken products' rack",
+          "reason": "Put on a rack is not kept — the broken units are still recorded as thrown away.",
+          "conflict": "a broken unit is thrown away — no rack holds it."
+        }
+      },
+      "brokenTo": {
+        "label": "Broken units",
+        "discard": "Thrown away",
+        "rack": "Put on a rack",
+        "rackRequired": "Pick a rack for the broken units."
+      },
+      "notKept": {
+        "courierPhoto": "the courier's slip photo",
+        "brokenPhoto": "the broken products' photo",
+        "brokenRack": "the broken products' rack"
       }
     },
     "createdByAll": "Anyone who raised it",
@@ -1872,18 +1952,20 @@
       "menu": "Restock actions",
       "sign": {
         "title": "Sign for Restock #{{id}}",
-        "message": "Confirm the courier has handed this box over. The restock moves to Arrived — the selling team can still correct its lines until you accept it.",
+        "message": "Confirm the courier has handed this box over. The restock moves to Arrived — stock does not go up until you accept it, and the selling team can still correct its lines until then.",
         "messageLost": "This restock was marked lost, and the box has turned up after all. Signing for it moves it to Arrived, and you accept it as usual.",
         "dismiss": "Not Yet",
         "tracking": "Tracking number on the label: {{receipt}}",
-        "noTracking": "No tracking number was given — check the box against its lines."
+        "noTracking": "No tracking number was given — check the box against its lines.",
+        "courierHint": "If the courier asked for something when handing the box over. Optional — it can still be entered or changed at Accept."
       },
       "toast": {
         "cancelled": "Restock cancelled",
         "cancelFailed": "Cancel failed",
         "lost": "Restock marked lost",
         "lostFailed": "Mark lost failed",
-        "arrived": "Signed for — the restock has arrived",
+        "arrived": "Restock marked as arrived",
+        "arrivedCodNotKept": "What was entered for the courier's charge was not kept — enter it again at Accept.",
         "arriveFailed": "Sign for box failed"
       },
       "notes": "Notes"
@@ -1906,6 +1988,11 @@
       "saved": "Notes saved",
       "saveFailed": "Couldn't save the notes",
       "notStored": "Not saved — once the restock has arrived the server does not take a note change yet."
+    },
+    "photo": {
+      "add": "Add Photo",
+      "replace": "Replace Photo",
+      "remove": "Remove photo"
     }
   },
   "shops": {
@@ -4152,7 +4239,8 @@
       "sample": "· sample figures",
       "derived": "· rule not settled",
       "missing": "· not in the total"
-    }
+    },
+    "conflict": "Against a business decision:"
   },
   "orderForm": {
     "pending": {

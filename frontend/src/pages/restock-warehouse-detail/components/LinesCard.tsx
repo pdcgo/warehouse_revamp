@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, HStack, Span, Stack, Table, Text } from "@chakra-ui/react";
 
@@ -14,6 +15,8 @@ import {
   problemValue,
 } from "../../../features/restock/summary";
 import { LineSupplier, useLineSuppliers } from "../../../features/restock/LineSupplier";
+import { BrokenPhotoView } from "../../../features/restock/BrokenPhotoView";
+import { brokenPhotoSample } from "../../../features/restock/brokenPhotoSample";
 import { formatRupiahNumber } from "../../../lib/money";
 
 // THE LINES, AS THE WAREHOUSE COUNTED THEM — what was ordered, where it was bought, what the box held, and WHERE the good
@@ -27,7 +30,19 @@ import { formatRupiahNumber } from "../../../lib/money";
 // PLACEMENT is this page's own column: counting and shelving are one act, and every good unit is on a placement
 // (there-is-no-unplaced-pile) — shown by its CODE, which is what is painted on the aisle. It appears once accepted;
 // before then nothing has been put anywhere, and an em dash would invite the crew to wonder which shelf they forgot.
-export function LinesCard({ request, teamId }: { request: RestockRequest; teamId: bigint }) {
+//
+// THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — a thumbnail beside the broken count, opening it whole.
+// ⚠ A SAMPLE (brokenPhotoSample.ts): nothing stores one yet.
+export function LinesCard({
+  request,
+  teamId,
+  brokenPhotoMark,
+}: {
+  request: RestockRequest;
+  teamId: bigint;
+  /** The page's mark on the broken photo — a sample until the received line carries one. */
+  brokenPhotoMark?: ReactNode;
+}) {
   const { t } = useTranslation();
 
   const counted = request.status === RestockRequestStatus.ACCEPTED;
@@ -122,7 +137,12 @@ export function LinesCard({ request, teamId }: { request: RestockRequest; teamId
                       testId={`restock-detail-received-${item.productId}`}
                     />
                     <CountCell counted={counted} value={goodQuantity(item)} testId={`restock-detail-good-${item.productId}`} />
-                    <ProblemCell item={item} type={RestockProblemType.BROKEN} testId={`restock-detail-broken-${item.productId}`} />
+                    <ProblemCell
+                      item={item}
+                      type={RestockProblemType.BROKEN}
+                      photoMark={brokenPhotoMark}
+                      testId={`restock-detail-broken-${item.productId}`}
+                    />
                     <ProblemCell item={item} type={RestockProblemType.MISSING} testId={`restock-detail-missing-${item.productId}`} />
                     {counted && (
                       <Table.Cell data-testid={`restock-detail-placement-${item.productId}`}>
@@ -165,10 +185,22 @@ function CountCell({ counted, value, bold, testId }: { counted: boolean; value: 
   );
 }
 
-// How many, what they were worth (system-filled), and this warehouse's note. A zero is an em dash.
-function ProblemCell({ item, type, testId }: { item: RestockRequestItem; type: RestockProblemType; testId: string }) {
+// How many, what they were worth (system-filled), and this warehouse's note. A zero is an em dash. A broken row's photo
+// sits beside its count, so the cell grows no line.
+function ProblemCell({
+  item,
+  type,
+  photoMark,
+  testId,
+}: {
+  item: RestockRequestItem;
+  type: RestockProblemType;
+  photoMark?: ReactNode;
+  testId: string;
+}) {
   const { t } = useTranslation();
   const count = type === RestockProblemType.BROKEN ? brokenQuantity(item) : missingQuantity(item);
+  const photo = type === RestockProblemType.BROKEN ? brokenPhotoSample(item) : "";
 
   if (count === 0n) {
     return (
@@ -183,9 +215,20 @@ function ProblemCell({ item, type, testId }: { item: RestockRequestItem; type: R
   return (
     <Table.Cell textAlign="end" data-testid={testId}>
       <Stack gap="0" align="end">
-        <Text as="span" fontWeight="semibold" color="error.fg" data-testid={`${testId}-count`}>
-          {count.toString()}
-        </Text>
+        <HStack gap="2" justify="end">
+          {photo && (
+            <BrokenPhotoView
+              url={photo}
+              name={item.name}
+              variant="thumb"
+              mark={photoMark}
+              testId={`restock-detail-broken-photo-${item.productId}`}
+            />
+          )}
+          <Text as="span" fontWeight="semibold" color="error.fg" data-testid={`${testId}-count`}>
+            {count.toString()}
+          </Text>
+        </HStack>
         <Text fontSize="xs" color="fg.muted" data-testid={`${testId}-value`}>
           {t("restock.detail.problemWorth", { amount: formatRupiahNumber(problemValue(item, type)) })}
         </Text>

@@ -669,7 +669,8 @@ export function useProductSearch(args: {
   return useQuery({
     queryKey: key.products(teamId, { search: q, scope }),
     ...referenceQuery,
-    enabled: q.length >= 2 && teamId > 0n,
+    // Nothing typed is a browse of the first page (a-search-select-reopens-whole); one character waits for a second.
+    enabled: (q === "" || q.length >= 2) && teamId > 0n,
     queryFn: async () => {
       const req = {
         teamId,

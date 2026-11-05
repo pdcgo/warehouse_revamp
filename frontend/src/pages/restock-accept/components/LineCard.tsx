@@ -11,8 +11,11 @@ import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { LineSupplier } from "../../../features/restock/LineSupplier";
 import type { SupplierRecord } from "../../../features/suppliers/adapt";
 import { formatRupiahNumber } from "../../../lib/money";
-import type { LineDraft, LineState } from "../draft";
+import { RadioPills } from "../../../components/inputs/RadioPills";
+import { PhotoPick } from "../../../features/restock/PhotoPick";
+import type { BrokenTo, LineDraft, LineState } from "../draft";
 import { PlacementPanel } from "./PlacementPanel";
+import { PlacementSelect } from "./PlacementSelect";
 
 // ONE LINE OF THE BOX, in three columns (owner): WHAT IT IS · WHAT ARRIVED · WHERE IT GOES — the three questions asked at
 // the door, side by side, so a long delivery is scanned down one column at a time. They stack below `xl`: a count, a
@@ -34,6 +37,8 @@ export function LineCard({
   goodsPrice,
   hpp,
   recommendations,
+  brokenPhotoMark,
+  brokenRackMark,
   update,
 }: {
   item: RestockRequestItem;
@@ -47,6 +52,10 @@ export function LineCard({
   goodsPrice: number;
   hpp: number;
   recommendations: ProductPlace[];
+  /** The page's mark on the broken photo — picked and not kept yet. */
+  brokenPhotoMark?: ReactNode;
+  /** The page's mark on "put on a rack" — chosen and not kept yet. */
+  brokenRackMark?: ReactNode;
   update: (fn: (d: LineDraft) => LineDraft) => void;
 }) {
   const { t } = useTranslation();
@@ -203,12 +212,60 @@ export function LineCard({
                   worthTestId={`accept-broken-value-${pid}`}
                 />
                 {st.broken > 0n && !st.brokenOver && (
-                  <ProblemNote
-                    value={draft.brokenNote}
-                    placeholder={t("restock.accept.brokenNote")}
-                    testId={`accept-broken-note-${pid}`}
-                    onChange={(brokenNote) => update((d) => ({ ...d, brokenNote }))}
-                  />
+                  <>
+                    <ProblemNote
+                      value={draft.brokenNote}
+                      placeholder={t("restock.accept.brokenNote")}
+                      testId={`accept-broken-note-${pid}`}
+                      onChange={(brokenNote) => update((d) => ({ ...d, brokenNote }))}
+                    />
+                    {/* What the broken units look like (a-broken-product-carries-a-photo) — under its note, both optional. */}
+                    <PhotoPick
+                      file={draft.brokenPhoto}
+                      onChange={(brokenPhoto) => update((d) => ({ ...d, brokenPhoto }))}
+                      alt={t("restock.accept.brokenPhoto.alt")}
+                      mark={brokenPhotoMark}
+                      testId={`accept-broken-photo-${pid}`}
+                    />
+                    {/* WHERE THEY GO (owner: *"ditaruh rak itu opsional, jadi ada 2 pilihan"*,
+                        a-broken-product-may-go-on-a-rack) — thrown away, as before, or onto a rack, which then needs one. */}
+                    <Stack gap="1.5" data-testid={`accept-broken-to-${pid}`}>
+                      <Text fontSize="xs" fontWeight="bold" color="fg.label">
+                        {t("restock.accept.brokenTo.label")}
+                      </Text>
+                      <RadioPills<BrokenTo>
+                        value={draft.brokenTo}
+                        onChange={(brokenTo) => update((d) => ({ ...d, brokenTo }))}
+                        ariaLabel={t("restock.accept.brokenTo.label")}
+                        options={[
+                          {
+                            value: "discard",
+                            label: t("restock.accept.brokenTo.discard"),
+                            testId: `accept-broken-to-discard-${pid}`,
+                          },
+                          {
+                            value: "rack",
+                            label: t("restock.accept.brokenTo.rack"),
+                            mark: brokenRackMark,
+                            testId: `accept-broken-to-rack-${pid}`,
+                          },
+                        ]}
+                      />
+                      {draft.brokenTo === "rack" && (
+                        <PlacementSelect
+                          warehouseId={warehouseId}
+                          value={draft.brokenPlace}
+                          testId={`accept-broken-place-${pid}`}
+                          onChange={(brokenPlace) => update((d) => ({ ...d, brokenPlace }))}
+                        />
+                      )}
+                      {st.brokenNeedsPlace && (
+                        <ErrorLine testId={`accept-broken-place-error-${pid}`}>
+                          {t("restock.accept.brokenTo.rackRequired")}
+                        </ErrorLine>
+                      )}
+                    </Stack>
+                  </>
                 )}
 
                 <Outcome

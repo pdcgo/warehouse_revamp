@@ -31,7 +31,15 @@ import { cameFrom } from "../../lib/cameFrom";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
-import { useRestockRequest, useSaveRestockRequest } from "../../features/restock/queries";
+import {
+  type RefCheck,
+  type RestockRef,
+  useRestockRefInUse,
+  useRestockRequest,
+  useSaveRestockRequest,
+} from "../../features/restock/queries";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useLineSuppliers } from "../../features/restock/LineSupplier";
 import { toRupiah } from "../../features/restock/counting";
 import { TeamSelect } from "../../components/teams/TeamSelect";
@@ -61,6 +69,7 @@ import {
 import { LineCard } from "./components/LineCard";
 import { SummaryCard } from "./components/SummaryCard";
 import { SupplierBox } from "./components/SupplierBox";
+import { RESTOCK_FORM_PENDING } from "./pending";
 
 // The same defensive parse the detail page makes: a route param is a string from the URL bar, so a non-numeric one is
 // a legitimate thing to land on, not a crash. 0n means "not a usable id".
@@ -110,6 +119,37 @@ function Count({ value, max, testId }: { value: string; max: number; testId: str
   );
 }
 
+/**
+ * What the check found, under the field (a-reference-in-use-stops-the-restock-form): in DANGER when another restock
+ * holds the value — its number and its status, so it can be found — and a quiet warning when the check could not run.
+ * Nothing while it is free or still being asked: the line by Buat says "checking", and a field that flickers under each
+ * keystroke is noise.
+ */
+function RefCheckLine({ check, refName, testId }: { check: RefCheck; refName: RestockRef; testId: string }) {
+  const { t } = useTranslation();
+
+  if (check.state === "taken") {
+    return (
+      <Field.ErrorText data-testid={`${testId}-taken`}>
+        <HStack gap="1.5" wrap="wrap">
+          <Text>{t(`restock.form.${refName}Taken`, { id: check.id.toString() })}</Text>
+          <RestockStatusBadge status={check.status} />
+        </HStack>
+      </Field.ErrorText>
+    );
+  }
+
+  if (check.state === "failed") {
+    return (
+      <Text fontSize="xs" color="warning.fg" data-testid={`${testId}-failed`}>
+        {t("restock.form.refCheckFailed")}
+      </Text>
+    );
+  }
+
+  return null;
+}
+
 function CardTitle({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
     <Flex align="center" gap="card" wrap="wrap">
@@ -148,6 +188,10 @@ function CardTitle({ children, aside }: { children: ReactNode; aside?: ReactNode
 // reference is the Order ID; every typed field shows an example, and a limited one its count; Buat carries a plus and
 // Simpan a disk; the lines are rows of the Produk card, not cards inside it; no lines is an EmptyHint with the picker;
 // the warehouse is its name alone; the first load is the page's shape, and the page rises in.
+//
+// THE COURIER IS REQUIRED (the-courier-is-required-on-the-form), and a RESI OR ORDER ID ALREADY ON ANOTHER RESTOCK is in
+// danger under its field and holds Buat back (a-reference-in-use-stops-the-restock-form) — checked over this team's
+// restocks only, which the two pending marks say.
 export function RestockFormPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
@@ -264,6 +308,13 @@ export function RestockFormPage() {
 
   const mode: FormMode | null = !isEdit ? "create" : loaded && teamId !== undefined ? modeFor(loaded, teamId) : null;
   const headerLocked = mode === "arrived";
+
+  // IS THE RESI, OR THE ORDER ID, ON ANOTHER RESTOCK? (a-reference-in-use-stops-the-restock-form) — asked while the
+  // parcel is open; an arrived restock's are closed and were checked when they were typed.
+  const checksOpen = mode === "create" || mode === "ongoing";
+  const invoiceRefCheck = useRestockRefInUse({ teamId, ref: "invoiceRef", value: invoiceRef, exceptId: id, enabled: checksOpen });
+  const receiptCheck = useRestockRefInUse({ teamId, ref: "receipt", value: receipt, exceptId: id, enabled: checksOpen });
+
   // How many columns the width holds — read on the first render (`ssr: false`), so a wide screen never paints one
   // column first and then jumps.
   const columns = useBreakpointValue({ base: "one", lg: "two", "2xl": "three" }, { ssr: false }) ?? "one";
@@ -342,7 +393,18 @@ export function RestockFormPage() {
   const pickedIds = useMemo(() => lines.map((l) => l.productId), [lines]);
 
   // ── Save ─────────────────────────────────────────────────────────────────────────────────────
-  const missing = mode ? missingParts({ mode, warehouseId, financeAccountId, receipt, lines }) : [];
+  const missing = mode
+    ? missingParts({
+        mode,
+        warehouseId,
+        financeAccountId,
+        shipmentId,
+        receipt,
+        invoiceRefCheck: invoiceRefCheck.state,
+        receiptCheck: receiptCheck.state,
+        lines,
+      })
+    : [];
   const canSave = mode !== null && mode !== "closed" && missing.length === 0;
 
   async function save(event: FormEvent) {
@@ -655,8 +717,15 @@ export function RestockFormPage() {
 
           {/* THE ORDER ID (the-store-reference-is-the-order-id) — what the store calls it, as the list and the
               restock page do; "invoice" is not the word here. */}
-          <Field.Root disabled={headerLocked}>
-            <Field.Label>{t("restock.form.invoiceRef")}</Field.Label>
+          {/* Optional — but never one another restock holds: that is in DANGER under the field and holds Buat back
+              (a-reference-in-use-stops-the-restock-form). */}
+          <Field.Root disabled={headerLocked} invalid={invoiceRefCheck.state === "taken"}>
+            <Field.Label>
+              <HStack gap="1">
+                {t("restock.form.invoiceRef")}
+                <NotImplemented list={RESTOCK_FORM_PENDING} id="invoiceRefCheck" />
+              </HStack>
+            </Field.Label>
             <Input
               value={invoiceRef}
               maxLength={MAX_ORDER_ID}
@@ -664,16 +733,19 @@ export function RestockFormPage() {
               data-testid="restock-invoice-ref"
               onChange={(e) => setInvoiceRef(e.target.value)}
             />
+            <RefCheckLine check={invoiceRefCheck} refName="invoiceRef" testId="restock-invoice-ref-check" />
             <Flex w="full" gap="card" justify="space-between" align="start">
               <Field.HelperText>{t("restock.form.invoiceRefHelp")}</Field.HelperText>
               <Count value={invoiceRef} max={MAX_ORDER_ID} testId="restock-invoice-ref-count" />
             </Flex>
           </Field.Root>
 
-          <Field.Root disabled={headerLocked}>
+          {/* REQUIRED on this form (the-courier-is-required-on-the-form) — the resi under it means nothing without it. */}
+          <Field.Root required disabled={headerLocked}>
             <Field.Label>
               <HStack gap="1">
                 {t("restock.form.courier")}
+                <Field.RequiredIndicator />
               </HStack>
             </Field.Label>
             <Box w="full" data-testid="restock-courier">
@@ -682,11 +754,15 @@ export function RestockFormPage() {
             <Field.HelperText>{t("restock.form.courierHelp")}</Field.HelperText>
           </Field.Root>
 
-          {/* REQUIRED on this form (the-checks-run-products-warehouse-account-resi) — the last thing it checks. */}
-          <Field.Root required disabled={headerLocked}>
+          {/* REQUIRED on this form (the-checks-run-products-warehouse-account-resi) — the last thing it checks, and never
+              one another restock holds (a-reference-in-use-stops-the-restock-form). */}
+          <Field.Root required disabled={headerLocked} invalid={receiptCheck.state === "taken"}>
             <Field.Label>
-              {t("restock.form.trackingNumber")}
-              <Field.RequiredIndicator />
+              <HStack gap="1">
+                {t("restock.form.trackingNumber")}
+                <Field.RequiredIndicator />
+                <NotImplemented list={RESTOCK_FORM_PENDING} id="receiptCheck" />
+              </HStack>
             </Field.Label>
             <Input
               value={receipt}
@@ -695,6 +771,7 @@ export function RestockFormPage() {
               data-testid="restock-receipt"
               onChange={(e) => setReceipt(e.target.value)}
             />
+            <RefCheckLine check={receiptCheck} refName="receipt" testId="restock-receipt-check" />
             <Flex w="full" gap="card" justify="space-between" align="start">
               <Field.HelperText>{t("restock.form.trackingNumberHelp")}</Field.HelperText>
               <Count value={receipt} max={MAX_RECEIPT} testId="restock-receipt-count" />
@@ -841,6 +918,9 @@ export function RestockFormPage() {
     // product form does (owner: *"halaman tidak penuh"*).
     <Stack gap="section" animationStyle="enter" data-testid={isEdit ? "restock-edit-page" : "restock-create-page"}>
       {header}
+
+      {/* What is not finished — the reference checks see this team's restocks only (pending.ts). */}
+      <NotImplementedSummary list={RESTOCK_FORM_PENDING} />
 
       {headerLocked && (
         <Alert.Root status="info" data-testid="restock-arrived-banner">

@@ -134,6 +134,20 @@ async function pickAccount(canvas: Canvas, accountId: bigint) {
   await userEvent.click(option);
 }
 
+/** ShipmentChannelSelect portals — its options are on `screen`. */
+async function pickCourier(canvas: Canvas, code: string) {
+  await userEvent.click(within(canvas.getByTestId("restock-courier")).getByRole("combobox"));
+  const option = await screen.findByTestId(`shipment-channel-option-${code}`, {}, { timeout: 4000 });
+  await waitFor(() => expect(option).toBeVisible());
+  await userEvent.click(option);
+}
+
+/** Clear a field and type into it, at a speed a controlled input keeps up with. */
+async function retype(el: HTMLElement, text: string) {
+  await userEvent.clear(el);
+  await userEvent.type(el, text, { delay: 20 });
+}
+
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
 /** A new restock, as the selling team's owner. */
@@ -195,7 +209,8 @@ export const NotTheRaisingTeam: Story = {
 // THE CHECKS RUN IN THE FORM'S ORDER (owner: *"untuk urutan validasi restocknya mulai dari produk, gudang, rekening,
 // resi"*, *"di produk perlu cek semuanya punya supplier dulu"*, the-checks-run-products-warehouse-account-resi) — the line
 // by Buat Restok names one thing at a time: the products, a supplier and a total on every one, the warehouse, the paying account
-// (a-restock-names-its-paying-account), the resi; then the ready mark, and Buat Restok saves.
+// (a-restock-names-its-paying-account), the courier (the-courier-is-required-on-the-form), the resi — and while the resi
+// is being checked, that it is (a-reference-in-use-stops-the-restock-form); then the ready mark, and Buat Restok saves.
 export const TheChecksRunProductsWarehouseAccountResi: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, "restock-create-page");
@@ -220,12 +235,20 @@ export const TheChecksRunProductsWarehouseAccountResi: Story = {
     await expect(button).toBeDisabled();
 
     await pickAccount(canvas, BCA_OPS);
+    await first("courier");
+    await expect(button).toBeDisabled();
+
+    await pickCourier(canvas, "jne");
     await first("receipt");
     await expect(button).toBeDisabled();
 
-    await userEvent.type(canvas.getByTestId("restock-receipt"), "JNE0123456789", { delay: 20 });
+    // A resi no restock holds — asked first, so Buat waits for the answer.
+    await userEvent.type(canvas.getByTestId("restock-receipt"), "JNE7000000001", { delay: 20 });
+    await first("receiptChecking");
+    await expect(button).toBeDisabled();
 
-    await waitFor(() => expect(canvas.queryByTestId("restock-form-missing")).toBeNull());
+    await waitFor(() => expect(canvas.queryByTestId("restock-form-missing")).toBeNull(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("restock-receipt-check-taken")).toBeNull();
     // Everything in: the ready mark (a-save-button-says-what-it-waits-for).
     await expect(canvas.getByTestId("restock-form-ready")).toHaveTextContent("Ready to create");
     await expect(canvas.getByTestId("submit-restock")).toBeEnabled();
@@ -436,15 +459,105 @@ export const AnAcceptedRestockIsNotEditable: Story = {
   },
 };
 
-// EVERY FIELD IS STORED (00024, restock stage 1–3): the form carries no "not implemented" mark and no strip. A mark
-// that comes back is a field that stopped being kept — this fails the day it does.
-export const NothingIsMarkedNotImplemented: Story = {
+// ONLY THE REFERENCE CHECKS ARE MARKED: every field is stored (00024, restock stage 1–3) and carries no mark; the two
+// checks see this team's restocks only, and nothing behind them refuses (a-reference-in-use-stops-the-restock-form). A
+// third mark is a field that stopped being kept — this fails the day one comes back.
+export const OnlyTheReferenceChecksAreMarked: Story = {
   render: () => <EditOngoing />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, "restock-edit-page");
 
-    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
-    await expect(canvas.queryAllByTestId(/^not-implemented-/)).toHaveLength(0);
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await expect(canvas.getByTestId("not-implemented-invoiceRefCheck")).toHaveTextContent("1");
+    await expect(canvas.getByTestId("not-implemented-receiptCheck")).toHaveTextContent("2");
+    await expect(canvas.queryAllByTestId(/^not-implemented-(?!summary$|toggle$)/)).toHaveLength(2);
+  },
+};
+
+// ── A resi or an Order ID already on another restock (a-reference-in-use-stops-the-restock-form) ─────────────────────
+
+// IN DANGER UNDER THE FIELD, AND SIMPAN WAITS (owner: *"ada checker … untuk cek resi dan order id -> danger langsung di
+// formnya"*, *"hasil checkernya jadi validasi juga"*) — 502's resi typed into 501, in lower case: the same parcel. Its
+// number and status show in red under the field, and the line by Simpan names it. A resi nobody holds frees it again.
+export const AResiInUseIsDangerAndStopsSave: Story = {
+  render: () => <EditOngoing />,
+  beforeEach: ongoingFromOneSupplier,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+    const button = canvas.getByTestId("submit-restock");
+    const receipt = canvas.getByTestId("restock-receipt");
+
+    await waitFor(() => expect(button).toBeEnabled(), { timeout: 4000 });
+
+    await retype(receipt, ARRIVED.receipt.toLowerCase());
+    const taken = await canvas.findByTestId("restock-receipt-check-taken", {}, { timeout: 4000 });
+    await expect(taken).toHaveTextContent(`#${ARRIVED.id}`);
+    await expect(within(taken).getByTestId(`restock-status-${RestockRequestStatus.ARRIVED}`)).toBeVisible();
+    await expect(receipt).toHaveAttribute("aria-invalid", "true");
+    await expect(canvas.getByTestId("restock-form-missing-receiptTaken")).toBeVisible();
+    await expect(button).toBeDisabled();
+
+    await retype(receipt, "JNE7000000001");
+    await waitFor(() => expect(canvas.queryByTestId("restock-receipt-check-taken")).toBeNull(), { timeout: 4000 });
+    await waitFor(() => expect(button).toBeEnabled(), { timeout: 4000 });
+  },
+};
+
+// …and an Order ID the same way — 503's, whose restock was accepted: every status but cancelled holds it.
+export const AnOrderIdInUseIsDangerToo: Story = {
+  render: () => <EditOngoing />,
+  beforeEach: ongoingFromOneSupplier,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+    const button = canvas.getByTestId("submit-restock");
+
+    await waitFor(() => expect(button).toBeEnabled(), { timeout: 4000 });
+
+    await retype(canvas.getByTestId("restock-invoice-ref"), ACCEPTED.invoiceRefId);
+    const taken = await canvas.findByTestId("restock-invoice-ref-check-taken", {}, { timeout: 4000 });
+    await expect(taken).toHaveTextContent(`#${ACCEPTED.id}`);
+    await expect(within(taken).getByTestId(`restock-status-${RestockRequestStatus.ACCEPTED}`)).toBeVisible();
+    await expect(canvas.getByTestId("restock-form-missing-invoiceRefTaken")).toBeVisible();
+    await expect(button).toBeDisabled();
+  },
+};
+
+// NOT A DUPLICATE: the restock being edited does not hold its own resi and Order ID, and a CANCELLED restock holds
+// nothing — 505's Order ID is free again. Simpan waits for the answer, then saves.
+export const ACancelledRestockHoldsNothing: Story = {
+  render: () => <EditOngoing />,
+  beforeEach: ongoingFromOneSupplier,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+
+    await waitFor(() => expect(canvas.getByTestId("restock-form-ready")).toBeVisible(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("restock-receipt-check-taken")).toBeNull();
+    await expect(canvas.queryByTestId("restock-invoice-ref-check-taken")).toBeNull();
+
+    await retype(canvas.getByTestId("restock-invoice-ref"), restockFixture(505n).invoiceRefId);
+    await canvas.findByTestId("restock-form-missing-invoiceRefChecking");
+    await expect(canvas.getByTestId("submit-restock")).toBeDisabled();
+
+    await waitFor(() => expect(canvas.getByTestId("restock-form-ready")).toBeVisible(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("restock-invoice-ref-check-taken")).toBeNull();
+    await expect(canvas.getByTestId("submit-restock")).toBeEnabled();
+  },
+};
+
+// THE GAP THE MARK NAMES: 506 is Toko Kenanga's (team 13), and a selling team cannot list another team's restocks — so
+// its resi passes here. The day the server checks every team, this story fails and the mark comes off.
+export const AnotherTeamsResiIsNotCaughtYet: Story = {
+  render: () => <EditOngoing />,
+  beforeEach: ongoingFromOneSupplier,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+
+    await waitFor(() => expect(canvas.getByTestId("submit-restock")).toBeEnabled(), { timeout: 4000 });
+
+    await retype(canvas.getByTestId("restock-receipt"), restockFixture(506n).receipt);
+    await canvas.findByTestId("restock-form-missing-receiptChecking");
+    await waitFor(() => expect(canvas.getByTestId("restock-form-ready")).toBeVisible(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("restock-receipt-check-taken")).toBeNull();
   },
 };
 
@@ -758,7 +871,7 @@ export const WhatIsMissingIsOneLineOverBuat: Story = {
 
     await expect(button).toBeDisabled();
     await expect(missing).toHaveTextContent("Not filled in: products");
-    await expect(canvas.getByTestId("restock-form-missing-more")).toHaveTextContent("+3 more");
+    await expect(canvas.getByTestId("restock-form-missing-more")).toHaveTextContent("+4 more");
     await expect(missing.getBoundingClientRect().bottom).toBeLessThanOrEqual(button.getBoundingClientRect().top);
     await expect(missing.getBoundingClientRect().height).toBeLessThan(24);
     // Nothing under the button.
@@ -768,7 +881,7 @@ export const WhatIsMissingIsOneLineOverBuat: Story = {
     await userEvent.click(canvas.getByTestId("restock-form-missing-more"));
     const detail = await screen.findByTestId("restock-form-missing-detail");
     await waitFor(() => expect(detail).toBeVisible());
-    await expect(detail).toHaveTextContent(/products.*warehouse.*paying account.*tracking number/);
+    await expect(detail).toHaveTextContent(/products.*warehouse.*paying account.*courier.*tracking number/);
   },
 };
 

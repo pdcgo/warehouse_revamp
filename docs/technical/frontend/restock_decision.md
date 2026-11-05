@@ -50,6 +50,20 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [the-summary-folds-without-a-scrollbar](#the-summary-folds-without-a-scrollbar) | no scrollbar flashes while Rincian's products fold or unfold; the list keeps its scrollbar gutter |
 | [an-edit-opens-with-its-one-supplier](#an-edit-opens-with-its-one-supplier) | an edit whose open products all name one supplier and store opens with it on top — ONE product counts |
 | [the-restock-form-returns-where-it-was-opened](#the-restock-form-returns-where-it-was-opened) | an edit's Simpan and Kembali go back to the list or the restock's page, whichever opened it; by a link, the list |
+| [the-warehouse-restock-list-follows-the-screen-rules](#the-warehouse-restock-list-follows-the-screen-rules) | the warehouse's inbound list (`pages/restock-warehouse`) takes every rule in `context_decision.md` before the owner's own pass — the card strip, `FilterBar` with a search, short dates, a block per restock on a phone, the empty hints, `GrowingPager` |
+| [the-inbound-row-says-who-and-when](#the-inbound-row-says-who-and-when) | the inbound row's *Dari* is the team with who raised it small under it; **Dibuat** and **Sampai** are columns of their own, Sampai naming who signed for the box; a product cell's *+N lainnya* starts at the text's left edge, on every list |
+| [the-warehouse-sees-the-cod-it-paid](#the-warehouse-sees-the-cod-it-paid) | the warehouse's list shows no restock value — its one money card is the **COD it paid** couriers at the door this month, owed back by the selling teams; a sample until a read sums it |
+| [the-inbound-status-sits-before-its-dates](#the-inbound-status-sits-before-its-dates) | the inbound table runs Restok · Dari · Produk · Pengiriman · **Status** · Dibuat · Sampai · Aksi — the status right before the dates, as on the selling list |
+| [thonis-restock-is-weighed-one-feature-at-a-time](#thonis-restock-is-weighed-one-feature-at-a-time) | this branch does not follow `thoni`; that branch's restock design is a reference the owner weighs one feature at a time, later — and none of its features is marked pending meanwhile |
+| [the-courier-is-required-on-the-form](#the-courier-is-required-on-the-form) | the courier is required on the restock form, checked after the Order ID and before the resi |
+| [a-reference-in-use-stops-the-restock-form](#a-reference-in-use-stops-the-restock-form) | a resi or an Order ID already on another restock — not cancelled, not this one — is in **danger** under its field, with that restock's number and status, and holds Buat/Simpan back; checked over this team's restocks, marked `derived` |
+| [the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives) | the courier's charge can be noted at **Tandai Tiba** as well as at **Terima** — the same amount and note, optional at Tiba and final at Terima; at Tiba it is not kept yet (`dropped`) |
+| [tiba-marks-and-terima-is-final](#tiba-marks-and-terima-is-final) | Tiba only marks, Terima is final, and Terima may come straight from Dalam Perjalanan. The words stay — Tandai Tiba → *Tiba*, Terima → *Diterima* — and the three places that blurred them are fixed |
+| [a-broken-product-carries-a-photo](#a-broken-product-carries-a-photo) | at Terima a line with broken units takes one photo of them, under the broken note — optional, replaced or removed; on a phone the picker opens the camera. Not kept yet (`dropped`) |
+| [the-detail-pages-show-the-broken-photo](#the-detail-pages-show-the-broken-photo) | both detail pages show the broken units' photo — in the selling page's Penyesuaian dialog, as a thumbnail on a phone's block and beside the warehouse page's broken count — a sample drawing for now (`sample`) |
+| [a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack) | at Terima a line's broken units are **thrown away** (the default) **or put on a rack**, which must then be chosen; the rack is not kept yet (`dropped`) |
+| [the-courier-slip-has-an-optional-photo](#the-courier-slip-has-an-optional-photo) | the courier's charge takes an optional **photo of the slip** — at Tandai Tiba and at Terima; not kept yet (`dropped`) |
+| [the-rest-of-thonis-restock-stays-ours](#the-rest-of-thonis-restock-stays-ours) | the rest of the `thoni` restock stays ours: the count at Terima, the total above 0, one line per product, returns apart — and its backend is not this screen work's to weigh |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -994,3 +1008,347 @@ more products.
 | by a link, or the "cannot be edited" page | the list |
 
 What it replaces: an edit always returning to the restock's page.
+
+## the-warehouse-restock-list-follows-the-screen-rules
+
+> Owner, in chat (2026-11-04): *"list restok warehouse inisiasi"* — start the warehouse's restock list from the rules
+> every screen follows, before deciding anything about it.
+
+```
+Restok Masuk
+Kiriman yang menuju gudang ini — tandai tiba saat paket datang, terima untuk menghitungnya ke rak.
+[Restok masuk 3] [Produk 4] [Pcs 131] [Nilai antrean Rp 3.585.000] [Menunggu paling lama 4 hari]
+[⌕ Cari restok, resi, order ID, atau SKU] [Dari semua tim ⌄] [Dibuat oleh ⌄│Siapa saja] [Dibuat · 7 hari terakhir]  Hapus filter
+Semua Status · Dalam Perjalanan · Tiba · Diterima · Hilang · Dibatalkan
+Restok          Dari          Status              Produk                   Pengiriman         Aksi
+#501            Toko Melati   [Dalam Perjalanan]  3 produk · 64 pcs        [JNE]              [Tandai Tiba] [Terima]
+2 Nov 14:47                                       SKU-BERAS-5K +2 lainnya  JNE0123456789 ⧉
+                                                                           ‹ [1] ›
+on a phone
+[⌕ Cari …]  [Filter]
+#501 [Dalam Perjalanan]                              2 Nov 14:47
+Toko Melati
+[JNE] JNE0123456789 ⧉
+3 produk · 64 pcs  SKU-BERAS-5K +2 lainnya
+                                       [Tandai Tiba] [Terima]
+```
+
+| rule | applied |
+| --- | --- |
+| [the-desktop-shell-has-no-top-bar](context_decision.md#the-desktop-shell-has-no-top-bar) | the page names itself — **Restok Masuk**, its line under it; still no team badge and no *New Restock* (a warehouse does not order for itself) |
+| [a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip) · [a-summary-card-is-grey-with-a-thin-border](context_decision.md#a-summary-card-is-grey-with-a-thin-border) · [a-phone-card-shows-no-note](context_decision.md#a-phone-card-shows-no-note) | the five Chakra `Stat`s are a `SummaryStrip`; **Restok masuk** leads, pale blue — the coarsest count, what a shift is planned by. *Menunggu paling lama* keeps its red at 3 days, and its date as data a phone keeps. Unchanged in meaning: the queue still to do, narrowed by *Dari* and nothing else |
+| [a-phone-filters-from-a-sheet](context_decision.md#a-phone-filters-from-a-sheet) · [clear-filters-is-red-and-bold](context_decision.md#clear-filters-is-red-and-bold) · [every-filter-clears-from-its-own-x](context_decision.md#every-filter-clears-from-its-own-x) | the shared `FilterBar`: a **search** (new — the list RPC already takes `q`; debounced, kept in the URL), *Dari*, the person with its role, the date. **Hapus filter** puts them back — the range to its 7 days, the role to *Dibuat oleh*. The 7 days are where the screen starts, so they do not count as a filter |
+| [a-one-type-picker-shows-the-name-alone](context_decision.md#a-one-type-picker-shows-the-name-alone) | *Dari* offers selling teams only, so its pick is the name alone |
+| [a-table-date-is-short-and-every-time-is-wib](context_decision.md#a-table-date-is-short-and-every-time-is-wib) | the row's date is *2 Nov 14:47* — it was the day alone; several boxes arrive in one morning |
+| [a-table-row-lights-up](context_decision.md#a-table-row-lights-up) | every cell in `bg.muted` under the pointer; a phone block lights and gives under a thumb |
+| [a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block) | a restock is a block: the number, its status, the *missing* badge and when; from whom; the courier and the tracking number; what is in it; **Tandai Tiba** and **Terima**, named, at its foot |
+| [nothing-runs-past-a-phones-edge](context_decision.md#nothing-runs-past-a-phones-edge) | the six tabs scroll in their own row; the table scrolls in its own box |
+| [an-empty-list-shows-a-hint](context_decision.md#an-empty-list-shows-a-hint) | nothing matches: *Tidak ada restok yang cocok.* and **Hapus Filter**; an empty tab: which status has none; nothing yet: where restocks come from — no action, a warehouse raises none |
+| [every-list-pages-with-the-growing-pager](context_decision.md#every-list-pages-with-the-growing-pager) · [the-pager-is-always-on-screen](context_decision.md#the-pager-is-always-on-screen) | `GrowingPager`, 10 / 20 / 50 a page; it starts over when the tab, a filter or the page size changes |
+| [motion-is-small-quick-and-shared](context_decision.md#motion-is-small-quick-and-shared) | the page rises in; the first load is a `ListSkeleton`; the rows fade in once |
+| [every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story) · [a-page-story-has-its-shells-gutter](context_decision.md#a-page-story-has-its-shells-gutter) | a **Mobile** story right after Default; the stories lost Storybook's `padded` layout |
+| the tracking number | copyable (`CopyText`) — it is typed into the courier's tracking page; it was plain text |
+| not applied | [a-table-sorts-from-its-headings](context_decision.md#a-table-sorts-from-its-headings) — `RestockRequestListRequest` has no sort. [a-statistics-button-ends-the-tab-row](context_decision.md#a-statistics-button-ends-the-tab-row) — this list's figures are not statistics under the tabs but the **queue's headline** (owner), always on screen; ⚠ my reading, not asked |
+| unchanged | the columns and their order, the five status tabs and *Semua Status*, the filters in the URL, the 7-day window, the one person filter with its role, the row's named actions by status, money in the headline and never in the rows |
+| pinned by | `Mobile`, `TheScreenRules`, `ARowLightsUp`, `NothingMatchesClearsTheFilters`, and the stories already there |
+
+## the-inbound-row-says-who-and-when
+
+> Owner, in chat (2026-11-04): *"tablenya dari itu team besar lalu usernya kecil di bawah, oiya produk more harusnya sama
+> teks rata kiri, ada tanggal dibuat dan sampai"*.
+
+```
+Restok  Dari          Status        Produk                   Pengiriman        Dibuat        Sampai          Aksi
+#502    Toko Melati   [Tiba]        2 produk · 17 pcs        [J&T]             31 Okt 15:10  3 Nov 15:10     [Terima]
+        oleh Ani                    SKU-KOPI-250 +1 lainnya  JNT998877… ⧉                    oleh Budi
+```
+
+| | |
+| --- | --- |
+| Dari | the **team**, then **who raised it**, small and quiet under it — one context, two lines ([one-context-per-column-and-never-three-lines](context_decision.md#one-context-per-column-and-never-three-lines)) |
+| Restok | the number alone — its date moved to Dibuat |
+| Dibuat | when it was raised — short, with the time ([a-table-date-is-short-and-every-time-is-wib](context_decision.md#a-table-date-is-short-and-every-time-is-wib)); who raised it is already under the team |
+| Sampai | when the box reached the door, and **who signed for it** small under it; a dash until it is at the door. The list query now resolves `arrived_by_user_id` with the other two people, in the same one read |
+| the order | Restok · Dari · Status · Produk · Pengiriman · Dibuat · Sampai · Aksi — the two dates before the acts, as the selling list keeps its dates last |
+| on a phone | the block's team line carries *· oleh Ani* after it, small; an arrived restock adds *Sampai 3 Nov 15:10* under it |
+| *+N lainnya* | starts at the product line's left edge. It is `ProductLinesDialog`'s trigger, a button that stretched to the cell and centred its label — fixed in the component, so **every list** that shows a product cell (the selling and warehouse restocks, the orders) takes it |
+| pinned by | `TheRowSaysWhoAndWhen`, `TheMoreProductsLineStartsAtTheLeft` |
+
+What it replaces: the restock cell's date line, from
+[the-warehouse-restock-list-follows-the-screen-rules](#the-warehouse-restock-list-follows-the-screen-rules).
+
+## the-warehouse-sees-the-cod-it-paid
+
+> Owner, in chat (2026-11-04): *"gudang tidak perlu tahu nilai restok, tapi nilai cod yang mereka bayarkan mungkin lebih
+> baik"*.
+
+```
+BEFORE   [Restok masuk 3] [Produk 4] [Pcs 131] [Nilai antrean Rp 3.585.000] [Menunggu paling lama 4 hari]
+NOW      [Restok masuk 3] [Produk 4] [Pcs 131] [Menunggu paling lama 4 hari] [Ongkir COD dibayar ⚠  Rp 65.000
+                                                                               bulan ini · 3 restok
+                                                                               ditagih kembali ke tim penjual]
+```
+
+| | |
+| --- | --- |
+| no restock value | the **Nilai antrean** card is gone — what the goods cost is the selling team's business. The rows already carried no price (`showPrices=false`), and the product dialog still prices nothing |
+| the COD it paid | **Ongkir COD dibayar** — the courier's charge the warehouse handed over at the door (`warehouse_additional_cost`, entered at accept — [the-warehouse-cost-is-the-couriers-charge-at-the-door](../../business/inventory/restock_decision.md#the-warehouse-cost-is-the-couriers-charge-at-the-door)) on the restocks it accepted **this month**; the line says how many, the note that it is owed back by the selling teams |
+| its place | **last** — the four before it are the queue still to do; this is money already paid, over a month |
+| ⚠ a sample | nothing sums the charge: `RestockInboundPreview` counts the queue, the list pages its rows. The figure is invented, steady per warehouse (`codSample.ts`), and marked `sample` — the strip at the top and the ⚠ on the card (`pages/restock-warehouse/pending.ts`). **Backend needed:** the sum of `warehouse_additional_cost` and the count of restocks carrying one, for the restocks a warehouse accepted in a window |
+| pinned by | `TheWarehouseSeesOnlyTheCodItPaid` |
+
+What it replaces: *"MONEY IS IN THE HEADLINE, NOT IN THE ROWS"* (owner, 2026-07-30) — the queue's value as a card. The
+warehouse now sees no restock money at all; `RestockInboundPreview.amount` is no longer read by this screen.
+
+## the-inbound-status-sits-before-its-dates
+
+> Owner, in chat (2026-11-04): *"status sebelum tanggal"*.
+
+```
+BEFORE   Restok · Dari · Status · Produk · Pengiriman · Dibuat · Sampai · Aksi
+NOW      Restok · Dari · Produk · Pengiriman · Status · Dibuat · Sampai · Aksi
+```
+
+| | |
+| --- | --- |
+| the order | the status sits **right before the dates** — where the restock has got to, then when it got there. The selling list already runs *… Pengiriman · Status · Dibuat · Diterima · Aksi* ([the-restock-list-leads-with-its-references](#the-restock-list-leads-with-its-references)), so the two lists now read alike at their end |
+| the cell | unchanged — the status badge with the *missing* badge under it |
+| on a phone | unchanged — the block's first line is the number and its status |
+| pinned by | `TheRowSaysWhoAndWhen` (the headings in order) |
+
+What it replaces: the column order in [the-inbound-row-says-who-and-when](#the-inbound-row-says-who-and-when).
+
+## thonis-restock-is-weighed-one-feature-at-a-time
+
+> Owner, in chat (2026-11-04), after the two restock designs were compared: *"secara tampilan aku mau handle keduanya
+> dengan pertimbanganku nanti, secara branch kita tidak ngikut thoni, secara fitur di thoni ada tapi sekarang belum akan
+> dijadikan unimplemented, dimulai perlahan habis ini"*.
+
+```
+branch    this one — thoni is read, never merged or followed
+screens   ours today  +  a thoni feature when the owner takes it, one at a time
+marks     a feature nobody has taken is no ⚠
+```
+
+| | |
+| --- | --- |
+| the branch | the restock design on `thoni` (`docs/business/stock_thoni/` there) is a reference to read, not a branch to follow |
+| the screens | the owner handles both designs, one feature at a time, later. Each feature taken becomes its own entry here |
+| the marks | **none for now.** A pending mark says a decided screen is ahead of its backend; a feature not yet taken is not that |
+| thoni's, not on our screens (2026-11-04) | the COD charge entered at **Tandai Tiba**, with a receipt photo · a broken unit **put on a rack**, with a photo · good + broken + lost **equal** to what was sent · the courier required · a tracking number refused while another running restock holds it |
+| ours, not in thoni's | the lost status and the late box · the edit · the notes · Foto resi · the supplier's store |
+| conflict with the business docs | `inventory/restock*` and `stock_thoni/*` are two proposals; this entry records no choice between them |
+
+What it replaces: nothing — the first word on the `thoni` branch's restock.
+
+## the-courier-is-required-on-the-form
+
+> Owner, in chat (2026-11-04): *"oke, kurir kita wajib"* — the first feature taken under
+> [thonis-restock-is-weighed-one-feature-at-a-time](#thonis-restock-is-weighed-one-feature-at-a-time).
+
+```
+Pembayaran dan Paket     Rekening * · Order ID · Kurir * · Nomor resi * · Foto resi · Ongkir
+the check order          products → warehouse → account → Order ID → COURIER → resi
+```
+
+| | |
+| --- | --- |
+| the field | **Kurir** carries the red `*`; until one is picked the line by Buat says *Belum diisi: kurir* |
+| its place in the checks | after the Order ID, before the resi — the payment card top to bottom |
+| while arrived | closed with the parcel, so never asked for — as the account and the resi |
+| ⚠ the server | still takes a restock with no courier: `shipment_id` carries no rule. The form is stricter, as it already is for the supplier and the resi |
+| pinned by | `TheChecksRunProductsWarehouseAccountResi`, `WhatIsMissingIsOneLineOverBuat`; e2e *Restock create: tick two products* picks JNE |
+
+What it replaces: the courier as an optional field, and the check order in
+[the-checks-run-products-warehouse-account-resi](#the-checks-run-products-warehouse-account-resi).
+
+## a-reference-in-use-stops-the-restock-form
+
+> Owner, in chat (2026-11-04): *"ada checker yang belum ada sekarang untuk cek resi dan order id -> danger langsung di
+> formnya"*, then *"hasil checkernya jadi validasi juga"*.
+
+```
+Nomor resi *  [ jnt9988776655            ]   ← red border
+              Resi ini sudah dipakai restok #502  [Sampai]
+ⓘ Belum diisi: resi yang belum dipakai restok lain        [ Simpan ]  ← off
+```
+
+| | |
+| --- | --- |
+| what is checked | the **resi** and the **Order ID**, each on its own, against every other restock of this team |
+| what holds it | any status but **cancelled** — a cancelled parcel never came. The restock being edited is not its own duplicate |
+| the match | exact, letter case and the spaces around it aside: `jnt9988776655` is `JNT9988776655` |
+| how it asks | `RestockRequestList` with `filter.q` — its search already reaches the resi and the Order ID — then the exact match picked out of the hits (`useRestockRefInUse`). Asked once typing pauses (400 ms). No proto change |
+| on screen | the field in **danger**: a red border and, under it, the holder's number and its status badge. Nothing while free or still being asked — a line that flickers per keystroke is noise |
+| as validation | a held value is a missing part (*resi yang belum dipakai restok lain*, *Order ID yang belum dipakai restok lain*) — and so is one **still being checked** (*resi (sedang dicek)*): a check a quick click could outrun is not a check. A failed read says so under the field, in warning, and holds nothing |
+| while arrived | not asked — the references are closed |
+| ⚠ pending, `derived` | **1 · Cek Order ID** — checked on the screen only; the server does not refuse a repeated one, so two saves at the same moment both pass. **2 · Cek resi** — the same, and over this team's restocks only: a selling team cannot list another team's, so a resi on another team's restock is not caught. `restock-form/pending.ts` |
+| pinned by | `AResiInUseIsDangerAndStopsSave`, `AnOrderIdInUseIsDangerToo`, `ACancelledRestockHoldsNothing`, `AnotherTeamsResiIsNotCaughtYet` (the gap), `OnlyTheReferenceChecksAreMarked` |
+
+Conflict with the business docs: none written for restocks. `stock_thoni` refuses a resi on the **server**, across
+teams, under a lock, and has no Order ID rule; this is the screen half of it, with an Order ID rule added.
+
+What it replaces: `NothingIsMarkedNotImplemented` — the form carries two marks again.
+
+## the-cod-can-be-noted-when-the-box-arrives
+
+> Owner, in chat (2026-11-04): *"ongkir cod bisa keduanya, tiba itu untuk menandai, diterima itu final, status tidak perlu
+> ke tiba dan langsung bisa final jika perlu"* — taken from the `thoni` branch's design
+> ([thonis-restock-is-weighed-one-feature-at-a-time](#thonis-restock-is-weighed-one-feature-at-a-time)), where the charge is reported when the box arrives.
+
+```
+Dalam Perjalanan ──Tandai Tiba──▶ Tiba ──Terima──▶ Diterima (final)
+      │             COD + note, optional         COD + note — final
+      └────────────────── Terima straight away ──▶ COD + note here only
+```
+
+| | |
+| --- | --- |
+| at Tandai Tiba | the sign dialog carries the accept page's **Biaya kurir di pintu**: *Jumlah* and *Untuk apa*. Optional; once there is an amount the note is required and the sign waits for it, as at Terima. Its hint: it can still be entered or changed at Terima |
+| at Terima | unchanged — the amount and the note, final with the count |
+| one charge | still one amount and one note per restock ([the-courier-is-paid-once-per-restock](../../business/inventory/restock_decision.md#the-courier-is-paid-once-per-restock)): a figure given at Terima REPLACES the one noted at Tiba, never adds to it |
+| one component | `CourierCharge` moved from the accept page to `features/restock/` — two places draw it now. Its story: `Features/Restock/CourierCharge` |
+| ⚠ pending, `dropped` | `RestockRequestArrive` takes no charge, so what is typed at Tiba is thrown away. The page's mark sits by the charge's title in the dialog — the warehouse list's **2**, the warehouse detail's **1** (its first strip) — and after the sign a warning toast says *enter it again at Terima*. **Backend needed:** the charge and its note on Arrive, stored on the restock, and the accept page opening with them |
+| no photo | the courier's slip is not photographed (the owner's *"foto"* was for broken products — next, on the accept page) |
+| pinned by | `SignForBoxNotesTheCourierCharge`, `SignForBoxWithoutACharge`, `ANoteIsRequiredOnceThereIsAnAmount`, `TheSignDialogMarksItsCourierCharge` (list and detail) |
+
+Conflict with the business docs: [the-warehouse-cost-is-the-couriers-charge-at-the-door](../../business/inventory/restock_decision.md#the-warehouse-cost-is-the-couriers-charge-at-the-door)
+has it *entered at accept*. Noting it at Tiba too is this screen's; that rule's text stands until the owner changes it.
+
+What it replaces: the charge entered at Terima only.
+
+## tiba-marks-and-terima-is-final
+
+> Owner, in chat (2026-11-04): *"tiba itu untuk menandai, diterima itu final, status tidak perlu ke tiba dan langsung bisa
+> final jika perlu"*, then *"aku cuma tanya istilah yang tepat"* — and *"oke"*, *"terima tetap terima saja deh"*.
+
+```
+button          status       means
+Tandai Tiba  →  Tiba         the box is at the door — not counted, stock unchanged, still open to change
+Terima       →  Diterima     counted in, stock up — final
+```
+
+| | |
+| --- | --- |
+| the words | unchanged: *Tandai* already says it is a mark, *Diterima* that it is done. **Terima stays Terima** |
+| skipping Tiba | Terima is offered from Dalam Perjalanan already ([accept-locks-the-restock](../../business/inventory/restock_decision.md#accept-locks-the-restock)) — nothing to change |
+| fixed: the sign toast | *"Paket diterima — restok sudah tiba"* said **diterima** of the step that is not final → *"Restok ditandai tiba"* (en *Restock marked as arrived*) |
+| fixed: the warehouse list's column | *Sampai*, beside a status called *Tiba* → **Tiba** (en *Arrived*, unchanged) |
+| fixed: the sign dialog | it now says stock does not go up until Terima |
+| pinned by | `SignForBoxNotesTheCourierCharge` (the message and the toast) |
+
+What it replaces: the column's *Sampai* in [the-inbound-row-says-who-and-when](#the-inbound-row-says-who-and-when), and the
+sign toast's wording.
+
+## a-broken-product-carries-a-photo
+
+> Owner, in chat (2026-11-04): *"foto oke"*, then *"foto maksudku untuk produk rusak"* — taken from the `thoni` branch's
+> design ([thonis-restock-is-weighed-one-feature-at-a-time](#thonis-restock-is-weighed-one-feature-at-a-time)), where a broken row carries its photo.
+
+```
+Rusak                                  1   senilai Rp 12.500
+[ Bungkus sobek                      ]
+[▣] rusak.png  ✕   [📷 Ganti Foto]  ⚠1
+```
+
+| | |
+| --- | --- |
+| where | the accept page's line card, under the broken note — only once the line has a broken unit |
+| how many | **one** per line, replaced rather than added to, as the restock's Foto resi is |
+| required | no — optional, as the broken note is ([a-broken-reason-is-optional](../../business/inventory/restock_decision.md#a-broken-reason-is-optional)); it never holds Terima up |
+| on a phone | the picker opens the camera (`capture="environment"`) — the person is standing over the box |
+| on screen | a thumbnail of the picked file, its name, a remove button; the button reads *Tambah Foto*, then *Ganti Foto* |
+| ⚠ pending, `dropped` | `RestockRequestReceivedLine` has no photo, so the file is shown and **never uploaded** — an upload nothing points at is a file nobody can find again. The accept page's first mark (its strip is new), beside each line's photo; after Terima a warning toast says the photos were not kept. **Backend needed:** a photo per broken row on the received line, stored with the row, and read back on both detail pages' broken rows |
+| not here | the selling and warehouse detail pages show no photo — there is none to show until it is kept |
+| pinned by | `ABrokenLineTakesAPhoto`, `AcceptingWithAPhotoSaysItWasNotKept` |
+
+Conflict with the business docs: none — [a-broken-unit-is-thrown-away](../../business/inventory/context_decision.md#a-broken-unit-is-thrown-away) stands; the
+photo is evidence of the unit, not a place for it. `stock_thoni` also puts a broken unit on a rack; that is not taken.
+
+What it replaces: a broken row with a count and a note only.
+
+## the-detail-pages-show-the-broken-photo
+
+> Owner, in chat (2026-11-05): *"contoh di detail?"* — where the photo picked at Terima is read back.
+
+```
+selling, desktop   Penyesuaian dialog      Rusak 2 · senilai … · Karung sobek
+                                           [ photo, the dialog's width ]   Foto barang rusak ⚠2
+selling, phone     the line's block        Rusak 2 · … · Karung sobek
+                                           [▣] ⚠2   → taps open it whole
+warehouse          the Rusak cell          [▣] ⚠2  2   → opens it whole
+```
+
+| | |
+| --- | --- |
+| one component | `features/restock/BrokenPhotoView` — `full` (inside a dialog that is already the look-closer step) or `thumb` (a 40px square that opens a dialog). Both pages draw it the same way |
+| only where it applies | a line with no broken unit shows nothing |
+| the warehouse cell | the thumbnail sits BESIDE the count, so the cell grows no line |
+| ⚠ pending, `sample` | nothing stores a photo, so every broken line shows the same inline drawing (`brokenPhotoSample.ts`, no file, no network). The selling detail's **2** — its marks after it move up one (the notes 3–5, the trail 6) — and the warehouse detail's **2**, after the charge noted at Tiba. Goes the day the received line carries a photo |
+| pinned by | `TheBrokenRowShowsItsPhoto`, `OnAPhoneTheBrokenPhotoIsAThumbnail` (selling), `TheBrokenCountShowsItsPhoto` (warehouse) |
+
+What it replaces: *"not here — the selling and warehouse detail pages show no photo"* in [a-broken-product-carries-a-photo](#a-broken-product-carries-a-photo).
+
+## a-broken-product-may-go-on-a-rack
+
+> Owner, in chat (2026-11-05): *"ditaruh rak itu opsional, jadi ada 2 pilihan"* — taken from the `thoni` branch's design
+> ([thonis-restock-is-weighed-one-feature-at-a-time](#thonis-restock-is-weighed-one-feature-at-a-time)), where a broken row names its rack.
+
+```
+Rusak 2 · senilai Rp …
+[ Bungkus sobek ]   [📷 Tambah Foto]
+Barang rusak   (•) Dibuang   ( ) Ditaruh di rak ⚠3
+                             └ [ Pilih rak … ]  ← required once chosen
+```
+
+| | |
+| --- | --- |
+| the choice | two radio pills (`RadioPills`) under the broken note and photo: **Dibuang**, the default, or **Ditaruh di rak** |
+| the rack | chosen, a placement picker (the good units' own `PlacementSelect`) appears; until one is picked the line is not finished — *Pilih rak untuk barang rusak.* — and Terima waits |
+| one rack | all of a line's broken units go to one rack |
+| ⚠ pending, `dropped` | the received line places the good units only, so the broken units are recorded as thrown away whatever is chosen. The mark is on the rack choice, the accept page's **3**; Terima's toast lists it as not kept |
+| pinned by | `BrokenUnitsCanGoOnARack` |
+
+Conflict with the business docs: [a-broken-unit-is-thrown-away](../../business/inventory/context_decision.md#a-broken-unit-is-thrown-away) says no rack holds
+a broken unit. This screen offers the rack as the second choice, as the owner asked; that rule's text stands until the
+owner changes it.
+
+What it replaces: *"`stock_thoni` also puts a broken unit on a rack; that is not taken"* in [a-broken-product-carries-a-photo](#a-broken-product-carries-a-photo).
+
+## the-courier-slip-has-an-optional-photo
+
+> Owner, in chat (2026-11-05): *"kurasa masuk akal kalau opsional"* — the `thoni` branch's photo of the courier's slip.
+
+```
+Biaya kurir di pintu
+Jumlah [ Rp 15.000 ]   Untuk apa * [ biaya COD ]
+Foto nota   [▣] nota.jpg ✕   [📷 Ganti Foto]   ⚠1 (at Terima)
+```
+
+| | |
+| --- | --- |
+| where | `CourierCharge`, under the amount and the note — so at **Tandai Tiba** and at **Terima** alike |
+| required | no, at either act — the note still is, once there is an amount |
+| the control | `features/restock/PhotoPick` — the broken photo's picker, moved out of the accept page so both use it: one photo, replaced or removed, the camera on a phone |
+| ⚠ pending, `dropped` | not uploaded. At Tiba the whole charge is already not kept, so the dialog's one mark covers the photo too (its reason now says so); at Terima the charge is kept and the photo is not — the accept page's **1**. Terima's one toast lists what was not kept: *Belum tersimpan: foto nota, foto barang rusak, rak barang rusak.* |
+| pinned by | `TheCouriersSlipTakesAPhoto`, `AcceptingSaysWhatWasNotKept`, `SignForBoxNotesTheCourierCharge` |
+
+What it replaces: *"no photo — the courier's slip is not photographed"* in [the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives).
+
+## the-rest-of-thonis-restock-stays-ours
+
+> Owner, in chat (2026-11-05), on the differences still open: *"1. kita"*, *"3. belum tahu kondisi lapangan, tidak pernah
+> ada barang gratis kurasa kecuali pindah gudang"*, *"4. kita"*, *"5. kita"* — and *"catatan, backendnya bukan urusan
+> kita"*.
+
+| the `thoni` design | stays ours |
+| --- | --- |
+| good + broken + lost typed to equal what was sent | *datang* and *rusak* are typed; the rest is **kurang** by arithmetic ([a-short-unit-at-the-door-is-missing](../../business/inventory/restock_decision.md#a-short-unit-at-the-door-is-missing)) |
+| a line's total may be 0 | above 0 — no free goods but a warehouse transfer, which is not a restock |
+| one product on several lines, one per supplier | one line per product ([a-product-appears-once-per-restock](../../business/inventory/restock_decision.md#a-product-appears-once-per-restock)) |
+| returns run through the restock list and its Terima | returns stay apart, in the order flow |
+| (already) Terima only after Tiba; no lost status; no edit, notes, Foto resi or store | ours, as built — Terima from Dalam Perjalanan ([the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives)) |
+
+The `thoni` branch's **backend** — its storage, tables, events and locks — is not weighed in this screen work.
+
+What it replaces: nothing — the open half of [thonis-restock-is-weighed-one-feature-at-a-time](#thonis-restock-is-weighed-one-feature-at-a-time), closed.

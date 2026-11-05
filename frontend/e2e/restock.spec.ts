@@ -357,6 +357,12 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   await page.getByTestId("restock-all-supplier-picker-confirm").click();
   await expect(page.getByTestId("restock-line-1-supplier-shown")).toContainText(supplierName);
 
+  // The courier (the-courier-is-required-on-the-form) — JNE, which the shipment catalogue's first migration seeds.
+  await expect(page.getByTestId("restock-form-missing-courier")).toBeVisible();
+  await page.getByTestId("restock-courier").getByRole("combobox").click();
+  await page.getByTestId("shipment-channel-option-jne").click();
+
+  // The resi, which no other restock holds (a-reference-in-use-stops-the-restock-form) — asked of the list's search.
   await expect(page.getByTestId("restock-form-missing-receipt")).toBeVisible();
   await page.getByTestId("restock-receipt").fill(`E2E-RESI-${whCode}`);
 

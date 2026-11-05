@@ -88,6 +88,8 @@ when it applies one of these.
 | [a-dialog-pager-is-one-number](#a-dialog-pager-is-one-number) | a dialog's pager is `GrowingPager compact` — ‹ [2] ›, the current page alone in the app's pager boxes; it REPLACES the ‹ 1 of 3 › of [a-dialog-pages-simply](#a-dialog-pages-simply) | every product picker |
 | [a-save-button-says-what-it-waits-for](#a-save-button-says-what-it-waits-for) | a form's save button has ONE line by it — the first thing still missing, the rest on asking, or a green ✓ *Siap dibuat* once nothing is; `ReadyLine` | [the restock form](restock_decision.md#what-is-missing-is-one-line-over-buat), then the bundle and product forms |
 | [a-form-returns-where-it-was-opened](#a-form-returns-where-it-was-opened) | every way out of a form — save, Back, the top arrow — goes to the screen that opened it: a record's page, or a list with its filters; reached by a link, the list | [the product form](products_decision.md#the-form-returns-where-it-was-opened), then the restock form |
+| [every-combobox-reopens-whole](#every-combobox-reopens-whole) | EVERY combobox, opened again after a pick, shows its whole list — the person filter and the product search were the two that did not; the product search opens on its catalogue's first page | every combobox; swept 2026-11-04 |
+| [a-conflict-with-a-business-decision-is-said-in-its-mark](#a-conflict-with-a-business-decision-is-said-in-its-mark) | a part of a screen that does what the owner asked AGAINST a written business decision says so in its pending mark — `conflict: true`, and the decision in plain words in the strip's row and on the badge's hover | every pending list; restock's three, 2026-11-05 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1984,6 +1986,48 @@ a pasted link ─────────────► the form ── Simpan 
 | reached by a link | the form's list |
 | applied to | the product form; the restock form — its Ubah, from the list's row menu and from the restock's page, both carry where they were (`SellingRestockActions`) |
 | pinned by | the product form's four stories in its entry; the restock form's `AnEditFromTheListSavesBackToTheList`, `AnEditFromTheListGoesBackToTheList`, `AnEditFromTheDetailSavesBackToTheDetail`, `ArrivedAddsALineOnlyWithANote` (by a link: the list) |
+
+## every-combobox-reopens-whole
+
+> Owner, in chat (2026-11-04): *"semua combobox kalau sudah select opsinya munculkan semua saat dibuka kembali, selalu
+> bermasalah jika hanya menampilkan satu"*.
+
+```
+pick "Eko"   → the field reads Eko
+open again   → Ani · Budi · Citra · Eko · …        never  → Eko   (the picked name taken as a search)
+```
+
+| | |
+| --- | --- |
+| the rule | [a-search-select-reopens-whole](#a-search-select-reopens-whole), for **every** combobox — a bounded one shows everything; it searches only what is typed (`searchOnlyWhatIsTyped`) |
+| the sweep | fourteen comboboxes. Ten spread the helper already, and `AddressPicker` carries the rule inline. **Two did not**: `PersonFilterSelect` (every list's who-filter) filtered by the picked name, and `ProductSelect` sent the picked "SKU — name" to the server as its search — each reopened on the one picked. Both spread the helper now. `SearchSelectInput` is legacy and used nowhere, so it is left |
+| an unbounded search | **`ProductSelect` opens on its catalogue's first page** with nothing typed — a catalogue cannot load whole, so "everything" is its first page — and opens on a click (`openOnClick`). One character still waits for a second; two or more search the server. The picked product stays on the list, so the field always names it |
+| not comboboxes | the dialogs (product, supplier) and `CategorySelect` start their search over each time they open — already so |
+| pinned by | `AReopenedPickerShowsEveryone` (PersonFilterSelect), `AReopenedPickerShowsTheList` (ProductSelect), and the four already there: RoleSelect, ShopSelect, UserSelect |
+
+What it replaces: `ProductSelect` withholding its list until two characters were typed.
+
+## a-conflict-with-a-business-decision-is-said-in-its-mark
+
+> Owner, in chat (2026-11-05), after a screen choice was recorded as going against a business decision only in the
+> decision file: *"kalau bertentangan kamu kasih catatan di unimplemented"*.
+
+```
+⚠ 3 bagian layar ini belum diimplementasi                         [ Lihat 3 bagiannya ]
+  3. Rak barang rusak — Pilihan Ditaruh di rak belum tersimpan — … · tidak terkirim
+     Bertentangan dengan keputusan bisnis: barang rusak dibuang — tidak ada rak yang menyimpannya.
+```
+
+| | |
+| --- | --- |
+| when | a screen part the owner asked for goes against a WRITTEN business decision. The technical decision entry still records it ("Conflict with the business docs") — and now the screen says it too |
+| how | the part's entry in the page's `pending.ts` gets `conflict: true`; its words are `<ns>.pending.<id>.conflict` — which decision, **in plain words, never its slug**: the strip is read in the real app, not only in review |
+| where it shows | the part's row in `NotImplementedSummary`, on a line of its own, after *Bertentangan dengan keputusan bisnis:* (`pending.conflict`); and the `NotImplemented` badge's hover |
+| a part with no other gap | the mark is still the vehicle — give the part the kind that fits what is unfinished. A conflict alone, with nothing unfinished, has not come up |
+| applied | restock: the broken units' rack at Terima ([a-broken-product-may-go-on-a-rack](restock_decision.md#a-broken-product-may-go-on-a-rack)); the courier's charge at Tandai Tiba, on the warehouse list and its detail ([the-cod-can-be-noted-when-the-box-arrives](restock_decision.md#the-cod-can-be-noted-when-the-box-arrives)) |
+| pinned by | `AConflictIsSaidInItsRow` (`Features/Pending/PendingMarks`), `BrokenUnitsCanGoOnARack` |
+
+What it replaces: a conflict recorded only in the technical decision entry.
 
 ## Recorded elsewhere
 

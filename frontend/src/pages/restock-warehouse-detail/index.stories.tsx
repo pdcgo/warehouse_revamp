@@ -155,6 +155,38 @@ export const SignForBoxMovesItToArrived: Story = {
   },
 };
 
+// THE COURIER'S CHARGE IN THE SIGN DIALOG IS NOT KEPT YET (the-cod-can-be-noted-when-the-box-arrives) — the page says so
+// at the top, and the dialog's charge carries the mark.
+export const TheSignDialogMarksItsCourierCharge: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await userEvent.click(canvas.getByTestId("restock-action-sign-501"));
+    const charge = await screen.findByTestId("sign-courier");
+    await waitFor(() => expect(charge).toBeVisible());
+    await expect(within(charge).getByTestId("not-implemented-arrivalCod")).toHaveTextContent("1");
+  },
+};
+
+// THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — 503's rice: a thumbnail beside the broken count that opens
+// the photo whole. A SAMPLE, the page's second mark; the tea, nothing broken, has none.
+export const TheBrokenCountShowsItsPhoto: Story = {
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const cell = canvas.getByTestId("restock-detail-broken-74");
+    await expect(within(cell).getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("2");
+    await expect(canvas.queryByTestId("restock-detail-broken-photo-72")).toBeNull();
+
+    await userEvent.click(within(cell).getByTestId("restock-detail-broken-photo-74-open"));
+    const whole = await screen.findByTestId("restock-detail-broken-photo-74-dialog");
+    await waitFor(() => expect(whole).toBeVisible());
+    await expect(within(whole).getByRole("img")).toBeVisible();
+  },
+};
+
 // a-late-lost-box-is-signed-for-as-arrived — the lost parcel turned up: signed for, lost → arrived, then accepted as usual.
 export const ALateLostBoxIsSignedForAsArrived: Story = {
   render: () => <At504 />,

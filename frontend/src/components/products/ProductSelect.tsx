@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, Span, Stack, useListCollection } from "@chakra-ui/react";
 import { useProductSearch } from "../../features/products/queries";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 import { useDebounced } from "../../lib/useDebounced";
 
 // What a picked product contributes to an order line — a SNAPSHOT (#67): the opaque product id plus
@@ -51,7 +52,13 @@ export interface ProductSelectProps {
 // a catalogue grows without limit, so this searches SERVER-side (ProductList's `q`, min 2 chars) the
 // way UserSelect does, and renders each option as "sku — name". It emits the whole PickedProduct so
 // the caller can snapshot sku/name onto the line; the buyer-paid unit price is entered separately.
-export const description = "Searchable product picker (Chakra Combobox, server-side). Emits the picked product's id + sku + name snapshot. `scope`: \"team\" (default, this team's catalogue) or \"all\" (cross-team discovery, #110).";
+//
+// OPENED WITH NOTHING TYPED IT SHOWS THE CATALOGUE'S FIRST PAGE, and it searches ONLY what is typed (owner: *"semua
+// combobox kalau sudah select opsinya munculkan semua saat dibuka kembali, selalu bermasalah jika hanya menampilkan
+// satu"*, a-search-select-reopens-whole). The picked label the machine writes into the field used to be sent as the
+// search, so the list opened again held the one product picked. A catalogue cannot be loaded whole, so "everything" is
+// its first page — and the picked product stays on the list, so its label never goes blank.
+export const description = "Searchable product picker (Chakra Combobox, server-side). Opened with nothing typed it lists the catalogue's first page; typing searches it (2 characters or more), and only what is typed — opened again after a pick it shows the list, not the one picked. Emits the picked product's id + sku + name snapshot. `scope`: \"team\" (default, this team's catalogue) or \"all\" (cross-team discovery, #110).";
 
 export function ProductSelect({
   teamId,
@@ -63,6 +70,8 @@ export function ProductSelect({
   portalled = true,
 }: ProductSelectProps) {
   const [input, setInput] = useState("");
+  // The product picked here — kept on the list, so the field can always name it.
+  const [picked, setPicked] = useState<SelectableProduct | null>(null);
 
   const { collection, set } = useListCollection<SelectableProduct>({
     initialItems: [],
@@ -75,9 +84,12 @@ export function ProductSelect({
   const q = useDebounced(input.trim());
   const results = useProductSearch({ teamId, q, scope });
 
+  // Nothing typed: the first page. One character: nothing yet — a search needs two. The picked product first when the
+  // page does not hold it.
   useEffect(() => {
-    set(q.length >= 2 && teamId > 0n ? (results.data ?? []) : []);
-  }, [q, teamId, results.data, set]);
+    const found = q.length !== 1 && teamId > 0n ? (results.data ?? []) : [];
+    set(picked && !found.some((p) => p.id === picked.id) ? [picked, ...found] : found);
+  }, [q, teamId, results.data, picked, set]);
 
   return (
     <Combobox.Root
@@ -89,10 +101,13 @@ export function ProductSelect({
         if (picked === undefined) return;
         const product = collection.items.find((p) => p.id.toString() === picked);
         if (product) {
+          setPicked(product);
           onChange?.({ id: product.id, sku: product.sku, name: product.name });
         }
       }}
-      onInputValueChange={(e) => setInput(e.inputValue)}
+      // Opens on a click too — it has a first page to show now.
+      openOnClick
+      {...searchOnlyWhatIsTyped(setInput)}
       data-testid="product-select"
     >
       <Combobox.Control>
@@ -107,7 +122,7 @@ export function ProductSelect({
         <Combobox.Positioner>
           <Combobox.Content>
             <Combobox.Empty>
-              {input.trim().length < 2 ? "Type at least 2 characters" : "No products found"}
+              {input.trim().length === 1 ? "Type at least 2 characters" : "No products found"}
             </Combobox.Empty>
             {collection.items.map((p) => (
               <Combobox.Item item={p} key={p.id.toString()} data-testid={`product-select-option-${p.sku}`}>

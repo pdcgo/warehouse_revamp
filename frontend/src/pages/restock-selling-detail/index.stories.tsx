@@ -229,13 +229,14 @@ export const TheNotesAreOnePerWriter: Story = {
     await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
     const selling = canvas.getByTestId("restock-detail-note-selling");
     await waitFor(() => expect(within(selling).getByTestId("restock-detail-note-selling-by")).toHaveTextContent(/^Ani Rahayu · /));
-    await expect(within(selling).getByTestId("not-implemented-sellingNoteBy")).toHaveTextContent("2");
+    // The broken photo is the page's second mark (in Produk, above), so the notes' are third and fifth.
+    await expect(within(selling).getByTestId("not-implemented-sellingNoteBy")).toHaveTextContent("3");
 
     const warehouse = canvas.getByTestId("restock-detail-note-warehouse");
     await expect(warehouse).toHaveTextContent("No note from the warehouse yet.");
-    await expect(within(warehouse).getByTestId("not-implemented-warehouseNote")).toHaveTextContent("4");
+    await expect(within(warehouse).getByTestId("not-implemented-warehouseNote")).toHaveTextContent("5");
 
-    await expect(within(canvas.getByTestId("restock-detail-timeline-section")).getByTestId("not-implemented-trailChanges")).toHaveTextContent("5");
+    await expect(within(canvas.getByTestId("restock-detail-timeline-section")).getByTestId("not-implemented-trailChanges")).toHaveTextContent("6");
   },
 };
 
@@ -318,7 +319,7 @@ export const ARecordsNoteHasAMarkedUbah: Story = {
     const section = canvas.getByTestId("restock-detail-note-section");
 
     await expect(within(section).getByTestId("restock-notes-edit")).toBeVisible();
-    await expect(within(section).getByTestId("not-implemented-lateNote")).toHaveTextContent("3");
+    await expect(within(section).getByTestId("not-implemented-lateNote")).toHaveTextContent("4");
   },
 };
 
@@ -504,6 +505,45 @@ export const TheMissingColumn: Story = {
     await expect(within(dialog).getByTestId("restock-detail-missing-74-count")).toHaveTextContent("1");
     await expect(within(dialog).getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.167");
     await expect(canvas.getByTestId("restock-detail-missing")).toHaveTextContent("1 missing");
+  },
+};
+
+// THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — under the broken row in the Penyesuaian dialog, a SAMPLE
+// marked as one (the page's second mark); a line with nothing broken shows none.
+export const TheBrokenRowShowsItsPhoto: Story = {
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openTab(canvas, "products");
+
+    await userEvent.click(canvas.getByTestId("restock-detail-adjustment-74"));
+    const dialog = await screen.findByTestId("restock-detail-adjustment-74-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+
+    const photo = within(dialog).getByTestId("restock-detail-broken-photo-74");
+    await expect(within(photo).getByRole("img")).toHaveAttribute("src", expect.stringMatching(/^data:image\/svg\+xml/));
+    await expect(within(photo).getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("2");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("restock-detail-adjustment-74-dialog")).toBeNull());
+
+    // The tea came as ordered — its cell opens nothing, and there is no photo for it anywhere.
+    await expect(screen.queryByTestId("restock-detail-broken-photo-72")).toBeNull();
+  },
+};
+
+// …and on a phone, a thumbnail in the line's block that opens the photo whole.
+export const OnAPhoneTheBrokenPhotoIsAThumbnail: Story = {
+  render: () => <At503 />,
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openTab(canvas, "products");
+
+    const rice = canvas.getByTestId("restock-detail-item-74");
+    await userEvent.click(within(rice).getByTestId("restock-detail-broken-photo-74-open"));
+    const whole = await screen.findByTestId("restock-detail-broken-photo-74-dialog");
+    await waitFor(() => expect(whole).toBeVisible());
+    await expect(within(whole).getByRole("img")).toBeVisible();
   },
 };
 

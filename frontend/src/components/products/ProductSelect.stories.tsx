@@ -27,9 +27,7 @@ export const CrossTeamDiscovery: Story = { args: { scope: "all" } };
 
 export const Disabled: Story = { args: { disabled: true } };
 
-// ⚠ Unlike the bounded pickers, this one WITHHOLDS its list until you type — a catalogue grows
-// without limit, so there is no "show me everything" to offer. That is why it has no `openOnClick`
-// while TeamSelect and SupplierSelect do.
+// One character is not a search yet — the hint says so. (With NOTHING typed it lists the first page — below.)
 export const BelowTwoCharactersItDoesNotSearch: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -176,5 +174,34 @@ export const InsideADialog: Story = {
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
     await waitFor(() => expect(args.onChange).toHaveBeenCalled());
+  },
+};
+
+// OPENED WITH NOTHING TYPED IT LISTS THE CATALOGUE'S FIRST PAGE — and OPENED AGAIN AFTER A PICK it lists it again, the
+// picked product among them, not the one picked alone (owner: *"semua combobox kalau sudah select opsinya munculkan semua
+// saat dibuka kembali, selalu bermasalah jika hanya menampilkan satu"*, a-search-select-reopens-whole).
+export const AReopenedPickerShowsTheList: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<bigint | undefined>(undefined);
+
+    return <ProductSelect {...args} value={value} onChange={(p) => setValue(p.id)} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(1), { timeout: 4000 });
+    const browsed = screen.getAllByRole("option").length;
+
+    await userEvent.type(input, "kopi", { delay: 30 });
+    const option = await screen.findByTestId(`product-select-option-${products[0]!.sku}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(input).toHaveValue(`${products[0]!.sku} — ${products[0]!.name}`));
+
+    await userEvent.click(input);
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThanOrEqual(browsed), { timeout: 4000 });
+    await expect(screen.getByTestId(`product-select-option-${products[0]!.sku}`)).toBeInTheDocument();
   },
 };

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Flex, Stack, Text } from "@chakra-ui/react";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { NotImplemented } from "./NotImplemented";
 import { NotImplementedSummary } from "./NotImplementedSummary";
@@ -81,6 +81,44 @@ export const HiddenLeavesNothingBehind: Story = {
     // …and the control it was marking is still there. The switch hides the scaffolding, never the
     // screen under it.
     await expect(canvas.getByText("Import")).toBeInTheDocument();
+  },
+};
+
+// The accept page's copy, borrowed for the same reason as LIST's: one part against a business decision, two not.
+const CONFLICTED: PendingList<"courierPhoto" | "brokenPhoto" | "brokenRack"> = {
+  ns: "restock.accept",
+  parts: [
+    { id: "courierPhoto", kind: "dropped" },
+    { id: "brokenPhoto", kind: "dropped" },
+    { id: "brokenRack", kind: "dropped", conflict: true },
+  ],
+};
+
+/**
+ * A PART AGAINST A BUSINESS DECISION SAYS SO (owner: *"kalau bertentangan kamu kasih catatan di unimplemented"*,
+ * a-conflict-with-a-business-decision-is-said-in-its-mark) — on a line of its own in the part's row, in words rather
+ * than the decision's slug, and on the badge's hover. A part without `conflict` says nothing of the kind.
+ */
+export const AConflictIsSaidInItsRow: Story = {
+  render: () => (
+    <Stack gap="card" maxW="3xl">
+      <NotImplementedSummary list={CONFLICTED} />
+      <NotImplemented list={CONFLICTED} id="brokenRack" />
+    </Stack>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("not-implemented-toggle"));
+    const row = await canvas.findByTestId("pending-row-brokenRack-conflict");
+    await waitFor(() => expect(row).toBeVisible());
+    await expect(row).toHaveTextContent("Against a business decision: a broken unit is thrown away — no rack holds it.");
+    await expect(canvas.queryByTestId("pending-row-brokenPhoto-conflict")).toBeNull();
+
+    await expect(canvas.getByTestId("not-implemented-brokenRack")).toHaveAttribute(
+      "title",
+      expect.stringContaining("Against a business decision: a broken unit is thrown away"),
+    );
   },
 };
 
