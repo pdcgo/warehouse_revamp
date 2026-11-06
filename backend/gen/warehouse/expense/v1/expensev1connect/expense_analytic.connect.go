@@ -39,6 +39,9 @@ const (
 	// ExpenseAnalyticServiceMetricDataProcedure is the fully-qualified name of the
 	// ExpenseAnalyticService's MetricData RPC.
 	ExpenseAnalyticServiceMetricDataProcedure = "/warehouse.expense.v1.ExpenseAnalyticService/MetricData"
+	// ExpenseAnalyticServiceExpensePersonListProcedure is the fully-qualified name of the
+	// ExpenseAnalyticService's ExpensePersonList RPC.
+	ExpenseAnalyticServiceExpensePersonListProcedure = "/warehouse.expense.v1.ExpenseAnalyticService/ExpensePersonList"
 )
 
 // ExpenseAnalyticServiceClient is a client for the warehouse.expense.v1.ExpenseAnalyticService
@@ -50,6 +53,9 @@ type ExpenseAnalyticServiceClient interface {
 	// The figures of given keys — a key with nothing reads 0. The filters scope the numbers, never the keys
 	// (the-fill-step-scopes-its-numbers-by-the-filters). One answer per asked metric (one-call-answers-every-asked-metric).
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
+	// The people the Analytic screen's "created by" filter offers over an expense metric: everyone the report holds a row
+	// for in the reader's scope (a-who-filter-lists-the-people-on-its-rows) — the rows the USER group and filter read.
+	ExpensePersonList(context.Context, *connect.Request[v1.ExpensePersonListRequest]) (*connect.Response[v1.ExpensePersonListResponse], error)
 }
 
 // NewExpenseAnalyticServiceClient constructs a client for the
@@ -78,13 +84,21 @@ func NewExpenseAnalyticServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		expensePersonList: connect.NewClient[v1.ExpensePersonListRequest, v1.ExpensePersonListResponse](
+			httpClient,
+			baseURL+ExpenseAnalyticServiceExpensePersonListProcedure,
+			connect.WithSchema(expenseAnalyticServiceMethods.ByName("ExpensePersonList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // expenseAnalyticServiceClient implements ExpenseAnalyticServiceClient.
 type expenseAnalyticServiceClient struct {
-	metricSearch *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
-	metricData   *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
+	metricSearch      *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
+	metricData        *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
+	expensePersonList *connect.Client[v1.ExpensePersonListRequest, v1.ExpensePersonListResponse]
 }
 
 // MetricSearch calls warehouse.expense.v1.ExpenseAnalyticService.MetricSearch.
@@ -97,6 +111,11 @@ func (c *expenseAnalyticServiceClient) MetricData(ctx context.Context, req *conn
 	return c.metricData.CallUnary(ctx, req)
 }
 
+// ExpensePersonList calls warehouse.expense.v1.ExpenseAnalyticService.ExpensePersonList.
+func (c *expenseAnalyticServiceClient) ExpensePersonList(ctx context.Context, req *connect.Request[v1.ExpensePersonListRequest]) (*connect.Response[v1.ExpensePersonListResponse], error) {
+	return c.expensePersonList.CallUnary(ctx, req)
+}
+
 // ExpenseAnalyticServiceHandler is an implementation of the
 // warehouse.expense.v1.ExpenseAnalyticService service.
 type ExpenseAnalyticServiceHandler interface {
@@ -106,6 +125,9 @@ type ExpenseAnalyticServiceHandler interface {
 	// The figures of given keys — a key with nothing reads 0. The filters scope the numbers, never the keys
 	// (the-fill-step-scopes-its-numbers-by-the-filters). One answer per asked metric (one-call-answers-every-asked-metric).
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
+	// The people the Analytic screen's "created by" filter offers over an expense metric: everyone the report holds a row
+	// for in the reader's scope (a-who-filter-lists-the-people-on-its-rows) — the rows the USER group and filter read.
+	ExpensePersonList(context.Context, *connect.Request[v1.ExpensePersonListRequest]) (*connect.Response[v1.ExpensePersonListResponse], error)
 }
 
 // NewExpenseAnalyticServiceHandler builds an HTTP handler from the service implementation. It
@@ -129,12 +151,21 @@ func NewExpenseAnalyticServiceHandler(svc ExpenseAnalyticServiceHandler, opts ..
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	expenseAnalyticServiceExpensePersonListHandler := connect.NewUnaryHandler(
+		ExpenseAnalyticServiceExpensePersonListProcedure,
+		svc.ExpensePersonList,
+		connect.WithSchema(expenseAnalyticServiceMethods.ByName("ExpensePersonList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.expense.v1.ExpenseAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ExpenseAnalyticServiceMetricSearchProcedure:
 			expenseAnalyticServiceMetricSearchHandler.ServeHTTP(w, r)
 		case ExpenseAnalyticServiceMetricDataProcedure:
 			expenseAnalyticServiceMetricDataHandler.ServeHTTP(w, r)
+		case ExpenseAnalyticServiceExpensePersonListProcedure:
+			expenseAnalyticServiceExpensePersonListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -150,4 +181,8 @@ func (UnimplementedExpenseAnalyticServiceHandler) MetricSearch(context.Context, 
 
 func (UnimplementedExpenseAnalyticServiceHandler) MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.expense.v1.ExpenseAnalyticService.MetricData is not implemented"))
+}
+
+func (UnimplementedExpenseAnalyticServiceHandler) ExpensePersonList(context.Context, *connect.Request[v1.ExpensePersonListRequest]) (*connect.Response[v1.ExpensePersonListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.expense.v1.ExpenseAnalyticService.ExpensePersonList is not implemented"))
 }

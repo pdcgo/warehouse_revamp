@@ -34,6 +34,14 @@ import (
 // a stock Windows host has no IANA zone database.
 var wib = time.FixedZone("WIB", 7*60*60)
 
+// JakartaDay is the Jakarta day an instant falls on, as an expense date — the one conversion from a clock to an expense's
+// day (the-system-runs-on-jakarta-time), whatever zone the host or the instant is in: 00:30 WIB is that day, though a UTC
+// clock still reads the day before. A correction's Analytic day reads it, and so does the composition root's stock-loss
+// poster, which has no date a person picked.
+func JakartaDay(at time.Time) string {
+	return at.In(wib).Format(dateLayout)
+}
+
 // typedKind is one of the kinds a person types — the only kinds Analytic's expenses carry.
 func typedKind(kind expensev1.ExpenseKind) bool {
 	switch kind {
@@ -51,7 +59,7 @@ func metricDay(row *expense_service_models.ExpenseRecord) string {
 		return row.OccurredAt.Format(dateLayout)
 	}
 
-	return row.CreatedAt.In(wib).Format(dateLayout)
+	return JakartaDay(row.CreatedAt)
 }
 
 // foldMetric adds one just-written row to its report row. `side` is where its team sits (TeamSides).

@@ -33,6 +33,14 @@ finds it without having to re-read every decision log.
 > UTC, America/Los_Angeles and Asia/Makassar (a browser-local-midnight mutant fails all three). ⚠ Still browser-zone:
 > those pages' own `formatDateUnix` prints the expiry DATE with `toLocaleDateString` (no `timeZone`) — a different
 > concern, not changed.
+>
+> ✅ **Fixed 2026-11-06 (backlog #29) — the stock-loss expense's day.** Step 4 above held for the form, which sends the
+> picked date string, but not for the one writer of `expense_records.occurred_at` with no person picking a date:
+> `cmd/app_development/expense_poster.go` `PostStockLoss` formatted the HOST clock (`time.Now().Format`), so on a UTC host
+> a write-off 00:00–07:00 WIB was filed on the day before. It now dates by `expense_v1.JakartaDay(now)` — the expense
+> service's existing `wib` zone, the conversion a correction's Analytic day already used (`metricDay` reads it too) —
+> with an injectable `now`. Test `TestExpensePoster_AWriteOffAt0030WIBLandsOnItsJakartaDay` posts on a UTC clock at
+> 16:59 UTC (23:59 WIB, keeps 5 Nov) and 17:30 UTC (00:30 WIB, lands on 6 Nov); the host-clock mutant fails it.
 
 ### (the plan as it was written)
 

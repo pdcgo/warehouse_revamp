@@ -4,6 +4,8 @@ package warehouse.expense.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/analytic_base/v1/analytic.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1;expensev1";
@@ -34,6 +36,14 @@ service ExpenseAnalyticService {
   // The figures of given keys — a key with nothing reads 0. The filters scope the numbers, never the keys
   // (the-fill-step-scopes-its-numbers-by-the-filters). One answer per asked metric (one-call-answers-every-asked-metric).
   rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // The people the Analytic screen's "created by" filter offers over an expense metric: everyone the report holds a row
+  // for in the reader's scope (a-who-filter-lists-the-people-on-its-rows) — the rows the USER group and filter read.
+  rpc ExpensePersonList(ExpensePersonListRequest) returns (ExpensePersonListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -239,4 +249,95 @@ message MetricDataResponse {
   repeated MetricData metric_datas = 1;
   // The read's own time: the report is written in the expense's own transaction, so nothing lags.
   int64 as_of_unix = 2;
+}
+
+// ── Who the expense rows count for (a-who-filter-lists-the-people-on-its-rows) ───────────────────────────────────────
+//
+// What a USER filter over an expense metric offers: the people `expense_metric_daily_reports` holds a row for in the
+// reader's scope — whoever typed an expense, and whoever corrected or cancelled one (an-expense-correction-counts-for-
+// who-made-it) — and nobody else. Not the team's members: a person who has left still typed last year's rent. Former
+// members and suspended accounts are kept (a-filter-keeps-former-and-suspended-people). 0 is "not recorded", never a
+// person.
+
+enum ExpensePersonListDataType {
+  EXPENSE_PERSON_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  EXPENSE_PERSON_LIST_DATA_TYPE_PERSON = 1;
+}
+
+// ExpensePersonSort is the sort selection paired with the PERSON slice.
+enum ExpensePersonSort {
+  EXPENSE_PERSON_SORT_UNSPECIFIED = 0;
+  // The last day a report row counts for them — the default, newest first, so the people working now lead.
+  EXPENSE_PERSON_SORT_LAST_DAY = 1;
+}
+
+message ExpensePersonListFilter {
+  // The metrics on the table — `metrics/ads`, `metrics/expenses` or both. With Ads expense alone only the people on its
+  // ADS rows are offered: whoever typed only payroll is on none of its rows. Empty, or Expenses among them, is every
+  // typed kind's people (Expenses' rows hold Ads expense's). Another service's metric id is InvalidArgument.
+  repeated string metric_ids = 1 [(buf.validate.field).repeated = {
+    max_items: 10
+    unique: true
+  }];
+}
+
+message ExpensePersonListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    ExpensePersonSort person = 2;
+  }
+}
+
+message ExpensePersonListRequest {
+  // Whoever may read the metric may filter it (whoever-reads-a-list-may-filter-it): exactly MetricData's roles.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The reader, scoped as the metrics are: a team lists its own people; the root team every team's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  ExpensePersonListFilter filter = 2;
+  ExpensePersonListFilterSort sort = 3;
+  repeated ExpensePersonListDataType data_request = 4;
+  // It grows with staff turnover, slowly but without a ceiling, so it pages; the picker asks for a large first page
+  // and filters in the field.
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// One person, and the last day an expense report row of the reader's scope counts for them. Their name is
+// user_service's — the picker resolves it with UserByIDs.
+message ExpensePersonItem {
+  uint64 user_id = 1;
+  // YYYY-MM-DD, the report's own Jakarta day.
+  string last_day = 2;
+}
+
+message ExpensePersonMapItem {
+  // Keyed by user id.
+  map<uint64, ExpensePersonItem> map_data = 1;
+}
+
+message ExpensePersonListResponseItem {
+  oneof d {
+    ExpensePersonMapItem person = 1;
+  }
+}
+
+message ExpensePersonListResponse {
+  repeated ExpensePersonListResponseItem items = 1;
+  // User ids, in the sort's order.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }

@@ -2,11 +2,15 @@
 // @generated from file warehouse/expense/v1/expense_analytic.proto (package warehouse.expense.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
 import type { FilterItem, GroupType, MetricKeys, MetricSort, PaginationFilter } from "../../analytic_base/v1/analytic_pb";
 import { file_warehouse_analytic_base_v1_analytic } from "../../analytic_base/v1/analytic_pb";
+import type { CommonPagination, CommonSortType } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
+import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/expense/v1/expense_analytic.proto.
  */
 export const file_warehouse_expense_v1_expense_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Cit3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlX2FuYWx5dGljLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSJVChBBZHNFeHBlbnNlTWV0cmljEhoKBmFtb3VudBgBIAEoAUIKmrUYAggBoLUYAzolmrUYIQoEAQUECBIBARoJAQcJCwoCAwQFIgttZXRyaWNzL2FkcyKyAQoUQWRzRXhwZW5zZU1ldHJpY0J5SUQSRAoFaXRlbXMYASADKAsyNS53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlJRC5JdGVtc0VudHJ5GlQKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpYzoCOAEitAEKFUFkc0V4cGVuc2VNZXRyaWNCeURheRJFCgVpdGVtcxgBIAMoCzI2LndhcmVob3VzZS5leHBlbnNlLnYxLkFkc0V4cGVuc2VNZXRyaWNCeURheS5JdGVtc0VudHJ5GlQKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpYzoCOAEixwEKDkV4cGVuc2VzTWV0cmljEhcKA2FkcxgBIAEoAUIKmrUYAggBoLUYAxIbCgdwYXlyb2xsGAIgASgBQgqatRgCCAGgtRgDEh8KC29wZXJhdGlvbmFsGAMgASgBQgqatRgCCAGgtRgDEhkKBW90aGVyGAQgASgBQgqatRgCCAGgtRgDEhkKBXRvdGFsGAUgASgBQgqatRgCCAGgtRgDOiiatRgkCgMBBAgSAQEaCAEJCwoCAwQFIhBtZXRyaWNzL2V4cGVuc2VzIqwBChJFeHBlbnNlc01ldHJpY0J5SUQSQgoFaXRlbXMYASADKAsyMy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlc01ldHJpY0J5SUQuSXRlbXNFbnRyeRpSCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljOgI4ASKuAQoTRXhwZW5zZXNNZXRyaWNCeURheRJDCgVpdGVtcxgBIAMoCzI0LndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpSCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljOgI4ASLPAgoTTWV0cmljU2VhcmNoUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJFCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIMukgJggEGEAEgACABEkEKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgi6SAWSAQIQBhI8CgRzb3J0GAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljU29ydEIGukgDyAEBEkIKBHBhZ2UYBSABKAsyLC53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5QYWdpbmF0aW9uRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIl4KFE1ldHJpY1NlYXJjaFJlc3BvbnNlEjQKBGtleXMYASABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEhAKCGhhc19uZXh0GAIgASgIIuYCChFNZXRyaWNEYXRhUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJDCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIKukgHggEEEAEgABJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAYSNAoEa2V5cxgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY0tleXMSIAoKbWV0cmljX2lkcxgFIAMoCUIMukgJkgEGCAEQChgBEkMKCnJvd3NfZ3JvdXAYBiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCCLpIBYIBAhABOg6StRgKCggBAgMEBQYJCCKgAwoKTWV0cmljRGF0YRI/CglhZHNfYnlfaWQYASABKAsyKi53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlJREgAEkEKCmFkc19ieV9kYXkYAiABKAsyKy53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlEYXlIABI9CgthZHNfc3VtbWFyeRgDIAEoCzImLndhcmVob3VzZS5leHBlbnNlLnYxLkFkc0V4cGVuc2VNZXRyaWNIABJCCg5leHBlbnNlc19ieV9pZBgEIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlJREgAEkQKD2V4cGVuc2VzX2J5X2RheRgFIAEoCzIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlEYXlIABJAChBleHBlbnNlc19zdW1tYXJ5GAYgASgLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZXNNZXRyaWNIAEIDCgFtImAKEk1ldHJpY0RhdGFSZXNwb25zZRI2CgxtZXRyaWNfZGF0YXMYASADKAsyIC53YXJlaG91c2UuZXhwZW5zZS52MS5NZXRyaWNEYXRhEhIKCmFzX29mX3VuaXgYAiABKAMy6gEKFkV4cGVuc2VBbmFseXRpY1NlcnZpY2USagoMTWV0cmljU2VhcmNoEikud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljU2VhcmNoUmVxdWVzdBoqLndhcmVob3VzZS5leHBlbnNlLnYxLk1ldHJpY1NlYXJjaFJlc3BvbnNlIgOQAgESZAoKTWV0cmljRGF0YRInLndhcmVob3VzZS5leHBlbnNlLnYxLk1ldHJpY0RhdGFSZXF1ZXN0Gigud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljRGF0YVJlc3BvbnNlIgOQAgFCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9leHBlbnNlL3YxO2V4cGVuc2V2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
+  fileDesc("Cit3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlX2FuYWx5dGljLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSJVChBBZHNFeHBlbnNlTWV0cmljEhoKBmFtb3VudBgBIAEoAUIKmrUYAggBoLUYAzolmrUYIQoEAQUECBIBARoJAQcJCwoCAwQFIgttZXRyaWNzL2FkcyKyAQoUQWRzRXhwZW5zZU1ldHJpY0J5SUQSRAoFaXRlbXMYASADKAsyNS53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlJRC5JdGVtc0VudHJ5GlQKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpYzoCOAEitAEKFUFkc0V4cGVuc2VNZXRyaWNCeURheRJFCgVpdGVtcxgBIAMoCzI2LndhcmVob3VzZS5leHBlbnNlLnYxLkFkc0V4cGVuc2VNZXRyaWNCeURheS5JdGVtc0VudHJ5GlQKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpYzoCOAEixwEKDkV4cGVuc2VzTWV0cmljEhcKA2FkcxgBIAEoAUIKmrUYAggBoLUYAxIbCgdwYXlyb2xsGAIgASgBQgqatRgCCAGgtRgDEh8KC29wZXJhdGlvbmFsGAMgASgBQgqatRgCCAGgtRgDEhkKBW90aGVyGAQgASgBQgqatRgCCAGgtRgDEhkKBXRvdGFsGAUgASgBQgqatRgCCAGgtRgDOiiatRgkCgMBBAgSAQEaCAEJCwoCAwQFIhBtZXRyaWNzL2V4cGVuc2VzIqwBChJFeHBlbnNlc01ldHJpY0J5SUQSQgoFaXRlbXMYASADKAsyMy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlc01ldHJpY0J5SUQuSXRlbXNFbnRyeRpSCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljOgI4ASKuAQoTRXhwZW5zZXNNZXRyaWNCeURheRJDCgVpdGVtcxgBIAMoCzI0LndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpSCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljOgI4ASLPAgoTTWV0cmljU2VhcmNoUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJFCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIMukgJggEGEAEgACABEkEKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgi6SAWSAQIQBhI8CgRzb3J0GAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljU29ydEIGukgDyAEBEkIKBHBhZ2UYBSABKAsyLC53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5QYWdpbmF0aW9uRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIl4KFE1ldHJpY1NlYXJjaFJlc3BvbnNlEjQKBGtleXMYASABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEhAKCGhhc19uZXh0GAIgASgIIuYCChFNZXRyaWNEYXRhUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJDCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIKukgHggEEEAEgABJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAYSNAoEa2V5cxgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY0tleXMSIAoKbWV0cmljX2lkcxgFIAMoCUIMukgJkgEGCAEQChgBEkMKCnJvd3NfZ3JvdXAYBiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCCLpIBYIBAhABOg6StRgKCggBAgMEBQYJCCKgAwoKTWV0cmljRGF0YRI/CglhZHNfYnlfaWQYASABKAsyKi53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlJREgAEkEKCmFkc19ieV9kYXkYAiABKAsyKy53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlEYXlIABI9CgthZHNfc3VtbWFyeRgDIAEoCzImLndhcmVob3VzZS5leHBlbnNlLnYxLkFkc0V4cGVuc2VNZXRyaWNIABJCCg5leHBlbnNlc19ieV9pZBgEIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlJREgAEkQKD2V4cGVuc2VzX2J5X2RheRgFIAEoCzIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlEYXlIABJAChBleHBlbnNlc19zdW1tYXJ5GAYgASgLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZXNNZXRyaWNIAEIDCgFtImAKEk1ldHJpY0RhdGFSZXNwb25zZRI2CgxtZXRyaWNfZGF0YXMYASADKAsyIC53YXJlaG91c2UuZXhwZW5zZS52MS5NZXRyaWNEYXRhEhIKCmFzX29mX3VuaXgYAiABKAMiOQoXRXhwZW5zZVBlcnNvbkxpc3RGaWx0ZXISHgoKbWV0cmljX2lkcxgBIAMoCUIKukgHkgEEEAoYASKVAQobRXhwZW5zZVBlcnNvbkxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSOQoGcGVyc29uGAIgASgOMicud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVBlcnNvblNvcnRIAEIDCgFzIswCChhFeHBlbnNlUGVyc29uTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESPQoGZmlsdGVyGAIgASgLMi0ud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVBlcnNvbkxpc3RGaWx0ZXISPwoEc29ydBgDIAEoCzIxLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25MaXN0RmlsdGVyU29ydBJFCgxkYXRhX3JlcXVlc3QYBCADKA4yLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgiNgoRRXhwZW5zZVBlcnNvbkl0ZW0SDwoHdXNlcl9pZBgBIAEoBBIQCghsYXN0X2RheRgCIAEoCSK6AQoURXhwZW5zZVBlcnNvbk1hcEl0ZW0SSQoIbWFwX2RhdGEYASADKAsyNy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTWFwSXRlbS5NYXBEYXRhRW50cnkaVwoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI2CgV2YWx1ZRgCIAEoCzInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25JdGVtOgI4ASJiCh1FeHBlbnNlUGVyc29uTGlzdFJlc3BvbnNlSXRlbRI8CgZwZXJzb24YASABKAsyKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTWFwSXRlbUgAQgMKAWQingEKGUV4cGVuc2VQZXJzb25MaXN0UmVzcG9uc2USQgoFaXRlbXMYASADKAsyMy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyp0ChlFeHBlbnNlUGVyc29uTGlzdERhdGFUeXBlEi0KKUVYUEVOU0VfUEVSU09OX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASKAokRVhQRU5TRV9QRVJTT05fTElTVF9EQVRBX1RZUEVfUEVSU09OEAEqWgoRRXhwZW5zZVBlcnNvblNvcnQSIwofRVhQRU5TRV9QRVJTT05fU09SVF9VTlNQRUNJRklFRBAAEiAKHEVYUEVOU0VfUEVSU09OX1NPUlRfTEFTVF9EQVkQATLlAgoWRXhwZW5zZUFuYWx5dGljU2VydmljZRJqCgxNZXRyaWNTZWFyY2gSKS53YXJlaG91c2UuZXhwZW5zZS52MS5NZXRyaWNTZWFyY2hSZXF1ZXN0Gioud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljU2VhcmNoUmVzcG9uc2UiA5ACARJkCgpNZXRyaWNEYXRhEicud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljRGF0YVJlcXVlc3QaKC53YXJlaG91c2UuZXhwZW5zZS52MS5NZXRyaWNEYXRhUmVzcG9uc2UiA5ACARJ5ChFFeHBlbnNlUGVyc29uTGlzdBIuLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25MaXN0UmVxdWVzdBovLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25MaXN0UmVzcG9uc2UiA5ACAUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * ADS EXPENSE — the typed ADS expenses, net of their corrections, each on its own day (the owner's tree: *Ads Expense —
@@ -368,6 +372,241 @@ export const MetricDataResponseSchema: GenMessage<MetricDataResponse> = /*@__PUR
   messageDesc(file_warehouse_expense_v1_expense_analytic, 10);
 
 /**
+ * @generated from message warehouse.expense.v1.ExpensePersonListFilter
+ */
+export type ExpensePersonListFilter = Message<"warehouse.expense.v1.ExpensePersonListFilter"> & {
+  /**
+   * The metrics on the table — `metrics/ads`, `metrics/expenses` or both. With Ads expense alone only the people on its
+   * ADS rows are offered: whoever typed only payroll is on none of its rows. Empty, or Expenses among them, is every
+   * typed kind's people (Expenses' rows hold Ads expense's). Another service's metric id is InvalidArgument.
+   *
+   * @generated from field: repeated string metric_ids = 1;
+   */
+  metricIds: string[];
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpensePersonListFilter.
+ * Use `create(ExpensePersonListFilterSchema)` to create a new message.
+ */
+export const ExpensePersonListFilterSchema: GenMessage<ExpensePersonListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense_analytic, 11);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpensePersonListFilterSort
+ */
+export type ExpensePersonListFilterSort = Message<"warehouse.expense.v1.ExpensePersonListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.expense.v1.ExpensePersonListFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.expense.v1.ExpensePersonSort person = 2;
+     */
+    value: ExpensePersonSort;
+    case: "person";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpensePersonListFilterSort.
+ * Use `create(ExpensePersonListFilterSortSchema)` to create a new message.
+ */
+export const ExpensePersonListFilterSortSchema: GenMessage<ExpensePersonListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense_analytic, 12);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpensePersonListRequest
+ */
+export type ExpensePersonListRequest = Message<"warehouse.expense.v1.ExpensePersonListRequest"> & {
+  /**
+   * The reader, scoped as the metrics are: a team lists its own people; the root team every team's.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.expense.v1.ExpensePersonListFilter filter = 2;
+   */
+  filter?: ExpensePersonListFilter | undefined;
+
+  /**
+   * @generated from field: warehouse.expense.v1.ExpensePersonListFilterSort sort = 3;
+   */
+  sort?: ExpensePersonListFilterSort | undefined;
+
+  /**
+   * @generated from field: repeated warehouse.expense.v1.ExpensePersonListDataType data_request = 4;
+   */
+  dataRequest: ExpensePersonListDataType[];
+
+  /**
+   * It grows with staff turnover, slowly but without a ceiling, so it pages; the picker asks for a large first page
+   * and filters in the field.
+   *
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination | undefined;
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpensePersonListRequest.
+ * Use `create(ExpensePersonListRequestSchema)` to create a new message.
+ */
+export const ExpensePersonListRequestSchema: GenMessage<ExpensePersonListRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense_analytic, 13);
+
+/**
+ * One person, and the last day an expense report row of the reader's scope counts for them. Their name is
+ * user_service's — the picker resolves it with UserByIDs.
+ *
+ * @generated from message warehouse.expense.v1.ExpensePersonItem
+ */
+export type ExpensePersonItem = Message<"warehouse.expense.v1.ExpensePersonItem"> & {
+  /**
+   * @generated from field: uint64 user_id = 1;
+   */
+  userId: bigint;
+
+  /**
+   * YYYY-MM-DD, the report's own Jakarta day.
+   *
+   * @generated from field: string last_day = 2;
+   */
+  lastDay: string;
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpensePersonItem.
+ * Use `create(ExpensePersonItemSchema)` to create a new message.
+ */
+export const ExpensePersonItemSchema: GenMessage<ExpensePersonItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense_analytic, 14);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpensePersonMapItem
+ */
+export type ExpensePersonMapItem = Message<"warehouse.expense.v1.ExpensePersonMapItem"> & {
+  /**
+   * Keyed by user id.
+   *
+   * @generated from field: map<uint64, warehouse.expense.v1.ExpensePersonItem> map_data = 1;
+   */
+  mapData: { [key: string]: ExpensePersonItem };
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpensePersonMapItem.
+ * Use `create(ExpensePersonMapItemSchema)` to create a new message.
+ */
+export const ExpensePersonMapItemSchema: GenMessage<ExpensePersonMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense_analytic, 15);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpensePersonListResponseItem
+ */
+export type ExpensePersonListResponseItem = Message<"warehouse.expense.v1.ExpensePersonListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.expense.v1.ExpensePersonListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.expense.v1.ExpensePersonMapItem person = 1;
+     */
+    value: ExpensePersonMapItem;
+    case: "person";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpensePersonListResponseItem.
+ * Use `create(ExpensePersonListResponseItemSchema)` to create a new message.
+ */
+export const ExpensePersonListResponseItemSchema: GenMessage<ExpensePersonListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense_analytic, 16);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpensePersonListResponse
+ */
+export type ExpensePersonListResponse = Message<"warehouse.expense.v1.ExpensePersonListResponse"> & {
+  /**
+   * @generated from field: repeated warehouse.expense.v1.ExpensePersonListResponseItem items = 1;
+   */
+  items: ExpensePersonListResponseItem[];
+
+  /**
+   * User ids, in the sort's order.
+   *
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
+   */
+  pageInfo?: PageInfo | undefined;
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpensePersonListResponse.
+ * Use `create(ExpensePersonListResponseSchema)` to create a new message.
+ */
+export const ExpensePersonListResponseSchema: GenMessage<ExpensePersonListResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense_analytic, 17);
+
+/**
+ * @generated from enum warehouse.expense.v1.ExpensePersonListDataType
+ */
+export enum ExpensePersonListDataType {
+  /**
+   * @generated from enum value: EXPENSE_PERSON_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: EXPENSE_PERSON_LIST_DATA_TYPE_PERSON = 1;
+   */
+  PERSON = 1,
+}
+
+/**
+ * Describes the enum warehouse.expense.v1.ExpensePersonListDataType.
+ */
+export const ExpensePersonListDataTypeSchema: GenEnum<ExpensePersonListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_expense_v1_expense_analytic, 0);
+
+/**
+ * ExpensePersonSort is the sort selection paired with the PERSON slice.
+ *
+ * @generated from enum warehouse.expense.v1.ExpensePersonSort
+ */
+export enum ExpensePersonSort {
+  /**
+   * @generated from enum value: EXPENSE_PERSON_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The last day a report row counts for them — the default, newest first, so the people working now lead.
+   *
+   * @generated from enum value: EXPENSE_PERSON_SORT_LAST_DAY = 1;
+   */
+  LAST_DAY = 1,
+}
+
+/**
+ * Describes the enum warehouse.expense.v1.ExpensePersonSort.
+ */
+export const ExpensePersonSortSchema: GenEnum<ExpensePersonSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_expense_v1_expense_analytic, 1);
+
+/**
  * THE EXPENSE METRICS on the Analytic composer (docs/business/analytic/rpc_provide_decision.md —
  * expense-has-ads-and-expenses, expense-figures-are-read-from-its-own-records, an-expense-correction-counts-on-the-day-it-is-made,
  * stock-loss-stays-out-of-analytic-expenses, the-expense-metrics-follow-the-decisions-already-made,
@@ -409,6 +648,17 @@ export const ExpenseAnalyticService: GenService<{
     methodKind: "unary";
     input: typeof MetricDataRequestSchema;
     output: typeof MetricDataResponseSchema;
+  },
+  /**
+   * The people the Analytic screen's "created by" filter offers over an expense metric: everyone the report holds a row
+   * for in the reader's scope (a-who-filter-lists-the-people-on-its-rows) — the rows the USER group and filter read.
+   *
+   * @generated from rpc warehouse.expense.v1.ExpenseAnalyticService.ExpensePersonList
+   */
+  expensePersonList: {
+    methodKind: "unary";
+    input: typeof ExpensePersonListRequestSchema;
+    output: typeof ExpensePersonListResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_expense_v1_expense_analytic, 0);

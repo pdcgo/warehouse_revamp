@@ -1445,6 +1445,7 @@ flowchart LR
 
 ✅ **Built 2026-10-06** (verified in code 2026-11-05) — `RestockActorList` (inventory) and `OrderCreatorList` (selling), read by `components/pickers/PersonFilterSelect.tsx` on the orders and both restock pages.
 
+✅ Built 2026-11-06 — `ExpensePersonList` (expense_service, `expense_v1/expense_person_list.go`): the Analytic *Created by* field over Ads expense and Expenses offers the people on `expense_metric_daily_reports` (typists and correctors), a team its own and root every team's, unioned in `features/analytic/people.ts`; tests `TestExpensePersonList_*`, story `CreatedByOffersTheExpensePeople`, e2e `the_expense_metrics.spec.ts`.
 
 ## whoever-reads-a-list-may-filter-it
 

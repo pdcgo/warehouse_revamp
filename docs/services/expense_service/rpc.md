@@ -48,6 +48,12 @@ Three consequences worth knowing:
   in-process, where no interceptor runs, so its write-offs still land
   (`TestExpenseCreate_StockLossIsRefusedThroughTheAPI`, `TestExpenseCreate_StockLossNamesNoAccount`,
   `TestExpensePoster_*`).
+- **Its day is the Jakarta day of the write-off** (2026-11-06, backlog #29). No person picks a date here, so the poster
+  dates it from its own clock through `expense_v1.JakartaDay` — the same WIB conversion a correction's Analytic day uses
+  ([the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)).
+  It used to format the HOST clock, so on a UTC host a loss counted 00:00–07:00 WIB sat on the day before
+  (`TestExpensePoster_AWriteOffAt0030WIBLandsOnItsJakartaDay`: 23:59 WIB keeps its day, 00:30 WIB — 17:30 UTC — is the
+  next).
 - **History stays mixed.** Rows written before the kind existed are still `OPERATIONAL`. They are only
   identifiable by their free-text note, so a backfill would be a guess that could move a real rent row
   (owner). The split is honest from that date forward, not backwards.
@@ -308,10 +314,43 @@ sequenceDiagram
 | the person | `created_by` of the row: the typer of an expense, the corrector of a correction — a person who only corrects reads negative on that day |
 | never counted | `STOCK_LOSS` — the fold skips it and the table's CHECK refuses kind 5; settlement's ads fee and a transfer's shipping are other services' rows |
 | Seller / Warehouse | the report row carries the team as `seller_id` (a selling team) or `warehouse_id` (a warehouse team); the root team's on neither. The composition root reads `teams.type` (`cmd/app_development/expense_team_sides.go`, kept per process) |
-| readers | every member of a team — CS and warehouse staff included, unlike `ExpenseList` — reads its own team's; the root team every team's; another team's rows match nothing. Both RPCs `NO_SIDE_EFFECTS`, so the admin monitor and an agent read them |
+| readers | every member of a team — CS and warehouse staff included, unlike `ExpenseList` — reads its own team's; the root team every team's; another team's rows match nothing. Every RPC of it (`MetricSearch`, `MetricData`, `ExpensePersonList`) is `NO_SIDE_EFFECTS`, so the admin monitor and an agent read them |
 | the headline | MetricData with `GROUP_TYPE_SUMMARY`. `rows_group` names the table's group: under an id group the headline sums only the rows that group keys (by Seller the sellers' — a warehouse team's expense is no Seller row — by Warehouse the warehouses'); under a time group or unset, everything visible. On any other `group_by` it is InvalidArgument |
 | refusals | InvalidArgument: another service's metric id, a filter or group a metric does not list (a shop on Expenses), a repeated filter, no date range, a range over a year, keys under SUMMARY, a period keyed by any day but its first |
 | money | exact doubles, summed in SQL, never rounded |
 | concurrency | one upsert per row, the transaction's last statement — see [lock-order.md](../../../audits/services/expense_service/concurrency/lock-order.md) |
 | perf | one query per read; a team's year 1–2 ms, root's every-team year 23–25 ms (the root scan, as the order metrics and Lost stock); create / adjust with the fold ~1 ms (`TestPerf_ExpenseMetric`, ~137 000 report rows) |
 | MCP | source `expense` in `mcp_service/tool_metrics.go` |
+
+### Who a USER filter offers — `ExpensePersonList`
+
+Built 2026-11-06 (backlog #30). The Analytic screen's *Created by* field over an expense metric
+([a-who-filter-lists-the-people-on-its-rows](../../business/user/context_decision.md#a-who-filter-lists-the-people-on-its-rows)),
+in the shape of settlement's `SettlementPersonList`: the distinct `user_id` of `expense_metric_daily_reports` in the
+reader's scope (`user_id <> 0`), each at `MAX(day)` — the newest day a report row counts for them — newest first, the id
+breaking a tie, paged by `CommonPagination` (the picker asks for 200). So it offers whoever typed an expense and whoever
+corrected or cancelled one ([an-expense-correction-counts-for-who-made-it](../../business/analytic/rpc_provide_decision.md#an-expense-correction-counts-for-who-made-it)),
+and never the team's member list.
+
+| | |
+| --- | --- |
+| scope | the metrics' (`metricReaderOf`): a team its own rows, the root team every team's — a person once, at their latest day on any team. A team with no expense row lists nobody |
+| `filter.metric_ids` | the expense metrics on the table. Ads expense alone reads the ADS rows only — whoever typed only payroll is on none of its rows; none named, or Expenses among them, every typed kind. Another service's id is InvalidArgument |
+| roles | MetricData's exactly ([whoever-reads-a-list-may-filter-it](../../business/user/context_decision.md#whoever-reads-a-list-may-filter-it)) — CS and warehouse staff included |
+| kept | former and suspended people ([a-filter-keeps-former-and-suspended-people](../../business/user/context_decision.md#a-filter-keeps-former-and-suspended-people)) |
+| range | none — like `SettlementPersonList` and `OrderCreatorList`, the picker loads the set once and filters as you type |
+| SQL | ONE statement: `SELECT user_id, MAX(day) AS last_day, COUNT(*) OVER () AS total … GROUP BY user_id ORDER BY last_day, user_id LIMIT …` — the window counts people, not rows; a page past the end alone runs a `COUNT(DISTINCT user_id)` |
+| perf | `TestPerf_ExpensePersonList` (perfaudit, ~137 000 report rows over 150 teams): a team 1.1–1.6 ms (bitmap scan of `expense_metric_daily_reports_team_day_idx`), root 24 ms (Ads alone 14 ms) — a seq scan of the whole report, as root's metric reads. ⚠ Root's read is not bounded by a year as the metrics are: it grows with the report's whole history. Settlement met the same at 28–31 ms and moved to a per-person `last_day` row kept by the fold ([the-person-list-reads-the-last-day-from-the-user-report](../../business/settlement/context_decision.md#the-person-list-reads-the-last-day-from-the-user-report)) — the shape to take here if it bites |
+| frontend | `features/expense/queries.ts` `useExpensePeople` (key `expenses`, so an expense typed on the Expenses page refreshes it) → `features/analytic/people.ts`, unioned by id after the order creators and settlement's people |
+
+```mermaid
+sequenceDiagram
+  participant S as Analytic screen — Created by
+  participant E as ExpenseAnalyticService
+  participant M as expense_metric_daily_reports
+  participant U as user_service
+  S->>E: ExpensePersonList — team, the expense metrics on the table, page of 200
+  E->>M: one grouped SELECT — user_id, MAX(day), the count — own team or every team
+  E-->>S: ids, latest first, with each person's last day
+  S->>U: UserByIDs — their names
+```

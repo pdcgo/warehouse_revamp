@@ -53,6 +53,9 @@ import { formatUnixDateTimeShort } from "../../lib/datetime";
 /** Every filter naming one entity — what a metric that cannot use one makes the screen drop. */
 const ENTITY_FILTERS = ["shop", "team", "warehouse", "user", "product", "supplier"] as const;
 
+/** No metric asks for people — the "created by" field is not on the screen. */
+const NO_METRICS: MetricDef[] = [];
+
 const isDefaultRange = (state: ReportState) =>
   state.range.kind === "relative" && DEFAULT_RANGE.kind === "relative" && state.range.days === DEFAULT_RANGE.days;
 
@@ -88,7 +91,7 @@ export function AnalyticPage() {
   const shared: FilterType[] = defs.length > 0 ? sharedFilters(defs) : ["dateRange"];
   // WHO THE "CREATED BY" FILTER OFFERS — the people on the chosen metrics' own rows, each service answering for its own
   // (a-who-filter-lists-the-people-on-its-rows), never the system-wide user search. Asked only while the filter shows.
-  const people = useAnalyticPeople(teamId, shared.includes("user") ? [...new Set(defs.map((d) => d.service))] : []);
+  const people = useAnalyticPeople(teamId, shared.includes("user") ? defs : NO_METRICS);
   const sort = state.sort ?? defaultSort(state.groupBy, state.metricIds);
   const { from, to } = windowOf(state.range);
   // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line

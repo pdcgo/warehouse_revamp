@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { expenseMetricCalls } from "../../../.storybook/expenseAnalyticStub";
+import { expenseMetricCalls, expensePersonCalls } from "../../../.storybook/expenseAnalyticStub";
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
 import { asPlatformOnly, asRole } from "../../../.storybook/sessionScenario";
 import { EXPENSE_KIND_FIELDS, EXPENSE_METRICS, METRICS, catalogueMetrics, metricById } from "../../features/analytic/catalogue";
@@ -54,6 +54,7 @@ const ExpensesBySeller = at(`?g=team&m=${EXPENSES}&${OCTOBER}&s=${EXPENSES}:tota
 const AdsAndExpensesMonthly = at(`?g=monthly&m=${ADS},${EXPENSES}&${QUARTER}`);
 const AdsForSinar = at(`?g=daily&m=${ADS}&shop=16&r=2026-10-13..2026-10-20`);
 const ExpensesOctoberMonthly = at(`?g=monthly&m=${EXPENSES}&${OCTOBER}`);
+const BothByCreator = at(`?g=user&m=${ADS},${EXPENSES}&${OCTOBER}&s=${EXPENSES}:total:desc`);
 
 const meta = {
   title: "Pages/Analytic/Expense",
@@ -63,6 +64,7 @@ const meta = {
     asTeam(12n),
     () => {
       expenseMetricCalls.length = 0;
+      expensePersonCalls.length = 0;
     },
   ],
 } satisfies Meta<typeof AdsByShop>;
@@ -280,6 +282,84 @@ export const ACorrectorReadsNegativeOnTheirDay: Story = {
       await expect(cell(canvas, day, "amount")).toBe(0);
     }
     await expect(headline(canvas, "amount")).toBe(-450_000);
+  },
+};
+
+/** Open the "created by" field and wait for its options — they are portalled, so read off `screen`. */
+async function openPeople(canvas: ReturnType<typeof within>) {
+  const field = await canvas.findByTestId("analytic-filter-user", {}, { timeout: 4000 });
+  await userEvent.click(within(field).getByRole("combobox"));
+  await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(0), { timeout: 4000 });
+}
+
+/** The ids the "created by" field offers, in its order. */
+const offered = () =>
+  screen.getAllByTestId(/^person-filter-option-\d+$/).map((o: HTMLElement) => o.getAttribute("data-testid")!.replace("person-filter-option-", ""));
+
+// CREATED BY OFFERS THE EXPENSE PEOPLE (a-who-filter-lists-the-people-on-its-rows) — with ONLY expense metrics on the
+// table, the field lists who typed or corrected Toko Melati's expenses, as expense_service's ExpensePersonList answers:
+// Ani, Budi, Dewi (who only corrected) and Eko, each named — never Toko Kenanga's Ani Lestari. Picking Dewi narrows the
+// table to her row: her −Rp 450.000 correction.
+export const CreatedByOffersTheExpensePeople: Story = {
+  render: () => <BothByCreator />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(rowKeys(canvas)).toHaveLength(4);
+
+    await openPeople(canvas);
+    await waitFor(() => expect(offered().sort()).toEqual(["61", "62", "64", "65"]));
+    await expect(screen.getByTestId("person-filter-option-61")).toHaveTextContent("Ani Rahayu");
+    await expect(screen.getByTestId("person-filter-option-62")).toHaveTextContent("Budi Santoso");
+    await expect(screen.getByTestId("person-filter-option-64")).toHaveTextContent("Dewi Lestari");
+    await expect(screen.getByTestId("person-filter-option-65")).toHaveTextContent("Eko Prasetyo");
+    await expect(screen.queryByTestId("person-filter-option-68")).toBeNull();
+    await expect(expensePersonCalls.at(-1)).toEqual({ teamId: 12n, metricIds: [ADS, EXPENSES] });
+
+    await userEvent.click(screen.getByTestId("person-filter-option-64"));
+    await waitFor(() => expect(rowKeys(canvas)).toEqual(["64"]));
+    await expect(cell(canvas, "64", "total")).toBe(-450_000);
+    await expect(headline(canvas, "total")).toBe(-450_000);
+  },
+};
+
+// ADS EXPENSE ALONE asks for its ads' people only — the service leaves out whoever typed only payroll or rent.
+export const CreatedByForAdsAloneAsksForTheAdsPeople: Story = {
+  render: () => <AdsByCreator />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openPeople(canvas);
+
+    await waitFor(() => expect(offered().sort()).toEqual(["61", "62", "64", "65"]));
+    await expect(expensePersonCalls.at(-1)).toEqual({ teamId: 12n, metricIds: [ADS] });
+  },
+};
+
+// A WAREHOUSE TEAM IS OFFERED ITS OWN PEOPLE — Gudang Pusat's Dewi, Budi and Eko, who typed its payroll, rent and
+// supplies; Toko Melati's Ani is on none of its rows.
+export const AWarehouseIsOfferedItsOwnPeople: Story = {
+  render: () => <ExpensesMonthly />,
+  beforeEach: [asTeam(11n)],
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openPeople(canvas);
+
+    await waitFor(() => expect(offered().sort()).toEqual(["62", "64", "65"]));
+    await expect(screen.getByTestId("person-filter-option-64")).toHaveTextContent("Dewi Lestari");
+    await expect(screen.queryByTestId("person-filter-option-61")).toBeNull();
+  },
+};
+
+// ROOT IS OFFERED EVERY TEAM'S PEOPLE — Toko Melati's, Gudang Pusat's and Toko Kenanga's Ani Lestari, each once.
+export const RootIsOfferedEveryTeamsPeople: Story = {
+  render: () => <ExpensesMonthly />,
+  beforeEach: [asTeam(ROOT_TEAM_ID), asPlatformOnly(Role.ROOT)],
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openPeople(canvas);
+
+    await waitFor(() => expect(offered().sort()).toEqual(["61", "62", "64", "65", "68"]));
+    await expect(screen.getByTestId("person-filter-option-68")).toHaveTextContent("Ani Lestari");
+    await expect(expensePersonCalls.at(-1)?.teamId).toBe(ROOT_TEAM_ID);
   },
 };
 

@@ -15,7 +15,8 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 //   today        Dewi (the team's admin) corrects the ad by −450.000
 //
 // In Analytic the correction counts TODAY, under Dewi; 3 days ago keeps its 500.000. The Expenses page and the
-// statement keep the correction on the ad's own day.
+// statement keep the correction on the ad's own day. The composer's Created by offers the two of them — and only them —
+// with nothing but expense metrics on the table (ExpensePersonList).
 
 const SUFFIX = Date.now().toString().slice(-6);
 const ADS = "metrics/ads";
@@ -272,4 +273,45 @@ test("The Analytic screen shows Created by with the corrector, and the correctio
   await expect(page.getByTestId(`analytic-row-${state.team}`)).toContainText(`E2E Expense Seller ${SUFFIX}`);
   await expect(page.getByTestId(`analytic-cell-${state.team}-total`)).toHaveText(rp(2_050_000));
   await expect(page.getByTestId("analytic-headline-total-value")).toHaveText(rp(2_050_000));
+});
+
+// a-who-filter-lists-the-people-on-its-rows: ExpensePersonList answers with the people on the team's expense rows — Dewi,
+// who corrected today, then root, who typed three days ago — and nobody else (the CS typed nothing); a CS of the team may
+// ask it (whoever-reads-a-list-may-filter-it).
+test("ExpensePersonList names the corrector and the typist, latest first", async ({ page }) => {
+  await login(page, CS, PASSWORD);
+
+  const people = await rpc<{ ids: string[]; items: { person?: { mapData: Record<string, { lastDay: string }> } }[] }>(
+    page,
+    "expense.v1.ExpenseAnalyticService/ExpensePersonList",
+    { teamId: state.team, filter: { metricIds: [ADS, EXPENSES] }, page: { page: 1, limit: 200 } },
+  );
+  expect(people.ids).toEqual([state.dewi, ROOT_USER_ID]);
+  expect(people.items[0]!.person!.mapData[state.dewi]!.lastDay).toBe(day(0));
+  expect(people.items[0]!.person!.mapData[ROOT_USER_ID]!.lastDay).toBe(day(3));
+});
+
+// The Analytic composer with ONLY the expense metrics on the table: Created by offers the corrector — Dewi, by name — and
+// the typist, nobody else; picking Dewi narrows the table to her row and the headline to her −450.000.
+test("The Created by filter offers the corrector, and picking her narrows the table", async ({ page }) => {
+  await login(page);
+  await useTeam(page, state.team);
+
+  await page.goto(`/analytic?g=user&m=${ADS},${EXPENSES}&r=7d&s=${EXPENSES}:total:desc`);
+  await expect(page.getByTestId(`analytic-row-${state.dewi}`)).toContainText(DEWI_NAME);
+  await expect(page.getByTestId(`analytic-row-${ROOT_USER_ID}`)).toBeVisible();
+  await expect(page.getByTestId("analytic-headline-total-value")).toHaveText(rp(2_050_000));
+
+  await page.getByTestId("analytic-filter-user").getByRole("combobox").click();
+  const dewi = page.getByTestId(`person-filter-option-${state.dewi}`).filter({ visible: true });
+  await expect(dewi).toContainText(DEWI_NAME);
+  await expect(page.getByTestId(`person-filter-option-${ROOT_USER_ID}`).filter({ visible: true })).toBeVisible();
+  await expect(page.locator('[data-testid^="person-filter-option-"]:visible')).toHaveCount(2);
+
+  await dewi.click();
+  await expect(page).toHaveURL(new RegExp(`[?&]user=${state.dewi}(&|$)`));
+  await expect(page.getByTestId(`analytic-row-${ROOT_USER_ID}`)).toHaveCount(0);
+  await expect(page.getByTestId(/^analytic-row-/)).toHaveCount(1);
+  await expect(page.getByTestId(`analytic-cell-${state.dewi}-total`)).toHaveText(`−${rp(450_000)}`);
+  await expect(page.getByTestId("analytic-headline-total-value")).toHaveText(`−${rp(450_000)}`);
 });
