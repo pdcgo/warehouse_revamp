@@ -106,6 +106,7 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [the-labels-have-one-address](#the-labels-have-one-address) | Cetak Label has one address, `/inventories/restock/labels?ids=…`, for one restock or several; every way in opens it, and the old `/inventories/restock/:id/labels` redirects to `?ids=:id` |
 | [cetak-is-the-one-print-button](#cetak-is-the-one-print-button) | Cetak Label has one print button, *Cetak* — no *Unduh PDF*: both opened the same print dialog, which is where a PDF is saved |
 | [the-labels-mark-their-one-by-one-read](#the-labels-mark-their-one-by-one-read) | Cetak Label reads each restock on its own — a detail, and an accepted one's labels — and says so: an `interim` pending mark on the Restok card and in the strip under the title |
+| [the-labels-stories-are-folders-by-part](#the-labels-stories-are-folders-by-part) | Cetak Label's 22 stories are folders by the part of the screen — Default and Mobile first, then Header, Restocks, Settings, States, ToPrint — as every big page's are |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -2429,3 +2430,27 @@ per restock                                   5 restocks     50 restocks
 | pinned by | `One-by-one read, marked` (the strip, *interim read*, and the card's ⚠ 1) |
 
 What it replaces: a page reading one call per restock with nothing on it saying so.
+
+## the-labels-stories-are-folders-by-part
+
+> Owner, in chat (2026-11-06): *"story labelnya sesuaikan seperti lainnya"*.
+
+```
+RestockLabels
+  Default
+  Mobile
+  ▸ Header     Ctrl+P prints · From the list · back
+  ▸ Restocks   Several restocks · Add a restock · Restock jumps to its labels · One-by-one read, marked
+  ▸ Settings   Paper size · Rows and columns · Padding · Text · Name lines · Limit and page · Remembered
+  ▸ States     Ongoing, no labels · Arrived, no placement · Selling team cannot print · Old address redirects
+  ▸ ToPrint    Every label placed · Edit the count · Broken and missing, no label
+```
+
+| | |
+| --- | --- |
+| the rule | [stories-are-grouped-by-the-part-of-the-screen](context_decision.md#stories-are-grouped-by-the-part-of-the-screen) — the page had 22 stories in one file |
+| the files | `pages/restock-labels/index.stories.tsx` (Default, Mobile, and the list of parts), `stories/<Part>.stories.tsx`, and `stories/kit.tsx` — the routes, the meta bar its title, `sheet`, `printedPaperMm`, `printedLabels`, `typeMeasure` |
+| unchanged | every story's name and play(); only the story ids follow the new titles |
+| pinned by | the 22 stories, passing in their folders |
+
+What it replaces: one `index.stories.tsx` holding every story of Cetak Label.
