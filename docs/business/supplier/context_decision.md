@@ -786,6 +786,8 @@ sequenceDiagram
 | run twice | inserts nothing it already has |
 | ⚠ the drop | **a later pass**, after the move has run on every database. Shipped together, a fresh `migrate up-all` would drop the rows before the command could copy them |
 
+✅ Built 2026-11-06 — a row an earlier run moved is recognised by its origin (same team, or a store's same supplier, and the same `created_at`), so one edited in supplier_service since is skipped and named, never overwritten and never a failure; only an unrelated row under a moving id still refuses (backlog #26, `tools/san/supplier_move.go`).
+
 ## every-accepted-line-links-its-own-product
 
 > Owner, in chat *(2026-10-07)*: *"for q11, we are linking at restock"*, confirmed as *"at accept — all of Q11 yes"* —

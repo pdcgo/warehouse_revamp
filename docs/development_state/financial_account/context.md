@@ -23,6 +23,12 @@ queue, never filed elsewhere; an archived account still takes the row.
 serves both reads. `features/financialAccount/pending.ts` is deleted; the report's Export mark is the domain's
 only one left. Proven in `e2e/financial_accounts.spec.ts` — 12 steps, two of them new.
 
+**2026-11-06 — expenses also fold into Analytic, in their own transaction** ([expense-figures-are-read-from-its-own-records](../../business/analytic/rpc_provide_decision.md#expense-figures-are-read-from-its-own-records)):
+`ExpenseCreate` / `ExpenseAdjust` write `expense_metric_daily_reports` (expense 00006) beside the row — a correction on the
+day it is MADE, for its maker. Nothing changes for the paying account: the events, the listener and the account's day
+(the expense's own) are as before; the Analytic expense figures are NOT read from them
+([analytic rpc_provide.md](../analytic/rpc_provide.md), [expense rpc.md](../../services/expense_service/rpc.md#the-analytic-expense-metrics--expenseanalyticservice)).
+
 **2026-11-04 — the warehouse transfer's shipping is wired** ([a-transfers-shipping-posts-as-an-expense](../../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense)):
 `TransferShippingHandler` on `warehouse-transfer-created|updated|cancelled` posts a transfer's `shipment_cost` out of the
 account it names as **`expense`** — *"Warehouse transfer #603 shipping"* — straight from inventory's events, with no

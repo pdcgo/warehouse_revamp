@@ -25,13 +25,14 @@ import {
   AccountChangeTypeMetricSchema,
 } from "../../gen/warehouse/financial_account/v1/financial_account_analytic_pb";
 import { InventoryLostMetricSchema } from "../../gen/warehouse/inventory/v1/inventory_analytic_pb";
+import { AdsExpenseMetricSchema, ExpensesMetricSchema } from "../../gen/warehouse/expense/v1/expense_analytic_pb";
 
-// THE METRIC CATALOGUE. A metric a service SERVES is read off its generated descriptor with `getOption` — its id, its
+// THE METRIC CATALOGUE. Every metric is SERVED and read off its generated descriptor with `getOption` — its id, its
 // filters, its groups, its fields' kinds and which can sort — so the screen states nothing the proto already does: the
 // five order metrics (order_statistic_metric.md), Warehouse Fee (the-warehouse-fee-prototype-is-accepted), the two
-// settlement metrics (settlement-serves-its-headline-and-its-breakdown), the two Finance metrics and Lost stock. The rest
-// are still a TypeScript MIRROR of the decided proto options, backed by samples, until their
-// services ship (HARD RULE 6 — the screen was built first).
+// settlement metrics (settlement-serves-its-headline-and-its-breakdown), the two Finance metrics, Lost stock and the two
+// expense metrics (the-expense-prototype-is-accepted). A new metric is drawn first as a PROTOTYPE (below), backed by
+// sample.ts, until its service ships (HARD RULE 6 — the screen was built first).
 //
 // Every entry obeys the decisions in rpc_provide_decision.md:
 //   a metric is ONE measure and names the groups it can be read by   the-table-picks-one-group
@@ -233,8 +234,6 @@ export const SETTLEMENT_METRICS: MetricDef[] = [
  */
 export const WAREHOUSE_FEE_METRIC: MetricDef = servedMetric(WarehouseFeeMetricSchema, "warehouseFee", "selling", "expense");
 
-const TIME: GroupType[] = ["daily", "weekly", "monthly", "yearly"];
-
 /**
  * THE FINANCE METRICS, served by financial_account_service (financial-accounts-serve-their-changes-and-their-types,
  * the-finance-prototype-is-accepted): Account changes — a statement: the opening balance, what moved it (one signed field
@@ -265,40 +264,45 @@ export const CHANGE_TYPE_FIELDS: string[] = FINANCE_METRICS[0]!.fields
  */
 export const INVENTORY_LOST_METRIC: MetricDef = servedMetric(InventoryLostMetricSchema, "inventoryLost", "inventory", "inventory");
 
+/**
+ * THE EXPENSE METRICS, served by expense_service (the-expense-prototype-is-accepted) from its own records, written in the
+ * expense's transaction (expense-figures-are-read-from-its-own-records):
+ *   Ads expense — `metrics/ads`, `amount`: the typed ads; filters team, shop, user, date range; groups shop, seller,
+ *     warehouse, created by, time (expense-has-ads-and-expenses).
+ *   Expenses — `metrics/expenses`: one money field per TYPED kind (Ads, Payroll, Operational, Other) and their total; no
+ *     Stock loss (stock-loss-stays-out-of-analytic-expenses); the same filters and groups without shop.
+ * A correction counts on the day it is MADE and for the person who MADE it (an-expense-correction-counts-on-the-day-it-
+ * is-made, an-expense-correction-counts-for-who-made-it); a selling team's expense sits under Seller, a warehouse team's
+ * under Warehouse; every member reads its own team's, root every team's. Grouped by Seller or Warehouse the headline
+ * counts only that group's rows — the provider sends the table's group as `rows_group`.
+ */
+export const EXPENSE_METRICS: MetricDef[] = [
+  servedMetric(AdsExpenseMetricSchema, "ads", "expense", "expense"),
+  servedMetric(ExpensesMetricSchema, "expenses", "expense", "expense"),
+];
+
 export const METRICS: MetricDef[] = [
   ...ORDER_METRICS,
   ...SETTLEMENT_METRICS,
   INVENTORY_LOST_METRIC,
-  {
-    metricId: "metrics/ads",
-    labelKey: "ads",
-    service: "ads",
-    category: "expense",
-    supportedFilters: ["dateRange", "shop"],
-    requiredFilters: ["dateRange"],
-    supportedGroupBy: ["summary", ...TIME, "shop"],
-    fields: [{ name: "ads_spend", kind: "money", canSort: true }],
-  },
+  EXPENSE_METRICS[0]!,
   WAREHOUSE_FEE_METRIC,
-  {
-    metricId: "metrics/expenses",
-    labelKey: "expenses",
-    service: "expense",
-    category: "expense",
-    // A team's expense is booked to the team, not to a shop or a product.
-    supportedFilters: ["dateRange"],
-    requiredFilters: ["dateRange"],
-    supportedGroupBy: ["summary", ...TIME],
-    fields: [{ name: "expense_total", kind: "money", canSort: true }],
-  },
+  EXPENSE_METRICS[1]!,
   ...FINANCE_METRICS,
 ];
+
+/**
+ * The expense kinds a person TYPES, as Expenses' fields, in `ExpenseKind`'s order (ADS 1 … OTHER 4) — read off the
+ * message: every field but the total. STOCK_LOSS (5) is not one of them: a loss is read as Lost stock and as Team
+ * Balance, never here (stock-loss-stays-out-of-analytic-expenses).
+ */
+export const EXPENSE_KIND_FIELDS: string[] = EXPENSE_METRICS[1]!.fields.map((f) => f.name).filter((name) => name !== "total");
 
 /**
  * ⚠ PROTOTYPES — metrics drawn for the owner's design accept, in Storybook only. They never reach the live screen: only a
  * story turns them on (`showPrototypeMetrics`), and the live app never calls it. Each goes into METRICS once the owner
  * accepts it and decides what it counts — Warehouse Fee, then Finance's two metrics and Lost stock (all served
- * 2026-11-05). Empty now; the mechanism stays for the next prototype.
+ * 2026-11-05), then Ads expense and Expenses (served 2026-11-06). Empty now; the mechanism stays for the next prototype.
  */
 export const PROTOTYPE_METRICS: MetricDef[] = [];
 

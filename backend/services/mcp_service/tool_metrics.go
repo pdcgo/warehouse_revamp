@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
+	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
 	financial_accountv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
@@ -159,6 +160,35 @@ func (t *tools) sources() []*metricSource {
 			},
 			data: func(ctx context.Context, req proto.Message) (proto.Message, error) {
 				res, err := c.LostAnalytic.MetricData(ctx, connect.NewRequest(req.(*inventoryv1.MetricDataRequest)))
+				if err != nil {
+					return nil, err
+				}
+
+				return res.Msg, nil
+			},
+		},
+		{
+			// Ads expense and Expenses (expense-has-ads-and-expenses) — the typed expenses, a correction on the day it
+			// was made (an-expense-correction-counts-on-the-day-it-is-made).
+			name: "expense",
+			pkg:  "warehouse.expense.v1",
+			newReq: func(search bool) proto.Message {
+				if search {
+					return &expensev1.MetricSearchRequest{}
+				}
+
+				return &expensev1.MetricDataRequest{}
+			},
+			search: func(ctx context.Context, req proto.Message) (proto.Message, error) {
+				res, err := c.ExpenseAnalytic.MetricSearch(ctx, connect.NewRequest(req.(*expensev1.MetricSearchRequest)))
+				if err != nil {
+					return nil, err
+				}
+
+				return res.Msg, nil
+			},
+			data: func(ctx context.Context, req proto.Message) (proto.Message, error) {
+				res, err := c.ExpenseAnalytic.MetricData(ctx, connect.NewRequest(req.(*expensev1.MetricDataRequest)))
 				if err != nil {
 					return nil, err
 				}

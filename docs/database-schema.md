@@ -1720,6 +1720,19 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+    expense_metric_daily_reports {
+        bigserial   id           PK
+        date        day          "a Jakarta day - an expense's occurred_at, a correction's day of making"
+        bigint      team_id      "whose expense, opaque - the reader's scope"
+        bigint      seller_id    "team_id when the team sells, else 0 - the Seller group"
+        bigint      warehouse_id "team_id when the team is a warehouse, else 0 - the Warehouse group"
+        int         kind         "a TYPED ExpenseKind only - ADS 1 to OTHER 4, CHECK, never STOCK_LOSS"
+        bigint      shop_id      "an ads expense's shop, 0 on every other kind"
+        bigint      user_id      "who made the entry - the typer, or the corrector"
+        double      amount       "the signed exact sum of the rows that count here"
+        timestamptz last_updated
+    }
+    expense_records ||--o{ expense_metric_daily_reports : "each typed row adds to one, in its own transaction"
 ```
 
 - **`expense_records`** (#161/#167) — money the business spent that **no order caused**: ads budget,
@@ -1766,6 +1779,28 @@ erDiagram
   - Indexed on `(team_id, occurred_at DESC, id DESC)` — every screen and every total asks for one team's rows over a
     period — and on `adjusts_expense_id` where it is set, for an expense's net and the floor. Migration `00002` turned
     every row voided until then into its expense plus an adjustment of minus its amount.
+- **`expense_metric_daily_reports`** (`00006`, 2026-11-06) — the Analytic expense metrics, *Ads expense* `metrics/ads` and
+  *Expenses* `metrics/expenses`, served by `ExpenseAnalyticService`
+  ([expense-has-ads-and-expenses](business/analytic/rpc_provide_decision.md#expense-has-ads-and-expenses),
+  [the-expense-prototype-is-accepted](business/analytic/rpc_provide_decision.md#the-expense-prototype-is-accepted)).
+  - **Written in the expense row's own transaction** (`expense_v1/metric_fold.go`, called by `ExpenseCreate` and
+    `ExpenseAdjust`) — never from the events, which a STOCK_LOSS and an expense made before *Paid from* never publish
+    ([expense-figures-are-read-from-its-own-records](business/analytic/rpc_provide_decision.md#expense-figures-are-read-from-its-own-records)).
+    One `INSERT … ON CONFLICT (day, team_id, kind, shop_id, user_id) DO UPDATE SET amount = amount + EXCLUDED.amount`.
+  - **The day.** An expense counts on its own `occurred_at`; a correction — a cancel too — on the Jakarta day it is
+    MADE ([an-expense-correction-counts-on-the-day-it-is-made](business/analytic/rpc_provide_decision.md#an-expense-correction-counts-on-the-day-it-is-made)),
+    so a past day never changes here, while `expense_records` keeps the correction on the expense's day for the Expenses
+    page, the statement and the paying account. **The person**: the typer, or the corrector
+    ([an-expense-correction-counts-for-who-made-it](business/analytic/rpc_provide_decision.md#an-expense-correction-counts-for-who-made-it)).
+  - **Typed kinds only** — `CHECK (kind BETWEEN 1 AND 4)`
+    ([stock-loss-stays-out-of-analytic-expenses](business/analytic/rpc_provide_decision.md#stock-loss-stays-out-of-analytic-expenses)).
+  - **`seller_id` / `warehouse_id`** — the team on its side of the composer
+    ([the-warehouse-is-its-own-group](business/analytic/rpc_provide_decision.md#the-warehouse-is-its-own-group)): a selling
+    team's expense under Seller, a warehouse team's under Warehouse, the root team's under neither; CHECK'd to be the team
+    itself, on one side at most. Which side is team_service's answer, asked before the transaction through the
+    composition root (`cmd/app_development/expense_team_sides.go`).
+  - Indexed on the upsert key (which starts with `day`, so root's read of every team over a window uses it) and on
+    `(team_id, day)` for a team's own read. No backfill (revamp-has-no-real-orders-yet).
 
 ---
 

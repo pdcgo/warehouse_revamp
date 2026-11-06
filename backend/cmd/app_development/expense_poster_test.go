@@ -25,7 +25,7 @@ import (
 // would just quietly stop answering the question again.
 func TestExpensePoster_FilesAStockWriteOffUnderItsOwnKind(t *testing.T) {
 	db := san_testdb.DB(t)
-	expenses := expense_v1.NewService(db, nil, nil)
+	expenses := expense_v1.NewService(db, nil, nil, nil)
 	poster := NewExpensePoster(expenses)
 
 	// Synthetic, for the reason spelled out in the test below: this asserts a total, and a committed
@@ -74,7 +74,7 @@ func TestExpensePoster_FilesAStockWriteOffUnderItsOwnKind(t *testing.T) {
 // easy and entirely plausible mistake.
 func TestExpensePoster_TheLossLandsOnTheWarehouseNotTheGoodsOwner(t *testing.T) {
 	db := san_testdb.DB(t)
-	expenses := expense_v1.NewService(db, nil, nil)
+	expenses := expense_v1.NewService(db, nil, nil, nil)
 	poster := NewExpensePoster(expenses)
 
 	// ⚠ SYNTHETIC IDS, deliberately far from the dev fixture's.

@@ -24,6 +24,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1/expensev1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1/financial_accountv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1/inventoryv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1/liabilityv1connect"
@@ -47,6 +48,7 @@ type Clients struct {
 	SupplierAnalytic   supplierv1connect.SupplierAnalyticServiceClient
 	FinanceAnalytic    financial_accountv1connect.FinancialAccountAnalyticServiceClient
 	LostAnalytic       inventoryv1connect.InventoryAnalyticServiceClient
+	ExpenseAnalytic    expensev1connect.ExpenseAnalyticServiceClient
 	Products           productv1connect.ProductServiceClient
 	Liability          liabilityv1connect.LiabilityServiceClient
 	Teams              teamv1connect.TeamServiceClient
@@ -63,6 +65,7 @@ func NewClients(httpClient connect.HTTPClient, baseURL string) Clients {
 		SupplierAnalytic:   supplierv1connect.NewSupplierAnalyticServiceClient(httpClient, baseURL, forward),
 		FinanceAnalytic:    financial_accountv1connect.NewFinancialAccountAnalyticServiceClient(httpClient, baseURL, forward),
 		LostAnalytic:       inventoryv1connect.NewInventoryAnalyticServiceClient(httpClient, baseURL, forward),
+		ExpenseAnalytic:    expensev1connect.NewExpenseAnalyticServiceClient(httpClient, baseURL, forward),
 		Products:           productv1connect.NewProductServiceClient(httpClient, baseURL, forward),
 		Liability:          liabilityv1connect.NewLiabilityServiceClient(httpClient, baseURL, forward),
 		Teams:              teamv1connect.NewTeamServiceClient(httpClient, baseURL, forward),

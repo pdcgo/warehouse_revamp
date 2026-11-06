@@ -89,6 +89,8 @@ import { supplierAnalyticService, supplierChannelService, supplierService } from
 import { orderAnalyticService } from "./orderAnalyticStub";
 import { InventoryAnalyticService } from "../src/gen/warehouse/inventory/v1/inventory_analytic_pb";
 import { inventoryAnalyticService } from "./inventoryAnalyticStub";
+import { ExpenseAnalyticService } from "../src/gen/warehouse/expense/v1/expense_analytic_pb";
+import { expenseAnalyticService } from "./expenseAnalyticStub";
 import { settlementAnalyticService } from "./settlementAnalyticStub";
 import { shopService } from "./shopStub";
 import { categoryService } from "./categoryStub";
@@ -1067,6 +1069,9 @@ export const transport = createRouterTransport(({ service }) => {
   service(OrderAnalyticService, orderAnalyticService);
   // Lost stock — inventoryAnalyticStub.ts answers it from the analytic sample's lost facts, scoped as the server scopes.
   service(InventoryAnalyticService, inventoryAnalyticService);
+  // Ads expense and Expenses — expenseAnalyticStub.ts answers them from the analytic sample's expense facts, each team
+  // reading its own and root every team's, the headline following the table's group.
+  service(ExpenseAnalyticService, expenseAnalyticService);
 
   // The rack registry (scoped by the warehouse, as the server is), Rack detail's reads and the two prototype writes —
   // rackStub.ts plays them, writeable, with the placement decisions.

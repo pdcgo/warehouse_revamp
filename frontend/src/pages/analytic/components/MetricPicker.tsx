@@ -12,8 +12,6 @@ import {
   metricCategories,
   metricSlug,
 } from "../../../features/analytic/catalogue";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ANALYTIC_PENDING } from "../pending";
 
 export const CATEGORY_ICON: Record<MetricCategory, LucideIcon> = {
   order: ShoppingCart,
@@ -102,7 +100,6 @@ export function MetricPicker({
         <Button variant="outline" colorPalette="gray" data-testid="analytic-add-metric">
           <Icon as={Plus} boxSize="4" />
           {t("analytic.addMetric")}
-          <NotImplemented list={ANALYTIC_PENDING} id="catalogue" />
         </Button>
       </Popover.Trigger>
 

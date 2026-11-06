@@ -3,12 +3,15 @@ package expense_v1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_service_models"
 	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 )
 
@@ -207,5 +210,83 @@ func TestExpenseAdjust_AFractionalCorrectionIsStoredExact(t *testing.T) {
 	_, err := tryAdjust(svc, teamA, expense.GetId(), 0.00001)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("a correction of float dust: code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+}
+
+// ANALYTIC, ON THE CORRECTION'S OWN DAY (an-expense-correction-counts-on-the-day-it-is-made,
+// an-expense-correction-counts-for-who-made-it): Dewi's −450.000 at 23:30 on 20 Oct WIB — 16:30 UTC — lands on 20 Oct
+// (a Jakarta day) under Dewi; Budi's cancel on 21 Oct at 06:30 WIB — still the 20th in UTC — lands on the 21st. The
+// expense's own 14 Oct row keeps its 500.000, and the expense list still files every correction under 14 Oct.
+func TestExpenseAdjust_FoldsOnTheDayItIsMadeForWhoMadeIt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	budi := asCaller(62, teamA, role_basev1.Role_ROLE_SELLING_OWNER)
+
+	res, err := svc.ExpenseCreate(budi, connect.NewRequest(&expensev1.ExpenseCreateRequest{
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 500_000, OccurredAt: "2026-10-14",
+		ShopId: adsShop, FinanceAccountId: payingAccount,
+	}))
+	if err != nil {
+		t.Fatalf("ExpenseCreate: %v", err)
+	}
+
+	expense := res.Msg.GetExpense().GetId()
+
+	expense_v1.SetClock(svc, func() time.Time { return time.Date(2026, 10, 20, 16, 30, 0, 0, time.UTC) })
+
+	_, err = svc.ExpenseAdjust(asCaller(64, teamA, role_basev1.Role_ROLE_SELLING_ADMIN), connect.NewRequest(&expensev1.ExpenseAdjustRequest{
+		TeamId: teamA, ExpenseId: expense, Amount: -450_000,
+	}))
+	if err != nil {
+		t.Fatalf("Dewi's correction: %v", err)
+	}
+
+	expense_v1.SetClock(svc, func() time.Time { return time.Date(2026, 10, 20, 23, 30, 0, 0, time.UTC) })
+
+	_, err = svc.ExpenseAdjust(budi, connect.NewRequest(&expensev1.ExpenseAdjustRequest{
+		TeamId: teamA, ExpenseId: expense, Amount: -50_000,
+	}))
+	if err != nil {
+		t.Fatalf("Budi's cancel: %v", err)
+	}
+
+	type cell struct {
+		day    string
+		user   uint64
+		amount float64
+	}
+
+	var got []cell
+	for _, r := range reportRows(t, db) {
+		got = append(got, cell{r.Day.Format("2006-01-02"), r.UserID, r.Amount})
+	}
+
+	want := []cell{{"2026-10-14", 62, 500_000}, {"2026-10-20", 64, -450_000}, {"2026-10-21", 62, -50_000}}
+	if len(got) != len(want) {
+		t.Fatalf("report = %v, want %v", got, want)
+	}
+
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("report = %v, want %v", got, want)
+		}
+	}
+
+	// The list and the statement keep the expense's day: every row of it is on 14 Oct.
+	var days []string
+
+	err = db.Model(&expense_service_models.ExpenseRecord{}).
+		Where("id = ? OR adjusts_expense_id = ?", expense, expense).
+		Pluck("to_char(occurred_at, 'YYYY-MM-DD')", &days).
+		Error
+	if err != nil {
+		t.Fatalf("days: %v", err)
+	}
+
+	for _, d := range days {
+		if d != "2026-10-14" {
+			t.Fatalf("an expense row on %s, want every one on the expense's 14 Oct", d)
+		}
 	}
 }

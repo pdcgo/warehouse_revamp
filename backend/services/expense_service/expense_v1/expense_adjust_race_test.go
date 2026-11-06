@@ -31,6 +31,8 @@ func TestRace_ExpenseAdjust_TheFloorHolds(t *testing.T) {
 
 	t.Cleanup(func() {
 		db.Where("team_id = ?", team).Delete(&expense_service_models.ExpenseRecord{})
+		// Its Analytic report rows too (metric_fold.go), or the next suite reads them.
+		db.Where("team_id = ?", team).Delete(&expense_service_models.ExpenseMetricDailyReport{})
 	})
 
 	for round := 0; round < 20; round++ {

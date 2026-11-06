@@ -4882,8 +4882,6 @@
       "system_adjustment": "Penyesuaian sistem",
       "lost_count": "Unit hilang",
       "lost_amount": "Nilai hilang",
-      "ads_spend": "Biaya iklan",
-      "expense_total": "Biaya",
       "transaction_count": "Transaksi biaya",
       "amount": "Jumlah biaya"
     },
@@ -4914,6 +4912,16 @@
       "inventoryLost": {
         "lost_count": "Unit hilang",
         "lost_amount": "Nilai hilang"
+      },
+      "ads": {
+        "amount": "Biaya iklan"
+      },
+      "expenses": {
+        "ads": "Iklan",
+        "payroll": "Gaji",
+        "operational": "Operasional",
+        "other": "Lainnya",
+        "total": "Total biaya"
       }
     },
     "cannotGroup": "Tidak bisa dikelompokkan per {{group}}",
@@ -4972,16 +4980,6 @@
       "metricRemoved_one": "{{metrics}} dihapus",
       "metricRemoved_other": "{{metrics}} dihapus",
       "metricRemovedReason": "Tidak bisa dikelompokkan per {{group}}."
-    },
-    "pending": {
-      "figures": {
-        "label": "Angka contoh",
-        "reason": "Metrik pesanan dan penyelesaian sudah asli. Angka metrik lainnya masih dikarang — layanannya belum menjawab MetricSearch atau MetricData."
-      },
-      "catalogue": {
-        "label": "Daftar metrik",
-        "reason": "Metrik pesanan dan penyelesaian dibaca dari kontrak layanannya; sisanya masih daftar tetap di layar sampai layanannya ada."
-      }
     },
     "accountsPicked_other": "{{count}} akun"
   },

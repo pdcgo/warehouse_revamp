@@ -37,6 +37,7 @@ import { SettlementImporterService } from "../gen/warehouse/settlement_importer/
 import { FinancialAccountService } from "../gen/warehouse/financial_account/v1/financial_account_pb";
 import { FinancialAccountAnalyticService } from "../gen/warehouse/financial_account/v1/financial_account_analytic_pb";
 import { InventoryAnalyticService } from "../gen/warehouse/inventory/v1/inventory_analytic_pb";
+import { ExpenseAnalyticService } from "../gen/warehouse/expense/v1/expense_analytic_pb";
 import { transport } from "../transport";
 
 // One client per service, created once. The transport attaches the bearer token; the CURRENT
@@ -111,6 +112,8 @@ export const financialAccountClient = createClient(FinancialAccountService, tran
 export const financialAccountAnalyticClient = createClient(FinancialAccountAnalyticService, transport);
 // Lost stock on the Analytic composer — served by inventory_service (inventory_analytic.proto).
 export const inventoryAnalyticClient = createClient(InventoryAnalyticService, transport);
+// Ads expense and Expenses on the Analytic composer — served by expense_service (expense_analytic.proto).
+export const expenseAnalyticClient = createClient(ExpenseAnalyticService, transport);
 
 // rpcError turns a Connect error into something a human can read — the code never, the server's sentence when it was
 // written for a person, else a translated one (api/rpcError.ts).

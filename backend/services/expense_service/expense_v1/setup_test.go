@@ -53,10 +53,27 @@ func (fakeAccounts) Account(_ context.Context, teamID, accountID uint64) (expens
 	return expense_v1.PayingAccount{}, false, nil
 }
 
+// The warehouse team of the expense tests — every other team is a seller (the-warehouse-is-its-own-group).
+const warehouseTeam uint64 = 11
+
+// fakeSides is team_service's answer: warehouseTeam is a warehouse, the root team neither, every other team a seller.
+type fakeSides struct{}
+
+func (fakeSides) SideOf(_ context.Context, teamID uint64) (expense_v1.TeamSide, error) {
+	switch teamID {
+	case warehouseTeam:
+		return expense_v1.SideWarehouse, nil
+	case 1:
+		return expense_v1.SideNeither, nil
+	default:
+		return expense_v1.SideSeller, nil
+	}
+}
+
 func newService(t *testing.T, db *gorm.DB) *expense_v1.Service {
 	t.Helper()
 
-	return expense_v1.NewService(db, nil, fakeAccounts{})
+	return expense_v1.NewService(db, nil, fakeAccounts{}, fakeSides{})
 }
 
 // sentEvents records what the service published, in order.
@@ -74,7 +91,7 @@ func (s *sentEvents) send(_ context.Context, _ *role_basev1.Identity, event *eve
 func newServiceSending(t *testing.T, db *gorm.DB, sent *sentEvents) *expense_v1.Service {
 	t.Helper()
 
-	return expense_v1.NewService(db, sent.send, fakeAccounts{})
+	return expense_v1.NewService(db, sent.send, fakeAccounts{}, fakeSides{})
 }
 
 // shopFor is the shop a helper's expense names: ADS names one, every other kind none.

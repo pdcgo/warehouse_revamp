@@ -2,8 +2,10 @@ package expense_v1
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
@@ -25,6 +27,11 @@ import (
 // cash, so it is stored with no account — whatever was sent — and never published.
 //
 // THE SHOP IS FOR ADS ONLY, AND ADS NEEDS ONE (an-expense-names-a-shop-only-for-ads): InvalidArgument either way.
+//
+// ANALYTIC (expense-figures-are-read-from-its-own-records): a typed expense also adds its amount to its day's
+// `expense_metric_daily_reports` row — on its own `occurred_at`, for the person who typed it — in the SAME transaction
+// (foldMetric). Which side its team sits on (Seller or Warehouse) is asked of team_service before the transaction. A
+// STOCK_LOSS adds nothing (stock-loss-stays-out-of-analytic-expenses) and asks nothing.
 func (s *Service) ExpenseCreate(
 	ctx context.Context,
 	req *connect.Request[expensev1.ExpenseCreateRequest],
@@ -77,7 +84,25 @@ func (s *Service) ExpenseCreate(
 		FinanceAccountID: account,
 	}
 
-	err = s.db.WithContext(ctx).Create(&row).Error
+	// Where the team's expenses sit in Analytic — asked BEFORE the transaction, like the account: a call to another
+	// service never holds a pooled connection across its round-trip.
+	side := SideNeither
+	if typedKind(kind) {
+		side, err = s.sides.SideOf(ctx, row.TeamID)
+		if err != nil {
+			return nil, costErr(fmt.Errorf("ask the team's side: %w", err))
+		}
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Create(&row).Error
+		if err != nil {
+			return err
+		}
+
+		// The Analytic report, in the expense's own transaction — the last lock it takes.
+		return foldMetric(tx, &row, side)
+	})
 	if err != nil {
 		return nil, costErr(err)
 	}

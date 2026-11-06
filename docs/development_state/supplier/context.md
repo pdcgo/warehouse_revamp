@@ -99,3 +99,32 @@ The fold's `lineValue` freezes each figure with `san_money.Whole` as it writes, 
 
 `lineValue` no longer rounds: the three valuations are the exact `total × units ÷ ordered`. The race suite's expected
 figures follow (`analytic_fold_race_test.go` `figAdd`).
+
+## 2026-11-06 — a row moved and edited since is already moved (backlog #26)
+
+[existing-suppliers-move-with-their-ids](../../business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)
+("a row already there is skipped", "run twice: inserts nothing it already has"). `san supplier move` recognised an
+earlier move by team + NAME, so a supplier or store renamed in supplier_service after it moved made every later run
+(and `dev setup`) refuse. Now `refuseCollisions` (`tools/san/supplier_move.go`) matches the row's **origin** — same team
+(a store: same supplier) and same `created_at`, which the move copies and no edit changes: such a row is skipped, never
+overwritten, and named in the output (`moveReport.editedSince` → "supplier 7 moved before and edited since (legacy …,
+now …) — kept as it is"). Anything else under a moving id — even with the same team and name — still refuses the whole
+run; the error now prints each side's team/supplier and creation time (WIB) so the operator sees why. Tests
+`TestSupplierMove_SkipsARowEditedSinceItMoved` (edited supplier + store skipped and reported, `ctid` unchanged, a fresh
+legacy supplier moved in the same run) and `TestSupplierMove_RefusesAnUnrelatedRowWithTheSameName`; the old three pass.
+Docs: [`docs/tools/san.md` § supplier move](../../tools/san.md#supplier-move).
+
+⚠ **The local dev DB holds a GENUINE collision, not an edited move**, so `dev setup` still stops there: legacy supplier 1
+is "Test Supplier" of team 90 created 2026-07-16, supplier_service's 1 is "PT sumber makmur" of team 89 created
+2026-10-12 from the new sequence; legacy store 1 ("asdasd", supplier 2) vs store 1 ("asdas asdasd", supplier 1); legacy
+supplier 2 was never moved (restock_items reference it 15 times; supplier_service 1/store 1 are referenced by 3
+restock lines and a batch). Per the decision's table the clash is re-numbered or removed by hand — an owner call.
+
+**2026-11-06 — the dev collision renumbered (owner: "A", local dev DB only).** One transaction on the local docker
+Postgres (`localhost:5433/postgres`): legacy `legacy_suppliers` **1 → 3** ("Test Supplier", team 90, deleted) and
+`legacy_supplier_channels` **1 → 3** ("asdasd" of legacy supplier 2); `legacy_suppliers_id_seq` and
+`legacy_supplier_channels_id_seq` set to 3. Nothing else referenced either legacy id (every `supplier_id` /
+`supplier_channel_id` = 1 in `restock_items`, `restock_problem_items`, `batches`, `supplier_product_daily_reports` is
+supplier_service's 1 / store 1, created from 2026-10-12, and was left alone). `dev setup --no-docker` then ran clean:
+2 suppliers + 2 stores moved (supplier_service now 1, 2, 3 / stores 1, 2, 3), the 15 lines on supplier 2 resolve.
+Backup / restore SQL: `D:/hermes/cache/scratch/dev_supplier_renumber_backup.sql` (scratch dir — pruned after 24h idle).

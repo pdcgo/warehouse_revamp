@@ -1974,3 +1974,95 @@ Built with it: the highlighted summary card no longer cuts a nine-digit Rp figur
 > In chat *(owner, 2026-11-05)* — *"Yes I follow your recommendation, A"*, to: are losses recorded before the Lost stock report (inventory migration 00037) replayed into it?
 
 **The verdict.** No backfill. Lost stock counts from the day the report was built; losses already in `warehouse_stock_problems` before it are not replayed. Revamp has no real counts yet ([revamp-has-no-real-orders-yet](../order/context_decision.md#revamp-has-no-real-orders-yet)), so nothing real is missed.
+
+---
+
+## expense-has-ads-and-expenses
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: which expense metrics, and where in the tree? (Storybook prototype `Pages/Analytic/Expense`, screenshots sent the same day.)
+
+**The verdict.** The *Expense* category holds, beside Warehouse Fee, two leaves:
+
+| leaf | id | fields | why its own leaf |
+| --- | --- | --- | --- |
+| **Ads expense** | `metrics/ads` | `amount` (the tree's) | only ads name a shop ([an-expense-names-a-shop-only-for-ads](../financial_account/context_decision.md#an-expense-names-a-shop-only-for-ads)), so only it filters by shop |
+| **Expenses** | `metrics/expenses` | one money field per kind — Ads, Payroll, Operational, Other, Stock loss — plus **Total** | one tick shows all money out, matching the Expenses page and the statement |
+
+The owner's tree listed Ads Expense only; this adds *Expenses*. Groups, filters, sources and readers are decided one by one after this.
+
+✅ Built 2026-11-06 — `ExpenseAnalyticService` (`expense_analytic.proto`): *Ads expense* `metrics/ads` (`amount`) and *Expenses* `metrics/expenses` (`ads`, `payroll`, `operational`, `other`, `total`), live under Expense in the composer beside Warehouse fee; the old `ads_spend` / `expense_total` samples are gone.
+
+---
+
+## expense-figures-are-read-from-its-own-records
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: build the expense metrics from `ExpenseCreated` / `ExpenseAdjusted` events, or from expense_service's own records?
+
+**The verdict.** expense_service keeps the figures **from its own `expense_records`** — a report written in the same transaction as the expense, as Lost stock is kept inside inventory. Every expense counts: *Stock loss* (which publishes no event), and expenses made before *Paid from* (no paying account, so no event). Analytic's Expenses then equal the Expenses page and the statement. The events stay for the paying account only.
+
+✅ Built 2026-11-06 — `expense_metric_daily_reports` (expense 00006), written by `ExpenseCreate` / `ExpenseAdjust` in the expense row's own transaction (`expense_v1/metric_fold.go`); no event is read (`TestExpenseCreate_AFailedFoldKeepsNoExpense`).
+
+---
+
+## an-expense-correction-counts-on-the-day-it-is-made
+
+> In chat *(owner, 2026-11-06)* — *"B"* (**not** the recommended A, which confirmed [an-adjustment-counts-on-the-day-it-fixes](./context_decision.md#an-adjustment-counts-on-the-day-it-fixes)), to: which day does an expense correction count on in Analytic? Asked with the example — an ad of Rp 500.000 on 14 Oct corrected by −450.000 on 20 Oct — and the cost: Analytic would then disagree with the Expenses page, the statement and the paying account.
+
+**The verdict.** In Analytic's expense metrics ([expense-has-ads-and-expenses](#expense-has-ads-and-expenses)) a correction counts **on the day it is made**, like a Warehouse Fee cancel ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)): 14 Oct keeps Rp 500.000, 20 Oct reads −450.000, and **past days never change**. A cancel takes the whole expense back on the cancel day.
+
+| | the day |
+| --- | --- |
+| Analytic — Ads expense, Expenses | **the correction's own day** (this decision) |
+| the Expenses page, `/statement`, the paying account | unchanged — the expense's day ([an-expense-posts-on-its-own-day](../financial_account/context_decision.md#an-expense-posts-on-its-own-day)) |
+
+**Supersedes** [an-adjustment-counts-on-the-day-it-fixes](./context_decision.md#an-adjustment-counts-on-the-day-it-fixes) for Analytic. ⚠ A day or month in Analytic can differ from the same period on the Expenses page by the corrections made later — accepted. ⚠ Not built.
+
+✅ Built 2026-11-06 — an expense on its `occurred_at`, a correction and a cancel on the Jakarta day they are made; `expense_records` keeps the expense's day for the Expenses page, the statement and the account (`TestMetricData_ACorrectionCountsOnTheDayItIsMade`, e2e `the_expense_metrics.spec.ts`).
+
+---
+
+## stock-loss-stays-out-of-analytic-expenses
+
+> In chat *(owner, 2026-11-06)* — *"B"*, to: does Analytic's *Expenses* ([expense-has-ads-and-expenses](#expense-has-ads-and-expenses)) show the warehouse's stock-loss expense? The loss itself was already decided twice — the warehouse owes the owning team ([the-warehouse-payable-is-broken-and-lost](../balance/context_decision.md#the-warehouse-payable-is-broken-and-lost)) and writes it off as its stock-loss expense ([a-recount-shortfall-is-written-off-and-owed](../inventory/adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed)); only its place in Analytic was open.
+
+**The verdict.** Analytic's **Expenses** carries only the kinds a person types — **Ads, Payroll, Operational, Other** — and **Total** over those. The `STOCK_LOSS` expense rows are **not** in it. In Analytic a loss is read as [Lost stock](#inventory-lost-counts-the-warehouses-custody-losses), and as money owed in Team Balance. Nothing changes in how inventory records a loss.
+
+✅ Built 2026-11-06 — the fold skips `STOCK_LOSS` and the report's `CHECK (kind BETWEEN 1 AND 4)` refuses it (`TestMetricData_AStockLossIsNeverCounted`).
+
+---
+
+## the-expense-metrics-follow-the-decisions-already-made
+
+> Settled 2026-11-06 by the assistant **from decisions the owner had already made** — not asked again. The owner pointed out that already-decided points were being re-asked; each row names the decision it follows. ⚠ marks a reading the owner may correct.
+
+| point | settled as | follows |
+| --- | --- | --- |
+| who reads | every member of a team, CS included, reads its own team's expense figures | [every-member-reads-every-metric-of-their-team](#every-member-reads-every-metric-of-their-team) |
+| root | ⚠ reads every team's — the tree's `team` filter only means something across teams, as for the order metrics and Lost stock | the tree (`Ads Expense — fiter: team, shop, user, date range`), [root-reads-every-teams-lost-stock](#root-reads-every-teams-lost-stock) |
+| filters | Ads expense: team, shop, user, date range (the tree). Expenses: the same without shop | the tree; [a-new-metric-removes-the-filters-it-cannot-use](#a-new-metric-removes-the-filters-it-cannot-use) |
+| groups | ⚠ seller, warehouse, created by, daily / weekly / monthly / yearly; Ads expense also by shop. A warehouse team's expense groups under *Warehouse* | [the-warehouse-is-its-own-group](#the-warehouse-is-its-own-group); the order metrics' groups |
+| settlement's ads fee | **not** in Ads expense — typed `ADS` expenses only | [settlement-ads-and-accounts-are-independent](../financial_account/context_decision.md#settlement-ads-and-accounts-are-independent) |
+| a transfer's shipping | **not** in Expenses — it is a paying-account row, and the Expenses screen lists only what a person typed | [a-transfers-shipping-posts-as-an-expense](../financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense) |
+| ids and fields | `metrics/ads` (`amount`, the tree's), `metrics/expenses` (one field per typed kind + `total`) | the tree; [expense-has-ads-and-expenses](#expense-has-ads-and-expenses), [stock-loss-stays-out-of-analytic-expenses](#stock-loss-stays-out-of-analytic-expenses) |
+
+✅ Built 2026-11-06 — readers (every member incl. CS and warehouse staff its own team, root every team's), the filters and groups as in the table; a selling team's expense under Seller, a warehouse team's under Warehouse (`expense_team_sides.go`).
+
+---
+
+## an-expense-correction-counts-for-who-made-it
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: in *Created by*, whose figure does an expense correction count under?
+
+**The verdict.** A correction counts for **the person who made it**, on the day it was made ([an-expense-correction-counts-on-the-day-it-is-made](#an-expense-correction-counts-on-the-day-it-is-made)). The original expense stays under the person who typed it, on its day. A person who only corrects can read negative for that day — accepted: it shows who changed what. A cancel counts the same way, for the person who cancelled.
+
+✅ Built 2026-11-06 — the report row's person is the row's `created_by`: the typer of an expense, the maker of a correction or cancel (`TestMetricData_CreatedByCountsTheCorrector`; the e2e reads the corrector's −450.000 by Created by).
+
+---
+
+## the-expense-prototype-is-accepted
+
+> In chat *(owner, 2026-11-06)* — *"A"*, replying to the Storybook screenshots of the expense metrics (`expense_metrics_v2/`: picker, Ads daily with the 20 Oct correction, Expenses by kind monthly, Created by with the corrector, a warehouse team, root by Seller, phone).
+
+**The verdict.** The prototype is the design for [expense-has-ads-and-expenses](#expense-has-ads-and-expenses) and the decisions after it, with one rule settled with it: **when the figures are grouped by Seller, the headline counts only the sellers' rows** — a warehouse team's expenses (grouped under *Warehouse*) are not in a Seller headline, so the top always equals the rows. Grouped by Warehouse, the headline is the warehouses'. Ungrouped (summary / time only), the headline is every expense the reader can see. ⚠ Not built.
+
+✅ Built 2026-11-06 — the 18 accepted stories pass through the real wire path (stub `expenseAnalyticStub.ts`); the headline rule is `MetricDataRequest.rows_group` — the provider sends the table's group, and by Seller / Warehouse the server sums only that group's rows (`TestMetricData_TheHeadlineCountsOnlyTheGroupsRows`, story `RootReadsEveryTeamsExpenses`).

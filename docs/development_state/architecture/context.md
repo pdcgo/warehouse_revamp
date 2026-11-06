@@ -24,9 +24,15 @@ finds it without having to re-read every decision log.
 > (`expired_at` is a TIMESTAMPTZ, not a DATE; the old `now + 30 days` instant moved the edge with the hour the list was
 > opened). Tests `TestBatchList_TheSoonWindowEndsWithTheThirtiethJakartaDay` (01:30 WIB written as UTC, 23:59 WIB, a UTC−5
 > `now`, the step at 00:00 WIB) and `TestBatchList_ExpiringSoonCountsTheWholeThirtiethJakartaDay` (filter + header count).
-> ⚠ **Left:** the screens' amber flag (`isExpiringSoon` in `pages/batches`, `pages/batch-detail`, `pages/warehouse-product`)
-> still computes `now + 30 × 24 h` in the browser — on the 30th day it turns amber only from the hour of the day the screen
-> is opened, a few hours' disagreement with the server's count.
+> ~~⚠ **Left:** the screens' amber flag still computes `now + 30 × 24 h` in the browser~~ — ✅ fixed 2026-11-06 (backlog
+> #25): ONE helper, `frontend/src/lib/expiry.ts` `isExpiringSoon(expiresOnUnix, now)` / `expiringSoonCutoffMs(now)`, the
+> server's rule — expiring before 00:00 WIB of Jakarta day today + 31, already-expired included, `0n` (no expiry) never —
+> as fixed UTC+7 arithmetic on the instant, so the browser's zone is never read. The three local copies (`pages/batches`,
+> `pages/batch-detail`, `pages/warehouse-product`) are gone; each page imports it. Tests `src/lib/expiry.test.ts`
+> (`npm run test:unit`): 23:30 and 00:30 WIB edges, expired / no expiry, and the same answers with Node's zone stubbed to
+> UTC, America/Los_Angeles and Asia/Makassar (a browser-local-midnight mutant fails all three). ⚠ Still browser-zone:
+> those pages' own `formatDateUnix` prints the expiry DATE with `toLocaleDateString` (no `timeZone`) — a different
+> concern, not changed.
 
 ### (the plan as it was written)
 

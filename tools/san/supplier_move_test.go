@@ -194,3 +194,95 @@ func TestSupplierMove_RefusesAClash(t *testing.T) {
 		t.Fatal("a refused move must write nothing — the clash-free supplier was moved anyway")
 	}
 }
+
+// A row an earlier run moved and supplier_service edited since is ALREADY MOVED — skipped, reported, never
+// overwritten and never a failure — while a supplier new to legacy still moves in the same run.
+func TestSupplierMove_SkipsARowEditedSinceItMoved(t *testing.T) {
+	db := san_testdb.DB(t)
+	san := newTestSan(t, db)
+
+	edited := seedLegacySupplier(t, db, 12, "SUP-1", "Test Supplier", "", "", "", "", false)
+	store := seedLegacyChannel(t, db, edited, "online", "shopee", "asdasd", "", "", "")
+
+	_, err := san.MoveSuppliers(context.Background())
+	if err != nil {
+		t.Fatalf("first move: %v", err)
+	}
+
+	err = db.Exec(`UPDATE suppliers SET name = 'PT Sumber Makmur', contact = '0812' WHERE id = ?`, edited).Error
+	if err != nil {
+		t.Fatalf("edit the moved supplier: %v", err)
+	}
+
+	err = db.Exec(`UPDATE supplier_channels SET name = 'asdas asdasd' WHERE id = ?`, store).Error
+	if err != nil {
+		t.Fatalf("edit the moved store: %v", err)
+	}
+
+	before := rowVersion(t, db, "suppliers", edited)
+	storeBefore := rowVersion(t, db, "supplier_channels", store)
+
+	fresh := seedLegacySupplier(t, db, 12, "SUP-2", "Fresh", "", "", "", "", false)
+
+	report, err := san.MoveSuppliers(context.Background())
+	if err != nil {
+		t.Fatalf("a row moved before and edited since must not fail the move: %v", err)
+	}
+
+	if report.suppliersMoved != 1 || report.suppliersAlreadyThere != 1 || report.storesAlreadyThere != 1 {
+		t.Fatalf("report = %+v", report)
+	}
+
+	if len(report.editedSince) != 2 ||
+		!strings.Contains(report.editedSince[0]+report.editedSince[1], `"Test Supplier", now "PT Sumber Makmur"`) {
+		t.Fatalf("the edited rows were not reported: %q", report.editedSince)
+	}
+
+	if got := movedSupplierRow(t, db, edited); got.Name != "PT Sumber Makmur" || got.Contact != "0812" {
+		t.Fatalf("the edit was overwritten: %+v", got)
+	}
+
+	if rowVersion(t, db, "suppliers", edited) != before || rowVersion(t, db, "supplier_channels", store) != storeBefore {
+		t.Fatal("an already-moved row was written again")
+	}
+
+	if got := movedSupplierRow(t, db, fresh); got.Name != "Fresh" {
+		t.Fatalf("the fresh supplier = %+v", got)
+	}
+}
+
+// An unrelated row under a moving id still refuses the move — even with the legacy row's team and name,
+// because it was not created when the legacy row was.
+func TestSupplierMove_RefusesAnUnrelatedRowWithTheSameName(t *testing.T) {
+	db := san_testdb.DB(t)
+	san := newTestSan(t, db)
+
+	id := seedLegacySupplier(t, db, 12, "SUP-1", "Sumber", "", "", "", "", false)
+
+	err := db.Exec(
+		`INSERT INTO suppliers (id, team_id, name, created_at, updated_at) VALUES (?, 12, 'Sumber', '2026-01-01', '2026-01-01')`, id,
+	).Error
+	if err != nil {
+		t.Fatalf("seed the clash: %v", err)
+	}
+
+	_, err = san.MoveSuppliers(context.Background())
+	if !errors.Is(err, errMoveCollision) {
+		t.Fatalf("move over an unrelated row = %v, want errMoveCollision", err)
+	}
+}
+
+// rowVersion is a row's physical position — any UPDATE moves it, and NOW() is constant inside the test's
+// one transaction, so updated_at could not tell.
+func rowVersion(t *testing.T, db *gorm.DB, table string, id uint64) string {
+	t.Helper()
+
+	var ctid string
+
+	err := db.Raw(`SELECT ctid::text FROM `+table+` WHERE id = ?`, id).Scan(&ctid).Error
+	if err != nil || ctid == "" {
+		t.Fatalf("read %s %d: %v", table, id, err)
+	}
+
+	return ctid
+}

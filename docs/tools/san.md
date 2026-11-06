@@ -494,7 +494,8 @@ every screen but placing an order works without it.
 
 Copies every supplier and store out of inventory_service and into supplier_service, **keeping each id** — restocks
 and batches hold those ids ([existing-suppliers-move-with-their-ids](../business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)).
-One-shot, and safe to run again: a row already moved is skipped. [`dev setup`](#dev-setup) runs it after migrating.
+One-shot, and safe to run again: a row already moved is skipped — also when it was edited in supplier_service
+since, which the run names and never overwrites. [`dev setup`](#dev-setup) runs it after migrating.
 
 ```sh
 go run ./tools/san supplier move                     # prompts: Local or Production
@@ -523,9 +524,10 @@ sequenceDiagram
   SAN->>L: read every row — deleted ones too
   Note over SAN: fold — city and province into the address, an offline store into its supplier, code dropped
   SAN->>S: read what already sits under the moving ids
-  alt a DIFFERENT row under a moving id
+  alt an UNRELATED row under a moving id
     SAN-->>SAN: refuse, the clash named — nothing written
   else
+    Note over SAN: a row moved before is skipped — named when edited since
     SAN->>S: INSERT each row not there yet, its id kept
     SAN->>S: set both id sequences past the largest id
   end
@@ -540,7 +542,11 @@ sequenceDiagram
 | an **online** store | a store: marketplace → `channel_type` (`other` when it had none), `url` → `uri`, its contact and location kept in `description` |
 | an **offline** store | folded into its supplier: contact and location fill the supplier's when empty, else are appended to its description ([the-supplier-lists-only-its-online-stores](../business/supplier/context_decision.md#the-supplier-lists-only-its-online-stores)) |
 
-A row is "already there" when the same id holds the same supplier (team and name) or store (supplier and name).
+A row is "already there" — moved by an earlier run — when the same id holds a row of the same **origin**: the
+same team (a store: the same supplier) and the same `created_at`. The move copies `created_at` and no edit changes
+it or the team, so a supplier renamed or given a new contact since it moved is still the row it moved: skipped, kept
+as it is, and named in the output. Any other row under a moving id — even one with the same team and name — was
+created in supplier_service, not moved, and refuses the run.
 
 ### Output
 
@@ -549,12 +555,21 @@ A row is "already there" when the same id holds the same supplier (team and name
 [Database Local] stores: 21 moved, 0 already there, 3 offline folded into their supplier
 ```
 
+A re-run after edits in supplier_service:
+
+```
+[Database Local] suppliers: 0 moved (0 of them deleted), 14 already there
+[Database Local] stores: 0 moved, 21 already there, 0 offline folded into their supplier
+[Database Local] store 3 moved before and edited since (legacy "asdasd", now "Sumber Official") — kept as it is
+[Database Local] supplier 7 moved before and edited since (legacy "Sumber", now "PT Sumber Makmur") — kept as it is
+```
+
 ### Errors you should expect
 
 | Error | Cause |
 | --- | --- |
 | `read legacy_suppliers (has inventory_service migrated to 00023?)` | The database is behind. Run [`migrate up-all`](#migrate) first |
-| `supplier_service already holds a different row under a moving id — nothing was written: supplier 7 (legacy "Sumber", now "…")` | A supplier was created in supplier_service before the move ran, under an id a legacy row needs. Nothing was moved. The clashing row has to be re-numbered or removed by hand — decide which with the owner |
+| `supplier_service already holds a different row under a moving id — nothing was written: supplier 7 (legacy "Sumber" of team 12 created 2026-07-16 13:59, now "…" of team 89 created 2026-10-12 18:03)` | A supplier (or store) was created in supplier_service before the move ran, under an id a legacy row needs — its team or creation time is not the legacy row's, so it is not an earlier move edited since. Nothing was moved. The clashing row has to be re-numbered or removed by hand — decide which with the owner |
 
 ---
 

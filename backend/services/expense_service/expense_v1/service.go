@@ -26,15 +26,21 @@ type Service struct {
 	db       *gorm.DB
 	events   event_source.EventSender
 	accounts PayingAccounts
+	// Which side of the Analytic composer a team's expenses sit on — Seller or Warehouse (TeamSides).
+	sides TeamSides
+	// The clock a correction is stamped with — the day it counts on in Analytic
+	// (an-expense-correction-counts-on-the-day-it-is-made). time.Now but in a test.
+	now func() time.Time
 }
 
 // compile-time proof Service satisfies the generated handler interface.
 var _ expensev1connect.ExpenseServiceHandler = (*Service)(nil)
 
-// NewService builds the handlers. `events` carries ExpenseCreated / ExpenseAdjusted to whoever posts the money
-// (financial_account_service); `accounts` answers whether the account an expense names may pay it — both from the
+// NewService builds the handlers — ExpenseService and ExpenseAnalyticService. `events` carries ExpenseCreated /
+// ExpenseAdjusted to whoever posts the money (financial_account_service); `accounts` answers whether the account an
+// expense names may pay it; `sides` whether a team is a seller or a warehouse, for the Analytic report — all from the
 // composition root, the one place allowed to know two services at once.
-func NewService(db *gorm.DB, events event_source.EventSender, accounts PayingAccounts) *Service {
+func NewService(db *gorm.DB, events event_source.EventSender, accounts PayingAccounts, sides TeamSides) *Service {
 	// A nil sender would panic on the first expense. EmptySender still VALIDATES the event, so a malformed one is caught
 	// with no broker in sight — the right default for a test.
 	if events == nil {
@@ -47,7 +53,12 @@ func NewService(db *gorm.DB, events event_source.EventSender, accounts PayingAcc
 		accounts = noPayingAccounts{}
 	}
 
-	return &Service{db: db, events: events, accounts: accounts}
+	// With no team service to ask, every team reads as a seller — a unit test of a selling team's expenses.
+	if sides == nil {
+		sides = everyTeamSells{}
+	}
+
+	return &Service{db: db, events: events, accounts: accounts, sides: sides, now: time.Now}
 }
 
 // The date layout every cost date crosses the wire in. A DATE, not a timestamp: nobody records the

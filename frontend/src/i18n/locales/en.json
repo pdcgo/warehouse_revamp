@@ -4903,8 +4903,6 @@
       "system_adjustment": "System adjustment",
       "lost_count": "Units lost",
       "lost_amount": "Lost value",
-      "ads_spend": "Ads spend",
-      "expense_total": "Expenses",
       "transaction_count": "Fee transactions",
       "amount": "Fee amount"
     },
@@ -4935,6 +4933,16 @@
       "inventoryLost": {
         "lost_count": "Lost units",
         "lost_amount": "Lost amount"
+      },
+      "ads": {
+        "amount": "Ads spend"
+      },
+      "expenses": {
+        "ads": "Ads",
+        "payroll": "Payroll",
+        "operational": "Operational",
+        "other": "Other",
+        "total": "Total expenses"
       }
     },
     "cannotGroup": "Cannot be grouped by {{group}}",
@@ -4993,16 +5001,6 @@
       "metricRemoved_one": "{{metrics}} removed",
       "metricRemoved_other": "{{metrics}} removed",
       "metricRemovedReason": "Cannot be grouped by {{group}}."
-    },
-    "pending": {
-      "figures": {
-        "label": "Sample figures",
-        "reason": "The order and settlement metrics are real. Every other metric's figures are invented — its service does not answer MetricSearch or MetricData yet."
-      },
-      "catalogue": {
-        "label": "Metric list",
-        "reason": "The order and settlement metrics are read from their services' contracts; the rest are a fixed list in the screen until their services ship."
-      }
     },
     "accountsPicked_one": "{{count}} account",
     "accountsPicked_other": "{{count}} accounts"

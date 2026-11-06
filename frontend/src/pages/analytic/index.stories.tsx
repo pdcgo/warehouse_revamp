@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
-import { METRICS, catalogueMetrics, tableGroups, TABLE_GROUPS } from "../../features/analytic/catalogue";
+import { METRICS, catalogueMetrics, metricById, tableGroups, TABLE_GROUPS } from "../../features/analytic/catalogue";
 import { AnalyticPage } from "./index";
 
 // The Analytic composer (docs/business/analytic/rpc_provide.md). The five ORDER metrics and the two SETTLEMENT metrics
@@ -31,6 +31,7 @@ const CREATED = "metrics/orders/created";
 
 const ByShop = at(`?g=shop&m=${CREATED},metrics/settlement&s=${CREATED}:created_count:desc`);
 const OrdersAndAdsByShop = at(`?g=shop&m=${CREATED},metrics/ads&s=${CREATED}:created_count:desc`);
+const OrdersAndLostBySeller = at(`?g=team&m=${CREATED},metrics/inventory/lost&s=${CREATED}:created_count:desc`);
 const OrdersByDayForSatria = at(`?g=daily&m=${CREATED}&shop=13&r=2026-10-01..2026-10-07`);
 const OrdersByShopAllRows = at(`?g=shop&m=${CREATED}&n=50`);
 const OrdersBySeller = at(`?g=team&m=${CREATED}`);
@@ -177,6 +178,17 @@ export const TheLivePickerShowsNoPrototype: Story = {
     }
     await expect(menu.getByTestId("analytic-metric-metrics-inventory-lost")).toHaveTextContent("Lost stock");
 
+    // Expense holds Warehouse fee and the served Ads expense and Expenses (the-expense-prototype-is-accepted).
+    await userEvent.click(menu.getByTestId("analytic-category-expense"));
+    for (const [id, label] of [
+      ["warehouse_fee", "Warehouse fee"],
+      ["ads", "Ads expense"],
+      ["expenses", "Expenses"],
+    ] as const) {
+      await expect(menu.getByTestId(`analytic-metric-metrics-${id}`)).toHaveTextContent(label);
+      await expect(metricById(`metrics/${id}`)?.schema).toBeDefined();
+    }
+
     await userEvent.click(menu.getByTestId("analytic-category-finance"));
     await expect(menu.getByTestId("analytic-metric-metrics-financial_accounts")).toHaveTextContent("Account changes");
     await expect(menu.getByTestId("analytic-metric-metrics-financial_accounts-types")).toHaveTextContent("Change types");
@@ -223,20 +235,36 @@ export const InventoryGreyedByShop: Story = {
 };
 
 // A GROUP CHANGE REMOVES THE COLUMNS THAT CANNOT FOLLOW (a-group-change-drops-the-columns-that-cannot-follow).
-// Ads expense has no seller group, so switching to Seller takes it off the table and a toast says why; Orders created
-// stays, and its one row is named by TeamByIds (the-team-group-is-the-seller).
-export const SwitchGroupToSeller: Story = {
+// Lost stock has no shop group (lost stock belongs to no shop), so switching to Shop takes it off the table and a toast
+// says why; Orders created stays, its rows the shops.
+export const SwitchGroupToShop: Story = {
+  render: () => <OrdersAndLostBySeller />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("analytic-chip-metrics-inventory-lost")).toBeVisible();
+
+    await pick(canvas, "analytic-group", "shop");
+
+    await waitFor(() => expect(canvas.queryByTestId("analytic-chip-metrics-inventory-lost")).toBeNull());
+    await expect(canvas.getByTestId("analytic-chip-metrics-orders-created")).toBeVisible();
+    const toast = await screen.findByText("Lost stock removed");
+    await waitFor(() => expect(toast).toBeVisible());
+    await waitFor(() => expect(canvas.getAllByTestId(/^analytic-row-/).length).toBeGreaterThan(0));
+  },
+};
+
+// ADS EXPENSE FOLLOWS A SWITCH TO SELLER — served with the Seller group (expense-has-ads-and-expenses), it stays on the
+// table beside Orders created, and the seller row is named by TeamByIds (the-team-group-is-the-seller).
+export const AdsFollowsASwitchToSeller: Story = {
   render: () => <OrdersAndAdsByShop />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await pick(canvas, "analytic-group", "team");
 
-    await waitFor(() => expect(canvas.queryByTestId("analytic-chip-metrics-ads")).toBeNull());
-    await expect(canvas.getByTestId("analytic-chip-metrics-orders-created")).toBeVisible();
-    const toast = await screen.findByText("Ads expense removed");
-    await waitFor(() => expect(toast).toBeVisible());
     await waitFor(() => expect(canvas.getByTestId("analytic-row-12")).toHaveTextContent("Toko Melati"));
+    await expect(canvas.getByTestId("analytic-chip-metrics-ads")).toBeVisible();
+    await expect(canvas.getByTestId("analytic-chip-metrics-orders-created")).toBeVisible();
   },
 };
 

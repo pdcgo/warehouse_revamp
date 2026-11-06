@@ -27,6 +27,7 @@ import {
   isAllDates,
   resolveRange,
 } from "../../components/datetime/DateRangePicker";
+import { isExpiringSoon } from "../../lib/expiry";
 import { formatRupiah } from "../../lib/money";
 import { dateRangeCodec, enumCodec, textCodec, useUrlState } from "../../lib/urlState";
 
@@ -45,10 +46,6 @@ function formatDateUnix(unix: bigint): string {
     month: "short",
     year: "numeric",
   });
-}
-
-function isExpiringSoon(unix: bigint): boolean {
-  return Number(unix) * 1000 <= Date.now() + 30 * 24 * 60 * 60 * 1000;
 }
 
 // BatchesPage is the warehouse-wide list of every stock batch (#209) — a cost layer per delivery line,

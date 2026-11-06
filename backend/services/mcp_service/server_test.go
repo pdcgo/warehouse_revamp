@@ -272,6 +272,8 @@ func TestMCP_ListMetricsReadsTheCatalogue(t *testing.T) {
 
 	sources := map[string]bool{}
 	created := false
+	// The expense metrics' source (expense-has-ads-and-expenses): both of its metrics, under "expense".
+	expenseMetrics := 0
 
 	for _, m := range body.Metrics {
 		sources[m.Source] = true
@@ -279,9 +281,13 @@ func TestMCP_ListMetricsReadsTheCatalogue(t *testing.T) {
 		if m.ID == "metrics/orders/created" {
 			created = len(m.Fields) > 0 && len(m.GroupBy) > 0
 		}
+
+		if (m.ID == "metrics/ads" || m.ID == "metrics/expenses") && m.Source == "expense" {
+			expenseMetrics++
+		}
 	}
 
-	if !created || !sources["orders"] || !sources["settlement"] || !sources["supplier"] {
+	if !created || !sources["orders"] || !sources["settlement"] || !sources["supplier"] || expenseMetrics != 2 {
 		t.Fatalf("catalogue = %s, want every source and metrics/orders/created with its fields", text)
 	}
 }

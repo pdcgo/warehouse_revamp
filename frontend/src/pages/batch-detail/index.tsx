@@ -26,6 +26,7 @@ import { ArrowLeft, Package, Pencil, Search } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { BatchOrigin } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import { isExpiringSoon } from "../../lib/expiry";
 import { formatRupiah } from "../../lib/money";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { MovementTable } from "../../features/inventory/MovementTable";
@@ -59,11 +60,6 @@ function formatDateUnix(unix: bigint): string {
     month: "short",
     year: "numeric",
   });
-}
-
-// A batch is flagged amber when it expires within 30 days — the "expiring soon" window the server uses.
-function isExpiringSoon(unix: bigint): boolean {
-  return Number(unix) * 1000 <= Date.now() + 30 * 24 * 60 * 60 * 1000;
 }
 
 // A shelf's count reads amber once its last opname is more than two weeks old — overdue for a re-count.

@@ -180,6 +180,11 @@ with no special case ([an-adjustment-counts-on-the-day-it-fixes](../../business/
 A day whose only expense was cancelled reads **0, made of two entries** — something was entered and taken back, and the
 day says so. The list shows both rows, the expense with what it counts for now.
 
+⚠ **Analytic counts a correction differently** — on the day it is MADE, for who made it
+([an-expense-correction-counts-on-the-day-it-is-made](../../business/analytic/rpc_provide_decision.md#an-expense-correction-counts-on-the-day-it-is-made)) —
+so a day or month there can differ from the same period here by the corrections made later. Accepted; see
+[the Analytic expense metrics](#the-analytic-expense-metrics--expenseanalyticservice).
+
 ## ExpenseCreate — Paid from and the ads-only shop
 
 Built 2026-11-04 — [an-expense-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid),
@@ -205,7 +210,7 @@ sequenceDiagram
     alt absent, archived, or not marked operational
       E-->>UI: FailedPrecondition, naming the account
     else the team's active operational account
-      E->>DB: INSERT with the account
+      E->>DB: INSERT with the account, and add it to its Analytic report row — one transaction
       E->>B: ExpenseCreated — after the commit, event id expense-created and the expense id
       E-->>UI: the expense
     end
@@ -245,6 +250,7 @@ sequenceDiagram
       E-->>UI: FailedPrecondition — a correction cannot make a cost income
     else
       E->>DB: INSERT the adjustment — the expense's team, shop, kind, day and ACCOUNT
+      E->>DB: add it to the Analytic report row of TODAY and of its maker — the same transaction, the last lock
       E-->>UI: the adjustment, and the expense with its new net
       E->>E: after the commit, ExpenseAdjusted when the expense names an account
     end
@@ -258,3 +264,54 @@ sequenceDiagram
 | `net_amount` | on an expense row in `ExpenseList` and in this response: its amount plus every adjustment of it |
 | the account | copied from the expense, never typed ([a-correction-follows-the-expenses-account](../../business/financial_account/context_decision.md#a-correction-follows-the-expenses-account)) — 0 on an expense made before *Paid from* |
 | events | `ExpenseAdjusted` (topic `expense-adjusted`, event_id `expense-adjusted:<adjustment id>`) after the commit — adjustment and expense ids, team, kind, the expense's account, the SIGNED amount, the expense's day, actor + override. Batalkan is just an adjustment of minus the net, so a cancel gives the account the net back. Not published for an account 0 or a `STOCK_LOSS` (built 2026-11-04) |
+
+---
+
+## The Analytic expense metrics — `ExpenseAnalyticService`
+
+Built 2026-11-06 — [expense-has-ads-and-expenses](../../business/analytic/rpc_provide_decision.md#expense-has-ads-and-expenses),
+[expense-figures-are-read-from-its-own-records](../../business/analytic/rpc_provide_decision.md#expense-figures-are-read-from-its-own-records),
+[an-expense-correction-counts-on-the-day-it-is-made](../../business/analytic/rpc_provide_decision.md#an-expense-correction-counts-on-the-day-it-is-made),
+[stock-loss-stays-out-of-analytic-expenses](../../business/analytic/rpc_provide_decision.md#stock-loss-stays-out-of-analytic-expenses),
+[the-expense-metrics-follow-the-decisions-already-made](../../business/analytic/rpc_provide_decision.md#the-expense-metrics-follow-the-decisions-already-made),
+[an-expense-correction-counts-for-who-made-it](../../business/analytic/rpc_provide_decision.md#an-expense-correction-counts-for-who-made-it),
+[the-expense-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-expense-prototype-is-accepted).
+`proto/warehouse/expense/v1/expense_analytic.proto`, handlers `expense_v1/metric_{shared,search,data,fold}.go`, the
+report `expense_metric_daily_reports` (00006).
+
+| metric | fields | filters | groups |
+| --- | --- | --- | --- |
+| **Ads expense** `metrics/ads` | `amount` — the ADS kind | date range (required), shop, team (the seller), user | shop, seller, warehouse, created by, daily / weekly / monthly / yearly |
+| **Expenses** `metrics/expenses` | `ads`, `payroll`, `operational`, `other`, `total` — typed kinds only, no STOCK_LOSS | date range (required), team, user | seller, warehouse, created by, time |
+
+```mermaid
+sequenceDiagram
+  participant P as a person — Record Expense or Adjust
+  participant E as expense_service
+  participant T as team_service, in-process
+  participant R as expense_records
+  participant M as expense_metric_daily_reports
+  participant A as Analytic composer
+  P->>E: ExpenseCreate or ExpenseAdjust
+  E->>T: the team's side, Seller or Warehouse — before the transaction, kept per team
+  E->>R: the expense, or the correction on the expense's own day
+  E->>M: plus its amount on the report row of its day and its person — same transaction
+  Note over M: an expense on its occurred_at, a correction on the day it is MADE, for who made it
+  A->>E: MetricSearch — keys of one group, ranked
+  A->>E: MetricData — the keys' figures, and the headline grouped by SUMMARY with rows_group
+  E->>M: one grouped SELECT per call
+```
+
+| | |
+| --- | --- |
+| the day | an expense: its own `occurred_at`. A correction and a cancel: the Jakarta day the adjustment was made (`created_at` in WIB). A past day never changes in Analytic, while `expense_records` keeps the correction on its expense's day — the Expenses page, `/statement` and the paying account are unchanged ([an-expense-posts-on-its-own-day](../../business/financial_account/context_decision.md#an-expense-posts-on-its-own-day)) |
+| the person | `created_by` of the row: the typer of an expense, the corrector of a correction — a person who only corrects reads negative on that day |
+| never counted | `STOCK_LOSS` — the fold skips it and the table's CHECK refuses kind 5; settlement's ads fee and a transfer's shipping are other services' rows |
+| Seller / Warehouse | the report row carries the team as `seller_id` (a selling team) or `warehouse_id` (a warehouse team); the root team's on neither. The composition root reads `teams.type` (`cmd/app_development/expense_team_sides.go`, kept per process) |
+| readers | every member of a team — CS and warehouse staff included, unlike `ExpenseList` — reads its own team's; the root team every team's; another team's rows match nothing. Both RPCs `NO_SIDE_EFFECTS`, so the admin monitor and an agent read them |
+| the headline | MetricData with `GROUP_TYPE_SUMMARY`. `rows_group` names the table's group: under an id group the headline sums only the rows that group keys (by Seller the sellers' — a warehouse team's expense is no Seller row — by Warehouse the warehouses'); under a time group or unset, everything visible. On any other `group_by` it is InvalidArgument |
+| refusals | InvalidArgument: another service's metric id, a filter or group a metric does not list (a shop on Expenses), a repeated filter, no date range, a range over a year, keys under SUMMARY, a period keyed by any day but its first |
+| money | exact doubles, summed in SQL, never rounded |
+| concurrency | one upsert per row, the transaction's last statement — see [lock-order.md](../../../audits/services/expense_service/concurrency/lock-order.md) |
+| perf | one query per read; a team's year 1–2 ms, root's every-team year 23–25 ms (the root scan, as the order metrics and Lost stock); create / adjust with the fold ~1 ms (`TestPerf_ExpenseMetric`, ~137 000 report rows) |
+| MCP | source `expense` in `mcp_service/tool_metrics.go` |

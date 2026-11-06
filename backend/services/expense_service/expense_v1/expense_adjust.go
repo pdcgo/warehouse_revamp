@@ -2,6 +2,7 @@ package expense_v1
 
 import (
 	"context"
+	"fmt"
 	"math"
 
 	"connectrpc.com/connect"
@@ -32,6 +33,12 @@ import (
 //
 // A missing expense, or another team's, is NotFound: a person clicked a button, and the honest answer is that it is not
 // there.
+//
+// ANALYTIC — THE CORRECTION'S OWN DAY (an-expense-correction-counts-on-the-day-it-is-made,
+// an-expense-correction-counts-for-who-made-it): the adjustment adds its signed amount to the `expense_metric_daily_reports`
+// row of the Jakarta day it is MADE and of the person who MADE it, in the same transaction (foldMetric) — so 14 Oct keeps
+// its Rp 500.000 and 20 Oct reads the −450.000. The expense's own day above is unchanged for the Expenses page, the
+// statement and the paying account. A correction of a STOCK_LOSS adds nothing there.
 func (s *Service) ExpenseAdjust(
 	ctx context.Context,
 	req *connect.Request[expensev1.ExpenseAdjustRequest],
@@ -47,13 +54,20 @@ func (s *Service) ExpenseAdjust(
 		return nil, costErr(errZeroCorrection)
 	}
 
+	// Where the team's expenses sit in Analytic — the expense is the scoped team's, so it is asked for that team, BEFORE
+	// the transaction (no round-trip under the expense row's lock).
+	side, err := s.sides.SideOf(ctx, msg.GetTeamId())
+	if err != nil {
+		return nil, costErr(fmt.Errorf("ask the team's side: %w", err))
+	}
+
 	var (
 		expense    expense_service_models.ExpenseRecord
 		adjustment expense_service_models.ExpenseRecord
 		net        float64
 	)
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// The scope check, and the reason another team's cost is NotFound rather than PermissionDenied.
 		err := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -89,9 +103,17 @@ func (s *Service) ExpenseAdjust(
 			IsOverride:       overrideFrom(ctx),
 			AdjustsExpenseID: expense.ID,
 			FinanceAccountID: expense.FinanceAccountID,
+			// When it was MADE — the day it counts on in Analytic.
+			CreatedAt: s.now(),
 		}
 
-		return tx.Create(&adjustment).Error
+		err = tx.Create(&adjustment).Error
+		if err != nil {
+			return err
+		}
+
+		// The Analytic report, on the correction's own day — the last lock of the transaction, after the expense row's.
+		return foldMetric(tx, &adjustment, side)
 	})
 	if err != nil {
 		return nil, costErr(err)

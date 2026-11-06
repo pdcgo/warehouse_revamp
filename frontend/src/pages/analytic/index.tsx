@@ -35,8 +35,6 @@ import {
   formatReportState,
   parseReportState,
 } from "../../features/analytic/url";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { windowOf } from "../../features/settlement/window";
 import { useTeam } from "../../features/team/TeamContext";
 import { AccountsFilter } from "../../features/financialAccount/AccountsFilter";
@@ -49,7 +47,6 @@ import { ReportGraphs } from "./components/ReportGraphs";
 import { ReportHeadline } from "./components/ReportHeadline";
 import { ReportTable } from "./components/ReportTable";
 import { fieldLabel, keyLabel, useKeyNames } from "./format";
-import { ANALYTIC_PENDING } from "./pending";
 import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 
@@ -74,9 +71,8 @@ function sortValue(sort: ReportSort | null): string {
 // table is GROUPED, which METRICS are its columns — from any service — one column to SORT by, and the filters every
 // chosen metric shares. One service ranks the rows; every service fills them (the-two-steps).
 //
-// ⚠ PARTLY BUILT AHEAD OF ITS BACKEND (HARD RULE 6). The five ORDER metrics are served by selling_service and read off
-// its contract; every other metric's figures are still invented (features/analytic/sample.ts) and its entry a mirror of
-// the decided proto options — the pending strip says which.
+// Every metric is SERVED and read off its service's contract (features/analytic/catalogue.ts) — the expense metrics last,
+// 2026-11-06 — so the screen carries no pending mark any more. A new metric is drawn as a Storybook prototype first.
 //
 // The whole state lives in the URL (the-report-lives-in-the-url), so a second tab is the compare view
 // (compare-in-another-tab-for-now).
@@ -271,14 +267,11 @@ export function AnalyticPage() {
       <Stack gap="1">
         <HStack gap="2">
           <Heading size="md">{t("analytic.title")}</Heading>
-          <NotImplemented list={ANALYTIC_PENDING} id="figures" />
         </HStack>
         <Text fontSize="sm" color="fg.muted">
           {t("analytic.subtitle")}
         </Text>
       </Stack>
-
-      <NotImplementedSummary list={ANALYTIC_PENDING} />
 
       {/* THE TABLE'S SHAPE — what a row is, and what the columns are. The group is chosen once, for the whole table
           (the-table-picks-one-group); each metric on it is a chip that takes its columns away. */}
