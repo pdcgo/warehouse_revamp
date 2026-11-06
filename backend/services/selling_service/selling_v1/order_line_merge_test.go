@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
@@ -76,18 +77,18 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 	}
 
 	line := got.Items[0]
-	if line.ProductID != 100 || line.Quantity != 3 || line.UnitCost != 11_333 ||
+	if line.ProductID != 100 || line.Quantity != 3 || !san_money.Equal(line.UnitCost, 34_000.0/3) ||
 		line.Total == nil || *line.Total != 34_000 {
-		t.Fatalf("stored line %+v — want product 100 × 3 at unit cost 11333, total 34000", line)
+		t.Fatalf("stored line %+v — want product 100 × 3 at the exact unit cost 11.333,33…, total 34000", line)
 	}
 
 	if got.GoodsCost != 34_000 || got.WarehouseFee == nil || *got.WarehouseFee != 3_400 {
-		t.Fatalf("stored goods_cost %d, fee %v — want the draw's 34000 and 10%% of it", got.GoodsCost, got.WarehouseFee)
+		t.Fatalf("stored goods_cost %v, fee %v — want the draw's 34000 and 10%% of it", got.GoodsCost, got.WarehouseFee)
 	}
 
 	// Every figure a single line of 3 stores, the merged order stores too.
 	if got.GoodsCost != want.GoodsCost || *got.WarehouseFee != *want.WarehouseFee || got.TotalCost != want.TotalCost {
-		t.Fatalf("merged header goods_cost %d fee %v total_cost %v — single line %d %v %v",
+		t.Fatalf("merged header goods_cost %v fee %v total_cost %v — single line %v %v %v",
 			got.GoodsCost, *got.WarehouseFee, got.TotalCost,
 			want.GoodsCost, *want.WarehouseFee, want.TotalCost)
 	}
@@ -109,7 +110,7 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 // disagree about but their label: they are ONE line, placed, holding the take's unit cost.
 func TestOrderCreate_OneProductOnTwoLinesIsOneLineAtTheTakesCost(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{100: 6000}}
+	picker := &fakePicker{costs: map[uint64]float64{100: 6000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -139,7 +140,7 @@ func TestOrderCreate_OneProductOnTwoLinesIsOneLineAtTheTakesCost(t *testing.T) {
 // them, so the order is refused — naming the product — before anything is taken.
 func TestOrderCreate_OneProductUnderTwoNamesIsRefused(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{100: 6000}}
+	picker := &fakePicker{costs: map[uint64]float64{100: 6000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -169,7 +170,7 @@ func TestOrderCreate_OneProductUnderTwoNamesIsRefused(t *testing.T) {
 // so it is placed as one line of the summed quantity, at the take's cost.
 func TestOrderCreateFromDraft_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{41: 20_000}}
+	picker := &fakePicker{costs: map[uint64]float64{41: 20_000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -200,7 +201,7 @@ func TestOrderCreateFromDraft_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T)
 
 	// 3 × 20.000 drawn — the header is the take's too, never the rows' 3 × 50.000.
 	if stored.GoodsCost != 60_000 {
-		t.Fatalf("stored goods_cost %d — want 60000", stored.GoodsCost)
+		t.Fatalf("stored goods_cost %v — want 60000", stored.GoodsCost)
 	}
 }
 
@@ -209,7 +210,7 @@ func TestOrderCreateFromDraft_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T)
 // until the draft goes, and nothing on the order sums them.
 func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{41: 20_000}}
+	picker := &fakePicker{costs: map[uint64]float64{41: 20_000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -237,7 +238,7 @@ func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(
 
 	// The take's 3 × 20.000 — never the rows' 2 × 50.000 + 1 × 35.000.
 	if stored.GoodsCost != 60_000 {
-		t.Fatalf("stored goods_cost %d, want the take's 60000", stored.GoodsCost)
+		t.Fatalf("stored goods_cost %v, want the take's 60000", stored.GoodsCost)
 	}
 
 	var drafts int64
@@ -254,7 +255,7 @@ func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(
 
 // draftOfOneProduct is a finished draft whose two scraped rows (2 × and 1 ×) are BOTH mapped to product 41, each at
 // the unit price given.
-func draftOfOneProduct(t *testing.T, svc *selling_v1.Service, shopID uint64, first, second int64) uint64 {
+func draftOfOneProduct(t *testing.T, svc *selling_v1.Service, shopID uint64, first, second float64) uint64 {
 	t.Helper()
 
 	draftID := pushRef(t, svc, 7, "SHP-100")
@@ -280,7 +281,7 @@ func draftOfOneProduct(t *testing.T, svc *selling_v1.Service, shopID uint64, fir
 			{Id: items[1].GetId(), ProductId: 41, Quantity: items[1].GetQuantity(), UnitPrice: second},
 		}},
 		PlatformCreatedAtUnix: i64(testPlatformDate),
-		PlatformTotal:         i64(testPlatformTotal),
+		PlatformTotal:         f64(testPlatformTotal),
 	})
 
 	return draftID

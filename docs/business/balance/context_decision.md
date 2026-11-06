@@ -31,6 +31,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-transfer-charge-is-a-transfer-fee](#a-transfer-charge-is-a-transfer-fee) | a warehouse transfer's door charge is its own source type, `TRANSFER_FEE`, keyed by the transfer |
 | [an-operating-cost-never-moves-a-team-balance](#an-operating-cost-never-moves-a-team-balance) | an operating cost — payroll, electricity, ads — is its own team's expense and never moves a team balance |
 | [an-orders-warehouse-fee-is-read-on-the-order](#an-orders-warehouse-fee-is-read-on-the-order) | an order's warehouse fee is kept on the order and read on its page, beside its settlement — no `order_id` filter on the entries |
+| [the-liability-day-is-the-jakarta-day](#the-liability-day-is-the-jakarta-day) | the liability daily view groups by the Jakarta day, not UTC | owner, as recommended | — |
 
 ---
 
@@ -1396,3 +1397,13 @@ flowchart LR
 | where it is read | the order's page |
 | `LiabilityEntryListFilter.order_id` | not added |
 | ✅ built | nothing to build |
+
+---
+
+## the-liability-day-is-the-jakarta-day
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: the liability daily report groups by UTC day (`liability_v1/liability_daily.go`, pinned by its tests) — move it to Jakarta days?
+
+**The verdict.** Yes. The liability daily view groups by the **Jakarta day** with Jakarta-midnight bounds, like every other day in the system ([the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)): an amount owed at 06:00 WIB lands on that WIB day, not the UTC day before. Its tests move with it. ⚠ Not built.
+
+✅ Built 2026-11-05 — `liability_v1/liability_daily.go` groups by `(created_at AT TIME ZONE 'Asia/Jakarta')::date` and reads the period's dates as Jakarta midnights; tests `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay`, `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` (now in WIB); perf `TestPerf_LiabilityDaily` — plan unchanged, not heavy ([rpc.md](../../services/liability_service/rpc.md#bucketing--the-jakarta-day)).

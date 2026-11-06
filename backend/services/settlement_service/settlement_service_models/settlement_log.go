@@ -42,11 +42,12 @@ type SettlementLog struct {
 	SourceType     string
 	SettlementType string
 
-	// ⚠ POSITIVE IS MONEY TOWARD US. `initial_total` is NEGATIVE, `fund` is POSITIVE. Whole rupiah.
-	Change int64
+	// ⚠ POSITIVE IS MONEY TOWARD US. `initial_total` is NEGATIVE, `fund` is POSITIVE. A double (00010), stored EXACT as
+	// posted — never rounded (the-backend-never-rounds-money).
+	Change float64
 
 	// The running position after this row. Derived; the log stays what it is derived from.
-	Balance int64
+	Balance float64
 
 	// The caller's idempotency key, unique across the WHOLE log (#00002) — not scoped to OrderID,
 	// which is nullable for a shop-addressed row and would have let Postgres admit the key twice.

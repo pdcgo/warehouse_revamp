@@ -35,7 +35,7 @@ func TestPerf_LiabilityPositionList(t *testing.T) {
 		_, err := svc.PostEntry(ctx, db, liability_v1.Posting{
 			DebtorTeamID:   uint64(1000 + i),
 			CreditorTeamID: selling,
-			Amount:         int64(1000 + i),
+			Amount:         float64(1000 + i),
 			SourceType:     liability_v1.SourceTypeOrderFee,
 			SourceID:       uint64(70000 + i),
 		})

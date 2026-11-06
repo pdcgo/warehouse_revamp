@@ -183,7 +183,7 @@ export const RecordingUpdatesTheList: Story = {
     await expect(expenseScenario.lastCreate).toEqual({
       teamId: EXPENSE_TEAM,
       kind: ExpenseKind.ADS,
-      amount: 750_000n,
+      amount: 750_000,
       occurredAt: today(),
       shopId: melatiStore.id,
       note: "Tokopedia ads — week 2",

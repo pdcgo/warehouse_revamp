@@ -269,7 +269,7 @@ func TestFoundRequestApprove_PostsWhatACountsFoundPosts(t *testing.T) {
 		mintValue  float64
 		batches    []int64
 		rackB      int64
-		foundMoney int64
+		foundMoney float64
 		expenses   int
 	}
 

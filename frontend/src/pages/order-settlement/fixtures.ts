@@ -13,7 +13,7 @@ import type { OrderSettlement, SettlementEntry } from "./model";
 function chain(
   rows: Array<Omit<SettlementEntry, "balance" | "id"> & { id?: string }>,
 ): SettlementEntry[] {
-  let running = 0n;
+  let running = 0;
   return rows.map((row, i) => {
     running += row.change;
     return { ...row, id: row.id ?? `e${i + 1}`, balance: running };
@@ -26,7 +26,7 @@ const workedEntries = chain([
   {
     uniqueId: "sys:order:1",
     settlementType: "initial_total",
-    change: -120_000n,
+    change: -120_000,
     sourceType: "order",
     actorName: "Ani",
     occurredOn: "2026-01-01",
@@ -36,7 +36,7 @@ const workedEntries = chain([
   {
     uniqueId: "shopee:2026-01-02:payout:1",
     settlementType: "fund",
-    change: 100_000n,
+    change: 100_000,
     sourceType: "importer",
     actorName: "Ani",
     occurredOn: "2026-01-02",
@@ -46,7 +46,7 @@ const workedEntries = chain([
   {
     uniqueId: "shopee:2026-01-04:ads:1",
     settlementType: "external_ads_fee",
-    change: -10_000n,
+    change: -10_000,
     sourceType: "importer",
     actorName: "Ani",
     occurredOn: "2026-01-04",
@@ -56,7 +56,7 @@ const workedEntries = chain([
   {
     uniqueId: "shopee:2026-01-04:adj:1",
     settlementType: "marketplace_adjustment",
-    change: 20_000n,
+    change: 20_000,
     sourceType: "importer",
     actorName: "Ani",
     occurredOn: "2026-01-04",
@@ -78,9 +78,9 @@ export const worked: OrderSettlement = {
   shopId: 21n,
   shopName: "Melati Official",
   teamName: "Selling A",
-  initialTotal: 120_000n,
-  lastBalance: -10_000n,
-  goodsCost: 70_000n,
+  initialTotal: 120_000,
+  lastBalance: -10_000,
+  goodsCost: 70_000,
   entries: workedEntries,
 };
 
@@ -99,14 +99,14 @@ export const awaiting: OrderSettlement = {
   shopId: 21n,
   shopName: "Melati Official",
   teamName: "Selling A",
-  initialTotal: 85_000n,
-  lastBalance: -85_000n,
-  goodsCost: 52_000n,
+  initialTotal: 85_000,
+  lastBalance: -85_000,
+  goodsCost: 52_000,
   entries: chain([
     {
       uniqueId: "sys:order:2",
       settlementType: "initial_total",
-      change: -85_000n,
+      change: -85_000,
       sourceType: "order",
       actorName: "Ani",
       occurredOn: "2026-01-03",
@@ -128,14 +128,14 @@ export const lateFee: OrderSettlement = {
   shopId: 21n,
   shopName: "Melati Official",
   teamName: "Selling A",
-  initialTotal: 240_000n,
-  lastBalance: -31_000n,
-  goodsCost: 150_000n,
+  initialTotal: 240_000,
+  lastBalance: -31_000,
+  goodsCost: 150_000,
   entries: chain([
     {
       uniqueId: "sys:order:3",
       settlementType: "initial_total",
-      change: -240_000n,
+      change: -240_000,
       sourceType: "order",
       actorName: "Ani",
       occurredOn: "2025-12-30",
@@ -144,7 +144,7 @@ export const lateFee: OrderSettlement = {
     {
       uniqueId: "shopee:2025-12-31:payout:3",
       settlementType: "fund",
-      change: 215_000n,
+      change: 215_000,
       sourceType: "importer",
       actorName: "Ani",
       occurredOn: "2025-12-31",
@@ -153,7 +153,7 @@ export const lateFee: OrderSettlement = {
     {
       uniqueId: "shopee:2025-12-31:aff:3",
       settlementType: "affiliate_fee",
-      change: -6_000n,
+      change: -6_000,
       sourceType: "importer",
       actorName: "Ani",
       // Belongs to December. Learned in January — this is the gap the two dates exist to show.
@@ -177,14 +177,14 @@ export const correctedByHand: OrderSettlement = {
   shopId: 22n,
   shopName: "Melati Store",
   teamName: "Selling A",
-  initialTotal: 310_000n,
-  lastBalance: -21_500n,
-  goodsCost: 195_000n,
+  initialTotal: 310_000,
+  lastBalance: -21_500,
+  goodsCost: 195_000,
   entries: chain([
     {
       uniqueId: "sys:order:4",
       settlementType: "initial_total",
-      change: -310_000n,
+      change: -310_000,
       sourceType: "order",
       actorName: "Ani",
       occurredOn: "2026-01-05",
@@ -193,7 +193,7 @@ export const correctedByHand: OrderSettlement = {
     {
       uniqueId: "shopee:2026-01-07:payout:4",
       settlementType: "fund",
-      change: 284_000n,
+      change: 284_000,
       sourceType: "importer",
       actorName: "Ani",
       occurredOn: "2026-01-07",
@@ -203,7 +203,7 @@ export const correctedByHand: OrderSettlement = {
       id: "typo",
       uniqueId: "manual:budi:1736251200000",
       settlementType: "marketplace_adjustment",
-      change: -45_000n,
+      change: -45_000,
       sourceType: "manual",
       actorName: "Budi",
       occurredOn: "2026-01-08",
@@ -213,7 +213,7 @@ export const correctedByHand: OrderSettlement = {
     {
       uniqueId: "manual:budi:1736254800000",
       settlementType: "marketplace_adjustment",
-      change: 45_000n,
+      change: 45_000,
       sourceType: "manual",
       actorName: "Budi",
       occurredOn: "2026-01-08",
@@ -224,7 +224,7 @@ export const correctedByHand: OrderSettlement = {
     {
       uniqueId: "manual:budi:1736258400000",
       settlementType: "marketplace_adjustment",
-      change: -4_500n,
+      change: -4_500,
       sourceType: "manual",
       actorName: "Budi",
       occurredOn: "2026-01-08",
@@ -247,14 +247,14 @@ export const ahead: OrderSettlement = {
   shopId: 22n,
   shopName: "Melati Store",
   teamName: "Selling A",
-  initialTotal: 96_000n,
-  lastBalance: 4_000n,
-  goodsCost: 61_000n,
+  initialTotal: 96_000,
+  lastBalance: 4_000,
+  goodsCost: 61_000,
   entries: chain([
     {
       uniqueId: "sys:order:5",
       settlementType: "initial_total",
-      change: -96_000n,
+      change: -96_000,
       sourceType: "order",
       actorName: "Ani",
       occurredOn: "2026-01-04",
@@ -263,7 +263,7 @@ export const ahead: OrderSettlement = {
     {
       uniqueId: "shopee:2026-01-06:payout:5",
       settlementType: "fund",
-      change: 88_000n,
+      change: 88_000,
       sourceType: "importer",
       actorName: "Ani",
       occurredOn: "2026-01-06",
@@ -272,7 +272,7 @@ export const ahead: OrderSettlement = {
     {
       uniqueId: "shopee:2026-01-09:adj:5",
       settlementType: "marketplace_adjustment",
-      change: 12_000n,
+      change: 12_000,
       sourceType: "importer",
       actorName: "Ani",
       occurredOn: "2026-01-09",
@@ -298,14 +298,14 @@ export const noEstimate: OrderSettlement = {
   shopId: 22n,
   shopName: "Melati Store",
   teamName: "Selling A",
-  initialTotal: 0n,
-  lastBalance: 62_000n,
-  goodsCost: 40_000n,
+  initialTotal: 0,
+  lastBalance: 62_000,
+  goodsCost: 40_000,
   entries: chain([
     {
       uniqueId: "shopee:2026-01-08:payout:6",
       settlementType: "fund",
-      change: 62_000n,
+      change: 62_000,
       sourceType: "importer",
       actorName: "Ani",
       occurredOn: "2026-01-08",

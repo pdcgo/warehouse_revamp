@@ -225,3 +225,48 @@ five tabs, the proof links, Confirm and Reject.
 | screens | pair detail: **Request Payment** (confirm, toast, then a muted line) and the debtor's warning (`PaymentRequestNotice`); list: a badge on the row. `useLiabilityPosition` reads one pair, `useRequestPayment` sends |
 | tests | `payment_request_send_test.go`; stories `TheCreditorAsksADebtorToPay`, `TheDebtorSeesTheRequest`, `TheWarehouseAdminMayAskToPay`, `ARequestedPairIsMarked`. The stub now reads positions from the asking team's side (a debtor sees its pair with Gudang Pusat, mirrored) |
 | dev DB | ⚠ **not migrated by this pass** — `go run ./tools/san migrate up --service liability_service` |
+
+**2026-11-05:** ✅ **the liability daily view is on Jakarta days** — [the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day).
+
+| | |
+| --- | --- |
+| handler | `liability_v1/liability_daily.go`: groups by `(created_at AT TIME ZONE 'Asia/Jakarta')::date`; `parsePeriod` reads both dates as Jakarta midnights (`jakarta`, fixed +7), so the half-open bounds are `[from 00:00 WIB, to+1 00:00 WIB)` |
+| tests | `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay` (00:00 and 06:00 WIB on their WIB day, 23:59 WIB the evening before outside the period), `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` moved to WIB times (23:30 WIB in, 00:05 WIB next day out — one UTC day); both red on the UTC code |
+| perf | `liability_daily_perf_test.go` (`-tags perfaudit`): 1 query, 10.7 ms (31 days) / 30 ms (366 days) median at 50 000 legs for the team among 500 000; plan unchanged from the UTC grouping (bitmap on `liability_logs_pair_idx`, `team_id` prefix). Not heavy — [rpc.md](../../services/liability_service/rpc.md#bucketing--the-jakarta-day) |
+| screens | none changed — the daily statement (`pages/daily-statement`) already sends Jakarta date strings |
+
+## 2026-11-06 — the team-balance ledger is a double, frozen whole by `PostEntry` (money-type change, part 2)
+
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen).
+
+| | |
+| --- | --- |
+| schema | `liability_service` `00014_liability_money_is_double.sql` — 10 columns `BIGINT` → `double precision`: `liability_logs.amount` / `balance_after`, `liability_balances.balance`, `liability_payment_requests.amount`, `liability_payments.amount`, `liability_terms.credit_limit`, `liability_terms_logs.old_/new_credit_limit`, `old_/new_handling_fee`. Applied on `warehouse_test` (the harness re-applies every migration from scratch); not run on dev — `go run ./tools/san migrate up`. |
+| wire | `liability.proto` — every position/credit/daily/summary figure and the `by_source` maps, `credit_limit` (`gte 0`, finite) ×3, `LiabilityPaymentRecordRequest.amount` (`gt 0`, finite); `LiabilityPaymentAccepted.amount` on the event |
+| freeze | `PostEntry` is THE freeze point — refuses NaN/±Inf, `san_money.Whole`, then requires `> 0`; the order-fee, courier and stock-loss posters hand it doubles and skip a figure whose whole is ≤ 0. `LiabilityPaymentRecord` freezes the claim and refuses one under Rp 1; `LiabilityTermsSet` freezes a limit (`wholeLimit`) |
+| tests | `TestPostEntry_RoundsAFractionOnceToWholeRupiah`, `TestPostEntry_RefusesAnAmountThatFreezesToNothingOrIsNotFinite`, `TestPaymentRecord_FreezesAFractionalClaimToWholeRupiah`; raceaudit `TestRace|TestInterleave` green |
+| frontend | the liability pages, `CreditMeter` (whole-rupiah ratio from `wholeRupiah`), `ChangeLogPanel`, direction words take a `Rupiah`; the order form's credit panel takes the doubles through `wholeRupiah` (`figuresOf`) |
+| MCP | `balance_positions` answers the figures as JSON numbers — asserted by `TestMCP_AnotherTeamIsRefusedThroughTheTool` |
+
+## 2026-11-06 — the backend never rounds money ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money))
+
+Supersedes the *freeze* row above: `PostEntry` stores the posting EXACT — it refuses NaN/±Inf and anything not above 0
+(`san_money.Positive`; float dust counts as 0) and no longer rounds. A 2,5% fee of Rp 12.666,99 posts Rp 316,67475 on
+both legs (the screen shows Rp 316,675). `LiabilityPaymentRecord` stores the claim as typed (refuses one not above 0,
+*"a payment must be more than Rp 0"*); `LiabilityTermsSet` stores a limit as set (`wholeLimit` is gone); the order-fee,
+courier and stock-loss posters skip a figure that is not above 0. "Square" is a tolerance test in SQL
+(`abs(balance) < 0.00005` in the `oldest_unsettled_at` CASE and `unsettled_only`), and `LiabilityPaymentRequestSend`
+refuses "nothing owed" with `Positive`. Frontend: `CreditMeter`/`creditWarning`, `directionOf` and `ChangeLogPanel`
+read the exact doubles with the server's 4-place tolerance (`isZeroRupiah` / `signOfRupiah`) — no `wholeRupiah`.
+Tests `TestPostEntry_StoresAFractionExact`, `TestPostEntry_RefusesDustOrAnAmountThatIsNotFinite`,
+`TestPaymentRecord_StoresAFractionalClaimExact`, `TestChargeOrder_TheFrozenFeeIsPostedExact`,
+`TestChargeOrder_AFractionalTotalIsPostedExactOnTheSum`, the push transfer test (5.000,4).
+
+**Found and fixed in the same pass — the order's fees never reached the ledger in a running app.** `register.go` mounted
+the restock / return / transfer push routes but not `/event/liability-order-placed/push` or
+`/event/liability-order-cancelled/push`, while `san pubsub ensure` declares both subscriptions: every *Order Placed*
+push 404'd and dead-lettered (the e2e emulator's `order-placed.dlq.triage` held them), so no warehouse fee or product fee
+was ever charged outside the unit tests, which call `ChargeOrder` directly. Both routes are mounted now (the same push
+handler); test `TestRegister_TheOrderEventsReachTheLedger` drives them through the real mux. Orders placed on a dev
+database before this fix have no fee entries — revamp has no real orders (revamp-has-no-real-orders-yet), so nothing is
+backfilled; a dev DB's dead-lettered events can be redriven with `san pubsub redrive --topic order-placed`.

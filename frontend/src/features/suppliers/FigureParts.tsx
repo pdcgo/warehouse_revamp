@@ -61,7 +61,7 @@ export function FiguresSummary({
 
   // A lost or broken figure in its status tone once there is any — written as a ROLE, never a hue (CLAUDE.md).
   const toneOf = (count: number, tone: string) => (count > 0 ? tone : undefined);
-  const toned = (value: bigint, count: number, tone: string) =>
+  const toned = (value: number, count: number, tone: string) =>
     figures ? <Span color={toneOf(count, tone)}>{formatRupiah(value)}</Span> : "—";
 
   // …and its share of every unit received BESIDE THE UNITS, bold, in the same tone (owner: *"persentase kasih di sebelah
@@ -118,14 +118,14 @@ export function FiguresSummary({
       />
       <SummaryCard
         label={t("supplierFigures.lost")}
-        value={toned(figures?.lostValue ?? 0n, figures?.lostCount ?? 0, "warning.fg")}
+        value={toned(figures?.lostValue ?? 0, figures?.lostCount ?? 0, "warning.fg")}
         line={unitsAndRate(figures?.lostCount ?? 0, figures ? lostRate(figures) : null, "warning.fg", "lost")}
         note={note("supplierFigures.lostHint")}
         testId={`${testId}-lost`}
       />
       <SummaryCard
         label={t("supplierFigures.broken")}
-        value={toned(figures?.brokenValue ?? 0n, figures?.brokenCount ?? 0, "error.fg")}
+        value={toned(figures?.brokenValue ?? 0, figures?.brokenCount ?? 0, "error.fg")}
         line={unitsAndRate(figures?.brokenCount ?? 0, figures ? brokenRate(figures) : null, "error.fg", "broken")}
         note={note("supplierFigures.brokenHint")}
         testId={`${testId}-broken`}
@@ -193,7 +193,7 @@ export function FigureCells({
 
 // Units over their value. A zero is ONE muted "0" — shown, not hidden, because "nothing broken" is the answer somebody
 // came for, but without an "Rp 0" under it: a quiet day would otherwise print six zeroes.
-function CountCell({ count, value, tone, testId }: { count: number; value: bigint; tone?: string; testId?: string }) {
+function CountCell({ count, value, tone, testId }: { count: number; value: number; tone?: string; testId?: string }) {
   if (count === 0) {
     return (
       <Table.Cell textAlign="end" data-testid={testId}>

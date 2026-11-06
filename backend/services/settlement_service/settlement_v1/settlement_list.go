@@ -8,6 +8,7 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
 )
 
@@ -33,8 +34,12 @@ func (s *Service) OrderSettlementList(
 
 	// The period narrows on when the ACCOUNT last moved, which is what a person means by "January's
 	// settlements" — not when the order was placed, which settlement does not know.
+	//
+	// ⚠ `updated_at` is an INSTANT, so its day bounds are Jakarta midnights (the-system-runs-on-jakarta-time) — a
+	// day parsed as UTC midnight would move the boundary to 07:00 WIB. The session's zone cannot carry this one: the
+	// bound is a Go time, compared as an absolute instant.
 	if raw := filter.GetFrom(); raw != "" {
-		from, err := parseDate(raw)
+		from, err := parseJakartaDay(raw)
 		if err != nil {
 			return nil, err
 		}
@@ -43,7 +48,7 @@ func (s *Service) OrderSettlementList(
 	}
 
 	if raw := filter.GetTo(); raw != "" {
-		to, err := parseDate(raw)
+		to, err := parseJakartaDay(raw)
 		if err != nil {
 			return nil, err
 		}
@@ -73,17 +78,17 @@ func (s *Service) OrderSettlementList(
 	// so its balance is positive — summing it would shrink the loss by money that was never a gain.
 	// It is counted instead, so the screen can say how many it left out.
 	var totals struct {
-		InitialTotal int64
-		LastBalance  int64
+		InitialTotal float64
+		LastBalance  float64
 		Unrecorded   int64
 	}
 
 	err = query.
 		Session(&gorm.Session{}).
 		Select(
-			"COALESCE(SUM(initial_total) FILTER (WHERE initial_total <> 0), 0) AS initial_total, " +
-				"COALESCE(SUM(last_balance) FILTER (WHERE initial_total <> 0), 0) AS last_balance, " +
-				"COUNT(*) FILTER (WHERE initial_total = 0) AS unrecorded",
+			"COALESCE(SUM(initial_total) FILTER (WHERE " + recordedSale + "), 0) AS initial_total, " +
+				"COALESCE(SUM(last_balance) FILTER (WHERE " + recordedSale + "), 0) AS last_balance, " +
+				"COUNT(*) FILTER (WHERE NOT " + recordedSale + ") AS unrecorded",
 		).
 		Scan(&totals).
 		Error
@@ -164,6 +169,10 @@ func (s *Service) OrderSettlementList(
 // Under a money measure an UNRECORDED sale (`initial_total = 0`) sorts last whichever way — its figures
 // are not real, so it may not lead the ranking in either direction. `order_id` breaks every tie, so
 // rows of equal value keep one order across pages.
+//
+// ⚠ "unrecorded" is a TOLERANCE test on a double (recordedSale), never `= 0`: every posted change is stored exact
+// (the-backend-never-rounds-money), so a sale and a part-cancel of fractions can net to float dust. The list's sums
+// skip the same accounts by the same test.
 func sortClause(sort *settlementv1.OrderSettlementListFilterSort) string {
 	desc := sort.GetSortType() != commonv1.CommonSortType_COMMON_SORT_TYPE_ASC
 
@@ -172,7 +181,7 @@ func sortClause(sort *settlementv1.OrderSettlementListFilterSort) string {
 		direction = "DESC"
 	}
 
-	const unrecordedLast = "(initial_total = 0) ASC, "
+	const unrecordedLast = "(NOT " + recordedSale + ") ASC, "
 	tiebreak := ", order_id " + direction
 
 	switch sort.GetSort() {
@@ -193,3 +202,7 @@ func sortClause(sort *settlementv1.OrderSettlementListFilterSort) string {
 		return unrecordedLast + "last_balance " + balance + tiebreak
 	}
 }
+
+// recordedSale is the SQL test for an account whose sale was recorded: `initial_total` is not zero within the tolerance
+// (san_money.ZeroBelow).
+const recordedSale = "abs(initial_total) >= " + san_money.ZeroBelow

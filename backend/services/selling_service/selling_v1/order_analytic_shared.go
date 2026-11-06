@@ -49,7 +49,7 @@ func (m *orderMetric) showsMoney(reader metricReader) bool {
 const (
 	fieldCount   = 1 // *_count            → order_count
 	fieldTotal   = 2 // *_total            → total      (money)
-	fieldMpTotal = 3 // *_mp_total, mp_total → mp_total (money)
+	fieldMpTotal = 3 // *_mp_total, mp_total → mp_total (money, a double like total since selling 00041)
 )
 
 var reportColumn = map[protoreflect.FieldNumber]string{
@@ -340,7 +340,7 @@ func metricMessage(metric *orderMetric, sums selling_service_models.OrderMetricC
 
 	mpTotal := fields.ByNumber(fieldMpTotal)
 	if mpTotal != nil {
-		msg.Set(mpTotal, protoreflect.ValueOfInt64(sums.MpTotal))
+		msg.Set(mpTotal, protoreflect.ValueOfFloat64(sums.MpTotal))
 	}
 
 	return msg

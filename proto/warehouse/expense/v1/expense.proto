@@ -90,7 +90,8 @@ enum ExpenseKind {
   EXPENSE_KIND_STOCK_LOSS = 5;
 }
 
-// One expense. Money is whole rupiah as int64, like every other money field in this system.
+// One expense. Money is rupiah as a double, stored exact when the expense is recorded or corrected — never rounded
+// (rupiah-is-floating-point, the-backend-never-rounds-money).
 message ExpenseRecord {
   uint64 id = 1;
 
@@ -111,10 +112,10 @@ message ExpenseRecord {
   // mistake is.
   ExpenseKind kind = 4;
 
-  // Whole rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
+  // Exact rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
   // let a negative expense silently become revenue. On an ADJUSTMENT signed and never 0 — the correction itself, not a
   // new total; the expense and its adjustments never sum below 0.
-  int64 amount = 5;
+  double amount = 5;
 
   // The date the expense BELONGS TO, as chosen by the person — not the moment the row was inserted.
   // Payroll is paid on the 5th for the month before, and filing it under the 5th would put it in the
@@ -140,7 +141,7 @@ message ExpenseRecord {
   uint64 adjusts_expense_id = 11;
 
   // On an EXPENSE, what it counts for after every adjustment of it: its amount plus theirs. 0 on an adjustment.
-  int64 net_amount = 12;
+  double net_amount = 12;
 
   // WHICH ACCOUNT PAID — a financial_account_service id, one of the team's operational accounts
   // (an-expense-must-name-the-account-that-paid). 0 on an expense made before *Paid from* existed: nothing posts back
@@ -186,8 +187,11 @@ message ExpenseCreateRequest {
     }
   ];
 
-  // Whole rupiah, POSITIVE. Recording an expense of nothing is not an expense.
-  int64 amount = 3 [(buf.validate.field).int64.gt = 0];
+  // Exact rupiah, POSITIVE. Recording an expense of nothing is not an expense.
+  double amount = 3 [(buf.validate.field).double = {
+    gt: 0
+    finite: true
+  }];
 
   // The date the expense BELONGS TO (YYYY-MM-DD), chosen by the person.
   string occurred_at = 4 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
@@ -282,12 +286,12 @@ message ExpenseListRequest {
 message ExpenseTotals {
   // The sum over EVERY row the filter matched, not the page — the same split RevenueTotals uses
   // (#78). A page total is a different number wearing the same label.
-  int64 total = 1;
+  double total = 1;
 
   // Per kind, so the summary cards need no second call. A kind with no expenses in the period is simply
   // absent rather than reported as 0 — absent and zero read the same on a card, and building the
   // absent ones would mean this message knowing the enum's members.
-  map<int32, int64> by_kind = 2;
+  map<int32, double> by_kind = 2;
 }
 
 // ExpenseRowItem is the EXPENSE slice — the fields the expense list renders (mirrors ExpenseRecord).
@@ -296,7 +300,7 @@ message ExpenseRowItem {
   uint64 team_id = 2;
   uint64 shop_id = 3;
   ExpenseKind kind = 4;
-  int64 amount = 5;
+  double amount = 5;
   string occurred_at = 6;
   string note = 7;
   uint64 created_by = 8;
@@ -306,7 +310,7 @@ message ExpenseRowItem {
   // As on ExpenseRecord: 0 on an expense, the corrected expense on an adjustment.
   uint64 adjusts_expense_id = 11;
   // As on ExpenseRecord: an expense's amount after every adjustment of it; 0 on an adjustment.
-  int64 net_amount = 12;
+  double net_amount = 12;
   // As on ExpenseRecord: the account that paid; 0 on an expense made before Paid from; an adjustment carries its
   // expense's.
   uint64 finance_account_id = 13;
@@ -403,14 +407,14 @@ message ExpenseDayItem {
   // the corrected expense's day.
   uint64 entries = 2;
 
-  // The day's spending, whole rupiah.
-  int64 total = 3;
+  // The day's spending, the exact sum.
+  double total = 3;
 
   // Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
   // day is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
   // and zero read identically, and building the empty ones would mean this message knowing the enum's
   // members.
-  map<int32, int64> by_kind = 4;
+  map<int32, double> by_kind = 4;
 }
 
 message ExpenseDailyResponse {
@@ -449,9 +453,10 @@ message ExpenseAdjustRequest {
   // The EXPENSE corrected — never an adjustment.
   uint64 expense_id = 2 [(buf.validate.field).uint64.gt = 0];
 
-  // The correction, signed, whole rupiah — not the new total. Never 0: a correction of nothing is not one.
-  int64 amount = 3 [(buf.validate.field).int64 = {
+  // The correction, signed, exact rupiah — not the new total. Never 0: a correction of nothing is not one.
+  double amount = 3 [(buf.validate.field).double = {
     not_in: [0]
+    finite: true
   }];
 
   // Why — what was wrong with the expense.

@@ -565,8 +565,8 @@ message StockAvailabilityResponse {
 // What one product cost a warehouse, per unit.
 message StockCostLine {
   uint64 product_id = 1;
-  // Whole rupiah. 0 means UNKNOWN — the warehouse has no restock history for this product — not free.
-  int64 unit_cost = 2;
+  // Exact rupiah, as stored. 0 means UNKNOWN — the warehouse has no restock history for this product — not free.
+  double unit_cost = 2;
 }
 
 // The warehouse roles read it too: its one caller is the warehouse product page (/inventories/products/:id), and
@@ -1055,7 +1055,7 @@ message StockBatch {
 
   // ⚠ Frozen HPP. `cost_known = false` means UNKNOWN, not free (#74) — `unit_cost` is then 0 and every
   // value below is 0, which a screen must render as "Unknown" rather than a real Rp 0.
-  int64 unit_cost = 8;
+  double unit_cost = 8;
   bool cost_known = 9;
 
   // Arrived = broken + lost + used + ready. Ready = Σ shelf_batch.qty; used = the remainder. Damaged
@@ -1067,8 +1067,8 @@ message StockBatch {
   int64 lost = 21;
 
   // arrived × unit_cost (the supplier invoice) and ready × unit_cost (what is still on the shelf).
-  int64 line_cost = 14;
-  int64 ready_value = 15;
+  double line_cost = 14;
+  double ready_value = 15;
 
   // 0 = does not expire (perishables only). The screen flags amber when it is within the soon window.
   int64 expires_on_unix = 16;
@@ -1159,7 +1159,7 @@ message BatchListResponse {
   repeated BatchListResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
-  int64 ready_value_total = 4;
+  double ready_value_total = 4;
   uint64 expiring_soon_count = 5;
 }
 
@@ -1168,12 +1168,12 @@ message BatchListResponse {
 message CostLayer {
   // ⚠ cost_known = false is UNKNOWN, not free (#74): unit_cost is then 0 and amount is 0, which the
   // screen renders "Unknown" — a real Rp 0 layer cannot happen (a batch with no cost has no value).
-  int64 unit_cost = 1;
+  double unit_cost = 1;
   bool cost_known = 2;
   // Ready units carrying this cost, across every shelf.
   int64 on_hand = 3;
-  // on_hand × unit_cost, whole rupiah.
-  int64 amount = 4;
+  // on_hand × unit_cost, exact.
+  double amount = 4;
 }
 
 message CostLayerListRequest {
@@ -1222,7 +1222,7 @@ message CostLayerListResponse {
   repeated CostLayerListResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
-  int64 total_value = 4;
+  double total_value = 4;
 }
 
 // One row of the PLACEMENT tab (#209) — a product on one shelf, and when it last moved. The dates flag
@@ -1308,11 +1308,11 @@ message ProductStockSummaryRequest {
 message ProductStockSummaryResponse {
   // READY — on hand now, across every shelf, and its value (known-cost layers only, #74).
   int64 ready_qty = 1;
-  int64 ready_value = 2;
+  double ready_value = 2;
 
   // ONGOING — inbound on pending restocks not yet accepted, and the estimated cost of those lines.
   int64 ongoing_qty = 3;
-  int64 ongoing_value_est = 4;
+  double ongoing_value_est = 4;
 
   // When the product was last counted on any shelf here (last ADJUST); 0 = never counted.
   int64 last_counted_unix = 5;
@@ -1442,9 +1442,9 @@ message BatchReceiptLine {
   int64 arrived = 5;
   int64 damaged = 6;
   int64 accepted = 7; // arrived − damaged
-  int64 unit_cost = 8;
+  double unit_cost = 8;
   bool cost_known = 9; // false → cost UNKNOWN, render "Unknown" not Rp 0 (#74)
-  int64 line_cost = 10; // arrived × unit_cost
+  double line_cost = 10; // arrived × unit_cost
   // Where this batch's units were put away — 0 = the unplaced pile. A line can span shelves.
   repeated uint64 rack_ids = 11;
 }
@@ -1460,7 +1460,7 @@ message BatchReceiptResponse {
   uint64 accepted_by = 7;
   repeated BatchReceiptLine lines = 8;
   int64 total_accepted = 9; // Σ accepted
-  int64 total_value = 10; // Σ line_cost over known-cost lines only (#74)
+  double total_value = 10; // Σ line_cost over known-cost lines only (#74)
 }
 
 // ── OwnerStock — the selling team's own stock, across the warehouses holding it ───────────────────
@@ -1473,13 +1473,13 @@ message OwnerStockItem {
   // known-cost layers only (#74): a batch whose cost never got recorded adds units without adding
   // money, because valuing it at 0 would quietly understate the stock.
   int64 ready_qty = 1;
-  int64 ready_value = 2;
+  double ready_value = 2;
 
   // ONGOING — ordered on restocks the warehouse has not accepted yet, and what those lines are
   // expected to cost. An ESTIMATE until the goods land: the cost settles on what actually arrives
   // (#74), which is why it is never added to ready_value.
   int64 ongoing_qty = 3;
-  int64 ongoing_value_est = 4;
+  double ongoing_value_est = 4;
 
   // The HPP SPREAD of the ready units — cheapest and dearest unit cost still on a shelf. A range, not
   // an average, because the same product genuinely arrives at different prices and the average is
@@ -1487,8 +1487,8 @@ message OwnerStockItem {
   //
   // `cost_known` is false when NO ready unit has a recorded cost; the two figures are then 0 and mean
   // nothing. Without it a caller cannot tell "we do not know" from "it cost nothing".
-  int64 cost_min = 5;
-  int64 cost_max = 6;
+  double cost_min = 5;
+  double cost_max = 6;
   bool cost_known = 7;
 
   // When the OLDEST units still on a shelf arrived. 0 = nothing on hand. This is what finds stock that
@@ -1578,9 +1578,9 @@ message OwnerStockByIdsResponse {
 // a number about nothing.
 message OwnerStockPreview {
   int64 ready_qty = 1;
-  int64 ready_value = 2;
+  double ready_value = 2;
   int64 ongoing_qty = 3;
-  int64 ongoing_value_est = 4;
+  double ongoing_value_est = 4;
   // The last time ANY of this team's stock arrived. 0 = never.
   int64 last_restock_unix = 5;
 }
@@ -1665,7 +1665,7 @@ message OwnerCostLayerListResponse {
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
   // Values the KNOWN-cost layers only (#74) — an unknown layer is worth "Unknown", never 0.
-  int64 total_value = 4;
+  double total_value = 4;
 }
 
 message OwnerBatchListFilter {
@@ -1706,7 +1706,7 @@ message OwnerBatchListResponse {
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
   // Over the whole filtered set, not the page. Known-cost batches only (#74).
-  int64 ready_value_total = 4;
+  double ready_value_total = 4;
 }
 
 // OwnerMovement is one line of the owner's ledger (#232).

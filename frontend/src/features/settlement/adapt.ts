@@ -102,7 +102,7 @@ export function settlementFromWire(
     teamName: known.teamName ?? "",
     initialTotal: wire.initialTotal,
     lastBalance: wire.lastBalance,
-    goodsCost: known.goodsCost ?? 0n,
+    goodsCost: known.goodsCost ?? 0,
     entries,
   };
 }

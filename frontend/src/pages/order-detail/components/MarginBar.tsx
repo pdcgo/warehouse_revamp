@@ -23,20 +23,21 @@ export function MarginBar({
   productCost,
   fees,
 }: {
-  platformTotal: bigint;
-  productCost: bigint;
+  /** A double since selling 00041. */
+  platformTotal: number;
+  productCost: number;
   /** `null` = never priced: there is no total to draw the margin against, so no bar. */
-  fees: bigint | null;
+  fees: number | null;
 }) {
   const { t } = useTranslation();
 
-  if (platformTotal <= 0n || productCost <= 0n || fees === null) {
+  if (platformTotal <= 0 || productCost <= 0 || fees === null) {
     return null;
   }
 
-  const mp = Number(platformTotal);
-  const goods = Number(productCost);
-  const fee = Number(fees);
+  const mp = platformTotal;
+  const goods = productCost;
+  const fee = fees;
   const spend = goods + fee;
 
   // Everything is measured against the larger of the two, so an underwater order still fits the track.

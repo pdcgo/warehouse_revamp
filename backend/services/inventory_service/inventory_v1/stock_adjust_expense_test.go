@@ -53,7 +53,7 @@ func TestStockAdjust_WritesOffLossValue(t *testing.T) {
 		t.Fatalf("after damaged: %d expense posts, want 1", len(expense.posted))
 	}
 	if expense.posted[0].warehouseID != warehouse || expense.posted[0].amount != 200000 {
-		t.Fatalf("loss = team %d amount %d, want %d/200000", expense.posted[0].warehouseID, expense.posted[0].amount, warehouse)
+		t.Fatalf("loss = team %v amount %v, want %v/200000", expense.posted[0].warehouseID, expense.posted[0].amount, warehouse)
 	}
 
 	recountTo := func(onHand int64) {

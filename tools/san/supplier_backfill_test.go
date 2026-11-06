@@ -47,7 +47,7 @@ func seedRestock(t *testing.T, db *gorm.DB, status string, supplierID *uint64, a
 type backfilledRow struct {
 	Day                 time.Time
 	RestockCount        int64
-	RestockValuation    int64
+	RestockValuation    float64
 	ShippingLostCount   int64
 	ShippingBrokenCount int64
 }

@@ -395,7 +395,7 @@ interface SampleBatch {
   warehouseId: bigint;
   arrived: bigint;
   ready: bigint;
-  unitCost: bigint;
+  unitCost: number;
   acceptedAt: bigint;
 }
 
@@ -409,17 +409,17 @@ function batchesOf(productId: bigint): SampleBatch[] {
   if (!figured(productId)) return [];
   const n = Number(productId % 997n);
   if (n % 6 === 0) return [];
-  const cost = BigInt(8_000 + ((n * 911) % 40_000));
+  const cost = 8_000 + ((n * 911) % 40_000);
   const first: SampleBatch = { id: productId * 10n + 1n, warehouseId: GUDANG_PUSAT, arrived: 60n, ready: BigInt(10 + ((n * 7) % 40)), unitCost: cost, acceptedAt: NOW - BigInt(20 + (n % 30)) * DAY };
   // ONE DELIVERY, so ONE PRICE — ids 705, 711, 717 … (SL-03-ANG-006, -012, -018 …), so the list shows a single cost beside
   // the ranges rather than a range on every row.
   if (n % 6 === 3) return [first];
   const out: SampleBatch[] = [
     first,
-    { id: productId * 10n + 2n, warehouseId: GUDANG_CABANG, arrived: 40n, ready: BigInt(5 + ((n * 11) % 30)), unitCost: cost + 1_500n, acceptedAt: NOW - BigInt(5 + (n % 10)) * DAY },
+    { id: productId * 10n + 2n, warehouseId: GUDANG_CABANG, arrived: 40n, ready: BigInt(5 + ((n * 11) % 30)), unitCost: cost + 1_500, acceptedAt: NOW - BigInt(5 + (n % 10)) * DAY },
   ];
   if (n % 2 === 0) {
-    out.push({ id: productId * 10n + 3n, warehouseId: GUDANG_PUSAT, arrived: 24n, ready: 24n, unitCost: cost + 800n, acceptedAt: NOW - BigInt(1 + (n % 4)) * DAY });
+    out.push({ id: productId * 10n + 3n, warehouseId: GUDANG_PUSAT, arrived: 24n, ready: 24n, unitCost: cost + 800, acceptedAt: NOW - BigInt(1 + (n % 4)) * DAY });
   }
   return out;
 }
@@ -435,11 +435,11 @@ export function ownerStockSample(productId: bigint, teamId: bigint, warehouseId:
   const ongoingQty = n % 4 === 0 ? BigInt(12 + (n % 20)) : 0n;
   return {
     readyQty: held.reduce((s, b) => s + b.ready, 0n),
-    readyValue: held.reduce((s, b) => s + b.ready * b.unitCost, 0n),
+    readyValue: held.reduce((s, b) => s + Number(b.ready) * b.unitCost, 0),
     ongoingQty,
-    ongoingValueEst: ongoingQty * (costs[0] ?? 10_000n),
-    costMin: costs.length ? costs.reduce((a, b) => (b < a ? b : a)) : 0n,
-    costMax: costs.length ? costs.reduce((a, b) => (b > a ? b : a)) : 0n,
+    ongoingValueEst: Number(ongoingQty) * (costs[0] ?? 10_000),
+    costMin: costs.length ? costs.reduce((a, b) => (b < a ? b : a)) : 0,
+    costMax: costs.length ? costs.reduce((a, b) => (b > a ? b : a)) : 0,
     costKnown: costs.length > 0,
     oldestBatchUnix: held.length ? held.reduce((a, b) => (b.acceptedAt < a ? b.acceptedAt : a), held[0]!.acceptedAt) : 0n,
     lastRestockUnix: batchesOf(productId).reduce((a, b) => (b.acceptedAt > a ? b.acceptedAt : a), 0n),
@@ -455,9 +455,9 @@ export function ownerStockStat(req: { teamId: bigint; filter?: { warehouseId?: b
   return {
     preview: {
       readyQty: all.reduce((s, x) => s + x.readyQty, 0n),
-      readyValue: all.reduce((s, x) => s + x.readyValue, 0n),
+      readyValue: all.reduce((s, x) => s + x.readyValue, 0),
       ongoingQty: all.reduce((s, x) => s + x.ongoingQty, 0n),
-      ongoingValueEst: all.reduce((s, x) => s + x.ongoingValueEst, 0n),
+      ongoingValueEst: all.reduce((s, x) => s + x.ongoingValueEst, 0),
       lastRestockUnix: all.reduce((a, x) => (x.lastRestockUnix > a ? x.lastRestockUnix : a), 0n),
     },
   };
@@ -497,8 +497,8 @@ export function orderActivityStat(req: { teamId: bigint }) {
 /** OwnerCostLayerList — one layer per batch still holding stock, in the lens. */
 export function ownerCostLayerList(req: { teamId: bigint; filter?: { productId?: bigint; warehouseId?: bigint }; page?: PageReq }) {
   const held = req.teamId === FIGURED_TEAM ? batchesOf(req.filter?.productId ?? 0n).filter(inLens(req.filter?.warehouseId)).filter((b) => b.ready > 0n) : [];
-  const layers = held.map((b) => ({ id: b.id, unitCost: b.unitCost, costKnown: true, onHand: b.ready, amount: b.ready * b.unitCost }));
-  return { ...paged("layer", layers, (l) => l.id, req.page), totalValue: layers.reduce((s, l) => s + l.amount, 0n) };
+  const layers = held.map((b) => ({ id: b.id, unitCost: b.unitCost, costKnown: true, onHand: b.ready, amount: Number(b.ready) * b.unitCost }));
+  return { ...paged("layer", layers, (l) => l.id, req.page), totalValue: layers.reduce((s, l) => s + l.amount, 0) };
 }
 
 /** OwnerBatchList — the product's deliveries, newest first, in the lens. */
@@ -523,8 +523,8 @@ export function ownerBatchList(req: { teamId: bigint; filter?: { productId?: big
           used: b.arrived - b.ready,
           ready: b.ready,
           lost: 0n,
-          lineCost: b.arrived * b.unitCost,
-          readyValue: b.ready * b.unitCost,
+          lineCost: Number(b.arrived) * b.unitCost,
+          readyValue: Number(b.ready) * b.unitCost,
           expiresOnUnix: b.acceptedAt + 365n * DAY,
           createdAtUnix: b.acceptedAt - 3n * DAY,
           acceptedAtUnix: b.acceptedAt,
@@ -534,7 +534,7 @@ export function ownerBatchList(req: { teamId: bigint; filter?: { productId?: big
           warehouseId: b.warehouseId,
         }))
     : [];
-  return { ...paged("batch", list, (b) => b.id, req.page), readyValueTotal: list.reduce((s, b) => s + b.readyValue, 0n) };
+  return { ...paged("batch", list, (b) => b.id, req.page), readyValueTotal: list.reduce((s, b) => s + b.readyValue, 0) };
 }
 
 /** OwnerStockHistory — each batch's receipt and what was picked from it since, newest first, a running balance. */

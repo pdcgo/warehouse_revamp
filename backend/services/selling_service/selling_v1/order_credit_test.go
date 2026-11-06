@@ -72,7 +72,8 @@ func TestOrderCreate_CreditBlockNamesTheCreditorAndTheNumbers(t *testing.T) {
 	}
 
 	msg := err.Error()
-	for _, want := range []string{"900", "52000000", "50000000"} {
+	// The figures in the words a person reads (san_money.Text) — exact, never rounded by the server.
+	for _, want := range []string{"900", "Rp 52.000.000", "Rp 50.000.000"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("the block message %q does not name %q", msg, want)
 		}

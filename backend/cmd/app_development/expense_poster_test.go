@@ -47,7 +47,7 @@ func TestExpensePoster_FilesAStockWriteOffUnderItsOwnKind(t *testing.T) {
 	}
 
 	if got := res.Msg.GetTotals().GetTotal(); got != 1_250_000 {
-		t.Fatalf("stock-loss total = %d, want 1250000 — the write-off did not land under STOCK_LOSS", got)
+		t.Fatalf("stock-loss total = %v, want 1250000 — the write-off did not land under STOCK_LOSS", got)
 	}
 
 	// And it is NOT ALSO sitting in Operational. The two must be disjoint, or the statement's
@@ -62,7 +62,7 @@ func TestExpensePoster_FilesAStockWriteOffUnderItsOwnKind(t *testing.T) {
 	}
 
 	if got := res.Msg.GetTotals().GetTotal(); got != 0 {
-		t.Fatalf("operational total = %d, want 0 — a stock write-off must not also count as operational", got)
+		t.Fatalf("operational total = %v, want 0 — a stock write-off must not also count as operational", got)
 	}
 }
 
@@ -85,9 +85,9 @@ func TestExpensePoster_TheLossLandsOnTheWarehouseNotTheGoodsOwner(t *testing.T) 
 	// assertion a stray committed row turns into a false failure. Team 2 is Dev Warehouse in the
 	// fixture; reading it here failed the moment anything had been seeded against it.
 	const (
-		warehouse  uint64 = 9_000_001
-		goodsOwner uint64 = 9_000_002
-		writtenOff int64  = 400_000
+		warehouse  uint64  = 9_000_001
+		goodsOwner uint64  = 9_000_002
+		writtenOff float64 = 400_000
 	)
 
 	err := poster.PostStockLoss(context.Background(), warehouse, writtenOff, "lost in the racks")
@@ -104,7 +104,7 @@ func TestExpensePoster_TheLossLandsOnTheWarehouseNotTheGoodsOwner(t *testing.T) 
 	}
 
 	if got := owner.Msg.GetTotals().GetTotal(); got != 0 {
-		t.Fatalf("the goods' owner was charged %d for stock the warehouse lost", got)
+		t.Fatalf("the goods' owner was charged %v for stock the warehouse lost", got)
 	}
 
 	// And the warehouse WAS charged. Without this the test would still pass if PostStockLoss silently
@@ -118,6 +118,6 @@ func TestExpensePoster_TheLossLandsOnTheWarehouseNotTheGoodsOwner(t *testing.T) 
 	}
 
 	if got := held.Msg.GetTotals().GetTotal(); got != writtenOff {
-		t.Fatalf("the warehouse bears %d of the loss, want %d", got, writtenOff)
+		t.Fatalf("the warehouse bears %v of the loss, want %v", got, writtenOff)
 	}
 }

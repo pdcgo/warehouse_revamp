@@ -118,8 +118,8 @@ export function LiabilityListPage() {
   const termsQuery = useLiabilityTerms({ teamId, page: 1, pageSize: 200 });
 
   const limitOf = useMemo(() => {
-    const byCounterparty = new Map<string, bigint | undefined>();
-    let fallback: bigint | undefined;
+    const byCounterparty = new Map<string, number | undefined>();
+    let fallback: number | undefined;
 
     for (const row of termsQuery.data?.terms ?? []) {
       if (row.counterpartyId === 0n) {
@@ -132,7 +132,7 @@ export function LiabilityListPage() {
     // ⚠ THE DEFAULT ROW IS THE RULE THE OTHERS ARE EXCEPTIONS TO. A debtor with no row of their own
     // inherits it — which is why `has` decides, not a truthy check: `undefined` is a real value here
     // meaning UNLIMITED, and it is the opposite of `0n`, meaning frozen.
-    return (counterpartyId: bigint): bigint | undefined =>
+    return (counterpartyId: bigint): number | undefined =>
       byCounterparty.has(counterpartyId.toString())
         ? byCounterparty.get(counterpartyId.toString())
         : fallback;

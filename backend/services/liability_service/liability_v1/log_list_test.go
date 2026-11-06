@@ -61,7 +61,7 @@ func TestEntryList_EachLineSaysWhatCausedIt(t *testing.T) {
 
 	// The balance rides on the response, so the page header needs no second call.
 	if msg.GetBalance() != 15000 {
-		t.Fatalf("balance = %d, want 15000", msg.GetBalance())
+		t.Fatalf("balance = %v, want 15000", msg.GetBalance())
 	}
 }
 
@@ -96,7 +96,7 @@ func TestEntryList_AFeeAndItsReversalBothStay(t *testing.T) {
 	}
 
 	if msg.GetBalance() != 0 {
-		t.Fatalf("balance = %d after a reversal, want 0", msg.GetBalance())
+		t.Fatalf("balance = %v after a reversal, want 0", msg.GetBalance())
 	}
 }
 
@@ -109,7 +109,7 @@ func TestEntryList_AnUntradedPairIsSquareRatherThanMissing(t *testing.T) {
 	msg := history(t, svc, selling, 12345)
 
 	if len(entryRows(msg)) != 0 || msg.GetBalance() != 0 {
-		t.Fatalf("entries=%d balance=%d, want an empty, square history",
+		t.Fatalf("entries=%v balance=%v, want an empty, square history",
 			len(entryRows(msg)), msg.GetBalance())
 	}
 }

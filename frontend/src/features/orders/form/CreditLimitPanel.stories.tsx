@@ -8,7 +8,7 @@ import type { CreditRow } from "./CreditLimitPanel";
 // the ordering team and the debt already carried (the-debtor-sees-the-limits-set-on-it). Shared by the new order and
 // the draft being finished, so its rules are pinned here rather than on either page.
 
-const row = (teamId: bigint, name: string, figures: CreditRow["figures"], adds = 120_000n): CreditRow => ({
+const row = (teamId: bigint, name: string, figures: CreditRow["figures"], adds = 120_000): CreditRow => ({
   teamId,
   name,
   roles: ["owner"],
@@ -17,10 +17,10 @@ const row = (teamId: bigint, name: string, figures: CreditRow["figures"], adds =
 });
 
 const READ: CreditRow[] = [
-  { ...row(11n, "Gudang Pusat", { state: "ready", debt: 8_700_000n, limit: 10_000_000n }, 2_000n), roles: ["warehouse", "owner"] },
-  row(13n, "Toko Kenanga", { state: "ready", debt: 400_000n, limit: 2_000_000n }),
-  row(14n, "Gudang Cabang", { state: "ready", debt: 860_000n, limit: undefined }),
-  row(15n, "Toko Anggrek", { state: "ready", debt: 870_000n, limit: 1_000_000n }, 200_000n),
+  { ...row(11n, "Gudang Pusat", { state: "ready", debt: 8_700_000, limit: 10_000_000 }, 2_000), roles: ["warehouse", "owner"] },
+  row(13n, "Toko Kenanga", { state: "ready", debt: 400_000, limit: 2_000_000 }),
+  row(14n, "Gudang Cabang", { state: "ready", debt: 860_000, limit: undefined }),
+  row(15n, "Toko Anggrek", { state: "ready", debt: 870_000, limit: 1_000_000 }, 200_000),
 ];
 
 const meta = {
@@ -54,7 +54,7 @@ export const Read: Story = {
 // says it is reading, and states only what this order adds.
 export const StillReading: Story = {
   args: {
-    rows: [row(11n, "Gudang Pusat", { state: "loading" }, 2_000n), row(15n, "Toko Anggrek", { state: "loading" })],
+    rows: [row(11n, "Gudang Pusat", { state: "loading" }, 2_000), row(15n, "Toko Anggrek", { state: "loading" })],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

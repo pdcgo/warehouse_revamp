@@ -39,16 +39,16 @@ export function MoneyBreakdown({
   platformTotal,
 }: {
   /** Σ line `unit_cost × quantity` — what the goods cost us. 0 = never recorded. */
-  productCost: bigint;
+  productCost: number;
   /** The warehouse's fee, frozen on the order (`orderFee`). `null` = never priced: placed before fees were frozen. */
-  fees: bigint | null;
-  /** `platform_total` — what the buyer paid the platform. 0 = not recorded. */
-  platformTotal: bigint;
+  fees: number | null;
+  /** `platform_total` — what the buyer paid the platform, an exact double frozen at placement. 0 = not recorded. */
+  platformTotal: number;
 }) {
   const { t } = useTranslation();
 
-  const known = productCost > 0n;
-  const spend = orderSpend(productCost, fees ?? 0n, known && fees !== null);
+  const known = productCost > 0;
+  const spend = orderSpend(productCost, fees ?? 0, known && fees !== null);
   const margin = orderMargin(platformTotal, spend);
   const pct = formatMarginPct(orderMarginPct(platformTotal, spend));
 
@@ -80,7 +80,7 @@ export function MoneyBreakdown({
           has no marketplace figure at all. */}
       <Line
         label={t("orderDetail.money.platformTotal")}
-        value={platformTotal > 0n ? platformTotal : null}
+        value={platformTotal > 0 ? platformTotal : null}
         testId="money-mp"
       />
 
@@ -98,7 +98,7 @@ export function MoneyBreakdown({
             {margin === null ? "—" : formatRupiah(margin)}
           </Text>
           {pct !== null && margin !== null && (
-            <Badge colorPalette={margin < 0n ? "error" : "success"} variant="subtle" size="sm">
+            <Badge colorPalette={margin < 0 ? "error" : "success"} variant="subtle" size="sm">
               {pct}
             </Badge>
           )}
@@ -124,7 +124,7 @@ function Line({
   testId,
 }: {
   label: string;
-  value: bigint | null;
+  value: number | null;
   strong?: boolean;
   mark?: React.ReactNode;
   testId?: string;

@@ -27,9 +27,9 @@ func NewExpensePoster(expense *expense_v1.Service) inventory_v1.ExpensePoster {
 	return &expensePoster{expense: expense}
 }
 
-func (p *expensePoster) PostStockLoss(ctx context.Context, warehouseID uint64, amount int64, note string) error {
+func (p *expensePoster) PostStockLoss(ctx context.Context, warehouseID uint64, amount float64, note string) error {
 	_, err := p.expense.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId:     warehouseID,
+		TeamId: warehouseID,
 		// STOCK_LOSS, not OPERATIONAL (owner, 2026-08-14). Shrinkage used to land in the same bucket as
 		// rent and electricity, which made "how much did we break this month" unanswerable — and that
 		// is the question a warehouse's own P&L is largely made of.

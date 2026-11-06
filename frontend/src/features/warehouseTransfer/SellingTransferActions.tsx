@@ -130,7 +130,8 @@ export function SellingTransferActions({ transfer, teamId, variant }: SellingTra
   );
 }
 
-const digitsOf = (n: number) => (n > 0 ? Math.round(n).toString() : "");
+// The stored cost exactly, a fraction included (the-backend-never-rounds-money) — saving untouched never moves it.
+const digitsOf = (n: number) => (n > 0 ? String(n) : "");
 const amountOf = (digits: string) => (digits === "" ? 0 : Number(digits));
 
 // EDIT COST — the shipping expense and the account that pays it, plus the note. The courier prices by the packed
@@ -183,7 +184,7 @@ function EditCostDialog({
       <Stack gap="field">
         <Field.Root>
           <Field.Label>{t("warehouseTransfer.cost.shippingCost")}</Field.Label>
-          <CurrencyInput value={cost} onChange={setCost} data-testid="transfer-cost-amount" />
+          <CurrencyInput fraction value={cost} onChange={setCost} data-testid="transfer-cost-amount" />
           <Field.HelperText>{t("warehouseTransfer.cost.shippingCostHint")}</Field.HelperText>
         </Field.Root>
 

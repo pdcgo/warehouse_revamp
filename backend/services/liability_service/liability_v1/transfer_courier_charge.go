@@ -3,6 +3,8 @@ package liability_v1
 import (
 	"context"
 	"errors"
+
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 )
 
 // TransferCourierCharge is what the courier asked at the RECEIVING warehouse's door for a warehouse transfer, as
@@ -16,7 +18,7 @@ type TransferCourierCharge struct {
 	SellingTeamID uint64
 	// The warehouse that RECEIVED the transfer (B, `to_warehouse_id`) — the door the courier was paid at.
 	WarehouseID uint64
-	Amount      int64
+	Amount      float64
 	// Who counted it in — read from the stored transfer, never from the envelope (every-entry-names-who-posted-it).
 	ActorID uint64
 }
@@ -31,7 +33,7 @@ type TransferCourierCharge struct {
 func (s *Service) ChargeTransferCourier(ctx context.Context, c TransferCourierCharge) error {
 	// Nothing is owed for 0 — and nothing to oneself: a team that is its own receiving warehouse paid its own courier.
 	// PostEntry refuses one team on both sides, and an error here would NACK a redelivery that can never succeed.
-	if c.Amount <= 0 || c.SellingTeamID == c.WarehouseID {
+	if !san_money.Positive(c.Amount) || c.SellingTeamID == c.WarehouseID {
 		return nil
 	}
 

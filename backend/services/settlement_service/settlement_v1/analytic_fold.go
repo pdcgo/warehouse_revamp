@@ -134,6 +134,10 @@ func (s *Service) fold(ctx context.Context, event *eventsv1.Event, posted *event
 
 // foldScope applies one movement to one scope: the day's row, every later day, and the scope's state row.
 //
+// ⚠ THE CHANGE IS ADDED AS POSTED, never rounded (the-backend-never-rounds-money): posting froze it exact, so every day
+// row, carry and position is a sum of exact doubles and equals the log's running sum within the tolerance
+// (san_money.Equal) — compared that way, never with ==.
+//
 // keepsLastDay is the person grain's: its state row also carries `last_day`, the newest day the scope has a row on
 // (#the-person-list-reads-the-last-day-from-the-user-report).
 //
@@ -147,7 +151,7 @@ func foldScope(
 	keepsLastDay bool,
 	keyID, teamID uint64,
 	day, column string,
-	change int64,
+	change float64,
 ) error {
 	args := map[string]any{
 		"day":    day,
@@ -182,6 +186,25 @@ SET %[3]s         = d.%[3]s + EXCLUDED.%[3]s,
 	}
 
 	// EVERY LATER DAY — a SHIFT, never a recomputation. This is what keeps a late event's carry true.
+	_, err = shiftLaterDays(tx, grain, keyID, teamID, day, change)
+	if err != nil {
+		return fmt.Errorf("settlement fold: %s later days: %w", grain.table, err)
+	}
+
+	// THE STATE ROW — the scope's NEWEST daily close, DERIVED rather than incremented, so a replay's
+	// redelivery re-derives it instead of doubling it.
+	err = deriveState(tx, grain, stateTable, keepsLastDay, lastDayRaised, keyID, teamID)
+	if err != nil {
+		return fmt.Errorf("settlement fold: %s: %w", stateTable, err)
+	}
+
+	return nil
+}
+
+// shiftLaterDays moves every later day's carried position — `open_balance` and `close_balance`, never a movement column
+// — by delta, and says how many rows it moved. The fold shifts by a late event's change; the day re-fold by how far its
+// corrected day's close moved (a-refold-shifts-the-later-days). One statement, one definition of the carry.
+func shiftLaterDays(tx *gorm.DB, grain reportGrain, keyID, teamID uint64, day string, delta float64) (int64, error) {
 	shift := fmt.Sprintf(`
 UPDATE %[1]s
 SET open_balance  = open_balance + @change,
@@ -189,13 +212,39 @@ SET open_balance  = open_balance + @change,
     last_updated  = NOW()
 WHERE %[2]s = @key AND team_id = @team AND day > CAST(@day AS date)`, grain.table, grain.key)
 
-	err = tx.Exec(shift, args).Error
-	if err != nil {
-		return fmt.Errorf("settlement fold: %s later days: %w", grain.table, err)
+	result := tx.Exec(shift, map[string]any{
+		"day":    day,
+		"key":    keyID,
+		"team":   teamID,
+		"change": delta,
+	})
+	if result.Error != nil {
+		return 0, result.Error
 	}
 
-	// THE STATE ROW — the scope's NEWEST daily close, DERIVED rather than incremented, so a replay's
-	// redelivery re-derives it instead of doubling it.
+	return result.RowsAffected, nil
+}
+
+// lastDayRule is how the person grain's state row moves `last_day`.
+type lastDayRule int
+
+const (
+	// lastDayRaised is the fold's: it only ever adds a day, so an older event leaves `last_day` where it is. GREATEST
+	// skips a NULL, which is what a replay leaves on a scope it cut to nothing.
+	lastDayRaised lastDayRule = iota
+	// lastDayRecomputed is the day re-fold's: it may remove the newest day, so `last_day` is the newest row's, lowered too.
+	lastDayRecomputed
+)
+
+// deriveState re-derives a scope's state row from its newest daily row — `close_balance`, and on the person grain
+// (keepsLastDay) `last_day` (#the-person-list-reads-the-last-day-from-the-user-report). A scope with no daily row
+// writes nothing here.
+func deriveState(tx *gorm.DB, grain reportGrain, stateTable string, keepsLastDay bool, rule lastDayRule, keyID, teamID uint64) error {
+	args := map[string]any{
+		"key":  keyID,
+		"team": teamID,
+	}
+
 	state := fmt.Sprintf(`
 INSERT INTO %[3]s (%[2]s, team_id, close_balance, last_updated)
 SELECT r.%[2]s, r.team_id, r.close_balance, NOW()
@@ -208,8 +257,11 @@ SET close_balance = EXCLUDED.close_balance,
     last_updated  = NOW()`, grain.table, grain.key, stateTable)
 
 	if keepsLastDay {
-		// The same newest daily row's day, RAISED and never lowered: the fold only ever adds a day, so an older
-		// event leaves it where it is. GREATEST skips a NULL, which is what a replay leaves on a scope it cut to nothing.
+		lastDay := "GREATEST(s.last_day, EXCLUDED.last_day)"
+		if rule == lastDayRecomputed {
+			lastDay = "EXCLUDED.last_day"
+		}
+
 		state = fmt.Sprintf(`
 INSERT INTO %[3]s AS s (%[2]s, team_id, close_balance, last_day, last_updated)
 SELECT r.%[2]s, r.team_id, r.close_balance, r.day, NOW()
@@ -219,16 +271,11 @@ ORDER BY r.day DESC
 LIMIT 1
 ON CONFLICT (%[2]s, team_id) DO UPDATE
 SET close_balance = EXCLUDED.close_balance,
-    last_day      = GREATEST(s.last_day, EXCLUDED.last_day),
-    last_updated  = NOW()`, grain.table, grain.key, stateTable)
+    last_day      = %[4]s,
+    last_updated  = NOW()`, grain.table, grain.key, stateTable, lastDay)
 	}
 
-	err = tx.Exec(state, args).Error
-	if err != nil {
-		return fmt.Errorf("settlement fold: %s: %w", stateTable, err)
-	}
-
-	return nil
+	return tx.Exec(state, args).Error
 }
 
 func advisoryLock(tx *gorm.DB, key string) error {

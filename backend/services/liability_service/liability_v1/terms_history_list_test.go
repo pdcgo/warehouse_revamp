@@ -48,7 +48,7 @@ func writeTerms(
 	t *testing.T,
 	svc *liability_v1.Service,
 	teamID, counterparty uint64,
-	limit *int64,
+	limit *float64,
 	reason string,
 ) {
 	t.Helper()
@@ -65,7 +65,7 @@ func writeTerms(
 	}
 }
 
-func i64(v int64) *int64 { return &v }
+func i64(v float64) *float64 { return &v }
 
 // ⛔ THE WHOLE REASON THIS TABLE EXISTS. `absent`, `0` and a number are THREE acts — no limit at all,
 // frozen entirely, and a real ceiling — and a NOT NULL column flattens the first into the second,
@@ -98,7 +98,7 @@ func TestTermsHistory_TellsRemovedApartFromFrozen(t *testing.T) {
 	// REMOVED: the new limit is ABSENT. If this ever reads as a present 0, the log is saying the
 	// creditor froze a team at the moment they un-restricted it.
 	if removed.NewCreditLimit != nil {
-		t.Fatalf("the removal recorded new_credit_limit = %d, want ABSENT — 0 means frozen, which is "+
+		t.Fatalf("the removal recorded new_credit_limit = %v, want ABSENT — 0 means frozen, which is "+
 			"the opposite of what happened", removed.GetNewCreditLimit())
 	}
 
@@ -137,7 +137,7 @@ func TestTermsHistory_ADeleteIsRecordedAsARemoval(t *testing.T) {
 	del := changes[0]
 
 	if del.NewCreditLimit != nil {
-		t.Fatalf("the delete recorded new_credit_limit = %d, want ABSENT", del.GetNewCreditLimit())
+		t.Fatalf("the delete recorded new_credit_limit = %v, want ABSENT", del.GetNewCreditLimit())
 	}
 
 	if del.GetReason() != "they settled up and left" {

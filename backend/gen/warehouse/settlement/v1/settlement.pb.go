@@ -334,11 +334,12 @@ type SettlementEntry struct {
 	ActorId        uint64         `protobuf:"varint,6,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
 	SourceType     SourceType     `protobuf:"varint,7,opt,name=source_type,json=sourceType,proto3,enum=warehouse.settlement.v1.SourceType" json:"source_type,omitempty"`
 	SettlementType SettlementType `protobuf:"varint,8,opt,name=settlement_type,json=settlementType,proto3,enum=warehouse.settlement.v1.SettlementType" json:"settlement_type,omitempty"`
-	// Signed, whole rupiah. POSITIVE IS MONEY TOWARD US — see SettlementType.
-	Change int64 `protobuf:"varint,9,opt,name=change,proto3" json:"change,omitempty"`
-	// The running position AFTER this row. Derived and kept for the panel; the log stays what it is
-	// derived from.
-	Balance int64 `protobuf:"varint,10,opt,name=balance,proto3" json:"balance,omitempty"`
+	// Signed rupiah, a double, stored EXACT as posted — never rounded (the-backend-never-rounds-money). POSITIVE IS
+	// MONEY TOWARD US — see SettlementType.
+	Change float64 `protobuf:"fixed64,9,opt,name=change,proto3" json:"change,omitempty"`
+	// The running position AFTER this row — a sum of exact doubles, equal to the log within the tolerance. Derived and kept for the panel; the log
+	// stays what it is derived from.
+	Balance float64 `protobuf:"fixed64,10,opt,name=balance,proto3" json:"balance,omitempty"`
 	// TWO DATES, and they are not the same question. `occurred_on` is the day the platform says the
 	// money belongs to; `posted_on` is the day we learned it. Equal on a same-day row, apart on a late
 	// fee — and a screen that showed only one could not tell a late charge from a backdated one.
@@ -443,14 +444,14 @@ func (x *SettlementEntry) GetSettlementType() SettlementType {
 	return SettlementType_SETTLEMENT_TYPE_UNSPECIFIED
 }
 
-func (x *SettlementEntry) GetChange() int64 {
+func (x *SettlementEntry) GetChange() float64 {
 	if x != nil {
 		return x.Change
 	}
 	return 0
 }
 
-func (x *SettlementEntry) GetBalance() int64 {
+func (x *SettlementEntry) GetBalance() float64 {
 	if x != nil {
 		return x.Balance
 	}
@@ -507,12 +508,12 @@ type OrderSettlement struct {
 	// zeroes it (#cancel-zeroes-the-live-sale).
 	//
 	// ⚠ 0 MEANS NOT RECORDED, never "sold for nothing". A missing fact, not a zero one — so the screens
-	// refuse to compute against it rather than reporting a total loss.
-	InitialTotal int64 `protobuf:"varint,2,opt,name=initial_total,json=initialTotal,proto3" json:"initial_total,omitempty"`
+	// refuse to compute against it rather than reporting a total loss. A double: the exact sum of posted rows.
+	InitialTotal float64 `protobuf:"fixed64,2,opt,name=initial_total,json=initialTotal,proto3" json:"initial_total,omitempty"`
 	// The current position. Negative means part of what the buyer paid never reached us.
-	LastBalance int64  `protobuf:"varint,3,opt,name=last_balance,json=lastBalance,proto3" json:"last_balance,omitempty"`
-	TeamId      uint64 `protobuf:"varint,4,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	ShopId      uint64 `protobuf:"varint,5,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	LastBalance float64 `protobuf:"fixed64,3,opt,name=last_balance,json=lastBalance,proto3" json:"last_balance,omitempty"`
+	TeamId      uint64  `protobuf:"varint,4,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ShopId      uint64  `protobuf:"varint,5,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
 	// Who created the order, frozen when the account opened (#the-creator-is-stamped-on-the-state-row).
 	// 0 = not recorded — an account opened by anything other than the order's own opening post.
 	CreatedByUserId uint64 `protobuf:"varint,6,opt,name=created_by_user_id,json=createdByUserId,proto3" json:"created_by_user_id,omitempty"`
@@ -557,14 +558,14 @@ func (x *OrderSettlement) GetOrderId() uint64 {
 	return 0
 }
 
-func (x *OrderSettlement) GetInitialTotal() int64 {
+func (x *OrderSettlement) GetInitialTotal() float64 {
 	if x != nil {
 		return x.InitialTotal
 	}
 	return 0
 }
 
-func (x *OrderSettlement) GetLastBalance() int64 {
+func (x *OrderSettlement) GetLastBalance() float64 {
 	if x != nil {
 		return x.LastBalance
 	}
@@ -620,8 +621,11 @@ type SettlementPostRequest struct {
 	UniqueId       string         `protobuf:"bytes,3,opt,name=unique_id,json=uniqueId,proto3" json:"unique_id,omitempty"`
 	SettlementType SettlementType `protobuf:"varint,4,opt,name=settlement_type,json=settlementType,proto3,enum=warehouse.settlement.v1.SettlementType" json:"settlement_type,omitempty"`
 	SourceType     SourceType     `protobuf:"varint,5,opt,name=source_type,json=sourceType,proto3,enum=warehouse.settlement.v1.SourceType" json:"source_type,omitempty"`
-	// Signed. May be 0 — a zero-value adjustment is a real thing a platform reports.
-	Change int64 `protobuf:"varint,6,opt,name=change,proto3" json:"change,omitempty"`
+	// Signed rupiah. May be 0 — a zero-value adjustment is a real thing a platform reports.
+	//
+	// A double, posted EXACT — a fraction is stored as it is sent, never rounded (the-backend-never-rounds-money). NaN
+	// and infinities are refused.
+	Change float64 `protobuf:"fixed64,6,opt,name=change,proto3" json:"change,omitempty"`
 	// The day the money belongs to. Required: without it a late fee cannot be told from a backdated one.
 	OccurredOn string `protobuf:"bytes,7,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
 	// The row this one undoes, or 0. A reversal is a NEW row (#a-correction-is-a-new-row).
@@ -710,7 +714,7 @@ func (x *SettlementPostRequest) GetSourceType() SourceType {
 	return SourceType_SOURCE_TYPE_UNSPECIFIED
 }
 
-func (x *SettlementPostRequest) GetChange() int64 {
+func (x *SettlementPostRequest) GetChange() float64 {
 	if x != nil {
 		return x.Change
 	}
@@ -1152,8 +1156,8 @@ type OrderSettlementListResponse struct {
 	// ⚠ Both sums skip accounts whose sale was never recorded (`initial_total = 0`): such an account's
 	// balance is its payouts with nothing to measure them against, and adding it would shrink the loss
 	// by money that was never a gain. They are counted instead, in `total_unrecorded`.
-	TotalInitialTotal int64 `protobuf:"varint,4,opt,name=total_initial_total,json=totalInitialTotal,proto3" json:"total_initial_total,omitempty"`
-	TotalLastBalance  int64 `protobuf:"varint,5,opt,name=total_last_balance,json=totalLastBalance,proto3" json:"total_last_balance,omitempty"`
+	TotalInitialTotal float64 `protobuf:"fixed64,4,opt,name=total_initial_total,json=totalInitialTotal,proto3" json:"total_initial_total,omitempty"`
+	TotalLastBalance  float64 `protobuf:"fixed64,5,opt,name=total_last_balance,json=totalLastBalance,proto3" json:"total_last_balance,omitempty"`
 	// How many accounts in the filtered set have no recorded sale — counted in `page_info.total_items`,
 	// left out of the two sums.
 	TotalUnrecorded uint64 `protobuf:"varint,6,opt,name=total_unrecorded,json=totalUnrecorded,proto3" json:"total_unrecorded,omitempty"`
@@ -1212,14 +1216,14 @@ func (x *OrderSettlementListResponse) GetPageInfo() *v1.PageInfo {
 	return nil
 }
 
-func (x *OrderSettlementListResponse) GetTotalInitialTotal() int64 {
+func (x *OrderSettlementListResponse) GetTotalInitialTotal() float64 {
 	if x != nil {
 		return x.TotalInitialTotal
 	}
 	return 0
 }
 
-func (x *OrderSettlementListResponse) GetTotalLastBalance() int64 {
+func (x *OrderSettlementListResponse) GetTotalLastBalance() float64 {
 	if x != nil {
 		return x.TotalLastBalance
 	}
@@ -1573,9 +1577,9 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\vsource_type\x18\a \x01(\x0e2#.warehouse.settlement.v1.SourceTypeR\n" +
 	"sourceType\x12P\n" +
 	"\x0fsettlement_type\x18\b \x01(\x0e2'.warehouse.settlement.v1.SettlementTypeR\x0esettlementType\x12\x16\n" +
-	"\x06change\x18\t \x01(\x03R\x06change\x12\x18\n" +
+	"\x06change\x18\t \x01(\x01R\x06change\x12\x18\n" +
 	"\abalance\x18\n" +
-	" \x01(\x03R\abalance\x12\x1f\n" +
+	" \x01(\x01R\abalance\x12\x1f\n" +
 	"\voccurred_on\x18\v \x01(\tR\n" +
 	"occurredOn\x12\x1b\n" +
 	"\tposted_on\x18\f \x01(\tR\bpostedOn\x12\x1f\n" +
@@ -1587,11 +1591,11 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\auser_id\x18\x10 \x01(\x04R\x06userId\"\xd3\x01\n" +
 	"\x0fOrderSettlement\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12#\n" +
-	"\rinitial_total\x18\x02 \x01(\x03R\finitialTotal\x12!\n" +
-	"\flast_balance\x18\x03 \x01(\x03R\vlastBalance\x12\x17\n" +
+	"\rinitial_total\x18\x02 \x01(\x01R\finitialTotal\x12!\n" +
+	"\flast_balance\x18\x03 \x01(\x01R\vlastBalance\x12\x17\n" +
 	"\ateam_id\x18\x04 \x01(\x04R\x06teamId\x12\x17\n" +
 	"\ashop_id\x18\x05 \x01(\x04R\x06shopId\x12+\n" +
-	"\x12created_by_user_id\x18\x06 \x01(\x04R\x0fcreatedByUserId\"\xaa\x04\n" +
+	"\x12created_by_user_id\x18\x06 \x01(\x04R\x0fcreatedByUserId\"\xb3\x04\n" +
 	"\x15SettlementPostRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12 \n" +
@@ -1603,8 +1607,8 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x0esettlementType\x12P\n" +
 	"\vsource_type\x18\x05 \x01(\x0e2#.warehouse.settlement.v1.SourceTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\n" +
-	"sourceType\x12\x16\n" +
-	"\x06change\x18\x06 \x01(\x03R\x06change\x12D\n" +
+	"sourceType\x12\x1f\n" +
+	"\x06change\x18\x06 \x01(\x01B\a\xbaH\x04\x12\x02@\x01R\x06change\x12D\n" +
 	"\voccurred_on\x18\a \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
 	"occurredOn\x12\x1f\n" +
 	"\vreverses_id\x18\b \x01(\x04R\n" +
@@ -1648,8 +1652,8 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v28.warehouse.settlement.v1.OrderSettlementListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12.\n" +
-	"\x13total_initial_total\x18\x04 \x01(\x03R\x11totalInitialTotal\x12,\n" +
-	"\x12total_last_balance\x18\x05 \x01(\x03R\x10totalLastBalance\x12)\n" +
+	"\x13total_initial_total\x18\x04 \x01(\x01R\x11totalInitialTotal\x12,\n" +
+	"\x12total_last_balance\x18\x05 \x01(\x01R\x10totalLastBalance\x12)\n" +
 	"\x10total_unrecorded\x18\x06 \x01(\x04R\x0ftotalUnrecorded\"u\n" +
 	"\x1cOrderSettlementDetailRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +

@@ -28,12 +28,12 @@ func checkCredit(
 
 // oweThem makes the debtor owe the creditor `amount`, through the ledger rather than by writing a
 // balance row — the check must agree with the books, not with a fixture.
-func oweThem(t *testing.T, svc *liability_v1.Service, db *gorm.DB, amount int64, sourceID uint64) {
+func oweThem(t *testing.T, svc *liability_v1.Service, db *gorm.DB, amount float64, sourceID uint64) {
 	t.Helper()
 
 	_, err := svc.PostEntry(context.Background(), db, codFee(amount, sourceID))
 	if err != nil {
-		t.Fatalf("post %d: %v", amount, err)
+		t.Fatalf("post %v: %v", amount, err)
 	}
 }
 
@@ -88,7 +88,7 @@ func TestCheckCredit_BlocksAtTheLimitNotBeforeIt(t *testing.T) {
 	}
 
 	if block.Debt != 50_000_000 || block.Limit != 50_000_000 {
-		t.Fatalf("block reported debt %d of limit %d, want 50000000 / 50000000",
+		t.Fatalf("block reported debt %v of limit %v, want 50000000 / 50000000",
 			block.Debt, block.Limit)
 	}
 }
@@ -107,7 +107,7 @@ func TestCheckCredit_ZeroLimitBlocksImmediately(t *testing.T) {
 	}
 
 	if block.Debt != 0 {
-		t.Fatalf("debt = %d, want 0 — frozen with nothing owed is still frozen", block.Debt)
+		t.Fatalf("debt = %v, want 0 — frozen with nothing owed is still frozen", block.Debt)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestCheckCredit_BeingOwedIsNotDebt(t *testing.T) {
 	oweThem(t, svc, db, 15000, 1)
 
 	if block := checkCredit(t, svc, warehouse, selling); block != nil {
-		t.Fatalf("a receivable of %d counted as debt against a limit of 1", block.Debt)
+		t.Fatalf("a receivable of %v counted as debt against a limit of 1", block.Debt)
 	}
 }
 
@@ -153,7 +153,7 @@ func TestCheckCredit_OverrideWithoutALimitLiftsTheDefault(t *testing.T) {
 	oweThem(t, svc, db, 99_000_000, 1)
 
 	if block := checkCredit(t, svc, selling, warehouse); block != nil {
-		t.Fatalf("blocked at %d despite an unlimited override on this pair", block.Limit)
+		t.Fatalf("blocked at %v despite an unlimited override on this pair", block.Limit)
 	}
 }
 

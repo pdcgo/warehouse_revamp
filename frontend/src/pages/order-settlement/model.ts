@@ -142,10 +142,10 @@ export interface SettlementEntry {
    */
   uniqueId: string;
   settlementType: SettlementType;
-  /** Signed. Positive is money toward us. Whole rupiah. */
-  change: bigint;
+  /** Signed. Positive is money toward us. An exact double, as posted (the-backend-never-rounds-money). */
+  change: number;
   /** The running position AFTER this row. */
-  balance: bigint;
+  balance: number;
   sourceType: SourceType;
   /** Who is answerable — the PIC (`actor-id-is-the-pic`). Resolved to a name for display. */
   actorName: string;
@@ -177,11 +177,15 @@ export interface OrderSettlement {
    * this column holds the sale (+120.000). Positive makes `netReceived = lastBalance + initialTotal`
    * read as an addition and matches what the field is named after.
    */
-  initialTotal: bigint;
+  initialTotal: number;
   /** The current position. Negative means part of what the buyer paid never reached us. */
-  lastBalance: bigint;
-  /** What the goods cost us, frozen on the order. Needed for true margin; settlement never stores it. */
-  goodsCost: bigint;
+  lastBalance: number;
+  /**
+   * What the goods cost us, frozen on the order. Needed for true margin; settlement never stores it.
+   * A double since selling 00042, frozen exact at placement (the-backend-never-rounds-money), so it meets the ledger's
+   * figures without a conversion.
+   */
+  goodsCost: number;
   entries: SettlementEntry[];
 }
 
@@ -193,7 +197,7 @@ export interface OrderSettlement {
  * A SINGLE-ROW READ, which is the whole reason `order_settlements` keeps the estimate beside the
  * balance. On the worked example: `−10.000 + 120.000 = 110.000`, which is `100 − 10 + 20`.
  */
-export function netReceived(s: OrderSettlement): bigint {
+export function netReceived(s: OrderSettlement): number {
   return s.lastBalance + s.initialTotal;
 }
 
@@ -203,7 +207,7 @@ export function netReceived(s: OrderSettlement): bigint {
  * The headline. `a-residual-balance-is-normal` says this is almost never zero and that is fine — so
  * it is presented as a fact about the order, never as a queue item or something to clear.
  */
-export function loss(s: OrderSettlement): bigint {
+export function loss(s: OrderSettlement): number {
   return -s.lastBalance;
 }
 
@@ -214,7 +218,7 @@ export function loss(s: OrderSettlement): bigint {
  * `hidden-cost-is-left-in-the-balance` it is the closest thing to a take-rate this system can
  * produce. Summed across a shop's orders it answers *"what does this marketplace actually cost us"*.
  */
-export function hiddenCost(s: OrderSettlement): bigint {
+export function hiddenCost(s: OrderSettlement): number {
   const funded = sumOf(s, "fund");
   return s.initialTotal - funded;
 }
@@ -225,17 +229,17 @@ export function hiddenCost(s: OrderSettlement): bigint {
  * Signed: negative is a charge, positive a reimbursement. `loss = hiddenCost − namedAdjustments`,
  * which is what lets the panel show the loss as a breakdown rather than a single unexplained figure.
  */
-export function namedAdjustments(s: OrderSettlement): bigint {
+export function namedAdjustments(s: OrderSettlement): number {
   return s.entries
     .filter((e) => e.settlementType !== "initial_total" && e.settlementType !== "fund")
-    .reduce((total, e) => total + e.change, 0n);
+    .reduce((total, e) => total + e.change, 0);
 }
 
 
-function sumOf(s: OrderSettlement, type: SettlementType): bigint {
+function sumOf(s: OrderSettlement, type: SettlementType): number {
   return s.entries
     .filter((e) => e.settlementType === type)
-    .reduce((total, e) => total + e.change, 0n);
+    .reduce((total, e) => total + e.change, 0);
 }
 
 // ── Presentation rules that are decisions, not styling ──────────────────────────────────────────
@@ -249,7 +253,7 @@ function sumOf(s: OrderSettlement, type: SettlementType): bigint {
  */
 export function direction(e: SettlementEntry): "in" | "out" | "opening" {
   if (e.settlementType === "initial_total") return "opening";
-  return e.change >= 0n ? "in" : "out";
+  return e.change >= 0 ? "in" : "out";
 }
 
 /** A late fee is one that arrived after the day it belongs to — `two-dates-occurred-and-posted`. */

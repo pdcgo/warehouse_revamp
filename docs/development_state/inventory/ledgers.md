@@ -465,3 +465,26 @@ Mutation names: [one-mutation-per-operation](../../business/inventory/context_de
 30. Get-or-create races (ledger template Critique 4): the destination rack row *"created at 0 first"* and the `warehouse_products` upsert both need `INSERT … ON CONFLICT DO NOTHING` — ✅ built: `inventory_ledgers/rack_rows.go` and `inventory_v1/warehouse_product.go`.
 31. Money type drift: opname_clarify's proposed `warehouse_stock_problems.price_unit` is `numeric`; [stock-money-is-float64-compared-at-4-digits](../../technical/stock/design_decision.md#stock-money-is-float64-compared-at-4-digits) makes it `double`.
 32. The build: `racks` (00007) becomes `placements` — stored codes are case-sensitive as typed, so lowercase collisions must be merged before the migration ([rack-codes-are-saved-lowercase](../../business/inventory/placement_decision.md#rack-codes-are-saved-lowercase)); `warehouse_products` (00011) exists without a team column; `stock_levels`, `stock_movements`, `stock_batches`, `stock_shelf_batches`, `stock_owner_movements` are dropped.
+
+## 2026-11-06 — stock reads carry the unrounded double (money-type change, part 2)
+
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen), [numeric-money-moves-to-double-too](../../business/order/context_decision.md#numeric-money-moves-to-double-too).
+
+- **Reads** — batch detail / list / receipt, `CostLayerList`, owner batch list, `StockCost`, owner stock by ids / stat
+  (no `ROUND(…)::bigint` in the SQL), product stock summary, rack detail / rack stock: every money field is the stored
+  double, unrounded. 21 `inventory.proto` + 3 `rack.proto` fields moved `int64` → `double`.
+- **Losses** — `PostStockLoss` / `PostStockDamage` (liability) and the `STOCK_LOSS` expense take a `float64`; the
+  receivers freeze it. Test `TestStockAdjust_AFractionalLossReachesTheLedgersUnroundedAndPostsWhole` (a real ledger
+  owes 6667 for 2 broken units of a 3333,33… batch; the expense is handed the unrounded 6666,66…).
+- **Schema** — `inventory_service` `00038_lost_amount_is_double.sql`: `inventory_lost_daily_reports.lost_amount`
+  `NUMERIC(20,2)` → `double precision`; the lost fold writes `san_money.Whole(value)`. Applied on `warehouse_test` (the harness re-applies every migration from scratch); not run on dev — `go run ./tools/san migrate up`.
+- **Changed test** — `TestStockCost_DerivesThePerUnitCostFromTheLineTotal` expects the unrounded 3333,33… (was the
+  rounded 3333), compared with `san_money.Equal`.
+
+## 2026-11-06 — the backend never rounds money ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money))
+
+The lost fold writes the exact Σ (no `san_money.Whole`); losses reach liability and expense exact and are gated with
+`san_money.Positive` (a loss of float dust posts nothing). `CostLayerList` still groups prices that agree to 4 places
+(a tolerance key) but reads the layer's exact stored price (`MIN(price_unit)`) instead of the 4-place key. The restock
+accept's log note writes the courier's charge with `san_money.Text`. Test
+`TestStockAdjust_AFractionalLossReachesTheLedgersExact` (owner owed 6.666,666…).

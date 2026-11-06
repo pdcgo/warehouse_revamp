@@ -1226,6 +1226,10 @@
       "notShippedHere": "Order #{{id}} does not ship from this warehouse — its label is not yours to print",
       "noLabel": "Order #{{id}} has no label attached yet — ask the seller to attach it",
       "refused": "The label of order #{{id}} could not be opened"
+    },
+    "settlementMissing": {
+      "filter": "Settlement not opened",
+      "badge": "No settlement account"
     }
   },
   "orderDetail": {
@@ -4537,8 +4541,7 @@
       "pickHint": "Take each product from the racks listed — chosen when the transfer was created, the fewest first.",
       "labelPhoto": "Label photo",
       "noLabelPhoto": "No photo of the label",
-      "openLabelPhoto": "Open Photo",
-      "labelPhotoAtSender": "Attached — only the sending warehouse can open it"
+      "openLabelPhoto": "Open Photo"
     },
     "accept": {
       "back": "Back to Transfer",

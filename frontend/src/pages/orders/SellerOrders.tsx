@@ -5,6 +5,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Collapsible,
   Flex,
   Heading,
@@ -17,7 +18,7 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { BarChart3, ChevronDown, Download, Plus, SearchX, ShoppingCart, Upload } from "lucide-react";
+import { BarChart3, ChevronDown, CircleAlert, Download, Plus, SearchX, ShoppingCart, Upload } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { OrderDateField, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
@@ -67,6 +68,7 @@ import {
 } from "../../components/datetime/DateRangePicker";
 import { useDebounced } from "../../lib/useDebounced";
 import {
+  boolCodec,
   dateRangeCodec,
   enumCodec,
   idCodec,
@@ -132,6 +134,10 @@ function dateTypeStage(type: OrderDateType) {
 // WHY THEY ARE SEARCH SELECTS (owner). A picker over data that grows is typed into; only a static,
 // small set stays a plain dropdown. Warehouse and creator and shop all grow, so all three search.
 // Marketplace is seven values that change when the company enters a new country — it stays a list.
+//
+// THE ORDERS WHOSE SETTLEMENT ACCOUNT NEVER OPENED (a-missing-account-is-found-by-its-opened-at, design accepted in
+// the-settlement-missing-badge-is-accepted): a *Settlement not opened* filter (`OrderListFilter.settlement_not_opened`)
+// and a *No settlement account* badge on each such row, for every reader of this list.
 export function SellerOrdersPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -155,6 +161,8 @@ export function SellerOrdersPage() {
   const [marketplace, setMarketplace] = useUrlState("market", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
   const [dateType, setDateType] = useUrlState<OrderDateType>("date", "created", DATE_TYPE_CODEC);
+  // The orders whose settlement account never opened (the-settlement-missing-badge-is-accepted).
+  const [notOpened, setNotOpened] = useUrlState("unopened", false, boolCodec);
 
   const [importing, setImporting] = useState(false);
 
@@ -198,8 +206,9 @@ export function SellerOrdersPage() {
       marketplace,
       warehouseId,
       dateField,
+      settlementNotOpened: notOpened,
     };
-  }, [debouncedSearch, shopId, canFilterByShop, range, dateType, creatorId, marketplace, warehouseId]);
+  }, [debouncedSearch, shopId, canFilterByShop, range, dateType, creatorId, marketplace, warehouseId, notOpened]);
 
   // The "created by" filter's people: everyone who typed in an order this team may list
   // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
@@ -246,6 +255,7 @@ export function SellerOrdersPage() {
     creatorId !== undefined,
     marketplace !== Marketplace.UNSPECIFIED,
     !isAllDates(range),
+    notOpened,
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
@@ -316,6 +326,29 @@ export function SellerOrdersPage() {
     const item = stageOfStatus(status);
 
     return item ? <OrderStatusBadge status={item.status} /> : undefined;
+  }
+
+  // The row's second line: its stage, and beside it a warning when the order's settlement account never
+  // opened (`settlement_opened_at_unix` 0). A person fixes it by hand on the order page
+  // (a-missing-account-is-fixed-by-hand); the badge is how they find it while scanning.
+  function rowBadgesFor(o: { id: bigint; status: OrderStatus; settlementOpenedAtUnix: bigint }) {
+    const stageBadge = stageBadgeFor(o.status);
+
+    if (o.settlementOpenedAtUnix > 0n) {
+      return stageBadge;
+    }
+
+    // One line beside the stage, never a third line in the cell (cells are two lines at most) — on a phone the table
+    // scrolls sideways instead.
+    return (
+      <HStack gap="1" wrap="nowrap" whiteSpace="nowrap">
+        {stageBadge}
+        <Badge colorPalette="warning" size="sm" data-testid={`order-settlement-missing-${o.id}`}>
+          <Icon as={CircleAlert} boxSize="3" />
+          {t("orders.settlementMissing.badge")}
+        </Badge>
+      </HStack>
+    );
   }
 
   function teamOf(id: bigint) {
@@ -460,6 +493,7 @@ export function SellerOrdersPage() {
             setMarketplace(Marketplace.UNSPECIFIED);
             setRange(ALL_DATES);
             setDateType("created");
+            setNotOpened(false);
           })
         }
       >
@@ -540,6 +574,20 @@ export function SellerOrdersPage() {
             onFieldChange={(v) => refilter(() => setDateType(v))}
             testId="orders-date"
           />
+        </FilterField>
+
+        {/* The orders whose settlement account never opened (a-missing-account-is-found-by-its-opened-at). */}
+        <FilterField w="auto" testId="orders-settlement-missing-filter">
+          <Checkbox.Root
+            size="sm"
+            checked={notOpened}
+            onCheckedChange={(e) => refilter(() => setNotOpened(e.checked === true))}
+            data-testid="orders-settlement-missing"
+          >
+            <Checkbox.HiddenInput />
+            <Checkbox.Control />
+            <Checkbox.Label>{t("orders.settlementMissing.filter")}</Checkbox.Label>
+          </Checkbox.Root>
         </FilterField>
       </FilterBar>
 
@@ -710,7 +758,7 @@ export function SellerOrdersPage() {
                             <Table.Cell data-testid={`open-order-${o.id}`}>
                               <OrderRefCell
                                 orderRefId={o.orderExternalRefId}
-                                statusBadge={stageBadgeFor(o.status)}
+                                statusBadge={rowBadgesFor(o)}
                               />
                             </Table.Cell>
 

@@ -329,7 +329,7 @@ export function WarehouseOrdersPage() {
                             testId={o.id}
                           />
                         </Table.Cell>
-                        <Table.Cell textAlign="end">{o.platformTotal > 0n ? formatRupiah(o.platformTotal) : "—"}</Table.Cell>
+                        <Table.Cell textAlign="end">{o.platformTotal > 0 ? formatRupiah(o.platformTotal) : "—"}</Table.Cell>
                       </Table.Row>
                     ))}
                   </Table.Body>

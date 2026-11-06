@@ -85,7 +85,7 @@ message OrderCreatedMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 mp_total = 3 [
+  optional double mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -137,7 +137,7 @@ message OrderCancelMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 mp_total = 3 [
+  optional double mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -189,7 +189,7 @@ message OrderReturnCreatedMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 return_created_mp_total = 3 [
+  optional double return_created_mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -241,7 +241,7 @@ message OrderReturnArrivedMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 return_arrived_mp_total = 3 [
+  optional double return_arrived_mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -293,7 +293,7 @@ message OrderLostCreatedMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 lost_created_mp_total = 3 [
+  optional double lost_created_mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];

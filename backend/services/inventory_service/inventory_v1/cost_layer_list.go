@@ -2,7 +2,6 @@ package inventory_v1
 
 import (
 	"context"
-	"math"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -41,12 +40,14 @@ func (s *Service) CostLayerList(
 	}), nil
 }
 
-// costLayers groups the batches matching `where` that still hold units by their price, dearest first, one page. A
-// layer's price is rounded to 4 places before grouping, so float dust never splits one price into two layers
-// (stock-money-is-float64-compared-at-4-digits). Its amount is its batches' own value. Whole rupiah on this contract.
-func costLayers(db *gorm.DB, page pager, where string, args ...any) ([]*inventoryv1.CostLayer, int64, int64, error) {
+// costLayers groups the batches matching `where` that still hold units by their price, dearest first, one page. Prices
+// that agree to 4 places are ONE layer — a tolerance compare, so float dust never splits one price into two layers
+// (stock-money-is-float64-compared-at-4-digits) — and the layer reads the exact stored price of its batches (the
+// lowest, when dust differs), never the 4-place key (the-backend-never-rounds-money). Its amount is its batches' own
+// value — the stored doubles, unrounded (the screen rounds for display only).
+func costLayers(db *gorm.DB, page pager, where string, args ...any) ([]*inventoryv1.CostLayer, int64, float64, error) {
 	grouped := `
-		SELECT ROUND(b.price_unit::numeric, 4)::float8 AS price, SUM(b.stock_count) AS on_hand, SUM(b.stock_valuation) AS amount
+		SELECT MIN(b.price_unit) AS price, SUM(b.stock_count) AS on_hand, SUM(b.stock_valuation) AS amount
 		FROM batches b
 		WHERE ` + where + ` AND b.stock_count > 0
 		GROUP BY ROUND(b.price_unit::numeric, 4)`
@@ -82,12 +83,12 @@ func costLayers(db *gorm.DB, page pager, where string, args ...any) ([]*inventor
 	layers := make([]*inventoryv1.CostLayer, 0, len(rows))
 	for _, r := range rows {
 		layers = append(layers, &inventoryv1.CostLayer{
-			UnitCost:  int64(math.Round(r.Price)),
+			UnitCost:  r.Price,
 			CostKnown: true,
 			OnHand:    r.OnHand,
-			Amount:    int64(math.Round(r.Amount)),
+			Amount:    r.Amount,
 		})
 	}
 
-	return layers, total, int64(math.Round(totalValue)), nil
+	return layers, total, totalValue, nil
 }

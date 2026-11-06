@@ -18,8 +18,8 @@ type LiabilityPayment struct {
 	PayerTeamID    uint64
 	CreditorTeamID uint64
 
-	// Whole rupiah, always positive. Direction lives in the two ids above, never in a sign.
-	Amount int64
+	// Exact rupiah (the-backend-never-rounds-money), always positive. Direction lives in the two ids above, never in a sign.
+	Amount float64
 
 	// recorded | confirmed | rejected | reversed — see the mapper. Text rather than an enum column for
 	// the same reason `liability_logs.source_type` is.

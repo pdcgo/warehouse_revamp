@@ -12,10 +12,14 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// ReceiptPhotoLinker signs a link to a restock's label photo — document_service's file, behind an interface this
-// service owns, so inventory_service never imports document_service (see the composition root's
-// restock_photo_linker.go). It is asked only AFTER RestockReceiptPhoto has checked the restock is going to the caller's
-// warehouse, and it is told the photo's OWNER — the restock's selling team — so a document id alone opens nothing.
+// ReceiptPhotoLinker signs a link to a label photo — document_service's file, behind an interface this service owns,
+// so inventory_service never imports document_service (see the composition root's restock_photo_linker.go). It is asked
+// only AFTER the handler has checked the caller's right to it, and it is told the photo's OWNER, so a document id alone
+// opens nothing:
+//
+//   - RestockReceiptPhoto — the restock is going to the caller's warehouse; the owner is the restock's selling team;
+//   - WarehouseTransferLabelPhoto — the caller is a side of the transfer; the owner is the sending warehouse
+//     (every-side-of-a-transfer-opens-its-label-photo).
 //
 // A photo that is not there for that owner (removed, never confirmed, another type) answers connect NotFound.
 type ReceiptPhotoLinker interface {

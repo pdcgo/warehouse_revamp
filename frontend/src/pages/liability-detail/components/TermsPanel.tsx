@@ -52,7 +52,7 @@ export interface TermsPanelProps {
    * What the counterparty owes RIGHT NOW, positive. The caller flips the sign: this page holds a
    * signed balance from the creditor's side, and a meter wants a magnitude.
    */
-  debt: bigint;
+  debt: number;
 }
 
 // TermsPanel — where this pair's credit limit and order fee are SET

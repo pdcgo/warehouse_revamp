@@ -332,10 +332,10 @@ export const warehouseStock: Record<string, bigint> = {
 // ⚠ 0 means UNKNOWN — the warehouse has no restock history for that product — never "free". Product
 // 73 carries a 0 deliberately, so a story can pin that the form renders it as unknown rather than
 // booking goods at no cost.
-export const productCosts: Record<string, bigint> = {
-  "71": 18500n,
-  "72": 9000n,
-  "73": 0n,
+export const productCosts: Record<string, number> = {
+  "71": 18500,
+  "72": 9000,
+  "73": 0,
 };
 
 // THE BATCHES ON THE SHELF, oldest first — what a take draws, and therefore what an order line costs
@@ -432,17 +432,17 @@ export const daysAgo = (days: number): bigint => BigInt(Math.floor(Date.now() / 
 // Only 101 and 110 carry a BUYER USERNAME — one on each detail page (the seller's and the warehouse's). Every other
 // row has none, which is the ordinary case (the-buyers-username-is-optional) and must show nothing at all.
 const orderRows = [
-  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PENDING, customerName: "Bu Ani", customerPhone: "0812-3456-0001", buyerUsername: "ani.melati88", platformTotal: 245_000n, goodsCost: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
-  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PENDING, customerName: "Pak Budi", customerPhone: "0812-3456-0002", platformTotal: 176_500n, goodsCost: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(2) },
-  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PROCESSED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", platformTotal: 92_000n, goodsCost: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(3) },
-  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", platformTotal: 413_000n, goodsCost: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdByUserId: 63n, createdAtUnix: daysAgo(4) },
-  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PICKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", platformTotal: 303_500n, goodsCost: 189_440n, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(5) },
-  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPING, customerName: "Pak Firman", customerPhone: "0812-3456-0006", platformTotal: 137_000n, goodsCost: 82_560n, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(6) },
+  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PENDING, customerName: "Bu Ani", customerPhone: "0812-3456-0001", buyerUsername: "ani.melati88", platformTotal: 245_000, goodsCost: 148_000, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PENDING, customerName: "Pak Budi", customerPhone: "0812-3456-0002", platformTotal: 176_500, goodsCost: 107_520, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(2) },
+  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PROCESSED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", platformTotal: 92_000, goodsCost: 55_040, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(3) },
+  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", platformTotal: 413_000, goodsCost: 257_280, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdByUserId: 63n, createdAtUnix: daysAgo(4) },
+  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PICKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", platformTotal: 303_500, goodsCost: 189_440, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(5) },
+  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPING, customerName: "Pak Firman", customerPhone: "0812-3456-0006", platformTotal: 137_000, goodsCost: 82_560, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(6) },
   { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCEL, customerName: "Bu Gita", customerPhone: "0812-3456-0007", shippingCode: "jne", createdByUserId: 0n, createdAtUnix: daysAgo(8) },
-  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPING, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", goodsCost: 307_200n, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdByUserId: 62n, createdAtUnix: daysAgo(120) },
-  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", platformTotal: 258_000n, goodsCost: 161_280n, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPING, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", goodsCost: 307_200, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdByUserId: 62n, createdAtUnix: daysAgo(120) },
+  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", platformTotal: 258_000, goodsCost: 161_280, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
 
-  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PENDING, customerName: "Pak Joko", customerPhone: "0813-9999-0001", buyerUsername: "joko_kenanga", platformTotal: 628_000n, goodsCost: 395_520n, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdByUserId: 61n, createdAtUnix: daysAgo(2) },
+  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PENDING, customerName: "Pak Joko", customerPhone: "0813-9999-0001", buyerUsername: "joko_kenanga", platformTotal: 628_000, goodsCost: 395_520, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdByUserId: 61n, createdAtUnix: daysAgo(2) },
   { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PICKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", shippingCode: "jne", createdByUserId: 61n, createdAtUnix: daysAgo(3) },
 ];
 
@@ -490,15 +490,21 @@ function rowFacts(row: { id: bigint; status: OrderStatus; createdAtUnix: bigint;
     warehouseFee: 2000 + (n % 5) * 500,
     // A pending order entered pending the moment it was placed; every other status some hours or days later.
     statusAtUnix: row.createdAtUnix + BigInt(offset === undefined ? 0 : offset + (n % 7) * 1800),
+    // When its settlement account opened (a-missing-account-is-found-by-its-opened-at) — seconds after it was placed,
+    // except 103 and 109, whose opening never happened: the two the order list's *Settlement not opened* preview finds.
+    settlementOpenedAtUnix: SETTLEMENT_NEVER_OPENED.has(row.id) ? 0n : row.createdAtUnix + 4n,
   };
 }
+
+/** The fixture orders whose settlement account never opened — 0 on `settlement_opened_at_unix`. */
+export const SETTLEMENT_NEVER_OPENED = new Set([103n, 109n]);
 
 // `totalCost` is frozen on the server as goods_cost + warehouse_fee (selling 00027) — derived here the same way, so a
 // story reading it reads the sum the list and the detail compute.
 export const orders = orderRows.map((row) => {
   const facts = rowFacts(row);
 
-  return { ...row, ...facts, totalCost: Number(row.goodsCost ?? 0n) + facts.warehouseFee };
+  return { ...row, ...facts, totalCost: (row.goodsCost ?? 0) + facts.warehouseFee };
 });
 
 // ── What a DETAIL read adds, and a list row never carries ───────────────────────────────────────
@@ -521,8 +527,8 @@ export const orders = orderRows.map((row) => {
 export const orderDetailExtras: Record<
   string,
   {
-    platformTotal?: bigint;
-    goodsCost?: bigint;
+    platformTotal?: number;
+    goodsCost?: number;
     orderExternalRefId?: string;
     items?: {
       id: bigint;
@@ -530,7 +536,7 @@ export const orderDetailExtras: Record<
       productCode: string;
       name: string;
       quantity: number;
-      unitCost: bigint;
+      unitCost: number;
       /** A borrowed line's frozen figures — absent on an own line here, as on a line frozen before 00023/00025. */
       unitCostWithMarkup?: number;
       markupTotal?: number;
@@ -557,9 +563,9 @@ export const orderDetailExtras: Record<
   // same number ("the lines it was computed from are frozen too").
   "101": {
     items: [
-      { id: 1n, productId: 301n, productCode: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitCost: 48_000n },
-      { id: 2n, productId: 302n, productCode: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitCost: 46_000n },
-      { id: 3n, productId: 303n, productCode: "TOP-01", name: "Topi Rajut", quantity: 1, unitCost: 6_000n },
+      { id: 1n, productId: 301n, productCode: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitCost: 48_000 },
+      { id: 2n, productId: 302n, productCode: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitCost: 46_000 },
+      { id: 3n, productId: 303n, productCode: "TOP-01", name: "Topi Rajut", quantity: 1, unitCost: 6_000 },
     ],
     // TWO NOTES, ONE PER SIDE (a-note-is-a-timeline-row). The seller's is the one typed on the create form — the
     // order's first note row, written with the order — and the warehouse's came later, so it is listed FIRST.
@@ -604,7 +610,7 @@ export const orderDetailExtras: Record<
         productCode: "SEP-KNS-42",
         name: "Sepatu Kanvas — 42",
         quantity: 1,
-        unitCost: 157_867n,
+        unitCost: 157_867,
         unitCostWithMarkup: 189_440,
         markupTotal: 31_573,
         total: 189_440,
@@ -618,7 +624,7 @@ export const orderDetailExtras: Record<
   // row's own `goodsCost`, exactly as the default line would be, so the list and the detail still agree about it.
   "106": {
     items: [
-      { id: 1n, productId: 74n, productCode: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg", quantity: 1, unitCost: 82_560n },
+      { id: 1n, productId: 74n, productCode: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg", quantity: 1, unitCost: 82_560 },
     ],
   },
 
@@ -637,8 +643,8 @@ export const orderDetailExtras: Record<
   // NO ACTOR AT ALL — 0 is "not recorded", not "user zero". The page must show the step and stay silent
   // about who took it, rather than inventing a name or hiding the step.
   "108": {
-    platformTotal: 0n,
-    goodsCost: 310_000n,
+    platformTotal: 0,
+    goodsCost: 310_000,
     timelineLogs: [
       { id: 1n, status: 1, from: 2, actorId: 0n, createdAtUnix: daysAgo(120) },
       { id: 2n, status: 6, from: 1, actorId: 0n, createdAtUnix: daysAgo(119) },
@@ -666,8 +672,8 @@ export function orderDetailFor(id: bigint) {
     // a different marketplace figure, a different cost, and a reference that vanished on opening it.
     // The extras add what a list row cannot carry (lines, the timeline and its notes, address, receipt); the money
     // and the reference belong to the row.
-    platformTotal: extra.platformTotal ?? row.platformTotal ?? 0n,
-    goodsCost: extra.goodsCost ?? row.goodsCost ?? 0n,
+    platformTotal: extra.platformTotal ?? row.platformTotal ?? 0,
+    goodsCost: extra.goodsCost ?? row.goodsCost ?? 0,
     orderExternalRefId: extra.orderExternalRefId ?? row.orderExternalRefId ?? "",
     // The take's inventory transaction — what the pick page asks stockPickLocations by
     // (the-placement-page-reads-racks-by-transaction-id). See `pickTransactionOf` below.
@@ -685,7 +691,7 @@ export function orderDetailFor(id: bigint) {
         // reads `order.goodsCost`, and `order.proto` says those are one number — so a made-up line cost made
         // the same order read Rp 310.700 on the list and Rp 291.500 on its detail, and gave a cancelled
         // order the list calls unpriced a cost on its detail. `0` stays unknown, as on the row.
-        unitCost: row.goodsCost ?? 0n,
+        unitCost: row.goodsCost ?? 0,
       },
     ],
     timelineLogs: extra.timelineLogs ?? [{ id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: row.createdAtUnix }],
@@ -698,13 +704,13 @@ export function orderDetailFor(id: bigint) {
 // warehouse never types one. It is what the Drafts tab's badge counts, so the two versions of the
 // list differ there too — a number for Melati, a zero for Gudang Pusat.
 export const orderDrafts = [
-  { id: 201n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", buyerUsername: "lestari.shop", shippingCode: "jne", itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 0n },
-  { id: 202n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", buyerUsername: "", shippingCode: "sicepat", itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 3_600n, platformShipmentDeadlineUnix: 0n, platformTotal: 130_000n },
+  { id: 201n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", buyerUsername: "lestari.shop", shippingCode: "jne", itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 0 },
+  { id: 202n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", buyerUsername: "", shippingCode: "sicepat", itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 3_600n, platformShipmentDeadlineUnix: 0n, platformTotal: 130_000 },
   // TWO DRAFTS ONE FIELD SHORT OF READY — every line mapped, and each missing exactly one of the two things Promote
   // refuses that the list can read: 203 the marketplace order date, 204 the stored sell price. Without them the list
   // could call a draft ready that Promote turns away, and no story would notice.
-  { id: 203n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9003", shopId: 21n, warehouseId: 11n, customerName: "Bu Rina", customerPhone: "0812-3456-0103", buyerUsername: "", shippingCode: "jne", itemCount: 1, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 55_000n },
-  { id: 204n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9004", shopId: 22n, warehouseId: 11n, customerName: "Pak Yusuf", customerPhone: "0812-3456-0104", buyerUsername: "", shippingCode: "sicepat", itemCount: 1, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 7_200n, platformShipmentDeadlineUnix: 0n, platformTotal: 0n },
+  { id: 203n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9003", shopId: 21n, warehouseId: 11n, customerName: "Bu Rina", customerPhone: "0812-3456-0103", buyerUsername: "", shippingCode: "jne", itemCount: 1, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 55_000 },
+  { id: 204n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9004", shopId: 22n, warehouseId: 11n, customerName: "Pak Yusuf", customerPhone: "0812-3456-0104", buyerUsername: "", shippingCode: "sicepat", itemCount: 1, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 7_200n, platformShipmentDeadlineUnix: 0n, platformTotal: 0 },
 ];
 
 // ── What a draft DETAIL read adds — its lines ───────────────────────────────────────────────────
@@ -734,19 +740,19 @@ const draftAddress = {
 
 export const orderDraftItems: Record<
   string,
-  { id: bigint; externalSku: string; externalName: string; productId: bigint; quantity: number; unitPrice: bigint }[]
+  { id: bigint; externalSku: string; externalName: string; productId: bigint; quantity: number; unitPrice: number }[]
 > = {
   "201": [
-    { id: 2011n, externalSku: "SHP-KOPI-250", externalName: "Kopi Arabika Gayo 250gr Biji Sangrai", productId: 71n, quantity: 2, unitPrice: 55_000n },
-    { id: 2012n, externalSku: "SHP-TEH-100", externalName: "Teh Melati Wangi 100 gram", productId: 72n, quantity: 1, unitPrice: 25_000n },
+    { id: 2011n, externalSku: "SHP-KOPI-250", externalName: "Kopi Arabika Gayo 250gr Biji Sangrai", productId: 71n, quantity: 2, unitPrice: 55_000 },
+    { id: 2012n, externalSku: "SHP-TEH-100", externalName: "Teh Melati Wangi 100 gram", productId: 72n, quantity: 1, unitPrice: 25_000 },
     // THE UNMAPPED ONE — the scrape read it, nobody has said which product it is yet.
-    { id: 2013n, externalSku: "SHP-MUG-01", externalName: "Mug Keramik Motif Batik (bonus)", productId: 0n, quantity: 1, unitPrice: 20_000n },
+    { id: 2013n, externalSku: "SHP-MUG-01", externalName: "Mug Keramik Motif Batik (bonus)", productId: 0n, quantity: 1, unitPrice: 20_000 },
   ],
   "202": [
-    { id: 2021n, externalSku: "TK-KOPI-250", externalName: "Kopi Arabika 250g", productId: 71n, quantity: 1, unitPrice: 55_000n },
+    { id: 2021n, externalSku: "TK-KOPI-250", externalName: "Kopi Arabika 250g", productId: 71n, quantity: 1, unitPrice: 55_000 },
     // EXACTLY what the warehouse holds (product 72 has 3) — ready as it stands, and ONE click on the
     // + away from short. That is the edge the short-stock alert is judged against.
-    { id: 2022n, externalSku: "TK-TEH-100", externalName: "Teh Melati Kemasan 100gr", productId: 72n, quantity: 3, unitPrice: 25_000n },
+    { id: 2022n, externalSku: "TK-TEH-100", externalName: "Teh Melati Kemasan 100gr", productId: 72n, quantity: 3, unitPrice: 25_000 },
   ],
 };
 
@@ -846,9 +852,9 @@ export const revenueDays = [
 // than it earns, so a screen that counted COD as income would report roughly three times the profit
 // it made. The statement excludes it and says why — this fixture is what makes that assertable.
 export const liabilityDays = [
-  { teamId: 11n, ago: 1, handlingFee: 500_000n, codFee: 1_200_000n },
-  { teamId: 11n, ago: 3, handlingFee: 400_000n, codFee: 800_000n },
-  { teamId: 11n, ago: 8, handlingFee: 200_000n, codFee: 0n },
+  { teamId: 11n, ago: 1, handlingFee: 500_000, codFee: 1_200_000 },
+  { teamId: 11n, ago: 3, handlingFee: 400_000, codFee: 800_000 },
+  { teamId: 11n, ago: 8, handlingFee: 200_000, codFee: 0 },
 ];
 
 // What each team spent, one record per kind per day — so the stub derives both the day's total and
@@ -857,20 +863,20 @@ export const liabilityDays = [
 // The SELLING team has no stock loss and the WAREHOUSE does, which is not a detail of the fixture but
 // of the system: inventory posts every write-off against the warehouse's own team (#211). It is what
 // makes the summary's "of which … stock written off" line appear on one statement and not the other.
-export const expenseDays: { teamId: bigint; ago: number; byKind: Record<number, bigint> }[] = [
-  { teamId: 12n, ago: 2, byKind: { [ExpenseKind.ADS]: 250_000n } },
-  { teamId: 12n, ago: 5, byKind: { [ExpenseKind.ADS]: 180_000n, [ExpenseKind.OPERATIONAL]: 320_000n } },
+export const expenseDays: { teamId: bigint; ago: number; byKind: Record<number, number> }[] = [
+  { teamId: 12n, ago: 2, byKind: { [ExpenseKind.ADS]: 250_000 } },
+  { teamId: 12n, ago: 5, byKind: { [ExpenseKind.ADS]: 180_000, [ExpenseKind.OPERATIONAL]: 320_000 } },
   // NOTHING WAS SOLD THAT DAY, and payroll went out anyway — the row that proves a day can be a loss
   // with no income series on it at all.
-  { teamId: 12n, ago: 12, byKind: { [ExpenseKind.PAYROLL]: 200_000n } },
+  { teamId: 12n, ago: 12, byKind: { [ExpenseKind.PAYROLL]: 200_000 } },
   // The spending half of the two out-of-window months above — a rollup has to carry both sides of the
   // subtraction back, not just the income.
-  { teamId: 12n, ago: 45, byKind: { [ExpenseKind.OPERATIONAL]: 400_000n } },
-  { teamId: 12n, ago: 200, byKind: { [ExpenseKind.ADS]: 120_000n } },
+  { teamId: 12n, ago: 45, byKind: { [ExpenseKind.OPERATIONAL]: 400_000 } },
+  { teamId: 12n, ago: 200, byKind: { [ExpenseKind.ADS]: 120_000 } },
 
-  { teamId: 11n, ago: 1, byKind: { [ExpenseKind.STOCK_LOSS]: 90_000n } },
-  { teamId: 11n, ago: 3, byKind: { [ExpenseKind.OPERATIONAL]: 500_000n, [ExpenseKind.STOCK_LOSS]: 40_000n } },
-  { teamId: 11n, ago: 8, byKind: { [ExpenseKind.PAYROLL]: 100_000n } },
+  { teamId: 11n, ago: 1, byKind: { [ExpenseKind.STOCK_LOSS]: 90_000 } },
+  { teamId: 11n, ago: 3, byKind: { [ExpenseKind.OPERATIONAL]: 500_000, [ExpenseKind.STOCK_LOSS]: 40_000 } },
+  { teamId: 11n, ago: 8, byKind: { [ExpenseKind.PAYROLL]: 100_000 } },
 ];
 
 // ── CREDIT TERMS (#189) ─────────────────────────────────────────────────────────────────────────
@@ -888,18 +894,18 @@ export const expenseDays: { teamId: bigint; ago: number; byKind: Record<number, 
 //   team 15         → no row at all          → it appears in the "set terms" options, not the table
 export const liabilityTerms = [
   { teamId: 11n, counterpartyId: 0n, creditLimit: undefined, reason: "" },
-  { teamId: 11n, counterpartyId: 12n, creditLimit: 10_000_000n, reason: "" },
-  { teamId: 11n, counterpartyId: 13n, creditLimit: 0n, reason: "" },
-  { teamId: 11n, counterpartyId: 14n, creditLimit: 5_000_000n, reason: "" },
+  { teamId: 11n, counterpartyId: 12n, creditLimit: 10_000_000, reason: "" },
+  { teamId: 11n, counterpartyId: 13n, creditLimit: 0, reason: "" },
+  { teamId: 11n, counterpartyId: 14n, creditLimit: 5_000_000, reason: "" },
 ];
 
 // What each debtor owes team 11 right now. Positive = they owe us, so these are what the limits cap.
 export const liabilityPositions = [
   // 12 has one payment waiting for team 11 to confirm — liabilityPayments' 602.
-  { counterpartyId: 12n, balance: 8_700_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 1 },
-  { counterpartyId: 13n, balance: 1_000_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
-  { counterpartyId: 14n, balance: 6_200_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
-  { counterpartyId: 15n, balance: 250_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+  { counterpartyId: 12n, balance: 8_700_000, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 1 },
+  { counterpartyId: 13n, balance: 1_000_000, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+  { counterpartyId: 14n, balance: 6_200_000, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+  { counterpartyId: 15n, balance: 250_000, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
 ];
 
 // THE OPEN PAYMENT REQUESTS (a-creditor-may-request-payment) — Gudang Pusat (11) asked Toko Melati (12) to pay what it
@@ -908,7 +914,7 @@ export const liabilityPaymentRequests = [
   {
     creditorTeamId: 11n,
     debtorTeamId: 12n,
-    amount: 8_700_000n,
+    amount: 8_700_000,
     requestedByUserId: 1n,
     requestedAtUnix: BigInt(Date.UTC(2026, 9, 20, 3, 0) / 1000),
   },
@@ -925,9 +931,9 @@ export const liabilityPaymentRequests = [
 //   14 Gudang Cabang → no limit, owed 860k  → UNLIMITED, which must read as words, not as a full bar
 //   15 Toko Anggrek  → capped, 87% used     → NEAR — the spec's own example
 export const liabilityCredits = [
-  { debtorTeamId: 12n, creditorTeamId: 13n, creditLimit: 2_000_000n as bigint | undefined, debt: 400_000n },
-  { debtorTeamId: 12n, creditorTeamId: 14n, creditLimit: undefined as bigint | undefined, debt: 860_000n },
-  { debtorTeamId: 12n, creditorTeamId: 15n, creditLimit: 1_000_000n as bigint | undefined, debt: 870_000n },
+  { debtorTeamId: 12n, creditorTeamId: 13n, creditLimit: 2_000_000 as number | undefined, debt: 400_000 },
+  { debtorTeamId: 12n, creditorTeamId: 14n, creditLimit: undefined as number | undefined, debt: 860_000 },
+  { debtorTeamId: 12n, creditorTeamId: 15n, creditLimit: 1_000_000 as number | undefined, debt: 870_000 },
 ];
 
 // The change log. ⚠ Read the LIMIT columns of change 3 and 4 together — they are the two acts a
@@ -942,29 +948,29 @@ export const liabilityCredits = [
 export const liabilityTermsChanges = [
   {
     id: 4n, counterpartyId: 13n, actorId: 1n,
-    oldCreditLimit: undefined, newCreditLimit: 0n,
-    oldHandlingFee: 25_000n, newHandlingFee: 25_000n,
+    oldCreditLimit: undefined, newCreditLimit: 0,
+    oldHandlingFee: 25_000, newHandlingFee: 25_000,
     reason: "Repeated unpaid restock outlays — frozen pending payment.",
     override: false, changedAtUnix: 1_756_000_000n,
   },
   {
     id: 3n, counterpartyId: 12n, actorId: 2n,
-    oldCreditLimit: 5_000_000n, newCreditLimit: undefined,
-    oldHandlingFee: 30_000n, newHandlingFee: 30_000n,
+    oldCreditLimit: 5_000_000, newCreditLimit: undefined,
+    oldHandlingFee: 30_000, newHandlingFee: 30_000,
     reason: "Cap lifted for the ramadan push — agreed with the owner.",
     override: true, changedAtUnix: 1_755_600_000n,
   },
   {
     id: 2n, counterpartyId: 12n, actorId: 1n,
-    oldCreditLimit: undefined, newCreditLimit: 10_000_000n,
-    oldHandlingFee: 25_000n, newHandlingFee: 30_000n,
+    oldCreditLimit: undefined, newCreditLimit: 10_000_000,
+    oldHandlingFee: 25_000, newHandlingFee: 30_000,
     reason: "",
     override: false, changedAtUnix: 1_755_200_000n,
   },
   {
     id: 1n, counterpartyId: 14n, actorId: 1n,
-    oldCreditLimit: 20_000_000n, newCreditLimit: 5_000_000n,
-    oldHandlingFee: 0n, newHandlingFee: 0n,
+    oldCreditLimit: 20_000_000, newCreditLimit: 5_000_000,
+    oldHandlingFee: 0, newHandlingFee: 0,
     reason: "",
     override: false, changedAtUnix: 1_754_800_000n,
   },
@@ -977,10 +983,10 @@ export const liabilityTermsChanges = [
 // debtor. A fixture with only positive rows would make the payable tab permanently empty and the
 // screen's two-column direction rule untestable.
 export const liabilityEntries = [
-  { id: 501n, teamId: 11n, counterpartyId: 12n, amount: 30_000n, sourceType: 2, sourceId: 9001n, reversal: false, groupId: 1n, balanceAfter: 8_700_000n, createdAtUnix: 1_756_000_000n },
-  { id: 502n, teamId: 11n, counterpartyId: 12n, amount: 1_200_000n, sourceType: 5, sourceId: 7001n, reversal: false, groupId: 2n, balanceAfter: 8_670_000n, createdAtUnix: 1_755_900_000n },
-  { id: 503n, teamId: 11n, counterpartyId: 12n, amount: -450_000n, sourceType: 6, sourceId: 6001n, reversal: false, groupId: 3n, balanceAfter: 7_470_000n, createdAtUnix: 1_755_800_000n },
-  { id: 504n, teamId: 11n, counterpartyId: 12n, amount: 30_000n, sourceType: 2, sourceId: 9000n, reversal: false, groupId: 4n, balanceAfter: 7_920_000n, createdAtUnix: 1_755_700_000n },
+  { id: 501n, teamId: 11n, counterpartyId: 12n, amount: 30_000, sourceType: 2, sourceId: 9001n, reversal: false, groupId: 1n, balanceAfter: 8_700_000, createdAtUnix: 1_756_000_000n },
+  { id: 502n, teamId: 11n, counterpartyId: 12n, amount: 1_200_000, sourceType: 5, sourceId: 7001n, reversal: false, groupId: 2n, balanceAfter: 8_670_000, createdAtUnix: 1_755_900_000n },
+  { id: 503n, teamId: 11n, counterpartyId: 12n, amount: -450_000, sourceType: 6, sourceId: 6001n, reversal: false, groupId: 3n, balanceAfter: 7_470_000, createdAtUnix: 1_755_800_000n },
+  { id: 504n, teamId: 11n, counterpartyId: 12n, amount: 30_000, sourceType: 2, sourceId: 9000n, reversal: false, groupId: 4n, balanceAfter: 7_920_000, createdAtUnix: 1_755_700_000n },
 ];
 
 // One payment from each side, so both the "my payments" and "their payments" tabs have a row — and
@@ -991,10 +997,10 @@ export const liabilityEntries = [
 // And each names the account it LEFT (a-team-payment-posts-on-accept) — 1307 BCA Gudang is team 11's,
 // 1301 BCA Operasional team 12's — and, once accepted, the one it LANDED in; 0 until then.
 export const liabilityPayments = [
-  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000n, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n, documentIds: ["doc-601"], reason: "", fromAccountId: 1307n, toAccountId: 1301n },
-  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000n, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "", fromAccountId: 1301n, toAccountId: 0n },
+  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n, documentIds: ["doc-601"], reason: "", fromAccountId: 1307n, toAccountId: 1301n },
+  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "", fromAccountId: 1301n, toAccountId: 0n },
   // A REFUSED CLAIM — status 4, nothing posted, and the reason the payer has to read.
-  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000n, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_400_000n, confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account", fromAccountId: 1301n, toAccountId: 0n },
+  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_400_000n, confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account", fromAccountId: 1301n, toAccountId: 0n },
 ];
 
 // ── The settlement reports ──────────────────────────────────────────────────────────────────────
@@ -1018,39 +1024,40 @@ export const liabilityPayments = [
 //   Melati Store       100.000    90.000          0     10.000    10.000
 //   Ani (61)           180.000   135.000    200.000     45.000   245.000
 //   Budi (62)          120.000   105.000          0     15.000    15.000
+// The money is in doubles, as settlement serves it since settlement 00010 (every-ledger-moves-to-double-rounded-when-frozen).
 export interface SettlementBookRow {
   teamId: bigint;
   ago: number;
   shopId: bigint;
   userId: bigint;
-  initialTotal: bigint;
-  initialTotalCancel: bigint;
-  fund: bigint;
-  externalAdsFee: bigint;
-  marketplaceAdjustment: bigint;
-  withdrawal: bigint;
+  initialTotal: number;
+  initialTotalCancel: number;
+  fund: number;
+  externalAdsFee: number;
+  marketplaceAdjustment: number;
+  withdrawal: number;
 }
 
 const bookRow = (row: Partial<SettlementBookRow> & Pick<SettlementBookRow, "ago" | "shopId" | "userId">): SettlementBookRow => ({
   teamId: 12n,
-  initialTotal: 0n,
-  initialTotalCancel: 0n,
-  fund: 0n,
-  externalAdsFee: 0n,
-  marketplaceAdjustment: 0n,
-  withdrawal: 0n,
+  initialTotal: 0,
+  initialTotalCancel: 0,
+  fund: 0,
+  externalAdsFee: 0,
+  marketplaceAdjustment: 0,
+  withdrawal: 0,
   ...row,
 });
 
 export const settlementBook: SettlementBookRow[] = [
-  bookRow({ ago: 5, shopId: 21n, userId: 61n, initialTotal: -180_000n }),
-  bookRow({ ago: 5, shopId: 21n, userId: 62n, initialTotal: -20_000n }),
-  bookRow({ ago: 5, shopId: 22n, userId: 62n, initialTotal: -100_000n }),
-  bookRow({ ago: 3, shopId: 21n, userId: 61n, fund: 145_000n, externalAdsFee: -10_000n }),
-  bookRow({ ago: 3, shopId: 21n, userId: 62n, fund: 15_000n }),
-  bookRow({ ago: 3, shopId: 22n, userId: 62n, fund: 90_000n, externalAdsFee: -5_000n }),
-  bookRow({ ago: 2, shopId: 21n, userId: 61n, withdrawal: -200_000n }),
-  bookRow({ ago: 1, shopId: 22n, userId: 62n, initialTotal: -120_000n, initialTotalCancel: 120_000n, marketplaceAdjustment: 5_000n }),
+  bookRow({ ago: 5, shopId: 21n, userId: 61n, initialTotal: -180_000 }),
+  bookRow({ ago: 5, shopId: 21n, userId: 62n, initialTotal: -20_000 }),
+  bookRow({ ago: 5, shopId: 22n, userId: 62n, initialTotal: -100_000 }),
+  bookRow({ ago: 3, shopId: 21n, userId: 61n, fund: 145_000, externalAdsFee: -10_000 }),
+  bookRow({ ago: 3, shopId: 21n, userId: 62n, fund: 15_000 }),
+  bookRow({ ago: 3, shopId: 22n, userId: 62n, fund: 90_000, externalAdsFee: -5_000 }),
+  bookRow({ ago: 2, shopId: 21n, userId: 61n, withdrawal: -200_000 }),
+  bookRow({ ago: 1, shopId: 22n, userId: 62n, initialTotal: -120_000, initialTotalCancel: 120_000, marketplaceAdjustment: 5_000 }),
 ];
 
 // ── Settlement imports ──────────────────────────────────────────────────────────────────────────
@@ -1163,7 +1170,8 @@ type ImportLine = {
   platformType: string;
   description: string;
   settlementType: SettlementType;
-  change: bigint;
+  /** A double since settlement_importer 00004 — whole rupiah, as the importer passes it on. */
+  change: number;
   occurredOn: string;
   orderId: bigint;
   outcome: UploadedFileLineOutcome;
@@ -1178,24 +1186,24 @@ const SHOPEE_SHEET = "Rincian Transaksi";
 
 export const settlementImportLines: ImportLine[] = [
   // 901 — Shopee. Held: a type nobody mapped, and a key another account already holds.
-  { id: 9011n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Biaya Program Baru", description: "Biaya program promosi September", settlementType: SettlementType.UNSPECIFIED, change: -15_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, detail: "", settlementLogId: 0n },
-  { id: 9012n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927QRST", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927QRST", settlementType: SettlementType.FUND, change: 212_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.REFUSED, detail: "unique_id already names an entry on another account", settlementLogId: 0n },
+  { id: 9011n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Biaya Program Baru", description: "Biaya program promosi September", settlementType: SettlementType.UNSPECIFIED, change: -15_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, detail: "", settlementLogId: 0n },
+  { id: 9012n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927QRST", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927QRST", settlementType: SettlementType.FUND, change: 212_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.REFUSED, detail: "unique_id already names an entry on another account", settlementLogId: 0n },
   // Skipped: a withdrawal that failed, and the refund that returned it (only-a-successful-withdrawal-is-recorded).
-  { id: 9013n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Penarikan Dana", description: "Penarikan dana ke rekening — Gagal", settlementType: SettlementType.UNSPECIFIED, change: -5_899_085n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, detail: "", settlementLogId: 0n },
-  { id: 9014n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Penarikan Dana", description: "Pengembalian Dana untuk Penarikan Gagal", settlementType: SettlementType.UNSPECIFIED, change: 5_899_085n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, detail: "", settlementLogId: 0n },
+  { id: 9013n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Penarikan Dana", description: "Penarikan dana ke rekening — Gagal", settlementType: SettlementType.UNSPECIFIED, change: -5_899_085, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, detail: "", settlementLogId: 0n },
+  { id: 9014n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Penarikan Dana", description: "Pengembalian Dana untuk Penarikan Gagal", settlementType: SettlementType.UNSPECIFIED, change: 5_899_085, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, detail: "", settlementLogId: 0n },
   // Posted to the shop: their refs found no order (an-unmatched-ref-posts-to-the-shop).
-  { id: 9015n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927ABCD", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927ABCD", settlementType: SettlementType.FUND, change: 185_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7001n },
-  { id: 9016n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927EFGH", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927EFGH", settlementType: SettlementType.FUND, change: 92_500n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7002n },
+  { id: 9015n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927ABCD", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927ABCD", settlementType: SettlementType.FUND, change: 185_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7001n },
+  { id: 9016n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927EFGH", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927EFGH", settlementType: SettlementType.FUND, change: 92_500, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7002n },
   // Posted to the shop: its ref is on two live orders, both named (two-live-orders-on-a-ref-post-to-the-shop).
-  { id: 9017n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927DUPE", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927DUPE", settlementType: SettlementType.FUND, change: 64_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.SEVERAL_ORDERS, detail: "", settlementLogId: 7004n, foundOrderIds: [5001n, 5002n] },
+  { id: 9017n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927DUPE", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927DUPE", settlementType: SettlementType.FUND, change: 64_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.SEVERAL_ORDERS, detail: "", settlementLogId: 7004n, foundOrderIds: [5001n, 5002n] },
 
   // 902 — TikTok. Held: an adjustment type nobody mapped.
-  { id: 9021n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577001234567", platformType: "Seller shipping fee compensation", description: "Seller shipping fee compensation", settlementType: SettlementType.UNSPECIFIED, change: 8_000n, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, detail: "", settlementLogId: 0n },
+  { id: 9021n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577001234567", platformType: "Seller shipping fee compensation", description: "Seller shipping fee compensation", settlementType: SettlementType.UNSPECIFIED, change: 8_000, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, detail: "", settlementLogId: 0n },
   // Skipped: Earnings and GMV Pay Deduction repeat money the Order details rows already carry.
-  { id: 9022n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", description: "Earnings", settlementType: SettlementType.UNSPECIFIED, change: 4_210_000n, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
-  { id: 9023n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", description: "Earnings", settlementType: SettlementType.UNSPECIFIED, change: 3_985_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
-  { id: 9024n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "GMV Pay Deduction", description: "GMV Pay Deduction", settlementType: SettlementType.UNSPECIFIED, change: -412_500n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
-  { id: 9025n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577009876543", platformType: "Order", description: "Order", settlementType: SettlementType.FUND, change: 156_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7003n },
+  { id: 9022n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", description: "Earnings", settlementType: SettlementType.UNSPECIFIED, change: 4_210_000, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
+  { id: 9023n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", description: "Earnings", settlementType: SettlementType.UNSPECIFIED, change: 3_985_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
+  { id: 9024n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "GMV Pay Deduction", description: "GMV Pay Deduction", settlementType: SettlementType.UNSPECIFIED, change: -412_500, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
+  { id: 9025n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577009876543", platformType: "Order", description: "Order", settlementType: SettlementType.FUND, change: 156_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7003n },
 ];
 
 /**

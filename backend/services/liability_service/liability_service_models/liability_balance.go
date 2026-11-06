@@ -14,7 +14,7 @@ type LiabilityBalance struct {
 	CounterpartyID uint64
 
 	// Positive = they owe you. Same convention as LiabilityLog.Amount.
-	Balance int64
+	Balance float64
 
 	// When the current run of debt began; nil when the pair is square. Set as the balance leaves
 	// zero, cleared as it returns — so paying in full resets the clock and a partial payment does not.

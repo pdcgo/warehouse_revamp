@@ -204,7 +204,7 @@ func TestOrderDraftPush_LeavesTouchedFieldsAlone(t *testing.T) {
 	// …and the untouched field DID move. "Blanks only" is a rule about touched fields, not about
 	// empty ones: the app is still the authority on everything nobody here has claimed.
 	if draft.GetPlatformTotal() != 21000 {
-		t.Fatalf("platform_total = %d, want 21000 — an untouched field must still follow the app",
+		t.Fatalf("platform_total = %v, want 21000 — an untouched field must still follow the app",
 			draft.GetPlatformTotal())
 	}
 }

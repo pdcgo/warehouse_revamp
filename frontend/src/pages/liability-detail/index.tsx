@@ -193,7 +193,7 @@ export function LiabilityDetailPage() {
   }
 
   const entries = entriesQuery.data?.entries ?? [];
-  const balance = entriesQuery.data?.balance ?? 0n;
+  const balance = entriesQuery.data?.balance ?? 0;
   const entriesTotal = entriesQuery.data?.totalItems ?? 0;
 
   const payments = paymentsQuery.data?.payments ?? [];
@@ -519,7 +519,7 @@ export function LiabilityDetailPage() {
               role={current.role}
               // The page holds a SIGNED balance from this team's side; a meter wants a magnitude, and
               // a counterparty in credit owes nothing rather than a negative amount.
-              debt={balance > 0n ? balance : 0n}
+              debt={balance > 0 ? balance : 0}
             />
           </Tabs.Content>
 
@@ -645,7 +645,7 @@ function MakePaymentDialog({
       {
         teamId: payerTeamId,
         creditorTeamId,
-        amount: BigInt(amount),
+        amount: Number(amount),
         note,
         documentIds: proofs.map((p) => p.id),
         fromAccountId,

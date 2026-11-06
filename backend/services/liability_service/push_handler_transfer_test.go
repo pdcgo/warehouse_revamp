@@ -30,8 +30,8 @@ func transferAccepted(transferID uint64, charge float64) *eventsv1.Event {
 }
 
 // balance-posts-the-transfers-on-site-debt-from-the-event: the push handler routes Warehouse Transfer Accepted to a
-// `transfer_fee` keyed by the transfer — the selling team owes B (to_warehouse_id), never A — rounded to whole rupiah at
-// this service's edge, and a redelivery posts nothing new.
+// `transfer_fee` keyed by the transfer — the selling team owes B (to_warehouse_id), never A — posted EXACT
+// (the-backend-never-rounds-money), and a redelivery posts nothing new.
 func TestPushHandler_ATransferAcceptPostsATransferFeeOwedToTheReceiver(t *testing.T) {
 	db := san_testdb.DB(t)
 	handle := liability_service.NewLiabilityPushHandler(liability_v1.NewService(db, nil, nil, nil))
@@ -61,12 +61,12 @@ func TestPushHandler_ATransferAcceptPostsATransferFeeOwedToTheReceiver(t *testin
 
 		switch leg.TeamID {
 		case warehouse:
-			if leg.Amount != 5_000 || leg.CounterpartyID != sellingTeam {
-				t.Fatalf("receiver's leg %+v, want +5.000 owed by the selling team", leg)
+			if leg.Amount != 5_000.4 || leg.CounterpartyID != sellingTeam {
+				t.Fatalf("receiver's leg %+v, want +5.000,4 owed by the selling team", leg)
 			}
 		case sellingTeam:
-			if leg.Amount != -5_000 || leg.CounterpartyID != warehouse {
-				t.Fatalf("selling team's leg %+v, want −5.000 owed to the receiving warehouse", leg)
+			if leg.Amount != -5_000.4 || leg.CounterpartyID != warehouse {
+				t.Fatalf("selling team's leg %+v, want −5.000,4 owed to the receiving warehouse", leg)
 			}
 		default:
 			t.Fatalf("leg in team %d's books — only the selling team and the RECEIVING warehouse take part", leg.TeamID)

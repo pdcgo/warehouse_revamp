@@ -2,19 +2,19 @@ package main
 
 import (
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbsession"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 )
 
 // NewDatabase opens the Postgres shipment_service shares with user_service. GORM reads and writes rows; goose
-// owns the schema (`san migrate`), and a deploy never migrates.
+// owns the schema (`san migrate`), and a deploy never migrates. Every session is on the Jakarta calendar (san_dbsession).
 func NewDatabase(cfg *Config) (*gorm.DB, error) {
-	return gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{
+	return san_dbsession.OpenGORM(cfg.DatabaseURL, &gorm.Config{
 		TranslateError: true,
 		Logger:         logger.Default.LogMode(logger.Warn),
 	})

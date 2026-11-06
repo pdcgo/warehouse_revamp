@@ -141,7 +141,8 @@ export function usePostSettlementEntry(teamId: bigint | undefined) {
       shopId: bigint;
       settlementType: SettlementType;
       sourceType: Extract<SourceType, "manual">;
-      change: bigint;
+      /** A double since settlement 00010 — the server posts it exact, never rounded. */
+      change: number;
       occurredOn: string;
       uniqueId: string;
       reversesId?: bigint;

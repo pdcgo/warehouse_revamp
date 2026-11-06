@@ -9,6 +9,7 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
@@ -105,7 +106,7 @@ func TestStockAdjust_DamageMakesTheWarehouseOweTheOwner(t *testing.T) {
 
 	// 5 units at the batch's frozen 40.000.
 	if got.amount != 200000 {
-		t.Fatalf("amount = %d, want 200000 (5 × the batch's frozen 40.000)", got.amount)
+		t.Fatalf("amount = %v, want 200000 (5 × the batch's frozen 40.000)", got.amount)
 	}
 
 	if got.reversal() {
@@ -184,7 +185,7 @@ func TestStockAdjust_AFoundGivesTheReimbursementBack(t *testing.T) {
 	}
 
 	if found.amount != poster.damaged[0].amount {
-		t.Fatalf("the reversal is %d against a debt of %d — they must cancel",
+		t.Fatalf("the reversal is %v against a debt of %v — they must cancel",
 			found.amount, poster.damaged[0].amount)
 	}
 
@@ -364,7 +365,7 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	}
 
 	if ownerBalance.Balance != 200000 {
-		t.Fatalf("the owner is owed %d, want +200000 — a negative here means the victim was charged",
+		t.Fatalf("the owner is owed %v, want +200000 — a negative here means the victim was charged",
 			ownerBalance.Balance)
 	}
 
@@ -400,7 +401,7 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	}
 
 	if ownerBalance.Balance != 200000 {
-		t.Fatalf("balance = %d after the lost goods turned up, want 200000 — the broken ones are still owed", ownerBalance.Balance)
+		t.Fatalf("balance = %v after the lost goods turned up, want 200000 — the broken ones are still owed", ownerBalance.Balance)
 	}
 
 	// EVERY ENTRY REMAINS, each under its own source type: the breakage `broken_good`, the loss `lost_good`, the find
@@ -428,5 +429,57 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 			t.Fatalf("%d %s entries, want %d — the reimbursement was edited rather than "+
 				"compensated", entries, want.sourceType, want.count)
 		}
+	}
+}
+
+// A LOSS AT A FRACTIONAL UNIT COST REACHES THE LEDGERS EXACT (the-backend-never-rounds-money). Three units cost 10.000,
+// so a unit is 3.333,33…; two thrown away are worth 6.666,66…. Inventory hands that double on as it is — to the expense
+// (the warehouse's write-off) and to liability (what it owes the owner) — and the ledger posts it as it is. Nothing
+// rounds it, anywhere.
+func TestStockAdjust_AFractionalLossReachesTheLedgersExact(t *testing.T) {
+	db := san_testdb.DB(t)
+	expense := &recordingExpense{}
+	svc := inventory_v1.NewService(db, &realPoster{liability: liability_v1.NewService(db, nil, nil, nil)}, expense, nil, nil,
+		damageFacts(), nil, nil)
+
+	const warehouse uint64 = 5
+
+	ctx := ctxUser(1)
+
+	rack, err := svc.RackCreate(ctx, connect.NewRequest(&inventoryv1.RackCreateRequest{TeamId: warehouse, Code: "A-01-9"}))
+	if err != nil {
+		t.Fatalf("rack: %v", err)
+	}
+
+	acceptOne(t, svc, warehouse, rack.Msg.GetRack().GetId(), 100, 3, 10_000)
+
+	batches, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{
+		TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: 100}, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("BatchList: %v", err)
+	}
+
+	batch := batchRows(batches.Msg)[0]
+	if !san_money.Equal(batch.GetUnitCost(), 10_000.0/3) {
+		t.Fatalf("the read unit cost = %v, want the unrounded 3333,3333…", batch.GetUnitCost())
+	}
+
+	adjustBatch(t, svc, warehouse, 100, rack.Msg.GetRack().GetId(), batch.GetId(),
+		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_DAMAGED, 2)
+
+	if len(expense.posted) != 1 || !san_money.Equal(expense.posted[0].amount, 20_000.0/3) {
+		t.Fatalf("the write-off handed to the expense = %+v, want the unrounded 6666,666…", expense.posted)
+	}
+
+	var owed liability_service_models.LiabilityBalance
+
+	err = db.Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).Take(&owed).Error
+	if err != nil {
+		t.Fatalf("read the owner's balance: %v", err)
+	}
+
+	if !san_money.Equal(owed.Balance, 20_000.0/3) {
+		t.Fatalf("the owner is owed %v, want the exact 6.666,666… — the ledger never rounds", owed.Balance)
 	}
 }

@@ -67,7 +67,7 @@ func TestExpenseRecord_RoundTrips(t *testing.T) {
 func TestExpenseRecord_RefusesANonPositiveAmount(t *testing.T) {
 	db := san_testdb.DB(t)
 
-	for name, amount := range map[string]int64{"negative": -1, "zero": 0} {
+	for name, amount := range map[string]float64{"negative": -1, "zero": 0} {
 		row := aCost()
 		row.Amount = amount
 
@@ -92,7 +92,7 @@ func TestExpenseRecord_AnAdjustmentIsSignedAndNeverZero(t *testing.T) {
 	}
 
 	for name, c := range map[string]struct {
-		amount int64
+		amount float64
 		ok     bool
 	}{"a reduction": {-2_000_000, true}, "an addition": {500_000, true}, "zero": {0, false}} {
 		row := aCost()

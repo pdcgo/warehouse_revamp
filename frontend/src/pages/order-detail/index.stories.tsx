@@ -4,7 +4,7 @@ import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/tes
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orderLabelScenario, receiptUpdateScenario, withOrderStatus } from "../../../.storybook/sessionScenario";
-import { orderDetailFor, orders, products, teams, users } from "../../../.storybook/fixtures";
+import { orderDetailExtras, orderDetailFor, orders, products, teams, users } from "../../../.storybook/fixtures";
 import { OrderLabelReason, OrderStatus, OrderTimelineLogSchema } from "../../gen/warehouse/selling/v1/order_pb";
 import { NotesSection, noteWriter } from "./components/NotesSection";
 import { OrderDetailPage } from "./index";
@@ -232,6 +232,37 @@ export const ABorrowedLineIsPricedWithItsMarkup: Story = {
     await expect(line).not.toHaveTextContent("Rp 157.867");
 
     // goods_cost 189.440 + the frozen fee 2.000.
+    await expect(canvas.getByTestId("tile-system")).toHaveTextContent("Rp 191.440");
+  },
+};
+
+/**
+ * AN UNFROZEN FRACTION SHOWS TO THREE DECIMALS (a-fraction-of-a-rupiah-shows-three-decimals).
+ *
+ * `unit_cost_with_markup` is never rounded — it is the take's total over the quantity — so a borrowed line of three units
+ * whose total is 189.440 costs 63.146,666… a unit. On screen that is "Rp 63.146,667" (3 places, half away from zero),
+ * while the frozen goods_cost beside it stays whole. The rounding is display only: the line total is still the frozen
+ * 189.440, not 3 × 63.146,667.
+ */
+export const AnUnfrozenUnitCostShowsThreeDecimals: Story = {
+  render: () => <AtBorrowed />,
+  beforeEach: () => {
+    const line = orderDetailExtras["105"]!.items![0]!;
+    const before = { ...line };
+    Object.assign(line, { quantity: 3, unitCost: 52_622, unitCostWithMarkup: 189_440 / 3, markupTotal: 31_574 });
+    return () => {
+      Object.assign(line, before);
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-item-1")).toBeInTheDocument());
+
+    const line = canvas.getByTestId("order-item-1");
+    await expect(line).toHaveTextContent("Rp 63.146,667");
+    // The frozen line total and the order's goods_cost stay whole.
+    await expect(line).toHaveTextContent("Rp 189.440");
     await expect(canvas.getByTestId("tile-system")).toHaveTextContent("Rp 191.440");
   },
 };

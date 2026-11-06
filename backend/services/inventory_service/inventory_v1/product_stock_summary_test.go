@@ -50,10 +50,10 @@ func TestProductStockSummary_ReadyOngoingLast(t *testing.T) {
 	msg := res.Msg
 
 	if msg.GetReadyQty() != 100 || msg.GetReadyValue() != 4000000 {
-		t.Fatalf("ready = %d/%d, want 100/4000000", msg.GetReadyQty(), msg.GetReadyValue())
+		t.Fatalf("ready = %v/%v, want 100/4000000", msg.GetReadyQty(), msg.GetReadyValue())
 	}
 	if msg.GetOngoingQty() != 50 || msg.GetOngoingValueEst() != 2000000 {
-		t.Fatalf("ongoing = %d/%d, want 50/2000000", msg.GetOngoingQty(), msg.GetOngoingValueEst())
+		t.Fatalf("ongoing = %v/%v, want 50/2000000", msg.GetOngoingQty(), msg.GetOngoingValueEst())
 	}
 	if msg.GetLastRestockId() != lastDelivery {
 		t.Fatalf("last_restock_id = %d, want %d", msg.GetLastRestockId(), lastDelivery)

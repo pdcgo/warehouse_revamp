@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
@@ -61,6 +61,27 @@ export const Shipped: Story = {
     await expect(await canvas.findByTestId("transfer-detail-tracking")).toHaveTextContent("JNE7788990011");
     await expect(canvas.getByTestId("transfer-detail-shipping-cost")).toHaveTextContent("18.000");
     await expect(canvas.getByTestId("transfer-action-mark-lost-603")).toBeInTheDocument();
+  },
+};
+
+// THE LABEL PHOTO A attached at ship — the owning team opens it too (every-side-of-a-transfer-opens-its-label-photo): a
+// link minted on click by WarehouseTransferLabelPhoto, which checks the team is a side of the transfer.
+export const TheOwnerOpensTheLabelPhoto: Story = {
+  render: () => <At603 />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    await userEvent.click(await canvas.findByTestId("transfer-detail-label-photo-open"));
+
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith(
+        "https://example.invalid/transfer-photo/doc-transfer-603-label",
+        "_blank",
+        "noopener,noreferrer",
+      ),
+    );
+    open.mockRestore();
   },
 };
 

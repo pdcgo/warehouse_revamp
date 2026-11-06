@@ -2551,8 +2551,8 @@ func (x *StockAvailabilityResponse) GetItems() []*StockAvailabilityItem {
 type StockCostLine struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	ProductId uint64                 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// Whole rupiah. 0 means UNKNOWN — the warehouse has no restock history for this product — not free.
-	UnitCost      int64 `protobuf:"varint,2,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	// Exact rupiah, as stored. 0 means UNKNOWN — the warehouse has no restock history for this product — not free.
+	UnitCost      float64 `protobuf:"fixed64,2,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2594,7 +2594,7 @@ func (x *StockCostLine) GetProductId() uint64 {
 	return 0
 }
 
-func (x *StockCostLine) GetUnitCost() int64 {
+func (x *StockCostLine) GetUnitCost() float64 {
 	if x != nil {
 		return x.UnitCost
 	}
@@ -4753,8 +4753,8 @@ type StockBatch struct {
 	SupplierId uint64 `protobuf:"varint,7,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
 	// ⚠ Frozen HPP. `cost_known = false` means UNKNOWN, not free (#74) — `unit_cost` is then 0 and every
 	// value below is 0, which a screen must render as "Unknown" rather than a real Rp 0.
-	UnitCost  int64 `protobuf:"varint,8,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
-	CostKnown bool  `protobuf:"varint,9,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
+	UnitCost  float64 `protobuf:"fixed64,8,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	CostKnown bool    `protobuf:"varint,9,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
 	// Arrived = broken + lost + used + ready. Ready = Σ shelf_batch.qty; used = the remainder. Damaged
 	// stock is split into two reasons (#218): broken (physically damaged) and lost (missing/shrinkage).
 	Arrived int64 `protobuf:"varint,10,opt,name=arrived,proto3" json:"arrived,omitempty"`
@@ -4763,8 +4763,8 @@ type StockBatch struct {
 	Ready   int64 `protobuf:"varint,13,opt,name=ready,proto3" json:"ready,omitempty"`
 	Lost    int64 `protobuf:"varint,21,opt,name=lost,proto3" json:"lost,omitempty"`
 	// arrived × unit_cost (the supplier invoice) and ready × unit_cost (what is still on the shelf).
-	LineCost   int64 `protobuf:"varint,14,opt,name=line_cost,json=lineCost,proto3" json:"line_cost,omitempty"`
-	ReadyValue int64 `protobuf:"varint,15,opt,name=ready_value,json=readyValue,proto3" json:"ready_value,omitempty"`
+	LineCost   float64 `protobuf:"fixed64,14,opt,name=line_cost,json=lineCost,proto3" json:"line_cost,omitempty"`
+	ReadyValue float64 `protobuf:"fixed64,15,opt,name=ready_value,json=readyValue,proto3" json:"ready_value,omitempty"`
 	// 0 = does not expire (perishables only). The screen flags amber when it is within the soon window.
 	ExpiresOnUnix  int64  `protobuf:"varint,16,opt,name=expires_on_unix,json=expiresOnUnix,proto3" json:"expires_on_unix,omitempty"`
 	CreatedAtUnix  int64  `protobuf:"varint,17,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
@@ -4861,7 +4861,7 @@ func (x *StockBatch) GetSupplierId() uint64 {
 	return 0
 }
 
-func (x *StockBatch) GetUnitCost() int64 {
+func (x *StockBatch) GetUnitCost() float64 {
 	if x != nil {
 		return x.UnitCost
 	}
@@ -4910,14 +4910,14 @@ func (x *StockBatch) GetLost() int64 {
 	return 0
 }
 
-func (x *StockBatch) GetLineCost() int64 {
+func (x *StockBatch) GetLineCost() float64 {
 	if x != nil {
 		return x.LineCost
 	}
 	return 0
 }
 
-func (x *StockBatch) GetReadyValue() int64 {
+func (x *StockBatch) GetReadyValue() float64 {
 	if x != nil {
 		return x.ReadyValue
 	}
@@ -5264,7 +5264,7 @@ type BatchListResponse struct {
 	Items             []*BatchListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 	Ids               []uint64                 `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	PageInfo          *v1.PageInfo             `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	ReadyValueTotal   int64                    `protobuf:"varint,4,opt,name=ready_value_total,json=readyValueTotal,proto3" json:"ready_value_total,omitempty"`
+	ReadyValueTotal   float64                  `protobuf:"fixed64,4,opt,name=ready_value_total,json=readyValueTotal,proto3" json:"ready_value_total,omitempty"`
 	ExpiringSoonCount uint64                   `protobuf:"varint,5,opt,name=expiring_soon_count,json=expiringSoonCount,proto3" json:"expiring_soon_count,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -5321,7 +5321,7 @@ func (x *BatchListResponse) GetPageInfo() *v1.PageInfo {
 	return nil
 }
 
-func (x *BatchListResponse) GetReadyValueTotal() int64 {
+func (x *BatchListResponse) GetReadyValueTotal() float64 {
 	if x != nil {
 		return x.ReadyValueTotal
 	}
@@ -5341,12 +5341,12 @@ type CostLayer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// ⚠ cost_known = false is UNKNOWN, not free (#74): unit_cost is then 0 and amount is 0, which the
 	// screen renders "Unknown" — a real Rp 0 layer cannot happen (a batch with no cost has no value).
-	UnitCost  int64 `protobuf:"varint,1,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
-	CostKnown bool  `protobuf:"varint,2,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
+	UnitCost  float64 `protobuf:"fixed64,1,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	CostKnown bool    `protobuf:"varint,2,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
 	// Ready units carrying this cost, across every shelf.
 	OnHand int64 `protobuf:"varint,3,opt,name=on_hand,json=onHand,proto3" json:"on_hand,omitempty"`
-	// on_hand × unit_cost, whole rupiah.
-	Amount        int64 `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	// on_hand × unit_cost, exact.
+	Amount        float64 `protobuf:"fixed64,4,opt,name=amount,proto3" json:"amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5381,7 +5381,7 @@ func (*CostLayer) Descriptor() ([]byte, []int) {
 	return file_warehouse_inventory_v1_inventory_proto_rawDescGZIP(), []int{62}
 }
 
-func (x *CostLayer) GetUnitCost() int64 {
+func (x *CostLayer) GetUnitCost() float64 {
 	if x != nil {
 		return x.UnitCost
 	}
@@ -5402,7 +5402,7 @@ func (x *CostLayer) GetOnHand() int64 {
 	return 0
 }
 
-func (x *CostLayer) GetAmount() int64 {
+func (x *CostLayer) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -5654,7 +5654,7 @@ type CostLayerListResponse struct {
 	Items         []*CostLayerListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 	Ids           []uint64                     `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	PageInfo      *v1.PageInfo                 `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	TotalValue    int64                        `protobuf:"varint,4,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`
+	TotalValue    float64                      `protobuf:"fixed64,4,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5710,7 +5710,7 @@ func (x *CostLayerListResponse) GetPageInfo() *v1.PageInfo {
 	return nil
 }
 
-func (x *CostLayerListResponse) GetTotalValue() int64 {
+func (x *CostLayerListResponse) GetTotalValue() float64 {
 	if x != nil {
 		return x.TotalValue
 	}
@@ -6153,11 +6153,11 @@ func (x *ProductStockSummaryRequest) GetProductId() uint64 {
 type ProductStockSummaryResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// READY — on hand now, across every shelf, and its value (known-cost layers only, #74).
-	ReadyQty   int64 `protobuf:"varint,1,opt,name=ready_qty,json=readyQty,proto3" json:"ready_qty,omitempty"`
-	ReadyValue int64 `protobuf:"varint,2,opt,name=ready_value,json=readyValue,proto3" json:"ready_value,omitempty"`
+	ReadyQty   int64   `protobuf:"varint,1,opt,name=ready_qty,json=readyQty,proto3" json:"ready_qty,omitempty"`
+	ReadyValue float64 `protobuf:"fixed64,2,opt,name=ready_value,json=readyValue,proto3" json:"ready_value,omitempty"`
 	// ONGOING — inbound on pending restocks not yet accepted, and the estimated cost of those lines.
-	OngoingQty      int64 `protobuf:"varint,3,opt,name=ongoing_qty,json=ongoingQty,proto3" json:"ongoing_qty,omitempty"`
-	OngoingValueEst int64 `protobuf:"varint,4,opt,name=ongoing_value_est,json=ongoingValueEst,proto3" json:"ongoing_value_est,omitempty"`
+	OngoingQty      int64   `protobuf:"varint,3,opt,name=ongoing_qty,json=ongoingQty,proto3" json:"ongoing_qty,omitempty"`
+	OngoingValueEst float64 `protobuf:"fixed64,4,opt,name=ongoing_value_est,json=ongoingValueEst,proto3" json:"ongoing_value_est,omitempty"`
 	// When the product was last counted on any shelf here (last ADJUST); 0 = never counted.
 	LastCountedUnix int64 `protobuf:"varint,5,opt,name=last_counted_unix,json=lastCountedUnix,proto3" json:"last_counted_unix,omitempty"`
 	// The most recent delivery of this product (its restock/delivery id); 0 = never delivered here.
@@ -6203,7 +6203,7 @@ func (x *ProductStockSummaryResponse) GetReadyQty() int64 {
 	return 0
 }
 
-func (x *ProductStockSummaryResponse) GetReadyValue() int64 {
+func (x *ProductStockSummaryResponse) GetReadyValue() float64 {
 	if x != nil {
 		return x.ReadyValue
 	}
@@ -6217,7 +6217,7 @@ func (x *ProductStockSummaryResponse) GetOngoingQty() int64 {
 	return 0
 }
 
-func (x *ProductStockSummaryResponse) GetOngoingValueEst() int64 {
+func (x *ProductStockSummaryResponse) GetOngoingValueEst() float64 {
 	if x != nil {
 		return x.OngoingValueEst
 	}
@@ -6787,9 +6787,9 @@ type BatchReceiptLine struct {
 	Arrived     int64                  `protobuf:"varint,5,opt,name=arrived,proto3" json:"arrived,omitempty"`
 	Damaged     int64                  `protobuf:"varint,6,opt,name=damaged,proto3" json:"damaged,omitempty"`
 	Accepted    int64                  `protobuf:"varint,7,opt,name=accepted,proto3" json:"accepted,omitempty"` // arrived − damaged
-	UnitCost    int64                  `protobuf:"varint,8,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	UnitCost    float64                `protobuf:"fixed64,8,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
 	CostKnown   bool                   `protobuf:"varint,9,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"` // false → cost UNKNOWN, render "Unknown" not Rp 0 (#74)
-	LineCost    int64                  `protobuf:"varint,10,opt,name=line_cost,json=lineCost,proto3" json:"line_cost,omitempty"`   // arrived × unit_cost
+	LineCost    float64                `protobuf:"fixed64,10,opt,name=line_cost,json=lineCost,proto3" json:"line_cost,omitempty"`  // arrived × unit_cost
 	// Where this batch's units were put away — 0 = the unplaced pile. A line can span shelves.
 	RackIds       []uint64 `protobuf:"varint,11,rep,packed,name=rack_ids,json=rackIds,proto3" json:"rack_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -6875,7 +6875,7 @@ func (x *BatchReceiptLine) GetAccepted() int64 {
 	return 0
 }
 
-func (x *BatchReceiptLine) GetUnitCost() int64 {
+func (x *BatchReceiptLine) GetUnitCost() float64 {
 	if x != nil {
 		return x.UnitCost
 	}
@@ -6889,7 +6889,7 @@ func (x *BatchReceiptLine) GetCostKnown() bool {
 	return false
 }
 
-func (x *BatchReceiptLine) GetLineCost() int64 {
+func (x *BatchReceiptLine) GetLineCost() float64 {
 	if x != nil {
 		return x.LineCost
 	}
@@ -6915,7 +6915,7 @@ type BatchReceiptResponse struct {
 	AcceptedBy    uint64              `protobuf:"varint,7,opt,name=accepted_by,json=acceptedBy,proto3" json:"accepted_by,omitempty"`
 	Lines         []*BatchReceiptLine `protobuf:"bytes,8,rep,name=lines,proto3" json:"lines,omitempty"`
 	TotalAccepted int64               `protobuf:"varint,9,opt,name=total_accepted,json=totalAccepted,proto3" json:"total_accepted,omitempty"` // Σ accepted
-	TotalValue    int64               `protobuf:"varint,10,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`         // Σ line_cost over known-cost lines only (#74)
+	TotalValue    float64             `protobuf:"fixed64,10,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`        // Σ line_cost over known-cost lines only (#74)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7013,7 +7013,7 @@ func (x *BatchReceiptResponse) GetTotalAccepted() int64 {
 	return 0
 }
 
-func (x *BatchReceiptResponse) GetTotalValue() int64 {
+func (x *BatchReceiptResponse) GetTotalValue() float64 {
 	if x != nil {
 		return x.TotalValue
 	}
@@ -7028,22 +7028,22 @@ type OwnerStockItem struct {
 	// READY — units on a shelf, sellable now, and what they COST US (`ready_value`). Value counts
 	// known-cost layers only (#74): a batch whose cost never got recorded adds units without adding
 	// money, because valuing it at 0 would quietly understate the stock.
-	ReadyQty   int64 `protobuf:"varint,1,opt,name=ready_qty,json=readyQty,proto3" json:"ready_qty,omitempty"`
-	ReadyValue int64 `protobuf:"varint,2,opt,name=ready_value,json=readyValue,proto3" json:"ready_value,omitempty"`
+	ReadyQty   int64   `protobuf:"varint,1,opt,name=ready_qty,json=readyQty,proto3" json:"ready_qty,omitempty"`
+	ReadyValue float64 `protobuf:"fixed64,2,opt,name=ready_value,json=readyValue,proto3" json:"ready_value,omitempty"`
 	// ONGOING — ordered on restocks the warehouse has not accepted yet, and what those lines are
 	// expected to cost. An ESTIMATE until the goods land: the cost settles on what actually arrives
 	// (#74), which is why it is never added to ready_value.
-	OngoingQty      int64 `protobuf:"varint,3,opt,name=ongoing_qty,json=ongoingQty,proto3" json:"ongoing_qty,omitempty"`
-	OngoingValueEst int64 `protobuf:"varint,4,opt,name=ongoing_value_est,json=ongoingValueEst,proto3" json:"ongoing_value_est,omitempty"`
+	OngoingQty      int64   `protobuf:"varint,3,opt,name=ongoing_qty,json=ongoingQty,proto3" json:"ongoing_qty,omitempty"`
+	OngoingValueEst float64 `protobuf:"fixed64,4,opt,name=ongoing_value_est,json=ongoingValueEst,proto3" json:"ongoing_value_est,omitempty"`
 	// The HPP SPREAD of the ready units — cheapest and dearest unit cost still on a shelf. A range, not
 	// an average, because the same product genuinely arrives at different prices and the average is
 	// exactly what hides that.
 	//
 	// `cost_known` is false when NO ready unit has a recorded cost; the two figures are then 0 and mean
 	// nothing. Without it a caller cannot tell "we do not know" from "it cost nothing".
-	CostMin   int64 `protobuf:"varint,5,opt,name=cost_min,json=costMin,proto3" json:"cost_min,omitempty"`
-	CostMax   int64 `protobuf:"varint,6,opt,name=cost_max,json=costMax,proto3" json:"cost_max,omitempty"`
-	CostKnown bool  `protobuf:"varint,7,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
+	CostMin   float64 `protobuf:"fixed64,5,opt,name=cost_min,json=costMin,proto3" json:"cost_min,omitempty"`
+	CostMax   float64 `protobuf:"fixed64,6,opt,name=cost_max,json=costMax,proto3" json:"cost_max,omitempty"`
+	CostKnown bool    `protobuf:"varint,7,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
 	// When the OLDEST units still on a shelf arrived. 0 = nothing on hand. This is what finds stock that
 	// has stopped moving, so it is the oldest batch with READY units, not the oldest batch ever.
 	OldestBatchUnix int64 `protobuf:"varint,8,opt,name=oldest_batch_unix,json=oldestBatchUnix,proto3" json:"oldest_batch_unix,omitempty"`
@@ -7090,7 +7090,7 @@ func (x *OwnerStockItem) GetReadyQty() int64 {
 	return 0
 }
 
-func (x *OwnerStockItem) GetReadyValue() int64 {
+func (x *OwnerStockItem) GetReadyValue() float64 {
 	if x != nil {
 		return x.ReadyValue
 	}
@@ -7104,21 +7104,21 @@ func (x *OwnerStockItem) GetOngoingQty() int64 {
 	return 0
 }
 
-func (x *OwnerStockItem) GetOngoingValueEst() int64 {
+func (x *OwnerStockItem) GetOngoingValueEst() float64 {
 	if x != nil {
 		return x.OngoingValueEst
 	}
 	return 0
 }
 
-func (x *OwnerStockItem) GetCostMin() int64 {
+func (x *OwnerStockItem) GetCostMin() float64 {
 	if x != nil {
 		return x.CostMin
 	}
 	return 0
 }
 
-func (x *OwnerStockItem) GetCostMax() int64 {
+func (x *OwnerStockItem) GetCostMax() float64 {
 	if x != nil {
 		return x.CostMax
 	}
@@ -7477,9 +7477,9 @@ func (x *OwnerStockByIdsResponse) GetItems() map[uint64]*OwnerStockByIdsResponse
 type OwnerStockPreview struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	ReadyQty        int64                  `protobuf:"varint,1,opt,name=ready_qty,json=readyQty,proto3" json:"ready_qty,omitempty"`
-	ReadyValue      int64                  `protobuf:"varint,2,opt,name=ready_value,json=readyValue,proto3" json:"ready_value,omitempty"`
+	ReadyValue      float64                `protobuf:"fixed64,2,opt,name=ready_value,json=readyValue,proto3" json:"ready_value,omitempty"`
 	OngoingQty      int64                  `protobuf:"varint,3,opt,name=ongoing_qty,json=ongoingQty,proto3" json:"ongoing_qty,omitempty"`
-	OngoingValueEst int64                  `protobuf:"varint,4,opt,name=ongoing_value_est,json=ongoingValueEst,proto3" json:"ongoing_value_est,omitempty"`
+	OngoingValueEst float64                `protobuf:"fixed64,4,opt,name=ongoing_value_est,json=ongoingValueEst,proto3" json:"ongoing_value_est,omitempty"`
 	// The last time ANY of this team's stock arrived. 0 = never.
 	LastRestockUnix int64 `protobuf:"varint,5,opt,name=last_restock_unix,json=lastRestockUnix,proto3" json:"last_restock_unix,omitempty"`
 	unknownFields   protoimpl.UnknownFields
@@ -7523,7 +7523,7 @@ func (x *OwnerStockPreview) GetReadyQty() int64 {
 	return 0
 }
 
-func (x *OwnerStockPreview) GetReadyValue() int64 {
+func (x *OwnerStockPreview) GetReadyValue() float64 {
 	if x != nil {
 		return x.ReadyValue
 	}
@@ -7537,7 +7537,7 @@ func (x *OwnerStockPreview) GetOngoingQty() int64 {
 	return 0
 }
 
-func (x *OwnerStockPreview) GetOngoingValueEst() int64 {
+func (x *OwnerStockPreview) GetOngoingValueEst() float64 {
 	if x != nil {
 		return x.OngoingValueEst
 	}
@@ -7822,7 +7822,7 @@ type OwnerCostLayerListResponse struct {
 	Ids      []uint64                     `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	PageInfo *v1.PageInfo                 `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	// Values the KNOWN-cost layers only (#74) — an unknown layer is worth "Unknown", never 0.
-	TotalValue    int64 `protobuf:"varint,4,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`
+	TotalValue    float64 `protobuf:"fixed64,4,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7878,7 +7878,7 @@ func (x *OwnerCostLayerListResponse) GetPageInfo() *v1.PageInfo {
 	return nil
 }
 
-func (x *OwnerCostLayerListResponse) GetTotalValue() int64 {
+func (x *OwnerCostLayerListResponse) GetTotalValue() float64 {
 	if x != nil {
 		return x.TotalValue
 	}
@@ -8013,7 +8013,7 @@ type OwnerBatchListResponse struct {
 	Ids      []uint64                 `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	PageInfo *v1.PageInfo             `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	// Over the whole filtered set, not the page. Known-cost batches only (#74).
-	ReadyValueTotal int64 `protobuf:"varint,4,opt,name=ready_value_total,json=readyValueTotal,proto3" json:"ready_value_total,omitempty"`
+	ReadyValueTotal float64 `protobuf:"fixed64,4,opt,name=ready_value_total,json=readyValueTotal,proto3" json:"ready_value_total,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -8069,7 +8069,7 @@ func (x *OwnerBatchListResponse) GetPageInfo() *v1.PageInfo {
 	return nil
 }
 
-func (x *OwnerBatchListResponse) GetReadyValueTotal() int64 {
+func (x *OwnerBatchListResponse) GetReadyValueTotal() float64 {
 	if x != nil {
 		return x.ReadyValueTotal
 	}
@@ -8678,7 +8678,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\rStockCostLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x1b\n" +
-	"\tunit_cost\x18\x02 \x01(\x03R\bunitCost\"\xdf\x01\n" +
+	"\tunit_cost\x18\x02 \x01(\x01R\bunitCost\"\xdf\x01\n" +
 	"\x10StockCostRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12G\n" +
 	"\x06filter\x18\x02 \x01(\v2'.warehouse.inventory.v1.StockCostFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12L\n" +
@@ -8846,7 +8846,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12\x1f\n" +
 	"\vsupplier_id\x18\a \x01(\x04R\n" +
 	"supplierId\x12\x1b\n" +
-	"\tunit_cost\x18\b \x01(\x03R\bunitCost\x12\x1d\n" +
+	"\tunit_cost\x18\b \x01(\x01R\bunitCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\t \x01(\bR\tcostKnown\x12\x18\n" +
 	"\aarrived\x18\n" +
@@ -8855,8 +8855,8 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x04used\x18\f \x01(\x03R\x04used\x12\x14\n" +
 	"\x05ready\x18\r \x01(\x03R\x05ready\x12\x12\n" +
 	"\x04lost\x18\x15 \x01(\x03R\x04lost\x12\x1b\n" +
-	"\tline_cost\x18\x0e \x01(\x03R\blineCost\x12\x1f\n" +
-	"\vready_value\x18\x0f \x01(\x03R\n" +
+	"\tline_cost\x18\x0e \x01(\x01R\blineCost\x12\x1f\n" +
+	"\vready_value\x18\x0f \x01(\x01R\n" +
 	"readyValue\x12&\n" +
 	"\x0fexpires_on_unix\x18\x10 \x01(\x03R\rexpiresOnUnix\x12&\n" +
 	"\x0fcreated_at_unix\x18\x11 \x01(\x03R\rcreatedAtUnix\x12(\n" +
@@ -8897,14 +8897,14 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.inventory.v1.BatchListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12*\n" +
-	"\x11ready_value_total\x18\x04 \x01(\x03R\x0freadyValueTotal\x12.\n" +
+	"\x11ready_value_total\x18\x04 \x01(\x01R\x0freadyValueTotal\x12.\n" +
 	"\x13expiring_soon_count\x18\x05 \x01(\x04R\x11expiringSoonCount\"x\n" +
 	"\tCostLayer\x12\x1b\n" +
-	"\tunit_cost\x18\x01 \x01(\x03R\bunitCost\x12\x1d\n" +
+	"\tunit_cost\x18\x01 \x01(\x01R\bunitCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\x02 \x01(\bR\tcostKnown\x12\x17\n" +
 	"\aon_hand\x18\x03 \x01(\x03R\x06onHand\x12\x16\n" +
-	"\x06amount\x18\x04 \x01(\x03R\x06amount\"\xab\x02\n" +
+	"\x06amount\x18\x04 \x01(\x01R\x06amount\"\xab\x02\n" +
 	"\x14CostLayerListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12K\n" +
 	"\x06filter\x18\x02 \x01(\v2+.warehouse.inventory.v1.CostLayerListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12P\n" +
@@ -8927,7 +8927,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v21.warehouse.inventory.v1.CostLayerListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12\x1f\n" +
-	"\vtotal_value\x18\x04 \x01(\x03R\n" +
+	"\vtotal_value\x18\x04 \x01(\x01R\n" +
 	"totalValue\"\xb4\x01\n" +
 	"\x10ProductPlacement\x12\x17\n" +
 	"\arack_id\x18\x01 \x01(\x04R\x06rackId\x12\x17\n" +
@@ -8965,11 +8965,11 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x05\x01\x02\x06\t\b\"\xfc\x01\n" +
 	"\x1bProductStockSummaryResponse\x12\x1b\n" +
 	"\tready_qty\x18\x01 \x01(\x03R\breadyQty\x12\x1f\n" +
-	"\vready_value\x18\x02 \x01(\x03R\n" +
+	"\vready_value\x18\x02 \x01(\x01R\n" +
 	"readyValue\x12\x1f\n" +
 	"\vongoing_qty\x18\x03 \x01(\x03R\n" +
 	"ongoingQty\x12*\n" +
-	"\x11ongoing_value_est\x18\x04 \x01(\x03R\x0fongoingValueEst\x12*\n" +
+	"\x11ongoing_value_est\x18\x04 \x01(\x01R\x0fongoingValueEst\x12*\n" +
 	"\x11last_counted_unix\x18\x05 \x01(\x03R\x0flastCountedUnix\x12&\n" +
 	"\x0flast_restock_id\x18\x06 \x01(\x04R\rlastRestockId\"k\n" +
 	"\x12BatchDetailRequest\x12$\n" +
@@ -9020,11 +9020,11 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\aarrived\x18\x05 \x01(\x03R\aarrived\x12\x18\n" +
 	"\adamaged\x18\x06 \x01(\x03R\adamaged\x12\x1a\n" +
 	"\baccepted\x18\a \x01(\x03R\baccepted\x12\x1b\n" +
-	"\tunit_cost\x18\b \x01(\x03R\bunitCost\x12\x1d\n" +
+	"\tunit_cost\x18\b \x01(\x01R\bunitCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\t \x01(\bR\tcostKnown\x12\x1b\n" +
 	"\tline_cost\x18\n" +
-	" \x01(\x03R\blineCost\x12\x19\n" +
+	" \x01(\x01R\blineCost\x12\x19\n" +
 	"\brack_ids\x18\v \x03(\x04R\arackIds\"\x8a\x03\n" +
 	"\x14BatchReceiptResponse\x12\x1f\n" +
 	"\vdelivery_id\x18\x01 \x01(\x04R\n" +
@@ -9042,17 +9042,17 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x05lines\x18\b \x03(\v2(.warehouse.inventory.v1.BatchReceiptLineR\x05lines\x12%\n" +
 	"\x0etotal_accepted\x18\t \x01(\x03R\rtotalAccepted\x12\x1f\n" +
 	"\vtotal_value\x18\n" +
-	" \x01(\x03R\n" +
+	" \x01(\x01R\n" +
 	"totalValue\"\xc8\x02\n" +
 	"\x0eOwnerStockItem\x12\x1b\n" +
 	"\tready_qty\x18\x01 \x01(\x03R\breadyQty\x12\x1f\n" +
-	"\vready_value\x18\x02 \x01(\x03R\n" +
+	"\vready_value\x18\x02 \x01(\x01R\n" +
 	"readyValue\x12\x1f\n" +
 	"\vongoing_qty\x18\x03 \x01(\x03R\n" +
 	"ongoingQty\x12*\n" +
-	"\x11ongoing_value_est\x18\x04 \x01(\x03R\x0fongoingValueEst\x12\x19\n" +
-	"\bcost_min\x18\x05 \x01(\x03R\acostMin\x12\x19\n" +
-	"\bcost_max\x18\x06 \x01(\x03R\acostMax\x12\x1d\n" +
+	"\x11ongoing_value_est\x18\x04 \x01(\x01R\x0fongoingValueEst\x12\x19\n" +
+	"\bcost_min\x18\x05 \x01(\x01R\acostMin\x12\x19\n" +
+	"\bcost_max\x18\x06 \x01(\x01R\acostMax\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\a \x01(\bR\tcostKnown\x12*\n" +
 	"\x11oldest_batch_unix\x18\b \x01(\x03R\x0foldestBatchUnix\x12*\n" +
@@ -9084,11 +9084,11 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v23.warehouse.inventory.v1.OwnerStockByIdsResponseListR\x05value:\x028\x01\"\xca\x01\n" +
 	"\x11OwnerStockPreview\x12\x1b\n" +
 	"\tready_qty\x18\x01 \x01(\x03R\breadyQty\x12\x1f\n" +
-	"\vready_value\x18\x02 \x01(\x03R\n" +
+	"\vready_value\x18\x02 \x01(\x01R\n" +
 	"readyValue\x12\x1f\n" +
 	"\vongoing_qty\x18\x03 \x01(\x03R\n" +
 	"ongoingQty\x12*\n" +
-	"\x11ongoing_value_est\x18\x04 \x01(\x03R\x0fongoingValueEst\x12*\n" +
+	"\x11ongoing_value_est\x18\x04 \x01(\x01R\x0fongoingValueEst\x12*\n" +
 	"\x11last_restock_unix\x18\x05 \x01(\x03R\x0flastRestockUnix\"9\n" +
 	"\x14OwnerStockStatFilter\x12!\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04R\vwarehouseId\"\x90\x01\n" +
@@ -9112,7 +9112,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v21.warehouse.inventory.v1.CostLayerListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12\x1f\n" +
-	"\vtotal_value\x18\x04 \x01(\x03R\n" +
+	"\vtotal_value\x18\x04 \x01(\x01R\n" +
 	"totalValue\"X\n" +
 	"\x14OwnerBatchListFilter\x12\x1d\n" +
 	"\n" +
@@ -9128,7 +9128,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.inventory.v1.BatchListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12*\n" +
-	"\x11ready_value_total\x18\x04 \x01(\x03R\x0freadyValueTotal\"\xfd\x02\n" +
+	"\x11ready_value_total\x18\x04 \x01(\x01R\x0freadyValueTotal\"\xfd\x02\n" +
 	"\rOwnerMovement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1f\n" +
 	"\vmovement_id\x18\x02 \x01(\x04R\n" +

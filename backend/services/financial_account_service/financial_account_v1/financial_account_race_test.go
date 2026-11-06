@@ -246,7 +246,7 @@ func TestRace_Create_OneNumberOneRow(t *testing.T) {
 
 // ── the withdrawal listener ─────────────────────────────────────────────────────────────────────
 
-func deliver(svc *financial_account_v1.Service, eventID string, shop uint64, change int64) error {
+func deliver(svc *financial_account_v1.Service, eventID string, shop uint64, change float64) error {
 	return svc.WithdrawalHandler()(context.Background(), settlementEvent(eventID, teamA, shop, settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL, change, day(0)))
 }
 

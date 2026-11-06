@@ -604,10 +604,12 @@ type SettlementLogPosted struct {
 	OrderCreatedByUserId uint64             `protobuf:"varint,7,opt,name=order_created_by_user_id,json=orderCreatedByUserId,proto3" json:"order_created_by_user_id,omitempty"`
 	SettlementType       v11.SettlementType `protobuf:"varint,8,opt,name=settlement_type,json=settlementType,proto3,enum=warehouse.settlement.v1.SettlementType" json:"settlement_type,omitempty"`
 	SourceType           v11.SourceType     `protobuf:"varint,9,opt,name=source_type,json=sourceType,proto3,enum=warehouse.settlement.v1.SourceType" json:"source_type,omitempty"`
-	// Signed, whole rupiah. POSITIVE IS MONEY TOWARD US.
-	Change int64 `protobuf:"varint,10,opt,name=change,proto3" json:"change,omitempty"`
+	// Signed rupiah, a double — exact as posted, never rounded (the-backend-never-rounds-money).
+	// POSITIVE IS MONEY TOWARD US. An event published while it was an int64 still reads: protojson carried it as a
+	// quoted number, which a double field accepts.
+	Change float64 `protobuf:"fixed64,10,opt,name=change,proto3" json:"change,omitempty"`
 	// The account's position after this row. Audit only — no report folds it.
-	Balance int64 `protobuf:"varint,11,opt,name=balance,proto3" json:"balance,omitempty"`
+	Balance float64 `protobuf:"fixed64,11,opt,name=balance,proto3" json:"balance,omitempty"`
 	// YYYY-MM-DD. The day the report BUCKETS on (#posted-on-buckets-the-report) — a string, so no
 	// consumer re-derives a day from an instant in some other timezone.
 	PostedOn string `protobuf:"bytes,12,opt,name=posted_on,json=postedOn,proto3" json:"posted_on,omitempty"`
@@ -723,14 +725,14 @@ func (x *SettlementLogPosted) GetSourceType() v11.SourceType {
 	return v11.SourceType(0)
 }
 
-func (x *SettlementLogPosted) GetChange() int64 {
+func (x *SettlementLogPosted) GetChange() float64 {
 	if x != nil {
 		return x.Change
 	}
 	return 0
 }
 
-func (x *SettlementLogPosted) GetBalance() int64 {
+func (x *SettlementLogPosted) GetBalance() float64 {
 	if x != nil {
 		return x.Balance
 	}
@@ -790,9 +792,9 @@ type OrderPlaced struct {
 	// The SELLING team that placed it, and the order.
 	TeamId  uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	OrderId uint64 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	// The order's frozen `goods_cost`, whole rupiah — Σ its lines' `total`, borrowed lines with their markup
+	// The order's frozen `goods_cost`, exact rupiah — Σ its lines' `total`, borrowed lines with their markup
 	// (the-cross-charge-lives-on-the-line). Renamed from `cogs`, same number.
-	GoodsCost int64 `protobuf:"varint,4,opt,name=goods_cost,json=goodsCost,proto3" json:"goods_cost,omitempty"`
+	GoodsCost float64 `protobuf:"fixed64,4,opt,name=goods_cost,json=goodsCost,proto3" json:"goods_cost,omitempty"`
 	// Whether the goods' cost was actually KNOWN (#74). A goods_cost of 0 is ambiguous on its own — it means
 	// "free" and "never recorded" equally — so the distinction travels as its own field rather than
 	// being guessed at by the consumer. A margin computed over an unknown cost reads as pure profit,
@@ -819,14 +821,15 @@ type OrderPlaced struct {
 	// stamp, as `orders.is_override` holds it (an-override-is-stamped-in-every-service). The fee and the opening row a
 	// consumer posts for `actor_id` carry it beside the actor.
 	ActorIsOverride bool `protobuf:"varint,13,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
-	// The shop it was sold on, and what the PLATFORM says the buyer paid, whole rupiah — 0 = not recorded.
+	// The shop it was sold on, and what the PLATFORM says the buyer paid — 0 = not recorded. A double, frozen exact
+	// when the order was placed (the-backend-never-rounds-money).
 	// settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
 	// its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
 	// calls settlement, so the event has to carry everything the account needs.
 	ShopId uint64 `protobuf:"varint,10,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
 	// The order's `platform_total` (the-total-is-ours-the-platform-total-is-theirs) — renamed from
 	// `marketplace_total`, same number.
-	PlatformTotal int64 `protobuf:"varint,11,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
+	PlatformTotal float64 `protobuf:"fixed64,11,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
 	// THE WAREHOUSE'S FEE, as the order froze it at create (the-event-carries-the-warehouse-fee): `orders.warehouse_fee`,
 	// rupiah (rupiah-is-floating-point), copied as stored and never recomputed. liability_service posts it to the
 	// fulfilling warehouse and reads no rate of its own (the-flat-rate-is-dropped-last, step 4).
@@ -889,7 +892,7 @@ func (x *OrderPlaced) GetOrderId() uint64 {
 	return 0
 }
 
-func (x *OrderPlaced) GetGoodsCost() int64 {
+func (x *OrderPlaced) GetGoodsCost() float64 {
 	if x != nil {
 		return x.GoodsCost
 	}
@@ -938,7 +941,7 @@ func (x *OrderPlaced) GetShopId() uint64 {
 	return 0
 }
 
-func (x *OrderPlaced) GetPlatformTotal() int64 {
+func (x *OrderPlaced) GetPlatformTotal() float64 {
 	if x != nil {
 		return x.PlatformTotal
 	}
@@ -984,7 +987,7 @@ type OrderPlacedLine struct {
 	//
 	// ⚠ NOT WHAT THE PRODUCT FEE IS COMPUTED FROM any more — that is `total` below
 	// (the-ledger-charges-the-frozen-line-total).
-	UnitCost int64 `protobuf:"varint,4,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	UnitCost float64 `protobuf:"fixed64,4,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
 	// THE LINE'S FROZEN TOTAL, rupiah (rupiah-is-floating-point) — what inventory's take priced it at: the goods it drew
 	// plus, on another team's product, that product's own cross markup (inventory-computes-the-markup). Frozen on
 	// `order_items.total` in the order's transaction and copied here as stored, never recomputed.
@@ -1050,7 +1053,7 @@ func (x *OrderPlacedLine) GetQuantity() uint32 {
 	return 0
 }
 
-func (x *OrderPlacedLine) GetUnitCost() int64 {
+func (x *OrderPlacedLine) GetUnitCost() float64 {
 	if x != nil {
 		return x.UnitCost
 	}
@@ -1403,8 +1406,8 @@ type OrderReturnAccepted struct {
 	ActorIsOverride bool `protobuf:"varint,5,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
 	// The `return_completed` row of order_timeline_logs the accept wrote.
 	TimelineLogId uint64 `protobuf:"varint,6,opt,name=timeline_log_id,json=timelineLogId,proto3" json:"timeline_log_id,omitempty"`
-	// What the courier asked at the door, whole rupiah; 0 = nothing, which posts nothing — the common case.
-	CourierCharge int64 `protobuf:"varint,7,opt,name=courier_charge,json=courierCharge,proto3" json:"courier_charge,omitempty"`
+	// What the courier asked at the door, exact rupiah; 0 = nothing, which posts nothing — the common case.
+	CourierCharge float64 `protobuf:"fixed64,7,opt,name=courier_charge,json=courierCharge,proto3" json:"courier_charge,omitempty"`
 	// What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
 	CourierChargeNote string `protobuf:"bytes,8,opt,name=courier_charge_note,json=courierChargeNote,proto3" json:"courier_charge_note,omitempty"`
 	unknownFields     protoimpl.UnknownFields
@@ -1483,7 +1486,7 @@ func (x *OrderReturnAccepted) GetTimelineLogId() uint64 {
 	return 0
 }
 
-func (x *OrderReturnAccepted) GetCourierCharge() int64 {
+func (x *OrderReturnAccepted) GetCourierCharge() float64 {
 	if x != nil {
 		return x.CourierCharge
 	}
@@ -2503,8 +2506,8 @@ type LiabilityPaymentAccepted struct {
 	PaymentId      uint64                 `protobuf:"varint,1,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
 	PayerTeamId    uint64                 `protobuf:"varint,2,opt,name=payer_team_id,json=payerTeamId,proto3" json:"payer_team_id,omitempty"`
 	CreditorTeamId uint64                 `protobuf:"varint,3,opt,name=creditor_team_id,json=creditorTeamId,proto3" json:"creditor_team_id,omitempty"`
-	// Whole rupiah, always positive — direction is the two accounts, never a sign.
-	Amount int64 `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	// Exact rupiah, always positive — direction is the two accounts, never a sign.
+	Amount float64 `protobuf:"fixed64,4,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The payer's account. 0 on a payment recorded before *Paid from* existed: only the `to` leg posts.
 	FromAccountId uint64 `protobuf:"varint,5,opt,name=from_account_id,json=fromAccountId,proto3" json:"from_account_id,omitempty"`
 	// The creditor's account, named on accept. Never 0.
@@ -2569,7 +2572,7 @@ func (x *LiabilityPaymentAccepted) GetCreditorTeamId() uint64 {
 	return 0
 }
 
-func (x *LiabilityPaymentAccepted) GetAmount() int64 {
+func (x *LiabilityPaymentAccepted) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -2617,8 +2620,8 @@ type ExpenseCreated struct {
 	Kind      v12.ExpenseKind        `protobuf:"varint,3,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
 	// The account that paid — one of the team's operational accounts when the expense was recorded.
 	FinanceAccountId uint64 `protobuf:"varint,4,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
-	// Whole rupiah, always positive: the money that went out.
-	Amount int64 `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	// Exact rupiah (the-backend-never-rounds-money), always positive: the money that went out.
+	Amount float64 `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The day the expense belongs to (YYYY-MM-DD), as the person chose it — the day the account's row counts on.
 	OccurredOn string `protobuf:"bytes,6,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
 	// The shop an ADS expense ran for; 0 on every other kind.
@@ -2689,7 +2692,7 @@ func (x *ExpenseCreated) GetFinanceAccountId() uint64 {
 	return 0
 }
 
-func (x *ExpenseCreated) GetAmount() int64 {
+func (x *ExpenseCreated) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -2748,8 +2751,8 @@ type ExpenseAdjusted struct {
 	Kind v12.ExpenseKind `protobuf:"varint,4,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
 	// The expense's account, copied.
 	FinanceAccountId uint64 `protobuf:"varint,5,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
-	// Whole rupiah, SIGNED, never 0 — the correction itself, not a new total: minus is less was spent.
-	Amount int64 `protobuf:"varint,6,opt,name=amount,proto3" json:"amount,omitempty"`
+	// Exact rupiah, SIGNED, never 0 — the correction itself, not a new total: minus is less was spent.
+	Amount float64 `protobuf:"fixed64,6,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The corrected expense's day, copied (an-adjustment-counts-on-the-day-it-fixes).
 	OccurredOn string `protobuf:"bytes,7,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
 	ShopId     uint64 `protobuf:"varint,8,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
@@ -2826,7 +2829,7 @@ func (x *ExpenseAdjusted) GetFinanceAccountId() uint64 {
 	return 0
 }
 
-func (x *ExpenseAdjusted) GetAmount() int64 {
+func (x *ExpenseAdjusted) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -2943,8 +2946,8 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\vsource_type\x18\t \x01(\x0e2#.warehouse.settlement.v1.SourceTypeR\n" +
 	"sourceType\x12\x16\n" +
 	"\x06change\x18\n" +
-	" \x01(\x03R\x06change\x12\x18\n" +
-	"\abalance\x18\v \x01(\x03R\abalance\x12\x1b\n" +
+	" \x01(\x01R\x06change\x12\x18\n" +
+	"\abalance\x18\v \x01(\x01R\abalance\x12\x1b\n" +
 	"\tposted_on\x18\f \x01(\tR\bpostedOn\x12\x1f\n" +
 	"\voccurred_on\x18\r \x01(\tR\n" +
 	"occurredOn\x12\x1f\n" +
@@ -2957,7 +2960,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x1d\n" +
 	"\n" +
-	"goods_cost\x18\x04 \x01(\x03R\tgoodsCost\x12\x1d\n" +
+	"goods_cost\x18\x04 \x01(\x01R\tgoodsCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown\x12!\n" +
 	"\fwarehouse_id\x18\a \x01(\x04R\vwarehouseId\x12:\n" +
@@ -2966,7 +2969,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\x11actor_is_override\x18\r \x01(\bR\x0factorIsOverride\x12\x17\n" +
 	"\ashop_id\x18\n" +
 	" \x01(\x04R\x06shopId\x12%\n" +
-	"\x0eplatform_total\x18\v \x01(\x03R\rplatformTotal\x12(\n" +
+	"\x0eplatform_total\x18\v \x01(\x01R\rplatformTotal\x12(\n" +
 	"\rwarehouse_fee\x18\f \x01(\x01H\x00R\fwarehouseFee\x88\x01\x01\x12'\n" +
 	"\x0fidempotency_key\x18\x0e \x01(\tR\x0eidempotencyKey\x12%\n" +
 	"\x0etransaction_id\x18\x0f \x01(\x04R\rtransactionId:\x12\x8a\xb5\x18\x0e\n" +
@@ -2977,7 +2980,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12$\n" +
 	"\x0eowning_team_id\x18\x02 \x01(\x04R\fowningTeamId\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\rR\bquantity\x12\x1b\n" +
-	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\x12\x14\n" +
+	"\tunit_cost\x18\x04 \x01(\x01R\bunitCost\x12\x14\n" +
 	"\x05total\x18\x05 \x01(\x01R\x05total\"\x87\x02\n" +
 	"\x0eOrderCancelled\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
@@ -3012,7 +3015,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\bactor_id\x18\x04 \x01(\x04R\aactorId\x12*\n" +
 	"\x11actor_is_override\x18\x05 \x01(\bR\x0factorIsOverride\x12&\n" +
 	"\x0ftimeline_log_id\x18\x06 \x01(\x04R\rtimelineLogId\x12%\n" +
-	"\x0ecourier_charge\x18\a \x01(\x03R\rcourierCharge\x12.\n" +
+	"\x0ecourier_charge\x18\a \x01(\x01R\rcourierCharge\x12.\n" +
 	"\x13courier_charge_note\x18\b \x01(\tR\x11courierChargeNote:\x1b\x8a\xb5\x18\x17\n" +
 	"\x15order-return-accepted\"\xf8\x03\n" +
 	"\x0fRestockAccepted\x12\x1d\n" +
@@ -3127,7 +3130,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"payment_id\x18\x01 \x01(\x04R\tpaymentId\x12\"\n" +
 	"\rpayer_team_id\x18\x02 \x01(\x04R\vpayerTeamId\x12(\n" +
 	"\x10creditor_team_id\x18\x03 \x01(\x04R\x0ecreditorTeamId\x12\x16\n" +
-	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12&\n" +
+	"\x06amount\x18\x04 \x01(\x01R\x06amount\x12&\n" +
 	"\x0ffrom_account_id\x18\x05 \x01(\x04R\rfromAccountId\x12\"\n" +
 	"\rto_account_id\x18\x06 \x01(\x04R\vtoAccountId\x12\x19\n" +
 	"\bactor_id\x18\a \x01(\x04R\aactorId\x12*\n" +
@@ -3139,7 +3142,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x125\n" +
 	"\x04kind\x18\x03 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindR\x04kind\x12,\n" +
 	"\x12finance_account_id\x18\x04 \x01(\x04R\x10financeAccountId\x12\x16\n" +
-	"\x06amount\x18\x05 \x01(\x03R\x06amount\x12\x1f\n" +
+	"\x06amount\x18\x05 \x01(\x01R\x06amount\x12\x1f\n" +
 	"\voccurred_on\x18\x06 \x01(\tR\n" +
 	"occurredOn\x12\x17\n" +
 	"\ashop_id\x18\a \x01(\x04R\x06shopId\x12\x19\n" +
@@ -3155,7 +3158,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\ateam_id\x18\x03 \x01(\x04R\x06teamId\x125\n" +
 	"\x04kind\x18\x04 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindR\x04kind\x12,\n" +
 	"\x12finance_account_id\x18\x05 \x01(\x04R\x10financeAccountId\x12\x16\n" +
-	"\x06amount\x18\x06 \x01(\x03R\x06amount\x12\x1f\n" +
+	"\x06amount\x18\x06 \x01(\x01R\x06amount\x12\x1f\n" +
 	"\voccurred_on\x18\a \x01(\tR\n" +
 	"occurredOn\x12\x17\n" +
 	"\ashop_id\x18\b \x01(\x04R\x06shopId\x12\x19\n" +

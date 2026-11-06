@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Badge, Button, Card, Flex, HStack, Icon, SimpleGrid, Span, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowRight, ImageIcon } from "lucide-react";
 
-import { documentClient, rpcError } from "../../api/clients";
+import { rpcError, warehouseTransferClient } from "../../api/clients";
 
 import type { WarehouseTransfer, WarehouseTransferItem } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { WarehouseTransferStatus as S } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
@@ -175,9 +175,11 @@ export function ParcelCard({
 /**
  * The photo of the label A attached at ship (WarehouseTransferShip stores its document id as `receipt_file`).
  *
- * ⚠ ONLY A CAN OPEN IT. The document is A's upload and nothing shares it, and GetDownloadUrl reads only the owning team
- * or a team it was shared with — so B and the selling team are told the photo exists rather than offered a button the
- * server would answer NotFound. The URL is minted on click, never on render (a signed link would expire on an open page).
+ * EVERY SIDE OPENS IT (every-side-of-a-transfer-opens-its-label-photo): A whose upload it is, B matching the parcel at its
+ * door, and the selling team that owns the transfer — all through inventory's WarehouseTransferLabelPhoto, which checks
+ * the reader is a side of the transfer and has document_service sign A's file in-process. Nothing is shared, so
+ * GetDownloadUrl as B or the seller would be NotFound. The URL is minted on click, never on render (a signed link would
+ * expire on an open page); a refusal is said in a toast.
  */
 function LabelPhoto({ transfer, teamId }: { transfer: WarehouseTransfer; teamId: bigint }) {
   const { t } = useTranslation();
@@ -188,15 +190,11 @@ function LabelPhoto({ transfer, teamId }: { transfer: WarehouseTransfer; teamId:
     return <Span color="fg.muted">{t("warehouseTransfer.detail.noLabelPhoto")}</Span>;
   }
 
-  if (teamId !== transfer.fromWarehouseId) {
-    return <Span color="fg.muted">{t("warehouseTransfer.detail.labelPhotoAtSender")}</Span>;
-  }
-
   async function open() {
     setOpening(true);
 
     try {
-      const res = await documentClient.getDownloadUrl({ teamId, documentId });
+      const res = await warehouseTransferClient.warehouseTransferLabelPhoto({ teamId, transferId: transfer.id });
       window.open(res.url, "_blank", "noopener,noreferrer");
     } catch (err) {
       toaster.create({ type: "error", title: rpcError(err) });

@@ -63,6 +63,7 @@ var (
 	// A correction cannot turn a cost into income: an expense and its adjustments never sum below 0.
 	errBelowZero      = errors.New("the correction would take the expense below 0")
 	errZeroCorrection = errors.New("a correction of 0 corrects nothing")
+	errZeroExpense    = errors.New("an expense must be more than Rp 0")
 
 	// Every expense a person types names the account that paid it (an-expense-must-name-the-account-that-paid). The
 	// validation interceptor says it first (`uint64.gt = 0`); this is the handler not trusting a caller that skips it.
@@ -77,7 +78,7 @@ var (
 
 func costErr(err error) error {
 	switch {
-	case errors.Is(err, errBadDate), errors.Is(err, errZeroCorrection), errors.Is(err, errNoAccount),
+	case errors.Is(err, errBadDate), errors.Is(err, errZeroCorrection), errors.Is(err, errZeroExpense), errors.Is(err, errNoAccount),
 		errors.Is(err, errAdsNeedsAShop), errors.Is(err, errShopIsForAdsOnly):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, gorm.ErrRecordNotFound):
@@ -126,7 +127,7 @@ func overrideFrom(ctx context.Context) bool {
 
 // costToProto is one row on the wire. `net` is what an EXPENSE counts for after its adjustments; an adjustment
 // carries none.
-func costToProto(c *expense_service_models.ExpenseRecord, net int64) *expensev1.ExpenseRecord {
+func costToProto(c *expense_service_models.ExpenseRecord, net float64) *expensev1.ExpenseRecord {
 	if c.AdjustsExpenseID != 0 {
 		net = 0
 	}
@@ -149,15 +150,15 @@ func costToProto(c *expense_service_models.ExpenseRecord, net int64) *expensev1.
 
 // adjustedSums is Σ the adjustments of each given expense — what to add to its amount for its net. An expense with none
 // is absent, which reads as 0.
-func adjustedSums(db *gorm.DB, expenseIDs []uint64) (map[uint64]int64, error) {
-	out := make(map[uint64]int64, len(expenseIDs))
+func adjustedSums(db *gorm.DB, expenseIDs []uint64) (map[uint64]float64, error) {
+	out := make(map[uint64]float64, len(expenseIDs))
 	if len(expenseIDs) == 0 {
 		return out, nil
 	}
 
 	var rows []struct {
 		AdjustsExpenseID uint64
-		Sum              int64
+		Sum              float64
 	}
 
 	err := db.

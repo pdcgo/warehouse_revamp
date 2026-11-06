@@ -97,7 +97,7 @@ stateDiagram-v2
 | page | marks |
 | --- | --- |
 | selling list, form, selling detail | ✅ none — `costEvent` removed; the listener posts the cost (2026-11-04) |
-| warehouse list, warehouse detail | `labelPhoto` — `dropped`: the upload type is not designed |
+| warehouse list, warehouse detail | ✅ none — the label photo opens for A, B and the owning seller through `WarehouseTransferLabelPhoto` ([every-side-of-a-transfer-opens-its-label-photo](../../business/inventory/warehouse_transfer_decision.md#every-side-of-a-transfer-opens-its-label-photo), 2026-11-05) |
 | accept | `courierDebt` — `missing`: the charge is saved and announced, balance does not post it yet — its source type is [balance Q13](../../business/balance/context_clarify.md#question) (copy updated) |
 
 ## What is left

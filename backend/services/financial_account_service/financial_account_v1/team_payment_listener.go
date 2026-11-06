@@ -43,7 +43,7 @@ func (s *Service) postTeamPayment(ctx context.Context, event *eventsv1.Event, ac
 	// The day the creditor accepted — the envelope's clock, the one liability stamped (my spec, recorded in
 	// a-team-payment-posts-on-accept).
 	occurredAt := event.GetOccurredAt().AsTime()
-	amount := float64(accepted.GetAmount())
+	amount := accepted.GetAmount()
 	ref := fmt.Sprintf("Team payment #%d", accepted.GetPaymentId())
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

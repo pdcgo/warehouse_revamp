@@ -228,14 +228,15 @@ message LiabilityLog {
   uint64 counterparty_id = 3;
 
   // ⚠ ONE SIGN CONVENTION, STATED ONCE (§4.11): from `team_id`'s point of view, a RECEIVABLE is
-  // POSITIVE and a PAYABLE is NEGATIVE. Whole rupiah, int64 — never a float. Float cannot represent
-  // 0.1 exactly, sums drift, and equality decays into "within epsilon", at which point "are we
-  // square?" has no yes/no answer.
+  // POSITIVE and a PAYABLE is NEGATIVE. Rupiah as a double (rupiah-is-floating-point,
+  // the-backend-never-rounds-money): every leg is stored EXACT as posted — a fee of 316,675 is 316,675 — and the
+  // balance is the sum of its legs within the tolerance. "Are we square?" is answered with a tolerance
+  // (san_money.Equal / IsZero), never ==.
   //
   // The API must never also return an `abs()` of this under another name. Two fields called
   // "payable" that disagree in sign is a bug that reaches the screen. Direction is rendered as WORDS
   // by the UI ("They owe you…" / "You owe them…"), from this one signed number.
-  int64 amount = 4;
+  double amount = 4;
 
   // What caused it, and the id of that thing in its own service (opaque, no FK).
   LiabilitySourceType source_type = 5;
@@ -258,7 +259,7 @@ message LiabilityLog {
   // The balance after this entry, from `team_id`'s side. A convenience for the history screen, NOT a
   // second source of truth: the balance is a projection and must stay recomputable from the entries
   // alone (§4.8), or the ledger cannot be audited.
-  int64 balance_after = 9;
+  double balance_after = 9;
 
   // WHO CAUSED THIS — a user id, opaque to this service (every-entry-names-who-posted-it). Not the
   // service and not the event: the human whose act produced the movement, which is what a team
@@ -284,7 +285,7 @@ message LiabilityPosition {
 
   // Signed, from the requesting team's side: positive = they owe you, negative = you owe them. Same
   // convention as LiabilityLog.amount, deliberately — see the warning there.
-  int64 balance = 2;
+  double balance = 2;
 
   // WHEN THE OLDEST STILL-UNSETTLED ENTRY WAS POSTED, or 0 when the pair is square.
   //
@@ -313,8 +314,8 @@ message LiabilityPaymentRequest {
   // Who asks, and who is asked.
   uint64 creditor_team_id = 1;
   uint64 debtor_team_id = 2;
-  // What the debtor owed when it was asked, whole rupiah — the moment's figure, not a live one.
-  int64 amount = 3;
+  // What the debtor owed when it was asked, exact — the moment's figure, not a live one.
+  double amount = 3;
   uint64 requested_by_user_id = 4;
   int64 requested_at_unix = 5;
 }
@@ -432,12 +433,12 @@ message LiabilityPositionListResponse {
   // new way to mislead.
 
   // Σ of every POSITIVE balance — what the whole world owes this team.
-  int64 total_receivable = 5;
+  double total_receivable = 5;
 
   // Σ of every NEGATIVE balance, AS A POSITIVE MAGNITUDE. Direction is words on this screen, never a
   // sign (features/liability/direction.ts), so the wire hands the screen the number it renders
   // rather than one it must remember to negate.
-  int64 total_payable = 6;
+  double total_payable = 6;
 
   // WHOSE debt is the oldest, across every counterparty — 0 when nothing is outstanding. The tile
   // renders that team's name beneath the day count, so the id has to travel with the timestamp;
@@ -498,7 +499,7 @@ message LiabilityLogListResponse {
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
   // The pair's current balance, so the header needs no second call.
-  int64 balance = 4;
+  double balance = 4;
 }
 
 // ── The DAILY STATEMENT's income half, for a WAREHOUSE ────────────────────────────────────────────
@@ -575,17 +576,17 @@ message LiabilityDayItem {
   // POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum, so a day that charged a fee and reversed
   // it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
   // A series that dropped them would show income the ledger has already taken back.
-  int64 net = 3;
+  double net = 3;
 
   // Split by LiabilitySourceType's enum number, so the caller can pick which sources it treats as
   // earnings without a second call. A source with nothing that day is ABSENT rather than 0 — the same
   // choice ExpenseDayItem.by_kind makes.
-  map<int32, int64> by_source = 4;
+  map<int32, double> by_source = 4;
 }
 
 message LiabilityDailyTotals {
-  int64 net = 1;
-  map<int32, int64> by_source = 2;
+  double net = 1;
+  map<int32, double> by_source = 2;
 }
 
 message LiabilityDailyResponse {
@@ -627,12 +628,12 @@ message LiabilityCredit {
   //
   // ⚠ ABSENT MEANS UNLIMITED, `0` MEANS NO CREDIT AT ALL — exactly as on LiabilityTerms.credit_limit. A
   // pair row with no limit LIFTS the default for this debtor, so it reads as absent too.
-  optional int64 credit_limit = 2;
+  optional double credit_limit = 2;
 
   // What the asking team owes this creditor right now, as a POSITIVE number, from the committed balance.
   // 0 when the pair is square, has never traded, or the creditor is the one that owes — being owed money
   // is not debt.
-  int64 debt = 3;
+  double debt = 3;
 
   LiabilityCreditState state = 4;
 }
@@ -743,9 +744,9 @@ message LiabilityPayment {
   uint64 payer_team_id = 2;
   uint64 creditor_team_id = 3;
 
-  // Whole rupiah, always positive. Direction is carried by the two team fields above, not by a sign —
+  // Exact rupiah, always positive. Direction is carried by the two team fields above, not by a sign —
   // a negative payment would be a refund, which is a different thing and not modelled.
-  int64 amount = 4;
+  double amount = 4;
 
   LiabilityPaymentStatus status = 5;
 
@@ -808,7 +809,10 @@ message LiabilityPaymentRecordRequest {
   ];
 
   uint64 creditor_team_id = 2 [(buf.validate.field).uint64.gt = 0];
-  int64 amount = 3 [(buf.validate.field).int64.gt = 0];
+  double amount = 3 [(buf.validate.field).double = {
+    gt: 0
+    finite: true
+  }];
   string note = 4 [(buf.validate.field).string.max_len = 500];
 
   // AT LEAST ONE, always (a-payment-must-carry-proof). `balance_context.md` §Payment Flow has the
@@ -995,7 +999,10 @@ message LiabilityTerms {
   // NEXT order is blocked. Friendlier than a hard ceiling — a person is cut off next time rather than
   // rejected mid-order for an amount they cannot see — and it agrees with the eventual-consistency
   // window rather than fighting it.
-  optional int64 credit_limit = 5 [(buf.validate.field).int64.gte = 0];
+  optional double credit_limit = 5 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 }
 
 enum LiabilityTermsListDataType {
@@ -1072,7 +1079,10 @@ message LiabilityTermsSetRequest {
   reserved 4;
   reserved "product_markup_bp";
   // Omit for unlimited; send 0 to freeze this team's credit entirely.
-  optional int64 credit_limit = 5 [(buf.validate.field).int64.gte = 0];
+  optional double credit_limit = 5 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 
   // WHY the change — required when the actor is not one of the creditor team's own people, optional
   // when they are. A creditor setting its own terms owes nobody an explanation; somebody else
@@ -1134,15 +1144,15 @@ message LiabilityTermsChange {
 
   // ⚠ BOTH LIMITS ARE OPTIONAL, and that is load-bearing rather than tidy. `absent`, `0` and a
   // number are THREE different acts — no limit at all, frozen entirely, and a real ceiling — and a
-  // plain int64 flattens the first into the second, turning "they removed the limit" into "they
+  // plain number flattens the first into the second, turning "they removed the limit" into "they
   // froze the team". The log has to be able to say which one happened.
-  optional int64 old_credit_limit = 4;
-  optional int64 new_credit_limit = 5;
+  optional double old_credit_limit = 4;
+  optional double new_credit_limit = 5;
 
   // The handling fee, before and after — HISTORY ONLY. The term charged until step 5 of the-flat-rate-is-dropped-last
   // dropped it, and a change made since reads 0 → 0. No optional here: 0 meant "charge nothing".
-  int64 old_handling_fee = 6;
-  int64 new_handling_fee = 7;
+  double old_handling_fee = 6;
+  double new_handling_fee = 7;
 
   // ⛔ old/new_product_markup_bp — the log of a term that no longer exists, dropped with it
   // (the-ledger-charges-the-frozen-line-total). Reserved for the same reason.

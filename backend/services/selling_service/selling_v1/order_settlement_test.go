@@ -29,7 +29,7 @@ func createMarketplaceOrder(
 	svc *selling_v1.Service,
 	ctx context.Context,
 	shopID uint64,
-	marketplaceTotal int64,
+	marketplaceTotal float64,
 ) *sellingv1.Order {
 	t.Helper()
 

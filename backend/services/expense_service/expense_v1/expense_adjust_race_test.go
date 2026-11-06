@@ -63,7 +63,7 @@ func TestRace_ExpenseAdjust_TheFloorHolds(t *testing.T) {
 			t.Fatalf("round %d: %d landed and %d refused at the floor, want 3 and %d", round, landed, refused, racers-3)
 		}
 
-		var net int64
+		var net float64
 
 		err = db.Model(&expense_service_models.ExpenseRecord{}).
 			Select("COALESCE(SUM(amount), 0)").
@@ -75,7 +75,7 @@ func TestRace_ExpenseAdjust_TheFloorHolds(t *testing.T) {
 		}
 
 		if net != 100_000 {
-			t.Fatalf("round %d: the expense ends at %d, want 100.000 — three corrections of −300.000", round, net)
+			t.Fatalf("round %v: the expense ends at %v, want 100.000 — three corrections of −300.000", round, net)
 		}
 	}
 }

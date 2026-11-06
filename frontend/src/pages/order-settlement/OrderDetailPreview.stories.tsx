@@ -18,7 +18,7 @@ import { worked, awaiting } from "./fixtures";
 const meta = {
   title: "Pages/Order Settlement/On Order Detail",
   component: OrderDetailPreview,
-  args: { totalBeli: 80_000n },
+  args: { totalBeli: 80_000 },
 } satisfies Meta<typeof OrderDetailPreview>;
 
 export default meta;

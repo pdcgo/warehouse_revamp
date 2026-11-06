@@ -3,6 +3,8 @@ package liability_v1
 import (
 	"context"
 	"errors"
+
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 )
 
 // ReturnCourierCharge is what the courier asked at the warehouse's door for a RETURNED parcel, as *Order Return
@@ -16,7 +18,7 @@ type ReturnCourierCharge struct {
 	// The warehouse that ACCEPTED the return — the door the courier was paid at, which may not be the one the order
 	// shipped from (the-accept-records-where-it-was-accepted).
 	WarehouseID uint64
-	Amount        int64
+	Amount      float64
 	// Who accepted the return — read from the accept's timeline row, never from the envelope
 	// (every-entry-names-who-posted-it).
 	ActorID uint64
@@ -36,7 +38,7 @@ func (s *Service) ChargeReturnCourier(ctx context.Context, c ReturnCourierCharge
 	// Nothing is owed for 0 — and nothing to oneself: a team that is its own warehouse, accepting its own return, paid
 	// its own courier. PostEntry refuses a posting with one team on both sides, and an error here would NACK a
 	// redelivery that can never succeed.
-	if c.Amount <= 0 || c.SellingTeamID == c.WarehouseID {
+	if !san_money.Positive(c.Amount) || c.SellingTeamID == c.WarehouseID {
 		return nil
 	}
 

@@ -3,7 +3,6 @@ package inventory_v1
 import (
 	"context"
 	"errors"
-	"math"
 
 	"connectrpc.com/connect"
 
@@ -65,7 +64,9 @@ func (s *Service) BatchReceipt(
 
 	lines := make([]*inventoryv1.BatchReceiptLine, 0, len(rows))
 
-	var totalAccepted, totalValue int64
+	var totalAccepted int64
+
+	var totalValue float64
 
 	for i := range rows {
 		r := &rows[i]
@@ -73,7 +74,7 @@ func (s *Service) BatchReceipt(
 		// Accepted = arrived − damaged: the good units the batch was minted with.
 		damaged := r.Broken + r.Lost
 		arrived := r.InitStockCount + damaged
-		lineCost := int64(math.Round(float64(arrived) * r.PriceUnit))
+		lineCost := float64(arrived) * r.PriceUnit
 
 		totalAccepted += r.InitStockCount
 		totalValue += lineCost
@@ -86,7 +87,7 @@ func (s *Service) BatchReceipt(
 			Arrived:     arrived,
 			Damaged:     damaged,
 			Accepted:    r.InitStockCount,
-			UnitCost:    int64(math.Round(r.PriceUnit)),
+			UnitCost:    r.PriceUnit,
 			CostKnown:   true,
 			LineCost:    lineCost,
 			RackIds:     racksByProduct[r.ProductID],

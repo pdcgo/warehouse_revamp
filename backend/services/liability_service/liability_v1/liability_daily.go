@@ -57,7 +57,8 @@ func (s *Service) LiabilityDaily(
 		// The team_id clause IS the scope check — one team can never read another's earnings by id.
 		Where("team_id = ?", req.Msg.GetTeamId()).
 		// The SAME half-open upper bound the other two daily series use: `created_at` is a TIMESTAMPTZ,
-		// so `<= to` would mean `<= to 00:00:00` and silently drop almost the whole last day.
+		// so `<= to` would mean `<= to 00:00:00` and silently drop almost the whole last day. Both ends are
+		// JAKARTA midnights (the-liability-day-is-the-jakarta-day) — the same calendar the rows are grouped by.
 		Where("created_at >= ? AND created_at < ?", from, to.AddDate(0, 0, 1))
 
 	// NOT the scope (§4.9) — an optional narrowing to one counterparty, on top of the team clause above.
@@ -69,10 +70,12 @@ func (s *Service) LiabilityDaily(
 
 	err = query.
 		Select(
-			// UTC, explicitly. A bare `created_at::date` converts using the session's TimeZone, which
-			// nothing here sets — so two machines could bucket differently while the bounds above, parsed
-			// as UTC midnight, stayed put. A day whose row disagreed with the total beside it is unreadable.
-			"(created_at AT TIME ZONE 'UTC')::date AS day, " +
+			// THE JAKARTA DAY, explicitly (the-liability-day-is-the-jakarta-day): a fee owed at 06:00 WIB lands
+			// on that WIB day, not the UTC day before. Named rather than left to the session's TimeZone — the
+			// session is Jakarta too (san_dbsession), but a day whose row disagreed with the bounds above,
+			// which Go parses as Jakarta midnights, would be unreadable, so the two are one calendar by
+			// construction rather than by configuration.
+			"(created_at AT TIME ZONE 'Asia/Jakarta')::date AS day, " +
 				"source_type, " +
 				"COUNT(*) AS entries, " +
 				// REVERSALS ARE INCLUDED, not filtered. A cancelled order's fee is undone by an
@@ -105,7 +108,7 @@ type liabilityDayRow struct {
 	Day        time.Time
 	SourceType string
 	Entries    int64
-	Net        int64
+	Net        float64
 }
 
 // foldDays turns (day, source) pairs into one item per day, and accumulates the period totals in the
@@ -122,7 +125,7 @@ type liabilityDayRow struct {
 // exactly the failure the other two reuse their query to avoid.
 func foldDays(rows []liabilityDayRow) ([]*liabilityv1.LiabilityDayItem, *liabilityv1.LiabilityDailyTotals) {
 	days := make([]*liabilityv1.LiabilityDayItem, 0, len(rows))
-	totals := &liabilityv1.LiabilityDailyTotals{BySource: map[int32]int64{}}
+	totals := &liabilityv1.LiabilityDailyTotals{BySource: map[int32]float64{}}
 
 	var current *liabilityv1.LiabilityDayItem
 
@@ -132,7 +135,7 @@ func foldDays(rows []liabilityDayRow) ([]*liabilityv1.LiabilityDayItem, *liabili
 		if current == nil || current.GetDate() != date {
 			current = &liabilityv1.LiabilityDayItem{
 				Date:     date,
-				BySource: map[int32]int64{},
+				BySource: map[int32]float64{},
 			}
 			days = append(days, current)
 		}
@@ -159,7 +162,12 @@ func foldDays(rows []liabilityDayRow) ([]*liabilityv1.LiabilityDayItem, *liabili
 // statement screen can hand the same pair to all three services.
 const dateLayout = "2006-01-02"
 
-// parsePeriod validates a REQUIRED, BOUNDED day range and returns its inclusive ends.
+// jakarta is the system's calendar (the-system-runs-on-jakarta-time): a period's day is a Jakarta day. Fixed +7 —
+// WIB has no daylight saving, and a fixed zone needs no tzdata on the host.
+var jakarta = time.FixedZone("WIB", 7*60*60)
+
+// parsePeriod validates a REQUIRED, BOUNDED day range and returns its inclusive ends — each the Jakarta midnight that
+// starts its day.
 //
 // Proto validation already enforces the SHAPE, and this re-checks it anyway: a pattern is not validity
 // ("2026-02-31" matches and is not a day), and a unit test calling the handler directly gets no
@@ -169,12 +177,12 @@ func parsePeriod(rawFrom, rawTo string) (time.Time, time.Time, error) {
 		return time.Time{}, time.Time{}, connect.NewError(connect.CodeInvalidArgument, errPeriodRequired)
 	}
 
-	from, err := time.Parse(dateLayout, rawFrom)
+	from, err := time.ParseInLocation(dateLayout, rawFrom, jakarta)
 	if err != nil {
 		return time.Time{}, time.Time{}, connect.NewError(connect.CodeInvalidArgument, errBadDate)
 	}
 
-	to, err := time.Parse(dateLayout, rawTo)
+	to, err := time.ParseInLocation(dateLayout, rawTo, jakarta)
 	if err != nil {
 		return time.Time{}, time.Time{}, connect.NewError(connect.CodeInvalidArgument, errBadDate)
 	}

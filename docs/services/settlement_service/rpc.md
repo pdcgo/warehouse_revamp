@@ -79,6 +79,21 @@ sequenceDiagram
   S-)B: SettlementLogPosted — after commit, never fatal, also on a retry
 ```
 
+### The money is a double, stored exact as it posts (settlement 00010)
+
+Every rupiah this service holds — `settlement_logs.change`/`balance`, both accounts, both daily reports and both state
+reports — is `double precision` in the database and `double` on the wire since 2026-11-06
+([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)).
+**Posting is the freeze point**: `postEntry` refuses NaN and the infinities (`double.finite` on the wire, `errChangeNotFinite`
+for an in-process caller) and stores `change` **exact** — never rounded ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06; it rounded to whole
+rupiah before) — so every balance, report and metric below is a sum of exact doubles, equal to the log within the
+tolerance. Nothing downstream rounds: the fold adds the posted change as it is, and `MetricData` / `MetricSearch` serve
+the folded sums. `OrderSettlementList` tells an unrecorded sale by `abs(initial_total) < 0.00005` (`san_money.ZeroBelow`),
+never `= 0`. Comparisons on these doubles use
+`san_money.Equal` / `IsZero` (4 places), never `==` — the over-cancel check, the re-fold's *same figures* and its carry.
+`SettlementLogPosted.change`/`balance` are doubles too; an event published while they were int64 still reads (protojson
+quoted the number, which a double accepts).
+
 ### An imported shop row asks the shop — before the transaction
 
 [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs):
@@ -139,7 +154,7 @@ logged and never fails the post; re-posting the same `unique_id` republishes it.
 | --- | --- |
 | `PermissionDenied` | a cancel from a non-`order` source · the account belongs to another team |
 | `FailedPrecondition` | a second live sale · a cancel exceeding the live sale · `CancelSale` with nothing live (`ErrNothingToCancel`) |
-| `InvalidArgument` | unknown type or source · a bad date · a shop that disagrees with the account · `reverses_id` naming nothing on this account · a sale with no order · a `system_adjustment` on an order · a `unique_id` already used on another account |
+| `InvalidArgument` | a `change` that is NaN or infinite · unknown type or source · a bad date · a shop that disagrees with the account · `reverses_id` naming nothing on this account · a sale with no order · a `system_adjustment` on an order · a `unique_id` already used on another account |
 | `Internal` | the database |
 
 ---
@@ -187,6 +202,20 @@ sequenceDiagram
 | **the cancel's key is the ACT's date** | [the-cancel-key-is-order-plus-act-date](../../business/settlement/context_decision.md#the-cancel-key-is-order-plus-act-date) — the event's `occurred_at`, the instant the cancel was written, so a redelivery after midnight produces the same key |
 | **the creator** | the event's `actor_id` — `orders.created_by_user_id`, from `san_auth.GetIdentity` at placement — copied onto the account by the opening post and never again |
 | **the handler** | `OrderSaleHandler` in [order_sale.go](../../../backend/services/settlement_service/settlement_v1/order_sale.go), one handler behind both routes, switching on the variant |
+| **the order learns it opened** | after any committed `initial_total` on an order — this event, an opening by hand, an imported statement — `markOpened` tells the order service in-process (`OrderOpenedMarker` → `cmd/app_development/settlement_opened_marker.go` → `selling_v1.SettlementOpened`), which stamps `orders.settlement_opened_at` once with the row's `created_at` ([a-missing-account-is-found-by-its-opened-at](../../business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at)). After the commit and never fatal, like the publish: a failed stamp leaves the order reading *not opened* — the safe side — and a re-post of the same unique_id (a redelivery does it) stamps it. OrderList's `settlement_not_opened` lists the orders still NULL |
+
+```mermaid
+sequenceDiagram
+  participant B as Pub/Sub or a person
+  participant S as settlement PostEntry
+  participant O as selling SettlementOpened, in-process
+  B->>S: initial_total for order N
+  S->>S: account row FOR UPDATE, settlement_logs INSERT, COMMIT
+  S->>S: publish SettlementLogPosted
+  S->>O: order N, the row's created_at
+  O->>O: UPDATE orders SET settlement_opened_at WHERE id = N AND settlement_opened_at IS NULL
+  O-->>S: nil, or an error that is only logged
+```
 
 ---
 
@@ -325,7 +354,7 @@ sequenceDiagram
 | table | the shop table; the person table for `USER` or a `USER` filter ([one-settlement-metric-reads-both-tables](../../business/settlement/context_decision.md#one-settlement-metric-reads-both-tables)) | the same | the same |
 | keys | every id with a row up to the window's end — a quiet one still ranks. Id 0 (no one recorded) left out | every period of the window, quiet ones included | none |
 | movement | Σ over the window | Σ over the period clipped to the window | Σ over the window |
-| `position_to_date` | −Σ over the key's positions of each one's latest close, at the window's end | the same, at the clipped period's end — a period outside the window is zero | at the window's end |
+| `position_to_date` | −Σ change over every row of the key up to the window's end — the running sum, `close(D)` by its definition ([the-carry-materialises-the-day-boundary-position](../../business/settlement/context_decision.md#the-carry-materialises-the-day-boundary-position)) | the same, at the clipped period's end: Σ change before the page's first day read once, then each day's change in date order — a period outside the window is zero | at the window's end |
 | `take_rate` | gap ÷ sales of the key's own sums; unset with no sale. Sorts, ranking only the keys that sold at least Rp 1.000.000 in the window; the rest follow in key order ([a-take-rate-ranks-above-one-million-of-sales](../../business/settlement/context_decision.md#a-take-rate-ranks-above-one-million-of-sales)) | the same, each period its own sales | the same |
 | the range | at most 366 days on every group, both ends counted ([a-metric-reads-at-most-a-year](../../business/analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year)) | the same — so the 260 weeks · 60 months · 20 years span caps below it no longer bind | the same |
 | scope | the team, or every team from the ROOT team — so `TEAM` crosses teams only for ROOT and ADMIN | the same | the same |
@@ -337,6 +366,49 @@ so the ranking and the numbers beside it cannot disagree, and `received` is Σ t
 | --- | --- |
 | `InvalidArgument` | a shop and a person in one request · a metric or field this service does not serve, or a field that cannot sort · a filter or group a metric does not list · a missing date range · a period key that is not its period's first day · a time-group search over the span cap |
 
-⚠ **Heavy** — [MetricData](../../../audits/services/settlement_service/performances/MetricData.md) and
-[MetricSearch](../../../audits/services/settlement_service/performances/MetricSearch.md): a period's position is read over the
-whole history, per period. The fix is an open question.
+✅ **Not heavy since 2026-11-05** — the position is ONE running sum (`timeBase`: `carried` once, `days` once,
+`SUM(change) OVER (ORDER BY day)`; `idBase`: one hash aggregate per key), the shape financial_account's series took
+([the-balance-series-is-a-running-sum](../../business/analytic/rpc_provide_decision.md#the-balance-series-is-a-running-sum)).
+A page of 20 days 273 → 12.5 ms, 200 days 1 596 → 41 ms, 200 shops 233 → 32 ms, the shop ranking 143 → 14 ms — see
+[MetricData](../../../audits/services/settlement_service/performances/MetricData.md) and
+[MetricSearch](../../../audits/services/settlement_service/performances/MetricSearch.md), both resolved. The reads take the
+position from `change`, not from the stored `close_balance`; the two differ only where a carry has drifted.
+
+### The day re-fold — `DayRefold` (not an RPC)
+
+The operator's repair, `san report refold` ([docs/tools/san.md](../../tools/san.md#report-refold),
+[a-wrong-day-is-refolded-from-the-log](../../business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log)):
+one scope's day of a report rebuilt from that day's `settlement_logs` — `settlement-shop-daily` by shop, or
+`settlement-user-daily` by person ([the-person-report-refolds-too](../../business/settlement/context_decision.md#the-person-report-refolds-too)).
+An in-process method of the service (`settlement_v1/day_refold.go`), like supplier's backfill fold — no wire contract, no
+policy.
+
+```mermaid
+sequenceDiagram
+  participant OP as san report refold
+  participant R as DayRefold — one transaction
+  participant F as the fold — a redelivery or an event in flight
+  OP->>R: report, a shop or a person, day
+  R->>R: process_event_lock FOR SHARE, the scope's log rows of the day with their claims
+  R->>R: claim the LOST rows — unclaimed and over an hour old
+  F-->>R: a fold claiming the same row waits on that claim, then folds nothing
+  R->>R: advisory settlement-shop or settlement-user per team, then re-read the claims
+  R->>R: replace the day's row from the claimed rows
+  R->>R: shift every later day's open and close by how far the day's close moved
+  R->>R: re-derive the state row — close, and the person's last_day
+  F-->>R: a row in flight — unclaimed and young — is left out and folded after the commit
+  R-->>OP: before and after per team, the shift, counted, claimed, in flight, the other report's scopes now short
+```
+
+| | |
+| --- | --- |
+| the scope's rows | shop: `l.shop_id`. Person: the one the fold counts the row for — the order's creator (`order_settlements.created_by_user_id`) on an order row, `user_id` (an imported row's primary CS) on a shop row, else `actor_id` |
+| what counts | every claimed row (the fold's claim, or another re-fold's) + every unclaimed row over an hour old, which it claims; a younger unclaimed row is in flight |
+| the later days | **shifted** by the day's new close − the close they carried from (the stored close, or the open when the day had no row) — `shiftLaterDays`, the fold's own statement for a late event ([a-refold-shifts-the-later-days](../../business/settlement/context_decision.md#a-refold-shifts-the-later-days)). Their movement is untouched |
+| the state row | `deriveState`, the fold's statement, after the shift; the person's `last_day` is recomputed (a re-fold can remove the newest day). A scope left with no row reads close 0 and `last_day` NULL |
+| one claim, two reports | a claimed lost row is in THIS report only — the claim stops its redelivery, so the result's `Short` names the other report's scopes and `san` prints their re-fold commands |
+| a carry already off | `NextGap`: the next row's open minus this day's close after the shift — non-zero only where that row was already broken; re-folding it closes the gap |
+| idempotent | a row equal to the log is not written; a second run shifts nothing (0 difference) |
+
+The reads take the position from the running sum of `change` regardless (above); the shift keeps the stored carry — what
+a later fold opens a new day from — true as well.

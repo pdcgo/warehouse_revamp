@@ -87,7 +87,9 @@ func foldLost(tx *gorm.DB, now time.Time, rows []lostRow) error {
 
 	for _, k := range keys {
 		s := sums[k]
-		values = append(values, "(CAST(? AS date), ?, ?, ?, ?, ?, ROUND(CAST(? AS numeric), 2), NOW())")
+		// The day's lost value, the exact double the losses sum to (numeric-money-moves-to-double-too,
+		// the-backend-never-rounds-money) — no numeric cast, no rounding.
+		values = append(values, "(CAST(? AS date), ?, ?, ?, ?, ?, CAST(? AS double precision), NOW())")
 		args = append(args, day, s.WarehouseID, s.TeamID, s.ProductID, s.SupplierID, s.LostCount, s.LostAmount)
 	}
 

@@ -7,6 +7,7 @@ import (
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 )
 
@@ -59,7 +60,7 @@ func (s *Service) postTransferCreated(
 	event *eventsv1.Event,
 	created *eventsv1.WarehouseTransferCreated,
 ) error {
-	if rupiah(created.GetAmount()) == 0 {
+	if san_money.IsZero(created.GetAmount()) {
 		return s.claimOnly(ctx, event)
 	}
 
@@ -93,18 +94,18 @@ func (s *Service) postTransferUpdated(
 		// The same account: only what changed. Old account 0 is a cost of 0 until now (nothing was posted), or — ⚠ my
 		// spec, as the restock's — a transfer whose cost predates its account: either way only the difference posts.
 		diff := updated.GetNewAmount() - updated.GetOldAmount()
-		if rupiah(diff) != 0 {
+		if !san_money.IsZero(diff) {
 			legs = append(legs, paymentLeg{accountID: newAccount, change: -diff, description: ref + " edited"})
 		}
 
 	default:
 		// Moved (or cost set to 0, new account empty): the old account gets back what it paid, the new one pays the
 		// new cost.
-		if rupiah(updated.GetOldAmount()) != 0 {
+		if !san_money.IsZero(updated.GetOldAmount()) {
 			legs = append(legs, paymentLeg{accountID: oldAccount, change: updated.GetOldAmount(), description: ref + " moved to another account"})
 		}
 
-		if rupiah(updated.GetNewAmount()) != 0 {
+		if !san_money.IsZero(updated.GetNewAmount()) {
 			legs = append(legs, paymentLeg{accountID: newAccount, change: -updated.GetNewAmount(), description: ref + " moved from another account"})
 		}
 	}
@@ -129,7 +130,7 @@ func (s *Service) postTransferCancelled(
 	cancelled *eventsv1.WarehouseTransferCancelled,
 ) error {
 	// Nothing was posted for the trip: nothing comes back.
-	if rupiah(cancelled.GetAmount()) == 0 {
+	if san_money.IsZero(cancelled.GetAmount()) {
 		return s.claimOnly(ctx, event)
 	}
 

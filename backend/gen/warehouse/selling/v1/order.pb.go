@@ -291,13 +291,18 @@ func (OrderListDataType) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{3}
 }
 
-// OrderRowSort is the sort selection paired with the ORDER slice.
+// OrderRowSort is the sort selection paired with the ORDER slice. Ties on a figure fall back to the order id, in the
+// same direction (the-total-sort-is-ours-and-the-platform-total-sorts-apart).
 type OrderRowSort int32
 
 const (
 	OrderRowSort_ORDER_ROW_SORT_UNSPECIFIED OrderRowSort = 0
 	OrderRowSort_ORDER_ROW_SORT_ID          OrderRowSort = 1
-	OrderRowSort_ORDER_ROW_SORT_TOTAL       OrderRowSort = 2
+	// TOTAL — `total_cost`: what the order cost the seller, goods cost + warehouse fee. Ours, never the platform's.
+	OrderRowSort_ORDER_ROW_SORT_TOTAL OrderRowSort = 2
+	// PLATFORM TOTAL — `platform_total`: what the storefront took from the buyer. Its own sort, never mixed with TOTAL
+	// (the-total-is-ours-the-platform-total-is-theirs).
+	OrderRowSort_ORDER_ROW_SORT_PLATFORM_TOTAL OrderRowSort = 3
 )
 
 // Enum value maps for OrderRowSort.
@@ -306,11 +311,13 @@ var (
 		0: "ORDER_ROW_SORT_UNSPECIFIED",
 		1: "ORDER_ROW_SORT_ID",
 		2: "ORDER_ROW_SORT_TOTAL",
+		3: "ORDER_ROW_SORT_PLATFORM_TOTAL",
 	}
 	OrderRowSort_value = map[string]int32{
-		"ORDER_ROW_SORT_UNSPECIFIED": 0,
-		"ORDER_ROW_SORT_ID":          1,
-		"ORDER_ROW_SORT_TOTAL":       2,
+		"ORDER_ROW_SORT_UNSPECIFIED":    0,
+		"ORDER_ROW_SORT_ID":             1,
+		"ORDER_ROW_SORT_TOTAL":          2,
+		"ORDER_ROW_SORT_PLATFORM_TOTAL": 3,
 	}
 )
 
@@ -806,7 +813,7 @@ type OrderItem struct {
 	Quantity    uint32 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	// What this product COST us, per unit, frozen when the order was placed (#74) — the owner's
 	// `unit_cost`: the units the take drew ÷ the quantity (an-order-is-costed-at-what-leaves-the-shelf),
-	// whole rupiah.
+	// exact (the-backend-never-rounds-money).
 	//
 	// SERVER-SET AND IGNORED ON INPUT. A client supplying it would be writing its own margin, which is
 	// the one number nobody placing an order should get to choose.
@@ -814,7 +821,7 @@ type OrderItem struct {
 	// 0 means "unknown", not "free": a product that was never restocked (received straight into stock,
 	// say) has no recorded cost. Margin on such a line reads as if the goods were free, so 0 here is a
 	// flag that the number is not to be trusted rather than a value to compute with.
-	UnitCost int64 `protobuf:"varint,7,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	UnitCost float64 `protobuf:"fixed64,7,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
 	// The line's frozen TOTAL — the owner's `total`, `unit_cost_with_markup × quantity`: the goods the take
 	// drew plus, on another team's product, that product's own cross markup (inventory-computes-the-markup).
 	// What the product fee is posted from (the-ledger-charges-the-frozen-line-total). Unrounded rupiah
@@ -898,7 +905,7 @@ func (x *OrderItem) GetQuantity() uint32 {
 	return 0
 }
 
-func (x *OrderItem) GetUnitCost() int64 {
+func (x *OrderItem) GetUnitCost() float64 {
 	if x != nil {
 		return x.UnitCost
 	}
@@ -1150,7 +1157,10 @@ type Order struct {
 	// survives on an order placed before that, and means "not recorded", never "sold for nothing".
 	//
 	//	margin = platform_total − total_cost        (an-order-records-no-shipping-cost)
-	PlatformTotal int64 `protobuf:"varint,17,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
+	//
+	// A double, frozen EXACT when the order is placed (the-backend-never-rounds-money) — settlement's `initial_total`
+	// carries that same figure.
+	PlatformTotal float64 `protobuf:"fixed64,17,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
 	// The lines — populated by OrderDetail (OrderList returns a summary without them).
 	Items []*OrderItem `protobuf:"bytes,12,rep,name=items,proto3" json:"items,omitempty"`
 	// The order's TIMELINE, oldest first — populated by OrderDetail only, exactly like `items`. A list returning every
@@ -1161,15 +1171,15 @@ type Order struct {
 	Address *OrderAddress `protobuf:"bytes,14,opt,name=address,proto3" json:"address,omitempty"`
 	// WHAT THE GOODS COST THE SELLER — the owner's `goods_cost`, "goods only, used for warehouse fee charge
 	// calculation": Σ the lines' frozen `total`, so a borrowed line counts WITH its owner's markup
-	// (the-cross-charge-lives-on-the-line). The warehouse fee is priced on it (the-fee-is-priced-on-goods-cost). Whole
-	// rupiah, rounded once. Frozen at create (a-lines-money-is-frozen-at-finalize); an order placed before selling 00027
+	// (the-cross-charge-lives-on-the-line). The warehouse fee is priced on it (the-fee-is-priced-on-goods-cost). Exact,
+	// never rounded (the-backend-never-rounds-money). Frozen at create (a-lines-money-is-frozen-at-finalize); an order placed before selling 00027
 	// keeps the drawn cost it was frozen with, the same figure on any order with no borrowed line.
 	//
 	// Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that wants to show
 	// margin would otherwise have to load every order's items.
 	//
 	// 0 means the goods' cost is unknown (the take valued nothing), not that they were free.
-	GoodsCost int64 `protobuf:"varint,16,opt,name=goods_cost,json=goodsCost,proto3" json:"goods_cost,omitempty"`
+	GoodsCost float64 `protobuf:"fixed64,16,opt,name=goods_cost,json=goodsCost,proto3" json:"goods_cost,omitempty"`
 	// GOODS + THE WAREHOUSE'S FEE — the owner's `total_cost`, what the order cost the seller ("total beli"). Frozen at
 	// create beside the two it adds; unrounded rupiah, like the fee (rupiah-is-floating-point). An order whose fee was
 	// never priced counts it as nothing here, so a reader that needs to know reads `warehouse_fee`'s absence.
@@ -1233,8 +1243,8 @@ type Order struct {
 	// once by warehouse_service's WarehouseFeeCalculate on the order's goods cost (the-fee-is-priced-on-goods-cost) and
 	// never recomputed, so a rate changed later cannot rewrite what an order cost. The owner's `warehouse_fee`.
 	//
-	// Unrounded rupiah, a double like the rate it came from (rupiah-is-floating-point) — when a frozen figure is rounded
-	// is not decided, so it is not rounded.
+	// Exact rupiah, a double like the rate it came from (rupiah-is-floating-point) — never rounded
+	// (the-backend-never-rounds-money): 2,5% of 12.666,99 is 316,67475.
 	//
 	// ABSENT = never priced: an order placed before fees were frozen. Never 0 for that — 0 is a warehouse that chose to
 	// charge nothing, which is a price.
@@ -1274,8 +1284,13 @@ type Order struct {
 	// (the-placement-page-reads-racks-by-transaction-id). 0 = none recorded: an order from a developer's database that
 	// predates the column (revamp-has-no-real-orders-yet).
 	TransactionId uint64 `protobuf:"varint,34,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// WHEN THE ORDER'S SETTLEMENT ACCOUNT OPENED (a-missing-account-is-found-by-its-opened-at) — stamped by settlement,
+	// through an in-process seam, the first time an `initial_total` is posted for the order (from Order Placed, by hand on
+	// the order page, or from an imported statement). 0 = NOT YET: the open failed, is dead-lettered, or never ran — the
+	// order still committed. OrderListFilter.settlement_not_opened lists exactly those.
+	SettlementOpenedAtUnix int64 `protobuf:"varint,35,opt,name=settlement_opened_at_unix,json=settlementOpenedAtUnix,proto3" json:"settlement_opened_at_unix,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
@@ -1357,7 +1372,7 @@ func (x *Order) GetShippingCode() string {
 	return ""
 }
 
-func (x *Order) GetPlatformTotal() int64 {
+func (x *Order) GetPlatformTotal() float64 {
 	if x != nil {
 		return x.PlatformTotal
 	}
@@ -1392,7 +1407,7 @@ func (x *Order) GetAddress() *OrderAddress {
 	return nil
 }
 
-func (x *Order) GetGoodsCost() int64 {
+func (x *Order) GetGoodsCost() float64 {
 	if x != nil {
 		return x.GoodsCost
 	}
@@ -1504,6 +1519,13 @@ func (x *Order) GetTransactionId() uint64 {
 	return 0
 }
 
+func (x *Order) GetSettlementOpenedAtUnix() int64 {
+	if x != nil {
+		return x.SettlementOpenedAtUnix
+	}
+	return 0
+}
+
 type OrderCreateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -1518,8 +1540,8 @@ type OrderCreateRequest struct {
 	ShippingCode  string `protobuf:"bytes,6,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
 	// What the buyer PAID on the platform. REQUIRED at finalize (platform-total-is-required-at-finalize) — refused
 	// when 0 by the placement rule both doors share, so the message names what is missing rather than a field number.
-	// See Order.platform_total.
-	PlatformTotal int64 `protobuf:"varint,13,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
+	// See Order.platform_total. A fraction is kept exact as the order is placed; NaN and infinities are refused.
+	PlatformTotal float64 `protobuf:"fixed64,13,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
 	// The shipping receipt, already uploaded to document_service by the client. Optional.
 	//
 	// NOT VERIFIED HERE, and that is a choice rather than an oversight: checking the id would make
@@ -1651,7 +1673,7 @@ func (x *OrderCreateRequest) GetShippingCode() string {
 	return ""
 }
 
-func (x *OrderCreateRequest) GetPlatformTotal() int64 {
+func (x *OrderCreateRequest) GetPlatformTotal() float64 {
 	if x != nil {
 		return x.PlatformTotal
 	}
@@ -1911,9 +1933,13 @@ type OrderListFilter struct {
 	// UNSPECIFIED or CREATED = when we wrote the row, PLATFORM_CREATED = when the buyer ordered. The window's fields keep
 	// their names; this says which column they are measured against. An order with no platform date never matches a
 	// platform-date window — it has no date there to fall inside.
-	DateField     OrderDateField `protobuf:"varint,12,opt,name=date_field,json=dateField,proto3,enum=warehouse.selling.v1.OrderDateField" json:"date_field,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DateField OrderDateField `protobuf:"varint,12,opt,name=date_field,json=dateField,proto3,enum=warehouse.selling.v1.OrderDateField" json:"date_field,omitempty"`
+	// Only orders whose settlement account has NOT opened — `settlement_opened_at IS NULL`
+	// (a-missing-account-is-found-by-its-opened-at). false = no filter. A person fixes each by hand on the order page
+	// (a-missing-account-is-fixed-by-hand). Mirrored on OrderStatFilter, so the tabs count the same set.
+	SettlementNotOpened bool `protobuf:"varint,13,opt,name=settlement_not_opened,json=settlementNotOpened,proto3" json:"settlement_not_opened,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *OrderListFilter) Reset() {
@@ -2028,6 +2054,13 @@ func (x *OrderListFilter) GetDateField() OrderDateField {
 		return x.DateField
 	}
 	return OrderDateField_ORDER_DATE_FIELD_UNSPECIFIED
+}
+
+func (x *OrderListFilter) GetSettlementNotOpened() bool {
+	if x != nil {
+		return x.SettlementNotOpened
+	}
+	return false
 }
 
 type OrderListFilterSort struct {
@@ -3200,10 +3233,10 @@ type OrderReturnAcceptRequest struct {
 	// on one timeline note from the warehouse, for customer service to claim from the platform. One entry per line, never
 	// above the line's quantity.
 	MissingLines []*OrderReturnMissingLine `protobuf:"bytes,3,rep,name=missing_lines,json=missingLines,proto3" json:"missing_lines,omitempty"`
-	// What the courier asked at the door, whole rupiah; 0 = nothing, the common case (a-return-may-carry-the-couriers-ask).
+	// What the courier asked at the door, exact; 0 = nothing, the common case (a-return-may-carry-the-couriers-ask).
 	// Above 0, the order's selling team owes the ACCEPTING warehouse that amount — it paid at its door — and liability
 	// posts it from OrderReturnAccepted.
-	CourierCharge int64 `protobuf:"varint,4,opt,name=courier_charge,json=courierCharge,proto3" json:"courier_charge,omitempty"`
+	CourierCharge float64 `protobuf:"fixed64,4,opt,name=courier_charge,json=courierCharge,proto3" json:"courier_charge,omitempty"`
 	// What it was for — required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for); the handler
 	// checks, since a rule across two fields is not written here. Ignored when there is no charge.
 	CourierChargeNote string `protobuf:"bytes,5,opt,name=courier_charge_note,json=courierChargeNote,proto3" json:"courier_charge_note,omitempty"`
@@ -3262,7 +3295,7 @@ func (x *OrderReturnAcceptRequest) GetMissingLines() []*OrderReturnMissingLine {
 	return nil
 }
 
-func (x *OrderReturnAcceptRequest) GetCourierCharge() int64 {
+func (x *OrderReturnAcceptRequest) GetCourierCharge() float64 {
 	if x != nil {
 		return x.CourierCharge
 	}
@@ -4247,9 +4280,11 @@ type OrderStatFilter struct {
 	// The seller list's warehouse filter, as on OrderListFilter.
 	WarehouseId uint64 `protobuf:"varint,10,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	// Which date the window reads, as on OrderListFilter — so the tab counts total what the table shows.
-	DateField     OrderDateField `protobuf:"varint,11,opt,name=date_field,json=dateField,proto3,enum=warehouse.selling.v1.OrderDateField" json:"date_field,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DateField OrderDateField `protobuf:"varint,11,opt,name=date_field,json=dateField,proto3,enum=warehouse.selling.v1.OrderDateField" json:"date_field,omitempty"`
+	// Only orders whose settlement account has not opened, as on OrderListFilter.
+	SettlementNotOpened bool `protobuf:"varint,12,opt,name=settlement_not_opened,json=settlementNotOpened,proto3" json:"settlement_not_opened,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *OrderStatFilter) Reset() {
@@ -4359,6 +4394,13 @@ func (x *OrderStatFilter) GetDateField() OrderDateField {
 	return OrderDateField_ORDER_DATE_FIELD_UNSPECIFIED
 }
 
+func (x *OrderStatFilter) GetSettlementNotOpened() bool {
+	if x != nil {
+		return x.SettlementNotOpened
+	}
+	return false
+}
+
 type OrderStatRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -4420,17 +4462,17 @@ type OrderStatusCount struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Status OrderStatus            `protobuf:"varint,1,opt,name=status,proto3,enum=warehouse.selling.v1.OrderStatus" json:"status,omitempty"`
 	Count  int64                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
-	// The sum of those orders' `platform_total`, whole rupiah — what the buyers paid the platform for them. Every order in
+	// The sum of those orders' `platform_total` — what the buyers paid the platform for them. Every order in
 	// the pile, measurable or not (an order placed before platform-total-is-required-at-finalize adds its 0). It summed
-	// `total` until selling 00027 dropped that column.
-	Value int64 `protobuf:"varint,3,opt,name=value,proto3" json:"value,omitempty"`
+	// `total` until selling 00027 dropped that column. A double since selling 00041, a sum of whole-rupiah figures.
+	Value float64 `protobuf:"fixed64,3,opt,name=value,proto3" json:"value,omitempty"`
 	// Σ line quantity over EVERY order in the pile — units, not lines, because units are what UPT counts
 	// (the-summary-follows-the-tab: UPT = item_count ÷ count).
 	ItemCount int64 `protobuf:"varint,4,opt,name=item_count,json=itemCount,proto3" json:"item_count,omitempty"`
-	// Σ platform_total — what the buyers paid the platform.
-	MpValue int64 `protobuf:"varint,5,opt,name=mp_value,json=mpValue,proto3" json:"mp_value,omitempty"`
+	// Σ platform_total — what the buyers paid the platform. A double, like the figure it sums.
+	MpValue float64 `protobuf:"fixed64,5,opt,name=mp_value,json=mpValue,proto3" json:"mp_value,omitempty"`
 	// Σ goods_cost — what the goods cost the seller, borrowed lines with their markup.
-	GoodsCost int64 `protobuf:"varint,6,opt,name=goods_cost,json=goodsCost,proto3" json:"goods_cost,omitempty"`
+	GoodsCost float64 `protobuf:"fixed64,6,opt,name=goods_cost,json=goodsCost,proto3" json:"goods_cost,omitempty"`
 	// Σ warehouse_fee — what fulfilling them cost. Unrounded rupiah, like the frozen fees it adds.
 	Fees float64 `protobuf:"fixed64,7,opt,name=fees,proto3" json:"fees,omitempty"`
 	// How many of `count` are NOT measurable, so the reader is told what the three sums above left out.
@@ -4483,7 +4525,7 @@ func (x *OrderStatusCount) GetCount() int64 {
 	return 0
 }
 
-func (x *OrderStatusCount) GetValue() int64 {
+func (x *OrderStatusCount) GetValue() float64 {
 	if x != nil {
 		return x.Value
 	}
@@ -4497,14 +4539,14 @@ func (x *OrderStatusCount) GetItemCount() int64 {
 	return 0
 }
 
-func (x *OrderStatusCount) GetMpValue() int64 {
+func (x *OrderStatusCount) GetMpValue() float64 {
 	if x != nil {
 		return x.MpValue
 	}
 	return 0
 }
 
-func (x *OrderStatusCount) GetGoodsCost() int64 {
+func (x *OrderStatusCount) GetGoodsCost() float64 {
 	if x != nil {
 		return x.GoodsCost
 	}
@@ -4538,7 +4580,7 @@ type OrderStatPreview struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Orders_30D int64                  `protobuf:"varint,1,opt,name=orders_30d,json=orders30d,proto3" json:"orders_30d,omitempty"`
 	// Σ `platform_total` over the window — what the buyers paid. It summed `total` until selling 00027 dropped it.
-	Revenue_30D   int64 `protobuf:"varint,2,opt,name=revenue_30d,json=revenue30d,proto3" json:"revenue_30d,omitempty"`
+	Revenue_30D   float64 `protobuf:"fixed64,2,opt,name=revenue_30d,json=revenue30d,proto3" json:"revenue_30d,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4580,7 +4622,7 @@ func (x *OrderStatPreview) GetOrders_30D() int64 {
 	return 0
 }
 
-func (x *OrderStatPreview) GetRevenue_30D() int64 {
+func (x *OrderStatPreview) GetRevenue_30D() float64 {
 	if x != nil {
 		return x.Revenue_30D
 	}
@@ -5643,7 +5685,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x04name\x18\x04 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12#\n" +
 	"\bquantity\x18\x05 \x01(\rB\a\xbaH\x04*\x02(\x01R\bquantity\x12\x1b\n" +
-	"\tunit_cost\x18\a \x01(\x03R\bunitCost\x12\x19\n" +
+	"\tunit_cost\x18\a \x01(\x01R\bunitCost\x12\x19\n" +
 	"\x05total\x18\b \x01(\x01H\x00R\x05total\x88\x01\x01\x126\n" +
 	"\x15unit_cost_with_markup\x18\t \x01(\x01H\x01R\x12unitCostWithMarkup\x88\x01\x01\x12&\n" +
 	"\fmarkup_total\x18\n" +
@@ -5668,7 +5710,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\vdocument_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
 	"documentId\x12$\n" +
 	"\bfilename\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\bfilename\x12%\n" +
-	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xbb\n" +
+	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xf6\n" +
 	"\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
@@ -5678,13 +5720,13 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\rcustomer_name\x18\x05 \x01(\tR\fcustomerName\x12%\n" +
 	"\x0ecustomer_phone\x18\x06 \x01(\tR\rcustomerPhone\x12#\n" +
 	"\rshipping_code\x18\b \x01(\tR\fshippingCode\x12%\n" +
-	"\x0eplatform_total\x18\x11 \x01(\x03R\rplatformTotal\x125\n" +
+	"\x0eplatform_total\x18\x11 \x01(\x01R\rplatformTotal\x125\n" +
 	"\x05items\x18\f \x03(\v2\x1f.warehouse.selling.v1.OrderItemR\x05items\x12K\n" +
 	"\rtimeline_logs\x18\x17 \x03(\v2&.warehouse.selling.v1.OrderTimelineLogR\ftimelineLogs\x12&\n" +
 	"\x0fcreated_at_unix\x18\r \x01(\x03R\rcreatedAtUnix\x12<\n" +
 	"\aaddress\x18\x0e \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12\x1d\n" +
 	"\n" +
-	"goods_cost\x18\x10 \x01(\x03R\tgoodsCost\x12\x1d\n" +
+	"goods_cost\x18\x10 \x01(\x01R\tgoodsCost\x12\x1d\n" +
 	"\n" +
 	"total_cost\x18\x1f \x01(\x01R\ttotalCost\x12<\n" +
 	"\areceipt\x18\x13 \x01(\v2\".warehouse.selling.v1.OrderReceiptR\areceipt\x12!\n" +
@@ -5700,10 +5742,11 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x0ebuyer_username\x18\x1e \x01(\tR\rbuyerUsername\x12/\n" +
 	"\x14date_entered_at_unix\x18  \x01(\x03R\x11dateEnteredAtUnix\x12'\n" +
 	"\x0fidempotency_key\x18! \x01(\tR\x0eidempotencyKey\x12%\n" +
-	"\x0etransaction_id\x18\" \x01(\x04R\rtransactionIdB\x10\n" +
+	"\x0etransaction_id\x18\" \x01(\x04R\rtransactionId\x129\n" +
+	"\x19settlement_opened_at_unix\x18# \x01(\x03R\x16settlementOpenedAtUnixB\x10\n" +
 	"\x0e_warehouse_feeJ\x04\b\a\x10\bJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
-	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\x81\b\n" +
+	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\x8a\b\n" +
 	"\x12OrderCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12*\n" +
@@ -5711,8 +5754,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\rcustomer_name\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\fcustomerName\x12.\n" +
 	"\x0ecustomer_phone\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18(R\rcustomerPhone\x12,\n" +
-	"\rshipping_code\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18(R\fshippingCode\x12.\n" +
-	"\x0eplatform_total\x18\r \x01(\x03B\a\xbaH\x04\"\x02(\x00R\rplatformTotal\x12<\n" +
+	"\rshipping_code\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18(R\fshippingCode\x127\n" +
+	"\x0eplatform_total\x18\r \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\rplatformTotal\x12<\n" +
 	"\areceipt\x18\x0f \x01(\v2\".warehouse.selling.v1.OrderReceiptR\areceipt\x12\x1c\n" +
 	"\x04note\x18\x0e \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x04note\x12=\n" +
 	"\x15order_external_ref_id\x18\x10 \x01(\tB\n" +
@@ -5738,7 +5781,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e2'.warehouse.selling.v1.OrderListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xc9\x04\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xfd\x04\n" +
 	"\x0fOrderListFilter\x12C\n" +
 	"\x06status\x18\x01 \x01(\x0e2!.warehouse.selling.v1.OrderStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status\x12\x1d\n" +
 	"\n" +
@@ -5754,7 +5797,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	" \x01(\tB\a\xbaH\x04r\x02\x182R\fshippingCode\x12!\n" +
 	"\fwarehouse_id\x18\v \x01(\x04R\vwarehouseId\x12M\n" +
 	"\n" +
-	"date_field\x18\f \x01(\x0e2$.warehouse.selling.v1.OrderDateFieldB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdateField\"\xd6\x01\n" +
+	"date_field\x18\f \x01(\x0e2$.warehouse.selling.v1.OrderDateFieldB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdateField\x122\n" +
+	"\x15settlement_not_opened\x18\r \x01(\bR\x13settlementNotOpened\"\xd6\x01\n" +
 	"\x13OrderListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12:\n" +
@@ -5841,12 +5885,12 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12\x14\n" +
 	"\x05moved\x18\x02 \x01(\bR\x05moved\x129\n" +
 	"\x06status\x18\x03 \x01(\x0e2!.warehouse.selling.v1.OrderStatusR\x06status\x12%\n" +
-	"\x0erefused_reason\x18\x04 \x01(\tR\rrefusedReason\"\xb9\x02\n" +
+	"\x0erefused_reason\x18\x04 \x01(\tR\rrefusedReason\"\xc2\x02\n" +
 	"\x18OrderReturnAcceptRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId\x12\\\n" +
-	"\rmissing_lines\x18\x03 \x03(\v2,.warehouse.selling.v1.OrderReturnMissingLineB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\fmissingLines\x12.\n" +
-	"\x0ecourier_charge\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\rcourierCharge\x128\n" +
+	"\rmissing_lines\x18\x03 \x03(\v2,.warehouse.selling.v1.OrderReturnMissingLineB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\fmissingLines\x127\n" +
+	"\x0ecourier_charge\x18\x04 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\rcourierCharge\x128\n" +
 	"\x13courier_charge_note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x11courierChargeNote:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"j\n" +
 	"\x16OrderReturnMissingLine\x12+\n" +
@@ -5917,7 +5961,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\n" +
 	"orders_30d\x18\x02 \x01(\x03R\torders30d\"a\n" +
 	"\x19OrderActivityStatResponse\x12D\n" +
-	"\apreview\x18\x01 \x01(\v2*.warehouse.selling.v1.OrderActivityPreviewR\apreview\"\x84\x04\n" +
+	"\apreview\x18\x01 \x01(\v2*.warehouse.selling.v1.OrderActivityPreviewR\apreview\"\xb8\x04\n" +
 	"\x0fOrderStatFilter\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x1f\n" +
@@ -5932,7 +5976,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\fwarehouse_id\x18\n" +
 	" \x01(\x04R\vwarehouseId\x12M\n" +
 	"\n" +
-	"date_field\x18\v \x01(\x0e2$.warehouse.selling.v1.OrderDateFieldB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdateField\"\x87\x01\n" +
+	"date_field\x18\v \x01(\x0e2$.warehouse.selling.v1.OrderDateFieldB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdateField\x122\n" +
+	"\x15settlement_not_opened\x18\f \x01(\bR\x13settlementNotOpened\"\x87\x01\n" +
 	"\x10OrderStatRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12=\n" +
 	"\x06filter\x18\x02 \x01(\v2%.warehouse.selling.v1.OrderStatFilterR\x06filter:\x0e\x92\xb5\x18\n" +
@@ -5941,18 +5986,18 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x10OrderStatusCount\x129\n" +
 	"\x06status\x18\x01 \x01(\x0e2!.warehouse.selling.v1.OrderStatusR\x06status\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x03R\x05count\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\x03R\x05value\x12\x1d\n" +
+	"\x05value\x18\x03 \x01(\x01R\x05value\x12\x1d\n" +
 	"\n" +
 	"item_count\x18\x04 \x01(\x03R\titemCount\x12\x19\n" +
-	"\bmp_value\x18\x05 \x01(\x03R\ampValue\x12\x1d\n" +
+	"\bmp_value\x18\x05 \x01(\x01R\ampValue\x12\x1d\n" +
 	"\n" +
-	"goods_cost\x18\x06 \x01(\x03R\tgoodsCost\x12\x12\n" +
+	"goods_cost\x18\x06 \x01(\x01R\tgoodsCost\x12\x12\n" +
 	"\x04fees\x18\a \x01(\x01R\x04fees\x12%\n" +
 	"\x0emargin_unknown\x18\b \x01(\x03R\rmarginUnknown\"R\n" +
 	"\x10OrderStatPreview\x12\x1d\n" +
 	"\n" +
 	"orders_30d\x18\x01 \x01(\x03R\torders30d\x12\x1f\n" +
-	"\vrevenue_30d\x18\x02 \x01(\x03R\n" +
+	"\vrevenue_30d\x18\x02 \x01(\x01R\n" +
 	"revenue30d\"\x9a\x01\n" +
 	"\x11OrderStatResponse\x12@\n" +
 	"\apreview\x18\x01 \x01(\v2&.warehouse.selling.v1.OrderStatPreviewR\apreview\x12C\n" +
@@ -6057,11 +6102,12 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x11OrderListDataType\x12$\n" +
 	" ORDER_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cORDER_LIST_DATA_TYPE_GENERAL\x10\x01\x12\x1e\n" +
-	"\x1aORDER_LIST_DATA_TYPE_ORDER\x10\x02*_\n" +
+	"\x1aORDER_LIST_DATA_TYPE_ORDER\x10\x02*\x82\x01\n" +
 	"\fOrderRowSort\x12\x1e\n" +
 	"\x1aORDER_ROW_SORT_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11ORDER_ROW_SORT_ID\x10\x01\x12\x18\n" +
-	"\x14ORDER_ROW_SORT_TOTAL\x10\x02*s\n" +
+	"\x14ORDER_ROW_SORT_TOTAL\x10\x02\x12!\n" +
+	"\x1dORDER_ROW_SORT_PLATFORM_TOTAL\x10\x03*s\n" +
 	"\x0fOrderExportView\x12!\n" +
 	"\x1dORDER_EXPORT_VIEW_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18ORDER_EXPORT_VIEW_SELLER\x10\x01\x12\x1f\n" +

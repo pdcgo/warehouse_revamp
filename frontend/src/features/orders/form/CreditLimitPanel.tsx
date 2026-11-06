@@ -30,9 +30,9 @@ import { formatRupiah } from "../../../lib/money";
 
 export type CreditRole = "warehouse" | "owner";
 
-/** One creditor's figures — read, still reading, or failed. `limit` undefined = unlimited, 0n = frozen, n = the ceiling. */
+/** One creditor's figures — read, still reading, or failed. `limit` undefined = unlimited, 0 = frozen, n = the ceiling. */
 export type CreditFigures =
-  | { state: "ready"; debt: bigint; limit?: bigint }
+  | { state: "ready"; debt: number; limit?: number }
   | { state: "loading" }
   | { state: "failed" };
 
@@ -51,7 +51,7 @@ export interface CreditRow {
   /** The limit this creditor set on us and what we already owe it — once the read has answered. */
   figures: CreditFigures;
   /** What this order would add to that debt, across every reason it owes this team. */
-  adds: bigint;
+  adds: number;
 }
 
 export function CreditLimitPanel({ rows, compact }: { rows: CreditRow[]; compact?: boolean }) {
@@ -78,7 +78,7 @@ export function CreditLimitPanel({ rows, compact }: { rows: CreditRow[]; compact
             const figures = row.figures;
             const ready = figures.state === "ready";
             const limit = ready ? figures.limit : undefined;
-            const after = ready ? figures.debt + row.adds : 0n;
+            const after = ready ? figures.debt + row.adds : 0;
             const capped = ready && limitStateOf(limit) === "capped";
             // The projection is only a warning where there is a ceiling to cross. Against an
             // unlimited creditor "after this order" is just a bigger number.

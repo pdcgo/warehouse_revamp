@@ -216,7 +216,7 @@ func perfLine(fileID uint64, i, n int, now time.Time) settlement_importer_servic
 		PlatformType:    "Penghasilan dari Pesanan",
 		Description:     fmt.Sprintf("Penghasilan dari Pesanan #2609%08dAB", i),
 		SettlementType:  "fund",
-		Change:          int64(10_000 + i*37),
+		Change:          float64(10_000 + i*37),
 		OccurredOn:      &day,
 		OrderID:         uint64(500_000 + i),
 		Outcome:         "posted",

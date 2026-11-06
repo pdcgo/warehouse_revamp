@@ -16,10 +16,11 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/expense/v1/expense.proto.
  */
 export const file_warehouse_expense_v1_expense: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSKoAgoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoAxITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEhoKEmFkanVzdHNfZXhwZW5zZV9pZBgLIAEoBBISCgpuZXRfYW1vdW50GAwgASgDEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgNIAEoBEoECAkQClIGdm9pZGVkIooDChRFeHBlbnNlQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARKmAQoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQnW6SHK6AWgKK2V4cGVuc2VfY3JlYXRlLmtpbmQuc3RvY2tfbG9zc19pc19ub3RfdHlwZWQSLnN0b2NrIGxvc3MgaXMgcmVjb3JkZWQgYnkgaW52ZW50b3J5LCBub3QgdHlwZWQaCXRoaXMgIT0gNYIBBBABIAASFwoGYW1vdW50GAMgASgDQge6SAQiAiAAEjgKC29jY3VycmVkX2F0GAQgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIPCgdzaG9wX2lkGAUgASgEEhYKBG5vdGUYBiABKAlCCLpIBXIDGPQDEiMKEmZpbmFuY2VfYWNjb3VudF9pZBgHIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgDEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAzoCOAEiqQIKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgDEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAMSGgoSYWRqdXN0c19leHBlbnNlX2lkGAsgASgEEhIKCm5ldF9hbW91bnQYDCABKAMSGgoSZmluYW5jZV9hY2NvdW50X2lkGA0gASgESgQICRAKUgZ2b2lkZWQisQEKEUV4cGVuc2VSb3dNYXBJdGVtEkYKCG1hcF9kYXRhGAEgAygLMjQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GlQKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93SXRlbToCOAEikgEKF0V4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASOgoHZXhwZW5zZRgCIAEoCzInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtSABCAwoBZCLHAQoTRXhwZW5zZUxpc3RSZXNwb25zZRI8CgVpdGVtcxgBIAMoCzItLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjMKBnRvdGFscxgEIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMixAEKEkV4cGVuc2VEYWlseUZpbHRlchIxCgRmcm9tGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIvCgJ0bxgCIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIoMBChNFeHBlbnNlRGFpbHlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkAKBmZpbHRlchgCIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseUZpbHRlckIGukgDyAEBOgyStRgICgYBAgMEBgkisAEKDkV4cGVuc2VEYXlJdGVtEgwKBGRhdGUYASABKAkSDwoHZW50cmllcxgCIAEoBBINCgV0b3RhbBgDIAEoAxJBCgdieV9raW5kGAQgAygLMjAud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0uQnlLaW5kRW50cnkaLQoLQnlLaW5kRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgDOgI4ASJ/ChRFeHBlbnNlRGFpbHlSZXNwb25zZRIyCgRkYXlzGAEgAygLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0SMwoGdG90YWxzGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscyKOAQoURXhwZW5zZUFkanVzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKZXhwZW5zZV9pZBgCIAEoBEIHukgEMgIgABIXCgZhbW91bnQYAyABKANCB7pIBCICOAASFgoEbm90ZRgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQihgEKFUV4cGVuc2VBZGp1c3RSZXNwb25zZRI3CgphZGp1c3RtZW50GAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZBI0CgdleHBlbnNlGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCquAQoLRXhwZW5zZUtpbmQSHAoYRVhQRU5TRV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQRVhQRU5TRV9LSU5EX0FEUxABEhgKFEVYUEVOU0VfS0lORF9QQVlST0xMEAISHAoYRVhQRU5TRV9LSU5EX09QRVJBVElPTkFMEAMSFgoSRVhQRU5TRV9LSU5EX09USEVSEAQSGwoXRVhQRU5TRV9LSU5EX1NUT0NLX0xPU1MQBSqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzK5AwoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmcKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZSIDkAIBEmoKDEV4cGVuc2VEYWlseRIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseVJlcXVlc3QaKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXNwb25zZSIDkAIBEmgKDUV4cGVuc2VBZGp1c3QSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQWRqdXN0UmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VBZGp1c3RSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSKoAgoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoARITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEhoKEmFkanVzdHNfZXhwZW5zZV9pZBgLIAEoBBISCgpuZXRfYW1vdW50GAwgASgBEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgNIAEoBEoECAkQClIGdm9pZGVkIpMDChRFeHBlbnNlQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARKmAQoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQnW6SHK6AWgKK2V4cGVuc2VfY3JlYXRlLmtpbmQuc3RvY2tfbG9zc19pc19ub3RfdHlwZWQSLnN0b2NrIGxvc3MgaXMgcmVjb3JkZWQgYnkgaW52ZW50b3J5LCBub3QgdHlwZWQaCXRoaXMgIT0gNYIBBBABIAASIAoGYW1vdW50GAMgASgBQhC6SA0SC0ABIQAAAAAAAAAAEjgKC29jY3VycmVkX2F0GAQgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIPCgdzaG9wX2lkGAUgASgEEhYKBG5vdGUYBiABKAlCCLpIBXIDGPQDEiMKEmZpbmFuY2VfYWNjb3VudF9pZBgHIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgBEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAToCOAEiqQIKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgBEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAMSGgoSYWRqdXN0c19leHBlbnNlX2lkGAsgASgEEhIKCm5ldF9hbW91bnQYDCABKAESGgoSZmluYW5jZV9hY2NvdW50X2lkGA0gASgESgQICRAKUgZ2b2lkZWQisQEKEUV4cGVuc2VSb3dNYXBJdGVtEkYKCG1hcF9kYXRhGAEgAygLMjQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GlQKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93SXRlbToCOAEikgEKF0V4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASOgoHZXhwZW5zZRgCIAEoCzInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtSABCAwoBZCLHAQoTRXhwZW5zZUxpc3RSZXNwb25zZRI8CgVpdGVtcxgBIAMoCzItLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjMKBnRvdGFscxgEIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMixAEKEkV4cGVuc2VEYWlseUZpbHRlchIxCgRmcm9tGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIvCgJ0bxgCIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIoMBChNFeHBlbnNlRGFpbHlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkAKBmZpbHRlchgCIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseUZpbHRlckIGukgDyAEBOgyStRgICgYBAgMEBgkisAEKDkV4cGVuc2VEYXlJdGVtEgwKBGRhdGUYASABKAkSDwoHZW50cmllcxgCIAEoBBINCgV0b3RhbBgDIAEoARJBCgdieV9raW5kGAQgAygLMjAud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0uQnlLaW5kRW50cnkaLQoLQnlLaW5kRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgBOgI4ASJ/ChRFeHBlbnNlRGFpbHlSZXNwb25zZRIyCgRkYXlzGAEgAygLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0SMwoGdG90YWxzGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscyKXAQoURXhwZW5zZUFkanVzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKZXhwZW5zZV9pZBgCIAEoBEIHukgEMgIgABIgCgZhbW91bnQYAyABKAFCELpIDRILOQAAAAAAAAAAQAESFgoEbm90ZRgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQihgEKFUV4cGVuc2VBZGp1c3RSZXNwb25zZRI3CgphZGp1c3RtZW50GAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZBI0CgdleHBlbnNlGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCquAQoLRXhwZW5zZUtpbmQSHAoYRVhQRU5TRV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQRVhQRU5TRV9LSU5EX0FEUxABEhgKFEVYUEVOU0VfS0lORF9QQVlST0xMEAISHAoYRVhQRU5TRV9LSU5EX09QRVJBVElPTkFMEAMSFgoSRVhQRU5TRV9LSU5EX09USEVSEAQSGwoXRVhQRU5TRV9LSU5EX1NUT0NLX0xPU1MQBSqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzK5AwoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmcKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZSIDkAIBEmoKDEV4cGVuc2VEYWlseRIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseVJlcXVlc3QaKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXNwb25zZSIDkAIBEmgKDUV4cGVuc2VBZGp1c3QSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQWRqdXN0UmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VBZGp1c3RSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
- * One expense. Money is whole rupiah as int64, like every other money field in this system.
+ * One expense. Money is rupiah as a double, stored exact when the expense is recorded or corrected — never rounded
+ * (rupiah-is-floating-point, the-backend-never-rounds-money).
  *
  * @generated from message warehouse.expense.v1.ExpenseRecord
  */
@@ -59,13 +60,13 @@ export type ExpenseRecord = Message<"warehouse.expense.v1.ExpenseRecord"> & {
   kind: ExpenseKind;
 
   /**
-   * Whole rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
+   * Exact rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
    * let a negative expense silently become revenue. On an ADJUSTMENT signed and never 0 — the correction itself, not a
    * new total; the expense and its adjustments never sum below 0.
    *
-   * @generated from field: int64 amount = 5;
+   * @generated from field: double amount = 5;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * The date the expense BELONGS TO, as chosen by the person — not the moment the row was inserted.
@@ -108,9 +109,9 @@ export type ExpenseRecord = Message<"warehouse.expense.v1.ExpenseRecord"> & {
   /**
    * On an EXPENSE, what it counts for after every adjustment of it: its amount plus theirs. 0 on an adjustment.
    *
-   * @generated from field: int64 net_amount = 12;
+   * @generated from field: double net_amount = 12;
    */
-  netAmount: bigint;
+  netAmount: number;
 
   /**
    * WHICH ACCOUNT PAID — a financial_account_service id, one of the team's operational accounts
@@ -150,11 +151,11 @@ export type ExpenseCreateRequest = Message<"warehouse.expense.v1.ExpenseCreateRe
   kind: ExpenseKind;
 
   /**
-   * Whole rupiah, POSITIVE. Recording an expense of nothing is not an expense.
+   * Exact rupiah, POSITIVE. Recording an expense of nothing is not an expense.
    *
-   * @generated from field: int64 amount = 3;
+   * @generated from field: double amount = 3;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * The date the expense BELONGS TO (YYYY-MM-DD), chosen by the person.
@@ -340,18 +341,18 @@ export type ExpenseTotals = Message<"warehouse.expense.v1.ExpenseTotals"> & {
    * The sum over EVERY row the filter matched, not the page — the same split RevenueTotals uses
    * (#78). A page total is a different number wearing the same label.
    *
-   * @generated from field: int64 total = 1;
+   * @generated from field: double total = 1;
    */
-  total: bigint;
+  total: number;
 
   /**
    * Per kind, so the summary cards need no second call. A kind with no expenses in the period is simply
    * absent rather than reported as 0 — absent and zero read the same on a card, and building the
    * absent ones would mean this message knowing the enum's members.
    *
-   * @generated from field: map<int32, int64> by_kind = 2;
+   * @generated from field: map<int32, double> by_kind = 2;
    */
-  byKind: { [key: number]: bigint };
+  byKind: { [key: number]: number };
 };
 
 /**
@@ -388,9 +389,9 @@ export type ExpenseRowItem = Message<"warehouse.expense.v1.ExpenseRowItem"> & {
   kind: ExpenseKind;
 
   /**
-   * @generated from field: int64 amount = 5;
+   * @generated from field: double amount = 5;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * @generated from field: string occurred_at = 6;
@@ -422,9 +423,9 @@ export type ExpenseRowItem = Message<"warehouse.expense.v1.ExpenseRowItem"> & {
   /**
    * As on ExpenseRecord: an expense's amount after every adjustment of it; 0 on an adjustment.
    *
-   * @generated from field: int64 net_amount = 12;
+   * @generated from field: double net_amount = 12;
    */
-  netAmount: bigint;
+  netAmount: number;
 
   /**
    * As on ExpenseRecord: the account that paid; 0 on an expense made before Paid from; an adjustment carries its
@@ -627,11 +628,11 @@ export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
   entries: bigint;
 
   /**
-   * The day's spending, whole rupiah.
+   * The day's spending, the exact sum.
    *
-   * @generated from field: int64 total = 3;
+   * @generated from field: double total = 3;
    */
-  total: bigint;
+  total: number;
 
   /**
    * Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
@@ -639,9 +640,9 @@ export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
    * and zero read identically, and building the empty ones would mean this message knowing the enum's
    * members.
    *
-   * @generated from field: map<int32, int64> by_kind = 4;
+   * @generated from field: map<int32, double> by_kind = 4;
    */
-  byKind: { [key: number]: bigint };
+  byKind: { [key: number]: number };
 };
 
 /**
@@ -706,11 +707,11 @@ export type ExpenseAdjustRequest = Message<"warehouse.expense.v1.ExpenseAdjustRe
   expenseId: bigint;
 
   /**
-   * The correction, signed, whole rupiah — not the new total. Never 0: a correction of nothing is not one.
+   * The correction, signed, exact rupiah — not the new total. Never 0: a correction of nothing is not one.
    *
-   * @generated from field: int64 amount = 3;
+   * @generated from field: double amount = 3;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * Why — what was wrong with the expense.

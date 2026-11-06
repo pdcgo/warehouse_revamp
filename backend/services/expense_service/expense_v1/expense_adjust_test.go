@@ -7,23 +7,24 @@ import (
 	"connectrpc.com/connect"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 )
 
 // adjust corrects one expense by a signed amount, as the screen's Adjust and Batalkan do.
-func adjust(t *testing.T, svc *expense_v1.Service, expenseID uint64, amount int64) *expensev1.ExpenseAdjustResponse {
+func adjust(t *testing.T, svc *expense_v1.Service, expenseID uint64, amount float64) *expensev1.ExpenseAdjustResponse {
 	t.Helper()
 
 	res, err := tryAdjust(svc, teamA, expenseID, amount)
 	if err != nil {
-		t.Fatalf("ExpenseAdjust(%d, %d): %v", expenseID, amount, err)
+		t.Fatalf("ExpenseAdjust(%v, %v): %v", expenseID, amount, err)
 	}
 
 	return res
 }
 
-func tryAdjust(svc *expense_v1.Service, team, expenseID uint64, amount int64) (*expensev1.ExpenseAdjustResponse, error) {
+func tryAdjust(svc *expense_v1.Service, team, expenseID uint64, amount float64) (*expensev1.ExpenseAdjustResponse, error) {
 	res, err := svc.ExpenseAdjust(context.Background(), connect.NewRequest(&expensev1.ExpenseAdjustRequest{
 		TeamId: team, ExpenseId: expenseID, Amount: amount, Note: "typo",
 	}))
@@ -58,7 +59,7 @@ func TestExpenseAdjust_IsANewRowOnTheExpensesDay(t *testing.T) {
 
 	got := res.GetAdjustment()
 	if got.GetAmount() != -4_500_000 || got.GetAdjustsExpenseId() != typo.GetId() {
-		t.Fatalf("adjustment = %d of %d, want −4.500.000 of %d", got.GetAmount(), got.GetAdjustsExpenseId(), typo.GetId())
+		t.Fatalf("adjustment = %v of %v, want −4.500.000 of %v", got.GetAmount(), got.GetAdjustsExpenseId(), typo.GetId())
 	}
 
 	// Copied, never typed: the day and the kind are the expense's (an-adjustment-counts-on-the-day-it-fixes).
@@ -67,12 +68,12 @@ func TestExpenseAdjust_IsANewRowOnTheExpensesDay(t *testing.T) {
 	}
 
 	if expense := res.GetExpense(); expense.GetAmount() != 5_000_000 || expense.GetNetAmount() != 500_000 {
-		t.Fatalf("expense = %d net %d, want 5.000.000 unchanged and net 500.000", expense.GetAmount(), expense.GetNetAmount())
+		t.Fatalf("expense = %v net %v, want 5.000.000 unchanged and net 500.000", expense.GetAmount(), expense.GetNetAmount())
 	}
 
 	month := september(t, svc)
 	if month.GetTotals().GetTotal() != 500_000 || month.GetTotals().GetByKind()[int32(expensev1.ExpenseKind_EXPENSE_KIND_ADS)] != 500_000 {
-		t.Fatalf("September = %d (ads %d), want 500.000", month.GetTotals().GetTotal(),
+		t.Fatalf("September = %v (ads %v), want 500.000", month.GetTotals().GetTotal(),
 			month.GetTotals().GetByKind()[int32(expensev1.ExpenseKind_EXPENSE_KIND_ADS)])
 	}
 
@@ -83,7 +84,7 @@ func TestExpenseAdjust_IsANewRowOnTheExpensesDay(t *testing.T) {
 
 	for _, row := range rows {
 		if row.GetId() == typo.GetId() && row.GetNetAmount() != 500_000 {
-			t.Fatalf("the listed expense's net = %d, want 500.000", row.GetNetAmount())
+			t.Fatalf("the listed expense's net = %v, want 500.000", row.GetNetAmount())
 		}
 	}
 }
@@ -97,12 +98,12 @@ func TestExpenseAdjust_BatalkanBringsItToZeroAndKeepsTheRows(t *testing.T) {
 
 	res := adjust(t, svc, expense.GetId(), -1_200_000)
 	if res.GetExpense().GetNetAmount() != 0 {
-		t.Fatalf("net after Batalkan = %d, want 0", res.GetExpense().GetNetAmount())
+		t.Fatalf("net after Batalkan = %v, want 0", res.GetExpense().GetNetAmount())
 	}
 
 	month := september(t, svc)
 	if month.GetTotals().GetTotal() != 0 || len(expenseRows(month)) != 2 {
-		t.Fatalf("September = %d over %d rows, want 0 over 2", month.GetTotals().GetTotal(), len(expenseRows(month)))
+		t.Fatalf("September = %v over %v rows, want 0 over 2", month.GetTotals().GetTotal(), len(expenseRows(month)))
 	}
 }
 
@@ -115,7 +116,7 @@ func TestExpenseAdjust_MayAdd(t *testing.T) {
 
 	res := adjust(t, svc, expense.GetId(), 50_000)
 	if res.GetExpense().GetNetAmount() != 850_000 {
-		t.Fatalf("net = %d, want 850.000", res.GetExpense().GetNetAmount())
+		t.Fatalf("net = %v, want 850.000", res.GetExpense().GetNetAmount())
 	}
 }
 
@@ -134,7 +135,7 @@ func TestExpenseAdjust_NeverSumsBelowZero(t *testing.T) {
 	}
 
 	if total := september(t, svc).GetTotals().GetTotal(); total != 500_000 {
-		t.Fatalf("September = %d after the refusal, want 500.000 — nothing written", total)
+		t.Fatalf("September = %v after the refusal, want 500.000 — nothing written", total)
 	}
 }
 
@@ -154,7 +155,7 @@ func TestExpenseAdjust_RefusesToAdjustAnAdjustment(t *testing.T) {
 
 	// The fix for a mistaken correction: a second correction of the expense.
 	if res := adjust(t, svc, expense.GetId(), 4_000_000); res.GetExpense().GetNetAmount() != 4_500_000 {
-		t.Fatalf("net after the second correction = %d, want 4.500.000", res.GetExpense().GetNetAmount())
+		t.Fatalf("net after the second correction = %v, want 4.500.000", res.GetExpense().GetNetAmount())
 	}
 }
 
@@ -168,7 +169,7 @@ func TestExpenseAdjust_Refuses(t *testing.T) {
 
 	cases := map[string]struct {
 		team, id uint64
-		amount   int64
+		amount   float64
 		want     connect.Code
 	}{
 		"a missing expense": {teamA, expense.GetId() + 1000, -1, connect.CodeNotFound},
@@ -181,5 +182,30 @@ func TestExpenseAdjust_Refuses(t *testing.T) {
 		if connect.CodeOf(err) != c.want {
 			t.Fatalf("%s: %v, want %v", name, err, c.want)
 		}
+	}
+}
+
+// A CORRECTION IS STORED EXACT too (the-backend-never-rounds-money): −100,6 is written as −100,6, and the expense's net
+// is the exact difference. Rp 0,3 is a real correction now; only a correction of nothing (0, or float dust) is refused.
+func TestExpenseAdjust_AFractionalCorrectionIsStoredExact(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	expense := record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, 50_000, "2026-09-10")
+
+	res := adjust(t, svc, expense.GetId(), -100.6)
+	if res.GetAdjustment().GetAmount() != -100.6 || !san_money.Equal(res.GetExpense().GetNetAmount(), 49_899.4) {
+		t.Fatalf("adjustment/net = %v/%v, want −100,6 / 49.899,4", res.GetAdjustment().GetAmount(), res.GetExpense().GetNetAmount())
+	}
+
+	res = adjust(t, svc, expense.GetId(), 0.3)
+	if res.GetAdjustment().GetAmount() != 0.3 || !san_money.Equal(res.GetExpense().GetNetAmount(), 49_899.7) {
+		t.Fatalf("a correction of Rp 0,3: adjustment/net = %v/%v, want 0,3 / 49.899,7",
+			res.GetAdjustment().GetAmount(), res.GetExpense().GetNetAmount())
+	}
+
+	_, err := tryAdjust(svc, teamA, expense.GetId(), 0.00001)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a correction of float dust: code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
 }

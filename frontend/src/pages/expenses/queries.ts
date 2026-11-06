@@ -124,7 +124,7 @@ export function useInvalidateExpenses() {
 interface SaveExpenseVars {
   teamId: bigint;
   kind: ExpenseKind;
-  amount: bigint;
+  amount: number;
   occurredAt: string;
   shopId: bigint;
   note: string;
@@ -147,7 +147,7 @@ interface AdjustExpenseVars {
   teamId: bigint;
   expenseId: bigint;
   /** The correction, SIGNED — not the new total. Never 0. */
-  amount: bigint;
+  amount: number;
   note: string;
 }
 

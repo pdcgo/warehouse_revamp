@@ -2,6 +2,26 @@
 
 Tables: [database-schema.md](../../database-schema.md#liability_service).
 
+### The money is a double, stored exact as it is written (liability 00014)
+
+Every rupiah this service holds — the ledger's legs and `balance_after`, the balances, payment requests, payments, the
+credit limits and their history — is `double precision` in the database and `double` on the wire since 2026-11-06
+([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)): the `LiabilityPosition*`, `LiabilityCredit*`,
+`LiabilityDaily` / summary figures and their `by_source` maps, `LiabilityPaymentRecordRequest.amount` (`gt 0`, finite),
+`credit_limit` on the terms (`gte 0`, finite), and `LiabilityPaymentAccepted.amount` on the event. **`PostEntry` is the
+freeze point, and it is EXACT** ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06 — it rounded to whole rupiah before): it refuses NaN,
+the infinities and anything not above 0 (`san_money.Positive` — float dust below 4 places counts as 0) and stores the
+figure as handed in. An order's 2,5% fee on Rp 12.666,99 posts Rp 316,67475 on both legs; a balance is the sum of its
+logs within the tolerance, and "square" is a tolerance test in SQL too (`abs(balance) < 0.00005`, `san_money.ZeroBelow`
+— the running `oldest_unsettled_at` clock and `unsettled_only`). `LiabilityPaymentRecord` stores the claim as typed
+and refuses one that is not above 0 (InvalidArgument, *"a payment must be more than Rp 0"*); `LiabilityTermsSet` stores
+a limit as set. The order-fee and courier listeners skip a figure that is not above 0 before posting.
+
+⚠ **The order routes are mounted since 2026-11-06**: `/event/liability-order-placed/push` and
+`/event/liability-order-cancelled/push` were missing from `register.go` (the pushes 404'd and dead-lettered), so the
+fees below were never charged in a running app; both now go to the same push handler
+(`TestRegister_TheOrderEventsReachTheLedger`).
+
 ## The first writer — a restock's courier charge, from *Restock Accepted* (#184)
 
 An obligation the system creates at a restock's door: the warehouse pays the courier for goods it does not own, so the
@@ -99,7 +119,7 @@ sequenceDiagram
 | --- | --- |
 | who owes whom | the transfer's selling team (`team_id`) owes the RECEIVING warehouse (`to_warehouse_id`, B) — never A |
 | the source | **`transfer_fee`** (`LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10`), `source_id` = the transfer — never `incidental_fee`, whose key is a restock: transfer 41 beside restock 41 for the same pair would be swallowed as a redelivery. Proved by `TestChargeTransferCourier_DoesNotCollideWithARestockOfTheSameNumber` |
-| the amount | `warehouse_additional_cost`, a double as inventory stores it, rounded to whole rupiah at this service's edge |
+| the amount | `warehouse_additional_cost`, a double as inventory stores it, posted exact (the-backend-never-rounds-money) |
 | 0 | posts nothing, acked — the event is published after every accept |
 | to oneself | nothing — skipped before `PostEntry`, as the return's |
 | a redelivery | posts nothing new — `ErrAlreadyPosted` is the normal answer; 8 deliveries at once post once (`transfer_courier_charge_race_test.go`) |
@@ -167,7 +187,7 @@ sequenceDiagram
     and
         S-->>T: liability-order-placed
     end
-    T->>T: the order's frozen warehouse_fee to the warehouse, rounded once
+    T->>T: the order's frozen warehouse_fee to the warehouse, exact
     T->>T: product fee to each owning team, the sum of its line totals
 ```
 
@@ -186,7 +206,7 @@ topic until liability became a second consumer.
 
 | | Default with no configuration | Because |
 | --- | --- | --- |
-| **Warehouse fee** | **charge nothing** when the order carries none | It is a **price**, and the order froze it at create (warehouse_service priced it). Liability posts that number, rounded once to whole rupiah, and reads no rate of its own — since step 4 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last), `liability_terms.handling_fee` is not read ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)). An order placed before fees were frozen carries none and is charged nothing; a fee of 0 posts no entry. |
+| **Warehouse fee** | **charge nothing** when the order carries none | It is a **price**, and the order froze it at create (warehouse_service priced it). Liability posts that number exactly as frozen, and reads no rate of its own — since step 4 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last), `liability_terms.handling_fee` is not read ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)). An order placed before fees were frozen carries none and is charged nothing; a fee of 0 posts no entry. |
 | **Product fee** | **charge the lines' frozen totals** | It is a **cost transfer**. The goods left the owner's stock and do not come back (§2.2 — "money from the first moment"), so the owner is owed whether or not anybody configured anything — and there is nothing here to configure. |
 
 Defaulting the product fee to zero as well would mean one team's goods walk out of another team's
@@ -204,14 +224,14 @@ flowchart LR
   T --> O["order_items.total — frozen"]
   O --> E["OrderPlacedLine.total"]
   E --> F["product fee per owning team = sum of its line totals"]
-  F --> R["rounded once, on the sum"]
+  F --> R["posted exact, on the sum"]
 ```
 
 | | |
 | --- | --- |
 | the fee | Σ `total` of the owning team's lines, one fee per owning team per order, never recomputed |
 | own lines | never charged — the owner is the selling team |
-| rounding | the sum, once, to whole rupiah (`math.Round`) — the same edge the restock courier charge is rounded at |
+| rounding | none — the exact sum of the owner's lines is one entry (`PostEntry`, the-backend-never-rounds-money) |
 | the terms | not read for this fee at all — `liability_terms.product_markup_bp` was dropped (`00010`) |
 
 **Still cost-anchored, never the buyer-paid price** ([the-product-fee-is-the-line-total](../../business/order/context_decision.md#the-product-fee-is-the-line-total)).
@@ -324,16 +344,34 @@ that also emitted empty days would be a second calendar free to disagree about w
 A quiet day is still **rendered**, dimmed. A missing row cannot tell a reader "nothing was charged" apart
 from "that day did not load".
 
-### Bucketing
+### Bucketing — the Jakarta day
 
-`created_at` is a `TIMESTAMPTZ`, cast with an explicit `AT TIME ZONE 'UTC'` — a bare `::date` converts
-using the session's TimeZone, which nothing sets. The upper bound is **half-open** (`< to + 1 day`) for
-the same reason revenue's is: `<= to` means `<= midnight` and would silently drop almost the whole final
+`created_at` is a `TIMESTAMPTZ`, grouped by `(created_at AT TIME ZONE 'Asia/Jakarta')::date`, and the period's bounds
+are **Jakarta midnights** (`parsePeriod` reads both dates in WIB) — one calendar for the rows and the bounds
+([the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day),
+[the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)). A fee
+owed at 06:00 WIB lands on that WIB day, not the UTC day before. The zone is named in the SQL rather than left to the
+session (which `san_dbsession` also pins to Jakarta), so the grouping and the Go-parsed bounds agree by construction. The
+upper bound is **half-open** (`< to + 1 day`): `<= to` means `<= midnight` and would silently drop almost the whole final
 day of every period.
 
-> ⚠ The business is UTC+7, so an entry posted before 07:00 local lands on the previous day here. It is
-> deliberate *consistency* rather than a fresh decision — see
-> `revenue_service/rpc.md` (removed with the service on 2026-08-29 — `git show 0d4cbc49^:docs/services/revenue_service/rpc.md`) for the full note.
+```mermaid
+flowchart LR
+  I["a leg at 2026-07-03 06:00 WIB — 2026-07-02 23:00 UTC"] --> D["grouped on 2026-07-03"]
+  B["period 2026-07-03 .. 2026-07-03"] --> R["created_at in 07-03 00:00 WIB .. 07-04 00:00 WIB"]
+  R --> D
+```
+
+Pinned by `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay` (00:00 and 06:00 WIB land on their WIB day,
+23:59 WIB the evening before does not) and `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` (23:30 WIB counts,
+00:05 WIB the next day does not — though both are the same UTC day).
+
+**Performance** (`TestPerf_LiabilityDaily`, `-tags perfaudit`, 2026-11-05): one query; 50 000 legs for the team among
+500 000 — a 31-day period **10.7 ms** median, a 366-day period **30 ms**. The plan is the one the UTC grouping had (a
+bitmap scan of `liability_logs_pair_idx` on its `team_id` prefix, then the `created_at` filter; the probe EXPLAINs both
+groupings side by side: 9.7 vs 9.2 ms, 28.5 vs 21.7 ms) — the change moved the group key, not the access path. Not
+heavy, so no audit file. The `created_at` filter removes 46 125 of the team's rows on the 31-day period: an index on
+`(team_id, created_at)` would narrow it, the owner's call if a team's ledger grows far past this.
 
 ### The totals are built in the fold, not by a second query
 

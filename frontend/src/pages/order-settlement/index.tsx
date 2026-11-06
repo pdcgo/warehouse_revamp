@@ -51,19 +51,19 @@ import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 export interface SettlementTotals {
   /** Every account the filters match. */
   count: number;
-  initialTotal: bigint;
-  lastBalance: bigint;
+  initialTotal: number;
+  lastBalance: number;
   /** Accounts with no recorded sale — in `count`, out of both sums. */
   unrecorded: number;
 }
 
 /** The server's sums, computed from rows — the same rules, for a caller holding every row (a story). */
 export function settlementTotalsOf(orders: OrderSettlement[]): SettlementTotals {
-  const recorded = orders.filter((o) => o.initialTotal !== 0n);
+  const recorded = orders.filter((o) => o.initialTotal !== 0);
   return {
     count: orders.length,
-    initialTotal: recorded.reduce((sum, o) => sum + o.initialTotal, 0n),
-    lastBalance: recorded.reduce((sum, o) => sum + o.lastBalance, 0n),
+    initialTotal: recorded.reduce((sum, o) => sum + o.initialTotal, 0),
+    lastBalance: recorded.reduce((sum, o) => sum + o.lastBalance, 0),
     unrecorded: orders.length - recorded.length,
   };
 }
@@ -218,10 +218,10 @@ function SettlementSummary({ totals }: { totals: SettlementTotals }) {
 
   // Two decimals, ROUNDED — so a share under 1% does not read "0%", and Received and Lost, which are
   // the two halves of the same sales, add up to 100% instead of 99.99%.
-  const ofSales = (part: bigint) =>
-    totals.initialTotal > 0n
+  const ofSales = (part: number) =>
+    totals.initialTotal > 0
       ? t("orderSettlement.stat.ofSales", {
-          pct: ((Number(part) * 100) / Number(totals.initialTotal)).toFixed(2),
+          pct: ((part * 100) / totals.initialTotal).toFixed(2),
         })
       : "—";
 
@@ -252,11 +252,11 @@ function SettlementSummary({ totals }: { totals: SettlementTotals }) {
       <SummaryCard
         label={t("orderSettlement.stat.lost")}
         value={
-          <Text as="span" color={adjustment < 0n ? "fg.error" : adjustment > 0n ? "fg.success" : undefined}>
+          <Text as="span" color={adjustment < 0 ? "fg.error" : adjustment > 0 ? "fg.success" : undefined}>
             {formatSignedRupiah(adjustment)}
           </Text>
         }
-        line={ofSales(adjustment < 0n ? -adjustment : adjustment)}
+        line={ofSales(Math.abs(adjustment))}
         testId="settlement-stat-lost"
       />
     </SummaryStrip>
@@ -300,7 +300,7 @@ function ListRow({
   onOpen?: (orderId: bigint) => void;
 }) {
   const { t } = useTranslation();
-  const unknown = order.initialTotal === 0n;
+  const unknown = order.initialTotal === 0;
   const adjustment = order.lastBalance;
 
   return (
@@ -342,7 +342,7 @@ function ListRow({
             <Text
               fontSize="sm"
               fontWeight="medium"
-              color={adjustment < 0n ? "fg.error" : adjustment > 0n ? "fg.success" : undefined}
+              color={adjustment < 0 ? "fg.error" : adjustment > 0 ? "fg.success" : undefined}
             >
               {formatSignedRupiah(adjustment)}
             </Text>

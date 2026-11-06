@@ -37,15 +37,15 @@ func TestPerf_LiabilityCreditByIds(t *testing.T) {
 
 	for c := uint64(0); c < creditors; c++ {
 		creditor := 5000 + c
-		limit := int64(1_000_000)
+		limit := float64(1_000_000)
 		terms = append(terms, liability_service_models.LiabilityTerms{TeamID: creditor, CounterpartyID: 0, CreditLimit: &limit})
 
 		for d := uint64(0); d < debtors; d++ {
 			debtor := 100 + d
-			pair := int64(500_000 + c)
+			pair := float64(500_000 + c)
 			terms = append(terms, liability_service_models.LiabilityTerms{TeamID: creditor, CounterpartyID: debtor, CreditLimit: &pair})
 
-			owed := int64(1000 * (c + d + 1))
+			owed := float64(1000 * (c + d + 1))
 			balances = append(balances,
 				liability_service_models.LiabilityBalance{TeamID: debtor, CounterpartyID: creditor, Balance: -owed},
 				liability_service_models.LiabilityBalance{TeamID: creditor, CounterpartyID: debtor, Balance: owed},

@@ -35,7 +35,7 @@ import { SELF_ID } from "./userStub";
 interface ShelfLine {
   productId: bigint;
   onHand: bigint;
-  unitCost: bigint;
+  unitCost: number;
   // A count holds it (a-count-locks-the-product-on-the-rack) — the real server sets it from the open snapshot rows.
   counting: boolean;
 }
@@ -62,16 +62,16 @@ export interface RackWrite {
 // (74) — so a move off it writes three transactions. A-01-2 holds tea (72) that a count is holding. B-02-1 is empty.
 const SHELVES: Record<string, ShelfLine[]> = {
   "41": [
-    { productId: 71n, onHand: 12n, unitCost: 18500n, counting: false },
-    { productId: 73n, onHand: 5n, unitCost: 14000n, counting: false },
-    { productId: 74n, onHand: 8n, unitCost: 65000n, counting: false },
+    { productId: 71n, onHand: 12n, unitCost: 18500, counting: false },
+    { productId: 73n, onHand: 5n, unitCost: 14000, counting: false },
+    { productId: 74n, onHand: 8n, unitCost: 65000, counting: false },
   ],
   "42": [
-    { productId: 71n, onHand: 6n, unitCost: 18500n, counting: false },
-    { productId: 72n, onHand: 3n, unitCost: 9000n, counting: true },
+    { productId: 71n, onHand: 6n, unitCost: 18500, counting: false },
+    { productId: 72n, onHand: 3n, unitCost: 9000, counting: true },
   ],
   "43": [],
-  "44": [{ productId: 74n, onHand: 4n, unitCost: 65000n, counting: false }],
+  "44": [{ productId: 74n, onHand: 4n, unitCost: 65000, counting: false }],
   "45": [],
 };
 
@@ -233,7 +233,7 @@ function write(
     const cost = Object.values(shelves)
       .flat()
       .find((l) => l.productId === productId)?.unitCost;
-    line = { productId, onHand: 0n, unitCost: cost ?? 0n, counting: false };
+    line = { productId, onHand: 0n, unitCost: cost ?? 0, counting: false };
     shelf.push(line);
   }
 
@@ -355,8 +355,8 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
       rack,
       summary: {
         totalOnHand: lines.reduce((acc, l) => acc + l.onHand, 0n),
-        totalValue: lines.reduce((acc, l) => acc + l.onHand * l.unitCost, 0n),
-        unknownCostProducts: lines.filter((l) => l.unitCost === 0n).length,
+        totalValue: lines.reduce((acc, l) => acc + Number(l.onHand) * l.unitCost, 0),
+        unknownCostProducts: lines.filter((l) => l.unitCost === 0).length,
         lastCountedAt: counted ?? "",
       },
     };
@@ -382,8 +382,8 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
                     productId: l.productId,
                     onHand: l.onHand,
                     unitCost: l.unitCost,
-                    costKnown: l.unitCost > 0n,
-                    value: l.onHand * l.unitCost,
+                    costKnown: l.unitCost > 0,
+                    value: Number(l.onHand) * l.unitCost,
                     counting: l.counting,
                   },
                 ]),

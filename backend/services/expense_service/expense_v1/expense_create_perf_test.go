@@ -27,7 +27,7 @@ func TestPerf_ExpenseCreate(t *testing.T) {
 
 	for i := range 20_000 {
 		rows = append(rows, expense_service_models.ExpenseRecord{
-			TeamID: teamA, Kind: int32(1 + i%4), Amount: int64(10_000 + i), OccurredAt: start.AddDate(0, 0, i%1_090),
+			TeamID: teamA, Kind: int32(1 + i%4), Amount: float64(10_000 + i), OccurredAt: start.AddDate(0, 0, i%1_090),
 			CreatedBy: 1, FinanceAccountID: payingAccount, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 		})
 	}

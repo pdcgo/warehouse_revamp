@@ -46,11 +46,11 @@ export function AdjustExpenseDialog({ teamId, expense, onClose }: AdjustExpenseD
   const busy = adjust.isPending;
   const account = useExpenseAccountName(teamId, expense.financeAccountId);
 
-  const typed = amount === "" ? 0n : BigInt(amount);
+  const typed = amount === "" ? 0 : Number(amount);
   const correction = direction === "reduce" ? -typed : typed;
   const after = expense.netAmount + correction;
-  const belowZero = after < 0n;
-  const ready = typed > 0n && !belowZero;
+  const belowZero = after < 0;
+  const ready = typed > 0 && !belowZero;
 
   function close() {
     setOpen(false);

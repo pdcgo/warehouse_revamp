@@ -98,7 +98,7 @@ type expenseDayRow struct {
 	Day     time.Time
 	Kind    int32
 	Entries int64
-	Total   int64
+	Total   float64
 }
 
 // foldDays turns (day, kind) pairs into one item per day, preserving the query's ascending order.
@@ -117,7 +117,7 @@ func foldDays(rows []expenseDayRow) []*expensev1.ExpenseDayItem {
 		if current == nil || current.GetDate() != date {
 			current = &expensev1.ExpenseDayItem{
 				Date:   date,
-				ByKind: map[int32]int64{},
+				ByKind: map[int32]float64{},
 			}
 			days = append(days, current)
 		}

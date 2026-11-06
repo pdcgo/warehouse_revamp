@@ -4,7 +4,14 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Field } from "@chakra-ui/react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
-import { CurrencyInput, description, formatDigits, toDigits } from "./CurrencyInput";
+import {
+  CurrencyInput,
+  description,
+  formatDecimalDigits,
+  formatDigits,
+  toDecimalDigits,
+  toDigits,
+} from "./CurrencyInput";
 
 const meta = {
   title: "Components/Inputs/CurrencyInput",
@@ -162,5 +169,44 @@ export const FormattingRules: Story = {
     await expect(toDigits("000")).toBe("0");
     await expect(toDigits("007")).toBe("7");
     await expect(formatDigits("20000")).toBe("20.000");
+  },
+};
+
+// WITH `fraction` A FIGURE KEEPS ITS FRACTION (the-backend-never-rounds-money): a draft's platform total of
+// Rp 150.000,5 is shown as such, and the person types a comma to start a fraction of up to 3 places. The raw value
+// carries a "." so `Number(raw)` reads it exactly. Stateful for the same reason as RefusesAnythingThatIsNotADigit.
+export const TypesAFractionAfterAComma: Story = {
+  args: { fraction: true },
+  render: (args) => {
+    const [value, setValue] = useState("150000.5");
+
+    return (
+      <>
+        <CurrencyInput {...args} value={value} onChange={setValue} />
+        <span data-testid="raw">{value}</span>
+      </>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByLabelText("Price");
+
+    await expect(input).toHaveValue("150.000,5");
+
+    await userEvent.type(input, "557");
+    // Three places at most: the fourth digit is not taken.
+    await expect(canvas.getByTestId("raw")).toHaveTextContent("150000.555");
+    await expect(input).toHaveValue("150.000,555");
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "12666,99");
+    await expect(canvas.getByTestId("raw")).toHaveTextContent("12666.99");
+    await expect(input).toHaveValue("12.666,99");
+
+    await expect(toDecimalDigits("150.000,")).toBe("150000.");
+    await expect(formatDecimalDigits("150000.")).toBe("150.000,");
+    await expect(toDecimalDigits(",5")).toBe("0.5");
+    // Without `fraction` the comma is not a digit, as before.
+    await expect(toDigits("12,5")).toBe("125");
   },
 };

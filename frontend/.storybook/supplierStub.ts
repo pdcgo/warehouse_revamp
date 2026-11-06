@@ -340,11 +340,11 @@ type Metric = Omit<FigureFixture, "daysAgo" | "supplierId" | "productId" | "team
 
 const zeroMetric = (): Metric => ({
   restockCount: 0n,
-  restockValuation: 0n,
+  restockValuation: 0,
   shippingLostCount: 0n,
-  shippingLostValuation: 0n,
+  shippingLostValuation: 0,
   shippingBrokenCount: 0n,
-  shippingBrokenValuation: 0n,
+  shippingBrokenValuation: 0,
   brokenRate: 0,
 });
 

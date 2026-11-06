@@ -65,7 +65,7 @@ func (s *Service) FinancialAccountTransfer(
 			}
 		}
 
-		legs, err := transferLegs(tx, from, to, rupiah(msg.GetAmount()), occurredAt, msg.GetNote(), actor, override)
+		legs, err := transferLegs(tx, from, to, msg.GetAmount(), occurredAt, msg.GetNote(), actor, override)
 		if err != nil {
 			return err
 		}

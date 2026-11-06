@@ -1,3 +1,5 @@
+import type { Rupiah } from "./money";
+
 // The CROSS markup — what another team pays over our cost when it sells one of our products on its
 // own order — travels as BASIS POINTS (1/100 of a percent) and is read and typed as PERCENT.
 //
@@ -10,12 +12,14 @@ export function formatMarkup(bps: number): string {
 }
 
 /**
- * What another team pays for a unit that cost us `cost` — the cost with the markup on top, in whole rupiah (basis points
- * over rupiah land on fractions no invoice carries, so the division floors). The product list, the product's page and
- * Discover all price a cross unit with this one function.
+ * What another team pays for a unit that cost us `cost` — the cost with the markup on top, EXACT: basis points over
+ * the cost, never rounded, as the take prices it (inventory-computes-the-markup, the-backend-never-rounds-money). The
+ * screen rounds it for display only. The product list, the product's page and Discover all price a cross unit with
+ * this one function. Takes either wire shape; answers a number.
  */
-export function withMarkup(cost: bigint, bps: number): bigint {
-  return cost + (cost * BigInt(bps)) / 10_000n;
+export function withMarkup(cost: Rupiah, bps: number): number {
+  const c = typeof cost === "bigint" ? Number(cost) : cost;
+  return c + (c * bps) / 10_000;
 }
 
 /** 1250 → "12.5" — the value an input holds, without the sign. */

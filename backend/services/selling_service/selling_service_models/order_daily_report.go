@@ -38,5 +38,5 @@ func (OrderDailyReport) TableName() string {
 type OrderMetricColumns struct {
 	OrderCount int64
 	Total      float64
-	MpTotal    int64
+	MpTotal    float64
 }

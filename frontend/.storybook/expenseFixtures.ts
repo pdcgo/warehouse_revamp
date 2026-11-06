@@ -31,7 +31,7 @@ export interface ExpenseFixture {
   shopId: bigint;
   kind: ExpenseKind;
   /** On an expense positive; on an adjustment signed, never 0. */
-  amount: bigint;
+  amount: number;
   occurredAt: string;
   note: string;
   createdBy: bigint;
@@ -84,14 +84,14 @@ const row = (
 
 export const expenseFixtures: ExpenseFixture[] = [
   // Last month.
-  row({ id: 480n, kind: ExpenseKind.OPERATIONAL, amount: 750_000n, occurredAt: day(LAST_MONTH, 10), note: "Internet" }),
-  row({ id: 481n, kind: ExpenseKind.PAYROLL, amount: 3_500_000n, occurredAt: day(LAST_MONTH, 5), note: "Packing wages" }),
+  row({ id: 480n, kind: ExpenseKind.OPERATIONAL, amount: 750_000, occurredAt: day(LAST_MONTH, 10), note: "Internet" }),
+  row({ id: 481n, kind: ExpenseKind.PAYROLL, amount: 3_500_000, occurredAt: day(LAST_MONTH, 5), note: "Packing wages" }),
 
   // This month.
   row({
     id: 501n,
     kind: ExpenseKind.ADS,
-    amount: 1_500_000n,
+    amount: 1_500_000,
     occurredAt: day(CURRENT_MONTH, 2),
     note: "Shopee ads — week 1",
     shopId: 21n,
@@ -101,7 +101,7 @@ export const expenseFixtures: ExpenseFixture[] = [
   row({
     id: 502n,
     kind: ExpenseKind.PAYROLL,
-    amount: 4_000_000n,
+    amount: 4_000_000,
     occurredAt: day(CURRENT_MONTH, 5),
     note: "Packing wages",
     shopId: 22n,
@@ -109,7 +109,7 @@ export const expenseFixtures: ExpenseFixture[] = [
   row({
     id: 503n,
     kind: ExpenseKind.OPERATIONAL,
-    amount: 800_000n,
+    amount: 800_000,
     occurredAt: day(CURRENT_MONTH, 3),
     note: "Electricity",
     financeAccountId: SHOPEEPAY_MELATI,
@@ -117,7 +117,7 @@ export const expenseFixtures: ExpenseFixture[] = [
   row({
     id: 504n,
     kind: ExpenseKind.OPERATIONAL,
-    amount: 50_000n,
+    amount: 50_000,
     occurredAt: day(CURRENT_MONTH, 3),
     note: "The invoice says 850.000",
     createdBy: SITI,
@@ -127,7 +127,7 @@ export const expenseFixtures: ExpenseFixture[] = [
   row({
     id: 505n,
     kind: ExpenseKind.OTHER,
-    amount: 200_000n,
+    amount: 200_000,
     occurredAt: day(CURRENT_MONTH, 4),
     note: "Team lunch",
     financeAccountId: BCA_OPERASIONAL,
@@ -135,7 +135,7 @@ export const expenseFixtures: ExpenseFixture[] = [
   row({
     id: 506n,
     kind: ExpenseKind.OTHER,
-    amount: -200_000n,
+    amount: -200_000,
     occurredAt: day(CURRENT_MONTH, 4),
     note: "Cancelled",
     createdBy: SITI,

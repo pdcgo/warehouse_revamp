@@ -81,7 +81,7 @@ func (s *Service) FinancialAccountCapital(
 
 		row, err = post(tx, account, entry{
 			changeType:  m.ChangeCapital,
-			change:      sign * rupiah(msg.GetAmount()),
+			change:      sign * msg.GetAmount(),
 			description: description,
 			occurredAt:  occurredAt,
 			actorID:     actor,

@@ -3,7 +3,32 @@
 Cross-cutting decisions that are **taken but not applied**. One entry per owed change, so the next agent
 finds it without having to re-read every decision log.
 
-## Jakarta time — DECIDED, NOT APPLIED
+## Jakarta time — ✅ APPLIED 2026-11-05
+
+> **Built.** Steps 1, 2, 3 and 5 below are done: `backend/pkgs/san_dbsession` pins `TimeZone=Asia/Jakarta` on every
+> connection — the dev server (`cmd/app_development/deps.go`), `cmd/shipment_service`, `san` (`NewDatabase`,
+> `openDatabase`, so `migrate` too) and `san_testdb` — set on the parsed config, so a DSN in any form, naming any zone, is
+> Jakarta. Settlement `00009` writes the column comments. Tests: `san_dbsession/session_test.go`,
+> `settlement_v1/post_entry_jakarta_test.go`. Existing rows were not rewritten — revamp holds no real data
+> (revamp-has-no-real-orders-yet), which answers *the one thing to decide* below. Step 4 (`expense_records.occurred_at`)
+> needs nothing: the form sends the picked date string.
+>
+> **Checked beside it (2026-11-05):** already Jakarta in Go — financial_account (`jakarta`), inventory (`fold_lost`,
+> restock accept), selling (order fold, export), supplier, settlement (`order_sale`, replay), warehouse (receiving, info);
+> `date_trunc` over `DATE` columns needs no zone; list filters taking unix bounds leave the day to the browser.
+> **Fixed:** settlement's list period (`updated_at` bounds were UTC midnights → `parseJakartaDay`). ~~⚠ Not changed,
+> flagged~~ — ✅ both fixed 2026-11-05: `liability_v1/liability_daily.go` groups by the Jakarta day with Jakarta-midnight
+> bounds ([the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day),
+> [balance state](../balance/context.md)); `inventory_v1/batch_list.go` `soonCutoff(now)` is the Jakarta midnight that starts
+> today's Jakarta date + 31, compared `expired_at <` it — the whole 30th Jakarta day is "soon" at any hour, on any host
+> (`expired_at` is a TIMESTAMPTZ, not a DATE; the old `now + 30 days` instant moved the edge with the hour the list was
+> opened). Tests `TestBatchList_TheSoonWindowEndsWithTheThirtiethJakartaDay` (01:30 WIB written as UTC, 23:59 WIB, a UTC−5
+> `now`, the step at 00:00 WIB) and `TestBatchList_ExpiringSoonCountsTheWholeThirtiethJakartaDay` (filter + header count).
+> ⚠ **Left:** the screens' amber flag (`isExpiringSoon` in `pages/batches`, `pages/batch-detail`, `pages/warehouse-product`)
+> still computes `now + 30 × 24 h` in the browser — on the 30th day it turns amber only from the hour of the day the screen
+> is opened, a few hours' disagreement with the server's count.
+
+### (the plan as it was written)
 
 **Decision:** [the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)
 (2026-09-02) — WIB (UTC+7) is the system's calendar. Every `DATE`, every day boundary, every report

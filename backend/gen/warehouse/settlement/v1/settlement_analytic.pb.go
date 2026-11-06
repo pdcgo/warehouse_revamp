@@ -123,14 +123,14 @@ func (SettlementPersonSort) EnumDescriptor() ([]byte, []int) {
 type SettlementMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// What buyers paid, LIVE — cancels netted: −(initial_total + initial_total_cancel).
-	Sales int64 `protobuf:"varint,1,opt,name=sales,proto3" json:"sales,omitempty"`
+	Sales float64 `protobuf:"fixed64,1,opt,name=sales,proto3" json:"sales,omitempty"`
 	// What the platform moved toward us — Σ every field of SettlementTypeMetric, named fees included.
-	Received int64 `protobuf:"varint,2,opt,name=received,proto3" json:"received,omitempty"`
+	Received float64 `protobuf:"fixed64,2,opt,name=received,proto3" json:"received,omitempty"`
 	// What left the marketplace wallet for our bank, as a positive number: −withdrawal. ⚠ NOT part of `received` — it is
 	// our own money moving on — but it IS in the position (#withdrawal-counts-in-the-position).
-	Withdrawn int64 `protobuf:"varint,3,opt,name=withdrawn,proto3" json:"withdrawn,omitempty"`
+	Withdrawn float64 `protobuf:"fixed64,3,opt,name=withdrawn,proto3" json:"withdrawn,omitempty"`
 	// sales − received: the part of the sale that never reached us.
-	Gap int64 `protobuf:"varint,4,opt,name=gap,proto3" json:"gap,omitempty"`
+	Gap float64 `protobuf:"fixed64,4,opt,name=gap,proto3" json:"gap,omitempty"`
 	// gap ÷ sales, worked out from the key's own sums — never an average of rates. UNSET with no sales to divide by.
 	//
 	// Ranked only among keys that SOLD at least Rp 1.000.000 in the window — its sample is `sales`, in rupiah; the rest
@@ -139,7 +139,7 @@ type SettlementMetric struct {
 	// THE POSITION at the period's END, as a positive number: −close_balance — what buyers paid, less everything the
 	// platform moved, withdrawals included (#the-report-headline-is-position-to-date). A balance: it adds up across keys,
 	// never across periods (a-position-is-its-own-stat-type). Never "outstanding" — nobody is going to collect it.
-	PositionToDate int64 `protobuf:"varint,6,opt,name=position_to_date,json=positionToDate,proto3" json:"position_to_date,omitempty"`
+	PositionToDate float64 `protobuf:"fixed64,6,opt,name=position_to_date,json=positionToDate,proto3" json:"position_to_date,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -174,28 +174,28 @@ func (*SettlementMetric) Descriptor() ([]byte, []int) {
 	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *SettlementMetric) GetSales() int64 {
+func (x *SettlementMetric) GetSales() float64 {
 	if x != nil {
 		return x.Sales
 	}
 	return 0
 }
 
-func (x *SettlementMetric) GetReceived() int64 {
+func (x *SettlementMetric) GetReceived() float64 {
 	if x != nil {
 		return x.Received
 	}
 	return 0
 }
 
-func (x *SettlementMetric) GetWithdrawn() int64 {
+func (x *SettlementMetric) GetWithdrawn() float64 {
 	if x != nil {
 		return x.Withdrawn
 	}
 	return 0
 }
 
-func (x *SettlementMetric) GetGap() int64 {
+func (x *SettlementMetric) GetGap() float64 {
 	if x != nil {
 		return x.Gap
 	}
@@ -209,7 +209,7 @@ func (x *SettlementMetric) GetTakeRate() float64 {
 	return 0
 }
 
-func (x *SettlementMetric) GetPositionToDate() int64 {
+func (x *SettlementMetric) GetPositionToDate() float64 {
 	if x != nil {
 		return x.PositionToDate
 	}
@@ -314,17 +314,17 @@ func (x *SettlementMetricByDay) GetItems() map[string]*SettlementMetric {
 type SettlementTypeMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// What actually arrived from the platform.
-	Fund                  int64 `protobuf:"varint,1,opt,name=fund,proto3" json:"fund,omitempty"`
-	ExternalAdsFee        int64 `protobuf:"varint,2,opt,name=external_ads_fee,json=externalAdsFee,proto3" json:"external_ads_fee,omitempty"`
-	AffiliateFee          int64 `protobuf:"varint,3,opt,name=affiliate_fee,json=affiliateFee,proto3" json:"affiliate_fee,omitempty"`
-	MarketplaceAdjustment int64 `protobuf:"varint,4,opt,name=marketplace_adjustment,json=marketplaceAdjustment,proto3" json:"marketplace_adjustment,omitempty"`
-	ShipmentAdjustment    int64 `protobuf:"varint,5,opt,name=shipment_adjustment,json=shipmentAdjustment,proto3" json:"shipment_adjustment,omitempty"`
-	LogisticReimbursement int64 `protobuf:"varint,6,opt,name=logistic_reimbursement,json=logisticReimbursement,proto3" json:"logistic_reimbursement,omitempty"`
-	PlatformReimbursement int64 `protobuf:"varint,7,opt,name=platform_reimbursement,json=platformReimbursement,proto3" json:"platform_reimbursement,omitempty"`
-	MarketplaceProgram    int64 `protobuf:"varint,8,opt,name=marketplace_program,json=marketplaceProgram,proto3" json:"marketplace_program,omitempty"`
-	Other                 int64 `protobuf:"varint,9,opt,name=other,proto3" json:"other,omitempty"`
+	Fund                  float64 `protobuf:"fixed64,1,opt,name=fund,proto3" json:"fund,omitempty"`
+	ExternalAdsFee        float64 `protobuf:"fixed64,2,opt,name=external_ads_fee,json=externalAdsFee,proto3" json:"external_ads_fee,omitempty"`
+	AffiliateFee          float64 `protobuf:"fixed64,3,opt,name=affiliate_fee,json=affiliateFee,proto3" json:"affiliate_fee,omitempty"`
+	MarketplaceAdjustment float64 `protobuf:"fixed64,4,opt,name=marketplace_adjustment,json=marketplaceAdjustment,proto3" json:"marketplace_adjustment,omitempty"`
+	ShipmentAdjustment    float64 `protobuf:"fixed64,5,opt,name=shipment_adjustment,json=shipmentAdjustment,proto3" json:"shipment_adjustment,omitempty"`
+	LogisticReimbursement float64 `protobuf:"fixed64,6,opt,name=logistic_reimbursement,json=logisticReimbursement,proto3" json:"logistic_reimbursement,omitempty"`
+	PlatformReimbursement float64 `protobuf:"fixed64,7,opt,name=platform_reimbursement,json=platformReimbursement,proto3" json:"platform_reimbursement,omitempty"`
+	MarketplaceProgram    float64 `protobuf:"fixed64,8,opt,name=marketplace_program,json=marketplaceProgram,proto3" json:"marketplace_program,omitempty"`
+	Other                 float64 `protobuf:"fixed64,9,opt,name=other,proto3" json:"other,omitempty"`
 	// A repair of the report, shop-addressed (#system-adjustment-is-a-ledger-type).
-	SystemAdjustment int64 `protobuf:"varint,10,opt,name=system_adjustment,json=systemAdjustment,proto3" json:"system_adjustment,omitempty"`
+	SystemAdjustment float64 `protobuf:"fixed64,10,opt,name=system_adjustment,json=systemAdjustment,proto3" json:"system_adjustment,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -359,70 +359,70 @@ func (*SettlementTypeMetric) Descriptor() ([]byte, []int) {
 	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *SettlementTypeMetric) GetFund() int64 {
+func (x *SettlementTypeMetric) GetFund() float64 {
 	if x != nil {
 		return x.Fund
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetExternalAdsFee() int64 {
+func (x *SettlementTypeMetric) GetExternalAdsFee() float64 {
 	if x != nil {
 		return x.ExternalAdsFee
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetAffiliateFee() int64 {
+func (x *SettlementTypeMetric) GetAffiliateFee() float64 {
 	if x != nil {
 		return x.AffiliateFee
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetMarketplaceAdjustment() int64 {
+func (x *SettlementTypeMetric) GetMarketplaceAdjustment() float64 {
 	if x != nil {
 		return x.MarketplaceAdjustment
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetShipmentAdjustment() int64 {
+func (x *SettlementTypeMetric) GetShipmentAdjustment() float64 {
 	if x != nil {
 		return x.ShipmentAdjustment
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetLogisticReimbursement() int64 {
+func (x *SettlementTypeMetric) GetLogisticReimbursement() float64 {
 	if x != nil {
 		return x.LogisticReimbursement
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetPlatformReimbursement() int64 {
+func (x *SettlementTypeMetric) GetPlatformReimbursement() float64 {
 	if x != nil {
 		return x.PlatformReimbursement
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetMarketplaceProgram() int64 {
+func (x *SettlementTypeMetric) GetMarketplaceProgram() float64 {
 	if x != nil {
 		return x.MarketplaceProgram
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetOther() int64 {
+func (x *SettlementTypeMetric) GetOther() float64 {
 	if x != nil {
 		return x.Other
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetSystemAdjustment() int64 {
+func (x *SettlementTypeMetric) GetSystemAdjustment() float64 {
 	if x != nil {
 		return x.SystemAdjustment
 	}
@@ -1365,16 +1365,16 @@ const file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc = "" +
 	"\n" +
 	"1warehouse/settlement/v1/settlement_analytic.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xc7\x02\n" +
 	"\x10SettlementMetric\x12 \n" +
-	"\x05sales\x18\x01 \x01(\x03B\n" +
+	"\x05sales\x18\x01 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05sales\x12&\n" +
-	"\breceived\x18\x02 \x01(\x03B\n" +
+	"\breceived\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\breceived\x12(\n" +
-	"\twithdrawn\x18\x03 \x01(\x03B\n" +
+	"\twithdrawn\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\twithdrawn\x12\x1c\n" +
-	"\x03gap\x18\x04 \x01(\x03B\n" +
+	"\x03gap\x18\x04 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x03gap\x120\n" +
 	"\ttake_rate\x18\x05 \x01(\x01B\x0e\x9a\xb5\x18\x06\b\x01\x10\xc0\x84=\xa0\xb5\x18\x01H\x00R\btakeRate\x88\x01\x01\x124\n" +
-	"\x10position_to_date\x18\x06 \x01(\x03B\n" +
+	"\x10position_to_date\x18\x06 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x04R\x0epositionToDate:+\x9a\xb5\x18'\n" +
 	"\x04\x01\x04\x05\b\x12\x01\x01\x1a\b\x01\x02\x03\x04\x05\t\a\n" +
 	"\"\x12metrics/settlementB\f\n" +
@@ -1393,26 +1393,26 @@ const file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12?\n" +
 	"\x05value\x18\x02 \x01(\v2).warehouse.settlement.v1.SettlementMetricR\x05value:\x028\x01\"\xee\x04\n" +
 	"\x14SettlementTypeMetric\x12\x1e\n" +
-	"\x04fund\x18\x01 \x01(\x03B\n" +
+	"\x04fund\x18\x01 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x04fund\x124\n" +
-	"\x10external_ads_fee\x18\x02 \x01(\x03B\n" +
+	"\x10external_ads_fee\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x0eexternalAdsFee\x12/\n" +
-	"\raffiliate_fee\x18\x03 \x01(\x03B\n" +
+	"\raffiliate_fee\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\faffiliateFee\x12A\n" +
-	"\x16marketplace_adjustment\x18\x04 \x01(\x03B\n" +
+	"\x16marketplace_adjustment\x18\x04 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15marketplaceAdjustment\x12;\n" +
-	"\x13shipment_adjustment\x18\x05 \x01(\x03B\n" +
+	"\x13shipment_adjustment\x18\x05 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x12shipmentAdjustment\x12A\n" +
-	"\x16logistic_reimbursement\x18\x06 \x01(\x03B\n" +
+	"\x16logistic_reimbursement\x18\x06 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15logisticReimbursement\x12A\n" +
-	"\x16platform_reimbursement\x18\a \x01(\x03B\n" +
+	"\x16platform_reimbursement\x18\a \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15platformReimbursement\x12;\n" +
-	"\x13marketplace_program\x18\b \x01(\x03B\n" +
+	"\x13marketplace_program\x18\b \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x12marketplaceProgram\x12 \n" +
-	"\x05other\x18\t \x01(\x03B\n" +
+	"\x05other\x18\t \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05other\x127\n" +
 	"\x11system_adjustment\x18\n" +
-	" \x01(\x03B\n" +
+	" \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x10systemAdjustment:1\x9a\xb5\x18-\n" +
 	"\x04\x01\x04\x05\b\x12\x01\x01\x1a\b\x01\x02\x03\x04\x05\t\a\n" +
 	"\"\x18metrics/settlement/types\"\xd7\x01\n" +

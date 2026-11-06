@@ -180,10 +180,12 @@ message SettlementLogPosted {
   warehouse.settlement.v1.SettlementType settlement_type = 8;
   warehouse.settlement.v1.SourceType source_type = 9;
 
-  // Signed, whole rupiah. POSITIVE IS MONEY TOWARD US.
-  int64 change = 10;
+  // Signed rupiah, a double — exact as posted, never rounded (the-backend-never-rounds-money).
+  // POSITIVE IS MONEY TOWARD US. An event published while it was an int64 still reads: protojson carried it as a
+  // quoted number, which a double field accepts.
+  double change = 10;
   // The account's position after this row. Audit only — no report folds it.
-  int64 balance = 11;
+  double balance = 11;
 
   // YYYY-MM-DD. The day the report BUCKETS on (#posted-on-buckets-the-report) — a string, so no
   // consumer re-derives a day from an instant in some other timezone.
@@ -225,9 +227,9 @@ message OrderPlaced {
   reserved 3, 5;
   reserved "revenue", "shipping_cost";
 
-  // The order's frozen `goods_cost`, whole rupiah — Σ its lines' `total`, borrowed lines with their markup
+  // The order's frozen `goods_cost`, exact rupiah — Σ its lines' `total`, borrowed lines with their markup
   // (the-cross-charge-lives-on-the-line). Renamed from `cogs`, same number.
-  int64 goods_cost = 4;
+  double goods_cost = 4;
 
   // Whether the goods' cost was actually KNOWN (#74). A goods_cost of 0 is ambiguous on its own — it means
   // "free" and "never recorded" equally — so the distinction travels as its own field rather than
@@ -259,14 +261,15 @@ message OrderPlaced {
   // consumer posts for `actor_id` carry it beside the actor.
   bool actor_is_override = 13;
 
-  // The shop it was sold on, and what the PLATFORM says the buyer paid, whole rupiah — 0 = not recorded.
+  // The shop it was sold on, and what the PLATFORM says the buyer paid — 0 = not recorded. A double, frozen exact
+  // when the order was placed (the-backend-never-rounds-money).
   // settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
   // its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
   // calls settlement, so the event has to carry everything the account needs.
   uint64 shop_id = 10;
   // The order's `platform_total` (the-total-is-ours-the-platform-total-is-theirs) — renamed from
   // `marketplace_total`, same number.
-  int64 platform_total = 11;
+  double platform_total = 11;
 
   // THE WAREHOUSE'S FEE, as the order froze it at create (the-event-carries-the-warehouse-fee): `orders.warehouse_fee`,
   // rupiah (rupiah-is-floating-point), copied as stored and never recomputed. liability_service posts it to the
@@ -305,7 +308,7 @@ message OrderPlacedLine {
   //
   // ⚠ NOT WHAT THE PRODUCT FEE IS COMPUTED FROM any more — that is `total` below
   // (the-ledger-charges-the-frozen-line-total).
-  int64 unit_cost = 4;
+  double unit_cost = 4;
 
   // THE LINE'S FROZEN TOTAL, rupiah (rupiah-is-floating-point) — what inventory's take priced it at: the goods it drew
   // plus, on another team's product, that product's own cross markup (inventory-computes-the-markup). Frozen on
@@ -452,8 +455,8 @@ message OrderReturnAccepted {
   // The `return_completed` row of order_timeline_logs the accept wrote.
   uint64 timeline_log_id = 6;
 
-  // What the courier asked at the door, whole rupiah; 0 = nothing, which posts nothing — the common case.
-  int64 courier_charge = 7;
+  // What the courier asked at the door, exact rupiah; 0 = nothing, which posts nothing — the common case.
+  double courier_charge = 7;
   // What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
   string courier_charge_note = 8;
 }
@@ -688,8 +691,8 @@ message LiabilityPaymentAccepted {
   uint64 payment_id = 1;
   uint64 payer_team_id = 2;
   uint64 creditor_team_id = 3;
-  // Whole rupiah, always positive — direction is the two accounts, never a sign.
-  int64 amount = 4;
+  // Exact rupiah, always positive — direction is the two accounts, never a sign.
+  double amount = 4;
   // The payer's account. 0 on a payment recorded before *Paid from* existed: only the `to` leg posts.
   uint64 from_account_id = 5;
   // The creditor's account, named on accept. Never 0.
@@ -715,8 +718,8 @@ message ExpenseCreated {
   warehouse.expense.v1.ExpenseKind kind = 3;
   // The account that paid — one of the team's operational accounts when the expense was recorded.
   uint64 finance_account_id = 4;
-  // Whole rupiah, always positive: the money that went out.
-  int64 amount = 5;
+  // Exact rupiah (the-backend-never-rounds-money), always positive: the money that went out.
+  double amount = 5;
   // The day the expense belongs to (YYYY-MM-DD), as the person chose it — the day the account's row counts on.
   string occurred_on = 6;
   // The shop an ADS expense ran for; 0 on every other kind.
@@ -745,8 +748,8 @@ message ExpenseAdjusted {
   warehouse.expense.v1.ExpenseKind kind = 4;
   // The expense's account, copied.
   uint64 finance_account_id = 5;
-  // Whole rupiah, SIGNED, never 0 — the correction itself, not a new total: minus is less was spent.
-  int64 amount = 6;
+  // Exact rupiah, SIGNED, never 0 — the correction itself, not a new total: minus is less was spent.
+  double amount = 6;
   // The corrected expense's day, copied (an-adjustment-counts-on-the-day-it-fixes).
   string occurred_on = 7;
   uint64 shop_id = 8;

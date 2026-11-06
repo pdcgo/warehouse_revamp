@@ -402,12 +402,13 @@ erDiagram
         text        kode_pos         "as chosen (editable in the picker)"
         text        address_line     "jalan, no. rumah, RT/RW — free text"
         text        shipping_code    "opaque courier code — matched against shipment_service.shipment_channels.code"
-        bigint      goods_cost         "the owner's goods_cost - sum of the lines' frozen total, a borrowed line WITH its markup; the warehouse fee's basis. Whole rupiah, rounded once; 0 = unknown, not free (cogs until 00027)"
+        double      goods_cost         "the owner's goods_cost - sum of the lines' frozen total, a borrowed line WITH its markup; the warehouse fee's basis. Exact, never rounded; 0 = unknown, not free (cogs until 00027). A double since 00042"
         double      total_cost         "the owner's total_cost - goods_cost + warehouse_fee, frozen at create (00027). Unrounded, CHECK >= 0; back-filled with a NULL fee as 0"
-        bigint      platform_total     "the owner's platform_total - what the buyer paid on the platform (marketplace_total until 00026). Required at placement since 00022, checked in code; 0 only before that"
+        double      platform_total     "the owner's platform_total - what the buyer paid on the platform (marketplace_total until 00026). Required at placement since 00022, checked in code; 0 only before that. A double since 00041, frozen exact at placement"
         text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — a duplicate is warned by the order form, never refused (a-duplicate-ref-is-warned-not-refused)"
         text        idempotency_key     "UK - the key the submit that created it minted (00035). NOT NULL, UNIQUE. Older dev rows filled as order:id. The key its stock take is filed under"
         bigint      transaction_id      "the inventory transaction its stock take wrote (00036) - no FK, another service's id. NULL = none recorded, no backfill"
+        timestamptz settlement_opened_at "when its settlement account opened (00040) - stamped once by settlement in-process at the first initial_total. NULL = NOT YET. Partial index orders_settlement_not_opened_idx on the NULLs"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         boolean     is_override         "the creator was Root or the Administrator, not a member - set at placement, never updated (00033)"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
@@ -428,7 +429,7 @@ erDiagram
         text        product_code "snapshot at order time, sku until 00032"
         text        name       "snapshot"
         int         quantity   ">= 1"
-        bigint      unit_cost     "the owner's unit_cost - the take's drawn cost per unit, whole rupiah (#74); server-set, 0 = unknown"
+        double      unit_cost     "the owner's unit_cost - the take's drawn cost per unit, frozen exact (#74); server-set, 0 = unknown. A double since 00042"
         double      total         "the owner's total - the line's FROZEN total as the take priced it, goods plus the product's own markup (00023). Unrounded, CHECK >= 0. NULL = never frozen, placed before 00023"
         double      unit_cost_with_markup "the owner's unit_cost_with_markup - one unit after the owner's markup, as the take returned it; the unit cost on an own line (00025). Unrounded, CHECK >= 0. NULL = never frozen"
         double      markup_total  "the owner's markup_total - what the markup added, total minus the drawn cost; 0 on an own line (00025). Unrounded, CHECK >= 0. NULL = never frozen"
@@ -471,7 +472,7 @@ erDiagram
         text        kode_pos
         text        address_line
         text        shipping_code
-        bigint      platform_total "what the buyer paid on the platform, as pushed or typed (00022; marketplace_total until 00026). 0 allowed on a draft — Promote copies it, and refuses a 0"
+        double      platform_total "what the buyer paid on the platform, as pushed or typed (a double since 00041, kept as typed) (00022; marketplace_total until 00026). 0 allowed on a draft — Promote copies it, and refuses a 0"
         timestamptz platform_created_at        "when the buyer ordered on the storefront, as pushed or corrected (00020). NULL allowed on a draft — Promote refuses it"
         timestamptz platform_shipment_deadline "the marketplace's ship-by time (00020). Optional everywhere"
         timestamptz created_at
@@ -485,7 +486,7 @@ erDiagram
         text        external_name "what the app scraped, never overwritten"
         bigint      product_id    "0 until a person maps it — the unmapped line IS the incompleteness"
         int         quantity      "no CHECK, unlike order_items — a scrape may not have read it"
-        bigint      unit_price    "what the marketplace charged per unit, as scraped — the owner's platform_price; deleted with the draft"
+        double      unit_price    "what the marketplace charged per unit, as scraped — the owner's platform_price; kept as read, not rounded (00042); deleted with the draft"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -524,7 +525,7 @@ erDiagram
         bigint           user_id      "the order s creator, 0 = none recorded"
         bigint           order_count  "warehouse_fee - signed fee transactions"
         double_precision total        "sum of total_cost - warehouse_fee - signed fee amount"
-        bigint           mp_total     "sum of platform_total - 0 on warehouse_fee"
+        double_precision mp_total     "sum of platform_total - 0 on warehouse_fee (double since 00041)"
         timestamptz      last_updated
     }
 ```
@@ -614,6 +615,21 @@ erDiagram
   ([the-placement-page-reads-racks-by-transaction-id](business/inventory/order_decision.md#the-placement-page-reads-racks-by-transaction-id)).
   NULL = none recorded; no backfill ([revamp-has-no-real-orders-yet](business/order/context_decision.md#revamp-has-no-real-orders-yet)).
   The Down drops the column.
+- **`orders.settlement_opened_at`** (`00040`) — when the order's settlement account OPENED
+  ([a-missing-account-is-found-by-its-opened-at](business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at)).
+  `TIMESTAMPTZ NULL`; **NULL = not yet** — the open failed, is dead-lettered, or never ran, and the order committed all the
+  same. Stamped by settlement through an in-process seam (`settlement_v1.OrderOpenedMarker` →
+  `cmd/app_development/settlement_opened_marker.go` → `selling_v1.SettlementOpened`) after the first `initial_total`
+  commits — from Order Placed, by hand on the order page, or from an imported statement — with that row's `created_at`;
+  `WHERE settlement_opened_at IS NULL` makes every later stamp a no-op, so the first opening wins. Selling writes it,
+  settlement never touches `orders` (HARD RULE 3). **`orders_settlement_not_opened_idx`** — `(id) WHERE
+  settlement_opened_at IS NULL`, partial: it holds only the backlog, so OrderList's `settlement_not_opened` filter reads
+  that short list newest first (1.6 ms over 50 000 orders with 500 missing; 4.5–17 ms without it —
+  [OrderList finding 6](../audits/services/selling_service/performances/OrderList.md)). **The fill** (developer databases
+  only, [revamp-has-no-real-orders-yet](business/order/context_decision.md#revamp-has-no-real-orders-yet)): an existing
+  order with an `initial_total` in settlement's `settlement_logs` gets that row's earliest `created_at`, so NULL means
+  missing on a dev database too — a one-off READ of settlement's table, guarded by `to_regclass` so a fresh database
+  (selling migrated before settlement) applies it as a no-op. The Down drops the index and the column.
 - **`orders_return_team_idx`** (`00034`) — `(team_id) WHERE status IN ('return', 'return_completed')`, partial: the index of
   the third reader every order read now has, the selling team's configured return warehouse, which reads that team's
   returns only (`orderReaders`, [a-return-may-land-in-another-warehouse](business/order/context_decision.md#a-return-may-land-in-another-warehouse)).
@@ -638,15 +654,16 @@ erDiagram
     is in the COGS, and a broken unit costs what a good one does. Only arrived stock counts: a restock not yet accepted
     has no batch. The order take itself charges oldest batch first, so this is the preview a form freezes.
   - It is safe to change because the answer is **frozen onto the line**: a new rule changes future orders and never
-    rewrites what past ones recorded. This contract is still whole rupiah, rounded at the read, until it turns
-    `double` too (money-is-double-in-the-api-too).
+    rewrites what past ones recorded. The read is UNROUNDED `double` (no `ROUND::bigint` since inventory's part 2 of
+    every-ledger-moves-to-double-rounded-when-frozen); the order freezes it exact onto the line — nothing rounds it
+    (the-backend-never-rounds-money, 2026-11-06).
   - **0 means UNKNOWN, not free.** A product never restocked has no recorded cost, and every row
     predating this column is in that position. A margin computed over an unknown cost reads as pure
     profit, so treat 0 as a flag rather than a figure. `StockCost` omits unknown products entirely
     rather than returning zero for them, precisely to keep the two apart.
   - `goods_cost` is denormalised onto the header because `OrderList` returns a summary **without** lines; it
-    cannot drift, because the lines it was computed from are frozen too. It is rounded ONCE from the unrounded line
-    totals, so Σ line totals and the header agree to the rupiah. ⚠ An order placed before `00027` keeps the drawn cost
+    cannot drift, because the lines it was computed from are frozen too. It is the EXACT sum of the line totals, never
+    rounded (the-backend-never-rounds-money), so Σ line totals and the header agree within the tolerance. ⚠ An order placed before `00027` keeps the drawn cost
     it was frozen with (no markup) — the same figure on any order with no borrowed line; not recomputed
     ([a-lines-money-is-frozen-at-finalize](business/order/context_decision.md#a-lines-money-is-frozen-at-finalize)).
 - **What the order cost the seller** — `orders.total_cost` (`00027`), the owner's "goods + warehouse fee": `goods_cost`
@@ -671,8 +688,8 @@ erDiagram
     those orders paid is a liability row the order cannot read. The list's money and the census treat NULL as an
     unknown total beli, exactly as a `goods_cost` of 0.
   - **What the ledger posts** (step 4, the-event-carries-the-warehouse-fee): `OrderPlaced.warehouse_fee` carries this
-    column as stored, and liability posts it — rounded once to whole rupiah at its own edge, since its entries are
-    `BIGINT` — and reads no rate. NULL posts nothing.
+    column as stored, and liability posts it EXACT (`PostEntry`, its freeze point; `double precision` since liability
+    `00014`, never rounded since the-backend-never-rounds-money) — and reads no rate. NULL posts nothing.
 - **Each line freezes its TOTAL** (`00023`) — `order_items.total`, what inventory's take priced the line at: the goods
   it drew plus, on another team's product, that product's own `cross_markup_bps`
   ([inventory-computes-the-markup](business/order/context_decision.md#inventory-computes-the-markup)). The order
@@ -695,8 +712,9 @@ erDiagram
   in the same INSERT; the order applies nothing ([inventory-computes-the-markup](business/order/context_decision.md#inventory-computes-the-markup)).
   - **An own line has no markup**: `unit_cost_with_markup` is the drawn unit cost and `markup_total` is exactly 0. The
     take prices the markup ON the draw's value (value × rate), so float noise never lands it under the `CHECK >= 0`.
-  - **`markup_total` = `total` − `unit_cost` × `quantity` only within rounding** — `unit_cost` is whole rupiah, the
-    other three are unrounded `DOUBLE PRECISION` (rupiah-is-floating-point).
+  - **`markup_total` = `total` − `unit_cost` × `quantity` within the tolerance** — all four are frozen exact, never
+    rounded (the-backend-never-rounds-money), and all four are `DOUBLE PRECISION` (rupiah-is-floating-point; `unit_cost`
+    since `00042`).
   - **NULL is NEVER FROZEN** — every line before `00025`, and a product the take named no draw for. Not back-filled.
   - Exposed read-only on `OrderItem` (`total`, `unit_cost_with_markup`, `markup_total`, absent when NULL). No screen
     shows the two new ones yet.
@@ -717,7 +735,10 @@ erDiagram
   - **Trimmed by the handlers** (create, push, update), so spaces alone are stored as `''`. Promote copies the draft's.
   - On a draft it is its own `touched_fields` name (`buyer_username`). No index: nothing searches or joins on it.
 - **What the buyer paid** — `orders.platform_total` (`00008`, as `marketplace_total`), and since `00022`
-  `order_drafts.platform_total` (`BIGINT NOT NULL DEFAULT 0`, whole rupiah). The owner's `platform_total`: `00026`
+  `order_drafts.platform_total` (`BIGINT NOT NULL DEFAULT 0`, whole rupiah; both `double precision` since `00041` —
+  [every-ledger-moves-to-double-rounded-when-frozen](business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen):
+  a draft keeps what was typed, and since [the-backend-never-rounds-money](business/order/context_decision.md#the-backend-never-rounds-money) placement freezes the order's EXACT, as typed — it rounded to
+  whole rupiah before). The owner's `platform_total`: `00026`
   renamed both columns at once, values kept
   ([the-total-is-ours-the-platform-total-is-theirs](business/order/context_decision.md#the-total-is-ours-the-platform-total-is-theirs)).
   - **Required to PLACE** (platform-total-is-required-at-finalize), by `placeOrder`'s shared rule, so both doors meet
@@ -741,7 +762,7 @@ erDiagram
   `OrderCancelled.actor_is_override`, so the rows liability and settlement write from them say so too. ⚠ Moves made by the order-import STREAMS (`ShopeeOrderImport`, `TiktokOrderImport`) read
   false even for Root: a server stream's ctx carries no scope or role, so the rule has nothing to read.
 - **`orders`** / **`order_items`** — the SELLING side of an order (#67): who ordered, from which
-  shop, and the frozen money (whole rupiah). Team-scoped (`team_id` opaque); `shop_id` is a real FK
+  shop, and the frozen money (exact, never rounded). Team-scoped (`team_id` opaque); `shop_id` is a real FK
   (same service). `status` is the `OrderStatus` enum as text — the eleven of the status diagram
   (`pending`, `processed`, `picked`, `shipping`, `shipped`, `completed`, `problem`, `lost`, `return`,
   `return_completed`, `cancel`), default `pending` since 00015, which moved every old row:
@@ -1377,8 +1398,8 @@ erDiagram
     warehouse_transfers }o--o| inventory_transactions : "in-leg"
 ```
 
-- **Money is `double precision`** like the ledgers'; the contract still carries whole rupiah until the cut-over turns it
-  `double`.
+- **Money is `double precision`** like the ledgers', and the contract carries it as `double`, unrounded
+  (money-is-double-in-the-api-too).
 - **Indexed for each side's list**, newest first: `(team_id, id DESC)`, `(from_warehouse_id, id DESC)`,
   `(to_warehouse_id, id DESC)`.
 - **`warehouse_transfer_logs.is_override`** (`00034`) — that act's actor was Root or the Administrator with no role in
@@ -1577,7 +1598,7 @@ erDiagram
         bigint      product_id
         bigint      supplier_id  "the batch's supplier, 0 when none"
         bigint      lost_count   "CHECK 0 or more"
-        numeric     lost_amount  "units x the batch's price, rupiah"
+        double      lost_amount  "units x the batch's price, the exact sum the fold writes; NUMERIC(20,2) until 00038"
         timestamptz last_updated
     }
     warehouse_stock_problems ||--o{ inventory_lost_daily_reports : "a lost row folds into"
@@ -1589,6 +1610,9 @@ erDiagram
   it — one `warehouse_id = T OR team_id = T` condition, a BitmapOr of the two (a-warehouse-sees-its-lost-amount).
 - Logical link only to `warehouse_stock_problems` (no FK): the report is derived and its sums equal the register's lost
   rows (asserted by `TestRace_LostFold_EveryLossAddsToTheDaysRow`).
+- **`lost_amount` is `double precision`** since `00038` (numeric-money-moves-to-double-too) — `NUMERIC(20,2)` before. The
+  fold writes each row's units × price EXACT ([the-backend-never-rounds-money](business/order/context_decision.md#the-backend-never-rounds-money); it rounded to whole rupiah before); the cast was exact
+  and nothing was backfilled.
 
 ---
 
@@ -1686,7 +1710,7 @@ erDiagram
         bigint      team_id     "the scope, opaque cross-service id; ONE team per row"
         bigint      shop_id     "the shop an ADS expense ran for, opaque - required on ADS, refused on every other kind; 0 = none"
         int         kind        "ExpenseKind enum number — mapped in the handler, no DB CHECK"
-        bigint      amount      "whole rupiah — > 0 on an expense, signed and never 0 on an adjustment"
+        double      amount      "stored exact as written — > 0 on an expense, signed and never 0 on an adjustment. A double since 00005"
         date        occurred_at "the date the cost BELONGS TO, chosen by the person"
         text        note        "what it actually was"
         bigint      created_by  "who typed it, opaque user_service id"
@@ -1733,6 +1757,10 @@ erDiagram
     `0` on every row made before the column and on a `STOCK_LOSS` (inventory's internal call, no cash moved) — nothing
     posts for 0. Each new row is published (`ExpenseCreated` / `ExpenseAdjusted`) and financial_account_service posts it
     as `expense`, or `ads_expense` for ADS.
+  - **`amount` is `double precision`** since `00005` (every-ledger-moves-to-double-rounded-when-frozen) — `BIGINT` before.
+    `ExpenseCreate` / `ExpenseAdjust` store it EXACT ([the-backend-never-rounds-money](business/order/context_decision.md#the-backend-never-rounds-money)), a stock loss's FIFO fraction included; Create
+    refuses one that is not finite and above 0, Adjust a correction of 0 (float dust counts as 0). Sums equal their rows
+    within the tolerance.
   - **`kind` has no DB `CHECK`** (cf. #80). Proto enums are open and append-only, so a check
     constraint would reject a kind the contract already allows on the day one is added.
   - Indexed on `(team_id, occurred_at DESC, id DESC)` — every screen and every total asks for one team's rows over a
@@ -1764,7 +1792,7 @@ erDiagram
         bigserial   id                PK
         bigint      team_id           "the CREDITOR who set these terms"
         bigint      counterparty_id   "the debtor — 0 IS THE DEFAULT ROW for every other team"
-        bigint      credit_limit      "NULL = UNLIMITED, 0 = no credit at all"
+        double      credit_limit      "NULL = UNLIMITED, 0 = no credit at all; exact as set"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -1773,12 +1801,12 @@ erDiagram
         bigserial   id              PK
         bigint      team_id         "whose books this leg is in, opaque, no FK"
         bigint      counterparty_id "the other side"
-        bigint      amount          "signed — receivable positive, payable negative; whole rupiah"
+        double      amount          "signed — receivable positive, payable negative; stored exact by PostEntry"
         text        source_type     "order_fee / product_fee / payment / incidental_fee / broken_good / lost_good / found / return_incidental_fee / transfer_fee; no CHECK"
         bigint      source_id       "opaque id in the service that owns the cause, no FK"
         boolean     reversal        "undoes an earlier leg — part of the idempotency key"
         bigint      group_id        "both legs of one movement share it"
-        bigint      balance_after   "derived; the log rows stay the truth"
+        double      balance_after   "derived; the log rows stay the truth"
         bigint      actor_id        "WHO caused it — 0 is unattended, or a row older than the column"
         boolean     is_override     "the actor was Root or the Administrator, not a member (00013) - an event's leg takes the event's actor_is_override"
         timestamptz created_at
@@ -1788,7 +1816,7 @@ erDiagram
         bigserial   id                  PK
         bigint      team_id             "one row per ORDERED pair — two per relationship"
         bigint      counterparty_id
-        bigint      balance             "same sign convention; positive = they owe you"
+        double      balance             "same sign convention; positive = they owe you"
         timestamptz oldest_unsettled_at "when the current run of debt began, NULL when square"
         timestamptz created_at
         timestamptz updated_at
@@ -1798,7 +1826,7 @@ erDiagram
         bigserial   id                   PK
         bigint      creditor_team_id     "who asks - UNIQUE with the debtor"
         bigint      debtor_team_id       "who is asked"
-        bigint      amount               "what the debtor owed when asked, whole rupiah, CHECK > 0"
+        double      amount               "what the debtor owed when asked, exact, CHECK > 0"
         bigint      requested_by_user_id "opaque user id"
         boolean     is_override          "the asker was Root or the Administrator, not a member - follows a re-send (00013)"
         timestamptz created_at           "when asked - replaced by a second request"
@@ -1808,7 +1836,7 @@ erDiagram
         bigserial   id               PK
         bigint      payer_team_id    "who paid — NOT interchangeable with the creditor"
         bigint      creditor_team_id "who was paid, and the ONLY team that may confirm"
-        bigint      amount           "whole rupiah, ALWAYS POSITIVE — direction is the two ids"
+        double      amount           "stored exact as recorded, ALWAYS POSITIVE — direction is the two ids"
         text        status           "recorded, confirmed, rejected or reversed"
         text        note             "the payers hint for the human confirming"
         text        reason           "why it was REJECTED or REVERSED — the status says which"
@@ -1828,16 +1856,24 @@ erDiagram
         bigint      team_id               "the CREDITOR whose terms changed"
         bigint      counterparty_id       "0 IS THE DEFAULT ROW, as in liability_terms"
         bigint      actor_id              "WHO changed it — opaque user id, 0 when unattended"
-        bigint      old_credit_limit      "NULLABLE — NULL unlimited, 0 frozen, n a ceiling"
-        bigint      new_credit_limit      "NULLABLE, for the same three-way reason"
-        bigint      old_handling_fee      "HISTORY - the flat fee until 00011 dropped it, never written since"
-        bigint      new_handling_fee      "HISTORY, as old_handling_fee"
+        double      old_credit_limit      "NULLABLE — NULL unlimited, 0 frozen, n a ceiling"
+        double      new_credit_limit      "NULLABLE, for the same three-way reason"
+        double      old_handling_fee      "HISTORY - the flat fee until 00011 dropped it, never written since"
+        double      new_handling_fee      "HISTORY, as old_handling_fee"
         text        reason                "required by the app when override is true"
         boolean     override              "the actor held no role in the creditor team"
         timestamptz changed_at
     }
 ```
 
+- **Every rupiah column is `double precision`** since `00014` (every-ledger-moves-to-double-rounded-when-frozen) — the
+  ten that were `BIGINT`: `liability_logs.amount` / `balance_after`, `liability_balances.balance`,
+  `liability_payment_requests.amount`, `liability_payments.amount`, `liability_terms.credit_limit` and the four
+  `liability_terms_logs` limit/fee columns. ⚠ **Frozen exact** ([the-backend-never-rounds-money](business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06 — it rounded to whole
+  rupiah before): `PostEntry` is the freeze point — it refuses NaN/Inf and anything not above 0 (float dust counts as 0,
+  `san_money.Positive`) and stores the figure as handed in — so a 2,5% fee of Rp 316,67475 is that leg, and a balance
+  equals the sum of its logs within the tolerance. "Square" is tested with a tolerance in SQL too
+  (`abs(balance) < 0.00005`, `san_money.ZeroBelow`). A payment's claim and a credit limit are stored as written. The CHECKs carry over; the casts were exact and nothing was backfilled.
 - **`liability_logs`** — the ledger of what teams owe each other (#183). Immutable and
   append-only: a correction is a
   **compensating entry**, never an update or delete, because a ledger you can edit is not evidence of
@@ -2001,6 +2037,14 @@ guess, it is exactly *how much of what the buyer paid never reached us*: the pla
 platform never itemises. So the balance **never reaches zero, and that is correct** — there is no
 `settled` flag and no outstanding figure anywhere in this schema.
 
+**Every rupiah here is `double precision` since `00010`** (2026-11-06,
+[every-ledger-moves-to-double-rounded-when-frozen](business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)) —
+the log's `change`/`balance`, both accounts, both daily reports' sixteen figures and both state reports' `close_balance`;
+never `numeric`. `SettlementPost` stores `change` **exact** as it posts ([the-backend-never-rounds-money](business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06 — it rounded to
+whole rupiah before), so every column below is a sum of exact doubles and the reports equal the log within the tolerance.
+Comparisons in code go through `san_money.Equal` / `IsZero`, never `==`; an unrecorded sale is `abs(initial_total) <
+0.00005` in SQL (`san_money.ZeroBelow`).
+
 ```mermaid
 erDiagram
   settlement_logs {
@@ -2013,11 +2057,11 @@ erDiagram
     bigint user_id "who the per-user report counts it for, when not the actor — an imported shop row's primary CS (00006). 0 otherwise"
     text source_type "importer, manual or order"
     text settlement_type "one of thirteen"
-    bigint change "signed. POSITIVE IS MONEY TOWARD US"
-    bigint balance "running, after this row"
+    double change "signed. POSITIVE IS MONEY TOWARD US. Exact as posted, never rounded (00010)"
+    double balance "running, after this row"
     text unique_id "caller-generated. UNIQUE across the whole log"
-    date occurred_on "the day the money belongs to"
-    date posted_on "the day we learned it"
+    date occurred_on "the Jakarta day the money belongs to"
+    date posted_on "the Jakarta day we learned it — CURRENT_DATE on a session pinned to Asia/Jakarta (00009)"
     bigint reverses_id "points BACKWARDS, or NULL"
     text note
     timestamptz created_at
@@ -2025,8 +2069,8 @@ erDiagram
 
   order_settlements {
     bigint order_id PK "the row a writer LOCKS"
-    bigint initial_total "the LIVE sale, stored POSITIVE. 0 means NOT RECORDED"
-    bigint last_balance "the current position"
+    double initial_total "the LIVE sale, stored POSITIVE. 0 means NOT RECORDED"
+    double last_balance "the current position"
     bigint team_id
     bigint shop_id
     bigint created_by_user_id "who created the order — stamped ONCE by the opening post (00004)"
@@ -2037,7 +2081,7 @@ erDiagram
   shop_settlements {
     bigint shop_id PK "the row a shop-addressed writer LOCKS"
     bigint team_id
-    bigint last_balance "the shop DIRECT movements only — not its whole position"
+    double last_balance "the shop DIRECT movements only — not its whole position"
     timestamptz created_at
     timestamptz updated_at
   }
@@ -2117,12 +2161,12 @@ erDiagram
     date day "UNIQUE with shop_id and team_id"
     bigint shop_id
     bigint team_id
-    bigint initial_total "one column per settlement_type, the log's sign"
-    bigint fund "and eleven more tracked movements"
-    bigint withdrawal "one of the five of 00006 — counts in the position like every column"
-    bigint change "the day's net movement"
-    bigint open_balance "STORED carry — the position before the day"
-    bigint close_balance "the position after it"
+    double initial_total "one column per settlement_type, the log's sign"
+    double fund "and eleven more tracked movements"
+    double withdrawal "one of the five of 00006 — counts in the position like every column"
+    double change "the day's net movement"
+    double open_balance "STORED carry — the position before the day"
+    double close_balance "the position after it"
     timestamptz last_updated
   }
 
@@ -2131,9 +2175,9 @@ erDiagram
     date day "UNIQUE with user_id and team_id"
     bigint user_id "the ORDER creator; for a shop row its written user_id, else its actor. 0 = not recorded"
     bigint team_id
-    bigint change "same tracked columns as the shop grain"
-    bigint open_balance
-    bigint close_balance
+    double change "same tracked columns as the shop grain"
+    double open_balance
+    double close_balance
     timestamptz last_updated
   }
 
@@ -2141,7 +2185,7 @@ erDiagram
     bigserial id PK
     bigint shop_id "UNIQUE with team_id"
     bigint team_id
-    bigint close_balance "the NEWEST daily close — derived, never incremented"
+    double close_balance "the NEWEST daily close — derived, never incremented"
     timestamptz last_updated
   }
 
@@ -2149,7 +2193,7 @@ erDiagram
     bigserial id PK
     bigint user_id "UNIQUE with team_id"
     bigint team_id
-    bigint close_balance
+    double close_balance
     date last_day "00008 - the newest day the person has a daily row on. NULL only mid-replay"
     timestamptz last_updated
   }
@@ -2185,6 +2229,15 @@ erDiagram
 | `*_daily_reports_day_idx` / `settlement_event_logs_day_idx` | the replay's delete — three tables, one predicate |
 | `settlement_event_logs_created_idx` | the retention prune |
 | `user_settlement_reports_team_last_day_idx` (team_id, last_day, user_id) | `SettlementPersonList`'s page, `ORDER BY last_day, user_id` either way (`00008` — replaced `user_settlement_reports_team_idx`) |
+
+### Every date is a Jakarta day (`00009`)
+
+- **Column comments only**, no DDL: `settlement_logs.posted_on` / `occurred_on`, `settlement_event_logs.day`, both daily
+  tables' `day` and `user_settlement_reports.last_day` say they are Jakarta (WIB) days
+  ([the-system-runs-on-jakarta-time](technical/architecture/context_decision.md#the-system-runs-on-jakarta-time): *"`DATE`
+  columns are Jakarta dates by definition, and the column comment should say so"*). `posted_on`'s `DEFAULT CURRENT_DATE`
+  is the Jakarta day because every session is: `backend/pkgs/san_dbsession` pins `TimeZone=Asia/Jakarta` on every
+  connection the server, `san` and the tests open. Rows written before are not rewritten — there is no real data yet.
 
 ### The person's last day (`00008`)
 
@@ -2270,7 +2323,7 @@ erDiagram
     text platform_type
     text description
     text settlement_type "settlement's text — empty when unmapped"
-    bigint change "whole rupiah"
+    double change "the reader's figure as a double (00004), never rounded - a real fraction is held, stored 0"
     date occurred_on
     bigint order_id "0 means the shop"
     text outcome "posted, existing, held or skipped"
@@ -2308,7 +2361,9 @@ The money a team actually HOLDS — its bank accounts, ShopeePay wallet and cash
 ([context_decision.md](business/financial_account/context_decision.md)). `financial_accounts` is the ledger's
 STATE and `financial_account_logs` its LOG: a balance moves only with a log row, in the same transaction
 ([the-accounts-are-one-ledger](business/financial_account/context_decision.md#the-accounts-are-one-ledger)).
-Money is `NUMERIC(20,2)`, rounded to whole rupiah as it posts — the wire is `double`
+Money is `double precision` since `00003` (`NUMERIC(20,2)` before —
+[numeric-money-moves-to-double-too](business/order/context_decision.md#numeric-money-moves-to-double-too)), stored exact
+as it posts ([the-backend-never-rounds-money](business/order/context_decision.md#the-backend-never-rounds-money)), so a balance equals the sum of its logs within the tolerance; the wire is `double`
 ([rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point)).
 
 ```mermaid
@@ -2327,7 +2382,7 @@ erDiagram
     text name "unique in the team, case-blind"
     text holder_name "atas nama"
     text description
-    numeric balance "moves ONLY with a log row — may go below zero"
+    double balance "moves ONLY with a log row — may go below zero"
     timestamptz reconciled_at "last checked against the bank — NULL is never"
     timestamptz created_at
     timestamptz updated_at
@@ -2337,8 +2392,8 @@ erDiagram
     bigint team_id
     bigint account_id FK "financial_accounts — the scope of balance_after"
     text change_type "expense, ads_expense, adjustment, withdrawal, restock, opening_balance, transfer, team_payment, capital"
-    numeric change "signed — positive is money INTO the account"
-    numeric balance_after "the previous row's plus this change, in ENTRY order"
+    double change "signed — positive is money INTO the account"
+    double balance_after "the previous row's plus this change, in ENTRY order"
     text description "the cause in words — no source id"
     bigint actor_id "who — 0 for a listener with no person behind it"
     boolean is_override "the actor was Root or the Administrator, not a member (00002). A listener's row takes the event's actor_is_override"
@@ -2367,18 +2422,18 @@ erDiagram
     date day "the Jakarta day of the rows' occurred_at"
     bigint account_id "UNIQUE with day"
     bigint team_id
-    numeric expense "one signed sum per change type"
-    numeric ads_expense
-    numeric adjustment
-    numeric withdrawal
-    numeric restock
-    numeric opening_balance
-    numeric transfer
-    numeric team_payment
-    numeric capital
-    numeric change "the day's net — close minus open"
-    numeric open_balance "the account's balance as the day opened — SHIFTED by a late row"
-    numeric close_balance
+    double expense "one signed sum per change type"
+    double ads_expense
+    double adjustment
+    double withdrawal
+    double restock
+    double opening_balance
+    double transfer
+    double team_payment
+    double capital
+    double change "the day's net — close minus open"
+    double open_balance "the account's balance as the day opened — SHIFTED by a late row"
+    double close_balance
     timestamptz last_updated
   }
   financial_account_event_logs {
@@ -2460,11 +2515,11 @@ erDiagram
         bigint      product_id                "the RESTOCKING team product, opaque"
         bigint      team_id                   "the RESTOCKING team, not the supplier owner"
         bigint      restock_count             "units accepted as good stock"
-        bigint      restock_valuation         "at the line price"
+        double      restock_valuation         "at the line price, exact as the fold values it - a double since 00003"
         bigint      shipping_lost_count       "short in an accepted parcel"
-        bigint      shipping_lost_valuation
+        double      shipping_lost_valuation
         bigint      shipping_broken_count     "arrived broken"
-        bigint      shipping_broken_valuation
+        double      shipping_broken_valuation
         timestamptz last_updated
     }
 

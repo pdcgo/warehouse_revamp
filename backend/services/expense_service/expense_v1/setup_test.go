@@ -119,7 +119,7 @@ func record(
 	t *testing.T,
 	svc *expense_v1.Service,
 	kind expensev1.ExpenseKind,
-	amount int64,
+	amount float64,
 	on string,
 ) *expensev1.ExpenseRecord {
 	t.Helper()
@@ -128,7 +128,7 @@ func record(
 		TeamId: teamA, Kind: kind, Amount: amount, OccurredAt: on, ShopId: shopFor(kind), FinanceAccountId: payingAccount,
 	}))
 	if err != nil {
-		t.Fatalf("ExpenseCreate(%v, %d, %s): %v", kind, amount, on, err)
+		t.Fatalf("ExpenseCreate(%v, %v, %s): %v", kind, amount, on, err)
 	}
 
 	return res.Msg.GetExpense()

@@ -4,6 +4,7 @@ import { PencilLine } from "lucide-react";
 
 import { FilterChips } from "../../../components/chrome/FilterChips";
 import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
+import { formatRupiah } from "../../../lib/money";
 import { type Band, CUSTOM, NO_RANGE, type RangePick } from "../ranges";
 
 // A RANGE, PICKED (owner: *"untuk stok dan price rangenya pilih saja, kalau mau custom kudu klik tombol dulu"*,
@@ -44,7 +45,8 @@ export function DiscoverRangeFilter({
   const custom = value.band === CUSTOM;
   // A typed bound past the ceiling is held at it.
   const clamp = (raw: string) => (raw === "" ? "" : String(Math.min(Number(raw), max)));
-  const ceiling = kind === "stock" ? max.toLocaleString("id-ID") : `Rp ${max.toLocaleString("id-ID")}`;
+  // A price ceiling through the one money formatter (a-fraction-of-a-rupiah-shows-three-decimals).
+  const ceiling = kind === "stock" ? max.toLocaleString("id-ID") : formatRupiah(max);
 
   return (
     <Stack gap="2" data-testid={testId}>

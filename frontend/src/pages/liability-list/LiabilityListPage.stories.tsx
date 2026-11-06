@@ -61,7 +61,7 @@ export const TheSummaryIsTheWholeSetNotThePage: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    const whole = liabilityPositions.reduce((s, p) => (p.balance > 0n ? s + p.balance : s), 0n);
+    const whole = liabilityPositions.reduce((s, p) => (p.balance > 0 ? s + p.balance : s), 0);
 
     // The tile reads the SERVER's number. Asserting on the fixture total rather than on a formatted
     // string keeps this a statement about the arithmetic, not about the locale.

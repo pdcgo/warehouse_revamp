@@ -10,6 +10,7 @@ import (
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 )
 
@@ -44,7 +45,7 @@ func (s *Service) ExpensePaymentHandler() event_source.PushHandler {
 				teamID:      created.GetTeamId(),
 				accountID:   created.GetFinanceAccountId(),
 				kind:        created.GetKind(),
-				change:      -float64(created.GetAmount()),
+				change:      -created.GetAmount(),
 				day:         created.GetOccurredOn(),
 				actorID:     created.GetActorId(),
 				isOverride:  created.GetActorIsOverride(),
@@ -57,7 +58,7 @@ func (s *Service) ExpensePaymentHandler() event_source.PushHandler {
 				teamID:      adjusted.GetTeamId(),
 				accountID:   adjusted.GetFinanceAccountId(),
 				kind:        adjusted.GetKind(),
-				change:      -float64(adjusted.GetAmount()),
+				change:      -adjusted.GetAmount(),
 				day:         adjusted.GetOccurredOn(),
 				actorID:     adjusted.GetActorId(),
 				isOverride:  adjusted.GetActorIsOverride(),
@@ -90,7 +91,7 @@ type expenseLeg struct {
 // ARCHIVED account still posts (my spec, as for a withdrawal and a restock): an expense recorded while it was active
 // may be corrected after it was archived, and refusing would dead-letter money that moved.
 func (s *Service) postExpense(ctx context.Context, event *eventsv1.Event, leg expenseLeg) error {
-	if leg.accountID == 0 || leg.kind == expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS || rupiah(leg.change) == 0 {
+	if leg.accountID == 0 || leg.kind == expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS || san_money.IsZero(leg.change) {
 		return s.claimOnly(ctx, event)
 	}
 

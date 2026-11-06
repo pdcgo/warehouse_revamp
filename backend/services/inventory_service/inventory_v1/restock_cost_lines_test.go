@@ -142,7 +142,7 @@ func TestRestockAccept_TheCourierChargeReachesTheHPP(t *testing.T) {
 	}
 
 	if lines[0].GetUnitCost() != 54500 {
-		t.Fatalf("HPP = %d, want 54500 — a charge that raises a debt must also raise the cost",
+		t.Fatalf("HPP = %v, want 54500 — a charge that raises a debt must also raise the cost",
 			lines[0].GetUnitCost())
 	}
 }

@@ -32,6 +32,8 @@ func InitializeSan(dsn DatabaseDSN) (*San, error) {
 		NewSupplierFigures,
 		NewTeamCodes,
 		NewShopGrants,
+		NewReleaseInventory,
+		NewSettlementReports,
 
 		NewSan,
 	)

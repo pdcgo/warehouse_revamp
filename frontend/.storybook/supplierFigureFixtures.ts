@@ -19,11 +19,11 @@ export interface FigureFixture {
   /** The RESTOCKING team. */
   teamId: bigint;
   restockCount: bigint;
-  restockValuation: bigint;
+  restockValuation: number;
   shippingLostCount: bigint;
-  shippingLostValuation: bigint;
+  shippingLostValuation: number;
   shippingBrokenCount: bigint;
-  shippingBrokenValuation: bigint;
+  shippingBrokenValuation: number;
 }
 
 const row = (
@@ -40,11 +40,11 @@ const row = (
   productId,
   teamId,
   restockCount: BigInt(rc),
-  restockValuation: BigInt(rv),
+  restockValuation: rv,
   shippingLostCount: BigInt(lc),
-  shippingLostValuation: BigInt(lv),
+  shippingLostValuation: lv,
   shippingBrokenCount: BigInt(bc),
-  shippingBrokenValuation: BigInt(bv),
+  shippingBrokenValuation: bv,
 });
 
 export const figureFixtures: FigureFixture[] = [

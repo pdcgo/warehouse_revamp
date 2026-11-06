@@ -56,6 +56,14 @@ service WarehouseTransferService {
   // (the-receiver-mints-one-batch-per-source-batch). The courier's on-site charge is saved on the transfer, and balance
   // posts the team's debt to B from Warehouse Transfer Accepted (balance-posts-the-transfers-on-site-debt-from-the-event).
   rpc WarehouseTransferAccept(WarehouseTransferAcceptRequest) returns (WarehouseTransferAcceptResponse);
+  // Any side opens the label photo A attached at ship (every-side-of-a-transfer-opens-its-label-photo): the caller's
+  // team must be the sender, the receiver or the owning selling team — checked here, then document_service signs A's
+  // file in-process, no share.
+  rpc WarehouseTransferLabelPhoto(WarehouseTransferLabelPhotoRequest) returns (WarehouseTransferLabelPhotoResponse) {
+    // A READ — it writes no row and moves no file; it signs a link (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // Where a transfer is (a-transfer-has-seven-statuses). APPEND ONLY.
@@ -345,6 +353,38 @@ message WarehouseTransferDetailRequest {
 
 message WarehouseTransferDetailResponse {
   WarehouseTransfer transfer = 1;
+}
+
+// The label photo of a shipped transfer, for every side of it (every-side-of-a-transfer-opens-its-label-photo): the
+// sending warehouse A, whose upload it is; the receiving warehouse B, to match the parcel at its door; and the selling
+// team that owns the transfer and paid for the shipping.
+message WarehouseTransferLabelPhotoRequest {
+  // Every side, as Detail. A transfer the team is no side of reads as NotFound, exactly as an id that does not exist.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// A short-lived signed link, minted per call — never stored, never rendered as an href. A transfer with no photo (not
+// shipped yet, none attached, or the file is gone) is FailedPrecondition instead.
+message WarehouseTransferLabelPhotoResponse {
+  string url = 1;
+  int64 expires_at_unix = 2;
 }
 
 // ── The selling team's acts ─────────────────────────────────────────────────────────────────────────────────────────

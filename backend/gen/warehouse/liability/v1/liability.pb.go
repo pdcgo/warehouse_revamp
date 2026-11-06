@@ -637,14 +637,15 @@ type LiabilityLog struct {
 	TeamId         uint64 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	CounterpartyId uint64 `protobuf:"varint,3,opt,name=counterparty_id,json=counterpartyId,proto3" json:"counterparty_id,omitempty"`
 	// ⚠ ONE SIGN CONVENTION, STATED ONCE (§4.11): from `team_id`'s point of view, a RECEIVABLE is
-	// POSITIVE and a PAYABLE is NEGATIVE. Whole rupiah, int64 — never a float. Float cannot represent
-	// 0.1 exactly, sums drift, and equality decays into "within epsilon", at which point "are we
-	// square?" has no yes/no answer.
+	// POSITIVE and a PAYABLE is NEGATIVE. Rupiah as a double (rupiah-is-floating-point,
+	// the-backend-never-rounds-money): every leg is stored EXACT as posted — a fee of 316,675 is 316,675 — and the
+	// balance is the sum of its legs within the tolerance. "Are we square?" is answered with a tolerance
+	// (san_money.Equal / IsZero), never ==.
 	//
 	// The API must never also return an `abs()` of this under another name. Two fields called
 	// "payable" that disagree in sign is a bug that reaches the screen. Direction is rendered as WORDS
 	// by the UI ("They owe you…" / "You owe them…"), from this one signed number.
-	Amount int64 `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	Amount float64 `protobuf:"fixed64,4,opt,name=amount,proto3" json:"amount,omitempty"`
 	// What caused it, and the id of that thing in its own service (opaque, no FK).
 	SourceType LiabilitySourceType `protobuf:"varint,5,opt,name=source_type,json=sourceType,proto3,enum=warehouse.liability.v1.LiabilitySourceType" json:"source_type,omitempty"`
 	SourceId   uint64              `protobuf:"varint,6,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
@@ -663,7 +664,7 @@ type LiabilityLog struct {
 	// The balance after this entry, from `team_id`'s side. A convenience for the history screen, NOT a
 	// second source of truth: the balance is a projection and must stay recomputable from the entries
 	// alone (§4.8), or the ledger cannot be audited.
-	BalanceAfter int64 `protobuf:"varint,9,opt,name=balance_after,json=balanceAfter,proto3" json:"balance_after,omitempty"`
+	BalanceAfter float64 `protobuf:"fixed64,9,opt,name=balance_after,json=balanceAfter,proto3" json:"balance_after,omitempty"`
 	// WHO CAUSED THIS — a user id, opaque to this service (every-entry-names-who-posted-it). Not the
 	// service and not the event: the human whose act produced the movement, which is what a team
 	// disputing a charge has to be able to see.
@@ -734,7 +735,7 @@ func (x *LiabilityLog) GetCounterpartyId() uint64 {
 	return 0
 }
 
-func (x *LiabilityLog) GetAmount() int64 {
+func (x *LiabilityLog) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -769,7 +770,7 @@ func (x *LiabilityLog) GetGroupId() uint64 {
 	return 0
 }
 
-func (x *LiabilityLog) GetBalanceAfter() int64 {
+func (x *LiabilityLog) GetBalanceAfter() float64 {
 	if x != nil {
 		return x.BalanceAfter
 	}
@@ -796,7 +797,7 @@ type LiabilityPosition struct {
 	CounterpartyId uint64                 `protobuf:"varint,1,opt,name=counterparty_id,json=counterpartyId,proto3" json:"counterparty_id,omitempty"`
 	// Signed, from the requesting team's side: positive = they owe you, negative = you owe them. Same
 	// convention as LiabilityLog.amount, deliberately — see the warning there.
-	Balance int64 `protobuf:"varint,2,opt,name=balance,proto3" json:"balance,omitempty"`
+	Balance float64 `protobuf:"fixed64,2,opt,name=balance,proto3" json:"balance,omitempty"`
 	// WHEN THE OLDEST STILL-UNSETTLED ENTRY WAS POSTED, or 0 when the pair is square.
 	//
 	// ⚠ AGEING IS THE POINT OF THIS SCREEN, not the total. "Rp 2.4m, oldest unsettled 47 days" is
@@ -856,7 +857,7 @@ func (x *LiabilityPosition) GetCounterpartyId() uint64 {
 	return 0
 }
 
-func (x *LiabilityPosition) GetBalance() int64 {
+func (x *LiabilityPosition) GetBalance() float64 {
 	if x != nil {
 		return x.Balance
 	}
@@ -890,10 +891,10 @@ type LiabilityPaymentRequest struct {
 	// Who asks, and who is asked.
 	CreditorTeamId uint64 `protobuf:"varint,1,opt,name=creditor_team_id,json=creditorTeamId,proto3" json:"creditor_team_id,omitempty"`
 	DebtorTeamId   uint64 `protobuf:"varint,2,opt,name=debtor_team_id,json=debtorTeamId,proto3" json:"debtor_team_id,omitempty"`
-	// What the debtor owed when it was asked, whole rupiah — the moment's figure, not a live one.
-	Amount            int64  `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	RequestedByUserId uint64 `protobuf:"varint,4,opt,name=requested_by_user_id,json=requestedByUserId,proto3" json:"requested_by_user_id,omitempty"`
-	RequestedAtUnix   int64  `protobuf:"varint,5,opt,name=requested_at_unix,json=requestedAtUnix,proto3" json:"requested_at_unix,omitempty"`
+	// What the debtor owed when it was asked, exact — the moment's figure, not a live one.
+	Amount            float64 `protobuf:"fixed64,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	RequestedByUserId uint64  `protobuf:"varint,4,opt,name=requested_by_user_id,json=requestedByUserId,proto3" json:"requested_by_user_id,omitempty"`
+	RequestedAtUnix   int64   `protobuf:"varint,5,opt,name=requested_at_unix,json=requestedAtUnix,proto3" json:"requested_at_unix,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -942,7 +943,7 @@ func (x *LiabilityPaymentRequest) GetDebtorTeamId() uint64 {
 	return 0
 }
 
-func (x *LiabilityPaymentRequest) GetAmount() int64 {
+func (x *LiabilityPaymentRequest) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -1419,11 +1420,11 @@ type LiabilityPositionListResponse struct {
 	// Every payment awaiting this team's confirmation, across all counterparties, the nav badge.
 	AwaitingConfirmation uint32 `protobuf:"varint,4,opt,name=awaiting_confirmation,json=awaitingConfirmation,proto3" json:"awaiting_confirmation,omitempty"`
 	// Σ of every POSITIVE balance — what the whole world owes this team.
-	TotalReceivable int64 `protobuf:"varint,5,opt,name=total_receivable,json=totalReceivable,proto3" json:"total_receivable,omitempty"`
+	TotalReceivable float64 `protobuf:"fixed64,5,opt,name=total_receivable,json=totalReceivable,proto3" json:"total_receivable,omitempty"`
 	// Σ of every NEGATIVE balance, AS A POSITIVE MAGNITUDE. Direction is words on this screen, never a
 	// sign (features/liability/direction.ts), so the wire hands the screen the number it renders
 	// rather than one it must remember to negate.
-	TotalPayable int64 `protobuf:"varint,6,opt,name=total_payable,json=totalPayable,proto3" json:"total_payable,omitempty"`
+	TotalPayable float64 `protobuf:"fixed64,6,opt,name=total_payable,json=totalPayable,proto3" json:"total_payable,omitempty"`
 	// WHOSE debt is the oldest, across every counterparty — 0 when nothing is outstanding. The tile
 	// renders that team's name beneath the day count, so the id has to travel with the timestamp;
 	// sending only the age would leave the screen unable to say who it belongs to.
@@ -1493,14 +1494,14 @@ func (x *LiabilityPositionListResponse) GetAwaitingConfirmation() uint32 {
 	return 0
 }
 
-func (x *LiabilityPositionListResponse) GetTotalReceivable() int64 {
+func (x *LiabilityPositionListResponse) GetTotalReceivable() float64 {
 	if x != nil {
 		return x.TotalReceivable
 	}
 	return 0
 }
 
-func (x *LiabilityPositionListResponse) GetTotalPayable() int64 {
+func (x *LiabilityPositionListResponse) GetTotalPayable() float64 {
 	if x != nil {
 		return x.TotalPayable
 	}
@@ -1766,7 +1767,7 @@ type LiabilityLogListResponse struct {
 	Ids      []uint64                        `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	PageInfo *v1.PageInfo                    `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	// The pair's current balance, so the header needs no second call.
-	Balance       int64 `protobuf:"varint,4,opt,name=balance,proto3" json:"balance,omitempty"`
+	Balance       float64 `protobuf:"fixed64,4,opt,name=balance,proto3" json:"balance,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1822,7 +1823,7 @@ func (x *LiabilityLogListResponse) GetPageInfo() *v1.PageInfo {
 	return nil
 }
 
-func (x *LiabilityLogListResponse) GetBalance() int64 {
+func (x *LiabilityLogListResponse) GetBalance() float64 {
 	if x != nil {
 		return x.Balance
 	}
@@ -1986,11 +1987,11 @@ type LiabilityDayItem struct {
 	// POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum, so a day that charged a fee and reversed
 	// it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
 	// A series that dropped them would show income the ledger has already taken back.
-	Net int64 `protobuf:"varint,3,opt,name=net,proto3" json:"net,omitempty"`
+	Net float64 `protobuf:"fixed64,3,opt,name=net,proto3" json:"net,omitempty"`
 	// Split by LiabilitySourceType's enum number, so the caller can pick which sources it treats as
 	// earnings without a second call. A source with nothing that day is ABSENT rather than 0 — the same
 	// choice ExpenseDayItem.by_kind makes.
-	BySource      map[int32]int64 `protobuf:"bytes,4,rep,name=by_source,json=bySource,proto3" json:"by_source,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	BySource      map[int32]float64 `protobuf:"bytes,4,rep,name=by_source,json=bySource,proto3" json:"by_source,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2039,14 +2040,14 @@ func (x *LiabilityDayItem) GetEntries() uint64 {
 	return 0
 }
 
-func (x *LiabilityDayItem) GetNet() int64 {
+func (x *LiabilityDayItem) GetNet() float64 {
 	if x != nil {
 		return x.Net
 	}
 	return 0
 }
 
-func (x *LiabilityDayItem) GetBySource() map[int32]int64 {
+func (x *LiabilityDayItem) GetBySource() map[int32]float64 {
 	if x != nil {
 		return x.BySource
 	}
@@ -2055,8 +2056,8 @@ func (x *LiabilityDayItem) GetBySource() map[int32]int64 {
 
 type LiabilityDailyTotals struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Net           int64                  `protobuf:"varint,1,opt,name=net,proto3" json:"net,omitempty"`
-	BySource      map[int32]int64        `protobuf:"bytes,2,rep,name=by_source,json=bySource,proto3" json:"by_source,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	Net           float64                `protobuf:"fixed64,1,opt,name=net,proto3" json:"net,omitempty"`
+	BySource      map[int32]float64      `protobuf:"bytes,2,rep,name=by_source,json=bySource,proto3" json:"by_source,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2091,14 +2092,14 @@ func (*LiabilityDailyTotals) Descriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *LiabilityDailyTotals) GetNet() int64 {
+func (x *LiabilityDailyTotals) GetNet() float64 {
 	if x != nil {
 		return x.Net
 	}
 	return 0
 }
 
-func (x *LiabilityDailyTotals) GetBySource() map[int32]int64 {
+func (x *LiabilityDailyTotals) GetBySource() map[int32]float64 {
 	if x != nil {
 		return x.BySource
 	}
@@ -2169,11 +2170,11 @@ type LiabilityCredit struct {
 	//
 	// ⚠ ABSENT MEANS UNLIMITED, `0` MEANS NO CREDIT AT ALL — exactly as on LiabilityTerms.credit_limit. A
 	// pair row with no limit LIFTS the default for this debtor, so it reads as absent too.
-	CreditLimit *int64 `protobuf:"varint,2,opt,name=credit_limit,json=creditLimit,proto3,oneof" json:"credit_limit,omitempty"`
+	CreditLimit *float64 `protobuf:"fixed64,2,opt,name=credit_limit,json=creditLimit,proto3,oneof" json:"credit_limit,omitempty"`
 	// What the asking team owes this creditor right now, as a POSITIVE number, from the committed balance.
 	// 0 when the pair is square, has never traded, or the creditor is the one that owes — being owed money
 	// is not debt.
-	Debt          int64                `protobuf:"varint,3,opt,name=debt,proto3" json:"debt,omitempty"`
+	Debt          float64              `protobuf:"fixed64,3,opt,name=debt,proto3" json:"debt,omitempty"`
 	State         LiabilityCreditState `protobuf:"varint,4,opt,name=state,proto3,enum=warehouse.liability.v1.LiabilityCreditState" json:"state,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2216,14 +2217,14 @@ func (x *LiabilityCredit) GetCreditorTeamId() uint64 {
 	return 0
 }
 
-func (x *LiabilityCredit) GetCreditLimit() int64 {
+func (x *LiabilityCredit) GetCreditLimit() float64 {
 	if x != nil && x.CreditLimit != nil {
 		return *x.CreditLimit
 	}
 	return 0
 }
 
-func (x *LiabilityCredit) GetDebt() int64 {
+func (x *LiabilityCredit) GetDebt() float64 {
 	if x != nil {
 		return x.Debt
 	}
@@ -2572,9 +2573,9 @@ type LiabilityPayment struct {
 	// creditor can see the money arrive.
 	PayerTeamId    uint64 `protobuf:"varint,2,opt,name=payer_team_id,json=payerTeamId,proto3" json:"payer_team_id,omitempty"`
 	CreditorTeamId uint64 `protobuf:"varint,3,opt,name=creditor_team_id,json=creditorTeamId,proto3" json:"creditor_team_id,omitempty"`
-	// Whole rupiah, always positive. Direction is carried by the two team fields above, not by a sign —
+	// Exact rupiah, always positive. Direction is carried by the two team fields above, not by a sign —
 	// a negative payment would be a refund, which is a different thing and not modelled.
-	Amount int64                  `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	Amount float64                `protobuf:"fixed64,4,opt,name=amount,proto3" json:"amount,omitempty"`
 	Status LiabilityPaymentStatus `protobuf:"varint,5,opt,name=status,proto3,enum=warehouse.liability.v1.LiabilityPaymentStatus" json:"status,omitempty"`
 	// Free text from the payer: a transfer reference, a bank, a date. It is a HINT for the human
 	// confirming, never something the system reads — which is exactly why the ledger uses
@@ -2663,7 +2664,7 @@ func (x *LiabilityPayment) GetCreditorTeamId() uint64 {
 	return 0
 }
 
-func (x *LiabilityPayment) GetAmount() int64 {
+func (x *LiabilityPayment) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -2744,10 +2745,10 @@ type LiabilityPaymentRecordRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The PAYER — and the scope. You may only ever record your own payment: recording somebody else's
 	// would be asserting a movement of their money.
-	TeamId         uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	CreditorTeamId uint64 `protobuf:"varint,2,opt,name=creditor_team_id,json=creditorTeamId,proto3" json:"creditor_team_id,omitempty"`
-	Amount         int64  `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	Note           string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	TeamId         uint64  `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	CreditorTeamId uint64  `protobuf:"varint,2,opt,name=creditor_team_id,json=creditorTeamId,proto3" json:"creditor_team_id,omitempty"`
+	Amount         float64 `protobuf:"fixed64,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	Note           string  `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
 	// AT LEAST ONE, always (a-payment-must-carry-proof). `balance_context.md` §Payment Flow has the
 	// payer *bring* proof of the bank transfer and the creditor *check it manually* — a rule the system
 	// enforces, not a habit it hopes for.
@@ -2814,7 +2815,7 @@ func (x *LiabilityPaymentRecordRequest) GetCreditorTeamId() uint64 {
 	return 0
 }
 
-func (x *LiabilityPaymentRecordRequest) GetAmount() int64 {
+func (x *LiabilityPaymentRecordRequest) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -3431,7 +3432,7 @@ type LiabilityTerms struct {
 	// NEXT order is blocked. Friendlier than a hard ceiling — a person is cut off next time rather than
 	// rejected mid-order for an amount they cannot see — and it agrees with the eventual-consistency
 	// window rather than fighting it.
-	CreditLimit   *int64 `protobuf:"varint,5,opt,name=credit_limit,json=creditLimit,proto3,oneof" json:"credit_limit,omitempty"`
+	CreditLimit   *float64 `protobuf:"fixed64,5,opt,name=credit_limit,json=creditLimit,proto3,oneof" json:"credit_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3480,7 +3481,7 @@ func (x *LiabilityTerms) GetCounterpartyId() uint64 {
 	return 0
 }
 
-func (x *LiabilityTerms) GetCreditLimit() int64 {
+func (x *LiabilityTerms) GetCreditLimit() float64 {
 	if x != nil && x.CreditLimit != nil {
 		return *x.CreditLimit
 	}
@@ -3741,7 +3742,7 @@ type LiabilityTermsSetRequest struct {
 	// 0 sets the DEFAULT row — see LiabilityTerms.counterparty_id.
 	CounterpartyId uint64 `protobuf:"varint,2,opt,name=counterparty_id,json=counterpartyId,proto3" json:"counterparty_id,omitempty"`
 	// Omit for unlimited; send 0 to freeze this team's credit entirely.
-	CreditLimit *int64 `protobuf:"varint,5,opt,name=credit_limit,json=creditLimit,proto3,oneof" json:"credit_limit,omitempty"`
+	CreditLimit *float64 `protobuf:"fixed64,5,opt,name=credit_limit,json=creditLimit,proto3,oneof" json:"credit_limit,omitempty"`
 	// WHY the change — required when the actor is not one of the creditor team's own people, optional
 	// when they are. A creditor setting its own terms owes nobody an explanation; somebody else
 	// changing them does, and that difference is the entire definition of an override here.
@@ -3797,7 +3798,7 @@ func (x *LiabilityTermsSetRequest) GetCounterpartyId() uint64 {
 	return 0
 }
 
-func (x *LiabilityTermsSetRequest) GetCreditLimit() int64 {
+func (x *LiabilityTermsSetRequest) GetCreditLimit() float64 {
 	if x != nil && x.CreditLimit != nil {
 		return *x.CreditLimit
 	}
@@ -3970,15 +3971,15 @@ type LiabilityTermsChange struct {
 	ActorId uint64 `protobuf:"varint,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
 	// ⚠ BOTH LIMITS ARE OPTIONAL, and that is load-bearing rather than tidy. `absent`, `0` and a
 	// number are THREE different acts — no limit at all, frozen entirely, and a real ceiling — and a
-	// plain int64 flattens the first into the second, turning "they removed the limit" into "they
+	// plain number flattens the first into the second, turning "they removed the limit" into "they
 	// froze the team". The log has to be able to say which one happened.
-	OldCreditLimit *int64 `protobuf:"varint,4,opt,name=old_credit_limit,json=oldCreditLimit,proto3,oneof" json:"old_credit_limit,omitempty"`
-	NewCreditLimit *int64 `protobuf:"varint,5,opt,name=new_credit_limit,json=newCreditLimit,proto3,oneof" json:"new_credit_limit,omitempty"`
+	OldCreditLimit *float64 `protobuf:"fixed64,4,opt,name=old_credit_limit,json=oldCreditLimit,proto3,oneof" json:"old_credit_limit,omitempty"`
+	NewCreditLimit *float64 `protobuf:"fixed64,5,opt,name=new_credit_limit,json=newCreditLimit,proto3,oneof" json:"new_credit_limit,omitempty"`
 	// The handling fee, before and after — HISTORY ONLY. The term charged until step 5 of the-flat-rate-is-dropped-last
 	// dropped it, and a change made since reads 0 → 0. No optional here: 0 meant "charge nothing".
-	OldHandlingFee int64  `protobuf:"varint,6,opt,name=old_handling_fee,json=oldHandlingFee,proto3" json:"old_handling_fee,omitempty"`
-	NewHandlingFee int64  `protobuf:"varint,7,opt,name=new_handling_fee,json=newHandlingFee,proto3" json:"new_handling_fee,omitempty"`
-	Reason         string `protobuf:"bytes,10,opt,name=reason,proto3" json:"reason,omitempty"`
+	OldHandlingFee float64 `protobuf:"fixed64,6,opt,name=old_handling_fee,json=oldHandlingFee,proto3" json:"old_handling_fee,omitempty"`
+	NewHandlingFee float64 `protobuf:"fixed64,7,opt,name=new_handling_fee,json=newHandlingFee,proto3" json:"new_handling_fee,omitempty"`
+	Reason         string  `protobuf:"bytes,10,opt,name=reason,proto3" json:"reason,omitempty"`
 	// TRUE when the actor was not one of the creditor team's own people — an override. Derived by the
 	// server at write time from the actor's membership, never sent by the caller: whether a write was
 	// an override is a fact about who made it, and the caller is the one party who cannot be trusted
@@ -4040,28 +4041,28 @@ func (x *LiabilityTermsChange) GetActorId() uint64 {
 	return 0
 }
 
-func (x *LiabilityTermsChange) GetOldCreditLimit() int64 {
+func (x *LiabilityTermsChange) GetOldCreditLimit() float64 {
 	if x != nil && x.OldCreditLimit != nil {
 		return *x.OldCreditLimit
 	}
 	return 0
 }
 
-func (x *LiabilityTermsChange) GetNewCreditLimit() int64 {
+func (x *LiabilityTermsChange) GetNewCreditLimit() float64 {
 	if x != nil && x.NewCreditLimit != nil {
 		return *x.NewCreditLimit
 	}
 	return 0
 }
 
-func (x *LiabilityTermsChange) GetOldHandlingFee() int64 {
+func (x *LiabilityTermsChange) GetOldHandlingFee() float64 {
 	if x != nil {
 		return x.OldHandlingFee
 	}
 	return 0
 }
 
-func (x *LiabilityTermsChange) GetNewHandlingFee() int64 {
+func (x *LiabilityTermsChange) GetNewHandlingFee() float64 {
 	if x != nil {
 		return x.NewHandlingFee
 	}
@@ -4398,26 +4399,26 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12'\n" +
 	"\x0fcounterparty_id\x18\x03 \x01(\x04R\x0ecounterpartyId\x12\x16\n" +
-	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12L\n" +
+	"\x06amount\x18\x04 \x01(\x01R\x06amount\x12L\n" +
 	"\vsource_type\x18\x05 \x01(\x0e2+.warehouse.liability.v1.LiabilitySourceTypeR\n" +
 	"sourceType\x12\x1b\n" +
 	"\tsource_id\x18\x06 \x01(\x04R\bsourceId\x12\x1a\n" +
 	"\breversal\x18\a \x01(\bR\breversal\x12\x19\n" +
 	"\bgroup_id\x18\b \x01(\x04R\agroupId\x12#\n" +
-	"\rbalance_after\x18\t \x01(\x03R\fbalanceAfter\x12\x19\n" +
+	"\rbalance_after\x18\t \x01(\x01R\fbalanceAfter\x12\x19\n" +
 	"\bactor_id\x18\v \x01(\x04R\aactorId\x12&\n" +
 	"\x0fcreated_at_unix\x18\n" +
 	" \x01(\x03R\rcreatedAtUnix\"\x9e\x02\n" +
 	"\x11LiabilityPosition\x12'\n" +
 	"\x0fcounterparty_id\x18\x01 \x01(\x04R\x0ecounterpartyId\x12\x18\n" +
-	"\abalance\x18\x02 \x01(\x03R\abalance\x127\n" +
+	"\abalance\x18\x02 \x01(\x01R\abalance\x127\n" +
 	"\x18oldest_unsettled_at_unix\x18\x03 \x01(\x03R\x15oldestUnsettledAtUnix\x123\n" +
 	"\x15awaiting_confirmation\x18\x04 \x01(\rR\x14awaitingConfirmation\x12X\n" +
 	"\x0fpayment_request\x18\x05 \x01(\v2/.warehouse.liability.v1.LiabilityPaymentRequestR\x0epaymentRequest\"\xde\x01\n" +
 	"\x17LiabilityPaymentRequest\x12(\n" +
 	"\x10creditor_team_id\x18\x01 \x01(\x04R\x0ecreditorTeamId\x12$\n" +
 	"\x0edebtor_team_id\x18\x02 \x01(\x04R\fdebtorTeamId\x12\x16\n" +
-	"\x06amount\x18\x03 \x01(\x03R\x06amount\x12/\n" +
+	"\x06amount\x18\x03 \x01(\x01R\x06amount\x12/\n" +
 	"\x14requested_by_user_id\x18\x04 \x01(\x04R\x11requestedByUserId\x12*\n" +
 	"\x11requested_at_unix\x18\x05 \x01(\x03R\x0frequestedAtUnix\"\x87\x01\n" +
 	"\"LiabilityPaymentRequestSendRequest\x12$\n" +
@@ -4455,8 +4456,8 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x123\n" +
 	"\x15awaiting_confirmation\x18\x04 \x01(\rR\x14awaitingConfirmation\x12)\n" +
-	"\x10total_receivable\x18\x05 \x01(\x03R\x0ftotalReceivable\x12#\n" +
-	"\rtotal_payable\x18\x06 \x01(\x03R\ftotalPayable\x12G\n" +
+	"\x10total_receivable\x18\x05 \x01(\x01R\x0ftotalReceivable\x12#\n" +
+	"\rtotal_payable\x18\x06 \x01(\x01R\ftotalPayable\x12G\n" +
 	" oldest_unsettled_counterparty_id\x18\a \x01(\x04R\x1doldestUnsettledCounterpartyId\x127\n" +
 	"\x18oldest_unsettled_at_unix\x18\b \x01(\x03R\x15oldestUnsettledAtUnix\"J\n" +
 	"\x16LiabilityLogListFilter\x120\n" +
@@ -4480,7 +4481,7 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v24.warehouse.liability.v1.LiabilityLogListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12\x18\n" +
-	"\abalance\x18\x04 \x01(\x03R\abalance\"\xad\x01\n" +
+	"\abalance\x18\x04 \x01(\x01R\abalance\"\xad\x01\n" +
 	"\x14LiabilityDailyFilter\x127\n" +
 	"\x04from\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x04from\x123\n" +
 	"\x02to\x18\x02 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x02to\x12'\n" +
@@ -4492,24 +4493,24 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x10LiabilityDayItem\x12\x12\n" +
 	"\x04date\x18\x01 \x01(\tR\x04date\x12\x18\n" +
 	"\aentries\x18\x02 \x01(\x04R\aentries\x12\x10\n" +
-	"\x03net\x18\x03 \x01(\x03R\x03net\x12S\n" +
+	"\x03net\x18\x03 \x01(\x01R\x03net\x12S\n" +
 	"\tby_source\x18\x04 \x03(\v26.warehouse.liability.v1.LiabilityDayItem.BySourceEntryR\bbySource\x1a;\n" +
 	"\rBySourceEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xbe\x01\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xbe\x01\n" +
 	"\x14LiabilityDailyTotals\x12\x10\n" +
-	"\x03net\x18\x01 \x01(\x03R\x03net\x12W\n" +
+	"\x03net\x18\x01 \x01(\x01R\x03net\x12W\n" +
 	"\tby_source\x18\x02 \x03(\v2:.warehouse.liability.v1.LiabilityDailyTotals.BySourceEntryR\bbySource\x1a;\n" +
 	"\rBySourceEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\x9c\x01\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\x9c\x01\n" +
 	"\x16LiabilityDailyResponse\x12<\n" +
 	"\x04days\x18\x01 \x03(\v2(.warehouse.liability.v1.LiabilityDayItemR\x04days\x12D\n" +
 	"\x06totals\x18\x02 \x01(\v2,.warehouse.liability.v1.LiabilityDailyTotalsR\x06totals\"\xcc\x01\n" +
 	"\x0fLiabilityCredit\x12(\n" +
 	"\x10creditor_team_id\x18\x01 \x01(\x04R\x0ecreditorTeamId\x12&\n" +
-	"\fcredit_limit\x18\x02 \x01(\x03H\x00R\vcreditLimit\x88\x01\x01\x12\x12\n" +
-	"\x04debt\x18\x03 \x01(\x03R\x04debt\x12B\n" +
+	"\fcredit_limit\x18\x02 \x01(\x01H\x00R\vcreditLimit\x88\x01\x01\x12\x12\n" +
+	"\x04debt\x18\x03 \x01(\x01R\x04debt\x12B\n" +
 	"\x05state\x18\x04 \x01(\x0e2,.warehouse.liability.v1.LiabilityCreditStateR\x05stateB\x0f\n" +
 	"\r_credit_limit\"\xd5\x01\n" +
 	"\x16LiabilityCreditMapItem\x12V\n" +
@@ -4540,7 +4541,7 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\"\n" +
 	"\rpayer_team_id\x18\x02 \x01(\x04R\vpayerTeamId\x12(\n" +
 	"\x10creditor_team_id\x18\x03 \x01(\x04R\x0ecreditorTeamId\x12\x16\n" +
-	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12F\n" +
+	"\x06amount\x18\x04 \x01(\x01R\x06amount\x12F\n" +
 	"\x06status\x18\x05 \x01(\x0e2..warehouse.liability.v1.LiabilityPaymentStatusR\x06status\x12\x12\n" +
 	"\x04note\x18\x06 \x01(\tR\x04note\x12\x1f\n" +
 	"\vrecorded_by\x18\a \x01(\x04R\n" +
@@ -4552,11 +4553,11 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\fdocument_ids\x18\v \x03(\tR\vdocumentIds\x12\x16\n" +
 	"\x06reason\x18\f \x01(\tR\x06reason\x12&\n" +
 	"\x0ffrom_account_id\x18\r \x01(\x04R\rfromAccountId\x12\"\n" +
-	"\rto_account_id\x18\x0e \x01(\x04R\vtoAccountId\"\xad\x02\n" +
+	"\rto_account_id\x18\x0e \x01(\x04R\vtoAccountId\"\xb6\x02\n" +
 	"\x1dLiabilityPaymentRecordRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x121\n" +
-	"\x10creditor_team_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ecreditorTeamId\x12\x1f\n" +
-	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12\x1c\n" +
+	"\x10creditor_team_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ecreditorTeamId\x12(\n" +
+	"\x06amount\x18\x03 \x01(\x01B\x10\xbaH\r\x12\v@\x01!\x00\x00\x00\x00\x00\x00\x00\x00R\x06amount\x12\x1c\n" +
 	"\x04note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note\x125\n" +
 	"\fdocument_ids\x18\x05 \x03(\tB\x12\xbaH\x0f\x92\x01\f\b\x01\x10\n" +
 	"\"\x06r\x04\x10\x01\x18@R\vdocumentIds\x12/\n" +
@@ -4602,11 +4603,11 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x1cLiabilityPaymentListResponse\x12N\n" +
 	"\x05items\x18\x01 \x03(\v28.warehouse.liability.v1.LiabilityPaymentListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xc1\x01\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xca\x01\n" +
 	"\x0eLiabilityTerms\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12'\n" +
-	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x12/\n" +
-	"\fcredit_limit\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x00R\vcreditLimit\x88\x01\x01B\x0f\n" +
+	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x128\n" +
+	"\fcredit_limit\x18\x05 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00H\x00R\vcreditLimit\x88\x01\x01B\x0f\n" +
 	"\r_credit_limitJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\fhandling_feeR\x11product_markup_bp\"\xe9\x01\n" +
 	"\x19LiabilityTermsListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12U\n" +
@@ -4625,11 +4626,11 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x1aLiabilityTermsListResponse\x12L\n" +
 	"\x05items\x18\x01 \x03(\v26.warehouse.liability.v1.LiabilityTermsListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\x87\x02\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\x90\x02\n" +
 	"\x18LiabilityTermsSetRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12'\n" +
-	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x12/\n" +
-	"\fcredit_limit\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x00R\vcreditLimit\x88\x01\x01\x12 \n" +
+	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x128\n" +
+	"\fcredit_limit\x18\x05 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00H\x00R\vcreditLimit\x88\x01\x01\x12 \n" +
 	"\x06reason\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x06reason:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x06B\x0f\n" +
 	"\r_credit_limitJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\fhandling_feeR\x11product_markup_bp\"Y\n" +
@@ -4645,10 +4646,10 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12'\n" +
 	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId\x12\x19\n" +
 	"\bactor_id\x18\x03 \x01(\x04R\aactorId\x12-\n" +
-	"\x10old_credit_limit\x18\x04 \x01(\x03H\x00R\x0eoldCreditLimit\x88\x01\x01\x12-\n" +
-	"\x10new_credit_limit\x18\x05 \x01(\x03H\x01R\x0enewCreditLimit\x88\x01\x01\x12(\n" +
-	"\x10old_handling_fee\x18\x06 \x01(\x03R\x0eoldHandlingFee\x12(\n" +
-	"\x10new_handling_fee\x18\a \x01(\x03R\x0enewHandlingFee\x12\x16\n" +
+	"\x10old_credit_limit\x18\x04 \x01(\x01H\x00R\x0eoldCreditLimit\x88\x01\x01\x12-\n" +
+	"\x10new_credit_limit\x18\x05 \x01(\x01H\x01R\x0enewCreditLimit\x88\x01\x01\x12(\n" +
+	"\x10old_handling_fee\x18\x06 \x01(\x01R\x0eoldHandlingFee\x12(\n" +
+	"\x10new_handling_fee\x18\a \x01(\x01R\x0enewHandlingFee\x12\x16\n" +
 	"\x06reason\x18\n" +
 	" \x01(\tR\x06reason\x12\x1a\n" +
 	"\boverride\x18\v \x01(\bR\boverride\x12&\n" +

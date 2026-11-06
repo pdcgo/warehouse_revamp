@@ -54,7 +54,7 @@ warehouse there refuses orders until it sets one on Settings.
 
 | | |
 | --- | --- |
-| rounding | when a frozen fee is rounded to whole rupiah — [rupiah-is-floating-point](../../../business/order/context_decision.md#rupiah-is-floating-point)'s mitigations are not decided |
+| rounding | decided 2026-11-06: never — the fee is stored and posted exact, only the screen rounds ([the-backend-never-rounds-money](../../../business/order/context_decision.md#the-backend-never-rounds-money)) |
 
 ## Step 5 — built 2026-10-29, the rollout is complete
 

@@ -29,7 +29,7 @@ import { LIGHTS_UP } from "./parts";
 //
 // An unknown cost is its own layer and is NOT Rp 0 (#74): a batch whose cost never got captured still
 // has units on a shelf, and pricing them at nothing would understate the stock by exactly their worth.
-function LayerCost({ unitCost, costKnown }: { unitCost: bigint; costKnown: boolean }) {
+function LayerCost({ unitCost, costKnown }: { unitCost: number; costKnown: boolean }) {
   const { t } = useTranslation();
 
   if (!costKnown) {
@@ -80,7 +80,7 @@ export function PriceSection({
   const fits = page === 1 && (layers.data?.totalItems ?? 0) <= PAGE_SIZE;
 
   // What another team pays for a layer — its cost with this product's cross markup on top.
-  const crossOf = (unitCost: bigint) => withMarkup(unitCost, product.crossMarkupBps);
+  const crossOf = (unitCost: number) => withMarkup(unitCost, product.crossMarkupBps);
 
   return (
           <Stack gap="card">

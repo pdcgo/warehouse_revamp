@@ -41,7 +41,7 @@ import type { OrderSettlement, SettlementEntry } from "./model";
 const meta = {
   title: "Pages/Order Settlement/Ledger Panel",
   component: OrderLedgerPanel,
-  args: { totalBeli: 80_000n },
+  args: { totalBeli: 80_000 },
 } satisfies Meta<typeof OrderLedgerPanel>;
 
 export default meta;
@@ -65,9 +65,9 @@ export const WorkedExample: Story = {
     await expect(canvas.getByTestId("ledger-table")).toHaveTextContent("−Rp 10.000");
 
     // 120.000 − 100.000 = 20.000 kept and never explained. −10.000 + 20.000 = +10.000 named.
-    await expect(hiddenCost(worked)).toBe(20_000n);
-    await expect(netReceived(worked)).toBe(110_000n);
-    await expect(loss(worked)).toBe(10_000n);
+    await expect(hiddenCost(worked)).toBe(20_000);
+    await expect(netReceived(worked)).toBe(110_000);
+    await expect(loss(worked)).toBe(10_000);
 
     // ⚠ The word is LOST. `a-residual-balance-is-normal` means nobody is collecting this, so any
     // label implying a debt — "outstanding", "unpaid", "due" — would be wrong on every order.
@@ -89,7 +89,7 @@ export const Awaiting: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByTestId(/^entry-/)).toHaveLength(1);
     // The whole sale is unreceived so far, which is exactly right and must not look like an alarm.
-    await expect(loss(awaiting)).toBe(85_000n);
+    await expect(loss(awaiting)).toBe(85_000);
     await expect(canvas.queryByTestId("no-estimate-notice")).not.toBeInTheDocument();
   },
 };
@@ -182,7 +182,7 @@ export const CameOutAhead: Story = {
   args: { settlement: ahead, canPost: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(loss(ahead)).toBe(-4_000n);
+    await expect(loss(ahead)).toBe(-4_000);
     // ONE label both ways, signed — "+Rp 4.000" rather than a second word for a gain.
     await expect(canvas.getByTestId("loss")).toHaveTextContent("Adjustment");
     await expect(canvas.getByTestId("loss")).toHaveTextContent("+Rp 4.000");
@@ -244,7 +244,7 @@ export const NoTotalBeliNoMargins: Story = {
  * 80.000: estimated 40.000 (33.33%), true 30.000 (25.00%) — and 30.000 − 40.000 is the −10.000 beside them.
  */
 export const TwoMarginsDifferByTheAdjustment: Story = {
-  args: { settlement: worked, canPost: true, totalBeli: 80_000n },
+  args: { settlement: worked, canPost: true, totalBeli: 80_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId("estimated-margin-value")).toHaveTextContent("Rp 40.000");
@@ -257,7 +257,7 @@ export const TwoMarginsDifferByTheAdjustment: Story = {
 
 /** Each margin says how it is made, under its share — no tooltip. */
 export const TheMarginsSayWhereTheyComeFrom: Story = {
-  args: { settlement: worked, canPost: true, totalBeli: 80_000n },
+  args: { settlement: worked, canPost: true, totalBeli: 80_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId("estimated-margin-note")).toHaveTextContent("selling price − total cost");

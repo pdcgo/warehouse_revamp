@@ -43,8 +43,8 @@ func perfOrderRows(n int, shopIDs []uint64) []selling_service_models.Order {
 			WarehouseID:    uint64(900 + i%3),
 			Status:         statuses[i%len(statuses)],
 			CustomerName:   "Budi",
-			GoodsCost:      int64(10_000 + i),
-			PlatformTotal:  int64(15_000 + i),
+			GoodsCost:      float64(10_000 + i),
+			PlatformTotal:  float64(15_000 + i),
 			// Half inside the 30-day window, half outside it, so the FILTER aggregates are not
 			// measured against a set that trivially matches everything.
 			CreatedAt: time.Now().Add(-time.Duration(i%60) * 24 * time.Hour),
@@ -98,11 +98,11 @@ func perfStatOrderRows(n int, teamOf func(int) uint64, shopIDs []uint64, salt in
 		}
 
 		if i%5 != 0 {
-			o.GoodsCost = total / 2
+			o.GoodsCost = float64(total / 2)
 		}
 
 		if i%3 != 0 {
-			o.PlatformTotal = total - 1_000
+			o.PlatformTotal = float64(total - 1_000)
 		}
 
 		if i%4 != 0 {

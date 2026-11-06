@@ -24,6 +24,7 @@ import (
 //
 //	go run ./tools/san pubsub ensure --project warehouse-dev --emulator
 //	go run ./tools/san pubsub redrive --project warehouse-dev --topic order-placed --emulator
+//	go run ./tools/san pubsub --project warehouse-dev --emulator releases list
 func pubsubCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "pubsub",
@@ -42,6 +43,7 @@ func pubsubCommand() *cli.Command {
 		Commands: []*cli.Command{
 			pubsubEnsureCommand(),
 			pubsubRedriveCommand(),
+			pubsubReleasesCommand(),
 		},
 	}
 }

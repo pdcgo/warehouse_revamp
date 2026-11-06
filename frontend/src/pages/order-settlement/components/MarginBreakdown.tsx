@@ -24,13 +24,13 @@ import type { OrderSettlement, SettlementType } from "../model";
 // payouts is money still to come, not a deduction — so the deduction is shown only beside a real payout.
 // A dialog on a desktop, a bottom sheet on a phone: a modal squeezed to 390px reads as a cramped popup.
 
-type Group = { type: SettlementType; total: bigint; count: number };
+type Group = { type: SettlementType; total: number; count: number };
 
 function groupsOf(settlement: OrderSettlement): Group[] {
   const byType = new Map<SettlementType, Group>();
   for (const e of settlement.entries) {
     if (e.settlementType === "initial_total" || e.settlementType === "initial_total_cancel") continue;
-    const g = byType.get(e.settlementType) ?? { type: e.settlementType, total: 0n, count: 0 };
+    const g = byType.get(e.settlementType) ?? { type: e.settlementType, total: 0, count: 0 };
     g.total += e.change;
     g.count += 1;
     byType.set(e.settlementType, g);
@@ -73,15 +73,17 @@ function Line({
   );
 }
 
-function Breakdown({ settlement, totalBeli }: { settlement: OrderSettlement; totalBeli: bigint }) {
+function Breakdown({ settlement, totalBeli }: { settlement: OrderSettlement; totalBeli: number }) {
   const { t } = useTranslation();
   const groups = groupsOf(settlement);
+  // Every figure is an exact double (settlement 00010, selling 00042, the-backend-never-rounds-money).
+  const beli = totalBeli;
   const sale = settlement.initialTotal;
   const received = settlement.lastBalance + sale;
-  const margin = received - totalBeli;
-  const estimated = sale - totalBeli;
-  const funded = groups.find((g) => g.type === "fund")?.total ?? 0n;
-  const pct = sale > 0n ? ((Number(margin) * 100) / Number(sale)).toFixed(2) : null;
+  const margin = received - beli;
+  const estimated = sale - beli;
+  const funded = groups.find((g) => g.type === "fund")?.total ?? 0;
+  const pct = sale > 0 ? ((margin * 100) / sale).toFixed(2) : null;
 
   return (
     <Stack gap="2" data-testid="margin-breakdown">
@@ -124,7 +126,7 @@ function Breakdown({ settlement, totalBeli }: { settlement: OrderSettlement; tot
           muted
           testId="breakdown-difference"
         />
-        {funded > 0n && (
+        {funded > 0 && (
           <Line
             label={t("orderSettlement.breakdown.deducted")}
             value={formatRupiah(sale - funded)}
@@ -146,7 +148,7 @@ export function MarginBreakdown({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   settlement: OrderSettlement;
-  totalBeli: bigint;
+  totalBeli: number;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();

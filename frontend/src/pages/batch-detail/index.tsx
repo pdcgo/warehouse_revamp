@@ -190,9 +190,9 @@ export function BatchDetailPage() {
     );
   }
 
-  const cost = (v: bigint) => (batch.costKnown ? formatRupiah(v) : t("batchDetail.costUnknown"));
+  const cost = (v: number) => (batch.costKnown ? formatRupiah(v) : t("batchDetail.costUnknown"));
   // A lifecycle figure's value = its count × the frozen unit cost (Unknown when the cost isn't known).
-  const amount = (count: bigint) => cost(count * batch.unitCost);
+  const amount = (count: bigint) => cost(Number(count) * batch.unitCost);
 
   return (
     <Stack gap="section" data-testid="batch-detail-page">

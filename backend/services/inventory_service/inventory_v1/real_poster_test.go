@@ -24,7 +24,7 @@ func (p *realPoster) PostStockDamage(
 	ctx context.Context,
 	tx *gorm.DB,
 	ownerTeamID, warehouseID, movementID, actorID uint64,
-	amount int64,
+	amount float64,
 	kind inventory_v1.StockDamageKind,
 ) error {
 	sourceType := liability_v1.SourceTypeBrokenGood

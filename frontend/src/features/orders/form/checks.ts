@@ -73,12 +73,20 @@ function normalise(value: string): string {
  */
 export const MINIMUM_MARGIN_PCT = 35;
 
-export function checkProfitFloor(sellPrice: bigint, orderTotal: bigint): CheckFinding | null {
+/**
+ * The margin as a percent of the sell price, truncated toward zero to hundredths — on the exact figures
+ * (the-backend-never-rounds-money). The panel shows it and the check judges it, so the two read one number.
+ */
+export function profitPct(sellPrice: number, orderTotal: number): number {
+  return Math.trunc(((sellPrice - orderTotal) * 10000) / sellPrice) / 100 || 0;
+}
+
+export function checkProfitFloor(sellPrice: number, orderTotal: number): CheckFinding | null {
   // No sell price is not a thin order — it is an order nobody has priced, and Create already refuses it
   // (platform-total-is-required-at-finalize).
-  if (sellPrice <= 0n) return null;
+  if (sellPrice <= 0) return null;
 
-  const pct = Number(((sellPrice - orderTotal) * 10000n) / sellPrice) / 100;
+  const pct = profitPct(sellPrice, orderTotal);
   if (pct >= MINIMUM_MARGIN_PCT) return null;
 
   return {
@@ -168,8 +176,8 @@ export function runOrderChecks(input: {
   orderRefId: string;
   trackingCode: string;
   scan: ReceiptScan | null;
-  sellPrice: bigint;
-  orderTotal: bigint;
+  sellPrice: number;
+  orderTotal: number;
 }): CheckFinding[] {
   const findings = [
     checkScanMatches(input.scan, {

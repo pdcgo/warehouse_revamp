@@ -21,7 +21,7 @@ type OrderDraftItem struct {
 	// Unconstrained on purpose — a scrape may not have been able to read either. Promote is where a
 	// quantity of 0 becomes an error, so one unreadable line never costs the other nine.
 	Quantity  uint32
-	UnitPrice int64
+	UnitPrice float64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

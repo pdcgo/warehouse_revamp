@@ -362,8 +362,10 @@ message UploadedFileLine {
   string description = 6;
   // What it became. UNSPECIFIED when the platform's type is not mapped.
   warehouse.settlement.v1.SettlementType settlement_type = 7;
-  // Whole rupiah. A FRACTIONAL_AMOUNT line keeps its figure as written in `detail`.
-  int64 change = 8;
+  // Rupiah, a double like SettlementPost's change — the reader's own figure, never rounded
+  // (the-backend-never-rounds-money). A FRACTIONAL_AMOUNT line is held (a-fractional-statement-line-is-still-held), and
+  // keeps its figure as written in `detail`, with 0 here.
+  double change = 8;
   // YYYY-MM-DD, Jakarta.
   string occurred_on = 9;
   // 0 = the shop.

@@ -7,6 +7,25 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-05 · stock never stuck, accounts checked, Analytic figures, shop access
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A failed order never keeps the stock** | every Create carries its own key; if the order isn't saved the stock goes back, and a cancel returns it by event even behind a running count |
+| **The order form waits safely** | while Create waits the form locks; a dropped connection shows *No answer* with **Try Again**, which first checks whether the first try landed |
+| **A ref used before is warned** | the form names the order or draft that already has it — a colleague's draft without a link |
+| **The right account pays** | restocks and expenses only from the team's active operational accounts; a transfer from any active one; *stock loss* can't be typed by hand |
+| **Analytic gained real figures** | **Warehouse fee** (a cancel takes it back on its day; a warehouse sees what it earned), a **Finance** category (account changes and change types, filtered by account, a year in 11 ms instead of 1.5 s), **Lost stock** (count shortages and adjustments, at batch price); product and supplier filters search real items |
+| **Only the shops you were given** | placing or pushing an order checks the person's shop grant; a closed shop still imports its old statements. `san shop grant-current-cs` gives today's CS their team's shops — **run it at release** |
+| **Sorting by Total works** | *Total* is what the order cost the seller; *Platform total* sorts what the buyer paid |
+| **A transfer's label photo opens for every side** | the sending warehouse, the receiving one and the seller |
+| **A stuck stock release is replayed** | `san pubsub releases list / replay` finds a dead-lettered release and gives the stock back, safely twice |
+| **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
+| **Dialogs fit the desktop** | seven dialogs stop filling the screen |
+| **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |
+
+**Next:** an expense report on Analytic, returns back onto the shelf (waits on `return.md`).
+
 ## 2026-11-04 · table mirroring — finding what changed in the old system
 
 | What shipped | What it means for a person |

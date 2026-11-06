@@ -83,7 +83,7 @@ func figureRow(t *testing.T, db *gorm.DB, day string, supplier, product, team ui
 
 // metric is a SupplierMetric written as six numbers, for comparing — its broken rate computed as the server does,
 // broken ÷ every unit, 0 when none arrived.
-func metric(rc, rv, lc, lv, bc, bv int64) *supplierv1.SupplierMetric {
+func metric(rc int64, rv float64, lc int64, lv float64, bc int64, bv float64) *supplierv1.SupplierMetric {
 	var rate float64
 	if units := rc + lc + bc; units > 0 {
 		rate = float64(bc) / float64(units)
@@ -97,7 +97,7 @@ func metric(rc, rv, lc, lv, bc, bv int64) *supplierv1.SupplierMetric {
 	}
 }
 
-func columns(rc, rv, lc, lv, bc, bv int64) supplier_service_models.SupplierMetricColumns {
+func columns(rc int64, rv float64, lc int64, lv float64, bc int64, bv float64) supplier_service_models.SupplierMetricColumns {
 	return supplier_service_models.SupplierMetricColumns{
 		RestockCount: rc, RestockValuation: rv,
 		ShippingLostCount: lc, ShippingLostValuation: lv,

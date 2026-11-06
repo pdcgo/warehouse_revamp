@@ -234,7 +234,7 @@ export function DailyStatementPage() {
           <StatementSummary
             mode={mode}
             grain={grain}
-            income={statement?.income ?? 0n}
+            income={statement?.income ?? 0}
             liability={statement?.liability}
             expenses={statement?.expenses}
             buckets={buckets}
@@ -278,7 +278,7 @@ export function DailyStatementPage() {
                 mode={mode}
                 grain={grain}
                 rows={rows}
-                income={statement?.income ?? 0n}
+                income={statement?.income ?? 0}
                 liability={statement?.liability}
                 expenses={statement?.expenses}
               />

@@ -43,7 +43,7 @@ func perfReportRows() []selling_service_models.OrderDailyReport {
 					OrderMetricColumns: selling_service_models.OrderMetricColumns{
 						OrderCount: int64(1 + (d+k)%9),
 						Total:      float64(50_000 + 137*k),
-						MpTotal:    int64(60_000 + 151*k),
+						MpTotal:    float64(60_000 + 151*k),
 					},
 					LastUpdated: time.Now(),
 				})

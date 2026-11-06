@@ -41,13 +41,13 @@ export const expenseScenario = {
     | {
         teamId: bigint;
         kind: ExpenseKind;
-        amount: bigint;
+        amount: number;
         occurredAt: string;
         shopId: bigint;
         note: string;
         financeAccountId: bigint;
       },
-  lastAdjust: undefined as undefined | { teamId: bigint; expenseId: bigint; amount: bigint; note: string },
+  lastAdjust: undefined as undefined | { teamId: bigint; expenseId: bigint; amount: number; note: string },
   /** How many times ExpenseList was asked — a read-only story pins that the screen still reads. */
   listCalls: 0,
   /** Set by a story: the next ExpenseAdjust fails as a server FAULT (Unavailable, a Go error's text) — not a refusal. */
@@ -70,7 +70,7 @@ resetExpenseStub();
  * and pressing save, so the screen's figure is stale and the server's floor is what refuses. Writes the adjustment row
  * directly (no role check): it is the other person's request, not this one's.
  */
-export function someoneElseAdjusts(expenseId: bigint, amount: bigint, note = "Corrected by a colleague") {
+export function someoneElseAdjusts(expenseId: bigint, amount: number, note = "Corrected by a colleague") {
   const expense = rows.find((r) => r.id === expenseId)!;
   rows.push({
     ...expense,
@@ -103,8 +103,8 @@ function mayWrite() {
 const invalid = (msg: string) => new ConnectError(msg, Code.InvalidArgument);
 
 /** What an expense counts for after every adjustment of it; 0 on an adjustment. */
-function netOf(r: ExpenseFixture): bigint {
-  if (r.adjustsExpenseId !== 0n) return 0n;
+function netOf(r: ExpenseFixture): number {
+  if (r.adjustsExpenseId !== 0n) return 0;
 
   return rows.filter((a) => a.adjustsExpenseId === r.id).reduce((sum, a) => sum + a.amount, r.amount);
 }
@@ -134,9 +134,9 @@ export const expenseService: Partial<ServiceImpl<typeof ExpenseService>> = {
       .sort((a, b) => (a.occurredAt === b.occurredAt ? (a.id > b.id ? -1 : 1) : a.occurredAt > b.occurredAt ? -1 : 1));
 
     // The WHOLE period, adjustments included (each carries its expense's kind) — never the page.
-    const byKind: Record<number, bigint> = {};
-    for (const r of matched) byKind[r.kind] = (byKind[r.kind] ?? 0n) + r.amount;
-    const total = matched.reduce((sum, r) => sum + r.amount, 0n);
+    const byKind: Record<number, number> = {};
+    for (const r of matched) byKind[r.kind] = (byKind[r.kind] ?? 0) + r.amount;
+    const total = matched.reduce((sum, r) => sum + r.amount, 0);
 
     const limit = req.page.limit || 20;
     const current = req.page.page || 1;
@@ -166,7 +166,7 @@ export const expenseService: Partial<ServiceImpl<typeof ExpenseService>> = {
     if (req.teamId === 0n) throw invalid("team_id: value must be greater than 0");
     if (req.kind === ExpenseKind.UNSPECIFIED || !(req.kind in ExpenseKind)) throw invalid("kind: value must not be in list [0]");
     if (req.kind === ExpenseKind.STOCK_LOSS) throw invalid("kind: stock loss is recorded by inventory, not typed");
-    if (req.amount <= 0n) throw invalid("amount: value must be greater than 0");
+    if (!(req.amount > 0)) throw invalid("amount: value must be greater than 0");
     if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(req.occurredAt)) throw invalid("a date must be YYYY-MM-DD");
     if ([...req.note].length > 500) throw invalid("note: value length must be at most 500 characters");
     if (req.financeAccountId === 0n) throw invalid("finance_account_id: value must be greater than 0");
@@ -213,7 +213,7 @@ export const expenseService: Partial<ServiceImpl<typeof ExpenseService>> = {
     mayWrite();
     if (req.teamId === 0n) throw invalid("team_id: value must be greater than 0");
     if (req.expenseId === 0n) throw invalid("expense_id: value must be greater than 0");
-    if (req.amount === 0n) throw invalid("a correction of 0 corrects nothing");
+    if (req.amount === 0) throw invalid("a correction of 0 corrects nothing");
     if ([...req.note].length > 500) throw invalid("note: value length must be at most 500 characters");
 
     expenseScenario.lastAdjust = { teamId: req.teamId, expenseId: req.expenseId, amount: req.amount, note: req.note };
@@ -224,7 +224,7 @@ export const expenseService: Partial<ServiceImpl<typeof ExpenseService>> = {
     if (expense.adjustsExpenseId !== 0n) {
       throw new ConnectError("an adjustment corrects an expense, never another adjustment", Code.FailedPrecondition);
     }
-    if (netOf(expense) + req.amount < 0n) {
+    if (netOf(expense) + req.amount < 0) {
       throw new ConnectError("the correction would take the expense below 0", Code.FailedPrecondition);
     }
 

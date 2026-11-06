@@ -2,6 +2,7 @@ package settlement_importer_v1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -114,5 +115,42 @@ func TestUploadedFileLineList_AnotherTeamsFileIsNotFound(t *testing.T) {
 	_, err := listLines(t, w, theirs, nil, nil)
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("code = %v, want NotFound", connect.CodeOf(err))
+	}
+}
+
+// THE WIRE CARRIES THE LINE'S CHANGE AS A DOUBLE (settlement_importer 00004) — the stored figure, untouched: a posted
+// line's whole rupiah, a withdrawal negative.
+func TestUploadedFileLineList_TheChangeIsTheStoredDouble(t *testing.T) {
+	db := san_testdb.DB(t)
+	w := newWorld(t, db)
+	w.orders.byRef["2509AAA"] = []settlement_importer_v1.OrderRef{{OrderID: 501, ShopID: shopeeShop, CreatedByUserID: orderMaker}}
+
+	w.importShopee(t, shopeeShop, sevenShopeeRows(t))
+	fileID := fileRows(t, db)[0].ID
+
+	posted, err := listLines(t, w, fileID, []settlement_importerv1.UploadedFileLineOutcome{
+		settlement_importerv1.UploadedFileLineOutcome_UPLOADED_FILE_LINE_OUTCOME_POSTED,
+	}, nil)
+	if err != nil {
+		t.Fatalf("posted: %v", err)
+	}
+
+	stored := map[uint64]float64{}
+	for _, line := range lineRows(t, db, fileID) {
+		stored[line.ID] = line.Change
+	}
+
+	got := []float64{}
+	for _, line := range linesOf(posted) {
+		if line.GetChange() != stored[line.GetId()] {
+			t.Errorf("line %d reads %v on the wire, %v stored", line.GetId(), line.GetChange(), stored[line.GetId()])
+		}
+
+		got = append(got, line.GetChange())
+	}
+
+	want := []float64{185_000, 77_000, -150_000}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("posted changes = %v, want %v", got, want)
 	}
 }

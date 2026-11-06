@@ -109,7 +109,7 @@ sequenceDiagram
     participant H as a handler or the listener
     participant DB as one transaction
     H->>DB: SELECT the account FOR UPDATE — a transfer locks both, in id order
-    H->>DB: INSERT the log row — balance_after = balance + change, rounded to whole rupiah
+    H->>DB: INSERT the log row — balance_after = balance + change, exact
     H->>DB: UPDATE the account's balance
     H->>DB: UPSERT the day's report row — opening from the last row before it
     H->>DB: SHIFT every later day's open and close by the change
@@ -119,6 +119,14 @@ sequenceDiagram
 It never refuses — below zero included
 ([below-zero-is-warned-never-refused](../../business/financial_account/context_decision.md#below-zero-is-warned-never-refused)).
 Whether a row may be posted at all (archived, unknown) is the caller's check, made under the lock.
+
+**The columns are `double precision`** since `00003` (2026-11-06, `NUMERIC(20,2)` before —
+[numeric-money-moves-to-double-too](../../business/order/context_decision.md#numeric-money-moves-to-double-too)): the balance, the log's `change` / `balance_after`
+and the twelve daily-report figures. The wire was already `double`. `post` is the freeze point and stores the change
+EXACT ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06 — `rupiah()` rounded to whole rupiah before and is gone), so a balance equals the sum
+of its logs within the tolerance. The listeners hand `post` the event's double as it arrives and skip a zero with
+`san_money.IsZero`; Reconcile posts the exact difference (none when it is zero to 4 places); Archive and Identify test
+"holds nothing" with `IsZero`. A refusal or a log note writes a figure with `san_money.Text` (up to 3 decimals).
 
 ---
 

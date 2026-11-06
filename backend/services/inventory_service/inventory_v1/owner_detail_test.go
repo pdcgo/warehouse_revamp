@@ -19,7 +19,7 @@ func ownerLayers(
 	t *testing.T,
 	svc *inventory_v1.Service,
 	owner, product, warehouse uint64,
-) ([]*inventoryv1.CostLayer, int64) {
+) ([]*inventoryv1.CostLayer, float64) {
 	t.Helper()
 
 	res, err := svc.OwnerCostLayerList(context.Background(), connect.NewRequest(&inventoryv1.OwnerCostLayerListRequest{
@@ -143,18 +143,18 @@ func TestOwnerCostLayerList_GroupsByFrozenCost(t *testing.T) {
 	}
 
 	if layers[0].GetUnitCost() != 40_000 || layers[0].GetOnHand() != 100 {
-		t.Errorf("dearest layer = %d × %d, want 40000 × 100",
+		t.Errorf("dearest layer = %v × %v, want 40000 × 100",
 			layers[0].GetUnitCost(), layers[0].GetOnHand())
 	}
 
 	if layers[1].GetUnitCost() != 25_000 || layers[1].GetOnHand() != 50 {
-		t.Errorf("cheaper layer = %d × %d, want 25000 × 50",
+		t.Errorf("cheaper layer = %v × %v, want 25000 × 50",
 			layers[1].GetUnitCost(), layers[1].GetOnHand())
 	}
 
 	// 100 × 40.000 + 50 × 25.000
 	if totalValue != 5_250_000 {
-		t.Errorf("total_value = %d, want 5250000", totalValue)
+		t.Errorf("total_value = %v, want 5250000", totalValue)
 	}
 }
 
@@ -179,7 +179,7 @@ func TestOwnerCostLayerList_WarehouseLens(t *testing.T) {
 	}
 
 	if allValue != 5_600_000 {
-		t.Errorf("total_value across warehouses = %d, want 5600000", allValue)
+		t.Errorf("total_value across warehouses = %v, want 5600000", allValue)
 	}
 
 	one, oneValue := ownerLayers(t, svc, owner, product, surabaya)
@@ -189,7 +189,7 @@ func TestOwnerCostLayerList_WarehouseLens(t *testing.T) {
 	}
 
 	if oneValue != 1_600_000 {
-		t.Errorf("surabaya total_value = %d, want 1600000", oneValue)
+		t.Errorf("surabaya total_value = %v, want 1600000", oneValue)
 	}
 }
 
@@ -205,7 +205,7 @@ func TestOwnerCostLayerList_AnotherTeamGetsNothing(t *testing.T) {
 	layers, totalValue := ownerLayers(t, svc, stranger, product, warehouse)
 
 	if len(layers) != 0 || totalValue != 0 {
-		t.Errorf("stranger saw %d layers worth %d, want none", len(layers), totalValue)
+		t.Errorf("stranger saw %v layers worth %v, want none", len(layers), totalValue)
 	}
 }
 
@@ -416,7 +416,7 @@ func TestOrderTake_DrawsDownTheBatchesItTook(t *testing.T) {
 
 	// 70 × 40.000 + 50 × 25.000
 	if totalValue != 4_050_000 {
-		t.Errorf("total_value = %d, want 4050000", totalValue)
+		t.Errorf("total_value = %v, want 4050000", totalValue)
 	}
 
 	// The batch row must agree, and `used` must show the units that shipped — it is

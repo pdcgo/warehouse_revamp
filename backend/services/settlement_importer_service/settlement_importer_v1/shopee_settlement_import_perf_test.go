@@ -214,7 +214,7 @@ func TestPerf_ImportLineWriteOptions(t *testing.T) {
 			UniqueID:     fmt.Sprintf("shopee:rincian_transaksi:%032x", i),
 			OrderRef:     fmt.Sprintf("2609%08dAB", i),
 			PlatformType: "Penghasilan dari Pesanan", Description: "Penghasilan dari Pesanan",
-			SettlementType: "fund", Change: int64(10_000 + i), OccurredOn: &day,
+			SettlementType: "fund", Change: float64(10_000 + i), OccurredOn: &day,
 			OrderID: uint64(700_000 + i), Outcome: "posted", SettlementLogID: uint64(9_000_000 + i),
 		}
 	}

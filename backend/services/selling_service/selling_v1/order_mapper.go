@@ -214,6 +214,8 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		IdempotencyKey: o.IdempotencyKey,
 		// The inventory transaction its stock was taken in; 0 = none recorded.
 		TransactionId: uint64OrZero(o.TransactionID),
+		// When its settlement account opened; 0 = not yet (a-missing-account-is-found-by-its-opened-at).
+		SettlementOpenedAtUnix: unixOrZero(o.SettlementOpenedAt),
 	}
 }
 

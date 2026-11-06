@@ -10,10 +10,6 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
 
-import (
-	_ "github.com/jackc/pgx/v5/stdlib"
-)
-
 // Injectors from wire.go:
 
 // InitializeSan is the operations tool's composition root. Regenerate after changing it:
@@ -43,6 +39,8 @@ func InitializeSan(dsn DatabaseDSN) (*San, error) {
 	supplier_v1Service := NewSupplierFigures(db)
 	team_v1Service := NewTeamCodes(db)
 	selling_v1Service := NewShopGrants(db, roleResolver)
-	san := NewSan(db, service, supplier_v1Service, team_v1Service, selling_v1Service)
+	inventory_v1Service := NewReleaseInventory(db)
+	settlement_v1Service := NewSettlementReports(db)
+	san := NewSan(db, service, supplier_v1Service, team_v1Service, selling_v1Service, inventory_v1Service, settlement_v1Service)
 	return san, nil
 }

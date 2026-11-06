@@ -65,15 +65,15 @@ func TestExpenseDaily_GroupsByDayAscendingWithTheKindSplit(t *testing.T) {
 		t.Fatalf("the 3rd holds %d entries, want 2", n)
 	}
 	if got := days[0].GetTotal(); got != 14_000_000 {
-		t.Fatalf("the 3rd's total = %d, want 14000000 (2m ads + 12m payroll)", got)
+		t.Fatalf("the 3rd's total = %v, want 14000000 (2m ads + 12m payroll)", got)
 	}
 
 	byKind := days[0].GetByKind()
 	if got := byKind[int32(expensev1.ExpenseKind_EXPENSE_KIND_ADS)]; got != 2_000_000 {
-		t.Fatalf("the 3rd's ads = %d, want 2000000", got)
+		t.Fatalf("the 3rd's ads = %v, want 2000000", got)
 	}
 	if got := byKind[int32(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL)]; got != 12_000_000 {
-		t.Fatalf("the 3rd's payroll = %d, want 12000000", got)
+		t.Fatalf("the 3rd's payroll = %v, want 12000000", got)
 	}
 
 	// A kind with nothing that day is ABSENT rather than 0 — the same choice ExpenseTotals makes.
@@ -83,16 +83,16 @@ func TestExpenseDaily_GroupsByDayAscendingWithTheKindSplit(t *testing.T) {
 
 	// THE FOOTER IS THE SUM OF THE ROWS. A statement whose total contradicts the table above it is
 	// unreadable, so this is asserted rather than assumed to follow from both being "the same filter".
-	var summed int64
+	var summed float64
 	for _, d := range days {
 		summed += d.GetTotal()
 	}
 
 	if got := got.GetTotals().GetTotal(); got != summed {
-		t.Fatalf("totals.total = %d but the days sum to %d", got, summed)
+		t.Fatalf("totals.total = %v but the days sum to %v", got, summed)
 	}
 	if got := got.GetTotals().GetTotal(); got != 15_000_000 {
-		t.Fatalf("period total = %d, want 15000000 — June must not count", got)
+		t.Fatalf("period total = %v, want 15000000 — June must not count", got)
 	}
 }
 
@@ -116,12 +116,12 @@ func TestExpenseDaily_ACancelledExpenseLeavesItsDayAtZero(t *testing.T) {
 	}
 
 	if days[1].GetDate() != "2026-07-04" || days[1].GetTotal() != 0 || days[1].GetEntries() != 2 {
-		t.Fatalf("the 4th is %s / %d / %d entries, want 2026-07-04 / 0 / 2",
+		t.Fatalf("the 4th is %s / %v / %v entries, want 2026-07-04 / 0 / 2",
 			days[1].GetDate(), days[1].GetTotal(), days[1].GetEntries())
 	}
 
 	if total := got.GetTotals().GetTotal(); total != 2_000_000 {
-		t.Fatalf("the month's total = %d, want 2.000.000 — the cancelled 9.000.000 counts for nothing", total)
+		t.Fatalf("the month's total = %v, want 2.000.000 — the cancelled 9.000.000 counts for nothing", total)
 	}
 }
 
@@ -150,11 +150,11 @@ func TestExpenseDaily_KindFilterNarrowsBothTheDaysAndTheTotals(t *testing.T) {
 	}
 
 	if days[0].GetDate() != "2026-07-03" || days[0].GetTotal() != 2_000_000 {
-		t.Fatalf("the ads-only day reads %s / %d, want 2026-07-03 / 2000000", days[0].GetDate(), days[0].GetTotal())
+		t.Fatalf("the ads-only day reads %s / %v, want 2026-07-03 / 2000000", days[0].GetDate(), days[0].GetTotal())
 	}
 
 	if got := got.GetTotals().GetTotal(); got != 2_000_000 {
-		t.Fatalf("filtered total = %d, want 2000000 — payroll must not count in an ads-filtered footer", got)
+		t.Fatalf("filtered total = %v, want 2000000 — payroll must not count in an ads-filtered footer", got)
 	}
 }
 
@@ -236,6 +236,6 @@ func TestExpenseDaily_NeverLeaksAnotherTeamsDays(t *testing.T) {
 		t.Fatalf("team %d sees %d of team %d's days", otherTeam, n, teamA)
 	}
 	if got := res.Msg.GetTotals().GetTotal(); got != 0 {
-		t.Fatalf("team %d sees a total of %d from team %d's money", otherTeam, got, teamA)
+		t.Fatalf("team %v sees a total of %v from team %v's money", otherTeam, got, teamA)
 	}
 }

@@ -40,7 +40,7 @@ type record struct {
 
 	// What it posts as. UNSPECIFIED when the platform's type is not mapped.
 	settlementType settlementv1.SettlementType
-	change         int64
+	change         float64
 	occurredOn     time.Time
 
 	// Set when the line must NOT post: held (it cannot, yet) or skipped (it must not, by decision).
@@ -368,7 +368,7 @@ func (r *record) classify(settlementType san_excel_readers.SettlementType, err e
 	r.settlementType = mapped
 }
 
-// amount converts to whole rupiah, or HOLDS the line — a fraction is never rounded (critique 8).
+// amount passes a whole-rupiah amount on, or HOLDS the line — a fraction is never rounded here (critique 8).
 func (r *record) amount(value float64) {
 	change, ok := wholeRupiah(value)
 	if !ok {

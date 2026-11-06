@@ -12,14 +12,16 @@ import (
 // LabelURL signs a short-lived link to a shipping label for the service that has checked the caller's right to it: the
 // ORDER SERVICE, once the order ships from the caller's warehouse (a-warehouse-prints-the-labels-of-orders-it-ships),
 // and INVENTORY, once the restock is going to the caller's warehouse (the-restocks-warehouse-opens-its-label-photo — the
-// restock form's ReceiptUpload stores its label photo as an order receipt too). It is a Go method reached in-process
+// restock form's ReceiptUpload stores its label photo as an order receipt too), and once the caller is a side of a
+// warehouse transfer (every-side-of-a-transfer-opens-its-label-photo — A's ship form uploads it the same way). It is a Go method reached in-process
 // through the composition root (order_label_linker.go, restock_photo_linker.go) — NOT an RPC: no browser can call it,
 // and no request names the owner.
 //
 // ⚠ IT IS THE ONE DOOR PAST GetDownloadUrl's TWO, and it is narrow on purpose:
 //
 //   - only an ORDER RECEIPT — never a payment proof, a statement or any other private file;
-//   - only the team the calling service says OWNS it (the order's or the restock's selling team) — the id alone
+//   - only the team the calling service says OWNS it (the order's or the restock's selling team, a transfer's sending
+//     warehouse) — the id alone
 //     opens nothing;
 //   - only an ACTIVE one.
 //

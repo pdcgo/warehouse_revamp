@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
@@ -38,7 +39,7 @@ func (s *Service) LiabilityPaymentRequestSend(
 		Where("team_id = ? AND counterparty_id = ?", creditor, debtor).
 		Take(&balance).
 		Error
-	if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && balance.Balance <= 0) {
+	if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && !san_money.Positive(balance.Balance)) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errNothingOwed)
 	}
 

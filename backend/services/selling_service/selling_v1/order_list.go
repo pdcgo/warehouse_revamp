@@ -42,6 +42,7 @@ type orderScopeFilter interface {
 	GetShippingCode() string
 	GetWarehouseId() uint64
 	GetDateField() sellingv1.OrderDateField
+	GetSettlementNotOpened() bool
 }
 
 // A literal `%`, `_` or `\` typed into the search box must match ITSELF, not act as a wildcard.
@@ -197,6 +198,12 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// naming another warehouse here reads nothing rather than reaching orders it does not ship.
 	if warehouseID := filter.GetWarehouseId(); warehouseID > 0 {
 		query = query.Where("warehouse_id = ?", warehouseID)
+	}
+
+	// The orders whose settlement account never opened (a-missing-account-is-found-by-its-opened-at): NULL is "not yet".
+	// Served by the partial index orders_settlement_not_opened_idx, which holds only those.
+	if filter.GetSettlementNotOpened() {
+		query = query.Where("settlement_opened_at IS NULL")
 	}
 
 	return query

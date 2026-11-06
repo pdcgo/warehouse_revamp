@@ -80,10 +80,10 @@ func TestOrderCreate_PublishesTheFrozenMoney(t *testing.T) {
 
 	// What the buyer paid — the order's platform_total — and the order's frozen goods_cost.
 	if got.GetPlatformTotal() != order.GetPlatformTotal() {
-		t.Fatalf("event platform total = %d, want the order's %d", got.GetPlatformTotal(), order.GetPlatformTotal())
+		t.Fatalf("event platform total = %v, want the order's %v", got.GetPlatformTotal(), order.GetPlatformTotal())
 	}
 	if got.GetGoodsCost() != order.GetGoodsCost() {
-		t.Fatalf("event goods_cost = %d, want the order's frozen %d", got.GetGoodsCost(), order.GetGoodsCost())
+		t.Fatalf("event goods_cost = %v, want the order's frozen %v", got.GetGoodsCost(), order.GetGoodsCost())
 	}
 }
 
@@ -130,7 +130,7 @@ func TestOrderCreate_MarksAnUnknownCostInTheEvent(t *testing.T) {
 			"this order's margin would read as pure profit with nothing flagging it")
 	}
 	if got.GetGoodsCost() != 0 {
-		t.Fatalf("goods_cost = %d, want 0 for an uncosted order", got.GetGoodsCost())
+		t.Fatalf("goods_cost = %v, want 0 for an uncosted order", got.GetGoodsCost())
 	}
 }
 

@@ -212,7 +212,8 @@ export function restockWire(id: bigint) {
   return toWire(found, true);
 }
 
-const rupiah = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
+// The words the server writes (san_money.Text): the exact figure, up to 3 decimals — never rounded to the rupiah.
+const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID", { maximumFractionDigits: 3 })}`;
 
 export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestService>> = {
   restockRequestCreate(req) {

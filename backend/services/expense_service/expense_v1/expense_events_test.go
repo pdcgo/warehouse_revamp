@@ -58,7 +58,7 @@ func TestExpenseEvents_EachCorrectionAnnouncesItsSignedAmount(t *testing.T) {
 
 	for i, want := range []struct {
 		row    uint64
-		amount int64
+		amount float64
 	}{{down.GetId(), -4_500_000}, {up.GetId(), 1_000_000}, {cancel.GetId(), -1_500_000}} {
 		event := sent.events[i+1]
 		if id := "expense-adjusted:" + strconv.FormatUint(want.row, 10); event.GetEventId() != id {
@@ -69,7 +69,7 @@ func TestExpenseEvents_EachCorrectionAnnouncesItsSignedAmount(t *testing.T) {
 		if got == nil || got.GetAdjustmentId() != want.row || got.GetExpenseId() != expense.GetId() ||
 			got.GetFinanceAccountId() != payingAccount || got.GetAmount() != want.amount ||
 			got.GetKind() != expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL || got.GetOccurredOn() != "2026-09-28" {
-			t.Fatalf("correction %d: ExpenseAdjusted = %+v, want adjustment %d of expense %d, account %d, %d",
+			t.Fatalf("correction %v: ExpenseAdjusted = %+v, want adjustment %v of expense %v, account %v, %v",
 				i, got, want.row, expense.GetId(), payingAccount, want.amount)
 		}
 	}

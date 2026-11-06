@@ -175,8 +175,9 @@ export function payingAccountRefusal(teamId: bigint, accountId: bigint): string 
 
 // ── The arithmetic ──────────────────────────────────────────────────────────────────────────────
 
-// Whole rupiah as a row posts (rupiah-is-floating-point's mitigation) — so a balance compares exactly.
-const rupiah = (n: number) => Math.round(n);
+// Exact, as the server posts a row (the-backend-never-rounds-money) — a balance is the sum of its logs within the
+// tolerance.
+const rupiah = (n: number) => n;
 
 const balanceOf = (accountId: bigint) =>
   logs.filter((l) => l.accountId === accountId).reduce((sum, l) => sum + l.change, 0);

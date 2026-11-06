@@ -123,7 +123,7 @@ export function BatchReceiptPage() {
     );
   }
 
-  const cost = (known: boolean, v: bigint) => (known ? formatRupiah(v) : t("batchReceipt.costUnknown"));
+  const cost = (known: boolean, v: number) => (known ? formatRupiah(v) : t("batchReceipt.costUnknown"));
 
   return (
     <Stack gap="section" data-testid="batch-receipt-page">

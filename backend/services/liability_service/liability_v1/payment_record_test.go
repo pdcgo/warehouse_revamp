@@ -56,7 +56,7 @@ func (r *recordingSender) send(ctx context.Context, identity *role_basev1.Identi
 	return nil
 }
 
-func recordFrom(svc *liability_v1.Service, payer, creditor, fromAccount uint64, amount int64) (*liabilityv1.LiabilityPayment, error) {
+func recordFrom(svc *liability_v1.Service, payer, creditor, fromAccount uint64, amount float64) (*liabilityv1.LiabilityPayment, error) {
 	res, err := svc.LiabilityPaymentRecord(context.Background(),
 		connect.NewRequest(&liabilityv1.LiabilityPaymentRecordRequest{
 			TeamId:         payer,
@@ -160,5 +160,36 @@ func TestPaymentRecord_ATeamCannotPayItself(t *testing.T) {
 	_, err := recordFrom(svc, selling, selling, sellingBCA, 15000)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+}
+
+// A CLAIM IS STORED EXACT (the-backend-never-rounds-money): the payment's figure is written as claimed, so the accept
+// posts exactly that — Rp 316,675 included. Only a claim that is not above 0 (float dust included) is refused as
+// InvalidArgument.
+func TestPaymentRecord_StoresAFractionalClaimExact(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, bothBanks, nil)
+
+	payment, err := recordFrom(svc, selling, warehouse, sellingBCA, 15_000.5)
+	if err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	if payment.GetAmount() != 15_000.5 {
+		t.Fatalf("amount = %v, want exactly 15.000,5", payment.GetAmount())
+	}
+
+	var row liability_service_models.LiabilityPayment
+	if err := db.Where("id = ?", payment.GetId()).Take(&row).Error; err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	if row.Amount != 15_000.5 {
+		t.Fatalf("stored amount = %v, want 15000.5", row.Amount)
+	}
+
+	_, err = recordFrom(svc, selling, warehouse, sellingBCA, 0.00001)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a claim of float dust: code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
 }

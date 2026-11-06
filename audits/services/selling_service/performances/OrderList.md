@@ -51,7 +51,8 @@ pie showData
 | 2 | `SELECT orders.*, (item_quantity), (status_at) … ORDER BY id DESC LIMIT n` | 20 / 200 | 0.15 / 0.75 ms | Index Scan Backward `orders_pkey`. SubPlans: `order_items_order_idx`, `order_timeline_logs_order_idx` | ok |
 | 2s | the same, with the search | ≤ 20 | 47–73 ms root | **Seq Scan** → Sort. The SubPlans run for the matches only | 🔴 |
 | 2d | the same, `LIMIT 200 OFFSET 49800` | 200 | 147–275 ms | Index Scan Backward over all 50 000. **Both SubPlans `loops=50000`**, 112 ms of JIT | 🔴 |
-| 2t | the same, `ORDER BY total DESC` | 20 | 34–48 ms | Seq Scan → top-N heapsort. The SubPlans run after the sort (`loops=20`) | 🟡 |
+| 2t | the same, `ORDER BY total_cost DESC, id DESC` (Total) or `platform_total DESC, id DESC` (Platform total) | 20 | 35 ms root · 8 ms team 2 | Seq Scan (root) / BitmapOr (team) → top-N heapsort. The SubPlans run after the sort (`loops=20`) | 🟡 |
+| 2n | `… AND settlement_opened_at IS NULL ORDER BY id DESC LIMIT 20` (*not opened*) | 20 | 0.12–0.15 ms | Index Scan Backward `orders_settlement_not_opened_idx` (the partial index); its count 0.27 ms | ok |
 
 EXPLAIN times. The handler's own query times are within these ranges.
 
@@ -175,8 +176,15 @@ Root takes 37–48 ms: a Seq Scan, then a top-N heapsort of 50 000 rows. There i
 nothing here, because the SubPlans run after the sort. The query is under the 50 ms line, but it is linear: root passes
 50 ms at ~70 000 orders.
 
-**→ Recommend: nothing yet.** An index on `orders (total)` would serve root's sort alone, because a team's scope is an
-`OR` and is narrowed first. Add it when root's sort-by-total starts to hurt.
+🔄 *(2026-11-05, [the-total-sort-is-ours-and-the-platform-total-sorts-apart](../../../../docs/business/order/context_decision.md#the-total-sort-is-ours-and-the-platform-total-sorts-apart).)*
+The sort named a `total` column that 00027 had replaced, so it had stopped working: *Total* now orders by `total_cost`,
+a new *Platform total* by `platform_total`, each with `id` as the tie-break in the same direction. Re-measured over
+50 000 orders with distinct figures (`order_list_sort_settlement_perf_test.go`): root **37.2 / 37.1 ms** wall
+(35.3 / 35.0 ms EXPLAIN), team 2 **10.8 / 10.7 ms**, warehouse 900 **15.8 ms** (Platform total) — the same shape and
+cost as before; the tie-break adds a sort key, not a pass.
+
+**→ Recommend: nothing yet.** An index on `orders (total_cost, id)` or `(platform_total, id)` would serve root's sort
+alone, because a team's scope is an `OR` and is narrowed first. Add it when root's sort starts to hurt.
 
 ### 4. Root's count still reads the whole table 🟡
 
@@ -186,6 +194,23 @@ A status tab scans too (3.2 ms), because `status` has no index. A team is narrow
 **→ Recommend: accept it until ~500 000 orders.** Then give root's *unfiltered* view an estimated total
 (`pg_class.reltuples`) and keep the exact count once a filter narrows it. The alternative is a "has more" pager, which
 would need an exception to the-pager-is-always-on-screen.
+
+### 6. *Settlement not opened* reads only the missing ones ✅
+
+*(2026-11-05, [a-missing-account-is-found-by-its-opened-at](../../../../docs/business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at).)*
+`settlement_not_opened` adds `settlement_opened_at IS NULL`. Once things run, those orders are FEW — each one is a failed
+open a person is about to fix — so selling 00040 gives them a partial index, `orders (id) WHERE settlement_opened_at IS
+NULL`. Measured over 50 000 orders with 1 in 100 missing (500), with the index and, in the same transaction, without:
+
+| case | with the index | without |
+| --- | --- | --- |
+| root · not opened · 20 | **1.6 ms** wall · count 0.27 ms · page 0.12 ms (Index Scan Backward on the partial index) | 9.8 ms · count 9.5 ms (Seq Scan, 49 500 removed) |
+| team 2 · not opened · 20 | 1.8 ms | 4.5 ms |
+| warehouse 900 · not opened · 20 | 1.6 ms | 6.4 ms |
+| root · not opened · sort Total · 20 | 1.7 ms | 17.4 ms |
+
+The stat's mirror (OrderStat with the same filter) reads the same index. Cost: one entry per order until its account
+opens, then the entry leaves the index — the index stays the size of the backlog, not of the table.
 
 ---
 
@@ -297,3 +322,4 @@ lands in one large `''` bucket that no window reads.
 | 2026-10-22 | 4.0 ms | 2 | re-audit: `status_at` (a correlated MAX over 246 206 timeline rows), the `warehouse_id` filter, the tracking number in the search. `status_at` adds ~0.1 ms to a 20-row page. Now 🔴 on the search (112–158 ms, first measured here; the tracking number adds 8–21 ms per query) and on a deep OFFSET page (252 ms, two-thirds of it `status_at`) |
 | 2026-10-22 | 4.2 ms | 2 | finding 2 fixed — the page is chosen bare in a derived table and the two facts computed for its rows only: the last 200-row page **252 → 20.5 ms**. The search (finding 1) is unchanged at 112–120 ms and waits on the proposed migration |
 | 2026-10-30 | — | 2 | the status-date window (`ENTERED_*`) measured: 50.6 ms for the list and 25.3 ms for OrderStat at 150 000 timeline rows, by a seq scan of the timeline. 7.0 / 4.0 ms with the proposed `(status, created_at)` index — not applied (finding 5) |
+| 2026-11-05 | — | 2 | the two money sorts (Total = `total_cost`, Platform total = `platform_total`, id tie-break): root 37 ms, team 10.8 ms — finding 3 unchanged. `settlement_not_opened` with its partial index (00040): 1.6–1.8 ms; without it 4.5–17.4 ms (finding 6) |

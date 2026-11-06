@@ -3,10 +3,12 @@ package liability_v1_test
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
@@ -29,7 +31,7 @@ func post(
 	return svc.PostEntry(context.Background(), db, p)
 }
 
-func codFee(amount int64, sourceID uint64) liability_v1.Posting {
+func codFee(amount float64, sourceID uint64) liability_v1.Posting {
 	return liability_v1.Posting{
 		DebtorTeamID:   selling,
 		CreditorTeamID: warehouse,
@@ -39,7 +41,7 @@ func codFee(amount int64, sourceID uint64) liability_v1.Posting {
 	}
 }
 
-func balanceOf(t *testing.T, db *gorm.DB, teamID, counterpartyID uint64) int64 {
+func balanceOf(t *testing.T, db *gorm.DB, teamID, counterpartyID uint64) float64 {
 	t.Helper()
 
 	var row liability_service_models.LiabilityBalance
@@ -78,18 +80,18 @@ func TestPostEntry_WritesBothLegs(t *testing.T) {
 	}
 
 	if entries[0].Amount+entries[1].Amount != 0 {
-		t.Fatalf("legs sum to %d, want 0 — they must be exact negatives",
+		t.Fatalf("legs sum to %v, want 0 — they must be exact negatives",
 			entries[0].Amount+entries[1].Amount)
 	}
 
 	// The CREDITOR is owed: positive. The debtor's side is the mirror.
 	if balanceOf(t, db, warehouse, selling) != 15000 {
-		t.Fatalf("warehouse balance = %d, want +15000 (a receivable is positive)",
+		t.Fatalf("warehouse balance = %v, want +15000 (a receivable is positive)",
 			balanceOf(t, db, warehouse, selling))
 	}
 
 	if balanceOf(t, db, selling, warehouse) != -15000 {
-		t.Fatalf("selling balance = %d, want -15000 (a payable is negative)",
+		t.Fatalf("selling balance = %v, want -15000 (a payable is negative)",
 			balanceOf(t, db, selling, warehouse))
 	}
 }
@@ -133,7 +135,7 @@ func TestPostEntry_AReversalIsNotADuplicate(t *testing.T) {
 
 	// The balance nets to zero…
 	if got := balanceOf(t, db, warehouse, selling); got != 0 {
-		t.Fatalf("balance after reversal = %d, want 0", got)
+		t.Fatalf("balance after reversal = %v, want 0", got)
 	}
 
 	// …and the history still shows both. "The fee briefly existed" is what an audit needs to see.
@@ -184,11 +186,11 @@ func TestPostEntry_OneSourceCanOweSeveralCounterparties(t *testing.T) {
 	}
 
 	if got := balanceOf(t, db, selling, warehouse); got != -12000 {
-		t.Fatalf("owed to the warehouse = %d, want -12000", got)
+		t.Fatalf("owed to the warehouse = %v, want -12000", got)
 	}
 
 	if got := balanceOf(t, db, selling, owner); got != -72000 {
-		t.Fatalf("owed to the product owner = %d, want -72000", got)
+		t.Fatalf("owed to the product owner = %v, want -72000", got)
 	}
 }
 
@@ -198,14 +200,14 @@ func TestPostEntry_TheBalanceIsRecomputableFromTheEntries(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	for i, amount := range []int64{15000, 4000, 9000} {
+	for i, amount := range []float64{15000, 4000, 9000} {
 		_, err := post(t, svc, db, codFee(amount, uint64(100+i)))
 		if err != nil {
 			t.Fatalf("posting %d: %v", i, err)
 		}
 	}
 
-	var summed int64
+	var summed float64
 
 	err := db.
 		Model(&liability_service_models.LiabilityLog{}).
@@ -218,7 +220,7 @@ func TestPostEntry_TheBalanceIsRecomputableFromTheEntries(t *testing.T) {
 	}
 
 	if stored := balanceOf(t, db, warehouse, selling); stored != summed {
-		t.Fatalf("stored balance %d != sum of entries %d — the projection has drifted",
+		t.Fatalf("stored balance %v != sum of entries %v — the projection has drifted",
 			stored, summed)
 	}
 }
@@ -262,7 +264,7 @@ func TestPostEntry_TheAgeingClockStartsAndStops(t *testing.T) {
 
 	settled := readBalance(t, db, warehouse, selling)
 	if settled.Balance != 0 {
-		t.Fatalf("balance = %d after settling in full, want 0", settled.Balance)
+		t.Fatalf("balance = %v after settling in full, want 0", settled.Balance)
 	}
 
 	if settled.OldestUnsettledAt != nil {
@@ -369,5 +371,93 @@ func TestPostEntry_RollsBackWithItsCallersTransaction(t *testing.T) {
 
 	if entries != 0 {
 		t.Fatalf("%d entries survived a rolled-back transaction", entries)
+	}
+}
+
+// logSum is Σ amount over one side's legs — what the balance must always equal.
+func logSum(t *testing.T, db *gorm.DB, teamID, counterpartyID uint64) float64 {
+	t.Helper()
+
+	var sum float64
+
+	err := db.
+		Raw(`SELECT COALESCE(SUM(amount), 0) FROM liability_logs WHERE team_id = ? AND counterparty_id = ?`,
+			teamID, counterpartyID).
+		Scan(&sum).
+		Error
+	if err != nil {
+		t.Fatalf("sum logs: %v", err)
+	}
+
+	return sum
+}
+
+// THE FREEZE POINT, EXACT (the-backend-never-rounds-money): a fraction — an order's percentage fee, a loss at a FIFO unit
+// cost — is stored as it is, never rounded. Both legs carry the same exact figure (316,675 posts 316,675), and the
+// balance equals the sum of its logs within the tolerance.
+func TestPostEntry_StoresAFractionExact(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	for i, amount := range []float64{1234.5, 0.6, 2_499.4999, 316.675} {
+		_, err := post(t, svc, db, codFee(amount, uint64(500+i)))
+		if err != nil {
+			t.Fatalf("PostEntry %v: %v", amount, err)
+		}
+	}
+
+	var legs []liability_service_models.LiabilityLog
+
+	err := db.Where("source_id BETWEEN 500 AND 503").Order("id").Find(&legs).Error
+	if err != nil {
+		t.Fatalf("read legs: %v", err)
+	}
+
+	want := map[uint64]float64{500: 1234.5, 501: 0.6, 502: 2_499.4999, 503: 316.675}
+
+	for _, leg := range legs {
+		abs := leg.Amount
+		if abs < 0 {
+			abs = -abs
+		}
+
+		if abs != want[leg.SourceID] {
+			t.Fatalf("leg of source %d = %v, want exactly %v", leg.SourceID, leg.Amount, want[leg.SourceID])
+		}
+	}
+
+	if got := balanceOf(t, db, warehouse, selling); !san_money.Equal(got, 4_051.2749) {
+		t.Fatalf("warehouse balance = %v, want 4.051,2749 (1.234,5 + 0,6 + 2.499,4999 + 316,675)", got)
+	}
+
+	for _, side := range [][2]uint64{{warehouse, selling}, {selling, warehouse}} {
+		if got, sum := balanceOf(t, db, side[0], side[1]), logSum(t, db, side[0], side[1]); !san_money.Equal(got, sum) {
+			t.Fatalf("balance %v != Σ logs %v for %d → %d", got, sum, side[0], side[1])
+		}
+	}
+}
+
+// Float dust below 4 places is no movement, and NaN or an infinity is not money: all three are refused BEFORE anything is
+// written, so no idempotency key is spent on them. (Rp 0,4 is a real movement now — nothing rounds it away.)
+func TestPostEntry_RefusesDustOrAnAmountThatIsNotFinite(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	for i, amount := range []float64{0.00001, math.NaN(), math.Inf(1)} {
+		_, err := post(t, svc, db, codFee(amount, uint64(600+i)))
+		if err == nil {
+			t.Fatalf("PostEntry %v: want a refusal", amount)
+		}
+	}
+
+	var n int64
+
+	err := db.Model(&liability_service_models.LiabilityLog{}).Where("source_id BETWEEN 600 AND 602").Count(&n).Error
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+
+	if n != 0 {
+		t.Fatalf("%d legs written for refused postings, want 0", n)
 	}
 }

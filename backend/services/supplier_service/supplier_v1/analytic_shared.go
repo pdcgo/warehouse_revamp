@@ -53,6 +53,17 @@ func int64Array(values []int64) string {
 	return "{" + strings.Join(parts, ",") + "}"
 }
 
+// float64Array is int64Array for money: a Postgres double precision[] literal, each value written in full
+// (strconv 'g', -1 — the shortest text that reads back as the same double).
+func float64Array(values []float64) string {
+	parts := make([]string, 0, len(values))
+	for _, v := range values {
+		parts = append(parts, strconv.FormatFloat(v, 'g', -1, 64))
+	}
+
+	return "{" + strings.Join(parts, ",") + "}"
+}
+
 // unitsSum is every unit that came off the supplier — restocked + lost + broken — the broken rate's denominator.
 func unitsSum(alias string) string {
 	return fmt.Sprintf("COALESCE(SUM(%[1]s.restock_count + %[1]s.shipping_lost_count + %[1]s.shipping_broken_count), 0)", alias)

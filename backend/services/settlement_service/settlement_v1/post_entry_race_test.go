@@ -44,11 +44,11 @@ var settlementTables = []string{
 func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const posters = 8
-	const each int64 = 1_000
+	const each float64 = 1_000
 
 	// Each caller posts its own DISTINCT row, so nothing is de-duplicated and all 8 must apply.
 	res := h.Race(t, posters, func(i int) error {
@@ -72,7 +72,7 @@ func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 		t.Fatalf("%d of %d distinct posts failed — every one of them was a legitimate entry", res.Failed(), posters)
 	}
 
-	var balance int64
+	var balance float64
 
 	err := db.Raw(`SELECT last_balance FROM order_settlements WHERE order_id = ?`, order).
 		Scan(&balance).
@@ -83,13 +83,13 @@ func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 
 	want := each * posters
 	if balance != want {
-		t.Fatalf("last_balance = %d after %d concurrent posts of %d, want %d — %d was lost to a "+
+		t.Fatalf("last_balance = %v after %v concurrent posts of %v, want %v — %v was lost to a "+
 			"read-modify-write race", balance, posters, each, want, want-balance)
 	}
 
 	// THE PROJECTION MUST STILL EQUAL THE LOG. A balance that is right by luck is not the claim;
 	// recomputing from the entries is.
-	var summed int64
+	var summed float64
 
 	err = db.Raw(`SELECT COALESCE(SUM(change), 0) FROM settlement_logs WHERE order_id = ?`, order).
 		Scan(&summed).
@@ -99,7 +99,7 @@ func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 	}
 
 	if summed != balance {
-		t.Fatalf("the log sums to %d but the account says %d — the projection has drifted from its "+
+		t.Fatalf("the log sums to %v but the account says %v — the projection has drifted from its "+
 			"own source, which is the one thing that makes this ledger auditable", summed, balance)
 	}
 }
@@ -112,7 +112,7 @@ func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const retries = 8
@@ -167,7 +167,7 @@ func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 			"has been credited %d times for one cancellation", rows, retries, rows)
 	}
 
-	var balance int64
+	var balance float64
 
 	err = db.Raw(`SELECT last_balance FROM order_settlements WHERE order_id = ?`, order).
 		Scan(&balance).
@@ -178,7 +178,7 @@ func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 
 	// The sale (−120.000) and ONE cancel (+120.000). A second credit would read +120.000.
 	if balance != 0 {
-		t.Fatalf("last_balance = %d after %d retries of one cancel, want 0 — the retries were not "+
+		t.Fatalf("last_balance = %v after %v retries of one cancel, want 0 — the retries were not "+
 			"absorbed", balance, retries)
 	}
 }
@@ -199,11 +199,11 @@ func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 
 	// An imported shop row asks the shop for its primary CS first, and a settlement with no shop to ask
 	// refuses every one — which left this test proving nothing from 9f20652 until the audit caught it.
-	svc := settlement_v1.NewService(db, nil, nil, &raceShopPrimary{user: shopPrimaryCS})
+	svc := settlement_v1.NewService(db, nil, nil, &raceShopPrimary{user: shopPrimaryCS}, nil)
 	ctx := context.Background()
 
 	const posters = 8
-	const each int64 = -1_000
+	const each float64 = -1_000
 
 	res := h.Race(t, posters, func(i int) error {
 		_, err := svc.PostEntry(ctx, settlement_v1.PostInput{
@@ -226,7 +226,7 @@ func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 		t.Fatalf("%d of %d distinct shop posts failed — every one was a legitimate entry", res.Failed(), posters)
 	}
 
-	var balance int64
+	var balance float64
 
 	err := db.Raw(`SELECT last_balance FROM shop_settlements WHERE shop_id = ?`, shop).
 		Scan(&balance).
@@ -237,13 +237,13 @@ func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 
 	want := each * posters
 	if balance != want {
-		t.Fatalf("shop last_balance = %d after %d concurrent posts of %d, want %d — %d was lost to a "+
+		t.Fatalf("shop last_balance = %v after %v concurrent posts of %v, want %v — %v was lost to a "+
 			"read-modify-write race, which is exactly what shop_settlements exists to prevent",
 			balance, posters, each, want, want-balance)
 	}
 
 	// And the projection must equal the log it projects — the shop's DIRECT rows only.
-	var summed int64
+	var summed float64
 
 	err = db.Raw(`SELECT COALESCE(SUM(change), 0) FROM settlement_logs WHERE shop_id = ? AND order_id IS NULL`, shop).
 		Scan(&summed).
@@ -253,7 +253,7 @@ func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 	}
 
 	if summed != balance {
-		t.Fatalf("the shop's log rows sum to %d but the account says %d — the projection has drifted "+
+		t.Fatalf("the shop's log rows sum to %v but the account says %v — the projection has drifted "+
 			"from its own source", summed, balance)
 	}
 }

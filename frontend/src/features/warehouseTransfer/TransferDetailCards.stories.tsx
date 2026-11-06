@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@chakra-ui/react";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { ParcelCard, RouteCard, TransferLinesCard } from "./TransferDetailCards";
 import { storyTransfer } from "./storyTransfer";
@@ -11,17 +11,19 @@ function Cards({
   id,
   showMoney,
   showPicks,
+  teamId = 12n,
 }: {
   id: bigint;
   showMoney: boolean;
   showPicks: boolean;
+  teamId?: bigint;
 }) {
   const transfer = storyTransfer(id);
 
   return (
     <Stack gap="section">
       <RouteCard transfer={transfer} />
-      <ParcelCard transfer={transfer} teamId={12n} showMoney={showMoney} />
+      <ParcelCard transfer={transfer} teamId={teamId} showMoney={showMoney} />
       <TransferLinesCard transfer={transfer} showPrices={showMoney} showPicks={showPicks} />
     </Stack>
   );
@@ -45,9 +47,34 @@ export const AsTheOwner: Story = {
     await expect(canvas.getByTestId("transfer-detail-tracking")).toHaveTextContent("JNE7788990011");
     await expect(canvas.getByTestId("transfer-detail-shipping-cost")).toHaveTextContent("18.000");
     await expect(canvas.getByTestId("transfer-detail-total")).toHaveTextContent("488.000");
-    // A's label photo is A's document: the owner is told it is attached, not offered a link the server would refuse.
-    await expect(canvas.getByTestId("transfer-detail-label-photo")).toHaveTextContent("only the sending warehouse");
-    await expect(canvas.queryByTestId("transfer-detail-label-photo-open")).toBeNull();
+    // A's label photo opens for the owner too (every-side-of-a-transfer-opens-its-label-photo) — minted on click by
+    // WarehouseTransferLabelPhoto, never rendered as a link.
+    await expect(canvas.getByTestId("transfer-detail-tracking").querySelector("a")).toBeNull();
+    const open = spyOn(window, "open").mockReturnValue(null);
+    await userEvent.click(canvas.getByTestId("transfer-detail-label-photo-open"));
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith(
+        "https://example.invalid/transfer-photo/doc-transfer-603-label",
+        "_blank",
+        "noopener,noreferrer",
+      ),
+    );
+    open.mockRestore();
+  },
+};
+
+// A team that is no side of the transfer is refused by the server (NotFound) — said in a toast, no tab opened.
+export const AFourthTeamIsRefused: Story = {
+  args: { showMoney: false, teamId: 99n },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    await userEvent.click(canvas.getByTestId("transfer-detail-label-photo-open"));
+
+    await expect(await screen.findByText(/warehouse transfer not found/i)).toBeInTheDocument();
+    await expect(open).not.toHaveBeenCalled();
+    open.mockRestore();
   },
 };
 

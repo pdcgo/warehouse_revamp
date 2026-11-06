@@ -228,7 +228,7 @@ message OrderItem {
 
   // What this product COST us, per unit, frozen when the order was placed (#74) — the owner's
   // `unit_cost`: the units the take drew ÷ the quantity (an-order-is-costed-at-what-leaves-the-shelf),
-  // whole rupiah.
+  // exact (the-backend-never-rounds-money).
   //
   // SERVER-SET AND IGNORED ON INPUT. A client supplying it would be writing its own margin, which is
   // the one number nobody placing an order should get to choose.
@@ -236,7 +236,7 @@ message OrderItem {
   // 0 means "unknown", not "free": a product that was never restocked (received straight into stock,
   // say) has no recorded cost. Margin on such a line reads as if the goods were free, so 0 here is a
   // flag that the number is not to be trusted rather than a value to compute with.
-  int64 unit_cost = 7;
+  double unit_cost = 7;
 
   // The line's frozen TOTAL — the owner's `total`, `unit_cost_with_markup × quantity`: the goods the take
   // drew plus, on another team's product, that product's own cross markup (inventory-computes-the-markup).
@@ -333,7 +333,10 @@ message Order {
   // survives on an order placed before that, and means "not recorded", never "sold for nothing".
   //
   //   margin = platform_total − total_cost        (an-order-records-no-shipping-cost)
-  int64 platform_total = 17;
+  //
+  // A double, frozen EXACT when the order is placed (the-backend-never-rounds-money) — settlement's `initial_total`
+  // carries that same figure.
+  double platform_total = 17;
 
   // The lines — populated by OrderDetail (OrderList returns a summary without them).
   repeated OrderItem items = 12;
@@ -352,15 +355,15 @@ message Order {
 
   // WHAT THE GOODS COST THE SELLER — the owner's `goods_cost`, "goods only, used for warehouse fee charge
   // calculation": Σ the lines' frozen `total`, so a borrowed line counts WITH its owner's markup
-  // (the-cross-charge-lives-on-the-line). The warehouse fee is priced on it (the-fee-is-priced-on-goods-cost). Whole
-  // rupiah, rounded once. Frozen at create (a-lines-money-is-frozen-at-finalize); an order placed before selling 00027
+  // (the-cross-charge-lives-on-the-line). The warehouse fee is priced on it (the-fee-is-priced-on-goods-cost). Exact,
+  // never rounded (the-backend-never-rounds-money). Frozen at create (a-lines-money-is-frozen-at-finalize); an order placed before selling 00027
   // keeps the drawn cost it was frozen with, the same figure on any order with no borrowed line.
   //
   // Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that wants to show
   // margin would otherwise have to load every order's items.
   //
   // 0 means the goods' cost is unknown (the take valued nothing), not that they were free.
-  int64 goods_cost = 16;
+  double goods_cost = 16;
 
   // GOODS + THE WAREHOUSE'S FEE — the owner's `total_cost`, what the order cost the seller ("total beli"). Frozen at
   // create beside the two it adds; unrounded rupiah, like the fee (rupiah-is-floating-point). An order whose fee was
@@ -438,8 +441,8 @@ message Order {
   // once by warehouse_service's WarehouseFeeCalculate on the order's goods cost (the-fee-is-priced-on-goods-cost) and
   // never recomputed, so a rate changed later cannot rewrite what an order cost. The owner's `warehouse_fee`.
   //
-  // Unrounded rupiah, a double like the rate it came from (rupiah-is-floating-point) — when a frozen figure is rounded
-  // is not decided, so it is not rounded.
+  // Exact rupiah, a double like the rate it came from (rupiah-is-floating-point) — never rounded
+  // (the-backend-never-rounds-money): 2,5% of 12.666,99 is 316,67475.
   //
   // ABSENT = never priced: an order placed before fees were frozen. Never 0 for that — 0 is a warehouse that chose to
   // charge nothing, which is a price.
@@ -485,6 +488,12 @@ message Order {
   // (the-placement-page-reads-racks-by-transaction-id). 0 = none recorded: an order from a developer's database that
   // predates the column (revamp-has-no-real-orders-yet).
   uint64 transaction_id = 34;
+
+  // WHEN THE ORDER'S SETTLEMENT ACCOUNT OPENED (a-missing-account-is-found-by-its-opened-at) — stamped by settlement,
+  // through an in-process seam, the first time an `initial_total` is posted for the order (from Order Placed, by hand on
+  // the order page, or from an imported statement). 0 = NOT YET: the open failed, is dead-lettered, or never ran — the
+  // order still committed. OrderListFilter.settlement_not_opened lists exactly those.
+  int64 settlement_opened_at_unix = 35;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -549,8 +558,11 @@ message OrderCreateRequest {
 
   // What the buyer PAID on the platform. REQUIRED at finalize (platform-total-is-required-at-finalize) — refused
   // when 0 by the placement rule both doors share, so the message names what is missing rather than a field number.
-  // See Order.platform_total.
-  int64 platform_total = 13 [(buf.validate.field).int64.gte = 0];
+  // See Order.platform_total. A fraction is kept exact as the order is placed; NaN and infinities are refused.
+  double platform_total = 13 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 
   // The shipping receipt, already uploaded to document_service by the client. Optional.
   //
@@ -730,6 +742,11 @@ message OrderListFilter {
   // their names; this says which column they are measured against. An order with no platform date never matches a
   // platform-date window — it has no date there to fall inside.
   OrderDateField date_field = 12 [(buf.validate.field).enum.defined_only = true];
+
+  // Only orders whose settlement account has NOT opened — `settlement_opened_at IS NULL`
+  // (a-missing-account-is-found-by-its-opened-at). false = no filter. A person fixes each by hand on the order page
+  // (a-missing-account-is-fixed-by-hand). Mirrored on OrderStatFilter, so the tabs count the same set.
+  bool settlement_not_opened = 13;
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -739,11 +756,16 @@ enum OrderListDataType {
   ORDER_LIST_DATA_TYPE_ORDER = 2;
 }
 
-// OrderRowSort is the sort selection paired with the ORDER slice.
+// OrderRowSort is the sort selection paired with the ORDER slice. Ties on a figure fall back to the order id, in the
+// same direction (the-total-sort-is-ours-and-the-platform-total-sorts-apart).
 enum OrderRowSort {
   ORDER_ROW_SORT_UNSPECIFIED = 0;
   ORDER_ROW_SORT_ID = 1;
+  // TOTAL — `total_cost`: what the order cost the seller, goods cost + warehouse fee. Ours, never the platform's.
   ORDER_ROW_SORT_TOTAL = 2;
+  // PLATFORM TOTAL — `platform_total`: what the storefront took from the buyer. Its own sort, never mixed with TOTAL
+  // (the-total-is-ours-the-platform-total-is-theirs).
+  ORDER_ROW_SORT_PLATFORM_TOTAL = 3;
 }
 
 message OrderListFilterSort {
@@ -1060,10 +1082,13 @@ message OrderReturnAcceptRequest {
   // on one timeline note from the warehouse, for customer service to claim from the platform. One entry per line, never
   // above the line's quantity.
   repeated OrderReturnMissingLine missing_lines = 3 [(buf.validate.field).repeated.max_items = 200];
-  // What the courier asked at the door, whole rupiah; 0 = nothing, the common case (a-return-may-carry-the-couriers-ask).
+  // What the courier asked at the door, exact; 0 = nothing, the common case (a-return-may-carry-the-couriers-ask).
   // Above 0, the order's selling team owes the ACCEPTING warehouse that amount — it paid at its door — and liability
   // posts it from OrderReturnAccepted.
-  int64 courier_charge = 4 [(buf.validate.field).int64.gte = 0];
+  double courier_charge = 4 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
   // What it was for — required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for); the handler
   // checks, since a rule across two fields is not written here. Ignored when there is no charge.
   string courier_charge_note = 5 [(buf.validate.field).string.max_len = 200];
@@ -1304,6 +1329,9 @@ message OrderStatFilter {
 
   // Which date the window reads, as on OrderListFilter — so the tab counts total what the table shows.
   OrderDateField date_field = 11 [(buf.validate.field).enum.defined_only = true];
+
+  // Only orders whose settlement account has not opened, as on OrderListFilter.
+  bool settlement_not_opened = 12;
 }
 
 message OrderStatRequest {
@@ -1338,10 +1366,10 @@ message OrderStatRequest {
 message OrderStatusCount {
   OrderStatus status = 1;
   int64 count = 2;
-  // The sum of those orders' `platform_total`, whole rupiah — what the buyers paid the platform for them. Every order in
+  // The sum of those orders' `platform_total` — what the buyers paid the platform for them. Every order in
   // the pile, measurable or not (an order placed before platform-total-is-required-at-finalize adds its 0). It summed
-  // `total` until selling 00027 dropped that column.
-  int64 value = 3;
+  // `total` until selling 00027 dropped that column. A double since selling 00041, a sum of whole-rupiah figures.
+  double value = 3;
 
   // Σ line quantity over EVERY order in the pile — units, not lines, because units are what UPT counts
   // (the-summary-follows-the-tab: UPT = item_count ÷ count).
@@ -1356,10 +1384,10 @@ message OrderStatusCount {
   //
   //   total beli = goods_cost + fees        margin = mp_value − total beli        % = margin ÷ mp_value
 
-  // Σ platform_total — what the buyers paid the platform.
-  int64 mp_value = 5;
+  // Σ platform_total — what the buyers paid the platform. A double, like the figure it sums.
+  double mp_value = 5;
   // Σ goods_cost — what the goods cost the seller, borrowed lines with their markup.
-  int64 goods_cost = 6;
+  double goods_cost = 6;
   // Σ warehouse_fee — what fulfilling them cost. Unrounded rupiah, like the frozen fees it adds.
   double fees = 7;
   // How many of `count` are NOT measurable, so the reader is told what the three sums above left out.
@@ -1378,7 +1406,7 @@ message OrderStatusCount {
 message OrderStatPreview {
   int64 orders_30d = 1;
   // Σ `platform_total` over the window — what the buyers paid. It summed `total` until selling 00027 dropped it.
-  int64 revenue_30d = 2;
+  double revenue_30d = 2;
 }
 
 message OrderStatResponse {

@@ -377,9 +377,12 @@ export function OrderCreatePage() {
     const orderRef = draft.source !== DRAFT_SOURCE ? draft.externalId : "";
     // What the buyer paid — the draft's own `platform_total` (the-draft-price-is-platform-total); when the app sent none,
     // the rows' prices summed (`the-draft-sell-price-starts-from-the-rows`). The CS may type over it either way.
-    const scraped = draft.items.reduce((sum, item) => sum + item.unitPrice * BigInt(item.quantity), 0n);
-    const seededTotal = draft.platformTotal > 0n ? draft.platformTotal : scraped;
-    const platformTotal = seededTotal > 0n ? seededTotal.toString() : "";
+    const scraped = draft.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    // ⚠ The draft's figure and the rows' prices are doubles since selling 00041/00042, kept EXACT
+    // (a-draft-keeps-its-platform-total-as-typed, the-backend-never-rounds-money): the seed is the figure itself, a
+    // fraction included, and the order places exactly that.
+    const seededTotal = draft.platformTotal > 0 ? draft.platformTotal : scraped;
+    const platformTotal = Number.isFinite(seededTotal) && seededTotal > 0 ? String(seededTotal) : "";
     // The platform's own dates and the buyer's username, as the app pushed them — empty when it sent none.
     const seededOrderDate = draft.platformCreatedAtUnix > 0n ? unixToDateTimeInput(draft.platformCreatedAtUnix) : "";
     const seededDeadline =
@@ -679,7 +682,7 @@ export function OrderCreatePage() {
   // THE WAREHOUSE'S FEE, priced by the warehouse itself on the goods' cost — the same call order create makes before
   // it freezes the fee (the-flat-rate-is-dropped-last step 3). 0 while it is being asked, never a guess.
   const feeQuote = useWarehouseFeeQuote({ teamId, warehouseId, goodsCost: productsTotal });
-  const warehouseFee = feeQuote.data?.fee ?? 0n;
+  const warehouseFee = feeQuote.data?.fee ?? 0;
   // A warehouse that never set its fee takes no orders (a-warehouse-with-no-rate-takes-no-orders): its sentence is
   // shown under the picker and Save stays off, because the server would refuse the order anyway.
   const feeRefusal = warehouseId > 0n ? (feeQuote.data?.refusal ?? null) : null;
@@ -697,7 +700,7 @@ export function OrderCreatePage() {
     [productLines, owners, costs, teamId, teamNames, warehouseId, warehouseFee],
   );
 
-  const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0n);
+  const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0);
 
   // One row per creditor this order would put us in debt to — the building that ships it, and every
   // team whose goods are on it. Exactly the set `CheckCredit` is asked about at placement.
@@ -743,7 +746,7 @@ export function OrderCreatePage() {
     canSubmit({ customerName, shopId, warehouseId, lines: allLines, stock }) &&
     feeRefusal === null &&
     orderDate !== "" &&
-    sellPrice > 0n &&
+    sellPrice > 0 &&
     marketplace.orderExternalRefId.trim() !== "" &&
     unmappedReturns === 0;
 
@@ -785,7 +788,7 @@ export function OrderCreatePage() {
     note.trim() !== "" ||
     hasReceipt(receipt) ||
     addressTouched(address) ||
-    toRupiah(marketplace.platformTotal) > 0n ||
+    toRupiah(marketplace.platformTotal) > 0 ||
     lines.length > 0 ||
     // The cards that do not submit are still WORK: somebody who typed a deadline and a tracking
     // number has something to lose, whether or not the server will ever see it.
@@ -891,6 +894,8 @@ export function OrderCreatePage() {
       receipt: hasReceipt(receipt) ? receipt : undefined,
       // What the buyer paid on the platform. The order's OWN money — goods_cost, the warehouse fee, total_cost — is
       // not sent: the server freezes it from the take (an-order-is-costed-at-what-leaves-the-shelf).
+      // A double on the wire since selling 00041 — sent EXACT, a fraction included, and frozen as sent
+      // (the-backend-never-rounds-money).
       platformTotal: toRupiah(marketplace.platformTotal),
       // Trimmed, so a reference of nothing but whitespace is stored as none at all — the same
       // treatment `note` gets, and for the same reason: "" and "   " must not be two states.
@@ -1250,6 +1255,7 @@ export function OrderCreatePage() {
                         <Field.RequiredIndicator />
                       </Field.Label>
                       <CurrencyInput
+                        fraction
                         value={marketplace.platformTotal}
                         data-testid="order-marketplace-total"
                         onChange={(platformTotal) =>

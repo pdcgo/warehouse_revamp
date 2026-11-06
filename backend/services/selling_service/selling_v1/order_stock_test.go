@@ -10,6 +10,7 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
@@ -260,7 +261,7 @@ func itoa(n uint64) string {
 // computable from the order alone: margin = platform_total − total_cost, total_cost = goods_cost + fee.
 func TestOrderCreate_FreezesTheGoodsCost(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{100: 6000}}
+	picker := &fakePicker{costs: map[uint64]float64{100: 6000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -271,7 +272,7 @@ func TestOrderCreate_FreezesTheGoodsCost(t *testing.T) {
 	}
 
 	if got := created.Msg.GetOrder().GetGoodsCost(); got != 18000 {
-		t.Fatalf("order goods_cost = %d, want 18000 (3 × 6000)", got)
+		t.Fatalf("order goods_cost = %v, want 18000 (3 × 6000)", got)
 	}
 
 	// Read it back: the header total and the per-line cost are both stored, not just echoed.
@@ -283,17 +284,17 @@ func TestOrderCreate_FreezesTheGoodsCost(t *testing.T) {
 	}
 
 	if got := detail.Msg.GetOrder().GetGoodsCost(); got != 18000 {
-		t.Fatalf("stored goods_cost = %d, want 18000", got)
+		t.Fatalf("stored goods_cost = %v, want 18000", got)
 	}
 	if got := detail.Msg.GetOrder().GetItems()[0].GetUnitCost(); got != 6000 {
-		t.Fatalf("stored unit cost = %d, want 6000", got)
+		t.Fatalf("stored unit cost = %v, want 6000", got)
 	}
 }
 
 // AN ORDER IS COSTED AT WHAT LEAVES THE SHELF (an-order-is-costed-at-what-leaves-the-shelf): 3 units drawn as 2 from the
 // January batch at 10.000 and 1 from the March batch at 14.000 cost 34.000 — and the header's goods_cost, the fee's basis, the
 // line's unit cost and its total all come from that ONE draw, never from the shelf's average. The goods_cost (an own product: no markup) is the draw
-// itself, rounded once, so it adds up to what the goods were bought for — not 3 × the rounded 11.333.
+// itself, exact, so it adds up to what the goods were bought for — and the line's unit cost is the exact 11.333,33….
 func TestOrderCreate_FreezesEveryFigureFromTheTakesDraw(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{draw: selling_v1.PickDraw{
@@ -321,7 +322,7 @@ func TestOrderCreate_FreezesEveryFigureFromTheTakesDraw(t *testing.T) {
 
 	order := detail.Msg.GetOrder()
 	if order.GetGoodsCost() != 34_000 || order.GetWarehouseFee() != 3_400 {
-		t.Fatalf("stored goods_cost %d, fee %v — want the draw's 34000 and 10%% of it", order.GetGoodsCost(), order.GetWarehouseFee())
+		t.Fatalf("stored goods_cost %v, fee %v — want the draw's 34000 and 10%% of it", order.GetGoodsCost(), order.GetWarehouseFee())
 	}
 
 	var items []selling_service_models.OrderItem
@@ -331,8 +332,8 @@ func TestOrderCreate_FreezesEveryFigureFromTheTakesDraw(t *testing.T) {
 		t.Fatalf("read the lines: %v", err)
 	}
 
-	if len(items) != 1 || items[0].UnitCost != 11_333 || items[0].Total == nil || *items[0].Total != 34_000 {
-		t.Fatalf("stored lines %+v — want unit cost 11333 (the draw ÷ 3) and total 34000", items)
+	if len(items) != 1 || !san_money.Equal(items[0].UnitCost, 34_000.0/3) || items[0].Total == nil || *items[0].Total != 34_000 {
+		t.Fatalf("stored lines %+v — want the exact unit cost 11.333,33… (the draw ÷ 3) and total 34000", items)
 	}
 }
 
@@ -342,7 +343,7 @@ func TestOrderCreate_FreezesEveryFigureFromTheTakesDraw(t *testing.T) {
 func TestOrderCreate_UnknownCostFreezesZero(t *testing.T) {
 	db := san_testdb.DB(t)
 	// The warehouse has no restock history for product 100, so it is absent from the map.
-	picker := &fakePicker{costs: map[uint64]int64{}}
+	picker := &fakePicker{costs: map[uint64]float64{}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -352,7 +353,7 @@ func TestOrderCreate_UnknownCostFreezesZero(t *testing.T) {
 	}
 
 	if got := created.Msg.GetOrder().GetGoodsCost(); got != 0 {
-		t.Fatalf("goods_cost = %d, want 0 for an unknown cost", got)
+		t.Fatalf("goods_cost = %v, want 0 for an unknown cost", got)
 	}
 }
 
@@ -360,7 +361,7 @@ func TestOrderCreate_UnknownCostFreezesZero(t *testing.T) {
 // writing its own margin, which is the one number nobody placing an order should get to choose.
 func TestOrderCreate_ClientCannotSetItsOwnCost(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{100: 6000}}
+	picker := &fakePicker{costs: map[uint64]float64{100: 6000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
@@ -374,9 +375,9 @@ func TestOrderCreate_ClientCannotSetItsOwnCost(t *testing.T) {
 
 	// The warehouse's figure won, not the caller's.
 	if got := created.Msg.GetOrder().GetItems()[0].GetUnitCost(); got != 6000 {
-		t.Fatalf("unit cost = %d, want the warehouse's 6000 — a client set its own margin", got)
+		t.Fatalf("unit cost = %v, want the warehouse's 6000 — a client set its own margin", got)
 	}
 	if got := created.Msg.GetOrder().GetGoodsCost(); got != 18000 {
-		t.Fatalf("goods_cost = %d, want 18000", got)
+		t.Fatalf("goods_cost = %v, want 18000", got)
 	}
 }

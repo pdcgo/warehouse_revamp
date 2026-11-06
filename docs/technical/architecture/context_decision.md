@@ -79,6 +79,10 @@ single-timezone standards carry a DST caveat; this one does not.
 ⚠ **What it does NOT decide**: whether a *user* in another timezone sees their own day or Jakarta's. The
 system's calendar is Jakarta; the presentation question is separate and not raised by anything yet.
 
+✅ Built 2026-11-05 — `backend/pkgs/san_dbsession` sets the session `timezone` to Asia/Jakarta on every connection (dev server, shipment_service, `san`, `san_testdb`); settlement `00009` comments its DATE columns; tests `san_dbsession/session_test.go` and `TestSettlementPost_APostAt2330UTCLandsOnTheJakartaDay` ([development_state/architecture](../../development_state/architecture/context.md)).
+
+✅ Built 2026-11-05 — the two day boundaries the session could not fix: `liability_v1/liability_daily.go` groups and bounds by the Jakarta day ([the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day)); `inventory_v1/batch_list.go` `soonCutoff(now)` ends the "expiring ≤ 30 days" window at the Jakarta midnight after today's Jakarta date + 30, not at a host-clock instant; tests `TestBatchList_TheSoonWindowEndsWithTheThirtiethJakartaDay`, `TestBatchList_ExpiringSoonCountsTheWholeThirtiethJakartaDay` ([development_state/architecture](../../development_state/architecture/context.md)).
+
 ## region-stays-its-own-service
 
 > Owner, in chat (2026-10-31): *"yes"* — to [Q8](./context_clarify.md#question), *does `region_service` stay its own

@@ -28,7 +28,7 @@ func TestCostCreate_RecordsTheChosenDate(t *testing.T) {
 	got := record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, 12_000_000, "2026-06-30")
 
 	if got.GetAmount() != 12_000_000 {
-		t.Fatalf("amount = %d, want 12000000", got.GetAmount())
+		t.Fatalf("amount = %v, want 12000000", got.GetAmount())
 	}
 	if got.GetOccurredAt() != "2026-06-30" {
 		t.Fatalf("occurred_at = %q, want the chosen 2026-06-30", got.GetOccurredAt())
@@ -38,7 +38,7 @@ func TestCostCreate_RecordsTheChosenDate(t *testing.T) {
 	}
 	// A new cost is an expense, not an adjustment, and counts for its own amount until somebody corrects it.
 	if got.GetAdjustsExpenseId() != 0 || got.GetNetAmount() != got.GetAmount() {
-		t.Fatalf("adjusts %d, net %d — want an expense counting for its own %d",
+		t.Fatalf("adjusts %v, net %v — want an expense counting for its own %v",
 			got.GetAdjustsExpenseId(), got.GetNetAmount(), got.GetAmount())
 	}
 }
@@ -245,5 +245,42 @@ func TestExpenseCreate_StockLossIsRefusedThroughTheAPI(t *testing.T) {
 	}))
 	if err != nil {
 		t.Fatalf("payroll through the API: %v", err)
+	}
+}
+
+// AN EXPENSE IS STORED EXACT (the-backend-never-rounds-money): a fraction — a stock loss arrives priced at a FIFO unit
+// cost — is written as it is, so the account it moves and every daily sum read that same exact figure. Rp 0,4 is a real
+// expense; only one that is not above 0 (float dust included) is refused as InvalidArgument and writes no row.
+func TestExpenseCreate_AFractionalAmountIsStoredExact(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	got := record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, 12_345.5, "2026-06-30")
+	if got.GetAmount() != 12_345.5 || got.GetNetAmount() != 12_345.5 {
+		t.Fatalf("amount/net = %v/%v, want exact 12.345,5", got.GetAmount(), got.GetNetAmount())
+	}
+
+	var stored float64
+
+	err := db.Raw(`SELECT amount FROM expense_records WHERE id = ?`, got.GetId()).Scan(&stored).Error
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+
+	if stored != 12_345.5 {
+		t.Fatalf("stored amount = %v, want 12345.5", stored)
+	}
+
+	small := record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, 0.4, "2026-06-30")
+	if small.GetAmount() != 0.4 {
+		t.Fatalf("an expense of Rp 0,4 = %v, want 0,4 stored", small.GetAmount())
+	}
+
+	_, err = svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, Amount: 0.00001, OccurredAt: "2026-06-30",
+		FinanceAccountId: payingAccount,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("an expense of float dust: code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
 }

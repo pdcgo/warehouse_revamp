@@ -45,3 +45,9 @@ the next call a 401.
 | a refresh token | by design — 90 days, then connect again |
 | a cross-instance rate limit | per instance today; a shared limiter (Redis) when there is more than one |
 | a dev tunnel recipe | connecting the real ChatGPT/Claude needs `PUBLIC_URL` on a public HTTPS tunnel to :8080 and `APP_URL` to the UI — not scripted |
+
+## 2026-11-06 — money reaches the agent as JSON numbers
+
+Every money field the tools read is a `double` since the money-type change (both parts), so protojson writes a number —
+`"total_receivable":700000`, never the quoted `"700000"` of an `int64`. No tool description calls money an integer
+(`list_metrics`' CURRENCY / POSITION say *rupiah*). `TestMCP_AnotherTeamIsRefusedThroughTheTool` now asserts the number.

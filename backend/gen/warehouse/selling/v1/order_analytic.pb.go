@@ -32,7 +32,7 @@ type OrderCreatedMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	CreatedTotal *float64 `protobuf:"fixed64,2,opt,name=created_total,json=createdTotal,proto3,oneof" json:"created_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	MpTotal       *int64 `protobuf:"varint,3,opt,name=mp_total,json=mpTotal,proto3,oneof" json:"mp_total,omitempty"`
+	MpTotal       *float64 `protobuf:"fixed64,3,opt,name=mp_total,json=mpTotal,proto3,oneof" json:"mp_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,7 +81,7 @@ func (x *OrderCreatedMetric) GetCreatedTotal() float64 {
 	return 0
 }
 
-func (x *OrderCreatedMetric) GetMpTotal() int64 {
+func (x *OrderCreatedMetric) GetMpTotal() float64 {
 	if x != nil && x.MpTotal != nil {
 		return *x.MpTotal
 	}
@@ -186,7 +186,7 @@ type OrderCancelMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	CancelTotal *float64 `protobuf:"fixed64,2,opt,name=cancel_total,json=cancelTotal,proto3,oneof" json:"cancel_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	MpTotal       *int64 `protobuf:"varint,3,opt,name=mp_total,json=mpTotal,proto3,oneof" json:"mp_total,omitempty"`
+	MpTotal       *float64 `protobuf:"fixed64,3,opt,name=mp_total,json=mpTotal,proto3,oneof" json:"mp_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -235,7 +235,7 @@ func (x *OrderCancelMetric) GetCancelTotal() float64 {
 	return 0
 }
 
-func (x *OrderCancelMetric) GetMpTotal() int64 {
+func (x *OrderCancelMetric) GetMpTotal() float64 {
 	if x != nil && x.MpTotal != nil {
 		return *x.MpTotal
 	}
@@ -340,7 +340,7 @@ type OrderReturnCreatedMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	ReturnCreatedTotal *float64 `protobuf:"fixed64,2,opt,name=return_created_total,json=returnCreatedTotal,proto3,oneof" json:"return_created_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	ReturnCreatedMpTotal *int64 `protobuf:"varint,3,opt,name=return_created_mp_total,json=returnCreatedMpTotal,proto3,oneof" json:"return_created_mp_total,omitempty"`
+	ReturnCreatedMpTotal *float64 `protobuf:"fixed64,3,opt,name=return_created_mp_total,json=returnCreatedMpTotal,proto3,oneof" json:"return_created_mp_total,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -389,7 +389,7 @@ func (x *OrderReturnCreatedMetric) GetReturnCreatedTotal() float64 {
 	return 0
 }
 
-func (x *OrderReturnCreatedMetric) GetReturnCreatedMpTotal() int64 {
+func (x *OrderReturnCreatedMetric) GetReturnCreatedMpTotal() float64 {
 	if x != nil && x.ReturnCreatedMpTotal != nil {
 		return *x.ReturnCreatedMpTotal
 	}
@@ -494,7 +494,7 @@ type OrderReturnArrivedMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	ReturnArrivedTotal *float64 `protobuf:"fixed64,2,opt,name=return_arrived_total,json=returnArrivedTotal,proto3,oneof" json:"return_arrived_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	ReturnArrivedMpTotal *int64 `protobuf:"varint,3,opt,name=return_arrived_mp_total,json=returnArrivedMpTotal,proto3,oneof" json:"return_arrived_mp_total,omitempty"`
+	ReturnArrivedMpTotal *float64 `protobuf:"fixed64,3,opt,name=return_arrived_mp_total,json=returnArrivedMpTotal,proto3,oneof" json:"return_arrived_mp_total,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -543,7 +543,7 @@ func (x *OrderReturnArrivedMetric) GetReturnArrivedTotal() float64 {
 	return 0
 }
 
-func (x *OrderReturnArrivedMetric) GetReturnArrivedMpTotal() int64 {
+func (x *OrderReturnArrivedMetric) GetReturnArrivedMpTotal() float64 {
 	if x != nil && x.ReturnArrivedMpTotal != nil {
 		return *x.ReturnArrivedMpTotal
 	}
@@ -648,7 +648,7 @@ type OrderLostCreatedMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	LostCreatedTotal *float64 `protobuf:"fixed64,2,opt,name=lost_created_total,json=lostCreatedTotal,proto3,oneof" json:"lost_created_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	LostCreatedMpTotal *int64 `protobuf:"varint,3,opt,name=lost_created_mp_total,json=lostCreatedMpTotal,proto3,oneof" json:"lost_created_mp_total,omitempty"`
+	LostCreatedMpTotal *float64 `protobuf:"fixed64,3,opt,name=lost_created_mp_total,json=lostCreatedMpTotal,proto3,oneof" json:"lost_created_mp_total,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -697,7 +697,7 @@ func (x *OrderLostCreatedMetric) GetLostCreatedTotal() float64 {
 	return 0
 }
 
-func (x *OrderLostCreatedMetric) GetLostCreatedMpTotal() int64 {
+func (x *OrderLostCreatedMetric) GetLostCreatedMpTotal() float64 {
 	if x != nil && x.LostCreatedMpTotal != nil {
 		return *x.LostCreatedMpTotal
 	}
@@ -1573,7 +1573,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\fcreatedCount\x124\n" +
 	"\rcreated_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\fcreatedTotal\x88\x01\x01\x12*\n" +
-	"\bmp_total\x18\x03 \x01(\x03B\n" +
+	"\bmp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\ampTotal\x88\x01\x01:1\x9a\xb5\x18-\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x16metrics/orders/createdB\x10\n" +
@@ -1596,7 +1596,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\vcancelCount\x122\n" +
 	"\fcancel_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\vcancelTotal\x88\x01\x01\x12*\n" +
-	"\bmp_total\x18\x03 \x01(\x03B\n" +
+	"\bmp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\ampTotal\x88\x01\x01:3\x9a\xb5\x18/\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x18metrics/orders/cancelledB\x0f\n" +
@@ -1619,7 +1619,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x12returnCreatedCount\x12A\n" +
 	"\x14return_created_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\x12returnCreatedTotal\x88\x01\x01\x12F\n" +
-	"\x17return_created_mp_total\x18\x03 \x01(\x03B\n" +
+	"\x17return_created_mp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\x14returnCreatedMpTotal\x88\x01\x01:8\x9a\xb5\x184\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x1dmetrics/orders/return_createdB\x17\n" +
@@ -1642,7 +1642,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x12returnArrivedCount\x12A\n" +
 	"\x14return_arrived_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\x12returnArrivedTotal\x88\x01\x01\x12F\n" +
-	"\x17return_arrived_mp_total\x18\x03 \x01(\x03B\n" +
+	"\x17return_arrived_mp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\x14returnArrivedMpTotal\x88\x01\x01:8\x9a\xb5\x184\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x1dmetrics/orders/return_arrivedB\x17\n" +
@@ -1665,7 +1665,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x10lostCreatedCount\x12=\n" +
 	"\x12lost_created_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\x10lostCreatedTotal\x88\x01\x01\x12B\n" +
-	"\x15lost_created_mp_total\x18\x03 \x01(\x03B\n" +
+	"\x15lost_created_mp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\x12lostCreatedMpTotal\x88\x01\x01:6\x9a\xb5\x182\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x1bmetrics/orders/lost_createdB\x15\n" +

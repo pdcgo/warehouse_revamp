@@ -60,7 +60,7 @@ func primaryIs(user uint64) *stubPrimary {
 	return &stubPrimary{user: user}
 }
 
-func shopOther(uniqueID string, change int64) settlement_v1.PostInput {
+func shopOther(uniqueID string, change float64) settlement_v1.PostInput {
 	return settlement_v1.PostInput{
 		UniqueID:       uniqueID,
 		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER,
@@ -73,7 +73,7 @@ func shopOther(uniqueID string, change int64) settlement_v1.PostInput {
 // — because there is none. An empty OrderSettlement would read as an account whose every figure is 0.
 func TestSettlementPost_ShopAddressedOpensItsOwnAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
 
 	result, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -93,11 +93,11 @@ func TestSettlementPost_ShopAddressedOpensItsOwnAccount(t *testing.T) {
 	}
 
 	if result.ShopState.LastBalance != -20_000 {
-		t.Errorf("shop last_balance = %d, want -20.000", result.ShopState.LastBalance)
+		t.Errorf("shop last_balance = %v, want -20.000", result.ShopState.LastBalance)
 	}
 
 	if result.Entry.Balance != -20_000 {
-		t.Errorf("entry balance = %d, want -20.000 — the shop's chain starts here", result.Entry.Balance)
+		t.Errorf("entry balance = %v, want -20.000 — the shop's chain starts here", result.Entry.Balance)
 	}
 
 	// The row it locks must actually be on disk, or the next writer has nothing to serialise on.
@@ -120,7 +120,7 @@ func TestSettlementPost_ShopAddressedOpensItsOwnAccount(t *testing.T) {
 // movements only, and the order rows are a different chain entirely.
 func TestSettlementPost_TheTwoChainsDoNotMix(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -134,7 +134,7 @@ func TestSettlementPost_TheTwoChainsDoNotMix(t *testing.T) {
 
 	// The shop chain opened at 0 and knows nothing of the order's −120.000.
 	if shopResult.ShopState.LastBalance != -20_000 {
-		t.Errorf("shop last_balance = %d, want -20.000 — the order's balance must not leak in",
+		t.Errorf("shop last_balance = %v, want -20.000 — the order's balance must not leak in",
 			shopResult.ShopState.LastBalance)
 	}
 
@@ -147,14 +147,14 @@ func TestSettlementPost_TheTwoChainsDoNotMix(t *testing.T) {
 	}
 
 	if account.LastBalance != -sale {
-		t.Errorf("order last_balance = %d, want %d — the shop row must not move it", account.LastBalance, -sale)
+		t.Errorf("order last_balance = %v, want %v — the shop row must not move it", account.LastBalance, -sale)
 	}
 }
 
 // A shop-addressed row is idempotent on the same key, exactly as an order-addressed one is.
 func TestSettlementPost_ShopAddressedIsIdempotent(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
 
 	first, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -175,7 +175,7 @@ func TestSettlementPost_ShopAddressedIsIdempotent(t *testing.T) {
 	}
 
 	if second.ShopState.LastBalance != -20_000 {
-		t.Errorf("shop last_balance = %d, want -20.000 — a retry must not move the account twice",
+		t.Errorf("shop last_balance = %v, want -20.000 — a retry must not move the account twice",
 			second.ShopState.LastBalance)
 	}
 }
@@ -188,7 +188,7 @@ func TestSettlementPost_ShopAddressedIsIdempotent(t *testing.T) {
 // on every line while the money sat in the other shop.
 func TestSettlementPost_RefusesAKeyHeldByAnotherShop(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
 
 	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -244,7 +244,7 @@ func TestSettlementPost_RefusesAKeyHeldByAnotherShop(t *testing.T) {
 // row — its amount, its note, its dates.
 func TestSettlementPost_RefusesAKeyHeldByAnotherTeamsShop(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
 
 	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -269,7 +269,7 @@ func TestSettlementPost_RefusesAKeyHeldByAnotherTeamsShop(t *testing.T) {
 // there is no account to open, and the row would never reach the detail panel that explains it.
 func TestSettlementPost_RefusesAnInitialTotalWithNoOrder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
 
 	_, err := postShop(t, svc, settlement_v1.PostInput{
 		UniqueID:       "shop-30-sale",
@@ -290,7 +290,7 @@ func TestSettlementPost_RefusesAnInitialTotalWithNoOrder(t *testing.T) {
 // where it would move that order's balance for something the marketplace never did.
 func TestSettlementPost_RefusesASystemAdjustmentOnAnOrder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
 
 	_, err := post(t, svc, settlement_v1.PostInput{
 		UniqueID:       "repair-aug",
@@ -311,7 +311,7 @@ func TestSettlementPost_RefusesASystemAdjustmentOnAnOrder(t *testing.T) {
 // is: the scope proves the caller's team, never the account's.
 func TestSettlementPost_RefusesAnotherTeamsShopAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
 
 	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {

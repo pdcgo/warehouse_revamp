@@ -53,7 +53,7 @@ export interface SettlementTabProps {
    * The page's own "total sistem" — what the order cost, everything included — for the panel's two
    * margins. Undefined when the page does not know it; the margins then stay off.
    */
-  totalBeli?: bigint;
+  totalBeli?: number;
   /** Drop the panel's own card — the host is already one. See `OrderLedgerPanel`. */
   bare?: boolean;
 }

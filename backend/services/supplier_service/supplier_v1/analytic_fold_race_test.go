@@ -90,12 +90,13 @@ func figService(db *gorm.DB, broker supplier_v1.ReplayBroker) *supplier_v1.Servi
 // figAdd is what folding these lines adds to a row: the units, and their value at the line's price.
 func figAdd(c supplier_service_models.SupplierMetricColumns, lines ...line) supplier_service_models.SupplierMetricColumns {
 	for _, l := range lines {
-		value := func(units int64) int64 {
+		value := func(units int64) float64 {
 			if l.ordered <= 0 {
 				return 0
 			}
 
-			return l.total * units / l.ordered
+			// Exact, as the fold values it (the-backend-never-rounds-money).
+			return float64(l.total) * float64(units) / float64(l.ordered)
 		}
 
 		c.RestockCount += l.accepted

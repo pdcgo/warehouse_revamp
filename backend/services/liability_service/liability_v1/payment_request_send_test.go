@@ -68,7 +68,7 @@ func TestPaymentRequest_IsANoticeThatMovesNothing(t *testing.T) {
 	}
 
 	if o := owed(t, db, tokoA, bekasi); o != 700_000 {
-		t.Fatalf("Toko A owes %d after the request, want 700.000 — a request posts nothing", o)
+		t.Fatalf("Toko A owes %v after the request, want 700.000 — a request posts nothing", o)
 	}
 }
 

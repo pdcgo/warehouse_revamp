@@ -191,3 +191,31 @@ event's own time*, and for an expense that reads as its day. For payroll typed o
 account's row then lands last month while the bank shows the 5th. Options and the recommendation are in the build's
 report. ✅ *(2026-11-05)* The restock now checks its `finance_account_id` server-side too
 (`backend/cmd/app_development/restock_accounts.go` beside `expense_accounts.go` — see the 2026-11-05 note above).
+
+## 2026-11-06 — expense and the accounts are doubles, frozen whole as they are written (money-type change, part 2)
+
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen), [numeric-money-moves-to-double-too](../../business/order/context_decision.md#numeric-money-moves-to-double-too).
+
+- **Expense** — `expense_service` `00005_expense_amount_is_double.sql`: `expense_records.amount` `BIGINT` → `double precision`;
+  the create/adjust amounts (`gt 0` / `not_in [0]`, finite), list rows, daily and per-kind sums and
+  `ExpenseCreated`/`ExpenseAdjusted.amount` → `double`. `ExpenseCreate` / `ExpenseAdjust` freeze with `san_money.Whole`
+  and refuse a figure that rounds to nothing (InvalidArgument, `errZeroExpense` / `errZeroCorrection`) — a `STOCK_LOSS`
+  arrives from inventory as a fraction. Tests `TestExpenseCreate_AFractionalAmountFreezesToWholeRupiah`,
+  `TestExpenseAdjust_AFractionalCorrectionFreezesToWholeRupiah`.
+- **Accounts** — `financial_account_service` `00003_numeric_money_is_double.sql`: the 15 `NUMERIC(20,2)` columns
+  (`financial_accounts.balance`, `financial_account_logs.change`/`balance_after`, 12 daily-report figures) →
+  `double precision`; GORM tags `double precision`. `rupiah()` is `san_money.Whole` (was `math.Round` — the same half-away-from-zero, now the one shared freeze, which also turns −0 into 0); the listeners
+  pass the event's double with no `float64()` casts. Tests `TestExpensePayment_PostsAnExactWholeFigureAndTheBalanceIsTheSumOfItsLogs`,
+  `TestTeamPayment_PostsAnExactWholeFigureOnBothLegs`.
+- Applied on `warehouse_test` (the harness re-applies every migration from scratch); not run on dev — `go run ./tools/san migrate up`.
+- **Frontend** — expenses pages and dialogs send/read `number`; the daily statement is `number`.
+
+## 2026-11-06 — the backend never rounds money ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money))
+
+`rupiah()` (`san_money.Whole`) is deleted: `post` stores the change EXACT, so a balance equals the sum of its logs within
+the tolerance. Capital/transfer/reconcile pass the typed figure as is; Reconcile posts the exact difference (none when it
+is zero to 4 places); the restock, transfer-shipping and expense listeners skip a zero with `san_money.IsZero`; Archive
+and Identify test "holds nothing" with `IsZero`. Refusals and the reconcile note write figures with `san_money.Text`
+(up to 3 decimals). Storybook's `financialAccountStub` no longer rounds. Tests
+`TestExpensePayment_PostsTheExactFigureAndTheBalanceIsTheSumOfItsLogs`, `TestTeamPayment_PostsTheExactFigureOnBothLegs`,
+`TestFinancialAccountTransfer_PostsTwoLegsSharingAGroup` (250.000,4 exact).

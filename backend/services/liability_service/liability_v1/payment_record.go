@@ -2,12 +2,14 @@ package liability_v1
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
@@ -40,10 +42,18 @@ func (s *Service) LiabilityPaymentRecord(
 		return nil, err
 	}
 
+	// THE FREEZE POINT of a payment's figure, exact as claimed (the-backend-never-rounds-money), so the confirm posts
+	// exactly what was claimed — Rp 316,675 posts Rp 316,675. It must be finite and above 0 (the wire's gt/finite,
+	// re-checked for a direct caller); float dust below 4 places is a payment of nothing.
+	amount := req.Msg.GetAmount()
+	if !san_money.Positive(amount) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a payment must be more than Rp 0"))
+	}
+
 	payment := liability_service_models.LiabilityPayment{
 		PayerTeamID:    payerTeamID,
 		CreditorTeamID: creditorTeamID,
-		Amount:         req.Msg.GetAmount(),
+		Amount:         amount,
 		Status:         paymentRecorded,
 		Note:           req.Msg.GetNote(),
 		FromAccountID:  req.Msg.GetFromAccountId(),

@@ -20,7 +20,7 @@ type LiabilityTerms struct {
 	// it is the PRODUCT's, frozen on each order line's total (the-ledger-charges-the-frozen-line-total).
 
 	// ⚠ nil is UNLIMITED; 0 is NO CREDIT AT ALL. Removing a limit deletes the row.
-	CreditLimit *int64
+	CreditLimit *float64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

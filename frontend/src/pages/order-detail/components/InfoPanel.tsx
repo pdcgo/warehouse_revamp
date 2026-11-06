@@ -129,9 +129,9 @@ export function InfoPanel({
                       <Table.Cell>{it.productCode}</Table.Cell>
                       <Table.Cell>{it.name}</Table.Cell>
                       <Table.Cell textAlign="end">{it.quantity}</Table.Cell>
-                      <Table.Cell textAlign="end">{it.unitCost > 0n ? formatRupiah(lineUnitBeli(it)) : "—"}</Table.Cell>
+                      <Table.Cell textAlign="end">{it.unitCost > 0 ? formatRupiah(lineUnitBeli(it)) : "—"}</Table.Cell>
                       <Table.Cell textAlign="end">
-                        {it.unitCost > 0n ? formatRupiah(BigInt(Math.round(lineTotalBeli(it)))) : "—"}
+                        {it.unitCost > 0 ? formatRupiah(lineTotalBeli(it)) : "—"}
                       </Table.Cell>
                     </Table.Row>
                   ))}
@@ -146,20 +146,20 @@ export function InfoPanel({
                   fee). No subtotal and no shipping: an order records no shipping (an-order-records-no-shipping-cost). A
                   fee never priced (an order placed before fees were frozen) is a dash, never Rp 0. */}
               <Text fontSize="sm" color="fg.muted" data-testid="order-detail-goods-cost">
-                {t("orderDetail.money.productTotal")}: {order.goodsCost > 0n ? formatRupiah(order.goodsCost) : "—"}
+                {t("orderDetail.money.productTotal")}: {order.goodsCost > 0 ? formatRupiah(order.goodsCost) : "—"}
               </Text>
               <Text fontSize="sm" color="fg.muted" data-testid="order-detail-fee">
                 {t("orderDetail.money.fees")}: {orderFee(order) === null ? "—" : formatRupiah(orderFee(order)!)}
               </Text>
               <Text fontSize="md" fontWeight="semibold" data-testid="order-detail-total">
                 {t("orderDetail.money.systemTotal")}:{" "}
-                {order.goodsCost > 0n ? formatRupiah(BigInt(Math.round(order.totalCost))) : "—"}
+                {order.goodsCost > 0 ? formatRupiah(order.totalCost) : "—"}
               </Text>
 
               {/* What the storefront took — shown BELOW our total and outside it, because it is the platform's figure,
                   not ours (the-total-is-ours-the-platform-total-is-theirs). Hidden at 0, which means "nobody wrote it
                   down": an order predating the rule is in that state, and "Rp 0" would read as a sale of nothing. */}
-              {order.platformTotal > 0n && (
+              {order.platformTotal > 0 && (
                 <Text fontSize="sm" color="fg.muted" data-testid="order-detail-marketplace-total">
                   {t("orders.marketplaceTotal")}: {formatRupiah(order.platformTotal)}
                 </Text>

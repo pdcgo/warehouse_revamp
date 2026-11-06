@@ -257,7 +257,7 @@ sequenceDiagram
 | whole | every line at its ordered quantity ([a-return-is-never-partial](../../business/order/context_decision.md#a-return-is-never-partial)) — there is no "how many came back", only `missing_lines`: one per line, 1 to the line's quantity, on this order's lines |
 | a short parcel | one **note row** (no status) from the warehouse, at the accept's moment: *"Missing from the returned parcel: 1 × KPH-M Kaos Polos Hitam — M · …"* ([a-short-return-is-accepted-and-the-gap-written-off](../../business/order/context_decision.md#a-short-return-is-accepted-and-the-gap-written-off)). Its write-off is inventory's, not built |
 | a borrowed line | a line whose owner is known and is not the selling team, as create decides it. It answers a label: the mapped own product's code and name, one per unit in hand — the quantity less the missing ([a-returned-borrowed-unit-is-relabelled-at-the-accept](../../business/order/context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept)). An unmapped one refuses the whole accept ([a-return-never-clones-a-product](../../business/order/context_decision.md#a-return-never-clones-a-product)); an own line never reads the map |
-| the courier | `courier_charge` (whole rupiah, 0 = none) and its note, required above 0 ([an-incidental-line-must-say-what-it-was-for](../../business/balance/context_decision.md#an-incidental-line-must-say-what-it-was-for)). Written as the accept row's note — *"Courier charge Rp 15.000: ongkir retur"* — and carried by `OrderReturnAccepted`; liability posts it ([liability_service](../liability_service/rpc.md#the-courier-at-a-return--chargereturncourier)). A note with no charge is dropped |
+| the courier | `courier_charge` (a double, frozen exact by the accept; 0 = none) and its note, required above 0 ([an-incidental-line-must-say-what-it-was-for](../../business/balance/context_decision.md#an-incidental-line-must-say-what-it-was-for)). Written as the accept row's note — *"Courier charge Rp 15.000: ongkir retur"* — and carried by `OrderReturnAccepted`; liability posts it ([liability_service](../liability_service/rpc.md#the-courier-at-a-return--chargereturncourier)). A note with no charge is dropped |
 | the override | `is_override` on both rows it writes, and `actor_is_override` on the event ([an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)). `orders.is_override` is the placement's and is not touched |
 | the catalogue | read **before** the lock — no network call holds the order's row. The lines and the maps cannot change under it (frozen at placement, written once); only the status can, and it is re-read under the lock. A failed lookup is `Unavailable` and nothing is accepted |
 | the event | `OrderReturnAccepted` on `order-return-accepted`, `event_id` = `order-return-accepted:<order_id>` — the status is terminal, so an order is accepted once. It also replaces `OrderStatusChanged` as Return Arrived's feed: the plain move refuses `return_completed`, so no `OrderStatusChanged` ever carries it |
@@ -375,7 +375,7 @@ sequenceDiagram
     SELL->>SELL: credit check — before the transaction
     SELL->>INV: take the stock — under the order's key K, before the transaction (slice 3)
     INV-->>SELL: the transaction id, and per product the draw's cost, unit cost, and total with the product's markup
-    SELL->>SELL: open tx, insert the order header with K, transaction_id and goods_cost = the lines' totals rounded once, its first timeline row, plus the typed note as its first note row
+    SELL->>SELL: open tx, insert the order header with K, transaction_id and goods_cost = the exact sum of the lines' totals, its first timeline row, plus the typed note as its first note row
     SELL->>WH: WarehouseFeeCalculate(team, warehouse, goods_cost) — in-process, inside the tx
     alt the warehouse never set its fee, or cannot be reached
         WH-->>SELL: FailedPrecondition naming it, or an error
@@ -391,7 +391,7 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| the basis | `goods_cost` — Σ the lines' frozen `total` (the draw's cost plus, on a borrowed product, its owner's markup), rounded once to whole rupiah ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost), [an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)). A line the take named no draw for adds 0, so a percent warehouse charges its floor on it |
+| the basis | `goods_cost` — Σ the lines' frozen `total` (the draw's cost plus, on a borrowed product, its owner's markup), exact — never rounded ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost), [an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)). A line the take named no draw for adds 0, so a percent warehouse charges its floor on it |
 | when | AFTER the take, inside the order's transaction — its basis is the draw, which exists only once the take answers. The fee is warehouse_service's to compute, never selling's ([warehouse-prices-balance-records](../../business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)), so it is asked rather than worked out from a rate read earlier. A refusal fails the transaction and the compensation releases the take — the owner's own flow ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders) *"the take is rolled back like any failed step"*). The form refuses such a warehouse before Create, so it is the rare path |
 | the header | inserted AFTER the take (slice 3), with its `goods_cost` from the draw; `warehouse_fee` and `total_cost` (= the two added) are written by one UPDATE of that row once priced, in the same transaction — no reader sees the order without them |
 | concurrency | the fee read takes no lock; the order's KEY SHARE on its shop is held across it. The take is no longer inside the transaction (slice 3) — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
@@ -645,6 +645,29 @@ with the frozen money — `goods_cost` (`cogs` until 2026-10-23, same field numb
 (`marketplace_total`, same number); `revenue` (the dropped `total`) and `shipping_cost` are reserved, neither had a
 consumer. `liability_service` consumes it and charges the order's fees; settlement opens the sale from `platform_total`.
 
+**`platform_total` is a double, frozen exact at placement** (selling 00041, 2026-11-06,
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)):
+`orders.platform_total`, `order_drafts.platform_total` and `order_daily_reports.mp_total` are `double precision`; the wire's
+`platform_total` (Order, OrderCreateRequest, OrderDraft, OrderDraftUpdateRequest, the push line, `OrderPlaced`),
+`OrderStatusCount.value`/`mp_value`, `OrderStatPreview.revenue_30d` and the order metrics' `mp_total` fields are `double`.
+A draft keeps what was typed; `placeOrder` refuses a figure that is NaN, infinite or not above 0 (`san_money.Positive` —
+float dust is as missing as 0) and writes it EXACT onto the row ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06; it rounded with
+`san_money.Whole` before, so the decision `a-draft-keeps-its-platform-total-as-typed`'s *"rounded once when the order is
+placed"* no longer happens) — the event, the detail, the census and settlement's `initial_total` all carry that one
+exact figure.
+
+**The order's costs are doubles too** (selling 00042, 2026-11-06 — part 2): `orders.goods_cost`, `order_items.unit_cost`
+and `order_draft_items.unit_price` are `double precision`, and `goods_cost` (Order, `OrderPlaced`), `unit_cost` (OrderItem,
+`OrderPlacedLine`), `unit_price` (OrderDraftItem, the push line) and `OrderReturnAcceptRequest.courier_charge` (`gte 0`,
+finite; `OrderReturnAccepted` carries it) are `double`. `placeOrder` freezes each line's `unit_cost` (the take's drawn
+unit cost) and the order's `goods_cost` (Σ the lines' totals) EXACT — never rounded; the warehouse fee is the pricer's
+exact answer on that basis (2,5% of Rp 12.666,99 = Rp 316,67475) and `total_cost` their exact sum. `OrderReturnAccept`
+freezes the courier's charge as typed before its note check, its event and the liability posting read it. A draft's
+`unit_price` is information, kept as read. The order form previews the same exact figures — the line figures summed,
+nothing rounded (`features/orders/form/money.ts`, the fee quote as the warehouse answers it) — so the preview, the fee's
+basis and the frozen order are one figure; only the screen rounds, to 3 decimals. The credit block's message writes
+its figures with `san_money.Text` ("Rp 52.000.000", a fraction to 3 places).
+
 **Each line carries its frozen `total`** (`00023`) — what inventory's take priced it at, the goods plus the product's own
 markup ([inventory-computes-the-markup](../../business/order/context_decision.md#inventory-computes-the-markup)). The
 take answers it (`StockPicker.Pick` returns it per product), `placeOrder` writes the lines only after it, with it, and
@@ -734,8 +757,10 @@ sequenceDiagram
     end
 ```
 
-**The push's money, by JSON name.** A client posting Connect JSON names each field in lowerCamelCase. Money is whole
-rupiah, sent as a string or a number (protobuf `int64` in JSON).
+**The push's money, by JSON name.** A client posting Connect JSON names each field in lowerCamelCase. Money is a JSON
+number (protobuf `double`), a fraction allowed — a draft keeps it as sent
+([a-draft-keeps-its-platform-total-as-typed](../../business/order/context_decision.md#a-draft-keeps-its-platform-total-as-typed)).
+A quoted number from a client written for the old `int64` still parses.
 
 | JSON field | proto | what it is |
 | --- | --- | --- |
@@ -1185,6 +1210,19 @@ sequenceDiagram
 | a gone file | document_service's NotFound becomes `NO_LABEL` (and a WARN log); any other error is the call's error |
 | ⚠ step 1 | `order_ids` max 1, no PDF merge — the link is the order's own file. Merging (step 2) is the pick queue's `printMerge` mark |
 | cost | one primary-key read, 0.5 ms at 50 000 orders — not heavy |
+
+## The order list's money sorts and its *settlement not opened* filter — `OrderList` (2026-11-05)
+
+| | |
+| --- | --- |
+| **the two sorts** ([the-total-sort-is-ours-and-the-platform-total-sorts-apart](../../business/order/context_decision.md#the-total-sort-is-ours-and-the-platform-total-sorts-apart)) | `ORDER_ROW_SORT_TOTAL` orders by `total_cost` (goods cost + warehouse fee — what the order cost the seller); the new `ORDER_ROW_SORT_PLATFORM_TOTAL` by `platform_total` (what the buyer paid). Each `… <dir>, id <dir>`, so equal figures keep one stable order across pages. The column comes from a closed set in `orderOrderClause` (`list_slices.go`), never from input. Before this the TOTAL sort named a `total` column that 00027 had replaced. No screen offers sorting today |
+| **settlement not opened** ([a-missing-account-is-found-by-its-opened-at](../../business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at)) | `OrderListFilter.settlement_not_opened` → `settlement_opened_at IS NULL` in `scopedOrders`, so OrderStat (`OrderStatFilter.settlement_not_opened`) and OrderExport read the same set. Served by the partial index `orders_settlement_not_opened_idx` (00040). Each row carries `settlement_opened_at_unix` (0 = not yet). The screen's filter and badge are a Storybook prototype awaiting the owner (`SellerOrdersPage settlementMissingPrototype`) |
+| **who stamps it** | settlement, in-process, after a committed `initial_total` — `selling_v1.SettlementOpened(order, at)`: one `UPDATE … WHERE settlement_opened_at IS NULL`, so the first opening wins and an unknown order is no error. Not an RPC: no browser may claim an account opened. Seam and flow: [settlement rpc.md](../settlement_service/rpc.md#order_service--settlement_service-cross-service-by-event) |
+
+Tests: `order_list_sort_test.go`, `settlement_opened_test.go`, `settlement_opened_race_test.go` (`-tags raceaudit`), and
+through the composition root `cmd/app_development/settlement_opened_marker_test.go` (a real order, its Order Placed
+opening the account, and a refused open leaving NULL). Perf: [OrderList.md](../../../audits/services/selling_service/performances/OrderList.md)
+findings 3 and 6.
 
 ## The list as a file — `OrderExport`
 

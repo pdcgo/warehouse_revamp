@@ -122,6 +122,17 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [inventory-tx-cancel-is-an-order-event](#inventory-tx-cancel-is-an-order-event) | #10 Q7: InventoryTxCancel is an order event (204), its own topic | owner, as recommended | — |
 | [no-answer-is-only-a-lost-connection](#no-answer-is-only-a-lost-connection) | #10 Q8: no time limit — only a lost connection is *no answer*; the take has no deadline of its own | owner, against my recommendation | — |
 | [the-form-lock-and-try-again-are-accepted](#the-form-lock-and-try-again-are-accepted) | the locked form, the no-answer panel and Try Again are the design, with four calls | owner | — |
+| [a-used-key-reads-as-inventorys-refusal](#a-used-key-reads-as-inventorys-refusal) | #10 Q9: a used key is refused with inventory's *key already used*, no order shown | owner, as recommended | — |
+| [the-key-is-checked-first](#the-key-is-checked-first) | #10 Q10: the key is checked first, the unique index is the backstop | owner, as recommended | — |
+| [a-cancel-says-nothing-new-about-stock](#a-cancel-says-nothing-new-about-stock) | #10 Q11: a cancel keeps its message; the stock returns by event a moment later | owner, as recommended | — |
+| [a-stuck-release-is-replayed-by-san](#a-stuck-release-is-replayed-by-san) | #10 Q12: a `san` command lists and replays dead-lettered releases (covers 10d) | owner, as recommended | — |
+| [the-total-sort-is-ours-and-the-platform-total-sorts-apart](#the-total-sort-is-ours-and-the-platform-total-sorts-apart) | 10b: *Total* sorts by `total_cost`; a separate *Platform total* sort reads `platform_total` | owner, as recommended | — |
+| [every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen) | the integer ledgers move to `double precision` / `double`, rounded to whole rupiah when frozen, compared with a tolerance; no `numeric` | owner, as recommended | — |
+| [numeric-money-moves-to-double-too](#numeric-money-moves-to-double-too) | the `numeric` money columns (financial accounts, `lost_amount`) move to `double precision` too | owner, as recommended | — |
+| [a-fraction-of-a-rupiah-shows-three-decimals](#a-fraction-of-a-rupiah-shows-three-decimals) | a rupiah figure with a fraction shows up to 3 decimals; whole figures show none | owner, as recommended | — |
+| [a-draft-keeps-its-platform-total-as-typed](#a-draft-keeps-its-platform-total-as-typed) | a draft keeps a fractional platform total as typed; it is rounded to whole rupiah when the order is placed | owner, as recommended | — |
+| [the-backend-never-rounds-money](#the-backend-never-rounds-money) | the backend stores and posts every rupiah exactly; only the screen rounds (3 decimals) | owner, as recommended | — |
+| [large-sum-drift-is-left-for-now](#large-sum-drift-is-left-for-now) | summing exact doubles may drift past the 4-place tolerance only at ~100.000 entries; left for now | owner, as recommended | — |
 
 ---
 
@@ -4155,3 +4166,137 @@ The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-i
 
 ✅ **Built 2026-11-04** — `features/orders/createAnswer.ts` (+ unit tests), `pages/order-create/components/NoAnswerPanel.tsx`, `DuplicateRefDialog` `retry`; stories `Pages/Order/OrderCreateFormLock`.
 
+---
+
+## a-used-key-reads-as-inventorys-refusal
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to #10 Q9: when an order arrives with a key already used, what does the person see?
+
+**The verdict.** The refusal of [the-order-refuses-a-used-key](#the-order-refuses-a-used-key) reads as inventory's: **"key already used"**, the same detail whichever check catches it (the lookup before the take, or the unique index at the insert). No order is shown or linked — the only callers who send a used key are a bug and a hostile one, and neither is handed an order. Confirms the point listed in the withdrawn [superseded-the-take-before-the-order-follows-the-recommendations](#superseded-the-take-before-the-order-follows-the-recommendations).
+
+✅ **Built 2026-11-04** — `selling_v1/order_create.go` (the used-key refusal), test `order_create_idempotency_test.go`.
+
+---
+
+## the-key-is-checked-first
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to #10 Q10: where is the key checked?
+
+**The verdict.** `OrderCreate` looks up its key **first** — before the owner lookup and the credit check — so a used key does no work and takes nothing. The orders' unique index on the key ([the-idempotency-key-is-unique](#the-idempotency-key-is-unique)) is the backstop for two sends racing past the lookup. Inventory checks its own side first too ([a-used-key-is-refused-first](../inventory/order_decision.md#a-used-key-is-refused-first)).
+
+✅ **Built 2026-11-04** — `selling_v1/order_create.go`; tests `order_create_idempotency_test.go`.
+
+---
+
+## a-cancel-says-nothing-new-about-stock
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to #10 Q11: after a cancel, should the screen tell the person the stock is coming back?
+
+**The verdict.** No change. A cancel keeps its usual *Order cancelled* message; the stock returns through the release event a moment later ([inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled)), with no note on the screen. A release stuck behind a count waits and goes through when the count ends.
+
+---
+
+## a-stuck-release-is-replayed-by-san
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to #10 Q12: what happens when a stock release gets stuck in the dead-letter?
+
+**The verdict.** A **`san` command lists and replays** the dead-lettered `InventoryTxCancel` and `OrderCancelled` events, so stock left taken by a failed release is given back without a hand fix. A replay is safe to run twice: inventory releases a key once ([a-used-key-is-never-cancelled](#a-used-key-is-never-cancelled), the release claims its event). It also covers a lost `OrderCancelled` publish (backlog 10d) once that is dead-lettered or found by the key. ⚠ Not built.
+
+✅ Built 2026-11-05 — `san pubsub releases list | replay [--dry-run]` (`tools/san/pubsub_releases.go`): reads `inventory-tx-cancel.dlq` and `order-cancelled.dlq`, replays each stuck release through inventory's own push handler in-process, acks only on success, leaves other consumers' dead-letters alone; tests `pubsub_releases_test.go` (incl. a twice-replayed release through the real inventory handler); run against the dev emulator — [san.md](../../tools/san.md#pubsub-releases).
+
+---
+
+## the-total-sort-is-ours-and-the-platform-total-sorts-apart
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: what should sorting orders by *Total* do? (`OrderList`'s `ORDER_ROW_SORT_TOTAL` names a `total` column that no longer exists.) An earlier "A" in the same chat, to a question that would have pointed *Total* at what the buyer paid, was re-asked before it was recorded, because it broke [the-total-is-ours-the-platform-total-is-theirs](#the-total-is-ours-the-platform-total-is-theirs).
+
+**The verdict.** Both figures sort, each under its own name:
+
+| sort | column | what it is |
+| --- | --- | --- |
+| **Total** (`ORDER_ROW_SORT_TOTAL`) | `total_cost` | what the order cost the seller — goods cost + warehouse fee |
+| **Platform total** (new) | `platform_total` | what the storefront took from the buyer |
+
+The two are never mixed ([the-total-is-ours-the-platform-total-is-theirs](#the-total-is-ours-the-platform-total-is-theirs)). Ties fall back to the order id. ⚠ Not built.
+
+✅ Built 2026-11-05 — `ORDER_ROW_SORT_TOTAL` → `total_cost`, new `ORDER_ROW_SORT_PLATFORM_TOTAL` → `platform_total`, each with `id` as the tie-break in the same direction (`selling_v1/list_slices.go` `orderOrderClause`); tests `order_list_sort_test.go`; perf [OrderList.md](../../../audits/services/selling_service/performances/OrderList.md) finding 3 (root 37 ms, unchanged). No screen offers sorting orders today, so nothing on screen changed.
+
+---
+
+## every-ledger-moves-to-double-rounded-when-frozen
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: how do the ledgers still on whole-rupiah integers move to [rupiah-is-floating-point](#rupiah-is-floating-point)?
+
+**The verdict.** Every rupiah still stored as an integer moves to **`double precision`** in the database and **`double`** on the wire — the same shape as what already follows the decision (order cost figures, expense amounts, financial accounts, batch prices). Two of the decision's mitigations become the rule; the third does not:
+
+| | |
+| --- | --- |
+| frozen figures | rounded to **whole rupiah** at the moment they are frozen (finalize, posting), so drift cannot accumulate past it (`san_money`) |
+| comparing | with a tolerance, never `==` (`san_money.Equal`) |
+| `numeric` storage | **not** used |
+
+Still on integers on 2026-11-05: the settlement ledger and its reports, the liability ledger and its payments, `orders.platform_total`, the expense ledger, the stock reads (`int64`). ⚠ Not built — after the settlement pass running the same day, which edits settlement's reads.
+
+✅ Built 2026-11-06 — part 1: settlement + platform_total — `double precision` / `double` for the settlement ledger, its accounts and reports (settlement 00010, 39 columns), `uploaded_file_lines.change` (settlement_importer 00004) and `orders`/`order_drafts.platform_total` + `order_daily_reports.mp_total` (selling 00041); `SettlementPost` rounds `change` to whole rupiah as it posts and `placeOrder` freezes `platform_total` with `san_money.Whole`; compares via `san_money.Equal`/`IsZero`; frontend reads them as `number` (`lib/money.ts` formatters take `bigint | number`). Tests in `post_entry_test.go`, `metric_data_test.go`, `day_refold_test.go`, `shopee_settlement_import_test.go`, `uploaded_file_line_list_test.go`, `order_platform_total_test.go`. Part 2 (liability, expense, selling goods_cost/unit_cost/unit_price/courier_charge, inventory stock reads, supplier valuations, the `numeric` columns) not built — [development_state/settlement](../../development_state/settlement/context.md), [order](../../development_state/order/context.md).
+
+✅ Built 2026-11-06 — part 2: liability, expense, the order's costs, inventory's reads, supplier — `double precision` / `double` for the liability ledger, balances, payments, requests, credit limits and their history (liability 00014, 10 columns), `expense_records.amount` (expense 00005), `orders.goods_cost` / `order_items.unit_cost` / `order_draft_items.unit_price` (selling 00042) plus `courier_charge` on the wire, the three supplier valuations (supplier 00003); inventory's stock reads carry the stored double unrounded (no `ROUND::bigint`). Freeze points, each `san_money.Whole`: liability `PostEntry` (refuses NaN/Inf, then `> 0`), `LiabilityPaymentRecord` (refuses under Rp 1), `LiabilityTermsSet`, `ExpenseCreate` / `ExpenseAdjust` (refuse a figure that rounds to 0), `placeOrder` (each `unit_cost`, `goods_cost` once from the unrounded line totals), `OrderReturnAccept` (courier charge), the supplier and lost folds. The order form previews `goods_cost` and each owner's charge the same way — summed unrounded, rounded once. Tests `TestPostEntry_RoundsAFractionOnceToWholeRupiah`, `TestPaymentRecord_FreezesAFractionalClaimToWholeRupiah`, `TestExpenseCreate_AFractionalAmountFreezesToWholeRupiah`, `TestOrderCreate_FractionalCostsFreezeWholeOnceAndTravelAsDoubles`, `TestStockAdjust_AFractionalLossReachesTheLedgersUnroundedAndPostsWhole`, `features/orders/form/money.test.ts`. No integer rupiah column, proto field or Go/TS contract type is left — [development_state/order](../../development_state/order/context.md), [balance](../../development_state/balance/context.md), [financial_account](../../development_state/financial_account/context.md), [inventory](../../development_state/inventory/ledgers.md), [supplier](../../development_state/supplier/context.md).
+
+---
+
+## numeric-money-moves-to-double-too
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: the money-type inventory found the financial-account tables (15 columns: `financial_accounts.balance`, `financial_account_logs.change` / `balance_after`, `financial_account_daily_reports` ×12) and `inventory_lost_daily_reports.lost_amount` stored as Postgres `numeric` — move them too?
+
+**The verdict.** Yes. They move to **`double precision`** in part 2 of the money-type change, so every rupiah column follows one rule ([every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen) — no `numeric`). The wire is already `double`; only the column type changes, rounded to whole rupiah where the figure is frozen. ⚠ Not built.
+
+✅ Built 2026-11-06 — part 2: the 15 financial-account columns (financial_account 00003) and `inventory_lost_daily_reports.lost_amount` (inventory 00038) are `double precision`; no `numeric` column is left in any service. The ledger's `post` freezes with `san_money.Whole` (was `math.Round`) and the lost fold writes `Whole(value)`; tests `TestExpensePayment_PostsAnExactWholeFigureAndTheBalanceIsTheSumOfItsLogs`, `TestTeamPayment_PostsAnExactWholeFigureOnBothLegs` — [development_state/financial_account](../../development_state/financial_account/context.md), [inventory](../../development_state/inventory/ledgers.md).
+
+---
+
+## a-fraction-of-a-rupiah-shows-three-decimals
+
+> In chat *(owner, 2026-11-06)* — *"make precision 3 decimal"*, then *"C"* to: store 3 decimals (A), compare at 0.001 (B), or **show** 3 decimals (C)?
+
+**The verdict.** Storage and rounding stay as [every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen) decided — frozen figures are whole rupiah. On screen, a rupiah figure that **has a fraction** (an unfrozen figure: a unit cost with markup, a fee before posting, a batch price) shows **up to 3 decimals**, in the Indonesian form — `Rp 12.345,505`, trailing zeros dropped (`Rp 12.345,5`). A whole figure shows no decimals (`Rp 12.345`), as today. Rounding to 3 places is for display only and never feeds a sum. ⚠ Not built.
+
+✅ Built 2026-11-06 — `frontend/src/lib/money.ts` (`displayParts`): `formatRupiah` writes a number with a fraction to up to 3 places after a comma, rounded half away from zero (binary dust cleared first, so 1,0005 reads `Rp 1,001`), trailing zeros dropped; a whole figure or a bigint shows none; a figure that rounds to 0 never reads `−Rp 0`; from Rp 1.000.000.000.000 up the figure is shown whole. `formatSignedRupiah`, `formatRupiahNumber`, `formatRupiahBare` and `formatRupiahRange` (two ends that read the same are one price) follow it. The COMPACT formatter (`formatRupiahCompact`) does not: from Rp 1rb up it keeps its own one scaled decimal below 100 of the unit and none above (`Rp 12,3rb`, `Rp 150jt`), so a thousandth of a rupiah never shows there; below Rp 1rb it is `formatRupiah`, fraction included (`Rp 512,75`). Tests in `lib/money.test.ts` (*a fraction of a rupiah shows up to three decimals*), stories `AnUnfrozenUnitCostShowsThreeDecimals` (order detail) and the restock accept's landed price (`34.215,686`).
+
+---
+
+## a-draft-keeps-its-platform-total-as-typed
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: a draft's `platform_total` with a fraction — keep it as typed, or round on every save?
+
+**The verdict.** A draft is not frozen, so it **keeps the figure as typed** (shown with up to 3 decimals — [a-fraction-of-a-rupiah-shows-three-decimals](#a-fraction-of-a-rupiah-shows-three-decimals)). It is rounded to whole rupiah **once, when the order is placed** — the freeze point of [every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen). A figure that rounds to nothing is refused at placement.
+
+✅ **Built 2026-11-06** — `selling_v1/order_place.go` (`san_money.Whole` at placement); tests `TestOrderCreateFromDraft_APlatformTotalIsADoubleFrozenWholeEndToEnd`, `TestOrderCreate_RefusesAPlatformTotalThatRoundsToNothing`.
+
+---
+
+## the-backend-never-rounds-money
+
+> In chat *(owner, 2026-11-06)* — *"Round only on frontend, in backend stay as is"*, asked why an order's goods cost is rounded at placement; then *"A"* to: exact everywhere (A), exact on the order but rounded in the ledgers (B), or the backend as built (C)? **A** was recommended for a rule of "the backend never rounds".
+
+**The verdict.** The backend **never rounds money**. Orders, every ledger (settlement, liability / Team Balance, expense, financial accounts), every report and every event store and carry the **exact** figure — an order's goods cost `12.666,99`, its warehouse fee `316,675`, its total cost `12.983,675`, and Team Balance posts `316,675`. Only the **screen** rounds, by [a-fraction-of-a-rupiah-shows-three-decimals](#a-fraction-of-a-rupiah-shows-three-decimals) (up to 3 decimals, trailing zeros dropped). This **supersedes** the *"rounded to whole rupiah at the moment they are frozen"* row of [every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen); its `double precision` / `double` shape, and *compare with a tolerance, never `==`*, stand.
+
+| | |
+| --- | --- |
+| freezing | a frozen figure is frozen **exact** — it no longer changes, and it is not rounded |
+| a figure that "rounds to nothing" | no longer a refusal by rounding; an amount must still be finite and above 0 where it was |
+| the statement importer | still **holds** a line with a real fraction ([a-fractional-statement-line-is-still-held](../settlement/context_decision.md#a-fractional-statement-line-is-still-held)) — that is a check on the file, not a rounding |
+| the order form | previews the exact figures the server will store, shown with up to 3 decimals |
+| sums | sums of exact doubles; reports equal their logs within the tolerance |
+
+⚠ Not built — today placement, posting and the ledgers round with `san_money.Whole`.
+
+✅ Built 2026-11-06 — `san_money.Whole` is deleted and nothing in the backend rounds money: placement freezes `platform_total`, each `unit_cost`, `goods_cost` and the courier charge exact; `PostEntry` (Team Balance), `LiabilityPaymentRecord`, `LiabilityTermsSet`, `SettlementPost`, `ExpenseCreate`/`ExpenseAdjust`, the financial-account `post`, the lost and supplier folds store the figure as handed in. "Rounds to nothing" refusals are `san_money.Positive` (finite, above 0, float dust counts as 0); zero/square tests use the tolerance (`IsZero`, SQL `abs(x) < 0.00005`), and `san_money.Equal` compares the difference. The statement importer still holds a real fraction (`IsWhole`) and posts a whole-within-tolerance line as the reader's figure. Words the server writes use `san_money.Text` (3 decimals). The order form previews the exact figures (`number`, no whole-rupiah bigint maths; `CurrencyInput fraction` for the platform total); `wholeRupiah()` is gone from the frontend. Found on the way: liability never mounted its order-placed/cancelled push routes, so no order fee reached Team Balance — mounted. Tests: `TestOrderCreate_FractionalCostsAreFrozenExactAndTravelAsDoubles` (12.666,99 / 316,67475), `TestChargeOrder_TheFrozenFeeIsPostedExact`, `TestRegister_TheOrderEventsReachTheLedger`, `TestPostEntry_StoresAFractionExact`, `TestSettlementPost_StoresAFractionExact`, `TestExpenseCreate_AFractionalAmountIsStoredExact`, `TestExpensePayment_PostsTheExactFigureAndTheBalanceIsTheSumOfItsLogs`, `TestShopeeSettlementImport_AnAmountWithFloatDustPostsAsRead`, e2e `the_order_keeps_exact_figures.spec.ts` (preview = stored order, Team Balance 316,67475) — [development_state/order](../../development_state/order/context.md), [balance](../../development_state/balance/context.md).
+
+> ✏️ *Correction (assistant, 2026-11-06): the example figures in the verdict were the assistant's slip — written from a goods cost rounded to 12.667. Exactly: goods cost 12.666,99 → warehouse fee 2,5% = **316,67475** (shown Rp 316,675) → total cost **12.983,66475** (shown Rp 12.983,665). The rule is unchanged.*
+
+---
+
+## large-sum-drift-is-left-for-now
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: with [the-backend-never-rounds-money](#the-backend-never-rounds-money), a sum of ~100.000 exact entries (e.g. 316,675 each) drifts ~0,00005 — past the 4-place tolerance of `san_money.Equal` — so a report total could compare unequal to its log. Loosen the tolerance for large sums?
+
+**The verdict.** Not now. No ledger is near that size; comparisons keep the 4-place tolerance. Revisit when a ledger, report or reconcile sums entries in that range — the fix then is a tolerance scaled to the count of summed entries, not rounding.

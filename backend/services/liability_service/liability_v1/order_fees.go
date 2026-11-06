@@ -3,8 +3,8 @@ package liability_v1
 import (
 	"context"
 	"errors"
-	"math"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
@@ -73,8 +73,8 @@ func (s *Service) ChargeOrder(ctx context.Context, order PlacedOrder) error {
 // the-flat-rate-is-dropped-last, the switch-over day — so a rate edited between the sale and this delivery cannot
 // charge a number the order never saw.
 //
-// ⚠ ROUNDED HERE, ONCE. The fee arrives as a double (rupiah-is-floating-point) and a ledger entry is whole rupiah —
-// the same edge the product fee and the restock courier charge are rounded at.
+// ⚠ POSTED EXACT. The fee arrives as a double (rupiah-is-floating-point), often a fraction of a percentage, and the
+// ledger stores it as it is — never rounded (the-backend-never-rounds-money).
 //
 // No fee (an order placed before fees were frozen) and a fee of 0 both post nothing: a zero entry would consume this
 // pair's idempotency key for the order.
@@ -89,8 +89,10 @@ func (s *Service) chargeWarehouseFee(ctx context.Context, order PlacedOrder) err
 		return nil
 	}
 
-	fee := int64(math.Round(*order.WarehouseFee))
-	if fee <= 0 {
+	// Posted exactly as the order froze it — a double, often a fraction of a percentage fee (the-backend-never-rounds-
+	// money). A fee of nothing (0, or float dust) is no movement, so it is skipped here rather than refused.
+	fee := *order.WarehouseFee
+	if !san_money.Positive(fee) {
 		return nil
 	}
 
@@ -115,9 +117,8 @@ func (s *Service) chargeWarehouseFee(ctx context.Context, order PlacedOrder) err
 // ONE FEE PER OWNING TEAM, not per line: two lines of the same team's goods are one debt, and the
 // idempotency key is (source_type, source_id, counterparty), so per-line postings would collide.
 //
-// ⚠ ROUNDED HERE, ONCE, on the SUM. The totals arrive as doubles (rupiah-is-floating-point) and a ledger entry is
-// whole rupiah — the same edge the restock courier charge is rounded at. Summing first and rounding once means a
-// team's fee is never a pile of per-line roundings.
+// ⚠ POSTED EXACT, on the SUM. The totals arrive as doubles (rupiah-is-floating-point) and the sum of the lines is
+// posted as it is, never rounded (the-backend-never-rounds-money) — one entry per owner, the exact Σ of its lines.
 func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) error {
 	totalByOwner := map[uint64]float64{}
 
@@ -144,7 +145,7 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 	sortUint64s(owners)
 
 	for _, owner := range owners {
-		fee := int64(math.Round(totalByOwner[owner]))
+		fee := totalByOwner[owner]
 
 		// ⚠ A TOTAL OF ZERO MEANS UNKNOWN, NOT FREE — goods whose take valued nothing (received with no
 		// recorded cost), or an order placed before its lines froze a total. Either way the owning team is
@@ -154,7 +155,7 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 		// than refuse a real sale over a bookkeeping gap. Nothing is posted, because a zero-amount
 		// entry would consume this pair's idempotency key for this order — so the real fee, if the
 		// total were ever backfilled, could never be posted afterwards.
-		if fee <= 0 {
+		if !san_money.Positive(fee) {
 			continue
 		}
 
@@ -172,7 +173,7 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 func (s *Service) postOrderFee(
 	ctx context.Context,
 	debtorID, creditorID uint64,
-	amount int64,
+	amount float64,
 	sourceType SourceType,
 	actorID uint64,
 	actorIsOverride bool,

@@ -107,8 +107,8 @@ func expenseOrderClause(sort *expensev1.ExpenseListFilterSort) string {
 }
 
 // expenseRowItem is the EXPENSE (row) slice for one record — an expense with its net, or an adjustment.
-func expenseRowItem(c *expense_service_models.ExpenseRecord, adjusted map[uint64]int64) *expensev1.ExpenseRowItem {
-	var net int64
+func expenseRowItem(c *expense_service_models.ExpenseRecord, adjusted map[uint64]float64) *expensev1.ExpenseRowItem {
+	var net float64
 	if c.AdjustsExpenseID == 0 {
 		net = c.Amount + adjusted[c.ID]
 	}
@@ -133,7 +133,7 @@ func expenseRowItem(c *expense_service_models.ExpenseRecord, adjusted map[uint64
 // row slice) plus the sorted id list, from rows already in display order.
 func expenseListItems(
 	rows []expense_service_models.ExpenseRecord,
-	adjusted map[uint64]int64,
+	adjusted map[uint64]float64,
 	types []expensev1.ExpenseListDataType,
 ) ([]*expensev1.ExpenseListResponseItem, []uint64) {
 	if len(types) == 0 {
@@ -220,7 +220,7 @@ func (s *Service) filtered(ctx context.Context, msg *expensev1.ExpenseListReques
 
 type kindTotalRow struct {
 	Kind  int32
-	Total int64
+	Total float64
 }
 
 // totals sums the WHOLE filtered period, never the page.
@@ -247,7 +247,7 @@ func (s *Service) totals(ctx context.Context, msg *expensev1.ExpenseListRequest)
 		return nil, costErr(err)
 	}
 
-	out := expensev1.ExpenseTotals{ByKind: make(map[int32]int64, len(rows))}
+	out := expensev1.ExpenseTotals{ByKind: make(map[int32]float64, len(rows))}
 
 	for _, r := range rows {
 		out.ByKind[r.Kind] = r.Total

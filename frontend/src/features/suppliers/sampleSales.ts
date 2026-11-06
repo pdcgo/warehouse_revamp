@@ -13,15 +13,15 @@ const MARKUP = 1.3;
 
 export interface SampleSales {
   count: number;
-  value: bigint;
+  value: number;
 }
 
 export function sampleSalesFrom(figures: SupplierFigures): SampleSales {
-  if (figures.restockCount === 0) return { count: 0, value: 0n };
+  if (figures.restockCount === 0) return { count: 0, value: 0 };
 
   return {
     count: Math.max(1, Math.round(figures.restockCount * SOLD_SHARE)),
     // Rounded to Rp 500, as a price is.
-    value: BigInt(Math.round((Number(figures.restockValue) * SOLD_SHARE * MARKUP) / 500) * 500),
+    value: Math.round((figures.restockValue * SOLD_SHARE * MARKUP) / 500) * 500,
   };
 }

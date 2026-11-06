@@ -41,7 +41,7 @@ func cancelInput(uniqueID string) settlement_v1.CancelInput {
 // option is a convenience, and manual posting is the repair path (#a-missing-account-is-fixed-by-hand).
 func TestSettlementPost_RefusesASecondLiveSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -58,7 +58,7 @@ func TestSettlementPost_RefusesASecondLiveSale(t *testing.T) {
 // sale down — so the guard must let the repost through once it has.
 func TestSettlementPost_ReverseThenRepostCorrectsTheSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	wrong, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -87,7 +87,7 @@ func TestSettlementPost_ReverseThenRepostCorrectsTheSale(t *testing.T) {
 	}
 
 	if fixed.State.InitialTotal != 110_000 {
-		t.Fatalf("live sale = %d, want 110000", fixed.State.InitialTotal)
+		t.Fatalf("live sale = %v, want 110000", fixed.State.InitialTotal)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestSettlementPost_ReverseThenRepostCorrectsTheSale(t *testing.T) {
 // to 110.000, cancelling by the order's number would leave a live sale of −10.000.
 func TestCancelSale_TakesTheAmountFromTheLiveSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	wrong, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -129,11 +129,11 @@ func TestCancelSale_TakesTheAmountFromTheLiveSale(t *testing.T) {
 	}
 
 	if cancelled.Entry.Change != 110_000 {
-		t.Fatalf("cancel change = %d, want +110000 — the LIVE sale", cancelled.Entry.Change)
+		t.Fatalf("cancel change = %v, want +110000 — the LIVE sale", cancelled.Entry.Change)
 	}
 
 	if cancelled.State.InitialTotal != 0 || cancelled.State.LastBalance != 0 {
-		t.Fatalf("after cancel: live sale %d, balance %d — want 0 and 0",
+		t.Fatalf("after cancel: live sale %v, balance %v — want 0 and 0",
 			cancelled.State.InitialTotal, cancelled.State.LastBalance)
 	}
 
@@ -146,7 +146,7 @@ func TestCancelSale_TakesTheAmountFromTheLiveSale(t *testing.T) {
 // empty account would read as a settlement nobody performed.
 func TestCancelSale_WithNoLiveSaleOpensNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	_, err := svc.CancelSale(context.Background(), cancelInput("order-5001-cancel"))
 	if !errors.Is(err, settlement_v1.ErrNothingToCancel) {
@@ -166,7 +166,7 @@ func TestCancelSale_WithNoLiveSaleOpensNothing(t *testing.T) {
 // refused because the sale is now zero, and never credit the account a second time.
 func TestCancelSale_RetryIsAbsorbed(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -188,7 +188,7 @@ func TestCancelSale_RetryIsAbsorbed(t *testing.T) {
 	}
 
 	if again.State.LastBalance != 0 {
-		t.Fatalf("balance after retry = %d, want 0", again.State.LastBalance)
+		t.Fatalf("balance after retry = %v, want 0", again.State.LastBalance)
 	}
 }
 
@@ -197,7 +197,7 @@ func TestCancelSale_RetryIsAbsorbed(t *testing.T) {
 // with the live fold that already ran.
 func TestSettlementPost_TheCreatorIsStampedOnlyByTheOpeningPost(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	opening := initialTotal("order-5001-initial")
 	opening.CreatedByUserID = 7
@@ -228,7 +228,7 @@ func TestSettlementPost_TheCreatorIsStampedOnlyByTheOpeningPost(t *testing.T) {
 func TestSettlementPost_PublishesTheCommittedRow(t *testing.T) {
 	db := san_testdb.DB(t)
 	capture := &captureEvents{}
-	svc := settlement_v1.NewService(db, capture.send, nil, nil)
+	svc := settlement_v1.NewService(db, capture.send, nil, nil, nil)
 
 	opening := initialTotal("order-5001-initial")
 	opening.CreatedByUserID = 7

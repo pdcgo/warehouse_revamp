@@ -11,6 +11,7 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
 
@@ -74,7 +75,7 @@ func TestStockCost_TheAverageOfTheUnitsHeld(t *testing.T) {
 
 	// The two accepted deliveries, equal units at 5.000 and 7.000 — never the pending 9.999.
 	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 6000 {
-		t.Fatalf("unit cost = %d, want 6000 — the average of the units held", got)
+		t.Fatalf("unit cost = %v, want 6000 — the average of the units held", got)
 	}
 }
 
@@ -185,9 +186,10 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 		t.Fatalf("costs = %+v, want one line", stockCostLines(res.Msg))
 	}
 
-	// The batch keeps 3.333,33… as is; this contract carries whole rupiah, so the read rounds it to 3.333.
-	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 3333 {
-		t.Fatalf("unit cost = %d, want 3333 (10000 / 3, to the rupiah)", got)
+	// The batch keeps 3.333,33… as is, and since the stock reads became doubles (every-ledger-moves-to-double-rounded-
+	// when-frozen) so does the read: the unrounded unit cost, compared at san_money's 4 places — never pre-rounded.
+	if got := stockCostLines(res.Msg)[0].GetUnitCost(); !san_money.Equal(got, 10000.0/3) {
+		t.Fatalf("unit cost = %v, want 3333.3333… (10000 / 3, unrounded)", got)
 	}
 }
 
@@ -236,7 +238,7 @@ func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
 	}
 
 	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 12000 {
-		t.Fatalf("HPP = %d, want 12000 (10.000 goods + 2.000 freight share)", got)
+		t.Fatalf("HPP = %v, want 12000 (10.000 goods + 2.000 freight share)", got)
 	}
 }
 
@@ -286,7 +288,7 @@ func TestStockCost_FreightIsSpreadOverEveryUnitOrdered(t *testing.T) {
 
 	// goods 100.000 / 10 = 10.000 ; freight 20.000 / 10 = 2.000 ; the batch's price 12.000.
 	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 12000 {
-		t.Fatalf("HPP = %d, want 12000 — freight over all 10 ordered", got)
+		t.Fatalf("HPP = %v, want 12000 — freight over all 10 ordered", got)
 	}
 }
 
@@ -330,11 +332,11 @@ func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
 	// 10 units on the request, so every unit carries 20.000 / 10 = 2.000 of freight.
 	//   Widget: 80.000 / 8 = 10.000 + 2.000 = 12.000
 	//   Gadget: 40.000 / 2 = 20.000 + 2.000 = 22.000
-	want := map[uint64]int64{productX: 12000, productY: 22000}
+	want := map[uint64]float64{productX: 12000, productY: 22000}
 
 	for _, c := range stockCostLines(res.Msg) {
 		if got := c.GetUnitCost(); got != want[c.GetProductId()] {
-			t.Fatalf("product %d HPP = %d, want %d", c.GetProductId(), got, want[c.GetProductId()])
+			t.Fatalf("product %v HPP = %v, want %v", c.GetProductId(), got, want[c.GetProductId()])
 		}
 	}
 

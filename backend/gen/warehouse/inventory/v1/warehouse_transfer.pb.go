@@ -1556,6 +1556,115 @@ func (x *WarehouseTransferDetailResponse) GetTransfer() *WarehouseTransfer {
 	return nil
 }
 
+// The label photo of a shipped transfer, for every side of it (every-side-of-a-transfer-opens-its-label-photo): the
+// sending warehouse A, whose upload it is; the receiving warehouse B, to match the parcel at its door; and the selling
+// team that owns the transfer and paid for the shipping.
+type WarehouseTransferLabelPhotoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	TransferId    uint64                 `protobuf:"varint,2,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseTransferLabelPhotoRequest) Reset() {
+	*x = WarehouseTransferLabelPhotoRequest{}
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseTransferLabelPhotoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseTransferLabelPhotoRequest) ProtoMessage() {}
+
+func (x *WarehouseTransferLabelPhotoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseTransferLabelPhotoRequest.ProtoReflect.Descriptor instead.
+func (*WarehouseTransferLabelPhotoRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *WarehouseTransferLabelPhotoRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *WarehouseTransferLabelPhotoRequest) GetTransferId() uint64 {
+	if x != nil {
+		return x.TransferId
+	}
+	return 0
+}
+
+// A short-lived signed link, minted per call — never stored, never rendered as an href. A transfer with no photo (not
+// shipped yet, none attached, or the file is gone) is FailedPrecondition instead.
+type WarehouseTransferLabelPhotoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	ExpiresAtUnix int64                  `protobuf:"varint,2,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseTransferLabelPhotoResponse) Reset() {
+	*x = WarehouseTransferLabelPhotoResponse{}
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseTransferLabelPhotoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseTransferLabelPhotoResponse) ProtoMessage() {}
+
+func (x *WarehouseTransferLabelPhotoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseTransferLabelPhotoResponse.ProtoReflect.Descriptor instead.
+func (*WarehouseTransferLabelPhotoResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *WarehouseTransferLabelPhotoResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *WarehouseTransferLabelPhotoResponse) GetExpiresAtUnix() int64 {
+	if x != nil {
+		return x.ExpiresAtUnix
+	}
+	return 0
+}
+
 type WarehouseTransferUpdateRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	TeamId     uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -1571,7 +1680,7 @@ type WarehouseTransferUpdateRequest struct {
 
 func (x *WarehouseTransferUpdateRequest) Reset() {
 	*x = WarehouseTransferUpdateRequest{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[15]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1583,7 +1692,7 @@ func (x *WarehouseTransferUpdateRequest) String() string {
 func (*WarehouseTransferUpdateRequest) ProtoMessage() {}
 
 func (x *WarehouseTransferUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[15]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1596,7 +1705,7 @@ func (x *WarehouseTransferUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferUpdateRequest.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *WarehouseTransferUpdateRequest) GetTeamId() uint64 {
@@ -1643,7 +1752,7 @@ type WarehouseTransferUpdateResponse struct {
 
 func (x *WarehouseTransferUpdateResponse) Reset() {
 	*x = WarehouseTransferUpdateResponse{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[16]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1655,7 +1764,7 @@ func (x *WarehouseTransferUpdateResponse) String() string {
 func (*WarehouseTransferUpdateResponse) ProtoMessage() {}
 
 func (x *WarehouseTransferUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[16]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1668,7 +1777,7 @@ func (x *WarehouseTransferUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferUpdateResponse.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *WarehouseTransferUpdateResponse) GetTransfer() *WarehouseTransfer {
@@ -1690,7 +1799,7 @@ type WarehouseTransferCancelRequest struct {
 
 func (x *WarehouseTransferCancelRequest) Reset() {
 	*x = WarehouseTransferCancelRequest{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[17]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1702,7 +1811,7 @@ func (x *WarehouseTransferCancelRequest) String() string {
 func (*WarehouseTransferCancelRequest) ProtoMessage() {}
 
 func (x *WarehouseTransferCancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[17]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1715,7 +1824,7 @@ func (x *WarehouseTransferCancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferCancelRequest.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferCancelRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *WarehouseTransferCancelRequest) GetTeamId() uint64 {
@@ -1748,7 +1857,7 @@ type WarehouseTransferCancelResponse struct {
 
 func (x *WarehouseTransferCancelResponse) Reset() {
 	*x = WarehouseTransferCancelResponse{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[18]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1760,7 +1869,7 @@ func (x *WarehouseTransferCancelResponse) String() string {
 func (*WarehouseTransferCancelResponse) ProtoMessage() {}
 
 func (x *WarehouseTransferCancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[18]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1773,7 +1882,7 @@ func (x *WarehouseTransferCancelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferCancelResponse.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferCancelResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{18}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *WarehouseTransferCancelResponse) GetTransfer() *WarehouseTransfer {
@@ -1794,7 +1903,7 @@ type WarehouseTransferMarkLostRequest struct {
 
 func (x *WarehouseTransferMarkLostRequest) Reset() {
 	*x = WarehouseTransferMarkLostRequest{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[19]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1806,7 +1915,7 @@ func (x *WarehouseTransferMarkLostRequest) String() string {
 func (*WarehouseTransferMarkLostRequest) ProtoMessage() {}
 
 func (x *WarehouseTransferMarkLostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[19]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1819,7 +1928,7 @@ func (x *WarehouseTransferMarkLostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferMarkLostRequest.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferMarkLostRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{19}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *WarehouseTransferMarkLostRequest) GetTeamId() uint64 {
@@ -1852,7 +1961,7 @@ type WarehouseTransferMarkLostResponse struct {
 
 func (x *WarehouseTransferMarkLostResponse) Reset() {
 	*x = WarehouseTransferMarkLostResponse{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[20]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1864,7 +1973,7 @@ func (x *WarehouseTransferMarkLostResponse) String() string {
 func (*WarehouseTransferMarkLostResponse) ProtoMessage() {}
 
 func (x *WarehouseTransferMarkLostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[20]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1877,7 +1986,7 @@ func (x *WarehouseTransferMarkLostResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use WarehouseTransferMarkLostResponse.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferMarkLostResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{20}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *WarehouseTransferMarkLostResponse) GetTransfer() *WarehouseTransfer {
@@ -1898,7 +2007,7 @@ type WarehouseTransferProcessRequest struct {
 
 func (x *WarehouseTransferProcessRequest) Reset() {
 	*x = WarehouseTransferProcessRequest{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[21]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1910,7 +2019,7 @@ func (x *WarehouseTransferProcessRequest) String() string {
 func (*WarehouseTransferProcessRequest) ProtoMessage() {}
 
 func (x *WarehouseTransferProcessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[21]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1923,7 +2032,7 @@ func (x *WarehouseTransferProcessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferProcessRequest.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferProcessRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{21}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *WarehouseTransferProcessRequest) GetTeamId() uint64 {
@@ -1949,7 +2058,7 @@ type WarehouseTransferProcessResponse struct {
 
 func (x *WarehouseTransferProcessResponse) Reset() {
 	*x = WarehouseTransferProcessResponse{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[22]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1961,7 +2070,7 @@ func (x *WarehouseTransferProcessResponse) String() string {
 func (*WarehouseTransferProcessResponse) ProtoMessage() {}
 
 func (x *WarehouseTransferProcessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[22]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1974,7 +2083,7 @@ func (x *WarehouseTransferProcessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferProcessResponse.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferProcessResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{22}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *WarehouseTransferProcessResponse) GetTransfer() *WarehouseTransfer {
@@ -1999,7 +2108,7 @@ type WarehouseTransferShipRequest struct {
 
 func (x *WarehouseTransferShipRequest) Reset() {
 	*x = WarehouseTransferShipRequest{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[23]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2011,7 +2120,7 @@ func (x *WarehouseTransferShipRequest) String() string {
 func (*WarehouseTransferShipRequest) ProtoMessage() {}
 
 func (x *WarehouseTransferShipRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[23]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2024,7 +2133,7 @@ func (x *WarehouseTransferShipRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferShipRequest.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferShipRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{23}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *WarehouseTransferShipRequest) GetTeamId() uint64 {
@@ -2071,7 +2180,7 @@ type WarehouseTransferShipResponse struct {
 
 func (x *WarehouseTransferShipResponse) Reset() {
 	*x = WarehouseTransferShipResponse{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[24]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2083,7 +2192,7 @@ func (x *WarehouseTransferShipResponse) String() string {
 func (*WarehouseTransferShipResponse) ProtoMessage() {}
 
 func (x *WarehouseTransferShipResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[24]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2096,7 +2205,7 @@ func (x *WarehouseTransferShipResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferShipResponse.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferShipResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{24}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *WarehouseTransferShipResponse) GetTransfer() *WarehouseTransfer {
@@ -2117,7 +2226,7 @@ type WarehouseTransferArriveRequest struct {
 
 func (x *WarehouseTransferArriveRequest) Reset() {
 	*x = WarehouseTransferArriveRequest{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[25]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2129,7 +2238,7 @@ func (x *WarehouseTransferArriveRequest) String() string {
 func (*WarehouseTransferArriveRequest) ProtoMessage() {}
 
 func (x *WarehouseTransferArriveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[25]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2142,7 +2251,7 @@ func (x *WarehouseTransferArriveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferArriveRequest.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferArriveRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{25}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *WarehouseTransferArriveRequest) GetTeamId() uint64 {
@@ -2168,7 +2277,7 @@ type WarehouseTransferArriveResponse struct {
 
 func (x *WarehouseTransferArriveResponse) Reset() {
 	*x = WarehouseTransferArriveResponse{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[26]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2180,7 +2289,7 @@ func (x *WarehouseTransferArriveResponse) String() string {
 func (*WarehouseTransferArriveResponse) ProtoMessage() {}
 
 func (x *WarehouseTransferArriveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[26]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2193,7 +2302,7 @@ func (x *WarehouseTransferArriveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferArriveResponse.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferArriveResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{26}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *WarehouseTransferArriveResponse) GetTransfer() *WarehouseTransfer {
@@ -2220,7 +2329,7 @@ type WarehouseTransferAcceptRequest struct {
 
 func (x *WarehouseTransferAcceptRequest) Reset() {
 	*x = WarehouseTransferAcceptRequest{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[27]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2232,7 +2341,7 @@ func (x *WarehouseTransferAcceptRequest) String() string {
 func (*WarehouseTransferAcceptRequest) ProtoMessage() {}
 
 func (x *WarehouseTransferAcceptRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[27]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2245,7 +2354,7 @@ func (x *WarehouseTransferAcceptRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferAcceptRequest.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferAcceptRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{27}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *WarehouseTransferAcceptRequest) GetTeamId() uint64 {
@@ -2301,7 +2410,7 @@ type WarehouseTransferCountedLine struct {
 
 func (x *WarehouseTransferCountedLine) Reset() {
 	*x = WarehouseTransferCountedLine{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[28]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2313,7 +2422,7 @@ func (x *WarehouseTransferCountedLine) String() string {
 func (*WarehouseTransferCountedLine) ProtoMessage() {}
 
 func (x *WarehouseTransferCountedLine) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[28]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2326,7 +2435,7 @@ func (x *WarehouseTransferCountedLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferCountedLine.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferCountedLine) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{28}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *WarehouseTransferCountedLine) GetItemId() uint64 {
@@ -2380,7 +2489,7 @@ type WarehouseTransferAcceptResponse struct {
 
 func (x *WarehouseTransferAcceptResponse) Reset() {
 	*x = WarehouseTransferAcceptResponse{}
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[29]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2392,7 +2501,7 @@ func (x *WarehouseTransferAcceptResponse) String() string {
 func (*WarehouseTransferAcceptResponse) ProtoMessage() {}
 
 func (x *WarehouseTransferAcceptResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[29]
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2405,7 +2514,7 @@ func (x *WarehouseTransferAcceptResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarehouseTransferAcceptResponse.ProtoReflect.Descriptor instead.
 func (*WarehouseTransferAcceptResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{29}
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *WarehouseTransferAcceptResponse) GetTransfer() *WarehouseTransfer {
@@ -2542,7 +2651,16 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\n" +
 	"\b\x01\x02\x03\x04\x05\x06\t\b\"h\n" +
 	"\x1fWarehouseTransferDetailResponse\x12E\n" +
-	"\btransfer\x18\x01 \x01(\v2).warehouse.inventory.v1.WarehouseTransferR\btransfer\"\x80\x02\n" +
+	"\btransfer\x18\x01 \x01(\v2).warehouse.inventory.v1.WarehouseTransferR\btransfer\"\x84\x01\n" +
+	"\"WarehouseTransferLabelPhotoRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
+	"\vtransfer_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
+	"transferId:\x0e\x92\xb5\x18\n" +
+	"\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"_\n" +
+	"#WarehouseTransferLabelPhotoResponse\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12&\n" +
+	"\x0fexpires_at_unix\x18\x02 \x01(\x03R\rexpiresAtUnix\"\x80\x02\n" +
 	"\x1eWarehouseTransferUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
 	"\vtransfer_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
@@ -2634,7 +2752,7 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x1dWarehouseTransferListDataType\x121\n" +
 	"-WAREHOUSE_TRANSFER_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")WAREHOUSE_TRANSFER_LIST_DATA_TYPE_GENERAL\x10\x01\x128\n" +
-	"4WAREHOUSE_TRANSFER_LIST_DATA_TYPE_WAREHOUSE_TRANSFER\x10\x022\xa3\v\n" +
+	"4WAREHOUSE_TRANSFER_LIST_DATA_TYPE_WAREHOUSE_TRANSFER\x10\x022\xc1\f\n" +
 	"\x18WarehouseTransferService\x12\x8a\x01\n" +
 	"\x17WarehouseTransferCreate\x126.warehouse.inventory.v1.WarehouseTransferCreateRequest\x1a7.warehouse.inventory.v1.WarehouseTransferCreateResponse\x12\x89\x01\n" +
 	"\x15WarehouseTransferList\x124.warehouse.inventory.v1.WarehouseTransferListRequest\x1a5.warehouse.inventory.v1.WarehouseTransferListResponse\"\x03\x90\x02\x01\x12\x8f\x01\n" +
@@ -2645,7 +2763,8 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x18WarehouseTransferProcess\x127.warehouse.inventory.v1.WarehouseTransferProcessRequest\x1a8.warehouse.inventory.v1.WarehouseTransferProcessResponse\x12\x84\x01\n" +
 	"\x15WarehouseTransferShip\x124.warehouse.inventory.v1.WarehouseTransferShipRequest\x1a5.warehouse.inventory.v1.WarehouseTransferShipResponse\x12\x8a\x01\n" +
 	"\x17WarehouseTransferArrive\x126.warehouse.inventory.v1.WarehouseTransferArriveRequest\x1a7.warehouse.inventory.v1.WarehouseTransferArriveResponse\x12\x8a\x01\n" +
-	"\x17WarehouseTransferAccept\x126.warehouse.inventory.v1.WarehouseTransferAcceptRequest\x1a7.warehouse.inventory.v1.WarehouseTransferAcceptResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
+	"\x17WarehouseTransferAccept\x126.warehouse.inventory.v1.WarehouseTransferAcceptRequest\x1a7.warehouse.inventory.v1.WarehouseTransferAcceptResponse\x12\x9b\x01\n" +
+	"\x1bWarehouseTransferLabelPhoto\x12:.warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest\x1a;.warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse\"\x03\x90\x02\x01BRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
 
 var (
 	file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescOnce sync.Once
@@ -2660,46 +2779,48 @@ func file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_inventory_v1_warehouse_transfer_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_warehouse_inventory_v1_warehouse_transfer_proto_goTypes = []any{
-	(WarehouseTransferStatus)(0),              // 0: warehouse.inventory.v1.WarehouseTransferStatus
-	(WarehouseTransferDirection)(0),           // 1: warehouse.inventory.v1.WarehouseTransferDirection
-	(WarehouseTransferProblemType)(0),         // 2: warehouse.inventory.v1.WarehouseTransferProblemType
-	(WarehouseTransferListDataType)(0),        // 3: warehouse.inventory.v1.WarehouseTransferListDataType
-	(*WarehouseTransferPlacement)(nil),        // 4: warehouse.inventory.v1.WarehouseTransferPlacement
-	(*WarehouseTransferProblem)(nil),          // 5: warehouse.inventory.v1.WarehouseTransferProblem
-	(*WarehouseTransferItem)(nil),             // 6: warehouse.inventory.v1.WarehouseTransferItem
-	(*WarehouseTransferLog)(nil),              // 7: warehouse.inventory.v1.WarehouseTransferLog
-	(*WarehouseTransfer)(nil),                 // 8: warehouse.inventory.v1.WarehouseTransfer
-	(*WarehouseTransferLine)(nil),             // 9: warehouse.inventory.v1.WarehouseTransferLine
-	(*WarehouseTransferCreateRequest)(nil),    // 10: warehouse.inventory.v1.WarehouseTransferCreateRequest
-	(*WarehouseTransferCreateResponse)(nil),   // 11: warehouse.inventory.v1.WarehouseTransferCreateResponse
-	(*WarehouseTransferListRequest)(nil),      // 12: warehouse.inventory.v1.WarehouseTransferListRequest
-	(*WarehouseTransferListFilter)(nil),       // 13: warehouse.inventory.v1.WarehouseTransferListFilter
-	(*WarehouseTransferMapItem)(nil),          // 14: warehouse.inventory.v1.WarehouseTransferMapItem
-	(*WarehouseTransferListResponseItem)(nil), // 15: warehouse.inventory.v1.WarehouseTransferListResponseItem
-	(*WarehouseTransferListResponse)(nil),     // 16: warehouse.inventory.v1.WarehouseTransferListResponse
-	(*WarehouseTransferDetailRequest)(nil),    // 17: warehouse.inventory.v1.WarehouseTransferDetailRequest
-	(*WarehouseTransferDetailResponse)(nil),   // 18: warehouse.inventory.v1.WarehouseTransferDetailResponse
-	(*WarehouseTransferUpdateRequest)(nil),    // 19: warehouse.inventory.v1.WarehouseTransferUpdateRequest
-	(*WarehouseTransferUpdateResponse)(nil),   // 20: warehouse.inventory.v1.WarehouseTransferUpdateResponse
-	(*WarehouseTransferCancelRequest)(nil),    // 21: warehouse.inventory.v1.WarehouseTransferCancelRequest
-	(*WarehouseTransferCancelResponse)(nil),   // 22: warehouse.inventory.v1.WarehouseTransferCancelResponse
-	(*WarehouseTransferMarkLostRequest)(nil),  // 23: warehouse.inventory.v1.WarehouseTransferMarkLostRequest
-	(*WarehouseTransferMarkLostResponse)(nil), // 24: warehouse.inventory.v1.WarehouseTransferMarkLostResponse
-	(*WarehouseTransferProcessRequest)(nil),   // 25: warehouse.inventory.v1.WarehouseTransferProcessRequest
-	(*WarehouseTransferProcessResponse)(nil),  // 26: warehouse.inventory.v1.WarehouseTransferProcessResponse
-	(*WarehouseTransferShipRequest)(nil),      // 27: warehouse.inventory.v1.WarehouseTransferShipRequest
-	(*WarehouseTransferShipResponse)(nil),     // 28: warehouse.inventory.v1.WarehouseTransferShipResponse
-	(*WarehouseTransferArriveRequest)(nil),    // 29: warehouse.inventory.v1.WarehouseTransferArriveRequest
-	(*WarehouseTransferArriveResponse)(nil),   // 30: warehouse.inventory.v1.WarehouseTransferArriveResponse
-	(*WarehouseTransferAcceptRequest)(nil),    // 31: warehouse.inventory.v1.WarehouseTransferAcceptRequest
-	(*WarehouseTransferCountedLine)(nil),      // 32: warehouse.inventory.v1.WarehouseTransferCountedLine
-	(*WarehouseTransferAcceptResponse)(nil),   // 33: warehouse.inventory.v1.WarehouseTransferAcceptResponse
-	nil,                                       // 34: warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry
-	(*v1.CommonPagination)(nil),               // 35: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),                 // 36: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),                       // 37: warehouse.common.v1.PageInfo
+	(WarehouseTransferStatus)(0),                // 0: warehouse.inventory.v1.WarehouseTransferStatus
+	(WarehouseTransferDirection)(0),             // 1: warehouse.inventory.v1.WarehouseTransferDirection
+	(WarehouseTransferProblemType)(0),           // 2: warehouse.inventory.v1.WarehouseTransferProblemType
+	(WarehouseTransferListDataType)(0),          // 3: warehouse.inventory.v1.WarehouseTransferListDataType
+	(*WarehouseTransferPlacement)(nil),          // 4: warehouse.inventory.v1.WarehouseTransferPlacement
+	(*WarehouseTransferProblem)(nil),            // 5: warehouse.inventory.v1.WarehouseTransferProblem
+	(*WarehouseTransferItem)(nil),               // 6: warehouse.inventory.v1.WarehouseTransferItem
+	(*WarehouseTransferLog)(nil),                // 7: warehouse.inventory.v1.WarehouseTransferLog
+	(*WarehouseTransfer)(nil),                   // 8: warehouse.inventory.v1.WarehouseTransfer
+	(*WarehouseTransferLine)(nil),               // 9: warehouse.inventory.v1.WarehouseTransferLine
+	(*WarehouseTransferCreateRequest)(nil),      // 10: warehouse.inventory.v1.WarehouseTransferCreateRequest
+	(*WarehouseTransferCreateResponse)(nil),     // 11: warehouse.inventory.v1.WarehouseTransferCreateResponse
+	(*WarehouseTransferListRequest)(nil),        // 12: warehouse.inventory.v1.WarehouseTransferListRequest
+	(*WarehouseTransferListFilter)(nil),         // 13: warehouse.inventory.v1.WarehouseTransferListFilter
+	(*WarehouseTransferMapItem)(nil),            // 14: warehouse.inventory.v1.WarehouseTransferMapItem
+	(*WarehouseTransferListResponseItem)(nil),   // 15: warehouse.inventory.v1.WarehouseTransferListResponseItem
+	(*WarehouseTransferListResponse)(nil),       // 16: warehouse.inventory.v1.WarehouseTransferListResponse
+	(*WarehouseTransferDetailRequest)(nil),      // 17: warehouse.inventory.v1.WarehouseTransferDetailRequest
+	(*WarehouseTransferDetailResponse)(nil),     // 18: warehouse.inventory.v1.WarehouseTransferDetailResponse
+	(*WarehouseTransferLabelPhotoRequest)(nil),  // 19: warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest
+	(*WarehouseTransferLabelPhotoResponse)(nil), // 20: warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse
+	(*WarehouseTransferUpdateRequest)(nil),      // 21: warehouse.inventory.v1.WarehouseTransferUpdateRequest
+	(*WarehouseTransferUpdateResponse)(nil),     // 22: warehouse.inventory.v1.WarehouseTransferUpdateResponse
+	(*WarehouseTransferCancelRequest)(nil),      // 23: warehouse.inventory.v1.WarehouseTransferCancelRequest
+	(*WarehouseTransferCancelResponse)(nil),     // 24: warehouse.inventory.v1.WarehouseTransferCancelResponse
+	(*WarehouseTransferMarkLostRequest)(nil),    // 25: warehouse.inventory.v1.WarehouseTransferMarkLostRequest
+	(*WarehouseTransferMarkLostResponse)(nil),   // 26: warehouse.inventory.v1.WarehouseTransferMarkLostResponse
+	(*WarehouseTransferProcessRequest)(nil),     // 27: warehouse.inventory.v1.WarehouseTransferProcessRequest
+	(*WarehouseTransferProcessResponse)(nil),    // 28: warehouse.inventory.v1.WarehouseTransferProcessResponse
+	(*WarehouseTransferShipRequest)(nil),        // 29: warehouse.inventory.v1.WarehouseTransferShipRequest
+	(*WarehouseTransferShipResponse)(nil),       // 30: warehouse.inventory.v1.WarehouseTransferShipResponse
+	(*WarehouseTransferArriveRequest)(nil),      // 31: warehouse.inventory.v1.WarehouseTransferArriveRequest
+	(*WarehouseTransferArriveResponse)(nil),     // 32: warehouse.inventory.v1.WarehouseTransferArriveResponse
+	(*WarehouseTransferAcceptRequest)(nil),      // 33: warehouse.inventory.v1.WarehouseTransferAcceptRequest
+	(*WarehouseTransferCountedLine)(nil),        // 34: warehouse.inventory.v1.WarehouseTransferCountedLine
+	(*WarehouseTransferAcceptResponse)(nil),     // 35: warehouse.inventory.v1.WarehouseTransferAcceptResponse
+	nil,                                         // 36: warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry
+	(*v1.CommonPagination)(nil),                 // 37: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),                   // 38: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),                         // 39: warehouse.common.v1.PageInfo
 }
 var file_warehouse_inventory_v1_warehouse_transfer_proto_depIdxs = []int32{
 	2,  // 0: warehouse.inventory.v1.WarehouseTransferProblem.type:type_name -> warehouse.inventory.v1.WarehouseTransferProblemType
@@ -2715,14 +2836,14 @@ var file_warehouse_inventory_v1_warehouse_transfer_proto_depIdxs = []int32{
 	8,  // 10: warehouse.inventory.v1.WarehouseTransferCreateResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
 	13, // 11: warehouse.inventory.v1.WarehouseTransferListRequest.filter:type_name -> warehouse.inventory.v1.WarehouseTransferListFilter
 	3,  // 12: warehouse.inventory.v1.WarehouseTransferListRequest.data_request:type_name -> warehouse.inventory.v1.WarehouseTransferListDataType
-	35, // 13: warehouse.inventory.v1.WarehouseTransferListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	37, // 13: warehouse.inventory.v1.WarehouseTransferListRequest.page:type_name -> warehouse.common.v1.CommonPagination
 	0,  // 14: warehouse.inventory.v1.WarehouseTransferListFilter.status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
 	1,  // 15: warehouse.inventory.v1.WarehouseTransferListFilter.direction:type_name -> warehouse.inventory.v1.WarehouseTransferDirection
-	34, // 16: warehouse.inventory.v1.WarehouseTransferMapItem.map_data:type_name -> warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry
-	36, // 17: warehouse.inventory.v1.WarehouseTransferListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	36, // 16: warehouse.inventory.v1.WarehouseTransferMapItem.map_data:type_name -> warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry
+	38, // 17: warehouse.inventory.v1.WarehouseTransferListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	14, // 18: warehouse.inventory.v1.WarehouseTransferListResponseItem.warehouse_transfer:type_name -> warehouse.inventory.v1.WarehouseTransferMapItem
 	15, // 19: warehouse.inventory.v1.WarehouseTransferListResponse.items:type_name -> warehouse.inventory.v1.WarehouseTransferListResponseItem
-	37, // 20: warehouse.inventory.v1.WarehouseTransferListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	39, // 20: warehouse.inventory.v1.WarehouseTransferListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	8,  // 21: warehouse.inventory.v1.WarehouseTransferDetailResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
 	8,  // 22: warehouse.inventory.v1.WarehouseTransferUpdateResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
 	8,  // 23: warehouse.inventory.v1.WarehouseTransferCancelResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
@@ -2730,32 +2851,34 @@ var file_warehouse_inventory_v1_warehouse_transfer_proto_depIdxs = []int32{
 	8,  // 25: warehouse.inventory.v1.WarehouseTransferProcessResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
 	8,  // 26: warehouse.inventory.v1.WarehouseTransferShipResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
 	8,  // 27: warehouse.inventory.v1.WarehouseTransferArriveResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	32, // 28: warehouse.inventory.v1.WarehouseTransferAcceptRequest.lines:type_name -> warehouse.inventory.v1.WarehouseTransferCountedLine
+	34, // 28: warehouse.inventory.v1.WarehouseTransferAcceptRequest.lines:type_name -> warehouse.inventory.v1.WarehouseTransferCountedLine
 	4,  // 29: warehouse.inventory.v1.WarehouseTransferCountedLine.placements:type_name -> warehouse.inventory.v1.WarehouseTransferPlacement
 	8,  // 30: warehouse.inventory.v1.WarehouseTransferAcceptResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
 	8,  // 31: warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.WarehouseTransfer
 	10, // 32: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCreate:input_type -> warehouse.inventory.v1.WarehouseTransferCreateRequest
 	12, // 33: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferList:input_type -> warehouse.inventory.v1.WarehouseTransferListRequest
 	17, // 34: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferDetail:input_type -> warehouse.inventory.v1.WarehouseTransferDetailRequest
-	19, // 35: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferUpdate:input_type -> warehouse.inventory.v1.WarehouseTransferUpdateRequest
-	21, // 36: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCancel:input_type -> warehouse.inventory.v1.WarehouseTransferCancelRequest
-	23, // 37: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferMarkLost:input_type -> warehouse.inventory.v1.WarehouseTransferMarkLostRequest
-	25, // 38: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferProcess:input_type -> warehouse.inventory.v1.WarehouseTransferProcessRequest
-	27, // 39: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferShip:input_type -> warehouse.inventory.v1.WarehouseTransferShipRequest
-	29, // 40: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferArrive:input_type -> warehouse.inventory.v1.WarehouseTransferArriveRequest
-	31, // 41: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept:input_type -> warehouse.inventory.v1.WarehouseTransferAcceptRequest
-	11, // 42: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCreate:output_type -> warehouse.inventory.v1.WarehouseTransferCreateResponse
-	16, // 43: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferList:output_type -> warehouse.inventory.v1.WarehouseTransferListResponse
-	18, // 44: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferDetail:output_type -> warehouse.inventory.v1.WarehouseTransferDetailResponse
-	20, // 45: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferUpdate:output_type -> warehouse.inventory.v1.WarehouseTransferUpdateResponse
-	22, // 46: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCancel:output_type -> warehouse.inventory.v1.WarehouseTransferCancelResponse
-	24, // 47: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferMarkLost:output_type -> warehouse.inventory.v1.WarehouseTransferMarkLostResponse
-	26, // 48: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferProcess:output_type -> warehouse.inventory.v1.WarehouseTransferProcessResponse
-	28, // 49: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferShip:output_type -> warehouse.inventory.v1.WarehouseTransferShipResponse
-	30, // 50: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferArrive:output_type -> warehouse.inventory.v1.WarehouseTransferArriveResponse
-	33, // 51: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept:output_type -> warehouse.inventory.v1.WarehouseTransferAcceptResponse
-	42, // [42:52] is the sub-list for method output_type
-	32, // [32:42] is the sub-list for method input_type
+	21, // 35: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferUpdate:input_type -> warehouse.inventory.v1.WarehouseTransferUpdateRequest
+	23, // 36: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCancel:input_type -> warehouse.inventory.v1.WarehouseTransferCancelRequest
+	25, // 37: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferMarkLost:input_type -> warehouse.inventory.v1.WarehouseTransferMarkLostRequest
+	27, // 38: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferProcess:input_type -> warehouse.inventory.v1.WarehouseTransferProcessRequest
+	29, // 39: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferShip:input_type -> warehouse.inventory.v1.WarehouseTransferShipRequest
+	31, // 40: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferArrive:input_type -> warehouse.inventory.v1.WarehouseTransferArriveRequest
+	33, // 41: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept:input_type -> warehouse.inventory.v1.WarehouseTransferAcceptRequest
+	19, // 42: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto:input_type -> warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest
+	11, // 43: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCreate:output_type -> warehouse.inventory.v1.WarehouseTransferCreateResponse
+	16, // 44: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferList:output_type -> warehouse.inventory.v1.WarehouseTransferListResponse
+	18, // 45: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferDetail:output_type -> warehouse.inventory.v1.WarehouseTransferDetailResponse
+	22, // 46: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferUpdate:output_type -> warehouse.inventory.v1.WarehouseTransferUpdateResponse
+	24, // 47: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCancel:output_type -> warehouse.inventory.v1.WarehouseTransferCancelResponse
+	26, // 48: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferMarkLost:output_type -> warehouse.inventory.v1.WarehouseTransferMarkLostResponse
+	28, // 49: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferProcess:output_type -> warehouse.inventory.v1.WarehouseTransferProcessResponse
+	30, // 50: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferShip:output_type -> warehouse.inventory.v1.WarehouseTransferShipResponse
+	32, // 51: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferArrive:output_type -> warehouse.inventory.v1.WarehouseTransferArriveResponse
+	35, // 52: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept:output_type -> warehouse.inventory.v1.WarehouseTransferAcceptResponse
+	20, // 53: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto:output_type -> warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse
+	43, // [43:54] is the sub-list for method output_type
+	32, // [32:43] is the sub-list for method input_type
 	32, // [32:32] is the sub-list for extension type_name
 	32, // [32:32] is the sub-list for extension extendee
 	0,  // [0:32] is the sub-list for field type_name
@@ -2776,7 +2899,7 @@ func file_warehouse_inventory_v1_warehouse_transfer_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc), len(file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   31,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -29,7 +29,7 @@ func transferCourierLegs(t *testing.T, db *gorm.DB) []liability_service_models.L
 	return legs
 }
 
-func transferCharge(amount int64) liability_v1.TransferCourierCharge {
+func transferCharge(amount float64) liability_v1.TransferCourierCharge {
 	return liability_v1.TransferCourierCharge{
 		TransferID: courierTransfer, SellingTeamID: courierSellingTeam, WarehouseID: courierWarehouse,
 		Amount: amount, ActorID: 33,
@@ -59,13 +59,13 @@ func TestChargeTransferCourier_PostsTheDebtOnceForTheTransfer(t *testing.T) {
 	}
 
 	for _, leg := range legs {
-		want, counterparty := int64(5_000), courierSellingTeam
+		want, counterparty := float64(5_000), courierSellingTeam
 		if leg.TeamID == courierSellingTeam {
 			want, counterparty = -5_000, courierWarehouse
 		}
 
 		if leg.Amount != want || leg.CounterpartyID != counterparty || leg.ActorID != 33 || leg.Reversal {
-			t.Fatalf("leg %+v, want %d by 33 — the selling team owes, the receiving warehouse is owed", leg, want)
+			t.Fatalf("leg %+v, want %v by 33 — the selling team owes, the receiving warehouse is owed", leg, want)
 		}
 	}
 }
@@ -93,7 +93,7 @@ func TestChargeTransferCourier_DoesNotCollideWithARestockOfTheSameNumber(t *test
 		t.Fatalf("%d transfer legs, want 2 — the restock of the same number must not have taken its key", len(legs))
 	}
 
-	var balance int64
+	var balance float64
 
 	err = db.Raw(`SELECT balance FROM liability_balances WHERE team_id = ? AND counterparty_id = ?`,
 		courierWarehouse, courierSellingTeam).Scan(&balance).Error
@@ -102,7 +102,7 @@ func TestChargeTransferCourier_DoesNotCollideWithARestockOfTheSameNumber(t *test
 	}
 
 	if balance != 30_000 {
-		t.Fatalf("the warehouse is owed %d, want 30.000 — both charges", balance)
+		t.Fatalf("the warehouse is owed %v, want 30.000 — both charges", balance)
 	}
 }
 

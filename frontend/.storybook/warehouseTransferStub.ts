@@ -272,6 +272,19 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     return { transfer: toWire(visible(req.teamId, req.transferId), true) };
   },
 
+  // every-side-of-a-transfer-opens-its-label-photo — the server's rules: the caller must be a side of the transfer (a
+  // fourth team reads NotFound, as an unknown id), and one with no photo is FailedPrecondition. The URL names the route
+  // so a story can tell this link from GetDownloadUrl's.
+  warehouseTransferLabelPhoto(req) {
+    const r = visible(req.teamId, req.transferId);
+    if (!r.receiptFile) throw precondition("this transfer has no label photo");
+
+    return {
+      url: `https://example.invalid/transfer-photo/${r.receiptFile}`,
+      expiresAtUnix: BigInt(Math.floor(Date.now() / 1000) + 900),
+    };
+  },
+
   warehouseTransferUpdate(req) {
     const r = ownedBy(req.teamId, req.transferId);
     if (r.status === S.ACCEPTED || r.status === S.CANCELLED) {

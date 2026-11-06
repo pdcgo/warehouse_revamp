@@ -348,8 +348,14 @@ func TestMCP_AnotherTeamIsRefusedThroughTheTool(t *testing.T) {
 	}
 
 	text, isError = callTool(t, s, "balance_positions", nil)
-	if isError || len(rec.calls) != 1 || rec.teams[0] != team || !strings.Contains(text, "700000") {
+	if isError || len(rec.calls) != 1 || rec.teams[0] != team {
 		t.Fatalf("its own team's balance = %q on %v, want team %d's", text, rec.teams, team)
+	}
+
+	// Money reaches the agent as a JSON NUMBER since liability 00014 (every-ledger-moves-to-double-rounded-when-frozen)
+	// — never the quoted string protojson writes for an int64, which an agent would have to parse back into a figure.
+	if !strings.Contains(text, `"total_receivable":700000`) {
+		t.Fatalf("its own team's balance = %s, want total_receivable as the number 700000", text)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 	financial_account_v1 "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_v1"
@@ -24,7 +25,7 @@ const expenseID uint64 = 8_801
 // spentOn is the day the expense belongs to — three days back, so the row's day is not today by accident.
 var spentOn = day(3)
 
-func expenseCreated(eventID string, account uint64, kind expensev1.ExpenseKind, amount int64) *eventsv1.Event {
+func expenseCreated(eventID string, account uint64, kind expensev1.ExpenseKind, amount float64) *eventsv1.Event {
 	return &eventsv1.Event{
 		EventId:     eventID,
 		OccurredAt:  timestamppb.Now(),
@@ -36,7 +37,7 @@ func expenseCreated(eventID string, account uint64, kind expensev1.ExpenseKind, 
 	}
 }
 
-func expenseAdjusted(eventID string, account uint64, kind expensev1.ExpenseKind, amount int64) *eventsv1.Event {
+func expenseAdjusted(eventID string, account uint64, kind expensev1.ExpenseKind, amount float64) *eventsv1.Event {
 	return &eventsv1.Event{
 		EventId:     eventID,
 		OccurredAt:  timestamppb.Now(),
@@ -165,7 +166,7 @@ func TestExpensePayment_CorrectionsPostTheirDifference(t *testing.T) {
 
 	steps := []struct {
 		eventID string
-		amount  int64
+		amount  float64
 		want    float64
 	}{
 		{"expense-adjusted:1", -450_000, 950_000},  // a typo: 500.000 was 50.000 — 450.000 back
@@ -177,7 +178,7 @@ func TestExpensePayment_CorrectionsPostTheirDifference(t *testing.T) {
 		mustPayExpense(t, svc, expenseAdjusted(step.eventID, bcaA.GetId(), ads, step.amount))
 
 		if got := balance(t, db, bcaA.GetId()); got != step.want {
-			t.Fatalf("after %s (%d): balance = %v, want %v", step.eventID, step.amount, got, step.want)
+			t.Fatalf("after %s (%v): balance = %v, want %v", step.eventID, step.amount, got, step.want)
 		}
 	}
 
@@ -261,5 +262,33 @@ func TestExpensePayment_OutOfOrderDeliveryEndsTheSame(t *testing.T) {
 
 	if got := balance(t, db, bcaA.GetId()); got != 700_000 {
 		t.Fatalf("balance = %v, want 700000 — 400000 out, 100000 back", got)
+	}
+}
+
+// THE LISTENER POSTS THE EXACT FIGURE (the-backend-never-rounds-money): the expense stored its amount exact — a stock
+// loss at a FIFO unit cost is a fraction — and the row moves the account by exactly that, Rp 149.999,375, never
+// rounded; a second fractional expense adds its own. The balance equals the opening figure plus the sum of its logs
+// within the tolerance (san_money.Equal).
+func TestExpensePayment_PostsTheExactFigureAndTheBalanceIsTheSumOfItsLogs(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	bcaA := mustCreate(t, svc, bca(teamA, "BCA Ops", "9600000011", 1_000_000))
+
+	mustPayExpense(t, svc, expenseCreated("expense-created:8801", bcaA.GetId(), expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, 149_999.375))
+	mustPayExpense(t, svc, expenseCreated("expense-created:8802", bcaA.GetId(), expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, 316.67475))
+
+	rows := rowsOfType(t, db, bcaA.GetId(), m.ChangeExpense)
+	if len(rows) != 2 || rows[0].Change != -149_999.375 || rows[0].BalanceAfter != 850_000.625 || rows[1].Change != -316.67475 {
+		t.Fatalf("expense rows = %+v, want −149.999,375 leaving 850.000,625, then −316,67475", rows)
+	}
+
+	var sum float64
+	for _, row := range logs(t, db, bcaA.GetId()) {
+		sum += row.Change
+	}
+
+	got := balance(t, db, bcaA.GetId())
+	if !san_money.Equal(got, 849_683.95025) || !san_money.Equal(got, sum) {
+		t.Fatalf("balance = %v, Σ logs = %v — want both 849.683,95025", got, sum)
 	}
 }

@@ -72,10 +72,10 @@ type Order struct {
 	// (an-order-records-no-shipping-cost).
 	//
 	// GoodsCost is the owner's `goods_cost`: Σ the lines' frozen Total — a borrowed line WITH its owner's markup, what
-	// the goods cost the seller (the-cross-charge-lives-on-the-line) — rounded once to whole rupiah. The warehouse fee
+	// the goods cost the seller (the-cross-charge-lives-on-the-line) — exact, never rounded, a double since 00042 (the-backend-never-rounds-money). The warehouse fee
 	// is priced on it (the-fee-is-priced-on-goods-cost). Denormalised onto the header because OrderList returns a
 	// summary without lines. 0 means unknown, not free.
-	GoodsCost int64
+	GoodsCost float64
 	// The owner's `total_cost`: GoodsCost + WarehouseFee, frozen beside them — what the order cost the seller ("total
 	// beli"). Unrounded rupiah, like the fee. A never-priced fee counts as nothing here.
 	TotalCost float64
@@ -83,8 +83,9 @@ type Order struct {
 	// WHAT THE BUYER PAID on the platform — the owner's `platform_total` (00026,
 	// the-total-is-ours-the-platform-total-is-theirs): what the storefront actually took once its vouchers and
 	// subsidies had been applied. A fact read off the storefront, required at placement since 00022; 0 = not recorded,
-	// on an order placed before that. margin = PlatformTotal − TotalCost.
-	PlatformTotal int64
+	// on an order placed before that. margin = PlatformTotal − TotalCost. A double since 00041, frozen exact as
+	// typed at placement (the-backend-never-rounds-money).
+	PlatformTotal float64
 
 	// The SHIPPING RECEIPT attached to this order (owner) — the courier's slip or the marketplace's
 	// PDF. A REFERENCE to a document_service document: the id is opaque (no FK across services), and
@@ -125,6 +126,11 @@ type Order struct {
 	// bypass, not a membership (an-override-is-stamped-in-every-service). Read from the access interceptor's resolved
 	// role at placement (san_auth.IsOverride), never from the request, and never updated.
 	IsOverride bool
+
+	// WHEN ITS SETTLEMENT ACCOUNT OPENED (00040, a-missing-account-is-found-by-its-opened-at) — stamped once, by
+	// settlement through the in-process seam (Service.SettlementOpened), at its first `initial_total`. nil = NOT YET: the
+	// open failed, is dead-lettered, or never ran — the order committed all the same. Never written by placement.
+	SettlementOpenedAt *time.Time
 
 	// HOW MANY UNITS — the sum of the lines' quantities (the-warehouse-row-fills-from-shop-and-user-by-ids). Not a
 	// column: OrderList selects it with a subquery, and OrderDetail sums the lines it loads. Read-only to GORM.

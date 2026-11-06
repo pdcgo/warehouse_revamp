@@ -112,7 +112,7 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 	//   shirt 4.000.000/100 + 1.000 = 41.000; arrived 100, broken 0, ready 100, used 0
 	//   hat     840.000/30  + 1.000 = 29.000; arrived 30, broken 2, ready 28, used 0
 	if !shirt.GetCostKnown() || shirt.GetUnitCost() != 41000 {
-		t.Fatalf("shirt cost = %d known=%v, want 41000/true", shirt.GetUnitCost(), shirt.GetCostKnown())
+		t.Fatalf("shirt cost = %v known=%v, want 41000/true", shirt.GetUnitCost(), shirt.GetCostKnown())
 	}
 	if shirt.GetArrived() != 100 || shirt.GetBroken() != 0 || shirt.GetReady() != 100 || shirt.GetUsed() != 0 {
 		t.Fatalf("shirt lifecycle = a%d b%d r%d u%d, want 100/0/100/0",
@@ -124,15 +124,15 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 
 	// line_cost = arrived × cost; ready_value = ready × cost.
 	if shirt.GetLineCost() != 4100000 || shirt.GetReadyValue() != 4100000 {
-		t.Fatalf("shirt line=%d ready_value=%d, want 4100000/4100000", shirt.GetLineCost(), shirt.GetReadyValue())
+		t.Fatalf("shirt line=%v ready_value=%v, want 4100000/4100000", shirt.GetLineCost(), shirt.GetReadyValue())
 	}
 	if hat.GetLineCost() != 870000 || hat.GetReadyValue() != 812000 {
-		t.Fatalf("hat line=%d ready_value=%d, want 870000/812000", hat.GetLineCost(), hat.GetReadyValue())
+		t.Fatalf("hat line=%v ready_value=%v, want 870000/812000", hat.GetLineCost(), hat.GetReadyValue())
 	}
 
 	// Header tile: ready value over the whole set = 4.100.000 + 812.000.
 	if msg.GetReadyValueTotal() != 4912000 {
-		t.Fatalf("ready_value_total = %d, want 4912000", msg.GetReadyValueTotal())
+		t.Fatalf("ready_value_total = %v, want 4912000", msg.GetReadyValueTotal())
 	}
 
 	// Filter to one product — the detail's Batches tab.
@@ -199,5 +199,75 @@ func TestBatchList_DateRange(t *testing.T) {
 	}
 	if len(batchRows(upto.Msg)) != 2 {
 		t.Fatalf("arrived ≤ tomorrow returned %d, want 2", len(batchRows(upto.Msg)))
+	}
+}
+
+// wibZone is the system's calendar (the-system-runs-on-jakarta-time), for writing an expiry as a Jakarta wall time.
+var wibZone = time.FixedZone("WIB", 7*60*60)
+
+// THE SOON WINDOW IS JAKARTA DAYS: today's Jakarta date + 30, whole — the same edge at 01:30 WIB (still yesterday on a
+// UTC host) as at 23:59 WIB, and whatever zone `now` is written in. It moves at Jakarta midnight, not UTC midnight.
+func TestBatchList_TheSoonWindowEndsWithTheThirtiethJakartaDay(t *testing.T) {
+	want := time.Date(2026, 12, 6, 0, 0, 0, 0, wibZone) // 5 Nov + 31 days: the first instant past 5 Dec
+
+	for name, now := range map[string]time.Time{
+		"01:30 WIB, written as UTC (still 4 Nov in UTC)": time.Date(2026, 11, 4, 18, 30, 0, 0, time.UTC),
+		"06:59 WIB":                 time.Date(2026, 11, 5, 6, 59, 0, 0, wibZone),
+		"23:59 WIB, written as UTC": time.Date(2026, 11, 5, 16, 59, 0, 0, time.UTC),
+		"the same instant in UTC−5": time.Date(2026, 11, 5, 11, 59, 0, 0, time.FixedZone("UTC-5", -5*60*60)),
+	} {
+		if got := inventory_v1.SoonCutoff(now); !got.Equal(want) {
+			t.Fatalf("%s: cutoff %s, want %s", name, got.In(wibZone), want)
+		}
+	}
+
+	// 00:00 WIB on 6 Nov is 17:00 UTC on 5 Nov — the window moves a day, at Jakarta midnight.
+	if got := inventory_v1.SoonCutoff(time.Date(2026, 11, 5, 17, 0, 0, 0, time.UTC)); !got.Equal(want.AddDate(0, 0, 1)) {
+		t.Fatalf("at 00:00 WIB 6 Nov: cutoff %s, want 7 Dec 00:00 WIB", got.In(wibZone))
+	}
+}
+
+// The list's "expiring ≤ 30 days" filter and count take the WHOLE 30th Jakarta day — a batch expiring at 23:59 WIB on
+// it is soon at any hour the list is opened — and nothing of the 31st.
+func TestBatchList_ExpiringSoonCountsTheWholeThirtiethJakartaDay(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	const warehouse uint64 = 5
+	seedTwoBatches(t, svc, warehouse)
+
+	today := time.Now().In(wibZone)
+	lastSoon := time.Date(today.Year(), today.Month(), today.Day()+30, 23, 59, 0, 0, wibZone)
+	firstLater := time.Date(today.Year(), today.Month(), today.Day()+31, 0, 0, 0, 0, wibZone)
+
+	err := db.Exec(`UPDATE batches SET expired_at = CASE WHEN product_id = 100 THEN CAST(? AS timestamptz) ELSE CAST(? AS timestamptz) END
+		WHERE warehouse_id = ?`, lastSoon, firstLater, warehouse).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{
+		TeamId: warehouse,
+		Filter: &inventoryv1.BatchListFilter{Expiry: inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_EXPIRING_SOON},
+		Page:   page1(),
+	}))
+	if err != nil {
+		t.Fatalf("BatchList expiring soon: %v", err)
+	}
+
+	rows := batchRows(res.Msg)
+	if len(rows) != 1 || rows[0].GetProductId() != 100 || res.Msg.GetExpiringSoonCount() != 1 {
+		t.Fatalf("expiring soon = %d rows (count %d), want the shirt alone — 23:59 WIB on day 30 is in, 00:00 on day 31 is not",
+			len(rows), res.Msg.GetExpiringSoonCount())
+	}
+
+	// The header count over the unfiltered list says the same.
+	all, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1()}))
+	if err != nil {
+		t.Fatalf("BatchList: %v", err)
+	}
+
+	if all.Msg.GetExpiringSoonCount() != 1 {
+		t.Fatalf("expiring_soon_count = %d over both batches, want 1", all.Msg.GetExpiringSoonCount())
 	}
 }

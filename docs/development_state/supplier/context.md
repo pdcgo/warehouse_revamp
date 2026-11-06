@@ -87,3 +87,15 @@ for real (Q17, Q18 answered) · the menu's **Suppliers** group.
 `takeEventLock` / `releaseEventLock(ctx, takenAt)`, a lock older than its lease is taken over and logged once
 (`logExpiredEventLock`), and a release only frees the lock it took. Both services, the same file; the fold and the replay
 use it. Tests beside each. Also this pass: the year cap and *as of* on its metrics ([analytic](../analytic/rpc_provide.md)).
+
+## 2026-11-06 — the three valuations are doubles (money-type change, part 2)
+
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen). `supplier_service` `00003_valuations_are_double.sql`: `restock_valuation`, `shipping_lost_valuation`,
+`shipping_broken_valuation` `BIGINT` → `double precision`; `supplier_analytic.proto`'s three valuations → `double`.
+The fold's `lineValue` freezes each figure with `san_money.Whole` as it writes, and the replay unnests a
+`double precision[]`. Applied on `warehouse_test` (the harness re-applies every migration from scratch); not run on dev — `go run ./tools/san migrate up`. The `san` backfill test reads the valuation as `float64`.
+
+## 2026-11-06 — the backend never rounds money ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money))
+
+`lineValue` no longer rounds: the three valuations are the exact `total × units ÷ ordered`. The race suite's expected
+figures follow (`analytic_fold_race_test.go` `figAdd`).

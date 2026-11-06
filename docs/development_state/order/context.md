@@ -329,7 +329,7 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | the gap | `orderMoves` served `shipped → problem`, `problem → return`, `problem → lost`, but the action table offered none of them |
 | decisions | [customer-service-sets-shipped-and-problem-by-hand](../../business/order/context_decision.md#customer-service-sets-shipped-and-problem-by-hand) (its ⚠: the menu had no way into `problem`), [a-forced-return-follows-the-status-move](../../business/order/context_decision.md#a-forced-return-follows-the-status-move), [the-action-menu-is-a-table-keyed-by-status](../../technical/frontend/order_list_decision.md#the-action-menu-is-a-table-keyed-by-status) |
 | frontend | `features/orders/rowActions.ts`: `shipped` = Return Goods · Complete Order · **Mark as Problem** (`markProblem`, CircleAlert, selling, no confirm — `problem` still completes, returns or is lost); `problem` = Resolve Dispute · **Return Goods** (either end, confirms) · **Mark as Lost** (selling, confirms). The list's kebab and the detail's button bar draw it through `useOrderActions`; en + id `orders.rowAction.markProblem` |
-| ✅ built 2026-11-04 | the warehouse's forced return — the pick queue's *Receive Return* and the pick order page (`features/orders/useForceReturn.tsx`), per [a-return-is-received-by-search-then-forced](../../business/order/context_decision.md#a-return-is-received-by-search-then-forced). ⚠ Still open: `shipped → lost` and `completed → return` are also server moves with no button — not in this brief, asked too |
+| ✅ built 2026-11-04 | the warehouse's forced return — the pick queue's *Receive Return* and the pick order page (`features/orders/useForceReturn.tsx`), per [a-return-is-received-by-search-then-forced](../../business/order/context_decision.md#a-return-is-received-by-search-then-forced). `shipped → lost` and `completed → return` got their buttons on the seller's order actions ([every-allowed-move-has-a-button](../../business/order/context_decision.md#every-allowed-move-has-a-button), ✅ 2026-11-04, `features/orders/rowActions.ts`); the warehouse's side is the receive-by-search-then-force flow, not those buttons |
 | tests | stories `Pages/Order/OrderRowActions` (5: the two menus, both confirms, the warehouse end offered only the return) and `Pages/Order/OrderActionBar` (3); e2e `orders.spec.ts` *Moves: a shipped order is marked a problem, then returned (#11)* and *Moves: a problem order is written off as lost (#11)* — last in the file, since earlier tests count orders and stock |
 | drafts' ready | `OrderDraftListResponse.ready_count` — the whole filtered set's ready drafts (`readyDrafts`, the SQL twin of `draftGaps`); the drafts screen's *Ready* card reads it, its ⚠ `readyCount` mark, `pages/order-drafts/pending.ts` and the `orderDrafts.pending` / `summary.onThisPage` keys are gone. `TestOrderDraftList_ReadyCountIsTheWholeSets`, `TestPerf_OrderDraftListReadyCount` (4 queries, ≈9 ms at 5 000 drafts an author), e2e *Order drafts: a pushed draft appears…* asserts `0 of N` and no mark. Flow in [rpc.md](../../services/selling_service/rpc.md#reading-drafts--two-narrowings-not-one-192) |
 
@@ -355,6 +355,17 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 | stories | dialog `AColleaguesDraftIsNamedWithoutALink` (own 201 links, colleague's 202 does not); order form `ADraftOnTheRefWarns` now a colleague's (author 62) — named, no link, Create Anyway still places — and `YourOwnDraftOnTheRefLinks` (author = the signed-in user). e2e `orders.spec` *Duplicate ref…* unchanged: its pushed draft is root's own, so it still links |
 | schema | selling `00037_order_drafts_external_ref_lookup.sql` — `order_drafts_team_shop_external_idx (team_id, shop_id, external_id)`, not unique ([database-schema.md](../../database-schema.md)) |
 | audit | `OrderDraftByExternalRefs` ✅ re-probed: an index seek per ref, ≈0.52 ms (1 ref) / ≈0.56 ms (50 refs) at 50 000 drafts in one team, was ≈6.6 / ≈15 ms ([report](../../../audits/services/selling_service/performances/OrderDraftByExternalRefs.md)) |
+
+## 2026-11-05 — the settlement-missing badge and filter are live on the order list
+
+[the-settlement-missing-badge-is-accepted](../../business/settlement/context_decision.md#the-settlement-missing-badge-is-accepted)
+— the prototype behind `SellerOrdersPage settlementMissingPrototype` is now the live screen; the prop is removed.
+
+| | |
+| --- | --- |
+| frontend | `pages/orders/SellerOrders.tsx`: a row whose `settlementOpenedAtUnix` is 0 shows a warning *No settlement account* badge beside its stage (`order-settlement-missing-<id>`); the filter bar always offers *Settlement not opened* (`orders-settlement-missing`, URL `unopened`, → `OrderListFilter.settlement_not_opened`). Every reader of the list (seller, warehouse, root, admin) |
+| stories | `SellerOrderListSettlementMissing`: badge, filter, phone, and `TheLiveListShowsIt` (was `TheLiveListIsUnchanged`) — the routed `OrdersPage` carries the badge on 103/109 and offers the filter |
+| ⚠ odd | the badge follows the prototype and ignores the status: a CANCELLED order whose account never opened keeps it (and the filter lists it). Drafts are not orders, so they never show it |
 
 ## 2026-11-05 — the return dialogs stop stretching on desktop
 
@@ -467,3 +478,64 @@ touched here.
 ([each-team-sets-its-own-return-warehouse](../../business/order/context_decision.md#each-team-sets-its-own-return-warehouse)).
 Step 3 is one check before the create's transaction, turned on once root's Teams list shows no *No return warehouse*
 badge ([root-sees-which-teams-have-no-return-warehouse](../../business/order/context_decision.md#root-sees-which-teams-have-no-return-warehouse)).
+
+## 2026-11-06 — `platform_total` is a double, frozen whole at placement (money-type change, part 1)
+
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen).
+
+- **Schema** — `selling_service` `00041_platform_total_is_double.sql`: `orders.platform_total`, `order_drafts.platform_total`,
+  `order_daily_reports.mp_total` → `double precision`. Applied on `warehouse_test`; not run on dev —
+  `go run ./tools/san migrate up --service selling_service`.
+- **Wire** — `platform_total` on Order, OrderCreateRequest (`double.finite`, `gte 0`), OrderDraft, OrderDraftUpdateRequest,
+  the push line and `OrderPlaced`; `OrderStatusCount.value`/`mp_value`, `OrderStatPreview.revenue_30d`, the five order
+  metric `*mp_total` fields → `double`. The MCP metric tool forwards them as JSON numbers now (were quoted strings).
+- **Freeze** — a draft keeps what was typed; `placeOrder` refuses NaN/±Inf and a figure that rounds to nothing, and writes
+  `san_money.Whole(platform_total)` — so the row, the response, the event, the census and settlement's `initial_total`
+  carry one whole number. Export's `moneyOrEmpty` takes a double (`IsZero`).
+- **Tests** — `TestOrderCreateFromDraft_APlatformTotalIsADoubleFrozenWholeEndToEnd` (draft 131.000,5 → order/row/event/
+  detail/census/revenue 131.001), `TestOrderCreate_RefusesAPlatformTotalThatRoundsToNothing`.
+- **Frontend** — `platformTotal` is a `number` on every order screen (list MP cell, warehouse list, detail tiles, money
+  breakdown, margin bar, info panel, create form seed/send, draft readiness). `features/orders/margin.ts` takes the
+  revenue as a `Rupiah` and keeps its bigint arithmetic (`goods_cost`, fees are still bigint); `stat.ts` bridges `value`,
+  `mp_value`, `revenue_30d` with `wholeRupiah` — exact, they are sums of frozen whole figures.
+- ✅ **Part 2 built 2026-11-06** (below): `goods_cost`, `unit_cost`, `unit_price`, `courier_charge`, and the margin moved to number.
+
+## 2026-11-06 — the order's costs are doubles, frozen whole at placement (money-type change, part 2)
+
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen).
+
+- **Schema** — `selling_service` `00042_order_costs_are_double.sql`: `orders.goods_cost`, `order_items.unit_cost`,
+  `order_draft_items.unit_price` → `double precision`. Applied on `warehouse_test` (the harness re-applies every migration from scratch); not run on dev — `go run ./tools/san migrate up`.
+- **Wire** — `goods_cost` (Order, `OrderPlaced`, both `gte 0` + finite where a caller sends it), `unit_cost` (OrderItem,
+  `OrderPlacedLine`), `unit_price` (OrderDraftItem, the push line), `OrderReturnAcceptRequest.courier_charge` (`gte 0`,
+  finite) and `OrderReturnAccepted.courier_charge` → `double`.
+- **Freeze** — `placeOrder` writes `san_money.Whole(line.UnitCost)` per line and `goods_cost = Whole(Σ unrounded line
+  totals)`, once; `OrderReturnAccept` freezes the courier's charge before its note check, its event and the liability
+  posting. A draft's `unit_price` is kept as read. The credit check's block message formats the figures `%.0f`.
+- **Tests** — `TestOrderCreate_FractionalCostsFreezeWholeOnceAndTravelAsDoubles`; the raceaudit
+  `order_create_race_test.go` reads `goods_cost` / `unit_cost` as `float64` now.
+- **Frontend** — `features/orders/margin.ts` is `number` throughout; the order detail, list cells, summary, margin bar,
+  settlement panel and AcceptReturnDialog read `number`. The ORDER FORM keeps its typed/frozen figures in whole-rupiah
+  `bigint`, and now builds them the way the order freezes them: `lineValue` (unrounded) per line, `goodsCostOf` and each
+  owner's invoice row summed unrounded and rounded ONCE (`form/money.ts`, unit test `form/money.test.ts`) — it rounded
+  each line and floored each markup before, a rupiah or two off the frozen `goods_cost` on a fractional draw.
+- ✅ Part 2 is built: the "not built" bullet of the part-1 note above is closed by this one.
+
+## 2026-11-06 — the backend never rounds money ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money))
+
+Supersedes the whole-rupiah freezing of the two sections above (the `double` shape and the tolerance compares stand).
+
+| | now |
+| --- | --- |
+| `platform_total` | frozen EXACT at placement (`order_place.go`; refused only when not finite or not above 0 — `san_money.Positive`, float dust counts as 0). Rp 0,4 is placed as 0,4 |
+| `goods_cost` / `unit_cost` | the exact Σ of the lines' totals / the take's exact unit cost — `san_money.Whole` is deleted from the repo |
+| warehouse fee / `total_cost` | as before, unrounded: 2,5% of Rp 12.666,99 is stored Rp 316,67475 (the screen shows Rp 316,675) |
+| return courier charge | frozen as typed; the accept's note writes it with `san_money.Text` ("Rp 316,675") |
+| credit block message | figures via `san_money.Text` ("Rp 52.000.000") instead of `%.0f` |
+| order form | previews the exact figures (`features/orders/form/money.ts` `goodsCostOf`/`invoiceRows`/`creditRows`, `lines.ts`, `TotalsInvoicePanel`, `ProfitEstimatePanel`, `CreditLimitPanel`, `checks.ts` `profitPct`, the fee quote) — `number`, no bigint whole-rupiah maths; `CurrencyInput fraction` lets the platform total carry a draft's fraction (typed with a comma, up to 3 places) |
+
+⚠ **[a-draft-keeps-its-platform-total-as-typed](../../business/order/context_decision.md#a-draft-keeps-its-platform-total-as-typed)** says the figure is *"rounded to whole rupiah once, when the order is placed"* — no longer: placement keeps it exact (the newer decision supersedes that sentence; the owner text is unchanged). Its *"a figure that rounds to nothing is refused"* is now *"not above 0 (float dust included) is refused"*.
+
+Tests: `TestOrderCreate_FractionalCostsAreFrozenExactAndTravelAsDoubles`, `TestOrderCreateFromDraft_APlatformTotalIsFrozenExactEndToEnd`, `TestOrderCreate_RefusesAPlatformTotalOfDustButPlacesAFraction`, the unit-cost asserts in `order_item_markup_test` / `order_line_merge_test` / `order_stock_test`, `features/orders/form/money.test.ts`, e2e `the_order_keeps_exact_figures.spec.ts` (form preview == stored order via `formatRupiah`; Team Balance posts 316,67475).
+
+Note — the owner's example in the decision reads total cost `12.983,675`; the exact sum of goods `12.666,99` and fee `316,67475` is `12.983,66475`, shown `Rp 12.983,665`. The fee example (`316,675`) matches the 3-decimal display of the exact fee.

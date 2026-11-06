@@ -133,7 +133,7 @@ export const returnAcceptScenario = {
   refusal: undefined as string | undefined,
   last: undefined as
     | undefined
-    | { orderId: bigint; missing: { orderItemId: bigint; quantity: number }[]; courierCharge: bigint; courierChargeNote: string },
+    | { orderId: bigint; missing: { orderItemId: bigint; quantity: number }[]; courierCharge: number; courierChargeNote: string },
   /**
    * The status a story reads an order in, by id — no fixture is shipped, completed or in a problem, and a parcel the
    * warehouse receives (a-return-is-received-by-search-then-forced) is one of those. `inReturn` and `accepted` win over

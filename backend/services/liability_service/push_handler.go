@@ -2,7 +2,6 @@ package liability_service
 
 import (
 	"context"
-	"math"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
@@ -101,13 +100,13 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 
 			// The selling team owes the warehouse the courier's charge (balance-posts-the-couriers-debt-from-the-event).
 			// ActorID is the VARIANT's — who counted the box in, from the stored restock — never the envelope's. The charge
-			// arrives as inventory stores it, a double (money-is-double-in-the-api-too); liability's entries are whole
-			// rupiah, so it is rounded here, at this service's edge.
+			// arrives as inventory stores it, a double (money-is-double-in-the-api-too), and is passed on and posted as it
+			// is — never rounded (the-backend-never-rounds-money).
 			return svc.ChargeRestockCourier(ctx, liability_v1.CourierCharge{
 				RestockID:     accepted.GetRestockId(),
 				SellingTeamID: accepted.GetTeamId(),
 				WarehouseID:   accepted.GetWarehouseId(),
-				Amount:        int64(math.Round(accepted.GetWarehouseAdditionalCost())),
+				Amount:        accepted.GetWarehouseAdditionalCost(),
 				ActorID:       accepted.GetActorId(),
 				// Whether the accept was an override, as inventory stored it beside the actor.
 				ActorIsOverride: accepted.GetActorIsOverride(),
@@ -117,7 +116,7 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 			accepted := variant.OrderReturnAccepted
 
 			// The selling team owes the warehouse what the courier asked at the return's door
-			// (a-return-may-carry-the-couriers-ask). Whole rupiah already — selling stores money as integers. ActorID is the
+			// (a-return-may-carry-the-couriers-ask). A double, as selling froze it — PostEntry posts it exact. ActorID is the
 			// VARIANT's, read from the accept's timeline row, never the envelope's.
 			return svc.ChargeReturnCourier(ctx, liability_v1.ReturnCourierCharge{
 				OrderID:         accepted.GetOrderId(),
@@ -132,14 +131,14 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 			accepted := variant.WarehouseTransferAccepted
 
 			// The selling team owes the RECEIVING warehouse (B) what the courier asked at its door
-			// (a-transfer-charge-is-a-transfer-fee). Inventory stores it as a double, so it is rounded here, at this
-			// service's edge, as the restock's is. ActorID is the VARIANT's — who counted it in, from the stored
+			// (a-transfer-charge-is-a-transfer-fee). Inventory stores it as a double, passed on as the restock's is —
+			// PostEntry posts it exact, never rounded. ActorID is the VARIANT's — who counted it in, from the stored
 			// transfer — never the envelope's.
 			return svc.ChargeTransferCourier(ctx, liability_v1.TransferCourierCharge{
 				TransferID:    accepted.GetTransferId(),
 				SellingTeamID: accepted.GetTeamId(),
 				WarehouseID:   accepted.GetToWarehouseId(),
-				Amount:        int64(math.Round(accepted.GetWarehouseAdditionalCost())),
+				Amount:        accepted.GetWarehouseAdditionalCost(),
 				ActorID:       accepted.GetActorId(),
 			})
 

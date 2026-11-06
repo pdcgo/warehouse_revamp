@@ -7,7 +7,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbtarget"
+	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
+	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
@@ -31,6 +33,12 @@ type San struct {
 	// selling_service's shops and grants, for `shop grant-current-cs` (a-write-needs-a-grant-or-a-manager's rollout).
 	shops *selling_v1.Service
 
+	// inventory_service's release by key, for `pubsub releases replay` (a-stuck-release-is-replayed-by-san).
+	inventory *inventory_v1.Service
+
+	// settlement_service's day re-fold, for `report refold` (a-wrong-day-is-refolded-from-the-log).
+	settlement *settlement_v1.Service
+
 	// target is the human label of the chosen database ("Database Local", …). Every command
 	// prints it, so the record of what happened always says WHERE it happened.
 	target string
@@ -42,8 +50,13 @@ func NewSan(
 	suppliers *supplier_v1.Service,
 	teams *team_v1.Service,
 	shops *selling_v1.Service,
+	inventory *inventory_v1.Service,
+	settlement *settlement_v1.Service,
 ) *San {
-	return &San{db: db, users: users, suppliers: suppliers, teams: teams, shops: shops}
+	return &San{
+		db: db, users: users, suppliers: suppliers, teams: teams, shops: shops, inventory: inventory,
+		settlement: settlement,
+	}
 }
 
 // Close releases the pool. A CLI exits soon anyway, but a command that has finished should not be

@@ -35,14 +35,14 @@ const (
 type SupplierMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Units accepted as good stock.
-	RestockCount     int64 `protobuf:"varint,1,opt,name=restock_count,json=restockCount,proto3" json:"restock_count,omitempty"`
-	RestockValuation int64 `protobuf:"varint,2,opt,name=restock_valuation,json=restockValuation,proto3" json:"restock_valuation,omitempty"`
+	RestockCount     int64   `protobuf:"varint,1,opt,name=restock_count,json=restockCount,proto3" json:"restock_count,omitempty"`
+	RestockValuation float64 `protobuf:"fixed64,2,opt,name=restock_valuation,json=restockValuation,proto3" json:"restock_valuation,omitempty"`
 	// Units short in an accepted parcel.
-	ShippingLostCount     int64 `protobuf:"varint,3,opt,name=shipping_lost_count,json=shippingLostCount,proto3" json:"shipping_lost_count,omitempty"`
-	ShippingLostValuation int64 `protobuf:"varint,4,opt,name=shipping_lost_valuation,json=shippingLostValuation,proto3" json:"shipping_lost_valuation,omitempty"`
+	ShippingLostCount     int64   `protobuf:"varint,3,opt,name=shipping_lost_count,json=shippingLostCount,proto3" json:"shipping_lost_count,omitempty"`
+	ShippingLostValuation float64 `protobuf:"fixed64,4,opt,name=shipping_lost_valuation,json=shippingLostValuation,proto3" json:"shipping_lost_valuation,omitempty"`
 	// Units that arrived broken.
-	ShippingBrokenCount     int64 `protobuf:"varint,5,opt,name=shipping_broken_count,json=shippingBrokenCount,proto3" json:"shipping_broken_count,omitempty"`
-	ShippingBrokenValuation int64 `protobuf:"varint,6,opt,name=shipping_broken_valuation,json=shippingBrokenValuation,proto3" json:"shipping_broken_valuation,omitempty"`
+	ShippingBrokenCount     int64   `protobuf:"varint,5,opt,name=shipping_broken_count,json=shippingBrokenCount,proto3" json:"shipping_broken_count,omitempty"`
+	ShippingBrokenValuation float64 `protobuf:"fixed64,6,opt,name=shipping_broken_valuation,json=shippingBrokenValuation,proto3" json:"shipping_broken_valuation,omitempty"`
 	// broken ÷ (restocked + lost + broken), 0 to 1 — 0 when nothing arrived, so read the counts to tell no rate from a
 	// rate of 0. Ranked only among keys with at least 50 units; the rest follow, in key order
 	// (rate-ranking-needs-50-units, a-rate-ranks-only-above-its-minimum-sample).
@@ -88,7 +88,7 @@ func (x *SupplierMetric) GetRestockCount() int64 {
 	return 0
 }
 
-func (x *SupplierMetric) GetRestockValuation() int64 {
+func (x *SupplierMetric) GetRestockValuation() float64 {
 	if x != nil {
 		return x.RestockValuation
 	}
@@ -102,7 +102,7 @@ func (x *SupplierMetric) GetShippingLostCount() int64 {
 	return 0
 }
 
-func (x *SupplierMetric) GetShippingLostValuation() int64 {
+func (x *SupplierMetric) GetShippingLostValuation() float64 {
 	if x != nil {
 		return x.ShippingLostValuation
 	}
@@ -116,7 +116,7 @@ func (x *SupplierMetric) GetShippingBrokenCount() int64 {
 	return 0
 }
 
-func (x *SupplierMetric) GetShippingBrokenValuation() int64 {
+func (x *SupplierMetric) GetShippingBrokenValuation() float64 {
 	if x != nil {
 		return x.ShippingBrokenValuation
 	}
@@ -802,15 +802,15 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\x0eSupplierMetric\x12/\n" +
 	"\rrestock_count\x18\x01 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\frestockCount\x127\n" +
-	"\x11restock_valuation\x18\x02 \x01(\x03B\n" +
+	"\x11restock_valuation\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x10restockValuation\x12:\n" +
 	"\x13shipping_lost_count\x18\x03 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x11shippingLostCount\x12B\n" +
-	"\x17shipping_lost_valuation\x18\x04 \x01(\x03B\n" +
+	"\x17shipping_lost_valuation\x18\x04 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15shippingLostValuation\x12>\n" +
 	"\x15shipping_broken_count\x18\x05 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x13shippingBrokenCount\x12F\n" +
-	"\x19shipping_broken_valuation\x18\x06 \x01(\x03B\n" +
+	"\x19shipping_broken_valuation\x18\x06 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x17shippingBrokenValuation\x12-\n" +
 	"\vbroken_rate\x18\a \x01(\x01B\f\x9a\xb5\x18\x04\b\x01\x102\xa0\xb5\x18\x01R\n" +
 	"brokenRate:)\x9a\xb5\x18%\n" +

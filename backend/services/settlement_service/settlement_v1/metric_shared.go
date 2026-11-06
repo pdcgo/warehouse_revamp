@@ -163,23 +163,23 @@ func init() {
 type figureRow struct {
 	Key string
 
-	Sales          int64
-	Received       int64
-	Withdrawn      int64
-	Gap            int64
+	Sales          float64
+	Received       float64
+	Withdrawn      float64
+	Gap            float64
 	TakeRate       *float64
-	PositionToDate int64
+	PositionToDate float64
 
-	Fund                  int64
-	ExternalAdsFee        int64
-	AffiliateFee          int64
-	MarketplaceAdjustment int64
-	ShipmentAdjustment    int64
-	LogisticReimbursement int64
-	PlatformReimbursement int64
-	MarketplaceProgram    int64
-	Other                 int64
-	SystemAdjustment      int64
+	Fund                  float64
+	ExternalAdsFee        float64
+	AffiliateFee          float64
+	MarketplaceAdjustment float64
+	ShipmentAdjustment    float64
+	LogisticReimbursement float64
+	PlatformReimbursement float64
+	MarketplaceProgram    float64
+	Other                 float64
+	SystemAdjustment      float64
 }
 
 func (f figureRow) settlement() *settlementv1.SettlementMetric {
@@ -478,8 +478,12 @@ func sqlDays(days []time.Time) string {
 //
 //   - a key exists once it holds ANY row up to the window's end, so a key quiet in the window still carries its
 //     position in;
-//   - the position is Σ over the key's positions (a shop × team, or a person × team) of each one's latest close;
+//   - the position is THE RUNNING SUM: Σ change over every row of the key up to the window's end — close(D) by its
+//     definition (the-carry-materialises-the-day-boundary-position), summed over the key's positions at once;
 //   - a row with no id recorded is left out: the contract cannot send 0 back as a key (IDList's ids are > 0).
+//
+// ONE PASS, one hash aggregate: the movement is the same sums FILTERed to the window, so nothing is materialised or
+// sorted per position (audits/services/settlement_service/performances/MetricData.md, finding 2).
 //
 // `ids` narrows it to the asked keys; nil reads every key.
 func idBase(grain reportGrain, column, scope string, filters metricFilters, ids []uint64) string {
@@ -495,81 +499,95 @@ func idBase(grain reportGrain, column, scope string, filters metricFilters, ids 
 	}
 
 	return fmt.Sprintf(`
-WITH scoped AS (
-    SELECT r.*, r.%[2]s AS gid
+WITH base AS (
+    SELECT r.%[2]s AS k, %[6]s, COALESCE(SUM(r.change), 0) AS close_balance
     FROM %[1]s r
     WHERE %[3]s AND r.%[2]s <> 0 AND r.day <= %[4]s%[5]s
-),
-latest AS (
-    SELECT p.gid, SUM(p.close_balance) AS close_balance
-    FROM (
-        SELECT DISTINCT ON (%[6]s) gid, close_balance
-        FROM scoped
-        ORDER BY %[6]s, day DESC
-    ) p
-    GROUP BY p.gid
-),
-moves AS (
-    SELECT gid, %[7]s
-    FROM scoped
-    WHERE day >= %[8]s
-    GROUP BY gid
-),
-base AS (
-    SELECT l.gid AS k, %[9]s, l.close_balance
-    FROM latest l
-    LEFT JOIN moves m ON m.gid = l.gid
+    GROUP BY r.%[2]s
 ),
 measured AS (
-    SELECT CAST(b.k AS text) AS key, b.k, %[10]s
+    SELECT CAST(b.k AS text) AS key, b.k, %[7]s
     FROM base b
 )`,
-		grain.table, column, scope, sqlDay(filters.end), narrow, columnsOf("", grain.position),
-		movementSums(""), sqlDay(filters.start), movementsFrom("m"), measuresSelect())
+		grain.table, column, scope, sqlDay(filters.end), narrow,
+		movementSumsWhere("r", "r.day >= "+sqlDay(filters.start)), measuresSelect())
 }
 
 // timeBase is one row per bucket — keyed `k`, its first day — carrying the movement over the clipped bucket and the
-// position at its last day: Σ over every position of its latest close at or before that day. A bucket with no row is
-// still a row, its position carried from the last one before it.
+// position at its last day. A bucket with no row is still a row, its position carried from the last day before it.
+//
+// THE POSITION IS ONE RUNNING SUM (the-carry-materialises-the-day-boundary-position: close(D) = Σ change up to D), the
+// shape financial_account's balance series took (the-balance-series-is-a-running-sum):
+//
+//   - `carried` — Σ change over every row before the buckets' first day, read ONCE;
+//   - `days` — the buckets' span summed per day, read ONCE;
+//   - `running` — carried + Σ change OVER (ORDER BY day), so a bucket's position is the running value at its last
+//     day with a row. MATERIALIZED: inlined, the window was re-run once per bucket.
+//
+// No bucket re-reads history (audits/services/settlement_service/performances/MetricData.md, finding 1): every
+// per-bucket join is over `days`, a row per day of the span.
 func timeBase(grain reportGrain, scope string, buckets []bucket) string {
 	ats := make([]time.Time, 0, len(buckets))
 	froms := make([]time.Time, 0, len(buckets))
 	tos := make([]time.Time, 0, len(buckets))
 
+	lo, hi := buckets[0].from, buckets[0].to
+
 	for _, b := range buckets {
 		ats = append(ats, b.at)
 		froms = append(froms, b.from)
 		tos = append(tos, b.to)
+
+		if b.from.Before(lo) {
+			lo = b.from
+		}
+
+		if b.to.After(hi) {
+			hi = b.to
+		}
 	}
 
 	return fmt.Sprintf(`
 WITH buckets AS (
-    SELECT * FROM unnest(%[4]s, %[5]s, %[6]s) AS t(at, bucket_from, bucket_to)
+    SELECT * FROM unnest(%[3]s, %[4]s, %[5]s) AS t(at, bucket_from, bucket_to)
+),
+carried AS (
+    SELECT COALESCE(SUM(r.change), 0) AS close_balance
+    FROM %[1]s r
+    WHERE %[2]s AND r.day < %[6]s
+),
+days AS (
+    SELECT r.day, %[8]s
+    FROM %[1]s r
+    WHERE %[2]s AND r.day BETWEEN %[6]s AND %[7]s
+    GROUP BY r.day
+),
+running AS MATERIALIZED (
+    SELECT d.day, (SELECT close_balance FROM carried) + SUM(d.change) OVER (ORDER BY d.day) AS close_balance
+    FROM days d
 ),
 base AS (
-    SELECT t.at AS k, %[7]s, COALESCE(c.close_balance, 0) AS close_balance
+    SELECT t.at AS k, %[9]s, COALESCE(c.close_balance, (SELECT close_balance FROM carried)) AS close_balance
     FROM buckets t
     LEFT JOIN LATERAL (
-        SELECT %[8]s
-        FROM %[1]s r
-        WHERE %[2]s AND r.day BETWEEN t.bucket_from AND t.bucket_to
+        SELECT %[10]s
+        FROM days d
+        WHERE d.day BETWEEN t.bucket_from AND t.bucket_to
     ) m ON TRUE
     LEFT JOIN LATERAL (
-        SELECT SUM(x.close_balance) AS close_balance
-        FROM (
-            SELECT DISTINCT ON (%[3]s) r.close_balance
-            FROM %[1]s r
-            WHERE %[2]s AND r.day <= t.bucket_to
-            ORDER BY %[3]s, r.day DESC
-        ) x
+        SELECT x.close_balance
+        FROM running x
+        WHERE x.day <= t.bucket_to
+        ORDER BY x.day DESC
+        LIMIT 1
     ) c ON TRUE
 ),
 measured AS (
-    SELECT to_char(b.k, 'YYYY-MM-DD') AS key, b.k, %[9]s
+    SELECT to_char(b.k, 'YYYY-MM-DD') AS key, b.k, %[11]s
     FROM base b
 )`,
-		grain.table, scope, columnsOf("r", grain.position), sqlDays(ats), sqlDays(froms), sqlDays(tos),
-		movementsFrom("m"), movementSums("r"), measuresSelect())
+		grain.table, scope, sqlDays(ats), sqlDays(froms), sqlDays(tos), sqlDay(lo), sqlDay(hi),
+		movementSums("r"), movementsFrom("m"), movementSums("d"), measuresSelect())
 }
 
 // figureColumns is the final SELECT's list — the key and every field, by name.

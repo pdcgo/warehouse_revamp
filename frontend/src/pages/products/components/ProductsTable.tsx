@@ -87,7 +87,7 @@ function ReadyCell({
   phone = false,
 }: {
   qty?: bigint;
-  value?: bigint;
+  value?: number;
   lastOrderUnix?: bigint;
   productCode: string;
   /** A phone block's fact: start-aligned, the worth beside the units rather than on a title nobody can hover. */
@@ -174,7 +174,7 @@ function CostCell({
   productCode,
   phone = false,
 }: {
-  stock?: { costKnown: boolean; costMin: bigint; costMax: bigint };
+  stock?: { costKnown: boolean; costMin: number; costMax: number };
   markupBps: number;
   productCode: string;
   /** A phone block's fact: start-aligned. */
@@ -298,7 +298,7 @@ function OngoingCell({
   align = "end",
 }: {
   qty?: bigint;
-  value?: bigint;
+  value?: number;
   lastRestockUnix?: bigint;
   productCode: string;
   align?: "start" | "end";

@@ -13,6 +13,18 @@ an adjustment, never by an edit or a void ([every-correction-is-a-signed-adjustm
 Deliberately not here: per-order costs (COGS and shipping are frozen onto the order, #74), and any
 ledger — no balances, no double entry, the same call revenue made.
 
+### The amount is a double, stored exact as it is written (expense 00005)
+
+`expense_records.amount` is `double precision` and every amount on the wire is `double` since 2026-11-06 — the
+create's and the adjust's `amount` (`gt 0` / `not_in [0]`, finite), the list rows, the daily and the per-kind sums, and
+`ExpenseCreated` / `ExpenseAdjusted.amount` on the events
+([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)). **The write is the freeze point, and it is exact**
+([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06): `ExpenseCreate` and `ExpenseAdjust` store the figure as sent — a `STOCK_LOSS` arrives
+from inventory priced at a FIFO unit cost, a fraction, and is stored as that fraction. Create refuses one that is not
+finite and above 0 (InvalidArgument, *"an expense must be more than Rp 0"*; float dust below 4 places counts as 0,
+`san_money.Positive`); Adjust refuses a correction of 0 (*"a correction of 0 corrects nothing"*, tolerance-tested with
+`san_money.IsZero`). Rp 0,4 is a real expense now. Sums equal their rows within the tolerance.
+
 ### One kind nobody types: `STOCK_LOSS`
 
 `EXPENSE_KIND_STOCK_LOSS` is written by **inventory_service**, not by a person. When a warehouse adjusts

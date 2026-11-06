@@ -99,7 +99,7 @@ export function orderReturnAccept(req: OrderReturnAcceptRequest) {
     throw new ConnectError("only an order in return can be accepted", Code.FailedPrecondition);
   }
 
-  if (req.courierCharge > 0n && req.courierChargeNote.trim() === "") {
+  if (req.courierCharge > 0 && req.courierChargeNote.trim() === "") {
     throw new ConnectError("say what the courier's charge was for", Code.InvalidArgument);
   }
 

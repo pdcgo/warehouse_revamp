@@ -101,11 +101,11 @@ export function productsFromByIds(res: ProductByIdsResponse): Product[] {
 // One product's stock facts, as the LIST renders them.
 export interface OwnerStockRow {
   readyQty: bigint;
-  readyValue: bigint;
+  readyValue: number;
   ongoingQty: bigint;
-  ongoingValueEst: bigint;
-  costMin: bigint;
-  costMax: bigint;
+  ongoingValueEst: number;
+  costMin: number;
+  costMax: number;
   costKnown: boolean;
   oldestBatchUnix: bigint;
   lastRestockUnix: bigint;

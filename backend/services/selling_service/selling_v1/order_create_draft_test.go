@@ -51,7 +51,7 @@ func readyDraft(t *testing.T, svc *selling_v1.Service, _ *gorm.DB, shopID uint64
 		// (platform-created-at-is-required-at-finalize).
 		PlatformCreatedAtUnix: i64(testPlatformDate),
 		// …and what the buyer paid there, required on the same footing (platform-total-is-required-at-finalize).
-		PlatformTotal: i64(testPlatformTotal),
+		PlatformTotal: f64(testPlatformTotal),
 	})
 
 	return draftID
@@ -202,7 +202,7 @@ func TestOrderCreateFromDraft_TheSameDraftCannotBecomeTwoOrders(t *testing.T) {
 // draft's own figure, sent from the page.
 func TestOrderCreateFromDraft_TakesItsMoneyFromTheTakeNotTheRows(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{41: 10_000, 42: 5_000}}
+	picker := &fakePicker{costs: map[uint64]float64{41: 10_000, 42: 5_000}}
 	fees := &fakeFees{percent: 10}
 	svc := newServiceWithFees(t, db, picker, fees)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
@@ -215,7 +215,7 @@ func TestOrderCreateFromDraft_TakesItsMoneyFromTheTakeNotTheRows(t *testing.T) {
 	}
 
 	if order.GetGoodsCost() != 25_000 {
-		t.Fatalf("goods_cost = %d, want 25000 — the take's draw, not the rows' 135000", order.GetGoodsCost())
+		t.Fatalf("goods_cost = %v, want 25000 — the take's draw, not the rows' 135000", order.GetGoodsCost())
 	}
 
 	if order.GetWarehouseFee() != 2_500 || order.GetTotalCost() != 27_500 {
@@ -224,7 +224,7 @@ func TestOrderCreateFromDraft_TakesItsMoneyFromTheTakeNotTheRows(t *testing.T) {
 	}
 
 	if order.GetPlatformTotal() != testPlatformTotal {
-		t.Fatalf("platform_total = %d, want the draft's %d", order.GetPlatformTotal(), testPlatformTotal)
+		t.Fatalf("platform_total = %v, want the draft's %v", order.GetPlatformTotal(), testPlatformTotal)
 	}
 }
 
@@ -247,7 +247,7 @@ func TestOrderCreateFromDraft_ARefusedOrderLeavesTheDraft(t *testing.T) {
 		// platform-created-at-is-required-at-finalize — a draft may hold it empty, an order may not.
 		{"no platform order date", func(r *sellingv1.OrderDraftUpdateRequest) { r.PlatformCreatedAtUnix = i64(0) }},
 		// platform-total-is-required-at-finalize — the same footing.
-		{"no marketplace total", func(r *sellingv1.OrderDraftUpdateRequest) { r.PlatformTotal = i64(0) }},
+		{"no marketplace total", func(r *sellingv1.OrderDraftUpdateRequest) { r.PlatformTotal = f64(0) }},
 	}
 
 	for _, tc := range cases {
@@ -295,7 +295,7 @@ func TestOrderCreateFromDraft_IsWhereTheOrderPlacedEventFires(t *testing.T) {
 
 	placed := events.placed(t)
 	if placed.GetOrderId() != order.GetId() || placed.GetPlatformTotal() != order.GetPlatformTotal() {
-		t.Fatalf("event names order %d / platform total %d, want %d / %d",
+		t.Fatalf("event names order %v / platform total %v, want %v / %v",
 			placed.GetOrderId(), placed.GetPlatformTotal(), order.GetId(), order.GetPlatformTotal())
 	}
 }

@@ -67,16 +67,16 @@ func TestCostList_FiltersByPeriodAndTotalsTheWholeOfIt(t *testing.T) {
 	// 2.000.000 + 1.000.000 + 12.000.000 = 15.000.000. June's 11.000.000 is OUTSIDE the period, and a
 	// filter that leaked it would read 26.000.000.
 	if total := got.GetTotals().GetTotal(); total != 15_000_000 {
-		t.Fatalf("period total = %d, want 15000000 (June must not count)", total)
+		t.Fatalf("period total = %v, want 15000000 (June must not count)", total)
 	}
 
 	// And per kind, so the summary cards need no second call.
 	byKind := got.GetTotals().GetByKind()
 	if byKind[int32(expensev1.ExpenseKind_EXPENSE_KIND_ADS)] != 3_000_000 {
-		t.Fatalf("ads total = %d, want 3000000", byKind[int32(expensev1.ExpenseKind_EXPENSE_KIND_ADS)])
+		t.Fatalf("ads total = %v, want 3000000", byKind[int32(expensev1.ExpenseKind_EXPENSE_KIND_ADS)])
 	}
 	if byKind[int32(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL)] != 12_000_000 {
-		t.Fatalf("payroll total = %d, want 12000000", byKind[int32(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL)])
+		t.Fatalf("payroll total = %v, want 12000000", byKind[int32(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL)])
 	}
 
 	// A kind with nothing in the period is ABSENT, not 0 — absent and zero read identically on a card,
@@ -101,7 +101,7 @@ func TestCostList_ThePeriodIncludesBothEnds(t *testing.T) {
 	})
 
 	if total := got.GetTotals().GetTotal(); total != 300 {
-		t.Fatalf("total = %d, want 300 — both the first and last day of the period must count", total)
+		t.Fatalf("total = %v, want 300 — both the first and last day of the period must count", total)
 	}
 }
 
@@ -116,7 +116,7 @@ func TestCostList_NoPeriodMeansEverything(t *testing.T) {
 	got := list(t, svc, &expensev1.ExpenseListRequest{TeamId: teamA})
 
 	if total := got.GetTotals().GetTotal(); total != 300 {
-		t.Fatalf("unfiltered total = %d, want 300", total)
+		t.Fatalf("unfiltered total = %v, want 300", total)
 	}
 }
 
@@ -133,7 +133,7 @@ func TestCostList_ScopedToItsTeam(t *testing.T) {
 		t.Fatalf("another team's costs leaked: %v", expenseRows(got))
 	}
 	if total := got.GetTotals().GetTotal(); total != 0 {
-		t.Fatalf("another team's total leaked: %d", total)
+		t.Fatalf("another team's total leaked: %v", total)
 	}
 }
 
@@ -154,6 +154,6 @@ func TestCostList_FiltersByKind(t *testing.T) {
 		t.Fatalf("filtered list holds %d rows, want 1", n)
 	}
 	if total := got.GetTotals().GetTotal(); total != 2_000_000 {
-		t.Fatalf("filtered total = %d, want 2000000 — the payroll must not count", total)
+		t.Fatalf("filtered total = %v, want 2000000 — the payroll must not count", total)
 	}
 }

@@ -65,7 +65,7 @@ func (s *Service) postWithdrawal(ctx context.Context, event *eventsv1.Event, pos
 		// that is money ARRIVING here. A reversal of one is positive there, so it comes back out here.
 		_, err = post(tx, account, entry{
 			changeType:  m.ChangeWithdrawal,
-			change:      -float64(posted.GetChange()),
+			change:      -posted.GetChange(),
 			description: description,
 			occurredAt:  occurredAt,
 			// A row a listener posted names the person settlement says is answerable for it — and whether settlement

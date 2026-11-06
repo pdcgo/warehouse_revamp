@@ -50,7 +50,7 @@ func creditOf(
 
 // debtTo makes `debtor` owe `creditor` through the ledger, as the credit check's own tests do — the read must agree
 // with the books, not with a fixture.
-func debtTo(t *testing.T, svc *liability_v1.Service, db *gorm.DB, debtor, creditor uint64, amount int64, sourceID uint64) {
+func debtTo(t *testing.T, svc *liability_v1.Service, db *gorm.DB, debtor, creditor uint64, amount float64, sourceID uint64) {
 	t.Helper()
 
 	_, err := svc.PostEntry(context.Background(), db, liability_v1.Posting{
@@ -65,7 +65,7 @@ func debtTo(t *testing.T, svc *liability_v1.Service, db *gorm.DB, debtor, credit
 	}
 }
 
-func limitOf(t *testing.T, c *liabilityv1.LiabilityCredit) int64 {
+func limitOf(t *testing.T, c *liabilityv1.LiabilityCredit) float64 {
 	t.Helper()
 
 	if c.CreditLimit == nil {
@@ -85,14 +85,14 @@ func TestCreditByIds_ThePairRowWinsOverTheDefault(t *testing.T) {
 
 	got := creditOf(t, svc, selling, warehouse)[warehouse]
 	if limit := limitOf(t, got); limit != 2_000_000 {
-		t.Fatalf("limit = %d, want 2000000 — the pair row, not the default", limit)
+		t.Fatalf("limit = %v, want 2000000 — the pair row, not the default", limit)
 	}
 
 	// A pair row with NO limit lifts the default for this debtor, exactly as the check reads it.
 	putTerms(t, svc, warehouse, selling, nil)
 
 	if got := creditOf(t, svc, selling, warehouse)[warehouse]; got.CreditLimit != nil {
-		t.Fatalf("limit = %d, want unlimited — an unlimited pair row overrides the default", got.GetCreditLimit())
+		t.Fatalf("limit = %v, want unlimited — an unlimited pair row overrides the default", got.GetCreditLimit())
 	}
 }
 
@@ -105,7 +105,7 @@ func TestCreditByIds_TheDefaultRowAppliesWithoutAPairRow(t *testing.T) {
 
 	got := creditOf(t, svc, selling, warehouse)[warehouse]
 	if limit := limitOf(t, got); limit != 5_000_000 {
-		t.Fatalf("limit = %d, want the default's 5000000", limit)
+		t.Fatalf("limit = %v, want the default's 5000000", limit)
 	}
 }
 
@@ -123,11 +123,11 @@ func TestCreditByIds_NoRowsIsUnlimited(t *testing.T) {
 	}
 
 	if got.CreditLimit != nil {
-		t.Fatalf("limit = %d, want unlimited", got.GetCreditLimit())
+		t.Fatalf("limit = %v, want unlimited", got.GetCreditLimit())
 	}
 
 	if got.GetDebt() != 99_000_000 {
-		t.Fatalf("debt = %d, want 99000000 — the debt is shown under no limit too", got.GetDebt())
+		t.Fatalf("debt = %v, want 99000000 — the debt is shown under no limit too", got.GetDebt())
 	}
 
 	if got.GetState() != liabilityv1.LiabilityCreditState_LIABILITY_CREDIT_STATE_OK {
@@ -140,7 +140,7 @@ func TestCreditByIds_NoRowsIsUnlimited(t *testing.T) {
 func TestCreditByIds_TheStateAtEachEdge(t *testing.T) {
 	cases := []struct {
 		name string
-		debt int64
+		debt float64
 		want liabilityv1.LiabilityCreditState
 	}{
 		{"below 80%", 799_999, liabilityv1.LiabilityCreditState_LIABILITY_CREDIT_STATE_OK},
@@ -160,11 +160,11 @@ func TestCreditByIds_TheStateAtEachEdge(t *testing.T) {
 
 			got := creditOf(t, svc, selling, warehouse)[warehouse]
 			if got.GetState() != c.want {
-				t.Fatalf("debt %d of 1000000: state = %s, want %s", c.debt, got.GetState(), c.want)
+				t.Fatalf("debt %v of 1000000: state = %s, want %s", c.debt, got.GetState(), c.want)
 			}
 
 			if got.GetDebt() != c.debt {
-				t.Fatalf("debt = %d, want %d", got.GetDebt(), c.debt)
+				t.Fatalf("debt = %v, want %v", got.GetDebt(), c.debt)
 			}
 
 			atLimit := got.GetState() == liabilityv1.LiabilityCreditState_LIABILITY_CREDIT_STATE_AT_LIMIT
@@ -191,12 +191,12 @@ func TestCreditByIds_ACreditorWithNoDebtYet(t *testing.T) {
 
 	if c := got[warehouse]; c.GetDebt() != 0 ||
 		c.GetState() != liabilityv1.LiabilityCreditState_LIABILITY_CREDIT_STATE_OK {
-		t.Fatalf("no debt yet: debt = %d state = %s, want 0 / OK", c.GetDebt(), c.GetState())
+		t.Fatalf("no debt yet: debt = %v state = %s, want 0 / OK", c.GetDebt(), c.GetState())
 	}
 
 	frozen := got[productOwner]
 	if limitOf(t, frozen) != 0 {
-		t.Fatalf("limit = %d, want 0 — frozen is a real limit, not unlimited", frozen.GetCreditLimit())
+		t.Fatalf("limit = %v, want 0 — frozen is a real limit, not unlimited", frozen.GetCreditLimit())
 	}
 
 	if frozen.GetState() != liabilityv1.LiabilityCreditState_LIABILITY_CREDIT_STATE_AT_LIMIT {
@@ -215,7 +215,7 @@ func TestCreditByIds_BeingOwedIsNotDebt(t *testing.T) {
 
 	got := creditOf(t, svc, warehouse, selling)[selling]
 	if got.GetDebt() != 0 || got.GetState() != liabilityv1.LiabilityCreditState_LIABILITY_CREDIT_STATE_OK {
-		t.Fatalf("a receivable read as debt %d (%s) against a limit of 1", got.GetDebt(), got.GetState())
+		t.Fatalf("a receivable read as debt %v (%s) against a limit of 1", got.GetDebt(), got.GetState())
 	}
 }
 
@@ -230,18 +230,18 @@ func TestCreditByIds_NeverReturnsALimitSetOnAThirdTeam(t *testing.T) {
 
 	got := creditOf(t, svc, selling, warehouse)[warehouse]
 	if got.CreditLimit != nil {
-		t.Fatalf("limit = %d — the warehouse set no limit on this team; that is the third team's", got.GetCreditLimit())
+		t.Fatalf("limit = %v — the warehouse set no limit on this team; that is the third team's", got.GetCreditLimit())
 	}
 
 	if got.GetDebt() != 0 {
-		t.Fatalf("debt = %d — this team owes nothing; that is the third team's debt", got.GetDebt())
+		t.Fatalf("debt = %v — this team owes nothing; that is the third team's debt", got.GetDebt())
 	}
 
 	// And with a default row, the asking team reads the DEFAULT — still never the third team's own row.
 	putTerms(t, svc, warehouse, 0, rupiah(9_000_000))
 
 	if limit := limitOf(t, creditOf(t, svc, selling, warehouse)[warehouse]); limit != 9_000_000 {
-		t.Fatalf("limit = %d, want the default's 9000000", limit)
+		t.Fatalf("limit = %v, want the default's 9000000", limit)
 	}
 }
 
@@ -324,7 +324,7 @@ func TestCreditByIds_TwoQueriesWhateverTheCreditors(t *testing.T) {
 		creditor := 1000 + i
 		ids = append(ids, creditor)
 		putTerms(t, svc, creditor, selling, rupiah(1_000_000))
-		debtTo(t, svc, db, selling, creditor, int64(10_000*(i+1)), 100+i)
+		debtTo(t, svc, db, selling, creditor, float64(10_000*(i+1)), 100+i)
 	}
 
 	probe.Reset()

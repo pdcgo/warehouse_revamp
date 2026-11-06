@@ -128,7 +128,7 @@ export const ACorrectionUpdatesTheList: Story = {
     await expect(expenseScenario.lastAdjust).toEqual({
       teamId: EXPENSE_TEAM,
       expenseId: EXPENSE_ID,
-      amount: 100_000n,
+      amount: 100_000,
       note: "Late fee on the invoice",
     });
   },
@@ -145,7 +145,7 @@ export const AServerRefusalIsShown: Story = {
 
     await userEvent.type(dialog.getByTestId("adjust-amount"), "850000", { delay: 40 });
     await expect(dialog.getByTestId("adjust-after")).toHaveTextContent("Rp 0");
-    someoneElseAdjusts(EXPENSE_ID, -100_000n);
+    someoneElseAdjusts(EXPENSE_ID, -100_000);
     await userEvent.click(dialog.getByTestId("submit-adjust"));
 
     const said = await dialog.findByTestId("adjust-form-error");
@@ -179,7 +179,7 @@ export const AServerFaultIsSaidPlainly: Story = {
 
     // Pressed again, it goes through.
     await userEvent.click(dialog.getByTestId("submit-adjust"));
-    await waitFor(() => expect(expenseScenario.lastAdjust?.amount).toBe(-50_000n));
+    await waitFor(() => expect(expenseScenario.lastAdjust?.amount).toBe(-50_000));
   },
 };
 
@@ -198,7 +198,7 @@ export const AdjustShowsTheOriginalsAccount: Story = {
 
     await userEvent.type(dialog.getByTestId("adjust-amount"), "50000", { delay: 40 });
     await userEvent.click(dialog.getByTestId("submit-adjust"));
-    await waitFor(() => expect(expenseScenario.lastAdjust?.amount).toBe(-50_000n));
+    await waitFor(() => expect(expenseScenario.lastAdjust?.amount).toBe(-50_000));
     await expect(Object.keys(expenseScenario.lastAdjust!)).not.toContain("financeAccountId");
   },
 };
@@ -217,6 +217,6 @@ export const AdjustAnOldExpense: Story = {
 
     await userEvent.type(dialog.getByTestId("adjust-amount"), "100000", { delay: 40 });
     await userEvent.click(dialog.getByTestId("submit-adjust"));
-    await waitFor(() => expect(expenseScenario.lastAdjust).toMatchObject({ expenseId: 502n, amount: -100_000n }));
+    await waitFor(() => expect(expenseScenario.lastAdjust).toMatchObject({ expenseId: 502n, amount: -100_000 }));
   },
 };

@@ -1214,6 +1214,10 @@
       "notShippedHere": "Pesanan #{{id}} tidak dikirim dari gudang ini — labelnya bukan untuk dicetak di sini",
       "noLabel": "Pesanan #{{id}} belum punya label — minta penjual melampirkannya",
       "refused": "Label pesanan #{{id}} tidak bisa dibuka"
+    },
+    "settlementMissing": {
+      "filter": "Settlement belum terbuka",
+      "badge": "Belum ada akun settlement"
     }
   },
   "orderDetail": {
@@ -4516,8 +4520,7 @@
       "pickHint": "Ambil tiap produk dari rak yang tercantum — dipilih saat transfer dibuat, yang paling sedikit dulu.",
       "labelPhoto": "Foto label",
       "noLabelPhoto": "Belum ada foto label",
-      "openLabelPhoto": "Buka Foto",
-      "labelPhotoAtSender": "Terlampir — hanya gudang pengirim yang bisa membukanya"
+      "openLabelPhoto": "Buka Foto"
     },
     "accept": {
       "back": "Kembali ke Transfer",

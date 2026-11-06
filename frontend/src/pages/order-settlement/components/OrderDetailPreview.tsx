@@ -48,7 +48,7 @@ export interface OrderDetailPreviewProps {
   onAddEntry?: (draft: EntryDraft) => void;
   today?: string;
   /** What the order cost us, everything included — the panel's two margins. See `OrderLedgerPanel`. */
-  totalBeli?: bigint;
+  totalBeli?: number;
 }
 
 export function OrderDetailPreview({
@@ -172,7 +172,7 @@ function orderFor(settlement: OrderSettlement): Order {
     goodsCost: settlement.goodsCost,
     // The fee is a sample — a flat 2.500 — and total_cost is the two, as the server freezes it.
     warehouseFee: 2_500,
-    totalCost: Number(settlement.goodsCost) + 2_500,
+    totalCost: settlement.goodsCost + 2_500,
     items: [
       {
         id: 1n,
@@ -180,7 +180,7 @@ function orderFor(settlement: OrderSettlement): Order {
         productCode: "SKU-301",
         name: "Kaos Polos Hitam",
         quantity: 2,
-        unitCost: settlement.goodsCost / 2n,
+        unitCost: settlement.goodsCost / 2,
       },
     ],
     timelineLogs: [

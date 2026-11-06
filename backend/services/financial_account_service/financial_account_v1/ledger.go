@@ -86,7 +86,8 @@ func post(tx *gorm.DB, account *m.FinancialAccount, e entry) (m.FinancialAccount
 		return m.FinancialAccountLog{}, fmt.Errorf("financial_account: unknown change type %q", e.changeType)
 	}
 
-	change := rupiah(e.change)
+	// Exact, as handed in (the-backend-never-rounds-money): the balance is the sum of its logs within the tolerance.
+	change := e.change
 	after := account.Balance + change
 
 	row := m.FinancialAccountLog{

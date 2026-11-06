@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
@@ -22,7 +23,7 @@ func TestOrderCreate_ALineFreezesEveryFigureOfTheTake(t *testing.T) {
 	// Team 2 sells 2 of its own product at 9.000 and 3 of team 9's, drawn 2 × 10.000 + 1 × 14.000 = 34.000 and
 	// priced by the take at team 9's 20% markup: 40.800 in all, 13.600 a unit, 6.800 of it markup.
 	picker := &fakePicker{
-		costs: map[uint64]int64{ourProduct: 9_000},
+		costs: map[uint64]float64{ourProduct: 9_000},
 		draw: selling_v1.PickDraw{borrowedA: {
 			Cost: 34_000, UnitCost: 34_000.0 / 3, Total: 40_800, UnitCostWithMarkup: 13_600, MarkupTotal: 6_800,
 		}},
@@ -55,14 +56,14 @@ func TestOrderCreate_ALineFreezesEveryFigureOfTheTake(t *testing.T) {
 
 	// THE BORROWED LINE — every figure the take answered.
 	theirs := lines[borrowedA]
-	if theirs.UnitCost != 11_333 ||
+	if !san_money.Equal(theirs.UnitCost, 34_000.0/3) ||
 		!frozenAt(theirs.UnitCostWithMarkup, 13_600) || !frozenAt(theirs.MarkupTotal, 6_800) || !frozenAt(theirs.Total, 40_800) {
-		t.Fatalf("borrowed line %+v — want unit cost 11333, with markup 13600, markup 6800, total 40800", theirs)
+		t.Fatalf("borrowed line %+v — want the exact unit cost 11.333,33…, with markup 13600, markup 6800, total 40800", theirs)
 	}
 
-	// markup_total = total − unit_cost × qty, within the rounding of the whole-rupiah unit cost (half a rupiah a unit).
-	gap := math.Abs(*theirs.MarkupTotal - (*theirs.Total - float64(theirs.UnitCost)*float64(theirs.Quantity)))
-	if gap > 0.5*float64(theirs.Quantity) {
+	// markup_total = total − unit_cost × qty, within the tolerance: the unit cost is exact now (the-backend-never-rounds-money).
+	gap := math.Abs(*theirs.MarkupTotal - (*theirs.Total - theirs.UnitCost*float64(theirs.Quantity)))
+	if !san_money.IsZero(gap) {
 		t.Fatalf("markup_total %v is %v away from total − unit_cost × qty", *theirs.MarkupTotal, gap)
 	}
 
@@ -99,7 +100,7 @@ func TestOrderCreate_ABorrowedLineRaisesTheGoodsCostByItsMarkupAndTheFeeFollows(
 	db := san_testdb.DB(t)
 
 	picker := &fakePicker{
-		costs: map[uint64]int64{ourProduct: 9_000},
+		costs: map[uint64]float64{ourProduct: 9_000},
 		draw: selling_v1.PickDraw{borrowedA: {
 			Cost: 34_000, UnitCost: 34_000.0 / 3, Total: 40_800, UnitCostWithMarkup: 13_600, MarkupTotal: 6_800,
 		}},
@@ -124,7 +125,7 @@ func TestOrderCreate_ABorrowedLineRaisesTheGoodsCostByItsMarkupAndTheFeeFollows(
 	order := created.Msg.GetOrder()
 
 	if order.GetGoodsCost() != 58_800 {
-		t.Fatalf("goods_cost %d — want 58800: the own 18000 plus the borrowed line's 40800 WITH its markup", order.GetGoodsCost())
+		t.Fatalf("goods_cost %v — want 58800: the own 18000 plus the borrowed line's 40800 WITH its markup", order.GetGoodsCost())
 	}
 
 	if len(fees.asked) != 1 || fees.asked[0] != 58_800 {
@@ -137,7 +138,7 @@ func TestOrderCreate_ABorrowedLineRaisesTheGoodsCostByItsMarkupAndTheFeeFollows(
 
 	stored := storedOrder(t, db, order.GetId())
 	if stored.GoodsCost != 58_800 || stored.TotalCost != 64_680 {
-		t.Fatalf("stored goods_cost %d, total_cost %v — want what the response said", stored.GoodsCost, stored.TotalCost)
+		t.Fatalf("stored goods_cost %v, total_cost %v — want what the response said", stored.GoodsCost, stored.TotalCost)
 	}
 }
 
@@ -177,7 +178,7 @@ func TestOrderCreate_ALineTheTakeDidNotPriceFreezesNoMarkup(t *testing.T) {
 // a line is the take's, exactly what OrderCreate stores for the same draw, and so is the header's goods_cost.
 func TestOrderCreateFromDraft_TheLineCarriesNoMarketplacePrice(t *testing.T) {
 	db := san_testdb.DB(t)
-	costs := map[uint64]int64{41: 20_000, 42: 12_500}
+	costs := map[uint64]float64{41: 20_000, 42: 12_500}
 
 	promoteSvc := newServiceWithPicker(t, db, &fakePicker{costs: costs})
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
@@ -213,7 +214,7 @@ func TestOrderCreateFromDraft_TheLineCarriesNoMarketplacePrice(t *testing.T) {
 
 	for i, line := range fromDraft.Items {
 		if line.UnitCost != costs[line.ProductID] {
-			t.Fatalf("promoted line %+v — want the take's unit cost %d, never the marketplace's price", line, costs[line.ProductID])
+			t.Fatalf("promoted line %+v — want the take's unit cost %v, never the marketplace's price", line, costs[line.ProductID])
 		}
 
 		other := typed.Items[i]
@@ -226,7 +227,7 @@ func TestOrderCreateFromDraft_TheLineCarriesNoMarketplacePrice(t *testing.T) {
 
 	// 2 × 20.000 + 1 × 12.500 on both doors — never the rows' 2 × 50.000 + 35.000.
 	if fromDraft.GoodsCost != 52_500 || typed.GoodsCost != 52_500 {
-		t.Fatalf("goods_cost: promoted %d, created %d — want the take's 52500 on both doors", fromDraft.GoodsCost, typed.GoodsCost)
+		t.Fatalf("goods_cost: promoted %v, created %v — want the take's 52500 on both doors", fromDraft.GoodsCost, typed.GoodsCost)
 	}
 }
 

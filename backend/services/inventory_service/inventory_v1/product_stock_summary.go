@@ -34,10 +34,10 @@ func (s *Service) ProductStockSummary(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	var readyValue int64
+	var readyValue float64
 
 	err = db.Raw(`
-		SELECT COALESCE(ROUND(SUM(stock_valuation)), 0)::BIGINT
+		SELECT COALESCE(SUM(stock_valuation), 0)
 		FROM batches
 		WHERE warehouse_id = ? AND product_id = ?`,
 		warehouseID, productID).Scan(&readyValue).Error
@@ -48,13 +48,13 @@ func (s *Service) ProductStockSummary(
 	// ONGOING — inbound on restocks not yet accepted, and the estimated cost of those lines.
 	type ongoing struct {
 		Qty   int64
-		Value int64
+		Value float64
 	}
 
 	var o ongoing
 
 	err = db.Raw(`
-		SELECT COALESCE(SUM(i.count), 0) AS qty, ROUND(COALESCE(SUM(i.total), 0))::bigint AS value
+		SELECT COALESCE(SUM(i.count), 0) AS qty, COALESCE(SUM(i.total), 0) AS value
 		FROM restock_items i
 		JOIN restocks r ON r.id = i.restock_id
 		WHERE r.warehouse_id = ? AND i.product_id = ? AND r.status IN ?`,

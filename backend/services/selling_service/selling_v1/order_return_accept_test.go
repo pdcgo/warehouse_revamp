@@ -480,7 +480,7 @@ func TestOrderReturnAccept_TheCourierChargeRidesTheEvent(t *testing.T) {
 
 	accepted := rec.events[0].GetOrderReturnAccepted()
 	if accepted.GetCourierCharge() != 15_000 || accepted.GetCourierChargeNote() != "ongkir retur J&T" {
-		t.Fatalf("event charge %d %q, want 15.000 and its trimmed note", accepted.GetCourierCharge(), accepted.GetCourierChargeNote())
+		t.Fatalf("event charge %v %q, want 15.000 and its trimmed note", accepted.GetCourierCharge(), accepted.GetCourierChargeNote())
 	}
 }
 

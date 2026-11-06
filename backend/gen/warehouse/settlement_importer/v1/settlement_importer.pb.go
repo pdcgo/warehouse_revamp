@@ -1755,8 +1755,10 @@ type UploadedFileLine struct {
 	Description  string `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
 	// What it became. UNSPECIFIED when the platform's type is not mapped.
 	SettlementType v12.SettlementType `protobuf:"varint,7,opt,name=settlement_type,json=settlementType,proto3,enum=warehouse.settlement.v1.SettlementType" json:"settlement_type,omitempty"`
-	// Whole rupiah. A FRACTIONAL_AMOUNT line keeps its figure as written in `detail`.
-	Change int64 `protobuf:"varint,8,opt,name=change,proto3" json:"change,omitempty"`
+	// Rupiah, a double like SettlementPost's change — the reader's own figure, never rounded
+	// (the-backend-never-rounds-money). A FRACTIONAL_AMOUNT line is held (a-fractional-statement-line-is-still-held), and
+	// keeps its figure as written in `detail`, with 0 here.
+	Change float64 `protobuf:"fixed64,8,opt,name=change,proto3" json:"change,omitempty"`
 	// YYYY-MM-DD, Jakarta.
 	OccurredOn string `protobuf:"bytes,9,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
 	// 0 = the shop.
@@ -1852,7 +1854,7 @@ func (x *UploadedFileLine) GetSettlementType() v12.SettlementType {
 	return v12.SettlementType(0)
 }
 
-func (x *UploadedFileLine) GetChange() int64 {
+func (x *UploadedFileLine) GetChange() float64 {
 	if x != nil {
 		return x.Change
 	}
@@ -2435,7 +2437,7 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"\rplatform_type\x18\x05 \x01(\tR\fplatformType\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12P\n" +
 	"\x0fsettlement_type\x18\a \x01(\x0e2'.warehouse.settlement.v1.SettlementTypeR\x0esettlementType\x12\x16\n" +
-	"\x06change\x18\b \x01(\x03R\x06change\x12\x1f\n" +
+	"\x06change\x18\b \x01(\x01R\x06change\x12\x1f\n" +
 	"\voccurred_on\x18\t \x01(\tR\n" +
 	"occurredOn\x12\x19\n" +
 	"\border_id\x18\n" +

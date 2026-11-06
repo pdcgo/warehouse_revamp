@@ -16,7 +16,7 @@ export interface StatementTableProps {
   grain: PeriodGrain;
   rows: StatementRow[];
   /** The period's income, from the server. */
-  income: bigint;
+  income: number;
   liability: LiabilityDailyTotals | undefined;
   expenses: ExpenseTotals | undefined;
 }
@@ -47,8 +47,8 @@ function bucketLabel(bucket: string, grain: PeriodGrain, locale: string): string
 // A statement is mostly zeroes — nine columns times thirty days — and printed in full they crowd out the
 // numbers that are actually there. The dash is the same glyph the rest of the app uses for "there is
 // nothing here", so it needs no explaining.
-function money(amount: bigint): string {
-  return amount === 0n ? "—" : formatRupiah(amount);
+function money(amount: number): string {
+  return amount === 0 ? "—" : formatRupiah(amount);
 }
 
 // The statement itself — one row per bucket in the period, quiet ones included.
@@ -76,8 +76,8 @@ export function StatementTable({
 
   const warehouse = mode === "warehouse";
 
-  const spent = expenses?.total ?? 0n;
-  const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
+  const spent = expenses?.total ?? 0;
+  const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0;
   const codFees = courierAsks(liability?.bySource);
 
   if (rows.length === 0) {
@@ -173,14 +173,14 @@ export function StatementTable({
                 </>
               )}
 
-              <Table.Cell textAlign="end" color={row.stockLoss > 0n ? "warning.fg" : undefined}>
+              <Table.Cell textAlign="end" color={row.stockLoss > 0 ? "warning.fg" : undefined}>
                 {money(row.stockLoss)}
               </Table.Cell>
               <Table.Cell textAlign="end">{money(row.otherExpenses)}</Table.Cell>
 
               <Table.Cell
                 textAlign="end"
-                color={row.profit < 0n ? "error.fg" : undefined}
+                color={row.profit < 0 ? "error.fg" : undefined}
                 fontWeight="medium"
               >
                 {money(row.profit)}
@@ -189,7 +189,7 @@ export function StatementTable({
               {/* The RUNNING total is what makes this a statement rather than a table of periods: it says
                   where the period stood at the close of each one, so a bad week is visible as the line
                   turning over rather than as three rows a reader has to add up. */}
-              <Table.Cell textAlign="end" color={row.running < 0n ? "error.fg" : "fg.muted"}>
+              <Table.Cell textAlign="end" color={row.running < 0 ? "error.fg" : "fg.muted"}>
                 {formatRupiah(row.running)}
               </Table.Cell>
             </Table.Row>
@@ -214,21 +214,21 @@ export function StatementTable({
             ) : (
               <>
                 <Table.Cell />
-                <Table.Cell textAlign="end">{money(0n)}</Table.Cell>
-                <Table.Cell textAlign="end">{money(0n)}</Table.Cell>
-                <Table.Cell textAlign="end">{money(0n)}</Table.Cell>
+                <Table.Cell textAlign="end">{money(0)}</Table.Cell>
+                <Table.Cell textAlign="end">{money(0)}</Table.Cell>
+                <Table.Cell textAlign="end">{money(0)}</Table.Cell>
                 <Table.Cell textAlign="end">{money(income)}</Table.Cell>
               </>
             )}
 
-            <Table.Cell textAlign="end" color={stockLoss > 0n ? "warning.fg" : undefined}>
+            <Table.Cell textAlign="end" color={stockLoss > 0 ? "warning.fg" : undefined}>
               {money(stockLoss)}
             </Table.Cell>
             <Table.Cell textAlign="end">{money(spent - stockLoss)}</Table.Cell>
             <Table.Cell
               textAlign="end"
               fontWeight="bold"
-              color={income - spent < 0n ? "error.fg" : undefined}
+              color={income - spent < 0 ? "error.fg" : undefined}
               data-testid="statement-footer-profit"
             >
               {formatRupiah(income - spent)}

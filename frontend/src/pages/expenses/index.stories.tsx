@@ -308,7 +308,7 @@ export const RecordAnExpense: Story = {
     await expect(canvas.getByTestId(`expenses-total-kind-${ExpenseKind.OPERATIONAL}`)).toHaveTextContent("Rp 1.150.000");
     await expect(canvas.getByTestId("expenses-total")).toHaveTextContent("Rp 6.650.000");
     await expect(expenseScenario.lastCreate?.kind).toBe(ExpenseKind.OPERATIONAL);
-    await expect(expenseScenario.lastCreate?.amount).toBe(300_000n);
+    await expect(expenseScenario.lastCreate?.amount).toBe(300_000);
   },
 };
 
@@ -333,7 +333,7 @@ export const AdjustAnExpense: Story = {
     await expect(canvas.queryByTestId("expense-net-503")).toBeNull(); // back to what it was typed as: one line
     await expect(canvas.getByTestId(`expense-amount-${NEW_ID}`)).toHaveTextContent("−Rp 50.000");
     await expect(canvas.getByTestId(`expense-adjustment-${NEW_ID}`)).toBeInTheDocument();
-    await expect(expenseScenario.lastAdjust?.amount).toBe(-50_000n);
+    await expect(expenseScenario.lastAdjust?.amount).toBe(-50_000);
   },
 };
 
@@ -358,7 +358,7 @@ export const CancelAnExpense: Story = {
     await expect(canvas.getByTestId(`expense-row-${NEW_ID}`)).toHaveTextContent("Cancelled");
     await expect(canvas.getByTestId("expense-row-503")).toHaveTextContent("Electricity");
     await expect(canvasElement.querySelectorAll('[data-testid^="expense-adjustment-"]')).toHaveLength(3);
-    await expect(expenseScenario.lastAdjust?.amount).toBe(-850_000n);
+    await expect(expenseScenario.lastAdjust?.amount).toBe(-850_000);
   },
 };
 
@@ -373,12 +373,12 @@ export const ACancelRefusedIsSaid: Story = {
     await openActions(canvas, "503");
     await userEvent.click(screen.getByTestId("expense-cancel-503"));
     const dialog = await screen.findByRole("alertdialog");
-    someoneElseAdjusts(503n, -100_000n);
+    someoneElseAdjusts(503n, -100_000);
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
 
     await expect((await screen.findAllByText("Could not cancel the expense"))[0]).toBeInTheDocument();
     await expect((await screen.findAllByText(/the correction would take the expense below 0/))[0]).toBeInTheDocument();
-    await expect(expenseScenario.lastAdjust?.amount).toBe(-850_000n);
+    await expect(expenseScenario.lastAdjust?.amount).toBe(-850_000);
     await expect(canvas.queryByTestId(`expense-row-${(FIRST_NEW_EXPENSE_ID + 1n).toString()}`)).toBeNull();
 
     await waitFor(() => expect(canvas.getByTestId("expense-net-503")).toHaveTextContent("now Rp 750.000"));
@@ -406,7 +406,7 @@ export const AnAdjustRefusedShowsTheFigureNow: Story = {
     await userEvent.click(screen.getByTestId("expense-adjust-503"));
     const dialog = within(await screen.findByTestId("adjust-expense-dialog"));
     await userEvent.type(dialog.getByTestId("adjust-amount"), "850000", { delay: 40 });
-    someoneElseAdjusts(503n, -100_000n);
+    someoneElseAdjusts(503n, -100_000);
     await userEvent.click(dialog.getByTestId("submit-adjust"));
 
     await expect(await dialog.findByTestId("adjust-form-error")).toHaveTextContent(

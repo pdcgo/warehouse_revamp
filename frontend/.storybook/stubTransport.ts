@@ -407,27 +407,27 @@ export function resetLiabilityTerms() {
 // as the server's precedence goes — so a story that changes 11's terms sees the debtor's side change with it. Every
 // other creditor is `liabilityCredits`. Nothing found is unlimited and owed nothing, as the server answers a pair that
 // never traded.
-function creditStanding(debtor: bigint, creditor: bigint): { creditLimit?: bigint; debt: bigint } {
+function creditStanding(debtor: bigint, creditor: bigint): { creditLimit?: number; debt: number } {
   if (creditor === 11n) {
     const terms =
       termsTable.find((x) => x.teamId === creditor && x.counterpartyId === debtor) ??
       termsTable.find((x) => x.teamId === creditor && x.counterpartyId === 0n);
     // Signed from 11's side: positive = the debtor owes 11. Being owed is not debt.
-    const balance = positionsTable.find((p) => p.counterpartyId === debtor)?.balance ?? 0n;
+    const balance = positionsTable.find((p) => p.counterpartyId === debtor)?.balance ?? 0;
 
-    return { creditLimit: terms?.creditLimit, debt: balance > 0n ? balance : 0n };
+    return { creditLimit: terms?.creditLimit, debt: balance > 0 ? balance : 0 };
   }
 
   const row = liabilityCredits.find((c) => c.debtorTeamId === debtor && c.creditorTeamId === creditor);
 
-  return { creditLimit: row?.creditLimit, debt: row?.debt ?? 0n };
+  return { creditLimit: row?.creditLimit, debt: row?.debt ?? 0 };
 }
 
 // The server's state, at its thresholds: AT_LIMIT on `debt >= limit` (the create's refusal), NEAR from 80%.
-function creditStateOf(limit: bigint | undefined, debt: bigint): LiabilityCreditState {
+function creditStateOf(limit: number | undefined, debt: number): LiabilityCreditState {
   if (limit === undefined) return LiabilityCreditState.OK;
   if (debt >= limit) return LiabilityCreditState.AT_LIMIT;
-  if (debt * 5n >= limit * 4n) return LiabilityCreditState.NEAR;
+  if (debt * 5 >= limit * 4) return LiabilityCreditState.NEAR;
   return LiabilityCreditState.OK;
 }
 
@@ -472,14 +472,15 @@ type StubRow = {
   orderRef: string;
   platformType: string;
   settlementType: ImportSettlementType;
-  change: bigint;
+  /** A double since settlement_importer 00004 (every-ledger-moves-to-double-rounded-when-frozen). */
+  change: number;
   outcome: UploadedFileLineOutcome;
   reason: UploadedFileLineReason;
   level: LogLevel;
   text: string;
 };
 
-const posted = (sheet: string, orderRef: string, platformType: string, change: bigint, type = ImportSettlementType.FUND): StubRow => ({
+const posted = (sheet: string, orderRef: string, platformType: string, change: number, type = ImportSettlementType.FUND): StubRow => ({
   sheet,
   orderRef,
   platformType,
@@ -498,36 +499,36 @@ function stubImportRows(platform: Marketplace): StubRow[] {
   if (platform === Marketplace.TIKTOK) {
     const sheet = "Order details";
     return [
-      posted(sheet, "577005550001", "Order", 185_000n),
-      { ...posted(sheet, "577005550001", "Affiliate commission", -9_250n, ImportSettlementType.AFFILIATE_FEE), text: "577005550001 — its affiliate commission, posted as its own row" },
-      posted(sheet, "577005550002", "Order", 92_000n),
-      { sheet, orderRef: "577005550003", platformType: "Seller shipping fee compensation", settlementType: ImportSettlementType.UNSPECIFIED, change: 8_000n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Seller shipping fee compensation” is not mapped — held" },
-      posted(sheet, "577005550004", "Order", 143_500n),
-      posted(sheet, "577005550005", "Order", 61_000n),
-      { ...posted(sheet, "577009990000", "Order", 77_000n), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 577009990000 — posted to the shop" },
-      posted(sheet, "577005550006", "Order", 210_000n),
-      posted(sheet, "577005550007", "Order", 49_900n),
-      { sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", settlementType: ImportSettlementType.UNSPECIFIED, change: 1_020_400n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, level: LogLevel.INFO, text: "Earnings repeat the order rows — skipped" },
-      posted(sheet, "577005550008", "Order", 118_000n),
-      posted(sheet, "577005550009", "Order", 95_000n),
+      posted(sheet, "577005550001", "Order", 185_000),
+      { ...posted(sheet, "577005550001", "Affiliate commission", -9_250, ImportSettlementType.AFFILIATE_FEE), text: "577005550001 — its affiliate commission, posted as its own row" },
+      posted(sheet, "577005550002", "Order", 92_000),
+      { sheet, orderRef: "577005550003", platformType: "Seller shipping fee compensation", settlementType: ImportSettlementType.UNSPECIFIED, change: 8_000, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Seller shipping fee compensation” is not mapped — held" },
+      posted(sheet, "577005550004", "Order", 143_500),
+      posted(sheet, "577005550005", "Order", 61_000),
+      { ...posted(sheet, "577009990000", "Order", 77_000), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 577009990000 — posted to the shop" },
+      posted(sheet, "577005550006", "Order", 210_000),
+      posted(sheet, "577005550007", "Order", 49_900),
+      { sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", settlementType: ImportSettlementType.UNSPECIFIED, change: 1_020_400, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, level: LogLevel.INFO, text: "Earnings repeat the order rows — skipped" },
+      posted(sheet, "577005550008", "Order", 118_000),
+      posted(sheet, "577005550009", "Order", 95_000),
     ];
   }
 
   const sheet = "Rincian Transaksi";
   const income = "Penghasilan dari Pesanan";
   return [
-    posted(sheet, "240928AAAA", income, 185_000n),
-    posted(sheet, "240928BBBB", income, 92_000n),
-    posted(sheet, "240928CCCC", income, 143_500n),
-    { sheet, orderRef: "", platformType: "Biaya Program Baru", settlementType: ImportSettlementType.UNSPECIFIED, change: -15_000n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Biaya Program Baru” is not mapped — held" },
-    posted(sheet, "240928DDDD", income, 61_000n),
-    posted(sheet, "240928EEEE", income, 210_000n),
-    { ...posted(sheet, "240928WXYZ", income, 77_000n), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 240928WXYZ — posted to the shop" },
-    posted(sheet, "240928FFFF", income, 49_900n),
-    posted(sheet, "240928GGGG", income, 118_000n),
-    { sheet, orderRef: "", platformType: "Penarikan Dana", settlementType: ImportSettlementType.UNSPECIFIED, change: -2_500_000n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, level: LogLevel.INFO, text: "a withdrawal that did not succeed — skipped" },
-    posted(sheet, "240928HHHH", income, 95_000n),
-    posted(sheet, "240928IIII", income, 72_500n),
+    posted(sheet, "240928AAAA", income, 185_000),
+    posted(sheet, "240928BBBB", income, 92_000),
+    posted(sheet, "240928CCCC", income, 143_500),
+    { sheet, orderRef: "", platformType: "Biaya Program Baru", settlementType: ImportSettlementType.UNSPECIFIED, change: -15_000, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Biaya Program Baru” is not mapped — held" },
+    posted(sheet, "240928DDDD", income, 61_000),
+    posted(sheet, "240928EEEE", income, 210_000),
+    { ...posted(sheet, "240928WXYZ", income, 77_000), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 240928WXYZ — posted to the shop" },
+    posted(sheet, "240928FFFF", income, 49_900),
+    posted(sheet, "240928GGGG", income, 118_000),
+    { sheet, orderRef: "", platformType: "Penarikan Dana", settlementType: ImportSettlementType.UNSPECIFIED, change: -2_500_000, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, level: LogLevel.INFO, text: "a withdrawal that did not succeed — skipped" },
+    posted(sheet, "240928HHHH", income, 95_000),
+    posted(sheet, "240928IIII", income, 72_500),
   ];
 }
 
@@ -787,6 +788,8 @@ type OrderScopeFilter =
       warehouseId?: bigint;
       // Which date the window reads (the-date-filter-switches-created-or-platform).
       dateField?: OrderDateField;
+      // Only orders whose settlement account never opened (a-missing-account-is-found-by-its-opened-at).
+      settlementNotOpened?: boolean;
     }
   | undefined;
 
@@ -857,7 +860,7 @@ function matchOrder(q: string | undefined, o: (typeof orders)[number]): boolean 
 // Whether the margin can be taken over this order — the server's `orderMeasurable`: a known cost, a recorded
 // marketplace figure and a frozen fee, all three.
 function measurable(o: (typeof orders)[number]): boolean {
-  return (o.goodsCost ?? 0n) > 0n && (o.platformTotal ?? 0n) > 0n && o.warehouseFee !== undefined;
+  return (o.goodsCost ?? 0) > 0 && (o.platformTotal ?? 0) > 0 && o.warehouseFee !== undefined;
 }
 
 // The order's units, summed from its lines — what the server's correlated sum reads.
@@ -884,6 +887,8 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .filter((o) => !filter?.marketplace || shops.find((s) => s.id === o.shopId)?.marketplace === filter.marketplace)
     .filter((o) => !filter?.shippingCode || o.shippingCode === filter.shippingCode)
     .filter((o) => !filter?.warehouseId || o.warehouseId === filter.warehouseId)
+    // settlement_opened_at IS NULL, as scopedOrders reads it.
+    .filter((o) => !filter?.settlementNotOpened || o.settlementOpenedAtUnix === 0n)
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
@@ -914,13 +919,13 @@ function periodDays<T extends { teamId: bigint; ago: number }>(
 }
 
 // Sum a per-key money map into an accumulator — how every by-kind / by-source total is built.
-function addInto(total: Record<number, bigint>, part: Record<number, bigint>) {
+function addInto(total: Record<number, number>, part: Record<number, number>) {
   for (const [k, v] of Object.entries(part)) {
-    total[Number(k)] = (total[Number(k)] ?? 0n) + v;
+    total[Number(k)] = (total[Number(k)] ?? 0) + v;
   }
 }
 
-const sumMap = (m: Record<number, bigint>) => Object.values(m).reduce((a, b) => a + b, 0n);
+const sumMap = (m: Record<number, number>) => Object.values(m).reduce((a, b) => a + b, 0);
 
 export const transport = createRouterTransport(({ service }) => {
   service(TeamService, {
@@ -1300,15 +1305,15 @@ export const transport = createRouterTransport(({ service }) => {
                       mapData: {
                         [key]: {
                           readyQty: ready,
-                          readyValue: ready * (productCosts[key] ?? 0n),
+                          readyValue: Number(ready) * (productCosts[key] ?? 0),
                           // A fixed ONGOING on one product, so the "already on order" figure has
                           // something to render — it is what stops the same restock being placed
                           // twice, and an all-zero fixture would never show it. Same ownership rule.
                           ongoingQty: mine && key === "72" ? 6n : 0n,
-                          ongoingValueEst: 0n,
-                          costMin: productCosts[key] ?? 0n,
-                          costMax: productCosts[key] ?? 0n,
-                          costKnown: (productCosts[key] ?? 0n) > 0n,
+                          ongoingValueEst: 0,
+                          costMin: productCosts[key] ?? 0,
+                          costMax: productCosts[key] ?? 0,
+                          costKnown: (productCosts[key] ?? 0) > 0,
                           oldestBatchUnix: 0n,
                           lastRestockUnix: 0n,
                         },
@@ -1337,7 +1342,7 @@ export const transport = createRouterTransport(({ service }) => {
                   value: {
                     mapData: {
                       // 0 = UNKNOWN, never free. Product 73 carries one on purpose.
-                      [id.toString()]: { productId: id, unitCost: productCosts[id.toString()] ?? 0n },
+                      [id.toString()]: { productId: id, unitCost: productCosts[id.toString()] ?? 0 },
                     },
                   },
                 },
@@ -1629,10 +1634,11 @@ export const transport = createRouterTransport(({ service }) => {
         {
           status: OrderStatus;
           count: bigint;
-          value: bigint;
+          // Σ platform_total — doubles since selling 00041.
+          value: number;
           itemCount: bigint;
-          mpValue: bigint;
-          goodsCost: bigint;
+          mpValue: number;
+          goodsCost: number;
           fees: number;
           marginUnknown: bigint;
         }
@@ -1641,10 +1647,10 @@ export const transport = createRouterTransport(({ service }) => {
         const row = counts.get(o.status) ?? {
           status: o.status,
           count: 0n,
-          value: 0n,
+          value: 0,
           itemCount: 0n,
-          mpValue: 0n,
-          goodsCost: 0n,
+          mpValue: 0,
+          goodsCost: 0,
           fees: 0,
           marginUnknown: 0n,
         };
@@ -1653,10 +1659,10 @@ export const transport = createRouterTransport(({ service }) => {
         counts.set(o.status, {
           status: o.status,
           count: row.count + 1n,
-          value: row.value + (o.platformTotal ?? 0n),
+          value: row.value + (o.platformTotal ?? 0),
           itemCount: row.itemCount + unitsOf(o.id),
-          mpValue: row.mpValue + (measured ? (o.platformTotal ?? 0n) : 0n),
-          goodsCost: row.goodsCost + (measured ? (o.goodsCost ?? 0n) : 0n),
+          mpValue: row.mpValue + (measured ? (o.platformTotal ?? 0) : 0),
+          goodsCost: row.goodsCost + (measured ? (o.goodsCost ?? 0) : 0),
           fees: row.fees + (measured ? (o.warehouseFee ?? 0) : 0),
           marginUnknown: row.marginUnknown + (measured ? 0n : 1n),
         });
@@ -1670,7 +1676,7 @@ export const transport = createRouterTransport(({ service }) => {
       return {
         preview: {
           orders30d: BigInt(recent.length),
-          revenue30d: recent.reduce((sum, o) => sum + (o.platformTotal ?? 0n), 0n),
+          revenue30d: recent.reduce((sum, o) => sum + (o.platformTotal ?? 0), 0),
         },
         // One entry per status that HAS orders; a status with none is ABSENT rather than a zero row,
         // exactly as the proto says. The page renders the gaps itself.
@@ -1753,7 +1759,7 @@ export const transport = createRouterTransport(({ service }) => {
     liabilityPositionList: (req) => {
       const set = positionsFor(req.teamId).filter(
         (p) =>
-          (!req.filter?.unsettledOnly || p.balance !== 0n) &&
+          (!req.filter?.unsettledOnly || p.balance !== 0) &&
           (!req.filter?.counterpartyId || p.counterpartyId === req.filter.counterpartyId),
       );
 
@@ -1769,9 +1775,9 @@ export const transport = createRouterTransport(({ service }) => {
         // Whole-set, as the server counts it: every payment recorded TO this team and not yet confirmed or
         // refused — the menu's count on Kewajiban reads it (`the-sidebar-is-in-sections`).
         awaitingConfirmation: paymentsTable.filter((p) => p.creditorTeamId === req.teamId && p.status === 1).length,
-        totalReceivable: set.reduce((s, p) => (p.balance > 0n ? s + p.balance : s), 0n),
+        totalReceivable: set.reduce((s, p) => (p.balance > 0 ? s + p.balance : s), 0),
         // A MAGNITUDE, as the wire carries it — direction is words on this screen, never a sign.
-        totalPayable: set.reduce((s, p) => (p.balance < 0n ? s - p.balance : s), 0n),
+        totalPayable: set.reduce((s, p) => (p.balance < 0 ? s - p.balance : s), 0),
         oldestUnsettledCounterpartyId: oldest?.counterpartyId ?? 0n,
         oldestUnsettledAtUnix: oldest?.oldestUnsettledAtUnix ?? 0n,
       };
@@ -1789,7 +1795,7 @@ export const transport = createRouterTransport(({ service }) => {
       ),
       // From the asking team's side — a debtor's story reads its pair with Gudang Pusat as owed.
       balance:
-        positionsFor(req.teamId).find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
+        positionsFor(req.teamId).find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0,
     }),
 
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
@@ -1797,14 +1803,14 @@ export const transport = createRouterTransport(({ service }) => {
     // courier, so summing every source and calling it income counts money nobody earned.
     liabilityDaily: (req) => {
       const days = periodDays(liabilityDays, req.teamId, req.filter);
-      const bySource: Record<number, bigint> = {};
+      const bySource: Record<number, number> = {};
 
       const perDay = days.map((d) => {
         // A source with nothing that day is ABSENT rather than 0 — the contract's choice, and the
         // reason every reader of these maps has to default rather than index blindly.
-        const sources: Record<number, bigint> = {};
-        if (d.handlingFee !== 0n) sources[LiabilitySourceType.ORDER_FEE] = d.handlingFee;
-        if (d.codFee !== 0n) sources[LiabilitySourceType.INCIDENTAL_FEE] = d.codFee;
+        const sources: Record<number, number> = {};
+        if (d.handlingFee !== 0) sources[LiabilitySourceType.ORDER_FEE] = d.handlingFee;
+        if (d.codFee !== 0) sources[LiabilitySourceType.INCIDENTAL_FEE] = d.codFee;
 
         addInto(bySource, sources);
 
@@ -1933,9 +1939,9 @@ export const transport = createRouterTransport(({ service }) => {
     // REQUEST — the creditor's notice (a-creditor-may-request-payment). It moves nothing; a pair that owes nothing is
     // refused, as the server refuses it, and a second request replaces the first with the moment's figure.
     liabilityPaymentRequestSend: (req) => {
-      const owed = positionsFor(req.teamId).find((p) => p.counterpartyId === req.debtorTeamId)?.balance ?? 0n;
+      const owed = positionsFor(req.teamId).find((p) => p.counterpartyId === req.debtorTeamId)?.balance ?? 0;
 
-      if (owed <= 0n) {
+      if (owed <= 0) {
         throw new ConnectError("the debtor owes this team nothing now, so there is nothing to ask for", Code.FailedPrecondition);
       }
 
@@ -2088,7 +2094,7 @@ export const transport = createRouterTransport(({ service }) => {
     // entry count are both derived from the fixture's map and cannot disagree with each other.
     expenseDaily: (req) => {
       const wanted = req.filter?.kind ?? ExpenseKind.UNSPECIFIED;
-      const byKindTotal: Record<number, bigint> = {};
+      const byKindTotal: Record<number, number> = {};
 
       const perDay = periodDays(expenseDays, req.teamId, req.filter)
         .map((d) => {
@@ -2096,7 +2102,7 @@ export const transport = createRouterTransport(({ service }) => {
           // exactly dropping the other keys, and a day left holding nothing drops out of the series
           // rather than reporting a 0 the sparse contract says should be absent.
           const only = d.byKind[wanted];
-          const byKind: Record<number, bigint> =
+          const byKind: Record<number, number> =
             wanted === ExpenseKind.UNSPECIFIED
               ? { ...d.byKind }
               : only === undefined

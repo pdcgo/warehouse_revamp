@@ -163,7 +163,7 @@ export function useRecordPayment() {
     mutationFn: (args: {
       teamId: bigint;
       creditorTeamId: bigint;
-      amount: bigint;
+      amount: number;
       note: string;
       // ⚠ AT LEAST ONE, and the server refuses without (a-payment-must-carry-proof). Each must
       // already be SHARED with the creditor — see useProofUpload, which does both.
@@ -345,7 +345,7 @@ export function useTermsHistory(args: {
 
 // Set one pair's terms — a CREATE-OR-UPDATE on (team, counterparty).
 //
-// ⚠ `creditLimit: undefined` means UNLIMITED and `0n` means NO CREDIT AT ALL. They are opposites, so
+// ⚠ `creditLimit: undefined` means UNLIMITED and `0` means NO CREDIT AT ALL. They are opposites, so
 // the caller must pass `undefined` deliberately rather than letting a blank input coerce to zero —
 // that coercion is the bug the whole optional field exists to prevent.
 export function useSetTerms() {
@@ -355,7 +355,7 @@ export function useSetTerms() {
     mutationFn: (args: {
       teamId: bigint;
       counterpartyId: bigint;
-      creditLimit: bigint | undefined;
+      creditLimit: number | undefined;
       reason: string;
     }) =>
       liabilityTermsClient.liabilityTermsSet({

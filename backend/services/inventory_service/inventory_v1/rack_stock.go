@@ -109,7 +109,7 @@ func (s *Service) RackStock(
 		if known {
 			// Multiplied HERE rather than in the client, so a line and the header tile cannot disagree
 			// about the same arithmetic.
-			line.Value = levels[i].StockCount * unitCost
+			line.Value = float64(levels[i].StockCount) * unitCost
 		}
 
 		lines = append(lines, line)

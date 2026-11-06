@@ -53,7 +53,7 @@ func TestOrderCreate_OneProductOnTwoLinesThroughTheRealTake(t *testing.T) {
 	}
 
 	if order.GetGoodsCost() != 30_000 || items[0].GetUnitCost() != 10_000 {
-		t.Fatalf("goods_cost %d, unit cost %d — want the one draw of 3 × 10.000", order.GetGoodsCost(), items[0].GetUnitCost())
+		t.Fatalf("goods_cost %v, unit cost %v — want the one draw of 3 × 10.000", order.GetGoodsCost(), items[0].GetUnitCost())
 	}
 
 	if left := ledgerUnits(t, db, warehouse, product); left != 2 {

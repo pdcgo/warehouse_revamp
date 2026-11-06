@@ -200,8 +200,9 @@ export const TheCostRangeReadsAsARange: Story = {
 };
 
 /** CROSS COMES BEFORE THE COST, and UNDER THE COST what another team pays (the-cross-price-rides-under-the-cost) — the
- * cost range with the markup on both ends, said "Cross …". 700 costs Rp 45.700 – Rp 47.200 at 12.5%; a 0% product's price
- * is its cost; nothing on a shelf has neither. The lock follows the cost. */
+ * cost range with the markup on both ends, said "Cross …". 700 costs Rp 45.700 – Rp 47.200 at 12.5% — EXACT, as the take
+ * prices it (the-backend-never-rounds-money): Rp 51.412,5, never floored to Rp 51.412; a 0% product's price is its cost;
+ * nothing on a shelf has neither. The lock follows the cost. */
 export const TheCrossPriceRidesUnderTheCost: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -217,7 +218,7 @@ export const TheCrossPriceRidesUnderTheCost: Story = {
     // The cross price sits in the COST's cell, under the range.
     const costCell = within(canvas.getByTestId("product-row-SL-03-ANG-001")).getAllByRole("cell")[2]!;
     await waitFor(() =>
-      expect(within(costCell).getByTestId("cross-price-SL-03-ANG-001")).toHaveTextContent(/^Rp 51\.412 – Rp 53\.100$/),
+      expect(within(costCell).getByTestId("cross-price-SL-03-ANG-001")).toHaveTextContent(/^Rp 51\.412,5 – Rp 53\.100$/),
     );
     await expect(canvas.getByTestId("cross-price-SL-03-ANG-006")).toHaveTextContent(/^Rp 10\.255$/);
     await expect(canvas.queryByTestId("cross-price-SL-03-ANG-003")).toBeNull();

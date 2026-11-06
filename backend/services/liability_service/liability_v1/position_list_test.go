@@ -64,18 +64,18 @@ func TestPositionList_ShowsBothDirectionsWithTheSignIntact(t *testing.T) {
 			len(positionRows(msg)))
 	}
 
-	byCounterparty := map[uint64]int64{}
+	byCounterparty := map[uint64]float64{}
 	for _, p := range positionRows(msg) {
 		byCounterparty[p.GetCounterpartyId()] = p.GetBalance()
 	}
 
 	if byCounterparty[warehouse] != -15000 {
-		t.Fatalf("owed to the warehouse = %d, want -15000 (a payable is negative)",
+		t.Fatalf("owed to the warehouse = %v, want -15000 (a payable is negative)",
 			byCounterparty[warehouse])
 	}
 
 	if byCounterparty[other] != 4000 {
-		t.Fatalf("owed by team %d = %d, want +4000 (a receivable is positive)",
+		t.Fatalf("owed by team %v = %v, want +4000 (a receivable is positive)",
 			other, byCounterparty[other])
 	}
 }
@@ -223,7 +223,7 @@ func TestPositionList_TheSummaryIsTheWHOLESetNotThePage(t *testing.T) {
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	// Three counterparties owe the selling team 1000, 2000 and 3000.
-	for i, amount := range []int64{1000, 2000, 3000} {
+	for i, amount := range []float64{1000, 2000, 3000} {
 		_, err := svc.PostEntry(context.Background(), db, liability_v1.Posting{
 			DebtorTeamID: uint64(100 + i), CreditorTeamID: selling, Amount: amount,
 			SourceType: liability_v1.SourceTypeOrderFee, SourceID: uint64(500 + i),
@@ -244,14 +244,14 @@ func TestPositionList_TheSummaryIsTheWHOLESetNotThePage(t *testing.T) {
 		msg := summarizeOnePage(t, svc, selling, page, 1)
 
 		if got := msg.GetTotalReceivable(); got != 6000 {
-			t.Fatalf("page %d: total_receivable = %d, want 6000 — the summary is reading the page",
+			t.Fatalf("page %v: total_receivable = %v, want 6000 — the summary is reading the page",
 				page, got)
 		}
 
 		// ⚠ A POSITIVE MAGNITUDE. Direction is words on this screen, never a sign, so the wire hands
 		// the tile the number it renders rather than one it must remember to negate.
 		if got := msg.GetTotalPayable(); got != 400 {
-			t.Fatalf("page %d: total_payable = %d, want 400 (a magnitude, not -400)", page, got)
+			t.Fatalf("page %v: total_payable = %v, want 400 (a magnitude, not -400)", page, got)
 		}
 	}
 }
@@ -289,7 +289,7 @@ func TestPositionList_AnEmptySetSummarizesToZero(t *testing.T) {
 	msg := summarizeOnePage(t, svc, 4242, 1, 50)
 
 	if msg.GetTotalReceivable() != 0 || msg.GetTotalPayable() != 0 {
-		t.Fatalf("receivable = %d, payable = %d, want 0/0",
+		t.Fatalf("receivable = %v, payable = %v, want 0/0",
 			msg.GetTotalReceivable(), msg.GetTotalPayable())
 	}
 

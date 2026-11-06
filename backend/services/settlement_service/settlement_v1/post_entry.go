@@ -3,12 +3,14 @@ package settlement_v1
 import (
 	"context"
 	"errors"
+	"math"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
 )
 
@@ -71,11 +73,12 @@ type PostInput struct {
 	UniqueID       string
 	SettlementType settlementv1.SettlementType
 	SourceType     settlementv1.SourceType
-	Change         int64
-	OccurredOn     string
-	ReversesID     uint64
-	Note           string
-	ActorID        uint64
+	// Signed rupiah, stored exact as it posts — never rounded (the-backend-never-rounds-money).
+	Change     float64
+	OccurredOn string
+	ReversesID uint64
+	Note       string
+	ActorID    uint64
 
 	// Whether ActorID posted from outside the team (an-override-is-stamped-in-every-service) — set by SettlementPost
 	// from the request's resolved role, and by an order event's post from the event's `actor_is_override`: that row
@@ -234,6 +237,14 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		return out, err
 	}
 
+	// ⚠ POSTING IS THE FREEZE POINT, EXACT (the-backend-never-rounds-money): the change is stored as it is handed in,
+	// never rounded — the row, its running balance, the state rows and every report folded from it are sums of exact
+	// doubles, and each equals the log's running sum within the tolerance (san_money.Equal). The wire refuses NaN and
+	// the infinities (double.finite); an in-process caller is held to the same.
+	if math.IsNaN(in.Change) || math.IsInf(in.Change, 0) {
+		return out, errChangeNotFinite
+	}
+
 	// WHO AN IMPORTED SHOP ROW COUNTS FOR — the shop's primary CS, asked here, before the transaction
 	// (#settlement-asks-the-shop-for-its-primary-cs). An order row counts for its creator and a shop row
 	// posted by hand for its actor, so only this row asks.
@@ -262,7 +273,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 			shopState  settlement_service_models.ShopSettlement
 
 			// The position this row builds on, whichever account it came from.
-			prevBalance int64
+			prevBalance float64
 		)
 
 		if in.OrderID != 0 {
@@ -419,7 +430,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		// "no live sale" and both open one.
 		if in.OrderID != 0 {
 			if opts.changeFromLiveSale {
-				if orderState.InitialTotal == 0 {
+				if san_money.IsZero(orderState.InitialTotal) {
 					return ErrNothingToCancel
 				}
 
@@ -430,11 +441,12 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 
 			// A reversal (reverses_id set) is how a live sale is taken DOWN, so it is exempt — it is the
 			// first half of reverse-then-repost.
-			if typeText == typeInitialTotal && in.ReversesID == 0 && orderState.InitialTotal != 0 {
+			if typeText == typeInitialTotal && in.ReversesID == 0 && !san_money.IsZero(orderState.InitialTotal) {
 				return errSaleAlreadyOpen
 			}
 
-			if typeText == typeInitialTotalCancel && in.Change > orderState.InitialTotal {
+			// Compared past san_money's tolerance, never a bare > on two doubles.
+			if typeText == typeInitialTotalCancel && in.Change > orderState.InitialTotal && !san_money.Equal(in.Change, orderState.InitialTotal) {
 				return errCancelExceedsSale
 			}
 		}
@@ -448,9 +460,10 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 			SourceType:     sourceText,
 			SettlementType: typeText,
 			Change:         in.Change,
-			Balance:        prevBalance + in.Change,
-			UniqueID:       in.UniqueID,
-			OccurredOn:     occurred,
+			// A sum of exact doubles — no rounding of its own; it equals Σ the log within the tolerance.
+			Balance:    prevBalance + in.Change,
+			UniqueID:   in.UniqueID,
+			OccurredOn: occurred,
 			// `posted_on` is left to the column's DEFAULT CURRENT_DATE and read back by the insert, so
 			// the day the event announces is the day the database stored — one calendar, the session's.
 			Note: in.Note,
@@ -467,6 +480,14 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		}
 
 		err = tx.Create(&entry).Error
+		if isUniqueViolation(err) {
+			// A KEY ANOTHER ACCOUNT IS WRITING AT THIS VERY MOMENT (a-colliding-key-at-once-is-refused-the-same).
+			// Under the account lock a same-account retry was always found by the lookup above, so a duplicate
+			// here can only be ANOTHER account's key, still uncommitted when we looked — refused exactly as the
+			// lookup refuses one committed a moment earlier, never a server fault.
+			return errUniqueIDTaken
+		}
+
 		if err != nil {
 			return dbError(err)
 		}
@@ -527,6 +548,9 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 	// readers learn of it. Published on an idempotent hit too: that is how a publish that failed the
 	// first time is repaired by simply retrying the post, and every consumer dedups on the derived id.
 	s.publishPosted(ctx, out)
+
+	// The order learns its account opened — after the commit and never fatal, like the publish (markOpened).
+	s.markOpened(ctx, out)
 
 	return out, nil
 }

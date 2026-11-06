@@ -14,7 +14,7 @@ type InventoryLostDailyReport struct {
 	ProductID   uint64
 	SupplierID  uint64
 	LostCount   int64
-	LostAmount  float64 `gorm:"type:numeric(20,2)"`
+	LostAmount  float64 `gorm:"type:double precision"`
 	LastUpdated time.Time
 }
 

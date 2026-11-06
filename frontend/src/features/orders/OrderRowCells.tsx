@@ -244,8 +244,8 @@ export function DateCell({ unix, testId }: { unix?: bigint; testId?: string }) {
  * ⚠ TWO WAYS TO BE UNKNOWN, AND EITHER REFUSES. A `goods_cost` of 0 is unknown, not free (`order.proto`), and a `null` fee is
  * an order placed before fees were frozen — printing the half that IS known would read as a suspiciously cheap order.
  */
-export function SpendCell({ goodsCost, fees }: { goodsCost: bigint; fees: bigint | null }) {
-  const spend = orderSpend(goodsCost, fees ?? 0n, goodsCost > 0n && fees !== null);
+export function SpendCell({ goodsCost, fees }: { goodsCost: number; fees: number | null }) {
+  const spend = orderSpend(goodsCost, fees ?? 0, goodsCost > 0 && fees !== null);
 
   return (
     <Text whiteSpace="nowrap" data-testid="order-spend">
@@ -276,18 +276,19 @@ export function MpTotalCell({
   goodsCost,
   fees,
 }: {
-  platformTotal: bigint;
-  goodsCost: bigint;
+  /** A double since selling 00041, frozen exact at placement. 0 = not recorded. */
+  platformTotal: number;
+  goodsCost: number;
   /** The order's frozen fee, or `null` when it was never priced — then there is no total beli to take a margin from. */
-  fees: bigint | null;
+  fees: number | null;
 }) {
-  const spend = orderSpend(goodsCost, fees ?? 0n, goodsCost > 0n && fees !== null);
+  const spend = orderSpend(goodsCost, fees ?? 0, goodsCost > 0 && fees !== null);
   const margin = orderMargin(platformTotal, spend);
   const pct = formatMarginPct(orderMarginPct(platformTotal, spend));
 
   return (
     <Stack gap="0.5" minW="0" align="end">
-      {platformTotal > 0n ? (
+      {platformTotal > 0 ? (
         <Text whiteSpace="nowrap" data-testid="order-total-mp">
           {formatRupiah(platformTotal)}
         </Text>

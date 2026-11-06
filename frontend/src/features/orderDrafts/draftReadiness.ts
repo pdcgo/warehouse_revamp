@@ -54,7 +54,7 @@ export function draftGaps(draft: OrderDraft, opts: DraftGapOptions = {}): DraftG
   // platform-total-is-required-at-finalize — the STORED figure, because the list reads only what a draft keeps. The page
   // may still follow the rows' prices and send that, so this can call a draft unfinished that the page could promote —
   // the safe side to be wrong on.
-  if (draft.platformTotal <= 0n) {
+  if (draft.platformTotal <= 0) {
     gaps.push({ key: "orderDrafts.gapSellPrice" });
   }
 

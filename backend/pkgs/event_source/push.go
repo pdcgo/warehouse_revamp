@@ -53,6 +53,13 @@ func decodeEvent(data []byte) (*eventsv1.Event, error) {
 	return event, nil
 }
 
+// DecodeEvent is the push route's decoder, for a message read straight off a subscription rather than pushed — `san
+// pubsub releases` reads a dead-letter's triage with it (a-stuck-release-is-replayed-by-san). The same leniency and the
+// same validation, so a replayed message is judged exactly as its first delivery was.
+func DecodeEvent(data []byte) (*eventsv1.Event, error) {
+	return decodeEvent(data)
+}
+
 // NewMuxPushHandler adapts a PushHandler to an http.HandlerFunc for a Pub/Sub PUSH subscription,
 // continuing the publisher's trace from the message attributes.
 //

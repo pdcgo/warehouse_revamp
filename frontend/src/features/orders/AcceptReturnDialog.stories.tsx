@@ -82,7 +82,7 @@ export const AWholeParcelIsAcceptedAsIs: Story = {
     await expect(returnAcceptScenario.last).toEqual({
       orderId: ORDER.id,
       missing: [],
-      courierCharge: 0n,
+      courierCharge: 0,
       courierChargeNote: "",
     });
   },
@@ -122,7 +122,7 @@ export const AChargeNeedsWhatItWasFor: Story = {
     await userEvent.click(screen.getByTestId("accept-return-submit"));
 
     await waitFor(() =>
-      expect(returnAcceptScenario.last).toMatchObject({ courierCharge: 15_000n, courierChargeNote: "ongkir retur J&T" }),
+      expect(returnAcceptScenario.last).toMatchObject({ courierCharge: 15_000, courierChargeNote: "ongkir retur J&T" }),
     );
   },
 };

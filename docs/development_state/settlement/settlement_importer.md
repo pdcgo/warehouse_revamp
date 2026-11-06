@@ -131,8 +131,9 @@ Every RPC this pass wrote or widened, audited for performance and every write fo
   stops a racing removal from leaving the shop with no primary.
 - ⚠ **The `raceaudit` and `perfaudit` tests are outside CI.** A shop-grain race test stayed red for a day
   unnoticed. After touching a write path, run `go test -tags raceaudit ./backend/services/<service>/...`.
-  `TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsAnswersInternal` fails **by design** until the owner
-  answers the 23505 mapping.
+  `TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsIsRefusedTheSame` (was `…AnswersInternal`, red by design)
+  is green since 2026-11-05: a 23505 at the insert maps to `errUniqueIDTaken`
+  ([a-colliding-key-at-once-is-refused-the-same](../../business/settlement/context_decision.md#a-colliding-key-at-once-is-refused-the-same)).
 - ⚠ **Two people per imported row** — `actor_id` is the uploader, `user_id` the primary CS on a shop row. Never write
   one into the other.
 - ⚠ **The commission is on the DETAIL, never the item**, and a file with no `Affiliate…` column is refused.
@@ -151,3 +152,24 @@ Every RPC this pass wrote or widened, audited for performance and every write fo
 | screen | `pages/settlement-import-detail` — the *Posted to the shop* view asks for NO_ORDER **and** SEVERAL_ORDERS; the reason reads *"On several live orders — none was credited"* and the found ids are links to `/orders/:id`; the note and the tally help say *no single order found*. en + id |
 | tests | `TestOrderInShop` (9 cases) · `TestFoundOrderIDs` · `TestShopeeSettlementImport_TwoLiveOrdersOnARefPostToTheShop` (post to the shop, ids, WARN text, tally, list filter by SEVERAL_ORDERS) · `…_ALiveAndACancelledOrderPostToTheLiveOne` · `TestTiktokSettlementImport_TwoLiveOrdersOnARefPostToTheShop` (fund, commission and reimbursement all to the shop). Story `ARefOnSeveralOrdersNamesThem`; stub + fixture line 9017; e2e `settlement_imports.spec.ts` 4/4 |
 | audits | no new query, no new lock — one more column on the line's existing INSERT; the existing `ShopeeSettlementImport` / `TiktokSettlementImport` reports stand |
+
+## 2026-11-06 — the line's amount is a double (money-type change, part 1)
+
+`settlement_importer_service` `00004_line_change_is_double.sql`: `uploaded_file_lines.change bigint → double precision`;
+`UploadedFileLine.change` and `LedgerPost.Change` are doubles, passed to settlement's `double change`
+([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)).
+A fraction is **still held** (`fractional_amount`, critique 8 — the decision did not reopen it); `wholeRupiah` now asks
+`san_money.IsWhole`, so float dust (99.999,99999) is whole and posts as 100.000. Tests:
+`TestShopeeSettlementImport_AnAmountWithFloatDustPostsWhole`, `TestUploadedFileLineList_TheChangeIsTheStoredDouble`.
+Frontend: the file page's line amounts, the Storybook import lines and the stub importer rows are numbers. Not run on
+dev — `go run ./tools/san migrate up --service settlement_importer_service`.
+
+## 2026-11-06 — the backend never rounds money ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money))
+
+A statement line with a real fraction is still HELD (`fractional_amount`,
+[a-fractional-statement-line-is-still-held](../../business/settlement/context_decision.md#a-fractional-statement-line-is-still-held))
+— `wholeRupiah` keeps its `san_money.IsWhole` check on the file. What changed: a line whose amount is whole within the
+tolerance (reader float dust, 99.999,99999) now posts the READER'S figure exactly instead of the rounded whole number
+(it was `san_money.Whole`). ⚠ awaiting the owner if they want dust snapped to the whole number here (the settlement
+decision says dust "counts as whole and posts"). Test `TestShopeeSettlementImport_AnAmountWithFloatDustPostsAsRead`
+(the 0,5 line is still held).

@@ -10,17 +10,17 @@ import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import { useTermsHistory } from "./queries";
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiah, isZeroRupiah, type Rupiah } from "../../lib/money";
 
 const PAGE_SIZE = 10;
 
 // One limit, as a person reads it. The three states again — see CreditMeter for why they cannot
 // collapse to a number.
-function LimitText({ limit }: { limit: bigint | undefined }) {
+function LimitText({ limit }: { limit: Rupiah | undefined }) {
   const { t } = useTranslation();
 
   if (limit === undefined) return <Text as="span" color="fg.subtle">{t("terms.limitUnlimited")}</Text>;
-  if (limit === 0n) return <Text as="span" color="error.fg">{t("terms.limitFrozen")}</Text>;
+  if (isZeroRupiah(limit)) return <Text as="span" color="error.fg">{t("terms.limitFrozen")}</Text>;
   return <Text as="span">{formatRupiah(limit)}</Text>;
 }
 

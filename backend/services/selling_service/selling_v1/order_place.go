@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"strconv"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -51,7 +51,10 @@ type orderPlacement struct {
 	// What the buyer paid on the platform — REQUIRED (validate, platform-total-is-required-at-finalize): it is the figure
 	// settlement opens the account on. The order's own money (goods_cost, warehouse_fee, total_cost) is not here: it is
 	// the take's and the warehouse's, frozen by placeOrder — no door supplies it.
-	platformTotal int64
+	//
+	// A double as typed or read; placeOrder freezes it EXACT as it writes the order row (the-backend-never-rounds-money),
+	// and settlement's `initial_total` carries that same figure.
+	platformTotal float64
 	// The marketplace's own id for this order, verbatim. Required by the request's validation
 	// (an-order-ref-is-required-by-the-rpc); "" only on an order placed before that rule.
 	orderExternalRefID string
@@ -117,7 +120,10 @@ func (p *orderPlacement) validate() error {
 
 	// The same footing (platform-total-is-required-at-finalize): a draft's Promote sends the figure on its page, so a
 	// draft still at 0 meets this rule exactly as a typed order does.
-	if p.platformTotal <= 0 {
+	// Judged on the exact figure (the-backend-never-rounds-money): it must be finite and above 0 — float dust below 4
+	// places is as missing as 0. NaN and the infinities are refused too: the wire's double.finite does not reach a
+	// direct caller.
+	if !san_money.Positive(p.platformTotal) {
 		return errOrderNoPlatformTotal
 	}
 
@@ -281,7 +287,8 @@ func (s *Service) placeOrder(
 			PlatformShipmentDeadline: timeOrNil(p.platformShipmentDeadline),
 			// `goods_cost` is the take's draw, known before the row is written. `warehouse_fee` and `total_cost` are
 			// priced below, in this same transaction.
-			GoodsCost:     orderGoodsCost(p.items, draw),
+			GoodsCost: orderGoodsCost(p.items, draw),
+			// FROZEN HERE, exact as typed (the-backend-never-rounds-money) — the event and the account read the row.
 			PlatformTotal: p.platformTotal,
 			// Verbatim, exactly as the person read it off the storefront — never trimmed into a
 			// shape, never parsed.
@@ -382,7 +389,8 @@ func (s *Service) placeOrder(
 				total := line.Total
 				withMarkup := line.UnitCostWithMarkup
 				markup := line.MarkupTotal
-				items[i].UnitCost = int64(math.Round(line.UnitCost))
+				// Frozen here exact, as the take priced it (the-backend-never-rounds-money).
+				items[i].UnitCost = line.UnitCost
 				items[i].Total = &total
 				items[i].UnitCostWithMarkup = &withMarkup
 				items[i].MarkupTotal = &markup
@@ -561,13 +569,13 @@ func (s *Service) placeOrder(
 }
 
 // orderGoodsCost is the order's `goods_cost`: Σ the lines' frozen `total` — the value of the units that left the shelf
-// (an-order-is-costed-at-what-leaves-the-shelf) plus, on another team's product, that product's own markup — rounded
-// ONCE, to the whole rupiah the column holds. What the goods cost the SELLER (the-cross-charge-lives-on-the-line): a
+// (an-order-is-costed-at-what-leaves-the-shelf) plus, on another team's product, that product's own markup — EXACT, never
+// rounded (the-backend-never-rounds-money; a double since 00042). What the goods cost the SELLER (the-cross-charge-lives-on-the-line): a
 // borrowed line is owed to its owner at its total (the-product-fee-is-the-line-total), so it counts at that here too;
 // on an own line the total is the drawn cost. A product the take named no draw for adds 0, which is why a goods_cost of
 // 0 reads as UNKNOWN rather than free (see costKnown). It is also the basis the warehouse prices its fee on
 // (the-fee-is-priced-on-goods-cost) — one figure, so the two cannot be two sums.
-func orderGoodsCost(items []*sellingv1.OrderItem, draw PickDraw) int64 {
+func orderGoodsCost(items []*sellingv1.OrderItem, draw PickDraw) float64 {
 	var total float64
 
 	// In the order's own product order, so the float sum comes out the same every time.
@@ -575,13 +583,13 @@ func orderGoodsCost(items []*sellingv1.OrderItem, draw PickDraw) int64 {
 		total += draw[id].Total
 	}
 
-	return int64(math.Round(total))
+	return total
 }
 
 // orderTotalCost is the order's `total_cost`: goods_cost + the warehouse fee — the owner's "goods + warehouse fee", what
 // the order cost the seller. Unrounded, like the fee. A fee never priced (a service built without a pricer) adds 0.
-func orderTotalCost(goodsCost int64, warehouseFee *float64) float64 {
-	total := float64(goodsCost)
+func orderTotalCost(goodsCost float64, warehouseFee *float64) float64 {
+	total := goodsCost
 
 	if warehouseFee != nil {
 		total += *warehouseFee
@@ -599,12 +607,12 @@ func orderTotalCost(goodsCost int64, warehouseFee *float64) float64 {
 //
 // ⚠ A COST THE TAKE DID NOT ANSWER IS PRICED AS 0, so a percentage warehouse charges its floor on such an order. The
 // fee's basis is the goods' cost by decision (the-fee-is-priced-on-goods-cost); an unknown cost has no better basis.
-func (s *Service) priceWarehouseFee(ctx context.Context, teamID, warehouseID uint64, goodsCost int64) (*float64, error) {
+func (s *Service) priceWarehouseFee(ctx context.Context, teamID, warehouseID uint64, goodsCost float64) (*float64, error) {
 	if s.fees == nil {
 		return nil, nil
 	}
 
-	fee, err := s.fees.Price(ctx, teamID, warehouseID, float64(goodsCost))
+	fee, err := s.fees.Price(ctx, teamID, warehouseID, goodsCost)
 	if err != nil {
 		var refusal *connect.Error
 		if errors.As(err, &refusal) && refusal.Code() == connect.CodeFailedPrecondition {
@@ -794,7 +802,7 @@ func orderCreditors(
 // CUSTOMER SERVICE, who never sees the Liability screens and cannot go and look the numbers up.
 func creditBlocked(block *CreditBlock) error {
 	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf(
-		"credit limit reached with team %d: %d owed of a %d limit — settle before ordering again",
-		block.CreditorTeamID, block.Debt, block.Limit,
+		"credit limit reached with team %d: %s owed of a %s limit — settle before ordering again",
+		block.CreditorTeamID, san_money.Text(block.Debt), san_money.Text(block.Limit),
 	))
 }

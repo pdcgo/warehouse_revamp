@@ -39,7 +39,7 @@ func daily(
 }
 
 // handling posts a fee the SELLING team owes the WAREHOUSE — the warehouse's actual earnings.
-func handling(amount int64, sourceID uint64) liability_v1.Posting {
+func handling(amount float64, sourceID uint64) liability_v1.Posting {
 	return liability_v1.Posting{
 		DebtorTeamID:   selling,
 		CreditorTeamID: warehouse,
@@ -112,7 +112,7 @@ func TestLiabilityDaily_GroupsByDayAscendingWithTheSourceSplit(t *testing.T) {
 
 	// RECEIVABLE IS POSITIVE from the warehouse's point of view (§4.11) — it is owed both fees.
 	if net := days[0].GetNet(); net != 35_000 {
-		t.Fatalf("the 3rd's net = %d, want 35000 (20.000 handling + 15.000 COD), positive because the warehouse is OWED", net)
+		t.Fatalf("the 3rd's net = %v, want 35000 (20.000 handling + 15.000 COD), positive because the warehouse is OWED", net)
 	}
 
 	// ⚠ THE SPLIT IS THE POINT. A COD fee is a REIMBURSEMENT of cash the warehouse already paid a
@@ -120,10 +120,10 @@ func TestLiabilityDaily_GroupsByDayAscendingWithTheSourceSplit(t *testing.T) {
 	// that only carried `net` would force the screen to call all of it income.
 	bySource := days[0].GetBySource()
 	if got := bySource[handlingFeeSource]; got != 20_000 {
-		t.Fatalf("the 3rd's handling fees = %d, want 20000", got)
+		t.Fatalf("the 3rd's handling fees = %v, want 20000", got)
 	}
 	if got := bySource[codFeeSource]; got != 15_000 {
-		t.Fatalf("the 3rd's COD fees = %d, want 15000", got)
+		t.Fatalf("the 3rd's COD fees = %v, want 15000", got)
 	}
 
 	// A source with nothing that day is ABSENT rather than 0.
@@ -133,19 +133,19 @@ func TestLiabilityDaily_GroupsByDayAscendingWithTheSourceSplit(t *testing.T) {
 	}
 
 	// THE FOOTER IS THE SUM OF THE ROWS.
-	var summed int64
+	var summed float64
 	for _, d := range days {
 		summed += d.GetNet()
 	}
 
 	if got := got.GetTotals().GetNet(); got != summed {
-		t.Fatalf("totals.net = %d but the days sum to %d", got, summed)
+		t.Fatalf("totals.net = %v but the days sum to %v", got, summed)
 	}
 	if got := got.GetTotals().GetNet(); got != 65_000 {
-		t.Fatalf("period net = %d, want 65000 — June must not count", got)
+		t.Fatalf("period net = %v, want 65000 — June must not count", got)
 	}
 	if got := got.GetTotals().GetBySource()[handlingFeeSource]; got != 50_000 {
-		t.Fatalf("period handling fees = %d, want 50000", got)
+		t.Fatalf("period handling fees = %v, want 50000", got)
 	}
 }
 
@@ -179,10 +179,10 @@ func TestLiabilityDaily_AReversedFeeNetsTheDayToZero(t *testing.T) {
 		t.Fatalf("the day holds %d entry legs, want 2 — the fee and its reversal both stay", n)
 	}
 	if net := days[0].GetNet(); net != 0 {
-		t.Fatalf("the day's net = %d, want 0 — the fee was charged and given back", net)
+		t.Fatalf("the day's net = %v, want 0 — the fee was charged and given back", net)
 	}
 	if got := got.GetTotals().GetNet(); got != 0 {
-		t.Fatalf("period net = %d, want 0", got)
+		t.Fatalf("period net = %v, want 0", got)
 	}
 }
 
@@ -200,14 +200,18 @@ func TestLiabilityDaily_TheTwoSidesAreExactNegatives(t *testing.T) {
 	debtor := daily(t, svc, selling, "2026-07-01", "2026-07-31")
 
 	if got := creditor.GetTotals().GetNet(); got != 20_000 {
-		t.Fatalf("the warehouse's net = %d, want +20000 (it is OWED)", got)
+		t.Fatalf("the warehouse's net = %v, want +20000 (it is OWED)", got)
 	}
 	if got := debtor.GetTotals().GetNet(); got != -20_000 {
-		t.Fatalf("the selling team's net = %d, want -20000 (it OWES)", got)
+		t.Fatalf("the selling team's net = %v, want -20000 (it OWES)", got)
 	}
 }
 
-// The last day of the period counts IN FULL, and the day after it does not.
+// wib is the system's calendar (the-liability-day-is-the-jakarta-day) — every instant below is written in it, so the
+// Jakarta day each one belongs to reads straight off the literal.
+var wib = time.FixedZone("WIB", 7*60*60)
+
+// The last day of the period counts IN FULL, and the day after it does not — both ends JAKARTA days.
 //
 // `created_at` is a TIMESTAMPTZ, so a `<= to` bound would mean `<= midnight` and silently drop almost
 // the whole final day. This handler writes its own bound (both ends are required here), and a second
@@ -216,10 +220,10 @@ func TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	// Late on the final day — the leg a `<= to` bound would lose.
-	postOn(t, db, svc, handling(50_000, 1), time.Date(2026, 7, 31, 23, 30, 0, 0, time.UTC))
-	// And the first moment of the next day, which must NOT count.
-	postOn(t, db, svc, handling(7_000, 2), time.Date(2026, 8, 1, 0, 5, 0, 0, time.UTC))
+	// Late on the final day — the leg a `<= to` bound would lose. 23:30 WIB is 16:30 UTC.
+	postOn(t, db, svc, handling(50_000, 1), time.Date(2026, 7, 31, 23, 30, 0, 0, wib))
+	// And the first moment of the next Jakarta day, which must NOT count — still 31 July in UTC (17:05).
+	postOn(t, db, svc, handling(7_000, 2), time.Date(2026, 8, 1, 0, 5, 0, 0, wib))
 
 	got := daily(t, svc, warehouse, "2026-07-01", "2026-07-31")
 
@@ -229,7 +233,39 @@ func TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull(t *testing.T) {
 	}
 
 	if days[0].GetDate() != "2026-07-31" || days[0].GetNet() != 50_000 {
-		t.Fatalf("the last day reads %s / %d, want 2026-07-31 / 50000 — 23:30 must not be dropped", days[0].GetDate(), days[0].GetNet())
+		t.Fatalf("the last day reads %s / %v, want 2026-07-31 / 50000 — 23:30 must not be dropped", days[0].GetDate(), days[0].GetNet())
+	}
+}
+
+// THE JAKARTA DAY (the-liability-day-is-the-jakarta-day): an amount owed between 00:00 and 07:00 WIB is the UTC day
+// before, and lands on its WIB day — both in the row it is grouped into and in the period that admits it. The period's
+// first day starts at Jakarta midnight: 23:59 WIB the evening before is outside it, though it is the same UTC day.
+func TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	// 3 July, Jakarta: its first instant, and 06:00 — both still 2 July in UTC (17:00 and 23:00).
+	postOn(t, db, svc, handling(11_000, 1), time.Date(2026, 7, 3, 0, 0, 0, 0, wib))
+	postOn(t, db, svc, handling(22_000, 2), time.Date(2026, 7, 3, 6, 0, 0, 0, wib))
+	// 2 July 23:59 WIB — the Jakarta day before, the same UTC day as the two above.
+	postOn(t, db, svc, handling(44_000, 3), time.Date(2026, 7, 2, 23, 59, 0, 0, wib))
+
+	got := daily(t, svc, warehouse, "2026-07-03", "2026-07-03")
+
+	days := got.GetDays()
+	if len(days) != 1 || days[0].GetDate() != "2026-07-03" || days[0].GetNet() != 33_000 || days[0].GetEntries() != 2 {
+		t.Fatalf("3 July = %+v, want one row of 33.000 from the two legs at 00:00 and 06:00 WIB", days)
+	}
+
+	if net := got.GetTotals().GetNet(); net != 33_000 {
+		t.Fatalf("period net = %v, want 33.000 — 2 July 23:59 WIB is the day before", net)
+	}
+
+	// Over both days, each amount sits on its own Jakarta day.
+	both := daily(t, svc, warehouse, "2026-07-02", "2026-07-03").GetDays()
+	if len(both) != 2 || both[0].GetDate() != "2026-07-02" || both[0].GetNet() != 44_000 ||
+		both[1].GetDate() != "2026-07-03" || both[1].GetNet() != 33_000 {
+		t.Fatalf("2–3 July = %+v, want 2 July 44.000 then 3 July 33.000", both)
 	}
 }
 
@@ -293,7 +329,7 @@ func TestLiabilityDaily_NeverLeaksAnotherTeamsDays(t *testing.T) {
 		t.Fatalf("team %d sees %d of the warehouse's days", stranger, n)
 	}
 	if got := res.Msg.GetTotals().GetNet(); got != 0 {
-		t.Fatalf("team %d sees a net of %d from somebody else's ledger", stranger, got)
+		t.Fatalf("team %v sees a net of %v from somebody else's ledger", stranger, got)
 	}
 }
 

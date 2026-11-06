@@ -8,7 +8,7 @@ type LiabilityPaymentRequest struct {
 	ID                uint64 `gorm:"primaryKey"`
 	CreditorTeamID    uint64
 	DebtorTeamID      uint64
-	Amount            int64
+	Amount            float64
 	RequestedByUserID uint64
 	CreatedAt         time.Time
 

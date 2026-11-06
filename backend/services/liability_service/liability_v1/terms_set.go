@@ -96,3 +96,4 @@ func (s *Service) LiabilityTermsSet(
 		Terms: termsToProto(&row),
 	}), nil
 }
+

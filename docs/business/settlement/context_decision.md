@@ -93,6 +93,13 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [problem-funding-is-what-the-platform-pays](#problem-funding-is-what-the-platform-pays) | problem funding is whatever the platform pays, under its own label — no type of its own, no claim screen |
 | [a-take-rate-ranks-above-one-million-of-sales](#a-take-rate-ranks-above-one-million-of-sales) | `take_rate` sorts, ranking only the keys that sold at least Rp 1.000.000 in the range; the rest follow, unranked |
 | [a-cancel-reverses-the-live-sale](#a-cancel-reverses-the-live-sale) | a cancel reverses the LIVE sale, after every correction — never the original row |
+| [a-missing-account-is-found-by-its-opened-at](#a-missing-account-is-found-by-its-opened-at) | `orders.settlement_opened_at` (NULL = not yet) lists the orders whose account never opened | owner, as recommended | — |
+| [the-settlement-missing-badge-is-accepted](#the-settlement-missing-badge-is-accepted) | a *No settlement account* badge and a *Settlement not opened* filter on the order list | owner | — |
+| [a-colliding-key-at-once-is-refused-the-same](#a-colliding-key-at-once-is-refused-the-same) | a key colliding across accounts at once is refused like one posted after, not *internal* | owner, as recommended | — |
+| [a-refold-shifts-the-later-days](#a-refold-shifts-the-later-days) | a re-fold also shifts later days' stored balances by the difference, as a late event does | owner, as recommended | — |
+| [the-person-report-refolds-too](#the-person-report-refolds-too) | `san report refold` also rebuilds the person report (`settlement-user-daily`) | owner, as recommended | — |
+| [a-fractional-statement-line-is-still-held](#a-fractional-statement-line-is-still-held) | a statement line with a real fraction is still held; reader float dust counts as whole | owner, as recommended | — |
+| [the-importer-posts-the-figure-it-read](#the-importer-posts-the-figure-it-read) | a statement figure within float dust of whole posts exactly as read, never snapped | owner, as recommended | — |
 
 ---
 
@@ -3832,6 +3839,8 @@ flowchart LR
 | the broker replay | stays for range rebuilds |
 | a second reader of the log | accepted, for a one-day repair — the replay decision avoided it for range rebuilds only |
 
+✅ Built 2026-11-05 — `go run ./tools/san report refold --report settlement-shop-daily --shop <id> --date <yyyy-mm-dd> [--dry-run]` → `settlement_v1/day_refold.go`: the day's claimed log rows plus the never-folded ones over an hour old (claimed, so a redelivery folds nothing), the fold's locks, one row replaced, no other day written; tests `day_refold_test.go`, `TestRace_Refold_AFoldRacingItCountsEveryRowOnce`; run on the dev DB ([san.md](../../tools/san.md#report-refold)).
+
 ---
 
 ## settlement-opens-the-sale-from-the-order-event
@@ -4044,3 +4053,72 @@ row. It is the reading [cancel-zeroes-the-live-sale](#cancel-zeroes-the-live-sal
 - `last_day` is the MAX of the person's daily rows: the fold raises it, a replay recomputes it with the rows it rebuilds, and the migration backfills it from the daily table.
 - Raised by the perf audit `audits/services/settlement_service/performances/SettlementPersonList.md` (a full scan, 28–31 ms at 100 000 person-days).
 
+---
+
+## a-missing-account-is-found-by-its-opened-at
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: how are orders whose settlement account never opened found? ([context_clarify](./context_clarify.md) — *"What a log line is not, is a queue"*.)
+
+**The verdict.** Each order records **when its settlement account opened**: a nullable `orders.settlement_opened_at`, set when the open succeeds, `NULL` meaning *not yet*. The orders still missing one are then a query, not a grep — the order list can filter or badge them, and a person fixes each by hand on the order detail page ([a-missing-account-is-fixed-by-hand](#a-missing-account-is-fixed-by-hand)). The order still commits when the open fails; only the finding changes. ⚠ Not built.
+
+✅ Built 2026-11-05 — selling `00040` (`orders.settlement_opened_at`, partial index `orders_settlement_not_opened_idx`, dev rows with an `initial_total` filled), stamped by settlement in-process after a committed `initial_total` (`settlement_v1/order_opened.go` → `cmd/app_development/settlement_opened_marker.go` → `selling_v1.SettlementOpened`), `OrderListFilter`/`OrderStatFilter.settlement_not_opened`; tests `settlement_opened_test.go`, `order_opened_test.go`, `settlement_opened_marker_test.go`, raceaudit `settlement_opened_race_test.go`. The order list's filter and badge are a Storybook prototype only (`Pages/Order/SellerOrderListSettlementMissing`), awaiting the owner's accept.
+
+---
+
+## the-settlement-missing-badge-is-accepted
+
+> In chat *(owner, 2026-11-05)* — *"A"*, replying to the Storybook screenshots of the seller's order list with orders whose settlement account never opened (desktop badges, filtered, phone).
+
+**The verdict.** The design for [a-missing-account-is-found-by-its-opened-at](#a-missing-account-is-found-by-its-opened-at): on the seller's order list, an order whose settlement account never opened shows a **No settlement account** warning badge on the status line, and the filters gain a **Settlement not opened** checkbox (`settlement_not_opened`) listing only those orders. Each is fixed by hand on its detail page ([a-missing-account-is-fixed-by-hand](#a-missing-account-is-fixed-by-hand)).
+
+✅ Built 2026-11-05 — the `settlementMissingPrototype` prop is gone: `/orders` (`pages/orders/SellerOrders.tsx`) shows the *No settlement account* badge (`order-settlement-missing-<id>`) on every row with `settlementOpenedAtUnix` 0, any status, and the *Settlement not opened* checkbox (URL `unopened`) for every reader of the list; stories `SellerOrderListSettlementMissing` — `TheLiveListShowsIt` pins it on the routed page.
+
+---
+
+## a-colliding-key-at-once-is-refused-the-same
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: two statement imports posting the same key for two shops at the same instant — the loser read *internal* (`SettlementPost` concurrency finding 1).
+
+**The verdict.** The loser is refused exactly as one posted a moment later would be — [a-key-held-by-another-account-is-refused](#a-key-held-by-another-account-is-refused), `invalid_argument` — never a server fault. A unique violation at the insert maps to that refusal: under the account lock a same-account retry is always found before the insert, so a duplicate there can only be another account's key. The data was already right (one row); only the answer changes.
+
+✅ Built 2026-11-05 — `settlement_v1/post_entry.go` step 4: a unique violation at the insert (`isUniqueViolation`: `gorm.ErrDuplicatedKey` or pg `23505`) answers `errUniqueIDTaken`; raceaudit `TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsIsRefusedTheSame` (was `…AnswersInternal`, red by design) green — 20 of 20 real collisions `invalid_argument`, was 20 of 20 `internal`.
+
+---
+
+## a-refold-shifts-the-later-days
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: after `san report refold` corrects a day, what happens to the days after it?
+
+**The verdict.** The re-fold rewrites the one day from the log **and shifts every later day's stored balances by the same difference** — exactly as the fold already shifts later days when a late event lands on an earlier day. The day's own figures are recomputed; later days' figures (`change`, sales, …) are not touched, only their carried positions (`open_balance` / `close_balance`) and the shop's state row. Amends [a-wrong-day-is-refolded-from-the-log](#a-wrong-day-is-refolded-from-the-log)'s *"does not touch any other day"*: no other day's **movement** is touched; its **carry** follows. ⚠ Not built.
+
+✅ Built 2026-11-05 — `settlement_v1/day_refold.go`: after the day's row, every later day of the scope shifts `open_balance`/`close_balance` by the day's new close − the close they carried from (the fold's own statement, `shiftLaterDays` in `analytic_fold.go`); movement untouched; the state row re-derived after the shift (`deriveState`); tests `TestDayRefold_RewritesAWrongDayAndShiftsTheLaterCarry`, `…AQuietDayGainsItsRowAndEveryLaterDayFollows`, raceaudit `TestRace_Refold_TheLaterDaysTakeEveryShiftOnce` ([san.md](../../tools/san.md#report-refold)).
+
+---
+
+## the-person-report-refolds-too
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: the re-fold rebuilds the shop report only, and claims a lost event so its redelivery cannot repair the person report either — add a person re-fold?
+
+**The verdict.** Yes. `san report refold --report settlement-user-daily --user <id> --date <yyyy-mm-dd>` rebuilds one person's day from the log exactly as the shop re-fold does ([a-wrong-day-is-refolded-from-the-log](#a-wrong-day-is-refolded-from-the-log), [a-refold-shifts-the-later-days](#a-refold-shifts-the-later-days)). A lost event claimed by one re-fold is counted by the other report's re-fold, so every report the event feeds can be repaired. ⚠ Not built.
+
+✅ Built 2026-11-05 — `go run ./tools/san report refold --report settlement-user-daily --user <id> --date <yyyy-mm-dd> [--dry-run]` → `DayRefold` on `user_settlement_daily_reports`: the person's rows as the fold attributes them (order creator, an imported row's primary CS, else the actor), `settlement-user` advisory keys, later days shifted, `last_day` recomputed. The claim is shared, so a lost row one re-fold claims is counted by the other's; the output names the other report's re-fold to run. Tests `TestDayRefold_Person_*`, `TestDayRefold_ALostRowTheShopRefoldClaimsIsCountedByThePersonRefold`, raceaudit `TestRace_Refold_TheShopAndPersonRefoldsCountEveryRowOnce`; run on the dev DB ([san.md](../../tools/san.md#report-refold)).
+
+---
+
+## a-fractional-statement-line-is-still-held
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: after money moved to `double`, should a statement line whose amount has a real fraction (e.g. Rp 12.345,50) still be held?
+
+**The verdict.** Yes — it stays **held** for review, as the importer's critique 8 decided: a real fraction in a marketplace statement means the file is not what the reader thinks. Float dust from parsing (a value within tolerance of a whole rupiah) counts as whole and posts. The posting itself still rounds anything it is handed ([every-ledger-moves-to-double-rounded-when-frozen](../order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)).
+
+✅ **Built 2026-11-06** — settlement_importer `wholeRupiah` + `san_money.IsWhole`; test `TestShopeeSettlementImport_AnAmountWithFloatDustPostsWhole`.
+
+---
+
+## the-importer-posts-the-figure-it-read
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: the reader parses a whole statement amount with float dust (99.999,99999 for 100.000) — post it as read, or snap it to the whole number?
+
+**The verdict.** Post the figure **exactly as read** — [the-backend-never-rounds-money](../order/context_decision.md#the-backend-never-rounds-money). Dust only decides whether the line is *whole*: within tolerance it is not held ([a-fractional-statement-line-is-still-held](#a-fractional-statement-line-is-still-held)), and it posts unsnapped; the screen shows it whole.
+
+✅ **Built 2026-11-06** — settlement_importer `san_money.IsWhole` check; the posted change is the reader's figure.

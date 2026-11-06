@@ -16,8 +16,8 @@ type OrderItem struct {
 	Name        string
 	Quantity    uint32
 	// What this product COST us, per unit, frozen at order time (#74) — the owner's `unit_cost`: the units the take drew
-	// ÷ the quantity (an-order-is-costed-at-what-leaves-the-shelf), rounded to whole rupiah. 0 means UNKNOWN, not free.
-	UnitCost int64
+	// ÷ the quantity (an-order-is-costed-at-what-leaves-the-shelf), exact (a double since 00042, the-backend-never-rounds-money). 0 means UNKNOWN, not free.
+	UnitCost float64
 	// THE LINE'S FROZEN TOTAL, rupiah — what inventory's take priced it at: the goods it drew plus, on another team's
 	// product, that product's own cross markup (inventory-computes-the-markup). The product fee is posted from it
 	// (the-ledger-charges-the-frozen-line-total). nil = never frozen: a line placed before the column existed.

@@ -1948,8 +1948,9 @@ export const CapitalDirectionSchema: GenEnum<CapitalDirection> = /*@__PURE__*/
  * (seeing-is-team-wide-moving-is-admin-and-up). Balances are on their own RPC (Overview), never on the
  * list, so narrowing who sees them later is one policy line.
  *
- * Money is `double` on the wire (rupiah-is-floating-point), stored `numeric` and rounded to whole rupiah
- * as it posts — so a balance compares exactly against zero and against the bank's figure.
+ * Money is `double` on the wire and in the database (rupiah-is-floating-point), stored exact as it posts — never
+ * rounded (the-backend-never-rounds-money) — so a balance is compared against zero and against the bank's figure with a
+ * tolerance (san_money.Equal / IsZero), never ==.
  *
  * @generated from service warehouse.financial_account.v1.FinancialAccountService
  */

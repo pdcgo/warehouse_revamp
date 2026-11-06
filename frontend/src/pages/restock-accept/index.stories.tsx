@@ -306,15 +306,16 @@ export const TheChargeStaysOutOfTheTotal: Story = {
 
     // 400.000 + 325.000 + 15.000 shipping.
     await expect(canvas.getByTestId("accept-grand-total")).toHaveTextContent("740.000");
-    // 400.000 ÷ 12 + 15.000 ÷ 17 units ordered = 34.215,69.
-    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.216");
+    // 400.000 ÷ 12 + 15.000 ÷ 17 units ordered = 34.215,686… — an unfrozen unit price, shown to three decimals
+    // (a-fraction-of-a-rupiah-shows-three-decimals).
+    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.215,686");
 
     await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
 
     await waitFor(() => expect(canvas.getByTestId("accept-courier-owed")).toHaveTextContent("5.000"));
     await expect(canvas.getByTestId("accept-grand-total")).toHaveTextContent("740.000");
     // (15.000 + 5.000) ÷ 17 — the charge is in the unit price.
-    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.510");
+    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.509,804");
   },
 };
 
@@ -330,9 +331,9 @@ export const ProblemUnitsCarryTheLandedPrice: Story = {
     await count(canvasElement, RICE.productId, "4");
 
     // 400.000 ÷ 12 + 15.000 ÷ 17 — every unit ordered, not the good ones.
-    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.216");
+    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.215,686");
     const coffee = await lineOf(canvasElement, COFFEE.productId);
-    await expect(coffee.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.216");
+    await expect(coffee.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.215,686");
 
     // 325.000 ÷ 5 + 15.000 ÷ 17 — the missing unit carries the rice's landed price.
     const rice = await lineOf(canvasElement, RICE.productId);

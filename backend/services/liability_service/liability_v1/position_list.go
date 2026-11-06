@@ -9,6 +9,7 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
@@ -48,7 +49,8 @@ func (s *Service) LiabilityPositionList(
 		// A settled pair keeps its row forever — the ledger never deletes anything — so the default view
 		// would otherwise fill with zeros and bury the rows a manager opened the screen for.
 		if req.Msg.GetFilter().GetUnsettledOnly() {
-			q = q.Where("balance <> 0")
+			// Within the tolerance: a balance of exact fractions that squared can hold float dust.
+			q = q.Where("abs(balance) >= " + san_money.ZeroBelow)
 		}
 
 		return q

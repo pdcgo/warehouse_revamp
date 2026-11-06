@@ -14,6 +14,10 @@ import (
 // type the restock form's ReceiptUpload stores) of the team inventory names as its owner — the restock's selling team
 // — and signs it under its own identity. It is the same narrow door as orderLabelLinker's, never a share.
 //
+// The same linker serves a warehouse transfer's label photo (every-side-of-a-transfer-opens-its-label-photo):
+// WarehouseTransferLabelPhoto has checked the caller is the sender, the receiver or the owning selling team, and names
+// the SENDING warehouse as the owner — A's crew attached the photo at ship, through the same ReceiptUpload.
+//
 // It calls a plain method, not an RPC, because the owner it is told is inventory's finding and must never come from a
 // browser.
 type restockPhotoLinker struct {

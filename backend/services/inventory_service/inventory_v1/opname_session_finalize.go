@@ -3,13 +3,13 @@ package inventory_v1
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -131,8 +131,10 @@ func (s *Service) OpnameSessionFinalize(
 		loss += ct.BrokenValue + ct.LostValue
 	}
 
-	if amount := int64(math.Round(loss)); amount > 0 {
-		_ = s.expense.PostStockLoss(ctx, warehouseID, amount, opnameNote(session.ID))
+	// Passed as the exact double it is (the-backend-never-rounds-money). A loss of nothing (0, or float dust) is no
+	// expense.
+	if san_money.Positive(loss) {
+		_ = s.expense.PostStockLoss(ctx, warehouseID, loss, opnameNote(session.ID))
 	}
 
 	progress, err := opnameProgressOf(s.db.WithContext(ctx), []models.OpnameSession{session})
@@ -191,8 +193,9 @@ func (s *Service) postCountDebts(
 			amount float64
 			kind   StockDamageKind
 		}{{ct.BrokenValue, StockDamageBroken}, {ct.LostValue, StockDamageLost}, {ct.ClaimedValue, StockDamageFound}} {
-			amount := int64(math.Round(money.amount))
-			if amount <= 0 {
+			// As the count valued it, the exact double; the ledger posts it unrounded.
+			amount := money.amount
+			if !san_money.Positive(amount) {
 				continue
 			}
 

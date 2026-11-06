@@ -16,7 +16,8 @@ import (
 // (balance-posts-the-couriers-debt-from-the-event), and the accept never writes balance's tables.
 type LiabilityPoster interface {
 	// PostStockDamage records that `warehouseID` owes `ownerTeamID` the value of stock it broke or lost
-	// while holding it, valued at the batch's frozen cost (business_level Â§Warehouse 5).
+	// while holding it, valued at the batch's frozen cost — a double, passed as it is and posted exact by the ledger
+	// (the-backend-never-rounds-money) (business_level Â§Warehouse 5).
 	//
 	// ⚠ THE DIRECTION IS THE OPPOSITE OF EVERY OTHER POSTING FROM THIS SERVICE. Elsewhere the selling
 	// team owes the warehouse; here the WAREHOUSE owes the selling team. The goods were never the
@@ -36,7 +37,7 @@ type LiabilityPoster interface {
 		ctx context.Context,
 		tx *gorm.DB,
 		ownerTeamID, warehouseID, movementID, actorID uint64,
-		amount int64,
+		amount float64,
 		kind StockDamageKind,
 	) error
 }
@@ -71,7 +72,7 @@ const (
 )
 
 func (noLiability) PostStockDamage(
-	context.Context, *gorm.DB, uint64, uint64, uint64, uint64, int64, StockDamageKind,
+	context.Context, *gorm.DB, uint64, uint64, uint64, uint64, float64, StockDamageKind,
 ) error {
 	return nil
 }

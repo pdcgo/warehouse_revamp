@@ -211,13 +211,13 @@ message RackSummary {
   // Every unit on the shelf, across every product. The "count" half of the header tile.
   int64 total_on_hand = 1;
 
-  // What those units COST, whole rupiah — quantity × the product's unit cost in this warehouse.
+  // What those units COST, exact — quantity × the product's unit cost in this warehouse.
   //
   // ⚠ It is a floor, not a valuation. A product with no recorded cost contributes NOTHING rather
   // than a guess, so a shelf full of never-restocked goods reads as worth little — which is why
   // `unknown_cost_products` travels beside it rather than being left to be inferred from a low
   // number.
-  int64 total_value = 2;
+  double total_value = 2;
 
   // How many distinct products on this shelf have no recorded cost. Non-zero means `total_value` is
   // understated, and by an unknown amount — the screen says so rather than presenting a confident
@@ -250,12 +250,12 @@ message RackStockLine {
   // stock has no recorded cost. `cost_known` carries the distinction rather than leaving a screen to
   // guess it from a zero, because "this shelf holds nothing of value" and "we never recorded what
   // this cost" are opposite things to tell a manager.
-  int64 unit_cost = 3;
+  double unit_cost = 3;
   bool cost_known = 4;
 
-  // `on_hand × unit_cost`, whole rupiah — 0 when the cost is unknown. Computed here rather than in the
+  // `on_hand × unit_cost`, exact — 0 when the cost is unknown. Computed here rather than in the
   // client so the line and the header tile cannot disagree about the same multiplication.
-  int64 value = 5;
+  double value = 5;
 
   // A COUNT HOLDS THIS PRODUCT ON THIS RACK (a-count-locks-the-product-on-the-rack): a move or a sample cannot take
   // it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing). True while an open

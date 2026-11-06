@@ -37,6 +37,11 @@ func NewRegister(
 		// ACL does not reach it (the-event-webhook-is-open). ⚠ Unlike a fold, what it writes is a DEBT, so a forged
 		// event here is worth more than a skewed figure: restrict this path at the ingress to Pub/Sub's push.
 		push := event_source.NewMuxPushHandler(NewLiabilityPushHandler(liability))
+		// THE ORDER'S FEES — charged on *Order Placed*, reversed on *Order Cancelled* (#186,
+		// the-event-carries-the-warehouse-fee). `san pubsub ensure` declares both subscriptions; without these routes the
+		// emulator's pushes 404'd and dead-lettered, so no order fee ever reached Team Balance (found 2026-11-06).
+		mux.Handle("/event/"+OrderPlacedSubscription+"/push", push)
+		mux.Handle("/event/"+OrderCancelledSubscription+"/push", push)
 		mux.Handle("/event/"+RestockAcceptedSubscription+"/push", push)
 		// …and the courier's charge at a RETURN's door — the same handler, its own subscription
 		// (a-return-may-carry-the-couriers-ask). The same ingress restriction applies.

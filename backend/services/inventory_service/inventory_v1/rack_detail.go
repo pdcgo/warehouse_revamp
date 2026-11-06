@@ -97,7 +97,7 @@ func (s *Service) rackSummary(
 			continue
 		}
 
-		summary.TotalValue += levels[i].StockCount * unitCost
+		summary.TotalValue += float64(levels[i].StockCount) * unitCost
 	}
 
 	// WHEN THIS SHELF WAS LAST COUNTED — the later of a recount's `adjustment` rack row (0 when it found the rack exact)

@@ -24,7 +24,7 @@ import (
 )
 
 // payTeam delivers one acceptance — payer's `from` out, creditor's `to` in.
-func payTeam(svc *financial_account_v1.Service, eventID string, payer, creditor, from, to uint64, amount int64) error {
+func payTeam(svc *financial_account_v1.Service, eventID string, payer, creditor, from, to uint64, amount float64) error {
 	return svc.TeamPaymentHandler()(context.Background(), &eventsv1.Event{
 		EventId:     eventID,
 		OccurredAt:  timestamppb.Now(),

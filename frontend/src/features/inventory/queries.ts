@@ -242,7 +242,7 @@ export function useWarehouseProduct(args: {
         product,
         ownerName,
         places: productPlacesFlat(placesRes),
-        unitCost: cost?.unitCost ?? 0n,
+        unitCost: cost?.unitCost ?? 0,
         costKnown: cost !== undefined,
         lastOpname: opnameRows[0] ?? null,
         history: historyRows,

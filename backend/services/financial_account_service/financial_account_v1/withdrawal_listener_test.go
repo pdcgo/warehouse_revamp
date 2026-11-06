@@ -13,7 +13,7 @@ import (
 	financial_account_v1 "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_v1"
 )
 
-func settlementEvent(eventID string, team, shop uint64, settlementType settlementv1.SettlementType, change int64, on string) *eventsv1.Event {
+func settlementEvent(eventID string, team, shop uint64, settlementType settlementv1.SettlementType, change float64, on string) *eventsv1.Event {
 	return &eventsv1.Event{
 		EventId:    eventID,
 		OccurredAt: timestamppb.Now(),
@@ -30,7 +30,7 @@ func settlementEvent(eventID string, team, shop uint64, settlementType settlemen
 }
 
 // withdraw delivers settlement's withdrawal row — NEGATIVE there, money leaving the marketplace wallet.
-func withdraw(t *testing.T, svc *financial_account_v1.Service, eventID string, team, shop uint64, change int64, on string) {
+func withdraw(t *testing.T, svc *financial_account_v1.Service, eventID string, team, shop uint64, change float64, on string) {
 	t.Helper()
 
 	err := svc.WithdrawalHandler()(context.Background(), settlementEvent(eventID, team, shop, settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL, change, on))

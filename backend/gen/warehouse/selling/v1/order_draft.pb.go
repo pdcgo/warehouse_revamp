@@ -187,8 +187,8 @@ type OrderDraftItem struct {
 	// Unconstrained, unlike OrderItem's `quantity >= 1`: a scrape may not have been able to read
 	// either. Refusing a whole push over one unreadable line would lose the other nine — promote is
 	// where every requirement lands.
-	Quantity      uint32 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	UnitPrice     int64  `protobuf:"varint,6,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
+	Quantity      uint32  `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	UnitPrice     float64 `protobuf:"fixed64,6,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -258,7 +258,7 @@ func (x *OrderDraftItem) GetQuantity() uint32 {
 	return 0
 }
 
-func (x *OrderDraftItem) GetUnitPrice() int64 {
+func (x *OrderDraftItem) GetUnitPrice() float64 {
 	if x != nil {
 		return x.UnitPrice
 	}
@@ -313,11 +313,11 @@ type OrderDraft struct {
 	// The buyer's username on the marketplace (the-buyers-username-is-optional). "" = none, which is allowed all the
 	// way through. Promote copies it.
 	BuyerUsername string `protobuf:"bytes,21,opt,name=buyer_username,json=buyerUsername,proto3" json:"buyer_username,omitempty"`
-	// WHAT THE BUYER PAID on the platform, whole rupiah — the owner's `order_drafts.platform_total`
+	// WHAT THE BUYER PAID on the platform, a double (the-backend-never-rounds-money) — the owner's `order_drafts.platform_total`
 	// (platform-total-is-required-at-finalize), the figure settlement opens the order's account on. 0 = not known yet: a
 	// draft may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto
-	// Order.platform_total.
-	PlatformTotal int64 `protobuf:"varint,22,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
+	// Order.platform_total, exact as the order is placed — a draft keeps what was read or typed, and so does the order.
+	PlatformTotal float64 `protobuf:"fixed64,22,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -492,7 +492,7 @@ func (x *OrderDraft) GetBuyerUsername() string {
 	return ""
 }
 
-func (x *OrderDraft) GetPlatformTotal() int64 {
+func (x *OrderDraft) GetPlatformTotal() float64 {
 	if x != nil {
 		return x.PlatformTotal
 	}
@@ -1026,9 +1026,9 @@ type OrderDraftLineEdit struct {
 	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The mapping. 0 leaves the line unmapped, which keeps the draft unpromotable — that is a legal
 	// state to save, because half-finished work is the whole point of a draft.
-	ProductId     uint64 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Quantity      uint32 `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	UnitPrice     int64  `protobuf:"varint,4,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
+	ProductId     uint64  `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Quantity      uint32  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	UnitPrice     float64 `protobuf:"fixed64,4,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1084,7 +1084,7 @@ func (x *OrderDraftLineEdit) GetQuantity() uint32 {
 	return 0
 }
 
-func (x *OrderDraftLineEdit) GetUnitPrice() int64 {
+func (x *OrderDraftLineEdit) GetUnitPrice() float64 {
 	if x != nil {
 		return x.UnitPrice
 	}
@@ -1172,7 +1172,7 @@ type OrderDraftUpdateRequest struct {
 	BuyerUsername *string `protobuf:"bytes,13,opt,name=buyer_username,json=buyerUsername,proto3,oneof" json:"buyer_username,omitempty"`
 	// What the buyer paid on the platform, as a person read it or typed it (platform-total-is-required-at-finalize).
 	// Set = edited and marked touched, so the app's next push leaves it alone; 0 clears it.
-	PlatformTotal *int64 `protobuf:"varint,14,opt,name=platform_total,json=platformTotal,proto3,oneof" json:"platform_total,omitempty"`
+	PlatformTotal *float64 `protobuf:"fixed64,14,opt,name=platform_total,json=platformTotal,proto3,oneof" json:"platform_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1291,7 +1291,7 @@ func (x *OrderDraftUpdateRequest) GetBuyerUsername() string {
 	return ""
 }
 
-func (x *OrderDraftUpdateRequest) GetPlatformTotal() int64 {
+func (x *OrderDraftUpdateRequest) GetPlatformTotal() float64 {
 	if x != nil && x.PlatformTotal != nil {
 		return *x.PlatformTotal
 	}
@@ -1501,7 +1501,7 @@ type OrderDraftPushRequest struct {
 	// (platform-total-is-required-at-finalize). Renamed from `marketplace_total` on 2026-10-23 with its number kept, so a
 	// binary client is unaffected — ⚠ but a JSON client still sending `marketplaceTotal` has it DISCARDED silently, and
 	// its drafts reach Promote with 0.
-	PlatformTotal int64 `protobuf:"varint,15,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
+	PlatformTotal float64 `protobuf:"fixed64,15,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1627,7 +1627,7 @@ func (x *OrderDraftPushRequest) GetBuyerUsername() string {
 	return ""
 }
 
-func (x *OrderDraftPushRequest) GetPlatformTotal() int64 {
+func (x *OrderDraftPushRequest) GetPlatformTotal() float64 {
 	if x != nil {
 		return x.PlatformTotal
 	}
@@ -2087,7 +2087,7 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"product_id\x18\x04 \x01(\x04R\tproductId\x12\x1a\n" +
 	"\bquantity\x18\x05 \x01(\rR\bquantity\x12\x1d\n" +
 	"\n" +
-	"unit_price\x18\x06 \x01(\x03R\tunitPrice\"\xe4\x06\n" +
+	"unit_price\x18\x06 \x01(\x01R\tunitPrice\"\xe4\x06\n" +
 	"\n" +
 	"OrderDraft\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
@@ -2113,7 +2113,7 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\x18platform_created_at_unix\x18\x13 \x01(\x03R\x15platformCreatedAtUnix\x12E\n" +
 	"\x1fplatform_shipment_deadline_unix\x18\x14 \x01(\x03R\x1cplatformShipmentDeadlineUnix\x12%\n" +
 	"\x0ebuyer_username\x18\x15 \x01(\tR\rbuyerUsername\x12%\n" +
-	"\x0eplatform_total\x18\x16 \x01(\x03R\rplatformTotalJ\x04\b\r\x10\x0eR\rshipping_cost\"\xe6\x02\n" +
+	"\x0eplatform_total\x18\x16 \x01(\x01R\rplatformTotalJ\x04\b\r\x10\x0eR\rshipping_cost\"\xe6\x02\n" +
 	"\x15OrderDraftListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12B\n" +
 	"\x06filter\x18\x02 \x01(\v2*.warehouse.selling.v1.OrderDraftListFilterR\x06filter\x12B\n" +
@@ -2150,16 +2150,16 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\bdraft_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\adraftId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"R\n" +
 	"\x18OrderDraftDetailResponse\x126\n" +
-	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\"\x87\x01\n" +
+	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\"\x90\x01\n" +
 	"\x12OrderDraftLineEdit\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x02 \x01(\x04R\tproductId\x12\x1a\n" +
-	"\bquantity\x18\x03 \x01(\rR\bquantity\x12&\n" +
+	"\bquantity\x18\x03 \x01(\rR\bquantity\x12/\n" +
 	"\n" +
-	"unit_price\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\tunitPrice\"Q\n" +
+	"unit_price\x18\x04 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\tunitPrice\"Q\n" +
 	"\x0fOrderDraftLines\x12>\n" +
-	"\x05lines\x18\x01 \x03(\v2(.warehouse.selling.v1.OrderDraftLineEditR\x05lines\"\xa3\a\n" +
+	"\x05lines\x18\x01 \x03(\v2(.warehouse.selling.v1.OrderDraftLineEditR\x05lines\"\xac\a\n" +
 	"\x17OrderDraftUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\bdraft_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\adraftId\x12\x1c\n" +
@@ -2173,8 +2173,8 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	" \x01(\v2%.warehouse.selling.v1.OrderDraftLinesR\x05items\x12E\n" +
 	"\x18platform_created_at_unix\x18\v \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x05R\x15platformCreatedAtUnix\x88\x01\x01\x12S\n" +
 	"\x1fplatform_shipment_deadline_unix\x18\f \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x06R\x1cplatformShipmentDeadlineUnix\x88\x01\x01\x123\n" +
-	"\x0ebuyer_username\x18\r \x01(\tB\a\xbaH\x04r\x02\x18dH\aR\rbuyerUsername\x88\x01\x01\x123\n" +
-	"\x0eplatform_total\x18\x0e \x01(\x03B\a\xbaH\x04\"\x02(\x00H\bR\rplatformTotal\x88\x01\x01:\v\x92\xb5\x18\a\n" +
+	"\x0ebuyer_username\x18\r \x01(\tB\a\xbaH\x04r\x02\x18dH\aR\rbuyerUsername\x88\x01\x01\x12<\n" +
+	"\x0eplatform_total\x18\x0e \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00H\bR\rplatformTotal\x88\x01\x01:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05B\n" +
 	"\n" +
 	"\b_shop_idB\x0f\n" +
@@ -2195,7 +2195,7 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10dR\bdraftIds:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"4\n" +
 	"\x18OrderDraftDeleteResponse\x12\x18\n" +
-	"\adeleted\x18\x01 \x01(\rR\adeleted\"\xe4\x05\n" +
+	"\adeleted\x18\x01 \x01(\rR\adeleted\"\xed\x05\n" +
 	"\x15OrderDraftPushRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12!\n" +
 	"\x06source\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x06source\x12+\n" +
@@ -2211,8 +2211,8 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\x05items\x18\v \x03(\v2$.warehouse.selling.v1.OrderDraftItemR\x05items\x12@\n" +
 	"\x18platform_created_at_unix\x18\f \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x15platformCreatedAtUnix\x12N\n" +
 	"\x1fplatform_shipment_deadline_unix\x18\r \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x1cplatformShipmentDeadlineUnix\x12.\n" +
-	"\x0ebuyer_username\x18\x0e \x01(\tB\a\xbaH\x04r\x02\x18dR\rbuyerUsername\x12.\n" +
-	"\x0eplatform_total\x18\x0f \x01(\x03B\a\xbaH\x04\"\x02(\x00R\rplatformTotal:\v\x92\xb5\x18\a\n" +
+	"\x0ebuyer_username\x18\x0e \x01(\tB\a\xbaH\x04r\x02\x18dR\rbuyerUsername\x127\n" +
+	"\x0eplatform_total\x18\x0f \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\rplatformTotal:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05J\x04\b\n" +
 	"\x10\vR\rshipping_cost\"j\n" +
 	"\x16OrderDraftPushResponse\x126\n" +

@@ -3,7 +3,6 @@ package inventory_v1
 import (
 	"context"
 	"errors"
-	"math"
 	"time"
 
 	"connectrpc.com/connect"
@@ -72,8 +71,8 @@ func batchQuery(db *gorm.DB) *gorm.DB {
 }
 
 // batchRowToProto maps a batch. Arrived = broken + lost + used + ready: the good units minted plus what the door found
-// wrong; used is what has left since. Every batch carries its price, so the cost is always known. Money is whole rupiah
-// on this contract until it turns `double` (money-is-double-in-the-api-too).
+// wrong; used is what has left since. Every batch carries its price, so the cost is always known. Money is the stored
+// double, unrounded (money-is-double-in-the-api-too, the-backend-never-rounds-money).
 func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 	arrived := r.InitStockCount + r.Broken + r.Lost
 
@@ -86,15 +85,15 @@ func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 		ProductCode:    r.ProductCode,
 		Name:           r.Name,
 		SupplierId:     r.SupplierID,
-		UnitCost:       int64(math.Round(r.PriceUnit)),
+		UnitCost:       r.PriceUnit,
 		CostKnown:      true,
 		Arrived:        arrived,
 		Broken:         r.Broken,
 		Lost:           r.Lost,
 		Ready:          r.Ready,
 		Used:           r.InitStockCount - r.Ready,
-		LineCost:       int64(math.Round(float64(arrived) * r.PriceUnit)),
-		ReadyValue:     int64(math.Round(r.StockValuation)),
+		LineCost:       float64(arrived) * r.PriceUnit,
+		ReadyValue:     r.StockValuation,
 		CreatedAtUnix:  r.CreatedAt.Unix(),
 		AcceptedAtUnix: r.CreatedAt.Unix(),
 		CreatedBy:      r.CreatedBy,

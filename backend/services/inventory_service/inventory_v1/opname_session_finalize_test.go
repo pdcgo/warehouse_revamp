@@ -186,7 +186,7 @@ func TestOpnameSessionFinalize_ATearAndAnExtraClaimsThenMints(t *testing.T) {
 		t.Fatalf("claims %+v, want one of 1 unit by the found transaction", claims)
 	}
 
-	kinds := map[inventory_v1.StockDamageKind]int64{}
+	kinds := map[inventory_v1.StockDamageKind]float64{}
 	for _, d := range f.poster.damaged {
 		kinds[d.kind] += d.amount
 	}
@@ -242,7 +242,7 @@ func TestOpnameSessionFinalize_AShortageWritesARowPerBatchBrokenBeforeLost(t *te
 		t.Fatalf("Rak A %d, Rak B %d, want both empty", a, b)
 	}
 
-	kinds := map[inventory_v1.StockDamageKind]int64{}
+	kinds := map[inventory_v1.StockDamageKind]float64{}
 	for _, d := range f.poster.damaged {
 		kinds[d.kind] += d.amount
 	}

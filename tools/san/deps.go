@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbsession"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 )
 
@@ -25,8 +25,10 @@ type DatabaseDSN string
 
 // NewDatabase opens the chosen Postgres. GORM reads and writes rows; goose owns the schema, and
 // this graph never migrates — `san migrate` drives goose on its own handle, not through GORM.
+//
+// Every session is on the Jakarta calendar (san_dbsession) — the same one the server's are on.
 func NewDatabase(dsn DatabaseDSN) (*gorm.DB, error) {
-	return gorm.Open(postgres.Open(string(dsn)), &gorm.Config{
+	return san_dbsession.OpenGORM(string(dsn), &gorm.Config{
 		TranslateError: true,
 		Logger:         logger.Default.LogMode(logger.Warn),
 	})

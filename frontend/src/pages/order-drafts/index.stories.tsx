@@ -35,7 +35,7 @@ const UNMAPPED = orderDrafts.find((d) => d.unmappedItemCount > 0)!; // 201
 const READY = orderDrafts.find((d) => d.unmappedItemCount === 0)!; // 202
 // Each one field short of READY — the two Promote refusals a summary row can read.
 const NO_DATE = orderDrafts.find((d) => d.unmappedItemCount === 0 && d.platformCreatedAtUnix === 0n)!; // 203
-const NO_PRICE = orderDrafts.find((d) => d.unmappedItemCount === 0 && d.platformTotal === 0n)!; // 204
+const NO_PRICE = orderDrafts.find((d) => d.unmappedItemCount === 0 && d.platformTotal === 0)!; // 204
 
 const Routed = routedPage(
   [

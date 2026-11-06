@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
@@ -123,8 +123,9 @@ func (s *Service) StockAdjust(
 
 			// THE WAREHOUSE OWES THE OWNER for what it broke or lost (business_level §Warehouse 5) — inside the
 			// transaction, keyed by the problem. Turning up again is a found request's approval, which gives it back.
-			amount := int64(math.Round(value))
-			if amount > 0 && owner != warehouseID {
+			// The exact double as the problem valued it — the ledger posts it unrounded (the-backend-never-rounds-money).
+			amount := value
+			if san_money.Positive(amount) && owner != warehouseID {
 				damageErr := s.liability.PostStockDamage(ctx, tx, owner, warehouseID, txID, actor, amount, damageKindOf(reason))
 				if damageErr != nil {
 					return damageErr
@@ -158,8 +159,8 @@ func (s *Service) StockAdjust(
 			if line.Counted < line.Expected {
 				loss = line.Value
 
-				amount := int64(math.Round(line.Value))
-				if amount > 0 && line.OwnerTeamID != warehouseID {
+				amount := line.Value
+				if san_money.Positive(amount) && line.OwnerTeamID != warehouseID {
 					damageErr := s.liability.PostStockDamage(ctx, tx, line.OwnerTeamID, warehouseID,
 						line.TransactionID, actor, amount, StockDamageLost)
 					if damageErr != nil {
@@ -177,8 +178,8 @@ func (s *Service) StockAdjust(
 	}
 
 	// The loss value, written off AFTER the stock left the rack — best-effort, as before (#211).
-	if amount := int64(math.Round(loss)); amount > 0 {
-		_ = s.expense.PostStockLoss(ctx, warehouseID, amount, lossNote)
+	if san_money.Positive(loss) {
+		_ = s.expense.PostStockLoss(ctx, warehouseID, loss, lossNote)
 	}
 
 	return connect.NewResponse(&inventoryv1.StockAdjustResponse{

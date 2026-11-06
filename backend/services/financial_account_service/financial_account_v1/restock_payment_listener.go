@@ -10,6 +10,7 @@ import (
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 )
 
@@ -58,7 +59,7 @@ type paymentLeg struct {
 }
 
 func (s *Service) postRestockCreated(ctx context.Context, event *eventsv1.Event, created *eventsv1.RestockCreated) error {
-	if rupiah(created.GetAmount()) == 0 {
+	if san_money.IsZero(created.GetAmount()) {
 		return s.claimOnly(ctx, event)
 	}
 
@@ -90,17 +91,17 @@ func (s *Service) postRestockUpdated(ctx context.Context, event *eventsv1.Event,
 		// keep their payment_type, nothing posts back). Naming an account on its first edit posts only the
 		// difference into it, never the whole restock again.
 		diff := updated.GetNewAmount() - updated.GetOldAmount()
-		if rupiah(diff) != 0 {
+		if !san_money.IsZero(diff) {
 			legs = append(legs, paymentLeg{accountID: newAccount, change: -diff, description: ref + " edited"})
 		}
 
 	default:
 		// Moved: the old account gets back what it paid, the new one pays the new amount.
-		if rupiah(updated.GetOldAmount()) != 0 {
+		if !san_money.IsZero(updated.GetOldAmount()) {
 			legs = append(legs, paymentLeg{accountID: oldAccount, change: updated.GetOldAmount(), description: ref + " moved to another account"})
 		}
 
-		if rupiah(updated.GetNewAmount()) != 0 {
+		if !san_money.IsZero(updated.GetNewAmount()) {
 			legs = append(legs, paymentLeg{accountID: newAccount, change: -updated.GetNewAmount(), description: ref + " moved from another account"})
 		}
 	}
@@ -121,7 +122,7 @@ func (s *Service) postRestockUpdated(ctx context.Context, event *eventsv1.Event,
 
 func (s *Service) postRestockCancelled(ctx context.Context, event *eventsv1.Event, cancelled *eventsv1.RestockCancelled) error {
 	// The money did not come back: nothing posts (a-restock-names-its-paying-account).
-	if !cancelled.GetMoneyReturned() || rupiah(cancelled.GetAmount()) == 0 {
+	if !cancelled.GetMoneyReturned() || san_money.IsZero(cancelled.GetAmount()) {
 		return s.claimOnly(ctx, event)
 	}
 

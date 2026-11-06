@@ -42,7 +42,7 @@ type fakePicker struct {
 	pickErr   error                     // if set, Pick refuses
 	onPick    func(ctx context.Context) // if set, runs at the start of every Pick — a test cancels the request here
 	txID      uint64                    // the transaction a successful take answers; 0 = 7001
-	costs     map[uint64]int64          // each product's unit cost as the take draws it
+	costs     map[uint64]float64        // each product's unit cost as the take draws it
 	totals    map[uint64]float64        // a line's total, when it is not its cost
 	draw      selling_v1.PickDraw       // a product's draw, verbatim
 	returnErr error                     // if set, Return refuses
@@ -334,4 +334,4 @@ const testPlatformDate int64 = 1_790_000_000
 
 // testPlatformTotal is what the buyer of every test order paid on the storefront — REQUIRED at placement too
 // (platform-total-is-required-at-finalize). A test that asserts on the figure sets its own.
-const testPlatformTotal int64 = 12_000
+const testPlatformTotal float64 = 12_000

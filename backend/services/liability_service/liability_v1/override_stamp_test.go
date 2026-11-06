@@ -172,7 +172,7 @@ func TestOverride_TheTermsLogReadsTheSharedRule(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	set := func(ctx context.Context, limit int64) {
+	set := func(ctx context.Context, limit float64) {
 		_, err := svc.LiabilityTermsSet(ctx, connect.NewRequest(&liabilityv1.LiabilityTermsSetRequest{
 			TeamId: warehouse, CounterpartyId: selling, CreditLimit: &limit, Reason: "test",
 		}))

@@ -3,7 +3,6 @@ package inventory_v1
 import (
 	"context"
 	"errors"
-	"math"
 
 	"connectrpc.com/connect"
 
@@ -79,13 +78,14 @@ func (s *Service) StockCost(
 // value of what stays on the shelf.
 //
 // A product with NO batch here is ABSENT from the map, never present as 0 — "we do not know what this cost" and "this
-// cost nothing" are different facts. Whole rupiah until these reads turn `double` (money-is-double-in-the-api-too).
+// cost nothing" are different facts. The exact double, never rounded (money-is-double-in-the-api-too,
+// the-backend-never-rounds-money).
 func (s *Service) unitCosts(
 	ctx context.Context,
 	warehouseID uint64,
 	productIDs []uint64,
-) (map[uint64]int64, error) {
-	costs := map[uint64]int64{}
+) (map[uint64]float64, error) {
+	costs := map[uint64]float64{}
 
 	// An empty id list would make `IN ?` invalid SQL, and "the cost of nothing" is an empty map rather than an error.
 	if len(productIDs) == 0 {
@@ -119,7 +119,7 @@ func (s *Service) unitCosts(
 	}
 
 	for _, row := range rows {
-		costs[row.ProductID] = int64(math.Round(row.UnitCost))
+		costs[row.ProductID] = row.UnitCost
 	}
 
 	return costs, nil

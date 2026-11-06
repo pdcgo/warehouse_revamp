@@ -15,6 +15,7 @@ import (
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -66,6 +67,8 @@ func (s *Service) OrderReturnAccept(
 ) (*connect.Response[sellingv1.OrderReturnAcceptResponse], error) {
 	teamID := req.Msg.GetTeamId()
 	orderID := req.Msg.GetOrderId()
+	// THE FREEZE POINT of the courier's charge, exact as typed (the-backend-never-rounds-money) — the event, the note
+	// and the balance all read this one figure.
 	charge := req.Msg.GetCourierCharge()
 	chargeNote := strings.TrimSpace(req.Msg.GetCourierChargeNote())
 
@@ -149,7 +152,7 @@ func (s *Service) acceptReturn(
 	ctx context.Context,
 	teamID, orderID uint64,
 	missing []missingLine,
-	charge int64,
+	charge float64,
 	chargeNote string,
 ) (returnAccepted, error) {
 	var accepted returnAccepted
@@ -220,7 +223,7 @@ func (s *Service) acceptReturn(
 
 // publishReturnAccepted announces the committed accept as OrderReturnAccepted. The event id is derived from the ORDER —
 // an order is accepted once — and its moment is the accept's row's.
-func (s *Service) publishReturnAccepted(ctx context.Context, accepted returnAccepted, charge int64, chargeNote string) {
+func (s *Service) publishReturnAccepted(ctx context.Context, accepted returnAccepted, charge float64, chargeNote string) {
 	orderRef := strconv.FormatUint(accepted.order.ID, 10)
 
 	// The note travels only with a charge: without one there is nothing it explains.
@@ -436,12 +439,12 @@ func returnNotClaimed(status string) error {
 }
 
 // courierChargeText is the accept row's note: the courier's charge and what it was for, "" when there is none.
-func courierChargeText(charge int64, note string) string {
+func courierChargeText(charge float64, note string) string {
 	if charge <= 0 {
 		return ""
 	}
 
-	return "Courier charge " + rupiahText(charge) + ": " + note
+	return "Courier charge " + san_money.Text(charge) + ": " + note
 }
 
 // missingText is the short parcel's note, each missing product named with how many: "Missing from the returned parcel:
@@ -458,21 +461,4 @@ func missingText(missing []missingLine) string {
 // lineLabel names an order line as it was frozen: its product code and name.
 func lineLabel(item selling_service_models.OrderItem) string {
 	return strings.TrimSpace(item.ProductCode + " " + item.Name)
-}
-
-// rupiahText is an amount as a person reads it: "Rp 15.000".
-func rupiahText(amount int64) string {
-	digits := strconv.FormatInt(amount, 10)
-
-	var b strings.Builder
-
-	for i, r := range digits {
-		if i > 0 && (len(digits)-i)%3 == 0 {
-			b.WriteByte('.')
-		}
-
-		b.WriteRune(r)
-	}
-
-	return "Rp " + b.String()
 }

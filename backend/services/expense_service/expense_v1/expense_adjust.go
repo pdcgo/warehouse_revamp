@@ -2,12 +2,14 @@ package expense_v1
 
 import (
 	"context"
+	"math"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_service_models"
 )
 
@@ -38,14 +40,17 @@ func (s *Service) ExpenseAdjust(
 
 	// Re-checked rather than trusted from the validation: a caller that skips the interceptor (a test, a command) must
 	// not write a correction of nothing — the database would refuse it, as a less useful error.
-	if msg.GetAmount() == 0 {
+	// THE FREEZE POINT, exact as typed (the-backend-never-rounds-money). NaN/Inf never get this far through the
+	// interceptor (finite); a direct caller's is refused below, as is a correction of nothing (0, or float dust).
+	amount := msg.GetAmount()
+	if san_money.IsZero(amount) || math.IsNaN(amount) || math.IsInf(amount, 0) {
 		return nil, costErr(errZeroCorrection)
 	}
 
 	var (
 		expense    expense_service_models.ExpenseRecord
 		adjustment expense_service_models.ExpenseRecord
-		net        int64
+		net        float64
 	)
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -68,7 +73,7 @@ func (s *Service) ExpenseAdjust(
 			return err
 		}
 
-		net = expense.Amount + adjusted[expense.ID] + msg.GetAmount()
+		net = expense.Amount + adjusted[expense.ID] + amount
 		if net < 0 {
 			return errBelowZero
 		}
@@ -77,7 +82,7 @@ func (s *Service) ExpenseAdjust(
 			TeamID:           expense.TeamID,
 			ShopID:           expense.ShopID,
 			Kind:             expense.Kind,
-			Amount:           msg.GetAmount(),
+			Amount:           amount,
 			OccurredAt:       expense.OccurredAt,
 			Note:             msg.GetNote(),
 			CreatedBy:        actorFrom(ctx),

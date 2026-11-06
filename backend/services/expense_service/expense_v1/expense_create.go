@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_service_models"
 )
 
@@ -56,11 +57,19 @@ func (s *Service) ExpenseCreate(
 		}
 	}
 
+	// THE FREEZE POINT, exact (the-backend-never-rounds-money) — a stock loss arrives from inventory priced at a FIFO
+	// unit cost, a fraction, and is stored as that fraction. One that is not above 0 (or is not a number at all) is
+	// refused: an expense of nothing is not one.
+	amount := req.Msg.GetAmount()
+	if !san_money.Positive(amount) {
+		return nil, costErr(errZeroExpense)
+	}
+
 	row := expense_service_models.ExpenseRecord{
 		TeamID:           req.Msg.GetTeamId(),
 		ShopID:           req.Msg.GetShopId(),
 		Kind:             int32(kind),
-		Amount:           req.Msg.GetAmount(),
+		Amount:           amount,
 		OccurredAt:       occurred,
 		Note:             req.Msg.GetNote(),
 		CreatedBy:        actorFrom(ctx),

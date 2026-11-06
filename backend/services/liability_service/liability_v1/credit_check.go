@@ -13,9 +13,9 @@ type CreditBlock struct {
 	CreditorTeamID uint64
 	// What the debtor currently owes this creditor, as a POSITIVE number. The ledger stores a payable
 	// as negative; a message reading "you owe -52.000.000" is how a sign convention reaches a user.
-	Debt int64
+	Debt float64
 	// The limit that was hit. A limit of 0 is a real value here — it means no credit at all.
-	Limit int64
+	Limit float64
 }
 
 // CheckCredit reports the FIRST creditor refusing `debtorTeamID` any more credit, or nil if every one
@@ -93,7 +93,7 @@ func (s *Service) CheckCredit(
 // refusesCredit is THE RULE, written once: the next order is refused when the current debt has reached the limit.
 // CheckCredit blocks on it and LiabilityCreditByIds reports it as AT_LIMIT, so what the order form shows and what
 // the create refuses are one comparison rather than two copies of it.
-func refusesCredit(debt, limit int64) bool {
+func refusesCredit(debt, limit float64) bool {
 	return debt >= limit
 }
 
@@ -128,7 +128,7 @@ func (s *Service) creditLimits(
 	ctx context.Context,
 	debtorTeamID uint64,
 	creditorIDs []uint64,
-) (map[uint64]int64, error) {
+) (map[uint64]float64, error) {
 	var rows []liability_service_models.LiabilityTerms
 
 	err := s.db.
@@ -143,7 +143,7 @@ func (s *Service) creditLimits(
 		return nil, err
 	}
 
-	limits := make(map[uint64]int64, len(rows))
+	limits := make(map[uint64]float64, len(rows))
 
 	for i := range rows {
 		if rows[i].CreditLimit == nil {
@@ -168,7 +168,7 @@ func (s *Service) debtsToward(
 	ctx context.Context,
 	debtorTeamID uint64,
 	creditorIDs []uint64,
-) (map[uint64]int64, error) {
+) (map[uint64]float64, error) {
 	var rows []liability_service_models.LiabilityBalance
 
 	err := s.db.
@@ -180,7 +180,7 @@ func (s *Service) debtsToward(
 		return nil, err
 	}
 
-	debts := make(map[uint64]int64, len(rows))
+	debts := make(map[uint64]float64, len(rows))
 
 	for i := range rows {
 		// A positive balance means the CREDITOR owes the debtor. That is not debt, and reading it as a

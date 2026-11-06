@@ -55,10 +55,10 @@ type OrderDraft struct {
 	ShippingCode  string
 
 	// WHAT THE BUYER PAID on the platform — the owner's `order_drafts.platform_total` (00022, renamed by 00026;
-	// platform-total-is-required-at-finalize), whole rupiah, as the app pushed it or a person typed it. 0 = not known
+	// platform-total-is-required-at-finalize), a double (00041), as the app pushed it or a person typed it. 0 = not known
 	// yet, which a draft may be; Promote copies it onto the order, where placeOrder refuses a 0. Nothing here can derive
 	// what the buyer paid. A draft carries no shipping money (00027, an-order-records-no-shipping-cost).
-	PlatformTotal int64
+	PlatformTotal float64
 
 	// THE PLATFORM'S TWO DATES (00020), as the app pushed them or a person corrected them. Either may be nil on a draft:
 	// Promote refuses a missing order date (platform-created-at-is-required-at-finalize), never a missing deadline.

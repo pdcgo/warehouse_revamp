@@ -221,7 +221,8 @@ func (ExpenseRowSort) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{2}
 }
 
-// One expense. Money is whole rupiah as int64, like every other money field in this system.
+// One expense. Money is rupiah as a double, stored exact when the expense is recorded or corrected — never rounded
+// (rupiah-is-floating-point, the-backend-never-rounds-money).
 type ExpenseRecord struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -239,10 +240,10 @@ type ExpenseRecord struct {
 	// On an adjustment, the expense's kind, copied — so a kind's total and the daily split take the correction where the
 	// mistake is.
 	Kind ExpenseKind `protobuf:"varint,4,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
-	// Whole rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
+	// Exact rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
 	// let a negative expense silently become revenue. On an ADJUSTMENT signed and never 0 — the correction itself, not a
 	// new total; the expense and its adjustments never sum below 0.
-	Amount int64 `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	Amount float64 `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The date the expense BELONGS TO, as chosen by the person — not the moment the row was inserted.
 	// Payroll is paid on the 5th for the month before, and filing it under the 5th would put it in the
 	// wrong month for every report that matters. RFC3339 date (YYYY-MM-DD). On an adjustment, the expense's day, copied
@@ -258,7 +259,7 @@ type ExpenseRecord struct {
 	// adjustment is fixed by a second one on the same expense.
 	AdjustsExpenseId uint64 `protobuf:"varint,11,opt,name=adjusts_expense_id,json=adjustsExpenseId,proto3" json:"adjusts_expense_id,omitempty"`
 	// On an EXPENSE, what it counts for after every adjustment of it: its amount plus theirs. 0 on an adjustment.
-	NetAmount int64 `protobuf:"varint,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
+	NetAmount float64 `protobuf:"fixed64,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
 	// WHICH ACCOUNT PAID — a financial_account_service id, one of the team's operational accounts
 	// (an-expense-must-name-the-account-that-paid). 0 on an expense made before *Paid from* existed: nothing posts back
 	// for the past. On an ADJUSTMENT, the expense's account, copied and never typed — a correction posts where the
@@ -327,7 +328,7 @@ func (x *ExpenseRecord) GetKind() ExpenseKind {
 	return ExpenseKind_EXPENSE_KIND_UNSPECIFIED
 }
 
-func (x *ExpenseRecord) GetAmount() int64 {
+func (x *ExpenseRecord) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -369,7 +370,7 @@ func (x *ExpenseRecord) GetAdjustsExpenseId() uint64 {
 	return 0
 }
 
-func (x *ExpenseRecord) GetNetAmount() int64 {
+func (x *ExpenseRecord) GetNetAmount() float64 {
 	if x != nil {
 		return x.NetAmount
 	}
@@ -390,8 +391,8 @@ type ExpenseCreateRequest struct {
 	// the validation interceptor (cmd/app_development/expense_poster.go) — so this rule refuses it from every API caller
 	// and leaves inventory's path open. InvalidArgument, in the person's words.
 	Kind ExpenseKind `protobuf:"varint,2,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
-	// Whole rupiah, POSITIVE. Recording an expense of nothing is not an expense.
-	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	// Exact rupiah, POSITIVE. Recording an expense of nothing is not an expense.
+	Amount float64 `protobuf:"fixed64,3,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The date the expense BELONGS TO (YYYY-MM-DD), chosen by the person.
 	OccurredAt string `protobuf:"bytes,4,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
 	// REQUIRED on ADS, refused on every other kind (an-expense-names-a-shop-only-for-ads): only an ads expense names the
@@ -455,7 +456,7 @@ func (x *ExpenseCreateRequest) GetKind() ExpenseKind {
 	return ExpenseKind_EXPENSE_KIND_UNSPECIFIED
 }
 
-func (x *ExpenseCreateRequest) GetAmount() int64 {
+func (x *ExpenseCreateRequest) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -780,11 +781,11 @@ type ExpenseTotals struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The sum over EVERY row the filter matched, not the page — the same split RevenueTotals uses
 	// (#78). A page total is a different number wearing the same label.
-	Total int64 `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	Total float64 `protobuf:"fixed64,1,opt,name=total,proto3" json:"total,omitempty"`
 	// Per kind, so the summary cards need no second call. A kind with no expenses in the period is simply
 	// absent rather than reported as 0 — absent and zero read the same on a card, and building the
 	// absent ones would mean this message knowing the enum's members.
-	ByKind        map[int32]int64 `protobuf:"bytes,2,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	ByKind        map[int32]float64 `protobuf:"bytes,2,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -819,14 +820,14 @@ func (*ExpenseTotals) Descriptor() ([]byte, []int) {
 	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *ExpenseTotals) GetTotal() int64 {
+func (x *ExpenseTotals) GetTotal() float64 {
 	if x != nil {
 		return x.Total
 	}
 	return 0
 }
 
-func (x *ExpenseTotals) GetByKind() map[int32]int64 {
+func (x *ExpenseTotals) GetByKind() map[int32]float64 {
 	if x != nil {
 		return x.ByKind
 	}
@@ -840,7 +841,7 @@ type ExpenseRowItem struct {
 	TeamId        uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	ShopId        uint64                 `protobuf:"varint,3,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
 	Kind          ExpenseKind            `protobuf:"varint,4,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
-	Amount        int64                  `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	Amount        float64                `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
 	OccurredAt    string                 `protobuf:"bytes,6,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
 	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
 	CreatedBy     uint64                 `protobuf:"varint,8,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
@@ -848,7 +849,7 @@ type ExpenseRowItem struct {
 	// As on ExpenseRecord: 0 on an expense, the corrected expense on an adjustment.
 	AdjustsExpenseId uint64 `protobuf:"varint,11,opt,name=adjusts_expense_id,json=adjustsExpenseId,proto3" json:"adjusts_expense_id,omitempty"`
 	// As on ExpenseRecord: an expense's amount after every adjustment of it; 0 on an adjustment.
-	NetAmount int64 `protobuf:"varint,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
+	NetAmount float64 `protobuf:"fixed64,12,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
 	// As on ExpenseRecord: the account that paid; 0 on an expense made before Paid from; an adjustment carries its
 	// expense's.
 	FinanceAccountId uint64 `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
@@ -914,7 +915,7 @@ func (x *ExpenseRowItem) GetKind() ExpenseKind {
 	return ExpenseKind_EXPENSE_KIND_UNSPECIFIED
 }
 
-func (x *ExpenseRowItem) GetAmount() int64 {
+func (x *ExpenseRowItem) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -956,7 +957,7 @@ func (x *ExpenseRowItem) GetAdjustsExpenseId() uint64 {
 	return 0
 }
 
-func (x *ExpenseRowItem) GetNetAmount() int64 {
+func (x *ExpenseRowItem) GetNetAmount() float64 {
 	if x != nil {
 		return x.NetAmount
 	}
@@ -1317,13 +1318,13 @@ type ExpenseDayItem struct {
 	// How many rows the day's number is made of — its expenses AND the adjustments that correct them, each counting on
 	// the corrected expense's day.
 	Entries uint64 `protobuf:"varint,2,opt,name=entries,proto3" json:"entries,omitempty"`
-	// The day's spending, whole rupiah.
-	Total int64 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	// The day's spending, the exact sum.
+	Total float64 `protobuf:"fixed64,3,opt,name=total,proto3" json:"total,omitempty"`
 	// Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
 	// day is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
 	// and zero read identically, and building the empty ones would mean this message knowing the enum's
 	// members.
-	ByKind        map[int32]int64 `protobuf:"bytes,4,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	ByKind        map[int32]float64 `protobuf:"bytes,4,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1372,14 +1373,14 @@ func (x *ExpenseDayItem) GetEntries() uint64 {
 	return 0
 }
 
-func (x *ExpenseDayItem) GetTotal() int64 {
+func (x *ExpenseDayItem) GetTotal() float64 {
 	if x != nil {
 		return x.Total
 	}
 	return 0
 }
 
-func (x *ExpenseDayItem) GetByKind() map[int32]int64 {
+func (x *ExpenseDayItem) GetByKind() map[int32]float64 {
 	if x != nil {
 		return x.ByKind
 	}
@@ -1456,8 +1457,8 @@ type ExpenseAdjustRequest struct {
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// The EXPENSE corrected — never an adjustment.
 	ExpenseId uint64 `protobuf:"varint,2,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
-	// The correction, signed, whole rupiah — not the new total. Never 0: a correction of nothing is not one.
-	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	// The correction, signed, exact rupiah — not the new total. Never 0: a correction of nothing is not one.
+	Amount float64 `protobuf:"fixed64,3,opt,name=amount,proto3" json:"amount,omitempty"`
 	// Why — what was wrong with the expense.
 	Note          string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1508,7 +1509,7 @@ func (x *ExpenseAdjustRequest) GetExpenseId() uint64 {
 	return 0
 }
 
-func (x *ExpenseAdjustRequest) GetAmount() int64 {
+func (x *ExpenseAdjustRequest) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -1586,7 +1587,7 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
 	"\ashop_id\x18\x03 \x01(\x04R\x06shopId\x125\n" +
 	"\x04kind\x18\x04 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindR\x04kind\x12\x16\n" +
-	"\x06amount\x18\x05 \x01(\x03R\x06amount\x12\x1f\n" +
+	"\x06amount\x18\x05 \x01(\x01R\x06amount\x12\x1f\n" +
 	"\voccurred_at\x18\x06 \x01(\tR\n" +
 	"occurredAt\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x12\x1d\n" +
@@ -1596,14 +1597,14 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	" \x01(\x03R\rcreatedAtUnix\x12,\n" +
 	"\x12adjusts_expense_id\x18\v \x01(\x04R\x10adjustsExpenseId\x12\x1d\n" +
 	"\n" +
-	"net_amount\x18\f \x01(\x03R\tnetAmount\x12,\n" +
+	"net_amount\x18\f \x01(\x01R\tnetAmount\x12,\n" +
 	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountIdJ\x04\b\t\x10\n" +
-	"R\x06voided\"\xcc\x03\n" +
+	"R\x06voided\"\xd5\x03\n" +
 	"\x14ExpenseCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\xac\x01\n" +
 	"\x04kind\x18\x02 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindBu\xbaHr\xba\x01h\n" +
-	"+expense_create.kind.stock_loss_is_not_typed\x12.stock loss is recorded by inventory, not typed\x1a\tthis != 5\x82\x01\x04\x10\x01 \x00R\x04kind\x12\x1f\n" +
-	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12D\n" +
+	"+expense_create.kind.stock_loss_is_not_typed\x12.stock loss is recorded by inventory, not typed\x1a\tthis != 5\x82\x01\x04\x10\x01 \x00R\x04kind\x12(\n" +
+	"\x06amount\x18\x03 \x01(\x01B\x10\xbaH\r\x12\v@\x01!\x00\x00\x00\x00\x00\x00\x00\x00R\x06amount\x12D\n" +
 	"\voccurred_at\x18\x04 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
 	"occurredAt\x12\x17\n" +
 	"\ashop_id\x18\x05 \x01(\x04R\x06shopId\x12\x1c\n" +
@@ -1634,17 +1635,17 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"\xaa\x01\n" +
 	"\rExpenseTotals\x12\x14\n" +
-	"\x05total\x18\x01 \x01(\x03R\x05total\x12H\n" +
+	"\x05total\x18\x01 \x01(\x01R\x05total\x12H\n" +
 	"\aby_kind\x18\x02 \x03(\v2/.warehouse.expense.v1.ExpenseTotals.ByKindEntryR\x06byKind\x1a9\n" +
 	"\vByKindEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xa6\x03\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xa6\x03\n" +
 	"\x0eExpenseRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
 	"\ashop_id\x18\x03 \x01(\x04R\x06shopId\x125\n" +
 	"\x04kind\x18\x04 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindR\x04kind\x12\x16\n" +
-	"\x06amount\x18\x05 \x01(\x03R\x06amount\x12\x1f\n" +
+	"\x06amount\x18\x05 \x01(\x01R\x06amount\x12\x1f\n" +
 	"\voccurred_at\x18\x06 \x01(\tR\n" +
 	"occurredAt\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x12\x1d\n" +
@@ -1654,7 +1655,7 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	" \x01(\x03R\rcreatedAtUnix\x12,\n" +
 	"\x12adjusts_expense_id\x18\v \x01(\x04R\x10adjustsExpenseId\x12\x1d\n" +
 	"\n" +
-	"net_amount\x18\f \x01(\x03R\tnetAmount\x12,\n" +
+	"net_amount\x18\f \x01(\x01R\tnetAmount\x12,\n" +
 	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountIdJ\x04\b\t\x10\n" +
 	"R\x06voided\"\xc6\x01\n" +
 	"\x11ExpenseRowMapItem\x12O\n" +
@@ -1683,19 +1684,19 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x0eExpenseDayItem\x12\x12\n" +
 	"\x04date\x18\x01 \x01(\tR\x04date\x12\x18\n" +
 	"\aentries\x18\x02 \x01(\x04R\aentries\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x03R\x05total\x12I\n" +
+	"\x05total\x18\x03 \x01(\x01R\x05total\x12I\n" +
 	"\aby_kind\x18\x04 \x03(\v20.warehouse.expense.v1.ExpenseDayItem.ByKindEntryR\x06byKind\x1a9\n" +
 	"\vByKindEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\x8d\x01\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\x8d\x01\n" +
 	"\x14ExpenseDailyResponse\x128\n" +
 	"\x04days\x18\x01 \x03(\v2$.warehouse.expense.v1.ExpenseDayItemR\x04days\x12;\n" +
-	"\x06totals\x18\x02 \x01(\v2#.warehouse.expense.v1.ExpenseTotalsR\x06totals\"\xaf\x01\n" +
+	"\x06totals\x18\x02 \x01(\v2#.warehouse.expense.v1.ExpenseTotalsR\x06totals\"\xb8\x01\n" +
 	"\x14ExpenseAdjustRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
-	"expense_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\texpenseId\x12\x1f\n" +
-	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x028\x00R\x06amount\x12\x1c\n" +
+	"expense_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\texpenseId\x12(\n" +
+	"\x06amount\x18\x03 \x01(\x01B\x10\xbaH\r\x12\v9\x00\x00\x00\x00\x00\x00\x00\x00@\x01R\x06amount\x12\x1c\n" +
 	"\x04note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"\x9b\x01\n" +

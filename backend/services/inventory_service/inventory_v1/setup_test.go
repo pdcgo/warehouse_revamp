@@ -79,11 +79,11 @@ type recordingExpense struct {
 
 type stockLoss struct {
 	warehouseID uint64
-	amount      int64
+	amount      float64
 	note        string
 }
 
-func (e *recordingExpense) PostStockLoss(_ context.Context, warehouseID uint64, amount int64, note string) error {
+func (e *recordingExpense) PostStockLoss(_ context.Context, warehouseID uint64, amount float64, note string) error {
 	e.posted = append(e.posted, stockLoss{warehouseID: warehouseID, amount: amount, note: note})
 	return nil
 }
@@ -141,7 +141,7 @@ type damagePosting struct {
 	warehouseID uint64
 	movementID  uint64
 	actorID     uint64
-	amount      int64
+	amount      float64
 	kind        inventory_v1.StockDamageKind
 }
 
@@ -158,7 +158,7 @@ func (p *recordingPoster) PostStockDamage(
 	_ context.Context,
 	_ *gorm.DB,
 	ownerTeamID, warehouseID, movementID, actorID uint64,
-	amount int64,
+	amount float64,
 	kind inventory_v1.StockDamageKind,
 ) error {
 	if p.fail != nil {

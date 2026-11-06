@@ -18,20 +18,20 @@ import { LiabilityLedgerTable } from "./components/LiabilityLedgerTable";
 
 // The page's own fixtures — the same rows the liability detail story serves.
 const rows = liabilityEntries.map((e) => create(LiabilityLogSchema, e));
-const receivable = rows.filter((e) => e.amount > 0n);
-const payable = rows.filter((e) => e.amount < 0n);
+const receivable = rows.filter((e) => e.amount > 0);
+const payable = rows.filter((e) => e.amount < 0);
 
 // A lost item that turned up again: the warehouse gives back what it was charged, and says so.
 const found = create(LiabilityLogSchema, {
   id: 599n,
   teamId: 11n,
   counterpartyId: 12n,
-  amount: 450_000n,
+  amount: 450_000,
   sourceType: LiabilitySourceType.FOUND,
   sourceId: 6001n,
   reversal: true,
   groupId: 3n,
-  balanceAfter: 7_920_000n,
+  balanceAfter: 7_920_000,
   createdAtUnix: 1_756_100_000n,
 });
 

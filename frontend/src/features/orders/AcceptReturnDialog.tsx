@@ -83,8 +83,8 @@ export function AcceptReturnDialog({
     setLabels(null);
   }, [open]);
 
-  const amount = charge === "" ? 0n : BigInt(charge);
-  const charged = amount > 0n;
+  const amount = charge === "" ? 0 : Number(charge);
+  const charged = amount > 0;
   const noteMissing = charged && note.trim() === "";
   const busy = accept.isPending;
 

@@ -42,6 +42,12 @@ export interface OrderFilters {
    * storefront (the-date-filter-switches-created-or-platform). Absent = created.
    */
   dateField?: OrderDateField;
+  /**
+   * Only orders whose settlement account never opened — `settlement_opened_at IS NULL`
+   * (a-missing-account-is-found-by-its-opened-at). Absent or false = no filter. ⚠ PROTOTYPE: only the Storybook
+   * preview of the order list sets it until its design is accepted.
+   */
+  settlementNotOpened?: boolean;
 }
 
 export const NO_ORDER_FILTERS: OrderFilters = {
@@ -64,6 +70,7 @@ const filterKey = (f: OrderFilters) => ({
   shippingCode: f.shippingCode ?? "",
   warehouseId: (f.warehouseId ?? 0n).toString(),
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
+  settlementNotOpened: f.settlementNotOpened ?? false,
 });
 
 const filterMsg = (f: OrderFilters) => orderListFilterMsg(f);
@@ -80,6 +87,7 @@ export const orderListFilterMsg = (f: OrderFilters) => ({
   shippingCode: f.shippingCode ?? "",
   warehouseId: f.warehouseId ?? 0n,
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
+  settlementNotOpened: f.settlementNotOpened ?? false,
 });
 
 export function useOrders(args: {

@@ -123,7 +123,7 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
       {
         teamId,
         kind,
-        amount: BigInt(amount),
+        amount: Number(amount),
         occurredAt,
         shopId: isAds ? shopId : 0n,
         note,

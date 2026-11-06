@@ -38,14 +38,14 @@ function lastMoved(order: OrderSettlementPageProps["orders"][number]): string {
   return order.entries.reduce((latest, e) => (e.postedOn > latest ? e.postedOn : latest), "");
 }
 
-const MEASURE: Record<SettlementSortKey, (o: OrderSettlement) => bigint> = {
-  orderId: (o) => o.orderId,
+const MEASURE: Record<SettlementSortKey, (o: OrderSettlement) => number> = {
+  orderId: (o) => Number(o.orderId),
   sold: (o) => o.initialTotal,
   received: (o) => o.lastBalance + o.initialTotal,
   loss: (o) => -o.lastBalance,
 };
 
-const cmp = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
+const cmp = (a: bigint | number, b: bigint | number) => (a < b ? -1 : a > b ? 1 : 0);
 
 // The server's ORDER BY: an unrecorded sale last under a money measure whichever way, the measure in
 // the chosen direction, the order id breaking ties in the same direction.
@@ -53,8 +53,8 @@ function sortLikeTheServer(rows: OrderSettlement[], sort: SettlementSort): Order
   const dir = sort.dir === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => {
     if (sort.by !== "orderId") {
-      const unA = a.initialTotal === 0n;
-      const unB = b.initialTotal === 0n;
+      const unA = a.initialTotal === 0;
+      const unB = b.initialTotal === 0;
       if (unA !== unB) return unA ? 1 : -1;
     }
     return cmp(MEASURE[sort.by](a), MEASURE[sort.by](b)) * dir || cmp(a.orderId, b.orderId) * dir;
@@ -206,7 +206,7 @@ export const TheSummaryIsTheOrderListsCards: Story = {
 
     // The figure the server cannot sum is not on the strip at all — never summed from this page.
     await expect(canvas.queryByTestId("settlement-stat-hidden")).toBeNull();
-    await expect(hiddenCost(noEstimate)).toBe(-62_000n);
+    await expect(hiddenCost(noEstimate)).toBe(-62_000);
   },
 };
 
@@ -393,6 +393,6 @@ export const Empty: Story = {
     // …and so does the pager with its per-page selector, for the same reason (owner: always shown).
     await expect(canvas.getByTestId("pagination-bar")).toBeInTheDocument();
     await expect(canvas.getByTestId("page-size")).toBeInTheDocument();
-    await expect(loss(worked)).toBe(10_000n);
+    await expect(loss(worked)).toBe(10_000);
   },
 };

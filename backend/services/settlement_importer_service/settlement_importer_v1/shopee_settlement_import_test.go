@@ -15,6 +15,7 @@ import (
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	settlement_importerv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement_importer/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_excel_readers"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	settlement_importer_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service/settlement_importer_v1"
 )
@@ -380,5 +381,37 @@ func TestShopeeSettlementImport_FinishesWhenNobodyIsWatching(t *testing.T) {
 
 	if len(w.ledger.posted()) != 3 {
 		t.Fatalf("%d posts, want 3", len(w.ledger.posted()))
+	}
+}
+
+// THE LINE'S CHANGE IS A DOUBLE (settlement_importer 00004): a statement amount carried through the reader's float
+// arithmetic — 99.999,99999, dust below the 4 places money is compared at — counts as WHOLE rupiah and posts, as the
+// reader's own figure: the importer never rounds it (the-backend-never-rounds-money). A REAL fraction is still held
+// (a-fractional-statement-line-is-still-held — a check on the file, not a rounding), and the line keeps the figure it
+// was written with.
+func TestShopeeSettlementImport_AnAmountWithFloatDustPostsAsRead(t *testing.T) {
+	db := san_testdb.DB(t)
+	w := newWorld(t, db)
+	w.orders.byRef["2509AAA"] = []settlement_importer_v1.OrderRef{{OrderID: 501, ShopID: shopeeShop, CreatedByUserID: orderMaker}}
+
+	w.importShopee(t, shopeeShop, shopeeStatement(t,
+		shopeeRow{"2026-09-02 10:00:00", "Penghasilan dari Pesanan", "Penghasilan dari Pesanan #2509AAA", "2509AAA", "Transaksi Masuk", "99999.99999", "Transaksi Selesai", "99999.99999"},
+		shopeeRow{"2026-09-03 09:00:00", "Penarikan Dana", "Penarikan Dana", "-", "Transaksi Keluar", "-50000.00001", "Transaksi Selesai", "49999.99998"},
+		shopeeRow{"2026-09-05 10:00:00", "Penyesuaian", "Penyesuaian", "-", "Transaksi Masuk", "0.5", "Transaksi Selesai", "49999.49998"},
+	))
+
+	posts := w.ledger.posted()
+	if len(posts) != 2 || posts[0].Change != 99_999.99999 || posts[1].Change != -50_000.00001 ||
+		!san_money.Equal(posts[0].Change, 100_000) || !san_money.Equal(posts[1].Change, -50_000) {
+		t.Fatalf("posts = %+v — the dust is whole rupiah, sent as the reader's figure, never rounded", posts)
+	}
+
+	lines := lineRows(t, db, fileRows(t, db)[0].ID)
+	if len(lines) != 3 || lines[0].Change != 99_999.99999 || lines[1].Change != -50_000.00001 {
+		t.Fatalf("lines = %+v — stored as the figure it posted", lines)
+	}
+
+	if lines[2].Outcome != "held" || lines[2].Reason != "fractional_amount" || lines[2].Change != 0 || lines[2].Detail != "0.5" {
+		t.Errorf("the fraction = %+v — held, with 0 stored and the figure kept as written", lines[2])
 	}
 }

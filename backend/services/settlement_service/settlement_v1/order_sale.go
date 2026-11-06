@@ -12,6 +12,7 @@ import (
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 )
 
 // OrderSaleHandler opens and cancels an order's account FROM THE ORDER'S EVENTS
@@ -50,7 +51,8 @@ func (s *Service) OrderSaleHandler() event_source.PushHandler {
 // order cannot reach here with 0 — the skip stays as the guard for orders placed before that, which carry
 // none and must not open an account at 0.
 func (s *Service) openSale(ctx context.Context, placed *eventsv1.OrderPlaced, placedAt time.Time) error {
-	if placed.GetPlatformTotal() <= 0 {
+	// Read exact (the-backend-never-rounds-money): a total that is not above 0 — or only float dust — opens nothing.
+	if !san_money.Positive(placed.GetPlatformTotal()) {
 		return nil
 	}
 

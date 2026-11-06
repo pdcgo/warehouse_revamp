@@ -36,6 +36,7 @@ sequenceDiagram
 | --- | --- |
 | read-only | every tool is listed with `readOnlyHint` — a hint; the interceptor is the enforcement. Each RPC a tool calls is declared `idempotency_level = NO_SIDE_EFFECTS` |
 | `team_id` | omitted = the connection's team. An every-team connection must name one; a one-team connection naming another is refused by the interceptor |
+| money | a JSON **number** of rupiah in every answer — every money field the tools read is a `double` since 2026-11-06 ([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)), so protojson writes `700000`, never the quoted `"700000"` it wrote for an `int64`. Frozen figures (balances, posted amounts, an order's `goods_cost`) are whole; an unfrozen one (a line's unit cost with markup, a fee) may carry a fraction. `list_metrics` states each field's kind; no tool describes money as an integer. Asserted by `TestMCP_AnotherTeamIsRefusedThroughTheTool` |
 | transport | Streamable HTTP, **stateless** with JSON responses — any instance answers, a restart drops nothing |
 | the 401 | carries `WWW-Authenticate: Bearer resource_metadata=…`, which is what starts an agent's OAuth |
 | behind a tunnel | `PUBLIC_URL` names the public address; a non-loopback one turns off the SDK's localhost guard, which otherwise answers 403 to a proxied request |

@@ -86,7 +86,7 @@ function decimal(value: number | null): ReactNode {
   return value === null ? unknown() : value.toLocaleString("id-ID", { maximumFractionDigits: 1 });
 }
 
-function rupiah(value: bigint | null): ReactNode {
+function rupiah(value: number | null): ReactNode {
   return value === null ? unknown() : formatRupiah(value);
 }
 

@@ -283,3 +283,108 @@ test("Transfer: the team balance shows the transfer fee owed to B", async ({ pag
   // A is owed nothing: A paid nothing at its door.
   await expect(page.getByTestId(`liability-row-${state.whA}`)).toHaveCount(0);
 });
+
+// every-side-of-a-transfer-opens-its-label-photo — A ships a second transfer WITH a photo of the label (A's own upload,
+// an order receipt), and every side opens it through WarehouseTransferLabelPhoto: B's floor STAFF, created here with
+// that one role, matching the parcel at its door, and the owning selling team (team 1). A fourth team — a third
+// warehouse root owns — is refused NotFound. Nothing is shared: as the document's owner, B still reads NotFound.
+test("Transfer: every side opens the label photo, a fourth team is refused", async ({ page }) => {
+  const STAFF = `e2etrfstaff${SUFFIX}`;
+  const PASSWORD = "e2e-trf-photo-1";
+
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const requested = await rpc<{ uploadUrl: string; method: string; headers?: Record<string, string>; uploadToken: string }>(
+    page,
+    "document.v1.DocumentService/RequestUpload",
+    {
+      teamId: state.whA,
+      filename: "transfer-label.png",
+      contentType: "image/png",
+      sizeBytes: "70",
+      resourceType: "DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT",
+    },
+  );
+  const put = await page.evaluate(
+    async ([url, method, headers]) => {
+      const png = Uint8Array.from(
+        atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="),
+        (c) => c.charCodeAt(0),
+      );
+      const res = await fetch(url as string, { method: method as string, headers: headers as Record<string, string>, body: png });
+      return res.status;
+    },
+    [requested.uploadUrl, requested.method, requested.headers ?? {}] as const,
+  );
+  expect(put).toBeLessThan(300);
+  const confirmed = await rpc<{ document: { id: string } }>(page, "document.v1.DocumentService/ConfirmUpload", {
+    uploadToken: requested.uploadToken,
+  });
+  const documentId = String(confirmed.document.id);
+
+  // One unit, no cost — it moves no money, so the account and balance checks above stay true.
+  const created = await rpc<{ transfer: { id: string } }>(page, "inventory.v1.WarehouseTransferService/WarehouseTransferCreate", {
+    teamId: "1",
+    fromWarehouseId: state.whA,
+    toWarehouseId: state.whB,
+    lines: [{ productId: state.product, count: "1" }],
+  });
+  const transfer = created.transfer.id;
+  await rpc(page, "inventory.v1.WarehouseTransferService/WarehouseTransferProcess", { teamId: state.whA, transferId: transfer });
+  await rpc(page, "inventory.v1.WarehouseTransferService/WarehouseTransferShip", {
+    teamId: state.whA,
+    transferId: transfer,
+    receipt: `JPH${SUFFIX}`,
+    receiptFile: documentId,
+  });
+
+  const opensFor = async (teamId: string) => {
+    await useTeam(page, teamId);
+    await page.goto(`/inventories/transfer/${transfer}`);
+    const button = page.getByTestId("transfer-detail-label-photo-open");
+    await expect(button).toBeVisible();
+
+    // The link comes from INVENTORY and names A's file. (Headless Chromium's popup never settles, so the answer that
+    // minted the link is what is read, beside the tab opening.)
+    const [answer, popup] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith("/warehouse.inventory.v1.WarehouseTransferService/WarehouseTransferLabelPhoto")),
+      page.waitForEvent("popup"),
+      button.click(),
+    ]);
+    expect(answer.status()).toBe(200);
+    const body = (await answer.json()) as { url: string; expiresAtUnix: string };
+    expect(String(body.url)).toContain("transfer-label.png");
+    expect(Number(body.expiresAtUnix)).toBeGreaterThan(Date.now() / 1000);
+    await popup.close();
+  };
+
+  // The owning selling team.
+  await opensFor("1");
+
+  // A fourth team: a warehouse that is no side of this transfer.
+  const other = await rpc<{ team: { id: string } }>(page, "team.v1.TeamService/TeamCreate", {
+    name: `E2E Transfer C ${SUFFIX}`,
+    teamCode: `TC${SUFFIX}`,
+    type: "TEAM_TYPE_WAREHOUSE",
+    ownerUserId: ROOT_USER_ID,
+  });
+  await expect(
+    rpc(page, "inventory.v1.WarehouseTransferService/WarehouseTransferLabelPhoto", { teamId: other.team.id, transferId: transfer }),
+  ).rejects.toThrow(/404|not_found/);
+
+  // B's floor staff, with that one role.
+  await rpc(page, "user.v1.UserService/CreateUser", {
+    teamId: state.whB,
+    username: STAFF,
+    password: PASSWORD,
+    name: STAFF,
+    role: "ROLE_WAREHOUSE_STAFF",
+  });
+  await login(page, STAFF, PASSWORD);
+  await opensFor(state.whB);
+
+  // Never shared: asked as the document's owner, B reads NotFound.
+  await expect(
+    rpc(page, "document.v1.DocumentService/GetDownloadUrl", { teamId: state.whB, documentId }),
+  ).rejects.toThrow(/404|not_found/);
+});

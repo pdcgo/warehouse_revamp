@@ -1,5 +1,19 @@
 # inventory_service — RPC & event flows
 
+**Money is an unrounded `double` on every read** (2026-11-06, part 2 of
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)).
+The ledgers were already `double precision`; the stock reads stopped rounding them to whole-rupiah `int64` — batch
+detail / list / receipt, the cost layers, the owner's batches, `StockCost`, the owner-stock reads, the product stock
+summary and the rack detail / stock figures carry the stored figure (no `ROUND(…)::bigint` in the SQL), and a screen
+rounds only for display (3 decimals, [a-fraction-of-a-rupiah-shows-three-decimals](../../business/order/context_decision.md#a-fraction-of-a-rupiah-shows-three-decimals)).
+inventory freezes nothing itself: a loss or a breakage hands its unrounded value to liability (`PostStockLoss` /
+`PostStockDamage`) and expense (`STOCK_LOSS`), which store it exact; an order's take returns unrounded line figures and
+selling freezes them exact at placement ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06). The one figure inventory stores frozen is
+`inventory_lost_daily_reports.lost_amount` — `double precision` since `00038` (was `NUMERIC(20,2)`,
+[numeric-money-moves-to-double-too](../../business/order/context_decision.md#numeric-money-moves-to-double-too)),
+the exact sum the lost fold writes. `CostLayerList` groups batches whose prices agree to 4 places (a tolerance key) and
+reads the layer's exact stored price (`MIN(price_unit)`), never the 4-place key.
+
 ## Pub/Sub push receiver — `/event/<sub>/push`
 
 `inventory_service` hears other services' events on **Pub/Sub PUSH** routes — plain HTTP, **not** Connect RPCs — mounted
@@ -431,8 +445,8 @@ it, A processes and ships it, B signs for it and counts it in. The design is
 > **Built on the decided ledgers** — `inventory_v1/warehouse_transfer_*.go`, one file per RPC, the legs in
 > `inventory_mutations/post_transfer.go` (`PostTransferOut`, `PostTransferIn`). It supersedes
 > `InventoryService.StockTransfer`, the instant one-product move, which nothing calls and the cut-over retires.
-> ⚠ Money on the wire is still whole rupiah (`int64`), rounded from the `double` columns, until the cut-over turns the
-> contract `double`.
+> Money on the wire is `double`, rupiah as the `double` columns hold it — unrounded (since 2026-11-06, part 2 of
+> [every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)).
 
 | RPC | Who | From → to | What it does |
 | --- | --- | --- | --- |
@@ -445,6 +459,41 @@ it, A processes and ships it, B signs for it and counts it in. The design is
 | `WarehouseTransferShip` | A | process → shipped | the courier, tracking number and label photo — all optional |
 | `WarehouseTransferArrive` | B | shipped / lost → arrived | signs for the box |
 | `WarehouseTransferAccept` | B | shipped / arrived → accepted | counts the box in — below |
+| `WarehouseTransferLabelPhoto` | any side (+ Root, Administrator) | any | a signed link to A's label photo, for A, B and the owning team — below |
+
+### WarehouseTransferLabelPhoto — every side opens the label photo
+
+The photo A attached at ship (`receipt_file`, A's own upload through ReceiptUpload) is opened by **all three sides**: A,
+B to match the parcel at its door, and the selling team that owns the transfer and paid for the shipping
+([every-side-of-a-transfer-opens-its-label-photo](../../business/inventory/warehouse_transfer_decision.md#every-side-of-a-transfer-opens-its-label-photo)).
+Policy: Root, Administrator, Selling Owner / Admin / CS, Warehouse Owner / Admin / Staff — Detail's roles; `team_id` is
+the scope; `NO_SIDE_EFFECTS`.
+
+```mermaid
+sequenceDiagram
+    participant W as any side's transfer detail
+    participant I as inventory WarehouseTransferLabelPhoto
+    participant D as document_service LabelURL, in-process
+    W->>I: team_id = the reading team, transfer_id
+    I->>I: warehouse_transfers WHERE id AND team_id, from_warehouse_id or to_warehouse_id = team_id
+    alt a fourth team or no such transfer
+        I-->>W: NotFound
+    else receipt_file empty
+        I-->>W: FailedPrecondition - this transfer has no label photo
+    else
+        I->>D: owner = A, the from_warehouse_id, and receipt_file
+        D-->>I: signed url and expiry, or NotFound
+        I-->>W: url, expires_at_unix - NotFound from D reads as no label photo
+    end
+```
+
+The seam is the restock's: inventory's `ReceiptPhotoLinker` (`cmd/app_development/restock_photo_linker.go`), told the
+owner by inventory — here A — never by the browser; it signs only an active `order_receipt` of that owner. No
+`document_shares` row: GetDownloadUrl as B or the seller stays NotFound. All three screens call this RPC
+(`features/warehouseTransfer/TransferDetailCards.tsx` `LabelPhoto`), A included. Code
+`inventory_v1/warehouse_transfer_label_photo.go`; audit
+[WarehouseTransferLabelPhoto.md](../../../audits/services/inventory_service/performances/WarehouseTransferLabelPhoto.md)
+(1 PK lookup); e2e `transfers.spec.ts` *every side opens the label photo, a fourth team is refused*.
 
 ### Lifecycle
 

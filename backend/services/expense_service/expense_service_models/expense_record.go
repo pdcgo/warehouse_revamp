@@ -22,9 +22,9 @@ type ExpenseRecord struct {
 	// get to decide which values are legal (cf. #80).
 	Kind int32
 
-	// Whole rupiah (DB CHECK). Positive on an expense — the kind carries the direction, and a signed amount would let a
+	// Exact rupiah, never rounded (the-backend-never-rounds-money); the sign is a DB CHECK. Positive on an expense — the kind carries the direction, and a signed amount would let a
 	// negative cost silently become revenue. Signed and never 0 on an adjustment: the correction, not a new total.
-	Amount int64
+	Amount float64
 
 	// The date the cost BELONGS TO, as chosen — not the insert time. Payroll paid on the 5th is last
 	// month's cost, and filing it under the 5th puts it in the wrong month.

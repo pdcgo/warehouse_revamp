@@ -104,7 +104,7 @@ func TestRackDetail_SummarisesWhatIsOnTheShelf(t *testing.T) {
 
 	// 10 × 50.000 + 4 × 1.000.
 	if summary.GetTotalValue() != 504000 {
-		t.Fatalf("total value = %d, want 504000", summary.GetTotalValue())
+		t.Fatalf("total value = %v, want 504000", summary.GetTotalValue())
 	}
 
 	// Every unit on the ledgers carries a price, so nothing on the shelf is of unknown cost.

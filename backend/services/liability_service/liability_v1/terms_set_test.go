@@ -13,12 +13,12 @@ import (
 
 // setTerms is the call under test, wrapped so each case reads as the thing it is asserting rather
 // than as request plumbing. `limit` is a POINTER on purpose — nil is the "unlimited" case, and a
-// helper taking an int64 could not express it.
+// helper taking a plain number could not express it.
 func putTerms(
 	t *testing.T,
 	svc *liability_v1.Service,
 	teamID, counterpartyID uint64,
-	limit *int64,
+	limit *float64,
 ) *liabilityv1.LiabilityTerms {
 	t.Helper()
 
@@ -35,7 +35,7 @@ func putTerms(
 	return res.Msg.GetTerms()
 }
 
-func rupiah(v int64) *int64 { return &v }
+func rupiah(v float64) *float64 { return &v }
 
 // THE LIMIT EXISTS ONLY IF SOMEBODY CAN WRITE IT — the test that the write path is real.
 func TestTermsSet_WritesTheLimit(t *testing.T) {
@@ -45,7 +45,7 @@ func TestTermsSet_WritesTheLimit(t *testing.T) {
 	got := putTerms(t, svc, warehouse, selling, rupiah(50_000_000))
 
 	if got.GetCreditLimit() != 50_000_000 {
-		t.Fatalf("credit_limit = %d, want 50000000", got.GetCreditLimit())
+		t.Fatalf("credit_limit = %v, want 50000000", got.GetCreditLimit())
 	}
 }
 
@@ -59,7 +59,7 @@ func TestTermsSet_AbsentLimitIsUnlimitedAndZeroIsNoCredit(t *testing.T) {
 
 	unlimited := putTerms(t, svc, warehouse, selling, nil)
 	if unlimited.CreditLimit != nil {
-		t.Fatalf("an omitted limit stored %d, want ABSENT (unlimited)", unlimited.GetCreditLimit())
+		t.Fatalf("an omitted limit stored %v, want ABSENT (unlimited)", unlimited.GetCreditLimit())
 	}
 
 	frozen := putTerms(t, svc, warehouse, selling, rupiah(0))
@@ -68,7 +68,7 @@ func TestTermsSet_AbsentLimitIsUnlimitedAndZeroIsNoCredit(t *testing.T) {
 	}
 
 	if frozen.GetCreditLimit() != 0 {
-		t.Fatalf("credit_limit = %d, want 0 (no credit at all)", frozen.GetCreditLimit())
+		t.Fatalf("credit_limit = %v, want 0 (no credit at all)", frozen.GetCreditLimit())
 	}
 }
 
@@ -82,7 +82,7 @@ func TestTermsSet_IsAnUpsert(t *testing.T) {
 	got := putTerms(t, svc, warehouse, selling, rupiah(80_000_000))
 
 	if got.GetCreditLimit() != 80_000_000 {
-		t.Fatalf("after re-set: limit = %d — want 80000000", got.GetCreditLimit())
+		t.Fatalf("after re-set: limit = %v — want 80000000", got.GetCreditLimit())
 	}
 
 	var rows int64
@@ -109,7 +109,7 @@ func TestTermsSet_OmittingTheLimitClearsIt(t *testing.T) {
 	got := putTerms(t, svc, warehouse, selling, nil)
 
 	if got.CreditLimit != nil {
-		t.Fatalf("limit = %d after omitting it, want ABSENT — a limit cannot be lifted",
+		t.Fatalf("limit = %v after omitting it, want ABSENT — a limit cannot be lifted",
 			got.GetCreditLimit())
 	}
 }
@@ -127,7 +127,7 @@ func TestTermsSet_CounterpartyZeroWritesTheDefaultRow(t *testing.T) {
 	}
 
 	if got.GetCreditLimit() != 10_000_000 {
-		t.Fatalf("default credit_limit = %d, want 10000000", got.GetCreditLimit())
+		t.Fatalf("default credit_limit = %v, want 10000000", got.GetCreditLimit())
 	}
 }
 

@@ -40,6 +40,10 @@ type Service struct {
 	// Who an imported shop row counts for — the shop's primary CS, asked of the shop before the write
 	// (#settlement-asks-the-shop-for-its-primary-cs). Settlement's one call into another service.
 	shops ShopPrimary
+
+	// Where the order learns its account OPENED — orders.settlement_opened_at, stamped at the first `initial_total`
+	// (a-missing-account-is-found-by-its-opened-at). The order's own row, so the order service writes it.
+	opened OrderOpenedMarker
 }
 
 // compile-time proof Service serves every proto service. One implementation behind four, exactly as
@@ -51,7 +55,13 @@ var (
 	_ settlementv1connect.SettlementAnalyticMaintenanceServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, events event_source.EventSender, broker ReplayBroker, shops ShopPrimary) *Service {
+func NewService(
+	db *gorm.DB,
+	events event_source.EventSender,
+	broker ReplayBroker,
+	shops ShopPrimary,
+	opened OrderOpenedMarker,
+) *Service {
 	// A nil sender would panic on the first post. EmptySender still VALIDATES the event, so a malformed
 	// one is caught with no broker in sight — the right default for tests and a local run.
 	if events == nil {
@@ -68,7 +78,12 @@ func NewService(db *gorm.DB, events event_source.EventSender, broker ReplayBroke
 		shops = noShopPrimary{}
 	}
 
-	return &Service{db: db, events: events, broker: broker, shops: shops}
+	// With no order service to tell, an opening is not stamped — a test's settlement, or a binary with no orders.
+	if opened == nil {
+		opened = noOrderOpened{}
+	}
+
+	return &Service{db: db, events: events, broker: broker, shops: shops, opened: opened}
 }
 
 const dateLayout = "2006-01-02"
@@ -153,12 +168,29 @@ var (
 		errors.New("initial_total_cancel exceeds this order's live sale"),
 	)
 
+	// A change that is not a number cannot be frozen to a rupiah. The wire refuses it (double.finite); this holds an
+	// in-process caller — an order event, the importer — to the same.
+	errChangeNotFinite = connect.NewError(
+		connect.CodeInvalidArgument,
+		errors.New("change must be a finite amount of rupiah"),
+	)
+
 	errUnknownType   = errors.New("unknown settlement_type")
 	errUnknownSource = errors.New("unknown source_type")
 )
 
 // parseDate is deliberate about its error: the proto's regex has already run in production, but a
 // handler called directly (a CLI command, a unit test) has no validation interceptor in front of it.
+// parseJakartaDay is a day as the instant it starts at — Jakarta midnight — for a bound on a TIMESTAMPTZ column.
+func parseJakartaDay(raw string) (time.Time, error) {
+	t, err := time.ParseInLocation(dateLayout, raw, jakarta)
+	if err != nil {
+		return time.Time{}, errBadDate
+	}
+
+	return t, nil
+}
+
 func parseDate(raw string) (time.Time, error) {
 	t, err := time.Parse(dateLayout, raw)
 	if err != nil {

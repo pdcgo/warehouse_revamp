@@ -65,7 +65,8 @@ function scopeOf(teamId: bigint, groupBy: GroupType, items: FilterItem[]): { sco
   return { scope, rows };
 }
 
-const sum = (rows: Row[], pick: (row: Row) => bigint) => rows.reduce((total, row) => total + pick(row), 0n);
+// Doubles since settlement 00010 — sums of the exact posted rows. `0 - x`, never `-x`, so an empty sum is 0 and not −0.
+const sum = (rows: Row[], pick: (row: Row) => number) => rows.reduce((total, row) => total + pick(row), 0);
 
 const changeOf = (row: Row) =>
   row.initialTotal + row.initialTotalCancel + row.fund + row.externalAdsFee + row.marketplaceAdjustment + row.withdrawal;
@@ -73,31 +74,31 @@ const changeOf = (row: Row) =>
 /** Both metrics' figures for one key: its rows in [from, to], and the position at `to`. */
 function figuresOf(rows: Row[], from: string, to: string) {
   const moved = rows.filter((row) => row.date >= from && row.date <= to);
-  const sales = -sum(moved, (row) => row.initialTotal + row.initialTotalCancel);
+  const sales = 0 - sum(moved, (row) => row.initialTotal + row.initialTotalCancel);
   const types = {
     fund: sum(moved, (row) => row.fund),
     externalAdsFee: sum(moved, (row) => row.externalAdsFee),
-    affiliateFee: 0n,
+    affiliateFee: 0,
     marketplaceAdjustment: sum(moved, (row) => row.marketplaceAdjustment),
-    shipmentAdjustment: 0n,
-    logisticReimbursement: 0n,
-    platformReimbursement: 0n,
-    marketplaceProgram: 0n,
-    other: 0n,
-    systemAdjustment: 0n,
+    shipmentAdjustment: 0,
+    logisticReimbursement: 0,
+    platformReimbursement: 0,
+    marketplaceProgram: 0,
+    other: 0,
+    systemAdjustment: 0,
   };
-  const received = Object.values(types).reduce((total, value) => total + value, 0n);
+  const received = Object.values(types).reduce((total, value) => total + value, 0);
   const gap = sales - received;
 
   return {
     settlement: {
       sales,
       received,
-      withdrawn: -sum(moved, (row) => row.withdrawal),
+      withdrawn: 0 - sum(moved, (row) => row.withdrawal),
       gap,
       // From the key's own sums. Unset with no sale to divide by.
-      takeRate: sales > 0n ? Number(gap) / Number(sales) : undefined,
-      positionToDate: -sum(
+      takeRate: sales > 0 ? gap / sales : undefined,
+      positionToDate: 0 - sum(
         rows.filter((row) => row.date <= to),
         changeOf,
       ),

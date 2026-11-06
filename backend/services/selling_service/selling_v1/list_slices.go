@@ -21,11 +21,23 @@ func orderOrderClause(sort *sellingv1.OrderListFilterSort) string {
 			dir = "ASC"
 		}
 
+		// The two money sorts (the-total-sort-is-ours-and-the-platform-total-sorts-apart): TOTAL is ours, `total_cost`,
+		// and PLATFORM TOTAL is what the buyer paid, `platform_total` — each under its own name, never mixed. The column
+		// comes from this closed set, never from input.
 		if s, ok := sort.GetS().(*sellingv1.OrderListFilterSort_Order); ok {
-			if s.Order == sellingv1.OrderRowSort_ORDER_ROW_SORT_TOTAL {
-				col = "total"
+			switch s.Order {
+			case sellingv1.OrderRowSort_ORDER_ROW_SORT_TOTAL:
+				col = "total_cost"
+			case sellingv1.OrderRowSort_ORDER_ROW_SORT_PLATFORM_TOTAL:
+				col = "platform_total"
 			}
 		}
+	}
+
+	// Ties on a figure fall back to the order id, in the same direction, so a page boundary between two equal totals
+	// is stable from one request to the next.
+	if col != "id" {
+		return col + " " + dir + ", id " + dir
 	}
 
 	return col + " " + dir

@@ -90,8 +90,10 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
 | [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
 | [`shop grant-current-cs`](#shop-grant-current-cs) | The shop write gate's rollout: grant every current CS every live shop of their team, through `ShopUserAdd`. `--dry-run` prints it first. Safe to re-run — a second run adds nothing |
+| [`report refold`](#report-refold) | Rebuild ONE shop's or ONE person's day of a settlement report from the log — the repair for a day that is wrong while the log is right; every later day's carry follows. `--dry-run` prints it first. Safe to re-run — a second run changes nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
+| [`pubsub releases`](#pubsub-releases) | List and replay the dead-lettered stock releases (`InventoryTxCancel`, `OrderCancelled`) through inventory's own listener |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
 | [`remote mcp`](#remote-mcp) | Serve this checkout as **MCP tools** — the command for Claude Web and any other client we did not write, behind a tunnel |
 | [`remote refresh-token`](#remote-refresh-token) | Push the stored token's deadline out — same token, so nothing has to be re-pasted |
@@ -104,7 +106,8 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 **`remote`, `pubsub`, `dev run` and `deploy` touch no database**, so they never ask Local/Production and need
 no Postgres running (`dev run` starts the containers, and that is all). `--dsn` is meaningless to all
 four. `pubsub` has its own target flags instead — `--project`, and `--emulator` for the local broker;
-`deploy` has `--project` and `--region`.
+`deploy` has `--project` and `--region`. The one exception is **`pubsub releases replay`** (without `--dry-run`): it
+releases stock in inventory's tables, so it asks Local/Production (or takes `--dsn`) like any command that writes.
 
 **`dev setup` touches only the local one, and never asks.** It refuses to run at all when `--dsn` or
 `DATABASE_URL` is set — see [local only](#dev-setup).
@@ -910,6 +913,162 @@ sequenceDiagram
 | `a suspended or erased account is never made Root` | `add` on a suspended or erased account |
 | `name the account: --username, --email or --user-id` | No selector, or more than one |
 
+## `report refold`
+
+[a-wrong-day-is-refolded-from-the-log](../business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log):
+*"one report, one shop, one date — re-read that day's log rows and rewrite that day's report row."* The repair for a
+report day that is wrong while the log is right — a lost event, a fold that did not run. It **adds no log row**; the broker
+replay stays for range rebuilds. **Run it when a person notices a wrong day** — nothing detects one. Dry first, then for
+real. **Safe to re-run**: a row that already matches the log is left as it is, and a second run shifts nothing.
+
+Two reports ([the-person-report-refolds-too](../business/settlement/context_decision.md#the-person-report-refolds-too)):
+
+```sh
+go run ./tools/san report refold --report settlement-shop-daily --shop 57 --date 2026-10-10 --dry-run   # prompts Local/Production
+go run ./tools/san report refold --report settlement-shop-daily --shop 57 --date 2026-10-10             # the real run
+go run ./tools/san report refold --report settlement-user-daily --user 7 --date 2026-10-10 --dry-run    # one person's day
+go run ./tools/san report refold --report settlement-user-daily --user 7 --date 2026-10-10
+```
+
+| Flag | |
+| --- | --- |
+| `--report` | **`settlement-shop-daily`** — `shop_settlement_daily_reports`, by shop · **`settlement-user-daily`** — `user_settlement_daily_reports`, by person |
+| `--shop` | The shop id — the shop report's scope, and only its |
+| `--user` | The person's user id — the person report's scope, and only its. `--user 0` is the person report's row of "not recorded" |
+| `--date` | The **Jakarta** day, `yyyy-mm-dd` — the log rows' `posted_on` |
+| `--dry-run` | Compute and write everything inside the transaction, print it, **roll it back** |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+It calls settlement_service's own `DayRefold` (`settlement_v1/day_refold.go`) — the fold's lock, its claim table, its
+advisory keys, its later-day shift and its state-row statement — never a hand-written UPDATE.
+
+| a log row of the day | counted? |
+| --- | --- |
+| its event is claimed in `settlement_event_logs` — by the fold, or by the other report's re-fold | ✅ — rebuilt from the log, either way |
+| never claimed, written **over an hour ago** | ✅ — its event was lost. The re-fold **claims** it, so a late redelivery folds nothing |
+| never claimed, written **within the hour** | ❌ — in flight. Left to the fold, which adds it after the re-fold commits |
+
+**Whose rows a person's day holds** — the person the fold counts each row for: an order row's **creator** (stamped on the
+order's account when it opened), an imported shop row's **primary CS** (`user_id`), else the row's **actor**.
+
+The day's row is REPLACED: each type column, `change`, `open_balance` (the scope's last row before the day, as the fold
+opens a day) and `close_balance` = open + change. A day the log holds nothing countable on has no row — a stray one is
+removed. Then **every later day of the scope shifts** its `open_balance` and `close_balance` by exactly how far the day's
+close moved ([a-refold-shifts-the-later-days](../business/settlement/context_decision.md#a-refold-shifts-the-later-days))
+— the fold's own shift for a late event; their movement columns are not touched. The state row (`shop_settlement_reports`
+/ `user_settlement_reports`, with the person's `last_day`) is re-derived from the newest daily row after the shift; a scope
+left with no row at all reads 0 (and no `last_day`).
+
+⚠ **One claim feeds two reports.** A lost row the re-fold claims is in its own report now, and its redelivery folds nothing
+— so the **other** report is still short by it. The output names the other report's scopes and prints the command for
+each; run it. That re-fold counts the claimed row like any other.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san report refold
+  participant SET as settlement_service — DayRefold, one transaction
+  participant DB as Postgres
+  SAN->>SET: report, a shop or a person, day, dry-run
+  SET->>DB: process_event_lock FOR SHARE — a running replay refuses it
+  SET->>DB: the scope's settlement_logs rows of the day, each with its claim, its age, its key in the other report
+  SET->>DB: claim every lost row — before any advisory lock, as the fold claims before its locks
+  SET->>DB: advisory lock settlement-shop or settlement-user per team, in team order — the fold's own key
+  SET->>DB: re-read the claims — what is claimed now counts, the rest is in flight
+  SET->>DB: replace the day's row, or remove it
+  SET->>DB: shift every later day's open and close by how far the day's close moved
+  SET->>DB: re-derive the state row — close, and the person's last_day
+  SET-->>SAN: before and after per team, the shift, counted, claimed, in flight, the other report's short scopes
+  SAN-->>SAN: print it — a dry run rolls the transaction back
+```
+
+### Output
+
+The dev database (2026-11-05), every report day it holds, dry run then the real run — the log and both reports already
+agree, so nothing moves:
+
+```
+$ san report refold --report settlement-shop-daily --shop 3 --date 2026-10-30 --dry-run
+[explicit --dsn] settlement-shop-daily · shop 3 · 2026-10-30 · DRY RUN — nothing written
+  log rows counted 2 · lost and now claimed 0 · in flight, left to the fold 0
+  team 89: unchanged
+    column                           before          after
+    initial_total                   -123333        -123333
+    marketplace_adjustment           100000         100000
+    change                           -23333         -23333
+    close_balance                    -23333         -23333
+$ san report refold --report settlement-shop-daily --shop 3 --date 2026-10-30
+[explicit --dsn] settlement-shop-daily · shop 3 · 2026-10-30 · re-folded
+  log rows counted 2 · lost and now claimed 0 · in flight, left to the fold 0
+  team 89: unchanged
+    (the same table)
+$ san report refold --report settlement-user-daily --user 1 --date 2026-10-30 --dry-run
+[explicit --dsn] settlement-user-daily · user 1 · 2026-10-30 · DRY RUN — nothing written
+  log rows counted 2 · lost and now claimed 0 · in flight, left to the fold 0
+  team 89: unchanged
+    column                           before          after
+    initial_total                   -123333        -123333
+    marketplace_adjustment           100000         100000
+    change                           -23333         -23333
+    close_balance                    -23333         -23333
+$ san report refold --report settlement-user-daily --user 1 --date 2026-10-30
+[explicit --dsn] settlement-user-daily · user 1 · 2026-10-30 · re-folded
+  log rows counted 2 · lost and now claimed 0 · in flight, left to the fold 0
+  team 89: unchanged
+    (the same table)
+$ san report refold --report settlement-user-daily --user 1 --date 2026-10-26 --dry-run
+[explicit --dsn] settlement-user-daily · user 1 · 2026-10-26 · DRY RUN — nothing written
+  log rows counted 1 · lost and now claimed 0 · in flight, left to the fold 0
+  team 91: unchanged
+    column                           before          after
+    initial_total                   -123323        -123323
+    change                          -123323        -123323
+    close_balance                   -123323        -123323
+$ san report refold --report settlement-user-daily --user 1 --date 2026-10-26
+[explicit --dsn] settlement-user-daily · user 1 · 2026-10-26 · re-folded
+  (the same lines)
+```
+
+A repair — a lost row on a shop's day (`tools/san/report_test.go`, the test database), then the person re-fold it names:
+
+```
+[test] settlement-shop-daily · shop 41 · 2026-02-03 · re-folded
+  log rows counted 1 · lost and now claimed 1 · in flight, left to the fold 0
+  team 9: row added
+    column                           before          after
+    fund                                  0          25000  ←
+    change                                0          25000  ←
+    close_balance                         0          25000  ←
+    later days: none — the close moved by +25000
+  ⚠ 1 row(s) were never folded: settlement-user-daily is still short by them — a redelivery no longer folds them. Run:
+      go run ./tools/san report refold --report settlement-user-daily --user 3 --date 2026-02-03
+[test] settlement-user-daily · user 3 · 2026-02-03 · re-folded
+  log rows counted 1 · lost and now claimed 0 · in flight, left to the fold 0
+  team 9: row added
+    ...
+```
+
+| line | means |
+| --- | --- |
+| `later days: N shifted by +X — open/close only, their movement untouched` | the day's close moved by X, and so did every later day's carry |
+| `⚠ the next day, D, opens +X off this day's close — its carry was off before this re-fold; re-fold D to close it` | the next row's carry was already broken (a shift keeps a break). Re-folding D re-opens it from this day's close |
+| `⚠ N row(s) were never folded: <other report> is still short by them … Run:` | the lost rows are claimed now; run each printed command so the other report counts them too |
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `the re-fold rebuilds settlement-shop-daily (by shop) or settlement-user-daily (by user)` | another `--report` |
+| `settlement-shop-daily re-folds one shop: a shop id is required` | the shop report with no `--shop` (or `--shop 0`) |
+| `settlement-user-daily re-folds one person: a user id is required` | the person report with no `--user` |
+| `--report settlement-shop-daily re-folds one shop: give --shop, not --user` (and the person report's mirror) | both scopes, or the other report's flag |
+| `date must be YYYY-MM-DD` | `--date` is not a day |
+| `a replay holds the fold's lock (process_event_lock) — run the re-fold after it` | `AnalyticReplayCompute` is running. Wait for it (the lease is a minute) and run again |
+| `settlement re-fold: log row N has settlement_type "x", which has no report column` | a type the fold cannot file either — the fold dead-letters the same row |
+
+---
+
 ## `pubsub ensure`
 
 ```sh
@@ -986,8 +1145,8 @@ constant beside the handler that serves it):
 | `financial-account-warehouse-transfer-created` | `warehouse-transfer-created` | a warehouse transfer's shipping cost, as `expense`, out of the account it names ([a-transfers-shipping-posts-as-an-expense](../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense)) — push route `/event/financial-account-warehouse-transfer-created/push` |
 | `financial-account-warehouse-transfer-updated` | `warehouse-transfer-updated` | a cost edit's difference, or the whole cost moved to another account ([the-shipping-expense-reaches-the-account-by-event](../business/inventory/warehouse_transfer_decision.md#the-shipping-expense-reaches-the-account-by-event)) — push route `/event/financial-account-warehouse-transfer-updated/push` |
 | `financial-account-warehouse-transfer-cancelled` | `warehouse-transfer-cancelled` | the refund of whatever was posted for the trip — push route `/event/financial-account-warehouse-transfer-cancelled/push` |
-| `inventory-tx-cancel` | `inventory-tx-cancel` | inventory releases the stock take of an order create that failed after it, by the order's key — the backup of the order's direct release ([the-compensation-event-is-inventory-tx-cancel](../business/order/context_decision.md#the-compensation-event-is-inventory-tx-cancel), [the-release-is-direct-then-the-event](../business/order/context_decision.md#the-release-is-direct-then-the-event)). A cancel that meets a stock count is NACKed on purpose and redelivered until the count ends, so its dead-letter holds the ones that outlasted the retry limit — redrive with `pubsub redrive --topic inventory-tx-cancel` ([a-cancel-still-meets-the-count-first](../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) — push route `/event/inventory-tx-cancel/push` |
-| `inventory-order-cancelled` | `order-cancelled` | inventory releases a cancelled order's stock take by the order's key — the cancel no longer releases inside its own flow ([inventory-returns-stock-on-order-cancelled](../business/order/context_decision.md#inventory-returns-stock-on-order-cancelled), [every-release-goes-by-the-key](../business/order/context_decision.md#every-release-goes-by-the-key)). A release that meets a stock count (a cancel that slipped past the order's count check) is NACKed on purpose and redelivered until the count ends; the dead-letter holds the ones that outlasted the retry limit — redrive with `pubsub redrive --topic order-cancelled` once the count is over (every other consumer of the topic claims on `event_id`) ([a-cancel-still-meets-the-count-first](../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) — push route `/event/inventory-order-cancelled/push` |
+| `inventory-tx-cancel` | `inventory-tx-cancel` | inventory releases the stock take of an order create that failed after it, by the order's key — the backup of the order's direct release ([the-compensation-event-is-inventory-tx-cancel](../business/order/context_decision.md#the-compensation-event-is-inventory-tx-cancel), [the-release-is-direct-then-the-event](../business/order/context_decision.md#the-release-is-direct-then-the-event)). A cancel that meets a stock count is NACKed on purpose and redelivered until the count ends, so its dead-letter holds the ones that outlasted the retry limit — give them back with [`pubsub releases replay`](#pubsub-releases) ([a-stuck-release-is-replayed-by-san](../business/order/context_decision.md#a-stuck-release-is-replayed-by-san), [a-cancel-still-meets-the-count-first](../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) — push route `/event/inventory-tx-cancel/push` |
+| `inventory-order-cancelled` | `order-cancelled` | inventory releases a cancelled order's stock take by the order's key — the cancel no longer releases inside its own flow ([inventory-returns-stock-on-order-cancelled](../business/order/context_decision.md#inventory-returns-stock-on-order-cancelled), [every-release-goes-by-the-key](../business/order/context_decision.md#every-release-goes-by-the-key)). A release that meets a stock count (a cancel that slipped past the order's count check) is NACKed on purpose and redelivered until the count ends; the dead-letter holds the ones that outlasted the retry limit — give them back with [`pubsub releases replay`](#pubsub-releases) once the count is over, which leaves the other consumers' dead-letters on the same `.dlq` alone ([a-stuck-release-is-replayed-by-san](../business/order/context_decision.md#a-stuck-release-is-replayed-by-san), [a-cancel-still-meets-the-count-first](../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) — push route `/event/inventory-order-cancelled/push` |
 
 ⚠ **`settlement-fold` and `supplier-fold` are SEEKED by their service's `AnalyticReplayCompute`**, which reaches back as far as the topic's
 31-day retention. The replay reads that reach from Pub/Sub itself, so a topic created by anything other
@@ -1032,6 +1191,121 @@ anything that did get through the first time is a duplicate the second.
 not be decoded never gets there: the receiver records it and acks
 ([reject-never-nacks](../../guidelines/architectures/event_library.md#reject-never-nacks)), so redrive
 is not where you look for those.
+
+## `pubsub releases`
+
+```sh
+# what is stuck — touches nothing
+go run ./tools/san pubsub --project warehouse-dev --emulator releases list
+# what a replay would give back — touches nothing
+go run ./tools/san pubsub --project warehouse-dev --emulator releases replay --dry-run
+# give it back: asks Local/Production (or takes --dsn), then releases through inventory's own listener
+go run ./tools/san pubsub --project warehouse-dev --emulator releases replay
+```
+
+A **stuck release** is a stock release that kept failing and was dead-lettered, so the stock stays taken
+([a-stuck-release-is-replayed-by-san](../business/order/context_decision.md#a-stuck-release-is-replayed-by-san)).
+Inventory gives an order's stock back from two events — `InventoryTxCancel` (a create that failed after its take) and
+`OrderCancelled` (a cancelled order) — and a release that meets a stock count past the retry limit, or a database outage
+longer than the backoff, ends in `inventory-tx-cancel.dlq` / `order-cancelled.dlq`. This command reads both triage
+subscriptions and gives those releases back.
+
+| Flag | |
+| --- | --- |
+| `--project`, `--emulator` | on `pubsub`, as for every `pubsub` command |
+| `--quiet` | stop reading a dead-letter after this long with no NEW message (default `5s`) — Pub/Sub has no "is it empty" |
+| `--dry-run` (`replay`) | print what would be replayed; release nothing, remove nothing, ask for no database |
+| `--dsn` (root) | the database `replay` writes to; without it the Local/Production prompt (`san_dbtarget`) |
+
+**The replay calls INVENTORY'S OWN LISTENER in-process** — `inventory_service.NewInventoryPushHandler`, the handler behind
+`/event/inventory-tx-cancel/push` and `/event/inventory-order-cancelled/push` — so a replay is judged exactly as the
+delivery that failed (HARD RULE 3b: a command calls the handler, never a hand-written UPDATE).
+
+- **Safe to run twice.** The release goes by the order's key, and a key is released once
+  ([a-used-key-is-never-cancelled](../business/order/context_decision.md#a-used-key-is-never-cancelled)): a second replay
+  of the same event finds it released (or claimed) and does nothing.
+- **Acked only on success.** A message leaves the dead-letter only when the release answered nil; one that still fails
+  (the count is still open) is left where it was, said `STILL FAILS`, and the command exits non-zero.
+- **Only inventory's dead-letters.** `order-cancelled` has four subscribers sharing one `.dlq`. Pub/Sub stamps each
+  dead-letter with `CloudPubSubDeadLetterSourceSubscription` (the short id) and `…SubscriptionProject`; a message from
+  settlement, liability or the order fold is **left untouched** for that consumer's own [`pubsub redrive`](#pubsub-redrive).
+  A message with no source named was put there by hand and is taken as a release.
+- **Not `pubsub redrive`**, which republishes to the SOURCE topic and so redelivers an `OrderCancelled` to every
+  subscriber. This command only ever releases stock.
+
+```mermaid
+sequenceDiagram
+    participant P as operator
+    participant S as san pubsub releases
+    participant Q as topic.dlq.triage
+    participant I as inventory listener, in-process
+    P->>S: list, replay --dry-run, or replay
+    S->>Q: pull inventory-tx-cancel.dlq.triage, then order-cancelled.dlq.triage
+    Q-->>S: each dead-letter once, until quiet
+    alt another consumer's dead-letter, or not a release
+        S->>Q: NACK - left
+    else list or dry-run
+        S->>Q: NACK - left, printed
+    else replay
+        S->>I: the event, as the push route hands it
+        alt released, or already released
+            I-->>S: nil
+            S->>Q: ACK - removed
+        else still fails
+            I-->>S: the error
+            S->>Q: NACK - left, said
+        end
+    end
+```
+
+### Output — a real run against the dev emulator (2026-11-05)
+
+Two releases were made to fail for real: an `InventoryTxCancel` and an `OrderCancelled` published while the dev API
+was down, so every push failed and the emulator dead-lettered them after five attempts — the `OrderCancelled` from all
+four of its subscribers.
+
+```text
+$ go run ./tools/san pubsub --project warehouse-dev --emulator releases list
+inventory-tx-cancel.dlq (inventory's inventory-tx-cancel):
+  3  InventoryTxCancel key=dev-stuck-tx-1793865195 team=2 warehouse=3 (inventory-tx-cancel:dev-stuck-tx-1793865195) · 0 attempts
+order-cancelled.dlq (inventory's inventory-order-cancelled):
+  4  dead-lettered by selling-order-fold-cancelled — not a release, left for that consumer's redrive
+  7  dead-lettered by liability-order-cancelled — not a release, left for that consumer's redrive
+  5  dead-lettered by settlement-order-cancelled — not a release, left for that consumer's redrive
+  6  OrderCancelled order=9001 key=dev-stuck-cancel-1793865195 team=2 warehouse=3 (order-cancelled:9001) · 0 attempts
+2 stuck releases, nothing replayed; 3 other messages left
+
+$ go run ./tools/san pubsub --project warehouse-dev --emulator releases replay --dry-run
+…the same two · would replay — 2 stuck releases, nothing replayed; 3 other messages left
+
+$ go run ./tools/san --dsn "<local>" pubsub --project warehouse-dev --emulator releases replay
+replaying into explicit --dsn
+inventory-tx-cancel.dlq (inventory's inventory-tx-cancel):
+INFO InventoryTxCancel handled idempotency_key=dev-stuck-tx-1793865195 team_id=2 transaction_id=0 released=false
+  3  InventoryTxCancel key=dev-stuck-tx-1793865195 … · replayed, removed from the dead-letter
+order-cancelled.dlq (inventory's inventory-order-cancelled):
+  4  dead-lettered by selling-order-fold-cancelled — not a release, left for that consumer's redrive
+  7  dead-lettered by liability-order-cancelled — not a release, left for that consumer's redrive
+INFO OrderCancelled handled order_id=9001 idempotency_key=dev-stuck-cancel-1793865195 team_id=2 transaction_id=0 released=false
+  6  OrderCancelled order=9001 key=dev-stuck-cancel-1793865195 … · replayed, removed from the dead-letter
+  5  dead-lettered by settlement-order-cancelled — not a release, left for that consumer's redrive
+2 stuck releases: 2 replayed, 0 still failing; 3 other messages left
+```
+
+Both keys had no take behind them (`released=false`, `transaction_id=0`), so inventory **claimed** each with none — a
+take arriving late under either key is refused. The same `InventoryTxCancel` put back into the dead-letter by hand and
+replayed again was handled once more as a no-op, and inventory still holds ONE claim per key. (`0 attempts` there is
+from before the count was read off `CloudPubSubDeadLetterSourceDeliveryCount`; the triage subscription itself never
+sets a delivery attempt.)
+
+### Errors you should expect
+
+| Message | Meaning |
+| --- | --- |
+| `reading <topic>.dlq.triage: … Subscription does not exist` | the topics were never ensured on this broker — run [`pubsub ensure`](#pubsub-ensure) (the emulator forgets them on a restart) |
+| `STILL FAILS, left in the dead-letter: … waits for the stock count` | the count holding the rack is still open; finish it, then replay again |
+| `N releases still fail — fix the cause … and run again` | the exit error after a replay that left any failure |
+| `cannot be decoded … — left` | not an event this build reads; nothing is done with it |
 
 ---
 
@@ -1766,6 +2040,8 @@ this document in the same commit.
 | [`backend/cmd/shipment_service`](../../backend/cmd/shipment_service/) | the entry point `deploy` builds for shipment_service — its own Wire, config and chain |
 | [`.gcloudignore`](../../.gcloudignore) | what `deploy` uploads: `go.mod`, `go.sum`, `backend/` |
 | [`pkgs/san_dbtarget`](../../backend/pkgs/san_dbtarget/) | the Local/Production choice, shared with `cmd/tool` |
+| [`pkgs/san_dbsession`](../../backend/pkgs/san_dbsession/) | opens every handle — `NewDatabase` and `openDatabase` — with the session on **Jakarta time** (`TimeZone=Asia/Jakarta`, [the-system-runs-on-jakarta-time](../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)), the server's and the tests' calendar |
+| [`report.go`](../../tools/san/report.go) | `report refold` — the shop and the person report, through settlement_service's `DayRefold` |
 
 **`remote/` is a Connect service that deliberately does NOT live in `backend/services/`.** Every
 warehouse service does, and is mounted into the application mux by `service_api.go` — this one must

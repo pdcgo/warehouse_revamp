@@ -19,10 +19,10 @@ import (
 // The tables this audit writes — the ledger's two.
 var transferFeeTables = []string{"liability_logs", "liability_balances"}
 
-func warehouseOwed(t *testing.T, h *san_race.Harness) int64 {
+func warehouseOwed(t *testing.T, h *san_race.Harness) float64 {
 	t.Helper()
 
-	var balance int64
+	var balance float64
 
 	err := h.DB().Raw(`SELECT COALESCE(SUM(balance), 0) FROM liability_balances WHERE team_id = ? AND counterparty_id = ?`,
 		courierWarehouse, courierSellingTeam).Scan(&balance).Error
@@ -61,7 +61,7 @@ func TestRace_ChargeTransferCourier_OneEventEightDeliveries(t *testing.T) {
 	}
 
 	if got := warehouseOwed(t, h); got != 5_000 {
-		t.Fatalf("the warehouse is owed %d, want 5.000 — one charge", got)
+		t.Fatalf("the warehouse is owed %v, want 5.000 — one charge", got)
 	}
 }
 
@@ -92,6 +92,6 @@ func TestRace_ChargeTransferCourier_BesideARestockOfTheSameNumber(t *testing.T) 
 	}
 
 	if got := warehouseOwed(t, h); got != 30_000 {
-		t.Fatalf("the warehouse is owed %d, want 30.000 — the restock's and the transfer's, once each", got)
+		t.Fatalf("the warehouse is owed %v, want 30.000 — the restock's and the transfer's, once each", got)
 	}
 }

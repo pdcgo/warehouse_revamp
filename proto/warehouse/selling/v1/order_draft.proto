@@ -86,7 +86,7 @@ message OrderDraftItem {
   // either. Refusing a whole push over one unreadable line would lose the other nine — promote is
   // where every requirement lands.
   uint32 quantity = 5;
-  int64 unit_price = 6;
+  double unit_price = 6;
 }
 
 message OrderDraft {
@@ -151,11 +151,11 @@ message OrderDraft {
   // way through. Promote copies it.
   string buyer_username = 21;
 
-  // WHAT THE BUYER PAID on the platform, whole rupiah — the owner's `order_drafts.platform_total`
+  // WHAT THE BUYER PAID on the platform, a double (the-backend-never-rounds-money) — the owner's `order_drafts.platform_total`
   // (platform-total-is-required-at-finalize), the figure settlement opens the order's account on. 0 = not known yet: a
   // draft may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto
-  // Order.platform_total.
-  int64 platform_total = 22;
+  // Order.platform_total, exact as the order is placed — a draft keeps what was read or typed, and so does the order.
+  double platform_total = 22;
 }
 
 message OrderDraftListRequest {
@@ -275,7 +275,10 @@ message OrderDraftLineEdit {
   uint64 product_id = 2;
 
   uint32 quantity = 3;
-  int64 unit_price = 4 [(buf.validate.field).int64.gte = 0];
+  double unit_price = 4 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 }
 
 // The complete desired set of lines. Its own message so it has PRESENCE: an absent `lines` means
@@ -339,7 +342,10 @@ message OrderDraftUpdateRequest {
 
   // What the buyer paid on the platform, as a person read it or typed it (platform-total-is-required-at-finalize).
   // Set = edited and marked touched, so the app's next push leaves it alone; 0 clears it.
-  optional int64 platform_total = 14 [(buf.validate.field).int64.gte = 0];
+  optional double platform_total = 14 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 }
 
 message OrderDraftUpdateResponse {
@@ -465,7 +471,10 @@ message OrderDraftPushRequest {
   // (platform-total-is-required-at-finalize). Renamed from `marketplace_total` on 2026-10-23 with its number kept, so a
   // binary client is unaffected — ⚠ but a JSON client still sending `marketplaceTotal` has it DISCARDED silently, and
   // its drafts reach Promote with 0.
-  int64 platform_total = 15 [(buf.validate.field).int64.gte = 0];
+  double platform_total = 15 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 }
 
 message OrderDraftPushResponse {

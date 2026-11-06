@@ -11,7 +11,7 @@ import { fieldLabel, formatFigure } from "../format";
 function formatTick(kind: FieldKind, value: number): string {
   if (kind === "count" || kind === "ratio") return formatFigure(kind, value);
 
-  return formatRupiahCompact(BigInt(Math.round(value)));
+  return formatRupiahCompact(value);
 }
 
 // THE GRAPH — the table drawn as line charts (the-graph-draws-the-table): its group along the bottom, the value up the

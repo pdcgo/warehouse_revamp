@@ -53,13 +53,13 @@ func TestChargeReturnCourier_PostsTheDebtOnceForTheOrder(t *testing.T) {
 	}
 
 	for _, leg := range legs {
-		want := int64(15_000)
+		want := float64(15_000)
 		if leg.TeamID == courierSellingTeam {
 			want = -15_000
 		}
 
 		if leg.Amount != want || leg.ActorID != 31 {
-			t.Fatalf("leg %+v, want %d by 31 — the selling team owes, the warehouse is owed", leg, want)
+			t.Fatalf("leg %+v, want %v by 31 — the selling team owes, the warehouse is owed", leg, want)
 		}
 	}
 }
@@ -89,7 +89,7 @@ func TestChargeReturnCourier_DoesNotCollideWithARestockOfTheSameNumber(t *testin
 		t.Fatalf("%d return legs, want 2 — the restock of the same number must not have taken its key", len(legs))
 	}
 
-	var balance int64
+	var balance float64
 
 	err = db.Raw(`SELECT balance FROM liability_balances WHERE team_id = ? AND counterparty_id = ?`,
 		courierWarehouse, courierSellingTeam).Scan(&balance).Error
@@ -98,7 +98,7 @@ func TestChargeReturnCourier_DoesNotCollideWithARestockOfTheSameNumber(t *testin
 	}
 
 	if balance != 40_000 {
-		t.Fatalf("the warehouse is owed %d, want 40.000 — both charges", balance)
+		t.Fatalf("the warehouse is owed %v, want 40.000 — both charges", balance)
 	}
 }
 

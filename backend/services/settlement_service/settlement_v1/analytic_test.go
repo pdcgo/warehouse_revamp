@@ -32,7 +32,7 @@ func logPosted(
 	day string,
 	shopID, orderID, orderCreator, actor uint64,
 	settlementType settlementv1.SettlementType,
-	change int64,
+	change float64,
 ) *eventsv1.Event {
 	return &eventsv1.Event{
 		EventId:     fmt.Sprintf("settlement-log:%d", logID),
@@ -85,9 +85,9 @@ func fold(t *testing.T, svc *settlement_v1.Service, events ...*eventsv1.Event) {
 
 type dayWant struct {
 	day    string
-	change int64
-	open   int64
-	close  int64
+	change float64
+	open   float64
+	close  float64
 }
 
 func assertDays(t *testing.T, got []settlement_service_models.SettlementMetricColumns, days []time.Time, want []dayWant) {
@@ -100,7 +100,7 @@ func assertDays(t *testing.T, got []settlement_service_models.SettlementMetricCo
 	for i := range want {
 		if days[i].Format(time.DateOnly) != want[i].day || got[i].Change != want[i].change ||
 			got[i].OpenBalance != want[i].open || got[i].CloseBalance != want[i].close {
-			t.Fatalf("day %d = %s change %d open %d close %d, want %+v",
+			t.Fatalf("day %v = %s change %v open %v close %v, want %+v",
 				i, days[i].Format(time.DateOnly), got[i].Change, got[i].OpenBalance, got[i].CloseBalance, want[i])
 		}
 	}
@@ -159,7 +159,7 @@ var workedExampleDays = []dayWant{
 // would hold on every row while every figure after 01-02 was wrong.
 func TestFold_BuildsTheShopAndUserDaysAndShiftsLaterDays(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -182,14 +182,14 @@ func TestFold_BuildsTheShopAndUserDaysAndShiftsLaterDays(t *testing.T) {
 	}
 
 	if state.CloseBalance != -30_000 {
-		t.Fatalf("shop state close = %d, want −30.000 — the NEWEST day's close", state.CloseBalance)
+		t.Fatalf("shop state close = %v, want −30.000 — the NEWEST day's close", state.CloseBalance)
 	}
 }
 
 // At-least-once delivery: the same event twice is folded once.
 func TestFold_IsIdempotentOnTheEventID(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	first := workedExample()[0]
 	fold(t, svc, first, first)
@@ -202,7 +202,7 @@ func TestFold_IsIdempotentOnTheEventID(t *testing.T) {
 // redelivers it later — and nothing is claimed, so the redelivery is folded.
 func TestFold_RefusesWhileTheEventLockIsHeld(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() WHERE key = 'process_event_lock'`).Error
 	if err != nil {
@@ -230,7 +230,7 @@ func TestFold_RefusesWhileTheEventLockIsHeld(t *testing.T) {
 // it is misconfigured.
 func TestFold_RefusesAnUnparseableLock(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	err := db.Exec(`UPDATE settlement_service_metadata SET value = 'off' WHERE key = 'process_event_lock'`).Error
 	if err != nil {
@@ -246,7 +246,7 @@ func TestFold_RefusesAnUnparseableLock(t *testing.T) {
 // A shop-addressed row has no order and so no creator — the user grain files it under its ACTOR.
 func TestFold_AttributesAShopRowToItsActor(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	fold(t, svc, logPosted(9, "2026-01-05", shop, 0, 0, 9,
 		settlementv1.SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT, -5_000))
@@ -255,7 +255,7 @@ func TestFold_AttributesAShopRowToItsActor(t *testing.T) {
 	assertDays(t, metrics, days, []dayWant{{day: "2026-01-05", change: -5_000, open: 0, close: -5_000}})
 
 	if metrics[0].SystemAdjustment != -5_000 {
-		t.Fatalf("system_adjustment = %d, want −5.000", metrics[0].SystemAdjustment)
+		t.Fatalf("system_adjustment = %v, want −5.000", metrics[0].SystemAdjustment)
 	}
 }
 
@@ -283,7 +283,7 @@ func lastDay(t *testing.T, db *gorm.DB, userID uint64) string {
 // has a row on, and a late event on an older day leaves it where it is.
 func TestFold_RaisesTheUsersLastDayAndAnOlderDayDoesNotLowerIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	fold(t, svc, logPosted(1, "2026-01-05", shop, order, creator, creator,
 		settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL, -sale))
@@ -312,7 +312,7 @@ func TestFold_RaisesTheUsersLastDayAndAnOlderDayDoesNotLowerIt(t *testing.T) {
 func TestAnalyticReplayCompute_RecomputesTheUsersLastDay(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := settlement_v1.NewService(db, nil, broker, nil)
+	svc := settlement_v1.NewService(db, nil, broker, nil, nil)
 
 	const alone uint64 = 77 // only on days the replay cuts
 
@@ -399,7 +399,7 @@ func lockValue(t *testing.T, db *gorm.DB) string {
 func TestAnalyticReplayCompute_ClearsTheRangeAndSeeks(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := settlement_v1.NewService(db, nil, broker, nil)
+	svc := settlement_v1.NewService(db, nil, broker, nil, nil)
 
 	fold(t, svc,
 		logPosted(1, jakartaDay(-1), shop, order, creator, creator,
@@ -440,7 +440,7 @@ func TestAnalyticReplayCompute_ClearsTheRangeAndSeeks(t *testing.T) {
 func TestAnalyticReplayCompute_RefusesOutsideTheRetention(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := settlement_v1.NewService(db, nil, broker, nil)
+	svc := settlement_v1.NewService(db, nil, broker, nil, nil)
 
 	_, err := svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(-30),
@@ -459,7 +459,7 @@ func TestAnalyticReplayCompute_RefusesOutsideTheRetention(t *testing.T) {
 func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.T) {
 	db := san_testdb.DB(t)
 
-	unreadable := settlement_v1.NewService(db, nil, &fakeBroker{err: errors.New("admin API down")}, nil)
+	unreadable := settlement_v1.NewService(db, nil, &fakeBroker{err: errors.New("admin API down")}, nil, nil)
 
 	_, err := unreadable.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(0),
@@ -474,7 +474,7 @@ func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.
 	}
 
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	locked := settlement_v1.NewService(db, nil, broker, nil)
+	locked := settlement_v1.NewService(db, nil, broker, nil, nil)
 
 	_, err = locked.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(0),
@@ -491,7 +491,7 @@ func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.
 // Maintenance prunes dedup rows by when they were RECEIVED, keeping everything inside the retention.
 func TestAnalyticMaintenanceRun_PrunesOnlyExpiredClaims(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	err := db.Exec(`
 INSERT INTO settlement_event_logs (id, raw, day, created_at) VALUES
@@ -516,7 +516,7 @@ INSERT INTO settlement_event_logs (id, raw, day, created_at) VALUES
 // released, so the fold claims and folds the event instead of refusing it until somebody resets the row by hand.
 func TestFold_FoldsPastADeadReplaysLock(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
 
 	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() - interval '2 minutes' WHERE key = 'process_event_lock'`).Error
 	if err != nil {
@@ -540,7 +540,7 @@ func TestFold_FoldsPastADeadReplaysLock(t *testing.T) {
 func TestAnalyticReplayCompute_TakesOverADeadReplaysLock(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := settlement_v1.NewService(db, nil, broker, nil)
+	svc := settlement_v1.NewService(db, nil, broker, nil, nil)
 
 	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() - interval '2 minutes' WHERE key = 'process_event_lock'`).Error
 	if err != nil {

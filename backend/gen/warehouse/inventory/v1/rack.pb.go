@@ -1058,13 +1058,13 @@ type RackSummary struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Every unit on the shelf, across every product. The "count" half of the header tile.
 	TotalOnHand int64 `protobuf:"varint,1,opt,name=total_on_hand,json=totalOnHand,proto3" json:"total_on_hand,omitempty"`
-	// What those units COST, whole rupiah — quantity × the product's unit cost in this warehouse.
+	// What those units COST, exact — quantity × the product's unit cost in this warehouse.
 	//
 	// ⚠ It is a floor, not a valuation. A product with no recorded cost contributes NOTHING rather
 	// than a guess, so a shelf full of never-restocked goods reads as worth little — which is why
 	// `unknown_cost_products` travels beside it rather than being left to be inferred from a low
 	// number.
-	TotalValue int64 `protobuf:"varint,2,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`
+	TotalValue float64 `protobuf:"fixed64,2,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`
 	// How many distinct products on this shelf have no recorded cost. Non-zero means `total_value` is
 	// understated, and by an unknown amount — the screen says so rather than presenting a confident
 	// figure built on a gap.
@@ -1117,7 +1117,7 @@ func (x *RackSummary) GetTotalOnHand() int64 {
 	return 0
 }
 
-func (x *RackSummary) GetTotalValue() int64 {
+func (x *RackSummary) GetTotalValue() float64 {
 	if x != nil {
 		return x.TotalValue
 	}
@@ -1155,11 +1155,11 @@ type RackStockLine struct {
 	// stock has no recorded cost. `cost_known` carries the distinction rather than leaving a screen to
 	// guess it from a zero, because "this shelf holds nothing of value" and "we never recorded what
 	// this cost" are opposite things to tell a manager.
-	UnitCost  int64 `protobuf:"varint,3,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
-	CostKnown bool  `protobuf:"varint,4,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
-	// `on_hand × unit_cost`, whole rupiah — 0 when the cost is unknown. Computed here rather than in the
+	UnitCost  float64 `protobuf:"fixed64,3,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
+	CostKnown bool    `protobuf:"varint,4,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
+	// `on_hand × unit_cost`, exact — 0 when the cost is unknown. Computed here rather than in the
 	// client so the line and the header tile cannot disagree about the same multiplication.
-	Value int64 `protobuf:"varint,5,opt,name=value,proto3" json:"value,omitempty"`
+	Value float64 `protobuf:"fixed64,5,opt,name=value,proto3" json:"value,omitempty"`
 	// A COUNT HOLDS THIS PRODUCT ON THIS RACK (a-count-locks-the-product-on-the-rack): a move or a sample cannot take
 	// it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing). True while an open
 	// opname_session_snapshots row holds it (the-lock-is-the-open-snapshot-row).
@@ -1212,7 +1212,7 @@ func (x *RackStockLine) GetOnHand() int64 {
 	return 0
 }
 
-func (x *RackStockLine) GetUnitCost() int64 {
+func (x *RackStockLine) GetUnitCost() float64 {
 	if x != nil {
 		return x.UnitCost
 	}
@@ -1226,7 +1226,7 @@ func (x *RackStockLine) GetCostKnown() bool {
 	return false
 }
 
-func (x *RackStockLine) GetValue() int64 {
+func (x *RackStockLine) GetValue() float64 {
 	if x != nil {
 		return x.Value
 	}
@@ -2545,7 +2545,7 @@ const file_warehouse_inventory_v1_rack_proto_rawDesc = "" +
 	"\asummary\x18\x02 \x01(\v2#.warehouse.inventory.v1.RackSummaryR\asummary\"\xae\x01\n" +
 	"\vRackSummary\x12\"\n" +
 	"\rtotal_on_hand\x18\x01 \x01(\x03R\vtotalOnHand\x12\x1f\n" +
-	"\vtotal_value\x18\x02 \x01(\x03R\n" +
+	"\vtotal_value\x18\x02 \x01(\x01R\n" +
 	"totalValue\x122\n" +
 	"\x15unknown_cost_products\x18\x03 \x01(\rR\x13unknownCostProducts\x12&\n" +
 	"\x0flast_counted_at\x18\x04 \x01(\tR\rlastCountedAt\"\xb5\x01\n" +
@@ -2553,10 +2553,10 @@ const file_warehouse_inventory_v1_rack_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x17\n" +
 	"\aon_hand\x18\x02 \x01(\x03R\x06onHand\x12\x1b\n" +
-	"\tunit_cost\x18\x03 \x01(\x03R\bunitCost\x12\x1d\n" +
+	"\tunit_cost\x18\x03 \x01(\x01R\bunitCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\x04 \x01(\bR\tcostKnown\x12\x14\n" +
-	"\x05value\x18\x05 \x01(\x03R\x05value\x12\x1a\n" +
+	"\x05value\x18\x05 \x01(\x01R\x05value\x12\x1a\n" +
 	"\bcounting\x18\x06 \x01(\bR\bcounting\"Q\n" +
 	"\x0fRackTransaction\x12%\n" +
 	"\x0etransaction_id\x18\x01 \x01(\x04R\rtransactionId\x12\x17\n" +

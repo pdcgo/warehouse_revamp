@@ -169,12 +169,6 @@ func (s *Service) pickedDay(raw string) (time.Time, error) {
 	return day.Add(12 * time.Hour), nil
 }
 
-// rupiah rounds a figure to whole rupiah as it posts (rupiah-is-floating-point's mitigation), so balances
-// compare exactly.
-func rupiah(v float64) float64 {
-	return math.Round(v)
-}
-
 // validAmount is a positive, finite figure — the proto's `gt: 0, finite: true`, re-checked because a handler
 // called directly (a test, a CLI) has no validation interceptor in front of it.
 func validAmount(v float64) bool {

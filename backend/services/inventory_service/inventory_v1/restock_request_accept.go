@@ -3,8 +3,6 @@ package inventory_v1
 import (
 	"context"
 	"fmt"
-	"math"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -363,28 +362,10 @@ func acceptDescription(rr inventory_service_models.Restock, courierCharge float6
 
 	parts := []string{fmt.Sprintf("%d broken, %d missing", broken, missing)}
 	if courierCharge > 0 {
-		parts = append(parts, "courier's charge "+rupiahText(courierCharge))
+		parts = append(parts, "courier's charge "+san_money.Text(courierCharge))
 	}
 
 	return restockLogAccepted + " — " + strings.Join(parts, "; ")
-}
-
-// rupiahText is an amount as a person reads it, to the rupiah: "Rp 5.000". Rounded for the words only — the amount
-// itself is stored as it was typed.
-func rupiahText(v float64) string {
-	digits := strconv.FormatInt(int64(math.Round(v)), 10)
-
-	var b strings.Builder
-
-	for i, c := range digits {
-		if i > 0 && (len(digits)-i)%3 == 0 {
-			b.WriteByte('.')
-		}
-
-		b.WriteRune(c)
-	}
-
-	return "Rp " + b.String()
 }
 
 // derefID reads an optional id: 0 when the line names none.

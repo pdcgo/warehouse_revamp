@@ -119,6 +119,17 @@ none — the line posts to the SHOP (order 0, no creator, so settlement counts i
 `rows_posted_to_shop` ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)).
 The file page's *Posted to the shop* view lists both reasons, the found ids as links to the orders.
 
+### The line's amount is a double (settlement_importer 00004)
+
+`uploaded_file_lines.change` and `UploadedFileLine.change` are doubles since 2026-11-06
+([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)),
+and `LedgerPost.Change` is passed to settlement's `double change` as it is. A FRACTION IS STILL HELD (`fractional_amount`,
+critique 8 — never rounded here, the line keeps 0 and its figure in `detail`); what changed is the test for one:
+`wholeRupiah` asks `san_money.IsWhole` (whole to 4 places), so float dust from the reader's arithmetic (99.999,99999) is
+whole rupiah and posts instead of being held — as the reader's own figure, never rounded ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06;
+it was sent as the whole number 100.000 before). The IsWhole test is a check on the file
+(a-fractional-statement-line-is-still-held), not a rounding.
+
 ## The reads
 
 | RPC | shape | scope |
