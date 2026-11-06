@@ -23,6 +23,7 @@ import {
   withRefOrders,
 } from "../../../.storybook/duplicateRefStub";
 import { seedReturnMap } from "../../../.storybook/returnConfigurationStub";
+import { closeShopForStory } from "../../../.storybook/shopStub";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderTransactionRefusalReason } from "../../gen/warehouse/inventory/v1/order_transaction_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -1387,6 +1388,33 @@ export const FinalizingADraftDoesNotWarnAboutItself: Story = {
     // The draft read ran, and answered draft 202 itself — which the form dropped.
     await expect(duplicateRefScenario.draftCalls).toEqual([{ shopId: 22n, refs: ["MEL-9002"] }]);
     await expect(screen.queryByTestId("duplicate-ref-dialog")).toBeNull();
+  },
+};
+
+// A WAITING DRAFT ON A CLOSED SHOP (a-close-leaves-the-drafts-waiting, the-close-shop-prototype-is-accepted): draft 202's
+// Melati Store was closed. The form keeps the shop — badged, never cleared — says at the top that the shop is closed and
+// what the ways out are, and holds Create; Delete Draft is still there.
+export const ADraftOnAClosedShopKeepsItAndRefusesCreate: Story = {
+  render: () => <RoutedFromDraft202 />,
+  beforeEach: [asMelatiWithMaps, () => closeShopForStory(22n)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
+      timeout: 4000,
+    });
+    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveValue("Melati Store"), { timeout: 4000 });
+
+    const alert = await canvas.findByTestId("order-create-shop-closed");
+    await expect(alert).toHaveTextContent("Melati Store is closed");
+    await expect(alert).toHaveTextContent(/Delete the draft, or ask the team's owner or admin to reopen the shop/);
+    await expect(canvas.getByTestId("order-create-save")).toBeDisabled();
+    await expect(canvas.getByTestId("order-create-delete-draft")).toBeVisible();
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const kept = await canvas.findByTestId("shop-select-option-22");
+    await waitFor(() => expect(kept).toBeVisible());
+    await expect(within(kept).getByTestId("shop-select-closed-22")).toBeVisible();
   },
 };
 

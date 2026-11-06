@@ -286,6 +286,8 @@ export function ReturnsPage() {
             disabled until one is picked. */}
         <Box maxW="52" w="full">
           <ShopSelect
+            // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+            asFilter
             teamId={teamId}
             value={shopId > 0n ? shopId : undefined}
             disabled={teamId === 0n}

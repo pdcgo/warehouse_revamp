@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, shops, teams, users } from "../../../.storybook/fixtures";
 import { asAdminTeam, orderExportScenario, orderStatScenario } from "../../../.storybook/sessionScenario";
+import { closeShopForStory } from "../../../.storybook/shopStub";
 import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
 
@@ -154,6 +155,42 @@ export const TheShopFilterIsOfferedAndNarrowsTheTable: Story = {
     for (const o of onThatShop) {
       await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
     }
+  },
+};
+
+// A CLOSED SHOP STAYS A FILTER (report-filters-offer-closed-shops): Melati Store, closed, is offered after the open
+// shops, badged Closed — picked, its orders are the table, and the field keeps the badge.
+export const TheShopFilterOffersAClosedShopLastBadged: Story = {
+  beforeEach: () => {
+    closeShopForStory(shops[1]!.id);
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const shop = shops[1]!; // Melati Store — orders 102, 105, 108
+    const onThatShop = OWN.filter((o) => o.shopId === shop.id);
+    const elsewhere = OWN.find((o) => o.shopId !== shop.id)!;
+
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("shop-select"));
+    const option = await controls.findByTestId(`shop-select-option-${shop.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(within(option).getByTestId(`shop-select-closed-${shop.id}`)).toHaveTextContent("Closed");
+    // LAST — after every open shop.
+    const listed = within(option.closest('[role="listbox"]') as HTMLElement)
+      .getAllByRole("option")
+      .map((o) => o.getAttribute("data-testid"));
+    await expect(listed.length).toBeGreaterThan(1);
+    await expect(listed[listed.length - 1]).toBe(`shop-select-option-${shop.id}`);
+
+    await userEvent.click(option);
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${elsewhere.id}`)).toBeNull());
+    for (const o of onThatShop) {
+      await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
+    }
+    await expect(controls.getByTestId("shop-select")).toHaveValue(shop.name);
+    await expect(controls.getByTestId("shop-select-value-closed")).toBeVisible();
   },
 };
 

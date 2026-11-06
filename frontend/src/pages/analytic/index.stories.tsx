@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
+import { closeShopForStory } from "../../../.storybook/shopStub";
 import { METRICS, catalogueMetrics, metricById, tableGroups, TABLE_GROUPS } from "../../features/analytic/catalogue";
 import { AnalyticPage } from "./index";
 
@@ -311,6 +312,50 @@ export const AddingStockLostRemovesTheShopFilter: Story = {
     const toast = await screen.findByText("Shop filter removed");
     await waitFor(() => expect(toast).toBeVisible());
     await expect(canvas.getByTestId("analytic-chip-metrics-inventory-lost")).toBeVisible();
+  },
+};
+
+// A CLOSED SHOP STAYS A FILTER (report-filters-offer-closed-shops): Melati Store (22), closed, is offered after the
+// team's open shops, badged Closed — picked, it is the report's `shop=` and the field keeps the badge, so a closed
+// shop's history stays one pick away.
+const OrdersByShopProbed = routedPage(
+  [
+    {
+      path: "/analytic",
+      element: (
+        <>
+          <AnalyticPage />
+          <LocationProbe />
+        </>
+      ),
+    },
+  ],
+  `/analytic?g=shop&m=${CREATED}`,
+);
+
+export const TheShopFilterOffersAClosedShopLastBadged: Story = {
+  beforeEach: () => {
+    closeShopForStory(22n);
+  },
+  render: () => <OrdersByShopProbed />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const field = canvas.getByTestId("analytic-filter-shop");
+
+    await userEvent.click(within(field).getByTestId("shop-select"));
+    const option = await within(field).findByTestId("shop-select-option-22");
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(within(option).getByTestId("shop-select-closed-22")).toHaveTextContent("Closed");
+    const listed = within(option.closest('[role="listbox"]') as HTMLElement)
+      .getAllByRole("option")
+      .map((o) => o.getAttribute("data-testid"));
+    await expect(listed.length).toBeGreaterThan(1);
+    await expect(listed[listed.length - 1]).toBe("shop-select-option-22");
+
+    await userEvent.click(option);
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("shop=22"));
+    await expect(within(field).getByTestId("shop-select")).toHaveValue("Melati Store");
+    await expect(within(field).getByTestId("shop-select-value-closed")).toBeVisible();
   },
 };
 

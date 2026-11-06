@@ -1009,15 +1009,15 @@ sequenceDiagram
     participant DB as shops, shop_users
     participant R as user_service's role resolver
     C->>S: team_id, shop_id, user_id — under the caller's token
-    S->>DB: a shop of this team — a deleted one included?
+    S->>DB: a shop of this team — open or closed
     alt none — another team's, or never existed
         S-->>C: NotFound
-    else found — open, or deleted and flagged
+    else found — open, or closed and flagged
         S->>DB: the primary grant, and the user's own grant — one read
         opt the user holds no grant
             S->>R: the user's role in the team, and in the root team — cached
         end
-        S-->>C: the shop with deleted, primary_user_id, is_have_access
+        S-->>C: the shop with status, closed_at_unix, primary_user_id, is_have_access
     end
 ```
 
@@ -1026,7 +1026,7 @@ sequenceDiagram
 | `is_have_access` | granted the shop, or the team's owner or admin, or root or admin ([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). A grant answers it without asking for a role |
 | `primary_user_id` | the grant flagged `is_primary` — 0 = none |
 | the roles | `RoleReader`, an interface selling owns; the composition root answers it with the access interceptor's resolver, so it is the same cached lookup every request pays for |
-| a deleted shop | 🔄 *(2026-11-05)* **answered**, `shop.deleted = true` — each caller decides ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)). The settlement importer and settlement's primary-CS lookup accept it, so a closed shop's last statements import; financial_account's `ShopOfTeam` adapter (`cmd/app_development/financial_account_deps.go`) refuses it as `NotFound`, as before — a new account link is not a payout; the order writes refuse it (below). Until the close is built, a closed shop is a deleted one |
+| a closed shop | **answered**, `shop.status = SHOP_STATUS_CLOSED` with its `closed_at_unix` — each caller decides ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)). The settlement importer and settlement's primary-CS lookup accept it, so a closed shop's last statements import; financial_account's `ShopOfTeam` adapter (`cmd/app_development/financial_account_deps.go`) refuses it as `NotFound` — no new account link ([a-closed-shop-takes-no-new-account-link](../../business/shop/context_decision.md#a-closed-shop-takes-no-new-account-link)); the order writes refuse it (below). *(2026-11-06: `status` replaced `deleted`, selling `00043`)* |
 | in-process | the body is `shopAccess` (`selling_v1/shop_write_gate.go`) — the same answer this service's own order writes read, with no RPC hop |
 
 ### The write gate on new selling — `refuseShopWrite` (2026-11-05)
@@ -1040,7 +1040,7 @@ caller is the request's identity; a call with none holds no grant and no role, s
 flowchart TD
   W["OrderCreate, a draft's Promote, OrderDraftPush with a shop, OrderDraftUpdate setting a shop"] --> A["shopAccess - the shop, the caller's grant, the role if no grant"]
   A -->|"another team's, or none"| NF["NotFound - shop not found"]
-  A -->|"deleted - closed"| FP["FailedPrecondition - NAME: the shop is closed"]
+  A -->|"closed"| FP["FailedPrecondition - NAME: the shop is closed"]
   A -->|"no grant, not owner or admin, not root or admin"| PD["PermissionDenied - You have no access to NAME"]
   A -->|"granted, or a manager"| OK["the write goes on - the take, the row"]
 ```
@@ -1048,22 +1048,56 @@ flowchart TD
 | | |
 | --- | --- |
 | refused | `PermissionDenied`, *"You have no access to <shop> — ask the team's owner or admin for it"* — the importer's words · a closed shop `FailedPrecondition`, *"<shop>: the shop is closed — it takes no new orders"* ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)) |
-| not gated | reads (`ShopList`, `OrderList`, reports) · a draft push with no shop yet · an edit that leaves or clears the shop · the order moves and the order imports (`OrderStatusChange`, `ShopeeOrderImport`, `TiktokOrderImport`) — not in the decision's list, an open question |
+| not gated | reads (`ShopList`, `OrderList`, reports) · a draft push with no shop yet · an edit that leaves or clears the shop · the order moves and the order imports (`OrderStatusChange`, `ShopeeOrderImport`, `TiktokOrderImport`) — a closed shop's placed orders run to their end ([order-moves-stay-team-wide](../../business/shop/context_decision.md#order-moves-stay-team-wide)) |
 | the picker | `ShopList` `writable` (below) — the order form's `ShopSelect` (the draft page is the same form) and the statement import dialog ask it |
 | cost | 2 indexed reads (the shop by PK, `shop_users` by `(shop_id, user_id)`) + the cached role; `OrderCreate`'s whole create is 8 queries ≈3.2 ms (`TestPerf_OrderCreateKeyLookup`), was 7 |
-| concurrency | no lock — a revoke or a close landing between the gate and the write lets that one write through, serializable as *write, then revoke* ([lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |
-| tests | `shop_write_gate_test.go` — `TestOrderCreate_NeedsAGrantOrAManager` · `TestOrderCreate_AClosedShopOrAnotherTeamsIsRefused` · `TestOrderDraftPush_NeedsAGrantOrAManager` · `TestOrderDraftUpdate_SettingTheShopNeedsAGrantOrAManager` · `TestShopList_WritableIsTheCallersShops`; `shop_access_check_test.go` `TestShopAccessCheck_ADeletedShopIsAnsweredFlagged`; e2e `writes_need_a_shop_grant.spec.ts` |
+| concurrency | the gate itself takes no lock — a revoke landing between it and the write lets that one write through, serializable as *write, then revoke*. A **close** cannot: `placeOrder` re-reads the shop `FOR SHARE` inside its transaction (`refuseClosedShopInTx`), which ShopClose's `FOR NO KEY UPDATE` waits on — the order commits before the close, or reads it closed and is refused, its take returned (`TestRace_ShopClose_OrderCreate`; [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |
+| tests | `shop_write_gate_test.go` — `TestOrderCreate_NeedsAGrantOrAManager` · `TestOrderCreate_AClosedShopOrAnotherTeamsIsRefused` · `TestOrderCreate_AShopClosedDuringTheTakeIsRefused` · `TestOrderDraftPush_NeedsAGrantOrAManager` · `TestOrderDraftUpdate_SettingTheShopNeedsAGrantOrAManager` · `TestShopList_WritableIsTheCallersShops`; `shop_access_check_test.go` (a closed shop answered flagged); e2e `writes_need_a_shop_grant.spec.ts`, `the_closed_shop.spec.ts` |
+
+## A shop is closed, never deleted — `ShopClose` and `ShopReopen` (2026-11-06)
+
+There is no delete: `ShopDelete` is gone, and a shop made by mistake is closed too
+([a-shop-is-closed-never-deleted](../../business/shop/context_decision.md#a-shop-is-closed-never-deleted)). `shops.status`
+(`open` | `closed`) and `closed_at` replaced `deleted` (selling `00043`, which filled every deleted shop in as closed at its
+`updated_at`). Both RPCs are the team's owner or admin, or root or admin; both answer the shop as it now stands, with its
+primary CS.
+
+```mermaid
+flowchart TD
+  C["ShopClose"] --> L1["lockShopRow - the shop FOR NO KEY UPDATE"]
+  L1 -->|"another team's, or none"| NF1["NotFound"]
+  L1 -->|"already closed"| I1["answered as it is - closed_at untouched"]
+  L1 -->|"open"| U1["UPDATE status closed, closed_at now"]
+  R["ShopReopen"] --> L2["lockShopRow - the shop FOR NO KEY UPDATE"]
+  L2 -->|"another team's, or none"| NF2["NotFound"]
+  L2 -->|"already open"| I2["answered as it is"]
+  L2 -->|"closed"| H["an OPEN shop of the team with its code?"]
+  H -->|"yes"| FP["FailedPrecondition - NAME cannot reopen: the open shop HOLDER holds the code CODE"]
+  H -->|"no"| U2["UPDATE status open, closed_at NULL"]
+  U2 -->|"one took the code in the same instant - the partial unique index"| FP2["FailedPrecondition - by the code"]
+```
+
+| | a closed shop |
+| --- | --- |
+| refused | a new order (`OrderCreate`, a draft's Promote), a draft pushed onto it or edited to it — *"<shop>: the shop is closed — it takes no new orders"* ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)) · `ShopUpdate` — FailedPrecondition, *"the shop is closed — reopen the shop first"* ([a-closed-shop-locks-all-but-its-grants](../../business/shop/context_decision.md#a-closed-shop-locks-all-but-its-grants)) · a new withdrawal-account link (`ShopOfTeam` → NotFound, [a-closed-shop-takes-no-new-account-link](../../business/shop/context_decision.md#a-closed-shop-takes-no-new-account-link)) |
+| still served | `ShopDetail`, `ShopAccessCheck` (flagged) · the grants and the primary CS (`ShopUserAdd`/`Remove`/`SetPrimary`) · its statements (the settlement importer) · its placed orders' moves and the order imports · its drafts, which stay listed and wait — after a reopen they promote again ([a-close-leaves-the-drafts-waiting](../../business/shop/context_decision.md#a-close-leaves-the-drafts-waiting)) |
+| the code | unique among OPEN shops only — `shops_team_code_open_unique (team_id, shop_code) WHERE status = 'open'` — so the close frees it and `ShopCreate` may reuse it; the reopen is refused while an open shop holds it, naming that shop ([a-shop-code-is-unique-among-open-shops](../../business/shop/context_decision.md#a-shop-code-is-unique-among-open-shops)). The `00043` fill renames nothing: a deleted shop whose code was reused reopens only after one is renamed |
+| idempotent | a second close keeps the first `closed_at`; a reopen of an open shop changes nothing — two managers at once is one close (`TestRace_ShopClose_SameShopAtOnce`) |
+| concurrency | the row lock queues a close with an edit, a reopen and a grant write on the same shop; an order being placed holds the row `FOR SHARE` from its in-transaction re-check, so it commits before the close or is refused after it (`TestRace_ShopClose_OrderCreate`, mutation-checked). Two closed shops of one code reopened at once: exactly one wins (`TestRace_ShopReopen_TwoShopsOneCode`). Safe — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
+| cost | ShopClose 4 statements, ≈1.1 ms median; ShopReopen 5 (the holder by `shops_team_code_open_unique`), ≈1.2 ms — every read by index (`TestPerf_ShopClose`, `TestPerf_ShopReopen`, `-tags perfaudit`) — fast |
+| tests | `shop_close_test.go`, `shop_reopen_test.go` (roles, idempotency, NotFound, the code freed and the clash naming its holder, drafts waiting then promoting) · `shop_update_test.go` `TestShopUpdate_AClosedShopIsRefused` · `shop_user_test.go` (grants editable on a closed shop) · `shop_detail_test.go` · `shop_list_test.go` (status) · `shop_status_migration_test.go` (the `00043` fill) · `shop_close_race_test.go` (`-tags raceaudit`) · e2e `shops.spec.ts`, `the_closed_shop.spec.ts` |
 
 ## The shop list's filters — `ShopList` (#16)
 
-`ShopListFilter` carries `q`, `marketplace`, `primary_user_id` and `no_primary` (2026-11-04); each narrows the whole set
-on the server, so the count and the pages agree with the rows. The primary is a flag on a grant
+`ShopListFilter` carries `q`, `marketplace`, `primary_user_id` and `no_primary` (2026-11-04), and `status`
+(2026-11-06); each narrows the whole set on the server, so the count and the pages agree with the rows. The primary is a flag on a grant
 ([the-primary-cs-is-a-flag-on-a-grant](../../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)), never a
 column of `shops`, so the two CS filters ask `shop_users` (by `shop_users_one_primary_idx`). A person and *nobody* at once
 is refused, InvalidArgument. Perf: 3 queries, ≤ 4.3 ms median over 500 shops a team (`TestPerf_ShopListFilters`) — fast.
 
 | filter | WHERE |
 | --- | --- |
+| `status` *(2026-11-06)* | UNSPECIFIED and `OPEN` → `status = 'open'` — **the default**, so every picker and the list read open shops unless they ask · `CLOSED` → `status = 'closed'` · `ALL` → none ([a-shop-is-closed-never-deleted](../../business/shop/context_decision.md#a-shop-is-closed-never-deleted)). By `shops_team_status_idx (team_id, status)`; 3 queries, ≤ 2.2 ms median for closed or all over 500 shops (one in five closed) — fast |
 | `marketplace` ≠ UNSPECIFIED | `marketplace = <text>` |
 | `primary_user_id` > 0 | `id IN (SELECT shop_id FROM shop_users WHERE is_primary AND user_id = ?)` |
 | `no_primary` | `NOT EXISTS (SELECT 1 FROM shop_users WHERE shop_id = shops.id AND is_primary)` |
@@ -1276,7 +1310,7 @@ sequenceDiagram
   participant rd as order_import_readers
   participant mv as moveOrders
   fe->>imp: team_id, shop_id, file_content
-  imp->>imp: the shop - this team's, not deleted, on this platform
+  imp->>imp: the shop - this team's, open or closed, on this platform
   imp-->>fe: ERROR and end, when it is not
   imp->>rd: the file
   rd-->>imp: one order per ref, the platform's words and what they mean

@@ -19,19 +19,30 @@ import (
 
 // ShopList's #16 filters — marketplace, primary CS, no primary CS — and the pickers' `writable` (a CS's grants), over 20 teams of 500 shops (10 000), each shop
 // granted to three people and two of every three with a primary. A team runs tens of shops; 500 is the ceiling probe.
+// One shop in five is CLOSED, so the status filter (a-shop-is-closed-never-deleted) — open by default, closed, all — is
+// measured on a team whose closed shops are a real share of its rows (shops_team_status_idx).
 func TestPerf_ShopListFilters(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 
 	markets := []string{"shopee", "tokopedia", "lazada", "tiktok"}
 	shops := make([]selling_service_models.Shop, 0, 10_000)
+	closedAt := time.Now()
 
 	for team := range 20 {
 		for i := range 500 {
 			code := "T" + strconv.Itoa(team) + "-" + strconv.Itoa(i)
-			shops = append(shops, selling_service_models.Shop{
+			shop := selling_service_models.Shop{
 				TeamID: uint64(2 + team), Name: "Toko " + code, ShopCode: code, Marketplace: markets[i%4],
+				Status:    selling_service_models.ShopOpen,
 				CreatedAt: time.Now(), UpdatedAt: time.Now(),
-			})
+			}
+
+			if i%5 == 4 {
+				shop.Status = selling_service_models.ShopClosed
+				shop.ClosedAt = &closedAt
+			}
+
+			shops = append(shops, shop)
 		}
 	}
 
@@ -76,12 +87,26 @@ func TestPerf_ShopListFilters(t *testing.T) {
 		return err
 	}
 
+	// The statement import's second picker read: the closed shops a CS may still import for.
+	closedWritable := func() error {
+		_, err := cs.ShopList(asUser(101), connect.NewRequest(&sellingv1.ShopListRequest{
+			TeamId: 2,
+			Filter: &sellingv1.ShopListFilter{Writable: true, Status: sellingv1.ShopListStatus_SHOP_LIST_STATUS_CLOSED},
+			Page:   &commonv1.CommonPagination{Page: 1, Limit: 20},
+		}))
+
+		return err
+	}
+
 	calls := map[string]func() error{
-		"ShopList writable, a CS": writable,
-		"ShopList unfiltered":     list(nil),
-		"ShopList marketplace":    list(&sellingv1.ShopListFilter{Marketplace: marketplacev1.Marketplace_MARKETPLACE_SHOPEE}),
-		"ShopList primary cs":     list(&sellingv1.ShopListFilter{PrimaryUserId: 101}),
-		"ShopList no primary":     list(&sellingv1.ShopListFilter{NoPrimary: true}),
+		"ShopList writable, a CS":        writable,
+		"ShopList closed writable, a CS": closedWritable,
+		"ShopList status closed":         list(&sellingv1.ShopListFilter{Status: sellingv1.ShopListStatus_SHOP_LIST_STATUS_CLOSED}),
+		"ShopList status all":            list(&sellingv1.ShopListFilter{Status: sellingv1.ShopListStatus_SHOP_LIST_STATUS_ALL}),
+		"ShopList unfiltered":            list(nil),
+		"ShopList marketplace":           list(&sellingv1.ShopListFilter{Marketplace: marketplacev1.Marketplace_MARKETPLACE_SHOPEE}),
+		"ShopList primary cs":            list(&sellingv1.ShopListFilter{PrimaryUserId: 101}),
+		"ShopList no primary":            list(&sellingv1.ShopListFilter{NoPrimary: true}),
 	}
 
 	for name, call := range calls {

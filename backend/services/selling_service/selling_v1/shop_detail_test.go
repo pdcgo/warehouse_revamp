@@ -44,3 +44,27 @@ func TestShopDetail_CrossTeamIsolation(t *testing.T) {
 		t.Fatalf("cross-team detail code = %v, want NotFound", connect.CodeOf(err))
 	}
 }
+
+// A CLOSED shop's page still reads — its status, its close date, its primary CS (a-closed-shop-locks-all-but-its-grants).
+func TestShopDetail_AClosedShopReads(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	id := insertShop(t, db, 2, "Closed Shop", "CL1", "shopee")
+	grantShop(t, db, id, 10, true)
+	closed := closeShop(t, svc, 2, id)
+
+	resp, err := svc.ShopDetail(context.Background(), connect.NewRequest(&sellingv1.ShopDetailRequest{
+		TeamId: 2, ShopId: id,
+	}))
+	if err != nil {
+		t.Fatalf("ShopDetail of a closed shop: %v", err)
+	}
+
+	got := resp.Msg.GetShop()
+	if got.GetStatus() != sellingv1.ShopStatus_SHOP_STATUS_CLOSED || got.GetClosedAtUnix() != closed.GetClosedAtUnix() ||
+		got.GetPrimaryUserId() != 10 {
+		t.Fatalf("closed shop read as status %v, closed at %d, primary %d — want CLOSED, %d, 10",
+			got.GetStatus(), got.GetClosedAtUnix(), got.GetPrimaryUserId(), closed.GetClosedAtUnix())
+	}
+}

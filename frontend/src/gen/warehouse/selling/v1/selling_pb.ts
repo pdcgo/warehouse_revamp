@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/selling.proto.
  */
 export const file_warehouse_selling_v1_selling: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2Uvc2VsbGluZy92MS9zZWxsaW5nLnByb3RvEhR3YXJlaG91c2Uuc2VsbGluZy52MSK/AQoEU2hvcBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgwKBG5hbWUYAyABKAkSEQoJc2hvcF9jb2RlGAQgASgJEjoKC21hcmtldHBsYWNlGAUgASgOMiUud2FyZWhvdXNlLm1hcmtldHBsYWNlLnYxLk1hcmtldHBsYWNlEhMKC2Rlc2NyaXB0aW9uGAYgASgJEg8KB2RlbGV0ZWQYByABKAgSFwoPcHJpbWFyeV91c2VyX2lkGAggASgEItwBChFTaG9wQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgRuYW1lGAIgASgJQgq6SAdyBRABGIABEhwKCXNob3BfY29kZRgDIAEoCUIJukgGcgQQARggEkYKC21hcmtldHBsYWNlGAQgASgOMiUud2FyZWhvdXNlLm1hcmtldHBsYWNlLnYxLk1hcmtldHBsYWNlQgq6SAeCAQQQASAAEh0KC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxjoBzoKkrUYBgoEAQIDBCI+ChJTaG9wQ3JlYXRlUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AipQIKD1Nob3BMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI0CgZmaWx0ZXIYAiABKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wTGlzdEZpbHRlchI2CgRzb3J0GAMgASgLMigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcExpc3RGaWx0ZXJTb3J0EjwKDGRhdGFfcmVxdWVzdBgEIAMoDjImLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgMEBSKpAQoOU2hvcExpc3RGaWx0ZXISEgoBcRgBIAEoCUIHukgEcgIYZBJECgttYXJrZXRwbGFjZRgCIAEoDjIlLndhcmVob3VzZS5tYXJrZXRwbGFjZS52MS5NYXJrZXRwbGFjZUIIukgFggECEAESFwoPcHJpbWFyeV91c2VyX2lkGAMgASgEEhIKCm5vX3ByaW1hcnkYBCABKAgSEAoId3JpdGFibGUYBSABKAgiuQEKElNob3BMaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjMKB2dlbmVyYWwYAiABKA4yIC53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxTb3J0SAASMQoEc2hvcBgDIAEoDjIhLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BSb3dTb3J0SABCAwoBcyKhAQoOU2hvcFJvd01hcEl0ZW0SQwoIbWFwX2RhdGEYASADKAsyMS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wUm93TWFwSXRlbS5NYXBEYXRhRW50cnkaSgoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIpCgV2YWx1ZRgCIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3A6AjgBIokBChRTaG9wTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjQKBHNob3AYAiABKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wUm93TWFwSXRlbUgAQgMKAWQijAEKEFNob3BMaXN0UmVzcG9uc2USOQoFaXRlbXMYASADKAsyKi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyJYChFTaG9wRGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSI+ChJTaG9wRGV0YWlsUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AiwQIKEVNob3BVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASHQoEbmFtZRgDIAEoCUIKukgHcgUQARiAAUgAiAEBEiEKCXNob3BfY29kZRgEIAEoCUIJukgGcgQQARggSAGIAQESSwoLbWFya2V0cGxhY2UYBSABKA4yJS53YXJlaG91c2UubWFya2V0cGxhY2UudjEuTWFya2V0cGxhY2VCCrpIB4IBBBABIABIAogBARIiCgtkZXNjcmlwdGlvbhgGIAEoCUIIukgFcgMY6AdIA4gBAToKkrUYBgoEAQIDBEIHCgVfbmFtZUIMCgpfc2hvcF9jb2RlQg4KDF9tYXJrZXRwbGFjZUIOCgxfZGVzY3JpcHRpb24iPgoSU2hvcFVwZGF0ZVJlc3BvbnNlEigKBHNob3AYASABKAsyGi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wIlcKEVNob3BEZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiFAoSU2hvcERlbGV0ZVJlc3BvbnNlIrUCChNTaG9wVXNlckxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjgKBmZpbHRlchgCIAEoCzIoLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyTGlzdEZpbHRlchI6CgRzb3J0GAMgASgLMiwud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJMaXN0RmlsdGVyU29ydBJACgxkYXRhX3JlcXVlc3QYBCADKA4yKi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckxpc3REYXRhVHlwZRI7CgRwYWdlGAUgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6C5K1GAcKBQECAwQFIi4KElNob3BVc2VyTGlzdEZpbHRlchIYCgdzaG9wX2lkGAEgASgEQge6SAQyAiAAIooBChZTaG9wVXNlckxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIAEIDCgFzIlcKGFNob3BVc2VyTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAQgMKAWQilAEKFFNob3BVc2VyTGlzdFJlc3BvbnNlEj0KBWl0ZW1zGAEgAygLMi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvInIKElNob3BVc2VyQWRkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAEhgKB3VzZXJfaWQYAyABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiFQoTU2hvcFVzZXJBZGRSZXNwb25zZSJ1ChVTaG9wVXNlclJlbW92ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgABIYCgd1c2VyX2lkGAMgASgEQge6SAQyAiAAOgqStRgGCgQBAgMEIhgKFlNob3BVc2VyUmVtb3ZlUmVzcG9uc2UieQoZU2hvcFVzZXJTZXRQcmltYXJ5UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAEhgKB3VzZXJfaWQYAyABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiRgoaU2hvcFVzZXJTZXRQcmltYXJ5UmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AidwoWU2hvcEFjY2Vzc0NoZWNrUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAEhgKB3VzZXJfaWQYAyABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFInQKF1Nob3BBY2Nlc3NDaGVja1Jlc3BvbnNlEigKBHNob3AYASABKAsyGi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wEhcKD3ByaW1hcnlfdXNlcl9pZBgCIAEoBBIWCg5pc19oYXZlX2FjY2VzcxgDIAEoCCKYAQoQU2hvcEJ5SWRzUmVxdWVzdBI9CgZmaWx0ZXIYASABKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQnlJZHNGaWx0ZXJCBrpIA8gBARI9CgxkYXRhX3JlcXVlc3QYAiADKA4yJy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQnlJZHNEYXRhVHlwZToGkrUYAiABIjMKD1Nob3BCeUlkc0ZpbHRlchIgCgNpZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAicgoJU2hvcEJhc2ljEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDAoEbmFtZRgDIAEoCRI6CgttYXJrZXRwbGFjZRgEIAEoDjIlLndhcmVob3VzZS5tYXJrZXRwbGFjZS52MS5NYXJrZXRwbGFjZSKqAQoQU2hvcEJhc2ljTWFwSXRlbRJFCghtYXBfZGF0YRgBIAMoCzIzLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BCYXNpY01hcEl0ZW0uTWFwRGF0YUVudHJ5Gk8KDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSLgoFdmFsdWUYAiABKAsyHy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQmFzaWM6AjgBIo0BChVTaG9wQnlJZHNSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI3CgViYXNpYxgCIAEoCzImLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BCYXNpY01hcEl0ZW1IAEIDCgFkIlMKFVNob3BCeUlkc1Jlc3BvbnNlTGlzdBI6CgVpdGVtcxgBIAMoCzIrLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BCeUlkc1Jlc3BvbnNlSXRlbSKxAQoRU2hvcEJ5SWRzUmVzcG9uc2USQQoFaXRlbXMYASADKAsyMi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQnlJZHNSZXNwb25zZS5JdGVtc0VudHJ5GlkKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjoKBXZhbHVlGAIgASgLMisud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcEJ5SWRzUmVzcG9uc2VMaXN0OgI4ASp2ChBTaG9wTGlzdERhdGFUeXBlEiMKH1NIT1BfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIfChtTSE9QX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIcChhTSE9QX0xJU1RfREFUQV9UWVBFX1NIT1AQAip3CgtTaG9wUm93U29ydBIdChlTSE9QX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASFAoQU0hPUF9ST1dfU09SVF9JRBABEhYKElNIT1BfUk9XX1NPUlRfTkFNRRACEhsKF1NIT1BfUk9XX1NPUlRfU0hPUF9DT0RFEAMqZgoUU2hvcFVzZXJMaXN0RGF0YVR5cGUSKAokU0hPUF9VU0VSX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASJAogU0hPUF9VU0VSX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQASp+ChFTaG9wQnlJZHNEYXRhVHlwZRIlCiFTSE9QX0JZX0lEU19EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIhCh1TSE9QX0JZX0lEU19EQVRBX1RZUEVfR0VORVJBTBABEh8KG1NIT1BfQllfSURTX0RBVEFfVFlQRV9CQVNJQxACMv8ICgtTaG9wU2VydmljZRJfCgpTaG9wQ3JlYXRlEicud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcENyZWF0ZVJlcXVlc3QaKC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQ3JlYXRlUmVzcG9uc2USXgoIU2hvcExpc3QSJS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wTGlzdFJlcXVlc3QaJi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wTGlzdFJlc3BvbnNlIgOQAgESZAoKU2hvcERldGFpbBInLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BEZXRhaWxSZXF1ZXN0Gigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcERldGFpbFJlc3BvbnNlIgOQAgESXwoKU2hvcFVwZGF0ZRInLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVcGRhdGVSZXF1ZXN0Gigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVwZGF0ZVJlc3BvbnNlEl8KClNob3BEZWxldGUSJy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wRGVsZXRlUmVxdWVzdBooLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BEZWxldGVSZXNwb25zZRJqCgxTaG9wVXNlckxpc3QSKS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckxpc3RSZXF1ZXN0Gioud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJMaXN0UmVzcG9uc2UiA5ACARJiCgtTaG9wVXNlckFkZBIoLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyQWRkUmVxdWVzdBopLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyQWRkUmVzcG9uc2USawoOU2hvcFVzZXJSZW1vdmUSKy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlclJlbW92ZVJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlclJlbW92ZVJlc3BvbnNlEncKElNob3BVc2VyU2V0UHJpbWFyeRIvLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyU2V0UHJpbWFyeVJlcXVlc3QaMC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlclNldFByaW1hcnlSZXNwb25zZRJzCg9TaG9wQWNjZXNzQ2hlY2sSLC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQWNjZXNzQ2hlY2tSZXF1ZXN0Gi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcEFjY2Vzc0NoZWNrUmVzcG9uc2UiA5ACARJcCglTaG9wQnlJZHMSJi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQnlJZHNSZXF1ZXN0Gicud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcEJ5SWRzUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZWxsaW5nL3YxO3NlbGxpbmd2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_marketplace_v1_marketplace, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2Uvc2VsbGluZy92MS9zZWxsaW5nLnByb3RvEhR3YXJlaG91c2Uuc2VsbGluZy52MSKHAgoEU2hvcBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgwKBG5hbWUYAyABKAkSEQoJc2hvcF9jb2RlGAQgASgJEjoKC21hcmtldHBsYWNlGAUgASgOMiUud2FyZWhvdXNlLm1hcmtldHBsYWNlLnYxLk1hcmtldHBsYWNlEhMKC2Rlc2NyaXB0aW9uGAYgASgJEhcKD3ByaW1hcnlfdXNlcl9pZBgIIAEoBBIwCgZzdGF0dXMYCSABKA4yIC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wU3RhdHVzEhYKDmNsb3NlZF9hdF91bml4GAogASgDSgQIBxAIUgdkZWxldGVkItwBChFTaG9wQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgRuYW1lGAIgASgJQgq6SAdyBRABGIABEhwKCXNob3BfY29kZRgDIAEoCUIJukgGcgQQARggEkYKC21hcmtldHBsYWNlGAQgASgOMiUud2FyZWhvdXNlLm1hcmtldHBsYWNlLnYxLk1hcmtldHBsYWNlQgq6SAeCAQQQASAAEh0KC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxjoBzoKkrUYBgoEAQIDBCI+ChJTaG9wQ3JlYXRlUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AipQIKD1Nob3BMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI0CgZmaWx0ZXIYAiABKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wTGlzdEZpbHRlchI2CgRzb3J0GAMgASgLMigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcExpc3RGaWx0ZXJTb3J0EjwKDGRhdGFfcmVxdWVzdBgEIAMoDjImLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgMEBSLpAQoOU2hvcExpc3RGaWx0ZXISEgoBcRgBIAEoCUIHukgEcgIYZBJECgttYXJrZXRwbGFjZRgCIAEoDjIlLndhcmVob3VzZS5tYXJrZXRwbGFjZS52MS5NYXJrZXRwbGFjZUIIukgFggECEAESFwoPcHJpbWFyeV91c2VyX2lkGAMgASgEEhIKCm5vX3ByaW1hcnkYBCABKAgSEAoId3JpdGFibGUYBSABKAgSPgoGc3RhdHVzGAYgASgOMiQud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcExpc3RTdGF0dXNCCLpIBYIBAhABIrkBChJTaG9wTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjEKBHNob3AYAyABKA4yIS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wUm93U29ydEgAQgMKAXMioQEKDlNob3BSb3dNYXBJdGVtEkMKCG1hcF9kYXRhGAEgAygLMjEud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GkoKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSKQoFdmFsdWUYAiABKAsyGi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wOgI4ASKJAQoUU2hvcExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI0CgRzaG9wGAIgASgLMiQud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFJvd01hcEl0ZW1IAEIDCgFkIowBChBTaG9wTGlzdFJlc3BvbnNlEjkKBWl0ZW1zGAEgAygLMioud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcExpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iWAoRU2hvcERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiPgoSU2hvcERldGFpbFJlc3BvbnNlEigKBHNob3AYASABKAsyGi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wIsECChFTaG9wVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAEh0KBG5hbWUYAyABKAlCCrpIB3IFEAEYgAFIAIgBARIhCglzaG9wX2NvZGUYBCABKAlCCbpIBnIEEAEYIEgBiAEBEksKC21hcmtldHBsYWNlGAUgASgOMiUud2FyZWhvdXNlLm1hcmtldHBsYWNlLnYxLk1hcmtldHBsYWNlQgq6SAeCAQQQASAASAKIAQESIgoLZGVzY3JpcHRpb24YBiABKAlCCLpIBXIDGOgHSAOIAQE6CpK1GAYKBAECAwRCBwoFX25hbWVCDAoKX3Nob3BfY29kZUIOCgxfbWFya2V0cGxhY2VCDgoMX2Rlc2NyaXB0aW9uIj4KElNob3BVcGRhdGVSZXNwb25zZRIoCgRzaG9wGAEgASgLMhoud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcCJWChBTaG9wQ2xvc2VSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiPQoRU2hvcENsb3NlUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AiVwoRU2hvcFJlb3BlblJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCI+ChJTaG9wUmVvcGVuUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AitQIKE1Nob3BVc2VyTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESOAoGZmlsdGVyGAIgASgLMigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJMaXN0RmlsdGVyEjoKBHNvcnQYAyABKAsyLC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckxpc3RGaWx0ZXJTb3J0EkAKDGRhdGFfcmVxdWVzdBgEIAMoDjIqLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToLkrUYBwoFAQIDBAUiLgoSU2hvcFVzZXJMaXN0RmlsdGVyEhgKB3Nob3BfaWQYASABKARCB7pIBDICIAAiigEKFlNob3BVc2VyTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAQgMKAXMiVwoYU2hvcFVzZXJMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSABCAwoBZCKUAQoUU2hvcFVzZXJMaXN0UmVzcG9uc2USPQoFaXRlbXMYASADKAsyLi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckxpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8icgoSU2hvcFVzZXJBZGRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASGAoHdXNlcl9pZBgDIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCIVChNTaG9wVXNlckFkZFJlc3BvbnNlInUKFVNob3BVc2VyUmVtb3ZlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAEhgKB3VzZXJfaWQYAyABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiGAoWU2hvcFVzZXJSZW1vdmVSZXNwb25zZSJ5ChlTaG9wVXNlclNldFByaW1hcnlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASGAoHdXNlcl9pZBgDIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJGChpTaG9wVXNlclNldFByaW1hcnlSZXNwb25zZRIoCgRzaG9wGAEgASgLMhoud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcCJ3ChZTaG9wQWNjZXNzQ2hlY2tSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASGAoHdXNlcl9pZBgDIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUidAoXU2hvcEFjY2Vzc0NoZWNrUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3ASFwoPcHJpbWFyeV91c2VyX2lkGAIgASgEEhYKDmlzX2hhdmVfYWNjZXNzGAMgASgIIpgBChBTaG9wQnlJZHNSZXF1ZXN0Ej0KBmZpbHRlchgBIAEoCzIlLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BCeUlkc0ZpbHRlckIGukgDyAEBEj0KDGRhdGFfcmVxdWVzdBgCIAMoDjInLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BCeUlkc0RhdGFUeXBlOgaStRgCIAEiMwoPU2hvcEJ5SWRzRmlsdGVyEiAKA2lkcxgBIAMoBEITukgQkgENCAEQyAEYASIEMgIgACJyCglTaG9wQmFzaWMSCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIMCgRuYW1lGAMgASgJEjoKC21hcmtldHBsYWNlGAQgASgOMiUud2FyZWhvdXNlLm1hcmtldHBsYWNlLnYxLk1hcmtldHBsYWNlIqoBChBTaG9wQmFzaWNNYXBJdGVtEkUKCG1hcF9kYXRhGAEgAygLMjMud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcEJhc2ljTWFwSXRlbS5NYXBEYXRhRW50cnkaTwoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIuCgV2YWx1ZRgCIAEoCzIfLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BCYXNpYzoCOAEijQEKFVNob3BCeUlkc1Jlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjcKBWJhc2ljGAIgASgLMiYud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcEJhc2ljTWFwSXRlbUgAQgMKAWQiUwoVU2hvcEJ5SWRzUmVzcG9uc2VMaXN0EjoKBWl0ZW1zGAEgAygLMisud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcEJ5SWRzUmVzcG9uc2VJdGVtIrEBChFTaG9wQnlJZHNSZXNwb25zZRJBCgVpdGVtcxgBIAMoCzIyLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BCeUlkc1Jlc3BvbnNlLkl0ZW1zRW50cnkaWQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSOgoFdmFsdWUYAiABKAsyKy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQnlJZHNSZXNwb25zZUxpc3Q6AjgBKlcKClNob3BTdGF0dXMSGwoXU0hPUF9TVEFUVVNfVU5TUEVDSUZJRUQQABIUChBTSE9QX1NUQVRVU19PUEVOEAESFgoSU0hPUF9TVEFUVVNfQ0xPU0VEEAIqhAEKDlNob3BMaXN0U3RhdHVzEiAKHFNIT1BfTElTVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIZChVTSE9QX0xJU1RfU1RBVFVTX09QRU4QARIbChdTSE9QX0xJU1RfU1RBVFVTX0NMT1NFRBACEhgKFFNIT1BfTElTVF9TVEFUVVNfQUxMEAMqdgoQU2hvcExpc3REYXRhVHlwZRIjCh9TSE9QX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASHwobU0hPUF9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESHAoYU0hPUF9MSVNUX0RBVEFfVFlQRV9TSE9QEAIqdwoLU2hvcFJvd1NvcnQSHQoZU0hPUF9ST1dfU09SVF9VTlNQRUNJRklFRBAAEhQKEFNIT1BfUk9XX1NPUlRfSUQQARIWChJTSE9QX1JPV19TT1JUX05BTUUQAhIbChdTSE9QX1JPV19TT1JUX1NIT1BfQ09ERRADKmYKFFNob3BVc2VyTGlzdERhdGFUeXBlEigKJFNIT1BfVVNFUl9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiQKIFNIT1BfVVNFUl9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAEqfgoRU2hvcEJ5SWRzRGF0YVR5cGUSJQohU0hPUF9CWV9JRFNfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIQodU0hPUF9CWV9JRFNfREFUQV9UWVBFX0dFTkVSQUwQARIfChtTSE9QX0JZX0lEU19EQVRBX1RZUEVfQkFTSUMQAjLdCQoLU2hvcFNlcnZpY2USXwoKU2hvcENyZWF0ZRInLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BDcmVhdGVSZXF1ZXN0Gigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcENyZWF0ZVJlc3BvbnNlEl4KCFNob3BMaXN0EiUud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcExpc3RSZXF1ZXN0GiYud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcExpc3RSZXNwb25zZSIDkAIBEmQKClNob3BEZXRhaWwSJy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wRGV0YWlsUmVxdWVzdBooLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BEZXRhaWxSZXNwb25zZSIDkAIBEl8KClNob3BVcGRhdGUSJy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXBkYXRlUmVxdWVzdBooLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVcGRhdGVSZXNwb25zZRJcCglTaG9wQ2xvc2USJi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQ2xvc2VSZXF1ZXN0Gicud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcENsb3NlUmVzcG9uc2USXwoKU2hvcFJlb3BlbhInLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BSZW9wZW5SZXF1ZXN0Gigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFJlb3BlblJlc3BvbnNlEmoKDFNob3BVc2VyTGlzdBIpLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyTGlzdFJlcXVlc3QaKi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckxpc3RSZXNwb25zZSIDkAIBEmIKC1Nob3BVc2VyQWRkEigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJBZGRSZXF1ZXN0Gikud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJBZGRSZXNwb25zZRJrCg5TaG9wVXNlclJlbW92ZRIrLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyUmVtb3ZlUmVxdWVzdBosLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyUmVtb3ZlUmVzcG9uc2USdwoSU2hvcFVzZXJTZXRQcmltYXJ5Ei8ud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJTZXRQcmltYXJ5UmVxdWVzdBowLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyU2V0UHJpbWFyeVJlc3BvbnNlEnMKD1Nob3BBY2Nlc3NDaGVjaxIsLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BBY2Nlc3NDaGVja1JlcXVlc3QaLS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQWNjZXNzQ2hlY2tSZXNwb25zZSIDkAIBElwKCVNob3BCeUlkcxImLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BCeUlkc1JlcXVlc3QaJy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQnlJZHNSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_marketplace_v1_marketplace, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.selling.v1.Shop
@@ -55,17 +55,28 @@ export type Shop = Message<"warehouse.selling.v1.Shop"> & {
   description: string;
 
   /**
-   * @generated from field: bool deleted = 7;
-   */
-  deleted: boolean;
-
-  /**
    * The shop's primary CS — one of its granted users, flagged (the-primary-cs-is-a-flag-on-a-grant).
    * 0 = none: the shop cannot import until someone is made primary.
    *
    * @generated from field: uint64 primary_user_id = 8;
    */
   primaryUserId: bigint;
+
+  /**
+   * Open, or closed (a-shop-is-closed-never-deleted). A closed shop takes no new selling but its money still runs
+   * (a-closed-shop-refuses-only-new-selling); only its grants and primary CS stay editable
+   * (a-closed-shop-locks-all-but-its-grants).
+   *
+   * @generated from field: warehouse.selling.v1.ShopStatus status = 9;
+   */
+  status: ShopStatus;
+
+  /**
+   * When it closed, unix seconds — 0 for an open shop.
+   *
+   * @generated from field: int64 closed_at_unix = 10;
+   */
+  closedAtUnix: bigint;
 };
 
 /**
@@ -207,6 +218,14 @@ export type ShopListFilter = Message<"warehouse.selling.v1.ShopListFilter"> & {
    * @generated from field: bool writable = 5;
    */
   writable: boolean;
+
+  /**
+   * Which shops by status (a-shop-is-closed-never-deleted, the-close-shop-prototype-is-accepted): UNSPECIFIED is OPEN,
+   * the default list; CLOSED the closed ones; ALL both.
+   *
+   * @generated from field: warehouse.selling.v1.ShopListStatus status = 6;
+   */
+  status: ShopListStatus;
 };
 
 /**
@@ -326,6 +345,8 @@ export const ShopListResponseSchema: GenMessage<ShopListResponse> = /*@__PURE__*
   messageDesc(file_warehouse_selling_v1_selling, 8);
 
 /**
+ * A shop of the team, OPEN OR CLOSED — a closed shop's page still reads (a-closed-shop-locks-all-but-its-grants).
+ *
  * @generated from message warehouse.selling.v1.ShopDetailRequest
  */
 export type ShopDetailRequest = Message<"warehouse.selling.v1.ShopDetailRequest"> & {
@@ -365,6 +386,8 @@ export const ShopDetailResponseSchema: GenMessage<ShopDetailResponse> = /*@__PUR
   messageDesc(file_warehouse_selling_v1_selling, 10);
 
 /**
+ * Refused on a CLOSED shop — FailedPrecondition, "reopen the shop first" (a-closed-shop-locks-all-but-its-grants).
+ *
  * @generated from message warehouse.selling.v1.ShopUpdateRequest
  */
 export type ShopUpdateRequest = Message<"warehouse.selling.v1.ShopUpdateRequest"> & {
@@ -426,9 +449,14 @@ export const ShopUpdateResponseSchema: GenMessage<ShopUpdateResponse> = /*@__PUR
   messageDesc(file_warehouse_selling_v1_selling, 12);
 
 /**
- * @generated from message warehouse.selling.v1.ShopDeleteRequest
+ * Closes a shop of the team: `status = closed`, `closed_at` now. Never refused for its drafts — they stay waiting
+ * (a-close-leaves-the-drafts-waiting). Frees its code (a-shop-code-is-unique-among-open-shops). Idempotent: an already
+ * closed shop is answered as it is, its close date unchanged. The team's owner and admin, and root or the
+ * administrator (a-closed-shop-locks-all-but-its-grants).
+ *
+ * @generated from message warehouse.selling.v1.ShopCloseRequest
  */
-export type ShopDeleteRequest = Message<"warehouse.selling.v1.ShopDeleteRequest"> & {
+export type ShopCloseRequest = Message<"warehouse.selling.v1.ShopCloseRequest"> & {
   /**
    * @generated from field: uint64 team_id = 1;
    */
@@ -441,24 +469,71 @@ export type ShopDeleteRequest = Message<"warehouse.selling.v1.ShopDeleteRequest"
 };
 
 /**
- * Describes the message warehouse.selling.v1.ShopDeleteRequest.
- * Use `create(ShopDeleteRequestSchema)` to create a new message.
+ * Describes the message warehouse.selling.v1.ShopCloseRequest.
+ * Use `create(ShopCloseRequestSchema)` to create a new message.
  */
-export const ShopDeleteRequestSchema: GenMessage<ShopDeleteRequest> = /*@__PURE__*/
+export const ShopCloseRequestSchema: GenMessage<ShopCloseRequest> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_selling, 13);
 
 /**
- * @generated from message warehouse.selling.v1.ShopDeleteResponse
+ * @generated from message warehouse.selling.v1.ShopCloseResponse
  */
-export type ShopDeleteResponse = Message<"warehouse.selling.v1.ShopDeleteResponse"> & {
+export type ShopCloseResponse = Message<"warehouse.selling.v1.ShopCloseResponse"> & {
+  /**
+   * @generated from field: warehouse.selling.v1.Shop shop = 1;
+   */
+  shop?: Shop | undefined;
 };
 
 /**
- * Describes the message warehouse.selling.v1.ShopDeleteResponse.
- * Use `create(ShopDeleteResponseSchema)` to create a new message.
+ * Describes the message warehouse.selling.v1.ShopCloseResponse.
+ * Use `create(ShopCloseResponseSchema)` to create a new message.
  */
-export const ShopDeleteResponseSchema: GenMessage<ShopDeleteResponse> = /*@__PURE__*/
+export const ShopCloseResponseSchema: GenMessage<ShopCloseResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_selling, 14);
+
+/**
+ * Reopens a closed shop of the team. Refused — FailedPrecondition, naming that shop — while an OPEN shop of the team
+ * holds its code (a-shop-code-is-unique-among-open-shops): rename one, then reopen. Idempotent: an open shop is answered
+ * as it is. Same roles as ShopClose.
+ *
+ * @generated from message warehouse.selling.v1.ShopReopenRequest
+ */
+export type ShopReopenRequest = Message<"warehouse.selling.v1.ShopReopenRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 shop_id = 2;
+   */
+  shopId: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ShopReopenRequest.
+ * Use `create(ShopReopenRequestSchema)` to create a new message.
+ */
+export const ShopReopenRequestSchema: GenMessage<ShopReopenRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_selling, 15);
+
+/**
+ * @generated from message warehouse.selling.v1.ShopReopenResponse
+ */
+export type ShopReopenResponse = Message<"warehouse.selling.v1.ShopReopenResponse"> & {
+  /**
+   * @generated from field: warehouse.selling.v1.Shop shop = 1;
+   */
+  shop?: Shop | undefined;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.ShopReopenResponse.
+ * Use `create(ShopReopenResponseSchema)` to create a new message.
+ */
+export const ShopReopenResponseSchema: GenMessage<ShopReopenResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_selling, 16);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserListRequest
@@ -495,7 +570,7 @@ export type ShopUserListRequest = Message<"warehouse.selling.v1.ShopUserListRequ
  * Use `create(ShopUserListRequestSchema)` to create a new message.
  */
 export const ShopUserListRequestSchema: GenMessage<ShopUserListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 15);
+  messageDesc(file_warehouse_selling_v1_selling, 17);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserListFilter
@@ -512,7 +587,7 @@ export type ShopUserListFilter = Message<"warehouse.selling.v1.ShopUserListFilte
  * Use `create(ShopUserListFilterSchema)` to create a new message.
  */
 export const ShopUserListFilterSchema: GenMessage<ShopUserListFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 16);
+  messageDesc(file_warehouse_selling_v1_selling, 18);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserListFilterSort
@@ -540,7 +615,7 @@ export type ShopUserListFilterSort = Message<"warehouse.selling.v1.ShopUserListF
  * Use `create(ShopUserListFilterSortSchema)` to create a new message.
  */
 export const ShopUserListFilterSortSchema: GenMessage<ShopUserListFilterSort> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 17);
+  messageDesc(file_warehouse_selling_v1_selling, 19);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserListResponseItem
@@ -563,7 +638,7 @@ export type ShopUserListResponseItem = Message<"warehouse.selling.v1.ShopUserLis
  * Use `create(ShopUserListResponseItemSchema)` to create a new message.
  */
 export const ShopUserListResponseItemSchema: GenMessage<ShopUserListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 18);
+  messageDesc(file_warehouse_selling_v1_selling, 20);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserListResponse
@@ -592,7 +667,7 @@ export type ShopUserListResponse = Message<"warehouse.selling.v1.ShopUserListRes
  * Use `create(ShopUserListResponseSchema)` to create a new message.
  */
 export const ShopUserListResponseSchema: GenMessage<ShopUserListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 19);
+  messageDesc(file_warehouse_selling_v1_selling, 21);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserAddRequest
@@ -619,7 +694,7 @@ export type ShopUserAddRequest = Message<"warehouse.selling.v1.ShopUserAddReques
  * Use `create(ShopUserAddRequestSchema)` to create a new message.
  */
 export const ShopUserAddRequestSchema: GenMessage<ShopUserAddRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 20);
+  messageDesc(file_warehouse_selling_v1_selling, 22);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserAddResponse
@@ -632,7 +707,7 @@ export type ShopUserAddResponse = Message<"warehouse.selling.v1.ShopUserAddRespo
  * Use `create(ShopUserAddResponseSchema)` to create a new message.
  */
 export const ShopUserAddResponseSchema: GenMessage<ShopUserAddResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 21);
+  messageDesc(file_warehouse_selling_v1_selling, 23);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserRemoveRequest
@@ -659,7 +734,7 @@ export type ShopUserRemoveRequest = Message<"warehouse.selling.v1.ShopUserRemove
  * Use `create(ShopUserRemoveRequestSchema)` to create a new message.
  */
 export const ShopUserRemoveRequestSchema: GenMessage<ShopUserRemoveRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 22);
+  messageDesc(file_warehouse_selling_v1_selling, 24);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserRemoveResponse
@@ -672,7 +747,7 @@ export type ShopUserRemoveResponse = Message<"warehouse.selling.v1.ShopUserRemov
  * Use `create(ShopUserRemoveResponseSchema)` to create a new message.
  */
 export const ShopUserRemoveResponseSchema: GenMessage<ShopUserRemoveResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 23);
+  messageDesc(file_warehouse_selling_v1_selling, 25);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserSetPrimaryRequest
@@ -701,7 +776,7 @@ export type ShopUserSetPrimaryRequest = Message<"warehouse.selling.v1.ShopUserSe
  * Use `create(ShopUserSetPrimaryRequestSchema)` to create a new message.
  */
 export const ShopUserSetPrimaryRequestSchema: GenMessage<ShopUserSetPrimaryRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 24);
+  messageDesc(file_warehouse_selling_v1_selling, 26);
 
 /**
  * @generated from message warehouse.selling.v1.ShopUserSetPrimaryResponse
@@ -718,7 +793,7 @@ export type ShopUserSetPrimaryResponse = Message<"warehouse.selling.v1.ShopUserS
  * Use `create(ShopUserSetPrimaryResponseSchema)` to create a new message.
  */
 export const ShopUserSetPrimaryResponseSchema: GenMessage<ShopUserSetPrimaryResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 25);
+  messageDesc(file_warehouse_selling_v1_selling, 27);
 
 /**
  * @generated from message warehouse.selling.v1.ShopAccessCheckRequest
@@ -747,14 +822,14 @@ export type ShopAccessCheckRequest = Message<"warehouse.selling.v1.ShopAccessChe
  * Use `create(ShopAccessCheckRequestSchema)` to create a new message.
  */
 export const ShopAccessCheckRequestSchema: GenMessage<ShopAccessCheckRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 26);
+  messageDesc(file_warehouse_selling_v1_selling, 28);
 
 /**
  * @generated from message warehouse.selling.v1.ShopAccessCheckResponse
  */
 export type ShopAccessCheckResponse = Message<"warehouse.selling.v1.ShopAccessCheckResponse"> & {
   /**
-   * A shop of the request's team — a DELETED (closed) one included, with `deleted` set, and each caller decides
+   * A shop of the request's team — a CLOSED one included, with its `status`, and each caller decides
    * (a-closed-shop-refuses-only-new-selling): a statement import still passes, a new order does not. Another team's
    * shop, or one that never existed, is NotFound.
    *
@@ -783,14 +858,14 @@ export type ShopAccessCheckResponse = Message<"warehouse.selling.v1.ShopAccessCh
  * Use `create(ShopAccessCheckResponseSchema)` to create a new message.
  */
 export const ShopAccessCheckResponseSchema: GenMessage<ShopAccessCheckResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 27);
+  messageDesc(file_warehouse_selling_v1_selling, 29);
 
 /**
  * SHOPS BY ID, ACROSS TEAMS (the-warehouse-row-fills-from-shop-and-user-by-ids): a warehouse ships other teams'
  * orders, and its row names each order's shop and marketplace. One call per page, never one per row.
  *
  * BASIC FIELDS ONLY — id, name, marketplace, owning team. Never members, grants or settings: an unscoped read must
- * not become a way into another team's shop. A DELETED shop is still returned, so an old order still names its
+ * not become a way into another team's shop. A CLOSED shop is still returned, so an old order still names its
  * shop; an id that never existed is absent.
  *
  * @generated from message warehouse.selling.v1.ShopByIdsRequest
@@ -814,7 +889,7 @@ export type ShopByIdsRequest = Message<"warehouse.selling.v1.ShopByIdsRequest"> 
  * Use `create(ShopByIdsRequestSchema)` to create a new message.
  */
 export const ShopByIdsRequestSchema: GenMessage<ShopByIdsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 28);
+  messageDesc(file_warehouse_selling_v1_selling, 30);
 
 /**
  * @generated from message warehouse.selling.v1.ShopByIdsFilter
@@ -831,7 +906,7 @@ export type ShopByIdsFilter = Message<"warehouse.selling.v1.ShopByIdsFilter"> & 
  * Use `create(ShopByIdsFilterSchema)` to create a new message.
  */
 export const ShopByIdsFilterSchema: GenMessage<ShopByIdsFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 29);
+  messageDesc(file_warehouse_selling_v1_selling, 31);
 
 /**
  * What anyone signed in may know about a shop.
@@ -867,7 +942,7 @@ export type ShopBasic = Message<"warehouse.selling.v1.ShopBasic"> & {
  * Use `create(ShopBasicSchema)` to create a new message.
  */
 export const ShopBasicSchema: GenMessage<ShopBasic> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 30);
+  messageDesc(file_warehouse_selling_v1_selling, 32);
 
 /**
  * @generated from message warehouse.selling.v1.ShopBasicMapItem
@@ -884,7 +959,7 @@ export type ShopBasicMapItem = Message<"warehouse.selling.v1.ShopBasicMapItem"> 
  * Use `create(ShopBasicMapItemSchema)` to create a new message.
  */
 export const ShopBasicMapItemSchema: GenMessage<ShopBasicMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 31);
+  messageDesc(file_warehouse_selling_v1_selling, 33);
 
 /**
  * @generated from message warehouse.selling.v1.ShopByIdsResponseItem
@@ -913,7 +988,7 @@ export type ShopByIdsResponseItem = Message<"warehouse.selling.v1.ShopByIdsRespo
  * Use `create(ShopByIdsResponseItemSchema)` to create a new message.
  */
 export const ShopByIdsResponseItemSchema: GenMessage<ShopByIdsResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 32);
+  messageDesc(file_warehouse_selling_v1_selling, 34);
 
 /**
  * @generated from message warehouse.selling.v1.ShopByIdsResponseList
@@ -930,7 +1005,7 @@ export type ShopByIdsResponseList = Message<"warehouse.selling.v1.ShopByIdsRespo
  * Use `create(ShopByIdsResponseListSchema)` to create a new message.
  */
 export const ShopByIdsResponseListSchema: GenMessage<ShopByIdsResponseList> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 33);
+  messageDesc(file_warehouse_selling_v1_selling, 35);
 
 /**
  * Keyed by shop id.
@@ -949,7 +1024,68 @@ export type ShopByIdsResponse = Message<"warehouse.selling.v1.ShopByIdsResponse"
  * Use `create(ShopByIdsResponseSchema)` to create a new message.
  */
 export const ShopByIdsResponseSchema: GenMessage<ShopByIdsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_selling, 34);
+  messageDesc(file_warehouse_selling_v1_selling, 36);
+
+/**
+ * A shop's life (a-shop-is-closed-never-deleted): created open, closed and reopened, never deleted.
+ *
+ * @generated from enum warehouse.selling.v1.ShopStatus
+ */
+export enum ShopStatus {
+  /**
+   * @generated from enum value: SHOP_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SHOP_STATUS_OPEN = 1;
+   */
+  OPEN = 1,
+
+  /**
+   * @generated from enum value: SHOP_STATUS_CLOSED = 2;
+   */
+  CLOSED = 2,
+}
+
+/**
+ * Describes the enum warehouse.selling.v1.ShopStatus.
+ */
+export const ShopStatusSchema: GenEnum<ShopStatus> = /*@__PURE__*/
+  enumDesc(file_warehouse_selling_v1_selling, 0);
+
+/**
+ * ShopList's status filter. UNSPECIFIED reads as OPEN — a list that does not ask shows the open shops.
+ *
+ * @generated from enum warehouse.selling.v1.ShopListStatus
+ */
+export enum ShopListStatus {
+  /**
+   * @generated from enum value: SHOP_LIST_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SHOP_LIST_STATUS_OPEN = 1;
+   */
+  OPEN = 1,
+
+  /**
+   * @generated from enum value: SHOP_LIST_STATUS_CLOSED = 2;
+   */
+  CLOSED = 2,
+
+  /**
+   * @generated from enum value: SHOP_LIST_STATUS_ALL = 3;
+   */
+  ALL = 3,
+}
+
+/**
+ * Describes the enum warehouse.selling.v1.ShopListStatus.
+ */
+export const ShopListStatusSchema: GenEnum<ShopListStatus> = /*@__PURE__*/
+  enumDesc(file_warehouse_selling_v1_selling, 1);
 
 /**
  * @generated from enum warehouse.selling.v1.ShopListDataType
@@ -975,7 +1111,7 @@ export enum ShopListDataType {
  * Describes the enum warehouse.selling.v1.ShopListDataType.
  */
 export const ShopListDataTypeSchema: GenEnum<ShopListDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_selling_v1_selling, 0);
+  enumDesc(file_warehouse_selling_v1_selling, 2);
 
 /**
  * @generated from enum warehouse.selling.v1.ShopRowSort
@@ -1006,7 +1142,7 @@ export enum ShopRowSort {
  * Describes the enum warehouse.selling.v1.ShopRowSort.
  */
 export const ShopRowSortSchema: GenEnum<ShopRowSort> = /*@__PURE__*/
-  enumDesc(file_warehouse_selling_v1_selling, 1);
+  enumDesc(file_warehouse_selling_v1_selling, 3);
 
 /**
  * ShopUserList returns opaque user ids; there is no user entity here, so the only slice is GENERAL
@@ -1030,7 +1166,7 @@ export enum ShopUserListDataType {
  * Describes the enum warehouse.selling.v1.ShopUserListDataType.
  */
 export const ShopUserListDataTypeSchema: GenEnum<ShopUserListDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_selling_v1_selling, 2);
+  enumDesc(file_warehouse_selling_v1_selling, 4);
 
 /**
  * @generated from enum warehouse.selling.v1.ShopByIdsDataType
@@ -1056,7 +1192,7 @@ export enum ShopByIdsDataType {
  * Describes the enum warehouse.selling.v1.ShopByIdsDataType.
  */
 export const ShopByIdsDataTypeSchema: GenEnum<ShopByIdsDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_selling_v1_selling, 3);
+  enumDesc(file_warehouse_selling_v1_selling, 5);
 
 /**
  * ShopService owns `shops` — the marketplace storefronts a SELLING team operates (#66). Every RPC
@@ -1100,12 +1236,24 @@ export const ShopService: GenService<{
     output: typeof ShopUpdateResponseSchema;
   },
   /**
-   * @generated from rpc warehouse.selling.v1.ShopService.ShopDelete
+   * A shop is CLOSED, never deleted (a-shop-is-closed-never-deleted) — there is no ShopDelete. Close stops new selling
+   * on it (a-closed-shop-refuses-only-new-selling) and frees its code; Reopen gives it back, refused while an open shop
+   * of the team holds the code (a-shop-code-is-unique-among-open-shops).
+   *
+   * @generated from rpc warehouse.selling.v1.ShopService.ShopClose
    */
-  shopDelete: {
+  shopClose: {
     methodKind: "unary";
-    input: typeof ShopDeleteRequestSchema;
-    output: typeof ShopDeleteResponseSchema;
+    input: typeof ShopCloseRequestSchema;
+    output: typeof ShopCloseResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.selling.v1.ShopService.ShopReopen
+   */
+  shopReopen: {
+    methodKind: "unary";
+    input: typeof ShopReopenRequestSchema;
+    output: typeof ShopReopenResponseSchema;
   },
   /**
    * Shop access — which users may work on a shop (#86). Scoped to the shop's team.

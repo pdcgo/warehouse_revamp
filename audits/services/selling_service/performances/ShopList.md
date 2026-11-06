@@ -21,7 +21,7 @@ statements now probe the caller's grants by index. Re-measured by `TestPerf_Shop
 flowchart LR
   P["the order form's picker - writable, a CS"] --> C["count + page"]
   C --> S["Bitmap Index Scan shop_users_user_shop_idx - the caller's grants only"]
-  C --> I["Index Scan shops_team_active_idx - the team's shops"]
+  C --> I["Index Scan shops_team_status_idx - the team's open shops"]
   S --> J["Hash Join on shop_id"]
   I --> J
 ```
@@ -34,3 +34,11 @@ bitmap heap scan (251 heap blocks) because the seeded rows are in the test's own
 all-visible — the cost now follows the caller's grants, not every team's. The same index serves the member-removed
 listener's `DELETE … WHERE user_id = ?` (leading column), and `shop_users_unique (shop_id, user_id)` still serves every
 per-shop read.
+
+## The status filter *(2026-11-06 — fast, no finding)*
+
+`deleted` became `status` (selling `00043`): `shops_team_active_idx (team_id) WHERE deleted = FALSE` gave way to
+`shops_team_status_idx (team_id, status)`, which serves the default (open) as well as *closed* and *all*. Re-measured on
+the same seed with one shop in five CLOSED (`TestPerf_ShopListFilters`): every case still 3 queries, medians 2.1–3.8 ms —
+status closed 2.2 ms, all 2.1 ms, closed + writable (the statement import's second read) 2.6 ms, the open default
+2.3 ms. The count reads `Bitmap Index Scan shops_team_status_idx`. Fast; nothing to fix.

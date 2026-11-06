@@ -8,6 +8,7 @@ import { ShopByIdsDataType, ShopRowSort } from "../../gen/warehouse/selling/v1/s
 import type { SortState } from "../../components/chrome/SortableHeader";
 import { peopleFor } from "../users/queries";
 import { shopListRowData, shopsFromList } from "./adapt";
+import { SHOP_LIST_STATUS, type ShopStatusFilter } from "./status";
 
 /** The two columns the contract can order a team's shops by. */
 export type ShopSortKey = "name" | "code";
@@ -27,6 +28,8 @@ export function useShops(args: {
   noPrimary?: boolean;
   /** `null` = the list's own order, newest first; otherwise by name or code, A to Z or back (the server sorts). */
   sort?: SortState<ShopSortKey> | null;
+  /** Open (the default), closed, or both (a-shop-is-closed-never-deleted). */
+  status?: ShopStatusFilter;
   page: number;
   pageSize: number;
 }) {
@@ -35,9 +38,11 @@ export function useShops(args: {
   const marketplace = args.marketplace ?? 0;
   const primaryUserId = args.primaryUserId ?? 0n;
   const noPrimary = args.noPrimary ?? false;
+  const status = args.status ?? "open";
 
   return useQuery({
     queryKey: key.shops(teamId, {
+      status,
       q,
       market: marketplace,
       cs: primaryUserId.toString(),
@@ -51,7 +56,7 @@ export function useShops(args: {
     queryFn: async () => {
       const res = await shopClient.shopList({
         teamId: teamId!,
-        filter: { q, marketplace, primaryUserId, noPrimary },
+        filter: { q, marketplace, primaryUserId, noPrimary, status: SHOP_LIST_STATUS[status] },
         sort: sort
           ? {
               sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
@@ -92,18 +97,23 @@ export function useShops(args: {
 // `writable` asks only the shops the signed-in person may WRITE on (a-write-needs-a-grant-or-a-manager) — every shop for
 // the team's owner or admin, otherwise the ones granted to them. The server answers it (ShopList `writable`), so the
 // picker of a write offers exactly what the write will accept. A separate key: it is a different question.
-export function useShopOptions(args: { teamId: bigint; writable?: boolean }) {
+//
+// `status` — ALL BY DEFAULT: most callers read this to NAME a row's shop (an order's, a draft's, a statement's, a
+// report's), and a closed shop's rows keep their name (a-shop-is-closed-never-deleted: "report rows get their names
+// back"). ShopSelect asks `open` for the shops it offers and `closed` for the ones it may offer after them, badged.
+export function useShopOptions(args: { teamId: bigint; writable?: boolean; status?: ShopStatusFilter; enabled?: boolean }) {
   const { teamId } = args;
   const writable = args.writable ?? false;
+  const status = args.status ?? "all";
 
   return useQuery({
-    queryKey: key.shops(teamId, writable ? { options: true, writable: true } : { options: true }),
+    queryKey: key.shops(teamId, { options: true, writable, status }),
     ...referenceQuery,
-    enabled: teamId > 0n,
+    enabled: teamId > 0n && (args.enabled ?? true),
     queryFn: async () => {
       const res = await shopClient.shopList({
         teamId,
-        filter: writable ? { writable: true } : undefined,
+        filter: { writable, status: SHOP_LIST_STATUS[status] },
         dataRequest: shopListRowData(),
         page: { page: 1, limit: 100 },
       });
@@ -142,8 +152,10 @@ export function useShopPrimaries(args: { teamId: bigint | undefined }) {
     ...referenceQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
+      // Every shop, closed ones included — the list's status filter can show them.
       const res = await shopClient.shopList({
         teamId: teamId!,
+        filter: { status: SHOP_LIST_STATUS.all },
         dataRequest: shopListRowData(),
         page: { page: 1, limit: 100 },
       });
@@ -178,7 +190,7 @@ export function useShopUsers(args: { teamId: bigint | undefined; shopId: bigint 
   });
 }
 
-// Broad: an edit changes the row in the list AND the detail page, and a delete changes every page
+// Broad: an edit changes the row in the list AND the detail page, and a close changes every page
 // after it. One invalidation covers both screens.
 export function useInvalidateShops() {
   const client = useQueryClient();
@@ -228,11 +240,23 @@ export function useSaveShop() {
   });
 }
 
-export function useDeleteShop() {
+// CLOSE AND REOPEN (a-shop-is-closed-never-deleted) — there is no delete. Every shop read is stale after either: the
+// list and its status filter, the shop's page, every picker (the order form's loses a closed shop at once).
+export function useCloseShop() {
   const invalidate = useInvalidateShops();
 
   return useMutation({
-    mutationFn: (vars: { teamId: bigint; shopId: bigint }) => shopClient.shopDelete(vars),
+    mutationFn: (vars: { teamId: bigint; shopId: bigint }) => shopClient.shopClose(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+/** Refused while an open shop of the team holds the code, naming it (a-shop-code-is-unique-among-open-shops). */
+export function useReopenShop() {
+  const invalidate = useInvalidateShops();
+
+  return useMutation({
+    mutationFn: (vars: { teamId: bigint; shopId: bigint }) => shopClient.shopReopen(vars),
     onSuccess: () => invalidate(),
   });
 }

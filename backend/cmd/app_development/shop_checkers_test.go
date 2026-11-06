@@ -17,10 +17,10 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
-// A CLOSED (deleted) shop through the adapters other services hold (a-closed-shop-refuses-only-new-selling):
-// ShopAccessCheck answers it flagged, and each caller decides — the settlement importer and settlement's primary-CS
-// lookup accept it, so a closed shop's last statements still import; financial_account's ShopOfTeam refuses a new
-// account link to it, NotFound, as it always did. Over selling's REAL ShopService on a loopback server, shaped like the
+// A CLOSED shop through the adapters other services hold (a-closed-shop-refuses-only-new-selling):
+// ShopAccessCheck answers it with its status, and each caller decides — the settlement importer and settlement's
+// primary-CS lookup accept it, so a closed shop's last statements still import; financial_account's ShopOfTeam refuses
+// a new account link to it, NotFound (a-closed-shop-takes-no-new-account-link). And reopened, the link is taken again. Over selling's REAL ShopService on a loopback server, shaped like the
 // composition root's client.
 func TestShopCheckers_AClosedShopImportsButIsNotLinked(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -44,9 +44,9 @@ func TestShopCheckers_AClosedShopImportsButIsNotLinked(t *testing.T) {
 
 	selling := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil)
 
-	_, err = selling.ShopDelete(context.Background(), connect.NewRequest(&sellingv1.ShopDeleteRequest{TeamId: team, ShopId: shop.ID}))
+	_, err = selling.ShopClose(context.Background(), connect.NewRequest(&sellingv1.ShopCloseRequest{TeamId: team, ShopId: shop.ID}))
 	if err != nil {
-		t.Fatalf("ShopDelete: %v", err)
+		t.Fatalf("ShopClose: %v", err)
 	}
 
 	mux := http.NewServeMux()
@@ -80,5 +80,16 @@ func TestShopCheckers_AClosedShopImportsButIsNotLinked(t *testing.T) {
 	err = NewFinancialAccountShopChecker(client).ShopOfTeam(ctx, team, shop.ID)
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Errorf("ShopOfTeam on a closed shop: %v, want NotFound", err)
+	}
+
+	// Reopened, it is a shop an account may be linked to again.
+	_, err = selling.ShopReopen(context.Background(), connect.NewRequest(&sellingv1.ShopReopenRequest{TeamId: team, ShopId: shop.ID}))
+	if err != nil {
+		t.Fatalf("ShopReopen: %v", err)
+	}
+
+	err = NewFinancialAccountShopChecker(client).ShopOfTeam(ctx, team, shop.ID)
+	if err != nil {
+		t.Errorf("ShopOfTeam on the reopened shop: %v, want it accepted", err)
 	}
 }

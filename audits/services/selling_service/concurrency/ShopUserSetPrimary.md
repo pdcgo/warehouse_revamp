@@ -137,7 +137,7 @@ What it costs: a Make primary waits at the check for as long as a Remove of the 
 
 ## Not proved
 
-- `ShopUpdate` / `ShopDelete` racing it: both UPDATE the shop row, which conflicts with `lockShop`. Read, not raced
+- `ShopUpdate` / `ShopDelete` (since 2026-11-06 `ShopClose` / `ShopReopen`) racing it: both UPDATE the shop row, which conflicts with `lockShop`. Read, not raced
 - the handlers' behaviour once shops move to `shop_service`
   ([the-shop-gets-its-own-service](../../../../docs/business/shop/context_decision.md#the-shop-gets-its-own-service)):
   the hierarchy and this fix must move with them

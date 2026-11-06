@@ -196,6 +196,9 @@ export function ImportOrdersDialog({
                         value={shopId}
                         placeholder={t("orders.import.shopPlaceholder", { marketplace: marketplaceLabel(marketplace) })}
                         onChange={setShopId}
+                        // A closed shop's placed orders still run to their end (a-closed-shop-refuses-only-new-selling,
+                        // order-moves-stay-team-wide) — offered after the open ones, badged.
+                        withClosed
                       />
                     </Box>
                   </Field.Root>

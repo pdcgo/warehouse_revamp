@@ -408,6 +408,8 @@ function SettlementFilterBar({
 
       <FilterField testId="settlement-shop-filter">
         <ShopSelect
+          // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+          asFilter
           teamId={filters.teamId}
           value={filters.shopId > 0n ? filters.shopId : undefined}
           placeholder={t("orderSettlement.allShops")}

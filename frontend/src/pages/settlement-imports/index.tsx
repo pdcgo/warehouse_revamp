@@ -92,6 +92,8 @@ export function SettlementImportsPage() {
       <Flex gap="card" wrap="wrap" align="center">
         <HStack maxW="xs" flex="1" minW="56" gap="1" data-testid="imports-shop-filter">
           <ShopSelect
+            // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+            asFilter
             teamId={teamId}
             value={shopId}
             placeholder={t("settlementImports.filter.allShops")}

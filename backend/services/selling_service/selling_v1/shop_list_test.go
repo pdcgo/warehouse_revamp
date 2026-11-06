@@ -2,16 +2,19 @@ package selling_v1_test
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
+	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
 func TestShopList_ScopedAndSearchable(t *testing.T) {
@@ -133,4 +136,122 @@ func TestShopList_PrimaryAndNoPrimaryTogetherIsInvalid(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
+}
+
+// THE STATUS FILTER (a-shop-is-closed-never-deleted, the-close-shop-prototype-is-accepted): open by default, closed by
+// the filter, both on ALL — every row carrying its status and, when closed, its close date.
+func TestShopList_TheStatusFilter(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	insertShop(t, db, 2, "Open Store", "OPN", "shopee")
+	closed := insertShop(t, db, 2, "Closed Store", "CLS", "shopee")
+	insertShop(t, db, 3, "Other Team", "OTH", "shopee")
+
+	closeShop(t, svc, 2, closed)
+
+	list := func(status sellingv1.ShopListStatus) []*sellingv1.Shop {
+		resp, err := svc.ShopList(context.Background(), connect.NewRequest(&sellingv1.ShopListRequest{
+			TeamId:      2,
+			Filter:      &sellingv1.ShopListFilter{Status: status},
+			DataRequest: []sellingv1.ShopListDataType{sellingv1.ShopListDataType_SHOP_LIST_DATA_TYPE_SHOP},
+			Page:        &commonv1.CommonPagination{Page: 1, Limit: 20},
+		}))
+		if err != nil {
+			t.Fatalf("ShopList(%v): %v", status, err)
+		}
+
+		if resp.Msg.GetPageInfo().GetTotalItems() != uint64(len(resp.Msg.GetIds())) {
+			t.Errorf("ShopList(%v): counted %d, listed %d", status, resp.Msg.GetPageInfo().GetTotalItems(), len(resp.Msg.GetIds()))
+		}
+
+		return shopRows(resp.Msg)
+	}
+
+	names := func(shops []*sellingv1.Shop) []string {
+		out := []string{}
+		for _, shop := range shops {
+			out = append(out, shop.GetName())
+		}
+
+		slices.Sort(out)
+
+		return out
+	}
+
+	for _, tc := range []struct {
+		status sellingv1.ShopListStatus
+		want   []string
+	}{
+		{sellingv1.ShopListStatus_SHOP_LIST_STATUS_UNSPECIFIED, []string{"Open Store"}},
+		{sellingv1.ShopListStatus_SHOP_LIST_STATUS_OPEN, []string{"Open Store"}},
+		{sellingv1.ShopListStatus_SHOP_LIST_STATUS_CLOSED, []string{"Closed Store"}},
+		{sellingv1.ShopListStatus_SHOP_LIST_STATUS_ALL, []string{"Closed Store", "Open Store"}},
+	} {
+		got := names(list(tc.status))
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("status %v: %v, want %v", tc.status, got, tc.want)
+		}
+	}
+
+	for _, shop := range list(sellingv1.ShopListStatus_SHOP_LIST_STATUS_ALL) {
+		closedRow := shop.GetId() == closed
+
+		if closedRow != (shop.GetStatus() == sellingv1.ShopStatus_SHOP_STATUS_CLOSED) ||
+			closedRow != (shop.GetClosedAtUnix() > 0) {
+			t.Errorf("row %s: status %v closed at %d", shop.GetName(), shop.GetStatus(), shop.GetClosedAtUnix())
+		}
+
+		if !closedRow && shop.GetStatus() != sellingv1.ShopStatus_SHOP_STATUS_OPEN {
+			t.Errorf("open row %s: status %v, want OPEN", shop.GetName(), shop.GetStatus())
+		}
+	}
+}
+
+// The status filter beside `writable`: the statement import's picker asks the closed shops a CS may write on — their
+// grants still count on a closed shop (a-closed-shop-locks-all-but-its-grants).
+func TestShopList_ClosedAndWritable(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil)
+
+	granted := insertShop(t, db, gateTeam, "Granted Closed", "GC", "shopee")
+	grantShop(t, db, granted, gateGranted, true)
+	insertShop(t, db, gateTeam, "Ungranted Closed", "UC", "shopee")
+	insertShop(t, db, gateTeam, "Granted Open", "GO", "shopee")
+
+	closeShop(t, svc, gateTeam, granted)
+
+	ungranted := storedShopByCode(t, db, "UC")
+	closeShop(t, svc, gateTeam, ungranted)
+
+	resp, err := svc.ShopList(asUser(gateGranted), connect.NewRequest(&sellingv1.ShopListRequest{
+		TeamId: gateTeam,
+		Filter: &sellingv1.ShopListFilter{
+			Status:   sellingv1.ShopListStatus_SHOP_LIST_STATUS_CLOSED,
+			Writable: true,
+		},
+		DataRequest: []sellingv1.ShopListDataType{sellingv1.ShopListDataType_SHOP_LIST_DATA_TYPE_SHOP},
+		Page:        &commonv1.CommonPagination{Page: 1, Limit: 20},
+	}))
+	if err != nil {
+		t.Fatalf("ShopList: %v", err)
+	}
+
+	rows := shopRows(resp.Msg)
+	if len(rows) != 1 || rows[0].GetId() != granted {
+		t.Fatalf("closed + writable for a CS = %+v, want the one closed shop granted to them", rows)
+	}
+}
+
+func storedShopByCode(t *testing.T, db *gorm.DB, code string) uint64 {
+	t.Helper()
+
+	var shop selling_service_models.Shop
+
+	err := db.Where("shop_code = ?", code).First(&shop).Error
+	if err != nil {
+		t.Fatalf("shop %s: %v", code, err)
+	}
+
+	return shop.ID
 }

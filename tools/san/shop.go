@@ -70,7 +70,7 @@ func shopCommand() *cli.Command {
 				Description: "One-shot, and safe to run again (a-write-needs-a-grant-or-a-manager: \"in the release that turns the\n" +
 					"gate on, every current CS is granted every shop of their team\"). For every live selling team (team_service\n" +
 					"TeamList) it reads the team's current CS — role CS, not suspended, not erased (user_service UserList) — and\n" +
-					"the team's live shops (ShopList) with who already holds each (ShopUserList), then grants each missing\n" +
+					"the team's open shops (ShopList) with who already holds each (ShopUserList), then grants each missing\n" +
 					"(shop, CS) pair through ShopUserAdd, so membership is re-checked and the primary rule applies: an existing\n" +
 					"primary is never touched, and a shop with none gets the first CS granted (lowest user id) as its primary\n" +
 					"(the-primary-cs-is-a-flag-on-a-grant). A grant that exists is skipped, so a second run adds nothing.\n" +
@@ -303,13 +303,15 @@ func (s *San) currentCS(ctx context.Context, teamID uint64) ([]rolloutCS, error)
 	return slices.CompactFunc(cs, func(a, b rolloutCS) bool { return a.id == b.id }), nil
 }
 
-// liveShops is the team's live shops — ShopList shows no deleted (closed) one — each carrying its primary CS.
+// liveShops is the team's OPEN shops — ShopList's `status` OPEN, never a closed one (a-shop-is-closed-never-deleted) —
+// each carrying its primary CS.
 func (s *San) liveShops(ctx context.Context, teamID uint64) ([]*sellingv1.Shop, error) {
 	byID := map[uint64]*sellingv1.Shop{}
 
 	for page := uint32(1); ; page++ {
 		req := &sellingv1.ShopListRequest{
 			TeamId:      teamID,
+			Filter:      &sellingv1.ShopListFilter{Status: sellingv1.ShopListStatus_SHOP_LIST_STATUS_OPEN},
 			DataRequest: []sellingv1.ShopListDataType{sellingv1.ShopListDataType_SHOP_LIST_DATA_TYPE_SHOP},
 			Page:        &commonv1.CommonPagination{Page: page, Limit: rolloutPage},
 		}

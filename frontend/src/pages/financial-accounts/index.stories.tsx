@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { account, expectedBalance } from "../../../.storybook/financialAccountFixtures";
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
+import { closeShopForStory } from "../../../.storybook/shopStub";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { FinancialAccountType } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { formatRupiahNumber } from "../../lib/money";
@@ -307,6 +308,35 @@ export const EveryFilterTheContractHas: Story = {
 
     await userEvent.click(canvas.getByTestId("account-filters-clear"));
     await waitFor(() => expect(canvas.getByTestId(`account-row-${BCA_GAJI.id}`)).toBeVisible());
+  },
+};
+
+// A CLOSED SHOP STAYS A FILTER (report-filters-offer-closed-shops): Melati Store (22), closed, is offered after the open
+// shops, badged Closed — picked, the list answers the account it withdraws into (BCA Operasional): the link a closed
+// shop made stays (a-closed-shop-takes-no-new-account-link), and the field keeps the badge.
+export const TheShopFilterOffersAClosedShopLastBadged: Story = {
+  beforeEach: () => {
+    closeShopForStory(22n);
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const field = canvas.getByTestId("account-shop-filter");
+
+    await userEvent.click(within(field).getByTestId("shop-select"));
+    const option = await within(field).findByTestId("shop-select-option-22");
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(within(option).getByTestId("shop-select-closed-22")).toHaveTextContent("Closed");
+    const listed = within(option.closest('[role="listbox"]') as HTMLElement)
+      .getAllByRole("option")
+      .map((o) => o.getAttribute("data-testid"));
+    await expect(listed.length).toBeGreaterThan(1);
+    await expect(listed[listed.length - 1]).toBe("shop-select-option-22");
+
+    await userEvent.click(option);
+    await waitFor(() => expect(canvas.queryByTestId(`account-row-${BCA_GAJI.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`account-row-${BCA_OPS.id}`)).toBeVisible();
+    await expect(within(field).getByTestId("shop-select")).toHaveValue("Melati Store");
+    await expect(within(field).getByTestId("shop-select-value-closed")).toBeVisible();
   },
 };
 

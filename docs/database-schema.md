@@ -367,10 +367,11 @@ erDiagram
         bigserial   id          PK
         bigint      team_id     "owning SELLING team, opaque cross-service id, no FK"
         text        name        "required"
-        text        shop_code   "required, unique per team among active"
+        text        shop_code   "required, unique per team among OPEN shops (00043)"
         text        marketplace "Marketplace enum as text (shopee, tokopedia, …); no CHECK"
         text        description
-        boolean     deleted     "soft delete"
+        text        status      "open or closed - CHECK; replaced deleted (00043)"
+        timestamptz closed_at   "set exactly while closed - CHECK"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -531,9 +532,16 @@ erDiagram
 ```
 
 - **`shops`** — a selling team's marketplace storefronts (#66). Team-scoped (`team_id` carries
-  `use_scope`), so a shop is only ever reachable within its owning team. `shop_code` is unique per
-  team **among active shops only** (`UNIQUE (team_id, shop_code) WHERE deleted = FALSE`), so a
-  soft-deleted shop frees its code and two teams may share one. `marketplace` stores the shared
+  `use_scope`), so a shop is only ever reachable within its owning team. 🔄 *(00043, 2026-11-06)* a shop
+  is **closed, never deleted**
+  ([a-shop-is-closed-never-deleted](business/shop/context_decision.md#a-shop-is-closed-never-deleted)):
+  `status` (`open` | `closed`, CHECK `shops_status_known`) and `closed_at` (non-null exactly while closed,
+  CHECK `shops_closed_at_when_closed`) replaced the `deleted` flag — the migration filled every deleted
+  shop in as `closed` at its `updated_at`. `shop_code` is unique per team **among open shops only**
+  (`shops_team_code_open_unique (team_id, shop_code) WHERE status = 'open'`), so a closed shop frees its
+  code and two teams may share one; the fill renamed no code, so a deleted shop whose code was since
+  reused reopens only after one is renamed. `shops_team_status_idx (team_id, status)` serves ShopList's
+  status filter (open by default). `marketplace` stores the shared
   `warehouse.marketplace.v1.Marketplace` enum **as text**, mapped via `pkgs/san_marketplace` — the
   same helper `supplier_service.supplier_channels` uses, so the two domains cannot drift to different
   encodings (#120). Deliberately **without** a `CHECK` IN-list: the mapper + proto validation guard

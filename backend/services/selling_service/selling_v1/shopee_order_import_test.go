@@ -357,6 +357,26 @@ func TestShopeeOrderImport_ACompletedFileDoesNotUndoAReturn(t *testing.T) {
 	}
 }
 
+// A CLOSED shop's placed orders still run to their end (a-closed-shop-refuses-only-new-selling,
+// order-moves-stay-team-wide): its order export imports and moves them as on an open shop.
+func TestShopeeOrderImport_AClosedShopsOrdersStillMove(t *testing.T) {
+	db := san_testdb.DB(t)
+	client := importClient(t, db)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	seedImportOrder(t, db, shop, "2610201E5F6G7H", "shipped")
+	seedImportOrder(t, db, shop, "2610212N1P2Q3R", "shipping")
+
+	closeShop(t, newService(t, db), 2, shop)
+
+	run := shopeeImport(t, client, shop, orderSample(t, "shopee", shopeeLate))
+	if len(run.errors) > 0 {
+		t.Fatalf("the closed shop's import: errors %v", run.errors)
+	}
+
+	wantTally(t, run, 2, 3, 4)
+}
+
 // The shop is checked before the file is read: another platform's shop, or another team's, is one ERROR line and
 // nothing else.
 func TestShopeeOrderImport_TheWrongShopEndsBeforeTheFile(t *testing.T) {

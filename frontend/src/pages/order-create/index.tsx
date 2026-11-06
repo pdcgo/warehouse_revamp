@@ -28,6 +28,7 @@ import { NoAnswerPanel } from "./components/NoAnswerPanel";
 import { useTeam } from "../../features/team/TeamContext";
 import { useAuth } from "../../features/auth/AuthContext";
 import { useCreateOrder } from "../../features/orders/queries";
+import { useShopOptions } from "../../features/shops/queries";
 import { useDeleteOrderDrafts, useOrderDraft } from "../../features/orderDrafts/queries";
 import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 import { DraftProductHints } from "./components/DraftProductHints";
@@ -742,7 +743,15 @@ export function OrderCreatePage() {
   // is the MARKETPLACE REF (an-order-ref-is-required-by-the-rpc): the request's validation refuses an empty one.
   // ⚠ AND EVERY BORROWED PRODUCT NEEDS ITS RETURN MAP (a-borrowed-line-needs-its-map-at-create): the server refuses
   // the order without one, so Create is held here too, and the line under the button says why.
+  // ⚠ AND THE SHOP IS OPEN (a-closed-shop-refuses-only-new-selling): a waiting draft keeps its shop after the shop was
+  // closed (a-close-leaves-the-drafts-waiting) — ShopSelect `keepClosed` shows it badged rather than clearing it — and
+  // the server refuses the order, so Create is held here and the alert at the top says why and what the ways out are.
+  // The same read ShopSelect's `keepClosed` makes, so it is one request.
+  const closedShops = useShopOptions({ teamId: cardTeamId, status: "closed" });
+  const closedShop = shopId > 0n ? closedShops.data?.find((shop) => shop.id === shopId) : undefined;
+
   const canSave =
+    closedShop === undefined &&
     canSubmit({ customerName, shopId, warehouseId, lines: allLines, stock }) &&
     feeRefusal === null &&
     orderDate !== "" &&
@@ -1113,6 +1122,18 @@ export function OrderCreatePage() {
 
       {/* NO ANSWER — outside the locked fieldset, so Try Again is the one thing on the page that still answers. */}
       {sent?.phase === "noAnswer" && <NoAnswerPanel onTryAgain={() => void tryAgain()} checking={checkingRef} />}
+
+      {/* THE DRAFT'S SHOP IS CLOSED — the draft waits (a-close-leaves-the-drafts-waiting): it cannot become an order until the
+          shop is reopened, or it is deleted. Said at the top, where Create's being held is explained. */}
+      {closedShop && (
+        <Alert.Root status="warning" data-testid="order-create-shop-closed">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{t("orderForm.shopClosed.title", { name: closedShop.name })}</Alert.Title>
+            <Alert.Description>{t("orderForm.shopClosed.body")}</Alert.Description>
+          </Alert.Content>
+        </Alert.Root>
+      )}
 
       {/* Full width, above both columns: a line the warehouse cannot fill is a fact about the whole
           order, not about the column the line happens to sit in. */}

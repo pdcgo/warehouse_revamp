@@ -6,6 +6,7 @@
 package selling_v1
 
 import (
+	"context"
 	"errors"
 	"math"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1/sellingv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
@@ -132,14 +134,15 @@ func dbError(err error) error {
 	return connect.NewError(connect.CodeInternal, err)
 }
 
-// shopExists reports whether an ACTIVE shop with this id exists IN THIS TEAM. The team_id clause is
-// the scope check — it is what stops one team touching another's shop by id.
+// shopExists reports whether a shop with this id exists IN THIS TEAM — open or closed: a closed shop keeps its grants
+// and its primary CS editable (a-closed-shop-locks-all-but-its-grants), so the access RPCs asking this answer it. The
+// team_id clause is the scope check — it is what stops one team touching another's shop by id.
 func shopExists(tx *gorm.DB, teamID, shopID uint64) (bool, error) {
 	var count int64
 
 	err := tx.
 		Model(&selling_service_models.Shop{}).
-		Where("id = ? AND team_id = ? AND deleted = ?", shopID, teamID, false).
+		Where("id = ? AND team_id = ?", shopID, teamID).
 		Count(&count).
 		Error
 
@@ -147,18 +150,54 @@ func shopExists(tx *gorm.DB, teamID, shopID uint64) (bool, error) {
 }
 
 // lockShop is shopExists taking the shop's row FOR UPDATE — what serialises every change to the shop's
-// primary CS, so two grants landing on a shop with none cannot both become it.
+// primary CS, so two grants landing on a shop with none cannot both become it. A closed shop is locked too: its grants
+// stay editable (a-closed-shop-locks-all-but-its-grants).
 func lockShop(tx *gorm.DB, teamID, shopID uint64) (bool, error) {
 	var shops []selling_service_models.Shop
 
 	err := tx.
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Select("id").
-		Where("id = ? AND team_id = ? AND deleted = ?", shopID, teamID, false).
+		Where("id = ? AND team_id = ?", shopID, teamID).
 		Find(&shops).
 		Error
 
 	return len(shops) > 0, err
+}
+
+// lockShopRow reads the team's shop FOR NO KEY UPDATE — the lock the shop's own writes take (ShopUpdate, ShopClose,
+// ShopReopen), so a close and an edit, or a close and a reopen, of one shop run one after the other and each reads the
+// status the other left. NO KEY: it does not wait on the KEY SHARE an order's insert holds on the shop through the
+// orders foreign key. errShopMissing for another team's shop or none.
+func lockShopRow(tx *gorm.DB, teamID, shopID uint64) (*selling_service_models.Shop, error) {
+	var shops []selling_service_models.Shop
+
+	err := tx.
+		Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).
+		Where("id = ? AND team_id = ?", shopID, teamID).
+		Find(&shops).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	if len(shops) == 0 {
+		return nil, errShopMissing
+	}
+
+	return &shops[0], nil
+}
+
+// shopWithPrimary is a shop write's answer: the row, its primary CS read from its flagged grant (loadPrimaries).
+func (s *Service) shopWithPrimary(ctx context.Context, shop *selling_service_models.Shop) (*sellingv1.Shop, error) {
+	shops := []selling_service_models.Shop{*shop}
+
+	err := loadPrimaries(s.db.WithContext(ctx), shops)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	return toProto(&shops[0]), nil
 }
 
 // loadPrimaries fills each shop's PrimaryUserID from its flagged grant — one query for the page.

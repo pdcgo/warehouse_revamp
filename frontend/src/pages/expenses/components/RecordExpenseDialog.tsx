@@ -230,7 +230,7 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
                         </HStack>
                       </Field.Label>
                       <Box w="full" data-testid="expense-shop-field">
-                        <ShopSelect teamId={teamId} value={shopId} onChange={setShopId} disabled={busy} />
+                        <ShopSelect teamId={teamId} value={shopId} onChange={setShopId} disabled={busy} withClosed />
                       </Box>
                       <Field.HelperText>{t("expenses.shopAdsHelp")}</Field.HelperText>
                     </Field.Root>

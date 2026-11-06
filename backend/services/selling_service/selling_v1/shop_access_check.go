@@ -15,7 +15,7 @@ import (
 // The settlement importer asks it before storing a file (the-shop-is-checked-before-the-file-is-stored),
 // and settlement asks it for an imported shop row's primary CS (settlement-asks-the-shop-for-its-primary-cs).
 //
-// A DELETED SHOP IS ANSWERED, with `deleted` set (a-closed-shop-refuses-only-new-selling): a closed shop's last
+// A CLOSED SHOP IS ANSWERED, with its `status` (a-closed-shop-refuses-only-new-selling): a closed shop's last
 // statements still import and its rows still find their primary CS. Each caller decides what a closed shop may do;
 // another team's shop, or one that never existed, is NotFound.
 func (s *Service) ShopAccessCheck(

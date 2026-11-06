@@ -53,11 +53,17 @@ func rolloutMember(t *testing.T, db *gorm.DB, username string, teamID uint64, ro
 	return user.ID
 }
 
-// rolloutShop writes a shop of a team, as selling_service stores it.
-func rolloutShop(t *testing.T, db *gorm.DB, teamID uint64, code string, deleted bool) uint64 {
+// rolloutShop writes a shop of a team, as selling_service stores it — open, or closed (a-shop-is-closed-never-deleted).
+func rolloutShop(t *testing.T, db *gorm.DB, teamID uint64, code string, closed bool) uint64 {
 	t.Helper()
 
-	shop := selling_service_models.Shop{TeamID: teamID, Name: "Toko " + code, ShopCode: code, Marketplace: "shopee", Deleted: deleted}
+	shop := selling_service_models.Shop{TeamID: teamID, Name: "Toko " + code, ShopCode: code, Marketplace: "shopee"}
+
+	if closed {
+		closedAt := time.Now()
+		shop.Status = selling_service_models.ShopClosed
+		shop.ClosedAt = &closedAt
+	}
 
 	err := db.Create(&shop).Error
 	if err != nil {
@@ -106,7 +112,7 @@ func countGrants(t *testing.T, db *gorm.DB) int64 {
 }
 
 // THE ROLLOUT GRANT (a-write-needs-a-grant-or-a-manager): every current CS of a selling team gets every live shop of
-// their team — not an owner or admin (they write without one), not a suspended CS, not a deleted shop, not another
+// their team — not an owner or admin (they write without one), not a suspended CS, not a closed shop, not another
 // team's shop, not a deleted team's. An existing grant and an existing primary are left alone; a shop with no primary
 // gets the first CS granted. --dry-run writes nothing and reports the same; a second run adds nothing.
 func TestGrantCurrentCS_GrantsEveryCurrentCSEveryLiveShopOfTheirTeam(t *testing.T) {
@@ -187,7 +193,7 @@ func TestGrantCurrentCS_GrantsEveryCurrentCSEveryLiveShopOfTheirTeam(t *testing.
 	expect := map[uint64]map[uint64]bool{
 		shopA1: {csA1: true, csA2: false}, // the existing primary kept, csA2 added beside it
 		shopA2: {csA1: true, csA2: false}, // no primary before: the lowest-id CS granted becomes it
-		shopA3: {},                        // deleted (closed) — nobody is granted it
+		shopA3: {},                        // closed — nobody is granted it
 		shopB1: {csB1: true},              // team B's CS only — never team A's
 		shopD1: {},                        // a deleted team's shop — its team is not walked
 	}

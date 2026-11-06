@@ -7,17 +7,18 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
-// shopAccess is ShopAccessCheck's answer, read in-process: the shop — a deleted (closed) one included, flagged — its
+// shopAccess is ShopAccessCheck's answer, read in-process: the shop — a closed one included, with its status — its
 // primary CS, and whether the user may WRITE on it (a-write-needs-a-grant-or-a-manager).
 //
 // The one definition of who may write on a shop. ShopAccessCheck returns it to other services; the order writes of this
 // service ask it directly, with no RPC hop (refuseShopWrite).
 //
-// Another team's shop, or one that never existed, is NotFound — the scope check. A deleted shop is ANSWERED, and each
+// Another team's shop, or one that never existed, is NotFound — the scope check. A closed shop is ANSWERED, and each
 // caller decides what a closed shop may still do (a-closed-shop-refuses-only-new-selling).
 func (s *Service) shopAccess(
 	ctx context.Context,
@@ -76,8 +77,7 @@ func (s *Service) shopAccess(
 	return &shop, isManager(team, root), nil
 }
 
-// errShopClosed is a closed shop refusing new selling (a-closed-shop-refuses-only-new-selling). Until the close is
-// built, a closed shop is a deleted one (a-shop-is-closed-never-deleted).
+// errShopClosed is a closed shop refusing new selling (a-closed-shop-refuses-only-new-selling).
 var errShopClosed = errors.New("the shop is closed — it takes no new orders (a-closed-shop-refuses-only-new-selling)")
 
 // refuseShopWrite is the write gate on the shop for NEW SELLING — OrderCreate (a draft's Promote is OrderCreate),
@@ -85,7 +85,7 @@ var errShopClosed = errors.New("the shop is closed — it takes no new orders (a
 // taken or written, so a refusal moves no stock.
 //
 //   - not this team's shop — NotFound, as before (every-shop-call-is-scoped-to-its-team)
-//   - a closed (deleted) shop — FailedPrecondition, naming it (a-closed-shop-refuses-only-new-selling)
+//   - a closed shop — FailedPrecondition, naming it (a-closed-shop-refuses-only-new-selling)
 //   - no grant and no manager role — PermissionDenied, naming it, in the importer's words
 //
 // The caller is the request's identity. A call with none holds no grant and no role, so it is refused like any other
@@ -96,13 +96,48 @@ func (s *Service) refuseShopWrite(ctx context.Context, teamID, shopID uint64) er
 		return err
 	}
 
-	if shop.Deleted {
-		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s: %w", shop.Name, errShopClosed))
+	if shop.IsClosed() {
+		return shopClosedRefusal(shop.Name)
 	}
 
 	if !access {
 		return connect.NewError(connect.CodePermissionDenied,
 			fmt.Errorf("You have no access to %s — ask the team's owner or admin for it", shop.Name))
+	}
+
+	return nil
+}
+
+func shopClosedRefusal(name string) error {
+	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s: %w", name, errShopClosed))
+}
+
+// refuseClosedShopInTx is the gate's status half again, INSIDE the order's own transaction, with the shop's row held
+// FOR SHARE until the order commits (a-closed-shop-refuses-only-new-selling). refuseShopWrite reads the shop before
+// the stock take, outside any transaction, so a close landing between that read and the order's insert would
+// otherwise let one order onto a shop already closed. FOR SHARE meets ShopClose's FOR NO KEY UPDATE: a close in
+// flight makes the order wait for it and then read the shop closed (refused, the take compensated); an order holding
+// it makes the close wait until the order is in. Orders on one shop never wait on each other — share locks are
+// compatible — and the insert's own foreign-key KEY SHARE is weaker than this.
+func refuseClosedShopInTx(tx *gorm.DB, teamID, shopID uint64) error {
+	var shops []selling_service_models.Shop
+
+	err := tx.
+		Clauses(clause.Locking{Strength: "SHARE"}).
+		Select("id", "name", "status").
+		Where("id = ? AND team_id = ?", shopID, teamID).
+		Find(&shops).
+		Error
+	if err != nil {
+		return err
+	}
+
+	if len(shops) == 0 {
+		return errShopMissing
+	}
+
+	if shops[0].IsClosed() {
+		return shopClosedRefusal(shops[0].Name)
 	}
 
 	return nil

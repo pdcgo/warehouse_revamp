@@ -138,10 +138,10 @@ func TestShopAccessCheck_AnotherTeamsShopIsNotFound(t *testing.T) {
 	}
 }
 
-// A deleted (closed) shop is ANSWERED, flagged, with its primary CS and the user's access — so its last statements
-// still import and its rows still find their primary (a-closed-shop-refuses-only-new-selling). Each caller decides;
-// the order writes refuse it (shop_write_gate_test.go).
-func TestShopAccessCheck_ADeletedShopIsAnsweredFlagged(t *testing.T) {
+// A closed shop is ANSWERED, with its status, its primary CS and the user's access — so its last statements still
+// import and its rows still find their primary (a-closed-shop-refuses-only-new-selling). Each caller decides; the order
+// writes refuse it (shop_write_gate_test.go).
+func TestShopAccessCheck_AClosedShopIsAnsweredWithItsStatus(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithRoles(t, db, nil)
 	ctx := context.Background()
@@ -151,18 +151,19 @@ func TestShopAccessCheck_ADeletedShopIsAnsweredFlagged(t *testing.T) {
 		primary = 10
 	)
 
-	deleted := insertShop(t, db, team, "Gone", "G1", "shopee")
-	grantShop(t, db, deleted, primary, true)
+	closed := insertShop(t, db, team, "Gone", "G1", "shopee")
+	grantShop(t, db, closed, primary, true)
 
-	_, err := svc.ShopDelete(ctx, connect.NewRequest(&sellingv1.ShopDeleteRequest{TeamId: team, ShopId: deleted}))
+	_, err := svc.ShopClose(ctx, connect.NewRequest(&sellingv1.ShopCloseRequest{TeamId: team, ShopId: closed}))
 	if err != nil {
-		t.Fatalf("ShopDelete: %v", err)
+		t.Fatalf("ShopClose: %v", err)
 	}
 
-	got := accessCheck(t, svc, team, deleted, primary)
+	got := accessCheck(t, svc, team, closed, primary)
 
-	if !got.GetShop().GetDeleted() {
-		t.Error("the deleted shop should be answered with deleted set")
+	if got.GetShop().GetStatus() != sellingv1.ShopStatus_SHOP_STATUS_CLOSED || got.GetShop().GetClosedAtUnix() == 0 {
+		t.Errorf("the closed shop should be answered closed, with its close date: status %v, closed at %d",
+			got.GetShop().GetStatus(), got.GetShop().GetClosedAtUnix())
 	}
 
 	if got.GetShop().GetName() != "Gone" || got.GetPrimaryUserId() != primary || !got.GetIsHaveAccess() {

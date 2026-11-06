@@ -281,12 +281,13 @@ export const EditOpensTheShopFilledIn: Story = {
   },
 };
 
-/** Delete confirms first, naming the shop — and the row is gone after. */
-export const DeleteConfirmsFirst: Story = {
+/** Close confirms first, naming the shop — and the row leaves the open list after (a-shop-is-closed-never-deleted). */
+export const CloseConfirmsFirst: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("delete-MEL-LAZ"));
+    await expect(canvas.queryAllByTestId(/^delete-/)).toHaveLength(0);
+    await userEvent.click(canvas.getByTestId("close-MEL-LAZ"));
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
     await expect(dialog).toHaveTextContent("Melati Grosir");

@@ -7,7 +7,7 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 //   a-write-needs-a-grant-or-a-manager     a CS writes only on the shops granted her — the order form offers only
 //                                          those, and an order sent straight to the API for another shop is refused
 //                                          PermissionDenied, naming the shop
-//   a-closed-shop-refuses-only-new-selling a deleted (closed) shop takes no new order, even from the team's owner
+//   a-closed-shop-refuses-only-new-selling a closed shop takes no new order, even from the team's owner
 //
 // It makes its own selling team (Root as Owner), two shops and a CS granted the first only. It places NO order — every
 // create here is refused at the gate, or fails after it for want of a warehouse — so it may run anywhere in the
@@ -138,8 +138,9 @@ test("setup: a selling team, shops A and B and a closed one, and a CS granted A 
   const granted = await call(page, "selling.v1.ShopService/ShopUserAdd", { teamId, shopId: shopA, userId: cs.body.user.id });
   expect(granted.status).toBe(200);
 
-  const closed = await call(page, "selling.v1.ShopService/ShopDelete", { teamId, shopId: shopClosed });
+  const closed = await call(page, "selling.v1.ShopService/ShopClose", { teamId, shopId: shopClosed });
   expect(closed.status).toBe(200);
+  expect(closed.body.shop.status).toBe("SHOP_STATUS_CLOSED");
 });
 
 test("Order form: a CS granted shop A sees A, and never B", async ({ page }) => {

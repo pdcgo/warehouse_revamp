@@ -89,3 +89,48 @@ func TestShopUser_CrossTeamIsolation(t *testing.T) {
 		t.Fatalf("cross-team list code = %v, want NotFound", connect.CodeOf(err))
 	}
 }
+
+// A CLOSED shop keeps its grants and its primary CS EDITABLE (a-closed-shop-locks-all-but-its-grants) — so someone can
+// still import its last statements: grants are added, listed and removed, and Make primary moves the primary, all on
+// the closed shop.
+func TestShopUser_AClosedShopsGrantsStayEditable(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := context.Background()
+
+	shopID := insertShop(t, db, 2, "Closed Shop", "CL1", "shopee")
+	closeShop(t, svc, 2, shopID)
+
+	for _, uid := range []uint64{10, 11} {
+		_, err := svc.ShopUserAdd(ctx, connect.NewRequest(&sellingv1.ShopUserAddRequest{
+			TeamId: 2, ShopId: shopID, UserId: uid,
+		}))
+		if err != nil {
+			t.Fatalf("ShopUserAdd %d on a closed shop: %v", uid, err)
+		}
+	}
+
+	if got := listUsers(t, svc, 2, shopID); len(got) != 2 {
+		t.Fatalf("users on the closed shop = %v, want 2", got)
+	}
+
+	resp, err := svc.ShopUserSetPrimary(ctx, connect.NewRequest(&sellingv1.ShopUserSetPrimaryRequest{
+		TeamId: 2, ShopId: shopID, UserId: 11,
+	}))
+	if err != nil {
+		t.Fatalf("Make primary on a closed shop: %v", err)
+	}
+
+	if resp.Msg.GetShop().GetPrimaryUserId() != 11 || resp.Msg.GetShop().GetStatus() != sellingv1.ShopStatus_SHOP_STATUS_CLOSED {
+		t.Fatalf("after Make primary: %+v, want primary 11 on the still-closed shop", resp.Msg.GetShop())
+	}
+
+	_, err = svc.ShopUserRemove(ctx, connect.NewRequest(&sellingv1.ShopUserRemoveRequest{TeamId: 2, ShopId: shopID, UserId: 10}))
+	if err != nil {
+		t.Fatalf("ShopUserRemove on a closed shop: %v", err)
+	}
+
+	if got := listUsers(t, svc, 2, shopID); len(got) != 1 || got[0] != 11 {
+		t.Fatalf("after remove on the closed shop: %v, want [11]", got)
+	}
+}

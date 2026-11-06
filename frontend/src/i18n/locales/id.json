@@ -1790,11 +1790,6 @@
     "title": "Toko",
     "selectTeam": "Pilih tim untuk mengelola tokonya.",
     "searchPlaceholder": "Cari nama atau kode",
-    "deleted": "Toko \"{{name}}\" dihapus",
-    "deleteFailed": "Gagal menghapus",
-    "deleteShop": "Hapus Toko",
-    "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
-    "delete": "Hapus",
     "empty": "Tidak ada toko ditemukan.",
     "table": {
       "name": "Nama",
@@ -1856,9 +1851,7 @@
       "title": "Detail Toko",
       "edit": "Ubah",
       "code": "Kode",
-      "description": "Deskripsi",
-      "delete": "Hapus",
-      "deleted": "Toko \"{{name}}\" dihapus"
+      "description": "Deskripsi"
     },
     "noPrimary": "Belum ada CS utama",
     "lead": "Etalase marketplace tempat tim ini berjualan — masing-masing dengan kodenya, marketplace-nya, dan orang yang mengurusnya.",
@@ -1891,7 +1884,55 @@
       "none": "Belum ada akun penarikan",
       "noneHint": "Hubungkan toko ini ke rekening di Akun Keuangan — penarikan dananya dicatat ke sana.",
       "openAccount": "Buka Akun",
-      "openAccounts": "Buka Akun Keuangan"
+      "openAccounts": "Buka Akun Keuangan",
+      "closedNone": "Toko yang ditutup tidak bisa dihubungkan ke akun baru — buka lagi untuk menghubungkannya."
+    },
+    "status": {
+      "label": "Status",
+      "closed": "Ditutup",
+      "closedOn": "Ditutup · {{date}}",
+      "filter": {
+        "open": "Toko buka",
+        "closed": "Toko ditutup",
+        "all": "Semua toko"
+      },
+      "noneClosed": "Belum ada toko yang ditutup",
+      "noneClosedHint": "Toko yang berhenti berjualan ditutup, tidak pernah dihapus — tampil di sini, dan bisa dibuka lagi."
+    },
+    "close": {
+      "action": "Tutup",
+      "title": "Tutup Toko",
+      "confirm": "Tutup Toko",
+      "message": "Tutup {{name}}? Toko bisa dibuka lagi nanti.",
+      "stopsTitle": "Yang berhenti",
+      "stops": {
+        "orders": "Pesanan baru, dan draf yang dikirim aplikasi luar",
+        "picker": "Toko hilang dari pilihan toko di form pesanan",
+        "drafts": "Draf yang menunggu tetap ada, tapi tidak bisa jadi pesanan sampai toko dibuka lagi",
+        "account": "Tidak bisa dihubungkan ke akun penarikan baru",
+        "edit": "Nama, kode dan deskripsinya dikunci"
+      },
+      "keepsTitle": "Yang tetap berjalan",
+      "keeps": {
+        "orders": "Pesanan yang sudah dibuat berjalan sampai selesai — kirim, batal, retur",
+        "money": "Laporannya tetap bisa diimpor; penyelesaian, akun yang terhubung dan biaya tetap berjalan",
+        "access": "Akses pengguna dan CS utamanya tetap bisa diubah"
+      },
+      "codeFreed": "Kodenya {{code}} bisa dipakai toko baru.",
+      "noPrimary": "Toko ini belum punya CS utama — pilih dulu, atau laporan terakhirnya tidak bisa diimpor.",
+      "done": "{{name}} ditutup",
+      "failed": "Gagal menutup toko"
+    },
+    "reopen": {
+      "action": "Buka Lagi",
+      "title": "Buka Toko Lagi",
+      "done": "{{name}} dibuka lagi",
+      "failed": "Gagal membuka lagi toko"
+    },
+    "closedBanner": {
+      "title": "Toko ini ditutup",
+      "since": "Ditutup pada {{date}}.",
+      "body": "Toko ini tidak menerima pesanan atau draf baru. Pesanan yang sudah dibuat berjalan sampai selesai, laporannya tetap bisa diimpor, dan akses penggunanya tetap bisa diubah. Nama, kode dan deskripsinya dikunci sampai toko dibuka lagi."
     }
   },
   "racks": {
@@ -3695,7 +3736,8 @@
       "hideLog": "Sembunyikan log",
       "openFile": "Buka file",
       "close": "Tutup",
-      "closeRunning": "Tutup — impor tetap jalan"
+      "closeRunning": "Tutup — impor tetap jalan",
+      "closedShop": "Toko ini ditutup — laporan terakhirnya tetap bisa diimpor."
     },
     "detail": {
       "notFound": "File ini tidak ada di impor tim Anda.",
@@ -4270,6 +4312,10 @@
       "leaveWaiting": "Pesanan sudah dikirim dan server belum menjawab. Keluar tidak menghentikannya — pesanan mungkin tetap dibuat. Periksa daftar pesanan sebelum mengetiknya lagi.",
       "leaveNoAnswer": "Pembuatan terakhir Anda tidak mendapat jawaban — pesanan mungkin sudah dibuat, mungkin juga belum. Periksa daftar pesanan sebelum mengetiknya lagi.",
       "leaveConfirm": "Keluar"
+    },
+    "shopClosed": {
+      "title": "{{name}} sudah ditutup",
+      "body": "Toko yang ditutup tidak menerima pesanan baru, jadi draf ini tidak bisa dibuat pesanan. Hapus draf ini, atau minta owner atau admin tim membuka kembali tokonya."
     }
   },
   "quantityInput": {

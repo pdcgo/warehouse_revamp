@@ -19,6 +19,7 @@ import { FileSpreadsheet, Upload } from "lucide-react";
 import { MarketplaceBadge } from "../../../components/badges/MarketplaceBadge";
 import { ShopSelect } from "../../../components/pickers/ShopSelect";
 import { useShopOptions } from "../../../features/shops/queries";
+import { ShopStatusBadge } from "../../../features/shops/ShopStatusBadge";
 import { FileTally } from "../../../features/settlementImport/FileTally";
 import { UploadedFileStatusBadge } from "../../../features/settlementImport/UploadedFileStatusBadge";
 import {
@@ -50,6 +51,9 @@ const LEVEL_COLOR: Partial<Record<LogLevel, string>> = {
 //  - once started, the dialog is a WINDOW onto the import: closing it drops the stream, never the import
 //    (an-import-finishes-whether-anyone-watches), and there is no Cancel;
 //  - the bar and the tallies are read from the stream's fields, and the end says what did NOT post.
+//  - the shop picker also offers the team's CLOSED shops, badged, after the open ones, and a picked one says its
+//    statements still import (a-closed-shop-refuses-only-new-selling — the importer accepts a closed shop; its last
+//    payouts arrive after the close). The grant still gates it (a-write-needs-a-grant-or-a-manager).
 export function ImportFileDialog({ teamId }: { teamId: bigint }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -62,8 +66,14 @@ export function ImportFileDialog({ teamId }: { teamId: bigint }) {
 
   // A statement import writes on the shop (a-write-needs-a-grant-or-a-manager): the picker offers only the shops this
   // person may import for — the same writable list ShopSelect asks below, so the pick is always found here.
-  const shops = useShopOptions({ teamId, writable: true });
-  const shop = useMemo(() => (shops.data ?? []).find((s) => s.id === shopId), [shops.data, shopId]);
+  const shops = useShopOptions({ teamId, writable: true, status: "open" });
+  // The closed shops the picker offers after them — the same read ShopSelect `withClosed` makes.
+  const closedShops = useShopOptions({ teamId, writable: true, status: "closed" });
+  const closedPick = useMemo(() => (closedShops.data ?? []).find((s) => s.id === shopId), [closedShops.data, shopId]);
+  const shop = useMemo(
+    () => (shops.data ?? []).find((s) => s.id === shopId) ?? closedPick,
+    [shops.data, shopId, closedPick],
+  );
   const importable = canImportFrom(shop?.marketplace);
 
   const { state, start, detach, reset } = useImportStream();
@@ -136,10 +146,18 @@ export function ImportFileDialog({ teamId }: { teamId: bigint }) {
                 <Stack gap="card">
                   <Field.Root required>
                     <Field.Label>{t("settlementImports.dialog.shop")}</Field.Label>
-                    <ShopSelect teamId={teamId} value={shopId} onChange={setShopId} writable />
+                    <ShopSelect teamId={teamId} value={shopId} onChange={setShopId} writable withClosed />
                     {shop && (
-                      <HStack gap="2" mt="1">
+                      <HStack gap="2" mt="1" wrap="wrap">
                         <MarketplaceBadge marketplace={shop.marketplace} size="sm" />
+                        {closedPick && (
+                          <>
+                            <ShopStatusBadge size="sm" />
+                            <Text fontSize="sm" color="fg.muted" data-testid="import-closed-shop">
+                              {t("settlementImports.dialog.closedShop")}
+                            </Text>
+                          </>
+                        )}
                         {!importable && (
                           <Text fontSize="sm" color="orange.fg" data-testid="import-unsupported">
                             {t("settlementImports.dialog.unsupported")}

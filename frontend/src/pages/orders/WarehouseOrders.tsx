@@ -208,6 +208,8 @@ export function WarehouseOrdersPage() {
         {canFilterByShop && (
           <Box maxW="52" w="full">
             <ShopSelect
+              // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+              asFilter
               teamId={teamId!}
               value={shopId > 0n ? shopId : undefined}
               placeholder={t("orders.shopAll")}

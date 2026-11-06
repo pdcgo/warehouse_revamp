@@ -550,6 +550,8 @@ export function SellerOrdersPage() {
         {canFilterByShop && (
           <FilterField testId="orders-shop-filter">
             <ShopSelect
+              // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+              asFilter
               teamId={teamId!}
               value={shopId > 0n ? shopId : undefined}
               placeholder={t("orders.shopAll")}

@@ -28,7 +28,6 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
-| 21b | **Close a shop** (`a-shop-is-closed-never-deleted`: status, Close/Reopen, a "closed" filter) — until then a closed shop's statements import through the API and auto-import but not from the dialog | feature | shop | M | `docs/business/shop/context_decision.md` |
 | 27 | **Old dev orders have no Team Balance fees** — liability's order routes were never mounted until 2026-11-06, so their `order-placed` events dead-lettered; `san pubsub redrive --topic order-placed` replays them if wanted | data | liability | S | `docs/tools/san.md` |
 | 23 | **Settlement — a screen for a shop's own direct rows** (no RPC lists them; a new screen → prototype first) | frontend · API | settlement | M | `docs/development_state/settlement/context.md` |
 | 16e | **Several warehouse labels in one PDF** — OrderLabels takes one order today (step 2: merge, a new resource type) | API · frontend | order | L | `pick-queue-next/pending.ts` printMerge |
@@ -105,4 +104,5 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 | 2026-11-06 | #25 one Jakarta-day 'expiring soon' rule on the screens (`lib/expiry.ts`); #26 `supplier move` recognises a moved-then-edited row by origin; dev DB's clashing legacy supplier / store 1 renumbered to 3 (backup `D:/hermes/backups/2026-11-06_dev_supplier_renumber_backup.sql`), `dev setup` runs clean | `88621385` |
 | 2026-11-06 | #28 closed — not a bug: a team restocks from another team's supplier by design (`a-team-restocks-from-another-teams-supplier`, `a-line-connects-to-any-teams-supplier-from-a-popup`) | `88621385` |
 | 2026-11-06 | #22 Analytic expense metrics live — Ads expense + Expenses (typed kinds), kept by expense_service in the same transaction (expense 00006), a correction on its own day for its maker, Seller / Warehouse headline rule; e2e `the_expense_metrics.spec.ts`; dev DB migrated | `88621385` |
-| 2026-11-06 | #30 `ExpensePersonList` — Analytic's Created by lists the expense metrics' people; #29 a stock-loss expense lands on the Jakarta day (`expense_v1.JakartaDay`) | uncommitted |
+| 2026-11-06 | #30 `ExpensePersonList` — Analytic's Created by lists the expense metrics' people; #29 a stock-loss expense lands on the Jakarta day (`expense_v1.JakartaDay`) | `dfb77e3f` |
+| 2026-11-06 | #21b Close Shop — `status` + `closed_at` replace `deleted` (selling 00043), ShopClose / ShopReopen, edit locked but access editable, new selling refused (re-checked in the order's transaction), a waiting draft keeps its closed shop; report filters offer closed shops badged (`report-filters-offer-closed-shops`); e2e `the_closed_shop.spec.ts`; dev DB migrated | uncommitted |

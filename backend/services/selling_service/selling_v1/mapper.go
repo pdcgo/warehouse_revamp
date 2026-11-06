@@ -7,15 +7,34 @@ import (
 )
 
 func toProto(s *selling_service_models.Shop) *sellingv1.Shop {
-	return &sellingv1.Shop{
+	shop := &sellingv1.Shop{
 		Id:          s.ID,
 		TeamId:      s.TeamID,
 		Name:        s.Name,
 		ShopCode:    s.ShopCode,
 		Marketplace: san_marketplace.FromText(s.Marketplace),
 		Description: s.Description,
-		Deleted:     s.Deleted,
+		Status:      shopStatusToProto(s.Status),
 
 		PrimaryUserId: s.PrimaryUserID,
 	}
+
+	if s.ClosedAt != nil {
+		shop.ClosedAtUnix = s.ClosedAt.Unix()
+	}
+
+	return shop
+}
+
+// shopStatusToProto maps the stored text to the enum (a-shop-is-closed-never-deleted). The column's CHECK allows only
+// the two, so anything else is a row this code does not know — UNSPECIFIED rather than a guess.
+func shopStatusToProto(status string) sellingv1.ShopStatus {
+	switch status {
+	case selling_service_models.ShopOpen:
+		return sellingv1.ShopStatus_SHOP_STATUS_OPEN
+	case selling_service_models.ShopClosed:
+		return sellingv1.ShopStatus_SHOP_STATUS_CLOSED
+	}
+
+	return sellingv1.ShopStatus_SHOP_STATUS_UNSPECIFIED
 }

@@ -250,6 +250,13 @@ func (s *Service) placeOrder(
 	)
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// THE SHOP IS STILL OPEN, read again under the row's share lock — a close that landed after the gate above is
+		// seen here, and refused like any failed step (the take is compensated below).
+		shopErr := refuseClosedShopInTx(tx, p.teamID, p.shopID)
+		if shopErr != nil {
+			return shopErr
+		}
+
 		address := p.address
 
 		order = selling_service_models.Order{

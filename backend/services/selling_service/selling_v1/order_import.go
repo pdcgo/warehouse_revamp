@@ -91,7 +91,9 @@ func (s *Service) importOrders(callerCtx context.Context, run orderImportRun, lo
 
 	err := s.db.
 		WithContext(ctx).
-		Where("id = ? AND team_id = ? AND deleted = ?", run.shopID, run.teamID, false).
+		// OPEN OR CLOSED: the import moves orders already placed, and a closed shop's placed orders run to their end
+		// (a-closed-shop-refuses-only-new-selling, order-moves-stay-team-wide).
+		Where("id = ? AND team_id = ?", run.shopID, run.teamID).
 		First(&shop).
 		Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

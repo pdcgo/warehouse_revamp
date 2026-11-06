@@ -114,18 +114,20 @@ export const DetailAndAccessAreTwoPanels: Story = {
   },
 };
 
-/** Delete confirms, naming the shop, then goes back to the list. */
-export const DeleteConfirmsAndGoesBack: Story = {
+/** Close Shop confirms, naming the shop — and the page stays, now read as closed (a-shop-is-closed-never-deleted). */
+export const CloseConfirmsAndThePageReadsClosed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("shop-detail-delete"));
+    await expect(canvas.queryByTestId("shop-detail-delete")).toBeNull();
+    await userEvent.click(canvas.getByTestId("shop-detail-close"));
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
     await expect(dialog).toHaveTextContent("Melati Official");
 
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
-    await waitFor(() => expect(canvas.getByTestId("at-shops")).toBeInTheDocument());
+    await canvas.findByTestId("shop-closed-banner");
+    await expect(canvas.getByTestId("shop-detail-reopen")).toBeVisible();
   },
 };
 

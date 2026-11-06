@@ -379,7 +379,7 @@ func TestInterleave_LockShop_NoKeyUpdateLetsTheOrderThrough(t *testing.T) {
 		var ids []uint64
 
 		return tx.
-			Raw(`SELECT id FROM shops WHERE id = ? AND team_id = ? AND deleted = false FOR NO KEY UPDATE`, shopID, raceShopTeam).
+			Raw(`SELECT id FROM shops WHERE id = ? AND team_id = ? AND status = 'open' FOR NO KEY UPDATE`, shopID, raceShopTeam).
 			Scan(&ids).
 			Error
 	}

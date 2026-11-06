@@ -1803,11 +1803,6 @@
     "title": "Shops",
     "selectTeam": "Select a team to manage its shops.",
     "searchPlaceholder": "Search name or code",
-    "deleted": "Shop \"{{name}}\" deleted",
-    "deleteFailed": "Delete failed",
-    "deleteShop": "Delete Shop",
-    "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
-    "delete": "Delete",
     "empty": "No shops found.",
     "table": {
       "name": "Name",
@@ -1869,9 +1864,7 @@
       "title": "Shop Details",
       "edit": "Edit",
       "code": "Code",
-      "description": "Description",
-      "delete": "Delete",
-      "deleted": "Shop \"{{name}}\" deleted"
+      "description": "Description"
     },
     "noPrimary": "No primary CS",
     "lead": "The marketplace storefronts this team sells through — each with its code, its marketplace and the people who work on it.",
@@ -1904,7 +1897,55 @@
       "none": "No withdrawal account",
       "noneHint": "Link this shop to an account in Financial Accounts — its withdrawals are recorded there.",
       "openAccount": "Open Account",
-      "openAccounts": "Open Financial Accounts"
+      "openAccounts": "Open Financial Accounts",
+      "closedNone": "A closed shop takes no new account link — reopen it to link one."
+    },
+    "status": {
+      "label": "Status",
+      "closed": "Closed",
+      "closedOn": "Closed · {{date}}",
+      "filter": {
+        "open": "Open shops",
+        "closed": "Closed shops",
+        "all": "All shops"
+      },
+      "noneClosed": "No closed shops",
+      "noneClosedHint": "A shop that stops selling is closed, never deleted — it shows here, and can be reopened."
+    },
+    "close": {
+      "action": "Close",
+      "title": "Close Shop",
+      "confirm": "Close Shop",
+      "message": "Close {{name}}? You can reopen it later.",
+      "stopsTitle": "It stops",
+      "stops": {
+        "orders": "New orders, and drafts pushed in by an outside app",
+        "picker": "It leaves the order form's shop list",
+        "drafts": "Its waiting drafts stay listed, but cannot become orders until it is reopened",
+        "account": "No new withdrawal account can be linked to it",
+        "edit": "Its name, code and description are locked"
+      },
+      "keepsTitle": "It keeps working",
+      "keeps": {
+        "orders": "Placed orders run to their end — shipping, cancel, return",
+        "money": "Its statements still import; settlement, its linked account and expenses carry on",
+        "access": "Who has access, and its primary CS, can still be changed"
+      },
+      "codeFreed": "Its code {{code}} becomes free for a new shop.",
+      "noPrimary": "It has no primary CS — choose one, or its last statements cannot be imported.",
+      "done": "{{name}} is closed",
+      "failed": "Could not close the shop"
+    },
+    "reopen": {
+      "action": "Reopen",
+      "title": "Reopen Shop",
+      "done": "{{name}} is open again",
+      "failed": "Could not reopen the shop"
+    },
+    "closedBanner": {
+      "title": "This shop is closed",
+      "since": "Closed on {{date}}.",
+      "body": "It takes no new orders or drafts. Its placed orders run to their end, its statements still import, and who has access can still change. Its name, code and description are locked until it is reopened."
     }
   },
   "racks": {
@@ -3714,7 +3755,8 @@
       "hideLog": "Hide log",
       "openFile": "Open the file",
       "close": "Close",
-      "closeRunning": "Close — keep importing"
+      "closeRunning": "Close — keep importing",
+      "closedShop": "This shop is closed — its last statements still import."
     },
     "detail": {
       "notFound": "This file is not in your team's imports.",
@@ -4291,6 +4333,10 @@
       "leaveWaiting": "The order has been sent and the server has not answered yet. Leaving does not stop it — it may still be placed. Check the orders list before you type it again.",
       "leaveNoAnswer": "Your last Create got no answer — the order may or may not have been placed. Check the orders list before you type it again.",
       "leaveConfirm": "Leave"
+    },
+    "shopClosed": {
+      "title": "{{name}} is closed",
+      "body": "A closed shop takes no new orders, so this draft cannot be placed. Delete the draft, or ask the team's owner or admin to reopen the shop."
     }
   },
   "quantityInput": {

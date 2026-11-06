@@ -16,7 +16,12 @@ type Shop struct {
 	Marketplace string
 
 	Description string
-	Deleted     bool
+
+	// Status is "open" or "closed" (ShopOpen, ShopClosed) — a shop is closed, never deleted
+	// (a-shop-is-closed-never-deleted). ClosedAt is when it closed; nil while it is open (a CHECK holds the two together).
+	// An empty Status is left to the column's default, open — a row written without one is an open shop.
+	Status   string `gorm:"default:open"`
+	ClosedAt *time.Time
 
 	// The shop's primary CS, read from shop_users — never a column of shops, because the flag lives on
 	// the grant (the-primary-cs-is-a-flag-on-a-grant). Filled by selling_v1's loadPrimaries; 0 = none.
@@ -28,4 +33,15 @@ type Shop struct {
 
 func (Shop) TableName() string {
 	return "shops"
+}
+
+// A shop's two states (a-shop-is-closed-never-deleted). Text in the column, guarded by shops_status_known.
+const (
+	ShopOpen   = "open"
+	ShopClosed = "closed"
+)
+
+// IsClosed says whether the shop is closed — it takes no new selling (a-closed-shop-refuses-only-new-selling).
+func (s *Shop) IsClosed() bool {
+	return s.Status == ShopClosed
 }

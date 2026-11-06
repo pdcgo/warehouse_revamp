@@ -719,11 +719,11 @@ go run ./tools/san shop grant-current-cs --dsn "$DATABASE_URL" --dry-run
 | a **current CS** — role `SELLING_CS` in a live selling team, not suspended, not erased | every live shop of that team they do not hold yet |
 | the team's owner and admin | nothing — they write on every shop without a grant |
 | a suspended or erased CS | nothing — the grant picker never offers them (a-suspended-user-is-never-picked) |
-| a deleted (closed) shop · another team's shop · a deleted team | nothing |
+| a closed shop (`status = closed`, since selling `00043`) · another team's shop · a deleted team | nothing |
 
 Every read and the write go through the **owning service's handler**, validated first as the interceptor would — team_service
 `TeamList` (live selling teams), user_service `UserList` (members, `exclude_suspended`, with their role), selling_service
-`ShopList` (live shops, each with its primary) and `ShopUserList` (who already holds it), then **`ShopUserAdd`** for each missing
+`ShopList` (open shops — `status` OPEN, each with its primary) and `ShopUserList` (who already holds it), then **`ShopUserAdd`** for each missing
 pair. No migration could do it: CS roles are user_service's tables, grants are selling_service's (HARD RULE 3). Going through
 `ShopUserAdd` keeps its own rules: membership and suspension are checked again (`refuseUngrantable`), and **the primary rule
 applies** — a shop's existing primary is never touched; a shop with **none** gets the first CS granted, lowest user id, as its

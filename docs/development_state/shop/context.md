@@ -4,7 +4,9 @@
 list, manage access, a primary CS, and `ShopAccessCheck` for the importer. Questions:
 [context_clarify.md](../../business/shop/context_clarify.md). Decisions:
 [context_decision.md](../../business/shop/context_decision.md) — **seven owner decisions** and **ten 🏗 as-built
-records** (one now superseded). The lifecycle is at *waiting for the owner* on Q3–Q6; no Storybook prototype yet.
+records** (one now superseded). 🔄 2026-11-06: the close (a shop is closed, never deleted) is decided, its prototype
+accepted and built — [below](#a-shop-is-closed-never-deleted--close-shop-built-2026-11-06); every read filter offers
+closed shops too — [below](#report-filters-offer-closed-shops--built-2026-11-06).
 
 ## Decided
 
@@ -19,8 +21,8 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 
 | | |
 | --- | --- |
-| RPCs | `ShopCreate` · `ShopList` · `ShopDetail` · `ShopUpdate` · `ShopDelete` (soft) · `ShopUserList` · `ShopUserAdd` · `ShopUserRemove` — and, from f6dab3b (2026-09-29, the importer session): `ShopAccessCheck` (team-scoped, `is_have_access`), `ShopUserSetPrimary`, `OrderByExternalRefs` |
-| tables | `shops` · `shop_users` (+ `is_primary`, migration 00014, backfilled from each shop's earliest grant) · `orders.shop_id` is a real FK to `shops` |
+| RPCs | `ShopCreate` · `ShopList` · `ShopDetail` · `ShopUpdate` · `ShopClose` · `ShopReopen` (2026-11-06, replacing `ShopDelete`) · `ShopUserList` · `ShopUserAdd` · `ShopUserRemove` — and, from f6dab3b (2026-09-29, the importer session): `ShopAccessCheck` (team-scoped, `is_have_access`), `ShopUserSetPrimary`, `OrderByExternalRefs` |
+| tables | `shops` (`status` + `closed_at` since selling `00043`, replacing `deleted`) · `shop_users` (+ `is_primary`, migration 00014, backfilled from each shop's earliest grant) · `orders.shop_id` is a real FK to `shops` |
 | callers | settlement and the importer each own an interface for the shop, adapted at the composition root with a Connect client — so the move to `shop_service` changes those adapters only |
 | frontend | `pages/shops`, `pages/shop-detail` (+ `ShopUsersSection`), `features/shops/ShopFormDialog`, `components/pickers/ShopSelect` · from c9c1861 (2026-09-29): the **Primary CS** badge, **Make primary** on every other granted user, a *No primary CS* warning on the shop page and a badge on `/shops` — covered by `e2e/shops.spec.ts`, and accepted as built by the owner ([the-screens-as-built-are-accepted](../../business/settlement/settlement_importer_decision.md#the-screens-as-built-are-accepted)) |
 | the list's filters *(2026-11-04, #16)* | `ShopListFilter` gained `marketplace`, `primary_user_id`, `no_primary` (a person and nobody at once → InvalidArgument); `/shops` sends its marketplace / primary CS / *No primary CS* picks and their ⚠ marks, `pages/shops/pending.ts` and the `shops.pending` i18n keys are gone. Tests: `TestShopList_FiltersByMarketplacePrimaryAndNoPrimary`, `TestShopList_PrimaryAndNoPrimaryTogetherIsInvalid`, perf `TestPerf_ShopListFilters` (fast), stories `TheMarketplaceFilterNarrowsTheList` · `ThePrimaryFilterNarrowsTheList` · `NoPrimaryCsNarrowsTheList`, e2e *Filters: marketplace, primary CS and no primary CS narrow the list (#16)*. Uncommitted |
@@ -36,7 +38,7 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 
 | | where |
 | --- | --- |
-| a deleted shop is readable only through `ShopAccessCheck` — 🔄 2026-11-05 it answers a deleted shop flagged, so the importer's API accepts a closed shop's statements; `ShopList` and `ShopDetail` still hide it, so the import DIALOG cannot pick one until the close and its *closed* list filter ([a-shop-is-closed-never-deleted](../../business/shop/context_decision.md#a-shop-is-closed-never-deleted)) are built | `selling_v1/shop_list.go`, `shop_detail.go` |
+| ~~a deleted shop is readable only through `ShopAccessCheck`~~ ✅ fixed 2026-11-06 by the close: `ShopList` `status` lists closed shops on asking, `ShopDetail` reads one, the import dialog offers it ([below](#a-shop-is-closed-never-deleted--close-shop-built-2026-11-06)) | `selling_v1/shop_list.go`, `shop_detail.go` |
 | `ShopUpdate` lets the marketplace change on a shop with history (Q4) | `selling_v1/shop_update.go`, `ShopFormDialog` |
 | `ShopCreate` does not check the team is a SELLING team (critique 4) | `selling_v1/shop_create.go` |
 | ⛔ `SettlementPost` opens a shop-addressed account under the CALLER's team on the first row — the first team to post claims the shop (critique 6) | `settlement_v1/post_entry.go:300-332` |
@@ -49,7 +51,7 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 
 | | |
 | --- | --- |
-| close, not delete | [shop Q3](../../business/shop/context_clarify.md#question) — ⛔ before the importer ships: the built check refuses a deleted shop |
+| ~~close, not delete~~ | ✅ decided ([a-shop-is-closed-never-deleted](../../business/shop/context_decision.md#a-shop-is-closed-never-deleted)) and built 2026-11-06 ([below](#a-shop-is-closed-never-deleted--close-shop-built-2026-11-06)) |
 | marketplace and team fixed at creation | [shop Q4](../../business/shop/context_clarify.md#question) — cheapest during the move |
 | the shop's own name on the platform | [shop Q5](../../business/shop/context_clarify.md#question) — cheapest during the move |
 | who can hold a grant — members only, ended by leaving | [shop Q6](../../business/shop/context_clarify.md#question) — real access now that grants gate writes |
@@ -73,7 +75,7 @@ order imports and the hand moves. Tests: `shop_write_gate_test.go` (5), `shop_ac
 · *WritableOffersAManagerEveryShop*, e2e `writes_need_a_shop_grant.spec.ts`. Perf: `ShopList` writable was heavy by plan only
 ([ShopList.md](../../../audits/services/selling_service/performances/ShopList.md) — 🔄 fixed by selling `00039`, below).
 Test fakes: `everyoneMayWrite` (selling_v1) and `runsEveryShop` (cmd/app_development) answer the team's owner, so order tests
-about something else need no grant. ⛔ Left: the close (`status`, Close/Reopen, the closed filter).
+about something else need no grant. ✅ The close (`status`, Close/Reopen, the closed filter) built 2026-11-06 — below.
 
 ### a-write-needs-a-grant-or-a-manager — the rollout grant (2026-11-05)
 ✅ Built 2026-11-05 — `san shop grant-current-cs [--dry-run]` (`tools/san/shop.go`, [san.md](../../tools/san.md#shop-grant-current-cs)).
@@ -90,4 +92,53 @@ owner/admin/suspended CS, a deleted shop, an existing grant: dry run = real run,
 ### a-closed-shop-refuses-only-new-selling — the ShopAccessCheck half (2026-11-05)
 🔄 Built 2026-11-05 — `ShopAccessCheck` answers a deleted shop with `deleted = true` (NotFound only for another team's or a
 missing one); the settlement importer and settlement's primary-CS lookup accept it; the order writes refuse it; financial
-account's `ShopOfTeam` still refuses it (adapter). The `status`/Close model itself is not built — a closed shop is a deleted one.
+account's `ShopOfTeam` still refuses it (adapter). ✅ The `status`/Close model built 2026-11-06 — below; `deleted` is gone.
+
+### close-a-shop — Storybook prototype (2026-11-06, backlog #21b)
+✅ **Accepted** ([the-close-shop-prototype-is-accepted](../../business/shop/context_decision.md#the-close-shop-prototype-is-accepted))
+**and built the same day** — the story-only `ShopClosePrototypeProvider` / `closePrototype.tsx` seam is gone; the screens
+below are the app's. The table is the accepted design, kept as the record.
+
+| screen | under the prototype | decision |
+| --- | --- | --- |
+| `/shops` | status filter *Open shops* (default, not counted) · *Closed shops* · *All shops*, URL `status` · a *Closed · date* badge under a closed shop's name · **Close** in Delete's place (ConfirmDialog: what stops, what keeps working, the code freed, a no-primary-CS warning) · **Reopen** on a closed row, no Edit, the primary CS ⋯ kept · no Delete | [a-shop-is-closed-never-deleted](../../business/shop/context_decision.md#a-shop-is-closed-never-deleted), [a-closed-shop-locks-all-but-its-grants](../../business/shop/context_decision.md#a-closed-shop-locks-all-but-its-grants) |
+| `/shops/:id` | **Close Shop** in Delete's place; a closed shop: *Closed* badge on the title row, an info banner (closed on, what it still does), **Reopen Shop** alone, access panel still editable, no account link offered | [a-closed-shop-locks-all-but-its-grants](../../business/shop/context_decision.md#a-closed-shop-locks-all-but-its-grants), [a-closed-shop-takes-no-new-account-link](../../business/shop/context_decision.md#a-closed-shop-takes-no-new-account-link) |
+| statement import dialog | `ShopSelect withClosed` offers the writable closed shops after the open ones, badged; a picked one says its statements still import | [a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling) |
+| order form (`MarketplaceInfoForm`) | `ShopSelect writable` — never offers a closed shop | same |
+| reopen refused | while an open shop of the team holds the code, naming it | [a-shop-code-is-unique-among-open-shops](../../business/shop/context_decision.md#a-shop-code-is-unique-among-open-shops) |
+
+**Backend step (decided, not built):** `shops.status` (`open` · `closed`) + `closed_at` replacing `deleted` (deleted rows become
+closed, `closed_at = updated_at`), the partial unique index on `status = 'open'`; `ShopClose` / `ShopReopen` (owner, admin, root,
+administrator — ShopDelete's policy) replacing `ShopDelete`; `Shop.status`/`closed_at_unix`; `ShopListFilter.status`
+(open default); `ShopDetail` and the grant RPCs (`shopExists`/`lockShop`) answering a closed shop; `ShopUpdate` refusing it
+(*"reopen the shop first"*); `refuseShopWrite` and financial_account's `ShopOfTeam` reading `status` instead of `deleted`;
+every label/filter read (`useShopOptions` callers, `ShopByIds`) naming a closed shop, marked. Found while scoping: a draft on a
+closed shop opened in the order form has its shop silently CLEARED by `ShopSelect writable` (it is not in the writable list), so
+CS could re-point it at another shop — against [a-close-leaves-the-drafts-waiting](../../business/shop/context_decision.md#a-close-leaves-the-drafts-waiting)
+(the ways out are delete or reopen); the form should keep it, badged, with Create refused. The *Open* table above is stale:
+Q3–Q6 were answered 2026-10-19.
+
+### a-shop-is-closed-never-deleted — Close Shop built (2026-11-06)
+✅ Built 2026-11-06 — the accepted prototype, live. Uncommitted.
+
+| | |
+| --- | --- |
+| migration | selling `00043_shop_status_replaces_deleted`: `status` (`open`·`closed`, CHECK `shops_status_known`) + `closed_at` (CHECK `shops_closed_at_when_closed`); every deleted shop → closed at its `updated_at`; `deleted` dropped; `shops_team_code_open_unique … WHERE status = 'open'`, `shops_team_status_idx (team_id, status)`. ⚠ the fill renames no code — a deleted shop whose code was since reused reopens only after one is renamed (the reopen refusal says which) |
+| proto | `ShopStatus` enum; `Shop.status = 9`, `closed_at_unix = 10` (field 7 `deleted` reserved); `ShopListFilter.status = 6` (`ShopListStatus`: UNSPECIFIED = open, OPEN, CLOSED, ALL); `ShopClose` / `ShopReopen` (owner, admin, root, Administrator); `ShopDelete` removed |
+| backend | `shop_close.go`, `shop_reopen.go` (idempotent, `lockShopRow` FOR NO KEY UPDATE, reopen refused naming the open holder of the code) · `ShopUpdate` refuses a closed shop *"reopen the shop first"* · `ShopDetail`, `ShopAccessCheck`, the grant RPCs answer it · `refuseShopWrite` + `refuseClosedShopInTx` (FOR SHARE inside `placeOrder`) refuse new selling · the order imports accept it · financial_account `ShopOfTeam` → NotFound on `SHOP_STATUS_CLOSED` · `san shop grant-current-cs` reads `ShopList` OPEN |
+| frontend | `features/shops/status.ts`, `queries.ts` (`useShops`/`useShopOptions` status — name lookups read ALL, so a closed shop is still named; `useCloseShop`/`useReopenShop`; `useDeleteShop` gone) · `ShopSelect` open by default, `withClosed` (statement import, expense, order import) and `keepClosed` (the order form: a waiting draft's closed shop kept, badged) · the order form holds Create with an alert naming the closed shop (`orderForm.shopClosed`) · `/shops` and `/shops/:id` Close/Reopen, no Delete · i18n `shops.delete*` removed |
+| tests | `shop_close_test.go`, `shop_reopen_test.go`, `shop_status_migration_test.go`, additions in `shop_update/detail/user/list/write_gate/access_check/shopee_order_import` tests · race `shop_close_race_test.go` (4, mutation-checked) · perf `TestPerf_ShopClose` / `TestPerf_ShopReopen` / `TestPerf_ShopListFilters` — all fast · stories `Pages/Shops/CloseShop` (the *TheLive…* stories now pin the live Close), `ShopSelect` (+3), `OrderCreate` *ADraftOnAClosedShopKeepsItAndRefusesCreate*, shops/shop-detail close stories · e2e `shops.spec.ts` (Close/Reopen replaced Delete), `the_closed_shop.spec.ts` (its own team: close → not offered, a statement still imports, reopen → offered), `writes_need_a_shop_grant.spec.ts` (ShopClose) |
+| docs | [selling rpc.md](../../services/selling_service/rpc.md#a-shop-is-closed-never-deleted--shopclose-and-shopreopen-2026-11-06) · [database-schema.md](../../database-schema.md) · [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) · [ShopList.md](../../../audits/services/selling_service/performances/ShopList.md) |
+
+### report-filters-offer-closed-shops — built (2026-11-06)
+✅ Built 2026-11-06 ([report-filters-offer-closed-shops](../../business/shop/context_decision.md#report-filters-offer-closed-shops)).
+Uncommitted. Frontend only: every read filter already sent a plain `shop_id` (no RPC checks the shop's status on a read),
+so a closed shop's rows were reachable by the API and only the pickers hid it.
+
+| | |
+| --- | --- |
+| `ShopSelect asFilter` | a read filter's picker: the closed shops after the open ones, badged *Closed* (`withClosed`'s list), and a PICKED closed shop keeps its *Closed* badge in the field (`shop-select-value-closed`) — on a filter nothing else says the shop is closed. `withClosed` / `keepClosed` (the writes) show no field badge, so the accepted write dialogs are unchanged |
+| filters now `asFilter` | Orders (`SellerOrders` — every non-warehouse team, with the marketplace narrowing; `WarehouseOrders` carries the flag too, though a warehouse is never shown the shop filter) · Returns · Order Settlement · Statement Imports list · Analytic (the composer's shop filter — a `ShopSelect`, not an `EntityFilter` chip; `EntityFilter` is product/supplier only) · Financial Accounts list |
+| unchanged — writes | the order form / a draft (`MarketplaceInfoForm`: open only, `keepClosed` for a waiting draft) · an account's *Link Shop* (`ShopLinks`: open only — [a-closed-shop-takes-no-new-account-link](../../business/shop/context_decision.md#a-closed-shop-takes-no-new-account-link)) · statement import, expense, order import (`withClosed`, as accepted) |
+| no shop filter (names only) | settlement report, account report, account detail, order drafts, expenses, order detail, pick queue — they name a row's shop through `useShopOptions` (status ALL) / `ShopByIds`, which already name a closed shop |
+| tests | stories `ShopSelect` *AsFilterOffersTheClosedShopsLastAndBadgesAClosedPick*, *WithClosedShowsNoBadgeInTheField* · `SellerOrderListPage` *TheShopFilterOffersAClosedShopLastBadged* (mutation-checked: fails without `asFilter`) · `Analytic/Composer` *TheShopFilterOffersAClosedShopLastBadged* (`shop=22` in the URL) · `FinancialAccount/Accounts` *TheShopFilterOffersAClosedShopLastBadged* · e2e `the_closed_shop.spec.ts` now seeds a warehouse with stock and places one order on each shop while open; after the close, *the Orders filter still offers it after the open shop, badged — and shows its orders* (URL `shop=`, one row, the field badge) |

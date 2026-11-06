@@ -14,8 +14,8 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
-// ShopList returns the scoped team's active shops, newest first, paginated. `q` filters by name or
-// shop code; `marketplace` by the shop's marketplace; `primary_user_id` by its primary CS and
+// ShopList returns the scoped team's shops, newest first, paginated — its OPEN shops unless `status` asks for the closed
+// ones or all (a-shop-is-closed-never-deleted: closed shops show by a filter). `q` filters by name or shop code; `marketplace` by the shop's marketplace; `primary_user_id` by its primary CS and
 // `no_primary` to the shops with none (the-primary-cs-is-a-flag-on-a-grant) — the last two exclude
 // each other. `writable` narrows it to the shops the caller may write on — what a picker for a write offers.
 func (s *Service) ShopList(
@@ -35,7 +35,16 @@ func (s *Service) ShopList(
 	query := s.db.
 		WithContext(ctx).
 		Model(&selling_service_models.Shop{}).
-		Where("team_id = ? AND deleted = ?", req.Msg.GetTeamId(), false)
+		Where("team_id = ?", req.Msg.GetTeamId())
+
+	// THE STATUS — open by default; both on ALL. Every branch is served by shops_team_status_idx (team_id, status).
+	switch filter.GetStatus() {
+	case sellingv1.ShopListStatus_SHOP_LIST_STATUS_CLOSED:
+		query = query.Where("status = ?", selling_service_models.ShopClosed)
+	case sellingv1.ShopListStatus_SHOP_LIST_STATUS_ALL:
+	default:
+		query = query.Where("status = ?", selling_service_models.ShopOpen)
+	}
 
 	if q := strings.TrimSpace(filter.GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"

@@ -235,12 +235,25 @@ test("Filters: marketplace, primary CS and no primary CS narrow the list (#16)",
   expect(refused).toContain("invalid_argument");
 });
 
-test("Delete: the shop is gone", async ({ page }) => {
+// A shop is closed, never deleted (a-shop-is-closed-never-deleted): Close confirms, the shop leaves the open list and is
+// under Closed, badged; Reopen gives it back. There is no Delete.
+test("Close: the shop leaves the open list, Closed lists it, Reopen brings it back", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoShops(page);
 
-  await page.getByTestId(`delete-${CODE}`).click();
+  await expect(page.getByTestId(`delete-${CODE}`)).toHaveCount(0);
+  await page.getByTestId(`close-${CODE}`).click();
   await page.getByTestId("confirm-action").click();
-
   await expect(page.getByTestId(`shop-row-${CODE}`)).toBeHidden();
+
+  await page.getByTestId("shops-status-select").click();
+  await page.getByTestId("shops-status-option-closed").click();
+  await expect(page.getByTestId(`shop-closed-${CODE}`)).toBeVisible();
+
+  await page.getByTestId(`reopen-${CODE}`).click();
+  await expect(page.getByTestId(`shop-row-${CODE}`)).toBeHidden();
+  await page.getByTestId("shops-status-select").click();
+  await page.getByTestId("shops-status-option-open").click();
+  await expect(page.getByTestId(`shop-row-${CODE}`)).toBeVisible();
+  await expect(page.getByTestId(`shop-closed-${CODE}`)).toHaveCount(0);
 });

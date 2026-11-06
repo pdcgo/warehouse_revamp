@@ -272,6 +272,9 @@ export function FinancialAccountsPage() {
         {(shops.data?.length ?? 0) > 0 && (
           <FilterField testId="account-shop-filter">
             <ShopSelect
+              // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops): an account keeps the
+              // links its closed shop made (a-closed-shop-takes-no-new-account-link).
+              asFilter
               teamId={teamId}
               value={shopId > 0n ? shopId : undefined}
               placeholder={t("financialAccounts.allShops")}

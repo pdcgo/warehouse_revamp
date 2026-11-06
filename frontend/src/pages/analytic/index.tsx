@@ -221,7 +221,14 @@ export function AnalyticPage() {
     teamId !== undefined && (
       <FilterField key={kind} w="13rem" testId={`analytic-filter-${kind}`}>
         {kind === "shop" && (
-          <ShopSelect teamId={teamId} value={asId(state.shop)} onChange={(id) => commit({ shop: fromId(id) })} placeholder={t("analytic.all.shop")} />
+          // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+          <ShopSelect
+            asFilter
+            teamId={teamId}
+            value={asId(state.shop)}
+            onChange={(id) => commit({ shop: fromId(id) })}
+            placeholder={t("analytic.all.shop")}
+          />
         )}
         {(kind === "team" || kind === "warehouse") && (
           <TeamSelect

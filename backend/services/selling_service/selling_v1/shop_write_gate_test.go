@@ -14,6 +14,7 @@ import (
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
@@ -113,7 +114,7 @@ func TestOrderCreate_NeedsAGrantOrAManager(t *testing.T) {
 	}
 }
 
-// A closed (deleted) shop takes no new order — not even from its owner — FailedPrecondition, naming it, before any
+// A closed shop takes no new order — not even from its owner — FailedPrecondition, naming it, before any
 // stock moves (a-closed-shop-refuses-only-new-selling). Another team's shop is still NotFound.
 func TestOrderCreate_AClosedShopOrAnotherTeamsIsRefused(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -123,9 +124,9 @@ func TestOrderCreate_AClosedShopOrAnotherTeamsIsRefused(t *testing.T) {
 	closed := insertShop(t, db, gateTeam, "Gone Store", "GONE", "shopee")
 	grantShop(t, db, closed, gateGranted, true)
 
-	_, err := svc.ShopDelete(context.Background(), connect.NewRequest(&sellingv1.ShopDeleteRequest{TeamId: gateTeam, ShopId: closed}))
+	_, err := svc.ShopClose(context.Background(), connect.NewRequest(&sellingv1.ShopCloseRequest{TeamId: gateTeam, ShopId: closed}))
 	if err != nil {
-		t.Fatalf("ShopDelete: %v", err)
+		t.Fatalf("ShopClose: %v", err)
 	}
 
 	foreign := insertShop(t, db, 3, "Other Team", "OTH", "shopee")
@@ -158,9 +159,9 @@ func TestOrderDraftPush_NeedsAGrantOrAManager(t *testing.T) {
 
 	closed := insertShop(t, db, gateTeam, "Gone Store", "GONE", "shopee")
 
-	_, err := svc.ShopDelete(context.Background(), connect.NewRequest(&sellingv1.ShopDeleteRequest{TeamId: gateTeam, ShopId: closed}))
+	_, err := svc.ShopClose(context.Background(), connect.NewRequest(&sellingv1.ShopCloseRequest{TeamId: gateTeam, ShopId: closed}))
 	if err != nil {
-		t.Fatalf("ShopDelete: %v", err)
+		t.Fatalf("ShopClose: %v", err)
 	}
 
 	pushOn := func(user, shopID uint64, ref string) error {
@@ -290,4 +291,41 @@ func sameIDs(got, want []uint64) bool {
 	}
 
 	return true
+}
+
+// A CLOSE THAT LANDS AFTER THE GATE: OrderCreate's gate reads the shop open, the shop is closed while the stock is
+// being taken, and the order's own transaction reads it again — refused, "the shop is closed", nothing written, the
+// take released (refuseClosedShopInTx). The committed race of the same is TestRace_ShopClose_OrderCreate.
+func TestOrderCreate_AShopClosedDuringTheTakeIsRefused(t *testing.T) {
+	db := san_testdb.DB(t)
+
+	var svc *selling_v1.Service
+
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+	picker := &fakePicker{onPick: func(context.Context) { closeShop(t, svc, 2, shop) }}
+	svc = newServiceWithPicker(t, db, picker)
+
+	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		IdempotencyKey:        newOrderKey(),
+		PlatformCreatedAtUnix: testPlatformDate,
+		PlatformTotal:         testPlatformTotal,
+		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
+		CustomerName: "Budi",
+		Items:        []*sellingv1.OrderItem{{ProductId: 41, ProductCode: "SKU41", Name: "Kaos", Quantity: 1}},
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "the shop is closed") {
+		t.Fatalf("an order on a shop closed mid-take: %v, want FailedPrecondition, the shop is closed", err)
+	}
+
+	var orders int64
+
+	db.Model(&selling_service_models.Order{}).Where("shop_id = ?", shop).Count(&orders)
+
+	if orders != 0 {
+		t.Fatalf("%d orders written on the closed shop", orders)
+	}
+
+	if len(picker.picked) != 1 || len(picker.returned) != 1 || picker.returned[0] != picker.picked[0] {
+		t.Fatalf("picked %v, returned %v — want the take released by its key", picker.picked, picker.returned)
+	}
 }

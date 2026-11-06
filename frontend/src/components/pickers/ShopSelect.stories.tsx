@@ -4,9 +4,10 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
 import { shops } from "../../../.storybook/fixtures";
-import { setShopWriter } from "../../../.storybook/shopStub";
+import { closeShopForStory, setShopWriter } from "../../../.storybook/shopStub";
 import { ShopSelect, description } from "./ShopSelect";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { ShopStatus } from "../../gen/warehouse/selling/v1/selling_pb";
 
 const meta = {
   title: "Components/Pickers/ShopSelect",
@@ -84,7 +85,7 @@ export const ReopeningAfterAPickShowsEveryShop: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const teamShops = shops.filter((s) => s.teamId === 12n && !s.deleted);
+    const teamShops = shops.filter((s) => s.teamId === 12n && s.status === ShopStatus.OPEN);
 
     await userEvent.click(canvas.getByTestId("shop-select"));
     const option = await canvas.findByTestId(`shop-select-option-${teamShops[1]!.id}`);
@@ -222,5 +223,149 @@ export const WritableOffersAManagerEveryShop: Story = {
     for (const shop of shops.filter((s) => s.teamId === 12n)) {
       await expect(await canvas.findByTestId(`shop-select-option-${shop.id}`)).toBeInTheDocument();
     }
+  },
+};
+
+// ── Closed shops (a-shop-is-closed-never-deleted, a-closed-shop-refuses-only-new-selling) ──────────────────────────────
+// Melati Store (22) is closed in each of these.
+
+/** A CLOSED SHOP IS NEVER OFFERED unless asked — the order form, an account link. */
+export const AClosedShopIsNotOfferedByDefault: Story = {
+  beforeEach: () => {
+    closeShopForStory(22n);
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    await waitFor(() => expect(canvas.getByTestId("shop-select-option-21")).toBeVisible());
+    await expect(canvas.queryByTestId("shop-select-option-22")).toBeNull();
+    await expect(canvas.queryAllByTestId(/^shop-select-closed-/)).toHaveLength(0);
+  },
+};
+
+/** `withClosed` — the statement import, an expense, the order import: the closed shops AFTER the open ones, badged. */
+export const WithClosedOffersTheClosedShopsLastBadged: Story = {
+  args: { withClosed: true },
+  beforeEach: () => {
+    closeShopForStory(22n);
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const closed = await canvas.findByTestId("shop-select-option-22");
+    await waitFor(() => expect(closed).toBeVisible());
+    await expect(within(closed).getByTestId("shop-select-closed-22")).toHaveTextContent("Closed");
+    await expect(canvas.getAllByTestId(/^shop-select-closed-/)).toHaveLength(1);
+
+    const options = canvas.getAllByRole("option").map((o) => o.getAttribute("data-testid"));
+    await expect(options[options.length - 1]).toBe("shop-select-option-22");
+  },
+};
+
+/**
+ * `asFilter` — a read filter (report-filters-offer-closed-shops): every shop, the closed ones LAST and badged; a picked
+ * closed shop keeps its badge in the field, and an open pick shows none.
+ */
+export const AsFilterOffersTheClosedShopsLastAndBadgesAClosedPick: Story = {
+  args: { asFilter: true },
+  beforeEach: () => {
+    closeShopForStory(22n);
+  },
+  render: (args) => {
+    const [value, setValue] = useState<bigint>(0n);
+
+    return (
+      <ShopSelect
+        {...args}
+        value={value}
+        onChange={(id) => {
+          setValue(id);
+          args.onChange?.(id);
+        }}
+      />
+    );
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // An open pick: no badge in the field.
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const open = await canvas.findByTestId("shop-select-option-21");
+    await waitFor(() => expect(open).toBeVisible());
+    await userEvent.click(open);
+    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveValue("Melati Official"));
+    await expect(canvas.queryByTestId("shop-select-value-closed")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const closed = await canvas.findByTestId("shop-select-option-22");
+    await waitFor(() => expect(closed).toBeVisible());
+    await expect(within(closed).getByTestId("shop-select-closed-22")).toHaveTextContent("Closed");
+    await expect(canvas.getAllByTestId(/^shop-select-closed-/)).toHaveLength(1);
+    const options = canvas.getAllByRole("option").map((o) => o.getAttribute("data-testid"));
+    await expect(options[options.length - 1]).toBe("shop-select-option-22");
+
+    await userEvent.click(closed);
+    await expect(args.onChange).toHaveBeenCalledWith(22n);
+    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveValue("Melati Store"));
+    await expect(canvas.getByTestId("shop-select-value-closed")).toHaveTextContent("Closed");
+  },
+};
+
+/** `withClosed` — a write's picker: the closed shop is offered, but a pick shows no badge in the field. */
+export const WithClosedShowsNoBadgeInTheField: Story = {
+  args: { withClosed: true, value: 22n },
+  beforeEach: () => {
+    closeShopForStory(22n);
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveValue("Melati Store"));
+    await expect(canvas.queryByTestId("shop-select-value-closed")).toBeNull();
+  },
+};
+
+/**
+ * `keepClosed` — the order form holding a waiting draft's CLOSED shop (a-close-leaves-the-drafts-waiting): the value is
+ * kept, never cleared, and shows badged; no other closed shop is offered.
+ */
+export const KeepClosedKeepsTheClosedValueBadged: Story = {
+  args: { writable: true, keepClosed: true },
+  beforeEach: () => {
+    closeShopForStory(22n);
+    closeShopForStory(23n);
+  },
+  render: (args) => {
+    const [value, setValue] = useState<bigint>(22n);
+
+    return (
+      <>
+        <ShopSelect
+          {...args}
+          value={value}
+          onChange={(id) => {
+            setValue(id);
+            args.onChange?.(id);
+          }}
+        />
+        <span data-testid="held">{value.toString()}</span>
+      </>
+    );
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveValue("Melati Store"));
+    await expect(canvas.getByTestId("held")).toHaveTextContent("22");
+    await expect(args.onChange).not.toHaveBeenCalledWith(0n);
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const kept = await canvas.findByTestId("shop-select-option-22");
+    await waitFor(() => expect(kept).toBeVisible());
+    await expect(within(kept).getByTestId("shop-select-closed-22")).toBeVisible();
+    // Melati Grosir is closed too — and not offered.
+    await expect(canvas.queryByTestId("shop-select-option-23")).toBeNull();
   },
 };

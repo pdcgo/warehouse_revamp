@@ -10,6 +10,7 @@
 import { type Timestamp, timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { ExpenseKind } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
+import { ShopStatus } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { SettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import {
@@ -44,15 +45,15 @@ export const teams = [
 
 // ── Shops ───────────────────────────────────────────────────────────────────────────────────────
 export const shops = [
-  { id: 21n, teamId: 12n, name: "Melati Official", shopCode: "MEL-SHP", marketplace: Marketplace.SHOPEE, description: "", deleted: false },
-  { id: 22n, teamId: 12n, name: "Melati Store", shopCode: "MEL-TOK", marketplace: Marketplace.TOKOPEDIA, description: "", deleted: false },
-  { id: 23n, teamId: 12n, name: "Melati Grosir", shopCode: "MEL-LAZ", marketplace: Marketplace.LAZADA, description: "", deleted: false },
+  { id: 21n, teamId: 12n, name: "Melati Official", shopCode: "MEL-SHP", marketplace: Marketplace.SHOPEE, description: "", status: ShopStatus.OPEN, closedAtUnix: 0n },
+  { id: 22n, teamId: 12n, name: "Melati Store", shopCode: "MEL-TOK", marketplace: Marketplace.TOKOPEDIA, description: "", status: ShopStatus.OPEN, closedAtUnix: 0n },
+  { id: 23n, teamId: 12n, name: "Melati Grosir", shopCode: "MEL-LAZ", marketplace: Marketplace.LAZADA, description: "", status: ShopStatus.OPEN, closedAtUnix: 0n },
   // Kenanga's storefront, so the OTHER selling team's orders can name a shop that exists rather than
   // a dangling id. Appended for the same reason as the team above.
-  { id: 24n, teamId: 13n, name: "Kenanga Official", shopCode: "KEN-TOK", marketplace: Marketplace.TOKOPEDIA, description: "", deleted: false },
+  { id: 24n, teamId: 13n, name: "Kenanga Official", shopCode: "KEN-TOK", marketplace: Marketplace.TOKOPEDIA, description: "", status: ShopStatus.OPEN, closedAtUnix: 0n },
   // Melati's TikTok storefront — the settlement importer reads Shopee and TikTok statements, and this is
   // the only way a story reaches the TikTok import. Appended, so every index above still holds.
-  { id: 25n, teamId: 12n, name: "Melati TikTok", shopCode: "MEL-TIK", marketplace: Marketplace.TIKTOK, description: "", deleted: false },
+  { id: 25n, teamId: 12n, name: "Melati TikTok", shopCode: "MEL-TIK", marketplace: Marketplace.TIKTOK, description: "", status: ShopStatus.OPEN, closedAtUnix: 0n },
 ];
 
 // ── Suppliers ───────────────────────────────────────────────────────────────────────────────────
